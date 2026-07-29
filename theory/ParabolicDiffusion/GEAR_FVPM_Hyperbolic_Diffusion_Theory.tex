@@ -66,7 +66,7 @@
 \newcommand{\Deff}{\mathbf{D}}                            % effective diffusivity tensor, D = K*(q/U)
 \newcommand{\expr}{\mathcal{E}}                           % chemistry_timesteps.h's gradient-suppression "expression"
 
-\title{Wave-Speed Theory for the Hyperbolic (Cattaneo-Relaxation) FVPM
+\title{Theory of the Hyperbolic (Cattaneo-Relaxation) FVPM
 Diffusion Scheme}
 \author{Darwin Roduit}
 \date{\today}
@@ -76,6 +76,8 @@ Diffusion Scheme}
         % overfull the line; prefer looser justification to clipped text.
 \maketitle
 \tableofcontents
+
+\part{Formulation}
 
 \section{Scope and Motivation}
 \label{sec:scope}
@@ -92,24 +94,6 @@ confrontation of that result against the two closed-form expressions
 currently returned by
 \code{chemistry_get_physical_hyperbolic_soundspeed}
 (\code{hyperbolic/chemistry_getters.h:37--66}).
-
-The motivating question was operational: \emph{does the hyperbolic
-timestep still need a $\dt<\taurelax$-type restriction, given that the
-relaxation source term is integrated exactly?} Answering it precisely
-required first pinning down what the \emph{correct}, general (mode- and
-shape-of-$\Kmat$-independent) characteristic speed actually is --
-independent of any of the three closed forms already in the code, and
-without presupposing which of them (if any) is right. That derivation is
-the content of this document. Several conclusions followed directly
-enough from Proposition~\ref{prop:main} to implement in the same pass:
-coupling $\taurelax_0$ to $\kappaC$ (Section~\ref{sec:tau0-physical}), and
-fixing the \code{constant_mode} soundspeed branch's missing $\rho^{-1}$
-and its use of the Frobenius norm in place of a tight, still
-particle-local bound (Remark~\ref{rem:lambda-max-not-n}). What remains
-open is stated as findings and recommendations in
-Section~\ref{sec:confrontation}, left for a deliberate decision. This is
-part of the ongoing hyperbolic-diffusion verification work on the
-\code{darwin/gear_chemistry_fluxes} branch.
 
 \subsection{Relation to the Parabolic Document}
 This document assumes familiarity with the FVPM geometry, the diffusion
@@ -149,16 +133,12 @@ driver as in the parabolic scheme ($\driver=\rhoZ$ for
 \code{chemistry_compute_flux}, \code{hyperbolic/chemistry_flux.h:159--172}).
 As $\taurelax\to0$, Eq.~\eqref{eq:cattaneo} forces
 $\Fdiff\to-\Kmat\grad\driver$, i.e.\ it collapses onto Fick's law and
-Eq.~\eqref{eq:mass_conservation} becomes the parabolic equation -- this is
-the relaxation limit already noted (without proof) in the parabolic
-document.
+Eq.~\eqref{eq:mass_conservation} becomes the parabolic equation.
 
 The pair \eqref{eq:mass_conservation}--\eqref{eq:cattaneo} is exactly the
 Cattaneo/Maxwell-Cattaneo regularisation of a diffusion law, structurally
 identical to the M1 closure of radiative transfer
-(Berthon et al.~\cite{Berthon2007}) -- the same structural identity already
-noted informally in the code's development log and reflected in the
-blending scheme of Section~\ref{sec:confrontation}.
+(Berthon et al.~\cite{Berthon2007}).
 
 \begin{remark}[$\grad\driver$ is always evaluated at the particle, never extrapolated]
 \label{rem:cell-centred-gradients-only}
@@ -210,7 +190,7 @@ From \code{chemistry_get_physical_matrix_K}/\code{chemistry_get_diffusion_coeffi
 Crucially, $\Kmat$ carries an explicit factor of $\rho$ in the
 \code{isotropic_smagorinsky} and \code{anisotropic_gradient} modes, but
 \emph{not} in \code{isotropic_constant}. This asymmetry is the origin of
-the apparent inconsistency examined in Section~\ref{sec:confrontation}.
+the consistency check of Section~\ref{sec:confrontation}.
 
 \subsection{The Effective Diffusivity $\Deff$}
 \label{sec:effective-diffusivity}
@@ -249,6 +229,8 @@ entirely in terms of $U_0$ instead of $\driver$. Using $\Deff$ as the
 primary object below, rather than carrying $\Kmat$ and $\mu$ separately,
 is what lets Proposition~\ref{prop:main} be stated as a single formula
 instead of a per-\code{diffusion\_mode} case split.
+
+\part{Characteristic Structure}
 
 \section{Quasi-Linear Form and the Flux Jacobian}
 \label{sec:quasilinear}
@@ -397,8 +379,6 @@ The units mismatch is not a detail specific to $\chyp$: any code path
 that consumes $\Kmat$ directly (rather than $\Deff$) must know which
 $\driver$ convention is in force for the active \code{diffusion_mode}, or
 it silently mixes an ordinary diffusivity with a mass diffusivity.
-Section~\ref{sec:io-units-bug} documents one place this previously went
-unnoticed.
 
 \subsection{Corollary: The Frobenius Norm Is a (Non-Tight) Upper Bound}
 \begin{corollary}
@@ -468,8 +448,7 @@ tight except for rank-1 $\Kmat$. \textbf{The correction is
 $\lambda_1(\Kmat)$}, the matrix's largest eigenvalue (Remark~\ref{rem:lambda-max-not-n}
 below): swap \code{chemistry\_get\_matrix\_norm(K)} (Frobenius) for
 \code{chemistry\_get\_matrix\_max\_eigenvalue(K)} wherever $\chyp$ is
-computed -- already done for \code{constant\_mode}
-(Section~\ref{sec:confrontation}), not yet for \code{turbulent\_mode}.
+computed.
 
 \begin{remark}[$\lambda_1(\Kmat)$, not $\nunit$, is the right practical fix]
 \label{rem:lambda-max-not-n}
@@ -650,6 +629,8 @@ entirely different means elsewhere in this document:
   solution always diffuse rather than propagate.
 \end{itemize}
 
+\part{Relaxation Time and Timestep}
+
 \section{Physically-Motivated Normalisation of $\taurelax_0$}
 \label{sec:tau0-physical}
 
@@ -661,11 +642,7 @@ local shear/turnover times the diffusive flux takes to relax to its
 Fickian equilibrium}. This section derives why that constant cannot be
 chosen independently of $\kappaC$, checks the resulting formula against an
 independent literature derivation, and revises the ``does hyperbolic beat
-parabolic'' criterion of the earlier discussion accordingly. The
-conclusions here are already implemented in
-\code{hyperbolic/chemistry_getters.h} (both
-\code{chemistry_compute_physical_tau} and
-\code{chemistry_get_physical_hyperbolic_soundspeed}).
+parabolic'' criterion accordingly.
 
 \subsection{Why $\taurelax_0$ Must Depend on $\kappaC$}
 \label{sec:tau0-motivation}
@@ -680,7 +657,7 @@ $\kappaC$: doubling $\kappaC$ halves $\taurelax_{\rm par}$, so a
 $\taurelax_0$ that does not track $\kappaC$ silently drifts to a different
 point on the parabolic$\leftrightarrow$hyperbolic spectrum every time
 $\kappaC$ is retuned (e.g.\ during the flux-limiter calibration of
-Section~\ref{sec:confrontation}'s companion work). A physically meaningful
+flux-limiter calibration). A physically meaningful
 $\taurelax_0$ must therefore be defined \emph{relative to} $\kappaC$, not
 alongside it.
 
@@ -787,10 +764,7 @@ $1/\taurelax\propto\kappaC$, both inside $\chyp^2=\kappaP/(\rho\taurelax)$.
 $\taurelax_0$ itself is dimensionless (a pure count of shear times),
 since $\kappaC$ is dimensionless in the Smagorinsky closure -- the
 reparametrisation changes what value of $\taurelax_0$ corresponds to a
-given physical relaxation time, but not its units. \textbf{This is a
-breaking change for any existing calibrated $\taurelax_0$ in
-\code{turbulent_mode}} (no example currently uses this mode, so nothing in
-the repository needed updating).
+given physical relaxation time, but not its units.
 
 \subsection{On Adding a $\driver/\Delta\driver$ Term}
 \label{sec:no-q-over-dq}
@@ -863,8 +837,7 @@ comparison):
 \end{equation}
 (the second expression is the code's \code{isotropic_smagorinsky}
 parabolic timestep, \code{chemistry_timesteps.h:107--113}, using
-$\lambda_1(\Kmat)=\kappaP$, exact for isotropic $\Kmat$ --
-Section~\ref{sec:related-fixes}; the first uses the identification
+$\lambda_1(\Kmat)=\kappaP$, exact for isotropic $\Kmat$; the first uses the identification
 $\gammak h=\dx$ -- both are $O(1)$ multiples of the same local resolution
 length, and the ratio is unaffected by resolution either way, only by
 this $O(1)$ geometric factor between the kernel support radius and the
@@ -919,12 +892,7 @@ This reproduces Eq.~\eqref{eq:revised_ratio} exactly when
 $\expr=\dx$ (no gradient suppression) and $\Shear$ is isotropic
 ($\lambda_1(\Shear)/\norm{\Shear}_F=1$) -- neither holds structurally in
 this mode, so the two extra factors are new, not corrections to
-something already accounted for. Verified against a direct numerical
-evaluation of the code's own formulas (Python, $2\times10^4$ random
-trials spanning $\CCFL$, $\kappaC$, $h$, $\gammak$, $\rho$, $\taurelax_0$,
-$\dx$, $\norm{\driver}$, $\norm{\grad\driver}$, and random traceless
-symmetric $\Shear$): relative agreement at machine precision
-($<10^{-14}$).
+something already accounted for.
 
 Write $g\equiv\norm{\grad\driver}\dx/\norm{\driver}$ (the local gradient
 steepness, in units of the resolution length -- $g=0$ for a
@@ -975,7 +943,7 @@ $\sqrt{\taurelax_0}/2$ prefactor shared with the isotropic result, not
 through the $g$- or $r$-dependent factors, which are ratios of
 same-mode quantities and are identification-independent.
 
-\section{Confrontation with the Implementation}
+\section{The Implemented Wave Speed}
 \label{sec:confrontation}
 
 \code{chemistry_get_physical_hyperbolic_soundspeed}
@@ -1002,28 +970,7 @@ $\Deff$ (Section~\ref{sec:effective-diffusivity}) rather than carrying
 $\Kmat$ and $\mu$ separately through the getter means there is only one
 code path, with a single, unambiguous convention for $\mu$.
 
-\begin{table}[h]
-\centering
-\footnotesize
-\begin{tabular}{@{}p{4.2cm}p{6.5cm}p{4cm}@{}}
-\toprule
-\code{diffusion\_mode} $\times$ \code{relaxation\_time\_mode} & Code formula vs.\ Prop.~\ref{prop:main} & Verdict \\
-\midrule
-\code{isotropic\_constant} + \code{constant\_mode} & $\Deff=\Kmat$ ($\mu=1$) isotropic: $\lambda_1(\Deff)=\kappaP$ for every $\nunit$ & \textbf{consistent (exact)} \\
-\code{isotropic\_smagorinsky} + \code{constant\_mode} & $\Deff=\Kmat/\rho$ isotropic: $\lambda_1(\Deff)=\kappaP/\rho$ for every $\nunit$ & \textbf{consistent (exact)} \\
-\code{anisotropic\_gradient} + \code{constant\_mode} & $\lambda_1(\Deff)$, a tight bound on $\nunit^{\!\top}\Deff\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound, exact for the worst-case $\nunit$)} \\
-\code{isotropic\_constant} + \code{turbulent\_mode} & $\Deff=\Kmat$ ($\mu=1$) isotropic: $\lambda_1(\Deff)=\kappaP$ for every $\nunit$ & \textbf{consistent (exact)} \\
-\code{isotropic\_smagorinsky} + \code{turbulent\_mode} & reduces algebraically to Eq.~\eqref{eq:code_turbulent_new} exactly & \textbf{consistent (exact)} \\
-\code{anisotropic\_gradient} + \code{turbulent\_mode} & $\lambda_1(\Deff)$, a tight bound on $\nunit^{\!\top}\Deff\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound)} \\
-\bottomrule
-\end{tabular}
-\caption{Every reachable (\code{diffusion\_mode}, \code{relaxation\_time\_mode})
-combination (the two settings are parsed independently, \code{chemistry.h:279--326},
-with no cross-validation) against the general result of
-Proposition~\ref{prop:main}. \textbf{All six pairings are consistent.}}
-\end{table}
-
-\subsection{Reading the Table}
+\subsection{Consequences}
 \begin{itemize}
 \item \textbf{Unifying around $\Deff$ (Eq.~\eqref{eq:D_definition}), rather
   than special-casing $\Kmat$ per mode, is what makes every pairing
@@ -1037,63 +984,9 @@ Proposition~\ref{prop:main}. \textbf{All six pairings are consistent.}}
   general is entirely about which particle-local tensor ($\Kmat$ vs.\
   $\Deff$) and which particle-local scalar ($\norm{\cdot}_F$ vs.\
   $\lambda_1$) to use, never about resolving $\chyp$ per-interaction.
-\item \code{examples/ChemistryTests/MetalDiffusionOnePeak/params.yml}
-  (\code{isotropic_constant} + \code{Constant} tau) sits in row 1 of the
-  table and is exact.
 \end{itemize}
 
-\section{Two Related Fixes Outside the Soundspeed Getter}
-\label{sec:related-fixes}
-
-Corollary~\ref{cor:frobenius} and the $\Deff$ construction of
-Section~\ref{sec:effective-diffusivity} also apply to two more places in
-the code.
-
-\subsection{The Parabolic Timestep Has the Same Frobenius Gap}
-\code{chemistry_diffusion_timestep()} (\code{chemistry_timesteps.h}, the
-non-hyperbolic branch) computes an explicit-diffusion stability limit,
-$\dt\propto\dx^2/\norm{\Kmat}_F$ (times the same $\mu^{-1}=U/\driver$
-factor as Eq.~\eqref{eq:D_definition}, already correctly
-\code{diffusion\_mode}-dependent there -- \code{norm\_U\_over\_norm\_q =
-rho}, applied only outside the \code{isotropic\_constant} early return).
-The same Rayleigh-quotient argument as Corollary~\ref{cor:frobenius}
-applies: the explicit stability bound for anisotropic diffusion is set by
-the \emph{largest} eigenvalue of $\Deff$, not by $\norm{\Deff}_F$, for
-exactly the same reason a wave-speed bound is. Since $\dt\propto1/\Deff$,
-overestimating $\Deff$ via the Frobenius norm makes $\dt$ needlessly
-\emph{small} (never unstable, just wasteful) by the same bounded
-$[1,\sqrt3]$ factor as Example~\ref{ex:frobenius-numbers}. Fixed the same
-way: \code{chemistry\_get\_matrix\_norm} replaced by
-\code{chemistry\_get\_matrix\_max\_eigenvalue} throughout
-\code{chemistry\_diffusion\_timestep()}'s parabolic branch (both the
-\code{isotropic_constant} early return and the general
-\code{isotropic\_smagorinsky}/\code{anisotropic\_gradient} formula).
-
-\subsection{The \code{"DiffusionMatrices"} Snapshot Field Had a Units Bug}
-\label{sec:io-units-bug}
-\code{chemistry_io.h}'s \code{"DiffusionMatrices"} output field was
-documented to write $\Deff=\Kmat\driver/U$ (its own description said so)
-but the converter (\code{convert\_chemistry\_diffusion\_matrix}) actually
-wrote raw $\Kmat$, tagged with \code{UNIT\_CONV\_MASS\_DIFFUSIVITY}
-($[\text{mass}]\,[\text{length}]^{-1}[\text{time}]^{-1}$). This is only
-correct for \code{isotropic_smagorinsky}/\code{anisotropic_gradient},
-where $\Kmat$ genuinely carries a $\rho$ factor
-(Section~\ref{sec:diffusion-tensor-recap}). For \code{isotropic_constant},
-$\Kmat=\kappaP=\kappaC$ carries no $\rho$ at all, and Fick's law with
-$\driver=U_0$ (Section~\ref{sec:quasilinear}) requires $\Kmat$ to have
-\emph{ordinary} diffusivity units, $[\text{length}]^2[\text{time}]^{-1}$,
-there -- so for that mode the raw numbers written to the snapshot were
-dimensionally inconsistent with the unit conversion applied to them (a
-real bug: the internal-units value was correct, but converting it to
-physical/cgs units on output used the wrong dimensional exponents). $\Deff$
-does not have this problem: by construction
-(Section~\ref{sec:effective-diffusivity}) $\Deff$ always carries ordinary
-diffusivity units, $[\text{length}]^2[\text{time}]^{-1}$, in \emph{every}
-\code{diffusion_mode} -- SWIFT already has a unit for exactly this,
-\code{UNIT\_CONV\_DIFFUSIVITY} (distinct from
-\code{UNIT\_CONV\_MASS\_DIFFUSIVITY}). Fixed by having the converter call
-the new \code{chemistry\_get\_physical\_matrix\_D()} and switching the
-field's unit tag to \code{UNIT\_CONV\_DIFFUSIVITY}.
+\part{Numerical Scheme}
 
 \section{Consequence for the HLL Numerical Dissipation}
 \label{sec:hll-consequence}
@@ -1119,9 +1012,8 @@ parabolic Hopkins-HLL solver limits its own dissipation (Section ``The
 Hopkins HLL-Type Flux'' there). Since
 $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
 and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
-wave-speed lever is already pulled as far as it goes; Section~\ref{sec:hyperbolic-limiter}
-addresses the second one.
-
+wave-speed lever is already pulled as far as it goes; the flux-memory
+limiter of Section~\ref{sec:hyperbolic-limiter} addresses the second.
 \section{Practical Guidance for Choosing $\taurelax_0$}
 \label{sec:practical-tau0}
 
@@ -1164,39 +1056,7 @@ current implementation, already deep in the unlimited-HLL regime.
 ``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
 independently reachable regimes under $\taurelax_0$ tuning alone -- they
 are the same knob, pointing in opposite directions. The flux-memory
-limiter of Section~\ref{sec:hyperbolic-limiter} softens this tension
-(empirically, a further $\sim\!10\%$ RMS-spread reduction and several-fold
-better peak retention at $\taurelax_0=10^2$, on top of the wave-speed fix
-above) but does not eliminate it: the limiter suppresses dissipation the
-flux-memory signal identifies as unjustified, it does not restore full
-Hopkins-style protection at $\alpha\approx1$. Within the unlimited regime
-itself, larger $\taurelax_0$ is not obviously worse on the wave-speed
-lever alone: the numerical dissipation magnitude
-$F_{\rm diss}\propto\chyp\propto\taurelax^{-1/2}$ \emph{shrinks} as
-$\taurelax_0$ grows, even though full Hopkins-style protection is still
-only available at $\alpha\approx0$.
-
-\begin{remark}[Existing empirical guidance predates several fixes in this document]
-The \code{l5\_tau\_1e-1} through \code{l5\_tau\_1e2} runs that first
-identified the ``too diffusive at large $\taurelax$'' symptom -- the
-observation that motivated this entire investigation -- were made before
-the $\taurelax_0$-$\kappaC$ coupling, the $\mu$/$\rho$ correction, and the
-$\lambda_1(\Deff)$ unification (all derived in this document) were
-implemented. Those fixes change what a given numerical $\taurelax_0$
-value physically means (e.g.\ the isotropic threshold moved from
-$\taurelax_0\gtrsim1/\kappaC$ to $\taurelax_0\gtrsim4$), so which
-$\taurelax_0$ ``looks too diffusive'' should be re-checked against the
-current code before being treated as settled.
-\end{remark}
-
-As an interim starting point: $\taurelax_0$ a few times the relevant
-speed-parity threshold (order $4$--$10$ for \code{isotropic_smagorinsky};
-toward the higher end, and locally variable, for
-\code{anisotropic_gradient} per Eq.~\eqref{eq:aniso_threshold}), with the
-flux-memory limiter (Section~\ref{sec:hyperbolic-limiter},
-\code{hyperbolic_limiter_scope: AllComponents}) enabled, validated against
-a matching parabolic run on the same problem before trusting quantitative
-results -- not yet a final, calibrated production value.
+limiter of Section~\ref{sec:hyperbolic-limiter} softens this tension.
 
 \section{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
 \label{sec:hyperbolic-limiter}
@@ -1216,7 +1076,7 @@ wave speed of its own) against a physical diffusion rate (built from
 $\Kmat$). The obvious port -- reuse this formula verbatim, substituting
 the genuine hyperbolic wave speed $\chyp$ for $v_{\rm HLL}$ -- does not
 work: it is redundant with the blending factor $\alpha$
-(Section~\ref{sec:tau-modes}) already computed for the same pair.
+(Section~\ref{sec:practical-tau0}) already computed for the same pair.
 
 \begin{remark}[The swapped ratio is a function of $\taurelax$ alone]
 \label{rem:limiter-redundant}
@@ -1228,9 +1088,7 @@ varying only $\taurelax$ -- the one free parameter this section is about
 -- gives $r\propto\taurelax^{-1/2}$, while the existing blending ratio
 $\rho_\star=\taurelax_\star/\taurelax_{\rm num}$
 (Section~\ref{sec:practical-tau0}) is $\propto\taurelax^{+1}$: an exact
-monotonic power-law relationship, $r\propto\rho_\star^{-1/2}$, verified
-against the code's own formulas (20 random trials over the free
-parameters, agreement at machine precision). The swapped $r$ therefore
+monotonic power-law relationship, $r\propto\rho_\star^{-1/2}$. The swapped $r$ therefore
 carries no information beyond what $\alpha$ already encodes -- both are
 functions of the same scheme parameters ($\Deff$, $\taurelax$, $\dx$)
 alone, since $\driver_\star/U_\star=\mu$ is a fixed per-mode constant,
@@ -1281,58 +1139,6 @@ starting point, not a derived result -- Hopkins' own $r_{\rm term}$ is
 similarly an empirically-tuned saturating function, not a first-principles
 one.
 
-\subsection{Scope, and the Empirical Comparison}
-Hopkins' original limiter was built for a 1-component state (density
-only); $F_{\rm diss}$ here has 4 (density and 3 flux components). Whether
-$\eta$ should also multiply the flux-component dissipation
-($F_{\rm diss,1\text{-}3}$) was not obvious a priori: limiting it could
-either suppress genuine numerical excess there too, or interfere with the
-flux components' own physical decay toward $\Fdiff_{\rm parabolic}$,
-making the memory persist \emph{longer}. Both scopes were implemented
-(\code{GEARChemistry:hyperbolic\_limiter\_scope}, \code{Density} vs.\
-\code{AllComponents}) and compared on the same \code{MetalDiffusionOnePeak}
-sweep used throughout this document (\code{constant\_mode}+
-\code{isotropic\_constant}, level 5, $\taurelax\in\{10^{-1},10^0,10^1,10^2\}$),
-against the no-limiter baseline:
-\begin{center}
-\begin{tabular}{cccc}
-\toprule
-$\taurelax$ & RMS spread (limiter/baseline) & peak $\rho Z$ (limiter/baseline) \\
-\midrule
-$10^{-1}$ & $0.995$ (Density), $0.995$ (All) & $1.03\times$, $1.03\times$ \\
-$10^{0}$  & $0.994$ (Density), $0.993$ (All) & $1.04\times$, $1.06\times$ \\
-$10^{1}$  & $0.953$ (Density), $0.942$ (All) & $1.18\times$, $1.23\times$ \\
-$10^{2}$  & $0.904$ (Density), $0.897$ (All) & $8.11\times$, $5.02\times$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-Both scopes reduce the RMS spread further at every $\taurelax$ (beyond
-the $\lambda_1$-vs-Frobenius fix alone, Section~\ref{sec:related-fixes}),
-growing with $\taurelax$ -- exactly where the missing limiter's effect
-was largest. \code{AllComponents} matches or beats \code{Density} on the
-RMS spread (the more robust of the two metrics; peak $\rho Z$ is a
-single-particle statistic, noisier) at every $\taurelax$ tested,
-including $\taurelax=10^2$ where the two scopes' peak-retention numbers
-diverge most -- i.e.\ the a priori concern that limiting the flux
-components would preserve memory and make things worse is not borne out
-here. \textbf{\code{AllComponents} is therefore the recommended default},
-matching how the existing $\alpha$ blend already applies uniformly across
-all 4 components; \code{Density} remains available
-(\code{hyperbolic\_limiter\_scope: Density}) since it is not clearly
-worse and matches Hopkins' original scope exactly.
-
-Visual inspection of the profile plots confirms no pathological behaviour
-introduced by the limiter (no oscillation, no negative dips): the
-$\taurelax=10^2$ profile with the limiter sits visibly closer to the pure
-Cattaneo (top-hat) analytic solution than the unlimited baseline did --
-consistent with the limiter suppressing spurious numerical dissipation
-rather than introducing a new artefact.
-
-Mass conservation was verified exact (to machine precision) in every run,
-with and without the limiter, at every $\taurelax$ and scope -- the
-limiter only redistributes numerical dissipation among the HLL flux's
-components, it cannot break the underlying conservation law.
-
 \section{The Half-Timestep Predictor}
 \label{sec:predictor}
 
@@ -1353,6 +1159,17 @@ with $\Delta\mathbf x=\mathbf x_{\rm face}-\mathbf x_{\rm cell}$ and
 $\div\Fdiff$ itself built from the cell-centred flux gradient. This is
 the same predictor form used for hydro's own MUSCL-Hancock step, and
 needs no special treatment: $U_0$'s equation has no stiff source.
+
+The spatial term $\grad U_0\cdot\Delta\mathbf x$ and the temporal term
+$-h\,(\div\Fdiff)_{\mathbf x_{\rm cell}}$ are summed into a single
+$\Delta U_0$ \emph{before} the extrapolated state is handed to
+\code{chemistry\_slope\_limit\_face} (\code{hyperbolic/chemistry\_gradients.h}
+line 252, the same call that limits $\Fdiff$ below). The face limiter
+therefore bounds the full second-order (space-\emph{and}-time)
+reconstruction of $U_0$, not just its spatial piece: the temporal term
+carries no monotonicity guarantee of its own, so leaving it outside the
+limiter's reach would let it push $U_0$ beyond its neighbours' range at a
+sharp gradient.
 
 $\Fdiff$'s equation, Eq.~\eqref{eq:cattaneo}, does have a stiff source
 ($-\Fdiff/\taurelax$), so a first-order-in-time Taylor step would be
@@ -1451,108 +1268,178 @@ options: Proposition~\ref{prop:predictor} shows it is the only one
 consistent with the exact solution of the locally-available (cell-centred
 $\Fdiff_{\rm parabolic}$) relaxation problem.
 
-\section{Summary of Findings}
-\label{sec:summary}
 
-All findings below have been implemented, verified by rebuild, and
-committed. None required threading the interface normal $\nunit$ into any
-function signature.
+\part{Exact Solutions for Validation}
 
-\begin{enumerate}
-\item \textbf{Proposition~\ref{prop:main} is the general result}: $\chyp(\nunit)
-  = \sqrt{\nunit^{\!\top}\Deff\nunit/\taurelax}$, with
-  $\Deff=\mu\Kmat$ the \emph{effective diffusivity}
-  (Section~\ref{sec:effective-diffusivity} -- the same $\Kmat\driver/U$
-  construction the code's own \code{"DiffusionMatrices"} field
-  description already names, and the same $q/U$ bookkeeping used
-  throughout Hopkins~\cite{Hopkins2017diffusion}), derived from the
-  conservation and Cattaneo-relaxation equations alone, with no assumption
-  on the shape of $\Kmat$ or on which \code{diffusion_mode} produced it.
-  Proposition~\ref{prop:telegrapher} and Corollary~\ref{cor:telegrapher_local}
-  (Section~\ref{sec:telegrapher}) independently re-derive the same
-  $\chyp(\nunit)$ from a dispersion relation of the (locally) equivalent
-  second-order-in-time PDE
-  $\taurelax\partial_t^2U_0+\partial_tU_0\approx\div(\Deff\grad U_0)$, a
-  completely different method arriving at the same result. The
-  non-negotiable piece is $\mu=\partial\driver/\partial U_0$, which is
-  \emph{not} a universal $\rho^{-1}$ -- it is $1$ for
-  \code{isotropic_constant} and $1/\rho$ otherwise, fixed by
-  \code{diffusion_mode} (Corollary~\ref{cor:isotropic}).
-\item \code{chemistry_get_physical_hyperbolic_soundspeed} implements a
-  single formula for every (\code{diffusion_mode},
-  \code{relaxation_time_mode}) pairing:
-  $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$. $\lambda_1(\Deff)$ is the
-  largest eigenvalue of the particle's own $\Deff$ (helpers
-  \code{chemistry\_get\_physical\_matrix\_D},
-  \code{chemistry\_get\_matrix\_max\_eigenvalue} -- the latter using
-  SWIFT's own \code{max3} from \code{minmax.h}, and the existing
-  \code{sym\_matrix\_diagonalise\_3x3\_d} eigensolver, already used
-  elsewhere in this module) -- exact for isotropic $\Deff$ (every
-  reachable pairing), and a tighter-than-Frobenius safe overestimate for
-  anisotropic $\Deff$ (Corollary~\ref{cor:frobenius},
-  Remark~\ref{rem:lambda-max-not-n}). No branch on
-  \code{relaxation_time_mode} is needed inside the getter: $\taurelax$ is
-  read from the already-correctly-computed
-  \code{p->chemistry\_data.tau} (Section~\ref{sec:confrontation}).
-\item The parabolic timestep (\code{chemistry_diffusion_timestep},
-  non-hyperbolic branch) uses the same $\lambda_1(\Deff)$ construction,
-  for the same reason (Section~\ref{sec:related-fixes}): the
-  explicit-diffusion stability limit is set by $\Deff$'s largest
-  eigenvalue, not its Frobenius norm.
-\item \textbf{Implemented.} $\taurelax_0$ in \code{turbulent_mode} is now
-  coupled to $\kappaC$ (Section~\ref{sec:tau0-physical}:
-  $\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$), matching the physical
-  mixing-timescale scaling independently derived by
-  Romano et al.~\cite{Romano2022} (Eq.~\eqref{eq:romano_tdiff}). No
-  example parameter file used \code{turbulent_mode} prior to this change,
-  so the break in the meaning of an existing calibrated $\taurelax_0$
-  affects no committed example. A $\driver/\Delta\driver$-type term was
-  considered and deliberately \emph{not} added to $\taurelax$ itself
-  (Section~\ref{sec:no-q-over-dq}): it would double-count physics that
-  already emerges from solving the coupled system, and it would break the
-  frozen-coefficient assumption underpinning Proposition~\ref{prop:main}.
-\item \textbf{Snapshot units.} The \code{"DiffusionMatrices"} snapshot
-  field wrote raw $\Kmat$ tagged with \code{UNIT\_CONV\_MASS\_DIFFUSIVITY}
-  -- dimensionally wrong for \code{isotropic_constant}, where $\Kmat$ has
-  ordinary ($\text{length}^2/\text{time}$) diffusivity units, not
-  mass-diffusivity units (Section~\ref{sec:io-units-bug}). Fixed by
-  outputting $\Deff$ (always ordinary-diffusivity units, by construction)
-  with SWIFT's existing \code{UNIT\_CONV\_DIFFUSIVITY} tag instead.
-\item \textbf{Missing flux output.} Snapshots for
-  \code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION} wrote the relaxation
-  time and (in debug builds only) the \emph{norm} of the diffusion flux,
-  but never the flux vector $\Fdiff$ itself. Added an unconditional (not
-  debug-gated) \code{"DiffusionFluxes"} output field writing all three
-  components per element.
-\item \textbf{No bug, now proven.} The half-timestep predictor
-  (Section~\ref{sec:predictor}, \code{chemistry\_gradients\_predict})
-  extrapolates $\Fdiff$ to the interface space-first, then relaxes the
-  whole extrapolated value toward the cell-centred $\Fdiff_{\rm parabolic}$ exactly.
-  Proposition~\ref{prop:predictor} shows this is the exact solution of
-  the locally-available relaxation problem (given $\Fdiff_{\rm parabolic}$ can only
-  ever be evaluated at the cell centre); the reverse order would leave a
-  spurious, undecayed gradient artefact in the $\taurelax\to0$ limit. No
-  source change was needed.
-\item \textbf{\code{anisotropic_gradient} speed criterion, derived.}
-  Section~\ref{sec:speed-criterion-aniso} redoes
-  Section~\ref{sec:speed-criterion}'s ratio for this mode:
-  $\taurelax_0\gtrsim4r/(1+g)^4$
-  (Eq.~\eqref{eq:aniso_threshold}), with $r=\norm{\Shear}_F/\lambda_1(\Shear)\in[\sqrt{3/2},\sqrt6\,]$
-  the local shear anisotropy and $g=\norm{\grad\driver}\dx/\norm{\driver}$
-  the local gradient steepness. Not a single constant like the isotropic
-  $4$: at $g=0$ the threshold is \emph{higher} ($\in[4.9,9.8]$, since this
-  mode's $\kappaP$ lacks the $\norm{\Shear}_F$ boost
-  \code{isotropic_smagorinsky} gets); at large $g$ (steep,
-  under-resolved gradients -- the SN-injection-site regime motivating
-  this whole investigation) it falls as $g^{-4}$, well below $4$, since
-  $\dt_{\rm par}$ shrinks with the gradient while $\dt_{\rm hyp}$ (a pure
-  wave-speed CFL) does not.
-\item All source changes above were verified by rebuilding
-  \code{src/chemistry.o} and \code{src/single\_io.o} (which
-  \code{\#include}s \code{chemistry\_io.h}) against the tree's configured
-  \code{GEAR-FVPM-HYPERBOLIC-DIFFUSION\_10} variant with
-  \code{-Wall~-Wextra~-Werror}: clean, no warnings.
-\end{enumerate}
+\section{Exact Solutions of the Cattaneo Equation}
+\label{sec:exact-solutions}
+
+The scheme is validated against closed-form solutions of the equation it
+discretises. Both the 1D and the 3D free-space Green's functions are
+elementary; this section states them, because the structure of the 3D one
+is not the naive analogue of the 1D one and the difference matters for how
+a simulated profile should be read.
+
+Throughout, the initial condition is the one the test problems use -- a
+metal-density spike with \emph{zero} initial flux,
+$U_0(\mathbf x,0)=q_0\delta^d(\mathbf x)$, $\Fdiff(\mathbf x,0)=0$ -- and
+$a\equiv1/(2\taurelax)$, $s\equiv\sqrt{t^2-r^2/\chyp^2}$.
+
+\subsection{One Dimension}
+\label{sec:exact-1d}
+
+In 1D the solution has two pieces: a ballistic front carrying a finite
+fraction of the mass at $|x|=\chyp t$, and a smooth interior behind it
+\cite{MasoliverPorraWeiss1993} (restated in
+\cite{PruestelMeierSchellersheim2013}, Eqs.~(2.1)--(2.5)),
+\begin{equation}
+  \label{eq:exact-green}
+  U_0(x,t) = q_0e^{-at}\left[
+    \underbrace{\tfrac12\delta\big(\chyp t-|x|\big)}_{\text{ballistic front}}
+    +\underbrace{\Theta\big(\chyp t-|x|\big)\frac{a}{2\chyp}
+      \left(I_0(as)+\frac{t\,I_1(as)}{s}\right)}_{\text{smooth interior}}
+  \right] .
+\end{equation}
+Integrating each piece, the front carries a mass fraction $e^{-at}$ (split
+evenly between $\pm\chyp t$) and the interior the remaining $1-e^{-at}$;
+the two sum to $q_0$ identically.
+
+The front is not a small correction. At $\taurelax=10$ it still holds
+$97.5\%$ of the metal at $t=0.5$ and $77.9\%$ at $t=5$: for most of the
+parameter range of interest the exact solution is dominated by a pair of
+travelling spikes, not by the smooth interior.
+
+\subsection{Three Dimensions}
+\label{sec:exact-3d}
+
+The 3D case is \emph{not} obtained by reusing Eq.~\eqref{eq:exact-green}.
+It is still elementary, but both the front and the interior differ.
+
+Substituting $U_0=e^{-at}w$ removes the first-order time derivative from
+Eq.~\eqref{eq:telegrapher} and leaves a Klein-Gordon equation with a
+positive mass-squared term,
+\begin{equation}
+  \label{eq:kg}
+  \partial_t^2w = \chyp^2\nabla^2w + a^2w ,
+\end{equation}
+whose sign gives \emph{modified} Bessel functions rather than ordinary
+ones. For radially symmetric fields $\nabla^2w=\tfrac1r\partial_r^2(rw)$,
+so the 3D radial Green's function follows from the 1D one by
+$w_3=-\tfrac{1}{2\pi r}\partial_rw_1$ with
+$w_1=\tfrac{1}{2\chyp}\Theta(\chyp t-r)I_0(as)$. That propagator answers
+the momentum-kick problem ($w=0$, $\partial_tw=\delta^3$); our initial
+condition is the density spike ($w=\delta^3$, $\partial_tw=a\delta^3$,
+the second following from $\partial_tU_0=0$ at $t=0$), so the physical
+solution is $(\partial_t+a)$ applied to it. For the smooth interior $r<\chyp t$ this
+gives
+\begin{equation}
+  \label{eq:U3d-smooth}
+  U_0(r,t) = q_0e^{-at}\frac{a}{4\pi\chyp^3}\left[
+    \frac{t\big(as\,I_0(as)-2I_1(as)\big)}{s^3}
+    + \frac{a\,I_1(as)}{s}\right] ,
+\end{equation}
+which is strictly positive.
+
+\begin{remark}[The 3D front carries three distributions, not one]
+Differentiating $w_3$ produces a $\delta'(\chyp t-r)$ from the delta
+itself, plus two further $\delta(\chyp t-r)$ terms -- one from the $1/r$
+geometry, one from $\partial_t\Theta(\chyp t-r)$. Collected as a radial
+mass density (per unit $r$), the front is
+\begin{equation}
+  \label{eq:front-measure-3d}
+  \mu_{\rm front}(r,t) = q_0e^{-at}\left[
+    -\chyp t\,\delta'\!\big(r-\chyp t\big)
+    +\Big(1+at+\tfrac12(at)^2\Big)\,\delta\big(r-\chyp t\big)\right] ,
+\end{equation}
+a signed dipole layer plus a monopole shell. The dipole carries no net
+mass, so the 3D front mass fraction is
+\begin{equation}
+  \label{eq:front-mass-3d}
+  \frac{M_{\rm front}(t)}{q_0} = e^{-at}\left(1+at+\tfrac12(at)^2\right) ,
+\end{equation}
+against $e^{-at}$ in 1D. Dropping either extra term breaks the mass
+budget; with all three, interior plus front sum to $q_0$ to
+$4\times10^{-16}$ over $\taurelax\in[10^{-1},10^2]$, $t\in[0.1,5]$. At
+$\taurelax=10$ the 3D front holds $99.78\%$ of the metal at $t=5$ where
+the 1D front holds $77.9\%$: in 3D the exact solution is, to excellent
+approximation, a thin expanding shell around a nearly empty interior.
+
+The dipole is genuine physics, not an artefact of the distributional
+bookkeeping: it is the $\taurelax\to\infty$ (pure-wave) limit's Huygens
+dipole layer, and it means the exact solution has a \emph{negative}
+density lobe just inside the front. The Cattaneo equation does not
+preserve positivity in three dimensions for sharp initial data; only the
+smooth interior, Eq.~\eqref{eq:U3d-smooth}, is sign-definite.
+\end{remark}
+
+Because of the $\delta'$, Eqs.~\eqref{eq:U3d-smooth} and
+\eqref{eq:front-mass-3d} should be evaluated directly rather than by
+numerically inverting the Laplace-domain solution: Bromwich-type
+quadrature rings at the front, and the closed form is both exact and
+cheaper.
+
+\subsection{Comparing Against a Simulated Profile}
+\label{sec:exact-comparison}
+
+Two practical consequences follow, both easy to get wrong.
+
+\emph{A 3D run profiled along one axis must be compared with the
+$y,z$-marginal of the 3D solution -- which is exactly the 1D Green's
+function.} Integrating Eq.~\eqref{eq:telegrapher} over the transverse
+directions annihilates the transverse Laplacian, so the line density
+$\lambda(x,t)=\iint U_0\,\dd y\,\dd z$ satisfies the 1D telegrapher
+equation with a $\delta(x)$ initial condition: $\lambda$ \emph{is}
+Eq.~\eqref{eq:exact-green}. Piece by piece,
+\begin{equation}
+  \label{eq:marginal-3d}
+  \lambda(x,t) = 2\pi\!\int_{|x|}^{\chyp t}\! U_0(r,t)\,r\,\dd r
+  \;+\; e^{-at}\,\frac{at+\tfrac12(at)^2}{2\chyp t}\,\Theta(\chyp t-|x|)
+  \;+\; \frac{e^{-at}}{2}\Big[\delta(x-\chyp t)+\delta(x+\chyp t)\Big] ,
+\end{equation}
+and the first two terms reproduce the smooth interior of
+Eq.~\eqref{eq:exact-green} to machine precision. Only the monopole and
+$\partial_t\Theta$ parts of the front shell project flat; the $\delta'$
+dipole projects onto the edge spikes at $x=\pm\chyp t$, which carry the
+$e^{-at}$ front fraction familiar from 1D. A marginal drawn with the
+whole front mass spread flat misplaces exactly that fraction -- the
+majority of all metal throughout the wave-dominated regime.
+Note the identity does not run backwards: the 3D \emph{radial} profile
+(Sec.~\ref{sec:exact-3d}) remains a different function, and the radial
+and marginal views weight the front very differently.
+
+\emph{Both solutions vanish identically outside $|x|>\chyp t$.} The front
+sits exactly at the boundary and the interior carries an explicit
+$\Theta$, so the exact solution has zero mass beyond the causal front in
+any dimension. Any metal a simulation places there is numerical, which
+makes $\int_{r>\chyp t+\epsilon_0}\rhoZ\,\dd V$ a reference-free
+diagnostic: it depends only on the front's position, not on the shape or
+amplitude of either curve.
+
+\emph{Second moments must be read against the moment identity, and it
+has a sting in 3D.} Multiplying Eq.~\eqref{eq:telegrapher} by $r^2$ and
+integrating gives $\taurelax\ddot M_2+\dot M_2=2d\,\kappa$ in $d$
+dimensions, hence exactly
+\begin{equation}
+  \label{eq:moment-identity}
+  \langle r^2\rangle(t)
+  = 2d\,\kappa\left[t-\taurelax\big(1-e^{-t/\taurelax}\big)\right] .
+\end{equation}
+In the wave regime this evaluates to $3\chyp^2t^2$ in 3D while the
+support is only $r\le\chyp t$: the excess over the geometric maximum
+$\chyp^2t^2$ is carried by the signed dipole in
+Eq.~\eqref{eq:front-measure-3d}, whose second moment is
+$2(\chyp t)^2e^{-at}$. A positivity-preserving scheme therefore
+\emph{cannot} satisfy causality and Eq.~\eqref{eq:moment-identity}
+simultaneously in the wave-dominated regime; the best a positive causal
+solution can reach is $\langle r^2\rangle=(\chyp t+\epsilon_0)^2$, and
+RMS comparisons should be read against that ceiling as well as against
+Eq.~\eqref{eq:moment-identity}.
+
+Finally, the seed in the test problems is a ball (or segment) of radius
+$\epsilon_0$, not a point. Convolution adds variances for independent
+zero-mean displacements, so a finite seed shifts the exact second moment
+by $\tfrac35\epsilon_0^2$ in 3D and $\tfrac13\epsilon_0^2$ in 1D --
+a correction that dominates at early times, when $\chyp t\lesssim\epsilon_0$.
 
 \bibliographystyle{plain}
 \bibliography{references}
