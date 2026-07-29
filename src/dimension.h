@@ -379,7 +379,65 @@ invert_dimension_by_dimension_matrix(
 #endif
 }
 
-inline int robust_scaled_lu_invert3x3(const double A[3][3], double inv[3][3]) {
+// Computes the 2-norm condition number (sigma_max / sigma_min) of a 3x3
+// row-major matrix
+__attribute__((always_inline)) INLINE static double
+matrix_3x3_2norm_condition_number(const double m[3][3]) {
+  // 1. Form the symmetric matrix S = A^T * A
+  double s0 = m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0];
+  double s1 = m[0][0] * m[0][1] + m[1][0] * m[1][1] + m[2][0] * m[2][1];
+  double s2 = m[0][0] * m[0][2] + m[1][0] * m[1][2] + m[2][0] * m[2][2];
+  double s4 = m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1];
+  double s5 = m[0][1] * m[0][2] + m[1][1] * m[1][2] + m[2][1] * m[2][2];
+  double s8 = m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2];
+
+  // 2. Compute invariants of S (coefficients of characteristic polynomial)
+  double c2 = s0 + s4 + s8;
+  double c1 = (s0 * s4 - s1 * s1) + (s0 * s8 - s2 * s2) + (s4 * s8 - s5 * s5);
+  double c0 = s0 * (s4 * s8 - s5 * s5) - s1 * (s1 * s8 - s2 * s5) +
+              s2 * (s1 * s5 - s2 * s4);
+
+  // 3. Solve the cubic equation analytically using Cardano's formulation
+  double p = c1 - (c2 * c2) / 3.0;
+  double q = c0 - (c2 * c1) / 3.0 + (2.0 * c2 * c2 * c2) / 27.0;
+
+  double ev_max, ev_min;
+
+  if (p >= 0.0) {
+    ev_max = c2 / 3.0;
+    ev_min = c2 / 3.0;
+  } else {
+    double r = sqrt(-p / 3.0);
+    double val = q / (2.0 * r * r * r);
+
+    // Clamp to prevent out-of-bounds inputs to acos due to numerical drift
+    if (val > 1.0) val = 1.0;
+    if (val < -1.0) val = -1.0;
+
+    double phi = acos(val);
+
+    // Find the three roots (eigenvalues of A^T*A)
+    double r1 = c2 / 3.0 + 2.0 * r * cos(phi / 3.0);
+    double r2 = c2 / 3.0 + 2.0 * r * cos((phi + 2.0 * M_PI) / 3.0);
+    double r3 = c2 / 3.0 + 2.0 * r * cos((phi + 4.0 * M_PI) / 3.0);
+
+    // Sort to isolate max and min eigenvalues
+    ev_max = r1;
+    if (r2 > ev_max) ev_max = r2;
+    if (r3 > ev_max) ev_max = r3;
+    ev_min = r1;
+    if (r2 < ev_min) ev_min = r2;
+    if (r3 < ev_min) ev_min = r3;
+  }
+
+  // 4. Return condition number (sigma_max / sigma_min)
+  if (ev_min <= 1e-15) return INFINITY;
+
+  return sqrt(ev_max / ev_min);
+}
+
+__attribute__((always_inline)) INLINE static int robust_scaled_lu_invert3x3(
+    const double A[3][3], double inv[3][3]) {
   double mat[3][3];
   double scale_factors[3];
 
