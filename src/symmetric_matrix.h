@@ -257,11 +257,11 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
     const double max_cond_num) {
 
+  /* Turn the matrix into a 3x3 array */
   float A[hydro_dimension_integer][hydro_dimension_integer];
   get_matrix_from_sym_matrix(A, M);
-  // const int res =
-  //     invert_dimension_by_dimension_matrix(M_inv_matrix, min_cond_num);
 
+  /* Go to double precision for the inversion */
   double A_d[hydro_dimension_integer][hydro_dimension_integer];
   double M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
 
@@ -272,12 +272,16 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     }
   }
 
+  /* Compute the condition number */
   const double cond_number = matrix_3x3_2norm_condition_number(A_d);
 
+  /* Abort if the condition number is bad */
   if (cond_number > max_cond_num) return 1;
 
-  const int res = robust_scaled_lu_invert3x3(A_d, M_inv_matrix);
+  /* Invert */
+  const int res = invert3x3_matrix_LU(A_d, M_inv_matrix);
 
+  /* Save the resulting matrix back into a (float) sym_matrix object */
   M_inv->xx = M_inv_matrix[0][0];
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
   M_inv->yy = M_inv_matrix[1][1];
