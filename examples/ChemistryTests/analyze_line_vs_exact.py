@@ -7,7 +7,7 @@ initial binned line density with the exact 1D Green's function of the
 equation the scheme solves: the telegrapher kernel (smooth Bessel interior
 plus the two e^{-at}/2 ballistic front deltas) for hyperbolic runs -- valid
 for 3D runs because the y,z-marginal of the 3D solution is exactly the 1D
-Green's function -- or the heat kernel for parabolic runs (detected by tau
+Green's function, or the heat kernel for parabolic runs (detected by tau
 being absent from the used parameters).
 
 Usage: analyze_line_vs_exact.py <rundir> [<rundir> ...]

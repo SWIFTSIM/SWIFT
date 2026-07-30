@@ -1,0 +1,25 @@
+# Intro
+This example reuses MetalDiffusionTwoPeaks' initial conditions verbatim: two gas particles at (x, y, z) = (L/4, L/2, L/2) and (x, y, z) = (3L/4, L/2, L/2) are seeded with non-null metallicity. The point of *this* example is different: L/4 and 3L/4 are exactly antipodal on the periodic box (separation L/2 in either direction along x), so with the **hyperbolic** diffusion scheme the two seeds' finite-speed fronts meet at **two simultaneous, symmetric crossing points** — the midpoint x=L/2, and the periodic seam x=0≡L. This is a clean, ready-made demonstration that hyperbolic diffusion is a genuine wave equation (finite propagation speed c_hyp = sqrt(kappa/tau)), not just diffusion with a limiter.
+
+*This example is meaningless for parabolic diffusion*: parabolic diffusion has infinite propagation speed, so there is no front and nothing to cross. Configure with the hyperbolic scheme only.
+
+# Configure
+```
+./configure --with-chemistry=GEAR-FVPM-HYPERBOLIC-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+```
+and then `make -j`.
+
+# ICs
+`run.sh` calls `makeIC.py` (identical to MetalDiffusionTwoPeaks') with default values. Run `python3 makeIC.py --help` for the parameter list.
+
+# Run
+`./run.sh`. You can override the script's own parameters (`n_threads`, `level`, `gas_density`, `box_mass`, ...) — look inside `run.sh`.
+
+# Tuning tau (the actual point of this example)
+`params.yml`'s `GEARChemistry:tau` sets the front speed via c_hyp = sqrt(kappa/tau). The crossing time is (L/4)/c_hyp. **The default `tau=0.15` and `time_end=3.0` are a first guess, not a validated demonstration** — with the default `--mass`/`--rho` (L ~ 0.74 kpc) and `diffusion_coefficient=2.516849e-3`, this puts the crossing at t~1.43, i.e. within the run, but the resolution/front sharpness has not been tuned. Concretely still to do:
+- Check the front is resolved by the chosen `level` (a front width of order the local smoothing length is under-resolved; a much smaller separation-to-h ratio may need a higher `level`).
+- Check `tau` isn't so small that `C_CFL_chemistry`'s implied timestep becomes prohibitively short (see the h-vs-h^2 timestep-scaling discussion in the GEAR FVPM diffusion logbook, `swift-gear` repo) for the resolution chosen.
+- Once tuned, run `python3 ../analyze_line_vs_exact.py <rundir>` (already wired into `run.sh`'s post-processing) and look at `line_profile_vs_exact.png`: it convolves this run's own initial line density with the exact 1D telegrapher Green's function, so for two antipodal seeds it automatically produces the exact **superposed** two-front solution to compare against — the crossing/interference is exactly what should show up as the two individual fronts' densities adding where they overlap, both before and after the exact-solution comparison confirms the simulated profile tracks it.
+
+#Debugging notes
+You can track the metal mass injected by feedback and diffused by the chemistry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particle over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.

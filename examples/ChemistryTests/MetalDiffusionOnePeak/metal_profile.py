@@ -19,6 +19,7 @@
 #
 ################################################################################
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import iv as modified_bessel
@@ -27,17 +28,10 @@ import argparse
 from tqdm import tqdm
 import swiftsimio as sw
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from chemistry_tests_common import get_fe_metal_mass
+
 # %%
-
-
-def get_fe_metal_mass(data):
-    """Get the Fe metal mass (in code units) from swiftsimio data"""
-    # Get the metal mass
-    if hasattr(data.gas.metal_mass_fractions, "fe"):
-        m_fe = data.gas.metal_mass_fractions.fe * data.gas.masses
-    else:  # This case happens when we run the simulation without --feedback
-        m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
-    return m_fe
 
 
 def radial_profile(value, r, r_max, cross_section_area, n_bins=30):
