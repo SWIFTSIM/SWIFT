@@ -9,68 +9,48 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 import argparse
 from tqdm import tqdm
 import swiftsimio as sw
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from chemistry_tests_common import get_fe_metal_mass
+from chemistry_tests_common import (
+    get_fe_metal_mass,
+    radial_profile,
+    hyperbolic_diffusion_solution_convolved,
+)
 
 # %%
 
 
-def x_profile(value, x_coord, x_min=None, x_max=None, n_bins=50):
-    """
-    Computes a 1D profile of 'value' along the x-axis (x_coord) using linear binning.
-
-    The number of bins is increased (default 50) as we are binning in 1D space linearly.
-    """
-    # Handle default x_min and x_max
-    if x_min is None:
-        x_min = x_coord.min()
-    if x_max is None:
-        x_max = x_coord.max()
-
-    # Create LINEAR bin edges
-    x_bins = np.linspace(x_min, x_max, n_bins + 1)
-
-    # Get bin indices for each x-coordinate
-    # np.digitize returns indices such that bins[i-1] <= x < bins[i]
-    bin_indices = np.digitize(x_coord, bins=x_bins) - 1
-
-    # Handle edge cases where x_coord might fall outside the range
-    # np.clip handles the case where x_coord == x_max (placed in the last bin)
-    bin_indices = np.clip(bin_indices, 0, n_bins - 1)
-
-    # Calculate the centers of the bins for plotting
-    x_centers = 0.5 * (x_bins[:-1] + x_bins[1:])
-
-    # Initialize profile array
-    values = np.zeros(n_bins)
-
-    # Calculate the average value (e.g., metal mass) in each bin
-    for i in range(n_bins):
-        in_bin = bin_indices == i
-        if np.any(in_bin):  # Ensure there are particles in the bin
-            # Instead of np.mean(value[in_bin]), we are calculating
-            # the total mass/count in the bin, and dividing by the bin width if needed.
-            # For a simple 'profile' calculation like your original radial_profile,
-            # we will just take the mean metal mass concentration in the x-slice.
-            # If you want DENSITY (mass / volume), you would need to divide by V_bin.
-            # Assuming you want the average metal mass in the x-slice:
-            values[i] = np.mean(value[in_bin])
-
-    return x_centers, values
+def periodic_hyperbolic(r, t, total_mass, epsilon, x_0, tau, kappa, L, source_shape, n_images=2):
+    """Sum the exact single-seed hyperbolic response over periodic images of the source -- exact since the causal front is 0 beyond c*t until it wraps around the box."""
+    u = np.zeros_like(r)
+    for k in range(-n_images, n_images + 1):
+        u += hyperbolic_diffusion_solution_convolved(
+            r, t, total_mass, epsilon, x_0 + k * L, tau, kappa,
+            with_front_term=True, source_shape=source_shape,
+        )
+    return u
 
 
-def gaussian_1d(x, t, q_0, x_0, kappa, epsilon):
-    """1D Gaussian solution for Parabolic Diffusion (or its functional form).
-    q_0 is the normalization constant, x_0 is the peak center."""
-    sigma_sq = epsilon**2 + 2 * kappa * t
+def periodic_parabolic(r, t, total_mass, sigma2, x_0, L, n_images=2):
+    """Sum the parabolic heat-kernel response over periodic images of the source."""
+    u = np.zeros_like(r)
+    for k in range(-n_images, n_images + 1):
+        xi = x_0 + k * L
+        u += np.exp(-0.5 * (r - xi) ** 2 / sigma2) / np.sqrt(2 * np.pi * sigma2)
+    return total_mass * u
 
-    # Use the 1D solution form:
-    return q_0 / np.sqrt(sigma_sq) * np.exp(-0.5 * ((x - x_0) ** 2) / sigma_sq)
+
+def find_t0_file(files):
+    return min(files, key=lambda f: sw.load(f).metadata.time.value)
+
+
+def wrap_centered(x, L):
+    """Box-centred x-coordinate, wrapped into [-L/2, L/2)."""
+    centered = x - 0.5 * L
+    return np.fmod(centered + 0.5 * L, L) - 0.5 * L
 
 
 # %%
@@ -83,8 +63,8 @@ Plot the Fe 1D density profile
     epilog = """
 Examples:
 --------
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max 1.1
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max 1.1 --log
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --log
 """
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
 
@@ -94,8 +74,8 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max 
         "--epsilon",
         action="store",
         type=float,
-        default=0.00,
-        help="Size of the initial homogeneous sphere seeded with metals",
+        default=0.04,
+        help="Radius of the homogeneous sphere seeded with metal mass",
     )
 
     parser.add_argument(
@@ -103,11 +83,11 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max 
     )
 
     parser.add_argument(
-        "--x_min", action="store", type=float, default=1e-1, help="Minimal x."
-    )
-
-    parser.add_argument(
-        "--x_max", action="store", type=float, default=1.6, help="Maximal x."
+        "--r_max",
+        action="store",
+        type=float,
+        default=None,
+        help="Maximal r. Defaults to the box's actual half-extent.",
     )
 
     parser.add_argument(
@@ -128,8 +108,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max 
 # %%
 # Parse the arguments
 args, files = parse_option()
-x_min = args.x_min
-x_max = args.x_max
 n_bins = args.n_bins
 epsilon = args.epsilon
 log = args.log
@@ -139,7 +117,9 @@ figsize = (6.4, 4.8)
 
 # Open the data in the first snapshot to grab some information
 data_init = sw.load(files[0])
-boxsize = data_init.metadata.boxsize.value[0]
+boxsize = data_init.metadata.boxsize
+L = float(boxsize[0].value)
+r_max = args.r_max if args.r_max is not None else L / 2.0
 
 # Read kappa from the parameter file
 try:
@@ -149,6 +129,31 @@ except KeyError:
 
 print(f"Using kappa = {kappa:.3e}")
 
+# Read tau from the parameter file
+try:
+    tau = float(data_init.metadata.parameters["GEARChemistry:tau"])
+except KeyError:
+    tau = 0.001
+
+print(f"Using tau = {tau:.3e}")
+print(f"Using r_max = {r_max:.4f}")
+
+cross_section_area = float(boxsize[1].value) * float(boxsize[2].value)
+ndim = 3 if (boxsize[1].value > 1e-3 and boxsize[2].value > 1e-3) else 1
+source_shape = "ball" if ndim == 3 else "segment"
+
+# The two seeds sit at L/4 and 3L/4 in [0, L); -L/4 and +L/4 once box-centred.
+x_1 = -L / 4.0
+x_2 = L / 4.0
+
+# Each seed's own total mass, measured at t=0 (before mixing): epsilon << L/2 separation, so splitting by box half is exact.
+d0 = sw.load(find_t0_file(files))
+m0 = get_fe_metal_mass(d0)
+r0_centered = wrap_centered(d0.gas.coordinates.value[:, 0], L)
+total_mass_1 = float(m0.value[r0_centered < 0.0].sum())
+total_mass_2 = float(m0.value[r0_centered >= 0.0].sum())
+print(f"Seed masses: M1={total_mass_1:.3e}  M2={total_mass_2:.3e}")
+
 for filename in tqdm(files):
     snapshot_number = int(filename.split("_")[1].split(".")[0])
     output_name = "metal_profile" + str(snapshot_number)
@@ -157,83 +162,36 @@ for filename in tqdm(files):
     if log:
         output_name = "log_" + output_name
 
-    # Get data
     m_fe = get_fe_metal_mass(data)
-
-    # 1. Get coordinates and center the box (coordinates in SWIFT are 0 to L)
-    # The new center of the box is at 0.0
-    centered_coords = data.gas.coordinates.value - 0.5 * boxsize
-
-    # 2. Apply periodic boundary conditions (smallest image convention)
-    # The centered box ranges from -L/2 to L/2.
-    # We only care about the X-axis component.
-    x_coord_unwrapped = centered_coords[:, 0]
-
-    # In a periodic box, every particle's position 'x' has images at x + n*L.
-    # The smallest image convention means shifting the particles so their
-    # position is in the range [-L/2, L/2). Since the coordinates were already
-    # centered to [-L/2, L/2), the smallest image convention is already
-    # applied, but we can do a double-check wrap:
-    x_coord = np.fmod(x_coord_unwrapped + 0.5 * boxsize, boxsize) - 0.5 * boxsize
-
-    # 3. Define the x-axis range for fitting/plotting, e.g., from -L/2 to L/2
-    # The range should be -0.5 * boxsize to 0.5 * boxsize
-    L_half = 0.5 * boxsize
-
-    # Use the full range of the box for the profile calculation
-    x_min_profile = -L_half
-    x_max_profile = L_half
-
     t = data.metadata.time.value
+    r_signed = wrap_centered(data.gas.coordinates.value[:, 0], L)
 
-    # Compute the 1D profile along the x-axis
-    x_centers, fe_bin = x_profile(
-        m_fe, x_coord, x_min=x_min_profile, x_max=x_max_profile, n_bins=n_bins
+    # Compute the profile (density: mass / bin volume, resolution-independent)
+    r_centers, fe_bin = radial_profile(
+        m_fe, r_signed, r_max, cross_section_area, n_bins=n_bins
     )
 
-    # The delta function peaks are at L/4 and 3L/4 in the [0, L] box.
-    # In the centered [-L/2, L/2] box, they are at:
-    # x_1 = L/4 - L/2 = -L/4
-    # x_2 = 3L/4 - L/2 = L/4
-    x_1 = -L_half / 2.0  # corresponds to L/4 in the [0,L] box
-    x_2 = L_half / 2.0  # corresponds to 3L/4 in the [0,L] box
+    # Exact self-normalised references: superpose each seed's own exact response (linearity), summed over periodic images so the fronts wrap correctly at the seam.
+    r_sol = np.linspace(-r_max, r_max, 400)
+    seed_var = epsilon**2 / 5 if ndim == 3 else epsilon**2 / 3
+    sigma2 = 2 * kappa * t + seed_var
 
-    x_sol = np.linspace(x_min_profile, x_max_profile, 100)
+    fe_sol = (
+        periodic_parabolic(r_sol, t, total_mass_1, sigma2, x_1, L)
+        + periodic_parabolic(r_sol, t, total_mass_2, sigma2, x_2, L)
+    ) / cross_section_area
+    fe_sol_hyperbolic = (
+        periodic_hyperbolic(r_sol, t, total_mass_1, epsilon, x_1, tau, kappa, L, source_shape)
+        + periodic_hyperbolic(r_sol, t, total_mass_2, epsilon, x_2, tau, kappa, L, source_shape)
+    ) / cross_section_area
 
-    # Perform the fit on the BINNED data (x_centers and fe_bin)
-    def fit_q(x, q_1, q_2):
-        # Use the 1D Gaussian solution
-        return gaussian_1d(x, t, q_1, x_1, kappa, epsilon) + gaussian_1d(
-            x, t, q_2, x_2, kappa, epsilon
-        )
-
-    initial_guess_q_1 = 1e-1
-    initial_guess_q_2 = 1e-1
-
-    popt, pcov = curve_fit(
-        fit_q, x_centers, fe_bin, p0=[initial_guess_q_1, initial_guess_q_2]
-    )
-
-    # Extract the fitted q_0 value
-    q_1 = popt[0]
-    q_2 = popt[1]
-
-    # Compute the analytical solution (using the new 1D function)
-    fe_1 = gaussian_1d(x_sol, t, q_1, x_1, kappa, epsilon)
-    fe_2 = gaussian_1d(x_sol, t, q_2, x_2, kappa, epsilon)
-    fe_sol = fe_1 + fe_2
-
-    # Now plot
     fig, ax = plt.subplots(num=1, nrows=1, ncols=1, figsize=figsize, layout="tight")
     ax.clear()
 
-    # Plot the binned x-profile
-    ax.plot(x_centers, fe_bin, label="Fe X-profile (Binned Mean Mass)")
+    ax.plot(r_centers, fe_bin, label="Fe mass profile")
+    ax.plot(r_sol, fe_sol, label="Exact parabolic (heat-kernel marginal)")
+    ax.plot(r_sol, fe_sol_hyperbolic, label="Exact hyperbolic (front+interior marginal)")
 
-    # Plot the analytical fit
-    ax.plot(x_sol, fe_sol, label="Parabolic diffusion solution (on X-axis)")
-
-    # Add markers for the analytical peak positions (L/4 and 3L/4)
     ax.axvline(
         x=x_1, color="gray", linestyle="--", linewidth=0.8, alpha=0.7, label=r"$x=L/4$"
     )
@@ -241,10 +199,9 @@ for filename in tqdm(files):
         x=x_2, color="gray", linestyle=":", linewidth=0.8, alpha=0.7, label=r"$x=3L/4$"
     )
 
-    ax.set_xlabel("$x$ [kpc]")  # Change label to x
-    ax.set_ylabel(r"$Fe$ [M$_\odot$] (Mean Mass per Slice)")  # Update Y-label
-    ax.set_xlim(x_min_profile, x_max_profile)  # Set X-limit to the full box
-
+    ax.set_xlabel("$x$ [kpc]")
+    ax.set_ylabel(r"$Fe$ density [M$_\odot$ kpc$^{-3}$]")
+    ax.set_xlim(-r_max, r_max)
     ax.legend()
 
     if log:

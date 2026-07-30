@@ -22,47 +22,20 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.special import iv as modified_bessel
 from scipy.special import ive as scaled_bessel
 import argparse
 from tqdm import tqdm
 import swiftsimio as sw
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from chemistry_tests_common import get_fe_metal_mass
+from chemistry_tests_common import (
+    get_fe_metal_mass,
+    radial_profile,
+    hyperbolic_diffusion_solution,
+    hyperbolic_diffusion_solution_convolved,
+)
 
 # %%
-
-
-def radial_profile(value, r, r_max, cross_section_area, n_bins=30):
-    """
-    Compute a 1D density profile (mass / bin volume) across -r_max to
-    r_max. Summing mass and dividing by bin volume (rather than averaging
-    per-particle values) makes the result resolution-independent -- a
-    per-particle mean shrinks by construction as particle count grows,
-    even when the underlying physical density is converged.
-    """
-    # Define a symmetric linear range
-    r_min = -r_max
-
-    # Create linear bin edges
-    r_bins = np.linspace(r_min, r_max, n_bins + 1)
-    bin_width = (r_max - r_min) / n_bins
-    bin_volume = bin_width * cross_section_area
-
-    # Get bin indices
-    bin_indices = np.digitize(r, bins=r_bins) - 1
-
-    # Calculate centers
-    r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
-
-    densities = np.zeros(n_bins)
-    for i in range(n_bins):
-        in_bin = bin_indices == i
-        if np.any(in_bin):
-            densities[i] = np.sum(value[in_bin]) / bin_volume
-
-    return r_centers, densities
 
 
 def gaussian(r, t, q_0, r_0, kappa, epsilon):
@@ -72,116 +45,6 @@ def gaussian(r, t, q_0, r_0, kappa, epsilon):
         / (epsilon**2 + 2 * kappa * t) ** 1.5
         * np.exp(-0.5 * ((r - r_0) ** 2) / (epsilon**2 + 2 * kappa * t))
     )
-
-
-def hyperbolic_diffusion_solution(x, t, q_0, x_0, tau, kappa):
-    """
-    Compute the solution u(x, t) of the hyperbolic diffusion equation.
-
-    Parameters:
-        x (array): Spatial positions.
-        t (float): Time.
-        tau (float): Relaxation time constant.
-        kappa (float): Diffusion coefficient.
-
-    Returns:
-        u (array): Solution values at positions x and time t.
-    """
-    # Wave speed
-    c = np.sqrt(kappa / tau)
-
-    Delta_x = x - x_0
-
-    # Compute radial term and modified Bessel functions for valid x values
-    within_causal_region = np.abs(Delta_x) <= c * t
-    radial_term = np.zeros_like(Delta_x)
-    radial_term[within_causal_region] = np.sqrt(
-        c**2 * t**2 - Delta_x[within_causal_region] ** 2
-    )
-
-    # Scaled Bessels: iv(n,z)*exp(-at) overflows for t >> tau (z ~ at can
-    # exceed 700); ive(n,z)*exp(z-at) is exact and safe since z <= at.
-    z = (c / (2 * kappa)) * radial_term[within_causal_region]
-    at = c**2 * t / (2 * kappa)
-    scale = np.exp(z - at)
-    I0 = scaled_bessel(0, z) * scale
-    I1 = scaled_bessel(1, z) * scale
-
-    # Compute the solution
-    u = np.zeros_like(Delta_x)
-    if t > 0:
-        u[within_causal_region] = (
-            0.5
-            * q_0
-            * (
-                (c / (2 * kappa)) * I0
-                + (c**2 / (2 * kappa)) * t * I1 / radial_term[within_causal_region]
-            )
-        )
-
-    return u
-
-
-def hyperbolic_diffusion_solution_convolved(
-    r,
-    t,
-    total_mass,
-    epsilon,
-    x_0,
-    tau,
-    kappa,
-    n_source_points=401,
-    with_front_term=False,
-    source_shape="segment",
-):
-    """Response to a 1D top-hat source of half-width epsilon (the actual
-    IC shape for --dimension 1), not a point source: convolve the
-    point-source Green's function above against a uniform linear-density
-    segment [x_0-epsilon, x_0+epsilon] of total mass total_mass. Only
-    valid for a 1D run's actual top-hat IC -- the 3D spherical IC needs a
-    different (3D) convolution, not implemented here. Self-normalising
-    (uses total_mass directly, no q_0 fit needed).
-
-    hyperbolic_diffusion_solution() implements only the smooth interior
-    (Bessel) part of the exact point-source Green's function; the exact
-    solution for our IC (delta-function density, zero initial flux) also
-    has a delta-function term at the ballistic front x=x_0+/-c*t, decaying
-    as exp(-t/2tau) with weight 1/2 (Masoliver, Porra & Weiss, Phys. Rev.
-    E 48, 939 (1993); see also Pruestel & Meier-Schellersheim, arXiv:1301.7139,
-    Eq. 2.1-2.5). with_front_term=True adds it: convolved against the
-    source's x-marginal, a delta at a moving point becomes that marginal
-    shape centred on the moving point.
-
-    source_shape: 'segment' (1D top-hat IC; uniform weight 1/(2 eps)) or
-    'ball' (3D uniform sphere; its x-marginal is the parabolic profile
-    (3/(4 eps))(1-(xi/eps)^2)). For a 3D run profiled along x this 1D
-    convolution IS exact: the y,z-marginal of the 3D Green's function is
-    exactly the 1D Green's function (integrating the PDE over y,z kills
-    the transverse Laplacian), so only the seed's x-marginal matters."""
-    c = np.sqrt(kappa / tau)
-    if source_shape == "ball":
-
-        def w_src(xi):
-            return 0.75 / epsilon * np.maximum(1 - (xi / epsilon) ** 2, 0.0)
-
-    else:
-
-        def w_src(xi):
-            return np.where(np.abs(xi) < epsilon, 0.5 / epsilon, 0.0)
-
-    x_prime = np.linspace(-epsilon, epsilon, n_source_points)
-    w = w_src(x_prime)
-    if t == 0:
-        return total_mass * w_src(r - x_0)
-    u = np.zeros_like(r)
-    for i, ri in enumerate(r):
-        g = hyperbolic_diffusion_solution(ri - x_0 - x_prime, t, 1.0, 0.0, tau, kappa)
-        u[i] = total_mass * np.trapezoid(w * g, x_prime)
-    if with_front_term:
-        front_weight = 0.5 * np.exp(-t / (2 * tau)) * total_mass
-        for front_x0 in (x_0 - c * t, x_0 + c * t):
-            u += front_weight * w_src(r - front_x0)
-    return u
 
 
 def hyperbolic_diffusion_solution_3d(r, t, total_mass, tau, kappa):
