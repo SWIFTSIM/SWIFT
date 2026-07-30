@@ -15,6 +15,7 @@ vy=${vy:=0.0}  # Default velocity y-component
 vz=${vz:=0.0}  # Default velocity z-component
 random_positions=${random_positions:=0} # Use random positions instead of regular grid?
 run_name=${run_name:=""}                # Name of the run
+dimension=${dimension:=3}               # Dimensionality of the problem.
 
 
 ICs_name="metal_diffusion_wave_interference.hdf5"
@@ -36,6 +37,7 @@ then
     fi
 
     python3 makeIC.py \
+        --dimension "$dimension" \
         --level "$level" \
         --rho "$gas_density" \
         --mass "$box_mass" \
@@ -78,8 +80,10 @@ printf "Running simulation..."
 #Do some data analysis to show what's in this box
 python3 ../plot_metal_mass_conservation_in_time.py snap/*.hdf5
 python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30
-python3 ../metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -15 --vmax -9.5
-python3 ../metal_projection.py snap/snapshot_*0.hdf5 --vmin "1e-15" --vmax "1e-9"
+if [ "$dimension" -eq 3 ]; then
+    python3 ../metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -15 --vmax -9.5
+    python3 ../metal_projection.py snap/snapshot_*0.hdf5 --vmin "1e-15" --vmax "1e-9"
+fi
 # The two seeds are antipodal on the periodic ring (README): their fronts
 # cross simultaneously at the midpoint and at the periodic seam. This is
 # the exact-solution comparison that actually shows it, see the README.

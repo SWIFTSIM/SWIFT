@@ -263,8 +263,8 @@ except KeyError:
 print(f"Using tau = {tau:.3e}")
 print(f"Using r_max = {r_max:.4f}")
 
-cross_section_area = float(boxsize[1].value) * float(boxsize[2].value)
-ndim = 3 if (boxsize[1].value > 1e-3 and boxsize[2].value > 1e-3) else 1
+ndim = int(data_init.metadata.dimension)
+cross_section_area = float(boxsize[1].value) * float(boxsize[2].value) if ndim == 3 else 1.0
 
 
 def fit_q0_linear(func_at_q0_one, density):
