@@ -225,4 +225,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {}
 
+/* No-op: this scheme does not exchange a metal diffusion flux. Present so
+   the force-loop template compiles for every --with-chemistry value. */
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_flux_exchange(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj,
+    const int both_updatable_here, const int local_first,
+    const int local_second, const float a, const float H, const float time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data) {}
+
 #endif /* SWIFT_EAGLE_CHEMISTRY_IACT_H */

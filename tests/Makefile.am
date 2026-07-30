@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS) $(GRACKLE_INCS)
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
 
@@ -36,7 +36,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
 	    testLog testDistance testTimeline \
-	    testSymmetricMatrixDiagonalisation # testMatrixInversion
+	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -50,7 +50,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation
+		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
+		 testChemistryFluxAntisymmetry
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -86,6 +87,8 @@ testSymmetry_SOURCES = testSymmetry.c
 
 # Added because of issues using memcmp on clang 4.x
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
+
+testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 

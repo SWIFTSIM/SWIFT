@@ -119,6 +119,7 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
+  task_type_chemistry_fct_ghost,
   task_type_count
 } __attribute__((packed));
 
@@ -162,6 +163,7 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_chemistry_fct_prep,
   task_subtype_count
 } __attribute__((packed));
 

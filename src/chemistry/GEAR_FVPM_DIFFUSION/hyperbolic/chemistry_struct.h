@@ -59,6 +59,17 @@ struct chemistry_part_data {
 
   } flux;
 
+  /*! Donor-side positivity (FCT) limiter: prospective metal mass leaving this
+   * particle during the current flux exchange, accumulated by the fct_prep
+   * loop and consumed/reset by the chemistry_fct_ghost task. */
+  double fct_sum_out[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Donor-side positivity (FCT) limiter: scaling factor applied to this
+   * particle's outgoing metal mass fluxes in the flux (force) loop. Computed
+   * by the chemistry_fct_ghost task from the current step's prospective
+   * outflow sum; frozen during the flux exchange. */
+  double fct_theta[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
   struct {
     /*! Counts the successive number of times this particle was negative */
     unsigned int negativity_counter[GEAR_CHEMISTRY_ELEMENT_COUNT];

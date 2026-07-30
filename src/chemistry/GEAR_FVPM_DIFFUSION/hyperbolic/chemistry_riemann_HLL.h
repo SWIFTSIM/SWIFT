@@ -166,14 +166,24 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        flux-memory limiter above, component 0 is always rescaled while
        components 1-3 follow hyperbolic_limiter_scope, since unconditionally
        suppressing their dissipation would preserve rather than decay an
-       already-stale flux memory. dt_ij follows the same convention as the
-       gradient predictor (chemistry_iact.h): symmetric min over a pair of
-       active particles, and pi's own dt when pj is inactive -- in which case
-       the pair is evaluated only once, so the flux stays antisymmetric. */
+       already-stale flux memory. dt_ij uses the same order-independent
+       mindt as chemistry.c's chemistry_compute_pair_fluxes() and
+       the MUSCL predictor (chemistry_gradients.h): the smallest positive
+       flux.dt among the two particles, whichever slot it ends up in after
+       canonicalisation. */
     const double c_max = max(c_diff_L, c_diff_R);
     const float dt_i = pi->chemistry_data.flux.dt;
     const float dt_j = pj->chemistry_data.flux.dt;
-    const double dt_min = (dt_j > 0.f) ? min(dt_i, dt_j) : dt_i;
+    double dt_min;
+    if (dt_i > 0.f && dt_j > 0.f) {
+      dt_min = min(dt_i, dt_j);
+    } else if (dt_i > 0.f) {
+      dt_min = dt_i;
+    } else if (dt_j > 0.f) {
+      dt_min = dt_j;
+    } else {
+      dt_min = 0.f;
+    }
     const double psize_i = chemistry_get_physical_particle_size(pi, cosmo);
     const double psize_j = chemistry_get_physical_particle_size(pj, cosmo);
     const double length_scale = min(psize_i, psize_j);
