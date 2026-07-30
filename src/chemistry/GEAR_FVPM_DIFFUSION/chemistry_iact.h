@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_IACT_H
 #define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_IACT_H
 
+#include "atomic.h"
 #include "chemistry_flux.h"
 #include "chemistry_getters.h"
 #include "chemistry_gradients.h"
@@ -294,7 +295,15 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * @param pj Particle j.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
- * @param interaction_mode 0 if non-symmetric interaction, 1 if symmetric.
+ * @param update_left Whether pi receives the flux.
+ * @param update_right Whether pj receives the flux.
+ * @param accum_ts_left Whether pi accumulates this pair's timestep variables
+ * (vmax, delxbar). Not the same mask as update_left: the nonsym contract
+ * gives the calling wrapper's active particle the timestep-variable credit
+ * even on an evaluation where the OTHER (inactive) particle is the one
+ * receiving the flux update (see runner_iact_nonsym_diffusion()).
+ * @param accum_ts_right Whether pj accumulates this pair's timestep
+ * variables. See accum_ts_left.
  * @param fct_pass CHEMISTRY_FCT_PASS_PREP to only accumulate the donor-side
  * outflow sums, CHEMISTRY_FCT_PASS_APPLY to scale by the donor's theta and
  * apply the fluxes.
@@ -304,7 +313,8 @@ runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, int interaction_mode, int fct_pass) {
+    const struct cosmology *cosmo, int update_left, int update_right,
+    int accum_ts_left, int accum_ts_right, int fct_pass) {
 
   /* Compute the pair fluxes in the shared, non-inlined helper (see
      chemistry.c). The prep and apply passes live in different translation
@@ -332,10 +342,10 @@ runner_iact_chemistry_fluxes_common(
   /* Store the signal velocity (only in the pass that applies fluxes, to
      leave the time-step estimate identical to the single-pass scheme) */
   if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
-    chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
-    if (interaction_mode == 1) {
+    if (accum_ts_left)
+      chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
+    if (accum_ts_right)
       chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
-    }
   }
 #else
   (void)vmax;
@@ -346,10 +356,8 @@ runner_iact_chemistry_fluxes_common(
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   /* Lanson & Vila (2008), denominator of equation (58) */
   if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
-    chi->timestepvars.delxbar += delxbar_i;
-    if (interaction_mode == 1) {
-      chj->timestepvars.delxbar += delxbar_j;
-    }
+    if (accum_ts_left) chi->timestepvars.delxbar += delxbar_i;
+    if (accum_ts_right) chj->timestepvars.delxbar += delxbar_j;
   }
 #endif
 
@@ -370,10 +378,9 @@ runner_iact_chemistry_fluxes_common(
          race-safe only because self/pair hydro tasks lock BOTH cells
          (task_lock default hydro branch). Do not relax the prep task's
          locking to a single cell. */
-      if (totflux[m][0] > 0.0) {
+      if (totflux[m][0] > 0.0 && update_left) {
         chi->fct_sum_out[m] += totflux[m][0] * mindt;
-      } else if (totflux[m][0] < 0.0 &&
-                 (interaction_mode == 1 || (chj->flux.dt < 0.f))) {
+      } else if (totflux[m][0] < 0.0 && update_right) {
         chj->fct_sum_out[m] += -totflux[m][0] * mindt;
       }
       /* Do not apply anything in the prep pass */
@@ -396,152 +403,388 @@ runner_iact_chemistry_fluxes_common(
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
      * of flux.dt, we can detect inactive neighbours through their negative time
      * step. */
-    chemistry_part_update_fluxes_left(pi, m, totflux[m], mindt);
-    if (interaction_mode == 1 || (chj->flux.dt < 0.f)) {
+    if (update_left)
+      chemistry_part_update_fluxes_left(pi, m, totflux[m], mindt);
+    if (update_right)
       chemistry_part_update_fluxes_right(pj, m, totflux[m], mindt);
-    }
   }
 }
 
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+/* Step-1 instrumentation: how often the local mixed-band tie-break arm
+   below actually decides to act versus skip. Defined once in chemistry.c
+   (this header may be textually included into more than one translation
+   unit); incremented atomically since the force loop runs multithreaded.
+   This aggregate pair of counters CANNOT prove "no dropped pairs" on its
+   own: an arm-1 (both_updatable_here) visit fully covers a pair without
+   touching either counter, so acted > skipped is also consistent with a
+   pair being dropped here but covered elsewhere by arm 1. The per-pair log
+   below is the instrument that actually discriminates; these two counters
+   are kept only as a cheap sanity readout. */
+extern long long chemistry_fvpm_visit_acted;
+extern long long chemistry_fvpm_visit_skipped;
+
+/* Per-pair discriminating log (see chemistry.c for the full rationale and
+   the post-processing that turns this into dropped/double_applied counts).
+   NOT thread-safe: diagnostic use only, with --threads=1. */
+enum chemistry_fvpm_visit_arm {
+  CHEMISTRY_FVPM_VISIT_SYM = 0,  /* arm 1: both_updatable_here */
+  CHEMISTRY_FVPM_VISIT_ACT = 1,  /* arm 3: mixed-band owner acts */
+  CHEMISTRY_FVPM_VISIT_SKIP = 2, /* arm 3: mixed-band non-owner skips */
+};
+
+struct chemistry_fvpm_visit_record {
+  const struct part *a; /* min(pi, pj) by address */
+  const struct part *b; /* max(pi, pj) by address */
+  enum chemistry_fvpm_visit_arm arm;
+};
+
+extern void chemistry_fvpm_visit_log_record(const struct part *pi,
+                                            const struct part *pj,
+                                            enum chemistry_fvpm_visit_arm arm);
+extern void chemistry_fvpm_visit_log_analyze(void);
+extern void chemistry_fvpm_visit_log_reset(void);
+#endif
+
 /**
- * @brief Do metal diffusion computation in the <FORCE LOOP> (symmetric version)
+ * @brief Strict lexicographic order on absolute (wrapped) particle
+ * positions.
  *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
+ * Frame-independent (unlike the sid-shifted local coordinates used inside
+ * the sorted pair loops) and rank-independent (proxy particles carry the
+ * owner's absolute position verbatim), so two independent evaluations of
+ * the same physical pair -- one per task that visits it -- agree on which
+ * side "wins" without any shared mutable state. A tie (all three
+ * coordinates bitwise equal) means the two particles are coincident; the
+ * caller treats that as a signal to skip, since a coincident pair's FVPM
+ * face has zero area anyway (Anorm2 == 0, see chemistry.c).
+ */
+__attribute__((always_inline)) INLINE static int chemistry_pos_less(
+    const struct part *restrict a, const struct part *restrict b) {
+  if (a->x[0] != b->x[0]) return a->x[0] < b->x[0];
+  if (a->x[1] != b->x[1]) return a->x[1] < b->x[1];
+  return a->x[2] < b->x[2];
+}
+
+/**
+ * @brief Designate the owner of a locally-active mixed-depth-band pair: the
+ * larger-h particle, with chemistry_pos_less() as an h-tie fallback.
+ *
+ * This is not an arbitrary tie-break: a pair interacts at all only if
+ * r2 < gamma^2 * max(hi, hj)^2, so the partner always lies inside the
+ * larger-h particle's own kernel, and SWIFT's hydro loop machinery must
+ * enumerate every active particle's full own-kernel neighbour set for
+ * density/force correctness. The larger-h side of an active mixed-band pair
+ * is therefore GUARANTEED its own visit to this pair; designating it the
+ * owner means the acting evaluation is always guaranteed to happen,
+ * independent of whether the smaller-h side's visit does. Position-only
+ * designation lacked this guarantee (the designated side could be the one
+ * whose own kernel does not contain the pair) and measurably dropped a
+ * small fraction of mixed-band pairs (Step-1 instrumentation, first
+ * implementation of this session). h is per-particle, frozen for the step
+ * after the density loop, communicated to proxies, and identical in the FCT
+ * prep and apply passes -- the same stability properties chemistry_pos_less
+ * relies on for x. Bitwise-equal h implies equal depth_h implies the same
+ * band, which the both_updatable_here arm already covers -- so the
+ * chemistry_pos_less() fallback here is expected to be dead in practice;
+ * kept as a safety net.
+ */
+__attribute__((always_inline)) INLINE static int chemistry_flux_owner(
+    const float hi, const float hj, const struct part *restrict pi,
+    const struct part *restrict pj) {
+  if (hi != hj) return hi > hj;
+  return chemistry_pos_less(pi, pj);
+}
+
+/**
+ * @brief Shared decision table for the chemistry diffusion flux exchange,
+ * used by both the flux-applying force loop and (via fct_pass) the FCT prep
+ * pass.
+ *
+ * The contract at every call site: @p pi is the particle this call is
+ * entitled to update (the pre-existing nonsym convention); @p pj is its
+ * neighbour. @p both_updatable_here is the call site's own doi&&doj-style
+ * gate -- when true, both particles are guaranteed active, local and in the
+ * same depth band, and this is the pair's ONE symmetric evaluation for the
+ * step (established structural fact, see the plan). @p local_first and
+ * @p local_second report whether the cell that @p pi (resp. @p pj) belongs
+ * to at THIS call site is local to this rank -- named by argument position,
+ * not by any fixed "cell i / cell j" identity, since several call sites
+ * place the cell-j particle first.
+ *
+ * Decision table (order matters):
+ *   1. both_updatable_here      -> symmetric update, today's sym path,
+ *                                  no reordering.
+ *   2. pj inactive (flux.dt<0)  -> nonsym + sentinel, today's path
+ *                                  (pj still receives the flux so the
+ *                                  exchange stays symmetric; the pair is
+ *                                  visited exactly once this step).
+ *   3. local_first && local_second (mixed depth band, both active, both
+ *      local) -> h-primary ownership: chemistry_flux_owner(hi, hj, pi, pj)
+ *      decides which of the two independent tasks visiting this pair
+ *      performs the one symmetric update (the larger-h side, whose own
+ *      visit to this pair is guaranteed by the hydro enumeration
+ *      invariant -- see chemistry_flux_owner()); the loser skips entirely
+ *      (an h-and-position tie -- coincident particles -- also skips, on
+ *      both sides, consistently).
+ *   4. otherwise (cross-rank: pj is a foreign/proxy copy) -> compute the
+ *      flux in position-canonical input order (so both ranks evaluate the
+ *      identical floating-point sequence) but apply the result only to the
+ *      local particle; a tie skips (degenerate face) rather than picking
+ *      an arbitrary side.
+ *
+ * A separate, purely diagnostic bypass
+ * (GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE) reproduces the id-keyed
+ * one-sided update used to establish the exact-zero conservation reference this
+ * session's fix targets; it is NOT MPI-safe (see chemistry_properties.h) and
+ * plays no part in the decision table above.
+ *
+ * @param fct_pass CHEMISTRY_FCT_PASS_PREP or CHEMISTRY_FCT_PASS_APPLY.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_flux_exchange_decide(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj,
+    const int both_updatable_here, const int local_first,
+    const int local_second, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, const int fct_pass) {
+
+  if (both_updatable_here) {
+    /* Today's sym path: both particles already guaranteed active, local and
+       in-band by the caller's own gate. No reordering -- see the plan for
+       why reordering here would only add rounding noise for no benefit. */
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+    /* Logged only on the APPLY pass so each pair contributes one record per
+       step (PREP visits the same pairs and would otherwise double them). */
+    if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
+      chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_SYM);
+#endif
+    runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                        cosmo, /*update_left=*/1,
+                                        /*update_right=*/1,
+                                        /*accum_ts_left=*/1,
+                                        /*accum_ts_right=*/1, fct_pass);
+    return;
+  }
+
+#if defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
+  /* Reference-only bypass: id-keyed one-sided update, kept verbatim
+     (including its id dependence) for the exact-zero conservation
+     comparison run. Not part of the production decision table. */
+  {
+    const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
+    const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
+    if (pi_is_active && pj_is_active) {
+      if (pi->id < pj->id) {
+        runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                            cosmo, 1, 1, 1, 1, fct_pass);
+      }
+      /* else: the mirror call (from pj's own active dispatch) performs the
+         full symmetric update; nothing to do here. */
+    } else {
+      const int pj_inactive = (pj->chemistry_data.flux.dt < 0.f);
+      runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                          cosmo, 1, pj_inactive, 1, 0,
+                                          fct_pass);
+    }
+  }
+  return;
+#else
+
+  const int pj_inactive = (pj->chemistry_data.flux.dt < 0.f);
+  if (pj_inactive) {
+    /* Today's nonsym path: pj still receives the flux so the exchange stays
+       symmetric, but this pair is visited exactly once this step (from
+       pi's active side), so it gets none of the timestep-variable credit. */
+    runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                        cosmo, /*update_left=*/1,
+                                        /*update_right=*/1,
+                                        /*accum_ts_left=*/1,
+                                        /*accum_ts_right=*/0, fct_pass);
+    return;
+  }
+
+  if (local_first && local_second) {
+    /* Both particles active and local, but this call site alone does not
+       cover the pair symmetrically (mixed depth band): exactly one of the
+       two independent tasks that visit this pair must act -- the larger-h
+       side (see chemistry_flux_owner()), whose own visit is guaranteed. */
+    if (chemistry_flux_owner(hi, hj, pi, pj)) {
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+      atomic_add(&chemistry_fvpm_visit_acted, 1);
+      if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
+        chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_ACT);
+#endif
+      runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                          cosmo, 1, 1, 1, 1, fct_pass);
+    } else {
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+      atomic_add(&chemistry_fvpm_visit_skipped, 1);
+      if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
+        chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_SKIP);
+#endif
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      if (hi == hj && pi->x[0] == pj->x[0] && pi->x[1] == pj->x[1] &&
+          pi->x[2] == pj->x[2])
+        warning(
+            "Coincident distinct particles (ids %lld/%lld) at pos "
+            "[%g %g %g] in the local mixed-band chemistry flux exchange -- "
+            "skipping degenerate face.",
+            pi->id, pj->id, pi->x[0], pi->x[1], pi->x[2]);
+#endif
+      /* Loser: the mirror task's own evaluation of this pair wins the
+         comparison the other way and acts instead. */
+    }
+    return;
+  }
+
+  /* Cross-rank: local_second is false here (the local_first && local_second
+     case was handled above), and every call site's first argument is by
+     construction the one this call is entitled to update -- so pi is local
+     and pj is a foreign/proxy copy that must never be written. Compute the
+     flux in position-canonical input order so both ranks evaluate the
+     identical floating-point sequence, then apply the result only to
+     whichever slot pi ends up in (never pj). */
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (!local_first)
+    error(
+        "runner_iact_chemistry_flux_exchange's cross-rank arm reached with "
+        "local_first false: the call site's first argument must always be "
+        "the locally-owned particle.");
+#endif
+  const int pi_less_pj = chemistry_pos_less(pi, pj);
+  const int pj_less_pi = chemistry_pos_less(pj, pi);
+  if (!pi_less_pj && !pj_less_pi) {
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    warning(
+        "Coincident distinct particles (ids %lld/%lld) at pos [%g %g %g] "
+        "in the cross-rank chemistry flux exchange -- skipping degenerate "
+        "face.",
+        pi->id, pj->id, pi->x[0], pi->x[1], pi->x[2]);
+#endif
+    return;
+  }
+  if (pi_less_pj) {
+    runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
+                                        cosmo, /*update_left=*/1,
+                                        /*update_right=*/0,
+                                        /*accum_ts_left=*/1,
+                                        /*accum_ts_right=*/0, fct_pass);
+  } else {
+    const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+    runner_iact_chemistry_fluxes_common(r2, mdx, hj, hi, pj, pi, chem_data,
+                                        cosmo, /*update_left=*/0,
+                                        /*update_right=*/1,
+                                        /*accum_ts_left=*/0,
+                                        /*accum_ts_right=*/1, fct_pass);
+  }
+#endif /* !GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
+}
+
+/**
+ * @brief Do metal diffusion computation in the <FORCE LOOP>: single
+ * dispatcher covering the symmetric, nonsym, mixed-band and cross-rank
+ * cases (see runner_iact_chemistry_flux_exchange_decide()).
+ *
+ * @param pi The particle this call site is entitled to update.
+ * @param pj Its neighbour.
+ * @param both_updatable_here Whether this call site's own gate already
+ * guarantees both particles active, local and in the same depth band (the
+ * pair's one symmetric evaluation for the step).
+ * @param local_first Whether the cell @p pi belongs to is local to this
+ * rank.
+ * @param local_second Whether the cell @p pj belongs to is local to this
+ * rank.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  * @param time_base The time base used in order to convert integer to float
  * time.
- * @param ti_current The current time (in integer)
+ * @param t_current The current time (in integer).
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
  * @param chem_data The global properties of the chemistry scheme.
- *
  */
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_flux_exchange(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj,
+    const int both_updatable_here, const int local_first,
+    const int local_second, const float a, const float H, const float time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data) {
+
+  (void)a;
+  (void)H;
+  (void)time_base;
+  (void)t_current;
+  (void)with_cosmology;
+
+  runner_iact_chemistry_flux_exchange_decide(
+      r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,
+      chem_data, cosmo, CHEMISTRY_FCT_PASS_APPLY);
+}
+
+/**
+ * @brief Prep pass of the FCT positivity limiter: mirrors
+ * runner_iact_chemistry_flux_exchange() exactly (identical decision table,
+ * identical position tie-break) so the prep pass sees the identical set of
+ * pair evaluations, in the identical order, as the apply pass in the force
+ * loop. The signature matches runner_iact_chemistry_flux_exchange() so the
+ * fct_prep loop instantiation's object-macro redirect (runner_doiact_hydro.c)
+ * can alias one to the other.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_flux_exchange_fct_prep(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj,
+    const int both_updatable_here, const int local_first,
+    const int local_second, const float a, const float H, const float time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data) {
+
+  (void)a;
+  (void)H;
+  (void)time_base;
+  (void)t_current;
+  (void)with_cosmology;
+
+  runner_iact_chemistry_flux_exchange_decide(
+      r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,
+      chem_data, cosmo, CHEMISTRY_FCT_PASS_PREP);
+}
+
+/* The template's original diffusion hooks: kept (not removed) so private
+   out-of-tree schemes sharing this template's call sites are unaffected,
+   but empty here -- this scheme's logic now lives entirely in
+   runner_iact_chemistry_flux_exchange() above. */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {
+    const struct chemistry_global_data *chem_data) {}
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      1, CHEMISTRY_FCT_PASS_APPLY);
-}
-
-/**
- * @brief Do metal diffusion computation in the <FORCE LOOP>
- * (nonsymmetric version)
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param time_base The time base used in order to convert integer to float
- * time.
- * @param ti_current The current time (in integer)
- * @param cosmo The #cosmology.
- * @param with_cosmology Are we running with cosmology?
- * @param chem_data The global properties of the chemistry scheme.
- *
- */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {
+    const struct chemistry_global_data *chem_data) {}
 
-#if !defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      0, CHEMISTRY_FCT_PASS_APPLY);
-#else
-  int local_mode = 0;
-  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
-
-  if (pi_is_active && pj_is_active) {
-    if (pi->id < pj->id) {
-      /* pi has the duty to update both pi and pj symmetrically */
-      local_mode = 1;
-    } else {
-      /* Nothing to do. The other particle will update symmetrically */
-      return;
-    }
-  } else {
-    /* pi or pj is active. No trick is needed here: only the active particle
-       will update both particles. So we can use the default implementation. */
-    local_mode = 0;
-  }
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      local_mode, CHEMISTRY_FCT_PASS_APPLY);
-#endif
-}
-
-/**
- * @brief Prep pass of the FCT positivity limiter (symmetric version).
- *
- * Runs in the chemistry_fct_prep loop, between the extra ghost and the
- * chemistry_fct_ghost task. Computes the same fluxes as the flux exchange in
- * the force loop, but only accumulates the donor-side outflow sums; nothing
- * is applied. The signature matches runner_iact_diffusion() so the fct_prep
- * loop instantiation can alias one to the other.
- */
 __attribute__((always_inline)) INLINE static void
 runner_iact_diffusion_fct_prep(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {
+    const struct chemistry_global_data *chem_data) {}
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      1, CHEMISTRY_FCT_PASS_PREP);
-}
-
-/**
- * @brief Prep pass of the FCT positivity limiter (nonsymmetric version).
- *
- * Mirrors runner_iact_nonsym_diffusion() exactly (including the debug
- * one-sided update mode) so the prep pass sees the identical set of pair
- * evaluations as the apply pass in the force loop.
- */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_diffusion_fct_prep(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {
-
-#if !defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      0, CHEMISTRY_FCT_PASS_PREP);
-#else
-  int local_mode = 0;
-  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
-
-  if (pi_is_active && pj_is_active) {
-    if (pi->id < pj->id) {
-      local_mode = 1;
-    } else {
-      return;
-    }
-  } else {
-    local_mode = 0;
-  }
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      local_mode, CHEMISTRY_FCT_PASS_PREP);
-#endif
-}
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_IACT_H */

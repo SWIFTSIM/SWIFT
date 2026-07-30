@@ -116,9 +116,15 @@ runner_iact_nonsym_mhd_chemistry_fct_prep(const float r2, const float dx[3],
 /* Route the force-loop chemistry diffusion calls of the template to the FCT
    prep pass (accumulate donor outflow sums, apply nothing). The timebin
    updates also run here; they are idempotent min() updates, so repeating them
-   in the force loop is harmless. */
+   in the force loop is harmless. runner_iact_(nonsym_)diffusion are empty for
+   this scheme (see chemistry_iact.h) so this redirect is a no-op in itself;
+   it is kept so any private out-of-tree scheme sharing this template still
+   gets its own diffusion hooks routed to the prep pass unchanged. The new
+   flux-exchange extension gets the identical redirect, alongside. */
 #define runner_iact_diffusion runner_iact_diffusion_fct_prep
 #define runner_iact_nonsym_diffusion runner_iact_nonsym_diffusion_fct_prep
+#define runner_iact_chemistry_flux_exchange \
+  runner_iact_chemistry_flux_exchange_fct_prep
 
 /* Import the chemistry FCT prep loop functions. */
 #define FUNCTION chemistry_fct_prep
@@ -128,5 +134,6 @@ runner_iact_nonsym_mhd_chemistry_fct_prep(const float r2, const float dx[3],
 
 #undef runner_iact_diffusion
 #undef runner_iact_nonsym_diffusion
+#undef runner_iact_chemistry_flux_exchange
 
 #endif /* GEAR FVPM diffusion chemistry */

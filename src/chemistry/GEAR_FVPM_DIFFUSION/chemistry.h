@@ -26,6 +26,7 @@
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Local includes. */
@@ -48,6 +49,26 @@
 #define GEAR_FVPM_DIFFUSION_NORMALISATION_DEFAULT 1.0
 #define GEAR_FVPM_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT 0.1
 #define GEAR_FVPM_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.0
+
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+/* Defined in chemistry.c; declared here (rather than pulling in
+   chemistry_iact.h) purely to print them at exit. */
+extern long long chemistry_fvpm_visit_acted;
+extern long long chemistry_fvpm_visit_skipped;
+extern void chemistry_fvpm_visit_log_analyze(void);
+
+/* atexit() callback: report the Step-1 mixed-band tie-break totals, plus
+   the per-pair log's discriminating dropped/double_applied verdict (the
+   aggregate counters alone cannot rule out drops -- see chemistry.c). */
+static void chemistry_fvpm_print_visit_counts(void) {
+  message(
+      "GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT: mixed-band arm acted=%lld "
+      "skipped=%lld (sanity readout only, see per-pair log verdict below "
+      "for the actual drop/double-apply proof)",
+      chemistry_fvpm_visit_acted, chemistry_fvpm_visit_skipped);
+  chemistry_fvpm_visit_log_analyze();
+}
+#endif
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -392,6 +413,13 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("Hyperbolic limiter scope:   %u", data->hyperbolic_limiter_scope);
 #endif
   }
+
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+  /* Step-1 instrumentation (see chemistry_iact.h): print the mixed-band
+     tie-break arm's ACTED/SKIPPED totals once, at process exit, so a short
+     diagnostic run reports them without touching swift.c. */
+  atexit(chemistry_fvpm_print_visit_counts);
+#endif
 }
 
 /**

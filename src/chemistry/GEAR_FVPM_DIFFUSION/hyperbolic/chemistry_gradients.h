@@ -68,12 +68,13 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
   double m_Zj = Uj[0] * mj / hydro_get_physical_density(pj, cosmo);
 
   unsigned int dumb;
-  const char corrected_i = chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id,
-                                   /*neg_counter*/ &dumb);
-  const char corrected_j = chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id,
-                                   &dumb);
+  const char corrected_i =
+      chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+                                       /*callloc=*/1, /*element*/ metal, pi->id,
+                                       /*neg_counter*/ &dumb);
+  const char corrected_j = chemistry_check_unphysical_state(
+      &m_Zj, m_Zj_not_extrapolated, mj,
+      /*callloc=*/1, /*element*/ metal, pj->id, &dumb);
 
   /* Check that we have meaningful fluxes */
   double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
@@ -216,9 +217,22 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_get_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j, dFz_j);
 
   /* MUSCL-Hancock half-step predictor, folded in before the face limiter
-     below so it bounds the full extrapolation, not just the spatial part. */
-  const float mindt =
-      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
+     below so it bounds the full extrapolation, not just the spatial part.
+     Order-independent mindt (see chemistry.c's
+     chemistry_gear_fvpm_compute_pair_fluxes() for why the naive chj-gated form
+     is unsafe after canonicalisation). */
+  const float dt_L = chi->flux.dt;
+  const float dt_R = chj->flux.dt;
+  float mindt;
+  if (dt_L > 0.f && dt_R > 0.f) {
+    mindt = fminf(dt_L, dt_R);
+  } else if (dt_L > 0.f) {
+    mindt = dt_L;
+  } else if (dt_R > 0.f) {
+    mindt = dt_R;
+  } else {
+    mindt = 0.f;
+  }
   const float half_mindt = 0.5 * mindt;
   const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
   const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);

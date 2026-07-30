@@ -83,6 +83,99 @@ void chemistry_struct_restore(const struct chemistry_global_data *chemistry,
 
 #include "chemistry/GEAR_FVPM_DIFFUSION/chemistry_iact.h"
 
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+/* Storage for the Step-1 visit-count instrumentation declared extern in
+   chemistry_iact.h; printed in swift.c at the end of the run. */
+long long chemistry_fvpm_visit_acted = 0;
+long long chemistry_fvpm_visit_skipped = 0;
+
+/* Per-pair discriminating log. The aggregate acted/skipped counters above
+   cannot distinguish a genuinely dropped pair from a benign one, because an
+   arm-1 (both_updatable_here) visit -- which also fully covers a pair --
+   never increments either counter. This log records every visit that could
+   possibly cover a pair (arm-1 symmetric visits, and arm-3 owner-acts
+   visits) plus every arm-3 skip, keyed by the pair's two particle pointers
+   (stable and unique within one step on one rank; avoids the id ban).
+   Post-processed once at exit (chemistry_fvpm_visit_log_analyze()): a pair
+   with zero covering records is dropped; two or more is double-applied.
+   NOT thread-safe -- diagnostic use only, with --threads=1 and a handful of
+   steps (-n). */
+static struct chemistry_fvpm_visit_record *chemistry_fvpm_visit_log = NULL;
+static size_t chemistry_fvpm_visit_log_count = 0;
+static size_t chemistry_fvpm_visit_log_capacity = 0;
+
+void chemistry_fvpm_visit_log_record(const struct part *pi,
+                                     const struct part *pj,
+                                     enum chemistry_fvpm_visit_arm arm) {
+  if (chemistry_fvpm_visit_log_count == chemistry_fvpm_visit_log_capacity) {
+    chemistry_fvpm_visit_log_capacity =
+        chemistry_fvpm_visit_log_capacity
+            ? chemistry_fvpm_visit_log_capacity * 2
+            : 65536;
+    chemistry_fvpm_visit_log = (struct chemistry_fvpm_visit_record *)realloc(
+        chemistry_fvpm_visit_log,
+        chemistry_fvpm_visit_log_capacity *
+            sizeof(struct chemistry_fvpm_visit_record));
+    if (chemistry_fvpm_visit_log == NULL)
+      error("Failed to grow the chemistry_fvpm_visit_log diagnostic buffer.");
+  }
+  struct chemistry_fvpm_visit_record *r =
+      &chemistry_fvpm_visit_log[chemistry_fvpm_visit_log_count++];
+  if (pi < pj) {
+    r->a = pi;
+    r->b = pj;
+  } else {
+    r->a = pj;
+    r->b = pi;
+  }
+  r->arm = arm;
+}
+
+static int chemistry_fvpm_visit_record_cmp(const void *x, const void *y) {
+  const struct chemistry_fvpm_visit_record *rx =
+      (const struct chemistry_fvpm_visit_record *)x;
+  const struct chemistry_fvpm_visit_record *ry =
+      (const struct chemistry_fvpm_visit_record *)y;
+  if (rx->a != ry->a) return (rx->a < ry->a) ? -1 : 1;
+  if (rx->b != ry->b) return (rx->b < ry->b) ? -1 : 1;
+  return 0;
+}
+
+void chemistry_fvpm_visit_log_reset(void) {
+  chemistry_fvpm_visit_log_count = 0;
+}
+
+void chemistry_fvpm_visit_log_analyze(void) {
+  if (chemistry_fvpm_visit_log_count == 0) return;
+  qsort(chemistry_fvpm_visit_log, chemistry_fvpm_visit_log_count,
+        sizeof(struct chemistry_fvpm_visit_record),
+        chemistry_fvpm_visit_record_cmp);
+  long long distinct_pairs = 0, dropped = 0, double_applied = 0;
+  size_t i = 0;
+  while (i < chemistry_fvpm_visit_log_count) {
+    size_t j = i;
+    int covering = 0;
+    while (j < chemistry_fvpm_visit_log_count &&
+           chemistry_fvpm_visit_log[j].a == chemistry_fvpm_visit_log[i].a &&
+           chemistry_fvpm_visit_log[j].b == chemistry_fvpm_visit_log[i].b) {
+      if (chemistry_fvpm_visit_log[j].arm == CHEMISTRY_FVPM_VISIT_SYM ||
+          chemistry_fvpm_visit_log[j].arm == CHEMISTRY_FVPM_VISIT_ACT)
+        covering++;
+      j++;
+    }
+    distinct_pairs++;
+    if (covering == 0) dropped++;
+    if (covering >= 2) double_applied++;
+    i = j;
+  }
+  message(
+      "GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT: per-pair log: distinct "
+      "pairs=%lld dropped=%lld double_applied=%lld (both must be exactly "
+      "zero for the flux-exchange dispatcher to be provably correct)",
+      distinct_pairs, dropped, double_applied);
+}
+#endif
+
 /**
  * @brief Computes the diffusion pair fluxes of all elements (side-effect
  * free).
@@ -267,10 +360,27 @@ __attribute__((noinline)) int chemistry_gear_fvpm_compute_pair_fluxes(
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
-  /* Get the time step for the flux exchange. This is always the smallest time
-   * step among the two particles. */
-  const float mindt =
-      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
+  /* Get the time step for the flux exchange: the smallest positive time step
+   * among the two particles, order-independently. The naive
+   * "(chj->flux.dt > 0.f) ? fminf(chi, chj) : chi" form silently assumes chi
+   * is always the active one; after canonicalisation the "left" slot can
+   * hold either particle, and that assumption would give
+   * fminf(-1.f, dt) = -1.f -- a negative timestep multiplying every flux. */
+  const float dt_L = chi->flux.dt;
+  const float dt_R = chj->flux.dt;
+  float mindt;
+  if (dt_L > 0.f && dt_R > 0.f) {
+    mindt = fminf(dt_L, dt_R);
+  } else if (dt_L > 0.f) {
+    mindt = dt_L;
+  } else if (dt_R > 0.f) {
+    mindt = dt_R;
+  } else {
+    /* Neither side is active: nothing to exchange. Should not happen given
+     * the nonsym/sym dispatch contracts, but stay safe rather than divide
+     * into a negative timestep. */
+    mindt = 0.f;
+  }
   *mindt_out = mindt;
 
   /* Nothing to do */

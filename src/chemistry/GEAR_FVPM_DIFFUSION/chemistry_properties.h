@@ -81,6 +81,10 @@
  * NOT MPI-compatible. Use only for serial/thread-testing of symmetry. */
 /* #define GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
 
+/** @note DEBUG ONLY: counts how often the local mixed-band tie-break arm
+ * acts versus skips (see chemistry_iact.h); printed at exit. */
+/* #define GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT */
+
 /**
  * @brief The diffusion mode
  */

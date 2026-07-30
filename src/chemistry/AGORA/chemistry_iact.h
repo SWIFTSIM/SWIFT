@@ -195,4 +195,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {}
 
+/**
+ * @brief Do metal diffusion computation in the <FORCE LOOP>: no-op for this
+ * chemistry scheme (mirrors GEAR_FVPM_DIFFUSION's real dispatcher so the
+ * force-loop template compiles for every --with-chemistry value).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_flux_exchange(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj,
+    const int both_updatable_here, const int local_first,
+    const int local_second, const float a, const float H, const float time_base,
+    const integertime_t t_current, const struct cosmology *cosmo,
+    const int with_cosmology, const struct chemistry_global_data *chem_data) {}
+
 #endif /* SWIFT_AGORA_CHEMISTRY_IACT_H */
