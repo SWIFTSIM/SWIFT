@@ -344,6 +344,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * this is better done during the flux calculation (in the gradients predict,
  * TODO).
  *
+ * This is not a "predictor" function, it is a drift. This drifts the primitive
+ * values forward. A better and more instructive name may have been
+ * hydro_drift_extra().
+ *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param dt_drift The drift time-step for positions.
@@ -368,7 +372,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float new_internal_energy;
   float old_internal_energy;
   old_internal_energy = gas_internal_energy_from_pressure(W[0], W[4]);
-  new_internal_energy = old_internal_energy + p->cool_du_dt_prev * dt_therm; /// 2; NO way it should be /2 if hydro_gradients_extrapolate_in_time is dt_therm
+  new_internal_energy = old_internal_energy;
 
   /* Apply entropy floor on internal energy, applies entropy floor on entropy */
   float floor_entropy;
@@ -498,7 +502,6 @@ if (is_nan_float(Q[4])) {
 
   /* Update density and velocity */
   W[0] = Q[0] * volume_inv;
-  //hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], hydro_props, &W[1]);
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
@@ -583,12 +586,6 @@ if (is_nan_float(Q[4])) {
     /* Include ONLY hydrodynamical effects (Asensio, private communication)
      * This term is Asensio 2023 Equation 24, he said opposite but ok
      * dE - v . dp + 0.5 * v**2 * dM - energy flux minus kinetic energy change
-     */
-
-    /* Question, how do we extract v_fluid_n, instead of this grav half kicked
-     * garbage?
-     *
-     * we could try momentum / mass both at n?
      */
 
     /* Get fluid velocity at timestep n, no funny kicks, just strictly
@@ -1116,34 +1113,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gravity.dt = dt_grav;
     p->gravity.dt_corr = dt_kick_corr;
 
-    // /* Do cooling routine in leapfrog fashion in kicks */
-    // float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
-    // float u_new = u_old + p->cool_du_dt_prev * dt_therm;
-    //
-    // /* Check against entropy floor */
-    // const float floor_A = entropy_floor(p, cosmo, floor_props);
-    // u_new = fmax(u_new, gas_internal_energy_from_entropy(p->rho,
-    //   floor_A));
-    // /* Check against absolute minimum */
-    // u_new = fmax(u_new, hydro_props->minimal_internal_energy /
-    //                 cosmo->a_factor_internal_energy);
-    //
-    // float A_new = gas_entropy_from_internal_energy(p->rho, u_new);
-    //
-    // /* Add change of thermal energy from cooling directly to
-    //  * entropy and energy */
-    // p->conserved.energy += p->conserved.mass * (u_new - u_old);
-    // p->conserved.entropy = p->conserved.mass * A_new;
-    //
-    // /* Set new pressure and entropic function A */
-    // p->P = gas_pressure_from_internal_energy(p->rho, u_new);
-    // p->A = A_new;
-    //
-    // /* Sanity check for myself, delete after testing */
-    // if (p->conserved.energy < 0.f) {
-    //   error("Energy negative, E = %e, dEcool = %e", p->conserved.energy, p->conserved.mass * (u_new - u_old));
-    // }
-
     /* Signal we just did a restore */
     p->timestepvars.last_kick = RESTORE_AFTER_ROLLBACK;
 
@@ -1165,34 +1134,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
-
-    // /* Do cooling routine in leapfrog fashion in kicks */
-    // float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
-    // float u_new = u_old + p->cool_du_dt_prev * dt_therm;
-    //
-    // /* Check against entropy floor */
-    // const float floor_A = entropy_floor(p, cosmo, floor_props);
-    // u_new = fmax(u_new, gas_internal_energy_from_entropy(p->rho,
-    //   floor_A));
-    // /* Check against absolute minimum */
-    // u_new = fmax(u_new, hydro_props->minimal_internal_energy /
-    //                 cosmo->a_factor_internal_energy);
-    //
-    // float A_new = gas_entropy_from_internal_energy(p->rho, u_new);
-    //
-    // /* Add change of thermal energy from cooling directly to
-    //  * entropy and energy */
-    // p->conserved.energy += p->conserved.mass * (u_new - u_old);
-    // p->conserved.entropy = p->conserved.mass * A_new;
-    //
-    // /* Set new pressure and entropic function A */
-    // p->P = gas_pressure_from_internal_energy(p->rho, u_new);
-    // p->A = A_new;
-    //
-    // /* Sanity check for myself, delete after testing */
-    // if (p->conserved.energy < 0.f) {
-    //   error("Energy negative, E = %e, dEcool = %e", p->conserved.energy, p->conserved.mass * (u_new - u_old));
-    // }
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
@@ -1218,29 +1159,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
-
-    /* Do cooling routine in leapfrog fashion in kicks */
-    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
-    float u_new = u_old + p->cool_du_dt_prev * 0;
-
-    /* Check against entropy floor */
-    const float floor_A = entropy_floor(p, cosmo, floor_props);
-    u_new = fmax(u_new, gas_internal_energy_from_entropy(p->rho,
-      floor_A));
-    /* Check against absolute minimum */
-    u_new = fmax(u_new, hydro_props->minimal_internal_energy /
-                    cosmo->a_factor_internal_energy);
-
-    float A_new = gas_entropy_from_internal_energy(p->rho, u_new);
-
-    /* Add change of thermal energy from cooling directly to
-     * entropy and energy */
-    p->conserved.energy += p->conserved.mass * (u_new - u_old);
-    p->conserved.entropy = p->conserved.mass * A_new;
-
-    /* Set new pressure and entropic function A */
-    p->P = gas_pressure_from_internal_energy(p->rho, u_new);
-    p->A = A_new;
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
