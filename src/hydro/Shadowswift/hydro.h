@@ -854,19 +854,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
 
-    /* Kick2 follows a new and improved flow from before:
-     * 1. All hydro and subgrid contributions are added
-     * 2. Convert conserved to primitive, activating thermal switch and
-     *    applying the entropy, pressure, temperature floors.
-     * 3. All gravity contributions are added and velocities are set.
-     * 4. Set primitive and conserved variables
-     * 5. Tidy up some final values before exiting kick2
-     *
-     * It is important that it is done in this order, to prevent us using
-     * the gravity kicked momentum for kinetic energy in the thermal switch
-     * while converting to primitive, otherwise the additions by gravity can be
-     * erroneously applied with catastrophic results for energy conservation */
-
     float Q[6];
     hydro_part_get_conserved_variables(p, Q);
 
