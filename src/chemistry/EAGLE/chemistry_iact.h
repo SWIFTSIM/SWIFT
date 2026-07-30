@@ -225,11 +225,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {}
 
-/**
- * @brief Do metal diffusion computation in the <FORCE LOOP>: no-op for this
- * chemistry scheme (mirrors GEAR_FVPM_DIFFUSION's real dispatcher so the
- * force-loop template compiles for every --with-chemistry value).
- */
+/* No-op: this scheme does not exchange a metal diffusion flux. Present so
+   the force-loop template compiles for every --with-chemistry value. */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_flux_exchange(
     const float r2, const float dx[3], const float hi, const float hj,

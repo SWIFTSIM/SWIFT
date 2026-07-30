@@ -112,6 +112,16 @@ enum chemistry_hyperbolic_limiter_scope {
   limiter_all_components /* Limit the flux-component dissipation too */
 };
 
+#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
+/** @brief Which arm of the flux-exchange dispatcher visited a pair
+ * (chemistry_debug.h's per-pair log). */
+enum chemistry_fvpm_visit_arm {
+  CHEMISTRY_FVPM_VISIT_SYM = 0,  /* both_updatable_here */
+  CHEMISTRY_FVPM_VISIT_ACT = 1,  /* mixed-band: owner acts */
+  CHEMISTRY_FVPM_VISIT_SKIP = 2, /* mixed-band: non-owner skips */
+};
+#endif
+
 /**
  * @brief Global chemical abundance information.
  */

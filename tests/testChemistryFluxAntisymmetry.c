@@ -42,7 +42,7 @@
  *    particle a caller happens to pass first (relevant since several call
  *    sites place the cell-j particle first).
  *  - MINDT ORDER-INDEPENDENCE: one particle active, one inactive. Directly
- *    exercises chemistry_gear_fvpm_compute_pair_fluxes()'s mindt computation
+ *    exercises chemistry_compute_pair_fluxes()'s mindt computation
  *    (the three sites fixed this session) for the two argument bindings of
  *    the same physical pair, independent of the dispatcher's arm selection.
  *  - LOCAL MIXED-BAND TIE-BREAK (both_updatable_here=0, both local): the
@@ -100,7 +100,8 @@ static const char *limiter_name(enum test_limiter_regime l) {
  * @brief Fill a #part with a self-consistent, non-degenerate baseline state.
  *
  * Position defaults to the origin; callers that exercise the position
- * tie-break (chemistry_pos_less()) must set p->x[0] explicitly afterwards.
+ * tie-break (flux_exchange_precedes()) must set p->x[0] explicitly
+ * afterwards.
  * Left at zero here: velocity gradients, flux gradients (except where
  * run_config() drives them non-zero for the hyperbolic MUSCL term), and the
  * cell slope-limiter bounds are wide open. run_config() drives a genuine
@@ -253,7 +254,7 @@ static struct residual_result measure_gate_residual(
 
 /**
  * @brief Evaluate order-independence of
- * chemistry_gear_fvpm_compute_pair_fluxes()'s mindt for a mixed-activity
+ * chemistry_compute_pair_fluxes()'s mindt for a mixed-activity
  * pair (pi active, pj inactive): calls it with (pi, pj, dx) and separately
  * with (pj, pi, -dx) and compares mindt. Bypasses the dispatcher entirely --
  * a real call site never presents an inactive particle as the "first"
@@ -273,25 +274,23 @@ static double measure_mindt_residual(
   float mindt_fwd = 0.f, vmax = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   float delxbar_i = 0.f, delxbar_j = 0.f;
-  chemistry_gear_fvpm_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj,
-                                          chem_data, cosmo, totflux, &mindt_fwd,
-                                          &vmax, &delxbar_i, &delxbar_j);
+  chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, chem_data, cosmo,
+                                totflux, &mindt_fwd, &vmax, &delxbar_i,
+                                &delxbar_j);
 #else
-  chemistry_gear_fvpm_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj,
-                                          chem_data, cosmo, totflux, &mindt_fwd,
-                                          &vmax);
+  chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, chem_data, cosmo,
+                                totflux, &mindt_fwd, &vmax);
 #endif
 
   const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
   float mindt_bwd = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
-  chemistry_gear_fvpm_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi,
-                                          chem_data, cosmo, totflux, &mindt_bwd,
-                                          &vmax, &delxbar_i, &delxbar_j);
+  chemistry_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi, chem_data, cosmo,
+                                totflux, &mindt_bwd, &vmax, &delxbar_i,
+                                &delxbar_j);
 #else
-  chemistry_gear_fvpm_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi,
-                                          chem_data, cosmo, totflux, &mindt_bwd,
-                                          &vmax);
+  chemistry_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi, chem_data, cosmo,
+                                totflux, &mindt_bwd, &vmax);
 #endif
 
   const double denom = max(fabs(mindt_fwd), fabs(mindt_bwd));
@@ -454,18 +453,18 @@ static void run_config(const char *label, enum test_geometry geom,
  * @brief Build a simple, well-behaved both-active pair and drive it through
  * the dispatcher's non-GATE arms.
  *
- * The position used for the tie-break (chemistry_pos_less()) is deliberately
- * decoupled from the physical separation used for the flux geometry (always
- * a fixed dx = {0.3, 0, 0} in the caller): a real face's flux can vanish for
- * a particular dx sign under a pure-gradient (parabolic) driver with a fixed
- * gradient pair, which would make a naive "flip pi_x, keep dx = pi.x - pj.x"
- * setup accidentally test a degenerate face instead of the tie-break logic.
- * Using an arbitrary, dx-independent x-offset keeps every configuration's
- * face physically identical and non-degenerate; only the tie-break outcome
- * changes.
+ * The position used for the tie-break (flux_exchange_precedes()) is
+ * deliberately decoupled from the physical separation used for the flux
+ * geometry (always a fixed dx = {0.3, 0, 0} in the caller): a real face's flux
+ * can vanish for a particular dx sign under a pure-gradient (parabolic) driver
+ * with a fixed gradient pair, which would make a naive "flip pi_x, keep dx =
+ * pi.x - pj.x" setup accidentally test a degenerate face instead of the
+ * tie-break logic. Using an arbitrary, dx-independent x-offset keeps every
+ * configuration's face physically identical and non-degenerate; only the
+ * tie-break outcome changes.
  *
- * @param order_sign +1 => chemistry_pos_less(pi, pj) is FALSE (pj "less");
- * -1 => TRUE (pi "less"); 0 => coincident-position tie.
+ * @param order_sign +1 => flux_exchange_precedes(pi->x, pj->x) is FALSE (pj
+ * "less"); -1 => TRUE (pi "less"); 0 => coincident-position tie.
  */
 static void build_tiebreak_pair(struct part *pi, struct part *pj,
                                 float order_sign) {
@@ -496,9 +495,9 @@ static void build_h_primary_pair(struct part *pi, struct part *pj,
                                  int hi_larger) {
   const float h_big = 2.0f, h_small = 1.0f;
   init_part(pi, /*id=*/1, hi_larger ? h_big : h_small, /*mass=*/10.0f,
-           /*rho=*/1.0f, /*metal_mass_frac=*/0.3);
+            /*rho=*/1.0f, /*metal_mass_frac=*/0.3);
   init_part(pj, /*id=*/2, hi_larger ? h_small : h_big, /*mass=*/10.0f,
-           /*rho=*/1.0f, /*metal_mass_frac=*/0.1);
+            /*rho=*/1.0f, /*metal_mass_frac=*/0.1);
   pj->x[0] = 100.0;
   pi->x[0] = hi_larger ? 100.1 : 99.9;
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
@@ -533,12 +532,10 @@ static int check_h_primary_designation(
     reset_flux_accumulators(&pj);
     runner_iact_chemistry_flux_exchange(
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
-        /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f,
-        time_base, ti_current, cosmo, /*with_cosmology=*/0, chem_data);
-    const int pi_acted =
-        pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
-    const int pj_acted =
-        pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
+        /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
+        ti_current, cosmo, /*with_cosmology=*/0, chem_data);
+    const int pi_acted = pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
+    const int pj_acted = pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     /* pi is entitled at this call site; it must act iff it has the larger
        h -- position was deliberately set to say the opposite. */
     const int ok = (pi_acted == hi_larger) && (pi_acted == pj_acted);
