@@ -519,6 +519,52 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 }
 
 /**
+ * @brief Computes the FCT positivity limiter factor theta of a particle.
+ *
+ * Called by the chemistry_fct_ghost task, after the chemistry_fct_prep loop
+ * accumulated the prospective outflow of the current flux exchange and before
+ * the force loop applies the (theta-scaled) fluxes. Must be called for every
+ * particle touched by the prep loop, including inactive donors, so theta is
+ * current-step for all sides of every flux exchange.
+ *
+ * The available metal mass is the current mass plus the net flux already
+ * committed in earlier steps of this particle's flux window (applied at its
+ * next chemistry_end_force()). Capping each step's prospective outflow by the
+ * running availability keeps the committed net above -metal_mass, hence the
+ * mass non-negative when the window is applied.
+ *
+ * Caveat: this is not an exact positivity proof. fct_sum_out sums outflow
+ * only, while flux.metal_mass sums signed in- and outflow, so for a particle
+ * draining to a tiny residual the relative round-off of the net scales as
+ * (flux traffic / residual) and is formally unbounded. The 1e-6 back-off
+ * below is an empirical margin: it covers traffic/availability up to ~1e6,
+ * which held across every test case, but a fully-draining particle with
+ * far larger traffic could still land marginally negative.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
+    struct part *restrict p) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double sum_out = chd->fct_sum_out[i];
+    if (sum_out > 0.0) {
+      const double avail =
+          fmax(chd->metal_mass[i] + chd->flux.metal_mass[i], 0.0);
+      /* Empirical back-off; see the caveat above. Measured overshoots reach
+         ~1e-10 of avail. Only binds on a particle draining completely. */
+      const double cap = avail * (1.0 - 1e-6);
+      chd->fct_theta[i] = (sum_out > cap) ? cap / sum_out : 1.0;
+    } else {
+      chd->fct_theta[i] = 1.0;
+    }
+    chd->fct_sum_out[i] = 0.0;
+  }
+}
+
+/**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
  * @param p The particle to act upon.
@@ -663,6 +709,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           cd->initial_metallicities[i] * hydro_get_mass(p);
     }
     p->chemistry_data.check.negativity_counter[i] = 0;
+    p->chemistry_data.fct_sum_out[i] = 0.0;
+    p->chemistry_data.fct_theta[i] = 1.0;
   }
 
   /* Init the part chemistry data */

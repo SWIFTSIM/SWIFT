@@ -26,6 +26,44 @@
 
 #define GIZMO_VOLUME_CORRECTION
 
+/* Passes of the two-pass FCT positivity limiter: the prep pass computes the
+   prospective fluxes and accumulates the donor-side outflow sums, the apply
+   pass computes the same fluxes, scales them by the donor's theta and applies
+   them. */
+#define CHEMISTRY_FCT_PASS_PREP 0
+#define CHEMISTRY_FCT_PASS_APPLY 1
+
+/* Status codes of chemistry_gear_fvpm_compute_pair_fluxes(), ordered by how
+   far the computation got before an early exit. */
+#define CHEMISTRY_PAIR_FLUX_NONE 0     /* no interaction at all */
+#define CHEMISTRY_PAIR_FLUX_VMAX 1     /* vmax valid; interface has no area */
+#define CHEMISTRY_PAIR_FLUX_GEOMETRY 2 /* vmax+delxbar valid; mindt == 0 */
+#define CHEMISTRY_PAIR_FLUX_FLUXES 3   /* fluxes valid */
+
+/**
+ * @brief Computes the diffusion pair fluxes of all elements (side-effect
+ * free).
+ *
+ * Defined out-of-line in chemistry.c and deliberately NOT inlined: the FCT
+ * prep loop and the flux-applying force loop must obtain bit-identical fluxes
+ * for the donor-side positivity cap to hold, which is only guaranteed if both
+ * passes execute the exact same machine code.
+ *
+ * @return a CHEMISTRY_PAIR_FLUX_* status describing which outputs are valid.
+ */
+int chemistry_gear_fvpm_compute_pair_fluxes(
+    const float r2, const float dx[3], const float hi, const float hj,
+    const struct part *restrict pi, const struct part *restrict pj,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo,
+    double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *mindt_out,
+    float *vmax_out
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
+    ,
+    float *delxbar_i_out, float *delxbar_j_out
+#endif
+);
+
 /**
  * @file GEAR_FVPM_DIFFUSION/chemistry_iact.h
  * @brief Diffusion of metals with MFM.
@@ -257,237 +295,96 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
  * @param interaction_mode 0 if non-symmetric interaction, 1 if symmetric.
+ * @param fct_pass CHEMISTRY_FCT_PASS_PREP to only accumulate the donor-side
+ * outflow sums, CHEMISTRY_FCT_PASS_APPLY to scale by the donor's theta and
+ * apply the fluxes.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, int interaction_mode) {
+    const struct cosmology *cosmo, int interaction_mode, int fct_pass) {
 
-  /* If the masses are null, then there is nothing to diffuse. */
-  if ((hydro_get_mass(pi) == 0.0 || hydro_get_mass(pj) == 0) ||
-      (pi->chemistry_data.kappa == 0.0 && pj->chemistry_data.kappa == 0.0)) {
-    return;
-  }
+  /* Compute the pair fluxes in the shared, non-inlined helper (see
+     chemistry.c). The prep and apply passes live in different translation
+     units, so a single out-of-line copy is what makes them provably execute
+     identical code under fast-math/LTO, rather than two copies free to round
+     differently and flip discontinuous limiter branches. */
+  double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4];
+  float mindt = 0.f, vmax = 0.f;
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
+  float delxbar_i = 0.f, delxbar_j = 0.f;
+  const int status = chemistry_gear_fvpm_compute_pair_fluxes(
+      r2, dx, hi, hj, pi, pj, chem_data, cosmo, totflux, &mindt, &vmax,
+      &delxbar_i, &delxbar_j);
+#else
+  const int status = chemistry_gear_fvpm_compute_pair_fluxes(
+      r2, dx, hi, hj, pi, pj, chem_data, cosmo, totflux, &mindt, &vmax);
+#endif
+
+  if (status == CHEMISTRY_PAIR_FLUX_NONE) return;
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  /* Get r and 1/r. */
-  const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
-
-  /* Initialize local variables */
-  float Bi[3][3];
-  float Bj[3][3];
-  for (int k = 0; k < 3; k++) {
-    for (int l = 0; l < 3; l++) {
-      Bi[k][l] = pi->geometry.matrix_E[k][l];
-      Bj[k][l] = pj->geometry.matrix_E[k][l];
-    }
-  }
-  const float Vi = pi->geometry.volume;
-  const float Vj = pj->geometry.volume;
-
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-  /* Calculate the maximal diffusion speed */
-  const float ci =
-      chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
-  const float cj =
-      chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
-  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
-  dvdr *= r_inv;
-  dvdr *= cosmo->a_inv; /* Convert comoving velocities to physical units */
-  const float vmax = ci + cj - min(0.0, dvdr);
-
-  /* Store the signal velocity */
-  chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
-  if (interaction_mode == 1) {
-    chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
-  }
-#endif
-
-  /* Compute kernel of pi. */
-  float wi, wi_dx;
-  const float hi_inv = 1.0f / hi;
-  const float hi_inv_dim = pow_dimension(hi_inv);
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-
-  /* Compute kernel of pj. */
-  float wj, wj_dx;
-  const float hj_inv = 1.0f / hj;
-  const float hj_inv_dim = pow_dimension(hj_inv);
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-
-  /* Compute (square of) area */
-  /* eqn. (7) */
-  float Anorm2 = 0.0f;
-  float A[3];
-  if (fvpm_part_geometry_well_behaved(pi) &&
-      fvpm_part_geometry_well_behaved(pj)) {
-    /* in principle, we use Vi and Vj as weights for the left and right
-     * contributions to the generalized surface vector.
-     * However, if Vi and Vj are very different (because they have very
-     * different smoothing lengths), then the expressions below are more
-     * stable. */
-    float Xi = Vi;
-    float Xj = Vj;
-#ifdef GIZMO_VOLUME_CORRECTION
-    if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5f * hydro_dimension) {
-      Xi = (Vi * hj + Vj * hi) / (hi + hj);
-      Xj = Xi;
+  /* Store the signal velocity (only in the pass that applies fluxes, to
+     leave the time-step estimate identical to the single-pass scheme) */
+  if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
+    chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
+    if (interaction_mode == 1) {
+      chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
     }
+  }
+#else
+  (void)vmax;
 #endif
-    for (int k = 0; k < 3; k++) {
-      /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wi * hi_inv_dim -
-             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-                 wj * hj_inv_dim;
-      Anorm2 += A[k] * A[k];
-    }
-  } else {
-    /* ill condition gradient matrix: revert to SPH face area */
-    const float hidp1 = pow_dimension_plus_one(hi_inv);
-    const float hjdp1 = pow_dimension_plus_one(hj_inv);
-    const float Anorm =
-        -(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * r_inv;
-    A[0] = -Anorm * dx[0];
-    A[1] = -Anorm * dx[1];
-    A[2] = -Anorm * dx[2];
-    Anorm2 = Anorm * Anorm * r2;
-  }
 
-  /* if the interface has no area, nothing happens and we return */
-  /* continuing results in dividing by zero and NaN's... */
-  if (Anorm2 == 0.0f) {
-    return;
-  }
-
-  /* Compute the area */
-  const float Anorm_inv = 1.0f / sqrtf(Anorm2);
-  const float Anorm = Anorm2 * Anorm_inv;
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-  /* For stability reasons, we do require A and dx to have opposite
-   * directions (basically meaning that the surface normal for the surface
-   * always points from particle i to particle j, as it would in a real
-   * moving-mesh code). If not, our scheme is no longer upwind and hence can
-   * become unstable. */
-  const float dA_dot_dx = A[0] * dx[0] + A[1] * dx[1] + A[2] * dx[2];
-  /* In GIZMO, Phil Hopkins reverts to an SPH integration scheme if this
-   * happens. We curently just ignore this case and display a message. */
-  const float rdim = pow_dimension(r);
-  if (dA_dot_dx > 1.e-6f * rdim) {
-    error("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx, Anorm,
-          Vi, Vj, r);
-  }
-#endif
+  if (status == CHEMISTRY_PAIR_FLUX_VMAX) return;
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
-  /* Lanson & Vila (2008), eq. (58): Delta x_i = 1 / (2 * sum_l w_l ||A_il||),
-   * where w_l is the neighbour's volume and ||A_il|| is the one-sided
-   * renormalized-gradient face-area weight. The geometric equivalent of
-   * each summand w_l ||A_il|| is the (symmetrized) interface area Anorm
-   * divided by the neighbour's volume, Anorm / V_neighbour; the factor of
-   * 1/2 in front of the sum in eq. (58) is applied once, in
-   * chemistry_timesteps.h, to the completed sum delxbar. */
-  chi->timestepvars.delxbar += Anorm / Vj;
-  if (interaction_mode == 1) {
-    chj->timestepvars.delxbar += Anorm / Vi;
+  /* Lanson & Vila (2008), denominator of equation (58) */
+  if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
+    chi->timestepvars.delxbar += delxbar_i;
+    if (interaction_mode == 1) {
+      chj->timestepvars.delxbar += delxbar_j;
+    }
   }
 #endif
 
-  /* Compute the normal vector of the interface */
-  const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
-                           A[2] * Anorm_inv};
+  if (status == CHEMISTRY_PAIR_FLUX_GEOMETRY) return;
 
-  /* Compute interface position (relative to pi, since we don't need
-   * the actual position) eqn. (8) */
-  const float xfac = -hi / (hi + hj);
-  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
-
-  /* Get the time step for the flux exchange. This is always the smallest time
-   * step among the two particles. */
-  const float mindt =
-      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
-
-  /* Nothing to do */
-  if (mindt == 0.f) {
-    return;
-  }
-
-  /*****************************************/
-  /* Predict the velocity at the interface to compute fluxes */
-  /* Get the hydro W_L and W_R */
-  float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
-  float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
-
-  /* Compute interface velocity */
-  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
-                        vi[1] + (vi[1] - vj[1]) * xfac,
-                        vi[2] + (vi[2] - vj[2]) * xfac};
-
-  /* Get the primitive variable of Euler eq */
-  float Wi[5] = {hydro_get_comoving_density(pi), vi[0], vi[1], vi[2],
-                 hydro_get_comoving_pressure(pi)};
-  float Wj[5] = {hydro_get_comoving_density(pj), vj[0], vj[1], vj[2],
-                 hydro_get_comoving_pressure(pj)};
-
-  chemistry_gradients_predict_hydro(pi, pj, dx, r, xij_i, Wi, Wj);
-
-  /* Boost the primitive variables to the frame of reference of the interface */
-  /* Note that velocities are indices 1-3 in W */
-  /* Note: This is necessary to properly follow the fluid motion. */
-  Wi[1] -= vij[0];
-  Wi[2] -= vij[1];
-  Wi[3] -= vij[2];
-  Wj[1] -= vij[0];
-  Wj[2] -= vij[1];
-  Wj[3] -= vij[2];
-
-  /* Convert to physical units */
-  Wi[0] *= cosmo->a3_inv;
-  Wi[1] /= cosmo->a;
-  Wi[2] /= cosmo->a;
-  Wi[3] /= cosmo->a;
-  Wi[4] *= cosmo->a_factor_pressure;
-
-  Wj[0] *= cosmo->a3_inv;
-  Wj[1] /= cosmo->a;
-  Wj[2] /= cosmo->a;
-  Wj[3] /= cosmo->a;
-  Wj[4] *= cosmo->a_factor_pressure;
-
-  /*****************************************/
-  /* Now solve the Riemann problem for each metal specie */
-  /* Helper variable */
-  const float a2 = cosmo->a * cosmo->a;
-  const float Anorm_p = a2 * Anorm;
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
-    /* Predict the diffusion state at the interface to compute fluxes */
-    double Ui[4], Uj[4];
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, chem_data, Ui,
-                                Uj);
-    /* Note: The returned values are in physical units. No conversion needed */
+    /* Two-pass FCT positivity limiter. The donor of a pair is the side losing
+     * metal mass (positive flux is subtracted from the left state pi). The
+     * prep pass accumulates each donor's prospective outflow, but only in the
+     * evaluation where the donor's flux field would be updated below, to avoid
+     * double counting in the nonsym double evaluation of a pair. The apply
+     * pass scales the flux by the donor's theta (frozen since the
+     * chemistry_fct_ghost task), so both evaluations of a pair apply the
+     * identical scaled flux and the exchange stays conservative. */
+    if (fct_pass == CHEMISTRY_FCT_PASS_PREP) {
+      /* NOTE: the write to the (possibly inactive) neighbour chj below is
+         race-safe only because self/pair hydro tasks lock BOTH cells
+         (task_lock default hydro branch). Do not relax the prep task's
+         locking to a single cell. */
+      if (totflux[m][0] > 0.0) {
+        chi->fct_sum_out[m] += totflux[m][0] * mindt;
+      } else if (totflux[m][0] < 0.0 &&
+                 (interaction_mode == 1 || (chj->flux.dt < 0.f))) {
+        chj->fct_sum_out[m] += -totflux[m][0] * mindt;
+      }
+      /* Do not apply anything in the prep pass */
+      continue;
+    }
 
-    /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
-    double totflux[4] = {0.0, 0.0, 0.0, 0.0};
-    chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, Anorm_p,
-                           chem_data, cosmo, totflux);
-
-    /* Flux limiter */
-    /* First check that we won't have negative masses. If so, we have a check
-       that will ensure masses are not negative and if so, it we set them to be
-       positive. Then, we have metal mass creation. If this correction happen
-       a lot, we will create a lot of metal mass. */
-    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt, interaction_mode,
-                                    chem_data);
+    if (totflux[m][0] > 0.0) {
+      totflux[m][0] *= chi->fct_theta[m];
+    } else if (totflux[m][0] < 0.0) {
+      totflux[m][0] *= chj->fct_theta[m];
+    }
 
     /* Update V*U ****************************************/
     /* When solving the Riemann problem, we assume pi is left state, and
@@ -499,9 +396,9 @@ runner_iact_chemistry_fluxes_common(
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
      * of flux.dt, we can detect inactive neighbours through their negative time
      * step. */
-    chemistry_part_update_fluxes_left(pi, m, totflux, mindt);
+    chemistry_part_update_fluxes_left(pi, m, totflux[m], mindt);
     if (interaction_mode == 1 || (chj->flux.dt < 0.f)) {
-      chemistry_part_update_fluxes_right(pj, m, totflux, mindt);
+      chemistry_part_update_fluxes_right(pj, m, totflux[m], mindt);
     }
   }
 }
@@ -533,7 +430,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const struct chemistry_global_data *chem_data) {
 
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      1);
+                                      1, CHEMISTRY_FCT_PASS_APPLY);
 }
 
 /**
@@ -565,7 +462,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
 
 #if !defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      0);
+                                      0, CHEMISTRY_FCT_PASS_APPLY);
 #else
   int local_mode = 0;
   const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
@@ -585,7 +482,65 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     local_mode = 0;
   }
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      local_mode);
+                                      local_mode, CHEMISTRY_FCT_PASS_APPLY);
+#endif
+}
+
+/**
+ * @brief Prep pass of the FCT positivity limiter (symmetric version).
+ *
+ * Runs in the chemistry_fct_prep loop, between the extra ghost and the
+ * chemistry_fct_ghost task. Computes the same fluxes as the flux exchange in
+ * the force loop, but only accumulates the donor-side outflow sums; nothing
+ * is applied. The signature matches runner_iact_diffusion() so the fct_prep
+ * loop instantiation can alias one to the other.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_diffusion_fct_prep(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data) {
+
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
+                                      1, CHEMISTRY_FCT_PASS_PREP);
+}
+
+/**
+ * @brief Prep pass of the FCT positivity limiter (nonsymmetric version).
+ *
+ * Mirrors runner_iact_nonsym_diffusion() exactly (including the debug
+ * one-sided update mode) so the prep pass sees the identical set of pair
+ * evaluations as the apply pass in the force loop.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_diffusion_fct_prep(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data) {
+
+#if !defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
+                                      0, CHEMISTRY_FCT_PASS_PREP);
+#else
+  int local_mode = 0;
+  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
+  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
+
+  if (pi_is_active && pj_is_active) {
+    if (pi->id < pj->id) {
+      local_mode = 1;
+    } else {
+      return;
+    }
+  } else {
+    local_mode = 0;
+  }
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
+                                      local_mode, CHEMISTRY_FCT_PASS_PREP);
 #endif
 }
 

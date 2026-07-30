@@ -149,6 +149,11 @@ enum {
   timer_do_rt_collect_times,
   timer_do_sync,
   timer_neutrino_weighting,
+  timer_doself_chemistry_fct_prep,
+  timer_dopair_chemistry_fct_prep,
+  timer_dosub_self_chemistry_fct_prep,
+  timer_dosub_pair_chemistry_fct_prep,
+  timer_do_chemistry_fct_ghost,
   timer_count,
 };
 

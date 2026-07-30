@@ -492,10 +492,11 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  * @param Wj (return) Resulting predicted and limited state of particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_gradients_predict_hydro(struct part *restrict pi,
-                                  struct part *restrict pj, const float dx[3],
-                                  const float r, const float xij_i[3],
-                                  float Wi[5], float Wj[5]) {
+chemistry_gradients_predict_hydro(const struct part *restrict pi,
+                                  const struct part *restrict pj,
+                                  const float dx[3], const float r,
+                                  const float xij_i[3], float Wi[5],
+                                  float Wj[5]) {
 
   /* Perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual

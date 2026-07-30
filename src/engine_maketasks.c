@@ -1833,6 +1833,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef EXTRA_HYDRO_LOOP
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Ghost of the chemistry FCT positivity limiter: computes theta between
+         the fct_prep loop and the (flux-applying) force loop. */
+      c->hydro.chemistry_fct_ghost = scheduler_addtask(
+          s, task_type_chemistry_fct_ghost, task_subtype_none, 0, 0, c, NULL);
+#endif
 #endif
 
       /* Stars */
@@ -2601,6 +2609,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_sink = (e->policy & engine_policy_sinks);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  struct task *t_chemistry_fct_prep = NULL;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS
   struct task *t_star_prep1 = NULL;
@@ -2783,6 +2795,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Chemistry FCT positivity limiter prep loop:
+         extra_ghost --> fct_prep --> fct_ghost --> force loop */
+      t_chemistry_fct_prep = scheduler_addtask(sched, task_type_self,
+                                               task_subtype_chemistry_fct_prep,
+                                               flags, 0, ci, NULL);
+      engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                          t_chemistry_fct_prep);
+      scheduler_addunlock(sched, t_chemistry_fct_prep,
+                          ci->hydro.super->hydro.chemistry_fct_ghost);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
+                          t_force);
+#endif
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -3126,6 +3154,39 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
       }
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Chemistry FCT positivity limiter prep loop:
+         extra_ghost --> fct_prep --> fct_ghost --> force loop.
+         The prep pair task feeds the fct_ghost of BOTH supers, and the force
+         pair waits for both fct_ghosts, so an inactive neighbour's theta is
+         also current-step when the flux exchange runs. */
+      t_chemistry_fct_prep =
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_chemistry_fct_prep, flags, 0, ci, cj);
+      engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      engine_addlink(e, &cj->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                            t_chemistry_fct_prep);
+        scheduler_addunlock(sched, t_chemistry_fct_prep,
+                            ci->hydro.super->hydro.chemistry_fct_ghost);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
+                            t_force);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
+                            t_chemistry_fct_prep);
+        scheduler_addunlock(sched, t_chemistry_fct_prep,
+                            cj->hydro.super->hydro.chemistry_fct_ghost);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.chemistry_fct_ghost,
+                            t_force);
+      }
+      /* TODO(MPI): a foreign ci/cj side needs send/recv wiring for the
+         donor-side outflow sums and theta before this limiter can run
+         multi-node. engine_maketasks() errors out for such runs today. */
+#endif
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -4029,6 +4090,17 @@ void engine_maketasks(struct engine *e) {
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
   const ticks tic = getticks();
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* The chemistry FCT positivity limiter has no MPI exchange of the
+     donor-side outflow sums/theta yet, so foreign copies of a particle would
+     limit fluxes inconsistently across ranks. */
+  if (e->nr_nodes > 1)
+    error(
+        "The GEAR FVPM chemistry FCT positivity limiter does not support MPI "
+        "runs yet.");
+#endif
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
