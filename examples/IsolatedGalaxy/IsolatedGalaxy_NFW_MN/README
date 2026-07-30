@@ -5,5 +5,5 @@
 
 tested with the following options: 
 
-./configure --with-hydro=gadget2 --with-ext-potential=nfw_mn --disable-hand-vec
+./configure --with-hydro=gadget2 --with-ext-potential=nfw-mn --disable-hand-vec
 
