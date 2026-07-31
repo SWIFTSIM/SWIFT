@@ -107,8 +107,8 @@ enum chemistry_relaxation_time_mode {
  * Hopkins-2017-style diffusivity limiter applies to.
  */
 enum chemistry_hyperbolic_limiter_scope {
-  limiter_density_only, /* Limit only the mass-density dissipation (matches
-                            Hopkins 2017's original 1-component scope) */
+  limiter_density_only,  /* Limit only the mass-density dissipation (matches
+                             Hopkins 2017's original 1-component scope) */
   limiter_all_components /* Limit the flux-component dissipation too */
 };
 

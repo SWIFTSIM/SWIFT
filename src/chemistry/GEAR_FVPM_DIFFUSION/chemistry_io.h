@@ -97,9 +97,9 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
 
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 INLINE static void convert_gas_diffusion_fluxes(const struct engine *e,
-                                                 const struct part *p,
-                                                 const struct xpart *xp,
-                                                 double *ret) {
+                                                const struct part *p,
+                                                const struct xpart *xp,
+                                                double *ret) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     ret[3 * i + 0] = p->chemistry_data.diffusion_flux[i][0];
     ret[3 * i + 1] = p->chemistry_data.diffusion_flux[i][1];
@@ -183,8 +183,7 @@ INLINE static int chemistry_write_particles(const struct part *parts,
       "Mass fraction of each element");
 
   list[1] = io_make_physical_output_field_convert_part(
-      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_DIFFUSIVITY, 0.f, parts,
-      xparts,
+      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_DIFFUSIVITY, 0.f, parts, xparts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical effective diffusivity D = K*q/U, stored in a vector. "
       "Unlike K, D has ordinary diffusivity units regardless of "

@@ -20,9 +20,9 @@
 #define SWIFT_FLUX_EXCHANGE_H
 
 /* Config parameters. */
-#include <config.h>
-
 #include "inline.h"
+
+#include <config.h>
 
 /**
  * @file flux_exchange.h

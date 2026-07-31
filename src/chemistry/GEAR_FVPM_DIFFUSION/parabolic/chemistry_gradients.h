@@ -56,12 +56,13 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
   double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
 
   unsigned int dumb = 0;
-  const char corrected_i = chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id,
-                                   /*neg_counter*/ &dumb);
-  const char corrected_j = chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id,
-                                   &dumb);
+  const char corrected_i =
+      chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+                                       /*callloc=*/1, /*element*/ metal, pi->id,
+                                       /*neg_counter*/ &dumb);
+  const char corrected_j = chemistry_check_unphysical_state(
+      &m_Zj, m_Zj_not_extrapolated, mj,
+      /*callloc=*/1, /*element*/ metal, pj->id, &dumb);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */

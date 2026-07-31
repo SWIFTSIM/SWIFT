@@ -206,8 +206,9 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
   const double norm_K_star = chemistry_get_matrix_norm(K_star);
 
   /* If U_star == 0.0, then q_star = 0.0 (since U = rho*q and we cannot have rho
-   * = 0) */  
-  const double norm_D_star = (U_star == 0.0) ? norm_K_star : norm_K_star * q_star / U_star;
+   * = 0) */
+  const double norm_D_star =
+      (U_star == 0.0) ? norm_K_star : norm_K_star * q_star / U_star;
   const double delta_x = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const double tau_numerical = delta_x * delta_x / norm_D_star;
 
@@ -265,15 +266,13 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_riemann_compute_hyperbolic_diffusivity_limiter(
-    const struct part *restrict pi, const struct part *restrict pj,
-    const int m, const struct chemistry_global_data *chem_data,
+    const struct part *restrict pi, const struct part *restrict pj, const int m,
+    const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
 
   double F_parabolic_L[3], F_parabolic_R[3];
-  chemistry_get_physical_parabolic_flux(pi, m, F_parabolic_L, chem_data,
-                                        cosmo);
-  chemistry_get_physical_parabolic_flux(pj, m, F_parabolic_R, chem_data,
-                                        cosmo);
+  chemistry_get_physical_parabolic_flux(pi, m, F_parabolic_L, chem_data, cosmo);
+  chemistry_get_physical_parabolic_flux(pj, m, F_parabolic_R, chem_data, cosmo);
 
   const double F_actual_L[3] = {pi->chemistry_data.diffusion_flux[m][0],
                                 pi->chemistry_data.diffusion_flux[m][1],
