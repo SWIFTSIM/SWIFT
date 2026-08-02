@@ -526,6 +526,8 @@ struct engine {
   /* Properties of the star model */
   struct stars_props *stars_properties;
 
+  struct MG_props *MG_properties;
+
   /* Properties of the black hole model */
   const struct black_holes_props *black_holes_properties;
 
@@ -748,7 +750,8 @@ void engine_init(
     struct extra_io_properties *io_extra_props,
     struct fof_props *fof_properties, struct los_props *los_properties,
     struct lightcone_array_props *lightcone_array_properties,
-    struct ic_info *ics_metadata);
+    struct ic_info *ics_metadata,
+    struct MG_props *MG);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,

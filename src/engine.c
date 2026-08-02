@@ -2281,7 +2281,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
 
     /* Compute mesh forces */
-    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/1);
+    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->verbose);
 
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
@@ -2946,7 +2946,7 @@ int engine_step(struct engine *e) {
       engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
-    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/1);
+    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->verbose);
 
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);
@@ -3483,7 +3483,8 @@ void engine_init(
     struct extra_io_properties *io_extra_props,
     struct fof_props *fof_properties, struct los_props *los_properties,
     struct lightcone_array_props *lightcone_array_properties,
-    struct ic_info *ics_metadata) {
+    struct ic_info *ics_metadata, 
+    struct MG_props *MG) {
 
   struct clocks_time tic, toc;
   if (engine_rank == 0) clocks_gettime(&tic);
@@ -3618,6 +3619,7 @@ void engine_init(
   e->entropy_floor = entropy_floor;
   e->gravity_properties = gravity;
   e->stars_properties = stars;
+  e->MG_properties = MG;
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;

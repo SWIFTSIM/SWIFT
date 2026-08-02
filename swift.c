@@ -196,6 +196,7 @@ int main(int argc, char *argv[]) {
   int with_lightcone = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
+  int with_modified_gravity = 0;
   int with_black_holes = 0;
   int with_timestep_limiter = 0;
   int with_timestep_sync = 0;
@@ -237,6 +238,7 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "modified-gravity", &with_modified_gravity, "Going to run with f(R) gravity", NULL, 0, 0),
       OPT_BOOLEAN(0, "temperature", &with_temperature,
                   "Run with temperature calculation.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling,
@@ -602,6 +604,16 @@ int main(int argc, char *argv[]) {
       pretime_message(
           "\nError: Cannot process stars without gravity, --external-gravity "
           "or --self-gravity must be chosen.");
+    }
+    return 1;
+  }
+
+  if ((with_modified_gravity && !with_self_gravity) || (with_modified_gravity && !with_cosmology)) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      pretime_message(
+          "Error: Cannot process modified gravity without self-gravity and cosmology, "
+          "--self-gravity and --cosmology must be chosen.\n");
     }
     return 1;
   }
@@ -1435,6 +1447,15 @@ int main(int argc, char *argv[]) {
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
+    message("Initialising MG properties");
+    struct MG_props MG_properties;
+    bzero(&MG_properties, sizeof(struct MG_props));
+    if (with_modified_gravity) {
+      MG_properties.with_MG = 1;
+      MG_init(&MG_properties, params, &s, &cosmo, &prog_const);
+    }
+    message("MG properties initialised");
+
     /* Initialise the lightcone properties */
     bzero(&lightcone_array_properties, sizeof(struct lightcone_array_props));
 #ifdef WITH_LIGHTCONE
@@ -1605,7 +1626,7 @@ int main(int argc, char *argv[]) {
                 &feedback_properties, &pressure_floor_props, &rt_properties,
                 &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
                 &starform, &chemistry, &extra_io_props, &fof_properties,
-                &los_properties, &lightcone_array_properties, &ics_metadata);
+                &los_properties, &lightcone_array_properties, &ics_metadata, &MG_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);

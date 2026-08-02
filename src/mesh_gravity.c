@@ -873,34 +873,6 @@ void compute_potential_distributed(struct pm_mesh *mesh, const struct space *s,
 }
 
 /**
- * @brief Store the variables that are relevant for the field equation.
- * 
- * The specific Hu-Sawicki model is initialised here by fixing fR0 and n.
- *
- * @param s The #space containing the particles.
- * @param cosmo The #cosmology used for this run.
- * @param MG_var The relevant #MG_variables.
- * @param fR0 Free parameter in Hu-Sawicki models; background field at redshift 0.
- * @param n Free parameter in Hu-Sawicki models. Should be > 0.
- * @param timing Do we print timing information?
- */
-void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, int timing) {
-  MG->a = cosmo->a;
-  MG->fR0 = fR0;
-  MG->n = n;
-  MG->a3_inv = (1./(MG->a*MG->a*MG->a));
-  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->R = (3.*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
-  MG->c = s->e->physical_constants->const_speed_light_c;
-  MG->G = s->e->physical_constants->const_newton_G;
-  MG->h = cosmo->h;
-  MG->overdensity = 0; //Do we know the overdensity instead of the density? Relevant for test cases
-  MG->timing = timing;
-
-}
-
-/**
  * @brief Compute the (effective) overdensity modification as a result of f(R).
  * 
  * Takes the density assigned to the modified gravity mesh, and calculates 
@@ -908,14 +880,14 @@ void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, str
  *
  * @param rho Mesh containing the density of size N_MGxN_MGxN_MG.
  * @param u The solution to the field equation on a mesh.
- * @param MG_var The relevant #MG_variables.
+ * @param MG The relevant #MG_props.
  * @param delta Side length of a grid cell.
  * @param N_MG Side length of mesh in number of grid cells.
  */
-void get_rho_mod(double *rho, double *u, struct MG_variables *MG, double delta, int N_MG) {
+void get_rho_mod(double *rho, double *u, struct MG_props *MG, double delta, int N_MG) {
   double mean_density = 0.;
   for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-    mean_density += rho[i]/(N_MG*N_MG*NL_LANGMAX);
+    mean_density += rho[i]/(N_MG*N_MG*N_MG);
   }
   for (int i=0; i<N_MG*N_MG*N_MG; i++) {
     rho[i] -= mean_density;
@@ -983,10 +955,10 @@ void get_cell_acc(double **acc, double *pot, int N, double fac) {
  * @param rho_MG The densities assigned to the mesh.
  * @param N_MG Side length in grid cells of the mesh on which to solve the field equation.
  */
-void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, const struct cosmology *cosmo, double *rho_MG, int N_MG) {
+void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, struct MG_props *MG, double *rho_MG, int N_MG) {
   ticks toc = getticks();
   const double box_size = s->dim[0];
-  int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
+  int N_min = MG->N_min; //Minimum gridsize to be used in multigrid acceleration
   double delta = box_size/N_MG;
   const double cell_fac_MG = N_MG / box_size;
   int get_MG_acc = 0;
@@ -997,17 +969,8 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   if (f_R == NULL) error("Error allocating memory for the density mesh.");
   //memuse_log_allocation("mesh.fR", f_R, 1, sizeof(double) * N_MG * N_MG * N_MG);
 
-  int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
-  if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
+  int test = MG->test; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
 
-  struct MG_variables MG_var;
-  double fR0 = -1e-5;
-  int n = 1;
-  int timing = 1;
-  initialise_MG_variables(s, cosmo, &MG_var, fR0, n, timing);
-
-  double fR_evo = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
-  MG_var.fR_bar = MG_var.fR0 * fR_evo * fR_evo;
   int cdim[3] = {N_MG,N_MG,N_MG};
   double mean_density = 20.;
 
@@ -1037,12 +1000,12 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
         }
       }
       rho_MG[cell_getid(cdim, N_MG/2, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-1.));
-      MG_var.overdensity = 0;
+      MG->overdensity = 0;
       break;
     case 3:
       /* Change the density field to represent a 1D sinusoid in the box */
       message("Testing the f(R) calculation with a 1D sine wave.");
-      double fR_mod = MG_var.fR_bar;
+      double fR_mod = MG->fR_bar;
       double fac = s->dim[0]/N_MG;
       //MG_var.fR0 = 2. * fR_mod;
       //MG_var.fR_bar *= 2.;
@@ -1050,11 +1013,11 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
         for (int j=0; j<N_MG; j++) {
           for (int k=0; k<N_MG; k++) {
             double x_dist = ((double) i) * fac;
-            rho_MG[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
+            rho_MG[cell_getid(cdim, i, j, k)] = peak_overdensity(MG, x_dist, fR_mod, s->dim[0]);
           }
         }
       }
-      MG_var.overdensity = 1;
+      MG->overdensity = 1;
       break;
     case 4: 
       /* Change the density field to represent a two particles aligned at the x-axis of the box */
@@ -1070,7 +1033,7 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
       }
       rho_MG[cell_getid(cdim, N_MG/2+32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
       rho_MG[cell_getid(cdim, N_MG/2-32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
-      MG_var.overdensity = 0;
+      MG->overdensity = 0;
       break;
   }
     
@@ -1078,9 +1041,9 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   /* Make a copy of the density array to renormalise */
   double *rho_copy = swift_malloc("density_copy", N_MG*N_MG*N_MG *sizeof(double));
   memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
-  space_get_fR_contribution(tp, s, rho_copy, f_R, &MG_var, N_min, N_MG, test);
+  space_get_fR_contribution(tp, s, rho_copy, f_R, MG, N_min, N_MG, test);
 
-  get_rho_mod(rho_MG, f_R, &MG_var, delta, N_MG);
+  get_rho_mod(rho_MG, f_R, MG, delta, N_MG);
 
   /* Decide if we want to calculate the MG contribution to the accelerations at the cell level. E.g. to export for analysing. */
   if (get_MG_acc){
@@ -1091,7 +1054,7 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
     }
 
     for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-      f_R[i] = (MG_var.fR_bar)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(f_R[i]);
+      f_R[i] = (MG->fR_bar)/(MG->a*MG->a) * (MG->c*MG->c)/2. * exp(f_R[i]);
     }
     get_cell_acc(acc, f_R, N_MG, cell_fac_MG);
 
@@ -1103,8 +1066,32 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
 
   swift_free("density_copy", rho_copy);
   swift_free("fR_field", f_R);
-  if (MG_var.timing) message("Solving the field equation took %.3f %s.",
+  if (MG->timing) message("Solving the field equation took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
+}
+
+void MG_init(struct MG_props *MG_props, struct swift_params *params, const struct space *s, const struct cosmology *cosmo, const struct phys_const *physical_constants) {
+  /* Get parameters from file */
+  MG_props->N_MG = parser_get_param_int(params, "ModifiedGravity:mesh_side_length");
+  MG_props->n = parser_get_opt_param_int(params, "ModifiedGravity:n", 1);
+  MG_props->fR0 = -1.*parser_get_param_double(params, "ModifiedGravity:fR0");
+  MG_props->test =  parser_get_opt_param_int(params, "ModifiedGravity:test", 0);
+  MG_props->timing = parser_get_opt_param_int(params, "ModifiedGravity:timing", 0);
+  MG_props->tolerance = parser_get_opt_param_double(params, "ModifiedGravity:tolerance", 10e-9);
+  MG_props->N_min = parser_get_param_int(params, "ModifiedGravity:N_min");
+
+  /* Collect remaining parameters */
+  MG_props->a = cosmo->a;
+  MG_props->a3_inv = (1./(MG_props->a*MG_props->a*MG_props->a));
+  MG_props->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+  MG_props->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
+  MG_props->R = (3.*MG_props->m*(MG_props->a3_inv + 4.*(MG_props->Omega_ratio)));
+  MG_props->c = physical_constants->const_speed_light_c;
+  MG_props->G = physical_constants->const_newton_G;
+  MG_props->h = cosmo->h;
+  MG_props->overdensity = 0; //Do we know the overdensity instead of the density? Relevant for test cases
+  double fR_evo = ((1. + 4. * MG_props->Omega_ratio)/(MG_props->a3_inv + 4. * MG_props->Omega_ratio));
+  MG_props->fR_bar = MG_props->fR0 * fR_evo * fR_evo;
 }
 
 /**
@@ -1126,11 +1113,12 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
  * @param verbose Are we talkative?
  * @param MG Do we want to calculate f(R) gravity?
  */
-void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
-                              struct threadpool *tp, const int verbose) {
+void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct space* s,
+                              struct threadpool* tp, const int verbose) {
 
 #ifdef HAVE_FFTW
   message("Doing this");
+  struct MG_props *MG = e->MG_properties;
   const double r_s = mesh->r_s;
   const double r_s_MG = 0.;
   const double box_size = s->dim[0];
@@ -1148,7 +1136,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
   /* Constants for the MG density/potential mesh */
-  int N_MG = 256;
+  int N_MG = MG->N_MG;
   const int N_half_MG = N_MG / 2;
   const double cell_fac_MG = N_MG / box_size;
 
@@ -1227,7 +1215,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
                    (void *)&data);
   }
   struct cic_mapper_data data_MG;
-  if (MG) {
+  if (MG->with_MG) {
     /*Assign the density to the mesh that is to be used for the f_R calculation */
     if (N_MG == N) memcpy(rho_MG, rho, N*N*N*sizeof(double));
     else {
@@ -1252,7 +1240,8 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     }
 
     /* Do the actual calculation. rho_MG receives the extra overdensity due to f_R */
-    add_modified_gravity_contribution(s, tp, cosmo, rho_MG, N_MG);
+    message("The field value is %E and the value of R is %E", MG->fR0, MG->R);
+    add_modified_gravity_contribution(s, tp, MG, rho_MG, N_MG);
   }
 
   if (verbose)
@@ -1280,7 +1269,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
-  if (MG) fftw_execute(forward_plan_MG);
+  if (MG->with_MG) fftw_execute(forward_plan_MG);
 
   if (verbose)
     message("Forward Fourier transform took %.3f %s.",
@@ -1298,7 +1287,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,
                             /* mesh_size=*/N, r_s, box_size, deconvolve, discrete_symbol);
 
-  if (MG) {
+  if (MG->with_MG) {
     mesh_apply_Green_function(tp, frho_MG, /*slice_offset=*/0, /*slice_width=*/N_MG,
                               /* mesh_size=*/N_MG, r_s_MG, box_size, deconvolve, discrete_symbol);
   }
@@ -1323,7 +1312,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
 
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
-  if (MG) fftw_execute(inverse_plan_MG);
+  if (MG->with_MG) fftw_execute(inverse_plan_MG);
 
   /* Extra conversion factor if we used a discrete symbol before */
   double conversion_factor;
@@ -1343,7 +1332,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
 
   /* Let's store it in the structure. Add the MG contribution to the total potential if this was calculated */
   for (int i=0; i<N*N*N; i++) {
-    if (MG && N_MG == N) mesh->potential_global[i] = rho[i] + rho_MG[i];
+    if (MG->with_MG && N_MG == N) mesh->potential_global[i] = rho[i] + rho_MG[i];
     else mesh->potential_global[i] = rho[i];
   }
 
@@ -1385,7 +1374,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     message("Computing mesh accelerations took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if (MG && N_MG != N) { //Do extra interpolation to the particles. Be sure not to delete the current values of the acceleration and potential
+  if (MG->with_MG && N_MG != N) { //Do extra interpolation to the particles. Be sure not to delete the current values of the acceleration and potential
     data_MG.cells = s->cells_top;
     data_MG.rho = NULL;
     data_MG.potential = rho_MG;
@@ -1439,12 +1428,13 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
  * @param verbose Are we talkative?
  * @param MG Do we want to calculate f(R) gravity?
  */
-void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
-                               struct threadpool *tp, const int verbose) {
-  if (mesh->distributed_mesh) {
+void pm_mesh_compute_potential(struct engine *e, struct pm_mesh* mesh, struct space* s,
+                               struct threadpool* tp, const int verbose) {
+  int MG = e->MG_properties->with_MG;
+  if (mesh->distributed_mesh && !MG) {
     compute_potential_distributed(mesh, s, tp, verbose);
   } else {
-    compute_potential_global(mesh, s, tp, verbose);
+    compute_potential_global(e, mesh, s, tp, verbose);
   }
 }
 

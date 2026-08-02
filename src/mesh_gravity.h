@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "gravity_properties.h"
+#include "space.h"
 #include "timeline.h"
 
 /* Forward declarations */
@@ -32,7 +33,7 @@ struct space;
 struct gpart;
 struct threadpool;
 struct cell;
-struct MG_variables;
+struct MG_props;
 
 /**
  * @brief Data structure for the long-range periodic forces using a mesh
@@ -93,7 +94,7 @@ void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
                   const double dim[3], int nr_threads);
 void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct engine *e, struct pm_mesh *mesh, struct space *s,
-                               struct threadpool *tp, const struct cosmology *cosmo, int verbose, const int MG);
+                               struct threadpool *tp, int verbose);
 void pm_mesh_clean(struct pm_mesh *mesh);
 
 void pm_mesh_allocate(struct pm_mesh *mesh);
@@ -103,8 +104,8 @@ void pm_mesh_free(struct pm_mesh *mesh);
 void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
 void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
 
-void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, int timing);
 void get_cell_acc(double **acc, double *rho, int N, double fac);
-void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, const struct cosmology *cosmo, double *rho_MG, int N_MG);
+void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, struct MG_props *MG, double *rho_MG, int N_MG);
+void MG_init(struct MG_props *MG_props, struct swift_params *params, const struct space *s, const struct cosmology *cosmo, const struct phys_const *physical_constants);
 
 #endif /* SWIFT_MESH_GRAVITY_H */

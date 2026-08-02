@@ -383,23 +383,16 @@ struct space {
 
 struct cic_mapper_data;
 struct tree_data;
-//struct cell_basic;
-struct AMR_levels {
-  struct cell **cells;
-  double mean_density; 
-  double mean_potential;
-  int cell_count; 
-  int ghost_count;
-  int depth; 
-  int cdim;
-};
+
 struct gpart_ref {
   struct cell *cell;
   int level;
   int index;
 };
 
-struct MG_variables {
+struct MG_props {
+  int with_MG;
+  int N_MG;
   int n;
   int overdensity;
   double fR0;
@@ -413,6 +406,9 @@ struct MG_variables {
   double h;
   double m;
   int timing;
+  int N_min;
+  double tolerance;
+  int test;
 };
 
 /* Function prototypes. */
@@ -548,19 +544,19 @@ void prolongate_residual(const double *coarser_solution, double *pot, int cdim[3
 void apply_GS(const double *density, double *pot, int cdim[3], double mean_density, double box_size);
 void apply_multigrid(const double *density, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
 void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N, const int N_double);
-void space_get_fR_contribution(struct threadpool *tp, const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N, const int test);
-void apply_NGS(struct threadpool *tp, const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
-double get_Laplacian(struct MG_variables *MG, const double *phi, const int cdim[3], int nbs[6], int i, int j, int k);
-double get_residual_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose);
-double get_derivative(double *phi, struct MG_variables *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta);
-void perform_red_black_sweep_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
-void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, const double *u_coarser, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
-double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
-void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
-void get_residual_array_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, double *coarser_residual, struct MG_variables *MG, int cdim[3], double delta);
-void get_residual_array_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double *residual_array, double delta);
-double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size);
+void space_get_fR_contribution(struct threadpool *tp, const struct space *s, double *rho, double *phi, struct MG_props *MG, int N_min, const int N, const int test);
+void apply_NGS(struct threadpool *tp, const double *rho, double *phi, struct MG_props *MG, int cdim[3], double mean_density, double box_size);
+double get_Laplacian(struct MG_props *MG, const double *phi, const int cdim[3], int nbs[6], int i, int j, int k);
+double get_residual_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_props *MG, int cdim[3], double mean_density, double delta, int verbose);
+double get_derivative(double *phi, struct MG_props *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta);
+void perform_red_black_sweep_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_props *MG, int cdim[3], double mean_density, double delta);
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, const double *u_coarser, struct MG_props *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_props *MG, int cdim[3], double delta, const int N_stop, int *depth);
+double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_props *MG, int cdim[3], double delta);
+void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_props *MG, int cdim[3], double delta);
+void get_residual_array_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, double *coarser_residual, struct MG_props *MG, int cdim[3], double delta);
+void get_residual_array_fR(const double *phi, const double *rho, struct MG_props *MG, int cdim[3], double mean_density, double *residual_array, double delta);
+double peak_overdensity(struct MG_props *MG, double delta_x, double fR_mean, double box_size);
 void coarser_red_black_mapper(void *map_data, int num, void* extra);
 void coarser_residual_mapper(void *map_data, int num, void* extra);
 void residual_mapper(void* map_data, int num, void* extra);
