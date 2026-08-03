@@ -155,7 +155,10 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 #ifdef WITH_MPI
 
   const struct gpart_foreign *restrict gparts_foreign = c->grav.parts_foreign;
-  const size_t nr_gparts = c->grav.count;
+  /* grav.count is refreshed independently (and more often, via
+   * grav_counts) than the actual gpart data recv -- count_valid is what
+   * this recv actually just delivered. */
+  const size_t nr_gparts = c->grav.count_valid;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
