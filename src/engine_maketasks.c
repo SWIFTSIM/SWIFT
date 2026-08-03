@@ -1604,6 +1604,13 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
       scheduler_addunlock(s, l->t, tend);
+
+      /* The pair tasks read cj->grav.count directly. Without this edge,
+       * t_grav_counts (which overwrites that count) is unlocked by the same
+       * t_grav predecessor with no ordering against the pair tasks, racing
+       * to update it mid-step whenever star formation changed it on the
+       * sender. */
+      if (t_grav_counts != NULL) scheduler_addunlock(s, l->t, t_grav_counts);
     }
   }
 
@@ -2053,15 +2060,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Report each super-cell's local particle counts. */
-    message(
-        "SUPER-CELL: id=%lld top_id=%lld is_top=%d depth=%d hydro.count=%d "
-        "sinks.count=%d stars.count=%d",
-        c->cellID, c->top->cellID, (c == c->top), c->depth, c->hydro.count,
-        c->sinks.count, c->stars.count);
-#endif
 
     /* Add the sort task. */
     c->hydro.sorts =
