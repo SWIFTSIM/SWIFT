@@ -7,7 +7,7 @@ scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 n_ranks=${n_ranks:=0}     # Number of ranks to use
 n_threads=${n_threads:=8} # Number of threads to use
-N=${N:=50000}             # Number of gas particles
+N=${N:=500000}            # Number of gas particles
 
 # Create the ICs if they do not exist
 if [ ! -e boss_bodenheimer.hdf5 ]; then

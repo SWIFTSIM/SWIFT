@@ -5,17 +5,17 @@ perturbation. The perturbation grows as the sphere collapses, producing the
 characteristic bar/two-arm fragmentation pattern, which makes this a standard
 test for sink particle formation from gravitational fragmentation.
 
-The default resolution (N=50000) is chosen to run in a few minutes on a
-laptop. `python3 makeIC.py --help` lists every parameter (sphere radius,
-mass, rotation rate, perturbation amplitude, etc); raise `-N` for
-production/paper-quality runs, and reduce `Gravity:max_physical_baryon_softening`
-and `GEARSink:cut_off_radius` accordingly (see `../artificial_fragmentation.py`
-in the wider test suite this example was ported from).
+The default resolution contains 500k particles. `python3 makeIC.py --help` lists
+every parameter (sphere radius, mass, rotation rate, perturbation amplitude, etc);
+raise `-N` for production/paper-quality runs,
+and reduce `Gravity:max_physical_baryon_softening` and `GEARSink:cut_off_radius` accordingly.
+
+Sink particles start forming around 6000 U_T (internal units).
 
 # Configure
 To run this example with the GEAR model,
 
-    ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+    ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-equation-of-state=isothermal-gas --with-grackle=path/to/grackle
 
 and then
 
@@ -29,5 +29,5 @@ The run.sh script calls `makeIC.py` with default values. Run
 Type `./run.sh` (`N=<value>` overrides the particle number), and let's go!
 
 Sink particles form and accrete gas in this test, but do not spawn stars
-(`GEARSink:disable_star_formation: 1` in params.yml) -- this test targets
+(`GEARSink:disable_star_formation: 1` in params.yml). This test targets
 sink formation/accretion physics, not the stellar feedback loop.

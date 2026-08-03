@@ -282,6 +282,10 @@ if __name__ == "__main__":
     U_int_total = opt.alpha * abs(E_pot)
     U_int_per_part = np.full(N, U_int_total / M_tot)
     print(f"  alpha      = U_therm/|E_pot| = {opt.alpha:.3e}")
+    print(
+        f"  This run uses the isothermal EoS: set params.yml's "
+        f"EoS:isothermal_internal_energy to {U_int_per_part[0]:.6e} to match."
+    )
 
     # Boxsize and smoothing length
     r_max = np.max(np.linalg.norm(pos, axis=1))
