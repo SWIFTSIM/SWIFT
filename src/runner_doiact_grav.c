@@ -1034,19 +1034,23 @@ static INLINE void runner_dopair_grav_pp_truncated(
           !gpart_is_inhibited(&gparts_j[pjd], e))
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
-            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
             "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
-            gparts_j[pjd].ti_drift, e->ti_current, gparts_j[pjd].type);
+            cj->top->cellID, gparts_j[pjd].ti_drift, e->ti_current,
+            gparts_j[pjd].type);
 
       if (foreign_j && pjd < gcount_j &&
           gparts_foreign_j[pjd].ti_drift != e->ti_current &&
           !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
-            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
-            "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
+            "delta_from_rebuild=%td gp.ti_drift=%lld e->ti_current=%lld "
+            "gp.type=%d",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
+            cj->top->cellID,
+            cj->grav.parts_foreign - cj->grav.parts_foreign_rebuild,
             gparts_foreign_j[pjd].ti_drift, e->ti_current,
             gparts_foreign_j[pjd].type);
 
