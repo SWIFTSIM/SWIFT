@@ -116,7 +116,7 @@ struct strength_part_data {
 
   // Activation thresholds of flaws for tensile damage accumulation
   // ### Work out how to set the length of this
-  float activation_thresholds[40];
+  float activation_thresholds[100];
 #endif
 
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS

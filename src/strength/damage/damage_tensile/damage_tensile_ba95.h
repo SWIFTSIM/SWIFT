@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    float *tensile_cbrtD_dt, int *number_of_activated_flaws,  const int number_of_flaws, const float activation_thresholds[40], // ### Change this length
+    float *tensile_cbrtD_dt, int *number_of_activated_flaws,  const int number_of_flaws, const float activation_thresholds[100], // ### Change this length
     const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage) {
 
   *tensile_cbrtD_dt = 0.f;
@@ -204,7 +204,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_evolve(
 
   /* Particle flaws and their thresholds. */
   const int number_of_flaws = p->strength_data.number_of_flaws;
-  float activation_thresholds[40]; // ### hardcoded length
+  float activation_thresholds[100]; // ### hardcoded length
   memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
 
   float tensile_cbrtD_dt;

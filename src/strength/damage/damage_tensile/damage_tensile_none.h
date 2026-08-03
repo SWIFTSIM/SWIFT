@@ -76,7 +76,7 @@ __attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    float *tensile_cbrtD_dt, int *number_of_activated_flaws,  const int number_of_flaws, const float activation_thresholds[40], // ### Change this length
+    float *tensile_cbrtD_dt, int *number_of_activated_flaws,  const int number_of_flaws, const float activation_thresholds[100], // ### Change this length
     const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage) {
 
       /* Set the rate of tensile cbrt(damage) accumulation to zero and number of activated flaws to zero */

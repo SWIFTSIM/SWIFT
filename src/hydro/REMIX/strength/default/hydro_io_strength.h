@@ -47,7 +47,7 @@ INLINE static void hydro_read_particles_strength(struct part* parts,
   list[*num_fields] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, strength_data.number_of_flaws);
   // ### Set length of these arrays in a better way here and in hydro_part.h
-  list[*num_fields+1] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+  list[*num_fields+1] = io_make_input_field("ActivationThresholds", FLOAT, 100, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, strength_data.activation_thresholds);
   
   *num_fields += 2;  
