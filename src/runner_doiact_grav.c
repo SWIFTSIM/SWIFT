@@ -932,6 +932,7 @@ static INLINE void runner_dopair_grav_pp_full(
  * @param gcount_j The number of particles in the cell j (for debugging checks
  * only).
  * @param foreign_j Is the cell j foreign? (for debugging checks only).
+ * @param cj The #cell j itself (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pp_truncated(
     struct gravity_cache *restrict ci_cache,
@@ -939,8 +940,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const int gcount_j, const int gcount_padded_j, const float dim[3],
     const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
-    const struct gpart_foreign *restrict gparts_foreign_j,
-    const int foreign_j) {
+    const struct gpart_foreign *restrict gparts_foreign_j, const int foreign_j,
+    const struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1031,12 +1032,23 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (!foreign_j && pjd < gcount_j &&
           gparts_j[pjd].ti_drift != e->ti_current &&
           !gpart_is_inhibited(&gparts_j[pjd], e))
-        error("gpj not drifted to current time");
+        error(
+            "gpj not drifted to current time: pjd=%d gcount_j=%d "
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
+            "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
+            pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
+            gparts_j[pjd].ti_drift, e->ti_current, gparts_j[pjd].type);
 
       if (foreign_j && pjd < gcount_j &&
           gparts_foreign_j[pjd].ti_drift != e->ti_current &&
           !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
-        error("gpj not drifted to current time");
+        error(
+            "gpj not drifted to current time: pjd=%d gcount_j=%d "
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
+            "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
+            pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
+            gparts_foreign_j[pjd].ti_drift, e->ti_current,
+            gparts_foreign_j[pjd].type);
 
       /* Check that we are not updated an inhibited particle */
       if (gpart_is_inhibited(&gparts_i[pid], e))
@@ -1564,7 +1576,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, dim,
             r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
-            cj->nodeID != e->nodeID);
+            cj->nodeID != e->nodeID, cj);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1578,7 +1590,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, dim,
             r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
-            ci->nodeID != e->nodeID);
+            ci->nodeID != e->nodeID, ci);
 
         /* Then the M2P */
         if (allow_multipole_i)
