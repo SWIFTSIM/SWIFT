@@ -147,8 +147,8 @@ enum task_subtypes {
   task_subtype_stars_prep1,
   task_subtype_stars_prep2,
   task_subtype_stars_feedback,
-  task_subtype_sf_counts,             /* MPI */
-  task_subtype_grav_counts,           /* MPI */
+  task_subtype_sf_counts,   /* MPI */
+  task_subtype_grav_counts, /* MPI */
   task_subtype_bpart_rho,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
