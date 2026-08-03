@@ -1488,13 +1488,19 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Start by constructing particle caches */
 
-  /* Computed the padded counts */
-  const int gcount_i = ci->grav.count;
-  const int gcount_j = cj->grav.count;
+  /* Computed the padded counts. For a foreign cell, grav.count is refreshed
+   * independently (and more often, via grav_counts) than the actual gpart
+   * data recv, so it cannot be trusted to bound a read of parts_foreign --
+   * use count_valid, the number of entries the last data recv actually
+   * delivered, instead. */
+  const int gcount_i =
+      (ci->nodeID == e->nodeID) ? ci->grav.count : ci->grav.count_valid;
+  const int gcount_j =
+      (cj->nodeID == e->nodeID) ? cj->grav.count : cj->grav.count_valid;
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
-  const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
-  const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
+  const int allow_multipole_i = allow_mpole && gcount_i > 1;
+  const int allow_multipole_j = allow_mpole && gcount_j > 1;
 
   /* Fill the caches */
   if (ci->nodeID == e->nodeID) {
@@ -1692,9 +1698,15 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
   const int ci_active =
       cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
 
+  /* For a foreign cj, grav.count is refreshed independently (and more
+   * often, via grav_counts) than the actual gpart data recv, so it cannot
+   * be trusted to bound a read of parts_foreign -- use count_valid. */
+  const int gcount_j =
+      (cj->nodeID == e->nodeID) ? cj->grav.count : cj->grav.count_valid;
+
   /* Anything to do here? */
   if (!ci_active) return;
-  if (ci->grav.count == 0 || cj->grav.count == 0) return;
+  if (ci->grav.count == 0 || gcount_j == 0) return;
 
   /* Recurse? */
   if (ci->split) {
@@ -1712,14 +1724,14 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
 
       runner_dopair_grav_pp_full_no_cache(
           ci->grav.parts, ci->grav.count, cj->grav.parts,
-          cj->grav.parts_foreign, cj->grav.count, e, e->gravity_properties,
+          cj->grav.parts_foreign, gcount_j, e, e->gravity_properties,
           &r->ci_gravity_cache, ci, cj, cj->grav.multipole);
 
     } else {
 
       runner_dopair_grav_pp_truncated_no_cache(
           ci->grav.parts, ci->grav.count, cj->grav.parts,
-          cj->grav.parts_foreign, cj->grav.count, dim, e, e->gravity_properties,
+          cj->grav.parts_foreign, gcount_j, dim, e, e->gravity_properties,
           &r->ci_gravity_cache, ci, cj, cj->grav.multipole);
     }
   }

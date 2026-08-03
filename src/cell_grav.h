@@ -127,6 +127,13 @@ struct cell_grav {
   /*! Nr of #gpart this cell can hold after addition of new #gpart. */
   int count_total;
 
+  /*! For a foreign cell, the number of leading #gpart_foreign entries
+   * actually delivered by the last gpart data recv (task_subtype_gpart).
+   * This can lag behind #count, which is refreshed independently and more
+   * frequently by task_subtype_grav_counts. Use this, not #count, to bound
+   * any read of #parts_foreign. */
+  int count_valid;
+
   /*! Number of #gpart updated in this cell. */
   int updated;
 
