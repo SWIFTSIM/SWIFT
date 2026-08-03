@@ -2054,15 +2054,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Report each super-cell's local particle counts. */
-    message(
-        "SUPER-CELL: id=%lld top_id=%lld is_top=%d depth=%d hydro.count=%d "
-        "sinks.count=%d stars.count=%d",
-        c->cellID, c->top->cellID, (c == c->top), c->depth, c->hydro.count,
-        c->sinks.count, c->stars.count);
-#endif
-
     /* Add the sort task. */
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
