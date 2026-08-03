@@ -126,16 +126,20 @@ void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Catch an undrifted gpart on the sender, before it becomes a mystery
-   * stale slot on some other rank. */
+   * stale slot on some other rank. c->grav.super/depth pin down whether
+   * the packed range even matches what the drift task covered. */
   for (int i = 0; i < c->grav.count; ++i) {
     const struct gpart *gp = &c->grav.parts[i];
     if (gp->ti_drift != r->e->ti_current && !gpart_is_inhibited(gp, r->e))
       error(
           "Packing an undrifted gpart: i=%d count=%d c->cellID=%lld "
-          "c->depth=%d c->grav.ti_old_part=%lld gp.ti_drift=%lld "
-          "e->ti_current=%lld gp.type=%d",
+          "c->depth=%d c->grav.ti_old_part=%lld c->grav.super->cellID=%lld "
+          "c->grav.super->depth=%d c->grav.super->grav.ti_old_part=%lld "
+          "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
           i, c->grav.count, c->cellID, c->depth, c->grav.ti_old_part,
-          gp->ti_drift, r->e->ti_current, gp->type);
+          c->grav.super->cellID, c->grav.super->depth,
+          c->grav.super->grav.ti_old_part, gp->ti_drift, r->e->ti_current,
+          gp->type);
   }
 #endif
 
