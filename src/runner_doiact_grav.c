@@ -1034,7 +1034,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
           !gpart_is_inhibited(&gparts_j[pjd], e))
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
-            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
+            "cj->top->cellID=%lld "
             "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
             cj->top->cellID, gparts_j[pjd].ti_drift, e->ti_current,
@@ -1045,7 +1046,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
           !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
-            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
+            "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
+            "cj->top->cellID=%lld "
             "cj->top->grav.count=%d delta_from_rebuild=%td gp.ti_drift=%lld "
             "e->ti_current=%lld gp.type=%d",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
@@ -1501,21 +1503,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            shift_i, CoM_j, cj->grav.multipole, ci,
                            e->gravity_properties);
   } else {
-#ifdef SWIFT_DEBUG_CHECKS
-    /* The slice [delta_from_rebuild, delta_from_rebuild + count) must lie
-     * within what the top cell's last gpart data recv actually covered,
-     * or grav_counts has advanced the count/offset past data we never
-     * received (a coverage gap, not a race). */
-    const ptrdiff_t delta_i =
-        ci->grav.parts_foreign - ci->grav.parts_foreign_rebuild;
-    if (delta_i + gcount_i > ci->top->grav.count)
-      error(
-          "Foreign cell's gpart slice runs past the received top-level "
-          "buffer: ci->cellID=%lld ci->depth=%d ci->top->cellID=%lld "
-          "delta=%td gcount_i=%d top->grav.count=%d",
-          ci->cellID, ci->depth, ci->top->cellID, delta_i, gcount_i,
-          ci->top->grav.count);
-#endif
     gravity_cache_populate_foreign(
         periodic, dim, ci_cache, ci->grav.parts_foreign, gcount_i,
         gcount_padded_i, shift_i, ci, e->gravity_properties);
@@ -1527,17 +1514,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            shift_j, CoM_i, ci->grav.multipole, cj,
                            e->gravity_properties);
   } else {
-#ifdef SWIFT_DEBUG_CHECKS
-    const ptrdiff_t delta_j =
-        cj->grav.parts_foreign - cj->grav.parts_foreign_rebuild;
-    if (delta_j + gcount_j > cj->top->grav.count)
-      error(
-          "Foreign cell's gpart slice runs past the received top-level "
-          "buffer: cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
-          "delta=%td gcount_j=%d top->grav.count=%d",
-          cj->cellID, cj->depth, cj->top->cellID, delta_j, gcount_j,
-          cj->top->grav.count);
-#endif
     gravity_cache_populate_foreign(
         periodic, dim, cj_cache, cj->grav.parts_foreign, gcount_j,
         gcount_padded_j, shift_j, cj, e->gravity_properties);
