@@ -29,6 +29,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "timers.h"
@@ -122,6 +123,21 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
  */
 void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
                           const int timer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Catch an undrifted gpart on the sender, before it becomes a mystery
+   * stale slot on some other rank. */
+  for (int i = 0; i < c->grav.count; ++i) {
+    const struct gpart *gp = &c->grav.parts[i];
+    if (gp->ti_drift != r->e->ti_current && !gpart_is_inhibited(gp, r->e))
+      error(
+          "Packing an undrifted gpart: i=%d count=%d c->cellID=%lld "
+          "c->depth=%d c->grav.ti_old_part=%lld gp.ti_drift=%lld "
+          "e->ti_current=%lld gp.type=%d",
+          i, c->grav.count, c->cellID, c->depth, c->grav.ti_old_part,
+          gp->ti_drift, r->e->ti_current, gp->type);
+  }
+#endif
 
   const size_t count = c->grav.count * sizeof(struct gpart_foreign);
   if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
