@@ -1490,8 +1490,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Computed the padded counts. For a foreign cell, grav.count is refreshed
    * independently (and more often, via grav_counts) than the actual gpart
-   * data recv, so it cannot be trusted to bound a read of parts_foreign --
-   * use count_valid, the number of entries the last data recv actually
+   * data recv, so it cannot be trusted to bound a read of parts_foreign.
+   * Use count_valid, the number of entries the last data recv actually
    * delivered, instead. */
   const int gcount_i =
       (ci->nodeID == e->nodeID) ? ci->grav.count : ci->grav.count_valid;
@@ -1700,7 +1700,7 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
 
   /* For a foreign cj, grav.count is refreshed independently (and more
    * often, via grav_counts) than the actual gpart data recv, so it cannot
-   * be trusted to bound a read of parts_foreign -- use count_valid. */
+   * be trusted to bound a read of parts_foreign. Use count_valid instead. */
   const int gcount_j =
       (cj->nodeID == e->nodeID) ? cj->grav.count : cj->grav.count_valid;
 
