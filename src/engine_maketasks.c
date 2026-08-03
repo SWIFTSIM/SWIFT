@@ -1604,6 +1604,13 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
       scheduler_addunlock(s, l->t, tend);
+
+      /* The pair tasks read cj->grav.count directly. Without this edge,
+       * t_grav_counts (which overwrites that count) is unlocked by the same
+       * t_grav predecessor with no ordering against the pair tasks, racing
+       * to update it mid-step whenever star formation changed it on the
+       * sender. */
+      if (t_grav_counts != NULL) scheduler_addunlock(s, l->t, t_grav_counts);
     }
   }
 
