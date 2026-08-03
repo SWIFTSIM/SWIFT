@@ -1046,10 +1046,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
             "cj->grav.count=%d cj->cellID=%lld cj->depth=%d cj->top->cellID=%lld "
-            "delta_from_rebuild=%td gp.ti_drift=%lld e->ti_current=%lld "
-            "gp.type=%d",
+            "cj->top->grav.count=%d delta_from_rebuild=%td gp.ti_drift=%lld "
+            "e->ti_current=%lld gp.type=%d",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
-            cj->top->cellID,
+            cj->top->cellID, cj->top->grav.count,
             cj->grav.parts_foreign - cj->grav.parts_foreign_rebuild,
             gparts_foreign_j[pjd].ti_drift, e->ti_current,
             gparts_foreign_j[pjd].type);
