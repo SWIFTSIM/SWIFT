@@ -72,10 +72,10 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 5
-  maximal_density_Hpcm3: 1e10  # Maximal density (in H atoms/cm^3) for cooling; densities above are floored to this value. Set to the high-density Cloudy table's density limit.
+  maximal_density_Hpcm3: 1e10                   # Maximal density (in H atoms/cm^3) for cooling; densities above are floored to this value. Set to the high-density Cloudy table's density limit.
 
 GEARChemistry:
-  initial_metallicity: -5
+  initial_metallicity: 0
 
 # No energy injection needed: there is not star.
 GEARFeedback:
@@ -105,7 +105,8 @@ GEARSink:
   sink_formation_bound_state_criterion:       1  # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion:  1  # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation:                     0  # (Optional) Disable sink formation. (Default: 0) -- keep sink formation/accretion active.
-  disable_star_formation:                     1  # (Optional) Disable sinks spawning star particles. (Default: 0) -- this test is about sink formation/accretion, not stellar feedback.
+  # This test is about sink formation/accretion, not stellar feedback.
+  disable_star_formation:                     1  # (Optional) Disable sinks spawning star particles. (Default: 0)
   CFL_condition:                        0.5      # Courant-Friedrich-Levy condition for time integration.
 
 EoS:
