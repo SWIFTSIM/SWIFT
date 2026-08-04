@@ -799,7 +799,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
         count_gparts_in +=
-            cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+            cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]) +
+            space_extra_gparts;
       }
 
       /* For stars, we just use the numbers in the top-level cells */
@@ -989,7 +990,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts_foreign);
-        gparts_foreign = &gparts_foreign[count_gparts];
+        gparts_foreign = &gparts_foreign[count_gparts + space_extra_gparts];
       }
 
       if (!fof && with_stars) {

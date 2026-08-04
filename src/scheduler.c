@@ -1022,6 +1022,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
+#ifdef SWIFT_DEBUG_CHECKS
+          if (count > (size_t)t->ci->grav.count_total)
+            error(
+                "Posting a gpart recv beyond the foreign cell's capacity: "
+                "count=%zd count_total=%d",
+                count, t->ci->grav.count_total);
+#endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
           buff = t->ci->grav.parts_foreign;
@@ -1158,6 +1165,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
+#ifdef SWIFT_DEBUG_CHECKS
+          if (count > (size_t)t->ci->grav.count_total)
+            error(
+                "Sending a gpart buffer beyond the local cell's capacity: "
+                "count=%zd count_total=%d",
+                count, t->ci->grav.count_total);
+#endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
           buff = t->buff;

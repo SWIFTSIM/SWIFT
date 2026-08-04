@@ -438,6 +438,10 @@ int cell_link_foreign_gparts(struct cell *c,
     if (counts != c->grav.count)
       error("Something is wrong with the foreign counts");
 #endif
+
+    /* Give this subtree room to grow, mirroring sparts/sinks headroom. */
+    c->grav.count_total = c->grav.count + space_extra_gparts;
+
     return counts;
   } else {
     c->grav.parts_foreign = gparts_foreign;
