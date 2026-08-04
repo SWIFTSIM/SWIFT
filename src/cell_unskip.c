@@ -2006,13 +2006,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-#ifdef WITH_MPI
-  const int with_sinks = (e->policy & engine_policy_sinks);
-  const int with_stars = (e->policy & engine_policy_stars);
-  const int with_star_formation = e->policy & engine_policy_star_formation;
-  const int with_star_formation_sink = with_sinks && with_stars;
-#endif
-
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2052,9 +2045,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-        /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active)
+        /* If the local cell is active, receive data from the foreign cell.
+         * grav_counts must be co-activated with the data, gated on whether
+         * the task exists at all (not a re-derived local count), so the
+         * count and data channels always share the same pre-SF snapshot. */
+        if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+          if (cell_get_recv(ci, task_subtype_grav_counts) != NULL)
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2071,34 +2070,20 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              when the two share the same MPI send/pack task (created once,
              linked onto every descendant that also targets this node). */
           cell_activate_drift_gpart(l_send->t->ci, s);
-        }
 
-        /* Propagating new star counts (star formation)? */
-        if (with_star_formation) {
-          if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
-          }
-          if (cj_active && cj->hydro.count > 0) {
+          if (cell_get_send_task(cj, task_subtype_grav_counts, ci_nodeID) !=
+              NULL)
             scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
                                     ci_nodeID);
-          }
         }
-
-        /* Propagating new star counts (star formation sink)? */
-        if (with_star_formation_sink) {
-          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
-          }
-          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
-                                    ci_nodeID);
-          }
-        } /* with_star_formation_sink */
 
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active)
+        if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+          if (cell_get_recv(cj, task_subtype_grav_counts) != NULL)
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2115,29 +2100,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              when the two share the same MPI send/pack task (created once,
              linked onto every descendant that also targets this node). */
           cell_activate_drift_gpart(l_send->t->ci, s);
-        }
 
-        /* Propagating new star counts (star formation)? */
-        if (with_star_formation) {
-          if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
-          }
-          if (ci_active && ci->hydro.count > 0) {
+          if (cell_get_send_task(ci, task_subtype_grav_counts, cj_nodeID) !=
+              NULL)
             scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
                                     cj_nodeID);
-          }
         }
-
-        /* Propagating new star counts (star formation sink)? */
-        if (with_star_formation_sink) {
-          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
-          }
-          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
-                                    cj_nodeID);
-          }
-        } /* with_star_formation_sink */
       } /* cj_nodeID != nodeID */
 #endif
     }

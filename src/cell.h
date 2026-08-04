@@ -1710,6 +1710,21 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
 }
 
 /**
+ * @brief Check if a cell has a send task of the given subtype to nodeID.
+ */
+__attribute__((always_inline)) INLINE static struct task *cell_get_send_task(
+    const struct cell *c, enum task_subtypes subtype, int nodeID) {
+#ifdef WITH_MPI
+  struct link *l = c->mpi.send;
+  while (l != NULL && !(l->t->subtype == subtype && l->t->cj->nodeID == nodeID))
+    l = l->next;
+  return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
+}
+
+/**
  * @brief Generate the cell ID for top level cells. Only used for debugging.
  *
  * Cell IDs are stored in the long long `cell->cellID`. Top level cells get
