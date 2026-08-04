@@ -821,6 +821,22 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 }
 
 /**
+ * @brief Snapshot #count as #count_packed for this cell and its sub-cells,
+ * capturing what the gpart data channel is about to ship before star/sink
+ * formation can change #count this step.
+ *
+ * @param c The #cell.
+ */
+void cell_snapshot_grav_count_packed(struct cell *c) {
+
+  c->grav.count_packed = c->grav.count;
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_snapshot_grav_count_packed(c->progeny[k]);
+}
+
+/**
  * @brief Pack the counts for star formation of the given cell and all it's
  * sub-cells.
  *
@@ -836,6 +852,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   /* Pack this cell's data. */
   pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
   pcells[0].count = c->grav.count;
+  pcells[0].count_packed = c->grav.count_packed;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Grav */
@@ -885,6 +902,7 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
   /* Unpack this cell's data. */
   c->grav.count = pcells[0].count;
+  c->grav.count_valid = pcells[0].count_packed;
   c->grav.parts_foreign =
       c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
 

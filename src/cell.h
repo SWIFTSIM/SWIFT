@@ -336,6 +336,10 @@ struct pcell_sf_grav {
 
   /* Number of particles in the cell */
   int count;
+
+  /* Number of particles in the cell when it was last packed for the gpart
+   * data channel, i.e. count_packed at the sender (see cell_grav.h). */
+  int count_packed;
 };
 
 /**
@@ -609,6 +613,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+void cell_snapshot_grav_count_packed(struct cell *c);
 int cell_pack_sink_formation_counts(struct cell *c,
                                     struct pcell_sink_formation_sinks *pcell);
 int cell_unpack_sink_formation_counts(struct cell *c,

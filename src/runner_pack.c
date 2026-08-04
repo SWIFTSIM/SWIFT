@@ -146,6 +146,11 @@ void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
   }
 #endif
 
+  /* Snapshot count as count_packed for c and every descendant, before
+   * star/sink formation (which runs after this pack) can change count.
+   * Propagated to the foreign copy via task_subtype_grav_counts. */
+  cell_snapshot_grav_count_packed(c);
+
   const size_t count = c->grav.count * sizeof(struct gpart_foreign);
   if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating gpart send buffer");

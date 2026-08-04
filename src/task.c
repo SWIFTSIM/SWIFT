@@ -748,22 +748,6 @@ int task_lock(struct task *t) {
       /* And log deactivation, if logging enabled. */
       if (res) {
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
-
-        /* Record how many gpart_foreign were actually delivered: grav.count
-         * is refreshed independently (and more often) by grav_counts, so it
-         * cannot be trusted to bound a read of parts_foreign. */
-        if (type == task_type_recv && subtype == task_subtype_gpart) {
-          int delivered = 0;
-          MPI_Get_count(&stat, gpart_foreign_mpi_type, &delivered);
-#ifdef SWIFT_DEBUG_CHECKS
-          if (delivered != ci->grav.count)
-            message(
-                "count_valid skew detected: cellID=%lld delivered=%d "
-                "grav.count=%d",
-                ci->cellID, delivered, ci->grav.count);
-#endif
-          ci->grav.count_valid = delivered;
-        }
       }
 
       return res;
