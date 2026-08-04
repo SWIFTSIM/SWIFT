@@ -1362,6 +1362,11 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
 
   chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
 
+  /* Our per-star rates are H-only; without this, Grackle would still apply
+     the global-YAML He rates below as an unrelated external He RT source. */
+  if (cooling->HII_couple_ionization_rate)
+    chemistry->radiative_transfer_hydrogen_only = 1;
+
   if (cooling->volumetric_heating_rates > 0)
     chemistry->use_volumetric_heating_rate = 1;
 
