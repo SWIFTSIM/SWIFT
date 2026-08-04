@@ -522,15 +522,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
-      if (with_star_formation && ci->hydro.count > 0) {
-        scheduler_addunlock(s, t_sf_counts, t_density);
-#ifdef EXTRA_STAR_LOOPS
-        scheduler_addunlock(s, t_sf_counts, t_prep2);
-#endif
-      }
-
-      if (with_star_formation_sink &&
-          (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+      /* t_sf_counts, once created, covers this whole subtree, not just cells
+       * with a local count, so gate on its existence, not this cell's count. */
+      if (t_sf_counts != NULL) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -542,12 +536,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &ci->mpi.send, t_prep2);
 #endif
-    if (with_star_formation && ci->hydro.count > 0) {
-      engine_addlink(e, &ci->mpi.send, t_sf_counts);
-    }
-
-    if (with_star_formation_sink &&
-        (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -1204,18 +1193,9 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
-
-      /* Receive the stars only once the counts have been received */
-      scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
-      scheduler_addunlock(s, t_sf_counts, t_density);
-#ifdef EXTRA_STAR_LOOPS
-      scheduler_addunlock(s, t_sf_counts, t_prep2);
-#endif
-    }
-
-    if (with_star_formation_sink &&
-        (c->hydro.count > 0 || c->sinks.count > 0)) {
+    /* t_sf_counts, once created, covers this whole subtree, not just cells
+     * with a local count, so gate on its existence, not this cell's count. */
+    if (t_sf_counts != NULL) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
@@ -1231,12 +1211,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
-      engine_addlink(e, &c->mpi.recv, t_sf_counts);
-    }
-
-    if (with_star_formation_sink &&
-        (c->hydro.count > 0 || c->sinks.count > 0)) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 

@@ -149,8 +149,9 @@ struct cell_grav {
   int count_total;
 
 #ifdef WITH_MPI
-  /*! #count at the last gpart data pack, before particle creation can change it.
-   * Sent to the foreign copy as #count_valid via task_subtype_grav_counts. */
+  /*! #count at the last gpart data pack, before particle creation can change
+   * it. Sent to the foreign copy as #count_valid via task_subtype_grav_counts.
+   */
   int count_packed;
 #endif
 
