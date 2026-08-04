@@ -2061,13 +2061,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
 
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
-                                  ci_nodeID);
+          struct link *l_send = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
              itself. */
-          cell_activate_drift_gpart(cj, s);
+          cell_activate_drift_gpart(l_send->t->ci, s);
 
           if (cell_get_send_task(cj, task_subtype_grav_counts, ci_nodeID) !=
               NULL)
@@ -2089,13 +2089,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
 
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
-                                  cj_nodeID);
+          struct link *l_send = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
              itself. */
-          cell_activate_drift_gpart(ci, s);
+          cell_activate_drift_gpart(l_send->t->ci, s);
 
           if (cell_get_send_task(ci, task_subtype_grav_counts, cj_nodeID) !=
               NULL)
