@@ -755,6 +755,13 @@ int task_lock(struct task *t) {
         if (type == task_type_recv && subtype == task_subtype_gpart) {
           int delivered = 0;
           MPI_Get_count(&stat, gpart_foreign_mpi_type, &delivered);
+#ifdef SWIFT_DEBUG_CHECKS
+          if (delivered != ci->grav.count)
+            message(
+                "count_valid skew detected: cellID=%lld delivered=%d "
+                "grav.count=%d",
+                ci->cellID, delivered, ci->grav.count);
+#endif
           ci->grav.count_valid = delivered;
         }
       }
