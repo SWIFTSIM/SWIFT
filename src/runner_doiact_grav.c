@@ -1035,11 +1035,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
             "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
-            "cj->top->cellID=%lld "
-            "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
+            "gp.ti_drift=%lld e->ti_current=%lld",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
-            cj->top->cellID, gparts_j[pjd].ti_drift, e->ti_current,
-            gparts_j[pjd].type);
+            gparts_j[pjd].ti_drift, e->ti_current);
 
       if (foreign_j && pjd < gcount_j &&
           gparts_foreign_j[pjd].ti_drift != e->ti_current &&
@@ -1047,14 +1045,11 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error(
             "gpj not drifted to current time: pjd=%d gcount_j=%d "
             "cj->grav.count=%d cj->cellID=%lld cj->depth=%d "
-            "cj->top->cellID=%lld "
-            "cj->top->grav.count=%d delta_from_rebuild=%td gp.ti_drift=%lld "
-            "e->ti_current=%lld gp.type=%d",
+            "cj->grav.data_recv_count=%d gp.ti_drift=%lld "
+            "e->ti_current=%lld",
             pjd, gcount_j, cj->grav.count, cj->cellID, cj->depth,
-            cj->top->cellID, cj->top->grav.count,
-            cj->grav.parts_foreign - cj->grav.parts_foreign_rebuild,
-            gparts_foreign_j[pjd].ti_drift, e->ti_current,
-            gparts_foreign_j[pjd].type);
+            cj->grav.data_recv_count, gparts_foreign_j[pjd].ti_drift,
+            e->ti_current);
 
       /* Check that we are not updated an inhibited particle */
       if (gpart_is_inhibited(&gparts_i[pid], e))
@@ -1488,15 +1483,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Start by constructing particle caches */
 
-  /* Computed the padded counts. For a foreign cell, grav.count is refreshed
-   * independently (and more often, via grav_counts) than the actual gpart
-   * data recv, so it cannot be trusted to bound a read of parts_foreign.
-   * Use count_valid, the number of entries the last data recv actually
-   * delivered, instead. */
-  const int gcount_i =
-      (ci->nodeID == e->nodeID) ? ci->grav.count : ci->grav.count_valid;
-  const int gcount_j =
-      (cj->nodeID == e->nodeID) ? cj->grav.count : cj->grav.count_valid;
+  /* Computed the padded counts. */
+  const int gcount_i = ci->grav.count;
+  const int gcount_j = cj->grav.count;
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
   const int allow_multipole_i = allow_mpole && gcount_i > 1;
@@ -1698,11 +1687,7 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
   const int ci_active =
       cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
 
-  /* For a foreign cj, grav.count is refreshed independently (and more
-   * often, via grav_counts) than the actual gpart data recv, so it cannot
-   * be trusted to bound a read of parts_foreign. Use count_valid instead. */
-  const int gcount_j =
-      (cj->nodeID == e->nodeID) ? cj->grav.count : cj->grav.count_valid;
+  const int gcount_j = cj->grav.count;
 
   /* Anything to do here? */
   if (!ci_active) return;

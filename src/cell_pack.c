@@ -821,26 +821,6 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 }
 
 /**
- * @brief Record #count as #count_packed for this cell and its sub-cells,
- * before star/sink formation can change #count this step.
- *
- * @param c The #cell.
- */
-void cell_set_grav_count_packed(struct cell *c) {
-#ifdef WITH_MPI
-
-  c->grav.count_packed = c->grav.count;
-
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_set_grav_count_packed(c->progeny[k]);
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-/**
  * @brief Pack the counts for star formation of the given cell and all it's
  * sub-cells.
  *
@@ -856,7 +836,6 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   /* Pack this cell's data. */
   pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
   pcells[0].count = c->grav.count;
-  pcells[0].count_packed = c->grav.count_packed;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Grav */
@@ -868,14 +847,41 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
+
+  /* Localizes a layout bug to the sender vs the receiver's reconstruction. */
+  {
+    const ptrdiff_t rel_end =
+        (c->grav.parts + c->grav.count) - c->top->grav.parts;
+    if (rel_end > c->top->grav.count)
+      error(
+          "PACK: cell's local range exceeds its top-level ancestor's count! "
+          "c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
+          "top->cellID=%lld top->grav.count=%d",
+          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
+          c->top->grav.count);
+  }
 #endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+  int progeny_count_sum = 0;
+#endif
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       count += cell_pack_grav_counts(c->progeny[k], &pcells[count]);
+#ifdef SWIFT_DEBUG_CHECKS
+      progeny_count_sum += c->progeny[k]->grav.count;
+#endif
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->split && progeny_count_sum != c->grav.count)
+    error(
+        "Split cell's grav.count=%d does not match the sum of its progeny's "
+        "counts=%d at pack time (c->cellID=%lld c->depth=%d)",
+        c->grav.count, progeny_count_sum, c->cellID, c->depth);
+#endif
 
   /* Return the number of packed values. */
   return count;
@@ -906,9 +912,24 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
   /* Unpack this cell's data. */
   c->grav.count = pcells[0].count;
-  c->grav.count_valid = pcells[0].count_packed;
   c->grav.parts_foreign =
       c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Mirror of the sender-side check, applied to the receiver's reconstruction.
+   */
+  {
+    const ptrdiff_t rel_end =
+        (c->grav.parts_foreign + c->grav.count) - c->top->grav.parts_foreign;
+    if (rel_end > c->top->grav.count)
+      error(
+          "UNPACK: cell's local range exceeds its top-level ancestor's "
+          "count! c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
+          "top->cellID=%lld top->grav.count=%d",
+          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
+          c->top->grav.count);
+  }
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -925,6 +946,24 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   return 0;
 #endif
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debug-only: stamp when a grav_counts delivery touched this cell
+ * and its sub-cells, for the foreign gpart staleness investigation.
+ *
+ * @param c The #cell.
+ * @param ti_current The current integer time.
+ */
+void cell_debug_stamp_grav_counts_recv(struct cell *c,
+                                       integertime_t ti_current) {
+  c->grav.counts_recv_at_tic = ti_current;
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_debug_stamp_grav_counts_recv(c->progeny[k], ti_current);
+}
+#endif
 
 /**
  * @brief Pack the counts for sink formation of the given cell and all it's

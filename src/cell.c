@@ -214,7 +214,6 @@ int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts_foreign) {
 
   c->grav.parts_foreign = gparts_foreign;
   c->grav.parts_foreign_rebuild = gparts_foreign;
-  c->grav.count_valid = 0;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
@@ -443,7 +442,6 @@ int cell_link_foreign_gparts(struct cell *c,
   } else {
     c->grav.parts_foreign = gparts_foreign;
     c->grav.parts_foreign_rebuild = gparts_foreign;
-    c->grav.count_valid = 0;
   }
 
   /* Go deeper to find the level where the tasks are */

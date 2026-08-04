@@ -47,6 +47,7 @@
 #include "inline.h"
 #include "lock.h"
 #include "mpiuse.h"
+#include "part.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
@@ -744,6 +745,24 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* A completed gpart recv must have delivered exactly grav.count
+       * entries: Stage 2's counts-before-data ordering guarantees the
+       * two always describe the same pre-SF snapshot. A mismatch here
+       * means that guarantee broke somewhere. */
+      if (res && type == task_type_recv && subtype == task_subtype_gpart) {
+        int received = 0;
+        MPI_Get_count(&stat, gpart_foreign_mpi_type, &received);
+        if (received == MPI_UNDEFINED)
+          error("gpart recv byte count is not a multiple of the datatype.");
+        if (received != ci->grav.count)
+          error(
+              "gpart recv delivered %d entries but ci->grav.count=%d "
+              "(cellID=%lld)",
+              received, ci->grav.count, ci->cellID);
+      }
+#endif
 
       /* And log deactivation, if logging enabled. */
       if (res) {

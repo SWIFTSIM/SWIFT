@@ -472,6 +472,9 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
             cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
+#ifdef SWIFT_DEBUG_CHECKS
+            cell_debug_stamp_grav_counts_recv(ci, r->e->ti_current);
+#endif
             free(t->buff);
           } else if (t->subtype == task_subtype_sink_formation_counts) {
             cell_unpack_sink_formation_counts(

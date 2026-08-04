@@ -128,6 +128,16 @@ struct cell_grav {
    * siblings outside that path were skipped despite ti_old_part being
    * stamped as current. */
   int drift_force_on_entry;
+
+  /*! ti_current the last time a grav_counts delivery touched this cell. */
+  integertime_t counts_recv_at_tic;
+
+  /*! ti_current the last time the gpart DATA channel actually delivered
+   * fresh foreign particles to this cell. */
+  integertime_t data_recv_at_tic;
+
+  /*! #count at that last DATA delivery. */
+  int data_recv_count;
 #endif
 
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
@@ -147,18 +157,6 @@ struct cell_grav {
 
   /*! Nr of #gpart this cell can hold after addition of new #gpart. */
   int count_total;
-
-#ifdef WITH_MPI
-  /*! #count at the last gpart data pack, before particle creation can change
-   * it. Sent to the foreign copy as #count_valid via task_subtype_grav_counts.
-   */
-  int count_packed;
-#endif
-
-  /*! For a foreign cell, the sender's #count_packed at the last data
-   * delivery. Lags #count on spawn steps; use this, not #count, to bound
-   * any read of #parts_foreign. */
-  int count_valid;
 
   /*! Number of #gpart updated in this cell. */
   int updated;

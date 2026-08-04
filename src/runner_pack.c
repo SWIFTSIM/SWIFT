@@ -146,9 +146,6 @@ void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
   }
 #endif
 
-  /* Record count_packed before formation can change count this step. */
-  cell_set_grav_count_packed(c);
-
   const size_t count = c->grav.count * sizeof(struct gpart_foreign);
   if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating gpart send buffer");
