@@ -148,18 +148,15 @@ struct cell_grav {
   /*! Nr of #gpart this cell can hold after addition of new #gpart. */
   int count_total;
 
-  /*! Snapshot of #count taken when this cell's gparts were last packed for
-   * the gpart data channel (task_subtype_gpart), i.e. before star/sink
-   * formation can change #count this step. Propagated to the foreign
-   * copy of this cell (as #count_valid) over task_subtype_grav_counts,
-   * which already recurses over every cell in the subtree. */
+#ifdef WITH_MPI
+  /*! #count at the last gpart data pack, before particle creation can change it.
+   * Sent to the foreign copy as #count_valid via task_subtype_grav_counts. */
   int count_packed;
+#endif
 
-  /*! For a foreign cell, the number of leading #gpart_foreign entries
-   * actually delivered by the last gpart data recv for this cell, i.e.
-   * the sender's #count_packed at pack time. This can lag behind #count,
-   * which reflects the sender's post-formation count. Use this, not
-   * #count, to bound any read of #parts_foreign. */
+  /*! For a foreign cell, the sender's #count_packed at the last data
+   * delivery. Lags #count on spawn steps; use this, not #count, to bound
+   * any read of #parts_foreign. */
   int count_valid;
 
   /*! Number of #gpart updated in this cell. */

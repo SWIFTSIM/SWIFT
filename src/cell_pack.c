@@ -821,19 +821,23 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 }
 
 /**
- * @brief Snapshot #count as #count_packed for this cell and its sub-cells,
- * capturing what the gpart data channel is about to ship before star/sink
- * formation can change #count this step.
+ * @brief Record #count as #count_packed for this cell and its sub-cells,
+ * before star/sink formation can change #count this step.
  *
  * @param c The #cell.
  */
-void cell_snapshot_grav_count_packed(struct cell *c) {
+void cell_set_grav_count_packed(struct cell *c) {
+#ifdef WITH_MPI
 
   c->grav.count_packed = c->grav.count;
 
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_snapshot_grav_count_packed(c->progeny[k]);
+      if (c->progeny[k] != NULL) cell_set_grav_count_packed(c->progeny[k]);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }
 
 /**
