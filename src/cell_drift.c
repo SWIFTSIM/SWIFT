@@ -431,6 +431,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
+
+  c->grav.ti_old_part_on_entry = ti_old_gpart;
+  c->grav.count_drifted = -1;
 #endif
 
   /* Early abort? */
@@ -483,6 +486,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->grav.count;
+#ifdef SWIFT_DEBUG_CHECKS
+    c->grav.count_drifted = (int)nr_gparts;
+#endif
     for (size_t k = 0; k < nr_gparts; k++) {
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];

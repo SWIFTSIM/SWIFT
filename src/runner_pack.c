@@ -133,10 +133,13 @@ void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
     if (gp->ti_drift != r->e->ti_current && !gpart_is_inhibited(gp, r->e))
       error(
           "Packing an undrifted gpart: i=%d count=%d c->cellID=%lld "
-          "c->depth=%d c->grav.ti_old_part=%lld c->grav.super->cellID=%lld "
-          "c->grav.super->depth=%d c->grav.super->grav.ti_old_part=%lld "
-          "gp.ti_drift=%lld e->ti_current=%lld gp.type=%d",
-          i, c->grav.count, c->cellID, c->depth, c->grav.ti_old_part,
+          "c->depth=%d c->split=%d c->grav.ti_old_part=%lld "
+          "c->grav.ti_old_part_on_entry=%lld c->grav.count_drifted=%d "
+          "c->grav.super->cellID=%lld c->grav.super->depth=%d "
+          "c->grav.super->grav.ti_old_part=%lld gp.ti_drift=%lld "
+          "e->ti_current=%lld gp.type=%d",
+          i, c->grav.count, c->cellID, c->depth, c->split, c->grav.ti_old_part,
+          c->grav.ti_old_part_on_entry, c->grav.count_drifted,
           c->grav.super->cellID, c->grav.super->depth,
           c->grav.super->grav.ti_old_part, gp->ti_drift, r->e->ti_current,
           gp->type);

@@ -109,6 +109,19 @@ struct cell_grav {
   /*! Last (integer) time the cell's gpart were drifted forward in time. */
   integertime_t ti_old_part;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! ti_old_part on entry to the last cell_drift_gpart() call on this cell,
+   * captured before any drift happens. Diagnostic for the undrifted-gpart
+   * pack check: if this already equalled ti_current, the drift's own guard
+   * skipped the cell entirely. */
+  integertime_t ti_old_part_on_entry;
+
+  /*! Number of gparts actually visited by the last direct (non-recursive)
+   * drift of this cell, or -1 if the direct drift branch wasn't taken
+   * (cell was split, or the drift guard skipped it). */
+  int count_drifted;
+#endif
+
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
 
