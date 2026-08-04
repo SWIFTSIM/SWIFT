@@ -2298,13 +2298,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
-                                  ci_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_spart_density, ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
                                   ci_nodeID);
 #endif
-          cell_activate_drift_spart(cj, s);
+          /* Drift the cell which will be sent at the level at which it is
+             sent, i.e. drift the cell specified in the send task (l->t)
+             itself. cj can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (ci_active) {
@@ -2334,13 +2339,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
-                                  cj_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_spart_density, cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-          cell_activate_drift_spart(ci, s);
+          /* Drift the cell which will be sent at the level at which it is
+             sent, i.e. drift the cell specified in the send task (l->t)
+             itself. ci can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (cj_active) {
