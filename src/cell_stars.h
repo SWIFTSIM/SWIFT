@@ -136,6 +136,20 @@ struct cell_stars {
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
+
+    /*! ti_old_part on entry to the last cell_drift_spart() call on this
+     * cell, captured before any drift happens. Diagnostic for the
+     * h_max_active staleness check: distinguishes a cell whose merge
+     * simply hasn't run yet from one whose merge ran with force=0. */
+    integertime_t ti_old_part_on_entry;
+
+    /*! Whether force was already true when the last cell_drift_spart()
+     * call reached this cell, i.e. cell_flag_do_stars_drift was set
+     * directly on it (not just inherited cell_flag_do_stars_sub_drift on
+     * an ancestor). If 0 for a split cell, only the sub-path with its own
+     * flags got force-drifted; siblings outside that path were skipped
+     * despite ti_old_part being stamped as current. */
+    int drift_force_on_entry;
 #endif
 
 #ifdef STARS_NONE

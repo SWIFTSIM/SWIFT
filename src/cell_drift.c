@@ -610,6 +610,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
+  c->stars.ti_old_part_on_entry = ti_old_spart;
+  c->stars.drift_force_on_entry = force;
+
   /* Check that we only drift local cells. */
   if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
 
