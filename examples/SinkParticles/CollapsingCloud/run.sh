@@ -23,9 +23,10 @@ if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]; then
     $scripts_location/getGrackleCoolingTable.sh --high-density
 fi
 
-if [ ! -e POPIIsw.h5 ]; then
+if [ ! -e POPII.hdf5 ]
+then
     echo "Fetching the chemistry tables..."
-    $scripts_location/getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh --with-winds
 fi
 
 # Create output directory

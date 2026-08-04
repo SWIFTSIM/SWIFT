@@ -255,10 +255,21 @@ python3 makeIC.py -o cloud.hdf5 -N 4000000 --solenoidal_fraction 1.0  # purely s
         help="Total gas mass, in solar masses.",
     )
     parser.add_argument(
-        "--alpha",
+        "--T",
+        dest="T",
         type=float,
-        default=0.26,
-        help="Ratio of thermal to gravitational energy, alpha = U_therm / |E_pot|.",
+        default=10.0,
+        help="Isothermal gas temperature, in Kelvin. Sets the (fixed) thermal "
+        "energy per unit mass; unlike Boss & Bodenheimer, this cloud's support "
+        "against collapse is meant to come from turbulence (--E_kin_over_E_pot), "
+        "not from thermal pressure, so this is set from a physical temperature "
+        "rather than from a target thermal/gravitational energy ratio.",
+    )
+    parser.add_argument(
+        "--mu",
+        type=float,
+        default=2.3,
+        help="Mean molecular weight of the gas.",
     )
     parser.add_argument(
         "--E_kin_over_E_pot",
@@ -352,10 +363,24 @@ if __name__ == "__main__":
     pos, vel, mass = sphere.generate_particles(N, seed=opt.seed)
     rho = np.full(N, sphere.rho_0)
 
-    # Thermal energy from the target virial ratio alpha = U_therm / |E_pot|
-    U_int_total = opt.alpha * abs(E_pot)
-    U_int_per_part = np.full(N, U_int_total / M_tot)
-    print(f"  alpha        = U_therm/|E_pot| = {opt.alpha:.3e}")
+    # Isothermal internal energy per unit mass: u = k_B*T / ((gamma-1)*mu*m_p)
+    gamma = 5.0 / 3.0
+    u_iso = (
+        (cte.k_B * opt.T * u.K / ((gamma - 1) * opt.mu * cte.m_p))
+        .to(u_Velocity**2)
+        .value
+    )
+    U_int_per_part = np.full(N, u_iso)
+    U_int_total = u_iso * M_tot
+    alpha = U_int_total / abs(E_pot)
+    print(f"  T            = {opt.T:.3e} K")
+    print(
+        f"  alpha        = U_therm/|E_pot| = {alpha:.3e} (derived from T, not an input)"
+    )
+    print(
+        f"  This run uses the isothermal EoS: set params.yml's "
+        f"EoS:isothermal_internal_energy to {U_int_per_part[0]:.6e} to match."
+    )
 
     # Boxsize and smoothing length
     r_max = np.max(np.linalg.norm(pos, axis=1))

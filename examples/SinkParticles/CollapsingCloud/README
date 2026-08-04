@@ -2,21 +2,13 @@
 This example simulates the gravitational collapse of a turbulent molecular
 cloud: a uniform-density sphere seeded with a turbulent velocity field drawn
 from a power-law power spectrum. It is a standard test for sink particle
-formation in a turbulence-dominated (rather than rotation-dominated, see
-../BossBodenheimer) collapse.
+formation in a turbulence-dominated collapse.
 
 `--solenoidal_fraction` sets, exactly (not just on average), the fraction of
 the turbulent kinetic energy that is solenoidal (divergence-free) rather than
 compressive (curl-free): 1.0 is purely solenoidal, 0.0 purely compressive,
 and 2/3 reproduces the natural, unprojected isotropic mixture of the two (a
 raw random 3-vector field has 2 of its 3 degrees of freedom transverse).
-Note: an older, pNbody-based version of this generator had a
-`--velocity_field_type` option with labels `solenoidal`/`compressive`/`mixed`,
-but its outputs were empirically indistinguishable (all had the isotropic
-~1/3 longitudinal energy fraction expected of an *unprojected* field) -- the
-projection was not actually taking effect. This generator's projection was
-verified directly against the expected 0 / 1 / 1/3 longitudinal energy
-fractions before being used here; see makeIC.py's module docstring.
 
 The default resolution (N=100000) is chosen to run in a reasonable time on a
 laptop; the run this example was originally validated against used N=4e6,
@@ -27,7 +19,7 @@ the particle sampling) for production/paper-quality runs.
 # Configure
 To run this example with the GEAR model,
 
-    ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+    ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-equation-of-state=isothermal-gas --with-grackle=path/to/grackle
 
 and then
 
@@ -40,7 +32,3 @@ The run.sh script calls `makeIC.py` with default values. Run
 # Run
 Type `./run.sh` (`N=<value>` and `solenoidal_fraction=<0..1>` override the
 defaults), and let's go!
-
-Sink particles form and accrete gas in this test, but do not spawn stars
-(`GEARSink:disable_star_formation: 1` in params.yml) -- this test targets
-sink formation/accretion physics, not the stellar feedback loop.
