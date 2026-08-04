@@ -60,6 +60,7 @@
 #include "mesh_gravity.h"
 #include "mhd.h"
 #include "minmax.h"
+#include "neutrino.h"
 #include "proxy.h"
 #include "restart.h"
 #include "row_major_id.h"
@@ -3863,6 +3864,12 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
+  /* Gather some neutrino constants if using delta-f weighting on the mesh */
+  struct neutrino_model nu_model;
+  bzero(&nu_model, sizeof(struct neutrino_model));
+  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+    gather_neutrino_consts(s, &nu_model);
+  data.nu_model = &nu_model;
 
   /* Initialise arrays for density and potential calculation. Except on the largest grid; there we already have them*/
   for (int i=0; i<N_levels-1; i++) {
