@@ -12,7 +12,7 @@ InternalUnitSystem:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:          collapsing_cloud.hdf5
-  periodic:           0                          # Isolated (vacuum) boundary conditions
+  periodic:           0                           # Isolated (vacuum) boundary conditions
   shift:              [25067.5, 25067.5, 25067.5] # boxsize/2; update if you change --R_s
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
@@ -35,8 +35,7 @@ Gravity:
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
-  max_physical_baryon_softening: 9         # Physical softening length (in internal units)
-  mesh_side_length:              32
+  max_physical_baryon_softening: 5         # Physical softening length (in internal units)
 
 Scheduler:
   cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -53,7 +52,7 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:                 5000     # Maximal smoothing length value
+  # h_max:                 5000     # Maximal smoothing length value
   minimal_temperature:   1
 
 # Cooling with Grackle 3.0
@@ -62,8 +61,6 @@ GrackleCooling:
   with_UV_background: 0                         # Enable or not the UV background
   redshift: -1                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 0                         # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0           # User provide volumetric heating rates
-  provide_specific_heating_rates: 0             # User provide specific heating rates
   self_shielding_method: -1                     # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 10000
@@ -87,7 +84,7 @@ GEARFeedback:
 GEARSink:
   use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   cut_off_radius: 18                             # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0.
-  f_acc: 0.5
+  f_acc: 0.1
   temperature_threshold_K: 1e4                   # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 6e7                   # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
   maximal_density_threshold_Hpcm3: 1e10          # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed.
