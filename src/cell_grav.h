@@ -120,6 +120,14 @@ struct cell_grav {
    * drift of this cell, or -1 if the direct drift branch wasn't taken
    * (cell was split, or the drift guard skipped it). */
   int count_drifted;
+
+  /*! Whether force was already true when the last cell_drift_gpart() call
+   * reached this cell (i.e. cell_flag_do_grav_drift was set directly on
+   * it, not just inherited/cell_flag_do_grav_sub_drift on an ancestor). If
+   * 0 for a split cell, only the sub-path with its own flags got drifted;
+   * siblings outside that path were skipped despite ti_old_part being
+   * stamped as current. */
+  int drift_force_on_entry;
 #endif
 
   /*! Last (integer) time the cell's multipole was drifted forward in time. */

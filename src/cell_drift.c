@@ -434,6 +434,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
   c->grav.ti_old_part_on_entry = ti_old_gpart;
   c->grav.count_drifted = -1;
+  c->grav.drift_force_on_entry = force;
 #endif
 
   /* Early abort? */
