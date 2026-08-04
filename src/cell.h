@@ -612,6 +612,7 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 #ifdef SWIFT_DEBUG_CHECKS
 void cell_debug_stamp_grav_counts_recv(struct cell *c,
                                        integertime_t ti_current);
+void cell_debug_stamp_sf_counts_recv(struct cell *c, integertime_t ti_current);
 #endif
 int cell_pack_sink_formation_counts(struct cell *c,
                                     struct pcell_sink_formation_sinks *pcell);

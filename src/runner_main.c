@@ -468,6 +468,9 @@ void *runner_main(void *data) {
                task_subtype_sf_sinks_counts) */
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
+#ifdef SWIFT_DEBUG_CHECKS
+            cell_debug_stamp_sf_counts_recv(ci, r->e->ti_current);
+#endif
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {

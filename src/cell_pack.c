@@ -820,6 +820,23 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #endif
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debug-only: stamp when an sf_counts delivery touched this cell
+ * and its sub-cells, for the stars h_max_active staleness investigation.
+ *
+ * @param c The #cell.
+ * @param ti_current The current integer time.
+ */
+void cell_debug_stamp_sf_counts_recv(struct cell *c, integertime_t ti_current) {
+  c->stars.sf_counts_recv_at_tic = ti_current;
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_debug_stamp_sf_counts_recv(c->progeny[k], ti_current);
+}
+#endif
+
 /**
  * @brief Pack the counts for star formation of the given cell and all it's
  * sub-cells.

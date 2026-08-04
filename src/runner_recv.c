@@ -250,6 +250,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
+  c->stars.spart_recv_at_tic = ti_current;
 #endif
 
   /* Clear this cell's sorted mask. */

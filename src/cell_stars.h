@@ -150,6 +150,14 @@ struct cell_stars {
      * flags got force-drifted; siblings outside that path were skipped
      * despite ti_old_part being stamped as current. */
     int drift_force_on_entry;
+
+    /*! ti_current the last time an sf_counts delivery (count/parts
+     * repartition) touched this cell. */
+    integertime_t sf_counts_recv_at_tic;
+
+    /*! ti_current the last time runner_do_recv_spart actually scanned
+     * this cell's particles to recompute h_max_active. */
+    integertime_t spart_recv_at_tic;
 #endif
 
 #ifdef STARS_NONE
