@@ -1006,6 +1006,51 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 }
 
 /**
+ * @brief Intermediate task between the chemistry FCT prep loop and the flux
+ * (force) loop: computes the donor-side positivity limiter factor theta from
+ * the prospective outflow sums.
+ *
+ * Note that this task processes ALL particles of the cell, active or not: an
+ * inactive particle can be a flux donor towards its active neighbours and its
+ * theta must be current-step too. The cell itself can also be inactive (only
+ * reached through a pair prep task of an active neighbouring cell).
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
+                                   int timer) {
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        runner_do_chemistry_fct_ghost(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over ALL the parts in this cell (see note above). */
+    for (int i = 0; i < count; i++) {
+      chemistry_end_fct_prep(&parts[i]);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_chemistry_fct_ghost);
+
+#else
+  error("SWIFT was not compiled with the GEAR FVPM diffusion chemistry.");
+#endif
+}
+
+/**
  * @brief Intermediate task after the gradient loop that does final operations
  * on the gradient quantities and optionally slope limits the gradients
  *

@@ -34,6 +34,9 @@
 #include "./chemistry/GEAR/chemistry_struct.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry_struct.h"
+#elif defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+#include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry_struct.h"
 #elif defined(CHEMISTRY_AGORA)
 #include "./chemistry/AGORA/chemistry_struct.h"
 #elif defined(CHEMISTRY_QLA)

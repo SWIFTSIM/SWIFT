@@ -88,6 +88,12 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     xp->feedback_data.delta_p[i] = 0;
   }
 
+  /* Update chemistry metal mass and reset feedback variable */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
+    xp->feedback_data.delta_metal_mass[i] = 0.0;
+  }
+
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_winds = 0;
 }

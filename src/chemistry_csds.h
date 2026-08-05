@@ -35,6 +35,9 @@
 #include "./chemistry/GEAR/chemistry_csds.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #error TODO
+#elif defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+#include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry_csds.h"
 #elif defined(CHEMISTRY_QLA)
 #error TODO
 #elif defined(CHEMISTRY_EAGLE)

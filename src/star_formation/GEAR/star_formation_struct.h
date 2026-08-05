@@ -57,6 +57,11 @@ struct star_formation_spart_data {
 
   /*! The progenitor ID */
   long long progenitor_id;
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  double norm_matrix_K;
+#endif
 };
 
 /**

@@ -24,7 +24,13 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
-struct feedback_part_data {};
+struct feedback_part_data {
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+#endif
+};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
@@ -32,6 +38,9 @@ struct feedback_part_data {};
 struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
+
+  /*! Metal mass received from supernovae */
+  double delta_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! specific energy received from supernovae */
   float delta_u;

@@ -2610,8 +2610,9 @@ fi
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, AGORA, QLA, EAGLE default: none@:>@
-      For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
+      [chemistry function @<:@none, GEAR_*, GEAR-FVPM-DIFFUSION_*,
+      GEAR-FVPM-HYPERBOLIC-DIFFUSION_*, AGORA, QLA, EAGLE default: none@:>@
+      For GEAR chemistries, you need to provide the number of elements (e.g. GEAR_10)]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
@@ -2636,6 +2637,25 @@ case "$with_chemistry" in
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
       with_chemistry_name="GEAR (with $number_element elements)"
       with_chemistry="GEAR"
+   ;;
+   GEAR-FVPM-DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_FVPM_DIFFUSION], [1], [Chemistry taken from the
+      GEAR model with meshless finite particle method to solve the parabolic
+      diffusion equation])
+      number_element=${with_chemistry#*_}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+      with_chemistry_name="GEAR FVPM diffusion (with $number_element elements)"
+      with_chemistry="GEAR FVPM DIFFUSION"
+   ;;
+   GEAR-FVPM-HYPERBOLIC-DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION], [1], [Chemistry taken from the
+      GEAR model with meshless finite particle method to solve the *hyperbolic*
+      diffusion equation])
+      number_element=${with_chemistry#*_}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element],
+      [Number of element to follow])
+      with_chemistry_name="GEAR FVPM hyperbolic diffusion (with $number_element elements)"
+      with_chemistry="GEAR FVPM HYPERBOLIC DIFFUSION"
    ;;
    AGORA)
       AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
@@ -3388,7 +3408,9 @@ AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
 AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
-AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION"])
+AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test
+"$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" =
+"GEAR_FVPM_DIFFUSION" || test "$with_chemistry" = "CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION"])
 
 # check if using AGORA chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])

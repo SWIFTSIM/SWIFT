@@ -1,0 +1,300 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H
+
+#include "chemistry_getters.h"
+#include "hydro.h"
+
+/**
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_slope_limiters_cell.h
+ * @brief File containing routines concerning the cell slope limiter for the
+ * GEAR MF diffusion scheme. (= fist slope limiting step that limits gradients
+ * such that they don't predict new extrema at neighbour particle's positions)
+ * */
+
+/**
+ * @brief Initialize variables for the cell wide slope limiter
+ *
+ * TODO: Use DBL_MAX for double fields.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_cell_init(struct part *p) {
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    p->chemistry_data.limiter.Z[m][0] = DBL_MAX;
+    p->chemistry_data.limiter.Z[m][1] = -DBL_MAX;
+
+    p->chemistry_data.limiter.rhoZ[m][0] = DBL_MAX;
+    p->chemistry_data.limiter.rhoZ[m][1] = -DBL_MAX;
+
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    /* Array index reminder: 1st: metal; 2nd: flux component x, y or z; 3rd
+       component: limiter min or max value. */
+    for (int i = 0; i < 3; i++) {
+      p->chemistry_data.limiter.flux[m][i][0] = DBL_MAX;
+      p->chemistry_data.limiter.flux[m][i][1] = -DBL_MAX;
+    }
+#endif
+  }
+
+  p->chemistry_data.limiter.v[0][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[0][1] = -FLT_MAX;
+  p->chemistry_data.limiter.v[1][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[1][1] = -FLT_MAX;
+  p->chemistry_data.limiter.v[2][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[2][1] = -FLT_MAX;
+
+  p->chemistry_data.limiter.maxr = -FLT_MAX;
+}
+
+/**
+ * @brief Collect information for the cell wide slope limiter during the
+ * grdient loop.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param r Distance between particle i and particle j
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
+
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  struct chemistry_part_data *chj = &pj->chemistry_data;
+#endif
+
+  /* Basic slope limiter: collect the maximal and the minimal value for the
+   * primitive variables among the ngbs */
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    /* Note: We tolerate negative metal masses, but they are not
+       physical. Hence, we assume the gas is pristine. This avoids amplifying
+       the diffusion flux when we have negative metal masses */
+    const double Zj = max(chemistry_get_metal_mass_fraction(pj, m), 0.0);
+    chi->limiter.Z[m][0] = min(Zj, chi->limiter.Z[m][0]);
+    chi->limiter.Z[m][1] = max(Zj, chi->limiter.Z[m][1]);
+
+    /* Ensures metalicity never exceeds 1 */
+    chi->limiter.Z[m][1] = min(1.0, chi->limiter.Z[m][1]);
+
+    /* Collect the comoving metal density. Note: Same comment as L88 */
+    const double rhoZj = max(chemistry_get_comoving_metal_density(pj, m), 0.0);
+    chi->limiter.rhoZ[m][0] = min(rhoZj, chi->limiter.rhoZ[m][0]);
+    chi->limiter.rhoZ[m][1] = max(rhoZj, chi->limiter.rhoZ[m][1]);
+
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    for (int i = 0; i < 3; i++) {
+      chi->limiter.flux[m][i][0] =
+          min(chj->diffusion_flux[m][i], chi->limiter.flux[m][i][0]);
+      chi->limiter.flux[m][i][1] =
+          max(chj->diffusion_flux[m][i], chi->limiter.flux[m][i][1]);
+    }
+#endif
+  }
+
+  /* TODO: Simplify using for loops ? */
+  chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
+  chi->limiter.v[0][1] = max(pj->v[0], chi->limiter.v[0][1]);
+  chi->limiter.v[1][0] = min(pj->v[1], chi->limiter.v[1][0]);
+  chi->limiter.v[1][1] = max(pj->v[1], chi->limiter.v[1][1]);
+  chi->limiter.v[2][0] = min(pj->v[2], chi->limiter.v[2][0]);
+  chi->limiter.v[2][1] = max(pj->v[2], chi->limiter.v[2][1]);
+
+  chi->limiter.maxr = max(r, chi->limiter.maxr);
+}
+
+/**
+ * @brief Slope-limit the given quantity. Only compute the cell limiter
+ * factor. To apply it, call chemistry_slope_limit_quantity_apply().
+ *
+ * @param gradient the gradient of the quantity
+ * @param maxr maximal distance to any neighbour of the particle
+ * @param value the current value of the quantity
+ * @param valmin the minimal value amongst all neighbours of the quantity
+ * @param valmax the maximal value amongst all neighbours of the quantity
+ * @param condition_number Condition number of the particle geometric matrix E
+ * @param pos_preserve Flag to use a positivity-preserving slope limiter for
+ * quantities that should not become negative (e.g. densities, metallicities).
+ * @param shoot_tol Allowable gradients overshoot tolerance for the
+ * pos_preserve mode.
+ * @return alpha Factor to cell limit the gradients.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_slope_limit_quantity(double gradient[3], const float maxr,
+                               const double value, const double valmin,
+                               const double valmax,
+                               const float condition_number,
+                               const int pos_preserve, const double shoot_tol) {
+
+  double gradtrue = sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
+                         gradient[2] * gradient[2]);
+  double alpha = 1.0;
+
+  if (gradtrue != 0.0) {
+    gradtrue *= maxr;
+    const double gradtrue_inv = 1.0 / gradtrue;
+    const double gradmax = valmax - value;
+    const double gradmin = value - valmin;
+
+    /* Stability factor based on condition number (better than 1.0) */
+    const double beta_2 =
+        min(1.0, const_gizmo_max_condition_number / condition_number);
+    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
+                            GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
+
+    /* Base slope limiter */
+    const double min_temp =
+        min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
+    alpha = min(1.0, min_temp);
+
+    /* Positivity-preserving mechanism */
+    if (pos_preserve) {
+      const double overshoot_corr = gradmin + shoot_tol * gradmax;
+      const double f_corr_overshoot =
+          (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
+
+      /* Compute fmin for positivity preservation */
+      const double min_value =
+          (value + valmin) * 0.5;  // Halfway between central and min value
+      const double positive_definite_min =
+          (value > 0.0) ? value * DBL_MIN : 0.0;
+      const double fmin =
+          (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
+      const double final_fmin =
+          (fmin > positive_definite_min) ? fmin : positive_definite_min;
+
+      /* Compute cfac for positivity preservation
+         Note: gradtrue has been multiplied by maxr already. Hence, we don't
+         need to divide (value - final_fmin) by maxr. */
+      const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
+      alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
+    } /* Positivity-preserving mode */
+
+    /* If valmin == valmax == value, then we are at a local maximum/minimum and
+       so the gradient should be 0.
+       This case can happen e.g. in the MetalDiffusionOnePeak example where we
+       only have one particule with non zero metallicity. The slope limiter then
+       computes a high value for alpha (1e15). */
+    if (valmin == valmax && valmin == value && valmax == value) {
+      alpha = 0.0;
+    }
+
+  } /* gradtrue != 0 */
+  return alpha;
+}
+
+/**
+ * @brief Apply the cell limiter to the given quantity. Result will be written
+ * directly to double gradient[3].
+ *
+ * @param gradient the gradient of the quantity
+ * @param alpha Factor to cell limit the gradients.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_quantity_apply(double gradient[3], const double alpha) {
+  /* Apply the limiting factor to the gradient */
+  if (alpha < 1.0) {
+    gradient[0] *= alpha;
+    gradient[1] *= alpha;
+    gradient[2] *= alpha;
+  }
+}
+
+/**
+ * @brief Slope limit cell gradients.
+ *
+ * Note 1: This is done in chemistry_gradients_finalise().
+ * Note 2: This function irrevocably alters the gradients. DO NOT update here
+ * gradients that are used to solve PDEs, e.g. the parabolic diffusion. The
+ * flux requires the "full" gradients and not cell limited ones. Cell limiting
+ * the diffusion driver gradient q alters the diffusion equations and MUST be
+ * cell limited during the gradients extrapolation step, before the face
+ * limiter.
+ *
+ * @param p Particle.
+ * @param cd The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
+    struct part *p, const struct chemistry_global_data *cd) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+  const float N_cond = p->geometry.condition_number;
+  const float maxr = chd->limiter.maxr;
+  const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
+  const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
+  const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
+
+  /* DO NOT cell limit rho*Z and Z here as they can be used as diffusion
+     drivers. Cell limiting the diffusion drivers reduces the diffusion
+     strength and thus irrevocably alters the PDE being solved. */
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    for (int i = 0; i < 3; i++) {
+      const double alpha_flux = chemistry_slope_limit_quantity(
+          chd->gradients.flux[m][i], maxr, chd->diffusion_flux[m][i],
+          chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0,
+          0.0);
+      chemistry_slope_limit_quantity_apply(chd->gradients.flux[m][i],
+                                           alpha_flux);
+    }
+  }
+#endif
+
+  /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays.
+   */
+  double gradvx[3], gradvy[3], gradvz[3];
+
+  /* Get the velocity gradients and cast them as double */
+  gradvx[0] = chd->gradients.v[0][0];
+  gradvx[1] = chd->gradients.v[0][1];
+  gradvx[2] = chd->gradients.v[0][2];
+  gradvy[0] = chd->gradients.v[1][0];
+  gradvy[1] = chd->gradients.v[1][1];
+  gradvy[2] = chd->gradients.v[1][2];
+  gradvz[0] = chd->gradients.v[2][0];
+  gradvz[1] = chd->gradients.v[2][1];
+  gradvz[2] = chd->gradients.v[2][2];
+
+  /* Slope limit the velocity gradients */
+  const double alpha_vx = chemistry_slope_limit_quantity(
+      gradvx, maxr, p->v[0], vxlim[0], vxlim[1], N_cond, 0, 0.0);
+  const double alpha_vy = chemistry_slope_limit_quantity(
+      gradvy, maxr, p->v[1], vylim[0], vylim[1], N_cond, 0, 0.0);
+  const double alpha_vz = chemistry_slope_limit_quantity(
+      gradvz, maxr, p->v[2], vzlim[0], vzlim[1], N_cond, 0, 0.0);
+
+  chemistry_slope_limit_quantity_apply(gradvx, alpha_vx);
+  chemistry_slope_limit_quantity_apply(gradvy, alpha_vy);
+  chemistry_slope_limit_quantity_apply(gradvz, alpha_vz);
+
+  /* Set the velocity gradient values */
+  chd->gradients.v[0][0] = gradvx[0];
+  chd->gradients.v[0][1] = gradvx[1];
+  chd->gradients.v[0][2] = gradvx[2];
+  chd->gradients.v[1][0] = gradvy[0];
+  chd->gradients.v[1][1] = gradvy[1];
+  chd->gradients.v[1][2] = gradvy[2];
+  chd->gradients.v[2][0] = gradvz[0];
+  chd->gradients.v[2][1] = gradvz[1];
+  chd->gradients.v[2][2] = gradvz[2];
+}
+
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H */

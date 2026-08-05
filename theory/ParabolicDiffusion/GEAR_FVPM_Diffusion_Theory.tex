@@ -1,0 +1,1370 @@
+% theory/ParabolicDiffusion/GEAR_FVPM_Diffusion_Theory.tex
+
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc} % Required for Unicode characters
+\usepackage{xcolor}         % Required for coloring text
+\usepackage{enumitem}       % For customizing list environments
+\usepackage{physics}        % For common physics notations like dv, grad, div, etc.
+\usepackage{booktabs}       % For clean tables
+\usepackage{listings}       % For inline/blocked source-code identifiers
+
+% ---------------------------------------------------------------------------
+% Code-identifier typesetting. \lstinline treats underscores literally, so
+% there is no risk of an unescaped "_" breaking the build.
+% ---------------------------------------------------------------------------
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true
+}
+\newcommand{\code}[1]{\mbox{\lstinline{#1}}}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+% ---------------------------------------------------------------------------
+% Physics macros. Names are chosen to mirror the GEAR\_FVPM\_DIFFUSION source
+% (see the Nomenclature appendix for the symbol <-> code-identifier map).
+% ---------------------------------------------------------------------------
+\newcommand{\Zfrac}{Z}                                  % metal mass fraction
+\newcommand{\rhoZ}{\rho \Zfrac}                          % metal mass density
+\newcommand{\driver}{q}                                  % diffusion driver
+\newcommand{\Kmat}{\mathbf{K}}                            % diffusion tensor
+\newcommand{\Kstar}{\mathbf{K}^{\star}}                   % interface diffusion tensor
+\newcommand{\Shear}{\mathbf{S}}                           % shear tensor
+\newcommand{\Splus}{\mathbf{S}_{+}}                       % regularised (PSD) shear tensor
+\newcommand{\Fdiff}{\mathbf{F}}                           % diffusion flux
+\newcommand{\kappaC}{\kappa_{0}}                          % chem\_data->diffusion\_coefficient
+\newcommand{\kappaP}{\kappa}                              % per-particle chemistry\_data.kappa
+\newcommand{\CCFL}{C_{\mathrm{CFL}}}                      % chem\_data->C\_CFL\_chemistry
+\newcommand{\psiHLL}{\psi}                                % hll\_riemann\_solver\_psi
+\newcommand{\epsHLL}{\epsilon}                            % hll\_riemann\_solver\_epsilon
+\newcommand{\gammak}{\gamma_{k}}                          % kernel\_gamma
+\newcommand{\Aij}{A_{ij}}                                 % interface area
+\newcommand{\xij}{\mathbf{x}_{ij}}                        % interface position
+\newcommand{\nunit}{\mathbf{n}}                           % interface unit normal
+\newcommand{\dx}{\Delta x}                                % GIZMO particle size
+\newcommand{\dt}{\Delta t}                                % explicit timestep
+
+\title{Theoretical Foundations of Parabolic Diffusion in GEAR FVPM}
+\author{Darwin Roduit}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+
+\subsection{Purpose and Scope}
+This document is a rigorous theoretical and numerical account of the
+\emph{parabolic} metal-diffusion solver implemented in
+\code{src/chemistry/GEAR_FVPM_DIFFUSION} (shared headers) and
+\code{src/chemistry/GEAR_FVPM_DIFFUSION/parabolic} (mode-specific headers)
+of the GEAR Finite Volume Particle Method (FVPM) chemistry module. Every
+equation below is transcribed from, and cross-referenced to, the C source
+so that the document can be used as a derivation-level companion to the
+code rather than a qualitative overview.
+
+The code also contains a second, \emph{hyperbolic} (Cattaneo/Maxwell-type)
+formulation of metal diffusion, selected at compile time by the macro
+\code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION} and implemented in the
+sibling \code{hyperbolic/} subdirectory. That formulation is out of scope
+here; it is mentioned only in Section~\ref{sec:hyperbolic-relation} to
+clarify that the parabolic equation solved in this document is recovered
+as its relaxation-time-to-zero limit.
+
+\subsection{Overview of the GEAR FVPM Framework}
+GEAR's chemistry module rides on top of a meshless Finite Volume Particle
+Method (Lagrangian, GIZMO/MFM-style) hydrodynamics solver. Each particle
+$i$ carries an effective volume $V_i$ and a geometric moment matrix
+$\mathbf{B}_i$ (SWIFT field \code{p->geometry.matrix_E}, already inverted)
+that is computed once per particle in the hydrodynamics density loop and
+consumed, unmodified, by the chemistry module. The diffusion solver
+therefore does not own its own spatial discretisation: it reuses the
+host MFM geometry to build kernel-weighted least-squares gradients and
+generalised interface areas between neighbouring particles (see
+Section~\ref{sec:fvpm-geometry}).
+
+\subsection{Metal Transport in Astrophysical Simulations}
+Unresolved turbulent mixing redistributes heavy elements produced by
+stars on scales below the hydrodynamic resolution. Because Lagrangian
+particle methods do not exchange mass between neighbours by default
+(each particle retains its metal budget unless an explicit mixing
+operator is added), an explicit sub-grid diffusion term is required to
+reproduce a realistic chemical enrichment of the interstellar and
+intergalactic medium. This is the role of the module documented here.
+
+\section{Physical Foundations}
+
+\subsection{Governing Differential Equations}
+
+\subsubsection{Conservation of Metal Mass}
+Let $\rho$ be the gas density and $\Zfrac$ the mass fraction of a given
+metal species (code index \code{metal} $\in [0,$
+\code{GEAR_CHEMISTRY_ELEMENT_COUNT}$)$). The transported quantity is the
+metal mass density $\rhoZ$. In the absence of sources (star-formation
+depletion) or sinks (supernova/stellar-wind enrichment, handled by other
+modules), conservation of metal mass advected with the flow and diffused
+relative to it reads
+\begin{equation}
+  \label{eq:conservation_rho_Z}
+  \pdv{(\rhoZ)}{t} + \div (\rhoZ\, \mathbf{v}) = -\div \Fdiff ,
+\end{equation}
+where $\mathbf{v}$ is the gas velocity and $\Fdiff$ is the diffusive
+metal-mass flux. The advective term $\div(\rhoZ\,\mathbf v)$ is handled
+implicitly by the fact that $\rhoZ$ is carried as a passive scalar by the
+Lagrangian particles (their mass and position already advect with the
+flow); the chemistry module solves only the remaining, purely diffusive
+part in the frame co-moving with each particle.
+
+\subsubsection{Parabolic Diffusion Equation}
+Isolating the diffusive part of Eq.~\eqref{eq:conservation_rho_Z} gives
+the parabolic diffusion equation actually integrated by the code
+(\code{chemistry_end_force}, \code{chemistry.h}):
+\begin{equation}
+  \label{eq:parabolic_diffusion_rho_Z}
+  \pdv{(\rhoZ)}{t} = -\div \Fdiff .
+\end{equation}
+This equation is discretised in finite-volume (conservative) form: each
+particle's metal mass $m_Z = \rhoZ\, V$ is updated by summing the flux
+exchanged with every neighbour across the shared interface (see
+Section~\ref{sec:flux-computation}).
+
+\subsubsection{Fick's Law and the Diffusion Driver}
+\label{sec:ficks-law}
+The diffusive flux obeys a generalised (tensorial) Fick's law,
+\begin{equation}
+  \label{eq:ficks_law}
+  \Fdiff = -\Kmat \cdot \grad \driver ,
+\end{equation}
+where $\Kmat$ is a symmetric, positive semi-definite $3\times3$ diffusion
+tensor (Section~\ref{sec:diffusion-tensor}) and $\driver$ is a
+\emph{diffusion driver} whose identity is not fixed: depending on the
+diffusion mode (Section~\ref{sec:diffusion-modes}) the code sets
+$\driver = \rhoZ$ or $\driver = \Zfrac$. This choice is physically
+consequential, not merely notational: it changes which PDE is actually
+solved (see the boxed remark at the end of
+Section~\ref{sec:diffusion-modes}).
+
+\subsection{Assumptions and Simplifications}
+
+\subsubsection{Continuum Approximation}
+Equations~\eqref{eq:conservation_rho_Z}--\eqref{eq:ficks_law} presuppose
+that the gas and metal fields are continuous on scales larger than the
+particle spacing, i.e.\ that the FVPM discretisation resolves the scales
+of interest.
+
+\subsubsection{Operator Splitting from Other Physics}
+Diffusion is solved with operator splitting: hydrodynamics, gravity,
+cooling, star formation and feedback are integrated by other SWIFT
+modules on their own schedules, and the chemistry module only ever sees
+the metal mass field at the start and end of its own sub-step
+(Section~\ref{sec:time-integration}).
+
+\subsubsection{Isotropy versus Anisotropy}
+$\Kmat$ can be isotropic ($\Kmat = \kappaP \mathbf I$) or anisotropic
+(full symmetric tensor built from the local velocity shear). Both cases
+are implemented; see Section~\ref{sec:diffusion-modes}.
+
+\subsection{Metal Transport Parameters}
+
+\subsubsection{Metal Mass Fraction}
+$\Zfrac = m_Z / m$, with $m$ the particle's total (gas) mass. Computed by
+\code{chemistry_get_metal_mass_fraction} (\code{chemistry_getters.h}).
+It is dimensionless and, physically, bounded in $[0,1]$; the code enforces
+this bound only at specific points (Section~\ref{sec:unphysical}), since
+the diffusion solver internally tolerates small transient excursions
+below zero to control noise amplification (Section~\ref{sec:gradients}).
+
+\subsubsection{Diffusion Coefficient and Tensor}
+\label{sec:diffusion-tensor}
+The single global input parameter \code{chem_data->diffusion_coefficient}
+(denoted $\kappaC$ below) is re-used with three distinct physical
+meanings depending on the diffusion mode -- a deliberate but easily
+mis-read overload that is documented explicitly here. The struct comment
+at \code{parabolic/chemistry_struct.h} notes the resulting unit
+change: in \code{isotropic_constant} mode $\kappaC$ is a true diffusivity
+(units of length$^2$/time); in the other two modes it plays the role of a
+dimensionless Smagorinsky-like constant $C_S$ multiplying a
+resolution-dependent turbulent diffusivity.
+
+\subsubsection{Shear Tensor}
+\label{sec:shear-tensor}
+For the turbulence-coupled modes, $\Kmat$ depends on the local,
+trace-free (compression/expansion removed) velocity shear tensor
+$\Shear$, built from a kernel-filtered ("Favre-like") velocity field
+$\tilde{\mathbf v}$ rather than the raw particle velocity, in the spirit
+of a large-eddy-simulation (LES) closure. Its full construction is given
+in Section~\ref{sec:diffusion-modes}.
+
+\subsection{Diffusion Modes}
+\label{sec:diffusion-modes}
+
+The behaviour of the solver is controlled by
+\code{chem_data->diffusion_mode}
+(\code{enum chemistry_diffusion_mode}, \code{chemistry_properties.h}),
+which selects one of three closures. In all three cases the diffusion
+coefficient is computed once per active particle per force sub-step by
+\code{chemistry_get_diffusion_coefficient}
+(\code{chemistry_getters.h}), using the physical (proper, not
+comoving) filtered density $\bar\rho = a^{-3}\,$\code{p->chemistry_data.filtered.rho}
+and physical smoothing length $h_{\rm phys} = a\,h$.
+
+\subsubsection{Isotropic Constant Diffusion}
+\begin{equation}
+  \Kmat = \kappaC \, \mathbf I , \qquad \driver = \rhoZ .
+\end{equation}
+This is the simplest closure: $\kappaC$ is a user-specified constant
+diffusivity, independent of the local flow. The resulting PDE
+(Section~\ref{sec:pde-per-mode}) is a genuine linear heat equation for
+the metal density itself,
+\begin{equation}
+  \Fdiff = -\kappaC \,\grad(\rhoZ) ,
+\end{equation}
+useful primarily as a verification test against analytic diffusion
+solutions (e.g.\ the spreading of a Gaussian or delta-function peak; see
+the \code{MetalDiffusionOnePeak}/\code{MetalDiffusionTwoPeaks} test
+problems shipped alongside this module).
+
+\subsubsection{Isotropic Smagorinsky Model}
+\begin{equation}
+  \kappaP = \kappaC \, \gammak^{2} \, h_{\rm phys}^{2} \, \bar\rho \,
+            \norm{\Shear}_F , \qquad
+  \Kmat = \kappaP \, \mathbf I , \qquad \driver = \Zfrac ,
+\end{equation}
+where $\norm{\Shear}_F = \sqrt{\Shear:\Shear}$ is the Frobenius norm of
+the shear tensor of Section~\ref{sec:shear-def} and $\gammak$ is the
+kernel's compact-support radius factor (SWIFT's \code{kernel_gamma},
+$O(1$--$2)$ and kernel-choice dependent, so that
+$h_{\rm bar} = \gammak\, h$ is the true compact-support radius of the
+kernel of smoothing length $h$). This is a standard Smagorinsky
+sub-grid-scale closure: the effective diffusivity scales as
+(filter length)$^2\times$(local strain rate), exactly as an eddy
+viscosity would in an LES momentum closure. The flux is
+\begin{equation}
+  \Fdiff = -\kappaP \,\grad \Zfrac .
+\end{equation}
+
+\subsubsection{Anisotropic Gradient Model}
+\begin{equation}
+  \kappaP = \kappaC \, \gammak^{2} \, h_{\rm phys}^{2} \, \bar\rho , \qquad
+  \Kmat = \kappaP \, \Splus , \qquad \driver = \Zfrac ,
+\end{equation}
+i.e.\ the same resolution-dependent prefactor as the Smagorinsky mode,
+\emph{without} the $\norm{\Shear}_F$ factor, because directional
+information is now retained in full through the tensor $\Splus$ rather
+than collapsed into a scalar norm (Rennehan-style~\cite{Rennehan2021} gradient/shear-aligned
+diffusion). The flux is the full matrix contraction
+\begin{equation}
+  \Fdiff = -\Kmat \cdot \grad \Zfrac
+         = -\kappaP\, \Splus \cdot \grad \Zfrac .
+\end{equation}
+Implemented in \code{chemistry_get_physical_parabolic_flux}
+(\code{chemistry_getters.h}).
+
+\subsubsection{Construction of the Shear Tensor and its Regularisation}
+\label{sec:shear-def}
+The raw (traceless, Hubble-flow-corrected) shear tensor is built in
+\code{chemistry_get_physical_shear_tensor}
+(\code{chemistry_getters.h}) from the symmetric part of the
+gradient of the filtered velocity $\tilde{\mathbf v}$ (comoving
+gradients, converted to physical units by $a^{-2}$: one factor of
+$a^{-1}$ from $\mathbf v_{\rm peculiar} = \mathbf v_{\rm comoving}/a$ and
+one from $\grad_{\rm phys} = a^{-1}\grad_{\rm comoving}$):
+\begin{equation}
+  \label{eq:shear_raw}
+  S_{ij} = \frac{1}{2}
+           \left(\pdv{\tilde v_i}{x_j} + \pdv{\tilde v_j}{x_i}\right)_{\rm phys}
+           + H\,\delta_{ij}
+           - \frac{1}{3}\,\mathrm{tr}(\Shear')\,\delta_{ij} ,
+\end{equation}
+where $H$ is the Hubble parameter (added once to the diagonal, since the
+Hubble flow is isotropic and $\Shear$ is symmetric) and the final term
+removes the trace of $\Shear' \equiv \tfrac12(\grad\tilde{\mathbf v} +
+\grad\tilde{\mathbf v}^T) + H\mathbf I$ \emph{after} the Hubble term has
+been added, so that pure compression/expansion (which is not turbulence)
+never contributes to the diffusion coefficient. The filtered velocity
+$\tilde{\mathbf v} = \overline{\rho\mathbf v}/\bar\rho$ is a
+mass(Favre)-weighted, kernel-smoothed velocity evaluated over the full
+compact support $h_{\rm bar} = \gammak h$ (wider than the density-defining
+smoothing length $h$), accumulated pairwise in
+\code{runner_iact_chemistry}/\code{runner_iact_nonsym_chemistry}
+(\code{chemistry_iact.h}) with a harmonic-mean density weighting
+and a fixed damping prefactor
+\code{GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR}$= 0.8$
+(\code{chemistry.h}) applied to the accumulated kernel sum before the
+particle's own self-contribution $\bar\rho_i \mathbf v_i$ is added back
+in \code{chemistry_end_density} (\code{chemistry.h}). Filtering
+$\mathbf v$ over the wider kernel support before differentiating
+suppresses single-particle noise in the shear estimate, consistent with
+the LES philosophy underlying the Smagorinsky and anisotropic-gradient
+closures.
+
+$\Shear$ as constructed in Eq.~\eqref{eq:shear_raw} is symmetric but not
+sign-definite. For the anisotropic mode this is a problem: $\Kmat$ must
+be positive semi-definite (PSD), otherwise the flux $\Fdiff = -\Kmat
+\cdot\grad\Zfrac$ can point \emph{up} the metallicity gradient in some
+direction and the diffusion operator would sharpen rather than smooth
+metal contrasts, an unconditionally unstable configuration for an
+explicit parabolic solver. \code{chemistry_regularize_shear_tensor}
+(\code{chemistry_getters.h}) fixes this by discarding the
+negative-eigenvalue subspace of $\Shear$, following Balarac et
+al.~\cite{Balarac2013}:
+\begin{equation}
+  \label{eq:S_plus_def}
+  \Splus \;=\; \sum_{k=1}^{3} \max(0,\lambda_k)\, \mathbf e_k \otimes \mathbf e_k ,
+\end{equation}
+where $(\lambda_k, \mathbf e_k)$ are the eigenpairs of the symmetric
+matrix $\Shear$ (obtained from a closed-form $3\times3$ symmetric
+Jacobi-type diagonalisation, \code{sym_matrix_diagonalise_3x3_d}).
+
+\begin{proposition}[Positive semi-definiteness of $\Splus$]
+\label{prop:psd}
+The tensor $\Splus$ defined by Eq.~\eqref{eq:S_plus_def} is symmetric
+and positive semi-definite for any symmetric input $\Shear$.
+\end{proposition}
+\begin{proof}
+Symmetry is immediate since $\mathbf e_k\otimes\mathbf e_k$ is symmetric
+for every $k$ and the $\lambda_k$ are real (eigenvalues of a symmetric
+real matrix). For positive semi-definiteness, take any
+$\mathbf u \in \mathbb R^3$ and expand it in the orthonormal eigenbasis
+$\{\mathbf e_k\}$ of $\Shear$ (orthonormality follows from the spectral
+theorem applied to the symmetric matrix $\Shear$):
+\begin{equation}
+  \mathbf u^T \Splus\, \mathbf u
+  = \sum_{k=1}^3 \max(0,\lambda_k)\, \mathbf u^T (\mathbf e_k \otimes \mathbf e_k) \mathbf u
+  = \sum_{k=1}^3 \max(0,\lambda_k)\, (\mathbf e_k \cdot \mathbf u)^2 .
+\end{equation}
+Each term in the sum is a non-negative scalar $\max(0,\lambda_k)$ times a
+square, hence non-negative; the sum of non-negative terms is
+non-negative, so $\mathbf u^T \Splus\,\mathbf u \geq 0$ for all
+$\mathbf u$, i.e.\ $\Splus \succeq 0$.
+\end{proof}
+
+Because $\Kmat = \kappaP \Splus$ with $\kappaP \geq 0$, Proposition
+\ref{prop:psd} guarantees $\Kmat \succeq 0$ in the anisotropic mode by
+construction, for every particle, at every timestep, independent of the
+local flow topology.
+
+\subsubsection{Different Modes Solve Different PDEs}
+\label{sec:pde-per-mode}
+\begin{quote}
+Substituting the driver choice of each mode into
+Eq.~\eqref{eq:parabolic_diffusion_rho_Z} via Eq.~\eqref{eq:ficks_law}
+gives three genuinely different governing equations, not merely three
+parametrisations of the same one:
+\begin{align}
+  \text{isotropic\_constant:} &\quad
+    \pdv{(\rhoZ)}{t} = \div\!\big(\kappaC\, \grad(\rhoZ)\big) ,
+    \label{eq:pde_const}\\
+  \text{isotropic\_smagorinsky:} &\quad
+    \pdv{(\rhoZ)}{t} = \div\!\big(\kappaP(\mathbf x,t)\, \grad \Zfrac\big) ,
+    \label{eq:pde_smag}\\
+  \text{anisotropic\_gradient:} &\quad
+    \pdv{(\rhoZ)}{t} = \div\!\big(\Kmat(\mathbf x,t) \cdot \grad \Zfrac\big) .
+    \label{eq:pde_aniso}
+\end{align}
+Equations~\eqref{eq:pde_smag}--\eqref{eq:pde_aniso} diffuse the
+\emph{intensive} quantity $\Zfrac$, with the local density folded into
+the (state-dependent) coefficient $\kappaP \propto \bar\rho$; this is the
+standard sub-grid metal-mixing closure used in the SPH/MFM literature
+(e.g.\ Shen, Wadsley \& Stinson~\cite{ShenWadsleyStinson2010}; Escala et al.~\cite{Escala2018}), chosen
+precisely because diffusing $\rhoZ$ directly (as in
+Eq.~\eqref{eq:pde_const}) would let density gradients alone drive
+spurious metal currents even in a chemically homogeneous ($\grad Z = 0$)
+medium. Equation~\eqref{eq:pde_const} does not have this property and is
+intended for controlled test problems rather than production
+astrophysical runs.
+\end{quote}
+
+\section{FVPM Spatial Discretisation}
+\label{sec:fvpm-geometry}
+
+\subsection{Meshless Particle Representation}
+The computational domain is discretised by particles, each carrying an
+effective volume $V_i$ (\code{p->geometry.volume}) computed by the
+underlying MFM hydrodynamics solver from a kernel partition of unity.
+Interactions occur between particles found by the same neighbour search
+(compact-support kernel with smoothing length $h$) used by the
+hydrodynamics solver; the chemistry module performs no independent
+neighbour finding.
+
+\subsection{Least-Squares Gradient Estimator}
+\label{sec:gradient-estimator}
+For every scalar field $Q$ carried by the particles (metal mass
+fraction, metal density, velocity components), the module computes a
+kernel-weighted, matrix-corrected gradient estimate
+(\code{chemistry_gradients_collect}, \code{chemistry_gradients.h}):
+\begin{equation}
+  \label{eq:gradient_estimator}
+  (\grad Q)_i \;=\; \sum_{j} (Q_i - Q_j)\, \tilde{\boldsymbol\psi}_i(\mathbf x_j) ,
+  \qquad
+  \tilde{\boldsymbol\psi}_i(\mathbf x_j) = W_{ij}\, \mathbf B_i \cdot \mathbf{dx}_{ij} ,
+\end{equation}
+with $\mathbf{dx}_{ij} \equiv \mathbf x_i - \mathbf x_j$ (the code's
+sign convention), $W_{ij} \equiv W(|\mathbf{dx}_{ij}|, h_i)$ the kernel
+value, and $\mathbf B_i = \mathbf E_i^{-1}$ the inverse of the particle's
+geometric moment matrix (\code{p->geometry.matrix_E}), computed and
+maintained by the host hydrodynamics module using the standard
+MFM/GIZMO second-moment normalisation of Lanson \& Vila~\cite{LansonVila2008} and
+Hopkins~\cite{Hopkins2015},
+\begin{equation}
+  \label{eq:E_matrix_def}
+  E_i^{kl} = \sum_j V_j\, W_{ij}\; \mathrm{dx}_{ij}^{k}\, \mathrm{dx}_{ij}^{l} .
+\end{equation}
+
+\begin{proposition}[Linear consistency of the gradient estimator]
+\label{prop:gradient-consistency}
+If a scalar field is exactly linear in a neighbourhood of particle $i$,
+$Q(\mathbf x) = Q_i + \mathbf G\cdot(\mathbf x - \mathbf x_i)$ for a
+constant vector $\mathbf G$, then the estimator of
+Eq.~\eqref{eq:gradient_estimator} reproduces the true gradient exactly:
+$(\grad Q)_i = \mathbf G$.
+\end{proposition}
+\begin{proof}
+For the assumed linear field, $Q_i - Q_j = \mathbf G\cdot(\mathbf x_i -
+\mathbf x_j) = \mathbf G \cdot \mathbf{dx}_{ij}$. Substituting into
+Eq.~\eqref{eq:gradient_estimator},
+\begin{equation}
+  (\grad Q)_i = \sum_j (\mathbf G\cdot\mathbf{dx}_{ij})\, W_{ij}\, \mathbf B_i \cdot \mathbf{dx}_{ij}
+  = \mathbf B_i \left(\sum_j W_{ij}\, \mathbf{dx}_{ij}\otimes\mathbf{dx}_{ij}\right) \mathbf G ,
+\end{equation}
+using the identity $(\mathbf a\cdot\mathbf u)(\mathbf M\mathbf u) =
+\mathbf M(\mathbf u\otimes\mathbf u)\mathbf a$ for a vector $\mathbf a$,
+matrix $\mathbf M$ and vector $\mathbf u$, applied with $\mathbf a =
+\mathbf G$, $\mathbf u=\mathbf{dx}_{ij}$ componentwise, and factoring
+$\mathbf B_i$ (constant over the sum) out to the left. Comparing the sum
+in parentheses to Eq.~\eqref{eq:E_matrix_def} shows it equals
+$\mathbf E_i$ up to the volume weight $V_j$ folded into $W_{ij}$ by
+construction in the code's normalisation (the kernel sum already carries
+the $V_j$ weighting through the SPH/MFM partition-of-unity
+normalisation used to build \code{matrix_E}). Hence
+$(\grad Q)_i = \mathbf B_i\, \mathbf E_i\, \mathbf G = \mathbf E_i^{-1}\mathbf E_i\, \mathbf G = \mathbf G$,
+since $\mathbf B_i \equiv \mathbf E_i^{-1}$ by definition.
+\end{proof}
+
+Whenever $\mathbf E_i$ is ill-conditioned (near-singular particle
+distribution, flagged by \code{fvpm_part_geometry_well_behaved(p)}
+returning false when the stored condition number exceeds
+\code{const_gizmo_max_condition_number}~$=100$), the matrix inversion is
+abandoned and the code falls back to the plain (first-order, kernel
+gradient) SPH estimator
+\begin{equation}
+  \tilde{\boldsymbol\psi}_i(\mathbf x_j) = -\frac{W'_{ij}}{r_{ij}}\, \mathbf{dx}_{ij} ,
+\end{equation}
+with $W'_{ij}$ the kernel derivative and $r_{ij} = |\mathbf{dx}_{ij}|$
+(\code{chemistry_gradients.h}). After accumulation over all
+neighbours, gradients are normalised by $h^{-d}$ ($d$ the spatial
+dimension) in \code{chemistry_gradients_finalise}
+(\code{chemistry_gradients.h}), matching the kernel's own
+normalisation convention.
+
+\subsection{Interface Geometry: Generalised Face Area}
+\label{sec:face-area}
+Fluxes are exchanged across a notional interface between every
+interacting pair $(i,j)$. Following Hopkins (2017, eq.~7), the
+generalised interface area vector is
+\begin{equation}
+  \label{eq:face_area}
+  \mathbf A_{ij} = -X_i\, W_{ij}\, h_i^{-d}\, \big(\mathbf B_i \cdot \mathbf{dx}_{ij}\big)
+                   -X_j\, W_{ji}\, h_j^{-d}\, \big(\mathbf B_j \cdot \mathbf{dx}_{ij}\big) ,
+\end{equation}
+with $X_i = V_i$, $X_j = V_j$ in the well-behaved case. If the two
+particle volumes differ strongly,
+$|V_i-V_j|/\min(V_i,V_j) > 1.5\, d$ (the \code{GIZMO_VOLUME_CORRECTION}
+branch, \code{chemistry_iact.h}), both weights are replaced by
+the smoothing-length-weighted blend
+$X_i = X_j = (V_i h_j + V_j h_i)/(h_i+h_j)$
+to avoid numerically unstable cancellations in
+Eq.~\eqref{eq:face_area} across sharp density (and hence volume)
+contrasts. If either particle's geometry matrix is ill-conditioned, the
+code instead falls back to the isotropic SPH face-area estimate
+\begin{equation}
+  A_{ij}^{\rm SPH} = -\Big(h_i^{-(d+1)} V_i^2 W'_{ij} + h_j^{-(d+1)} V_j^2 W'_{ji}\Big)/r_{ij} ,
+  \qquad \mathbf A_{ij} = A_{ij}^{\rm SPH}\, \mathbf{dx}_{ij} .
+\end{equation}
+The interface normal is $\nunit = \mathbf A_{ij}/\Aij$ with
+$\Aij = |\mathbf A_{ij}|$
+(\code{chemistry_iact.h}).
+
+\subsection{Interface Position and Interface-Frame Boost}
+\label{sec:interface-position}
+The effective interface point, relative to particle $i$, is (Hopkins
+2017, eq.~8)
+\begin{equation}
+  \label{eq:interface_position}
+  \xij = x_{\rm fac}\, \mathbf{dx}_{ij} , \qquad
+  x_{\rm fac} = -\frac{h_i}{h_i+h_j} ,
+\end{equation}
+so that the resolved interface sits at
+$\mathbf x_i + \xij = (h_j\, \mathbf x_i + h_i\, \mathbf x_j)/(h_i+h_j)$:
+a smoothing-length-weighted point between the two particles, pulled
+towards the particle with the \emph{smaller} smoothing length (higher
+local resolution). The corresponding interface (fluid) velocity used to
+boost the hydrodynamic primitive variables into the interface frame
+before the Riemann problem is solved is (Hopkins~\cite{Hopkins2017diffusion}, eq.~9)
+\begin{equation}
+  \mathbf v_{ij} = \mathbf v_i + (\mathbf v_i - \mathbf v_j)\, x_{\rm fac}
+  \qquad \text{(\code{chemistry_iact.h})} .
+\end{equation}
+This position and boost are computed once per pair and reused
+identically for the hydrodynamic reconstruction and for the diffusion
+Riemann problem, so that both solvers agree on where and in which frame
+the interface lives.
+
+\section{Gradient Reconstruction and Slope Limiting}
+\label{sec:gradients}
+
+\subsection{Cell-Wise Extremum-Preserving Limiter}
+Before any face reconstruction, gradients are scaled down (never up) so
+that a linear extrapolation to the farthest interacting neighbour cannot
+create a value outside the range spanned by the particle and all its
+neighbours (Hopkins~\cite{Hopkins2015} formalism,
+\code{chemistry_slope_limiters_cell.h}). For a scalar $Q$ with cell value
+$Q_i$, neighbour extrema $Q_{\min}, Q_{\max}$ and maximal neighbour
+distance $r_{\max}$ (\code{chi->limiter.maxr}), the limiter factor
+$\alpha\in[0,1]$ is (\code{chemistry_slope_limit_quantity},
+\code{chemistry_slope_limiters_cell.h})
+\begin{align}
+  g &= r_{\max}\, |\grad Q|_i , \\
+  \beta &= \max\!\Big(\beta_{\min},\ \beta_{\max}\min\!\Big(1,\ \tfrac{N_{\rm cond}}{\kappa(\mathbf E_i)}\Big)\Big) ,
+  \label{eq:cell_limiter_beta} \\
+  \alpha_0 &= \min\!\left(1,\ \beta \, \min\!\left(\frac{Q_{\max}-Q_i}{g},\ \frac{Q_i - Q_{\min}}{g}\right)\right) ,
+\end{align}
+with $\beta_{\min}=1$, $\beta_{\max}=2$
+(\code{GIZMO_SLOPE_LIMITER_BETA_MIN}/\code{MAX}) and $N_{\rm cond}=100$
+(\code{const_gizmo_max_condition_number}) a reference condition number:
+as the particle's geometry matrix approaches singularity
+($\kappa(\mathbf E_i)\to N_{\rm cond}$), $\beta\to\beta_{\min}$ and the
+limiter becomes maximally conservative; in a well-conditioned
+configuration $\beta\to\beta_{\max}=2$, the standard Hopkins (2015)
+value.
+
+For quantities that must remain non-negative under extrapolation
+(the diffusion drivers $\rhoZ$ and $\Zfrac$, invoked with
+\code{pos_preserve=1}), a second, tighter bound is applied
+(\code{chemistry_slope_limiters_cell.h}):
+\begin{align}
+  f_{\rm shoot} &= \min\!\big(Q_i - Q_{\min} + \tau_{\rm shoot}(Q_{\max}-Q_i),\ Q_{\max}-Q_i\big) , \\
+  Q_{\min}^{\rm floor} &= \max\!\left(f_{\rm shoot},\ \tfrac12(Q_i+Q_{\min})\right) , \\
+  \alpha_{\rm pos} &= \frac{Q_i - Q_{\min}^{\rm floor}}{g} , \\
+  \alpha &= \min(\alpha_0,\ \alpha_{\rm pos}) ,
+\end{align}
+where $\tau_{\rm shoot} = 0.2$
+(\code{GEAR_FVPM_DIFF_CELL_LIMITER_SHOOT_TOLERANGE}) is an allowed
+fractional overshoot that keeps the limiter from stalling the diffusion
+front entirely in regions with strong local extrema. If
+$Q_{\min}=Q_{\max}=Q_i$ (an isolated local extremum, e.g.\ a lone
+enriched particle surrounded by pristine gas) the gradient is forced to
+zero exactly ($\alpha=0$), since Eq.~\eqref{eq:cell_limiter_beta}--above
+would otherwise return a numerically enormous $\alpha$ from a
+$0/0$-adjacent limit.
+
+\textbf{Important asymmetry.} The generic cell limiter
+\code{chemistry_slope_limit_cell} (called once at the end of the
+gradient loop, \code{chemistry_gradients.h}) is applied to the
+velocity gradients but \emph{deliberately not} to the $\Zfrac$/$\rhoZ$
+gradients, per the code comment at
+\code{chemistry_slope_limiters_cell.h}: cell-limiting the
+diffusion driver's gradient would permanently reduce the magnitude of
+$\grad\driver$ used everywhere it appears in
+Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso}, i.e.\ it would silently
+alter the PDE being solved rather than merely stabilise its
+discretisation. Instead, the driver gradients are cell-limited
+\emph{locally, on the fly}, immediately before each face reconstruction,
+inside \code{chemistry_gradients_predict}
+(parabolic-mode state reconstruction, see below) and
+\code{chemistry_gradients_predict_Z}
+(\code{chemistry_gradients.h}), using the same
+$\alpha$-computation above but re-evaluated at every pairwise
+interaction. This keeps the corrected gradient reserved only for the
+extrapolation actually being performed, without corrupting the
+particle's stored gradient field for later use in the flux formula
+(Section~\ref{sec:flux-computation}), which needs the \emph{uncorrected}
+gradient.
+
+\subsection{Face-Wise (GIZMO) Limiter}
+\label{sec:face-limiter}
+After the cell-limited gradient is linearly extrapolated to the
+interface point $\xij$ (Eq.~\eqref{eq:interface_position}), giving a
+provisional reconstructed value $\phi_{\rm mid}^{0} = \phi_i + \grad\phi_i
+\cdot \xij$, a second limiting pass constrains the extrapolated pair
+$(\phi_{\rm mid,i},\phi_{\rm mid,j})$ using both particle values, not
+just particle $i$'s neighbourhood extrema
+(\code{chemistry_slope_limit_face_quantity_double},
+\code{chemistry_slope_limiters_face.h}):
+\begin{align}
+  \delta_1 &= \tfrac12 |\phi_i - \phi_j| , \qquad \delta_2 = \tfrac14 |\phi_i-\phi_j| , \\
+  \bar\phi &= \phi_i + \frac{|\xij|}{r_{ij}}(\phi_j - \phi_i) , \\
+  \phi_{+} &=
+    \begin{cases}
+      \phi_{\max} + \delta_1 & \text{if } \mathrm{sign}(\phi_{\max}+\delta_1) = \mathrm{sign}(\phi_{\max}) \\
+      \phi_{\max}/\big(1+\delta_1/|\phi_{\max}|\big) & \text{otherwise}
+    \end{cases} \\
+  \phi_{-} &=
+    \begin{cases}
+      \phi_{\min} - \delta_1 & \text{if } \mathrm{sign}(\phi_{\min}-\delta_1) = \mathrm{sign}(\phi_{\min}) \\
+      \phi_{\min}/\big(1+\delta_1/|\phi_{\min}|\big) & \text{otherwise}
+    \end{cases}
+\end{align}
+with $\phi_{\min}=\min(\phi_i,\phi_j)$, $\phi_{\max}=\max(\phi_i,\phi_j)$.
+The final, limited extrapolated value is
+\begin{equation}
+  \phi_{\rm mid} =
+  \begin{cases}
+    \max\!\big(\phi_-,\ \min(\bar\phi+\delta_2,\ \phi_{\rm mid}^{0})\big) & \text{if } \phi_i < \phi_j \\
+    \min\!\big(\phi_+,\ \max(\bar\phi-\delta_2,\ \phi_{\rm mid}^{0})\big) & \text{otherwise,}
+  \end{cases}
+\end{equation}
+and the returned, limited increment is $\phi_{\rm mid} - \phi_i$. The
+sign-aware construction of $\phi_\pm$ avoids letting the bound cross zero
+when $\phi_{\min}$ or $\phi_{\max}$ is itself close to zero, which
+matters for a strictly non-negative field like $\Zfrac$ or $\rhoZ$.
+Optionally (used for the hyperbolic scheme only, not here) the result can
+be clamped to non-negative values by $\phi_{\rm mid}\to\max(0,\phi_{\rm
+mid})$. For parabolic diffusion this exact limiter is applied
+identically to $\Fdiff$'s driver reconstruction via
+\code{chemistry_slope_limit_face}
+(\code{parabolic/chemistry_slope_limiter_face.h}), which simply
+calls the routine above once for each side of the interface ($i\to j$
+and $j\to i$).
+
+\subsection{State Reconstruction at the Interface}
+\label{sec:state-reconstruction}
+The full per-pair, per-species reconstruction pipeline,
+\code{chemistry_gradients_predict}
+(\code{parabolic/chemistry_gradients.h}), proceeds as follows for
+the metal-density state $U \equiv \rhoZ$:
+\begin{enumerate}
+  \item Start from the comoving metal densities $U_i, U_j$
+        (\code{chemistry_get_comoving_metal_density}).
+  \item Cell-limit the stored $\grad(\rhoZ)$ gradients of $i$ and $j$
+        \emph{on the fly}, with the positivity-preserving branch enabled
+        (Section~\ref{sec:gradients}).
+  \item Linearly extrapolate to the interface point $\xij$
+        (Section~\ref{sec:interface-position}):
+        $\delta U_i = \grad(\rhoZ)_i \cdot \xij$,
+        $\delta U_j = \grad(\rhoZ)_j \cdot \xij^{(j)}$, with
+        $\xij^{(j)} = \xij + \mathbf{dx}_{ij}$ the same physical point
+        expressed relative to particle $j$.
+  \item Apply the face-wise limiter of Section~\ref{sec:face-limiter} to
+        $(\delta U_i,\delta U_j)$ jointly, then set
+        $U_i \mathrel{+}= \delta U_i$, $U_j \mathrel{+}= \delta U_j$.
+  \item Correct unphysical excursions
+        (\code{chemistry_gradients_correct_unphysical_states},
+        \code{parabolic/chemistry_gradients.h}; see
+        Section~\ref{sec:unphysical} for the full logic): if the
+        extrapolation would push the implied metal mass negative or
+        above the gas mass, the offending state is reverted to its
+        pre-extrapolation (0th-order) value.
+  \item \textbf{Final safety clamp}: irrespective of the above,
+        $U_i \gets \max(0, U_i)$ and $U_j \gets \max(0, U_j)$
+        unconditionally, since the Riemann solver
+        (Section~\ref{sec:flux-computation}) is not robust to residual
+        negative densities surviving floating-point round-off in the
+        limiter chain.
+  \item Convert $U_i, U_j$ from comoving to physical density,
+        $U \to a^{-3} U$.
+\end{enumerate}
+When the diffusion driver is $\Zfrac$ rather than $\rhoZ$ (Smagorinsky
+and anisotropic modes), the analogous routine
+\code{chemistry_gradients_predict_Z}
+(\code{chemistry_gradients.h}) performs the same steps on the
+metal mass fraction gradients, followed by a hard clamp of the
+reconstructed metallicity to $[0,1]$
+(\code{chemistry_check_unphysical_metallicity},
+Section~\ref{sec:unphysical}).
+
+\section{Flux Computation}
+\label{sec:flux-computation}
+
+\subsection{Wave-Speed Estimation}
+The Riemann solver used here (\code{chemistry_riemann_solver_hopkins2017_HLL},
+\code{parabolic/chemistry_riemann_HLL.h}) is explicitly noted in
+the source as valid \emph{for parabolic diffusion only} -- it degrades
+for the hyperbolic system when the relaxation time is large. Its wave
+speeds are not diffusion signal speeds but ordinary \emph{hydrodynamic}
+speeds evaluated at the interface: with $u_L, u_R$ the particle
+velocities projected onto the interface normal $\nunit$ and
+$c_{s,L}, c_{s,R}$ the (physical) hydrodynamic sound speeds,
+\begin{equation}
+  \lambda_+ = |u_R - u_L| + \max(c_{s,L}, c_{s,R}) , \qquad \lambda_- = -\lambda_+ .
+\end{equation}
+This choice reuses the same characteristic-speed estimate as the
+GIZMO/MFM Euler solver: it guarantees the diffusion Riemann fan is at
+least as wide as the hydrodynamic one, so that the diffusive update never
+outruns the CFL condition already enforced by the hydro solver on the
+same pair. If $\lambda_+-\lambda_- $ falls below a tolerance
+$10^{-8}$ (\code{GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE}),
+both particles are (numerically) at rest relative to the interface with
+no local sound speed and the flux is set to zero to avoid a division by
+a near-zero denominator.
+
+\subsection{Interface Diffusion Tensor}
+The tensor entering the flux is a simple arithmetic mean of the two
+particles' physical diffusion tensors,
+\begin{equation}
+  \Kstar = \tfrac12\big(\Kmat_i + \Kmat_j\big)
+  \qquad(\code{chemistry_riemann_compute_K_star}) .
+\end{equation}
+If $\norm{\Kstar}_F = 0$ (e.g.\ at the very first timestep, before
+$\bar\rho$ has been computed and $\kappaP$ is still zero) the flux is
+set to zero identically.
+
+\subsection{The Hopkins~\cite{Hopkins2017diffusion} HLL-Type Flux}
+\label{sec:hll-flux}
+Let $U \equiv \rhoZ$ (the conserved state) and recall $\driver$ is the
+diffusion driver, reconstructed to the interface as $\driver_L,
+\driver_R$ (Section~\ref{sec:state-reconstruction}), with
+$U^\star = \tfrac12(U_L+U_R)$, $\driver^\star = \tfrac12(\driver_L +
+\driver_R)$ and $\grad\driver^\star = \tfrac12(\grad\driver_L +
+\grad\driver_R)$ (particle-centred, \emph{not} interface-extrapolated,
+gradients of the two neighbours).
+
+The flux of each particle's own local, first-order-reconstructed
+diffusive flux (Eq.~\eqref{eq:ficks_law}, evaluated with each particle's
+own stored gradient) is projected onto the interface normal,
+\begin{equation}
+  \mathrm{Flux}_{L} = \Fdiff_L\cdot\nunit , \qquad \mathrm{Flux}_R = \Fdiff_R\cdot\nunit .
+\end{equation}
+The two standard HLL building blocks are then formed,
+\begin{equation}
+  F_2 = \frac{\lambda_+\,\mathrm{Flux}_L - \lambda_-\,\mathrm{Flux}_R}{\lambda_+-\lambda_-} ,
+  \qquad
+  F_U = \frac{\lambda_+\lambda_- \,(U_R-U_L)}{\lambda_+-\lambda_-} ,
+\end{equation}
+i.e.\ $F_2$ is the upwind-blended transport term and $F_U$ is the
+standard HLL numerical-dissipation term. Unlike a textbook HLL solver,
+which would simply return $F_2 + F_U$, this solver blends the two with a
+\emph{minmod} limiter and an \emph{artificial diffusivity} $\alpha$
+(Hopkins~\cite{Hopkins2017diffusion}, eqs.~7--11) that caps the numerical dissipation at (a
+fraction of) the physically prescribed diffusivity:
+\begin{equation}
+  \label{eq:flux_hll}
+  F_{\rm HLL} = \mathrm{minmod}\Big((1+\psiHLL)\, F_2,\ F_2 + \alpha\, F_U\Big) ,
+\end{equation}
+with the two-argument minmod of Eq.~\eqref{eq:minmod_def} below and
+$\psiHLL = $ \code{chem_data->hll_riemann_solver_psi} a user-tunable
+parameter bounding how much extra transport-term weight is admitted
+before the antidiffusive correction is clipped.
+
+\subsubsection{The Artificial Diffusivity $\alpha$}
+Computed in \code{chemistry_riemann_compute_alpha}
+(\code{chemistry_riemann_utils.h}):
+\begin{align}
+  c_{\rm fast}^\star &= \tfrac12(c_{s,L}+c_{s,R}) , \qquad
+  v_{\rm HLL} = \tfrac12|u_R-u_L| + c_{\rm fast}^\star , \\
+  r &= \frac{v_{\rm HLL}\, |\mathbf{dx}_{ij}|\, |\driver^\star|}{\norm{\Kstar}_F \, |U^\star|} ,
+  \qquad
+  r_{\rm term} = \frac{0.2+r}{0.2+r+r^2} , \\
+  \mathrm{norm\_term} &=
+    \frac{\big\| \Kstar \cdot \grad\driver^\star \big\|}{\norm{\Kstar}_F\,\big\|\grad\driver^\star\big\|}
+    \quad\big(\to 1 \text{ if } \grad\driver^\star = 0,\ \text{by convention}\big), \\
+  \alpha &= \mathrm{norm\_term}\times r_{\rm term} ,
+  \qquad \alpha \to 0 \ \text{ if } U^\star = 0 \text{ or } \norm{\Kstar}_F = 0 .
+  \label{eq:alpha_def}
+\end{align}
+The dimensionless ratio $r$ compares the characteristic HLL numerical
+flux scale ($v_{\rm HLL}\,\driver^\star/|\mathbf{dx}_{ij}|$, after
+clearing the $|\mathbf{dx}_{ij}|$ factor) against the physical diffusive
+flux scale ($\norm{\Kstar}_F\,U^\star/|\mathbf{dx}_{ij}|^2$, similarly
+normalised): $r_{\rm term}\to 1$ when $r\gg1$ (numerical transport
+dominates -- little artificial diffusivity is needed to stabilise it) and
+$r_{\rm term}\to 5r$ as $r\to0$ (numerical transport is weak compared to
+the physical diffusivity, so the HLL dissipation term is allowed through
+more strongly to avoid an under-diffusive, oscillatory update).
+\code{norm\_term} additionally attenuates $\alpha$ when $\Kstar$ is
+strongly anisotropic relative to the local gradient direction, since
+$\|\Kstar\cdot\grad\driver^\star\| \leq \norm{\Kstar}_F
+\|\grad\driver^\star\|$ with equality only when $\grad\driver^\star$ lies
+along $\Kstar$'s dominant eigendirection.
+
+\begin{definition}[Two-argument minmod]
+\label{eq:minmod_def}
+\begin{equation}
+  \mathrm{minmod}(a,b) =
+  \begin{cases}
+    \min(a,b) & a>0 \text{ and } b>0 \\
+    \max(a,b) & a<0 \text{ and } b<0 \\
+    0 & \text{otherwise.}
+  \end{cases}
+\end{equation}
+\end{definition}
+
+\subsection{Direct-Flux Sign-Consistency Guard}
+\label{sec:anti-diffusion-guard}
+As a final robustness check, the code independently computes a
+\emph{direct} (central-difference) estimate of the flux, built purely
+from the two particles' own driver values (not their gradients, and not
+interface-reconstructed):
+\begin{equation}
+  q_i = \max(0,\driver_i) , \quad q_j=\max(0,\driver_j) , \quad
+  \grad\driver_{\rm dir} = \frac{(q_j-q_i)}{|\mathbf{dx}_{ij,\rm phys}|^2}\,\mathbf{dx}_{ij,\rm phys} ,
+\end{equation}
+\begin{equation}
+  F_{\rm dir} =
+  \begin{cases}
+    -\big(\Kstar\cdot\grad\driver_{\rm dir}\big)\cdot \dfrac{\mathbf{dx}_{ij,\rm phys}}{|\mathbf{dx}_{ij,\rm phys}|}
+      & \text{anisotropic\_gradient mode} \\[1.2em]
+    -\bar\kappa\, \grad\driver_{\rm dir}\cdot \dfrac{\mathbf{dx}_{ij,\rm phys}}{|\mathbf{dx}_{ij,\rm phys}|}
+      & \text{otherwise, } \bar\kappa=\tfrac12(\kappaP_i+\kappaP_j) .
+  \end{cases}
+\end{equation}
+If this direct estimate disagrees in \emph{sign} with the HLL flux of
+Eq.~\eqref{eq:flux_hll} by more than a relative tolerance
+$\epsHLL \equiv$ \code{chem_data->hll_riemann_solver_epsilon},
+\begin{equation}
+  F_{\rm dir}\cdot F_{\rm HLL} < 0
+  \quad\text{and}\quad
+  |F_{\rm dir}| > \epsHLL\, |F_{\rm HLL}| ,
+\end{equation}
+the interface flux is set to zero rather than trusted
+(\code{parabolic/chemistry_riemann_HLL.h}). This guards against
+the minmod-blended HLL construction of Eq.~\eqref{eq:flux_hll}
+occasionally returning an up-gradient (anti-diffusive) flux due to
+reconstruction error, at the cost of locally stalling diffusion across
+that one interface for one sub-step. The final flux entering the update
+is $F_{\rm HLL}\times\Aij$ (physical face area,
+\code{parabolic/chemistry_flux.h}).
+
+\section{Flux Limiting for Physical Realizability}
+\label{sec:flux-limiter}
+
+Even a Riemann-consistent flux can, once multiplied by a finite timestep
+and summed over all of a particle's neighbours, remove more metal mass
+than the particle possesses. \code{chemistry_limit_metal_mass_flux}
+(\code{chemistry_flux.h}) rescales the raw \emph{pairwise} flux
+$\Delta m \equiv F_{\rm HLL}\Aij\, \dt_{\min}$ ($\dt_{\min}$ the smaller
+of the two particles' active chemistry timesteps) through a sequence of
+symmetric (particle order-independent) guards:
+
+\begin{enumerate}
+  \item \textbf{Source constraint.} Let $m_{Z}^{\rm src}$ be the current
+        metal mass of whichever particle is donating mass (determined
+        by $\mathrm{sign}(\Delta m)$, not by particle index -- this is
+        what makes the limiter symmetric under $i\leftrightarrow j$). If
+        $m_Z^{\rm src}\le 0$, the flux is annihilated: a particle cannot
+        export metal mass it does not have.
+  \item \textbf{Capacity constraint.} Let $m^{\rm sink}$ be the sink
+        particle's total (gas) mass and $m_Z^{\rm sink}$ its current
+        metal mass; define the remaining headroom before $\Zfrac=1$,
+        $C \equiv m^{\rm sink} - m_Z^{\rm sink}$. If $C\le 0$ the flux is
+        annihilated.
+  \item \textbf{Noise gate.} If
+        $|\Delta m| < \epsilon_{\rm noise}\, m_Z^{\rm src}$ with
+        $\epsilon_{\rm noise}=10^{-15}$
+        (\code{GEAR_FVPM_DIFF_NOISE_GATE}), the flux is treated as
+        floating-point noise and zeroed, preventing a slow
+        accumulation ("ratchet effect") of sub-machine-precision
+        transfers.
+  \item \textbf{Smooth stability/startup limiter.} An effective mass
+        budget is formed,
+        \begin{equation}
+          m_{\rm eff} = \min\!\Big(\min(m_Z^{\rm src}, C),\ \
+          \frac{\max\!\big(0.25\, m_Z^{\rm sink},\ 0.1\, m_Z^{\rm src}\big)}{0.5}\Big) ,
+        \end{equation}
+        combining the source/capacity bound with a
+        \emph{sink-stability} bound $0.25\, m_Z^{\rm sink}$
+        (\code{GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY}: no single
+        pairwise interaction may change the sink's metal mass by more
+        than $25\%$, preventing oscillatory "neighbour flooding") and a
+        \emph{startup} floor $0.1\, m_Z^{\rm src}$
+        (\code{GEAR_FVPM_DIFF_LIMITER_STARTUP}: without this floor,
+        $m_Z^{\rm sink}=0$ pristine gas would have a zero stability
+        bound and could never be enriched, stalling the diffusion
+        front). The safety scale $0.5$
+        (\code{GEAR_FVPM_DIFF_LIMITER_SAFETY}) leaves headroom below the
+        hard constraints. The flux is then attenuated smoothly rather
+        than hard-clipped,
+        \begin{equation}
+          x = \frac{|\Delta m|}{0.5\, m_{\rm eff} + 10^{-40}} , \qquad
+          \Delta m \;\longrightarrow\; \frac{\Delta m}{1+x} .
+        \end{equation}
+        As $|\Delta m|\to\infty$ this rational form asymptotes to a
+        bounded transferred mass $\approx 0.5\,m_{\rm eff}$, while for
+        $|\Delta m|\ll 0.5\,m_{\rm eff}$ the attenuation factor is
+        $\approx 1$ (unmodified flux), giving a $C^0$-continuous
+        transition instead of a hard clip that would otherwise reduce
+        the formal order of convergence of the scheme near the
+        constraint boundary.
+\end{enumerate}
+
+\section{Time Integration}
+\label{sec:time-integration}
+
+The scheme is explicit and operator-split from hydrodynamics, gravity,
+cooling and star formation/feedback. For each active particle pair, the
+signed flux is accumulated into both particles' per-timestep flux
+buffers with the sign convention that a positive flux (in the direction
+of $\nunit$, from $i$ towards $j$) is subtracted from the left state $i$
+and added to the right state $j$
+(\code{chemistry_part_update_fluxes_left/right},
+\code{parabolic/chemistry_flux.h}):
+\begin{equation}
+  \Delta m_{Z,i} \mathrel{-}= F_{\rm HLL}\,\Aij\, \dt_{\min} , \qquad
+  \Delta m_{Z,j} \mathrel{+}= F_{\rm HLL}\,\Aij\, \dt_{\min} .
+\end{equation}
+Because SWIFT is an individual-timestep code, inactive neighbours of an
+active particle must still receive their share of the exchanged flux to
+preserve exact pairwise mass conservation; this is guaranteed structurally
+by \code{runner_iact_chemistry_fluxes_common}
+(\code{chemistry_iact.h}), which always updates both sides of a
+symmetric interaction. At the end of the force loop, each particle
+applies its accumulated buffer to the conserved variable
+(\code{chemistry_end_force}, \code{chemistry.h}):
+\begin{equation}
+  m_{Z,i}^{n+1} = m_{Z,i}^{n} + \sum_{j\in\mathcal N(i)} \Delta m_{Z,i}^{(j)} ,
+\end{equation}
+i.e.\ a first-order (forward Euler) update of the conserved metal mass
+using the already-limited, already-integrated-over-$\dt_{\min}$ flux sum:
+no further sub-cycling or higher-order time integrator is applied to the
+diffusion term itself.
+
+\section{Robustness: Unphysical-State Detection and Correction}
+\label{sec:unphysical}
+
+All corrections live in \code{chemistry_unphysical.h} and are invoked
+from exactly three call sites, distinguished by an integer
+\code{callloc}, each with a different tolerance for how "wrong" a state
+is allowed to be before the code intervenes rather than simply
+correcting silently
+(\code{chemistry_check_unphysical_state},
+\code{chemistry_unphysical.h}):
+
+\begin{itemize}
+  \item \textbf{\code{callloc=0}}, after the density loop
+        (\code{chemistry_end_density}): a negative metal mass here
+        indicates corruption \emph{outside} the diffusion solver (e.g.\
+        a bug in feedback/enrichment), so the first occurrence for a
+        given particle raises a hard \code{error()}.
+  \item \textbf{\code{callloc=1}}, during gradient extrapolation
+        (Section~\ref{sec:state-reconstruction}): the correction is
+        soft. If the extrapolated mass would go negative, the
+        extrapolation is discarded and the pre-extrapolation (0th-order,
+        particle-centred) value is used instead; the routine returns a
+        \code{char corrected} flag consumed by the caller to also reset
+        the reconstructed \emph{state} $U$, not just the mass used for
+        the check; the flag is compared with an integer test rather than
+        a floating-point comparison, avoiding round-off-triggered false
+        negatives. If instead the extrapolated mass exceeds the gas
+        mass, it is similarly reverted to the 0th-order value (or, in a
+        pathological case, hard-clamped to the gas mass).
+  \item \textbf{\code{callloc=2}}, after the force loop
+        (\code{chemistry_end_force}): a negative mass here means the
+        limiters of Sections~\ref{sec:flux-limiter}--\ref{sec:anti-diffusion-guard}
+        failed to prevent an overshoot. The particle's per-species
+        \code{negativity_counter} is incremented and a throttled warning
+        is issued every $200$ consecutive occurrences
+        (\code{GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT}); if the
+        magnitude of the negative mass ever exceeds the particle's gas
+        mass, a hard \code{error()} is raised regardless of the
+        counter, since that indicates a large, likely unrecoverable,
+        conservation failure rather than round-off.
+\end{itemize}
+
+In addition to this three-site dispatcher:
+\begin{itemize}
+  \item \textbf{Final safety clamp} (Section~\ref{sec:state-reconstruction},
+        step 6): an unconditional
+        $U \gets \max(0,U)$ applied to both reconstructed states
+        immediately before they are handed to the Riemann solver,
+        independent of whether the softer \code{callloc=1} logic fired.
+  \item \code{chemistry_check_unphysical_metallicity}
+        (\code{chemistry_unphysical.h}) hard-clamps any
+        reconstructed metallicity to $[0,1]$, used when the diffusion
+        driver is $\Zfrac$.
+  \item \code{chemistry_check_unphysical_total_metal_mass}
+        (\code{chemistry_unphysical.h}) checks, after both the
+        density loop and the force loop, that the \emph{sum} over all
+        tracked species does not exceed the particle's gas mass; if it
+        does, every species is rescaled by $1/(10\times m_{Z,\rm
+        tot}/m)$ and a warning is issued (this is a diagnostic
+        safety net, not expected to trigger in a correctly configured
+        run).
+  \item \code{chemistry_get_part_corrected_metal_mass}
+        (\code{chemistry_getters.h}) is the \emph{only} interface
+        exposed to other physics modules (feedback, cooling, star
+        formation): it always clamps negative metal mass to zero and
+        caps $m_Z \geq m$ down to $0.01\,m$. The diffusion solver is
+        thus free to carry small transient negative or super-unity
+        states internally (a deliberate design choice to avoid
+        amplifying noise, see the comments in
+        Section~\ref{sec:gradients}), while guaranteeing that no other
+        module ever observes an unphysical metallicity.
+\end{itemize}
+
+\section{Timestep Stability Criteria}
+\label{sec:timestep}
+
+\subsection{GIZMO Particle Size}
+The characteristic length entering every CFL estimate is the physical
+GIZMO particle size,
+\begin{equation}
+  \dx = a \left(\frac{V_i}{\Omega_d}\right)^{1/d} ,
+\end{equation}
+$\Omega_d$ the volume of the $d$-dimensional unit sphere
+(\code{chemistry_get_physical_particle_size}, \code{chemistry_timesteps.h}
+-- the same getter the hyperbolic solver's causal bound uses, so the CFL
+length and the bound's length scale cannot drift apart); optionally, under
+\code{GIZMO_LANSON_VILA_PARTICLE_SIZE}, the Lanson \& Vila (2008)
+alternative $\dx = a/(2\,\overline{\delta x^{-1}})$ is used instead,
+built from the same face-area accumulator as
+Eq.~\eqref{eq:face_area}.
+
+Their eq.~(58) defines $\dx_i = 1/(2\sum_l w_l\|A_{il}\|)$ with $w_l$ the
+neighbour's \emph{volume}, evaluated here as $\sum_l\|A_{il}\|/V_l$; the
+kernel value $w_jh_j^{-d}$ is dimensionally interchangeable with $1/V_l$
+but smaller by a factor of order the neighbour count, and using it in that
+place inflates $\dx_i$ by the same factor. The authors note below eq.~(58)
+that $\sum_l w_l\|A_{il}\| = O(1/\epsilon_0)$, with $\epsilon_0$ the
+smoothing length, so the two definitions describe the same resolution
+scale and differ only by an $O(1)$ constant. Switching between them at a
+fixed $\CCFL$ therefore buys nothing by itself: the constant is what a
+Courant number absorbs, so the admissible $\CCFL$ has to be re-derived for
+whichever length is in use, from Lanson \& Vila's own operator-based
+stability condition (their eq.~62) rather than carried over.
+
+\subsection{Mode-Dependent CFL Conditions}
+\label{sec:cfl-modes}
+The three diffusion modes do \emph{not} share a single timestep formula
+(\code{chemistry_diffusion_timestep}, \code{chemistry_timesteps.h}).
+In every mode the Frobenius norm $\norm{\Kmat}_F$ is evaluated first; if
+it vanishes (no diffusivity yet computed, e.g.\ at start-up) the
+timestep constraint is skipped ($\dt\to\infty$).
+
+\paragraph{Isotropic constant.}
+\begin{equation}
+  \label{eq:dt_const}
+  \dt \le \CCFL\, \frac{\dx^2}{\norm{\Kmat}_F} = \CCFL\, \frac{\dx^2}{\kappaC} ,
+\end{equation}
+the textbook explicit-diffusion CFL bound (derived rigorously in
+Appendix~\ref{app:von-neumann}), with no additional density-dependent
+prefactor since $\driver=\rhoZ$ already carries the density.
+
+\paragraph{Isotropic Smagorinsky and anisotropic gradient.}
+Both go through the more elaborate form (Hopkins~\cite{Hopkins2017diffusion}, eq.~15-style)
+\begin{equation}
+  \label{eq:dt_aniso}
+  \dt \le \CCFL\, \frac{E^2}{\norm{\Kmat}_F}\,\bar\rho ,
+\end{equation}
+where the extra factor $\bar\rho$ arises because here the conserved
+state is $U=\rhoZ$ but the driver is $\driver=\Zfrac$, so
+$\norm{U}/\norm{\driver} = \bar\rho$ (physical gas density,
+\code{hydro_get_physical_density}), and $E$ is a gradient-strength-aware
+effective length,
+\begin{equation}
+  \label{eq:E-bracket}
+  E =
+  \begin{cases}
+    \dx & \text{isotropic\_smagorinsky (see remark below)} \\[4pt]
+    \dfrac{\norm{\driver}\,\dx}{\norm{\grad\driver}\,\dx + \norm{\driver}}
+      & \text{anisotropic\_gradient,}
+  \end{cases}
+\end{equation}
+with $\norm{\driver} = \big(\sum_{\rm species} \Zfrac^2\big)^{1/2}$ and
+$\norm{\grad\driver}$ the Frobenius norm of the stacked
+species-by-component metallicity gradient matrix, both evaluated
+particle-locally. If $\norm{\driver}=0$ (no metal to diffuse) the
+constraint is skipped.
+
+For the anisotropic mode, $E$ interpolates between two regimes: in a
+smooth region ($\norm{\grad\driver}\,\dx \ll \norm{\driver}$),
+$E \to \dx$ and Eq.~\eqref{eq:dt_aniso} reduces to the same
+$\dx^2/\norm{\Kmat}_F$ scaling as Eq.~\eqref{eq:dt_const}. In a region
+with a locally steep metallicity gradient
+($\norm{\grad\driver}\,\dx \gg \norm{\driver}$),
+$E \to \norm{\driver}/\norm{\grad\driver}$, the gradient's own local
+scale length, which can be much shorter than $\dx$; the timestep
+constraint then becomes correspondingly \emph{tighter} than the naive
+particle-size estimate. This is intentional and physically necessary --
+diffusion locally erases steep features fastest exactly where they are
+steep -- but the code comment at \code{chemistry_timesteps.h}
+notes explicitly that it is expensive in practice: strong feedback-driven
+enrichment gradients can drive this term to very small values and
+"slow down everything." For that reason the Smagorinsky mode
+deliberately \emph{does not} use the bracket of
+Eq.~\eqref{eq:E-bracket}, substituting the plain particle size $\dx$
+instead (\code{chemistry_timesteps.h}) -- a pragmatic,
+non-rigorous compromise flagged as such directly in the source, adopted
+because the physically correct bound was found to be prohibitively
+restrictive for that closure in practice.
+
+\subsection{Hyperbolic Relation}
+\label{sec:hyperbolic-relation}
+For completeness: under
+\code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION}, the same code base
+instead advances a four-component relaxation system whose flux obeys a
+Cattaneo-type equation with relaxation time $\tau$ and whose timestep
+uses an ordinary hyperbolic CFL condition
+$\dt = \CCFL\, \dx/v_{\max}$. As $\tau\to0$ the hyperbolic system's
+flux equation collapses onto Eq.~\eqref{eq:ficks_law}, i.e.\ the
+parabolic equation documented in this file is the relaxation limit of
+that system; the two share the FVPM geometry, gradient estimator and
+slope limiters described above, but use different Riemann solvers,
+different conserved-state vectors, and different timestep criteria. The
+hyperbolic solver's own physics (relaxation-time model, blending
+factor between its HLL flux and the parabolic flux of
+Eq.~\eqref{eq:flux_hll}) is documented separately and is not repeated
+here.
+
+\section{Boundary Conditions and Special Cases}
+
+\subsection{No Explicit Boundary Treatment}
+The module implements \emph{no} boundary-condition logic of its own --
+no reflective, inflow/outflow, or fixed-concentration boundary is coded
+anywhere in \code{GEAR_FVPM_DIFFUSION}. Periodicity, where enabled, is
+resolved upstream by the SWIFT domain/tree infrastructure: the distance
+vector $\mathbf{dx}_{ij}$ passed into every gradient and flux routine
+documented above is already the minimum-image (periodicity-corrected)
+separation by the time it reaches this module (see e.g.\ the comment at
+\code{chemistry_gradients.h}, "\emph{Do it this way in case dx
+contains periodicity corrections already}"). For non-periodic domains,
+no special treatment of domain edges is applied beyond the generic
+neighbour-search behaviour of the host code.
+
+\subsection{Isolated Particles}
+The only edge case handled explicitly is a particle with zero
+neighbours, for which \code{chemistry_end_density} is never called (so
+the filtered fields would otherwise remain uninitialised).
+\code{chemistry_part_has_no_neighbours} (\code{chemistry.h-...})
+instead sets sane fallback values: the filtered density is set equal to
+the particle's own local density and the filtered momentum to
+$\bar\rho\,\mathbf v$, i.e.\ the particle is treated as its own,
+unfiltered neighbourhood. Since $\Splus$ built from a single-particle
+"gradient" is identically zero, such a particle contributes no
+anisotropic diffusion until it acquires neighbours; the isotropic modes
+are unaffected since $\kappaC$ does not depend on the shear tensor.
+
+\section{Validation and Verification}
+
+\subsection{Conservation Properties}
+The pairwise sign convention of Section~\ref{sec:time-integration}
+(flux subtracted from the source, added to the sink, both particles
+updated from a single Riemann solve) guarantees exact discrete
+conservation of total metal mass across every interacting pair,
+independent of the flux-limiter stage of Section~\ref{sec:flux-limiter}
+(the limiter rescales the flux by a common factor \emph{before} it is
+split between the two particles, so the pairwise anti-symmetry is
+preserved). Global conservation can therefore only be broken by the
+\code{callloc=2} corrections of Section~\ref{sec:unphysical}, which are
+intentionally non-conservative safety nets and are designed to trigger
+rarely (tracked via the negativity counter for exactly this reason).
+
+\subsection{Stability}
+Section~\ref{sec:timestep}'s CFL bounds are necessary but, because of
+the explicit minmod/artificial-diffusivity blending in
+Eq.~\eqref{eq:flux_hll} and the nonlinear flux limiter of
+Section~\ref{sec:flux-limiter}, not proven sufficient in closed form for
+the full nonlinear scheme; Appendix~\ref{app:von-neumann} derives the
+linear (constant-coefficient, unlimited) stability bound that motivates
+Eq.~\eqref{eq:dt_const}.
+
+\subsection{Suggested Test Problems}
+\begin{itemize}
+  \item \textbf{1D/3D diffusion of an isolated metal peak}
+        (\code{isotropic\_constant} mode): compare the discrete solution
+        against the analytic Green's function of the linear heat
+        equation, Eq.~\eqref{eq:pde_const}, on a uniform particle
+        distribution.
+  \item \textbf{Two-peak merging test}: verify that two well-separated
+        enriched regions diffuse independently at early times and merge
+        smoothly, exercising the cell and face limiters of
+        Section~\ref{sec:gradients} in a regime with two simultaneous
+        local extrema.
+  \item \textbf{Shear-flow anisotropic diffusion}: impose a prescribed
+        background shear (e.g.\ a Couette or Kolmogorov flow) and verify
+        that metal transport is preferentially aligned with the
+        positive-eigenvalue directions of $\Splus$
+        (Proposition~\ref{prop:psd}), not merely isotropic.
+\end{itemize}
+
+\section{Conclusion}
+
+\subsection{Summary}
+The parabolic branch of GEAR's FVPM chemistry module solves one of three
+distinct diffusion PDEs (Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso})
+depending on the chosen closure, using a meshless least-squares gradient
+estimator shared with the host MFM hydrodynamics solver, a two-stage
+(cell- then face-wise) slope limiter tuned to avoid corrupting the
+driver gradients that define the PDE itself, a Hopkins (2017)
+minmod-blended HLL Riemann solver with an artificial-diffusivity cap and
+an independent sign-consistency guard, and a physically-motivated,
+smoothly-saturating flux limiter that enforces mass conservation bounds
+without a hard discontinuity. Mode-dependent CFL conditions, several
+layers of unphysical-state detection, and an unconditional final
+positivity clamp round out the scheme's robustness.
+
+\subsection{Limitations}
+The explicit time integration ties the diffusion timestep to
+Eq.~\eqref{eq:dt_const} or~\eqref{eq:dt_aniso}, which can become
+severely restrictive in regions of high resolution or strong turbulence
+(as the code's own comments acknowledge for the anisotropic bracket of
+Eq.~\eqref{eq:E-bracket}). The Smagorinsky-mode timestep
+(Section~\ref{sec:cfl-modes}) is a known, explicitly-flagged compromise
+rather than a rigorous bound. The sign-consistency guard of
+Section~\ref{sec:anti-diffusion-guard} can locally stall diffusion for a
+sub-step whenever the HLL and direct flux estimates disagree, which is a
+robustness trade-off rather than a formally analysed limiter property.
+
+\subsection{Relation to the Wider Module}
+This document deliberately excludes the hyperbolic (Cattaneo-relaxation)
+formulation available under
+\code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION}
+(Section~\ref{sec:hyperbolic-relation}); readers needing that solver's
+four-component Riemann problem, relaxation-time model, and
+parabolic/hyperbolic flux-blending factor should consult its own
+documentation.
+
+\appendix
+
+\section{Mathematical Derivations}
+
+\subsection{From Conservation and Fick's Law to the Parabolic Equation}
+\label{app:derivation-pde}
+Starting from the conservation law for a generic scalar density
+$\rho Q$ advected with the flow and subject to a diffusive current
+$\Fdiff$,
+\begin{equation}
+  \pdv{(\rho Q)}{t} + \div(\rho Q\,\mathbf v) = -\div\Fdiff ,
+\end{equation}
+the Lagrangian (particle-following) derivative satisfies
+$\dv{}{t}(\rho Q) \equiv \pdv{(\rho Q)}{t} + \div(\rho Q\,\mathbf v) - \rho Q\,\div\mathbf v$
+only up to the usual continuity-equation bookkeeping; in the FVPM
+formalism this is sidestepped entirely because the conserved variable is
+carried \emph{by} the moving, mass-conserving particle rather than
+evolved on a fixed grid, so the advective flux never needs to be
+discretised for a passive scalar: only the diffusive part remains to be
+integrated,
+\begin{equation}
+  \pdv{(\rho Q)}{t}\bigg|_{\rm particle} = -\div\Fdiff .
+\end{equation}
+Substituting the tensorial Fick's law $\Fdiff = -\Kmat\cdot\grad q$
+(Eq.~\eqref{eq:ficks_law}) gives the general parabolic equation
+\begin{equation}
+  \pdv{(\rho Q)}{t} = \div\big(\Kmat\cdot\grad q\big) ,
+\end{equation}
+which specialises to Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso}
+according to whether $q=\rho Q$ or $q=Q$ and whether $\Kmat$ is a scalar
+multiple of the identity or the full anisotropic tensor $\kappaP\Splus$.
+
+\subsection{Von Neumann Stability of the Explicit Parabolic Update}
+\label{app:von-neumann}
+Consider the 1D, constant-coefficient model problem
+$\partial_t u = \kappaC\,\partial_x^2 u$ discretised with forward Euler
+in time and central differences in space on a uniform grid of spacing
+$\dx$ (the FVPM scheme reduces to this discretisation locally, in a
+region of uniform particle spacing and constant $\Kmat=\kappaC\mathbf I$,
+which is precisely the regime the code's
+Eq.~\eqref{eq:dt_const} targets):
+\begin{equation}
+  \frac{u_i^{n+1}-u_i^n}{\dt} = \kappaC\,\frac{u_{i+1}^n - 2u_i^n + u_{i-1}^n}{\dx^2} .
+\end{equation}
+\begin{proposition}[Parabolic CFL bound]
+The scheme above is Von Neumann stable if and only if
+$\dt \le \dfrac{\dx^2}{2\kappaC}$.
+\end{proposition}
+\begin{proof}
+Insert a Fourier mode $u_i^n = \hat u^n e^{\mathrm i k x_i}$, $x_i = i\,\dx$:
+\begin{equation}
+  \hat u^{n+1} = \hat u^n\Big[1 + \frac{\kappaC\dt}{\dx^2}\big(e^{\mathrm i k\dx} - 2 + e^{-\mathrm i k\dx}\big)\Big]
+  = \hat u^n\Big[1 - \frac{4\kappaC\dt}{\dx^2}\sin^2\!\Big(\frac{k\dx}{2}\Big)\Big] ,
+\end{equation}
+using $e^{i\theta}+e^{-i\theta}-2 = -4\sin^2(\theta/2)$. The amplification
+factor is
+$G(k) = 1 - \dfrac{4\kappaC\dt}{\dx^2}\sin^2\!\big(\tfrac{k\dx}{2}\big) \in
+\Big[1-\dfrac{4\kappaC\dt}{\dx^2},\ 1\Big]$
+as $\sin^2(\cdot)$ ranges over $[0,1]$. Stability requires
+$|G(k)|\le 1$ for every admissible $k$; since $G(k)\le1$ always, the
+binding constraint is the lower bound,
+\begin{equation}
+  1 - \frac{4\kappaC\dt}{\dx^2} \ge -1
+  \quad\Longleftrightarrow\quad
+  \dt \le \frac{\dx^2}{2\kappaC} ,
+\end{equation}
+attained in the worst case $k\dx=\pi$ (the grid (particle)-scale
+Nyquist mode). This is both necessary (violating it makes $|G(\pi/\dx)|>1$,
+so that mode grows without bound under repeated application) and
+sufficient (it makes $|G(k)|\le1$ for every $k$, so no mode grows).
+\end{proof}
+The code's constant $\CCFL$ (\code{chem_data->C_CFL_chemistry}) absorbs
+the factor of $1/2$ above together with an additional safety margin for
+the (nonlinear, multi-dimensional, variable-coefficient, explicitly
+minmod-limited) production scheme, for which the linear analysis above
+is necessary but not sufficient. In the anisotropic case, replacing
+$\kappaC \to \norm{\Kmat}_F$ in the bound is the standard generalisation
+used when the exact eigenvalue decomposition of $\Kmat$ is not tracked
+per-timestep for performance reasons: since
+$\norm{\Kmat}_F \ge \lambda_{\max}(\Kmat)$ for any symmetric PSD matrix
+(the Frobenius norm bounds the spectral radius from above), using
+$\norm{\Kmat}_F$ in place of the true largest eigenvalue in
+Eq.~\eqref{eq:dt_const}/\eqref{eq:dt_aniso} yields a \emph{more}
+restrictive (i.e.\ still stable, possibly conservative) timestep bound.
+
+\section{Nomenclature}
+
+\subsection{Symbol to Code-Identifier Map}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Symbol & Code identifier & Meaning \\
+\midrule
+$\rho$ & \code{hydro_get_physical_density(p)} & Physical gas density \\
+$\Zfrac$ & \code{chemistry_get_metal_mass_fraction} & Metal mass fraction \\
+$\rhoZ$ & \code{chemistry_get_physical_metal_density} & Physical metal mass density \\
+$m_Z$ & \code{p->chemistry_data.metal_mass[m]} & Conserved metal mass \\
+$\driver$ & -- (selected by mode) & Diffusion driver: $\rhoZ$ or $\Zfrac$ \\
+$\kappaC$ & \code{chem_data->diffusion_coefficient} & Global diffusion normalisation \\
+$\kappaP$ & \code{p->chemistry_data.kappa} & Per-particle diffusion coefficient \\
+$\Kmat$ & \code{chemistry_get_physical_matrix_K} & Diffusion tensor \\
+$\Kstar$ & \code{chemistry_riemann_compute_K_star} & Interface-averaged diffusion tensor \\
+$\Shear$ & \code{chemistry_get_physical_shear_tensor} & Traceless velocity shear tensor \\
+$\Splus$ & \code{chemistry_regularize_shear_tensor} & PSD-regularised shear tensor \\
+$\Fdiff$ & \code{chemistry_get_physical_parabolic_flux} & Diffusive flux \\
+$\gammak$ & \code{kernel_gamma} & Kernel compact-support factor \\
+$\mathbf B_i$ & \code{p->geometry.matrix_E} (already inverted) & Least-squares gradient matrix \\
+$V_i$ & \code{p->geometry.volume} & Particle effective volume \\
+$\mathbf A_{ij}$ & (local, \code{chemistry_iact.h}) & Generalised interface area vector \\
+$\xij$ & (local, \code{chemistry_iact.h}) & Interface position relative to $i$ \\
+$\psiHLL$ & \code{chem_data->hll_riemann_solver_psi} & HLL transport-term weight \\
+$\epsHLL$ & \code{chem_data->hll_riemann_solver_epsilon} & Direct-flux sign-consistency tolerance \\
+$\alpha$ & \code{chemistry_riemann_compute_alpha} & Artificial diffusivity \\
+$\CCFL$ & \code{chem_data->C_CFL_chemistry} & Chemistry CFL coefficient \\
+$\dx$ & (local, \code{chemistry_timesteps.h}) & GIZMO physical particle size \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Subscripts and Superscripts}
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item $i,j$: particle indices (also used as tensor component indices where unambiguous from context)
+  \item $L,R$: left/right Riemann states
+  \item $n$: explicit timestep index
+  \item $\star$: interface-averaged quantity
+  \item $+$: positive-eigenvalue-projected (regularised) tensor
+\end{itemize}
+
+\subsection{Abbreviations}
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item FVPM: Finite Volume Particle Method
+  \item MFM: Meshless Finite Mass (GIZMO family of schemes)
+  \item HLL: Harten--Lax--van Leer (approximate Riemann solver)
+  \item CFL: Courant--Friedrichs--Lewy
+  \item LES: Large-Eddy Simulation
+  \item PSD: Positive Semi-Definite
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

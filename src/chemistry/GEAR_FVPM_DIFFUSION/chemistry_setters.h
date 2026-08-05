@@ -1,0 +1,305 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H
+
+#include "chemistry_getters.h"
+#include "chemistry_struct.h"
+#include "hydro.h"
+#include "kernel_hydro.h"
+
+/**
+ * @brief Set the gradients for the given particle to zero.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_reset_gradients(struct part *restrict p) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->gradients.Z[m][0] = 0.0f;
+    chd->gradients.Z[m][1] = 0.0f;
+    chd->gradients.Z[m][2] = 0.0f;
+
+    chd->gradients.rhoZ[m][0] = 0.0f;
+    chd->gradients.rhoZ[m][1] = 0.0f;
+    chd->gradients.rhoZ[m][2] = 0.0f;
+
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    /* Iterate over the lines of the flux gradient matrix, for metal m */
+    for (int i = 0; i < 3; i++) {
+      chd->gradients.flux[m][i][0] = 0.f;
+      chd->gradients.flux[m][i][1] = 0.f;
+      chd->gradients.flux[m][i][2] = 0.f;
+    }
+#endif
+  }
+
+  chd->gradients.v[0][0] = 0.0f;
+  chd->gradients.v[0][1] = 0.0f;
+  chd->gradients.v[0][2] = 0.0f;
+  chd->gradients.v[1][0] = 0.0f;
+  chd->gradients.v[1][1] = 0.0f;
+  chd->gradients.v[1][2] = 0.0f;
+  chd->gradients.v[2][0] = 0.0f;
+  chd->gradients.v[2][1] = 0.0f;
+  chd->gradients.v[2][2] = 0.0f;
+
+  chd->filtered.grad_v_tilde[0][0] = 0.0f;
+  chd->filtered.grad_v_tilde[0][1] = 0.0f;
+  chd->filtered.grad_v_tilde[0][2] = 0.0f;
+  chd->filtered.grad_v_tilde[1][0] = 0.0f;
+  chd->filtered.grad_v_tilde[1][1] = 0.0f;
+  chd->filtered.grad_v_tilde[1][2] = 0.0f;
+  chd->filtered.grad_v_tilde[2][0] = 0.0f;
+  chd->filtered.grad_v_tilde[2][1] = 0.0f;
+  chd->filtered.grad_v_tilde[2][2] = 0.0f;
+}
+
+/**
+ * @brief Update the diffusion gradients for the given particle with the
+ * given contributions.
+ *
+ * @param p Particle.
+ * @param metal metal specie index to update (0 <= metal <
+ * GEAR_CHEMISTRY_ELEMENT_COUNT).
+ * @param dZ Metal mass fraction gradient (of size 3).
+ * @param drhoZ Metal density gradient (of size 3).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
+                                          double dZ[3], double drhoZ[3]) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  chd->gradients.Z[metal][0] += dZ[0];
+  chd->gradients.Z[metal][1] += dZ[1];
+  chd->gradients.Z[metal][2] += dZ[2];
+
+  chd->gradients.rhoZ[metal][0] += drhoZ[0];
+  chd->gradients.rhoZ[metal][1] += drhoZ[1];
+  chd->gradients.rhoZ[metal][2] += drhoZ[2];
+}
+
+/**
+ * @brief Update the velocity gradients for the given particle with the
+ * given contributions.
+ *
+ * @param p Particle
+ * @param dvx x Velocity gradient contribution.
+ * @param dvy y Velocity gradient contribution.
+ * @param dvz z Velocity gradient contribution.
+ * @param dvx_tilde x Velocity tilde gradient contribution.
+ * @param dvy_tilde y Velocity tilde gradient contribution.
+ * @param dvz_tilde z Velocity tilde gradient contribution.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
+                                      float dvy[3], float dvz[3],
+                                      float dvx_tilde[3], float dvy_tilde[3],
+                                      float dvz_tilde[3]) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  chd->gradients.v[0][0] += dvx[0];
+  chd->gradients.v[0][1] += dvx[1];
+  chd->gradients.v[0][2] += dvx[2];
+  chd->gradients.v[1][0] += dvy[0];
+  chd->gradients.v[1][1] += dvy[1];
+  chd->gradients.v[1][2] += dvy[2];
+  chd->gradients.v[2][0] += dvz[0];
+  chd->gradients.v[2][1] += dvz[1];
+  chd->gradients.v[2][2] += dvz[2];
+
+  chd->filtered.grad_v_tilde[0][0] += dvx_tilde[0];
+  chd->filtered.grad_v_tilde[0][1] += dvx_tilde[1];
+  chd->filtered.grad_v_tilde[0][2] += dvx_tilde[2];
+  chd->filtered.grad_v_tilde[1][0] += dvy_tilde[0];
+  chd->filtered.grad_v_tilde[1][1] += dvy_tilde[1];
+  chd->filtered.grad_v_tilde[1][2] += dvy_tilde[2];
+  chd->filtered.grad_v_tilde[2][0] += dvz_tilde[0];
+  chd->filtered.grad_v_tilde[2][1] += dvz_tilde[1];
+  chd->filtered.grad_v_tilde[2][2] += dvz_tilde[2];
+}
+
+/**
+ * @brief Normalise the gradients for the given particle with the given
+ * normalisation factor.
+ *
+ * @param p Particle.
+ * @param norm Normalisation factor.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->gradients.Z[m][0] *= norm;
+    chd->gradients.Z[m][1] *= norm;
+    chd->gradients.Z[m][2] *= norm;
+
+    chd->gradients.rhoZ[m][0] *= norm;
+    chd->gradients.rhoZ[m][1] *= norm;
+    chd->gradients.rhoZ[m][2] *= norm;
+
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    /* Iterate over the lines of the flux gradient matrix, for metal m */
+    for (int i = 0; i < 3; i++) {
+      chd->gradients.flux[m][i][0] *= norm;
+      chd->gradients.flux[m][i][1] *= norm;
+      chd->gradients.flux[m][i][2] *= norm;
+    }
+#endif
+  }
+
+  chd->gradients.v[0][0] *= norm;
+  chd->gradients.v[0][1] *= norm;
+  chd->gradients.v[0][2] *= norm;
+  chd->gradients.v[1][0] *= norm;
+  chd->gradients.v[1][1] *= norm;
+  chd->gradients.v[1][2] *= norm;
+  chd->gradients.v[2][0] *= norm;
+  chd->gradients.v[2][1] *= norm;
+  chd->gradients.v[2][2] *= norm;
+
+  chd->filtered.grad_v_tilde[0][0] *= norm;
+  chd->filtered.grad_v_tilde[0][1] *= norm;
+  chd->filtered.grad_v_tilde[0][2] *= norm;
+  chd->filtered.grad_v_tilde[1][0] *= norm;
+  chd->filtered.grad_v_tilde[1][1] *= norm;
+  chd->filtered.grad_v_tilde[1][2] *= norm;
+  chd->filtered.grad_v_tilde[2][0] *= norm;
+  chd->filtered.grad_v_tilde[2][1] *= norm;
+  chd->filtered.grad_v_tilde[2][2] *= norm;
+}
+
+/**
+ * @brief Compute and set the ejected metal yields from supernovae events (SNII
+ * and SNIa) for a star particle.
+ *
+ * This function calculates the total mass of metals ejected during supernova
+ * feedback (Type II and Type Ia) for a given star particle. It combines the
+ * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
+ * results into internal units.
+ *
+ * @param sp Pointer to the star particle structure (`struct spart`) where the
+ * results will be stored.
+ * @param m_snii Stellar mass involved per supernova II event.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's
+ * initial metallicity.
+ * @param number_snii Number of Type II supernovae events.
+ * @param number_snia Number of Type Ia supernovae events.
+ * @param snii_yields Array of metal yields per element for Type II supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param snia_yields Array of metal yields per element for Type Ia supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param phys_const Pointer to a structure containing physical constants.
+ *
+ * @note The resulting metal mass ejected per element is stored in:
+ *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_set_star_supernovae_ejected_yields(
+    struct spart *restrict sp, const float mass_snii_event,
+    const float m_non_processed, const int number_snii, const int number_snia,
+    const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const struct phys_const *phys_const) {
+
+  /* In MF diffusion, the last element correspond to the other untracked
+     metals, not the sum of all metals. This ensure proper diffusion of the
+     elements and consistency between the tracked elements and untracked ones */
+
+  float snii_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+  float snia_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+
+  /* Get the sum of all explicitely tracked elements */
+  float m_Z_tot_snii_tracked = 0.0;
+  float m_Z_tot_snia_tracked = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+    m_Z_tot_snii_tracked += snii_yields[i];
+    m_Z_tot_snia_tracked += snia_yields[i];
+
+    snii_yields_new[i] = snii_yields[i];
+    snia_yields_new[i] = snia_yields[i];
+
+    /* Check that the yields have physical values. Negative values may hint
+       interpolation problems. */
+    if (snii_yields_new[i] < 0) {
+      error(
+          "[%lld, %d] Negative SNII yields detected. Abort. mass = %e, mi = %e",
+          sp->id, i, sp->mass, snii_yields_new[i]);
+    }
+    if (snia_yields_new[i] < 0) {
+      error(
+          "[%lld, %d] Negative SNIa yields detected. Abort. mass = %e, mi = %e",
+          sp->id, i, sp->mass, snia_yields_new[i]);
+    }
+  }
+
+  /* In GEAR tables, the last element is the sum of all elements. To get the
+     metal mass of untracked element, we simply need to subtract the total
+     metal mass (the last yield) by the sum of all tracked elements. */
+  const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
+  snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
+  snia_yields_new[last_elem] = snia_yields[last_elem] - m_Z_tot_snia_tracked;
+
+  /* Check that we do not inject negative yields. Negative masses will produce
+     an error in diffusion because we check that we do not end up with negative
+     metal mass. */
+  if (snii_yields_new[last_elem] < 0) {
+    error("[%lld] Negative snii_yields[9] = %e. Reset to 0.", sp->id,
+          snii_yields_new[last_elem]);
+  }
+  if (snia_yields_new[last_elem] <= 0) {
+    error("[%lld] Negative snia_yields[9] = %e. Reset to 0.", sp->id,
+          snia_yields_new[last_elem]);
+  }
+
+  /* Now give your yields to the stars */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields_new[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            m_non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
+
+    /* Supernovae Ia yields */
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields_new[i] * number_snia;
+
+    /* Convert everything in code units */
+    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
+  }
+}
+
+/* Import the right chemistry_part_data definition */
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_setters.h"
+#endif
+
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H */

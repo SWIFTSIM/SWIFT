@@ -314,19 +314,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Re-set problematic values */
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.wcount_dh = 0.f;
-  p->geometry.volume = 1.0f;
-  p->geometry.matrix_E[0][0] = 1.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 1.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 1.0f;
 
-  /* reset the centroid to disable MFV velocity corrections for this particle */
-  fvpm_reset_centroids(p);
+  fvpm_geometry_part_has_no_neighbours(p);
 }
 
 /**

@@ -60,6 +60,15 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+/* Import the chemistry FCT prep loop functions. */
+#define FUNCTION chemistry_fct_prep
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_hydro.h"
+#include "runner_doiact_undef.h"
+#endif
+
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
@@ -268,6 +277,11 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+          else if (t->subtype == task_subtype_chemistry_fct_prep)
+            runner_dosub_self2_chemistry_fct_prep(r, ci, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -339,6 +353,12 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+          else if (t->subtype == task_subtype_chemistry_fct_prep)
+            runner_dosub_pair2_chemistry_fct_prep(r, ci, cj, /*below_h_max=*/0,
+                                                  1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -433,6 +453,12 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci, 1);
+          break;
+#endif
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+        case task_type_chemistry_fct_ghost:
+          runner_do_chemistry_fct_ghost(r, ci, 1);
           break;
 #endif
         case task_type_stars_ghost:
