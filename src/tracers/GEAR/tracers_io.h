@@ -66,6 +66,14 @@ INLINE static void convert_bpart_averaged_accretion_rate(const struct engine *e,
     } else {
       ret[i] = 0.f;
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged accretion rate for black hole id=%lld "
+          "trigger=%d value=%e",
+          bp->id, i, ret[i]);
+#endif
   }
 }
 

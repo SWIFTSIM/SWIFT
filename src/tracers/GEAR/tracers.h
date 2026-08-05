@@ -149,17 +149,30 @@ static INLINE void tracers_after_timestep_bpart(
 
   const float accr_rate = black_holes_get_accretion_rate(bp);
 
-  /* Accumulate average accretion rate */
+  /* Accumulate average accretion rate. If averaged_accretion_rate[i] < 0
+   * this is the first step after the trigger fired: the stored value is
+   * -time_to_remove, so (time_step_length + averaged_accretion_rate[i])
+   * gives only the in-window fraction, using a single consistent rate value
+   * and never going negative. */
   for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
     if (tracers_triggers_started[i]) {
-      bp->tracers_data.averaged_accretion_rate[i] +=
-          accr_rate * time_step_length;
+      if (bp->tracers_data.averaged_accretion_rate[i] < 0.f) {
+        const double in_window =
+            time_step_length + bp->tracers_data.averaged_accretion_rate[i];
+        bp->tracers_data.averaged_accretion_rate[i] = accr_rate * in_window;
+      } else {
+        bp->tracers_data.averaged_accretion_rate[i] +=
+            accr_rate * time_step_length;
+      }
     }
   }
 }
 
 static INLINE void tracers_after_recording_trigger_bpart(
-    struct bpart *bp, const int trigger_index, const double time_to_remove) {}
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {
+  bp->tracers_data.averaged_accretion_rate[trigger_index] =
+      -(float)time_to_remove;
+}
 
 /**
  * @brief Update the sink particle tracers just after its time-step has
