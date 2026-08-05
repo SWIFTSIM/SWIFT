@@ -481,12 +481,14 @@ runner_iact_nonsym_bh_gas_swallow(
     bi->v[1] = bi_mom[1] / bi->mass;
     bi->v[2] = bi_mom[2] / bi->mass;
 
-    /* Update the BH and also gas metal masses */
+    /* Update the BH and also gas metal masses. Note that the BH only gains
+     * `nibble_mass`, while `nibble_mass * excess_fraction` is removed from
+     * the gas (the excess being radiated away, not accreted). */
     struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
     struct chemistry_part_data *pj_chem = &pj->chemistry_data;
-    chemistry_transfer_part_to_bpart(
-        bi_chem, pj_chem, nibble_mass * excess_fraction,
-        nibble_mass * excess_fraction / pj_mass_orig);
+    const float nibble_fraction = nibble_mass * excess_fraction / pj_mass_orig;
+    chemistry_transfer_part_to_bpart(bi_chem, pj_chem, bi_mass_orig,
+                                     nibble_mass, nibble_fraction);
 
   } else { /* ends nibbling section, below comes swallowing */
 

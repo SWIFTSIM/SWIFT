@@ -445,7 +445,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   /* Update the BH metal masses */
   struct chemistry_bpart_data *bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data *p_chem = &p->chemistry_data;
-  chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass);
+  chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass, BH_mass);
 
   /* This BH swallowed a gas particle */
   bp->number_of_gas_swallows++;
@@ -521,7 +521,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   /* Update the BH metal masses */
   struct chemistry_bpart_data *bpi_chem = &bpi->chemistry_data;
   const struct chemistry_bpart_data *bpj_chem = &bpj->chemistry_data;
-  chemistry_add_bpart_to_bpart(bpi_chem, bpj_chem);
+  chemistry_add_bpart_to_bpart(bpi_chem, bpj_chem, bpi_dyn_mass, bpj_dyn_mass);
 
   /* Update the energy reservoir */
   bpi->energy_reservoir += bpj->energy_reservoir;

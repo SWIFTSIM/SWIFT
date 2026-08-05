@@ -593,58 +593,78 @@ __attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
     const struct chemistry_part_data *p_data, const double gas_mass) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    bp_data->metal_mass_fraction[i] = p_data->metal_mass[i]/gas_mass;
+    bp_data->metal_mass_fraction[i] = p_data->metal_mass[i] / gas_mass;
   }
 }
 
 /**
  * @brief Add the chemistry data of a gas particle to a black hole.
  *
+ * Black holes store metal mass fractions (like the sinks), so the new
+ * fraction is the mass-weighted average of the black hole's current
+ * fraction and the (smoothed) fraction carried by the swallowed gas
+ * particle.
+ *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
+ * @param bh_mass_old The dynamical mass of the black hole before swallowing
+ *        the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
     struct chemistry_bpart_data *bp_data,
-    const struct chemistry_part_data *p_data, const double gas_mass) {
+    const struct chemistry_part_data *p_data, const double gas_mass,
+    const double bh_mass_old) {
 
-  /* /\* gas mass *\/ */
-  /* const float mass = hydro_get_mass(p); */
+  const double bh_mass_new = bh_mass_old + gas_mass;
 
-  /* for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) { */
-  /*   double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old + */
-  /*               p->chemistry_data.smoothed_metal_mass_fraction[k] * mass; */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    const double mk = bp_data->metal_mass_fraction[k] * bh_mass_old +
+                      p_data->smoothed_metal_mass_fraction[k] * gas_mass;
 
-  /*   s->chemistry_data.metal_mass_fraction[k] = mk / s->mass; */
-  /* } */
+    bp_data->metal_mass_fraction[k] = mk / bh_mass_new;
+  }
 }
 
 /**
  * @brief Transfer chemistry data of a gas particle to a black hole.
  *
  * In contrast to `chemistry_add_part_to_bpart`, only a fraction of the
- * masses stored in the gas particle are transferred here. Absolute masses
- * of the gas particle are adjusted as well.
- * Black holes don't store fractions so we need to add element masses.
- *
- * We expect the nibble_mass to be the gas particle mass multiplied by the
- * nibble_fraction.
+ * mass stored in the gas particle is transferred here (nibbling). The
+ * black hole's fraction is updated as the mass-weighted average of its
+ * current fraction and the (smoothed) fraction carried by the gas
+ * particle, weighted by the mass the black hole actually gains. The gas
+ * particle's absolute metal masses are scaled down by the fraction of its
+ * mass that was removed, to conserve metal mass.
  *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
- * @param nibble_mass The mass to be removed from the gas particle.
+ * @param bh_mass_old The dynamical mass of the black hole before this gain.
+ * @param bh_mass_gained The dynamical mass gained by the black hole.
  * @param nibble_fraction The fraction of the (original) mass of the gas
  *        particle that is removed.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
                                  struct chemistry_part_data *p_data,
-                                 const double nibble_mass,
+                                 const double bh_mass_old,
+                                 const double bh_mass_gained,
                                  const double nibble_fraction) {
 
-  /* bp_data->metal_mass_total += p_data->metal_mass_fraction_total * nibble_mass; */
-  /* for (int i = 0; i < chemistry_element_count; ++i) */
-  /*   bp_data->metal_mass[i] += p_data->metal_mass_fraction[i] * nibble_mass; */
+  const double bh_mass_new = bh_mass_old + bh_mass_gained;
+
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    const double mk = bp_data->metal_mass_fraction[k] * bh_mass_old +
+                      p_data->smoothed_metal_mass_fraction[k] * bh_mass_gained;
+
+    bp_data->metal_mass_fraction[k] = mk / bh_mass_new;
+  }
+
+  /* The gas particle lost mass: scale its absolute element masses down by
+   * the same fraction so that metal mass is conserved. */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    p_data->metal_mass[k] *= (1. - nibble_fraction);
+  }
 }
 
 /**
@@ -652,22 +672,23 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
  *
  * @param bp_data The black hole data to add to.
  * @param swallowed_data The black hole data to use.
+ * @param bpi_mass_old The dynamical mass of the black hole before this
+ *        merger.
+ * @param bpj_mass The dynamical mass of the swallowed black hole.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
     struct chemistry_bpart_data *bp_data,
-    const struct chemistry_bpart_data *swallowed_data) {
+    const struct chemistry_bpart_data *swallowed_data,
+    const double bpi_mass_old, const double bpj_mass) {
 
-  /* bp_data->metal_mass_total += swallowed_data->metal_mass_total; */
-  /* for (int i = 0; i < chemistry_element_count; ++i) { */
-  /*   bp_data->metal_mass[i] += swallowed_data->metal_mass[i]; */
-  /* } */
-  /* bp_data->mass_from_SNIa += swallowed_data->mass_from_SNIa; */
-  /* bp_data->mass_from_SNII += swallowed_data->mass_from_SNII; */
-  /* bp_data->mass_from_AGB += swallowed_data->mass_from_AGB; */
-  /* bp_data->metal_mass_from_SNIa += swallowed_data->metal_mass_from_SNIa; */
-  /* bp_data->metal_mass_from_SNII += swallowed_data->metal_mass_from_SNII; */
-  /* bp_data->metal_mass_from_AGB += swallowed_data->metal_mass_from_AGB; */
-  /* bp_data->iron_mass_from_SNIa += swallowed_data->iron_mass_from_SNIa; */
+  const double bpi_mass_new = bpi_mass_old + bpj_mass;
+
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    const double mk = bp_data->metal_mass_fraction[k] * bpi_mass_old +
+                      swallowed_data->metal_mass_fraction[k] * bpj_mass;
+
+    bp_data->metal_mass_fraction[k] = mk / bpi_mass_new;
+  }
 }
 
 /**
@@ -852,8 +873,10 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart *restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
-  error("Not implemented");
-  return 0.f;
+
+  return bp->chemistry_data
+             .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] *
+         bp->mass;
 }
 
 /**
