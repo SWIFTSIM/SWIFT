@@ -86,23 +86,12 @@ runner_iact_nonsym_bh_gas_density(
   /* Contribution to the total neighbour mass */
   bi->ngb_mass += mj;
 
-  /* Contribution to the smoothed sound speed */
-  float cj = hydro_get_comoving_soundspeed(pj);
-  if (bh_props->with_fixed_T_near_EoS) {
-
-    /* Check whether we are close to the entropy floor. If we are, we
-     * re-calculate the sound speed using the fixed internal energy */
-    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
-                        bh_props->temp_to_u_factor;
-    const float u = hydro_get_drifted_physical_internal_energy(pj, cosmo);
-
-    if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
-        u > bh_props->fixed_u_for_soundspeed) {
-      cj = gas_soundspeed_from_internal_energy(
-               pj->rho, bh_props->fixed_u_for_soundspeed) /
-           cosmo->a_factor_sound_speed;
-    }
-  }
+  /* Contribution to the smoothed sound speed. EAGLE also supports
+   * re-calculating this from a fixed internal energy for gas close to its
+   * entropy floor; GEAR has no entropy floor (only a numerical pressure
+   * floor with a different physical meaning), so that correction does not
+   * apply here. */
+  const float cj = hydro_get_comoving_soundspeed(pj);
   bi->sound_speed_gas += mj * wi * cj;
 
   /* Neighbour internal energy */
