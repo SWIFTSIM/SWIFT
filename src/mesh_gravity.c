@@ -955,7 +955,21 @@ void get_cell_acc(double **acc, double *pot, int N, double fac) {
  * @param rho_MG The densities assigned to the mesh.
  * @param N_MG Side length in grid cells of the mesh on which to solve the field equation.
  */
-void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, struct MG_props *MG, double *rho_MG, int N_MG) {
+void add_modified_gravity_contribution(struct engine *e, struct space *s, struct threadpool *tp, struct MG_props *MG, double *rho_MG, int N_MG) {
+  struct cosmology *cosmo = e->cosmology;
+  /* Update the relevant variables */
+  MG->a = cosmo->a;
+  MG->a3_inv = (1./(MG->a*MG->a*MG->a));
+  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+  MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
+  MG->R = (3.*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
+  MG->c = e->physical_constants->const_speed_light_c;
+  MG->G = e->physical_constants->const_newton_G;
+  MG->h = cosmo->h;
+  MG->overdensity = 0; //Do we know the overdensity instead of the density? Relevant for test cases
+  double fR_evo = ((1. + 4. * MG->Omega_ratio)/(MG->a3_inv + 4. * MG->Omega_ratio));
+  MG->fR_bar = MG->fR0 * fR_evo * fR_evo;
+  
   ticks toc = getticks();
   const double box_size = s->dim[0];
   int N_min = MG->N_min; //Minimum gridsize to be used in multigrid acceleration
@@ -1241,7 +1255,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
     /* Do the actual calculation. rho_MG receives the extra overdensity due to f_R */
     message("The field value is %E and the value of R is %E", MG->fR0, MG->R);
-    add_modified_gravity_contribution(s, tp, MG, rho_MG, N_MG);
+    add_modified_gravity_contribution(e, s, tp, MG, rho_MG, N_MG);
   }
 
   if (verbose)
