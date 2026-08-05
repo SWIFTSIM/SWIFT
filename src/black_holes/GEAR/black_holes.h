@@ -138,6 +138,13 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->AGN_number_of_energy_injections = 0;
   bp->AGN_cumulative_energy = 0.f;
 
+  /* This is otherwise only zeroed in black_holes_reset_feedback(), which
+   * runs later in the step. Zero it here too so a feedback interaction
+   * that happens to run before the first reset (e.g. the initial fake
+   * time-step) does not read uninitialised heap memory as a ray count. */
+  bp->to_distribute.AGN_delta_u = 0.f;
+  bp->to_distribute.AGN_number_of_energy_injections = 0;
+
   /* Set the initial targetted heating temperature, used for the
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
