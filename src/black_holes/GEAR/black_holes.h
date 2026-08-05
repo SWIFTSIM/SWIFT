@@ -169,8 +169,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->rho_gas = 0.f;
   bp->sound_speed_gas = 0.f;
   bp->internal_energy_gas = 0.f;
-  bp->rho_subgrid_gas = -1.f;
-  bp->sound_speed_subgrid_gas = -1.f;
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
@@ -721,98 +719,25 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                                gas_v_phys[1] * gas_v_phys[1] +
                                gas_v_phys[2] * gas_v_phys[2];
 
-    if (props->use_subgrid_bondi) {
+    /* Use dynamical rho and c for the Bondi model. EAGLE also supports a
+     * subgrid-rho/c variant here, computed from a subgrid cooling model;
+     * GEAR has no equivalent, so only the dynamical version is available. */
 
-      /* Use subgrid rho and c for Bondi model */
-      message("Not implemented");
+    const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
 
-/*       /\* Construct basic properties of the gas around the BH in */
-/*          physical coordinates *\/ */
-/*       const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv; */
-/*       const double gas_u_phys = */
-/*           bp->internal_energy_gas * cosmo->a_factor_internal_energy; */
-/*       const double gas_P_phys = */
-/*           gas_pressure_from_internal_energy(gas_rho_phys, gas_u_phys); */
-
-/*       /\* Assume primordial abundance and solar metallicity pattern */
-/*        * (Yes, that is inconsitent but makes no difference) *\/ */
-/*       const double logZZsol = 0.; */
-/*       const double XH = 0.75; */
-/*       float abundance_ratio[colibre_cooling_N_elementtypes]; */
-/*       for (int i = 0; i < colibre_cooling_N_elementtypes; ++i) */
-/*         abundance_ratio[i] = 1.f; */
-
-/*       /\* Get the gas temperature *\/ */
-/*       const float gas_T = cooling_get_temperature_from_gas( */
-/*           constants, cosmo, cooling, gas_rho_phys, logZZsol, XH, gas_u_phys, */
-/*           /\*HII_region=*\/0); */
-/*       const float log10_gas_T = log10f(gas_T); */
-
-/*       /\* Internal energy on the entropy floor *\/ */
-/*       const double P_EOS = entropy_floor_gas_pressure(gas_rho_phys, bp->rho_gas, */
-/*                                                       cosmo, floor_props); */
-/*       const double u_EOS = */
-/*           gas_internal_energy_from_pressure(gas_rho_phys, P_EOS); */
-/*       const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS); */
-
-/*       const float log10_u_EOS_max_cgs = */
-/*           log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN); */
-
-/*       /\* Compute the subgrid density assuming pressure */
-/*        * equilibirum if on the entropy floor *\/ */
-/*       const double rho_sub = compute_subgrid_property( */
-/*           cooling, constants, floor_props, cosmo, gas_rho_phys, logZZsol, XH, */
-/*           gas_P_phys, log10_gas_T, log10_u_EOS_max_cgs, /\*HII_region=*\/0, */
-/*           abundance_ratio, 0.f, cooling_compute_subgrid_density); */
-
-/*       /\* Record what we used *\/ */
-/*       bp->rho_subgrid_gas = rho_sub; */
-
-/*       /\* And the subgrid sound-speed *\/ */
-/*       const float c_sub = gas_soundspeed_from_pressure(rho_sub, gas_P_phys); */
-
-/*       /\* Also update the sound-speed to use in the angular momentum limiter *\/ */
-/*       gas_c_phys = c_sub; */
-/*       gas_c_phys2 = c_sub * c_sub; */
-
-/*       /\* Record what we used *\/ */
-/*       bp->sound_speed_subgrid_gas = c_sub; */
-
-/*       /\* Now, compute the Bondi rate based on the normal velocities and */
-/*        * the subgrid density and sound-speed *\/ */
-/*       const double denominator2 = gas_v_norm2 + gas_c_phys2; */
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*       /\* Make sure that the denominator is strictly positive *\/ */
-/*       if (denominator2 <= 0) */
-/*         error( */
-/*             "Invalid denominator for black hole particle %lld in Bondi rate " */
-/*             "calculation.", */
-/*             bp->id); */
-/* #endif */
-/*       const double denominator_inv = 1. / sqrt(denominator2); */
-/*       Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * rho_sub * */
-/*                    denominator_inv * denominator_inv * denominator_inv; */
-
-    } else {
-
-      /* Use dynamical rho and c for Bondi model */
-
-      const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
-
-      const double denominator2 = gas_v_norm2 + gas_c_phys2;
+    const double denominator2 = gas_v_norm2 + gas_c_phys2;
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Make sure that the denominator is strictly positive */
-      if (denominator2 <= 0)
-        error(
-            "Invalid denominator for black hole particle %lld in Bondi rate "
-            "calculation.",
-            bp->id);
+    /* Make sure that the denominator is strictly positive */
+    if (denominator2 <= 0)
+      error(
+          "Invalid denominator for black hole particle %lld in Bondi rate "
+          "calculation.",
+          bp->id);
 #endif
 
-      const double denominator_inv = 1. / sqrt(denominator2);
-      Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
-                   denominator_inv * denominator_inv * denominator_inv;
-    }
+    const double denominator_inv = 1. / sqrt(denominator2);
+    Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
+                 denominator_inv * denominator_inv * denominator_inv;
   }
 
   /* Compute the boost factor from Booth & Schaye (2009) */

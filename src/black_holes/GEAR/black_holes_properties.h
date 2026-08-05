@@ -47,7 +47,7 @@ enum BH_merger_thresholds {
 };
 
 /**
- * @brief Properties of black holes and AGN feedback in the EAGEL model.
+ * @brief Properties of black holes and AGN feedback in the GEAR model.
  */
 struct black_holes_props {
 
@@ -86,9 +86,6 @@ struct black_holes_props {
 
   /*! Calculate Bondi accretion rate for individual neighbours? */
   int use_multi_phase_bondi;
-
-  /*! Are we using the subgrid gas properties in the Bondi model? */
-  int use_subgrid_bondi;
 
   /*! Are we applying the angular-momentum-based multiplicative term from
    * Rosas-Guevara et al. (2015)? */
@@ -346,14 +343,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "GEARAGN:use_multi_phase_bondi");
 
-  bp->use_subgrid_bondi =
-      parser_get_param_int(params, "GEARAGN:use_subgrid_bondi");
-
-  if (bp->use_multi_phase_bondi && bp->use_subgrid_bondi)
-    error(
-        "Cannot run with both the multi-phase Bondi and subgrid Bondi models "
-        "at the same time!");
-
   /* Rosas-Guevara et al. (2015) model */
   bp->with_angmom_limiter =
       parser_get_param_int(params, "GEARAGN:with_angmom_limiter");
@@ -436,8 +425,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->AGN_deterministic =
       parser_get_param_int(params, "GEARAGN:AGN_use_deterministic_feedback");
 
-  bp->epsilon_f =
-      parser_get_param_float(params, "GEARAGN:coupling_efficiency");
+  bp->epsilon_f = parser_get_param_float(params, "GEARAGN:coupling_efficiency");
 
   const double T_K_to_int =
       1. / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -479,14 +467,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->use_adaptive_energy_reservoir_threshold = parser_get_param_int(
       params, "GEARAGN:AGN_use_adaptive_energy_reservoir_threshold");
   if (bp->use_adaptive_energy_reservoir_threshold) {
-    bp->nheat_alpha =
-        parser_get_param_float(params, "GEARAGN:AGN_nheat_alpha");
+    bp->nheat_alpha = parser_get_param_float(params, "GEARAGN:AGN_nheat_alpha");
     bp->nheat_maccr_normalisation =
         parser_get_param_float(params,
                                "GEARAGN:AGN_nheat_maccr_normalisation") *
         phys_const->const_solar_mass / phys_const->const_year;
-    bp->nheat_limit =
-        parser_get_param_float(params, "GEARAGN:AGN_nheat_limit");
+    bp->nheat_limit = parser_get_param_float(params, "GEARAGN:AGN_nheat_limit");
   }
 
   /* We must always read a default value to initialize BHs to */
@@ -505,8 +491,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       params, "GEARAGN:with_reposition_velocity_threshold");
 
   if (bp->with_reposition_velocity_threshold) {
-    bp->max_reposition_velocity_ratio = parser_get_param_float(
-        params, "GEARAGN:max_reposition_velocity_ratio");
+    bp->max_reposition_velocity_ratio =
+        parser_get_param_float(params, "GEARAGN:max_reposition_velocity_ratio");
 
     /* Prevent nonsensical input */
     if (bp->max_reposition_velocity_ratio <= 0)
