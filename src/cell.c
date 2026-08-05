@@ -429,6 +429,11 @@ int cell_link_foreign_gparts(struct cell *c,
     error("Linking foreign particles in a local cell!");
 #endif
 
+  /* The real gparts_foreign allocation reserves space_extra_gparts headroom
+   * per top-level proxy cell (engine.c) regardless of which depth ends up
+   * hosting the recv task, so stamp count_total here unconditionally. */
+  if (c->depth == 0) c->grav.count_total = c->grav.count + space_extra_gparts;
+
   /* Do we have a gravity task at this level? */
   if (cell_get_recv(c, task_subtype_gpart) != NULL) {
 
