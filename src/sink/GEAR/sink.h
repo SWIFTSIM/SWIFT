@@ -1142,12 +1142,12 @@ INLINE static void sink_update_sink_properties_during_star_formation(
 
   /* This message must be put carefully after giving the star its mass,
      updated the sink mass and before changing the target_type */
-  /* message( */
-  /*     "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  " */
-  /*     "star_counter=%03d. Sink remaining mass: %e Msol.", */
-  /*     sink->id, sp->id, sp->mass / phys_const->const_solar_mass, */
-  /*     sink->target_type, star_counter, */
-  /*     sink->mass / phys_const->const_solar_mass); */
+  message(
+      "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+      "star_counter=%03d. Sink remaining mass: %e Msol.",
+      sink->id, sp->id, sp->mass / phys_const->const_solar_mass,
+      sink->target_type, star_counter,
+      sink->mass / phys_const->const_solar_mass);
 
   /* Sample the IMF to the get next target mass */
   sink_update_target_mass(sink, sink_props, e, star_counter);
