@@ -22,11 +22,31 @@ Seeding
 -------
 
 Black hole particles are converted from gas particles on the fly through
-friends-of-friends (FOF) group finding: any FOF group whose total mass
-exceeds ``FOF:black_hole_seed_halo_mass_Msun`` and that does not already
-contain a black hole has its densest gas particle converted into a black
-hole seed, with subgrid mass ``GEARAGN:subgrid_seed_mass_Msun``. This
-requires running with both ``--black-holes`` and ``--fof`` (see the
+friends-of-friends (FOF) group finding (``src/fof.c``): any FOF group that
+does not already contain a black hole and whose total mass exceeds
+``FOF:black_hole_seed_halo_mass_Msun`` has its densest gas particle
+converted into a black hole seed, with subgrid mass
+``GEARAGN:subgrid_seed_mass_Msun``.
+
+Two separate things determine what counts as a "group" and what counts
+towards its mass, both configured by the (model-independent)
+``FOF:linking_types`` / ``FOF:attaching_types`` arrays:
+
+- **Group membership** is decided only by particles of a *linking* type
+  (recommended: dark matter only — ``linking_types: [0, 1, 0, 0, 0, 0, 0]``
+  in gas/DM/.../star/black-hole order). Only these particles are used to
+  find neighbours and build the FOF graph, so which halo a group
+  corresponds to is a DM-only question.
+- **Group mass**, which is compared against
+  ``FOF:black_hole_seed_halo_mass_Msun``, sums *every* particle attached to
+  the group — the linking-type particles themselves plus any particle of
+  an *attaching* type (recommended: gas, stars, black holes —
+  ``attaching_types: [1, 0, 0, 0, 1, 1, 0]``) that ends up nearest to one
+  of them. So the seeding threshold is a total (DM + gas + stars + BH)
+  halo mass, not a DM-only mass, even though DM alone decides which
+  particles belong to the halo in the first place.
+
+This requires running with both ``--black-holes`` and ``--fof`` (see the
 ``--help`` output of the ``swift`` executable for the exact combination of
 flags, which also depends on whether feedback is enabled). Black hole
 particles (``PartType5``) can also be placed directly in the initial
@@ -68,6 +88,21 @@ fraction of the mass of each gas neighbour (``GEARAGN:use_nibbling`` set to
 energy, set by ``GEARAGN:radiative_efficiency``, is assumed to be radiated
 away rather than added to the black hole's mass.
 
+**Pressure floor vs. entropy floor.** ``GEARAGN:with_fixed_T_near_EoS`` is
+an EAGLE feature that overrides the sound-speed of gas sitting *on the
+entropy floor* (EAGLE's effective equation of state for unresolved
+star-forming gas) with a fixed value, so that gas artificially kept warm by
+the floor does not bias the Bondi rate. GEAR has no entropy floor — only
+the unrelated, purely numerical ``GEARPressureFloor`` (a Jeans-mass
+resolution safeguard, not an ISM effective equation of state) — so
+``entropy_floor_temperature()`` always returns zero and this switch is a
+no-op regardless of its setting. It is also unaffected by the pressure
+floor: the black hole's Bondi accretion rate uses each gas neighbour's
+sound-speed computed directly from its density and internal energy
+(``hydro_get_comoving_soundspeed``), not the pressure-floor-adjusted value
+cached for the hydro force loop (``p->force.soundspeed``). Leave
+``with_fixed_T_near_EoS`` at 0.
+
 AGN feedback
 ------------
 
@@ -99,6 +134,15 @@ close enough and gravitationally bound according to
 ``GEARAGN:merger_threshold_type``; the mass ratio of the merger is recorded
 as minor or major using ``GEARAGN:threshold_minor_merger`` and
 ``GEARAGN:threshold_major_merger``.
+
+There is no dedicated on/off switch for repositioning: it is gated purely
+by ``bp->subgrid_mass > GEARAGN:max_reposition_mass``. Since the subgrid
+mass is always strictly positive (seeded at
+``GEARAGN:subgrid_seed_mass_Msun`` and only growing through accretion),
+setting ``GEARAGN:max_reposition_mass: 0`` disables repositioning for every
+black hole, for the lifetime of the run. Conversely, an implausibly large
+value (e.g. ``1e20``) makes every black hole eligible, regardless of mass —
+the convention used in the EAGLE examples.
 
 Chemistry
 ---------
