@@ -725,6 +725,33 @@ def set_task_colours(data):
 
     return data
 
+def filter_star_dependencies(row):
+    """
+    Filter for star-centric tasks and the SF backbone.
+
+    Parameters
+    ----------
+    row : pandas.Series
+        A row from the dependency dataframe containing task_in and task_out.
+
+    Returns
+    -------
+    keep : bool
+        True if the dependency should be kept in the graph.
+    """
+    tin, tout = row["task_in"], row["task_out"]
+
+    # Standard star-centric tasks
+    if task_is_stars(tin) or task_is_stars(tout):
+        return True
+
+    # Add kick2 -> SF -> send_grav_count
+    if tin == "kick2" and "star_formation" in tout:
+        return True
+    if "star_formation" in tin and "send_grav_count" in tout:
+        return True
+
+    return False
 
 def filter_star_dependencies(row):
     """

@@ -5,9 +5,10 @@
 # set the resolution (LOW or MED)
 sim=LOW
 
-
 # make run.sh fail if a subcommand fails
 set -e
+
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Generate the initial conditions if they are not present.
 if [ ! -e agora_disk.hdf5 ]
@@ -20,22 +21,18 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh
 fi
-
 
 # Run SWIFT
 ../../../swift --sync --limiter --cooling --hydro --self-gravity --star-formation --feedback --stars --threads=8 agora_disk.yml 2>&1 | tee output.log
-
-
-
 
 echo "check solution..."
 python3 checkSolution.py

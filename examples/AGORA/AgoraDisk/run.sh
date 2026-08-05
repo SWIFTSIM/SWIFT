@@ -9,6 +9,8 @@ sim=LOW
 # make run.sh fail if a subcommand fails
 set -e
 
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
 # Generate the initial conditions if they are not present.
 if [ ! -e agora_disk.hdf5 ]
 then
@@ -20,7 +22,7 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh --hm2012
 fi
 
 
