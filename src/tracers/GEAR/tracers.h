@@ -34,7 +34,7 @@
  * @brief Update the particle tracers just after it has been initialised at the
  * start of a step.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
@@ -54,7 +54,7 @@ static INLINE void tracers_after_init(
 /**
  * @brief Update the particle tracers just after it has been drifted.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.

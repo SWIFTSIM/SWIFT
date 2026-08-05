@@ -719,9 +719,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                                gas_v_phys[1] * gas_v_phys[1] +
                                gas_v_phys[2] * gas_v_phys[2];
 
-    /* Use dynamical rho and c for the Bondi model. EAGLE also supports a
-     * subgrid-rho/c variant here, computed from a subgrid cooling model;
-     * GEAR has no equivalent, so only the dynamical version is available. */
+    /* Use dynamical rho and c for the Bondi model. */
 
     const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
 

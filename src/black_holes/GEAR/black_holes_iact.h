@@ -86,11 +86,7 @@ runner_iact_nonsym_bh_gas_density(
   /* Contribution to the total neighbour mass */
   bi->ngb_mass += mj;
 
-  /* Contribution to the smoothed sound speed. EAGLE also supports
-   * re-calculating this from a fixed internal energy for gas close to its
-   * entropy floor; GEAR has no entropy floor (only a numerical pressure
-   * floor with a different physical meaning), so that correction does not
-   * apply here. */
+  /* Contribution to the smoothed sound speed. */
   const float cj = hydro_get_comoving_soundspeed(pj);
   bi->sound_speed_gas += mj * wi * cj;
 
