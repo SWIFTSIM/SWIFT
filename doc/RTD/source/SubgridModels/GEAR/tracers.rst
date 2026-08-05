@@ -8,7 +8,7 @@ Particle tracers
 
 Over the course of the simulation, the gas, sink and star particles record some information about their evolution. These are updated for a given particle every time it is active. The GEAR tracers module is located in the directory ``src/tracers/GEAR/``. To enable GEAR tracers, add ``--with-tracers=GEAR`` to your configuration options.
 
-Currently, GEAR tracers are only implemented for sink particles.
+Currently, GEAR tracers are implemented for sink and black hole particles.
 
 Sink tracers
 ------------
@@ -24,5 +24,17 @@ The time slices are specified by ``Snapshots:recording_triggers_sink``. By defau
 |                                       | | snapshot trigger intervals                |                             | | first N snapshot triggers.                      |
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
 | ``AveragedStarFormationRates``        | | Star formation rates averaged over the    | [U_M U_T^{-1}]              | | Averaged over the period set by the             |
+|                                       | | snapshot trigger intervals                |                             | | first N snapshot triggers.                      |
++---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
+
+Black hole tracers
+-------------------
+
+The same accretion-rate tracer is available for black hole particles, using ``Snapshots:recording_triggers_bpart`` and the ``num_snapshot_triggers_bpart`` array length (default: 2).
+
++---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
+| Name                                  | Description                                 | Units                       | Comments                                          |
++=======================================+=============================================+=============================+===================================================+
+| ``AveragedAccretionRates``            | | Accretion rates averaged over the         | [U_M U_T^{-1}]              | | Averaged over the period set by the             |
 |                                       | | snapshot trigger intervals                |                             | | first N snapshot triggers.                      |
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
