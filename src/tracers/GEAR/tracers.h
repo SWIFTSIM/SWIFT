@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes.h"
 #include "cooling.h"
 #include "engine.h"
 #include "part.h"
@@ -124,7 +125,7 @@ static INLINE void tracers_after_timestep_spart(
  * @brief Update the black hole particle tracers just after its time-step has
  * been computed.
  *
- * Nothing to do here.
+ * In GEAR, we record the average accretion rate.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -141,7 +142,18 @@ static INLINE void tracers_after_timestep_bpart(
     struct bpart *bp, const struct unit_system *us,
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
-    const int *const tracers_triggers_started) {}
+    const int *const tracers_triggers_started) {
+
+  const float accr_rate = black_holes_get_accretion_rate(bp);
+
+  /* Accumulate average accretion rate */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (tracers_triggers_started[i]) {
+      bp->tracers_data.averaged_accretion_rate[i] +=
+          accr_rate * time_step_length;
+    }
+  }
+}
 
 /**
  * @brief Update the sink particle tracers just after its time-step has
@@ -215,8 +227,6 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 /**
  * @brief Initialise the black hole tracer data at the start of a calculation.
  *
- * Nothing to do here.
- *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
@@ -227,7 +237,10 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 static INLINE void tracers_first_init_bpart(struct bpart *bp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+                                            const struct cosmology *cosmo) {
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Initialise the sink tracer data at the start of a calculation.
@@ -314,11 +327,13 @@ static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
 /**
  * @brief Tracer event called after a snapshot was written.
  *
- * Nothing to do here.
- *
  * @param sp the #spart.
  */
-static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
+static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Tracer event called after a snapshot was written.
