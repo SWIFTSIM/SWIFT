@@ -169,7 +169,7 @@ python3 makeIC.py -o boss_bodenheimer.hdf5 -N 200000 --density_amplitude 0.5 --m
     parser.add_argument(
         "--R_s",
         type=float,
-        default=2406.0,
+        default=2139.0,
         help="Radius of the sphere, in AU.",
     )
     parser.add_argument(
@@ -206,9 +206,10 @@ python3 makeIC.py -o boss_bodenheimer.hdf5 -N 200000 --density_amplitude 0.5 --m
     parser.add_argument(
         "--boxsize",
         type=float,
-        default=None,
-        help="Side length of the (cubic) box, in AU. Defaults to 2.5 times the "
-        "maximal particle distance from the centre.",
+        default=20000.0,
+        help="Side length of the (cubic) box, in AU. Set generously to leave "
+        "room for sinks flung out by the rotation, rather than the tighter "
+        "2.5x-r_max default.",
     )
     parser.add_argument(
         "--seed",
