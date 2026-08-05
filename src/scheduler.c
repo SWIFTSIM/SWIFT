@@ -1023,11 +1023,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           count = t->ci->grav.count;
 #ifdef SWIFT_DEBUG_CHECKS
-          if (count > (size_t)t->ci->grav.count_total)
-            error(
-                "Posting a gpart recv beyond the foreign cell's capacity: "
-                "count=%zd count_total=%d",
-                count, t->ci->grav.count_total);
+          /* Mirror of the send-side check: bound against the top-level
+           * cell's real allocation via pointer arithmetic. */
+          {
+            const ptrdiff_t rel_end = (t->ci->grav.parts_foreign + count) -
+                                      t->ci->top->grav.parts_foreign;
+            if (rel_end > t->ci->top->grav.count_total)
+              error(
+                  "Posting a gpart recv beyond the top-level cell's "
+                  "capacity: rel_end=%td top->grav.count_total=%d "
+                  "t->ci->cellID=%lld t->ci->depth=%d "
+                  "t->ci->top->cellID=%lld t->ci->top->grav.count=%d",
+                  rel_end, t->ci->top->grav.count_total, t->ci->cellID,
+                  t->ci->depth, t->ci->top->cellID, t->ci->top->grav.count);
+          }
 #endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
@@ -1166,11 +1175,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           count = t->ci->grav.count;
 #ifdef SWIFT_DEBUG_CHECKS
-          if (count > (size_t)t->ci->grav.count_total)
-            error(
-                "Sending a gpart buffer beyond the local cell's capacity: "
-                "count=%zd count_total=%d",
-                count, t->ci->grav.count_total);
+          /* A sub-cell's own count_total is a zero-headroom split-time
+           * snapshot (cell_split.c), not a live capacity ceiling -- only
+           * the top-level cell owns real, headroom-bearing storage. Bound
+           * against the top's allocation via pointer arithmetic instead. */
+          {
+            const ptrdiff_t rel_end =
+                (t->ci->grav.parts + count) - t->ci->top->grav.parts;
+            if (rel_end > t->ci->top->grav.count_total)
+              error(
+                  "Sending a gpart buffer beyond the top-level cell's "
+                  "capacity: rel_end=%td top->grav.count_total=%d "
+                  "t->ci->cellID=%lld t->ci->depth=%d "
+                  "t->ci->top->cellID=%lld t->ci->top->grav.count=%d",
+                  rel_end, t->ci->top->grav.count_total, t->ci->cellID,
+                  t->ci->depth, t->ci->top->cellID, t->ci->top->grav.count);
+          }
 #endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
