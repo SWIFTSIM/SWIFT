@@ -163,6 +163,12 @@ All black hole parameters live in the ``GEARAGN`` section of the parameter
 file. Most are mandatory (no default is assumed); a few are only read when
 a related switch is enabled, as noted below.
 
+The numerical values in the example below are carried over from EAGLE's own
+example parameter files, for illustration only — they have not been tuned
+or validated for any GEAR simulation. Pick actual values based on your own
+resolution and physical setup, the same way you would for any other GEAR
+subgrid parameter.
+
 .. code:: YAML
 
    GEARAGN:

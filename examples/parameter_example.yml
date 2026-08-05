@@ -932,6 +932,9 @@ SPINJETAGN:
   slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
 
 # GEAR AGN model
+# The numerical values below are carried over from the EAGLEAGN example above
+# for illustration only. They have not been tuned or validated for any GEAR
+# simulation and should not be used as recommended defaults.
 GEARAGN:
   subgrid_seed_mass_Msun:              1.5e5      # Black hole subgrid mass at creation time in solar masses.
   use_subgrid_mass_from_ics:           1          # (Optional) Use subgrid masses specified in ICs [1, default], or initialise them to particle masses [0]?
