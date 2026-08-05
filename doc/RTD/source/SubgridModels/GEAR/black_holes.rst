@@ -88,20 +88,20 @@ fraction of the mass of each gas neighbour (``GEARAGN:use_nibbling`` set to
 energy, set by ``GEARAGN:radiative_efficiency``, is assumed to be radiated
 away rather than added to the black hole's mass.
 
-**Pressure floor vs. entropy floor.** ``GEARAGN:with_fixed_T_near_EoS`` is
-an EAGLE feature that overrides the sound-speed of gas sitting *on the
-entropy floor* (EAGLE's effective equation of state for unresolved
-star-forming gas) with a fixed value, so that gas artificially kept warm by
-the floor does not bias the Bondi rate. GEAR has no entropy floor — only
-the unrelated, purely numerical ``GEARPressureFloor`` (a Jeans-mass
-resolution safeguard, not an ISM effective equation of state) — so
-``entropy_floor_temperature()`` always returns zero and this switch is a
-no-op regardless of its setting. It is also unaffected by the pressure
-floor: the black hole's Bondi accretion rate uses each gas neighbour's
-sound-speed computed directly from its density and internal energy
-(``hydro_get_comoving_soundspeed``), not the pressure-floor-adjusted value
-cached for the hydro force loop (``p->force.soundspeed``). Leave
-``with_fixed_T_near_EoS`` at 0.
+**Pressure floor vs. entropy floor.** EAGLE overrides the sound-speed of
+gas sitting *on the entropy floor* (EAGLE's effective equation of state for
+unresolved star-forming gas) with a fixed value, so that gas artificially
+kept warm by the floor does not bias the Bondi rate
+(``EAGLEAGN:with_fixed_T_near_EoS``). GEAR has no entropy floor — only the
+unrelated, purely numerical ``GEARPressureFloor`` (a Jeans-mass resolution
+safeguard, not an ISM effective equation of state) — so this switch has no
+GEAR equivalent and was removed rather than kept as a no-op. The pressure
+floor could not stand in for it either way: the black hole's Bondi
+accretion rate uses each gas neighbour's sound-speed computed directly from
+its density and internal energy (``hydro_get_comoving_soundspeed``), not
+the pressure-floor-adjusted value cached for the hydro force loop
+(``p->force.soundspeed``), so the pressure floor never reaches the
+accretion-rate calculation.
 
 AGN feedback
 ------------
@@ -185,9 +185,6 @@ a related switch is enabled, as noted below.
      boost_n_h_star_H_p_cm3:              0.1      # Normalisation density of the density-dependent boost, in H/cm^3. Only read if with_boost_factor is 1 and boost_alpha_only is 0.
      use_nibbling:                        1        # Continuously nibble a small mass fraction from each gas neighbour, rather than swallowing whole particles.
      min_gas_mass_for_nibbling_Msun:      10       # Minimum gas particle mass allowed after nibbling, in solar masses. Only read if use_nibbling is 1.
-     with_fixed_T_near_EoS:               0        # Use a fixed temperature for the sound-speed of gas close to the entropy floor.
-     fixed_T_above_EoS_dex:               0.3      # Distance above the entropy floor (in dex) below which the fixed temperature is used. Only read if with_fixed_T_near_EoS is 1.
-     fixed_T_near_EoS_K:                  8000      # Fixed temperature used near the entropy floor, in Kelvin. Only read if with_fixed_T_near_EoS is 1.
 
      # Feedback
      AGN_feedback_model:                  Isotropic  # One of Random, Isotropic, MinimumDistance, MinimumDensity.
