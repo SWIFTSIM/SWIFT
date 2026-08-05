@@ -748,8 +748,9 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->stars.parts -- see cell_pack_grav_counts for why. */
+  pcells[0].delta_from_rebuild = c->stars.parts - c->top->stars.parts;
   pcells[0].count = c->stars.count;
   pcells[0].dx_max_part = c->stars.dx_max_part;
 
@@ -759,7 +760,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Stars part pointer moved in the wrong direction!");
+    error("Stars part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
@@ -799,9 +800,10 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. Reconstruct against our own top->stars.parts, not
+   * a cached per-cell baseline -- see cell_unpack_grav_counts for why. */
   c->stars.count = pcells[0].count;
-  c->stars.parts = c->stars.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -850,8 +852,10 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->grav.parts, not a shift from a cached rebuild-time
+   * baseline the receiver isn't guaranteed to share a reference point with. */
+  pcells[0].delta_from_rebuild = c->grav.parts - c->top->grav.parts;
   pcells[0].count = c->grav.count;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -860,7 +864,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Grav part pointer moved in the wrong direction!");
+    error("Grav part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
@@ -927,10 +931,15 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. delta_from_rebuild is the sender's absolute,
+   * always-fresh offset from its own top (see cell_pack_grav_counts) --
+   * reconstruct against our own top->grav.parts_foreign the same way,
+   * never against a per-cell cached baseline. For c == top this is a
+   * self-referential no-op (delta is always 0 at depth 0), relying on
+   * top->grav.parts_foreign already being valid from the last relink. */
   c->grav.count = pcells[0].count;
   c->grav.parts_foreign =
-      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
+      c->top->grav.parts_foreign + pcells[0].delta_from_rebuild;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Mirror of the sender-side check, applied to the receiver's reconstruction.
@@ -942,9 +951,9 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
       error(
           "UNPACK: cell's local range exceeds its top-level ancestor's "
           "count! c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
-          "top->cellID=%lld top->grav.count=%d",
+          "top->cellID=%lld top->grav.count=%d top->grav.count_total=%d",
           c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
-          c->top->grav.count);
+          c->top->grav.count, c->top->grav.count_total);
   }
 #endif
 
@@ -996,8 +1005,9 @@ int cell_pack_sink_formation_counts(struct cell *c,
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->sinks.parts - c->sinks.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->sinks.parts -- see cell_pack_grav_counts for why. */
+  pcells[0].delta_from_rebuild = c->sinks.parts - c->top->sinks.parts;
   pcells[0].count = c->sinks.count;
   pcells[0].dx_max_part = c->sinks.dx_max_part;
 
@@ -1007,7 +1017,7 @@ int cell_pack_sink_formation_counts(struct cell *c,
     error("Sink particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Sinks part pointer moved in the wrong direction!");
+    error("Sinks part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
@@ -1048,9 +1058,10 @@ int cell_unpack_sink_formation_counts(
     error("Sink particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. Reconstruct against our own top->sinks.parts, not
+   * a cached per-cell baseline -- see cell_unpack_grav_counts for why. */
   c->sinks.count = pcells[0].count;
-  c->sinks.parts = c->sinks.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->sinks.parts = c->top->sinks.parts + pcells[0].delta_from_rebuild;
   c->sinks.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
