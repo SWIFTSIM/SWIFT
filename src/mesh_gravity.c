@@ -1603,6 +1603,54 @@ void pm_mesh_clean(struct pm_mesh *mesh) {
   pm_mesh_free(mesh);
 }
 
+void modified_gravity_struct_dump(struct MG_props* MG, FILE* stream) {
+  restart_write_blocks(MG, sizeof(struct MG_props), 1, stream, "MG", "MG struct");
+
+  /* Write the struct properties */
+  restart_write_blocks(&(MG->with_MG), sizeof(int), 1, stream, "with_MG", "with_MG");
+  restart_write_blocks(&(MG->N_MG), sizeof(int), 1, stream, "N_MG", "N_MG");
+  restart_write_blocks(&(MG->n), sizeof(int), 1, stream, "n", "n");
+  restart_write_blocks(&(MG->overdensity), sizeof(int), 1, stream, "overdensity", "overdensity");
+  restart_write_blocks(&(MG->fR0), sizeof(double), 1, stream, "fR0", "fR0");
+  restart_write_blocks(&(MG->R), sizeof(double), 1, stream, "R", "R");
+  restart_write_blocks(&(MG->a), sizeof(double), 1, stream, "a", "a");
+  restart_write_blocks(&(MG->Omega_ratio), sizeof(double), 1, stream, "Omega_ratio", "Omega_ratio");
+  restart_write_blocks(&(MG->c), sizeof(double), 1, stream, "c", "c");
+  restart_write_blocks(&(MG->G), sizeof(double), 1, stream, "G", "G");
+  restart_write_blocks(&(MG->a3_inv), sizeof(double), 1, stream, "a3_inv", "a3_inv");
+  restart_write_blocks(&(MG->fR_bar), sizeof(double), 1, stream, "fR_bar", "fR_bar");
+  restart_write_blocks(&(MG->h), sizeof(double), 1, stream, "h", "h");
+  restart_write_blocks(&(MG->m), sizeof(double), 1, stream, "m", "m");
+  restart_write_blocks(&(MG->timing), sizeof(int), 1, stream, "timing", "timing");
+  restart_write_blocks(&(MG->N_min), sizeof(int), 1, stream, "N_min", "N_min");
+  restart_write_blocks(&(MG->tolerance), sizeof(double), 1, stream, "tolerance", "tolerance");
+  restart_write_blocks(&(MG->test), sizeof(int), 1, stream, "test", "test");
+}
+
+void modified_gravity_struct_restore(struct MG_props* MG, FILE* stream) {
+  restart_read_blocks(MG, sizeof(struct MG_props), 1, stream, NULL, "MG struct");
+
+  /* Write the struct properties */
+  restart_read_blocks(&(MG->with_MG), sizeof(int), 1, stream, NULL, "with_MG");
+  restart_read_blocks(&(MG->N_MG), sizeof(int), 1, stream, NULL, "N_MG");
+  restart_read_blocks(&(MG->n), sizeof(int), 1, stream, NULL, "n");
+  restart_read_blocks(&(MG->overdensity), sizeof(int), 1, stream, NULL, "overdensity");
+  restart_read_blocks(&(MG->fR0), sizeof(double), 1, stream, NULL, "fR0");
+  restart_read_blocks(&(MG->R), sizeof(double), 1, stream, NULL, "R");
+  restart_read_blocks(&(MG->a), sizeof(double), 1, stream, NULL, "a");
+  restart_read_blocks(&(MG->Omega_ratio), sizeof(double), 1, stream, NULL, "Omega_ratio");
+  restart_read_blocks(&(MG->c), sizeof(double), 1, stream, NULL, "c");
+  restart_read_blocks(&(MG->G), sizeof(double), 1, stream, NULL, "G");
+  restart_read_blocks(&(MG->a3_inv), sizeof(double), 1, stream, NULL, "a3_inv");
+  restart_read_blocks(&(MG->fR_bar), sizeof(double), 1, stream, NULL, "fR_bar");
+  restart_read_blocks(&(MG->h), sizeof(double), 1, stream, NULL, "h");
+  restart_read_blocks(&(MG->m), sizeof(double), 1, stream, NULL, "m");
+  restart_read_blocks(&(MG->timing), sizeof(int), 1, stream, NULL, "timing");
+  restart_read_blocks(&(MG->N_min), sizeof(int), 1, stream, NULL, "N_min");
+  restart_read_blocks(&(MG->tolerance), sizeof(double), 1, stream, NULL, "tolerance");
+  restart_read_blocks(&(MG->test), sizeof(int), 1, stream, NULL, "test");
+}
+
 /**
  * @brief Write a #pm_mesh struct to the given FILE as a stream of bytes.
  *

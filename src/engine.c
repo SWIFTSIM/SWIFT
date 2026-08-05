@@ -4180,6 +4180,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
 #endif
   ic_info_struct_dump(e->ics_metadata, stream);
+  modified_gravity_struct_dump(e->MG_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
@@ -4366,6 +4367,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct ic_info *)malloc(sizeof(struct ic_info));
   ic_info_struct_restore(ics_metadata, stream);
   e->ics_metadata = ics_metadata;
+
+  struct MG_props *MG_properties = (struct MG_props *)malloc(sizeof(struct MG_props));
+  modified_gravity_struct_restore(MG_properties, stream);
+  e->MG_properties = MG_properties;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
