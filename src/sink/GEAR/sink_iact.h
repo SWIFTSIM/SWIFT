@@ -313,6 +313,12 @@ runner_iact_nonsym_sinks_sink_swallow(
       if ((sj->merger_data.swallow_mass < si->mass) ||
           (sj->merger_data.swallow_mass == si->mass &&
            sj->merger_data.swallow_id < si->id)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        message(
+            "sink %lld marks sink %lld for merger (mass check, r=%f < "
+            "f_acc_r_acc=%f) at ti_current=%lld",
+            si->id, sj->id, r, f_acc_r_acc_i, (long long)ti_current);
+#endif
         sj->merger_data.swallow_id = si->id;
         sj->merger_data.swallow_mass = si->mass;
       }
@@ -429,6 +435,12 @@ runner_iact_nonsym_sinks_sink_swallow(
       if ((sj->merger_data.swallow_mass < si->mass) ||
           (sj->merger_data.swallow_mass == si->mass &&
            sj->merger_data.swallow_id < si->id)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        message(
+            "sink %lld marks sink %lld for merger (bound orbit check) at "
+            "ti_current=%lld",
+            si->id, sj->id, (long long)ti_current);
+#endif
         sj->merger_data.swallow_id = si->id;
         sj->merger_data.swallow_mass = si->mass;
       }

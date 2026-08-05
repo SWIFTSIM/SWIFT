@@ -397,8 +397,13 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            // message("sink %lld swallowing sink particle %lld", sp->id,
-            // cell_sp->id);
+#ifdef SWIFT_DEBUG_CHECKS
+            message(
+                "sink %lld (node %d) swallowing sink particle %lld (node %d, "
+                "cellID=%lld, local case) at step %d",
+                sp->id, e->nodeID, cell_sp->id, c->nodeID, c->cellID,
+                e->step);
+#endif
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
@@ -444,8 +449,9 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
               message(
-                  "Sink %lld swallowing sink particle %lld (foreign sink case)",
-                  sink->id, cell_sp->id);
+                  "Sink %lld (foreign) swallowing sink particle %lld "
+                  "(node %d, cellID=%lld, foreign sink case) at step %d",
+                  sink->id, cell_sp->id, c->nodeID, c->cellID, e->step);
 #endif /* SWIFT_DEBUG_CHECKS */
 
               /* Finally, remove the gas particle from the system */

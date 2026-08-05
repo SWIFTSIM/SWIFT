@@ -2431,6 +2431,39 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 #endif
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Locate the (leaf, or split-ancestor fallback) #cell owning a given
+ * local #sink particle, using pointer-range containment on c->sinks.parts.
+ *
+ * Diagnostic-only helper: attaches cell/drift context (depth, ti_old_part)
+ * to a "sink not swallowed" error so we can tell whether
+ * runner_do_sinks_sink_swallow() ever actually visited this cell this step.
+ *
+ * @param c The #cell to search (recurses into progeny).
+ * @param sp The #sink particle to find.
+ * @return The owning #cell, or NULL if sp is not in this subtree's range.
+ */
+static const struct cell *space_locate_sink_cell(const struct cell *c,
+                                                  const struct sink *sp) {
+  if (sp < c->sinks.parts || sp >= c->sinks.parts + c->sinks.count)
+    return NULL;
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
+      const struct cell *found = space_locate_sink_cell(c->progeny[k], sp);
+      if (found != NULL) return found;
+    }
+    /* In range for this split cell but not found in any current progeny's
+     * own sub-range -- report the ancestor itself, still useful context. */
+    return c;
+  }
+
+  return c;
+}
+#endif
+
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
@@ -2439,6 +2472,8 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct sink *restrict sinks = (struct sink *)map_data;
+  struct space *s = (struct space *)extra_data;
+  const struct engine *e = s->e;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_sinks; k++) {
@@ -2448,8 +2483,33 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
     const long long swallow_id =
         sink_get_sink_swallow_id(&sinks[k].merger_data);
 
-    if (swallow_id != -1)
-      error("Sink particle has not been swallowed! id=%lld", sinks[k].id);
+    if (swallow_id != -1) {
+
+      /* Find the owning cell to report its drift/activation state -- was
+       * its subtree ever visited by runner_do_sinks_sink_swallow() this
+       * step? */
+      const struct cell *owner = NULL;
+      for (int t = 0; t < s->nr_cells && owner == NULL; t++) {
+        if (s->cells_top[t].nodeID != e->nodeID) continue;
+        owner = space_locate_sink_cell(&s->cells_top[t], &sinks[k]);
+      }
+
+      if (owner != NULL)
+        error(
+            "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
+            "step=%d cellID=%lld depth=%d split=%d nodeID=%d "
+            "sinks.count=%d sinks.ti_old_part=%lld e->ti_current=%lld "
+            "drifted_this_step=%d",
+            sinks[k].id, swallow_id, e->step, owner->cellID, owner->depth,
+            owner->split, owner->nodeID, owner->sinks.count,
+            (long long)owner->sinks.ti_old_part, (long long)e->ti_current,
+            owner->sinks.ti_old_part == e->ti_current);
+      else
+        error(
+            "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
+            "step=%d (owning cell not found)",
+            sinks[k].id, swallow_id, e->step);
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -2483,7 +2543,7 @@ void space_check_swallow(struct space *s) {
   threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper,
                  s->sinks, s->nr_sinks, sizeof(struct sink),
                  threadpool_auto_chunk_size,
-                 /*extra_data=*/NULL);
+                 /*extra_data=*/s);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

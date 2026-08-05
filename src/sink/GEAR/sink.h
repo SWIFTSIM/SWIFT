@@ -839,8 +839,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
       spj->to_collect.mass_eligible_swallow;
   spi->to_collect.mass_swallowed += spj->to_collect.mass_swallowed;
 
-  /* message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id, */
-  /*         spj->id, spi->mass); */
+#ifdef SWIFT_DEBUG_CHECKS
+  message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,
+          spj->id, spi->mass);
+#endif
 }
 
 /**
