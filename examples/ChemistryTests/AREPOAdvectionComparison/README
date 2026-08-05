@@ -1,0 +1,21 @@
+# Intro: AREPO metal-advection comparison test
+
+Reproduces Patrick Hirling's AREPO "Noctua" turbulent box test,
+to compare metal transport against AREPO's moving-mesh result.
+
+The run is non-cosmological with TimeIntegration:time_end set to the
+physical time AREPO's run spanned. The AREPO run was cosmological.
+
+# Configure
+To run this example, configure with:
+./configure --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-chemistry=GEAR_9 --with-cooling=none --with-feedback=none
+
+Then,
+make -j
+
+You can also run this example with SPHENIX SPH, but note that does
+not exchange mass between particles. To run with SPHENIX, configure with:
+./configure --with-hydro=sphenix --with-chemistry=GEAR_9 --with-cooling=none --with-feedback=none
+
+# Run
+Type run.sh, and let's go!
