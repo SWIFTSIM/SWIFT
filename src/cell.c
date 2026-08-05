@@ -651,16 +651,12 @@ void cell_sanitize(struct cell *c, int treated) {
 
     /* Apply it */
     for (int i = 0; i < count; ++i) {
-      if (parts[i].h == 0.f || parts[i].h > upper_h_max) {
+      if (parts[i].h == 0.f || parts[i].h > upper_h_max)
         parts[i].h = upper_h_max;
-        parts[i].depth_h = c->depth;
-      }
     }
     for (int i = 0; i < scount; ++i) {
-      if (sparts[i].h == 0.f || sparts[i].h > upper_h_max) {
+      if (sparts[i].h == 0.f || sparts[i].h > upper_h_max)
         sparts[i].h = upper_h_max;
-        sparts[i].depth_h = c->depth;
-      }
     }
   }
 
@@ -720,6 +716,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->sinks.density = NULL;
   c->sinks.do_sink_swallow = NULL;
   c->sinks.do_gas_swallow = NULL;
+  c->sinks.formation_gas = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;

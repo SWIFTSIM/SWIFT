@@ -112,6 +112,75 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 }
 
 /**
+ * @brief Gas-gas sink formation interaction (symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop. The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * Placeholder: only maintains the debug neighbour-count reduction. The real
+ * GEAR formation-criteria accumulation is not wired in yet.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_hydro_aperture_prep_sink_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+  pj->sink_data.N_check_formation++;
+#endif
+}
+
+/**
+ * @brief Gas-gas sink formation interaction (non-symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop. The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * Placeholder: only maintains the debug neighbour-count reduction. The real
+ * GEAR formation-criteria accumulation is not wired in yet.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_aperture_prep_sink_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+#endif
+}
+
+/**
  * @brief Density interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.

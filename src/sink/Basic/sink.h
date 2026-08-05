@@ -90,7 +90,13 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(
-    struct part *restrict p, const struct sink_props *sink_props) {}
+    struct part *restrict p, const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  p->sink_data.N_check_formation = 0;
+  p->sink_data.N_check_formation_exact = 0;
+#endif
+}
 
 /**
  * @brief Initialisation of sink particle data before sink loops.

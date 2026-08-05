@@ -66,6 +66,16 @@ struct sink_part_data {
    * This is used to check that this part is, out of all sinks, the most bound
    * to the sink with swallow_id. */
   float E_mec_bound;
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  /* Integer number of gas neighbours in the formation loop (optimised) */
+  int N_check_formation;
+
+  /* Integer number of gas neighbours in the formation loop (brute-force) */
+  int N_check_formation_exact;
+
+#endif
 };
 
 /**

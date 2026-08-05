@@ -76,6 +76,15 @@ struct cell_sinks {
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;
 
+    /*! Implicit barrier before the gas-gas formation preparation loop */
+    struct task *prep_ghost_in;
+
+    /*! Implicit barrier after the gas-gas formation preparation loop */
+    struct task *prep_ghost_out;
+
+    /*! Linked list of gas-gas formation preparation tasks (self & pair) */
+    struct link *formation_gas;
+
     /*! Task for star formation from sink particles */
     struct task *star_formation_sink;
 
