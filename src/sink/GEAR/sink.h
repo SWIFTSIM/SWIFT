@@ -235,6 +235,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->N_neighbours = 0;
   cpd->M_tot = 0.0;
   cpd->max_potential = cpd->potential;
+  cpd->min_neighbour_potential = FLT_MAX;
 
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
@@ -244,18 +245,29 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_rot_neighbours[2] = 0.f;
 
   /* Do not reset the potential to 0. Keep the value computed at the end of the
-  last step. This value is used in runner_iact_nonsym_sink() and
-  runner_iact_sink() to check which particle is at a potential minimum. If you
-  set this value to 0, then we break the check. This value is used instead of
-  gpart->potential because:
+  last step. This value is used to determine whether this particle sits at a
+  local potential minimum (see sink_is_forming() and
+  sink_prepare_part_sink_formation_gas_criteria()). This value is used
+  instead of gpart->potential because:
   1) cpd->potential does not break MPI, while gpart->potential does
-  2) gpart->potential is not yet computed in runner_iact_X_sink(). */
+  2) gpart->potential is not yet computed at the time the sink-formation
+  neighbour loop runs. */
   /* cpd->potential = 0.f; */
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
                              E_mec_bound < 0. This is checked before comparing
                              any other value with this one. So no need to put
                              it to the max of float. */
   cpd->is_overlapping_sink = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  cpd->N_check_formation = 0;
+  /* Sentinel: -2 means "sink_init_part ran this step; brute-force should run."
+   * The brute-force mapper skips particles whose value is not -2, so only
+   * particles that were properly initialised (cell in the drift task graph)
+   * are ever checked.  This prevents spurious mismatches for limiter-woken
+   * particles whose cell was absent from the task graph. */
+  cpd->N_check_formation_exact = -2;
+#endif
 }
 
 /**
@@ -535,8 +547,13 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  /* Smoothing length criterion */
-  if ((sink_props->sink_formation_smoothing_length_criterion) &&
+  /* Smoothing length criterion. Only meaningful when the accretion radius is
+     fixed: it checks whether the local resolution (kernel_gamma * h) is
+     coarse relative to the externally-imposed target cut_off_radius. In the
+     adaptive case the accretion radius *is* kernel_gamma * h by definition,
+     so the comparison would be a tautology; skip the criterion instead. */
+  if (sink_props->use_fixed_r_cut &&
+      (sink_props->sink_formation_smoothing_length_criterion) &&
       (kernel_gamma * h >= sink_cut_off_radius)) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Size criterion failed!", p->id);
@@ -569,10 +586,15 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  /* Minimum of the potential criterion */
-  /* Done in density loop. The gas is then flagged through
-     sink_data.can_form_sink to not form sink. The check is done at the
-     beginning. */
+  /* Potential minimum criterion: only allow this particle to form a sink if
+     its own potential is the lowest among its gas neighbours within r_acc
+     (accumulated in sink_prepare_part_sink_formation_gas_criteria()). */
+  if (sink_data->potential > sink_data->min_neighbour_potential) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message("[%lld] Potential minimum criterion failed!", p->id);
+#endif
+    return 0;
+  }
 
   /* Overlapping existing sinks criterion */
   if (sink_props->sink_formation_overlapping_sink_criterion &&
@@ -1213,28 +1235,28 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 }
 
 /**
- * @brief Compute all quantities required for the formation of a sink such as
- * kinetic energy, potential energy, etc. This function works on the
- * neighbouring gas particles.
+ * @brief Fold the candidate particle's own mass, internal energy, and
+ * self-potential into its sink-formation totals.
  *
- * @param e The #engine.
+ * sink_prepare_part_sink_formation_gas_criteria() only runs on genuine
+ * neighbour pairs found by the fixed-aperture gas-gas neighbour loop, so
+ * pi's own contribution to M_tot, E_int_neighbours and E_pot_neighbours is
+ * otherwise missing. E_kin_neighbours and E_rot_neighbours[] need no self
+ * term (pi has zero velocity/rotation relative to itself), and
+ * max_potential is already seeded with pi's own potential in
+ * sink_init_part(). min_neighbour_potential must NOT include self (it is a
+ * neighbours-only reduction, checked explicitly in sink_is_forming()), so
+ * this function deliberately does not touch it. This function must be
+ * called exactly once per active candidate particle, before
+ * sink_is_forming() is evaluated.
+ *
+ * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
- * @param xpi The #xpart data of the particle #pi.
- * @param pj A neighbouring #part of #pi.
- * @param xpj The #xpart data of the particle #pj.
  * @param cosmo The cosmological parameters and properties.
- * @param cosmo The cosmological parameters and properties.
- * @param sink_props The sink properties to use.
  */
-INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
-    const struct part *restrict pj, struct xpart *restrict xpj,
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
-
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-  const float a2H = a * a * H;
-  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+INLINE static void sink_prepare_part_sink_formation(
+    const int with_self_gravity, struct part *restrict pi,
+    const struct cosmology *cosmo) {
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
@@ -1242,41 +1264,69 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     return;
   }
 
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+  const float mi = hydro_get_mass(pi);
+  const float u_inter_i = hydro_get_drifted_physical_internal_energy(pi, cosmo);
 
-  /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
+  pi->sink_data.M_tot += mi;
+  pi->sink_data.E_int_neighbours += mi * u_inter_i;
+
+  if (with_self_gravity) {
+    pi->sink_data.E_pot_neighbours +=
+        0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
+  }
+}
+
+/**
+ * @brief Compute all quantities required for the formation of a sink such as
+ * kinetic energy, potential energy, etc. This function works on the
+ * neighbouring gas particles j.
+ *
+ * The caller is solely responsible for only invoking this function on pairs
+ * already known to be within the applicable accretion radius (the fixed
+ * aperture loop filters by r_cut before calling; the adaptive-h density loop
+ * filters by kernel_gamma*max(hi,hj) before calling) -- this function does
+ * not re-check the distance itself.
+ *
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param pi The #part for which we compute the quantities.
+ * @param pj A neighbouring #part of #pi.
+ * @param dx Comoving vector separating both particles (pi - pj), already
+ * wrapped for periodicity by the caller.
+ * @param cosmo The cosmological parameters and properties.
+ */
+INLINE static void sink_prepare_part_sink_formation_gas_criteria(
+    const int with_self_gravity, struct part *restrict pi,
+    const struct part *restrict pj, const float dx[3],
+    const struct cosmology *cosmo) {
+
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* If for some reason the particle has been flagged to not form sink,
+     do not continue and save some computationnal ressources. */
+  if (!pi->sink_data.can_form_sink) {
+    return;
+  }
 
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
 
-  /* Compute the pairwise physical distance */
-  const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
-                        (float)(pj->x[2])};
-
-  const float dx[3] = {pjx[0] - pix[0], pjx[1] - pix[1], pjx[2] - pix[2]};
-  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                dx[2] * cosmo->a};
-  const float r2_physical = dx_physical[0] * dx_physical[0] +
-                            dx_physical[1] * dx_physical[1] +
-                            dx_physical[2] * dx_physical[2];
-
-  /* Checks that this part is a neighbour */
-  if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
-    return;
-  }
+  /* dx is comoving and already periodicity-wrapped by the caller (see
+     runner_doiact_functions_hydro_aperture.h); convert to physical here
+     instead of recomputing from raw particle positions. */
+  const float dx_physical[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
 
   const float mj = hydro_get_mass(pj);
   const float u_inter_j = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
-  /* Compute the relative comoving velocity between p and pi */
-  const float dv[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],
-                       pj->v[2] - pi->v[2]};
+  /* Compute the relative comoving velocity between pi and pj, matching the
+     dx = pi - pj convention. */
+  const float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
@@ -1307,30 +1357,31 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
     pi->sink_data.max_potential =
         max(pi->sink_data.max_potential, pj->sink_data.potential);
+    pi->sink_data.min_neighbour_potential =
+        min(pi->sink_data.min_neighbour_potential, pj->sink_data.potential);
   }
 
-  if (pi != pj) {
-    /* Compute rotation energies per component */
-    const float Dx = dx_physical[0];
-    const float Dy = dx_physical[1];
-    const float Dz = dx_physical[2];
-    const float R_yz = sqrtf(Dy * Dy + Dz * Dz);
-    const float R_xz = sqrtf(Dx * Dx + Dz * Dz);
-    const float R_xy = sqrtf(Dx * Dx + Dy * Dy);
-    const float L_x2 =
-        specific_angular_momentum[0] * specific_angular_momentum[0];
-    const float L_y2 =
-        specific_angular_momentum[1] * specific_angular_momentum[1];
-    const float L_z2 =
-        specific_angular_momentum[2] * specific_angular_momentum[2];
+  /* Compute rotation energies per component */
+  const float Dx = dx_physical[0];
+  const float Dy = dx_physical[1];
+  const float Dz = dx_physical[2];
+  const float R_yz = sqrtf(Dy * Dy + Dz * Dz);
+  const float R_xz = sqrtf(Dx * Dx + Dz * Dz);
+  const float R_xy = sqrtf(Dx * Dx + Dy * Dy);
+  const float L_x2 =
+      specific_angular_momentum[0] * specific_angular_momentum[0];
+  const float L_y2 =
+      specific_angular_momentum[1] * specific_angular_momentum[1];
+  const float L_z2 =
+      specific_angular_momentum[2] * specific_angular_momentum[2];
 
-    /* Limiting behaviour when R=0:
-                 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
-       So, if R = 0, then E_rot = 0. */
-    if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
-    if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
-    if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
-  }
+  /* Limiting behaviour when R=0:
+               L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
+     So, if R = 0, then E_rot = 0. */
+  if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
+  if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
+  if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
+
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */
@@ -1368,8 +1419,14 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     return;
   }
 
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+  /* Physical accretion radius of part p. In the fixed-r_cut case this is the
+     configured cut_off_radius; in the adaptive case there is no such global
+     value (sink_props->cut_off_radius is a -1 sentinel), so use what pi's
+     own accretion radius would become upon formation instead. */
+  const float r_acc_p =
+      (sink_props->use_fixed_r_cut ? sink_props->cut_off_radius
+                                   : kernel_gamma * pi->h) *
+      cosmo->a;
 
   /* Physical accretion radius of sink si */
   const float rmax = sj->h * kernel_gamma;

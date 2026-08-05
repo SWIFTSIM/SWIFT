@@ -154,6 +154,10 @@ const char *timers_names[timer_count] = {
     "dosub_self_chemistry_fct_prep",
     "dosub_pair_chemistry_fct_prep",
     "do_chemistry_fct_ghost",
+    "doself_hydro_aperture_prep_sink_formation",
+    "dopair_hydro_aperture_prep_sink_formation",
+    "dosub_self_hydro_aperture_prep_sink_formation",
+    "dosub_pair_hydro_aperture_prep_sink_formation",
 };
 
 /* File to store the timers */

@@ -50,6 +50,7 @@ struct task;
 #define TASK_LOOP_RT_TRANSPORT 12
 #define TASK_LOOP_STARS_PREP3 13
 #define TASK_LOOP_STARS_PREP4 14
+#define TASK_LOOP_PREP_SINK_FORMATION 15
 
 /**
  * @brief A struct representing a runner's thread and its data.

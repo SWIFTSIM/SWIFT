@@ -43,6 +43,7 @@ struct cosmology;
 struct gravity_props;
 struct star_formation;
 struct hydro_props;
+struct sink_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -399,7 +400,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
+                const struct hydro_props *hydro_properties,
+                const struct sink_props *sink_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,

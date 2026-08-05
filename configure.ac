@@ -459,6 +459,21 @@ elif test "$sink_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
+# Check if sink formation neighbour-count checks are enabled.
+AC_ARG_ENABLE([sink-formation-checks],
+   [AS_HELP_STRING([--enable-sink-formation-checks],
+     [Activate brute-force sink formation neighbour-count checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_formation_checks="$enableval"],
+   [sink_formation_checks="no"]
+)
+if test "$sink_formation_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-formation-checks!)
+elif test "$sink_formation_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS], [$enableval],
+                      [Enable brute-force sink formation neighbour-count checks])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],
@@ -2994,6 +3009,8 @@ case "$with_sink" in
     ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
+    AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
+   defines a fixed cutoff radius `cut_off_radius`?])
     ;;
     *)
       AC_MSG_ERROR([Unknown sink particle model model: $with_sink])

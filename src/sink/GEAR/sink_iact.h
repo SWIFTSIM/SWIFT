@@ -27,11 +27,22 @@
 #include "sink_properties.h"
 
 /**
- * @brief do sink computation after the runner_iact_density (symmetric
- * version)
+ * @brief Compute sink-formation gas properties from the standard SPH density
+ * loop (symmetric version).
  *
- * In GEAR: This function deactivates the sink formation ability of #part not
- * at a potential minimum.
+ * The fixed-aperture gas-gas neighbour loop (task_subtype_sink_formation_gas)
+ * only exists when the sink model uses a single, fixed, global aperture
+ * radius (see sink_formation_gas_loop_is_active()). With a variable/h-based
+ * cutoff there is no such loop, so this function -- running inside the
+ * regular density self/pair tasks, using the adaptive smoothing length -- is
+ * the only source of sink-formation gas properties (M_tot, energies,
+ * min_neighbour_potential, ...) for particles using an adaptive accretion
+ * radius. It feeds the same accumulation function the aperture loop uses.
+ *
+ * The density loop always runs, regardless of sink_props->use_fixed_r_cut,
+ * so this function must explicitly stay out of the way when the fixed
+ * aperture loop is active: kernel_gamma*h is not the aperture loop's r_cut,
+ * so accumulating here too would search the wrong neighbour set.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -41,43 +52,40 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
 
-  /* In order to prevent the formation of two sink particles too close together,
-   * we keep only gas particles with the smallest potential. The distance at
-   * which to prevent sink formation is the cutoff radius if this is fixed, or
-   * it is the variable smoothing length times gamma. */
+  /* The fixed-aperture gas-gas loop is the sole authority for sink-formation
+     gas properties when it is active. */
+  if (sink_props->use_fixed_r_cut) return;
 
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;
 
   if (r < rmax) {
-    float potential_i = pi->sink_data.potential;
-    float potential_j = pj->sink_data.potential;
-
-    /* prevent the particle with the largest potential to form a sink */
-    if (potential_i > potential_j) {
-      pi->sink_data.can_form_sink = 0;
-      return;
-    }
-
-    if (potential_j > potential_i) {
-      pj->sink_data.can_form_sink = 0;
-      return;
-    }
+    /* Accumulate for both active particles. dx = pi - pj, so the first call
+       (pi, pj) uses dx as-is; the second call swaps the particle order and
+       therefore needs the negated vector. */
+    const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+    sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, dx,
+                                                  cosmo);
+    sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pj, pi,
+                                                  mdx, cosmo);
   }
 }
 
 /**
- * @brief do sink computation after the runner_iact_density (non symmetric
- * version)
+ * @brief Compute sink-formation gas properties from the standard SPH density
+ * loop (non-symmetric version).
  *
- * In GEAR: This function deactivates the sink formation ability of #part not
- * at a potential minimum.
+ * See runner_iact_sink() for the rationale. Only pi is updated.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -87,28 +95,104 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
 
-  /* In order to prevent the formation of two sink particles too close together,
-   * we keep only gas particles with the smallest potential. The distance at
-   * which to prevent sink formation is the cutoff radius if this is fixed, or
-   * it is the variable smoothing length times gamma. */
+  /* The fixed-aperture gas-gas loop is the sole authority for sink-formation
+     gas properties when it is active. */
+  if (sink_props->use_fixed_r_cut) return;
 
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;
 
   if (r < rmax) {
-    float potential_i = pi->sink_data.potential;
-    float potential_j = pj->sink_data.potential;
-
-    /* if the potential is larger
-     * prevent the particle to form a sink */
-    if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
+    sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, dx,
+                                                  cosmo);
   }
+}
+
+/**
+ * @brief Gas-gas sink formation interaction (symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop.  The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_hydro_aperture_prep_sink_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+  pj->sink_data.N_check_formation++;
+#endif
+
+  /* Accumulate formation energies for both active particles. dx = pi - pj,
+     so the first call (pi, pj) uses dx as-is; the second call swaps the
+     particle order and therefore needs the negated vector. */
+  const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, dx,
+                                                cosmo);
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pj, pi, mdx,
+                                                cosmo);
+}
+
+/**
+ * @brief Gas-gas sink formation interaction (non-symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop.  The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_aperture_prep_sink_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+#endif
+
+  /* Accumulate formation energies into pi, with pj as neighbour. dx = pi -
+     pj already matches the convention expected below. */
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, dx,
+                                                cosmo);
 }
 
 /**
@@ -515,7 +599,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Calculate the velocity with the Hubble flow. The Hubble flow term is
      * relative wrt the sink particle. For the gas, we use -dx = pj - si. */
-    const float v_plus_H_flow[3] = {-a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+    const float v_plus_H_flow[3] = {-a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
                                     -a2H * dx[2] + dv[2]};
 
     /* Compute the physical relative velocity between the particles */
