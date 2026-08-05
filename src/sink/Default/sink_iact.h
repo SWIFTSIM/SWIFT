@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @brief Gas-gas sink formation interaction (symmetric).
  *
  * Called by the fixed-aperture gas-gas neighbour loop used during sink
- * formation. In the Default model this is a no-op.
+ * formation.  In the Default model this is a no-op.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -91,7 +91,7 @@ runner_iact_hydro_aperture_prep_sink_formation(
  * @brief Gas-gas sink formation interaction (non-symmetric).
  *
  * Called by the fixed-aperture gas-gas neighbour loop used during sink
- * formation. In the Default model this is a no-op.
+ * formation.  In the Default model this is a no-op.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
