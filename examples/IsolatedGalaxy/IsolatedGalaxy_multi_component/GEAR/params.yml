@@ -130,8 +130,8 @@ GEARChemistry:
 # Values below are illustrative EAGLE carry-overs (see examples/parameter_example.yml),
 # not tuned or validated for this galaxy.
 GEARAGN:
-  subgrid_seed_mass_Msun:              1.5e5      # Black hole subgrid mass at creation time in solar masses. Must match SEED_MASS_MSUN in add_black_hole.py.
-  use_subgrid_mass_from_ics:           0          # Initialise the subgrid mass from the particle mass in the ICs (no SubgridMasses field is written by add_black_hole.py).
+  subgrid_seed_mass_Msun:              1.5e5      # Black hole subgrid mass used only when a BH is seeded at runtime via FOF; not read for the BH already present in the ICs (see add_black_hole.py).
+  use_subgrid_mass_from_ics:           1          # Read the initial subgrid mass from the ICs' SubgridMasses field, written by add_black_hole.py.
   use_multi_phase_bondi:               0          # Compute Bondi rates per neighbour particle?
   with_angmom_limiter:                 1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                       1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term.
