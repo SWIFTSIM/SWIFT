@@ -177,7 +177,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h_frac,
     }
   }
 
-  /* Cell metadata. */
+  /* Cell properties */
   cell->split = 0;
   cell->hydro.h_max = h_max;
   cell->hydro.h_max_active = h_max;
@@ -606,7 +606,6 @@ int main(int argc, char *argv[]) {
 
   struct sink_props sink_props;
   bzero(&sink_props, sizeof(struct sink_props));
-  sink_props.cut_off_radius = r_cut;
   engine.sink_properties = &sink_props;
 
   struct pressure_floor_props pressure_floor;
