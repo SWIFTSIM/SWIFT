@@ -50,8 +50,8 @@
  * runner_iact_hydro_aperture_FUNCTION respectively.
  *
  * Only non-symmetric (_1_) variants are provided.  The formation loop uses a
- * pure gather pattern — each active particle independently accumulates from
- * its neighbours — so symmetric (_2_) variants and subset-reiteration
+ * pure gather pattern (each active particle independently accumulates from
+ * its neighbours) so symmetric (_2_) variants and subset-reiteration
  * functions (used by the standard hydro ghost loop) are not needed.
  *
  * Recursion termination:
@@ -521,12 +521,10 @@ void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
  * Builds a compact list @c indt[] of active particle indices to avoid
  * processing inactive-inactive pairs.  The main loop then uses two
  * regimes:
- *
  *   - If @c pi is passive: only iterate over active @c pj entries in
  *     @c indt[firstdt..countdt] that appear after @c pi in the array
  *     order, calling the non-symmetric interaction with @c pj as the
  *     accumulator.
- *
  *   - If @c pi is active: advance @c firstdt by 1 (pi has moved out of
  *     the pending-active window) and iterate all @c pj from @c pid+1 to
  *     @c count, calling the symmetric variant when both are active and
@@ -703,7 +701,7 @@ void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 /**
  * @brief Recursively compute non-symmetric pair interactions for sub-cells.
  *
- * Recurses while @c r_cut < 0.5 * ci->dmin — i.e. while the fixed aperture
+ * Recurses while @c r_cut < 0.5 * ci->dmin, i.e. while the fixed aperture
  * is smaller than a sub-cell.  Once the aperture equals or exceeds half the
  * cell's minimum dimension, all sub-cell progeny pairs would interact and
  * no pruning is possible, so DOPAIR1_BRANCH_HYDRO_APERTURE is called at this
@@ -736,7 +734,7 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-  /* We reached a leaf OR the aperture is larger than a sub-cell — no benefit
+  /* We reached a leaf OR the aperture is larger than a sub-cell: no benefit
    * in recursing further since all sub-cell pairs would interact anyway.
    * For the fixed r_cut loop the threshold is r_cut >= 0.5 * ci->dmin, which
    * mirrors the cell_can_recurse_in_subpair_hydro_task condition that uses
@@ -780,7 +778,7 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
 /**
  * @brief Recursively compute non-symmetric self interactions for sub-cells.
  *
- * Recurses while @c r_cut < 0.5 * c->dmin — i.e. while the fixed aperture
+ * Recurses while @c r_cut < 0.5 * c->dmin, i.e. while the fixed aperture
  * is smaller than a sub-cell.  At the leaf level (or once the aperture covers
  * the sub-cell scale), calls DOSELF1_BRANCH_HYDRO_APERTURE for the self part
  * and DOSUB_PAIR1_HYDRO_APERTURE for the cross-progeny part.
@@ -798,7 +796,7 @@ void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
   /* Anything to do here? */
   if (c->hydro.count == 0 || !CELL_IS_ACTIVE(c, r->e)) return;
 
-  /* We reached a leaf OR the aperture is larger than a sub-cell — call the
+  /* We reached a leaf OR the aperture is larger than a sub-cell: call the
    * leaf self function at this level. */
   if (!c->split || c->hydro.count < space_recurse_size_self_hydro ||
       r_cut >= 0.5f * c->dmin) {
