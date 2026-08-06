@@ -31,11 +31,11 @@
  *
  * The loop template is instantiated locally in this translation unit with a
  * model-agnostic test iact that counts each pair found within r_cut by
- * incrementing density.wcount.  This makes the test independent of any
+ * incrementing density.wcount. This makes the test independent of any
  * particular sink model and sensitive to any error in the geometric
  * neighbour-finding logic (wrong pairs included or excluded).
  *
- * Gas particles may have any smoothing length — the loop's sole cutoff
+ * Gas particles may have any smoothing length: the loop's sole cutoff
  * criterion is the fixed geometric aperture r_cut, so no h-based constraint
  * is needed.
  *
@@ -64,7 +64,7 @@
 #define R_CUT_FRACTION 0.25f
 
 /* Smoothing length in units of inter-particle spacing.  The loop uses a fixed
- * geometric r_cut, so h may be anything — use a value similar to standard
+ * geometric r_cut, so h may be anything. Use a value similar to standard
  * hydro tests. */
 #define H_FRAC 1.2348f
 
@@ -73,7 +73,7 @@
 /* ============================================================
  * Test-local iact: count neighbours within r_cut.
  *
- * These functions are model-agnostic — they accumulate density.wcount so
+ * These functions are model-agnostic. They accumulate density.wcount so
  * that both the optimised loop and the brute-force reference produce an
  * integer neighbour count per particle, making disagreements detectable.
  * ============================================================ */
