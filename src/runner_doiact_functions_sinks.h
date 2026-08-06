@@ -40,7 +40,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0 || c->sinks.count == 0) return;
+  if (c->sinks.count == 0) return;
   if (!cell_is_active_sinks(c, e)) return;
 
   const int scount = c->sinks.count;
@@ -182,7 +182,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
-  if (cj->hydro.count == 0 || ci->sinks.count == 0) return;
+  if (ci->sinks.count == 0) return;
   if (!cell_is_active_sinks(ci, e)) return;
 
   const int scount_i = ci->sinks.count;
@@ -871,19 +871,30 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   const int do_cj_sink = 1;
 #endif
 
+  /* In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int do_ci = (ci->sinks.count != 0 && ci_active && do_ci_sink);
+  const int do_cj = (cj->sinks.count != 0 && cj_active && do_cj_sink);
+#else
   const int do_ci =
       (ci->sinks.count != 0 && cj->hydro.count != 0 && ci_active && do_ci_sink);
   const int do_cj =
       (cj->sinks.count != 0 && ci->hydro.count != 0 && cj_active && do_cj_sink);
+#endif
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
 
   /* Check that cells are drifted. */
-  if (do_ci && (!cell_are_sink_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
+  if (do_ci && (!cell_are_sink_drifted(ci, e) ||
+                (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))))
     error("Interacting undrifted cells.");
 
-  if (do_cj && (!cell_are_part_drifted(ci, e) || !cell_are_sink_drifted(cj, e)))
+  if (do_cj && ((ci->hydro.count != 0 && !cell_are_part_drifted(ci, e)) ||
+                !cell_are_sink_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
   /* No sorted interactions here -> use the naive ones */
@@ -912,30 +923,35 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+  const int should_do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
+#else
   const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
                            cell_is_active_sinks(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_sinks(cj, e);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  /* Unlike BH (runner_doiact_functions_black_holes.h), sinks have no
-   * gas-count exemption for the swallow loop -- a sink-sink pair that
-   * would otherwise mark a merger gets silently dropped if the other
-   * side happens to be gas-free. Flag it when it happens. */
+  /* Temporary probe: confirm the gas-gate exemption above lets sink-sink
+   * marking proceed in gas-free cells. Remove once verified. */
   if (ci->sinks.count != 0 && cj->sinks.count != 0) {
-    if (cell_is_active_sinks(ci, e) && cj->hydro.count == 0 && !should_do_ci)
+    if (should_do_ci && cj->hydro.count == 0)
       message(
-          "sink-sink pair marking suppressed by gas gate (ci active, cj "
-          "gas-free): ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d "
-          "cj.sinks.count=%d",
+          "sink-sink marking reached gas-free cell (ci active, cj gas-free): "
+          "ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d cj.sinks.count=%d",
           ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
-    if (cell_is_active_sinks(cj, e) && ci->hydro.count == 0 && !should_do_cj)
+    if (should_do_cj && ci->hydro.count == 0)
       message(
-          "sink-sink pair marking suppressed by gas gate (cj active, ci "
-          "gas-free): ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d "
-          "cj.sinks.count=%d",
+          "sink-sink marking reached gas-free cell (cj active, ci gas-free): "
+          "ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d cj.sinks.count=%d",
           ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
   }
 #endif
@@ -971,10 +987,17 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_cj_sink = 1;
 #endif
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+    const int do_ci =
+        ci->sinks.count != 0 && cell_is_active_sinks(ci, e) && do_ci_sink;
+    const int do_cj =
+        cj->sinks.count != 0 && cell_is_active_sinks(cj, e) && do_cj_sink;
+#else
     const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_sinks(ci, e) && do_ci_sink;
     const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
                       cell_is_active_sinks(cj, e) && do_cj_sink;
+#endif
 
     if (do_ci) {
 
@@ -1023,9 +1046,17 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
     error("This function should not be called on foreign cells");
 #endif
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about sink-sink and sink-gas
+   * interactions.
+   * In all other cases only sink-gas so we can abort if there is
+   * no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+#else
   const int should_do_ci = ci->hydro.count != 0 && ci->sinks.count != 0 &&
                            cell_is_active_sinks(ci, e);
+#endif
 
   if (!should_do_ci) return;
 
