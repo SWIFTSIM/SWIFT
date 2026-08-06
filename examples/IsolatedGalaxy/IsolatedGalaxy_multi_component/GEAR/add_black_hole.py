@@ -16,18 +16,18 @@ import sys
 import h5py
 import numpy as np
 
-# Must match GEARAGN:subgrid_seed_mass_Msun in params.yml.
+# Initial dynamical and subgrid mass of the seed black hole.
 SEED_MASS_MSUN = 1.5e5
-# InternalUnitSystem:UnitMass_in_cgs in params.yml is 10^10 Msun.
-UNIT_MASS_MSUN = 1e10
+# Matches SWIFT's own const_solar_mass_cgs (src/physical_constants_cgs.h).
+SOLAR_MASS_IN_G = 1.98841e33
 
 
-def add_dataset(group, ref_group, name, value):
+def add_dataset(group, ref_group, name, value, name_out=None):
     """Create a length-1 dataset in `group` matching the dtype/shape of ref_group[name]."""
     ref = ref_group[name]
     data = np.asarray(value, dtype=ref.dtype)
     data = data.reshape((1,) + ref.shape[1:])
-    group.create_dataset(name, data=data)
+    group.create_dataset(name_out or name, data=data)
 
 
 def main(filename):
@@ -53,7 +53,11 @@ def main(filename):
                 max_id = max(max_id, int(np.max(f[key]["ParticleIDs"][:])))
         new_id = max_id + 1
 
-        seed_mass = SEED_MASS_MSUN / UNIT_MASS_MSUN
+        # Datasets must be written in the file's OWN declared unit system
+        # (SWIFT converts from that to whatever InternalUnitSystem the
+        # parameter file specifies at read time) - not assumed to match it.
+        unit_mass_in_g = f["Units"].attrs["Unit mass in cgs (U_M)"][0]
+        seed_mass = SEED_MASS_MSUN * SOLAR_MASS_IN_G / unit_mass_in_g
 
         bh = f.create_group("PartType5")
         add_dataset(bh, gas, "Coordinates", com_pos)
@@ -61,6 +65,9 @@ def main(filename):
         add_dataset(bh, gas, "Masses", [seed_mass])
         add_dataset(bh, gas, "ParticleIDs", [new_id])
         add_dataset(bh, gas, "SmoothingLength", [seed_h])
+        # Subgrid mass starts equal to the dynamical mass, as there is no
+        # separate resolved/unresolved distinction for a hand-placed seed.
+        add_dataset(bh, bh, "Masses", [seed_mass], name_out="SubgridMasses")
 
         header = f["Header"]
         num_this_file = list(header.attrs["NumPart_ThisFile"])
