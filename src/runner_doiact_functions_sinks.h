@@ -181,8 +181,11 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
-  /* Anything to do here? */
-  if (ci->hydro.count == 0 || ci->sinks.count == 0) return;
+  /* Anything to do here? ci holds the active sinks doing the interacting;
+   * cj is the neighbour whose gas/sinks they interact with, so it's cj's
+   * count that matters here, not ci's (matches
+   * DO_NONSYM_PAIR1_STARS_NAIVE's cj->hydro.count check). */
+  if (cj->hydro.count == 0 || ci->sinks.count == 0) return;
   if (!cell_is_active_sinks(ci, e)) return;
 
   const int scount_i = ci->sinks.count;
