@@ -33,9 +33,8 @@
  * search radius and the callback accumulates the gas properties needed to
  * evaluate the formation criteria.
  *
- * Before including this file, define FUNCTION (e.g. "prep_sink_formation") and
- * FUNCTION_TASK_LOOP (e.g. TASK_LOOP_PREP_SINK_FORMATION).  The macro
- * expansion creates the following set of functions:
+ * Before including this file, define FUNCTION (e.g. "prep_sink_formation").
+ * The macro expansion creates the following set of functions:
  *   runner_dopair1_naive_hydro_aperture_FUNCTION   (brute-force reference)
  *   runner_doself1_naive_hydro_aperture_FUNCTION   (brute-force reference)
  *   runner_dopair1_hydro_aperture_FUNCTION         (sorted, optimised)
@@ -271,12 +270,10 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
  * @brief Compute non-symmetric pair interactions using sorted particle lists.
  *
  * Uses two independent sweeps over the sorted lists of @p ci and @p cj:
- *
  *   - Active-ci pass: for each active pi in @p ci (descending along the pair
  *     axis), scan @p cj particles that fall within the fixed scan bound
  *     @c sort_i[pid].d + r_cut + dx_max - rshift.  The hit condition is
  *     @c r2 < r_cut^2.
- *
  *   - Active-cj pass: for each active pj in @p cj (ascending), scan @p ci
  *     particles within @c sort_j[pjd].d - r_cut - dx_max + rshift.
  *
@@ -309,7 +306,7 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Fixed-aperture scan bounds (replace hi/hj * kernel_gamma in the hydro
-   * loop).  hi_max accounts for the rshift projection so that the outer guard
+   * loop). hi_max accounts for the rshift projection so that the outer guard
    * in the ci loop correctly prunes particles whose sphere cannot reach cj. */
   const double hi_max = (double)r_cut - rshift;
   const double hj_max = (double)r_cut;
