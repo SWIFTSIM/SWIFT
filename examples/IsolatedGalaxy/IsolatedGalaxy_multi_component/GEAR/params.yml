@@ -32,7 +32,7 @@ Snapshots:
   delta_time:          1e-2                      # Time difference between consecutive outputs (in internal units)
   compression:         9
   recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot
-  recording_triggers_bpart:  [1e-2, 1e-3]        # Recording starts 10M and 1M years before a snapshot. Unused unless run with --black-holes (see with_bh in run.sh), but always required by the GEAR tracers module.
+  recording_triggers_bpart:  [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot. Unused unless run with --black-holes (see with_bh in run.sh), but always required by the GEAR tracers module.
 
 # Parameters governing the conserved quantities statistics
 Statistics:

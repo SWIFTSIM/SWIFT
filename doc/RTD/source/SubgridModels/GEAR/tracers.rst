@@ -30,7 +30,7 @@ The time slices are specified by ``Snapshots:recording_triggers_sink``. By defau
 Black hole tracers
 -------------------
 
-The same accretion-rate tracer is available for black hole particles, using ``Snapshots:recording_triggers_bpart`` and the ``num_snapshot_triggers_bpart`` array length (default: 2).
+The same accretion-rate tracer is available for black hole particles, using ``Snapshots:recording_triggers_bpart`` and the ``num_snapshot_triggers_bpart`` array length (default: 3, matching the sink tracer).
 
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
 | Name                                  | Description                                 | Units                       | Comments                                          |
