@@ -45,13 +45,13 @@ MsoltoCodeUnits = 1 / (UnitMass_in_g * u.g).to(u.M_sun).value
 #################################################################
 
 
-m_ref = 200000.0  # mass of gas particles, in solar mass
+m_ref = 100000.0  # mass of gas particles, in solar mass
 nf = 1  # particle number multiplicative factor (used to reduce noise)
 hydro = 1  # 1=gas is treated with SPH, 0=gas will be collision-less
 
 
 # mass ratio between components
-fm_gas = 1.0
+fm_gas = 0.25
 fm_disk = 1.0
 fm_bulge = 1.0
 fm_halo = 5.0
