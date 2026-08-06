@@ -64,11 +64,6 @@
 
 #include "runner_doiact_hydro_aperture.h"
 
-/* ============================================================
- * DOPAIR1_NAIVE_HYDRO_APERTURE
- * Brute-force non-symmetric pair interaction.
- * ============================================================ */
-
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric,
  *        brute force).
@@ -183,11 +178,6 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
   TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOSELF1_NAIVE_HYDRO_APERTURE
- * Brute-force non-symmetric self interaction.
- * ============================================================ */
-
 /**
  * @brief Compute cell self-interactions (non-symmetric, brute force).
  *
@@ -276,11 +266,6 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 
   TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
-
-/* ============================================================
- * DOPAIR1_HYDRO_APERTURE
- * Sorted non-symmetric pair interaction with fixed aperture r_cut.
- * ============================================================ */
 
 /**
  * @brief Compute non-symmetric pair interactions using sorted particle lists.
@@ -482,11 +467,6 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOPAIR1_BRANCH_HYDRO_APERTURE
- * Dispatch to sorted or naive DOPAIR1.
- * ============================================================ */
-
 /**
  * @brief Dispatch to the appropriate DOPAIR1 variant for this cell pair.
  *
@@ -537,11 +517,6 @@ void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   DOPAIR1_HYDRO_APERTURE(r, ci, cj, r_cut, sid, shift);
 #endif
 }
-
-/* ============================================================
- * DOSELF1_HYDRO_APERTURE
- * Optimised non-symmetric self interaction with active-particle list.
- * ============================================================ */
 
 /**
  * @brief Compute non-symmetric cell self-interactions (optimised).
@@ -696,11 +671,6 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
   TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOSELF1_BRANCH_HYDRO_APERTURE
- * Dispatch to optimised or naive DOSELF1.
- * ============================================================ */
-
 /**
  * @brief Dispatch to the appropriate DOSELF1 variant for this cell.
  *
@@ -732,11 +702,6 @@ void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
   DOSELF1_HYDRO_APERTURE(r, c, r_cut);
 #endif
 }
-
-/* ============================================================
- * DOSUB_PAIR1_HYDRO_APERTURE
- * Recursive sub-cell pair interaction.
- * ============================================================ */
 
 /**
  * @brief Recursively compute non-symmetric pair interactions for sub-cells.
@@ -814,11 +779,6 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR_HYDRO_APERTURE);
 }
-
-/* ============================================================
- * DOSUB_SELF1_HYDRO_APERTURE
- * Recursive sub-cell self interaction.
- * ============================================================ */
 
 /**
  * @brief Recursively compute non-symmetric self interactions for sub-cells.
