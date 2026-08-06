@@ -39,4 +39,4 @@ fi
 printf "Running simulation..."
 
 ../../../../swift --hydro --stars $runtime_params --self-gravity --feedback \
-		  --cooling --threads=4 params.yml 2>&1 | tee output.log
+		  --cooling --threads=8 params.yml 2>&1 | tee output.log

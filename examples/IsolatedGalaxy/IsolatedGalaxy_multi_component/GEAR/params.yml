@@ -29,7 +29,7 @@ Snapshots:
   subdir:              snap                      # snapshot directory
   basename:            snapshot                  # Common part of the name of output files
   time_first:          0.                        # Time of the first output (in internal units)
-  delta_time:          1e-2                      # Time difference between consecutive outputs (in internal units)
+  delta_time:          1e-3                      # Time difference between consecutive outputs (in internal units)
   compression:         9
   recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot
   recording_triggers_bpart:  [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot. Unused unless run with --black-holes (see with_bh in run.sh), but always required by the GEAR tracers module.
@@ -90,7 +90,7 @@ GEARSink:
   cut_off_radius: 5e-3                       # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
   f_acc: 0.1
   temperature_threshold_K: 1e4               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
-  density_threshold_Hpcm3: 1e0               # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
+  density_threshold_Hpcm3: 5e0               # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
   maximal_density_threshold_Hpcm3: 1e5       # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed.
   stellar_particle_mass_Msun: 1e5            # Mass of the stellar particle representing the low mass stars, in solar mass
   minimal_discrete_mass_Msun: 30             # Minimal mass of stars represented by discrete particles, in solar mass
