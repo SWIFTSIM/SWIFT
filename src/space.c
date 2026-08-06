@@ -2494,17 +2494,30 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
         owner = space_locate_sink_cell(&s->cells_top[t], &sinks[k]);
       }
 
-      if (owner != NULL)
+      if (owner != NULL) {
+        /* Does any ancestor between this leaf and the top have a stale
+         * ti_old_part? If so, runner_do_sinks_sink_swallow()'s top-down,
+         * per-cell-early-returning recursion would have bailed before ever
+         * reaching this leaf, regardless of which depth the relevant pair
+         * task's own ci/cj cell sits at. */
+        for (const struct cell *anc = owner; anc != NULL; anc = anc->parent) {
+          message(
+              "  ancestor chain: cellID=%lld depth=%d split=%d "
+              "sinks.count=%d sinks.ti_old_part=%lld match=%d",
+              anc->cellID, anc->depth, anc->split, anc->sinks.count,
+              (long long)anc->sinks.ti_old_part,
+              anc->sinks.ti_old_part == e->ti_current);
+        }
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
             "step=%d cellID=%lld depth=%d split=%d nodeID=%d "
             "sinks.count=%d sinks.ti_old_part=%lld e->ti_current=%lld "
-            "drifted_this_step=%d",
+            "drifted_this_step=%d (see ancestor chain above)",
             sinks[k].id, swallow_id, e->step, owner->cellID, owner->depth,
             owner->split, owner->nodeID, owner->sinks.count,
             (long long)owner->sinks.ti_old_part, (long long)e->ti_current,
             owner->sinks.ti_old_part == e->ti_current);
-      else
+      } else
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
             "step=%d (owning cell not found)",
