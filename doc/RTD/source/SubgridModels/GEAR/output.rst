@@ -135,10 +135,14 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
      - Description
      - Units
      - Comments
-   * - ``SubgridMasses``
-     - Subgrid mass of the black hole
+   * - ``DynamicalMasses``
+     - Dynamical (gravitational, resolved) mass of the black hole particle
      - [U_M]
-     -
+     - Generic ``Masses`` is not written for black holes; use this field.
+   * - ``SubgridMasses``
+     - Subgrid (unresolved, physical) mass of the black hole
+     - [U_M]
+     - Starts at the dynamical mass at formation and diverges from it as the BH accretes; see :ref:`gear_black_holes`.
    * - ``FormationScaleFactors`` / ``FormationTimes``
      - Scale-factor / time at which the BH was formed
      - [-] / [U_T]
