@@ -4,6 +4,7 @@
 set -e
 
 with_sinks=${with_sinks=0} # Run with sinks (1) or with SF (0)?
+with_bh=${with_bh=0}       # Seed a central black hole (1) or not (0)?
 
 scripts_location="../../../GEAR_ICs_and_SCRIPTS"
 
@@ -29,8 +30,13 @@ else
     runtime_params="--sinks"
 fi
 
+if [[ "$with_bh" -eq 1 ]]; then
+    echo "Seeding a central black hole..."
+    python3 add_black_hole.py galaxy_multi_component.hdf5
+    runtime_params="$runtime_params --black-holes"
+fi
 
 printf "Running simulation..."
 
 ../../../../swift --hydro --stars $runtime_params --self-gravity --feedback \
-		  --cooling --threads=14 params.yml 2>&1 | tee output.log
+		  --cooling --threads=4 params.yml 2>&1 | tee output.log
