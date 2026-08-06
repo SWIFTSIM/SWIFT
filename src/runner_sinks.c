@@ -517,6 +517,23 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
     error("Running pair task on foreign node");
+
+  /* cell_unskip.c activates this task on cell_is_active_sinks(x) ||
+   * cell_is_active_hydro(x), but we only process a side when the
+   * neighbour is cell_is_active_sinks -- if a side is hydro-active but
+   * not sinks-active, the task runs yet silently skips that side's
+   * flagged sinks. Flag the exact scenario when it happens. */
+  if ((ci->sinks.count > 0 || cj->sinks.count > 0) &&
+      !cell_is_active_sinks(ci, e) && !cell_is_active_sinks(cj, e) &&
+      (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e))) {
+    message(
+        "UNSKIP/RUNTIME MISMATCH: do_sink_swallow pair ci_cellID=%lld "
+        "cj_cellID=%lld ran but neither side is sinks-active (only "
+        "hydro-active) -- ci.active_hydro=%d cj.active_hydro=%d "
+        "ci.sinks.count=%d cj.sinks.count=%d",
+        ci->cellID, cj->cellID, cell_is_active_hydro(ci, e),
+        cell_is_active_hydro(cj, e), ci->sinks.count, cj->sinks.count);
+  }
 #endif
 
   /* Run the swallowing loop only in the cell that is the neighbour of the

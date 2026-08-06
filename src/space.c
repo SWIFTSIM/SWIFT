@@ -2506,10 +2506,15 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
         for (const struct cell *anc = owner; anc != NULL; anc = anc->parent) {
           message(
               "  ancestor depth=%d cellID=%lld split=%d is_hydro_super=%d "
-              "sinks.ti_old_part=%lld match=%d",
+              "sinks.ti_old_part=%lld match=%d hydro.count=%d stars.count=%d "
+              "sinks.count=%d has_self_density=%d has_self_sink_density=%d "
+              "active_sinks=%d active_hydro=%d",
               anc->depth, anc->cellID, anc->split, anc == anc->hydro.super,
               (long long)anc->sinks.ti_old_part,
-              anc->sinks.ti_old_part == e->ti_current);
+              anc->sinks.ti_old_part == e->ti_current, anc->hydro.count,
+              anc->stars.count, anc->sinks.count, anc->hydro.density != NULL,
+              anc->sinks.density != NULL, cell_is_active_sinks(anc, e),
+              cell_is_active_hydro(anc, e));
           int nr_tasks = 0;
           for (struct link *l = anc->sinks.do_sink_swallow; l != NULL;
                l = l->next, nr_tasks++) {
@@ -2517,11 +2522,13 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
             const struct cell *other = (t->ci == anc) ? t->cj : t->ci;
             message(
                 "    do_sink_swallow link %d: type=%s skip=%d "
-                "other_cellID=%lld other_nodeID=%d other_active_sinks=%d",
+                "other_cellID=%lld other_nodeID=%d other_active_sinks=%d "
+                "other_active_hydro=%d",
                 nr_tasks, taskID_names[t->type], t->skip,
                 other != NULL ? other->cellID : -1,
                 other != NULL ? other->nodeID : -1,
-                other != NULL ? cell_is_active_sinks(other, e) : -1);
+                other != NULL ? cell_is_active_sinks(other, e) : -1,
+                other != NULL ? cell_is_active_hydro(other, e) : -1);
           }
           if (nr_tasks == 0) message("    no do_sink_swallow task here");
         }
