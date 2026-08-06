@@ -918,6 +918,29 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_sinks(cj, e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* Unlike BH (runner_doiact_functions_black_holes.h), sinks have no
+   * gas-count exemption for the swallow loop -- a sink-sink pair that
+   * would otherwise mark a merger gets silently dropped if the other
+   * side happens to be gas-free. Flag it when it happens. */
+  if (ci->sinks.count != 0 && cj->sinks.count != 0) {
+    if (cell_is_active_sinks(ci, e) && cj->hydro.count == 0 && !should_do_ci)
+      message(
+          "sink-sink pair marking suppressed by gas gate (ci active, cj "
+          "gas-free): ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d "
+          "cj.sinks.count=%d",
+          ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
+    if (cell_is_active_sinks(cj, e) && ci->hydro.count == 0 && !should_do_cj)
+      message(
+          "sink-sink pair marking suppressed by gas gate (cj active, ci "
+          "gas-free): ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d "
+          "cj.sinks.count=%d",
+          ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
+  }
+#endif
+#endif
+
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
