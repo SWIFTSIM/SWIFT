@@ -2495,24 +2495,33 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
       }
 
       if (owner != NULL) {
-        /* Does any ancestor between this leaf and the top have a stale
-         * ti_old_part? If so, runner_do_sinks_sink_swallow()'s top-down,
-         * per-cell-early-returning recursion would have bailed before ever
-         * reaching this leaf, regardless of which depth the relevant pair
-         * task's own ci/cj cell sits at. */
-        for (const struct cell *anc = owner; anc != NULL; anc = anc->parent) {
+        /* cell_activate_drift_sink() threads cell_flag_do_sink_sub_drift up
+         * every ancestor to hydro.super, and cell_drift_sink() stamps
+         * ti_old_part on every cell it visits via force || sub_drift -- so a
+         * current leaf implies a current ancestor chain too. The remaining
+         * question is whether the do_sink_swallow task(s) touching this
+         * cell were ever activated, or exist at all. */
+        int nr_tasks = 0;
+        for (struct link *l = owner->sinks.do_sink_swallow; l != NULL;
+             l = l->next, nr_tasks++) {
+          struct task *t = l->t;
+          const struct cell *other = (t->ci == owner) ? t->cj : t->ci;
           message(
-              "  ancestor chain: cellID=%lld depth=%d split=%d "
-              "sinks.count=%d sinks.ti_old_part=%lld match=%d",
-              anc->cellID, anc->depth, anc->split, anc->sinks.count,
-              (long long)anc->sinks.ti_old_part,
-              anc->sinks.ti_old_part == e->ti_current);
+              "  do_sink_swallow link %d: type=%s skip=%d other_cellID=%lld "
+              "other_nodeID=%d other_active_sinks=%d other_active_hydro=%d",
+              nr_tasks, taskID_names[t->type], t->skip,
+              other != NULL ? other->cellID : -1,
+              other != NULL ? other->nodeID : -1,
+              other != NULL ? cell_is_active_sinks(other, e) : -1,
+              other != NULL ? cell_is_active_hydro(other, e) : -1);
         }
+        if (nr_tasks == 0)
+          message("  no do_sink_swallow task is linked to this cell at all");
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
             "step=%d cellID=%lld depth=%d split=%d nodeID=%d "
             "sinks.count=%d sinks.ti_old_part=%lld e->ti_current=%lld "
-            "drifted_this_step=%d (see ancestor chain above)",
+            "drifted_this_step=%d (see do_sink_swallow links above)",
             sinks[k].id, swallow_id, e->step, owner->cellID, owner->depth,
             owner->split, owner->nodeID, owner->sinks.count,
             (long long)owner->sinks.ti_old_part, (long long)e->ti_current,
