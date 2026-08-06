@@ -128,6 +128,21 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                                     ci->progeny[k], NULL),
                   s);
             }
+#ifdef SWIFT_DEBUG_CHECKS
+            else if (with_sinks && ci->progeny[k] != NULL &&
+                     ci->progeny[k]->sinks.count > 0) {
+              /* This progeny is gas-and-star-empty but sink-bearing --
+               * dropped here means it (and its own do_sink_swallow self
+               * task, cloned 1:1 off this density task) never exists. */
+              message(
+                  "DROPPED SELF DENSITY TASK for sink-only progeny: "
+                  "cellID=%lld depth=%d hydro.count=%d stars.count=%d "
+                  "sinks.count=%d",
+                  ci->progeny[k]->cellID, ci->progeny[k]->depth,
+                  ci->progeny[k]->hydro.count, ci->progeny[k]->stars.count,
+                  ci->progeny[k]->sinks.count);
+            }
+#endif
           }
 
           /* Make a task for each pair of progeny */
@@ -149,6 +164,20 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 }
               }
             }
+#ifdef SWIFT_DEBUG_CHECKS
+            else if (with_sinks && ci->progeny[j] != NULL &&
+                     ci->progeny[j]->sinks.count > 0) {
+              /* Same gap as the self-task loop above, for intra-parent
+               * pair tasks. */
+              message(
+                  "DROPPED INTRA-PARENT PAIR DENSITY TASKS for sink-only "
+                  "progeny: cellID=%lld depth=%d hydro.count=%d "
+                  "stars.count=%d sinks.count=%d",
+                  ci->progeny[j]->cellID, ci->progeny[j]->depth,
+                  ci->progeny[j]->hydro.count, ci->progeny[j]->stars.count,
+                  ci->progeny[j]->sinks.count);
+            }
+#endif
           }
         }
       }
