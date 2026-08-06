@@ -17,7 +17,9 @@
  *
  ******************************************************************************/
 
-/* Test for the gas-gas neighbour loop used in sink particle formation.
+/* Test for the fixed-aperture gas-gas neighbour loop (see
+ * runner_doiact_functions_hydro_aperture.h), whose first use is GEAR's sink
+ * formation criterion.
  *
  * Generates 27 cells arranged in a 3x3x3 grid, fills them with gas particles,
  * and verifies that the optimised pair and self interaction functions
