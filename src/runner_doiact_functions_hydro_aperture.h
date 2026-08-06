@@ -19,14 +19,19 @@
  *
  ******************************************************************************/
 
-/* Gas-gas neighbour loop for sink particle formation.
+/* Fixed-aperture gas-gas neighbour loop.
  *
  * Implements pair and self interaction loops that accumulate quantities on
  * active gas particles using a fixed aperture radius @p r_cut, rather than
  * the per-particle smoothing-length radius used by the standard hydro density
  * loop.  The aperture radius is passed explicitly as an argument to every
- * function, making the loop generic and independent of any particular subgrid
- * sink model.
+ * function, and the accumulated quantities and their physics are entirely
+ * defined by the IACT_HYDRO_APERTURE/IACT_NONSYM_HYDRO_APERTURE callback, so
+ * the loop itself is generic and independent of any particular subgrid
+ * physics.  Its first use is GEAR's sink formation criterion
+ * (FUNCTION = "prep_sink_formation"), where @p r_cut is the sink formation
+ * search radius and the callback accumulates the gas properties needed to
+ * evaluate the formation criteria.
  *
  * Before including this file, define FUNCTION (e.g. "prep_sink_formation") and
  * FUNCTION_TASK_LOOP (e.g. TASK_LOOP_PREP_SINK_FORMATION).  The macro
