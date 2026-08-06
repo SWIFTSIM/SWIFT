@@ -2445,9 +2445,8 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
  * @return The owning #cell, or NULL if sp is not in this subtree's range.
  */
 static const struct cell *space_locate_sink_cell(const struct cell *c,
-                                                  const struct sink *sp) {
-  if (sp < c->sinks.parts || sp >= c->sinks.parts + c->sinks.count)
-    return NULL;
+                                                 const struct sink *sp) {
+  if (sp < c->sinks.parts || sp >= c->sinks.parts + c->sinks.count) return NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {

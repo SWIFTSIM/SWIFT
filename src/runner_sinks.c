@@ -401,8 +401,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             message(
                 "sink %lld (node %d) swallowing sink particle %lld (node %d, "
                 "cellID=%lld, local case) at step %d",
-                sp->id, e->nodeID, cell_sp->id, c->nodeID, c->cellID,
-                e->step);
+                sp->id, e->nodeID, cell_sp->id, c->nodeID, c->cellID, e->step);
 #endif
 
             /* If the sink particle is local, remove it */
