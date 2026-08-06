@@ -2495,37 +2495,40 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
       }
 
       if (owner != NULL) {
-        /* cell_activate_drift_sink() threads cell_flag_do_sink_sub_drift up
-         * every ancestor to hydro.super, and cell_drift_sink() stamps
-         * ti_old_part on every cell it visits via force || sub_drift -- so a
-         * current leaf implies a current ancestor chain too. The remaining
-         * question is whether the do_sink_swallow task(s) touching this
-         * cell were ever activated, or exist at all. */
-        int nr_tasks = 0;
-        for (struct link *l = owner->sinks.do_sink_swallow; l != NULL;
-             l = l->next, nr_tasks++) {
-          struct task *t = l->t;
-          const struct cell *other = (t->ci == owner) ? t->cj : t->ci;
+        /* Neither checking only the leaf's drift state nor only the leaf's
+         * task links was enough: sink_do_sink_swallow tasks can be linked
+         * at any ancestor depth (same as any other pair task), and
+         * cell_drift_sink() only maintains ti_old_part from hydro.super
+         * downward -- above it the field is never touched at all. Walk the
+         * whole chain and dump both at every level, so we can see which
+         * depth actually hosts the task and whether that depth is inside
+         * or outside the drift-covered range. */
+        for (const struct cell *anc = owner; anc != NULL; anc = anc->parent) {
           message(
-              "  do_sink_swallow link %d: type=%s skip=%d other_cellID=%lld "
-              "other_nodeID=%d other_active_sinks=%d other_active_hydro=%d",
-              nr_tasks, taskID_names[t->type], t->skip,
-              other != NULL ? other->cellID : -1,
-              other != NULL ? other->nodeID : -1,
-              other != NULL ? cell_is_active_sinks(other, e) : -1,
-              other != NULL ? cell_is_active_hydro(other, e) : -1);
+              "  ancestor depth=%d cellID=%lld split=%d is_hydro_super=%d "
+              "sinks.ti_old_part=%lld match=%d",
+              anc->depth, anc->cellID, anc->split, anc == anc->hydro.super,
+              (long long)anc->sinks.ti_old_part,
+              anc->sinks.ti_old_part == e->ti_current);
+          int nr_tasks = 0;
+          for (struct link *l = anc->sinks.do_sink_swallow; l != NULL;
+               l = l->next, nr_tasks++) {
+            struct task *t = l->t;
+            const struct cell *other = (t->ci == anc) ? t->cj : t->ci;
+            message(
+                "    do_sink_swallow link %d: type=%s skip=%d "
+                "other_cellID=%lld other_nodeID=%d other_active_sinks=%d",
+                nr_tasks, taskID_names[t->type], t->skip,
+                other != NULL ? other->cellID : -1,
+                other != NULL ? other->nodeID : -1,
+                other != NULL ? cell_is_active_sinks(other, e) : -1);
+          }
+          if (nr_tasks == 0) message("    no do_sink_swallow task here");
         }
-        if (nr_tasks == 0)
-          message("  no do_sink_swallow task is linked to this cell at all");
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
-            "step=%d cellID=%lld depth=%d split=%d nodeID=%d "
-            "sinks.count=%d sinks.ti_old_part=%lld e->ti_current=%lld "
-            "drifted_this_step=%d (see do_sink_swallow links above)",
-            sinks[k].id, swallow_id, e->step, owner->cellID, owner->depth,
-            owner->split, owner->nodeID, owner->sinks.count,
-            (long long)owner->sinks.ti_old_part, (long long)e->ti_current,
-            owner->sinks.ti_old_part == e->ti_current);
+            "step=%d cellID=%lld depth=%d (see ancestor dump above)",
+            sinks[k].id, swallow_id, e->step, owner->cellID, owner->depth);
       } else
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "
