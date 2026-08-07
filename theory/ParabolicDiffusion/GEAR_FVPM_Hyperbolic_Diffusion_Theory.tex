@@ -1560,7 +1560,16 @@ $2(\chyp t)^2e^{-at}$. A positivity-preserving scheme therefore
 simultaneously in the wave-dominated regime; the best a positive causal
 solution can reach is $\langle r^2\rangle=(\chyp t+\epsilon_0)^2$, and
 RMS comparisons should be read against that ceiling as well as against
-Eq.~\eqref{eq:moment-identity}.
+Eq.~\eqref{eq:moment-identity}. Because the front carries most of the mass
+in the wave-dominated regime (Section~\ref{sec:exact-3d}), $\langle
+r^2\rangle$ must be accumulated as a genuine mass-weighted moment,
+$\sum_i m_{Z,i}\,r_i^2/\sum_i m_{Z,i}$ over the particles' own positions
+and metal masses; binning the metal density onto a fixed-width radial (or
+Cartesian) grid first and computing the moment from the quantized profile
+systematically under-counts the thin, fast-moving front shell whenever the
+bin width is comparable to or larger than the front's radial extent,
+biasing the diagnostic toward the smooth interior it is meant to be
+checked against.
 
 Finally, the seed in the test problems is a ball (or segment) of radius
 $\epsilon_0$, not a point. Convolution adds variances for independent

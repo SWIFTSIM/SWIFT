@@ -12,5 +12,5 @@ build() {
   pdflatex -interaction=nonstopmode -jobname="$jobname" "$texfile"
 }
 
-build gear_FVPM_diffusion GEAR_FVPM_Diffusion_Theory.tex
+build GEAR_FVPM_Diffusion_Theory GEAR_FVPM_Diffusion_Theory.tex
 build GEAR_FVPM_Hyperbolic_Diffusion_Theory GEAR_FVPM_Hyperbolic_Diffusion_Theory.tex
