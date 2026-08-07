@@ -1,33 +1,48 @@
 % theory/ParabolicDiffusion/GEAR_FVPM_Hyperbolic_Diffusion_Theory.tex
 
-\documentclass{article}
-\usepackage[margin=1in]{geometry} % Wider text block: this document is dense
-                                   % with long inline \code{} identifiers and
-                                   % display equations that overflow the
-                                   % default article textwidth.
+\documentclass[11pt, a4paper, parskip]{scrartcl}
+\usepackage[margin=2.7cm]{geometry}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{graphicx}
-\usepackage{hyperref}
 \usepackage[utf8]{inputenc} % Required for Unicode characters
 \usepackage{xcolor}         % Required for coloring text
 \usepackage{enumitem}       % For customizing list environments
 \usepackage{physics}        % For common physics notations like dv, grad, div, etc.
 \usepackage{booktabs}       % For clean tables
-\usepackage{listings}       % For inline/blocked source-code identifiers
+\usepackage{seqsplit}
+\usepackage[hidelinks]{hyperref}
 
-% ---------------------------------------------------------------------------
-% Code-identifier typesetting. \lstinline treats underscores literally, so
-% there is no risk of an unescaped "_" breaking the build.
-% ---------------------------------------------------------------------------
-\lstset{
-  basicstyle=\ttfamily\small,
-  breaklines=true,
-  columns=fullflexible,
-  keepspaces=true
-}
-\newcommand{\code}[1]{\mbox{\lstinline{#1}}}
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+% \code{} is \texttt{} that may break mid-identifier/mid-path across lines
+% (long function names, file paths) instead of overflowing the margin --
+% used for long \texttt content in running text. Left as plain \texttt{}
+% inside captions/section titles, where \seqsplit's \futurelet-based
+% scanning cannot survive LaTeX's full expansion of moving arguments.
+\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
+
+% KOMA-Script disables the classic \rm/\bf/\it/... font-switch commands
+% by default; the numbered sections use them freely for math-mode units
+% ($c_{\rm hyp}$, $F_{\rm diss}$, ...), matching the old article.cls
+% setup, so restore the standard LaTeX2e old-font-command behaviour here
+% rather than editing every occurrence.
+\makeatletter
+\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
+\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
+\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
+\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
+\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
+\makeatother
+
+\setkomafont{title}{\rmfamily\bfseries\boldmath}
+\addtokomafont{section}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
 
 \theoremstyle{plain}
 \newtheorem{proposition}{Proposition}
@@ -68,13 +83,24 @@
 
 \title{Theory of the Hyperbolic (Cattaneo-Relaxation) FVPM
 Diffusion Scheme}
+\subtitle{Theory document: Cattaneo relaxation, characteristic speed, and
+exact solutions}
 \author{Darwin Roduit}
 \date{\today}
 
 \begin{document}
-\sloppy % several long, unhyphenatable \code{} identifiers would otherwise
-        % overfull the line; prefer looser justification to clipped text.
 \maketitle
+
+This is the theoretical and numerical reference for the hyperbolic
+(Cattaneo-relaxation) variant of the GEAR FVPM metal-diffusion chemistry
+scheme (\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}), configured
+with \code{--with-chemistry=GEAR-FVPM-HYPERBOLIC-DIFFUSION\_N}. It builds
+on the parabolic companion document's FVPM discretisation and
+Riemann-solver framework (\code{GEAR\_FVPM\_Diffusion\_Theory.tex}, this
+directory); user-facing configuration and parameters are documented in
+the RTD pages under \code{doc/RTD/source/SubgridModels/GEAR/diffusion/}.
+Regenerate this PDF with \code{./run.sh}.
+
 \tableofcontents
 
 \part{Formulation}
@@ -85,15 +111,15 @@ Diffusion Scheme}
 This is the companion document promised, but not written, at the end of
 Section~\emph{Hyperbolic Relation} of
 \emph{Theoretical Foundations of Parabolic Diffusion in GEAR FVPM}
-(\code{GEAR_FVPM_Diffusion_Theory.tex}, this directory): a first-principles
+(\code{GEAR\_FVPM\_Diffusion\_Theory.tex}, this directory): a first-principles
 derivation of the characteristic (wave) speed of the hyperbolic
-(Cattaneo~\cite{Cattaneo1948}-relaxation) diffusion system implemented under
-\code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION}
-(\code{src/chemistry/GEAR_FVPM_DIFFUSION/hyperbolic/}), and a direct
+(Cattaneo~\citeyear{Cattaneo1948}-relaxation) diffusion system implemented under
+\code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION}
+(\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}), and a direct
 confrontation of that result against the two closed-form expressions
 currently returned by
-\code{chemistry_get_physical_hyperbolic_soundspeed}
-(\code{hyperbolic/chemistry_getters.h:37--66}).
+\code{chemistry\_get\_physical\_hyperbolic\_soundspeed}
+(\code{hyperbolic/chemistry\_getters.h:37--66}).
 
 \subsection{Relation to the Parabolic Document}
 This document assumes familiarity with the FVPM geometry, the diffusion
@@ -120,17 +146,17 @@ Eq.~3); the hyperbolic scheme instead promotes $\Fdiff$ to an independent
 dynamical variable, evolved by its own PDE.
 
 \subsection{The Cattaneo Relaxation Equation}
-The flux obeys (\code{chemistry_flux.h:90--94}, docstring of
-\code{chemistry_part_integrate_flux_source_term}):
+The flux obeys (\code{chemistry\_flux.h:90--94}, docstring of
+\code{chemistry\_part\_integrate\_flux\_source\_term}):
 \begin{equation}
   \label{eq:cattaneo}
   \pdv{\Fdiff}{t} + \frac{\Kmat}{\taurelax}\grad\driver = -\frac{\Fdiff}{\taurelax} ,
 \end{equation}
-where $\taurelax = \code{p->chemistry_data.tau}$ is the local relaxation
+where $\taurelax = \code{p->chemistry\_data.tau}$ is the local relaxation
 time (Section~\ref{sec:tau-modes}) and $\driver$ is the same diffusion
 driver as in the parabolic scheme ($\driver=\rhoZ$ for
-\code{isotropic_constant}; $\driver=\Zfrac$ otherwise -- see
-\code{chemistry_compute_flux}, \code{hyperbolic/chemistry_flux.h:159--172}).
+\code{isotropic\_constant}; $\driver=\Zfrac$ otherwise -- see
+\code{chemistry\_compute\_flux}, \code{hyperbolic/chemistry\_flux.h:159--172}).
 As $\taurelax\to0$, Eq.~\eqref{eq:cattaneo} forces
 $\Fdiff\to-\Kmat\grad\driver$, i.e.\ it collapses onto Fick's law and
 Eq.~\eqref{eq:mass_conservation} becomes the parabolic equation.
@@ -138,7 +164,7 @@ Eq.~\eqref{eq:mass_conservation} becomes the parabolic equation.
 The pair \eqref{eq:mass_conservation}--\eqref{eq:cattaneo} is exactly the
 Cattaneo/Maxwell-Cattaneo regularisation of a diffusion law, structurally
 identical to the M1 closure of radiative transfer
-(Berthon et al.~\cite{Berthon2007}).
+(Berthon et al.~\citeyear{Berthon2007}).
 
 \begin{remark}[$\grad\driver$ is always evaluated at the particle, never extrapolated]
 \label{rem:cell-centred-gradients-only}
@@ -162,34 +188,34 @@ approximation chosen among alternatives.
 \subsection{Relaxation-Time Models}
 \label{sec:tau-modes}
 Two independent modes exist
-(\code{chemistry_compute_physical_tau}, \code{hyperbolic/chemistry_getters.h:75--92}):
+(\code{chemistry\_compute\_physical\_tau}, \code{hyperbolic/chemistry\_getters.h:75--92}):
 \begin{align}
-  \text{\code{constant_mode}:} \qquad & \taurelax = \taurelax_0 , \\
-  \text{\code{turbulent_mode}:} \qquad & \taurelax = \frac{\taurelax_0}{\kappaC\,\norm{\Shear}_F} ,
+  \text{\code{constant\_mode}:} \qquad & \taurelax = \taurelax_0 , \\
+  \text{\code{turbulent\_mode}:} \qquad & \taurelax = \frac{\taurelax_0}{\kappaC\,\norm{\Shear}_F} ,
   \label{eq:tau_turbulent}
 \end{align}
-with $\taurelax_0=$\code{chem_data->tau} the parameter-file normalisation
+with $\taurelax_0=$\code{chem\_data->tau} the parameter-file normalisation
 and $\Shear$ the (unregularised) physical velocity shear tensor. The
-\code{turbulent_mode} formula includes an explicit $\kappaC^{-1}$
-(\code{chem_data->diffusion_coefficient}) coupling, motivated and derived
+\code{turbulent\_mode} formula includes an explicit $\kappaC^{-1}$
+(\code{chem\_data->diffusion\_coefficient}) coupling, motivated and derived
 in Section~\ref{sec:tau0-physical}. This choice of relaxation-time model is
 orthogonal, in the parameter file, to the diffusion-tensor mode $\Kmat$
-(Section~\ref{sec:diffusion-tensor-recap}): \code{diffusion_mode} and
-\code{relaxation_time_mode} are parsed as two independent strings
+(Section~\ref{sec:diffusion-tensor-recap}): \code{diffusion\_mode} and
+\code{relaxation\_time\_mode} are parsed as two independent strings
 (\code{chemistry.h:279--326}), with no cross-validation between them.
 
 \subsection{Diffusion Tensor Modes (recap)}
 \label{sec:diffusion-tensor-recap}
-From \code{chemistry_get_physical_matrix_K}/\code{chemistry_get_diffusion_coefficient}
-(\code{chemistry_getters.h:196--285}):
+From \code{chemistry\_get\_physical\_matrix\_K}/\code{chemistry\_get\_diffusion\_coefficient}
+(\code{chemistry\_getters.h:196--285}):
 \begin{align}
-  \text{\code{isotropic_constant}:} \qquad & \Kmat=\kappaP\mathbf I, \quad \kappaP=\kappaC, \\
-  \text{\code{isotropic_smagorinsky}:} \qquad & \Kmat=\kappaP\mathbf I, \quad \kappaP=\kappaC\,\gammak^2\,h^2\,\rho\,\norm{\Shear}_F, \\
-  \text{\code{anisotropic_gradient}:} \qquad & \Kmat = \kappaC\,\gammak^2\,h^2\,\rho \; \Splus .
+  \text{\code{isotropic\_constant}:} \qquad & \Kmat=\kappaP\mathbf I, \quad \kappaP=\kappaC, \\
+  \text{\code{isotropic\_smagorinsky}:} \qquad & \Kmat=\kappaP\mathbf I, \quad \kappaP=\kappaC\,\gammak^2\,h^2\,\rho\,\norm{\Shear}_F, \\
+  \text{\code{anisotropic\_gradient}:} \qquad & \Kmat = \kappaC\,\gammak^2\,h^2\,\rho \; \Splus .
 \end{align}
 Crucially, $\Kmat$ carries an explicit factor of $\rho$ in the
-\code{isotropic_smagorinsky} and \code{anisotropic_gradient} modes, but
-\emph{not} in \code{isotropic_constant}. This asymmetry is the origin of
+\code{isotropic\_smagorinsky} and \code{anisotropic\_gradient} modes, but
+\emph{not} in \code{isotropic\_constant}. This asymmetry is the origin of
 the consistency check of Section~\ref{sec:confrontation}.
 
 \subsection{The Effective Diffusivity $\Deff$}
@@ -198,11 +224,11 @@ $\Kmat$ is defined with respect to the \emph{driver} $\driver$ (Fick's
 law, $\Fdiff=-\Kmat\grad\driver$), not with respect to the
 \emph{conserved} state $U_0=\rhoZ$ -- and, as Section~\ref{sec:tau-modes}
 already had to confront for $\taurelax$, $\driver$ itself is
-\code{diffusion_mode}-dependent ($\driver=U_0$ for
-\code{isotropic_constant}, $\driver=U_0/\rho$ otherwise). This is not a
+\code{diffusion\_mode}-dependent ($\driver=U_0$ for
+\code{isotropic\_constant}, $\driver=U_0/\rho$ otherwise). This is not a
 notational nuisance to work around case-by-case; the code already
 resolves it with a single, explicit, named quantity. The \code{"DiffusionMatrices"}
-snapshot field's own description (\code{chemistry_io.h:185}) states it
+snapshot field's own description (\code{chemistry\_io.h:185}) states it
 outright: \emph{``The effective diffusivity is defined as $\Deff =
 \Kmat\driver/U$.''} Formally, under the frozen-coefficient approximation
 of Section~\ref{sec:quasilinear} ($\driver=\mu U_0$, $\mu$ locally
@@ -214,10 +240,10 @@ constant),
   \mu = \begin{cases} 1 & \code{isotropic\_constant} \\ 1/\rho & \text{otherwise} \end{cases} .
 \end{equation}
 This is exactly the same $q/U$ (or $U/q$) bookkeeping that recurs
-throughout Hopkins~\cite{Hopkins2017diffusion} and is already used
+throughout Hopkins~\citeyear{Hopkins2017diffusion} and is already used
 elsewhere in this module for precisely this reason, not by coincidence:
-\code{chemistry_riemann_compute_hyperbolic_blending_factor}
-(\code{chemistry_riemann_utils.h:210}) computes
+\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor}
+(\code{chemistry\_riemann\_utils.h:210}) computes
 \code{norm\_D\_star = norm\_K\_star * q\_star/U\_star} -- the same
 $\Deff=\Kmat(\driver/U)$ construction, independently, for the
 blending-factor calculation. $\Deff$, not $\Kmat$, is the tensor that
@@ -243,7 +269,7 @@ Define the four-component hyperbolic state vector
 As is standard for deriving a local wave-speed estimate for a Godunov-type
 solver (and as the code itself already does implicitly, by evaluating
 $\chyp$ from each particle's own, locally stored $\Kmat,\taurelax,\rho$ --
-\code{chemistry_iact.h:295--298}), we treat $\Kmat$ (equivalently $\Deff$),
+\code{chemistry\_iact.h:295--298}), we treat $\Kmat$ (equivalently $\Deff$),
 $\taurelax$ and $\rho$ as \emph{locally frozen} coefficients for the
 purpose of constructing the flux Jacobian: they are evaluated at the
 particle/interface, not differentiated with respect to $\Uvec$. This is
@@ -253,13 +279,13 @@ exactly analogous). Under it, $\driver=\mu U_0$ (Section~\ref{sec:effective-diff
 is linear in $U_0$, and $\Deff=\mu\Kmat$ is itself frozen.
 
 \subsection{The Flux Tensor, Rewritten in Terms of $\Deff$}
-Directly from the code (\code{chemistry_get_hyperbolic_flux},
-\code{hyperbolic/chemistry_getters.h:162--200}), the flux of $\Uvec$ in
+Directly from the code (\code{chemistry\_get\_hyperbolic\_flux},
+\code{hyperbolic/chemistry\_getters.h:162--200}), the flux of $\Uvec$ in
 Cartesian direction $k\in\{x,y,z\}$ is $(F_k,\,K_{xk}\driver/\taurelax,\,
 K_{yk}\driver/\taurelax,\,K_{zk}\driver/\taurelax)$ -- an exact
 transcription of the implementation (row 0 of \code{hypflux} is literally
 \code{U[1..3]}, rows 1--3 are literally \code{K[j][k]*(q/tau)},
-\code{hyperbolic/chemistry_getters.h:178--199}), not an independent
+\code{hyperbolic/chemistry\_getters.h:178--199}), not an independent
 modelling choice. Substituting $\driver=\mu U_0$ (frozen $\mu$) turns
 $K_{jk}\driver/\taurelax$ into $D_{jk}U_0/\taurelax$, so
 \begin{equation}
@@ -294,7 +320,7 @@ differentiation of the flux tensor above gives, for any $\mathbf x =
 For any symmetric positive semi-definite $3\times3$ effective diffusivity
 $\Deff$ (Section~\ref{sec:effective-diffusivity}; no assumption on its
 shape -- isotropic, Smagorinsky-scaled, or fully anisotropic, and no
-assumption on which \code{diffusion_mode} produced it), any
+assumption on which \code{diffusion\_mode} produced it), any
 relaxation-time model, and any unit interface normal $\nunit$, the
 projected flux Jacobian $\mathbf A(\nunit)$ of Eq.~\eqref{eq:jacobian_action}
 has eigenvalues
@@ -335,7 +361,7 @@ transverse magnetic field components in a 1D MHD Riemann problem, or the
 transverse momentum components in a 1D gas-dynamics Riemann problem: real,
 but not part of the acoustic-family wave-speed bound. The code's HLL
 solver (Section~\ref{sec:confrontation}) uses the same $\lambda_\pm$ bound
-for all four flux components (\code{chemistry_riemann_HLL.h:112-179}),
+for all four flux components (\code{chemistry\_riemann\_HLL.h:112-179}),
 which is the standard, conservative simplification -- not a further
 approximation beyond what Proposition~\ref{prop:main} already licenses for
 the two genuinely propagating families.
@@ -350,14 +376,14 @@ anisotropic). The two corollaries below specialise it.
 \subsection{Corollary: Isotropic Recovery}
 \begin{corollary}
 \label{cor:isotropic}
-$\Kmat=\kappaP\mathbf I$ in both \code{isotropic_constant} and
-\code{isotropic_smagorinsky} modes, but the driver $\driver$ that fixes
+$\Kmat=\kappaP\mathbf I$ in both \code{isotropic\_constant} and
+\code{isotropic\_smagorinsky} modes, but the driver $\driver$ that fixes
 $\kappaP$'s \emph{units} -- and hence $\mu=\driver/U_0$ -- differs between
 them (Section~\ref{sec:quasilinear}):
 \begin{align}
-  \driver &= U_0 \quad (\mu=1)\quad \text{for \code{isotropic_constant}}
+  \driver &= U_0 \quad (\mu=1)\quad \text{for \code{isotropic\_constant}}
   && \big[\kappaP\ \text{has units}\ \text{length}^2\,\text{time}^{-1}\big] , \\
-  \driver &= U_0/\rho \quad (\mu=1/\rho)\quad \text{for \code{isotropic_smagorinsky}}
+  \driver &= U_0/\rho \quad (\mu=1/\rho)\quad \text{for \code{isotropic\_smagorinsky}}
   && \big[\kappaP\ \text{has units}\ \text{mass}\,\text{length}^{-1}\text{time}^{-1}\big] .
 \end{align}
 Consequently $\Deff=\mu\kappaP\mathbf I$ is isotropic in both modes,
@@ -368,8 +394,8 @@ $\mu$), and
 \begin{equation}
   \chyp = \sqrt{\frac{\mu\,\kappaP}{\taurelax}} ,
   \qquad
-  \mu = \begin{cases} 1 & \text{\code{isotropic_constant}} \\
-                       1/\rho & \text{\code{isotropic_smagorinsky}} \end{cases} ,
+  \mu = \begin{cases} 1 & \text{\code{isotropic\_constant}} \\
+                       1/\rho & \text{\code{isotropic\_smagorinsky}} \end{cases} ,
 \end{equation}
 \emph{not} independent of which closure $\kappaP$ came from: the two
 modes' $\Deff$ differ by exactly the factor $\mu$, even though the
@@ -377,7 +403,7 @@ underlying $\Kmat=\kappaP\mathbf I$ formula looks superficially similar.
 \end{corollary}
 The units mismatch is not a detail specific to $\chyp$: any code path
 that consumes $\Kmat$ directly (rather than $\Deff$) must know which
-$\driver$ convention is in force for the active \code{diffusion_mode}, or
+$\driver$ convention is in force for the active \code{diffusion\_mode}, or
 it silently mixes an ordinary diffusivity with a mass diffusivity.
 
 \subsection{Corollary: The Frobenius Norm Is a (Non-Tight) Upper Bound}
@@ -455,7 +481,7 @@ computed.
 Proposition~\ref{prop:main} is stated per-interface, with $\chyp(\nunit)$
 depending on the pair-specific normal $\nunit$. It is tempting to conclude
 that fixing $\chyp$ in the code requires threading $\nunit$ into
-\code{chemistry_get_physical_hyperbolic_soundspeed} and evaluating it
+\code{chemistry\_get\_physical\_hyperbolic\_soundspeed} and evaluating it
 per-interaction rather than once per particle -- but this is unnecessary,
 and would be a worse engineering choice. What the CFL condition and the
 HLL wave-speed bound actually need is not the exact directional value, but
@@ -559,7 +585,7 @@ Section~\ref{sec:governing-system} -- and it is exact, not an
 approximation); Eq.~\eqref{eq:telegrapher} is a local specialisation,
 useful specifically because it isolates $U_0$ for the dispersion relation
 below, and reduces to Eq.~\eqref{eq:telegrapher_q} exactly whenever
-$\driver=U_0$ (\code{isotropic_constant}, $\mu=1$).
+$\driver=U_0$ (\code{isotropic\_constant}, $\mu=1$).
 
 \subsection{Two Limits}
 Eq.~\eqref{eq:telegrapher_q} interpolates between two regimes already
@@ -571,8 +597,8 @@ one equation:
   $\partial_tU_0=\div(\Kmat\grad \driver)$ -- Fick's law substituted into
   mass conservation, i.e.\ exactly the parabolic equation of the
   companion document (Eq.~1 there). This limit is consistent with
-  \code{chemistry_part_integrate_flux_source_term}'s exact solution
-  (\code{hyperbolic/chemistry_flux.h:105--129}), which computes
+  \code{chemistry\_part\_integrate\_flux\_source\_term}'s exact solution
+  (\code{hyperbolic/chemistry\_flux.h:105--129}), which computes
   $\Fdiff_{\rm out}=\Fdiff_{\rm in}\exp(-\dt/\taurelax)+\Fdiff_{\rm
   parabolic}\big(1-\exp(-\dt/\taurelax)\big)$ and so also collapses onto
   $\Fdiff_{\rm out}\to\Fdiff_{\rm parabolic}$ as $\taurelax\to0$ for any
@@ -637,7 +663,7 @@ entirely different means elsewhere in this document:
 The propositions above fix the \emph{shape} dependence of $\chyp$ but say
 nothing about how large $\taurelax_0$ itself should be. Numerically,
 $\taurelax_0$ is a free parameter-file constant; physically, in the
-\code{turbulent_mode} closure it is supposed to represent \emph{how many
+\code{turbulent\_mode} closure it is supposed to represent \emph{how many
 local shear/turnover times the diffusive flux takes to relax to its
 Fickian equilibrium}. This section derives why that constant cannot be
 chosen independently of $\kappaC$, checks the resulting formula against an
@@ -650,8 +676,8 @@ Whether the hyperbolic scheme is faster than the parabolic one is decided
 by comparing $\taurelax$ against the intrinsic parabolic crossing time of
 the same problem, $\taurelax_{\rm par}\sim\dx^2/D$ -- exactly the ratio the
 code already forms internally for the HLL blending factor
-(\code{chemistry_riemann_compute_hyperbolic_blending_factor},
-\code{chemistry_riemann_utils.h}). Since $D$ (through $\kappaP$) is itself
+(\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor},
+\code{chemistry\_riemann\_utils.h}). Since $D$ (through $\kappaP$) is itself
 set by $\kappaC$, this comparison timescale is not independent of
 $\kappaC$: doubling $\kappaC$ halves $\taurelax_{\rm par}$, so a
 $\taurelax_0$ that does not track $\kappaC$ silently drifts to a different
@@ -665,7 +691,7 @@ alongside it.
 \label{sec:tau-no-regularisation}
 Eq.~\eqref{eq:tau_turbulent} uses $\norm{\Shear}_F$, the Frobenius norm of
 the \emph{unregularised} shear tensor, even though $\Kmat$ itself is built
-from $\Splus$ in \code{anisotropic_gradient} mode
+from $\Splus$ in \code{anisotropic\_gradient} mode
 (Section~\ref{sec:diffusion-tensor-recap}). This is deliberate, not an
 inconsistency.
 
@@ -725,11 +751,11 @@ conservative one.
 \end{remark}
 
 \subsection{Cross-Check: The Parabolic Mixing Timescale of Romano et al.~(2022)}
-Romano, Nagamine \& Hirashita~\cite{Romano2022} use the same
-Shen-et-al.~\cite{ShenWadsleyStinson2010}/Smagorinsky-Lilly~\cite{Smagorinsky1963}
+Romano, Nagamine \& Hirashita~\citeyear{Romano2022} use the same
+Shen-et-al.~\citeyear{ShenWadsleyStinson2010}/Smagorinsky-Lilly~\citeyear{Smagorinsky1963}
 closure implemented here (their diffusivity, eq.~10 of that paper, is
 $D=C_d\norm{\Shear_{ab}}h^2\rho$ -- identical in structure to our
-$\kappaP$ for \code{isotropic_smagorinsky}, up to the SPH kernel-support
+$\kappaP$ for \code{isotropic\_smagorinsky}, up to the SPH kernel-support
 factor $\gammak^2$). They derive the physical timescale for turbulent
 diffusion to erase a contrast $\Delta A$ in some transported quantity $A$
 (their eq.~13):
@@ -797,7 +823,7 @@ timescale (in Gyr) into a concrete $\taurelax_0$ -- a calibration aid for
 the constant, not a runtime dependence for $\taurelax$.
 
 \begin{remark}[Ad hoc timestep criteria vs.\ a proper CFL condition]
-Romano et al.~\cite{Romano2022} note that a na\"ive Courant-like criterion
+Romano et al.~\citeyear{Romano2022} note that a na\"ive Courant-like criterion
 on the parabolic update itself, $\dt\leq\alpha\,A/\lvert{\rm d}A/{\rm
 d}t\rvert$ (their eq.~14), diverges as $A\to0$ (pristine gas), and work
 around it with an ad hoc combination of an abundance floor
@@ -811,7 +837,7 @@ because $\dt$ here is set by a genuine wave-speed CFL condition
 of the transported quantity, it does not need a bespoke floor, asymmetric
 coefficients, or a post-hoc convergence check against a stricter variant
 to handle the near-zero-abundance limit. The GEAR FVPM flux limiter's own
-\code{startup_fraction} parameter addresses the same pristine-gas
+\code{startup\_fraction} parameter addresses the same pristine-gas
 pathology, but at the flux-limiting stage rather than the timestep stage,
 and is ad hoc in the same sense (an empirically-set constant, not a
 first-principles result) -- but it is deliberately \emph{not} pinned to a
@@ -835,8 +861,8 @@ comparison):
   \qquad
   \dt_{\rm par} = \frac{\CCFL}{\kappaC\norm{\Shear}_F}
 \end{equation}
-(the second expression is the code's \code{isotropic_smagorinsky}
-parabolic timestep, \code{chemistry_timesteps.h:107--113}, using
+(the second expression is the code's \code{isotropic\_smagorinsky}
+parabolic timestep, \code{chemistry\_timesteps.h:107--113}, using
 $\lambda_1(\Kmat)=\kappaP$, exact for isotropic $\Kmat$; the first uses the identification
 $\gammak h=\dx$ -- both are $O(1)$ multiples of the same local resolution
 length, and the ratio is unaffected by resolution either way, only by
@@ -856,9 +882,9 @@ threshold of order unity.
 \begin{remark}[Particle-size definitions]
 \label{rem:particle-size-definitions}
 The CFL length scale $\dx$ above is the Gizmo effective size,
-$\dx=(V_i/V_{\rm unit\ sphere})^{1/d}$ (\code{chemistry_timesteps.h}'s
+$\dx=(V_i/V_{\rm unit\ sphere})^{1/d}$ (\code{chemistry\_timesteps.h}'s
 \code{else} branch). An alternative is the Lanson \&
-Vila~\cite{LansonVila2008} mean interparticle distance, their eq.~(58),
+Vila~\citeyear{LansonVila2008} mean interparticle distance, their eq.~(58),
 \begin{equation}
   \dx_i = \frac{1}{2\sum_l w_l\,\norm{A_{il}}_{\rm LV}} ,
   \label{eq:lanson-vila-psize}
@@ -868,7 +894,7 @@ renormalized-gradient weight. Written in terms of the symmetrized
 interface area $\norm{A_{ij}}$ that the flux exchange already builds,
 each summand is $w_l\norm{A_{il}}_{\rm LV}=\norm{A_{il}}/V_l$, of
 dimension length$^{-1}$; this is the form evaluated in
-\code{chemistry_timesteps.h}'s \code{GIZMO_LANSON_VILA_PARTICLE_SIZE}
+\code{chemistry\_timesteps.h}'s \code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE}
 branch, currently compiled out. Lanson \& Vila note directly below their
 eq.~(58) that $\sum_l w_l\norm{A_{il}}_{\rm LV}=O(1/\epsilon_0)$, with
 $\epsilon_0$ the smoothing length, so $\dx_i$ is of order the smoothing
@@ -887,19 +913,19 @@ than $1/V_l$ by a factor of order the neighbour count $N_{\rm ngb}$, and
 using it in place of $1/V_l$ inflates $\dx_i$ by that same factor.
 \end{remark}
 
-\subsection{Speed Criterion for \code{anisotropic_gradient} Mode}
+\subsection{Speed Criterion for \texttt{anisotropic\_gradient} Mode}
 \label{sec:speed-criterion-aniso}
-The derivation above is specific to \code{isotropic_smagorinsky}: its
+The derivation above is specific to \code{isotropic\_smagorinsky}: its
 $\kappaP$ carries an explicit $\norm{\Shear}_F$ factor
 (Section~\ref{sec:diffusion-tensor-recap}) that cancels the same factor
 in $\taurelax$, and its parabolic timestep uses $\expr=\dx$
-(\code{chemistry_timesteps.h:111--117}), independent of the local
-gradient. Neither holds for \code{anisotropic_gradient}: its $\kappaP$
+(\code{chemistry\_timesteps.h:111--117}), independent of the local
+gradient. Neither holds for \code{anisotropic\_gradient}: its $\kappaP$
 has no $\norm{\Shear}_F$ factor at all (shear enters only through
 $\Splus$'s eigenvalues), and its parabolic timestep uses the
 gradient-suppressed
 $\expr=\norm{\driver}\dx/(\norm{\grad\driver}\dx+\norm{\driver})$
-(\code{chemistry_timesteps.h:118--124}). Redo the ratio for this mode,
+(\code{chemistry\_timesteps.h:118--124}). Redo the ratio for this mode,
 using $\lambda_1(\Splus)=\lambda_1(\Shear)$ (Corollary~\ref{cor:shear-regularisation-bound}'s
 proof: the top eigenvalue of a nonzero traceless tensor is always
 positive, hence unchanged by the $\Splus$ projection) and the same
@@ -951,11 +977,11 @@ steepness $g$. Two limits are informative:
 \begin{itemize}
 \item \textbf{Smooth/well-resolved field} ($g\to0$, i.e.\
   $\expr\to\dx$, the same limit that makes
-  \code{anisotropic_gradient} degenerate to
-  \code{isotropic_smagorinsky}'s timestep form): the threshold reduces to
+  \code{anisotropic\_gradient} degenerate to
+  \code{isotropic\_smagorinsky}'s timestep form): the threshold reduces to
   $\taurelax_0\gtrsim4r\in[4.9,\,9.8]$ -- \emph{higher} than the isotropic
   $4$, because $\kappaP$ lacks the $\norm{\Shear}_F$ boost
-  \code{isotropic_smagorinsky} gets, making $\Deff$ smaller for the same
+  \code{isotropic\_smagorinsky} gets, making $\Deff$ smaller for the same
   $\kappaC,h$; since $\dt_{\rm par}\propto1/\Deff$ grows faster than
   $\dt_{\rm hyp}\propto1/\sqrt{\Deff}$ as $\Deff$ shrinks, a smaller
   $\Deff$ favours parabolic, so hyperbolic needs a larger $\taurelax_0$ to
@@ -980,10 +1006,10 @@ same-mode quantities and are identification-independent.
 \section{The Implemented Wave Speed}
 \label{sec:confrontation}
 
-\code{chemistry_get_physical_hyperbolic_soundspeed}
-(\code{hyperbolic/chemistry_getters.h:37--55}) is a single, general
-formula, valid for every \code{diffusion_mode} and
-\code{relaxation_time_mode}:
+\code{chemistry\_get\_physical\_hyperbolic\_soundspeed}
+(\code{hyperbolic/chemistry\_getters.h:37--55}) is a single, general
+formula, valid for every \code{diffusion\_mode} and
+\code{relaxation\_time\_mode}:
 \begin{equation}
   \label{eq:code_constant}
   \boxed{\;\chyp^{\rm code} = \sqrt{\frac{\lambda_1(\Deff)}{\taurelax}}\;} ,
@@ -992,9 +1018,9 @@ formula, valid for every \code{diffusion_mode} and
 exactly Eq.~\eqref{eq:main_result} of Proposition~\ref{prop:main} with
 $\nunit^{\!\top}\Deff\nunit$ replaced by its particle-local, direction-free
 bound $\lambda_1(\Deff)$ (Remark~\ref{rem:lambda-max-not-n}). No branch on
-\code{relaxation_time_mode} is needed inside the getter: $\taurelax$ is
+\code{relaxation\_time\_mode} is needed inside the getter: $\taurelax$ is
 read from \code{p->chemistry\_data.tau}, already computed correctly for
-whichever \code{relaxation_time_mode} is active by
+whichever \code{relaxation\_time\_mode} is active by
 \code{chemistry\_compute\_physical\_tau()} in
 \code{chemistry\_prepare\_force()}, \emph{before} this getter is ever
 called (from \code{chemistry\_iact.h} or the Riemann solver, both
@@ -1009,7 +1035,7 @@ code path, with a single, unambiguous convention for $\mu$.
 \item \textbf{Unifying around $\Deff$ (Eq.~\eqref{eq:D_definition}), rather
   than special-casing $\Kmat$ per mode, is what makes every pairing
   consistent at once.} The formula contains no assumption about which
-  \code{diffusion_mode} produced $\Kmat$ -- it asks for $\Deff$ and takes
+  \code{diffusion\_mode} produced $\Kmat$ -- it asks for $\Deff$ and takes
   its largest eigenvalue, which Proposition~\ref{prop:main} already proves
   is safe for any $\Kmat$ shape, and exact whenever $\Deff$ is isotropic
   (every mode paired with either relaxation-time model).
@@ -1028,10 +1054,10 @@ code path, with a single, unambiguous convention for $\mu$.
 An overestimated $\chyp$ does not only affect the timestep -- it directly
 inflates the numerical dissipation of the (unlimited) hyperbolic HLL flux
 used when the blending factor $\alpha\to1$
-(\code{chemistry_riemann_HLL.h:112--133}, the large-$\taurelax$ regime).
+(\code{chemistry\_riemann\_HLL.h:112--133}, the large-$\taurelax$ regime).
 With
 $\lambda_+=-\lambda_-\equiv\Lambda$ (the code's symmetric-ish estimate,
-\code{chemistry_riemann_HLL.h:74--75}), the HLL dissipation term simplifies
+\code{chemistry\_riemann\_HLL.h:74--75}), the HLL dissipation term simplifies
 to
 \begin{equation}
   F_{\rm diss} = \frac{\lambda_+\lambda_-\,(U_R-U_L)}{\lambda_+-\lambda_-}
@@ -1160,7 +1186,7 @@ $\taurelax_{\rm num}=r_{ij}^2/D_\star$ the local parabolic crossing time
 built from the actual pair separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$
 (distinct from the Gizmo particle size $\dx$ used in the speed-criterion
 sections -- a different, though comparable, length scale). For
-\code{isotropic_smagorinsky}+\code{turbulent_mode}, substituting
+\code{isotropic\_smagorinsky}+\code{turbulent\_mode}, substituting
 $\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$ and
 $\Deff=\kappaC\gammak^2h^2\norm{\Shear}_F$:
 \begin{equation}
@@ -1577,7 +1603,6 @@ zero-mean displacements, so a finite seed shifts the exact second moment
 by $\tfrac35\epsilon_0^2$ in 3D and $\tfrac13\epsilon_0^2$ in 1D --
 a correction that dominates at early times, when $\chyp t\lesssim\epsilon_0$.
 
-\bibliographystyle{plain}
 \bibliography{references}
 
 \end{document}
