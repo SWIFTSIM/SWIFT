@@ -116,17 +116,17 @@ sibling \code{hyperbolic/} subdirectory. That formulation is out of scope
 here; it is mentioned only in Section~\ref{sec:hyperbolic-relation} to
 clarify that the parabolic equation solved in this document is recovered
 as its relaxation-time-to-zero limit. Details about the hyperbolic solver
-can be found in the corresponding latex document, \code{./GEAR\_FVPM\_Hyperbolic\_Diffusion\_Theory.tex}
+can be found in the corresponding latex document, \code{./GEAR\_FVPM\_Hyperbolic\_Diffusion\_Theory.tex}.
 
 \subsection{Overview of the GEAR FVPM Framework}
 GEAR's chemistry module rides on top of a meshless Finite Volume Particle
-Method (Lagrangian, GIZMO/MFM-style) hydrodynamics solver. Each particle
+Method (Lagrangian, GIZMO/MFM/MFV-style) hydrodynamics solver. Each particle
 $i$ carries an effective volume $V_i$ and a geometric moment matrix
 $\mathbf{B}_i$ (SWIFT field \code{p->geometry.matrix\_E}, already inverted)
 that is computed once per particle in the hydrodynamics density loop and
 consumed, unmodified, by the chemistry module. The diffusion solver
 therefore does not own its own spatial discretisation: it reuses the
-host MFM geometry to build kernel-weighted least-squares gradients and
+host FVPM geometry to build kernel-weighted least-squares gradients and
 generalised interface areas between neighbouring particles (see
 Section~\ref{sec:fvpm-geometry}).
 
@@ -136,8 +136,8 @@ stars on scales below the hydrodynamic resolution. Because Lagrangian
 particle methods do not exchange mass between neighbours by default
 (each particle retains its metal budget unless an explicit mixing
 operator is added), an explicit sub-grid diffusion term is required to
-reproduce a realistic chemical enrichment of the interstellar and
-intergalactic medium. This is the role of the module documented here.
+reproduce a metal mixing of the interstellar and intergalactic medium.
+This is the role of the module documented here.
 
 \section{Physical Foundations}
 
@@ -150,7 +150,7 @@ metal species (code index \code{metal} $\in [0,$
 metal mass density $\rhoZ$. In the absence of sources (star-formation
 depletion) or sinks (supernova/stellar-wind enrichment, handled by other
 modules), conservation of metal mass advected with the flow and diffused
-relative to it reads
+relative to it reads:
 \begin{equation}
   \label{eq:conservation_rho_Z}
   \pdv{(\rhoZ)}{t} + \div (\rhoZ\, \mathbf{v}) = -\div \Fdiff ,
@@ -933,6 +933,106 @@ symmetric (particle order-independent) guards:
         the formal order of convergence of the scheme near the
         constraint boundary.
 \end{enumerate}
+
+\subsection{Global Flux-Corrected Transport Positivity Rescale}
+\label{sec:fct}
+
+The guards above bound each \emph{pairwise} interaction individually, but
+a particle can be visited by many active neighbours within the same
+timestep. Even when every individual transfer respects its own bound, the
+\emph{sum} of many simultaneously limited outflows can still exceed the
+donor's available metal mass. A global, per-particle correction closes
+this gap, following the flux-corrected transport (FCT) approach of
+\citet{Zalesak1979}: a low-order (here, zero) update is guaranteed
+positive, and the high-order correction (the diffusive flux itself) is
+scaled back just enough to keep the sum non-negative.
+
+\subsubsection{Two-Pass Mechanism}
+The correction runs as two passes over the same set of pair interactions,
+scheduled around a dedicated ghost task
+(\code{runner\_do\_chemistry\_fct\_ghost}, \code{runner\_ghost.c}) that sits
+between the density/gradient finalisation and the force loop:
+\begin{enumerate}
+  \item \textbf{Prep pass.} For every pair interaction, the same
+        already limiter-attenuated flux $\Delta m$ of the previous section
+        is computed, via a shared, out-of-line function so both passes are
+        bit-identical (\code{chemistry\_compute\_pair\_fluxes},
+        \code{chemistry.c}), and its donor-side outflow magnitude is
+        accumulated per particle and per species,
+        \begin{equation}
+          \label{eq:fct-sum}
+          \Sigma_{\rm out} = \sum_{\rm neighbours} \max(0, -\Delta m) .
+        \end{equation}
+  \item \textbf{Ghost task.} Once every neighbour's contribution has been
+        accumulated, each particle's available metal mass for this step is
+        formed from its current mass plus the net flux already committed
+        from earlier steps in its active timestep window,
+        $m_{\rm avail} = \max(0,\, m_Z + \Delta m_{\rm committed})$, and a
+        rescale factor is computed,
+        \begin{equation}
+          \label{eq:fct-theta}
+          \theta = \begin{cases}
+            \dfrac{(1-\delta)\, m_{\rm avail}}{\Sigma_{\rm out}} & \Sigma_{\rm out} > (1-\delta)\, m_{\rm avail} \\[0.8em]
+            1 & \text{otherwise}
+          \end{cases} , \qquad \delta = 10^{-6} .
+        \end{equation}
+        $\Sigma_{\rm out}$ is then reset to zero for the next step.
+  \item \textbf{Apply pass.} The force loop recomputes the identical
+        pairwise flux and multiplies it by the frozen, donor-side $\theta$
+        before accumulating it into the particle's flux buffer: the final
+        flux entering the update is
+        \begin{equation}
+          \Delta m \;\longrightarrow\; \theta_{\rm donor}\, \Delta m .
+        \end{equation}
+\end{enumerate}
+Because $\theta$ depends only on quantities already known before the force
+loop runs, this is a single closed-form rescale, not an iterative
+procedure.
+
+\subsubsection{Composition with the Pairwise Limiter}
+The two mechanisms are composed, not exclusive. Every pairwise flux is
+already attenuated by the smooth limiter above before it ever reaches
+Eq.~\eqref{eq:fct-sum}, so a tightly tuned pairwise limiter keeps
+$\Sigma_{\rm out}$ well below $m_{\rm avail}$ for most particles,
+$\theta\approx 1$ almost everywhere, and the pairwise limiter does
+essentially all of the positivity-relevant work. A loosely tuned pairwise
+limiter instead lets more flux traffic reach the sum, engaging $\theta<1$
+more often. Because $\theta$ is a single per-particle, per-species factor,
+engaging it suppresses every outgoing transfer from that donor for that
+species that step uniformly, including transfers that individually were
+not a problem. The pairwise limiter parameters therefore still control how
+much of the positivity burden is carried by this coarser, per-particle
+correction versus the pairwise limiter's own targeted attenuation.
+
+\subsubsection{Not an Exact Positivity Proof}
+Eq.~\eqref{eq:fct-theta} bounds outflow only: $\Sigma_{\rm out}$ sums the
+magnitude of outgoing transfers, while the committed net flux
+$\Delta m_{\rm committed}$ sums signed in- and outflow. For a particle
+draining toward a small residual mass, the relative round-off of that net
+scales with the ratio of total flux traffic to the residual, which is
+formally unbounded. The back-off constant $\delta=10^{-6}$ is an empirical
+margin: across the module's test suite it accommodates
+traffic-to-availability ratios up to about $10^{6}$, typically reducing
+the number of particles left with a negative metal mass by three to four
+orders of magnitude relative to running with no global correction at all,
+but a particle draining to a residual far smaller than that margin can
+still be left marginally negative internally.
+
+This residual is not itself the last line of defence. Every physics module
+outside the diffusion solver reads metal mass exclusively through
+\code{chemistry\_get\_part\_corrected\_metal\_mass}
+(Section~\ref{sec:unphysical}), which clamps a negative value to zero on
+read. The diffusion solver is therefore free to carry a small transient
+negative internally between steps, but no other module, including
+cooling, ever observes it.
+
+\subsubsection{MPI}
+The donor-side sums of Eq.~\eqref{eq:fct-sum} are purely local: a
+particle's neighbours across a rank boundary do not currently contribute
+to its $\Sigma_{\rm out}$. Rather than silently drop this correction on
+multi-rank runs, the code raises a hard error at task-graph construction
+time when configured with more than one MPI rank; distributed
+accumulation is not yet implemented.
 
 \section{Time Integration}
 \label{sec:time-integration}
