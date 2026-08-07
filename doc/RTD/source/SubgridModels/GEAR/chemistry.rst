@@ -25,3 +25,19 @@ For this chemistry scheme the parameters are:
     initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
     scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
 
+.. _gear_chemistry_fvpm_pointer:
+
+FVPM metal diffusion
+---------------------
+
+Rather than only smoothing the metallicity field, GEAR also implements a
+full metal-*exchange* alternative: the FVPM (Finite Volume Particle
+Method) diffusion scheme genuinely moves metal mass between neighbouring
+gas particles, using Riemann-problem fluxes on FVPM faces,
+with both a parabolic (Fickian) and a hyperbolic (Cattaneo/telegraph,
+finite propagation speed) variant. It is configured with
+``--with-chemistry=GEAR-FVPM-DIFFUSION_N`` or
+``--with-chemistry=GEAR-FVPM-HYPERBOLIC-DIFFUSION_N`` instead of
+``--with-chemistry=GEAR_N``. See :ref:`gear_fvpm_diffusion_model` for the
+full description, configuration options and parameter list.
+

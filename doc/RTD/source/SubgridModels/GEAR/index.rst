@@ -14,6 +14,7 @@ This model can be selected with the configuration option ``--with-subgrid=GEAR``
 
    gear_model
    chemistry
+   diffusion/index
    feedback
    supernova_feedback
    sinks/index
