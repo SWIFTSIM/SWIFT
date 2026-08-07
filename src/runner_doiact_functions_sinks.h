@@ -938,25 +938,6 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                            cell_is_active_sinks(cj, e);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  /* Temporary probe: confirm the gas-gate exemption above lets sink-sink
-   * marking proceed in gas-free cells. Remove once verified. */
-  if (ci->sinks.count != 0 && cj->sinks.count != 0) {
-    if (should_do_ci && cj->hydro.count == 0)
-      message(
-          "sink-sink marking reached gas-free cell (ci active, cj gas-free): "
-          "ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d cj.sinks.count=%d",
-          ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
-    if (should_do_cj && ci->hydro.count == 0)
-      message(
-          "sink-sink marking reached gas-free cell (cj active, ci gas-free): "
-          "ci_cellID=%lld cj_cellID=%lld ci.sinks.count=%d cj.sinks.count=%d",
-          ci->cellID, cj->cellID, ci->sinks.count, cj->sinks.count);
-  }
-#endif
-#endif
-
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
