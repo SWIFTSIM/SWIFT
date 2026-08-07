@@ -38,44 +38,56 @@ by default:
 These checks add overhead and are intended for validating a new setup or
 debugging a suspected mass-conservation problem, not for production runs.
 
+Fixed constants
+~~~~~~~~~~~~~~~~
+
+A handful of behaviours are set by compile-time constants in
+``chemistry_properties.h``/``chemistry.h`` rather than by a runtime
+parameter; changing them means editing the source and recompiling. The
+ones that affect the physics or numerics a user might notice:
+
+* ``GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR`` (:math:`0.8`): applied
+  to the neighbour-summed part of the kernel-filtered velocity field
+  feeding into the shear tensor :math:`S` (see
+  :ref:`gear_fvpm_diffusion_introduction`), before the particle's own
+  contribution is added, to avoid double-counting; the filtered density
+  :math:`\bar\rho` used in the same formulas is not affected by this
+  factor;
+* ``GIZMO_SLOPE_LIMITER_BETA_MIN``/``_MAX`` (:math:`1.0`/:math:`2.0`):
+  clamp the active (GIZMO-style) cell slope limiter's :math:`\beta`
+  factor; the lower bound keeps the slope from being entirely zeroed out
+  in smooth regions, the upper bound caps how far the reconstruction may
+  extrapolate;
+* ``GEAR_FVPM_DIFF_CELL_LIMITER_SHOOT_TOLERANGE`` (:math:`0.2`): the
+  fractional overshoot the cell-wide positivity limiter allows, loose
+  enough that it does not stall the solution;
+* ``GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE``
+  (:math:`10^{-8}`): floors the Riemann solver's wavespeed-difference
+  denominator purely to avoid division by zero, with no physical meaning
+  of its own;
+* ``GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT`` (:math:`200`): how
+  many consecutive steps a particle's metal mass may stay negative
+  before a console warning is triggered (production-scale logging
+  cadence, not a physics threshold);
+* ``GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY`` (off, i.e. :math:`0`, by
+  default): can be turned on for extra per-interaction diagnostic
+  printouts.
+
+Two further, commented-out ``#define`` toggles in
+``chemistry_properties.h`` exist purely for development use:
+``GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE`` forces one-sided
+pair updates for serial/thread symmetry testing (not MPI-compatible),
+and ``GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT`` counts how often a
+mixed-band interaction's tie-break logic takes each branch, printed at
+exit.
+
 MPI support
 ~~~~~~~~~~~~
 
 .. warning::
    Running with more than one MPI rank is **not currently supported** for
    either the parabolic or the hyperbolic FVPM diffusion scheme, and this
-   is enforced by an explicit, unconditional error rather than being
-   merely untested.
-
-   ``engine_maketasks()`` (:file:`src/engine_maketasks.c`) contains, for
-   both ``CHEMISTRY_GEAR_FVPM_DIFFUSION`` and
-   ``CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION`` builds:
-
-   .. code:: c
-
-      if (e->nr_nodes > 1)
-        error(
-            "The GEAR FVPM chemistry FCT positivity limiter does not support MPI "
-            "runs yet.");
-
-   with the code comment explaining the reason: the flux-corrected-transport
-   (FCT) positivity limiter's donor-side outflow sums and per-particle
-   :math:`\theta` factors are not exchanged over MPI, so a foreign
-   (proxy) copy of a particle on another rank would apply a different,
-   inconsistent limiter than its owning rank. The check runs
-   unconditionally at every task-graph (re)build, so any run launched
-   with more than one rank aborts immediately with this error; it is not
-   a matter of the run silently producing wrong results with many ranks.
-
-   Separately, the pairwise flux-exchange kernel
-   (``runner_iact_chemistry_flux_exchange_decide`` in
-   :file:`src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_iact.h`) does contain
-   a dedicated cross-rank code path that deterministically decides how to
-   apply a flux when the neighbour is a foreign/proxy particle. This
-   indicates the low-level interaction kernel has been written with
-   multi-rank correctness in mind, but it is unreachable in practice
-   because the ``engine_maketasks()`` guard above prevents any run with
-   ``nr_nodes > 1`` from getting that far.
+   is enforced by an explicit, unconditional error.
 
    In short: **configure and run single-node/single-rank** (e.g. with
    ``--disable-mpi``, or by launching ``swift`` rather than ``swift_mpi``,

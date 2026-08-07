@@ -132,10 +132,14 @@ particle's kernel-filtered velocity gradient, with the Hubble flow added
 back to its diagonal for cosmological runs before the trace is removed.
 So only genuine shear/turbulence drives the diffusivity, not uniform
 expansion or compression. :math:`\bar\rho` is likewise the
-kernel-filtered density, not the particle's own local density. Both
-filtered quantities apply a fixed smoothing correction factor of
-:math:`0.8` (not user-configurable).
- 
+kernel-filtered density, not the particle's own local density.
+
+A number of the constants entering this construction (e.g.
+``GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR``, the weight applied
+while accumulating the velocity field feeding into :math:`S`) are fixed
+at compile time rather than exposed as runtime parameters; see
+:ref:`gear_fvpm_diffusion_usage` for the full list.
+
 Timestep criterion
 ~~~~~~~~~~~~~~~~~~~
 
