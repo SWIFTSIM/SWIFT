@@ -68,10 +68,23 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* The resort tasks are at either the chosen depth or the super level,
-   * whichever comes first. */
-  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
-      c->hydro.count > 0) {
-    scheduler_activate(s, c->hydro.stars_resort);
+   * whichever comes first. Stop descending here unconditionally: whether
+   * there is anything to activate must not gate the recursion itself. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+
+    /* Mirror engine_make_hierarchical_tasks_hydro()'s creation criterion
+     * exactly, so we only activate a task that was actually created. */
+    const int with_stars = (s->space->e->policy & engine_policy_stars);
+    const int with_sinks = (s->space->e->policy & engine_policy_sinks);
+    const int with_star_formation =
+        (s->space->e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if ((c->hydro.count > 0 && with_star_formation) ||
+        ((c->hydro.count > 0 || c->sinks.count > 0) &&
+         with_star_formation_sink)) {
+      scheduler_activate(s, c->hydro.stars_resort);
+    }
   } else {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
