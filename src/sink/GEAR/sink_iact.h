@@ -512,6 +512,12 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* Check if a gas particle has not been already marked to be swallowed by
        another sink particle. */
     if (pj->sink_data.swallow_id < si->id) {
+#ifdef SWIFT_DEBUG_CHECKS
+      message(
+          "sink %lld marks part %lld for swallow (inner accretion radius, "
+          "r=%f < f_acc_r_acc=%f) at ti_current=%lld",
+          si->id, pj->id, r, f_acc_r_acc, (long long)ti_current);
+#endif
       pj->sink_data.swallow_id = si->id;
     }
 
@@ -634,6 +640,12 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* --------------------------------------------------------------------- */
     /* Since this pair gas-sink is the most bound, keep track of the
        E_mec_bound and set the swallow_id accordingly */
+#ifdef SWIFT_DEBUG_CHECKS
+    message(
+        "sink %lld marks part %lld for swallow (bound orbit check) at "
+        "ti_current=%lld",
+        si->id, pj->id, (long long)ti_current);
+#endif
     pj->sink_data.E_mec_bound = E_mec_sink_part;
     pj->sink_data.swallow_id = si->id;
   }

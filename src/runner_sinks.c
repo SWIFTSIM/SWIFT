@@ -139,6 +139,13 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
+#ifdef SWIFT_DEBUG_CHECKS
+            message(
+                "sink %lld (node %d) swallowing gas particle %lld (node %d, "
+                "cellID=%lld, local case) at step %d",
+                sp->id, e->nodeID, p->id, c->nodeID, c->cellID, e->step);
+#endif
+
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 

@@ -2407,6 +2407,38 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 #endif
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Locate the (leaf, or split-ancestor fallback) #cell owning a given
+ * local #part, using pointer-range containment on c->hydro.parts.
+ *
+ * Diagnostic-only helper: attaches cell/drift context (depth, ti_old_part)
+ * to a "gas not swallowed" error so we can tell whether
+ * runner_do_sinks_gas_swallow() ever actually visited this cell this step.
+ *
+ * @param c The #cell to search (recurses into progeny).
+ * @param p The #part to find.
+ * @return The owning #cell, or NULL if p is not in this subtree's range.
+ */
+static const struct cell *space_locate_part_cell(const struct cell *c,
+                                                 const struct part *p) {
+  if (p < c->hydro.parts || p >= c->hydro.parts + c->hydro.count) return NULL;
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
+      const struct cell *found = space_locate_part_cell(c->progeny[k], p);
+      if (found != NULL) return found;
+    }
+    /* In range for this split cell but not found in any current progeny's
+     * own sub-range -- report the ancestor itself, still useful context. */
+    return c;
+  }
+
+  return c;
+}
+#endif
+
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
@@ -2415,6 +2447,8 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
+  struct space *s = (struct space *)extra_data;
+  const struct engine *e = s->e;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
@@ -2423,8 +2457,79 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 
     const long long swallow_id = sink_get_part_swallow_id(&parts[k].sink_data);
 
-    if (swallow_id != -1)
-      error("Particle has not been swallowed! id=%lld", parts[k].id);
+    if (swallow_id != -1) {
+
+      /* Find the owning cell to report its drift/activation state -- was
+       * its subtree ever visited by runner_do_sinks_gas_swallow() this
+       * step? */
+      const struct cell *owner = NULL;
+      for (int t = 0; t < s->nr_cells && owner == NULL; t++) {
+        if (s->cells_top[t].nodeID != e->nodeID) continue;
+        owner = space_locate_part_cell(&s->cells_top[t], &parts[k]);
+      }
+
+      if (owner != NULL) {
+        /* Same rationale as the sink-sink check: sinks.do_gas_swallow and
+         * sinks.swallow tasks can be linked at any ancestor depth, and
+         * cell_drift_part()/cell_drift_sink() only maintain ti_old_part
+         * from hydro.super downward. Walk the whole chain and dump both
+         * drift stamps at every level. */
+        for (const struct cell *anc = owner; anc != NULL; anc = anc->parent) {
+          message(
+              "  ancestor depth=%d cellID=%lld split=%d is_hydro_super=%d "
+              "hydro.ti_old_part=%lld sinks.ti_old_part=%lld "
+              "match_hydro=%d match_sinks=%d hydro.count=%d stars.count=%d "
+              "sinks.count=%d has_self_density=%d has_self_sink_density=%d "
+              "active_sinks=%d active_hydro=%d",
+              anc->depth, anc->cellID, anc->split, anc == anc->hydro.super,
+              (long long)anc->hydro.ti_old_part,
+              (long long)anc->sinks.ti_old_part,
+              anc->hydro.ti_old_part == e->ti_current,
+              anc->sinks.ti_old_part == e->ti_current, anc->hydro.count,
+              anc->stars.count, anc->sinks.count, anc->hydro.density != NULL,
+              anc->sinks.density != NULL, cell_is_active_sinks(anc, e),
+              cell_is_active_hydro(anc, e));
+
+          int nr_swallow_tasks = 0;
+          for (struct link *l = anc->sinks.swallow; l != NULL;
+               l = l->next, nr_swallow_tasks++) {
+            struct task *t = l->t;
+            message(
+                "    swallow link %d: type=%s skip=%d ci_cellID=%lld "
+                "ci_nodeID=%d cj_cellID=%lld cj_nodeID=%d",
+                nr_swallow_tasks, taskID_names[t->type], t->skip,
+                t->ci != NULL ? t->ci->cellID : -1,
+                t->ci != NULL ? t->ci->nodeID : -1,
+                t->cj != NULL ? t->cj->cellID : -1,
+                t->cj != NULL ? t->cj->nodeID : -1);
+          }
+          if (nr_swallow_tasks == 0) message("    no swallow task here");
+
+          int nr_tasks = 0;
+          for (struct link *l = anc->sinks.do_gas_swallow; l != NULL;
+               l = l->next, nr_tasks++) {
+            struct task *t = l->t;
+            message(
+                "    do_gas_swallow link %d: type=%s skip=%d ci_cellID=%lld "
+                "ci_nodeID=%d cj_cellID=%lld cj_nodeID=%d",
+                nr_tasks, taskID_names[t->type], t->skip,
+                t->ci != NULL ? t->ci->cellID : -1,
+                t->ci != NULL ? t->ci->nodeID : -1,
+                t->cj != NULL ? t->cj->cellID : -1,
+                t->cj != NULL ? t->cj->nodeID : -1);
+          }
+          if (nr_tasks == 0) message("    no do_gas_swallow task here");
+        }
+        error(
+            "Particle has not been swallowed! id=%lld swallow_id=%lld "
+            "step=%d cellID=%lld depth=%d (see ancestor dump above)",
+            parts[k].id, swallow_id, e->step, owner->cellID, owner->depth);
+      } else
+        error(
+            "Particle has not been swallowed! id=%lld swallow_id=%lld "
+            "step=%d (owning cell not found)",
+            parts[k].id, swallow_id, e->step);
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -2569,7 +2674,7 @@ void space_check_swallow(struct space *s) {
   threadpool_map(&s->e->threadpool, space_check_part_sink_swallow_mapper,
                  s->parts, s->nr_parts, sizeof(struct part),
                  threadpool_auto_chunk_size,
-                 /*extra_data=*/NULL);
+                 /*extra_data=*/s);
 
   threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper,
                  s->sinks, s->nr_sinks, sizeof(struct sink),
