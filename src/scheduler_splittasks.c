@@ -122,7 +122,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             /* Do we have a non-empty progenitor? */
             if (ci->progeny[k] != NULL &&
                 (ci->progeny[k]->hydro.count ||
-                 (with_stars && ci->progeny[k]->stars.count))) {
+                 (with_stars && ci->progeny[k]->stars.count) ||
+                 (with_sinks && ci->progeny[k]->sinks.count))) {
               scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -150,12 +151,14 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             /* Do we have a non-empty progenitor? */
             if (ci->progeny[j] != NULL &&
                 (ci->progeny[j]->hydro.count ||
-                 (with_feedback && ci->progeny[j]->stars.count))) {
+                 (with_feedback && ci->progeny[j]->stars.count) ||
+                 (with_sinks && ci->progeny[j]->sinks.count))) {
               for (int k = j + 1; k < 8; k++) {
                 /* Do we have a second non-empty progenitor? */
                 if (ci->progeny[k] != NULL &&
                     (ci->progeny[k]->hydro.count ||
-                     (with_feedback && ci->progeny[k]->stars.count))) {
+                     (with_feedback && ci->progeny[k]->stars.count) ||
+                     (with_sinks && ci->progeny[k]->sinks.count))) {
                   scheduler_splittask_hydro(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
