@@ -165,15 +165,17 @@
 		      "Sink: " + n.sinks_count + "<br/>" +
 		      "Super: " + n.super + "<br/>" +
 		      "Super Hydro: " + n.hydro_super + "<br/>" +
+		      "Radiation level: " + n.radiation_level + "<br/>" +
 		      "Loc: " + n.loc1 + ", " + n.loc2 + ", " + n.loc3 + "<br/>" +
 		      "Width: " + n.width1 + ", " + n.width2 + ", " + n.width3 + "<br/>" +
 		      "Hydro h_max: " + n.hydro_h_max + "<br/>" +
-		      "Stars h_max: " + n.stars_h_max + "<br/>"
+		      "Stars h_max: " + n.stars_h_max + "<br/>" +
+		      "Stars h_hii_max: " + n.stars_h_hii_max + "<br/>"
               )
 		  .style("left", (d3.event.pageX) + "px")
 		  .style("top", (d3.event.pageY - 28) + "px")
 	      // change here to change the tool tip box size
-		  .style("height", 180 + "px");
+		  .style("height", 220 + "px");
 	  })
 	  .on("mouseout", function(d) {
               div.transition()

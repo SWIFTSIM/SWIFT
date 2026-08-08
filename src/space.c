@@ -2958,14 +2958,19 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   if (c->hydro.super != NULL)
     sprintf(hydro_superID, "%lld", c->hydro.super->cellID);
 
+  /* Get radiation level ID -- at or above (never below) hydro.super. */
+  char radiation_levelID[100] = "";
+  if (c->stars.radiation_level != NULL)
+    sprintf(radiation_levelID, "%lld", c->stars.radiation_level->cellID);
+
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+  fprintf(f, "%i,%i,%i,%i,%s,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID,
-          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-          c->width[2]);
-  fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
-          c->maxdepth);
+          radiation_levelID, c->loc[0], c->loc[1], c->loc[2], c->width[0],
+          c->width[1], c->width[2]);
+  fprintf(f, "%g, %g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max,
+          c->stars.h_hii_max, c->depth, c->maxdepth);
 
   /* Write children */
   for (int i = 0; i < 8; i++) {
@@ -2996,14 +3001,14 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
     fprintf(f, "name,parent,mpi_rank,");
     fprintf(f,
             "hydro_count,stars_count,gpart_count,sinks_count,super,hydro_super,"
-            "loc1,loc2,loc3,width1,width2,width3,");
-    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
+            "radiation_level,loc1,loc2,loc3,width1,width2,width3,");
+    fprintf(f, "hydro_h_max,stars_h_max,stars_h_hii_max,depth,maxdepth\n");
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
-    fprintf(f, "%li,%li,%li, , , , , , , , ,", s->nr_parts, s->nr_sparts,
+    fprintf(f, "%li,%li,%li, , , , , , , , , ,", s->nr_parts, s->nr_sparts,
             s->nr_gparts);
-    fprintf(f, " , , ,\n");
+    fprintf(f, " , , , , ,\n");
   }
 
   /* Write all the top level cells (and their children) */
