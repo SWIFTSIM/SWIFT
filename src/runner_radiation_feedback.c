@@ -363,12 +363,27 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   struct hii_neighbor ngb_buffer[max_ngbs];
 
   /* Floor on the wired 27-cell radiation_in stencil's reach beyond this
-   * pass's interaction_limit: a star at c's own edge still has a full
-   * neighbour cell width, c->dmin, of wired gas past it. The gather only
-   * visits wired cells whatever dynamic_search_radius says, so stopping
-   * here at worst defers an outer shell to the next rebuild pass rather
-   * than losing it. */
-  const float max_reachable_search_radius = interaction_limit + c->dmin;
+   * pass's interaction_limit: a star at c's own edge still has at least a
+   * full neighbour cell width of wired gas past it in every wired
+   * direction. Under asymmetric pairs a partner can rest FINER than c, so
+   * its wired coverage past the shared boundary is only its OWN (smaller)
+   * width -- use the tightest margin among c and every linked partner, not
+   * c->dmin alone, or the retry loop could grow past a thinner partner's
+   * wired coverage and gather an incomplete, anisotropic shell. The gather
+   * only visits wired cells whatever dynamic_search_radius says, so
+   * stopping here at worst defers an outer shell to the next rebuild pass
+   * rather than losing it. */
+  float reach_floor_dmin = c->dmin;
+  for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
+       l = l->next) {
+    if (l->t->type == task_type_self)
+      continue; /* Self is not an outward margin. */
+    struct cell *partner =
+        (l->t->ci == c->stars.radiation_level) ? l->t->cj : l->t->ci;
+    reach_floor_dmin = min(reach_floor_dmin, partner->dmin);
+  }
+  const float max_reachable_search_radius =
+      interaction_limit + reach_floor_dmin;
 
   for (int i = 0; i < scount; i++) {
 
