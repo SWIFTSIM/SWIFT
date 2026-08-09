@@ -596,6 +596,21 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
   }
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Race probe: compare this foreign cell's cached activity read against its
+   * read at the marking gate in DOPAIR1_BRANCH_SINKS. */
+  const int cj_active_probe = cell_is_active_sinks(cj, e);
+  const int ci_active_probe = cell_is_active_sinks(ci, e);
+  if (cj->nodeID != e->nodeID && cj->sinks.count > 0)
+    message(
+        "RESOLVE_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
+        cj->cellID, cj->sinks.ti_end_min, cj_active_probe, e->step);
+  if (ci->nodeID != e->nodeID && ci->sinks.count > 0)
+    message(
+        "RESOLVE_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
+        ci->cellID, ci->sinks.ti_end_min, ci_active_probe, e->step);
+#endif
+
   /* Run the swallowing loop only in the cell that is the neighbour of the
    * active sink */
   if (cell_is_active_sinks(cj, e)) runner_do_sinks_sink_swallow(r, ci, timer);

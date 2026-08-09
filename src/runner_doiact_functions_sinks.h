@@ -862,6 +862,17 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   const int ci_active = cell_is_active_sinks(ci, e);
   const int cj_active = cell_is_active_sinks(cj, e);
 
+#if defined(SWIFT_DEBUG_CHECKS) && (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* Race probe: compare this foreign cell's cached activity read against its
+   * read at the resolution gate in runner_do_sinks_sink_swallow_pair. */
+  if (ci->nodeID != e->nodeID && ci->sinks.count > 0)
+    message("MARK_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
+            ci->cellID, ci->sinks.ti_end_min, ci_active, e->step);
+  if (cj->nodeID != e->nodeID && cj->sinks.count > 0)
+    message("MARK_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
+            cj->cellID, cj->sinks.ti_end_min, cj_active, e->step);
+#endif
+
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_sink = ci->nodeID == e->nodeID;
   const int do_cj_sink = cj->nodeID == e->nodeID;
