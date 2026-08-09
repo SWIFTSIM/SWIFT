@@ -202,6 +202,7 @@ int main(int argc, char *argv[]) {
         bzero(&c, sizeof(struct cell));
         c.split = is;
         c.dmin = dmins[id];
+        c.hydro.count = 1; /* Non-gasless; see the dedicated block below. */
         c.hydro.h_max = h_values[ih];
         c.stars.h_max = h_values[ih];
         c.stars.h_hii_max = h_values[(ih + 1) % 5];
@@ -231,7 +232,7 @@ int main(int argc, char *argv[]) {
          * have returned before this test replaced it. */
         cell_clear_flag(&c, cell_flag_at_or_below_hydro_attach);
         const int expect_geometric =
-            c.split &&
+            c.split && c.hydro.count > 0 &&
             (space_stretch * kernel_gamma * c.hydro.h_max < 0.5f * c.dmin) &&
             (space_stretch * radiation_search_radius_factor * kernel_gamma *
                  c.stars.h_max <
@@ -261,6 +262,31 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  /* A gasless cell (hydro.count == 0, e.g. a star-only branch with no gas
+   * anywhere in its subtree) must never split, regardless of how permissive
+   * the geometric terms otherwise are -- there is no gas at any depth to
+   * gain resolution on, so descending further only wastes task-graph
+   * churn. See cell_can_split_pair_radiation_subgrid_task()'s docstring. */
+  bzero(&c, sizeof(struct cell));
+  c.split = 1;
+  c.dmin = 2.0f;
+  c.hydro.count = 0;
+  c.hydro.h_max = 0.0f;
+  c.stars.h_max = 0.0f;
+  c.stars.h_hii_max = 0.0f;
+  c.sinks.h_max = 0.0f;
+  c.black_holes.h_max = 0.0f;
+  if (cell_can_split_pair_radiation_subgrid_task(&c))
+    error(
+        "cell_can_split_pair_radiation_subgrid_task must never split a "
+        "gasless cell (hydro.count == 0), even with fully permissive "
+        "geometry.");
+  if (cell_can_split_self_radiation_subgrid_task(&c))
+    error(
+        "cell_can_split_self_radiation_subgrid_task must never split a "
+        "gasless cell (hydro.count == 0), even with fully permissive "
+        "geometry.");
 
   /* Confirm hydro's own split criteria stay decoupled from h_hii_max:
    * growing h_hii_max alone must NOT change cell_can_split_pair_hydro_task

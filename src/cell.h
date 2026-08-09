@@ -1298,8 +1298,19 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
    * radiation_in tasks landing on a common level by construction, and gives
    * radiation_level == hydro.super for free when h_hii is small; the h_hii
    * terms below still force an EARLIER stop (coarser radiation_level, above
-   * hydro.super) when the search radius demands it. */
+   * hydro.super) when the search radius demands it.
+   *
+   * c->hydro.count > 0 additionally guards a cell with sparts but no gas
+   * anywhere in its subtree: such a branch never gets a hydro-attach stamp
+   * (there is no density task to stamp from), so without this term the
+   * geometric criterion alone would keep splitting all the way to a leaf for
+   * no benefit -- there is no gas at any depth to gain resolution on. This
+   * is a no-op wherever hydro.count > 0 (every non-degenerate branch), and
+   * for a gasless one it stops splitting immediately, leaving the task
+   * coarse (see engine_make_hierarchical_tasks_radiation_subgrid() for how
+   * such a cell's own star drift still gets wired). */
   return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
+         c->hydro.count > 0 &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_max <
@@ -1321,8 +1332,10 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 
   /* Radiation's own criterion -- see
-   * cell_can_split_pair_radiation_subgrid_task() above. */
+   * cell_can_split_pair_radiation_subgrid_task() above (including the
+   * hydro.count > 0 term guarding a gasless star-only branch). */
   return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
+         c->hydro.count > 0 &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_max <
