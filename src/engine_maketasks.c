@@ -4013,6 +4013,197 @@ static void engine_radiation_check_hydro_attach_matches_super_mapper(
   for (int ind = 0; ind < num_elements; ind++)
     engine_radiation_check_hydro_attach_matches_super(&cells[ind]);
 }
+
+/**
+ * @brief Assert that two geometrically adjacent radiation_level cells share
+ * a radiation_in pair link, recursing box-pruned into whichever side has
+ * not yet reached its own radiation_level.
+ *
+ * This is the missing-link tripwire for asymmetric pairs
+ * (scheduler_splittask_radiation_subgrid()'s geometric facing-progeny
+ * enumeration, scheduler_splittasks.c): a wrong enumeration silently drops a
+ * stencil link, which neither cell.c's orphaned-link check nor the
+ * shared-radiation_level check in
+ * engine_make_extra_radiationloop_tasks_mapper() can see -- both only
+ * inspect links that DO exist. Box-pruning (cell_boxes_touch_under_shift())
+ * keeps the walk to exactly the cells the split actually produced, rather
+ * than an O(n^2) scan over every radiation_level cell in the run.
+ *
+ * @param a The first #cell.
+ * @param b The second #cell.
+ * @param shift Vector added to @p b's location to bring it into @p a's
+ * periodic image.
+ */
+static void engine_radiation_check_pair_linked(struct cell *a, struct cell *b,
+                                               const double shift[3]) {
+  if (!cell_boxes_touch_under_shift(a, b, shift)) return;
+
+  const int a_is_level = (a->stars.radiation_level == a);
+  const int b_is_level = (b->stars.radiation_level == b);
+
+  if (a_is_level && b_is_level) {
+    if (a == b) return;
+
+    int found = 0;
+    for (struct link *l = a->stars.radiation_in; l != NULL; l = l->next) {
+      struct cell *partner = (l->t->type == task_type_self) ? a
+                             : (l->t->ci == a)              ? l->t->cj
+                                                            : l->t->ci;
+      if (partner == b) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found)
+      error(
+          "Missing radiation_in link: radiation_level cells %lld and %lld "
+          "are geometrically adjacent but share no radiation_in pair link "
+          "-- a stencil hole from the facing-progeny enumeration.",
+          a->cellID, b->cellID);
+    return;
+  }
+
+  /* Split whichever side has not yet reached its own radiation_level; if
+   * both still need it, pair up their current-depth progeny (mirrors the
+   * splitter's own both-can-split descent) rather than fully resolving one
+   * side before ever touching the other. */
+  if (!a_is_level && !b_is_level) {
+    if (a->split && b->split) {
+      for (int j = 0; j < 8; j++)
+        if (a->progeny[j] != NULL)
+          for (int k = 0; k < 8; k++)
+            if (b->progeny[k] != NULL)
+              engine_radiation_check_pair_linked(a->progeny[j], b->progeny[k],
+                                                 shift);
+    } else if (a->split) {
+      for (int k = 0; k < 8; k++)
+        if (a->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a->progeny[k], b, shift);
+    } else if (b->split) {
+      for (int k = 0; k < 8; k++)
+        if (b->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a, b->progeny[k], shift);
+    }
+    /* Else: both are leaves without a radiation task nearby -- nothing to
+     * check (e.g. an empty or gasless/starless branch). */
+    return;
+  }
+
+  if (!a_is_level) {
+    if (a->split)
+      for (int k = 0; k < 8; k++)
+        if (a->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a->progeny[k], b, shift);
+    return;
+  }
+
+  /* !b_is_level */
+  if (b->split)
+    for (int k = 0; k < 8; k++)
+      if (b->progeny[k] != NULL)
+        engine_radiation_check_pair_linked(a, b->progeny[k], shift);
+}
+
+/**
+ * @brief Assert every sibling pair within a cell's own subtree is
+ * radiation_in-linked, recursing into every branch that has not yet reached
+ * its own radiation_level.
+ *
+ * Mirrors the self-splitting recursion in
+ * scheduler_splittask_radiation_subgrid() (self branch): a self task that
+ * splits creates both self sub-tasks for its progeny AND intra-parent
+ * sibling pair tasks between every combination of non-empty progeny.
+ *
+ * @param c The #cell to visit.
+ */
+static void engine_radiation_check_self_linked(struct cell *c) {
+  if (c->stars.radiation_level == c) return; /* Atomic: nothing below. */
+  if (!c->split) return;                     /* Leaf, no progeny to pair. */
+
+  static const double zero_shift[3] = {0.0, 0.0, 0.0};
+  for (int j = 0; j < 8; j++) {
+    if (c->progeny[j] == NULL) continue;
+    engine_radiation_check_self_linked(c->progeny[j]);
+    for (int k = j + 1; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
+      engine_radiation_check_pair_linked(c->progeny[j], c->progeny[k],
+                                         zero_shift);
+    }
+  }
+}
+
+/**
+ * @brief Mapper wrapper for the missing-link tripwire: one top-level cell
+ * and its 26 periodic neighbours per element, mirroring
+ * engine_make_radiationloop_tasks_mapper()'s own stencil.
+ *
+ * @param map_data Offset of the first cell index disguised as a pointer.
+ * @param num_elements Number of top-level cells to visit.
+ * @param extra_data The #engine.
+ */
+static void engine_radiation_check_missing_links_mapper(void *map_data,
+                                                        int num_elements,
+                                                        void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+  const int with_stars = (e->policy & engine_policy_stars);
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    const int cid = (size_t)(map_data) + ind;
+
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    struct cell *ci = &cells[cid];
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
+      continue;
+
+    /* Sibling/self adjacency within ci's own subtree. */
+    engine_radiation_check_self_linked(ci);
+
+    /* Neighbouring top-level cells, cid < cjd to avoid checking every pair
+     * twice. */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          if (cid >= cjd) continue;
+
+          struct cell *cj = &cells[cjd];
+          if ((cj->hydro.count == 0) && (!with_stars || cj->stars.count == 0))
+            continue;
+
+          double shift[3];
+          for (int d = 0; d < 3; d++) {
+            const double dx = cj->loc[d] - ci->loc[d];
+            if (periodic && dx < -s->dim[d] / 2)
+              shift[d] = s->dim[d];
+            else if (periodic && dx > s->dim[d] / 2)
+              shift[d] = -s->dim[d];
+            else
+              shift[d] = 0.0;
+          }
+
+          engine_radiation_check_pair_linked(ci, cj, shift);
+        }
+      }
+    }
+  }
+}
 #endif /* SWIFT_DEBUG_CHECKS */
 
 /**
@@ -4707,11 +4898,19 @@ void engine_maketasks(struct engine *e) {
   /* Ground-truth check: the topmost cell carrying cell_flag_hydro_task_
    * attached in each branch must be exactly that branch's hydro.super,
    * pinning the split-time proxy to the real thing set above. */
-  if (with_radiation_tasks)
+  if (with_radiation_tasks) {
     threadpool_map(&e->threadpool,
                    engine_radiation_check_hydro_attach_matches_super_mapper,
                    cells, nr_cells, sizeof(struct cell),
                    threadpool_auto_chunk_size, e);
+
+    /* Missing-link tripwire (Phase 2.3b): every pair of geometrically
+     * adjacent radiation_level cells must share a radiation_in link. Catches
+     * the failure mode neither of the two checks above can see -- a link
+     * that should exist but does not. */
+    threadpool_map(&e->threadpool, engine_radiation_check_missing_links_mapper,
+                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  }
 #endif
 
   /* Append hierarchical tasks to each cell. */
