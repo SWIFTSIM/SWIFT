@@ -955,6 +955,47 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
   }
 }
 
+/**
+ * @brief Do the axis-aligned boxes of two cells of any size touch or
+ * overlap, once @p b is translated by @p shift into @p a's periodic image?
+ *
+ * Exact for cells of any size ratio, unlike the equal-size assumptions
+ * baked into cell_split_pairs / space_getsid's sid classification. Used to
+ * geometrically enumerate facing progeny when only one side of a radiation
+ * pair descends (asymmetric pair split, scheduler_splittasks.c) and by the
+ * corresponding missing-link SWIFT_DEBUG_CHECKS tripwire
+ * (engine_maketasks.c).
+ *
+ * The per-axis test is inclusive of touching (abutting) boundaries: an
+ * overlap-or-abut result of true also covers exact face/edge/corner
+ * adjacency, not just volume overlap. Erring towards "touching" is the safe
+ * direction here -- a false positive costs one redundant pair task, a false
+ * negative would be a silent stencil hole.
+ *
+ * @param a The first #cell (its own coordinates, unshifted).
+ * @param b The second #cell.
+ * @param shift Vector added to @p b's location to bring it into @p a's
+ * periodic image, e.g. as returned by space_getsid_and_swap_cells() for the
+ * pair (a, b).
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_boxes_touch_under_shift(const struct cell *a, const struct cell *b,
+                             const double shift[3]) {
+  for (int k = 0; k < 3; k++) {
+    const double a0 = a->loc[k];
+    const double a1 = a->loc[k] + a->width[k];
+    const double b0 = b->loc[k] + shift[k];
+    const double b1 = b->loc[k] + b->width[k] + shift[k];
+
+    /* Tolerance for floating-point round-off in accumulated loc/width
+     * sums; cells that are not actually adjacent are separated by at least
+     * a full cell width, far larger than this. */
+    const double tol = 1.0e-6 * min(a->width[k], b->width[k]);
+    if (a1 + tol < b0 || b1 + tol < a0) return 0;
+  }
+  return 1;
+}
+
 /* Inlined functions (for speed). */
 
 /**
@@ -1432,18 +1473,24 @@ __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_radiation_pair(const struct cell *ci,
                                      const struct cell *cj) {
 
-  /* Note ci->dmin == cj->dmin. The runner searches out to
-   * radiation_search_radius_factor * kernel_gamma * max(h_hii_max, h_max)
+  /* Unlike the equal-size pairs elsewhere in this file, ci->dmin != cj->dmin
+   * in general once radiation pairs can be asymmetric: one side may rest at
+   * a finer radiation_level than the other. Scale against the SMALLER of
+   * the two -- the fine side's coverage margin is the one that binds, since
+   * it has less room to spare before drift or h_hii growth outruns its own
+   * cell size. The runner searches out to radiation_search_radius_factor *
+   * kernel_gamma * max(h_hii_max, h_max)
    * (runner_do_stars_hii_ionization_feedback()); match that here so the
    * criterion bounds the radius actually used, not a narrower one. Split
    * into two steps (rather than nesting max() calls) since the max() macro
    * declares locals that would otherwise shadow across the nested
    * expansion. */
+  const float pair_dmin = min(ci->dmin, cj->dmin);
   const float star_reach = radiation_search_radius_factor *
                            max(ci->stars.h_hii_max, ci->stars.h_max);
   if (kernel_gamma * max(star_reach, cj->hydro.h_max) + ci->stars.dx_max_part +
           cj->hydro.dx_max_part >
-      cj->dmin) {
+      pair_dmin) {
     return 1;
   }
   return 0;
