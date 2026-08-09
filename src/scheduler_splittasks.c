@@ -825,3 +825,51 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s);
   }
 }
+
+/**
+ * @brief Mapper function to split the freshly-created radiation_in tasks.
+ *
+ * @param map_data the tasks to process (a sub-range of s->tasks).
+ * @param num_elements the number of tasks in that range.
+ * @param extra_data The #scheduler we are working in.
+ */
+static void scheduler_splittasks_radiation_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+#ifdef SWIFT_DEBUG_CHECKS
+    if (t->subtype != task_subtype_stars_radiation_in)
+      error("Unexpected task sub-type %s/%s in scheduler_splittasks_radiation",
+            taskID_names[t->type], subtaskID_names[t->subtype]);
+#endif
+    scheduler_splittask_radiation_subgrid(t, s);
+  }
+}
+
+/**
+ * @brief Split the radiation_in tasks created since @p first_task, i.e.
+ * s->tasks[first_task .. s->nr_tasks).
+ *
+ * A separate, dedicated pass from scheduler_splittasks(): radiation task
+ * creation (engine_make_radiationloop_tasks_mapper()) runs after the
+ * hydro/gravity split, once the hydro-attach flags it depends on
+ * (cell_flag_at_or_below_hydro_attach) are available, so its tasks are not
+ * present yet when scheduler_splittasks() runs. Children created during the
+ * split (via scheduler_addtask()) are handled recursively by
+ * scheduler_splittask_radiation_subgrid() itself, exactly as in
+ * scheduler_splittasks_mapper() above, so mapping only the initially-created
+ * range suffices.
+ *
+ * @param s The #scheduler.
+ * @param first_task Index of the first newly-created radiation task in
+ * s->tasks.
+ */
+void scheduler_splittasks_radiation(struct scheduler *s, const int first_task) {
+  threadpool_map(s->threadpool, scheduler_splittasks_radiation_mapper,
+                 &s->tasks[first_task], s->nr_tasks - first_task,
+                 sizeof(struct task), threadpool_auto_chunk_size, s);
+}

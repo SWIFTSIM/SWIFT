@@ -3888,6 +3888,131 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Stamp cell_flag_hydro_task_attached on every cell a split hydro
+ * density self/pair task rests on directly.
+ *
+ * Runs after the hydro/gravity split (scheduler_splittasks()) but before
+ * cell_set_super_hydro() -- hydro.super does not exist yet at this point in
+ * engine_maketasks(), so the radiation split gate (cell_can_split_pair/self_
+ * radiation_subgrid_task(), cell.h) needs this ground-truth proxy instead:
+ * it is stamped from exactly the same population (self/pair density tasks)
+ * that cell_set_super_hydro() itself minimizes over.
+ *
+ * @param map_data The #task's to visit (sched->tasks).
+ * @param num_elements The number of tasks.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_stamp_hydro_attach_mapper(void *map_data,
+                                                       int num_elements,
+                                                       void *extra_data) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+
+    if (t->subtype != task_subtype_density) continue;
+    if (t->type != task_type_self && t->type != task_type_pair) continue;
+
+    cell_set_flag(t->ci, cell_flag_hydro_task_attached);
+    if (t->type == task_type_pair)
+      cell_set_flag(t->cj, cell_flag_hydro_task_attached);
+  }
+#endif
+}
+
+/**
+ * @brief Recursively propagate cell_flag_at_or_below_hydro_attach down a
+ * cell hierarchy: a cell carries it if it, or any ancestor, carries
+ * cell_flag_hydro_task_attached.
+ *
+ * @param c The #cell to visit.
+ * @param parent_attached Whether an ancestor of @p c already carries
+ * cell_flag_hydro_task_attached (or the propagated flag).
+ */
+static void engine_radiation_propagate_hydro_attach(struct cell *c,
+                                                    const int parent_attached) {
+  const int attached =
+      parent_attached || cell_get_flag(c, cell_flag_hydro_task_attached);
+
+  if (attached) cell_set_flag(c, cell_flag_at_or_below_hydro_attach);
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_radiation_propagate_hydro_attach(c->progeny[k], attached);
+}
+
+/**
+ * @brief Mapper wrapper for engine_radiation_propagate_hydro_attach(), one
+ * top-level cell (and its full subtree) per element.
+ *
+ * @param map_data The top-level #cell's to visit.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_propagate_hydro_attach_mapper(void *map_data,
+                                                           int num_elements,
+                                                           void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++)
+    engine_radiation_propagate_hydro_attach(&cells[ind], /*parent_attached=*/0);
+}
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Recursively check that cell_flag_hydro_task_attached's topmost
+ * cell in each branch coincides with the real hydro.super computed by
+ * cell_set_super_hydro().
+ *
+ * Stops descending as soon as the flag is found: no descendant of an
+ * attach point ever carries the flag itself (hydro splitting stops for
+ * self AND pair alike once a cell rests), so nothing further to check
+ * below it.
+ *
+ * @param c The #cell to visit.
+ */
+static void engine_radiation_check_hydro_attach_matches_super(struct cell *c) {
+  if (cell_get_flag(c, cell_flag_hydro_task_attached)) {
+    if (c->hydro.super != c)
+      error(
+          "cell_flag_hydro_task_attached ground-truth mismatch: cell %lld "
+          "carries the attach flag but hydro.super=%lld (expected self).",
+          c->cellID, c->hydro.super != NULL ? c->hydro.super->cellID : -1);
+    return;
+  }
+
+  if (c->hydro.super != NULL)
+    error(
+        "cell_flag_hydro_task_attached ground-truth mismatch: cell %lld has "
+        "hydro.super=%lld but no ancestor-or-self carries the attach flag.",
+        c->cellID, c->hydro.super->cellID);
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_radiation_check_hydro_attach_matches_super(c->progeny[k]);
+}
+
+/**
+ * @brief Mapper wrapper for engine_radiation_check_hydro_attach_matches_
+ * super(), one top-level cell (and its full subtree) per element.
+ *
+ * @param map_data The top-level #cell's to visit.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_check_hydro_attach_matches_super_mapper(
+    void *map_data, int num_elements, void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++)
+    engine_radiation_check_hydro_attach_matches_super(&cells[ind]);
+}
+#endif /* SWIFT_DEBUG_CHECKS */
+
+/**
  * @brief Constructs the top-level pair tasks for the first radiation subgrid
  * loop over neighbours
  *
@@ -4433,8 +4558,13 @@ void engine_maketasks(struct engine *e) {
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_subgrid_radiation_feedback = with_stars && with_feedback;
+  /* Radiation tasks only need hydro + stars (feedback pulls in the extra
+   * radiation_out loop and wiring, handled separately below). */
+  const int with_radiation_tasks =
+      (e->policy & engine_policy_hydro) && with_stars;
 #else
   const int with_subgrid_radiation_feedback = 0;
+  const int with_radiation_tasks = 0;
 #endif
 
   /* Re-set the scheduler. */
@@ -4463,16 +4593,6 @@ void engine_maketasks(struct engine *e) {
     message("Making gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Add the subgrid radiation tasks. */
-  if ((e->policy & engine_policy_hydro) && (e->policy & engine_policy_stars)) {
-    threadpool_map(&e->threadpool, engine_make_radiationloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-  }
-
-  if (e->verbose)
-    message("Making radiation tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
@@ -4482,12 +4602,51 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Split the tasks. */
+  /* Split the hydro/gravity tasks (radiation tasks do not exist yet, see
+   * below). */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  if (with_radiation_tasks) {
+    tic2 = getticks();
+
+    /* Stamp every cell that a density (hydro) self/pair task rests on
+     * directly -- this is the would-be hydro.super, computed from the
+     * now-final hydro split, before cell_set_super_hydro() has run. */
+    threadpool_map(&e->threadpool, engine_radiation_stamp_hydro_attach_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+
+    /* Propagate the stamp down: a cell is at-or-below a hydro attach point
+     * if it carries the stamp itself or an ancestor does. */
+    threadpool_map(
+        &e->threadpool, engine_radiation_propagate_hydro_attach_mapper, cells,
+        nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Stamping hydro-attach flags took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
+
+    /* Now that the at-or-below-hydro-attach flag is available, create the
+     * subgrid radiation tasks and split them: cell_can_split_pair/self_
+     * radiation_subgrid_task() (cell.h) use that flag as their stop
+     * condition. */
+    const int nr_tasks_before_radiation = sched->nr_tasks;
+    threadpool_map(&e->threadpool, engine_make_radiationloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (sched->nr_tasks > nr_tasks_before_radiation)
+      scheduler_splittasks_radiation(sched, nr_tasks_before_radiation);
+
+    if (e->verbose)
+      message("Making and splitting radiation tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that we are not left with invalid tasks */
@@ -4540,6 +4699,17 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ground-truth check: the topmost cell carrying cell_flag_hydro_task_
+   * attached in each branch must be exactly that branch's hydro.super,
+   * pinning the split-time proxy to the real thing set above. */
+  if (with_radiation_tasks)
+    threadpool_map(&e->threadpool,
+                   engine_radiation_check_hydro_attach_matches_super_mapper,
+                   cells, nr_cells, sizeof(struct cell),
+                   threadpool_auto_chunk_size, e);
+#endif
 
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,

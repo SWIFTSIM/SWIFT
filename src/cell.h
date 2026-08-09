@@ -33,6 +33,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "atomic.h"
 #include "cell_black_holes.h"
 #include "cell_grav.h"
 #include "cell_grid.h"
@@ -362,9 +363,11 @@ enum cell_flags {
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
   cell_flag_unskip_pair_grav_processed = (1UL << 20),
-  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
-  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
-  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
+  cell_flag_skip_rt_sort = (1UL << 21),     /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
+  cell_flag_hydro_task_attached = (1UL << 24), /* a density task rests here */
+  cell_flag_at_or_below_hydro_attach = (1UL << 25) /* self/ancestor attached */
 };
 
 /**
@@ -534,6 +537,30 @@ struct cell {
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
+
+/**
+ * @brief Set the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_set_flag(
+    struct cell *c, const uint32_t flag) {
+  atomic_or(&c->flags, flag);
+}
+
+/**
+ * @brief Clear the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, const uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
+}
+
+/**
+ * @brief  Get the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, const uint32_t flag) {
+  return (c->flags & flag) > 0;
+}
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
@@ -1747,30 +1774,6 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
 }
 
 void cell_free_grid_rec(struct cell *c);
-
-/**
- * @brief Set the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static void cell_set_flag(
-    struct cell *c, const uint32_t flag) {
-  atomic_or(&c->flags, flag);
-}
-
-/**
- * @brief Clear the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, const uint32_t flag) {
-  atomic_and(&c->flags, ~flag);
-}
-
-/**
- * @brief  Get the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, const uint32_t flag) {
-  return (c->flags & flag) > 0;
-}
 
 /**
  * @brief Check if a cell has a recv task of the given subtype.
