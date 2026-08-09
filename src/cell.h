@@ -1243,20 +1243,22 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
    * radiation_level rises toward the top level so the 27-neighbour stencil
    * at that level still covers the search radius.
    *
-   * NOTE (2026-07-12): also gated on c->hydro.super == NULL. Once a cell IS
-   * (or lies below) a hydro.super, cell_set_super_hydro() has already
-   * stamped that SAME hydro.super pointer onto every one of its progeny
-   * (the found super is passed down unchanged), so splitting further only
-   * produces sibling radiation tasks that all wire dependencies to the
-   * identical hydro.super -- a duplicate-unlock crash. Stopping AT
-   * hydro.super keeps self/pair radiation_in tasks landing on a common
-   * level by construction (each progeny of a splitting parent shares the
-   * same hydro.super, so they all stop together), and gives
-   * radiation_level == hydro.super for free when h_hii is small (no
-   * top-level locking); the h_hii terms below still force an EARLIER stop
-   * (coarser radiation_level, above hydro.super) when the search radius
-   * demands it. */
-  return c->split && c->hydro.super == NULL &&
+   * Splitting also stops once the cell is at or below a hydro.super, tested
+   * via cell_flag_at_or_below_hydro_attach rather than c->hydro.super itself:
+   * this predicate runs during task splitting, before cell_set_super_hydro()
+   * has populated hydro.super for the rebuild. The flag is a ground-truth
+   * proxy, stamped directly from the split density tasks (see the stamp/
+   * propagate passes in engine_maketasks()) -- it is exactly where
+   * hydro.super will end up, computed early. Once a cell IS (or lies below)
+   * a hydro.super, every one of its progeny would end up sharing that same
+   * hydro.super, so splitting further would only produce sibling radiation
+   * tasks that all wire dependencies to the identical hydro.super -- a
+   * duplicate-unlock crash. Stopping AT the attach point keeps self/pair
+   * radiation_in tasks landing on a common level by construction, and gives
+   * radiation_level == hydro.super for free when h_hii is small; the h_hii
+   * terms below still force an EARLIER stop (coarser radiation_level, above
+   * hydro.super) when the search radius demands it. */
+  return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_max <
@@ -1279,7 +1281,7 @@ cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 
   /* Radiation's own criterion -- see
    * cell_can_split_pair_radiation_subgrid_task() above. */
-  return c->split && c->hydro.super == NULL &&
+  return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_max <

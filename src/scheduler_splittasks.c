@@ -345,17 +345,16 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
          * progeny's own subtree (doself) plus whatever pair tasks connect
          * it to the rest of the 27-neighbour stencil -- without sibling
          * pairs, siblings within the same parent would be searched by
-         * neither a pair task nor doself, a permanent blind spot found
-         * and fixed this session.
+         * neither a pair task nor doself, a permanent blind spot.
          *
-         * NOTE (2026-07-12): each sibling progeny's own
-         * cell_can_split_self/pair_radiation_subgrid_task() is evaluated
-         * independently one level down, but that predicate is also gated on
-         * c->hydro.super == NULL (see cell.h). cell_set_super_hydro()
-         * stamps the SAME hydro.super pointer onto every progeny of a
-         * subtree once it is found, so all siblings under a splitting
-         * parent share an identical hydro.super and therefore stop
-         * splitting together, by construction -- no separate
+         * Each sibling progeny's own cell_can_split_self/pair_radiation_
+         * subgrid_task() is evaluated independently one level down, tested
+         * against cell_flag_at_or_below_hydro_attach (see cell.h) rather
+         * than hydro.super directly, since hydro.super does not exist yet
+         * at split time. The stamp/propagate passes in engine_maketasks()
+         * set that flag identically on every progeny of a subtree that
+         * shares a hydro attach point, so all siblings under a splitting
+         * parent stop splitting together, by construction -- no separate
          * synchronisation pass is needed. The SWIFT_DEBUG_CHECKS invariant
          * in engine_make_extra_radiationloop_tasks_mapper
          * (ci->stars.radiation_level == cj->stars.radiation_level) is kept

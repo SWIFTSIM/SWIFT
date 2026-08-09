@@ -147,21 +147,19 @@ int main(int argc, char *argv[]) {
   }
 
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
-   * must NEVER split once the cell is at or below hydro.super (non-NULL),
-   * for any combination of the other fields (including small h_max/
-   * h_hii_max that would otherwise geometrically allow splitting). This is
-   * the fix for the duplicate-unlock crash at gas_mass=0.01: once a cell
-   * IS (or lies below) a hydro.super, cell_set_super_hydro() has already
-   * stamped that SAME hydro.super pointer onto every one of its progeny,
-   * so splitting further would only produce sibling radiation tasks that
-   * all wire dependencies to the identical hydro.super. See
+   * must NEVER split once the cell is at or below a hydro attach point
+   * (cell_flag_at_or_below_hydro_attach set), for any combination of the
+   * other fields (including small h_max/h_hii_max that would otherwise
+   * geometrically allow splitting). This is the fix for the duplicate-unlock
+   * crash at gas_mass=0.01: once a cell IS (or lies below) a hydro.super,
+   * every one of its progeny would end up sharing that same hydro.super, so
+   * splitting further would only produce sibling radiation tasks that all
+   * wire dependencies to the identical hydro.super. See
    * cell_can_split_pair_radiation_subgrid_task()'s docstring in cell.h for
    * the full history. */
   struct cell c;
   const float dmins[] = {0.5f, 1.0f, 2.0f};
   const float h_values[] = {0.0f, 0.01f, 0.3f, 1.0f, 5.0f};
-  struct cell dummy_super;
-  bzero(&dummy_super, sizeof(struct cell));
   for (int is = 0; is < 2; ++is) {
     for (int id = 0; id < 3; ++id) {
       for (int ih = 0; ih < 5; ++ih) {
@@ -174,28 +172,28 @@ int main(int argc, char *argv[]) {
         c.sinks.h_max = h_values[ih];
         c.black_holes.h_max = h_values[ih];
 
-        /* With hydro.super already set (at-or-below hydro.super), must
-         * always refuse to split regardless of geometry. */
-        c.hydro.super = &dummy_super;
+        /* With the at-or-below-hydro-attach flag set, must always refuse
+         * to split regardless of geometry. */
+        cell_set_flag(&c, cell_flag_at_or_below_hydro_attach);
         if (cell_can_split_pair_radiation_subgrid_task(&c))
           error(
               "cell_can_split_pair_radiation_subgrid_task must never "
-              "split once hydro.super is set "
+              "split once at-or-below a hydro attach point "
               "(split=%d dmin=%e h=%e h_hii=%e).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
 
         if (cell_can_split_self_radiation_subgrid_task(&c))
           error(
               "cell_can_split_self_radiation_subgrid_task must never "
-              "split once hydro.super is set "
+              "split once at-or-below a hydro attach point "
               "(split=%d dmin=%e h=%e h_hii=%e).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
 
-        /* With hydro.super still NULL (strictly above any hydro.super),
+        /* With the flag cleared (strictly above any hydro attach point),
          * splitting must be governed purely by the geometric criterion --
-         * identical to what the (now-removed) NULL-gated call would have
-         * returned before this test replaced it. */
-        c.hydro.super = NULL;
+         * identical to what the (now-removed) hydro.super-gated call would
+         * have returned before this test replaced it. */
+        cell_clear_flag(&c, cell_flag_at_or_below_hydro_attach);
         const int expect_geometric =
             c.split &&
             (space_stretch * kernel_gamma * c.hydro.h_max < 0.5f * c.dmin) &&
@@ -212,7 +210,7 @@ int main(int argc, char *argv[]) {
         if (cell_can_split_pair_radiation_subgrid_task(&c) != expect_geometric)
           error(
               "cell_can_split_pair_radiation_subgrid_task disagreed with "
-              "the geometric criterion while hydro.super == NULL "
+              "the geometric criterion while the attach flag is clear "
               "(split=%d dmin=%e h=%e h_hii=%e expected=%d).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max,
               expect_geometric);
@@ -220,7 +218,7 @@ int main(int argc, char *argv[]) {
         if (cell_can_split_self_radiation_subgrid_task(&c) != expect_geometric)
           error(
               "cell_can_split_self_radiation_subgrid_task disagreed with "
-              "the geometric criterion while hydro.super == NULL "
+              "the geometric criterion while the attach flag is clear "
               "(split=%d dmin=%e h=%e h_hii=%e expected=%d).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max,
               expect_geometric);
