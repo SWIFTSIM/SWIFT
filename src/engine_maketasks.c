@@ -3682,9 +3682,12 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Invariant: a radiation_in PAIR must connect two DISTINCT
-       * radiation_level regions. If ci and cj share a radiation_level, both
-       * sides below wire the SAME hii_ionization_feedback / drift tasks ->
-       * duplicate unlocks (otherwise only caught cryptically, and late, in
+       * radiation_level regions -- ci and cj may sit at DIFFERENT depths
+       * (asymmetric pair, scheduler_splittask_radiation_subgrid()), the
+       * check only requires the two cells themselves to differ. If ci and cj
+       * share a radiation_level, both sides below wire the SAME
+       * hii_ionization_feedback / drift tasks -> duplicate unlocks
+       * (otherwise only caught cryptically, and late, in
        * scheduler_set_unlocks). This fires the moment a radiation pair is left
        * below radiation_level -- e.g. an intra-cell sub-pair, or a neighbour
        * pair split past where the self task stopped. */

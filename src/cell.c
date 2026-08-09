@@ -1380,10 +1380,11 @@ void cell_set_super_radiation_subgrid(struct cell *c,
    * own self-splitting or a matching-depth neighbour pair), that ancestor
    * wins by the "topmost found, propagated down" rule above -- and c's link
    * becomes permanently invisible to the flat walk. This is a silent,
-   * directional search-completeness bug, not a crash -- see project memory
-   * for the mechanism (mismatched hydro.super depth between neighbouring
-   * regions), verified independently by code-reading, not yet observed in
-   * a running example (uniform-density ICs never trigger the mismatch). */
+   * directional search-completeness bug, not a crash. Asymmetric radiation
+   * pairs (scheduler_splittask_radiation_subgrid()) are the actual fix: each
+   * side of a pair now rests at its OWN radiation_level instead of being
+   * forced to match a coarser neighbour, which removes the trigger for this
+   * mismatch by construction. Kept as a live regression tripwire. */
   if (c->stars.radiation_in != NULL && c->stars.radiation_level != c)
     error(
         "orphaned radiation_in link: cell %lld has its own radiation_in "

@@ -441,8 +441,10 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
        * radiation's flat neighbour walk at radiation_level needs all 26
        * neighbour pairs, corners included, to live AT radiation_level (dropping
        * them below is the corner-miss bug). */
-      if (cell_can_split_pair_radiation_subgrid_task(ci) &&
-          cell_can_split_pair_radiation_subgrid_task(cj)) {
+      const int can_split_ci = cell_can_split_pair_radiation_subgrid_task(ci);
+      const int can_split_cj = cell_can_split_pair_radiation_subgrid_task(cj);
+
+      if (can_split_ci && can_split_cj) {
 
         /* The cells are still coarse enough that we must descend one level to
          * reach radiation_level. Take a step back (recycle the current
@@ -467,6 +469,93 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
                                 cj->progeny[csp->pairs[k].pjd]),
               s);
         }
+
+        /* Exactly one side is still coarse enough to descend: the other has
+         * already reached its own radiation_level and must not move. This is
+         * the case cell_split_pairs/space_getsid cannot handle -- both are
+         * equal-size-only machinery (the pid tables enumerate a fixed 2 or 4
+         * progeny per sid, and space_getsid's corner-sign classification
+         * degrades a face into an "edge" once one side is finer -- either
+         * way silently dropping stencil links that no tripwire below this
+         * would catch). Enumerate the splitting side's facing progeny
+         * GEOMETRICALLY instead: exact for any size ratio, and the sid for
+         * each new (progeny, fixed) pair is computed fresh from that pair's
+         * own cells, never inherited from the parent (see
+         * cell_boxes_touch_under_shift()'s docstring in cell.h). */
+      } else if (can_split_ci != can_split_cj) {
+
+        struct cell *splitting = can_split_ci ? ci : cj;
+        struct cell *fixed = can_split_ci ? cj : ci;
+
+        int n_facing = 0;  /* Geometrically facing, empty or not. */
+        int n_created = 0; /* Facing AND non-empty -- these get a task. */
+
+        for (int k = 0; k < 8; k++) {
+          struct cell *p = splitting->progeny[k];
+          if (p == NULL) continue;
+
+          /* The splitting side plays ci's role in the shift convention
+           * (space_getsid_and_swap_cells() returns shift as "add to cj to
+           * reach ci"), so a progeny of ci needs no shift while a progeny
+           * of cj does. */
+          const int touches =
+              can_split_ci ? cell_boxes_touch_under_shift(p, fixed, shift)
+                           : cell_boxes_touch_under_shift(fixed, p, shift);
+          if (!touches) continue;
+          n_facing++;
+
+          if (!(p->hydro.count > 0 || (with_stars && p->stars.count > 0)))
+            continue;
+
+          /* Compute the sid on the NEW pair's own cells, honouring
+           * whatever swap it performs -- the parent's sid/shift do not
+           * carry over to an unequal-size child (see comment above). */
+          struct cell *new_ci = p;
+          struct cell *new_cj = fixed;
+          double new_shift[3];
+          const int new_sid = space_getsid_and_swap_cells(s->space, &new_ci,
+                                                          &new_cj, new_shift);
+
+          if (n_created == 0) {
+            t->ci = new_ci;
+            t->cj = new_cj;
+            t->flags = new_sid;
+            cell_set_flag(t->ci, cell_flag_has_tasks);
+            cell_set_flag(t->cj, cell_flag_has_tasks);
+          } else {
+            scheduler_splittask_radiation_subgrid(
+                scheduler_addtask(s, task_type_pair, t->subtype, new_sid, 1,
+                                  new_ci, new_cj),
+                s);
+          }
+          n_created++;
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* The splitting side's progeny exactly partition its volume, so at
+         * least one must geometrically face a partner that was itself
+         * adjacent to the (now-split) parent. Zero facing progeny means the
+         * geometric test itself is broken. */
+        if (n_facing == 0)
+          error(
+              "Radiation asymmetric pair split found no facing progeny -- "
+              "cell_boxes_touch_under_shift() or the emptiness gate is "
+              "broken.");
+#endif
+
+        if (n_created == 0) {
+          /* All facing progeny were empty: the task genuinely vanishes,
+           * exactly like the empty-task check at the top of this
+           * function. */
+          t->type = task_type_none;
+          t->subtype = task_subtype_none;
+          t->ci = NULL;
+          t->cj = NULL;
+          t->skip = 1;
+          break;
+        }
+
+        redo = 1;
 
         /* Otherwise, break it up if it is too large? */
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
