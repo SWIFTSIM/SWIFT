@@ -2178,8 +2178,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 /**
- * @brief Activate drift/sync + stars_in over every hydro.super beneath a
- * (possibly coarse) radiation cell.
+ * @brief Activate drift/sync + stars_in + hydro sorts over every hydro.super
+ * beneath a (possibly coarse) radiation cell.
  *
  * The subgrid HII ionization search reads and writes gas across the whole
  * subtree of a radiation_level cell and each of its neighbours. When
@@ -2189,6 +2189,16 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * engine_radiation_wire_super_deps, which wires the matching dependencies).
  * Activating drift on the coarse cell itself would drift nothing (it has no
  * hydro.drift task) and dereferencing its NULL hydro.super would crash.
+ *
+ * Also requests a hydro sort at each covered super. This replaces the old
+ * cell_activate_subcell_stars_tasks() walk (which recursed via the
+ * equal-size cell_split_pairs tables and is therefore wrong for asymmetric
+ * radiation pairs -- see the removed calls in cell_unskip_radiation_tasks()):
+ * the gather's sorted dopair (runner_radiation_feedback.c) accepts a sort
+ * along ANY of the 13 sids as a conservative pre-filter, so requesting one
+ * canonical direction here is enough to make the sorted path available at
+ * every leaf beneath the super; the naive dopair remains correct if no sort
+ * is available at all (e.g. the request hasn't propagated down yet).
  */
 static void cell_radiation_activate_supers_in(struct cell *c,
                                               struct scheduler *s,
@@ -2203,6 +2213,12 @@ static void cell_radiation_activate_supers_in(struct cell *c,
       error("Radiation search touches a hydro.super with no stars_in task.");
 #endif
     scheduler_activate(s, super->stars.stars_in);
+
+    /* Request a sort along one canonical direction; see the docstring. */
+    const int sid = 0;
+    atomic_or(&super->hydro.requires_sorts, 1 << sid);
+    super->hydro.dx_max_sort_old = super->hydro.dx_max_sort;
+    cell_activate_hydro_sorts(super, sid, s);
     return;
   }
   /* c is a strict ancestor of several supers: recurse to each. */
@@ -2275,22 +2291,23 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
 
       if (t->type == task_type_self) {
-        cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
-                                          with_star_formation_sink,
-                                          with_timestep_sync);
-
-        /* Drift/sync + stars_in over every hydro.super beneath ci. */
+        /* Drift/sync + stars_in + sorts over every hydro.super beneath ci.
+         * No subcell walk here: cell_activate_subcell_stars_tasks() recurses
+         * via the equal-size cell_split_pairs tables and calls
+         * cell_activate_drift_part() on the coarse cell, which walks UP to
+         * hydro.super -- below a coarse radiation cell that search finds
+         * nothing, silently skipping the drift. cell_radiation_activate_
+         * supers_in() is depth-agnostic and covers the same ground. */
         cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
       }
 
       else if (t->type == task_type_pair) {
-        cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
-                                          with_star_formation_sink,
-                                          with_timestep_sync);
-
-        /* Drift/sync + stars_in over every hydro.super beneath ci and cj.
-         * This covers the full search footprint (all progeny of both cells)
-         * and is robust to radiation_level sitting above hydro.super. */
+        /* Drift/sync + stars_in + sorts over every hydro.super beneath ci
+         * and cj. This covers the full search footprint (all progeny of
+         * both cells) and is robust to radiation_level sitting above
+         * hydro.super or ci/cj resting at different depths (asymmetric
+         * pairs) -- see the self-branch comment above for why the subcell
+         * walk it replaces cannot handle either case. */
         if (ci_nodeID == nodeID)
           cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
         if (cj_nodeID == nodeID)
