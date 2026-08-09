@@ -257,6 +257,119 @@ one's service rate) remains deliberately unaddressed -- would need
 per-pixel bounded buffer segments to fix robustly, only worth building
 if a clumpy test shows it matters in practice.
 
+\subsection{Sorted gather mechanics: one-sided scans on a global axis}
+\label{sec:sorted-gather}
+
+Within each unsplit receiver cell reached by the traversal of
+Section~\ref{sec:runtime}, the gather may use that cell's hydro sort
+arrays as a pre-filter
+(\code{runner\_dopair\_stars\_hii\_ionization\_feedback}). The way it
+does so differs structurally from the classic two-sided hydro
+\code{DOPAIR}, and the difference is what frees the search from any
+adjacency requirement between the star's cell and the receiver
+(Fig.~\ref{fig:dopair-contrast}).
+
+\textbf{Sort entries live on a global axis.} A cell's sort entry along
+axis \code{sid} is the particle's \emph{absolute} position projected
+onto the unit vector \code{runner\_shift[sid]}
+(\code{runner\_do\_hydro\_sort}, \code{src/runner\_sort.c}) -- a
+coordinate on a global 1D axis, computed with no reference to any
+partner cell. The gather projects the star onto that \emph{same} axis,
+$d_{i,\star} = (\vec{x}_\star - \vec{s})\cdot\hat{e}_{\rm sid}$, where
+$\vec{s}$ is purely the periodic-wrap shift (zero for a non-wrapped
+pair). The receiver's sorted list is then scanned only inside the window
+$[d_{i,\star} - R - \Delta,\; d_{i,\star} + R + \Delta]$, with $R$ the
+current search radius and $\Delta$ the drift slack
+(\code{cj->hydro.dx\_max\_sort + ci->stars.dx\_max\_sort}); a per-cell
+freshness gate (\code{dx\_max\_sort\_old} vs.\
+\code{space\_maxreldx}$\cdot$\code{dmin}) demotes stale sorts to the
+naive path. A distant receiver simply has its $d$-range far from
+$d_{i,\star}$: the window clips the near-face slice of its sorted list,
+or misses it entirely and the cell is skipped
+(Fig.~\ref{fig:sorted-nonadjacent}). Face-sharing between the star's
+cell and the receiver never enters; the star's own cell contributes
+nothing but its position and drift slack -- its sort arrays are never
+read.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/fig3_sorted_scan_nonadjacent.pdf}
+  \caption{Sorted scan against a non-adjacent receiver \texttt{C}. Sort
+    entries and the star's projection $d_{i,\star}$ are coordinates on
+    the same global axis, so only window/$d$-range overlap decides what
+    is scanned. Worked example (panel a): star at $x=1.2$, \texttt{C}
+    spanning $[3,4]$, $R = 2.1$, $\Delta = 0.05$ gives the window
+    $[-0.95, 3.35]$ -- exactly \texttt{C}'s ticks below $3.35$ are
+    scanned, without \texttt{A} and \texttt{C} sharing a face. Panel (b):
+    under periodic wrap the star is shifted by $-\vec{s}$ onto the
+    receiver's side before projecting.}
+  \label{fig:sorted-nonadjacent}
+\end{figure}
+
+\textbf{Any axis is conservative.} A 1D projection never exceeds the 3D
+distance, so every true neighbour within $R$ falls inside the window
+along \emph{any} of the 13 axes; the exact $r^2 < R^2$ test decides
+membership (Fig.~\ref{fig:any-axis}). Correctness is therefore
+axis-independent, and the axis choice is purely a pruning-efficiency
+knob. This licenses the full fallback ladder: prefer the carried sid,
+else scan forward along \emph{any} axis the receiver happens to be
+sorted along, else the naive $O(N)$ loop -- each rung trades speed,
+never completeness.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\linewidth]{figures/fig4_any_axis_conservative.pdf}
+  \caption{Any-axis conservativeness of the slab pre-filter: both
+    projections of the true separation are shorter than the separation
+    itself, so the window admits a superset along any sorted axis and
+    the exact $r^2$ test decides.}
+  \label{fig:any-axis}
+\end{figure}
+
+\textbf{sid selection and its degradation bound.} The per-link sid is
+chosen by per-axis \emph{sign} classification of the cell offset
+(\code{runner\_hii\_visit\_neighbors}), not by direction matching: a
+receiver offset by $(2,1,0)$ cell widths classifies as the $(1,1,0)$
+edge axis. The projected separation then retains
+$\cos\theta = 3/\sqrt{10} \approx 95\%$ of the true distance in that
+example; the worst case over all lattice offsets (a long face offset
+with unit transverse offsets, classified onto a corner axis) retains
+$1/\sqrt{3} \approx 58\%$. The slab is thus never more than
+$\sqrt{3}\times$ wider than the optimal-axis slab: a misaligned axis
+costs extra exact-$r^2$ tests, never a missed neighbour, and the
+cell-level window/$d$-range skip retains most of its selectivity even
+along a poorly aligned axis. The same one-per-link sid is carried
+unchanged down the receiver-side recursion, so off-axis leaves of a
+large partner region are exactly where the any-axis fallback and the
+exact test absorb the slack.
+
+\textbf{Reach stays inside the wiring.} Sorting narrows the scan within
+a visited cell; \emph{which} cells are visited remains governed by the
+\code{radiation\_in} stencil of Section~\ref{sec:runtime}. The in-pass
+radius-expansion loop is clamped to the reach the wired stencil
+guarantees
+(\code{max\_reachable\_search\_radius} in
+\code{runner\_dosub\_stars\_hii\_ionization\_feedback}), so the sorted
+machinery is never asked to find gas the task graph never wired; the
+deferred outer shell is picked up after the next rebuild re-levels the
+tasks.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/fig6_contrast_dopair_vs_radiation.pdf}
+  \caption{Two-sided lockstep \texttt{DOPAIR} (adjacency-bound: both sort
+    lists advance inward together along the pair's own axis) vs.\ the
+    one-sided star-centric radiation gather (receiver's sorts only, one
+    projected star coordinate, any-axis fallback). The one-sided form is
+    what makes non-adjacent receivers unremarkable.}
+  \label{fig:dopair-contrast}
+\end{figure}
+
+The remaining schematics of the search (traversal structure, multi-leaf
+gather with the global nearest-\code{max\_ngbs} buffer, and the unwired
+two-regions-away case with its three guards) are kept alongside the
+document in \code{figures/} (\code{fig1}, \code{fig2}, \code{fig5}).
+
 \subsection{Cell sizing: folding \texttt{h\_hii} into \texttt{space\_regrid}}
 \label{sec:space-regrid-hhii}
 
