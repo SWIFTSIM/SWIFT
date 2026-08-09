@@ -2625,16 +2625,34 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
             struct task *t = l->t;
             const struct cell *other = (t->ci == anc) ? t->cj : t->ci;
             message(
-                "    do_sink_swallow link %d: type=%s skip=%d "
+                "    do_sink_swallow link %d: type=%s skip=%d ti_run=%lld "
                 "other_cellID=%lld other_nodeID=%d other_active_sinks=%d "
                 "other_active_hydro=%d",
-                nr_tasks, taskID_names[t->type], t->skip,
+                nr_tasks, taskID_names[t->type], t->skip, (long long)t->ti_run,
                 other != NULL ? other->cellID : -1,
                 other != NULL ? other->nodeID : -1,
                 other != NULL ? cell_is_active_sinks(other, e) : -1,
                 other != NULL ? cell_is_active_hydro(other, e) : -1);
           }
           if (nr_tasks == 0) message("    no do_sink_swallow task here");
+
+          /* Layer B: proves the severed-edge mechanism directly -- if a
+           * do_sink_swallow link above shows a fresh ti_run while these
+           * ghosts show skip==1, the ghost chain never ran this step. */
+          if (anc == anc->hydro.super) {
+            if (anc->sinks.sink_ghost1 != NULL)
+              message("    sink_ghost1: skip=%d ti_run=%lld",
+                      anc->sinks.sink_ghost1->skip,
+                      (long long)anc->sinks.sink_ghost1->ti_run);
+            else
+              message("    sink_ghost1: NULL");
+            if (anc->sinks.sink_ghost2 != NULL)
+              message("    sink_ghost2: skip=%d ti_run=%lld",
+                      anc->sinks.sink_ghost2->skip,
+                      (long long)anc->sinks.sink_ghost2->ti_run);
+            else
+              message("    sink_ghost2: NULL");
+          }
         }
         error(
             "Sink particle has not been swallowed! id=%lld swallow_id=%lld "

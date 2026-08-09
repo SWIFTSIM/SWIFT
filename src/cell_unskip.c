@@ -3088,6 +3088,23 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Layer A probe: severed-edge precondition (see CLAUDE.md task notes). */
+    if (cj != NULL && (ci_active != cj_active)) {
+      const struct cell *inactive_side = ci_active ? cj : ci;
+      const struct cell *inactive_super = inactive_side->hydro.super;
+      if (inactive_super != NULL && inactive_super->sinks.count > 0) {
+        message(
+            "GHOST_SEVER_PROBE subtype=%s inactive_side=%s "
+            "inactive_cellID=%lld inactive_super_cellID=%lld "
+            "inactive_super_sinks_count=%d step=%d",
+            subtaskID_names[t->subtype], ci_active ? "cj" : "ci",
+            inactive_side->cellID, inactive_super->cellID,
+            inactive_super->sinks.count, e->step);
+      }
+    }
+#endif
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -3113,6 +3130,23 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Layer A probe: severed-edge precondition (see CLAUDE.md task notes). */
+    if (cj != NULL && (ci_active != cj_active)) {
+      const struct cell *inactive_side = ci_active ? cj : ci;
+      const struct cell *inactive_super = inactive_side->hydro.super;
+      if (inactive_super != NULL && inactive_super->sinks.count > 0) {
+        message(
+            "GHOST_SEVER_PROBE subtype=%s inactive_side=%s "
+            "inactive_cellID=%lld inactive_super_cellID=%lld "
+            "inactive_super_sinks_count=%d step=%d",
+            subtaskID_names[t->subtype], ci_active ? "cj" : "ci",
+            inactive_side->cellID, inactive_super->cellID,
+            inactive_super->sinks.count, e->step);
+      }
+    }
+#endif
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -3137,6 +3171,23 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Layer A probe: severed-edge precondition (see CLAUDE.md task notes). */
+    if (cj != NULL && (ci_active != cj_active)) {
+      const struct cell *inactive_side = ci_active ? cj : ci;
+      const struct cell *inactive_super = inactive_side->hydro.super;
+      if (inactive_super != NULL && inactive_super->sinks.count > 0) {
+        message(
+            "GHOST_SEVER_PROBE subtype=%s inactive_side=%s "
+            "inactive_cellID=%lld inactive_super_cellID=%lld "
+            "inactive_super_sinks_count=%d step=%d",
+            subtaskID_names[t->subtype], ci_active ? "cj" : "ci",
+            inactive_side->cellID, inactive_super->cellID,
+            inactive_super->sinks.count, e->step);
+      }
+    }
+#endif
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
