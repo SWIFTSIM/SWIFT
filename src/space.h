@@ -39,6 +39,7 @@
 
 /* Avoid cyclic inclusions */
 struct cell;
+struct cell_buff;
 struct cosmology;
 struct gravity_props;
 struct star_formation;
@@ -48,6 +49,7 @@ struct hydro_props;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
+#define space_dfs_levels_per_bfs_frontier_default 3
 #define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 200
@@ -80,6 +82,7 @@ struct hydro_props;
 /* Globals needed in contexts without a space struct. Remember to dump and
  * restore these. */
 extern int space_splitsize;
+extern int space_dfs_levels_per_bfs_frontier;
 extern int space_maxsize;
 extern int space_grid_split_threshold;
 extern int space_subsize_pair_hydro;
@@ -143,6 +146,9 @@ struct space {
 
   /*! Are we running with neutrino particles? */
   int with_neutrinos;
+
+  /*! Do we use the breadth-first frontier algorithm in space_split()? */
+  int with_bfs_splitting;
 
   /*! Width of the top-level cells. */
   double width[3];
@@ -427,6 +433,14 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
+void space_split_bfs_frontiers(struct space *s, int verbose);
+void space_split_finalise_leaf(struct space *s, struct cell *c);
+void space_split_accumulate_props(struct cell *c, const struct cell *cp);
+void space_split_populate_multipole(struct cell *c);
+void space_split_allocate_and_fill_buffers(
+    struct cell *c, struct cell_buff *restrict *buff,
+    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sbuff,
+    struct cell_buff *restrict *bbuff, struct cell_buff *restrict *sink_buff);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

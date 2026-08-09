@@ -139,6 +139,8 @@ Scheduler:
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
+  dfs_levels_per_bfs_frontier:   3         # (Optional) Number of DFS levels processed per frontier cell during space splitting (this is the default value).
+  enable_bfs_frontiers:      0         # (Optional) Whether to use the breadth-first frontier algorithm for space splitting. If 0, falls back to the plain recursive depth-first split (this is the default value).
   grid_split_threshold:      400       # (Optional) Maximal number of particles per cell at construction level of Voronoi grid (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
   cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
