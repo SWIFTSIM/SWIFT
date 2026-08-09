@@ -146,6 +146,42 @@ int main(int argc, char *argv[]) {
           "not the unfactored kernel_gamma * h_hii_max.");
   }
 
+  /* Case 5b: unequal dmin (asymmetric radiation pair) -- generalizes the
+   * "ci->dmin == cj->dmin" assumption baked into every other pair check in
+   * this file. Both orientations below use the same reach (0.4), which
+   * clears a dmin of 0.25 but not a dmin of 1.0. */
+  {
+    struct cell cell_fine, cell_coarse;
+    bzero(&cell_fine, sizeof(struct cell));
+    bzero(&cell_coarse, sizeof(struct cell));
+    cell_fine.dmin = 0.25f;
+    cell_coarse.dmin = 1.0f;
+
+    /* Orientation A: the fine cell is ci (holds the star growth) and the
+     * coarse cell is cj -- the discriminating case, where scaling against
+     * cj->dmin alone (the pre-fix behaviour) would wrongly stay silent. */
+    cell_fine.stars.dx_max_part = 0.4f;
+    if (!cell_need_rebuild_for_radiation_pair(&cell_fine, &cell_coarse))
+      error(
+          "cell_need_rebuild_for_radiation_pair must scale against "
+          "min(ci->dmin, cj->dmin), not cj->dmin alone -- missed a rebuild "
+          "whose reach cleared the fine cell's dmin but not the coarse "
+          "cell's.");
+
+    /* Orientation B: same reach, but the fine cell is now cj and the
+     * coarse cell (holding the star growth) is ci -- confirms min() picks
+     * up the fine dmin regardless of which argument slot it occupies (the
+     * pre-fix code would already have caught this orientation, since the
+     * fine cell IS cj there -- a non-regression check, not a discriminator).
+     */
+    cell_fine.stars.dx_max_part = 0.0f;
+    cell_coarse.stars.dx_max_part = 0.4f;
+    if (!cell_need_rebuild_for_radiation_pair(&cell_coarse, &cell_fine))
+      error(
+          "cell_need_rebuild_for_radiation_pair failed when the fine cell "
+          "(dmin=0.25) sits in the cj argument slot instead of ci.");
+  }
+
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
    * must NEVER split once the cell is at or below a hydro attach point
    * (cell_flag_at_or_below_hydro_attach set), for any combination of the
@@ -423,6 +459,96 @@ int main(int argc, char *argv[]) {
               box_covers, top_level);
       }
     }
+  }
+
+  /* cell_boxes_touch_under_shift(): the geometric facing test that replaces
+   * cell_split_pairs/space_getsid for asymmetric radiation pair descent
+   * (scheduler_splittasks.c). Only loc/width matter -- everything else is
+   * left zeroed. */
+  {
+    struct cell a, b;
+
+    /* Case 1: equal-size cells sharing a face (abutting, not overlapping)
+     * -- must count as touching. */
+    bzero(&a, sizeof(struct cell));
+    bzero(&b, sizeof(struct cell));
+    a.loc[0] = 0.0;
+    a.loc[1] = 0.0;
+    a.loc[2] = 0.0;
+    a.width[0] = a.width[1] = a.width[2] = 1.0;
+    b.loc[0] = 1.0;
+    b.loc[1] = 0.0;
+    b.loc[2] = 0.0;
+    b.width[0] = b.width[1] = b.width[2] = 1.0;
+    double zero_shift[3] = {0.0, 0.0, 0.0};
+    if (!cell_boxes_touch_under_shift(&a, &b, zero_shift))
+      error("cell_boxes_touch_under_shift missed a face-abutting pair.");
+
+    /* Case 2: a one-cell gap -- must NOT count as touching. */
+    b.loc[0] = 2.0;
+    if (cell_boxes_touch_under_shift(&a, &b, zero_shift))
+      error(
+          "cell_boxes_touch_under_shift flagged a pair separated by a "
+          "full cell width as touching.");
+
+    /* Case 3: periodic wrap -- b sits far away in real coordinates but its
+     * periodic image (via shift) abuts a. Must only touch WITH the shift
+     * applied, not without it. */
+    b.loc[0] = 9.0;
+    double wrap_shift[3] = {-10.0, 0.0, 0.0};
+    if (!cell_boxes_touch_under_shift(&a, &b, wrap_shift))
+      error(
+          "cell_boxes_touch_under_shift missed a pair touching only "
+          "through the periodic image.");
+    if (cell_boxes_touch_under_shift(&a, &b, zero_shift))
+      error(
+          "cell_boxes_touch_under_shift touched a pair separated in real "
+          "space without the periodic shift that brings them together.");
+
+    /* Case 4: unequal-size facing progeny -- the actual asymmetric-pair
+     * scenario. Parent P = [0,2] splits into progeny p_near = [0,1] and
+     * p_far = [1,2]^3... using x only for clarity, y/z stay full-width so
+     * only the x-axis discriminates. Partner Q = [2,4]^3 (unsplit, twice
+     * p's width). p_far shares P's face with Q and must touch; p_near
+     * does not. */
+    struct cell p_near, p_far, Q;
+    bzero(&p_near, sizeof(struct cell));
+    bzero(&p_far, sizeof(struct cell));
+    bzero(&Q, sizeof(struct cell));
+    p_near.loc[0] = 0.0;
+    p_far.loc[0] = 1.0;
+    p_near.width[0] = p_far.width[0] = 1.0;
+    p_near.width[1] = p_far.width[1] = 2.0;
+    p_near.width[2] = p_far.width[2] = 2.0;
+    Q.loc[0] = 2.0;
+    Q.width[0] = Q.width[1] = Q.width[2] = 2.0;
+    if (!cell_boxes_touch_under_shift(&p_far, &Q, zero_shift))
+      error(
+          "cell_boxes_touch_under_shift missed the fine progeny that "
+          "actually faces the coarse partner (the asymmetric-pair case "
+          "cell_split_pairs/space_getsid cannot handle).");
+    if (cell_boxes_touch_under_shift(&p_near, &Q, zero_shift))
+      error(
+          "cell_boxes_touch_under_shift touched a fine progeny that does "
+          "NOT face the coarse partner -- would create a spurious pair "
+          "task.");
+
+    /* Case 5: corner-only touch between unequal-size cells -- all three
+     * axes abut exactly, no axis overlaps. Perturbing one axis by a full
+     * cell width must break it. */
+    struct cell corner_a, corner_b;
+    bzero(&corner_a, sizeof(struct cell));
+    bzero(&corner_b, sizeof(struct cell));
+    corner_a.width[0] = corner_a.width[1] = corner_a.width[2] = 1.0;
+    corner_b.width[0] = corner_b.width[1] = corner_b.width[2] = 2.0;
+    corner_b.loc[0] = corner_b.loc[1] = corner_b.loc[2] = 1.0;
+    if (!cell_boxes_touch_under_shift(&corner_a, &corner_b, zero_shift))
+      error("cell_boxes_touch_under_shift missed a corner-only touch.");
+    corner_b.loc[2] = 3.5; /* Gap on z alone -- no longer touching. */
+    if (cell_boxes_touch_under_shift(&corner_a, &corner_b, zero_shift))
+      error(
+          "cell_boxes_touch_under_shift touched a pair with a real gap on "
+          "one axis.");
   }
 
   return 0;
