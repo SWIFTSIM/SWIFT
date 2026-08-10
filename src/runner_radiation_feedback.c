@@ -623,6 +623,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         if (num_radius_expansions >= max_radius_expansion_tries) break;
         if (dynamic_search_radius >= max_search_radius) break;
         if (dynamic_search_radius >= max_reachable_search_radius) {
+          /* Diagnostic (Phase 4.2): a nonzero rate means a star's physical
+           * front is waiting on the next rebuild to re-level its task,
+           * rather than being reach-limited by configuration. */
+          atomic_inc(&e->radiation_reach_clamp_count);
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
           message(
               "Star %lld: radius expansion clamped at the reachable stencil "

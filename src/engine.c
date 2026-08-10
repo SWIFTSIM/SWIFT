@@ -1380,6 +1380,21 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   const ticks tic = getticks();
 
+  /* Attribute this rebuild: nonzero means the radiation-pair criterion
+   * contributed, distinguishing it from ordinary drift/h_max rebuilds. */
+  if (e->nodeID == 0 || e->verbose) {
+    if (e->radiation_rebuild_demand_count > 0)
+      message(
+          "Rebuild triggered with %lld radiation-pair rebuild demand(s) "
+          "accumulated since the last rebuild.",
+          e->radiation_rebuild_demand_count);
+    else
+      message(
+          "Rebuild triggered by non-radiation criteria (0 radiation-pair "
+          "rebuild demands accumulated).");
+  }
+  e->radiation_rebuild_demand_count = 0;
+
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
   e->restarting = 0;
@@ -2699,6 +2714,17 @@ int engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
+
+    /* Radiation reach-clamp diagnostic (Phase 4.2): once clamping starts, log
+     * it every step so its growth is visible without a verbose build. */
+    if (e->radiation_reach_clamp_count > 0) {
+      message(
+          "Radiation reach-clamp events: %lld cumulative (+%lld this step).",
+          e->radiation_reach_clamp_count,
+          e->radiation_reach_clamp_count -
+              e->radiation_reach_clamp_count_last_step);
+      e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
+    }
 
     /* Write the star formation information to the file */
     const int with_sinks = (e->policy & engine_policy_sinks);
