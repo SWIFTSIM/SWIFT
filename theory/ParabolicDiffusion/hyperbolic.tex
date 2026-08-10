@@ -35,18 +35,18 @@ the same thing in both.
 \label{sec:governing-system}
 
 \subsubsection{Conservation of Metal Mass}
-As in the parabolic case (parabolic document, Eq.~1), conservation of
-metal-mass density in the frame comoving with each Lagrangian particle
-reads
+As in the parabolic case (Part~\ref{part:parabolic},
+Eq.~\eqref{eq:parabolic_diffusion_rho_Z}), conservation of metal-mass
+density in the frame comoving with each Lagrangian particle reads
 \begin{equation}
   \label{eq:mass_conservation}
   \pdv{(\rhoZ)}{t} + \div \Fdiff = 0 .
 \end{equation}
 The difference between the parabolic and hyperbolic schemes is entirely in
 what closes this equation: the parabolic scheme slaves $\Fdiff$
-algebraically to $\grad\driver$ via Fick's law (parabolic document,
-Eq.~3); the hyperbolic scheme instead promotes $\Fdiff$ to an independent
-dynamical variable, evolved by its own PDE.
+algebraically to $\grad\driver$ via Fick's law
+(Eq.~\eqref{eq:ficks_law}); the hyperbolic scheme instead promotes
+$\Fdiff$ to an independent dynamical variable, evolved by its own PDE.
 
 \subsubsection{The Cattaneo Relaxation Equation}
 The flux obeys (\code{chemistry\_flux.h:90--94}, docstring of
@@ -786,36 +786,14 @@ threshold of order unity.
 
 \begin{remark}[Particle-size definitions]
 \label{rem:particle-size-definitions}
-The CFL length scale $\dx$ above is the Gizmo effective size,
-$\dx=(V_i/V_{\rm unit\ sphere})^{1/d}$ (\code{chemistry\_timesteps.h}'s
-\code{else} branch). An alternative is the Lanson \&
-Vila~\citeyear{LansonVila2008} mean interparticle distance, their eq.~(58),
-\begin{equation}
-  \dx_i = \frac{1}{2\sum_l w_l\,\norm{A_{il}}_{\rm LV}} ,
-  \label{eq:lanson-vila-psize}
-\end{equation}
-with $w_l$ the neighbour's volume and $A_{il}$ their one-sided
-renormalized-gradient weight. Written in terms of the symmetrized
-interface area $\norm{A_{ij}}$ that the flux exchange already builds,
-each summand is $w_l\norm{A_{il}}_{\rm LV}=\norm{A_{il}}/V_l$, of
-dimension length$^{-1}$; this is the form evaluated in
-\code{chemistry\_timesteps.h}'s \code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE}
-branch, currently compiled out. Lanson \& Vila note directly below their
-eq.~(58) that $\sum_l w_l\norm{A_{il}}_{\rm LV}=O(1/\epsilon_0)$, with
-$\epsilon_0$ the smoothing length, so $\dx_i$ is of order the smoothing
-length, the same resolution scale as the Gizmo size, differing from it
-only by an $O(1)$ constant. Swapping definitions at a fixed $\CCFL$ is
-therefore not by itself a route to larger timesteps; what the choice
-changes is the constant, so the admissible $\CCFL$ has to be re-derived
-for whichever length is used. For Eq.~\eqref{eq:lanson-vila-psize} that
-derivation is Lanson \& Vila's own operator-based stability condition,
-their eq.~(62), which bounds $\dt\,\sum_l w_l\norm{A_{il}}_{\rm LV}$
-rather than assuming a Gizmo-calibrated Courant number carries over.
-When evaluating the sum, note that dimensional analysis
-alone does not pin down the summand: the kernel value $w_jh_j^{-d}$ also
-combines with $\norm{A_{il}}$ to give a length$^{-1}$, but it is smaller
-than $1/V_l$ by a factor of order the neighbour count $N_{\rm ngb}$, and
-using it in place of $1/V_l$ inflates $\dx_i$ by that same factor.
+The CFL length scale $\dx$ above is the same particle size used
+throughout the parabolic scheme's own CFL bound, with the same choice of
+GIZMO or Lanson \& Vila~\citeyear{LansonVila2008} definition and the same
+caveat that switching between them at a fixed $\CCFL$ is not by itself a
+route to a larger timestep (Part~\ref{part:parabolic},
+Section~\ref{sec:particle-size}). Nothing about the hyperbolic timestep
+changes that analysis; $\dx$ enters $\dt_{\rm hyp}$ exactly as it enters
+$\dt_{\rm par}$ above.
 \end{remark}
 
 \subsubsection{Speed Criterion for \texttt{anisotropic\_gradient} Mode}
