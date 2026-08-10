@@ -53,10 +53,8 @@ def main(filename):
                 max_id = max(max_id, int(np.max(f[key]["ParticleIDs"][:])))
         new_id = max_id + 1
 
-        # Datasets must be written in the file's OWN declared unit system
-        # (SWIFT converts from that to whatever InternalUnitSystem the
-        # parameter file specifies at read time) - not assumed to match it.
-        unit_mass_in_g = f["Units"].attrs["Unit mass in cgs (U_M)"][0]
+        # Read from the file's own declared unit system (scalar in pNbody-written ICs, length-1 array in downloaded ones).
+        unit_mass_in_g = np.ravel(f["Units"].attrs["Unit mass in cgs (U_M)"])[0]
         seed_mass = SEED_MASS_MSUN * SOLAR_MASS_IN_G / unit_mass_in_g
 
         bh = f.create_group("PartType5")
