@@ -757,12 +757,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
        * just at rebuild -- this recomputes h_hii_max from scratch each
        * call, so an unseeded value here would immediately erase the seed
        * space_split() planted at the last rebuild. */
-#ifdef IONIZATION_FEEDBACK_LOOP
       cell_h_hii_max =
           max(cell_h_hii_max, feedback_get_star_h_hii_max_seed(sp, e));
-#else
-      cell_h_hii_max = max(cell_h_hii_max, sp->h_hii);
-#endif
 
       /* Get ready for a density calculation */
       if (init_particles && spart_is_active(sp, e)) {

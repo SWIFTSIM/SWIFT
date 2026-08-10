@@ -569,13 +569,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Split-gate/rebuild-criterion tracker only (Phase 4.3): seeded with
        * the Strömgren radius estimate so a young star's placement
        * anticipates its growth. h_hii_max_active below stays on the true
-       * h_hii, since it ultimately feeds the real search radius. */
-#ifdef IONIZATION_FEEDBACK_LOOP
+       * h_hii, since it ultimately feeds the real search radius.
+       * feedback_get_star_h_hii_max_seed() is a plain passthrough to
+       * sp->h_hii for any model without HII photoionization feedback. */
       stars_h_hii_max =
           max(stars_h_hii_max, feedback_get_star_h_hii_max_seed(&sparts[k], e));
-#else
-      stars_h_hii_max = max(stars_h_hii_max, sparts[k].h_hii);
-#endif
 
       if (spart_is_active(&sparts[k], e)) {
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
