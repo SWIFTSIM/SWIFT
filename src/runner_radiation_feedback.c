@@ -659,7 +659,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       }
     }
 
-    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
+    /* Split-gate/rebuild-criterion tracker only: seeded with the Strömgren
+     * radius estimate so placement anticipates a young star's growth
+     * (Phase 4.3). h_hii_max_active feeds the real search radius
+     * (interaction_limit above) and must stay on the true si->h_hii. */
+    c->stars.h_hii_max =
+        max(c->stars.h_hii_max, feedback_get_star_h_hii_max_seed(si, e));
     c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, si->h_hii);
 
     /*****************************************/

@@ -953,6 +953,43 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
 }
 
 /**
+ * @brief Seed value for the stars.h_hii_max cell tracker (radiation task
+ * placement only -- see radiation_get_h_hii_max_seed()).
+ *
+ * Age/eligibility-gated on top of that helper: outside the HII-active
+ * window (dead, or aged past HII_max_age) the seed collapses to sp->h_hii
+ * like the real region does once nothing is held any more, instead of
+ * pinning the tracker at the seeded reach forever after the star stops
+ * doing any ionization. Deliberately NOT gated on will_do_HII_ionization
+ * (feedback_is_HII_ionization_active): that flag is true only on the
+ * specific step a rebuild pass actually runs, and gating on it would make
+ * the seed flicker between rebuild-cadence steps instead of tracking the
+ * star's age smoothly.
+ *
+ * Dispatch wrapper so callers outside this feedback model (the generic
+ * cell/space rebuild bookkeeping that collects stars.h_hii_max, guarded
+ * there by #IONIZATION_FEEDBACK_LOOP) can reach this without including
+ * GEAR-internal headers.
+ *
+ * @param sp The #spart to query.
+ * @param e The #engine (for physical constants, units, cooling, current
+ * time/cosmology, and GEARFeedback:HII_max_age_Myr).
+ */
+float feedback_get_star_h_hii_max_seed(const struct spart *sp,
+                                       const struct engine *e) {
+
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return sp->h_hii;
+
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const double star_age =
+      compute_star_age_end_of_step(sp, with_cosmology, e->cosmology, e->time);
+  if (star_age > e->feedback_props->HII_max_age) return sp->h_hii;
+
+  return radiation_get_h_hii_max_seed(sp, e->physical_constants,
+                                      e->internal_units, e->cooling_func);
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and

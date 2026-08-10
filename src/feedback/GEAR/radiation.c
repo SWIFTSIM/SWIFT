@@ -318,6 +318,86 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
+ * Estimate a #spart's Strömgren radius from its current ionizing photon
+ * rate and birth density: R_S = (3 Q / (4 pi alpha_B n_H^2))^(1/3). Used
+ * only to seed the split-gate/rebuild-criterion h_hii_max tracker ahead of
+ * a young star's actual growth (radiation_get_h_hii_max_seed()) -- never
+ * fed into the real search radius, photon budget, or tagging.
+ *
+ * Q is read back from dot_N_ion_pix, the same per-pixel rate the photon
+ * budget itself is built from, so it is 0 until the star's first pre-SN
+ * feedback pass has set it (harmless: the seed then simply has no effect
+ * until that point, same as a freshly spawned star's own h_hii = 0).
+ * n_H uses the star's birth density (already stored for every GEAR star,
+ * star or sink-spawned) and its own metallicity as a proxy for the natal
+ * gas composition, since no specific gas particle is available yet. alpha_B
+ * is evaluated at radiation_get_T_collisional_K(Z), the same
+ * metallicity-only equilibrium temperature radiation_get_part_ionized_
+ * internal_energy() uses, for consistency with the real ionization physics.
+ *
+ * @param sp The star.
+ * @param phys_const Physical constants.
+ * @param us The internal unit system.
+ * @param cooling The #cooling_function_data used in the run.
+ * @return Estimated Strömgren radius (physical, internal length units), or
+ * 0 if the star has no ionizing rate or birth density recorded yet.
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_stromgren_radius_estimate(
+    const struct spart *sp, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling) {
+
+  double Q_total = 0.;
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++)
+    Q_total += sp->feedback_data.radiation.dot_N_ion_pix[p];
+
+  const double birth_density = sp->sf_data.birth_density;
+  if (Q_total <= 0. || birth_density <= 0.) return 0.;
+
+  const double Z =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  const double X_H = max(cooling->HydrogenFractionByMass - Z, 0.);
+  const double n_H = (X_H * birth_density) / phys_const->const_proton_mass;
+  if (n_H <= 0.) return 0.;
+
+  const double T_ionized_K = radiation_get_T_collisional_K(Z);
+  const double alpha_B_cgs =
+      radiation_get_case_b_recombination_coefficient_cgs(T_ionized_K);
+  const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
+  const double alpha_B =
+      alpha_B_cgs / units_general_cgs_conversion_factor(us, dimension_alphaB);
+  if (alpha_B <= 0.) return 0.;
+
+  return cbrt(3. * Q_total / (4. * M_PI * alpha_B * n_H * n_H));
+}
+
+/**
+ * Seed value for the stars.h_hii_max cell tracker: max(sp->h_hii, estimated
+ * Strömgren radius converted to h_hii's own units). A newly formed star's
+ * h_hii starts near zero and grows toward R_S, so folding this into the
+ * tracker anticipates the radiation task placement the star is about to
+ * need instead of chasing it one rebuild behind (plan Phase 4.3). Divided
+ * by kernel_gamma to match h_hii's convention, since every consumer of
+ * stars.h_hii_max (cell_can_split_*_radiation_subgrid_task,
+ * cell_need_rebuild_for_radiation_pair) multiplies it back by kernel_gamma
+ * to recover a physical radius, exactly as it does for a real h_hii.
+ *
+ * @param sp The star.
+ * @param phys_const Physical constants.
+ * @param us The internal unit system.
+ * @param cooling The #cooling_function_data used in the run.
+ * @return max(sp->h_hii, R_S / kernel_gamma).
+ */
+__attribute__((always_inline)) INLINE float radiation_get_h_hii_max_seed(
+    const struct spart *sp, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling) {
+
+  const double R_S =
+      radiation_get_stromgren_radius_estimate(sp, phys_const, us, cooling);
+  return max(sp->h_hii, (float)(R_S / kernel_gamma));
+}
+
+/**
  * Set the #spart's ionizing photon rate, split evenly across the active
  * angular pixels.
  *
