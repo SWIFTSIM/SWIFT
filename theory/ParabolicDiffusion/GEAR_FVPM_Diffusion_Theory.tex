@@ -193,20 +193,20 @@ Section~\ref{sec:diffusion-modes}).
 
 \subsection{Assumptions and Simplifications}
 
-\subsubsection{Continuum Approximation}
+\textbf{Continuum approximation.}
 Equations~\eqref{eq:conservation_rho_Z}--\eqref{eq:ficks_law} presuppose
 that the gas and metal fields are continuous on scales larger than the
 particle spacing, i.e.\ that the FVPM discretisation resolves the scales
 of interest.
 
-\subsubsection{Operator Splitting from Other Physics}
+\textbf{Operator splitting from other physics.}
 Diffusion is solved with operator splitting: hydrodynamics, gravity,
 cooling, star formation and feedback are integrated by other SWIFT
 modules on their own schedules, and the chemistry module only ever sees
 the metal mass field at the start and end of its own sub-step
 (Section~\ref{sec:time-integration}).
 
-\subsubsection{Isotropy versus Anisotropy}
+\textbf{Isotropy versus anisotropy.}
 $\Kmat$ can be isotropic ($\Kmat = \kappaP \mathbf I$) or anisotropic
 (full symmetric tensor built from the local velocity shear). Both cases
 are implemented; see Section~\ref{sec:diffusion-modes}.
@@ -455,8 +455,14 @@ MFM/GIZMO second-moment normalisation of Lanson \& Vila~\citeyear{LansonVila2008
 Hopkins~\citeyear{Hopkins2015},
 \begin{equation}
   \label{eq:E_matrix_def}
-  E_i^{kl} = \sum_j V_j\, W_{ij}\; \mathrm{dx}_{ij}^{k}\, \mathrm{dx}_{ij}^{l} .
+  E_i^{kl} = \sum_j W_{ij}\; \mathrm{dx}_{ij}^{k}\, \mathrm{dx}_{ij}^{l} .
 \end{equation}
+This is Hopkins~\citeyear{Hopkins2015}'s moment matrix (their eqs.~6--7
+and 14) with the particle's own partition-of-unity normalisation
+already cancelled out; the code accumulates it directly in
+\code{matrix\_E} (\code{fvpm\_accumulate\_geometry\_and\_matrix},
+\code{fvpm\_geometry.h}) without computing that normalisation
+separately.
 
 \begin{proposition}[Linear consistency of the gradient estimator]
 \label{prop:gradient-consistency}
@@ -464,29 +470,9 @@ If a scalar field is exactly linear in a neighbourhood of particle $i$,
 $Q(\mathbf x) = Q_i + \mathbf G\cdot(\mathbf x - \mathbf x_i)$ for a
 constant vector $\mathbf G$, then the estimator of
 Eq.~\eqref{eq:gradient_estimator} reproduces the true gradient exactly:
-$(\grad Q)_i = \mathbf G$.
+$(\grad Q)_i = \mathbf G$. Proof in
+Appendix~\ref{app:gradient-consistency-proof}.
 \end{proposition}
-\begin{proof}
-For the assumed linear field, $Q_i - Q_j = \mathbf G\cdot(\mathbf x_i -
-\mathbf x_j) = \mathbf G \cdot \mathbf{dx}_{ij}$. Substituting into
-Eq.~\eqref{eq:gradient_estimator},
-\begin{equation}
-  (\grad Q)_i = \sum_j (\mathbf G\cdot\mathbf{dx}_{ij})\, W_{ij}\, \mathbf B_i \cdot \mathbf{dx}_{ij}
-  = \mathbf B_i \left(\sum_j W_{ij}\, \mathbf{dx}_{ij}\otimes\mathbf{dx}_{ij}\right) \mathbf G ,
-\end{equation}
-using the identity $(\mathbf a\cdot\mathbf u)(\mathbf M\mathbf u) =
-\mathbf M(\mathbf u\otimes\mathbf u)\mathbf a$ for a vector $\mathbf a$,
-matrix $\mathbf M$ and vector $\mathbf u$, applied with $\mathbf a =
-\mathbf G$, $\mathbf u=\mathbf{dx}_{ij}$ componentwise, and factoring
-$\mathbf B_i$ (constant over the sum) out to the left. Comparing the sum
-in parentheses to Eq.~\eqref{eq:E_matrix_def} shows it equals
-$\mathbf E_i$ up to the volume weight $V_j$ folded into $W_{ij}$ by
-construction in the code's normalisation (the kernel sum already carries
-the $V_j$ weighting through the SPH/MFM partition-of-unity
-normalisation used to build \code{matrix\_E}). Hence
-$(\grad Q)_i = \mathbf B_i\, \mathbf E_i\, \mathbf G = \mathbf E_i^{-1}\mathbf E_i\, \mathbf G = \mathbf G$,
-since $\mathbf B_i \equiv \mathbf E_i^{-1}$ by definition.
-\end{proof}
 
 Whenever $\mathbf E_i$ is ill-conditioned (near-singular particle
 distribution, flagged by \code{fvpm\_part\_geometry\_well\_behaved(p)}
@@ -1026,7 +1012,7 @@ read. The diffusion solver is therefore free to carry a small transient
 negative internally between steps, but no other module, including
 cooling, ever observes it.
 
-\subsubsection{MPI}
+\textbf{MPI.}
 The donor-side sums of Eq.~\eqref{eq:fct-sum} are purely local: a
 particle's neighbours across a rank boundary do not currently contribute
 to its $\Sigma_{\rm out}$. Rather than silently drop this correction on
@@ -1363,6 +1349,27 @@ documentation.
 \appendix
 
 \section{Mathematical Derivations}
+
+\subsection{Proof of Proposition~\ref{prop:gradient-consistency} (Linear Consistency of the Gradient Estimator)}
+\label{app:gradient-consistency-proof}
+For the assumed linear field, $Q_i - Q_j = \mathbf G\cdot(\mathbf x_i -
+\mathbf x_j) = \mathbf G \cdot \mathbf{dx}_{ij}$. Substituting into
+Eq.~\eqref{eq:gradient_estimator},
+\begin{equation}
+  (\grad Q)_i = \sum_j (\mathbf G\cdot\mathbf{dx}_{ij})\, W_{ij}\, \mathbf B_i \cdot \mathbf{dx}_{ij}
+  = \mathbf B_i \left(\sum_j W_{ij}\, \mathbf{dx}_{ij}\otimes\mathbf{dx}_{ij}\right) \mathbf G ,
+\end{equation}
+using the identity $(\mathbf a\cdot\mathbf u)(\mathbf M\mathbf u) =
+\mathbf M(\mathbf u\otimes\mathbf u)\mathbf a$ for a vector $\mathbf a$,
+matrix $\mathbf M$ and vector $\mathbf u$, applied with $\mathbf a =
+\mathbf G$, $\mathbf u=\mathbf{dx}_{ij}$ componentwise, and factoring
+$\mathbf B_i$ (constant over the sum) out to the left. The sum in
+parentheses is exactly $\mathbf E_i$ of Eq.~\eqref{eq:E_matrix_def}: the
+gradient estimator (Eq.~\eqref{eq:gradient_estimator}) and the moment
+matrix are built from the identical per-neighbour weight $W_{ij}$, so no
+further correction factor is needed. Hence
+$(\grad Q)_i = \mathbf B_i\, \mathbf E_i\, \mathbf G = \mathbf E_i^{-1}\mathbf E_i\, \mathbf G = \mathbf G$,
+since $\mathbf B_i \equiv \mathbf E_i^{-1}$ by definition.
 
 \subsection{From Conservation and Fick's Law to the Parabolic Equation}
 \label{app:derivation-pde}
