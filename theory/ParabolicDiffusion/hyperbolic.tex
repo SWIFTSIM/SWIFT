@@ -3,10 +3,12 @@
 % Input from GEAR_FVPM_Diffusion_Theory.tex (the master document); not
 % standalone.
 
-\part{Formulation}
+\part{Hyperbolic (Cattaneo-Relaxation) Diffusion}
 \label{part:hyperbolic}
 
-\section{Scope and Motivation}
+\section{Formulation}
+
+\subsection{Scope and Motivation}
 \label{sec:scope}
 
 This part is a first-principles derivation of the characteristic (wave)
@@ -21,7 +23,7 @@ currently returned by
 \code{chemistry\_get\_physical\_hyperbolic\_soundspeed}
 (\code{hyperbolic/chemistry\_getters.h:37--66}).
 
-\subsection{Relation to the Parabolic Part}
+\subsubsection{Relation to the Parabolic Part}
 This part assumes familiarity with the FVPM geometry, the diffusion
 driver $\driver$, and the diffusion tensor $\Kmat$ as defined in
 Part~\ref{part:parabolic}, Sections~\ref{sec:physical-foundations}--
@@ -29,10 +31,10 @@ Part~\ref{part:parabolic}, Sections~\ref{sec:physical-foundations}--
 share notation (see the macro list in the preamble) so that symbols mean
 the same thing in both.
 
-\section{Governing System}
+\subsection{Governing System}
 \label{sec:governing-system}
 
-\subsection{Conservation of Metal Mass}
+\subsubsection{Conservation of Metal Mass}
 As in the parabolic case (parabolic document, Eq.~1), conservation of
 metal-mass density in the frame comoving with each Lagrangian particle
 reads
@@ -46,7 +48,7 @@ algebraically to $\grad\driver$ via Fick's law (parabolic document,
 Eq.~3); the hyperbolic scheme instead promotes $\Fdiff$ to an independent
 dynamical variable, evolved by its own PDE.
 
-\subsection{The Cattaneo Relaxation Equation}
+\subsubsection{The Cattaneo Relaxation Equation}
 The flux obeys (\code{chemistry\_flux.h:90--94}, docstring of
 \code{chemistry\_part\_integrate\_flux\_source\_term}):
 \begin{equation}
@@ -87,7 +89,7 @@ option available with a first-order (linear) gradient estimator, not an
 approximation chosen among alternatives.
 \end{remark}
 
-\subsection{Relaxation-Time Models}
+\subsubsection{Relaxation-Time Models}
 \label{sec:tau-modes}
 Two independent modes exist
 (\code{chemistry\_compute\_physical\_tau}, \code{hyperbolic/chemistry\_getters.h:75--92}):
@@ -106,7 +108,7 @@ orthogonal, in the parameter file, to the diffusion-tensor mode $\Kmat$
 \code{relaxation\_time\_mode} are parsed as two independent strings
 (\code{chemistry.h:279--326}), with no cross-validation between them.
 
-\subsection{Diffusion Tensor Modes (recap)}
+\subsubsection{Diffusion Tensor Modes (recap)}
 \label{sec:diffusion-tensor-recap}
 From \code{chemistry\_get\_physical\_matrix\_K}/\code{chemistry\_get\_diffusion\_coefficient}
 (\code{chemistry\_getters.h:196--285}):
@@ -120,7 +122,7 @@ Crucially, $\Kmat$ carries an explicit factor of $\rho$ in the
 \emph{not} in \code{isotropic\_constant}. This asymmetry is the origin of
 the consistency check of Section~\ref{sec:confrontation}.
 
-\subsection{The Effective Diffusivity $\Deff$}
+\subsubsection{The Effective Diffusivity $\Deff$}
 \label{sec:effective-diffusivity}
 $\Kmat$ is defined with respect to the \emph{driver} $\driver$ (Fick's
 law, $\Fdiff=-\Kmat\grad\driver$), not with respect to the
@@ -158,12 +160,12 @@ primary object below, rather than carrying $\Kmat$ and $\mu$ separately,
 is what lets Proposition~\ref{prop:main} be stated as a single formula
 instead of a per-\code{diffusion\_mode} case split.
 
-\part{Characteristic Structure}
+\section{Characteristic Structure}
 
-\section{Quasi-Linear Form and the Flux Jacobian}
+\subsection{Quasi-Linear Form and the Flux Jacobian}
 \label{sec:quasilinear}
 
-\subsection{State Vector and Frozen Coefficients}
+\subsubsection{State Vector and Frozen Coefficients}
 Define the four-component hyperbolic state vector
 \begin{equation}
   \Uvec = (U_0, U_1, U_2, U_3) \equiv (\rhoZ, F_x, F_y, F_z) .
@@ -180,7 +182,7 @@ scheme in this code family (GIZMO's own MFV/MFM sound-speed estimate is
 exactly analogous). Under it, $\driver=\mu U_0$ (Section~\ref{sec:effective-diffusivity})
 is linear in $U_0$, and $\Deff=\mu\Kmat$ is itself frozen.
 
-\subsection{The Flux Tensor, Rewritten in Terms of $\Deff$}
+\subsubsection{The Flux Tensor, Rewritten in Terms of $\Deff$}
 Directly from the code (\code{chemistry\_get\_hyperbolic\_flux},
 \code{hyperbolic/chemistry\_getters.h:162--200}), the flux of $\Uvec$ in
 Cartesian direction $k\in\{x,y,z\}$ is $(F_k,\,K_{xk}\driver/\taurelax,\,
@@ -200,7 +202,7 @@ Eqs.~\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} read, in
 conservative form, $\partial_t\Uvec + \sum_k \partial_{x_k}\Gflux{k}(\Uvec)
 = -(0,\Fdiff/\taurelax)$.
 
-\subsection{The Directional Flux Jacobian}
+\subsubsection{The Directional Flux Jacobian}
 For a Riemann problem at an interface with unit normal $\nunit$, the
 relevant $4\times4$ matrix is the projected flux Jacobian
 $\mathbf A(\nunit) \equiv \partial(\Gflux{}(\Uvec)\cdot\nunit)/\partial\Uvec$.
@@ -214,7 +216,7 @@ differentiation of the flux tensor above gives, for any $\mathbf x =
   \big(\mathbf A(\nunit)\,\mathbf x\big)_j = v_j\, x_0 \quad (j=1,2,3) .
 \end{equation}
 
-\section{The Characteristic Speed: General Result}
+\subsection{The Characteristic Speed: General Result}
 \label{sec:main-theorem}
 
 \begin{proposition}[Characteristic speeds of the hyperbolic diffusion system]
@@ -275,7 +277,7 @@ frozen-coefficient flux Jacobian: no assumption was made anywhere about
 the internal structure of $\Kmat$ (isotropic, Smagorinsky, or
 anisotropic). The two corollaries below specialise it.
 
-\subsection{Corollary: Isotropic Recovery}
+\subsubsection{Corollary: Isotropic Recovery}
 \begin{corollary}
 \label{cor:isotropic}
 $\Kmat=\kappaP\mathbf I$ in both \code{isotropic\_constant} and
@@ -308,7 +310,7 @@ that consumes $\Kmat$ directly (rather than $\Deff$) must know which
 $\driver$ convention is in force for the active \code{diffusion\_mode}, or
 it silently mixes an ordinary diffusivity with a mass diffusivity.
 
-\subsection{Corollary: The Frobenius Norm Is a (Non-Tight) Upper Bound}
+\subsubsection{Corollary: The Frobenius Norm Is a (Non-Tight) Upper Bound}
 \begin{corollary}
 \label{cor:frobenius}
 For any unit $\nunit$ and any symmetric PSD $\Kmat$ with eigenvalues
@@ -412,7 +414,7 @@ Frobenius looseness) with a local, per-particle change, not an
 architectural one.
 \end{remark}
 
-\section{The General Telegrapher Equation}
+\subsection{The General Telegrapher Equation}
 \label{sec:telegrapher}
 
 Proposition~\ref{prop:main} was derived from the first-order system's
@@ -489,7 +491,7 @@ useful specifically because it isolates $U_0$ for the dispersion relation
 below, and reduces to Eq.~\eqref{eq:telegrapher_q} exactly whenever
 $\driver=U_0$ (\code{isotropic\_constant}, $\mu=1$).
 
-\subsection{Two Limits}
+\subsubsection{Two Limits}
 Eq.~\eqref{eq:telegrapher_q} interpolates between two regimes already
 discussed separately elsewhere in this document, now visibly unified in
 one equation:
@@ -514,7 +516,7 @@ one equation:
   propagation, the point of the whole regularisation.
 \end{itemize}
 
-\subsection{Dispersion Relation: An Independent Check on $\chyp$}
+\subsubsection{Dispersion Relation: An Independent Check on $\chyp$}
 Seek plane-wave solutions $U_0=\hat U_0\exp[i(\mathbf k\cdot\mathbf x-\omega t)]$
 of the \emph{local} form, Eq.~\eqref{eq:telegrapher}
 (Corollary~\ref{cor:telegrapher_local}; frozen $\taurelax,\Deff$, exactly
@@ -558,9 +560,9 @@ entirely different means elsewhere in this document:
   solution always diffuse rather than propagate.
 \end{itemize}
 
-\part{Relaxation Time and Timestep}
+\section{Relaxation Time and Timestep}
 
-\section{Physically-Motivated Normalisation of $\taurelax_0$}
+\subsection{Physically-Motivated Normalisation of $\taurelax_0$}
 \label{sec:tau0-physical}
 
 The propositions above fix the \emph{shape} dependence of $\chyp$ but say
@@ -573,7 +575,7 @@ chosen independently of $\kappaC$, checks the resulting formula against an
 independent literature derivation, and revises the ``does hyperbolic beat
 parabolic'' criterion accordingly.
 
-\subsection{Why $\taurelax_0$ Must Depend on $\kappaC$}
+\subsubsection{Why $\taurelax_0$ Must Depend on $\kappaC$}
 \label{sec:tau0-motivation}
 Whether the hyperbolic scheme is faster than the parabolic one is decided
 by comparing $\taurelax$ against the intrinsic parabolic crossing time of
@@ -590,7 +592,7 @@ Section~\ref{sec:hyperbolic-limiter}). A physically meaningful
 $\taurelax_0$ must therefore be defined \emph{relative to} $\kappaC$, not
 alongside it.
 
-\subsection{Should $\taurelax$ Use the Regularised $\Splus$?}
+\subsubsection{Should $\taurelax$ Use the Regularised $\Splus$?}
 \label{sec:tau-no-regularisation}
 Eq.~\eqref{eq:tau_turbulent} uses $\norm{\Shear}_F$, the Frobenius norm of
 the \emph{unregularised} shear tensor, even though $\Kmat$ itself is built
@@ -653,7 +655,7 @@ law). $\norm{\Shear}_F$ is both the physically correct choice and the more
 conservative one.
 \end{remark}
 
-\subsection{Cross-Check: The Parabolic Mixing Timescale of Romano et al.~(2022)}
+\subsubsection{Cross-Check: The Parabolic Mixing Timescale of Romano et al.~(2022)}
 Romano, Nagamine \& Hirashita~\citeyear{Romano2022} use the same
 Shen-et-al.~\citeyear{ShenWadsleyStinson2010}/Smagorinsky-Lilly~\citeyear{Smagorinsky1963}
 closure implemented here (their diffusivity, eq.~10 of that paper, is
@@ -676,7 +678,7 @@ a numerical convenience. It also has no explicit dependence on resolution
 $h$, for the same reason found in this document: $D\propto h^2$ cancels
 the $h^2$ implicit in a diffusive crossing time $\dx^2/D$.
 
-\subsection{The Coupled Closed Form}
+\subsubsection{The Coupled Closed Form}
 Equation~\eqref{eq:tau_turbulent} states the adopted form,
 $\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$. Propagating this through
 $\chyp=\sqrt{\kappaP/(\rho\taurelax)}$ with the isotropic Smagorinsky
@@ -695,7 +697,7 @@ since $\kappaC$ is dimensionless in the Smagorinsky closure; the
 reparametrisation changes what value of $\taurelax_0$ corresponds to a
 given physical relaxation time, but not its units.
 
-\subsection{On Adding a $\driver/\Delta\driver$ Term}
+\subsubsection{On Adding a $\driver/\Delta\driver$ Term}
 \label{sec:no-q-over-dq}
 A natural follow-up question: since Eq.~\eqref{eq:romano_tdiff} carries a
 factor $A/\Delta A$, should $\taurelax$ carry an analogous
@@ -752,7 +754,7 @@ reliance on an untuned constant, but not their reliance on an absolute
 threshold for what counts as ``pristine.''
 \end{remark}
 
-\subsection{Speed Criterion}
+\subsubsection{Speed Criterion}
 \label{sec:speed-criterion}
 Using Eq.~\eqref{eq:code_turbulent_new} and $v_{\max}\approx2\chyp$
 (comparable neighbouring particles, negligible relative velocity along
@@ -816,7 +818,7 @@ than $1/V_l$ by a factor of order the neighbour count $N_{\rm ngb}$, and
 using it in place of $1/V_l$ inflates $\dx_i$ by that same factor.
 \end{remark}
 
-\subsection{Speed Criterion for \texttt{anisotropic\_gradient} Mode}
+\subsubsection{Speed Criterion for \texttt{anisotropic\_gradient} Mode}
 \label{sec:speed-criterion-aniso}
 The derivation above is specific to \code{isotropic\_smagorinsky}: its
 $\kappaP$ carries an explicit $\norm{\Shear}_F$ factor
@@ -906,7 +908,7 @@ $\sqrt{\taurelax_0}/2$ prefactor shared with the isotropic result, not
 through the $g$- or $r$-dependent factors, which are ratios of
 same-mode quantities and are identification-independent.
 
-\section{The Implemented Wave Speed}
+\subsection{The Implemented Wave Speed}
 \label{sec:confrontation}
 
 \code{chemistry\_get\_physical\_hyperbolic\_soundspeed}
@@ -933,7 +935,7 @@ $\Deff$ (Section~\ref{sec:effective-diffusivity}) rather than carrying
 $\Kmat$ and $\mu$ separately through the getter means there is only one
 code path, with a single, unambiguous convention for $\mu$.
 
-\subsection{Consequences}
+\subsubsection{Consequences}
 \begin{itemize}
 \item \textbf{Unifying around $\Deff$ (Eq.~\eqref{eq:D_definition}), rather
   than special-casing $\Kmat$ per mode, is what makes every pairing
@@ -949,9 +951,9 @@ code path, with a single, unambiguous convention for $\mu$.
   $\lambda_1$) to use, never about resolving $\chyp$ per-interaction.
 \end{itemize}
 
-\part{Numerical Scheme}
+\section{Numerical Scheme}
 
-\section{Consequence for the HLL Numerical Dissipation}
+\subsection{Consequence for the HLL Numerical Dissipation}
 \label{sec:hll-consequence}
 
 An overestimated $\chyp$ does not only affect the timestep; it directly
@@ -978,7 +980,7 @@ and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
 wave-speed lever is already pulled as far as it goes; the flux-memory
 limiter of Section~\ref{sec:hyperbolic-limiter} addresses the second.
 
-\section{A Causal Bound on the Dissipation}
+\subsection{A Causal Bound on the Dissipation}
 \label{sec:causal-bound}
 
 The dissipation term itself, independent of any error in $\chyp$, has a
@@ -1038,7 +1040,7 @@ document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
 already fixes as exact or a tight, safe bound, rather than from a free
 constant chosen to match a given test problem.
 
-\subsection{Practical Considerations}
+\subsubsection{Practical Considerations}
 
 \begin{itemize}
 \item \textbf{Length scale.} The chemistry CFL condition ties $\dt$ to the
@@ -1070,7 +1072,7 @@ constant chosen to match a given test problem.
   already-stale flux memory.
 \end{itemize}
 
-\section{Practical Guidance for Choosing $\taurelax_0$}
+\subsection{Practical Guidance for Choosing $\taurelax_0$}
 \label{sec:practical-tau0}
 
 Sections~\ref{sec:speed-criterion}--\ref{sec:speed-criterion-aniso} and
@@ -1114,10 +1116,10 @@ independently reachable regimes under $\taurelax_0$ tuning alone; they
 are the same knob, pointing in opposite directions. The flux-memory
 limiter of Section~\ref{sec:hyperbolic-limiter} softens this tension.
 
-\section{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
+\subsection{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
 \label{sec:hyperbolic-limiter}
 
-\subsection{Why the Obvious Port Doesn't Work}
+\subsubsection{Why the Obvious Port Doesn't Work}
 \label{sec:limiter-naive-port}
 The parabolic Hopkins-HLL solver limits its dissipation with
 \code{chemistry\_riemann\_compute\_alpha} (\code{chemistry\_riemann\_utils.h}),
@@ -1153,7 +1155,7 @@ signal $\alpha$ does not already see: something that depends on the
 actual local state, not just on scheme parameters.
 \end{remark}
 
-\subsection{Flux Memory}
+\subsubsection{Flux Memory}
 \label{sec:limiter-flux-memory}
 In the parabolic scheme, comparing dissipation against $\Kmat\grad\driver$
 is exactly right because the flux \emph{is} $\Kmat\grad\driver$
@@ -1195,7 +1197,7 @@ starting point, not a derived result: Hopkins' own $r_{\rm term}$ is
 similarly an empirically-tuned saturating function, not a first-principles
 one.
 
-\section{The Half-Timestep Predictor}
+\subsection{The Half-Timestep Predictor}
 \label{sec:predictor}
 
 \code{chemistry\_gradients\_predict} (\code{hyperbolic/chemistry\_gradients.h:161--281})
@@ -1325,9 +1327,9 @@ consistent with the exact solution of the locally-available (cell-centred
 $\Fdiff_{\rm parabolic}$) relaxation problem.
 
 
-\part{Exact Solutions for Validation}
+\section{Exact Solutions for Validation}
 
-\section{Exact Solutions of the Cattaneo Equation}
+\subsection{Exact Solutions of the Cattaneo Equation}
 \label{sec:exact-solutions}
 
 The scheme is validated against closed-form solutions of the equation it
@@ -1341,7 +1343,7 @@ metal-density spike with \emph{zero} initial flux,
 $U_0(\mathbf x,0)=q_0\delta^d(\mathbf x)$, $\Fdiff(\mathbf x,0)=0$), and
 $a\equiv1/(2\taurelax)$, $s\equiv\sqrt{t^2-r^2/\chyp^2}$.
 
-\subsection{One Dimension}
+\subsubsection{One Dimension}
 \label{sec:exact-1d}
 
 In 1D the solution has two pieces: a ballistic front carrying a finite
@@ -1365,7 +1367,7 @@ $97.5\%$ of the metal at $t=0.5$ and $77.9\%$ at $t=5$: for most of the
 parameter range of interest the exact solution is dominated by a pair of
 travelling spikes, not by the smooth interior.
 
-\subsection{Three Dimensions}
+\subsubsection{Three Dimensions}
 \label{sec:exact-3d}
 
 The 3D case is \emph{not} obtained by reusing Eq.~\eqref{eq:exact-green}.
@@ -1434,7 +1436,7 @@ numerically inverting the Laplace-domain solution: Bromwich-type
 quadrature rings at the front, and the closed form is both exact and
 cheaper.
 
-\subsection{Comparing Against a Simulated Profile}
+\subsubsection{Comparing Against a Simulated Profile}
 \label{sec:exact-comparison}
 
 Two practical consequences follow, both easy to get wrong.
