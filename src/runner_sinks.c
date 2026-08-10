@@ -294,32 +294,6 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
   if (cell_is_active_sinks(ci, e)) runner_do_sinks_gas_swallow(r, cj, timer);
 }
 
-#ifdef SWIFT_DEBUG_CHECKS
-/**
- * @brief Count sinks in a cell's subtree flagged for a pending merger.
- *
- * A cell's sinks.parts/sinks.count already spans its whole subtree as a
- * contiguous sub-range of the space-wide sink array (see
- * cell_split.c:cell_split(), which sets each progeny's sinks.parts to a
- * sub-range of the parent's), so a flat loop over this cell alone is
- * enough -- no recursion into progeny is required.
- *
- * @param c The #cell (split or leaf).
- * @param e The #engine.
- * @return The number of non-inhibited sinks with a pending swallow_id.
- */
-static int runner_sinks_count_pending_merges(struct cell *c,
-                                             const struct engine *e) {
-  int n_pending = 0;
-  for (int k = 0; k < c->sinks.count; k++) {
-    struct sink *sp = &c->sinks.parts[k];
-    if (sink_is_inhibited(sp, e)) continue;
-    if (sink_get_sink_swallow_id(&sp->merger_data) != -1) n_pending++;
-  }
-  return n_pending;
-}
-#endif
-
 /**
  * @brief Process all the sink particles in a cell that have been flagged for
  * swallowing by a sink.
@@ -356,17 +330,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
    * the only ones that could have sink particles that have been flagged
    * for swallowing) */
   if (c->sinks.count == 0 || c->sinks.ti_old_part != e->ti_current) {
-#ifdef SWIFT_DEBUG_CHECKS
-    const int n_pending = runner_sinks_count_pending_merges(c, e);
-    if (n_pending > 0)
-      message(
-          "DISPATCH PROBE A: runner_do_sinks_sink_swallow early-returns on "
-          "cellID=%lld depth=%d nodeID=%d sinks.count=%d ti_old_part=%lld "
-          "ti_current=%lld is_hydro_super=%d n_pending_marked=%d",
-          c->cellID, c->depth, c->nodeID, c->sinks.count,
-          (long long)c->sinks.ti_old_part, (long long)e->ti_current,
-          c == c->hydro.super, n_pending);
-#endif
     return;
   }
 
@@ -533,13 +496,6 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  const int n_pending = runner_sinks_count_pending_merges(c, r->e);
-  if (n_pending > 0)
-    message(
-        "DISPATCH PROBE B: runner_do_sinks_sink_swallow_self entered on "
-        "ci_cellID=%lld ci_nodeID=%d depth=%d step=%d n_pending_marked=%d",
-        c->cellID, c->nodeID, c->depth, r->e->step, n_pending);
-
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
   if (!cell_is_active_sinks(c, r->e) && !cell_is_active_hydro(c, r->e))
     error("Running self task on inactive cell");
@@ -565,50 +521,8 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  const int ci_pending = runner_sinks_count_pending_merges(ci, e);
-  const int cj_pending = runner_sinks_count_pending_merges(cj, e);
-  if (ci_pending > 0 || cj_pending > 0)
-    message(
-        "DISPATCH PROBE B: runner_do_sinks_sink_swallow_pair entered on "
-        "ci_cellID=%lld ci_nodeID=%d cj_cellID=%lld cj_nodeID=%d depth=%d "
-        "step=%d ci_pending_marked=%d cj_pending_marked=%d",
-        ci->cellID, ci->nodeID, cj->cellID, cj->nodeID, ci->depth, e->step,
-        ci_pending, cj_pending);
-
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
     error("Running pair task on foreign node");
-
-  /* cell_unskip.c activates this task on cell_is_active_sinks(x) ||
-   * cell_is_active_hydro(x), but we only process a side when the
-   * neighbour is cell_is_active_sinks -- if a side is hydro-active but
-   * not sinks-active, the task runs yet silently skips that side's
-   * flagged sinks. Flag the exact scenario when it happens. */
-  if ((ci->sinks.count > 0 || cj->sinks.count > 0) &&
-      !cell_is_active_sinks(ci, e) && !cell_is_active_sinks(cj, e) &&
-      (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e))) {
-    message(
-        "UNSKIP/RUNTIME MISMATCH: do_sink_swallow pair ci_cellID=%lld "
-        "cj_cellID=%lld ran but neither side is sinks-active (only "
-        "hydro-active) -- ci.active_hydro=%d cj.active_hydro=%d "
-        "ci.sinks.count=%d cj.sinks.count=%d",
-        ci->cellID, cj->cellID, cell_is_active_hydro(ci, e),
-        cell_is_active_hydro(cj, e), ci->sinks.count, cj->sinks.count);
-  }
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Race probe: compare this foreign cell's cached activity read against its
-   * read at the marking gate in DOPAIR1_BRANCH_SINKS. */
-  const int cj_active_probe = cell_is_active_sinks(cj, e);
-  const int ci_active_probe = cell_is_active_sinks(ci, e);
-  if (cj->nodeID != e->nodeID && cj->sinks.count > 0)
-    message(
-        "RESOLVE_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
-        cj->cellID, cj->sinks.ti_end_min, cj_active_probe, e->step);
-  if (ci->nodeID != e->nodeID && ci->sinks.count > 0)
-    message(
-        "RESOLVE_GATE foreign_cellID=%lld ti_end_min=%lld active=%d step=%d",
-        ci->cellID, ci->sinks.ti_end_min, ci_active_probe, e->step);
 #endif
 
   /* Run the swallowing loop only in the cell that is the neighbour of the
