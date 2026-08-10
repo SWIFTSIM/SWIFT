@@ -138,21 +138,6 @@ __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
 }
 
 /**
- * @brief Seed value for the stars.h_hii_max cell tracker.
- *
- * Nothing to do here for the no-feedback model -- passes the true h_hii
- * through unseeded (always 0 for this model).
- *
- * @param sp The #spart to query.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_star_h_hii_max_seed(const struct spart *sp,
-                                 const struct engine *e) {
-  return sp->h_hii;
-}
-
-/**
  * @brief Returns the length of time since the particle last did
  * enrichment/feedback.
  *

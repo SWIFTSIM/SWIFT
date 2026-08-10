@@ -102,21 +102,6 @@ __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
 }
 
 /**
- * @brief Seed value for the stars.h_hii_max cell tracker.
- *
- * This model does not implement HII photoionization feedback -- passes the
- * true (always 0) h_hii through unseeded.
- *
- * @param sp The #spart to query.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static float
-feedback_get_star_h_hii_max_seed(const struct spart *sp,
-                                 const struct engine *e) {
-  return sp->h_hii;
-}
-
-/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon

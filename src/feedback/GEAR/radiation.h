@@ -83,15 +83,6 @@ double radiation_get_case_b_recombination_coefficient_cgs(const double T);
 
 double radiation_get_T_collisional_K(const double Z);
 
-double radiation_get_stromgren_radius_estimate(
-    const struct spart *sp, const struct phys_const *phys_const,
-    const struct unit_system *us, const struct cooling_function_data *cooling);
-
-float radiation_get_h_hii_max_seed(const struct spart *sp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   const struct cooling_function_data *cooling);
-
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
                                    long long star_id, double end_time,
                                    float excess_photon_energy_HI,
