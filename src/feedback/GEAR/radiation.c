@@ -319,28 +319,39 @@ radiation_get_part_rate_to_fully_ionize(
 
 /**
  * Estimate a #spart's Strömgren radius from its current ionizing photon
- * rate and birth density: R_S = (3 Q / (4 pi alpha_B n_H^2))^(1/3). Used
- * only to seed the split-gate/rebuild-criterion h_hii_max tracker ahead of
- * a young star's actual growth (radiation_get_h_hii_max_seed()) -- never
- * fed into the real search radius, photon budget, or tagging.
+ * rate and local gas density: R_S = (3 Q / (4 pi alpha_B n_H^2))^(1/3).
+ * Used only to seed the split-gate/rebuild-criterion h_hii_max tracker
+ * ahead of a young star's actual growth (radiation_get_h_hii_max_seed())
+ * -- never fed into the real search radius, photon budget, or tagging.
  *
  * Q is read back from dot_N_ion_pix, the same per-pixel rate the photon
  * budget itself is built from, so it is 0 until the star's first pre-SN
  * feedback pass has set it (harmless: the seed then simply has no effect
  * until that point, same as a freshly spawned star's own h_hii = 0).
- * n_H uses the star's birth density (already stored for every GEAR star,
- * star or sink-spawned) and its own metallicity as a proxy for the natal
- * gas composition, since no specific gas particle is available yet. alpha_B
- * is evaluated at radiation_get_T_collisional_K(Z), the same
- * metallicity-only equilibrium temperature radiation_get_part_ionized_
- * internal_energy() uses, for consistency with the real ionization physics.
+ * n_H uses enrichment_weight, the star's SPH-averaged local gas density
+ * from the same feedback density loop
+ * (radiation_get_comoving_gas_column_density_at_star() uses the identical
+ * field) -- NOT sf_data.birth_density, which is only ever set for a star
+ * formed during the run (star_formation_copy_properties(),
+ * sink_copy_properties_to_star()) and stays 0 forever for one placed
+ * directly in the initial conditions, silently disabling this whole
+ * estimate for exactly the single_star StromgrenSphere validation target.
+ * enrichment_weight is populated from the star's first feedback pass
+ * onward regardless of how it was created. Comoving, not physical -- inert
+ * at a=1 (every GEAR radiation example so far); converting via cosmo->a3_inv
+ * is future work for a cosmological run. The star's own metallicity stands
+ * in for the natal gas composition, since no specific gas particle is
+ * available yet. alpha_B is evaluated at radiation_get_T_collisional_K(Z),
+ * the same metallicity-only equilibrium temperature radiation_get_part_
+ * ionized_internal_energy() uses, for consistency with the real ionization
+ * physics.
  *
  * @param sp The star.
  * @param phys_const Physical constants.
  * @param us The internal unit system.
  * @param cooling The #cooling_function_data used in the run.
  * @return Estimated Strömgren radius (physical, internal length units), or
- * 0 if the star has no ionizing rate or birth density recorded yet.
+ * 0 if the star has no ionizing rate or local gas density recorded yet.
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_stromgren_radius_estimate(
@@ -351,13 +362,13 @@ radiation_get_stromgren_radius_estimate(
   for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++)
     Q_total += sp->feedback_data.radiation.dot_N_ion_pix[p];
 
-  const double birth_density = sp->sf_data.birth_density;
-  if (Q_total <= 0. || birth_density <= 0.) return 0.;
+  const double rho_gas = sp->feedback_data.enrichment_weight;
+  if (Q_total <= 0. || rho_gas <= 0.) return 0.;
 
   const double Z =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const double X_H = max(cooling->HydrogenFractionByMass - Z, 0.);
-  const double n_H = (X_H * birth_density) / phys_const->const_proton_mass;
+  const double n_H = (X_H * rho_gas) / phys_const->const_proton_mass;
   if (n_H <= 0.) return 0.;
 
   const double T_ionized_K = radiation_get_T_collisional_K(Z);
