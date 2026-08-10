@@ -2935,11 +2935,25 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
-      if (ci_active) {
-        scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
-      }
-      if (cj_active) {
-        scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
+      /* Mirror sink_in/sink_out: gate on pair activity, not per-side, or an
+       * inactive side's ghosts silently sever ordering. */
+      if (ci_active || cj_active) {
+        if (ci_nodeID == nodeID) {
+          if (ci->hydro.super->sinks.density_ghost != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.density_ghost);
+          if (ci->hydro.super->sinks.sink_ghost1 != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
+          if (ci->hydro.super->sinks.sink_ghost2 != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_ghost2);
+        }
+        if (cj_nodeID == nodeID) {
+          if (cj->hydro.super->sinks.density_ghost != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.density_ghost);
+          if (cj->hydro.super->sinks.sink_ghost1 != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
+          if (cj->hydro.super->sinks.sink_ghost2 != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_ghost2);
+        }
       }
 
 #ifdef WITH_MPI
