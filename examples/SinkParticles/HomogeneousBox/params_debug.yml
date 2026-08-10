@@ -141,6 +141,7 @@ GEARPressureFloor:
   jeans_factor: 10
 
 Stars:
+  HII_max_search_radius: 0.1  # Max HII search radius (internal units).
   timestep_age_threshold_unlimited_Myr: 30.            # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
   timestep_age_threshold_Myr:           10.            # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               1              # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.

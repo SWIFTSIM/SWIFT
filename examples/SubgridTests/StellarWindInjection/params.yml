@@ -68,6 +68,7 @@ GEARFeedback:
   HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
 
 Stars:
+  HII_max_search_radius: 0.05  # Max HII search radius (internal units). Inert here: with_photoionization is off; the parameter is mandatory for GEAR stars.
   timestep_age_threshold_unlimited_Myr: 1000.      # (Optional) Age above which stars have no time-step restriction any more (in Mega-years). Defaults to 0.
   timestep_age_threshold_Myr:           3.0        # (Optional) Age at which stars switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               0.1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.

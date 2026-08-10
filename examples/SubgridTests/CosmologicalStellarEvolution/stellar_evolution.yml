@@ -40,6 +40,7 @@ SPH:
 
 # Properties of the stars
 Stars:
+  HII_max_search_radius: 1e-4  # Max HII search radius (internal units). Inert here: with_photoionization is off; the parameter is mandatory for GEAR stars.
   overwrite_birth_time: 1
   birth_time:           0.00991   # Give the star in the ICs a decent birth time
   luminosity_filename:   ./photometry

@@ -65,6 +65,7 @@ EAGLEChemistry:
   init_abundance_Iron:         0. #0.       1.1032152e-3 # Mass fraction in Iron
 
 Stars:
+  HII_max_search_radius: 0.05  # Max HII search radius (internal units). Inert here: with_photoionization is off; the parameter is mandatory for GEAR stars.
   overwrite_birth_time:        0
   overwrite_birth_density:     0
   overwrite_birth_temperature: 0
