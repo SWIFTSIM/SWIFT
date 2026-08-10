@@ -76,7 +76,8 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 0
-  maximal_density_Hpcm3: 1e4            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  maximal_density_Hpcm3: 1e4            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates
+                                        # this parameter.
 
 GEARChemistry:
   initial_metallicity: 0
@@ -95,7 +96,8 @@ GEARFeedback:
   # Radiation
   with_photoelectric_heating:    0              # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere.
   with_photoionization:          1              # Whether to run with the subgrid photoionization model to mimick Strömgren sphere.
-  HII_min_density_Hpcm3: 0.01             # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The Default:1 value is tuned to exclude diffuse, non-HI-bound gas in cosmological runs; this idealized single-cloud test evacuates its own ionized region down to ~0.1-1 H/cm^3, which self-quenches the region against that default.
+  HII_min_density_Hpcm3: 0.01             # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The Default:1 value is tuned to exclude diffuse, non-HI-bound gas in cosmological runs; this idealized single-cloud
+                                          # test evacuates its own ionized region down to ~0.1-1 H/cm^3, which self-quenches the region against that default.
   radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   HII_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5            # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
@@ -111,4 +113,5 @@ Stars:
   max_timestep_young_Myr:               0.5     # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
   HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
-  HII_max_retry_full_buffer: 30                 # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)
+  HII_max_retry_full_buffer: 30                 # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold
+                                                # several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)
