@@ -225,7 +225,7 @@ below zero to control noise amplification (Section~\ref{sec:gradients}).
 \label{sec:diffusion-tensor}
 The single global input parameter \code{chem\_data->diffusion\_coefficient}
 (denoted $\kappaC$ below) is re-used with three distinct physical
-meanings depending on the diffusion mode -- a deliberate but easily
+meanings depending on the diffusion mode, a deliberate but easily
 mis-read overload that is documented explicitly here. The struct comment
 at \code{parabolic/chemistry\_struct.h} notes the resulting unit
 change: in \code{isotropic\_constant} mode $\kappaC$ is a true diffusivity
@@ -712,7 +712,7 @@ Section~\ref{sec:unphysical}).
 \subsection{Wave-Speed Estimation}
 The Riemann solver used here (\code{chemistry\_riemann\_solver\_hopkins2017\_HLL},
 \code{parabolic/chemistry\_riemann\_HLL.h}) is explicitly noted in
-the source as valid \emph{for parabolic diffusion only} -- it degrades
+the source as valid \emph{for parabolic diffusion only}: it degrades
 for the hyperbolic system when the relaxation time is large. Its wave
 speeds are not diffusion signal speeds but ordinary \emph{hydrodynamic}
 speeds evaluated at the interface: with $u_L, u_R$ the particle
@@ -800,7 +800,7 @@ flux scale ($v_{\rm HLL}\,\driver^\star/|\mathbf{dx}_{ij}|$, after
 clearing the $|\mathbf{dx}_{ij}|$ factor) against the physical diffusive
 flux scale ($\norm{\Kstar}_F\,U^\star/|\mathbf{dx}_{ij}|^2$, similarly
 normalised): $r_{\rm term}\to 1$ when $r\gg1$ (numerical transport
-dominates -- little artificial diffusivity is needed to stabilise it) and
+dominates: little artificial diffusivity is needed to stabilise it) and
 $r_{\rm term}\to 5r$ as $r\to0$ (numerical transport is weak compared to
 the physical diffusivity, so the HLL dissipation term is allowed through
 more strongly to avoid an under-diffusive, oscillatory update).
@@ -872,7 +872,7 @@ symmetric (particle order-independent) guards:
 \begin{enumerate}
   \item \textbf{Source constraint.} Let $m_{Z}^{\rm src}$ be the current
         metal mass of whichever particle is donating mass (determined
-        by $\mathrm{sign}(\Delta m)$, not by particle index -- this is
+        by $\mathrm{sign}(\Delta m)$, not by particle index; this is
         what makes the limiter symmetric under $i\leftrightarrow j$). If
         $m_Z^{\rm src}\le 0$, the flux is annihilated: a particle cannot
         export metal mass it does not have.
@@ -894,16 +894,41 @@ symmetric (particle order-independent) guards:
           m_{\rm eff} = \min\!\Big(\min(m_Z^{\rm src}, C),\ \
           \frac{\max\!\big(0.25\, m_Z^{\rm sink},\ 0.1\, m_Z^{\rm src}\big)}{0.5}\Big) ,
         \end{equation}
-        combining the source/capacity bound with a
+        combining the source/capacity bound with the larger, via
+        $\max(\cdot,\cdot)$, of two further bounds: a
         \emph{sink-stability} bound $0.25\, m_Z^{\rm sink}$
         (\code{GEAR\_FVPM\_DIFF\_LIMITER\_SINK\_STABILITY}: no single
         pairwise interaction may change the sink's metal mass by more
         than $25\%$, preventing oscillatory "neighbour flooding") and a
         \emph{startup} floor $0.1\, m_Z^{\rm src}$
-        (\code{GEAR\_FVPM\_DIFF\_LIMITER\_STARTUP}: without this floor,
-        $m_Z^{\rm sink}=0$ pristine gas would have a zero stability
-        bound and could never be enriched, stalling the diffusion
-        front). The safety scale $0.5$
+        (\code{GEAR\_FVPM\_DIFF\_LIMITER\_STARTUP}).
+
+        The startup floor exists because the sink-stability bound is
+        proportional to $m_Z^{\rm sink}$ itself, so for pristine gas
+        ($m_Z^{\rm sink}=0$) that bound is exactly zero. Without the
+        $\max$, a zero bound zeroes the flux into that particle on
+        every interaction; since a zeroed flux leaves $m_Z^{\rm sink}$
+        at zero, this is a fixed point, a particle caught at
+        $m_Z^{\rm sink}=0$ could never receive metal at all, stalling
+        the diffusion front permanently at the edge of every enriched
+        region rather than merely slowing it down. The startup floor
+        breaks this deadlock by capping the sink-stability term from
+        below at a fraction of the \emph{source's} mass instead,
+        independent of how little the sink currently holds.
+
+        Because the two bounds are combined with $\max$, the startup
+        floor is the one actually governing the limit exactly while
+        $m_Z^{\rm sink} < (0.1/0.25)\,m_Z^{\rm src} = 0.4\,
+        m_Z^{\rm src}$, i.e.\ while the sink remains under-enriched
+        relative to this particular neighbour; past that ratio the
+        ordinary sink-stability bound takes over on its own, with no
+        explicit switch. The startup floor is therefore a
+        \emph{bootstrap} mechanism, active only at the leading edge of
+        an enrichment front, not a persistent scale parameter, and it
+        never relaxes the source/capacity bound $\min(m_Z^{\rm src},
+        C)$ outside the $\max(\cdot,\cdot)$: however large it is set,
+        it cannot enrich a sink beyond what the source actually has
+        available. The safety scale $0.5$
         (\code{GEAR\_FVPM\_DIFF\_LIMITER\_SAFETY}) leaves headroom below the
         hard constraints. The flux is then attenuated smoothly rather
         than hard-clipped,
@@ -1127,33 +1152,43 @@ In addition to this three-site dispatcher:
 \section{Timestep Stability Criteria}
 \label{sec:timestep}
 
-\subsection{GIZMO Particle Size}
-The characteristic length entering every CFL estimate is the physical
-GIZMO particle size,
+\subsection{Characteristic Particle Size: GIZMO and Lanson \& Vila Definitions}
+The characteristic length entering every CFL estimate is a particle's
+own resolution scale $\dx$, computed one of two ways depending on a
+compile-time switch; both describe the same physical scale, so the
+choice is one of numerical convenience, not physics (see
+\textbf{Equivalence} below).
+
+\textbf{GIZMO definition (default).} The physical GIZMO particle size,
 \begin{equation}
   \dx = a \left(\frac{V_i}{\Omega_d}\right)^{1/d} ,
 \end{equation}
-$\Omega_d$ the volume of the $d$-dimensional unit sphere
-(\code{chemistry\_get\_physical\_particle\_size}, \code{chemistry\_timesteps.h}
--- the same getter the hyperbolic solver's causal bound uses, so the CFL
-length and the bound's length scale cannot drift apart); optionally, under
-\code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE}, the Lanson \& Vila (2008)
-alternative $\dx = a/(2\,\overline{\delta x^{-1}})$ is used instead,
-built from the same face-area accumulator as
-Eq.~\eqref{eq:face_area}.
+with $\Omega_d$ the volume of the $d$-dimensional unit sphere
+(\code{chemistry\_get\_physical\_particle\_size}, \code{chemistry\_timesteps.h}).
+This is the same getter the hyperbolic solver's causal bound uses, so
+the CFL length and the causal bound's length scale cannot drift apart.
 
-Their eq.~(58) defines $\dx_i = 1/(2\sum_l w_l\|A_{il}\|)$ with $w_l$ the
-neighbour's \emph{volume}, evaluated here as $\sum_l\|A_{il}\|/V_l$; the
-kernel value $w_jh_j^{-d}$ is dimensionally interchangeable with $1/V_l$
-but smaller by a factor of order the neighbour count, and using it in that
-place inflates $\dx_i$ by the same factor. The authors note below eq.~(58)
-that $\sum_l w_l\|A_{il}\| = O(1/\epsilon_0)$, with $\epsilon_0$ the
+\textbf{Lanson \& Vila definition (alternative).} Under
+\code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE}, $\dx = a\,\delta x_i$ is
+used instead, with $\delta x_i$ built from the same face-area
+accumulator as Eq.~\eqref{eq:face_area}. Their eq.~(58) defines
+$\delta x_i = 1/(2\sum_l w_l\|A_{il}\|)$ with $w_l$ the neighbour's
+\emph{volume}, evaluated here as $\sum_l\|A_{il}\|/V_l$; the kernel
+value $w_jh_j^{-d}$ is dimensionally interchangeable with $1/V_l$ but
+smaller by a factor of order the neighbour count, and using it in that
+place would inflate $\delta x_i$ by the same factor.
+
+\textbf{Equivalence.} The authors note below eq.~(58) that
+$\sum_l w_l\|A_{il}\| = O(1/\epsilon_0)$, with $\epsilon_0$ the
 smoothing length, so the two definitions describe the same resolution
-scale and differ only by an $O(1)$ constant. Switching between them at a
-fixed $\CCFL$ therefore buys nothing by itself: the constant is what a
-Courant number absorbs, so the admissible $\CCFL$ has to be re-derived for
-whichever length is in use, from Lanson \& Vila's own operator-based
-stability condition (their eq.~62) rather than carried over.
+scale and differ only by an $O(1)$ constant.
+
+\textbf{Consequence for $\CCFL$.} Switching between them at a fixed
+$\CCFL$ therefore buys nothing by itself: the constant is what a
+Courant number absorbs, so the admissible $\CCFL$ has to be re-derived
+for whichever length is in use, from Lanson \& Vila's own
+operator-based stability condition (their eq.~62) rather than carried
+over.
 
 \subsection{Mode-Dependent CFL Conditions}
 \label{sec:cfl-modes}
@@ -1207,15 +1242,15 @@ with a locally steep metallicity gradient
 $E \to \norm{\driver}/\norm{\grad\driver}$, the gradient's own local
 scale length, which can be much shorter than $\dx$; the timestep
 constraint then becomes correspondingly \emph{tighter} than the naive
-particle-size estimate. This is intentional and physically necessary --
+particle-size estimate. This is intentional and physically necessary:
 diffusion locally erases steep features fastest exactly where they are
-steep -- but the code comment at \code{chemistry\_timesteps.h}
+steep, but the code comment at \code{chemistry\_timesteps.h}
 notes explicitly that it is expensive in practice: strong feedback-driven
 enrichment gradients can drive this term to very small values and
 "slow down everything." For that reason the Smagorinsky mode
 deliberately \emph{does not} use the bracket of
 Eq.~\eqref{eq:E-bracket}, substituting the plain particle size $\dx$
-instead (\code{chemistry\_timesteps.h}) -- a pragmatic,
+instead (\code{chemistry\_timesteps.h}), a pragmatic,
 non-rigorous compromise flagged as such directly in the source, adopted
 because the physically correct bound was found to be prohibitively
 restrictive for that closure in practice.
@@ -1237,34 +1272,6 @@ hyperbolic solver's own physics (relaxation-time model, blending
 factor between its HLL flux and the parabolic flux of
 Eq.~\eqref{eq:flux_hll}) is documented separately and is not repeated
 here.
-
-\section{Boundary Conditions and Special Cases}
-
-\subsection{No Explicit Boundary Treatment}
-The module implements \emph{no} boundary-condition logic of its own --
-no reflective, inflow/outflow, or fixed-concentration boundary is coded
-anywhere in \code{GEAR\_FVPM\_DIFFUSION}. Periodicity, where enabled, is
-resolved upstream by the SWIFT domain/tree infrastructure: the distance
-vector $\mathbf{dx}_{ij}$ passed into every gradient and flux routine
-documented above is already the minimum-image (periodicity-corrected)
-separation by the time it reaches this module (see e.g.\ the comment at
-\code{chemistry\_gradients.h}, "\emph{Do it this way in case dx
-contains periodicity corrections already}"). For non-periodic domains,
-no special treatment of domain edges is applied beyond the generic
-neighbour-search behaviour of the host code.
-
-\subsection{Isolated Particles}
-The only edge case handled explicitly is a particle with zero
-neighbours, for which \code{chemistry\_end\_density} is never called (so
-the filtered fields would otherwise remain uninitialised).
-\code{chemistry\_part\_has\_no\_neighbours} (\code{chemistry.h-...})
-instead sets sane fallback values: the filtered density is set equal to
-the particle's own local density and the filtered momentum to
-$\bar\rho\,\mathbf v$, i.e.\ the particle is treated as its own,
-unfiltered neighbourhood. Since $\Splus$ built from a single-particle
-"gradient" is identically zero, such a particle contributes no
-anisotropic diffusion until it acquires neighbours; the isotropic modes
-are unaffected since $\kappaC$ does not depend on the shear tensor.
 
 \section{Validation and Verification}
 
@@ -1308,43 +1315,6 @@ Eq.~\eqref{eq:dt_const}.
         positive-eigenvalue directions of $\Splus$
         (Proposition~\ref{prop:psd}), not merely isotropic.
 \end{itemize}
-
-\section{Conclusion}
-
-\subsection{Summary}
-The parabolic branch of GEAR's FVPM chemistry module solves one of three
-distinct diffusion PDEs (Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso})
-depending on the chosen closure, using a meshless least-squares gradient
-estimator shared with the host MFM hydrodynamics solver, a two-stage
-(cell- then face-wise) slope limiter tuned to avoid corrupting the
-driver gradients that define the PDE itself, a Hopkins (2017)
-minmod-blended HLL Riemann solver with an artificial-diffusivity cap and
-an independent sign-consistency guard, and a physically-motivated,
-smoothly-saturating flux limiter that enforces mass conservation bounds
-without a hard discontinuity. Mode-dependent CFL conditions, several
-layers of unphysical-state detection, and an unconditional final
-positivity clamp round out the scheme's robustness.
-
-\subsection{Limitations}
-The explicit time integration ties the diffusion timestep to
-Eq.~\eqref{eq:dt_const} or~\eqref{eq:dt_aniso}, which can become
-severely restrictive in regions of high resolution or strong turbulence
-(as the code's own comments acknowledge for the anisotropic bracket of
-Eq.~\eqref{eq:E-bracket}). The Smagorinsky-mode timestep
-(Section~\ref{sec:cfl-modes}) is a known, explicitly-flagged compromise
-rather than a rigorous bound. The sign-consistency guard of
-Section~\ref{sec:anti-diffusion-guard} can locally stall diffusion for a
-sub-step whenever the HLL and direct flux estimates disagree, which is a
-robustness trade-off rather than a formally analysed limiter property.
-
-\subsection{Relation to the Wider Module}
-This document deliberately excludes the hyperbolic (Cattaneo-relaxation)
-formulation available under
-\code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION}
-(Section~\ref{sec:hyperbolic-relation}); readers needing that solver's
-four-component Riemann problem, relaxation-time model, and
-parabolic/hyperbolic flux-blending factor should consult its own
-documentation.
 
 \appendix
 
@@ -1464,7 +1434,7 @@ $\rho$ & \code{hydro\_get\_physical\_density(p)} & Physical gas density \\
 $\Zfrac$ & \code{chemistry\_get\_metal\_mass\_fraction} & Metal mass fraction \\
 $\rhoZ$ & \code{chemistry\_get\_physical\_metal\_density} & Physical metal mass density \\
 $m_Z$ & \code{p->chemistry\_data.metal\_mass[m]} & Conserved metal mass \\
-$\driver$ & -- (selected by mode) & Diffusion driver: $\rhoZ$ or $\Zfrac$ \\
+$\driver$ & n/a (selected by mode) & Diffusion driver: $\rhoZ$ or $\Zfrac$ \\
 $\kappaC$ & \code{chem\_data->diffusion\_coefficient} & Global diffusion normalisation \\
 $\kappaP$ & \code{p->chemistry\_data.kappa} & Per-particle diffusion coefficient \\
 $\Kmat$ & \code{chemistry\_get\_physical\_matrix\_K} & Diffusion tensor \\
