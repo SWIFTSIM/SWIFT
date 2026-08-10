@@ -1,0 +1,170 @@
+% theory/ParabolicDiffusion/appendices.tex
+% Shared appendices (mathematical derivations, nomenclature) for both
+% the parabolic and hyperbolic parts. Input from
+% GEAR_FVPM_Diffusion_Theory.tex (the master document); not standalone.
+
+\section{Mathematical Derivations}
+
+\subsection{Proof of Proposition~\ref{prop:gradient-consistency} (Linear Consistency of the Gradient Estimator)}
+\label{app:gradient-consistency-proof}
+For the assumed linear field, $Q_i - Q_j = \mathbf G\cdot(\mathbf x_i -
+\mathbf x_j) = \mathbf G \cdot \mathbf{dx}_{ij}$. Substituting into
+Eq.~\eqref{eq:gradient_estimator},
+\begin{equation}
+  (\grad Q)_i = \sum_j (\mathbf G\cdot\mathbf{dx}_{ij})\, W_{ij}\, \mathbf B_i \cdot \mathbf{dx}_{ij}
+  = \mathbf B_i \left(\sum_j W_{ij}\, \mathbf{dx}_{ij}\otimes\mathbf{dx}_{ij}\right) \mathbf G ,
+\end{equation}
+using the identity $(\mathbf a\cdot\mathbf u)(\mathbf M\mathbf u) =
+\mathbf M(\mathbf u\otimes\mathbf u)\mathbf a$ for a vector $\mathbf a$,
+matrix $\mathbf M$ and vector $\mathbf u$, applied with $\mathbf a =
+\mathbf G$, $\mathbf u=\mathbf{dx}_{ij}$ componentwise, and factoring
+$\mathbf B_i$ (constant over the sum) out to the left. The sum in
+parentheses is exactly $\mathbf E_i$ of Eq.~\eqref{eq:E_matrix_def}: the
+gradient estimator (Eq.~\eqref{eq:gradient_estimator}) and the moment
+matrix are built from the identical per-neighbour weight $W_{ij}$, so no
+further correction factor is needed. Hence
+$(\grad Q)_i = \mathbf B_i\, \mathbf E_i\, \mathbf G = \mathbf E_i^{-1}\mathbf E_i\, \mathbf G = \mathbf G$,
+since $\mathbf B_i \equiv \mathbf E_i^{-1}$ by definition.
+
+\subsection{From Conservation and Fick's Law to the Parabolic Equation}
+\label{app:derivation-pde}
+Starting from the conservation law for a generic scalar density
+$\rho Q$ advected with the flow and subject to a diffusive current
+$\Fdiff$,
+\begin{equation}
+  \pdv{(\rho Q)}{t} + \div(\rho Q\,\mathbf v) = -\div\Fdiff ,
+\end{equation}
+the Lagrangian (particle-following) derivative satisfies
+$\dv{}{t}(\rho Q) \equiv \pdv{(\rho Q)}{t} + \div(\rho Q\,\mathbf v) - \rho Q\,\div\mathbf v$
+only up to the usual continuity-equation bookkeeping; in the FVPM
+formalism this is sidestepped entirely because the conserved variable is
+carried \emph{by} the moving, mass-conserving particle rather than
+evolved on a fixed grid, so the advective flux never needs to be
+discretised for a passive scalar: only the diffusive part remains to be
+integrated,
+\begin{equation}
+  \pdv{(\rho Q)}{t}\bigg|_{\rm particle} = -\div\Fdiff .
+\end{equation}
+Substituting the tensorial Fick's law $\Fdiff = -\Kmat\cdot\grad q$
+(Eq.~\eqref{eq:ficks_law}) gives the general parabolic equation
+\begin{equation}
+  \pdv{(\rho Q)}{t} = \div\big(\Kmat\cdot\grad q\big) ,
+\end{equation}
+which specialises to Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso}
+according to whether $q=\rho Q$ or $q=Q$ and whether $\Kmat$ is a scalar
+multiple of the identity or the full anisotropic tensor $\kappaP\Splus$.
+
+\subsection{Von Neumann Stability of the Explicit Parabolic Update}
+\label{app:von-neumann}
+Consider the 1D, constant-coefficient model problem
+$\partial_t u = \kappaC\,\partial_x^2 u$ discretised with forward Euler
+in time and central differences in space on a uniform grid of spacing
+$\dx$ (the FVPM scheme reduces to this discretisation locally, in a
+region of uniform particle spacing and constant $\Kmat=\kappaC\mathbf I$,
+which is precisely the regime the code's
+Eq.~\eqref{eq:dt_const} targets):
+\begin{equation}
+  \frac{u_i^{n+1}-u_i^n}{\dt} = \kappaC\,\frac{u_{i+1}^n - 2u_i^n + u_{i-1}^n}{\dx^2} .
+\end{equation}
+\begin{proposition}[Parabolic CFL bound]
+The scheme above is Von Neumann stable if and only if
+$\dt \le \dfrac{\dx^2}{2\kappaC}$.
+\end{proposition}
+\begin{proof}
+Insert a Fourier mode $u_i^n = \hat u^n e^{\mathrm i k x_i}$, $x_i = i\,\dx$:
+\begin{equation}
+  \hat u^{n+1} = \hat u^n\Big[1 + \frac{\kappaC\dt}{\dx^2}\big(e^{\mathrm i k\dx} - 2 + e^{-\mathrm i k\dx}\big)\Big]
+  = \hat u^n\Big[1 - \frac{4\kappaC\dt}{\dx^2}\sin^2\!\Big(\frac{k\dx}{2}\Big)\Big] ,
+\end{equation}
+using $e^{i\theta}+e^{-i\theta}-2 = -4\sin^2(\theta/2)$. The amplification
+factor is
+$G(k) = 1 - \dfrac{4\kappaC\dt}{\dx^2}\sin^2\!\big(\tfrac{k\dx}{2}\big) \in
+\Big[1-\dfrac{4\kappaC\dt}{\dx^2},\ 1\Big]$
+as $\sin^2(\cdot)$ ranges over $[0,1]$. Stability requires
+$|G(k)|\le 1$ for every admissible $k$; since $G(k)\le1$ always, the
+binding constraint is the lower bound,
+\begin{equation}
+  1 - \frac{4\kappaC\dt}{\dx^2} \ge -1
+  \quad\Longleftrightarrow\quad
+  \dt \le \frac{\dx^2}{2\kappaC} ,
+\end{equation}
+attained in the worst case $k\dx=\pi$ (the grid (particle)-scale
+Nyquist mode). This is both necessary (violating it makes $|G(\pi/\dx)|>1$,
+so that mode grows without bound under repeated application) and
+sufficient (it makes $|G(k)|\le1$ for every $k$, so no mode grows).
+\end{proof}
+The code's constant $\CCFL$ (\code{chem\_data->C\_CFL\_chemistry}) absorbs
+the factor of $1/2$ above together with an additional safety margin for
+the (nonlinear, multi-dimensional, variable-coefficient, explicitly
+minmod-limited) production scheme, for which the linear analysis above
+is necessary but not sufficient. In the anisotropic case, replacing
+$\kappaC \to \norm{\Kmat}_F$ in the bound is the standard generalisation
+used when the exact eigenvalue decomposition of $\Kmat$ is not tracked
+per-timestep for performance reasons: since
+$\norm{\Kmat}_F \ge \lambda_{\max}(\Kmat)$ for any symmetric PSD matrix
+(the Frobenius norm bounds the spectral radius from above), using
+$\norm{\Kmat}_F$ in place of the true largest eigenvalue in
+Eq.~\eqref{eq:dt_const}/\eqref{eq:dt_aniso} yields a \emph{more}
+restrictive (i.e.\ still stable, possibly conservative) timestep bound.
+
+\section{Nomenclature}
+
+\subsection{Symbol to Code-Identifier Map}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Symbol & Code identifier & Meaning \\
+\midrule
+$\rho$ & \code{hydro\_get\_physical\_density(p)} & Physical gas density \\
+$\Zfrac$ & \code{chemistry\_get\_metal\_mass\_fraction} & Metal mass fraction \\
+$\rhoZ$ & \code{chemistry\_get\_physical\_metal\_density} & Physical metal mass density \\
+$m_Z$ & \code{p->chemistry\_data.metal\_mass[m]} & Conserved metal mass \\
+$\driver$ & n/a (selected by mode) & Diffusion driver: $\rhoZ$ or $\Zfrac$ \\
+$\kappaC$ & \code{chem\_data->diffusion\_coefficient} & Global diffusion normalisation \\
+$\kappaP$ & \code{p->chemistry\_data.kappa} & Per-particle diffusion coefficient \\
+$\Kmat$ & \code{chemistry\_get\_physical\_matrix\_K} & Diffusion tensor \\
+$\Kstar$ & \code{chemistry\_riemann\_compute\_K\_star} & Interface-averaged diffusion tensor \\
+$\Shear$ & \code{chemistry\_get\_physical\_shear\_tensor} & Traceless velocity shear tensor \\
+$\Splus$ & \code{chemistry\_regularize\_shear\_tensor} & PSD-regularised shear tensor \\
+$\Fdiff$ & \code{chemistry\_get\_physical\_parabolic\_flux} & Diffusive flux \\
+$\gammak$ & \code{kernel\_gamma} & Kernel compact-support factor \\
+$\mathbf B_i$ & \code{p->geometry.matrix\_E} (already inverted) & Least-squares gradient matrix \\
+$V_i$ & \code{p->geometry.volume} & Particle effective volume \\
+$\mathbf A_{ij}$ & (local, \code{chemistry\_iact.h}) & Generalised interface area vector \\
+$\xij$ & (local, \code{chemistry\_iact.h}) & Interface position relative to $i$ \\
+$\psiHLL$ & \code{chem\_data->hll\_riemann\_solver\_psi} & HLL transport-term weight \\
+$\epsHLL$ & \code{chem\_data->hll\_riemann\_solver\_epsilon} & Direct-flux sign-consistency tolerance \\
+$\alpha$ & \code{chemistry\_riemann\_compute\_alpha} & Artificial diffusivity \\
+$\CCFL$ & \code{chem\_data->C\_CFL\_chemistry} & Chemistry CFL coefficient \\
+$\dx$ & (local, \code{chemistry\_timesteps.h}) & GIZMO physical particle size \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Hyperbolic (Part~\ref{part:hyperbolic}) only}} \\
+\midrule
+$\taurelax$ & \code{p->chemistry\_data.tau} & Relaxation time \\
+$\chyp$ & \code{chemistry\_get\_physical\_hyperbolic\_soundspeed} & Hyperbolic characteristic (wave) speed \\
+$\Deff$ & \code{chemistry\_get\_physical\_matrix\_D} & Effective diffusivity, $\Deff=\Kmat(\driver/U_0)$ \\
+$\Uvec$ & (assembled, \code{hyperbolic/chemistry\_getters.h}) & Conserved state vector $(\rhoZ,F_x,F_y,F_z)$ \\
+$\Gflux{k}$ & (assembled, \code{hyperbolic/chemistry\_getters.h}) & Flux tensor, direction-$k$ component \\
+$\expr$ & (local, \code{chemistry\_timesteps.h}) & Gradient-suppression effective length (parabolic's $E$, Eq.~\eqref{eq:E-bracket}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Subscripts and Superscripts}
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item $i,j$: particle indices (also used as tensor component indices where unambiguous from context)
+  \item $L,R$: left/right Riemann states
+  \item $n$: explicit timestep index
+  \item $\star$: interface-averaged quantity
+  \item $+$: positive-eigenvalue-projected (regularised) tensor
+\end{itemize}
+
+\subsection{Abbreviations}
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item FVPM: Finite Volume Particle Method
+  \item MFM: Meshless Finite Mass (GIZMO family of schemes)
+  \item HLL: Harten--Lax--van Leer (approximate Riemann solver)
+  \item CFL: Courant--Friedrichs--Lewy
+  \item LES: Large-Eddy Simulation
+  \item PSD: Positive Semi-Definite
+\end{itemize}

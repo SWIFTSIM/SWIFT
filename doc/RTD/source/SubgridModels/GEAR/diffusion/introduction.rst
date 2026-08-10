@@ -91,8 +91,9 @@ turbulence), described together with the other runtime parameters on the
    protecting sink-like or pristine particles; its ``flux_limiter_*``
    parameters are on the :ref:`gear_fvpm_diffusion_parameters` page.
    Finally, a global **flux-corrected-transport (FCT) positivity
-   limiter** guarantees no particle's metal mass goes negative; see
-   :ref:`gear_fvpm_diffusion_usage`.
+   limiter** rescales each particle's outgoing flux so its metal mass
+   stays non-negative to within an empirical round-off margin, not an
+   exact guarantee; see :ref:`gear_fvpm_diffusion_usage`.
 
 Diffusion modes
 ~~~~~~~~~~~~~~~~
@@ -169,8 +170,8 @@ resolution length scales, but not the same quantity.
    limiters, positivity limiter, timestep criteria) see the theory notes,
    which are the authoritative reference for this scheme:
 
-   * ``theory/ParabolicDiffusion/GEAR_FVPM_Diffusion_Theory.tex`` (parabolic).
-   * ``theory/ParabolicDiffusion/GEAR_FVPM_Hyperbolic_Diffusion_Theory.tex`` (hyperbolic).
+   * ``theory/ParabolicDiffusion/GEAR_FVPM_Diffusion_Theory.tex``, covering both the
+     parabolic and hyperbolic formulations.
 
 Compiling the model
 --------------------

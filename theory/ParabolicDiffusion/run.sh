@@ -1,6 +1,7 @@
 #!/bin/bash
-# Build both theory documents (parabolic and hyperbolic diffusion), running
-# pdflatex/bibtex enough times to resolve cross-references and citations.
+# Build the combined parabolic + hyperbolic diffusion theory document,
+# running pdflatex/bibtex enough times to resolve cross-references and
+# citations.
 set -e
 
 build() {
@@ -13,4 +14,3 @@ build() {
 }
 
 build GEAR_FVPM_Diffusion_Theory GEAR_FVPM_Diffusion_Theory.tex
-build GEAR_FVPM_Hyperbolic_Diffusion_Theory GEAR_FVPM_Hyperbolic_Diffusion_Theory.tex

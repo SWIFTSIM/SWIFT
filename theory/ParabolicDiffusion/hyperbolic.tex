@@ -1,132 +1,33 @@
-% theory/ParabolicDiffusion/GEAR_FVPM_Hyperbolic_Diffusion_Theory.tex
-
-\documentclass[11pt, a4paper, parskip]{scrartcl}
-\usepackage[margin=2.7cm]{geometry}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{amsthm}
-\usepackage{graphicx}
-\usepackage[utf8]{inputenc} % Required for Unicode characters
-\usepackage{xcolor}         % Required for coloring text
-\usepackage{enumitem}       % For customizing list environments
-\usepackage{physics}        % For common physics notations like dv, grad, div, etc.
-\usepackage{booktabs}       % For clean tables
-\usepackage{seqsplit}
-\usepackage[hidelinks]{hyperref}
-
-\usepackage[]{natbib}
-\bibliographystyle{apalike}
-
-% \code{} is \texttt{} that may break mid-identifier/mid-path across lines
-% (long function names, file paths) instead of overflowing the margin --
-% used for long \texttt content in running text. Left as plain \texttt{}
-% inside captions/section titles, where \seqsplit's \futurelet-based
-% scanning cannot survive LaTeX's full expansion of moving arguments.
-\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
-
-% KOMA-Script disables the classic \rm/\bf/\it/... font-switch commands
-% by default; the numbered sections use them freely for math-mode units
-% ($c_{\rm hyp}$, $F_{\rm diss}$, ...), matching the old article.cls
-% setup, so restore the standard LaTeX2e old-font-command behaviour here
-% rather than editing every occurrence.
-\makeatletter
-\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
-\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
-\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
-\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
-\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
-\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
-\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
-\makeatother
-
-\setkomafont{title}{\rmfamily\bfseries\boldmath}
-\addtokomafont{section}{\rmfamily\bfseries\boldmath}
-\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
-\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
-
-\theoremstyle{plain}
-\newtheorem{proposition}{Proposition}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
-\theoremstyle{definition}
-\newtheorem{definition}{Definition}
-\theoremstyle{remark}
-\newtheorem{remark}{Remark}
-\newtheorem{example}{Example}
-
-% ---------------------------------------------------------------------------
-% Physics macros, shared with GEAR_FVPM_Diffusion_Theory.tex (parabolic
-% companion document) for notational continuity, plus a few new ones needed
-% only for the hyperbolic (relaxation) system.
-% ---------------------------------------------------------------------------
-\newcommand{\Zfrac}{Z}                                  % metal mass fraction
-\newcommand{\rhoZ}{\rho \Zfrac}                          % metal mass density
-\newcommand{\driver}{q}                                  % diffusion driver
-\newcommand{\Kmat}{\mathbf{K}}                            % diffusion tensor
-\newcommand{\Kstar}{\mathbf{K}^{\star}}                   % interface diffusion tensor
-\newcommand{\Shear}{\mathbf{S}}                           % shear tensor
-\newcommand{\Splus}{\mathbf{S}_{+}}                       % regularised (PSD) shear tensor
-\newcommand{\Fdiff}{\mathbf{F}}                           % diffusive flux (algebraic in \S1, dynamical from \S2 on)
-\newcommand{\kappaC}{\kappa_{0}}                          % chem\_data->diffusion\_coefficient
-\newcommand{\kappaP}{\kappa}                              % per-particle chemistry\_data.kappa
-\newcommand{\CCFL}{C_{\mathrm{CFL}}}                      % chem\_data->C\_CFL\_chemistry
-\newcommand{\gammak}{\gamma_{k}}                          % kernel\_gamma
-\newcommand{\nunit}{\mathbf{n}}                           % interface unit normal
-\newcommand{\dx}{\Delta x}                                % GIZMO particle size
-\newcommand{\dt}{\Delta t}                                % explicit timestep
-\newcommand{\Uvec}{\mathbf{U}}                            % hyperbolic state vector
-\newcommand{\Gflux}[1]{\mathbf{G}^{(#1)}}                 % flux tensor, direction-#1 component
-\newcommand{\chyp}{c_{\rm hyp}}                           % hyperbolic diffusion sound speed
-\newcommand{\taurelax}{\tau}                              % relaxation time (unmacroed in the parent doc; kept explicit here)
-\newcommand{\Deff}{\mathbf{D}}                            % effective diffusivity tensor, D = K*(q/U)
-\newcommand{\expr}{\mathcal{E}}                           % chemistry_timesteps.h's gradient-suppression "expression"
-
-\title{Theory of the Hyperbolic (Cattaneo-Relaxation) FVPM
-Diffusion Scheme}
-\subtitle{Theory document: Cattaneo relaxation, characteristic speed, and
-exact solutions}
-\author{Darwin Roduit}
-\date{\today}
-
-\begin{document}
-\maketitle
-
-This is the theoretical and numerical reference for the hyperbolic
-(Cattaneo-relaxation) variant of the GEAR FVPM metal-diffusion chemistry
-scheme (\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}), configured
-with \code{--with-chemistry=GEAR-FVPM-HYPERBOLIC-DIFFUSION\_N}. It builds
-on the parabolic companion document's FVPM discretisation and
-Riemann-solver framework (\code{GEAR\_FVPM\_Diffusion\_Theory.tex}, this
-directory); user-facing configuration and parameters are documented in
-the RTD pages under \code{doc/RTD/source/SubgridModels/GEAR/diffusion/}.
-Regenerate this PDF with \code{./run.sh}.
-
-\tableofcontents
+% theory/ParabolicDiffusion/hyperbolic.tex
+% Body of the hyperbolic (Cattaneo-relaxation) FVPM diffusion scheme.
+% Input from GEAR_FVPM_Diffusion_Theory.tex (the master document); not
+% standalone.
 
 \part{Formulation}
+\label{part:hyperbolic}
 
 \section{Scope and Motivation}
 \label{sec:scope}
 
-This is the companion document promised, but not written, at the end of
-Section~\emph{Hyperbolic Relation} of
-\emph{Theoretical Foundations of Parabolic Diffusion in GEAR FVPM}
-(\code{GEAR\_FVPM\_Diffusion\_Theory.tex}, this directory): a first-principles
-derivation of the characteristic (wave) speed of the hyperbolic
-(Cattaneo~\citeyear{Cattaneo1948}-relaxation) diffusion system implemented under
+This part is a first-principles derivation of the characteristic (wave)
+speed of the hyperbolic (Cattaneo~\citeyear{Cattaneo1948}-relaxation)
+diffusion system implemented under
 \code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION}
-(\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}), and a direct
+(\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}), promised but not
+derived where Section~\ref{sec:hyperbolic-relation} of
+Part~\ref{part:parabolic} first mentions the system, and a direct
 confrontation of that result against the two closed-form expressions
 currently returned by
 \code{chemistry\_get\_physical\_hyperbolic\_soundspeed}
 (\code{hyperbolic/chemistry\_getters.h:37--66}).
 
-\subsection{Relation to the Parabolic Document}
-This document assumes familiarity with the FVPM geometry, the diffusion
+\subsection{Relation to the Parabolic Part}
+This part assumes familiarity with the FVPM geometry, the diffusion
 driver $\driver$, and the diffusion tensor $\Kmat$ as defined in
-Sections~2--3 of the parabolic companion document; it does not repeat that
-material. The two documents share notation (see the macro list at the top
-of the source) so that symbols mean the same thing in both.
+Part~\ref{part:parabolic}, Sections~\ref{sec:physical-foundations}--
+\ref{sec:fvpm-geometry}; it does not repeat that material. The two parts
+share notation (see the macro list in the preamble) so that symbols mean
+the same thing in both.
 
 \section{Governing System}
 \label{sec:governing-system}
@@ -174,7 +75,8 @@ target inside \code{chemistry\_part\_integrate\_flux\_source\_term}) uses
 $\grad\driver$ as stored at the particle's own position, never
 extrapolated to an interface. This is a structural limitation of the
 scheme, not a simplifying choice available to relax: the FVPM
-least-squares gradient estimator (parabolic companion document) computes
+least-squares gradient estimator (Section~\ref{sec:gradient-estimator})
+computes
 only first derivatives of $\driver$ at each particle. Extrapolating
 $\grad\driver$ itself to an interface (as opposed to extrapolating
 $\driver$ using the already-computed $\grad\driver$, which \emph{is} done
@@ -268,7 +170,7 @@ Define the four-component hyperbolic state vector
 \end{equation}
 As is standard for deriving a local wave-speed estimate for a Godunov-type
 solver (and as the code itself already does implicitly, by evaluating
-$\chyp$ from each particle's own, locally stored $\Kmat,\taurelax,\rho$ --
+$\chyp$ from each particle's own, locally stored $\Kmat,\taurelax,\rho$,
 \code{chemistry\_iact.h:295--298}), we treat $\Kmat$ (equivalently $\Deff$),
 $\taurelax$ and $\rho$ as \emph{locally frozen} coefficients for the
 purpose of constructing the flux Jacobian: they are evaluated at the
@@ -595,8 +497,9 @@ one equation:
 \item $\taurelax\to0$: the first term drops and
   Eq.~\eqref{eq:telegrapher_q} collapses to
   $\partial_tU_0=\div(\Kmat\grad \driver)$: Fick's law substituted into
-  mass conservation, i.e.\ exactly the parabolic equation of the
-  companion document (Eq.~1 there). This limit is consistent with
+  mass conservation, i.e.\ exactly the parabolic equation of
+  Part~\ref{part:parabolic}, Eq.~\eqref{eq:parabolic_diffusion_rho_Z}.
+  This limit is consistent with
   \code{chemistry\_part\_integrate\_flux\_source\_term}'s exact solution
   (\code{hyperbolic/chemistry\_flux.h:105--129}), which computes
   $\Fdiff_{\rm out}=\Fdiff_{\rm in}\exp(-\dt/\taurelax)+\Fdiff_{\rm
@@ -1065,11 +968,11 @@ to
 \end{equation}
 i.e.\ \emph{linear} in the wave-speed estimate $\Lambda$. Any factor by
 which $\chyp$ is overestimated passes through directly into extra
-numerical diffusion in the large-$\taurelax$ ($\alpha\approx1$) regime --
+numerical diffusion in the large-$\taurelax$ ($\alpha\approx1$) regime,
 on top of, and independent from, a second lever: whether $F_{\rm diss}$
-itself is limited in that regime the way the companion document's
-parabolic Hopkins-HLL solver limits its own dissipation (Section ``The
-Hopkins HLL-Type Flux'' there). Since
+itself is limited in that regime the way Part~\ref{part:parabolic}'s
+parabolic Hopkins-HLL solver limits its own dissipation
+(Section~\ref{sec:hll-flux}). Since
 $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
 and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
 wave-speed lever is already pulled as far as it goes; the flux-memory
@@ -1146,7 +1049,7 @@ constant chosen to match a given test problem.
   dissipation's reach, applied on (almost) every face every step. Because
   the von Neumann/Lax-Wendroff stability floor for this term is set by the
   particle size rather than by the pair separation $r_{ij}$ itself (a
-  distinct, though comparable, length scale --
+  distinct, though comparable, length scale;
   Section~\ref{sec:practical-tau0}), an implementation may prefer the
   particle size in Eq.~\eqref{eq:causal-bound} in place of $r_{ij}$.
 \item \textbf{A floor is required.} $\zeta_{ij}\to0$ exactly would zero
@@ -1600,9 +1503,5 @@ checked against.
 Finally, the seed in the test problems is a ball (or segment) of radius
 $\epsilon_0$, not a point. Convolution adds variances for independent
 zero-mean displacements, so a finite seed shifts the exact second moment
-by $\tfrac35\epsilon_0^2$ in 3D and $\tfrac13\epsilon_0^2$ in 1D --
+by $\tfrac35\epsilon_0^2$ in 3D and $\tfrac13\epsilon_0^2$ in 1D,
 a correction that dominates at early times, when $\chyp t\lesssim\epsilon_0$.
-
-\bibliography{references}
-
-\end{document}
