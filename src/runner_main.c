@@ -141,6 +141,60 @@
 #include "likwid_wrapper.h"
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+/**
+ * @brief Verify that one side of a stars feedback task had its stars ghost
+ * chain (`ghost_in`/`ghost_out`) actually run this step, if that side's own
+ * stars are active.
+ *
+ * `cell_unskip.c`'s pair-task activation for the stars density/feedback
+ * loops uses the "either side active" pattern (activates on
+ * `ci_active || cj_active`), but the `stars.ghost_in`/`stars.ghost_out`
+ * chain that sequences density before feedback is only *activated* via the
+ * catch-all gated on `cell_need_activating_stars(c, ...)` for the cell
+ * itself -- never from a neighbour's activity. That is the same structural
+ * gap that caused the sink-sink swallow bug fixed by a722fbb14.
+ *
+ * `engine_maketasks.c` unconditionally wires `scheduler_addunlock(sched,
+ * side->hydro.super->stars.ghost_out, t_star_feedback)` for every feedback
+ * task, so if the edge is intact, `ghost_out` (and transitively `ghost_in`)
+ * must have already run by the time the feedback task using it starts.
+ * `task->skip` cannot detect a stale ghost here: it is reset to 1 both when
+ * a task is never activated and when it completes normally (see
+ * `scheduler_enqueue()`/`scheduler_done()`). `task->ti_run` is the reliable
+ * signal: implicit tasks such as the ghosts are stamped with `e->ti_current`
+ * in `scheduler_enqueue()` only when they actually run this step.
+ *
+ * @param e The #engine.
+ * @param t The running stars feedback #task.
+ * @param c The #cell to check (may be NULL for a self task's `cj`).
+ */
+static void runner_check_star_feedback_ghost_ran(const struct engine *e,
+                                                 const struct task *t,
+                                                 const struct cell *c) {
+
+  if (c == NULL || c->nodeID != e->nodeID || c->stars.count == 0) return;
+  if (!cell_is_active_stars(c, e)) return;
+
+  const struct cell *sup = c->hydro.super;
+  const struct task *gin = sup->stars.ghost_in;
+  const struct task *gout = sup->stars.ghost_out;
+
+  if (gin == NULL || gout == NULL) return;
+
+  if (gin->ti_run != e->ti_current || gout->ti_run != e->ti_current)
+    error(
+        "Stars feedback task is running for an active-stars cell whose "
+        "ghost chain did not run this step! sub=%s cellID=%lld depth=%d "
+        "supID=%lld supdepth=%d scount=%d ti_current=%lld "
+        "ghost_in: skip=%d ti_run=%lld ghost_out: skip=%d ti_run=%lld",
+        subtaskID_names[t->subtype], c->cellID, c->depth, sup->cellID,
+        sup->depth, c->stars.count, (long long)e->ti_current, gin->skip,
+        (long long)gin->ti_run, gout->skip, (long long)gout->ti_run);
+}
+#endif /* SWIFT_DEBUG_CHECKS */
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -207,6 +261,12 @@ void *runner_main(void *data) {
       t->ti_run = e->ti_current;
       /* Store the task that will be running (for debugging only) */
       r->t = t;
+
+      if (t->subtype == task_subtype_stars_feedback &&
+          (t->type == task_type_self || t->type == task_type_pair)) {
+        runner_check_star_feedback_ghost_ran(e, t, ci);
+        runner_check_star_feedback_ghost_ran(e, t, cj);
+      }
 #endif
 
       const ticks task_beg = getticks();
