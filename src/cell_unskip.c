@@ -2472,6 +2472,25 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
                                                    with_star_formation_sink);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Positive-fire probe mirroring GHOST_SEVER_PROBE (a722fbb14): counts how
+     * often the passive side's ghost chain is structurally at risk of never
+     * activating this step, since engine_do_unskip_stars() only recurses
+     * into active cells. */
+    if (t->type == task_type_pair && cj != NULL && (ci_active != cj_active)) {
+      const struct cell *inactive_side = ci_active ? cj : ci;
+      const struct cell *inactive_super = inactive_side->hydro.super;
+      if (inactive_super != NULL && inactive_super->stars.count > 0) {
+        message(
+            "STARS_GHOST_SEVER_PROBE inactive_side=%s inactive_cellID=%lld "
+            "inactive_super_cellID=%lld inactive_super_stars_count=%d "
+            "step=%d",
+            ci_active ? "cj" : "ci", inactive_side->cellID,
+            inactive_super->cellID, inactive_super->stars.count, e->step);
+      }
+    }
+#endif
+
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
     }
