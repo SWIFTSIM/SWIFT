@@ -285,7 +285,7 @@ INLINE static void sink_props_init(
    * cutoff radius.
    */
   sp->use_fixed_r_cut =
-      parser_get_param_char(params, "GEARSink:use_fixed_cut_off_radius");
+      (char)parser_get_param_int(params, "GEARSink:use_fixed_cut_off_radius");
 
   /* The property cut_off_radius is now only used in the GEAR model.
    * It is ignored if use_fixed_r_cut is 0. */
