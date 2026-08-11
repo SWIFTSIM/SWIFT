@@ -8,6 +8,7 @@
 \section{Introduction}
 
 \subsection{Purpose and Scope}
+\label{sec:parabolic-scope}
 This document is a rigorous theoretical and numerical account of the
 \emph{parabolic} metal-diffusion solver implemented in
 \code{src/chemistry/GEAR\_FVPM\_DIFFUSION} (shared headers) and
@@ -21,11 +22,12 @@ The code also contains a second, \emph{hyperbolic} (Cattaneo/Maxwell-type)
 formulation of metal diffusion, selected at compile time by the macro
 \code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION} and implemented in the
 sibling \code{hyperbolic/} subdirectory. That formulation is out of scope
-for this part; it is mentioned only in Section~\ref{sec:hyperbolic-relation}
-to clarify that the parabolic equation solved here is recovered as its
-relaxation-time-to-zero limit. The hyperbolic solver's own derivation,
-characteristic speed, and exact solutions are covered in
-Part~\ref{part:hyperbolic}.
+for this part: the parabolic equation solved here is recovered as its
+relaxation-time-to-zero limit, and the two share the FVPM geometry, the
+diffusion driver $\driver$, and the diffusion tensor $\Kmat$ developed
+below, but use different Riemann solvers, conserved-state vectors, and
+timestep criteria. The hyperbolic solver's own derivation, characteristic
+speed, and exact solutions are covered in Part~\ref{part:hyperbolic}.
 
 \subsection{Overview of the GEAR FVPM Framework}
 GEAR's chemistry module rides on top of a meshless Finite Volume Particle
@@ -1158,28 +1160,6 @@ instead (\code{chemistry\_timesteps.h}), a pragmatic,
 non-rigorous compromise flagged as such directly in the source, adopted
 because the physically correct bound was found to be prohibitively
 restrictive for that closure in practice.
-
-\subsection{Hyperbolic Relation (TODO: Move to hyperbolic chapter)}
-\label{sec:hyperbolic-relation}
-For completeness: under
-\code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION}, the same code base
-instead advances a four-component relaxation system whose flux obeys a
-Cattaneo-type equation with relaxation time $\tau$ and whose timestep
-uses an ordinary hyperbolic CFL condition
-\begin{equation}
-  \dt = \CCFL\, \frac{\dx}{v_{\max}} \,.
-\end{equation}
-As $\tau\to0$ the hyperbolic system's
-flux equation collapses onto Eq.~\eqref{eq:ficks_law}, i.e.\ the
-parabolic equation documented in this part is the relaxation limit of
-that system; the two share the FVPM geometry, gradient estimator and
-slope limiters described above, but use different Riemann solvers,
-different conserved-state vectors, and different timestep criteria. The
-hyperbolic solver's own physics, its relaxation-time model
-(Section~\ref{sec:tau-modes}) and the blending factor between its HLL
-flux and the parabolic flux of Eq.~\eqref{eq:flux_hll}
-(Section~\ref{sec:effective-diffusivity}), is covered in
-Part~\ref{part:hyperbolic} and not repeated here.
 
 \section{Validation and Verification}
 

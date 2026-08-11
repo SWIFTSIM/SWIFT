@@ -111,7 +111,8 @@ restrictive (i.e.\ still stable, possibly conservative) timestep bound.
 
 \subsection{Symbol to Code-Identifier Map}
 \begin{center}
-\begin{tabular}{@{}lll@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash\hsize=1.3\hsize}X >{\raggedright\arraybackslash\hsize=0.7\hsize}X@{}}
 \toprule
 Symbol & Code identifier & Meaning \\
 \midrule
@@ -147,7 +148,7 @@ $\Uvec$ & (assembled, \code{hyperbolic/chemistry\_getters.h}) & Conserved state 
 $\Gflux{k}$ & (assembled, \code{hyperbolic/chemistry\_getters.h}) & Flux tensor, direction-$k$ component \\
 $\expr$ & (local, \code{chemistry\_timesteps.h}) & Gradient-suppression effective length (parabolic's $E$, Eq.~\eqref{eq:E-bracket}) \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
 
 \subsection{Subscripts and Superscripts}
