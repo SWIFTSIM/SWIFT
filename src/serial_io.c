@@ -1159,6 +1159,34 @@ void write_output_serial(struct engine *e,
   size_t N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
+  long long N_zoom[swift_type_count];
+  for (int ptype = 0; ptype < swift_type_count; ++ptype)
+    N_zoom[ptype] = N[ptype];
+  if (e->s->with_zoom_region) {
+    N_zoom[swift_type_gas] = io_count_gas_in_zoom_to_write(
+        e->s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
+        e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter] = io_count_dark_matter_in_zoom_to_write(
+        e->s, subsample[swift_type_dark_matter],
+        subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter_background] =
+        io_count_background_dark_matter_in_zoom_to_write(
+            e->s, subsample[swift_type_dark_matter_background],
+            subsample_fraction[swift_type_dark_matter_background],
+            e->snapshot_output_count);
+    N_zoom[swift_type_sink] = io_count_sinks_in_zoom_to_write(
+        e->s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
+        e->snapshot_output_count);
+    N_zoom[swift_type_stars] = io_count_stars_in_zoom_to_write(
+        e->s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
+        e->snapshot_output_count);
+    N_zoom[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
+        e->s, subsample[swift_type_black_hole],
+        subsample_fraction[swift_type_black_hole], e->snapshot_output_count);
+    N_zoom[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
+        e->s, subsample[swift_type_neutrino],
+        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
+  }
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(N, offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1167,6 +1195,10 @@ void write_output_serial(struct engine *e,
 
   /* The last rank now has the correct N_total. Let's broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
+
+  long long N_total_zoom[swift_type_count] = {0};
+  MPI_Allreduce(N_zoom, N_total_zoom, swift_type_count, MPI_LONG_LONG_INT,
+                MPI_SUM, comm);
 
   /* List what fields to write.
    * Note that we want to want to write a 0-size dataset for some species
@@ -1253,6 +1285,8 @@ void write_output_serial(struct engine *e,
 
     /* GADGET-2 legacy values: Number of particles of each type */
     long long numParticlesThisFile[swift_type_count] = {0};
+    long long numParticles_InCells[swift_type_count] = {0};
+    long long numParticles_OutsideCells[swift_type_count] = {0};
     unsigned int numParticles[swift_type_count] = {0};
     unsigned int numParticlesHighWord[swift_type_count] = {0};
 
@@ -1262,8 +1296,12 @@ void write_output_serial(struct engine *e,
 
       if (numFields[ptype] == 0) {
         numParticlesThisFile[ptype] = 0;
+        numParticles_InCells[ptype] = 0;
+        numParticles_OutsideCells[ptype] = 0;
       } else {
         numParticlesThisFile[ptype] = N_total[ptype];
+        numParticles_InCells[ptype] = N_total_zoom[ptype];
+        numParticles_OutsideCells[ptype] = N_total[ptype] - N_total_zoom[ptype];
       }
     }
 
@@ -1275,6 +1313,10 @@ void write_output_serial(struct engine *e,
                        numParticlesHighWord, swift_type_count);
     io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                        swift_type_count);
+    io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                       numParticles_InCells, swift_type_count);
+    io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                       numParticles_OutsideCells, swift_type_count);
     double MassTable[swift_type_count] = {0};
     io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
     io_write_attribute(h_grp, "InitialMassTable", DOUBLE,

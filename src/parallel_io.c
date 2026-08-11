@@ -1170,6 +1170,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
+ * @param N_total_zoom The total number of particles in zoom cells.
  * @param to_write Whether or not specific particle types must be written.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
@@ -1181,6 +1182,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
 void prepare_file(struct engine *e, const char *fileName,
                   const char *xmfFileName,
                   const long long N_total[swift_type_count],
+                  const long long N_total_zoom[swift_type_count],
                   const int to_write[swift_type_count],
                   const int numFields[swift_type_count],
                   const char current_selection_name[FIELD_BUFFER_SIZE],
@@ -1276,6 +1278,8 @@ void prepare_file(struct engine *e, const char *fileName,
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
   long long numParticlesThisFile[swift_type_count] = {0};
+  long long numParticles_InCells[swift_type_count] = {0};
+  long long numParticles_OutsideCells[swift_type_count] = {0};
   unsigned int numParticles[swift_type_count] = {0};
   unsigned int numParticlesHighWord[swift_type_count] = {0};
 
@@ -1285,8 +1289,12 @@ void prepare_file(struct engine *e, const char *fileName,
 
     if (numFields[ptype] == 0) {
       numParticlesThisFile[ptype] = 0;
+      numParticles_InCells[ptype] = 0;
+      numParticles_OutsideCells[ptype] = 0;
     } else {
       numParticlesThisFile[ptype] = N_total[ptype];
+      numParticles_InCells[ptype] = N_total_zoom[ptype];
+      numParticles_OutsideCells[ptype] = N_total[ptype] - N_total_zoom[ptype];
     }
   }
 
@@ -1298,6 +1306,10 @@ void prepare_file(struct engine *e, const char *fileName,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                     numParticles_InCells, swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                     numParticles_OutsideCells, swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1650,6 +1662,36 @@ void write_output_parallel(struct engine *e,
   long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
+
+  /* Number of particles in the zoom region */
+  long long N_zoom[swift_type_count];
+  memcpy(N_zoom, N, swift_type_count * sizeof(long long));
+  if (e->s->with_zoom_region) {
+    N_zoom[swift_type_gas] = io_count_gas_in_zoom_to_write(
+        e->s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
+        e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter] = io_count_dark_matter_in_zoom_to_write(
+        e->s, subsample[swift_type_dark_matter],
+        subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter_background] =
+        io_count_background_dark_matter_in_zoom_to_write(
+            e->s, subsample[swift_type_dark_matter_background],
+            subsample_fraction[swift_type_dark_matter_background],
+            e->snapshot_output_count);
+    N_zoom[swift_type_sink] = io_count_sinks_in_zoom_to_write(
+        e->s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
+        e->snapshot_output_count);
+    N_zoom[swift_type_stars] = io_count_stars_in_zoom_to_write(
+        e->s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
+        e->snapshot_output_count);
+    N_zoom[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
+        e->s, subsample[swift_type_black_hole],
+        subsample_fraction[swift_type_black_hole], e->snapshot_output_count);
+    N_zoom[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
+        e->s, subsample[swift_type_neutrino],
+        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
+  }
+
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(N, offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1659,6 +1701,10 @@ void write_output_parallel(struct engine *e,
   /* The last rank now has the correct N_total. Let's
    * broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
+
+  long long N_total_zoom[swift_type_count] = {0};
+  MPI_Allreduce(N_zoom, N_total_zoom, swift_type_count, MPI_LONG_LONG_INT,
+                MPI_SUM, comm);
 
   /* Now everybody konws its offset and the total number of
    * particles of each type */
@@ -1674,9 +1720,9 @@ void write_output_parallel(struct engine *e,
 
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
-    prepare_file(e, fileName, xmfFileName, N_total, to_write, numFields,
-                 current_selection_name, internal_units, snapshot_units, fof,
-                 subsample_any, subsample_fraction);
+    prepare_file(e, fileName, xmfFileName, N_total, N_total_zoom, to_write,
+                 numFields, current_selection_name, internal_units,
+                 snapshot_units, fof, subsample_any, subsample_fraction);
 
   MPI_Barrier(MPI_COMM_WORLD);
 

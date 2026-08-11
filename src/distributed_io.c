@@ -475,6 +475,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
+ * @param N_total_zoom The total number of particles in zoom cells.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
@@ -485,6 +486,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
 void write_virtual_file(struct engine *e, const char *fileName_base,
                         const char *xmfFileName,
                         const long long N_total[swift_type_count],
+                        const long long N_total_zoom[swift_type_count],
                         const long long *N_counts, const int num_ranks,
                         const int to_write[swift_type_count],
                         const int numFields[swift_type_count],
@@ -586,6 +588,8 @@ void write_virtual_file(struct engine *e, const char *fileName_base,
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
   long long numParticlesThisFile[swift_type_count] = {0};
+  long long numParticles_InCells[swift_type_count] = {0};
+  long long numParticles_OutsideCells[swift_type_count] = {0};
   unsigned int numParticles[swift_type_count] = {0};
   unsigned int numParticlesHighWord[swift_type_count] = {0};
 
@@ -595,8 +599,12 @@ void write_virtual_file(struct engine *e, const char *fileName_base,
 
     if (numFields[ptype] == 0) {
       numParticlesThisFile[ptype] = 0;
+      numParticles_InCells[ptype] = 0;
+      numParticles_OutsideCells[ptype] = 0;
     } else {
       numParticlesThisFile[ptype] = N_total[ptype];
+      numParticles_InCells[ptype] = N_total_zoom[ptype];
+      numParticles_OutsideCells[ptype] = N_total[ptype] - N_total_zoom[ptype];
     }
   }
 
@@ -608,6 +616,10 @@ void write_virtual_file(struct engine *e, const char *fileName_base,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                     numParticles_InCells, swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                     numParticles_OutsideCells, swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -993,9 +1005,41 @@ void write_output_distributed(struct engine *e,
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
 
+  /* Number of particles in the zoom region */
+  long long N_zoom[swift_type_count];
+  memcpy(N_zoom, N, swift_type_count * sizeof(long long));
+  if (e->s->with_zoom_region) {
+    N_zoom[swift_type_gas] = io_count_gas_in_zoom_to_write(
+        e->s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
+        e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter] = io_count_dark_matter_in_zoom_to_write(
+        e->s, subsample[swift_type_dark_matter],
+        subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
+    N_zoom[swift_type_dark_matter_background] =
+        io_count_background_dark_matter_in_zoom_to_write(
+            e->s, subsample[swift_type_dark_matter_background],
+            subsample_fraction[swift_type_dark_matter_background],
+            e->snapshot_output_count);
+    N_zoom[swift_type_sink] = io_count_sinks_in_zoom_to_write(
+        e->s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
+        e->snapshot_output_count);
+    N_zoom[swift_type_stars] = io_count_stars_in_zoom_to_write(
+        e->s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
+        e->snapshot_output_count);
+    N_zoom[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
+        e->s, subsample[swift_type_black_hole],
+        subsample_fraction[swift_type_black_hole], e->snapshot_output_count);
+    N_zoom[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
+        e->s, subsample[swift_type_neutrino],
+        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
+  }
+
   /* Gather the total number of particles to write */
   long long N_total[swift_type_count] = {0};
   MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
+  long long N_total_zoom[swift_type_count] = {0};
+  MPI_Allreduce(N_zoom, N_total_zoom, swift_type_count, MPI_LONG_LONG_INT,
+                MPI_SUM, comm);
 
   /* Collect the number of particles written by each rank */
   long long *N_counts =
@@ -1122,6 +1166,8 @@ void write_output_distributed(struct engine *e,
 
   /* GADGET-2 legacy values:  Number of particles of each type */
   long long numParticlesThisFile[swift_type_count] = {0};
+  long long numParticles_InCells[swift_type_count] = {0};
+  long long numParticles_OutsideCells[swift_type_count] = {0};
   unsigned int numParticles[swift_type_count] = {0};
   unsigned int numParticlesHighWord[swift_type_count] = {0};
 
@@ -1137,8 +1183,12 @@ void write_output_distributed(struct engine *e,
 
     if (numFields[ptype] == 0) {
       numParticlesThisFile[ptype] = 0;
+      numParticles_InCells[ptype] = 0;
+      numParticles_OutsideCells[ptype] = 0;
     } else {
       numParticlesThisFile[ptype] = N[ptype];
+      numParticles_InCells[ptype] = N_zoom[ptype];
+      numParticles_OutsideCells[ptype] = N[ptype] - N_zoom[ptype];
     }
   }
 
@@ -1150,6 +1200,10 @@ void write_output_distributed(struct engine *e,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                     numParticles_InCells, swift_type_count);
+  io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                     numParticles_OutsideCells, swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1585,10 +1639,10 @@ void write_output_distributed(struct engine *e,
 
   /* Write the virtual meta-file */
   if (mpi_rank == 0)
-    write_virtual_file(e, fileName_base, xmfFileName, N_total, N_counts,
-                       mpi_size, to_write, numFields, current_selection_name,
-                       internal_units, snapshot_units, fof, subsample_any,
-                       subsample_fraction);
+    write_virtual_file(e, fileName_base, xmfFileName, N_total, N_total_zoom,
+                       N_counts, mpi_size, to_write, numFields,
+                       current_selection_name, internal_units, snapshot_units,
+                       fof, subsample_any, subsample_fraction);
 
   /* Make sure nobody is allowed to progress until rank 0 is done. */
   MPI_Barrier(comm);
