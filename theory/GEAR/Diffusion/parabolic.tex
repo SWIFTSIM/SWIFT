@@ -97,8 +97,7 @@ tensor (Section~\ref{sec:diffusion-tensor}) and $\driver$ is a
 \emph{diffusion driver} whose identity is not fixed: depending on the
 diffusion mode (Section~\ref{sec:diffusion-modes}) the code sets
 $\driver = \rhoZ$ or $\driver = \Zfrac$. This choice is physically
-consequential, not merely notational: it changes which PDE is actually
-solved (see the boxed remark at the end of
+consequential: it changes which PDE is actually solved (see the boxed remark at the end of
 Section~\ref{sec:diffusion-modes}).
 
 \subsection{Assumptions and Simplifications}
@@ -135,9 +134,7 @@ below zero to control noise amplification (Section~\ref{sec:gradients}).
 \label{sec:diffusion-tensor}
 The single global input parameter \code{chem\_data->diffusion\_coefficient}
 (denoted $\kappaC$ below) is re-used with three distinct physical
-meanings depending on the diffusion mode, a deliberate but easily
-mis-read overload that is documented explicitly here. The struct comment
-at \code{parabolic/chemistry\_struct.h} notes the resulting unit
+meanings depending on the diffusion mode. Note the resulting unit
 change: in \code{isotropic\_constant} mode $\kappaC$ is a true diffusivity
 (units of length$^2$/time); in the other two modes it plays the role of a
 dimensionless Smagorinsky-like constant $C_S$ multiplying a
@@ -156,8 +153,7 @@ in Section~\ref{sec:diffusion-modes}.
 \label{sec:diffusion-modes}
 
 The behaviour of the solver is controlled by
-\code{chem\_data->diffusion\_mode}
-(\code{enum chemistry\_diffusion\_mode}, \code{chemistry\_properties.h}),
+\code{chem\_data->diffusion\_mode},
 which selects one of three closures. In all three cases the diffusion
 coefficient is computed once per active particle per force sub-step by
 \code{chemistry\_get\_diffusion\_coefficient}
@@ -171,7 +167,7 @@ and physical smoothing length $h_{\rm phys} = a\,h$.
 \end{equation}
 This is the simplest closure: $\kappaC$ is a user-specified constant
 diffusivity, independent of the local flow. The resulting PDE
-(Section~\ref{sec:pde-per-mode}) is a genuine linear heat equation for
+(Section~\ref{sec:pde-per-mode}) is a linear heat equation for
 the metal density itself,
 \begin{equation}
   \Fdiff = -\kappaC \,\grad(\rhoZ) ,
@@ -214,8 +210,6 @@ diffusion). The flux is the full matrix contraction
   \Fdiff = -\Kmat \cdot \grad \Zfrac
          = -\kappaP\, \Splus \cdot \grad \Zfrac .
 \end{equation}
-Implemented in \code{chemistry\_get\_physical\_parabolic\_flux}
-(\code{chemistry\_getters.h}).
 
 \subsubsection{Construction of the Shear Tensor and its Regularisation}
 \label{sec:shear-def}
@@ -263,8 +257,7 @@ direction and the diffusion operator would sharpen rather than smooth
 metal contrasts, an unconditionally unstable configuration for an
 explicit parabolic solver. \code{chemistry\_regularize\_shear\_tensor}
 (\code{chemistry\_getters.h}) fixes this by discarding the
-negative-eigenvalue subspace of $\Shear$, following Balarac et
-al.~\cite{Balarac2013}:
+negative-eigenvalue subspace of $\Shear$, following~\cite{Balarac2013}:
 \begin{equation}
   \label{eq:S_plus_def}
   \Splus \;=\; \sum_{k=1}^{3} \max(0,\lambda_k)\, \mathbf e_k \otimes \mathbf e_k ,
@@ -306,7 +299,7 @@ local flow topology.
 \begin{quote}
 Substituting the driver choice of each mode into
 Eq.~\eqref{eq:parabolic_diffusion_rho_Z} via Eq.~\eqref{eq:ficks_law}
-gives three genuinely different governing equations, not merely three
+gives three different governing equations, not merely three
 parametrisations of the same one:
 \begin{align}
   \text{isotropic\_constant:} &\quad
@@ -322,7 +315,7 @@ parametrisations of the same one:
 Equations~\eqref{eq:pde_smag}--\eqref{eq:pde_aniso} diffuse the
 \emph{intensive} quantity $\Zfrac$, with the local density folded into
 the (state-dependent) coefficient $\kappaP \propto \bar\rho$; this is the
-standard sub-grid metal-mixing closure used in the SPH/MFM literature
+standard sub-grid metal-mixing closure used in the literature
 (e.g.\ Shen, Wadsley \& Stinson~\citeyear{ShenWadsleyStinson2010}; Escala et al.~\citeyear{Escala2018}), chosen
 precisely because diffusing $\rhoZ$ directly (as in
 Eq.~\eqref{eq:pde_const}) would let density gradients alone drive
@@ -338,7 +331,7 @@ astrophysical runs.
 \subsection{Meshless Particle Representation}
 The computational domain is discretised by particles, each carrying an
 effective volume $V_i$ (\code{p->geometry.volume}) computed by the
-underlying MFM hydrodynamics solver from a kernel partition of unity.
+underlying FVPM solver from a kernel partition of unity.
 Interactions occur between particles found by the same neighbour search
 (compact-support kernel with smoothing length $h$) used by the
 hydrodynamics solver; the chemistry module performs no independent
@@ -360,8 +353,8 @@ with $\mathbf{dx}_{ij} \equiv \mathbf x_i - \mathbf x_j$ (the code's
 sign convention), $W_{ij} \equiv W(|\mathbf{dx}_{ij}|, h_i)$ the kernel
 value, and $\mathbf B_i = \mathbf E_i^{-1}$ the inverse of the particle's
 geometric moment matrix (\code{p->geometry.matrix\_E}), computed and
-maintained by the host hydrodynamics module using the standard
-MFM/GIZMO second-moment normalisation of Lanson \& Vila~\citeyear{LansonVila2008} and
+maintained by the host hydrodynamics module using the GIZMO second-moment
+normalisation of Lanson \& Vila~\citeyear{LansonVila2008} and
 Hopkins~\citeyear{Hopkins2015},
 \begin{equation}
   \label{eq:E_matrix_def}
@@ -402,7 +395,7 @@ normalisation convention.
 
 \subsection{Interface Geometry: Generalised Face Area}
 \label{sec:face-area}
-Fluxes are exchanged across a notional interface between every
+Fluxes are exchanged across the interface between every
 interacting pair $(i,j)$. Following Hopkins (2017, eq.~7), the
 generalised interface area vector is
 \begin{equation}
@@ -440,8 +433,7 @@ The effective interface point, relative to particle $i$, is (Hopkins
 so that the resolved interface sits at
 $\mathbf x_i + \xij = (h_j\, \mathbf x_i + h_i\, \mathbf x_j)/(h_i+h_j)$:
 a smoothing-length-weighted point between the two particles, pulled
-towards the particle with the \emph{smaller} smoothing length (higher
-local resolution). The corresponding interface (fluid) velocity used to
+towards the particle with the \emph{smaller} smoothing length. The corresponding interface (fluid) velocity used to
 boost the hydrodynamic primitive variables into the interface frame
 before the Riemann problem is solved is (Hopkins~\citeyear{Hopkins2017diffusion}, eq.~9)
 \begin{equation}
@@ -457,7 +449,7 @@ the interface lives.
 \label{sec:gradients}
 
 \subsection{Cell-Wise Extremum-Preserving Limiter}
-Before any face reconstruction, gradients are scaled down (never up) so
+Before any face reconstruction, gradients are scaled down so
 that a linear extrapolation to the farthest interacting neighbour cannot
 create a value outside the range spanned by the particle and all its
 neighbours (Hopkins~\citeyear{Hopkins2015} formalism,
@@ -505,8 +497,7 @@ $0/0$-adjacent limit.
 \code{chemistry\_slope\_limit\_cell} (called once at the end of the
 gradient loop, \code{chemistry\_gradients.h}) is applied to the
 velocity gradients but \emph{deliberately not} to the $\Zfrac$/$\rhoZ$
-gradients, per the code comment at
-\code{chemistry\_slope\_limiters\_cell.h}: cell-limiting the
+gradients: cell-limiting the
 diffusion driver's gradient would permanently reduce the magnitude of
 $\grad\driver$ used everywhere it appears in
 Eqs.~\eqref{eq:pde_const}--\eqref{eq:pde_aniso}, i.e.\ it would silently
@@ -631,8 +622,7 @@ $c_{s,L}, c_{s,R}$ the (physical) hydrodynamic sound speeds,
 \begin{equation}
   \lambda_+ = |u_R - u_L| + \max(c_{s,L}, c_{s,R}) , \qquad \lambda_- = -\lambda_+ .
 \end{equation}
-This choice reuses the same characteristic-speed estimate as the
-GIZMO/MFM Euler solver: it guarantees the diffusion Riemann fan is at
+This choice guarantees the diffusion Riemann fan is at
 least as wide as the hydrodynamic one, so that the diffusive update never
 outruns the CFL condition already enforced by the hydro solver on the
 same pair. If $\lambda_+-\lambda_- $ falls below a tolerance
@@ -1080,11 +1070,14 @@ This is the same getter the hyperbolic solver's causal bound uses, so
 the CFL length and the causal bound's length scale cannot drift apart.
 
 \textbf{Lanson \& Vila definition (alternative).} Under
-\code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE}, $\dx = a\,\delta x_i$ is
-used instead, with $\delta x_i$ built from the same face-area
+\code{GIZMO\_LANSON\_VILA\_PARTICLE\_SIZE},
+\begin {equation}
+  \dx = a\,\delta x_i \qquad \delta x_i = \frac{1}{2\sum_l w_l\|A_{il}\|}
+\end{equation}
+is used instead, with $\delta x_i$ built from the same face-area
 accumulator as Eq.~\eqref{eq:face_area}. Their eq.~(58) defines
-$\delta x_i = 1/(2\sum_l w_l\|A_{il}\|)$ with $w_l$ the neighbour's
-\emph{volume}, evaluated here as $\sum_l\|A_{il}\|/V_l$; the kernel
+$\delta x_i$ with $w_l$ the neighbour's \emph{volume}, evaluated here
+as $\sum_l\|A_{il}\|/V_l$. Notice that the kernel
 value $w_jh_j^{-d}$ is dimensionally interchangeable with $1/V_l$ but
 smaller by a factor of order the neighbour count, and using it in that
 place would inflate $\delta x_i$ by the same factor.
@@ -1166,14 +1159,17 @@ non-rigorous compromise flagged as such directly in the source, adopted
 because the physically correct bound was found to be prohibitively
 restrictive for that closure in practice.
 
-\subsection{Hyperbolic Relation}
+\subsection{Hyperbolic Relation (TODO: Move to hyperbolic chapter)}
 \label{sec:hyperbolic-relation}
 For completeness: under
 \code{CHEMISTRY\_GEAR\_FVPM\_HYPERBOLIC\_DIFFUSION}, the same code base
 instead advances a four-component relaxation system whose flux obeys a
 Cattaneo-type equation with relaxation time $\tau$ and whose timestep
 uses an ordinary hyperbolic CFL condition
-$\dt = \CCFL\, \dx/v_{\max}$. As $\tau\to0$ the hyperbolic system's
+\begin{equation}
+  \dt = \CCFL\, \frac{\dx}{v_{\max}} \,.
+\end{equation}
+As $\tau\to0$ the hyperbolic system's
 flux equation collapses onto Eq.~\eqref{eq:ficks_law}, i.e.\ the
 parabolic equation documented in this part is the relaxation limit of
 that system; the two share the FVPM geometry, gradient estimator and

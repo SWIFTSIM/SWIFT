@@ -43,24 +43,23 @@ density in the frame comoving with each Lagrangian particle reads
   \pdv{(\rhoZ)}{t} + \div \Fdiff = 0 .
 \end{equation}
 The difference between the parabolic and hyperbolic schemes is entirely in
-what closes this equation: the parabolic scheme slaves $\Fdiff$
+what closes this equation: the parabolic scheme links $\Fdiff$
 algebraically to $\grad\driver$ via Fick's law
 (Eq.~\eqref{eq:ficks_law}); the hyperbolic scheme instead promotes
 $\Fdiff$ to an independent dynamical variable, evolved by its own PDE.
 
 \subsubsection{The Cattaneo Relaxation Equation}
-The flux obeys (\code{chemistry\_flux.h:90--94}, docstring of
-\code{chemistry\_part\_integrate\_flux\_source\_term}):
+The flux obeys:
 \begin{equation}
   \label{eq:cattaneo}
-  \pdv{\Fdiff}{t} + \frac{\Kmat}{\taurelax}\grad\driver = -\frac{\Fdiff}{\taurelax} ,
+  \pdv{\Fdiff}{t} = - \frac{\Kmat}{\taurelax}\grad\driver - \frac{\Fdiff}{\taurelax} ,
 \end{equation}
 where $\taurelax = \code{p->chemistry\_data.tau}$ is the local relaxation
 time (Section~\ref{sec:tau-modes}) and $\driver$ is the same diffusion
 driver as in the parabolic scheme ($\driver=\rhoZ$ for
 \code{isotropic\_constant}; $\driver=\Zfrac$ otherwise: see
 \code{chemistry\_compute\_flux}, \code{hyperbolic/chemistry\_flux.h:159--172}).
-As $\taurelax\to0$, Eq.~\eqref{eq:cattaneo} forces
+As $\taurelax\to0$, Eq.~\eqref{eq:cattaneo} tends to
 $\Fdiff\to-\Kmat\grad\driver$, i.e.\ it collapses onto Fick's law and
 Eq.~\eqref{eq:mass_conservation} becomes the parabolic equation.
 
@@ -75,15 +74,11 @@ Every use of $\Kmat\grad\driver$ in this scheme (Eq.~\eqref{eq:cattaneo}
 itself, and $\Fdiff_{\rm parabolic}=-\Kmat\grad\driver$, the relaxation
 target inside \code{chemistry\_part\_integrate\_flux\_source\_term}) uses
 $\grad\driver$ as stored at the particle's own position, never
-extrapolated to an interface. This is a structural limitation of the
-scheme, not a simplifying choice available to relax: the FVPM
-least-squares gradient estimator (Section~\ref{sec:gradient-estimator})
-computes
-only first derivatives of $\driver$ at each particle. Extrapolating
+extrapolated to an interface. This is a choice of implementation to reduce computation cost. Extrapolating
 $\grad\driver$ itself to an interface (as opposed to extrapolating
 $\driver$ using the already-computed $\grad\driver$, which \emph{is} done
 during state reconstruction) would require the gradient of
-$\grad\driver$, i.e.\ a second derivative the scheme does not compute.
+$\grad\driver$, i.e.\ a second derivative that would be required for each metal species.
 Cell-centred evaluation of $\Fdiff_{\rm parabolic}$ is therefore the only
 option available with a first-order (linear) gradient estimator, not an
 approximation chosen among alternatives.
@@ -103,10 +98,8 @@ and $\Shear$ the (unregularised) physical velocity shear tensor. The
 \code{turbulent\_mode} formula includes an explicit $\kappaC^{-1}$
 (\code{chem\_data->diffusion\_coefficient}) coupling, motivated and derived
 in Section~\ref{sec:tau0-physical}. This choice of relaxation-time model is
-orthogonal, in the parameter file, to the diffusion-tensor mode $\Kmat$
-(Section~\ref{sec:diffusion-tensor-recap}): \code{diffusion\_mode} and
-\code{relaxation\_time\_mode} are parsed as two independent strings
-(\code{chemistry.h:279--326}), with no cross-validation between them.
+independent to the diffusion-tensor mode $\Kmat$
+(Section~\ref{sec:diffusion-tensor-recap}): \code{diffusion\_mode}.
 
 \subsubsection{Diffusion Tensor Modes (recap)}
 \label{sec:diffusion-tensor-recap}
@@ -129,9 +122,7 @@ law, $\Fdiff=-\Kmat\grad\driver$), not with respect to the
 \emph{conserved} state $U_0=\rhoZ$, and, as Section~\ref{sec:tau-modes}
 already had to confront for $\taurelax$, $\driver$ itself is
 \code{diffusion\_mode}-dependent ($\driver=U_0$ for
-\code{isotropic\_constant}, $\driver=U_0/\rho$ otherwise). This is not a
-notational nuisance to work around case-by-case; the code already
-resolves it with a single, explicit, named quantity. The \code{"DiffusionMatrices"}
+\code{isotropic\_constant}, $\driver=U_0/\rho$ otherwise). The \code{"DiffusionMatrices"}
 snapshot field's own description (\code{chemistry\_io.h:185}) states it
 outright: \emph{``The effective diffusivity is defined as $\Deff =
 \Kmat\driver/U$.''} Formally, under the frozen-coefficient approximation
@@ -145,12 +136,7 @@ constant),
 \end{equation}
 This is exactly the same $q/U$ (or $U/q$) bookkeeping that recurs
 throughout Hopkins~\citeyear{Hopkins2017diffusion} and is already used
-elsewhere in this module for precisely this reason, not by coincidence:
-\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor}
-(\code{chemistry\_riemann\_utils.h:210}) computes
-\code{norm\_D\_star = norm\_K\_star * q\_star/U\_star}: the same
-$\Deff=\Kmat(\driver/U)$ construction, independently, for the
-blending-factor calculation. $\Deff$, not $\Kmat$, is the tensor that
+elsewhere in this module for precisely this reason. $\Deff$, not $\Kmat$, is the tensor that
 plays the role of an ordinary Fickian diffusivity \emph{for the conserved
 variable $U_0$ directly}: substituting $\grad\driver\approx\mu\grad U_0$
 (frozen-coefficient) into Fick's law gives $\Fdiff=-\Kmat\mu\grad U_0 =
