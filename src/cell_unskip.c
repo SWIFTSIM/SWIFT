@@ -2504,6 +2504,17 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate(s, ci->hydro.super->stars.stars_out);
         if (cj_nodeID == nodeID)
           scheduler_activate(s, cj->hydro.super->stars.stars_out);
+
+        /* Gate the ghost chain on pair activity, not per-side activity, or
+         * the passive side's ghost never activates (engine_do_unskip_stars
+         * only recurses into active cells) and the stars_ghost_out ->
+         * pair_stars_feedback edge is silently severed for that side. */
+        if (ci_nodeID == nodeID && ci->hydro.super->stars.ghost_in != NULL)
+          cell_activate_stars_ghosts(ci->hydro.super, s, e, with_star_formation,
+                                     with_star_formation_sink);
+        if (cj_nodeID == nodeID && cj->hydro.super->stars.ghost_in != NULL)
+          cell_activate_stars_ghosts(cj->hydro.super, s, e, with_star_formation,
+                                     with_star_formation_sink);
       }
 
       /* We only want to activate the task if the cell is active and is
@@ -2627,6 +2638,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
+      /* TODO(sink_mpi_physics): same per-side-active gating bug fixed for
+       * sinks in a722fbb14 and for stars alongside this comment -- gate on
+       * (ci_active || cj_active) instead, mirroring bh_in/bh_out above.
+       * Left as-is: black holes aren't compiled in this checkout
+       * (BLACK_HOLES_NONE), so the fix can't be tested here. */
       if (ci->hydro.super->black_holes.count > 0 && ci_active)
         scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost_1);
       if (cj->hydro.super->black_holes.count > 0 && cj_active)
