@@ -888,14 +888,8 @@ INLINE static void power_init_output_file(FILE *fp, const enum power_type type1,
  * @param verbose Are we talkative?
  */
 void power_spectrum(const enum power_type type1, const enum power_type type2,
-<<<<<<< HEAD
                     struct power_spectrum_data *pow_data, const struct space *s,
                     struct threadpool *tp, const int verbose) {
-=======
-                    struct power_spectrum_data* pow_data, const struct space* s,
-                    struct threadpool* tp, const int verbose, int direct_mapping) {
->>>>>>> 7556ec400 (Cleaning up a bit further)
-                    struct threadpool* tp, const int verbose) {
 
   const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
@@ -1101,7 +1095,6 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       bzero(pow_data->powgrid2, Ngrid2 * (Ngrid + 2) * sizeof(double));
 
     /* Fill out the folded grid(s) */
-<<<<<<< HEAD
     threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
                    (void *)&densdata);
@@ -1109,21 +1102,6 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
                      (void *)&densdata2);
-=======
-    if (direct_mapping) {
-      message("Mapping the MG density to the powgrid");
-      map_density_to_powgrid(pow_data->MG_dens, densdata.dens, densdata.fac, kfac, Ngrid);
-    }
-    else {
-      threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
-                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                    (void*)&densdata);
-      if (type1 != type2)
-        threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
-                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                      (void*)&densdata2);
-    }
->>>>>>> 7556ec400 (Cleaning up a bit further)
 #ifdef WITH_MPI
     /* Merge everybody's share of the grid onto rank 0 */
     if (e->nodeID == 0)
@@ -1346,11 +1324,7 @@ void power_spectrum_init(struct power_spectrum_data *p,
   const int kcutn = (p->windoworder >= 3) ? 90 : 70;
   const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
   const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
-<<<<<<< HEAD
   if ((p->Nfold > 1) && (kcutright < 10 || (kcutleft - kcutright) < 30))
-=======
-  if (p->Nfold>1 && (kcutright < 10 || (kcutleft - kcutright) < 30))
->>>>>>> 7556ec400 (Cleaning up a bit further)
     error(
         "Combination of power grid size and fold factor do not allow for "
         "enough overlap between foldings!");
@@ -1438,15 +1412,9 @@ void power_spectrum_init(struct power_spectrum_data *p,
 #endif
 }
 
-<<<<<<< HEAD
 void calc_all_power_spectra(struct power_spectrum_data *pow_data,
                             const struct space *s, struct threadpool *tp,
                             const int verbose) {
-=======
-void calc_all_power_spectra(struct power_spectrum_data* pow_data,
-                            const struct space* s, struct threadpool* tp,
-                            const int verbose, int direct_mapping) {
->>>>>>> 7556ec400 (Cleaning up a bit further)
 #ifdef HAVE_FFTW
 
   const ticks tic = getticks();
