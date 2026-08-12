@@ -9,14 +9,13 @@ The default level is 5 (N_particle = 2^(DIMENSION*level)). It is quick. If you w
 To run this example with GEAR model,
 
 ```
-./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-hydro-dimension=DIMENSION --with-grackle=path/to/grackle
+./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 ```
 
 with
 - X=`GEAR_10` for smoothed metallicity scheme,
-- X=`GEAR-MF-DIFFUSION_10` for the parabolic diffusion scheme,
-- X=`GEAR-MF-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
-- DIMENSION=1,2 or 3 is the dimensionality of the problem.
+- X=`GEAR-FVPM-DIFFUSION` for the parabolic diffusion scheme,
+- X=`GEAR-FVPM-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
 
 and then
 
@@ -35,7 +34,4 @@ dimension=DIMENSION ./run.sh
 
 and let's go!
 
-You can provide parameters to the running scripts, have a look inside them.
-
-#Debugging notes
-You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
+You can provide parameters to the running scripts, have a look at them.

@@ -7,13 +7,13 @@ The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to t
 To run this example with GEAR model,
 
 ```
-./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 ```
 
 with
 - X=`GEAR_10` for smoothed metallicity scheme,
-- X=`GEAR-MF-DIFFUSION` for the parabolic diffusion scheme,
-- X=`GEAR-MF-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
+- X=`GEAR-FVPM-DIFFUSION` for the parabolic diffusion scheme,
+- X=`GEAR-FVPM-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
 
 and then
 
@@ -21,14 +21,13 @@ make -j
 
 Note that you can also use the Gizmo MFM scheme to test diffusion by adding `--with-hydro=gizmo-mfm --with-riemann-solver=hllc` to the configuration step.
 
-
 # ICs
 The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 
 # Run
 Type run.sh and let's go!
 
-You can provide parameters to the running scripts, have a look inside them.
+You can provide parameters to the running scripts, have a look at them.
 
 #Debugging notes
 You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
