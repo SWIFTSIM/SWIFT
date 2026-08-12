@@ -1791,8 +1791,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             pjz > shift_threshold_z || pjz < -shift_threshold_z) {
           /* hydro.xparts is only ever populated for LOCAL cells (see
            * space_rebuild.c/cell_split.c) -- never for a foreign cj/ci, so
-           * guard on local_i/local_j before dereferencing it. */
-          const float x_diff_unavailable[3] = {0.f, 0.f, 0.f};
+           * guard on local_i/local_j before dereferencing it. Use a
+           * sentinel clearly distinct from a real x_diff (unlike 0.f,
+           * which a genuinely-unmoved local particle could also report)
+           * so the two cases can never be confused when reading the log. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
           const float *xi_diff = local_i
                                      ? ci->hydro.xparts[sort_i[pid].i].x_diff
                                      : x_diff_unavailable;
@@ -1801,16 +1804,17 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                       : x_diff_unavailable;
           message(
               "OUT_OF_FRAME_PROBE step=%d nodeID=%d ci_cellID=%lld "
-              "cj_cellID=%lld ci_sinks=%d cj_sinks=%d "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_sinks=%d "
+              "cj_sinks=%d "
               "ci_dx_max_part=%e cj_dx_max_part=%e ci_h_max=%e cj_h_max=%e "
               "ci_ti_old_part=%lld cj_ti_old_part=%lld ti_current=%lld "
               "pi_id=%lld pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
               "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) "
               "pj_id=%lld pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d "
               "pj_ti_drift=%lld pj_x_diff=(%e,%e,%e)",
-              e->step, e->nodeID, ci->cellID, cj->cellID, ci->sinks.count,
-              cj->sinks.count, ci->hydro.dx_max_part, cj->hydro.dx_max_part,
-              ci->hydro.h_max, cj->hydro.h_max,
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->sinks.count, cj->sinks.count, ci->hydro.dx_max_part,
+              cj->hydro.dx_max_part, ci->hydro.h_max, cj->hydro.h_max,
               (long long)ci->hydro.ti_old_part,
               (long long)cj->hydro.ti_old_part, (long long)e->ti_current,
               pi->id, pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
