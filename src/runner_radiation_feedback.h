@@ -184,11 +184,25 @@ void runner_dopair_stars_hii_ionization_feedback(
     struct hii_maintenance_context *ctx);
 
 /**
- * @brief Maintain a sorted buffer by inserting a new neighbor at the correct
- * position.
+ * @brief (r2, id) < (r2, id): is @p a_r2/@p a_id strictly before
+ * @p b_r2/@p b_id in the buffer's sort order?
  *
- * If the buffer is full, it replaces the furthest element if the new one is
- * closer.
+ * id is the tiebreak: r2 alone is not a total order (distinct particles can
+ * sit at the identical squared distance -- e.g. a symmetric IC), and the
+ * insertion order below must be reproducible across runs/threads for the
+ * repeat-run determinism gate.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_r2_id_before(
+    float a_r2, long long a_id, float b_r2, long long b_id) {
+  return (a_r2 < b_r2) || (a_r2 == b_r2 && a_id < b_id);
+}
+
+/**
+ * @brief Maintain a buffer sorted in ascending (r2, id) order by inserting a
+ * new neighbor at the correct position.
+ *
+ * If the buffer is full, it replaces the furthest element if the new one
+ * sorts before it.
  */
 __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
@@ -198,7 +212,8 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
   if (*count_found < max_size) {
     int i = *count_found - 1;
     /* Shift elements to make room (standard insertion) */
-    while (i >= 0 && buffer[i].r2 > r2) {
+    while (i >= 0 &&
+           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
       buffer[i + 1] = buffer[i];
       i--;
     }
@@ -211,12 +226,14 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 #endif
     (*count_found)++;
   }
-  /* Case B: Buffer is full, check if new particle is closer than the furthest
+  /* Case B: Buffer is full, check if new particle sorts before the furthest
    */
-  else if (r2 < buffer[max_size - 1].r2) {
+  else if (runner_hii_r2_id_before(r2, p->id, buffer[max_size - 1].r2,
+                                   buffer[max_size - 1].p->id)) {
     int i = max_size - 2;
     /* Shift elements to replace the furthest */
-    while (i >= 0 && buffer[i].r2 > r2) {
+    while (i >= 0 &&
+           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
       buffer[i + 1] = buffer[i];
       i--;
     }
@@ -283,7 +300,8 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
 }
 
 /**
- * @brief Verify that the gathered HII neighbor buffer is properly sorted.
+ * @brief Verify that the gathered HII neighbor buffer is properly sorted in
+ * ascending (r2, id) order, matching #runner_hii_buffer_insert's tiebreak.
  *
  * @param ngb_buffer The array of gathered #hii_neighbor structures.
  * @param count_found The number of valid neighbors stored in the buffer.
@@ -293,11 +311,18 @@ runner_do_stars_hii_ionization_feedback_check_sort(
     const struct hii_neighbor *ngb_buffer, const int count_found) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < count_found - 1; k++) {
-    if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
+    /* Strict: (r2, id) is a total order over distinct particles (unique
+       ids), so two adjacent entries failing this is either a genuine
+       ordering bug or a duplicate particle -- both real bugs. */
+    if (!runner_hii_r2_id_before(ngb_buffer[k].r2, ngb_buffer[k].p->id,
+                                 ngb_buffer[k + 1].r2,
+                                 ngb_buffer[k + 1].p->id)) {
       error(
-          "HII neighbor buffer not properly sorted! "
-          "Index %d (r2=%e) is larger than index %d (r2=%e).",
-          k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
+          "HII neighbor buffer not properly (r2, id)-sorted! "
+          "Index %d (r2=%e, id=%lld) does not sort before index %d "
+          "(r2=%e, id=%lld).",
+          k, ngb_buffer[k].r2, ngb_buffer[k].p->id, k + 1, ngb_buffer[k + 1].r2,
+          ngb_buffer[k + 1].p->id);
     }
   }
 #endif
