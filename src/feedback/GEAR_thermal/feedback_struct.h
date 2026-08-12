@@ -65,7 +65,16 @@ struct feedback_part_data {
       read the PREVIOUS pass's value rather than the current step's (see
       PLAN_radiation_mpi.md blocker F3: the owner's HII pass and a same-step
       cooling call race on this same-step value today, on one rank as much
-      as across ranks). */
+      as across ranks).
+
+      The cache write is skipped on cooling_new_energy()'s early-return
+      paths (a particle held at the subgrid-ionized floor, or pinned by
+      IONIZATION_FEEDBACK_DEBUG_FIXED_*_TEMPERATURE_K): on those steps this
+      field keeps its previous value, which on a particle's very first such
+      step is still the struct's zero-init default, 0.0f -- the OPPOSITE of
+      the 1.0f "no data" sentinel above. A future reader must not treat 0.0f
+      as "fully ionized" without first checking whether the cache has ever
+      actually been written for that particle. */
   float neutral_H_frac;
 };
 

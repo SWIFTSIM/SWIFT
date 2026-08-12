@@ -635,6 +635,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                &count_held, hii_gather_already_ionized,
                                &maintenance_ctx);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* hii_gather_already_ionized increments both counters together for
+       every already-ionized candidate it visits -- one entry buffered per
+       particle held. A mismatch means the buffer and the count it drives
+       (num_empty_expansions, the CHECKSUM line) have silently gone out of
+       sync. */
+    if (count_held != maintenance_ctx.buffer_count)
+      error("count_held (%d) != maintenance buffer_count (%d)", count_held,
+            maintenance_ctx.buffer_count);
+#endif
+
     /* Charge every buffered already-ionized candidate in ascending (r2, id)
        order: a budget shortfall then lapses the outermost shell of the
        region first (the recession front), instead of a set determined by
