@@ -1063,8 +1063,19 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Check that the particle we interact with was not inhibited */
       if (foreign_j && pjd < gcount_j &&
           gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
-          mass_j != 0.f)
+          mass_j != 0.f) {
+        message(
+            "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
+            "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d "
+            "raw_mass=%f cached_mass=%f time_bin=%d ti_drift=%lld "
+            "ti_current=%lld",
+            e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
+            gcount_j, gparts_foreign_j[pjd].mass, mass_j,
+            gparts_foreign_j[pjd].time_bin,
+            (long long)gparts_foreign_j[pjd].ti_drift,
+            (long long)e->ti_current);
         error("Inhibited particle used as gravity source.");
+      }
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
