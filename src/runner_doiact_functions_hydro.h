@@ -1789,8 +1789,16 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             pjx > shift_threshold_x || pjx < -shift_threshold_x ||
             pjy > shift_threshold_y || pjy < -shift_threshold_y ||
             pjz > shift_threshold_z || pjz < -shift_threshold_z) {
-          const struct xpart *xp_i = &ci->hydro.xparts[sort_i[pid].i];
-          const struct xpart *xp_j = &cj->hydro.xparts[sort_active_j[pjd].i];
+          /* hydro.xparts is only ever populated for LOCAL cells (see
+           * space_rebuild.c/cell_split.c) -- never for a foreign cj/ci, so
+           * guard on local_i/local_j before dereferencing it. */
+          const float x_diff_unavailable[3] = {0.f, 0.f, 0.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff =
+              local_j ? cj->hydro.xparts[sort_active_j[pjd].i].x_diff
+                      : x_diff_unavailable;
           message(
               "OUT_OF_FRAME_PROBE step=%d nodeID=%d ci_cellID=%lld "
               "cj_cellID=%lld ci_sinks=%d cj_sinks=%d "
@@ -1806,10 +1814,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
               (long long)ci->hydro.ti_old_part,
               (long long)cj->hydro.ti_old_part, (long long)e->ti_current,
               pi->id, pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
-              (long long)pi->ti_drift, xp_i->x_diff[0], xp_i->x_diff[1],
-              xp_i->x_diff[2], pj->id, pj->v[0], pj->v[1], pj->v[2], pj->h,
-              pj->time_bin, (long long)pj->ti_drift, xp_j->x_diff[0],
-              xp_j->x_diff[1], xp_j->x_diff[2]);
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
         }
 
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
