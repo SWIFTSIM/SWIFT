@@ -2199,6 +2199,33 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * canonical direction here is enough to make the sorted path available at
  * every leaf beneath the super; the naive dopair remains correct if no sort
  * is available at all (e.g. the request hasn't propagated down yet).
+ *
+ * Also activates the super's stars.feedback_ghost. radiation_in's own
+ * barrier is wired at maketasks time to wait on every covered super's
+ * feedback_ghost (engine_radiation_wire_super_deps,
+ * engine_maketasks.c:3586), so that SN feedback writes into a super's gas
+ * happen-before the HII gather reads it. That edge only has an effect if
+ * feedback_ghost is actually unskipped this step: on a star-inactive super
+ * engine_do_unskip_stars() never visits the cell at all (early return,
+ * engine_unskip.c:132-133), so cell_unskip_stars_tasks() never runs and
+ * feedback_ghost stays skip=1 -- a skipped task propagates no wait to its
+ * dependents (scheduler_rewait_mapper, scheduler.c:820-821), silently
+ * severing the edge and leaving the gather's ordering relative to feedback a
+ * lock-acquisition coin flip. Activating it here, unconditionally on every
+ * covered super, closes that gap. It is a correctness-only, no-op-safe
+ * addition on a genuinely star-inactive super: feedback_ghost is Implicit
+ * (task_type_stars_feedback_ghost) and its only upstream -- the star
+ * feedback self/pair tasks -- stay skipped there (nothing in this function
+ * activates them), so it has no unskipped predecessor, clears its wait
+ * immediately, and cascades straight to stars.stars_out (already activated
+ * unconditionally for the matching radiation_out task by
+ * cell_radiation_activate_supers_out below). A super with star-formation- or
+ * sink-eligible gas is never misclassified as inactive here:
+ * cell_need_activating_stars() (active.h:309-318) already folds
+ * with_star_formation/with_star_formation_sink into its activity test, so
+ * such supers take the normal engine_do_unskip_stars() ->
+ * cell_unskip_stars_tasks() path (cell_unskip.c:~2741) with real upstream
+ * wiring instead of ever reaching this branch as "inactive".
  */
 static void cell_radiation_activate_supers_in(struct cell *c,
                                               struct scheduler *s,
@@ -2211,8 +2238,13 @@ static void cell_radiation_activate_supers_in(struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
     if (super->stars.stars_in == NULL)
       error("Radiation search touches a hydro.super with no stars_in task.");
+    if (super->stars.feedback_ghost == NULL)
+      error(
+          "Radiation search touches a hydro.super with no feedback_ghost "
+          "task.");
 #endif
     scheduler_activate(s, super->stars.stars_in);
+    scheduler_activate(s, super->stars.feedback_ghost);
 
     /* Request a sort along one canonical direction; see the docstring. */
     const int sid = 0;
