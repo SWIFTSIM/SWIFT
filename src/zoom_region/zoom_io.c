@@ -27,6 +27,7 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
+#include "io_properties.h"
 #include "space.h"
 #include "zoom.h"
 
@@ -93,6 +94,199 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
   }
 
   H5Gclose(h_zoom);
+}
+
+/**
+ * @brief Write particle counts split between zoom and background particles.
+ *
+ * @param head_grp The snapshot Header group.
+ * @param total Total number of particles of each type in the file.
+ * @param in_cells Number of zoom particles of each type in the file.
+ * @param num_fields Number of fields selected for each particle type.
+ */
+void zoom_write_particle_counts(hid_t head_grp,
+                                const long long total[swift_type_count],
+                                const long long in_cells[swift_type_count],
+                                const int num_fields[swift_type_count]) {
+
+  long long num_in_cells[swift_type_count] = {0};
+  long long num_outside_cells[swift_type_count] = {0};
+  for (int ptype = 0; ptype < swift_type_count; ++ptype) {
+    if (num_fields[ptype] > 0) {
+      num_in_cells[ptype] = in_cells[ptype];
+      num_outside_cells[ptype] = total[ptype] - in_cells[ptype];
+    }
+  }
+
+  io_write_attribute(head_grp, "NumParticles_InCells", LONGLONG, num_in_cells,
+                     swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_OutsideCells", LONGLONG,
+                     num_outside_cells, swift_type_count);
+}
+
+/**
+ * @brief Count local zoom particles for each particle type.
+ *
+ * @param e The #engine.
+ * @param subsample Whether each particle type is being subsampled.
+ * @param subsample_fraction Fraction of each particle type to retain.
+ * @param local Total local particle counts for each particle type.
+ * @param local_in_cells Local zoom particle counts for each particle type.
+ */
+void zoom_io_count_particles_in_cells(
+    const struct engine *e, const int subsample[swift_type_count],
+    const float subsample_fraction[swift_type_count],
+    const long long local[swift_type_count],
+    long long local_in_cells[swift_type_count]) {
+
+  memcpy(local_in_cells, local, swift_type_count * sizeof(long long));
+  if (!e->s->with_zoom_region) return;
+
+  const struct space *s = e->s;
+  const int snap_num = e->snapshot_output_count;
+  local_in_cells[swift_type_gas] = io_count_gas_in_zoom_to_write(
+      s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
+      snap_num);
+  local_in_cells[swift_type_dark_matter] =
+      io_count_dark_matter_in_zoom_to_write(
+          s, subsample[swift_type_dark_matter],
+          subsample_fraction[swift_type_dark_matter], snap_num);
+  local_in_cells[swift_type_dark_matter_background] =
+      io_count_background_dark_matter_in_zoom_to_write(
+          s, subsample[swift_type_dark_matter_background],
+          subsample_fraction[swift_type_dark_matter_background], snap_num);
+  local_in_cells[swift_type_sink] = io_count_sinks_in_zoom_to_write(
+      s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
+      snap_num);
+  local_in_cells[swift_type_stars] = io_count_stars_in_zoom_to_write(
+      s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
+      snap_num);
+  local_in_cells[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
+      s, subsample[swift_type_black_hole],
+      subsample_fraction[swift_type_black_hole], snap_num);
+  local_in_cells[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
+      s, subsample[swift_type_neutrino],
+      subsample_fraction[swift_type_neutrino], snap_num);
+}
+
+#ifdef WITH_MPI
+/**
+ * @brief Prepare contiguous zoom and background regions for MPI snapshots.
+ *
+ * @param e The #engine.
+ * @param subsample Whether each particle type is being subsampled.
+ * @param subsample_fraction Fraction of each particle type to retain.
+ * @param local Total local particle counts for each particle type.
+ * @param total Total particle counts across all ranks.
+ * @param offset Original rank offset for each particle type.
+ * @param comm The MPI communicator.
+ * @param layout The particle counts and offsets to populate.
+ */
+void zoom_io_prepare_particle_layout(
+    const struct engine *e, const int subsample[swift_type_count],
+    const float subsample_fraction[swift_type_count],
+    const long long local[swift_type_count],
+    const long long total[swift_type_count],
+    const long long offset[swift_type_count], MPI_Comm comm,
+    struct zoom_io_particle_layout *layout) {
+
+  zoom_io_count_particles_in_cells(e, subsample, subsample_fraction, local,
+                                   layout->local_in_cells);
+
+  if (!e->s->with_zoom_region) {
+    memcpy(layout->total_in_cells, total, swift_type_count * sizeof(long long));
+    memcpy(layout->offset_in_cells, offset,
+           swift_type_count * sizeof(long long));
+    if (e->nodeID == 0)
+      bzero(layout->offset_in_cells, swift_type_count * sizeof(long long));
+    memcpy(layout->offset_outside_cells, total,
+           swift_type_count * sizeof(long long));
+    return;
+  }
+
+  bzero(layout->offset_in_cells, swift_type_count * sizeof(long long));
+  MPI_Exscan(layout->local_in_cells, layout->offset_in_cells, swift_type_count,
+             MPI_LONG_LONG_INT, MPI_SUM, comm);
+  if (e->nodeID == 0)
+    bzero(layout->offset_in_cells, swift_type_count * sizeof(long long));
+  MPI_Allreduce(layout->local_in_cells, layout->total_in_cells,
+                swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
+
+  /* Background particles follow all zoom particles. Their rank prefix is the
+   * total rank prefix minus the zoom rank prefix. */
+  for (int ptype = 0; ptype < swift_type_count; ++ptype)
+    layout->offset_outside_cells[ptype] = layout->total_in_cells[ptype] +
+                                          (e->nodeID == 0 ? 0 : offset[ptype]) -
+                                          layout->offset_in_cells[ptype];
+}
+#endif
+
+/**
+ * @brief Advance all particle pointers to the background segment.
+ *
+ * @param props The I/O properties to update.
+ * @param offset Number of local zoom particles preceding the background.
+ */
+void zoom_io_offset_io_props(struct io_props *props, size_t offset) {
+  if (props->field != NULL) props->field += offset * props->partSize;
+  if (props->parts != NULL) props->parts += offset;
+  if (props->xparts != NULL) props->xparts += offset;
+  if (props->gparts != NULL) props->gparts += offset;
+  if (props->sparts != NULL) props->sparts += offset;
+  if (props->bparts != NULL) props->bparts += offset;
+  if (props->sinks != NULL) props->sinks += offset;
+}
+
+/**
+ * @brief Write local zoom and background data into their global regions.
+ *
+ * @param h_data The HDF5 dataset to write.
+ * @param h_memspace The HDF5 memory dataspace.
+ * @param h_filespace The HDF5 file dataspace.
+ * @param h_type The HDF5 datatype.
+ * @param buffer The local particle data.
+ * @param rank Rank of the HDF5 dataspace.
+ * @param dimension Number of values per particle.
+ * @param count Total number of local particles.
+ * @param count_in_cells Number of local zoom particles.
+ * @param offset_in_cells Global offset of this rank's zoom particles.
+ * @param offset_outside_cells Global offset of this rank's background
+ * particles.
+ * @param field_name Name of the particle field being written.
+ */
+void zoom_io_write_serial_particle_regions(
+    hid_t h_data, hid_t h_memspace, hid_t h_filespace, hid_t h_type,
+    const void *buffer, int rank, int dimension, size_t count,
+    size_t count_in_cells, long long offset_in_cells,
+    long long offset_outside_cells, const char *field_name) {
+
+  const hsize_t region_sizes[2] = {count_in_cells, count - count_in_cells};
+  const hsize_t memory_offsets[2] = {0, count_in_cells};
+  const hsize_t file_offsets[2] = {offset_in_cells, offset_outside_cells};
+  hsize_t shape[2] = {0, dimension};
+  hsize_t offset[2] = {0, 0};
+  if (rank == 1) shape[1] = 0;
+
+  for (int region = 0; region < 2; ++region) {
+    shape[0] = region_sizes[region];
+    offset[0] = memory_offsets[region];
+    if (shape[0] > 0) {
+      herr_t err = H5Sselect_hyperslab(h_memspace, H5S_SELECT_SET, offset, NULL,
+                                       shape, NULL);
+      if (err < 0) error("Error selecting memory space for '%s'.", field_name);
+      offset[0] = file_offsets[region];
+      err = H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offset, NULL,
+                                shape, NULL);
+      if (err < 0) error("Error selecting file space for '%s'.", field_name);
+    } else {
+      H5Sselect_none(h_memspace);
+      H5Sselect_none(h_filespace);
+    }
+
+    const herr_t err =
+        H5Dwrite(h_data, h_type, h_memspace, h_filespace, H5P_DEFAULT, buffer);
+    if (err < 0) error("Error while writing data array '%s'.", field_name);
+  }
 }
 
 /**
