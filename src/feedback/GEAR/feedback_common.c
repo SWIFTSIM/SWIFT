@@ -693,12 +693,13 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * electrons are already stripped.
  *
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
- * renewed and cooling expires those tags at end_time. Note this is charged in
- * traversal order (own cell in array order, then the radiation_in links), NOT
- * in radius order as Phase 2's distance-sorted buffer is, so the set that
- * lapses when a star cannot afford its whole region is spatially arbitrary
- * rather than an outer shell. At equilibrium the shortfall is only the
- * marginal budget deficit, so that set is thin.
+ * renewed and cooling expires those tags at end_time. The caller
+ * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
+ * (r2, id) order over the star's whole held region, so a shortfall lapses
+ * the outermost shell (largest r2) first -- the physically sensible
+ * recession front -- rather than a set determined by cell-traversal order.
+ * At equilibrium the shortfall is only the marginal budget deficit, so that
+ * shell is thin.
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being maintained.

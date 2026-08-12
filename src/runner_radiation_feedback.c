@@ -25,19 +25,77 @@
 #include <mpi.h>
 #endif
 
+/* Standard headers. */
+#include <stdlib.h>
+
 /* This object's header. */
 #include "runner_radiation_feedback.h"
 
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
+#include "clocks.h"
+#include "cycle.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
+#include "memuse.h"
 #include "runner.h"
 #include "timers.h"
 
 #ifdef IONIZATION_FEEDBACK_LOOP
+/**
+ * @brief Grow a runner's HII maintenance scratch buffer to at least
+ * @p needed entries.
+ *
+ * Doubling grow-on-demand, like gravity_cache_init's pattern
+ * (runner_doiact_grav.c): never shrinks, so a region size seen once does
+ * not repeatedly pay realloc cost on every later pass at or below that
+ * size. Existing content is not preserved -- callers refill the buffer
+ * from scratch every maintenance pass, so nothing needs to survive a grow.
+ *
+ * @param r The #runner whose buffer to grow.
+ * @param needed The minimum required capacity, in entries.
+ */
+static INLINE void runner_hii_maintenance_buffer_ensure(struct runner *r,
+                                                        int needed) {
+  if (r->hii_maintenance_buffer_size >= needed) return;
+
+  int new_size = 2 * r->hii_maintenance_buffer_size;
+  if (new_size < needed) new_size = needed;
+  if (new_size < max_ngbs) new_size = max_ngbs;
+
+  struct hii_neighbor *new_buf = (struct hii_neighbor *)swift_realloc(
+      "hii_maintenance_buffer", r->hii_maintenance_buffer,
+      (size_t)new_size * sizeof(struct hii_neighbor));
+  if (new_buf == NULL)
+    error("Failed to grow the HII maintenance scratch buffer to %d entries.",
+          new_size);
+
+  r->hii_maintenance_buffer = new_buf;
+  r->hii_maintenance_buffer_size = new_size;
+}
+
+/**
+ * @brief qsort() comparator for ascending (r2, id) order.
+ *
+ * id is the tiebreak: r2 alone is not a total order (distinct particles can
+ * sit at the identical squared distance), and processing order must be
+ * reproducible across runs/threads for the maintenance charging pass to be
+ * deterministic. Explicit branches rather than subtraction -- `a - b` on
+ * r2's magnitudes or on a `long long` id either loses precision or
+ * overflows.
+ */
+static int runner_hii_maintenance_compare(const void *a, const void *b) {
+  const struct hii_neighbor *na = (const struct hii_neighbor *)a;
+  const struct hii_neighbor *nb = (const struct hii_neighbor *)b;
+  if (na->r2 < nb->r2) return -1;
+  if (na->r2 > nb->r2) return 1;
+  if (na->p->id < nb->p->id) return -1;
+  if (na->p->id > nb->p->id) return 1;
+  return 0;
+}
+
 /**
  * @brief Assign a gas candidate to its angular pixel and insert it into
  * the neighbour buffer if it is within range and that pixel still has
@@ -85,21 +143,32 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
       runner_hii_get_pixel(dx, feedback_get_star_HII_pixel_count(si));
 
   if (mode == hii_gather_already_ionized) {
-    /* Charged here rather than buffered: this set is the whole ionized
-       region, which has no reason to fit in max_ngbs, and a distance-sorted
-       buffer would silently drop its outskirts. */
-    const double charged = feedback_iact_HII_maintain_ionized_part(
-        si, pj, xpj, r2, pixel, ctx->phys_const, ctx->hydro_props, ctx->us,
-        ctx->cosmo, ctx->cooling, ctx->time, ctx->dt_back);
-
     /* Extent and count track what this star still HOLDS, not what it could
-       afford this pass. Gating them on `charged` would make them depend on
-       traversal order -- gas is visited own-cell-first, so a star short of
-       photons would report only its innermost region, shrink h_hii to match,
-       and drop the rest out of next pass's search radius entirely. */
+       afford this pass. Gating them on the eventual charge would make them
+       depend on traversal order -- gas is visited own-cell-first, so a star
+       short of photons would report only its innermost region, shrink
+       h_hii to match, and drop the rest out of next pass's search radius
+       entirely. Both are therefore still updated live here; only the
+       charge itself (order-sensitive: which shell lapses under a shortfall)
+       is deferred to the caller's (r2, id)-ordered pass below. */
     ctx->r2_max_maintained = max(ctx->r2_max_maintained, r2);
     (*count_found)++;
-    if (charged > 0.0) ctx->photons_charged += charged;
+
+    /* Buffer this candidate for (r2, id)-ordered charging once the whole
+       traversal has returned (runner_dosub_stars_hii_ionization_feedback):
+       this set is the whole ionized region, which has no reason to fit in
+       max_ngbs, so the buffer grows to match rather than dropping
+       outskirts the way the fixed-capacity new-candidate buffer would. */
+    runner_hii_maintenance_buffer_ensure(ctx->r, ctx->buffer_count + 1);
+    struct hii_neighbor *slot =
+        &ctx->r->hii_maintenance_buffer[ctx->buffer_count++];
+    slot->r2 = r2;
+    slot->p = pj;
+    slot->xp = xpj;
+    slot->pixel = pixel;
+#ifdef SWIFT_DEBUG_CHECKS
+    slot->c = c;
+#endif
     return;
   }
 
@@ -559,10 +628,48 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         .dt_back = dt_back,
         .r2_max_maintained = 0.f,
         .photons_charged = 0.0,
+        .r = r,
+        .buffer_count = 0,
     };
     runner_hii_visit_neighbors(r, c, si, interaction_limit, NULL, 0,
                                &count_held, hii_gather_already_ionized,
                                &maintenance_ctx);
+
+    /* Charge every buffered already-ionized candidate in ascending (r2, id)
+       order: a budget shortfall then lapses the outermost shell of the
+       region first (the recession front), instead of a set determined by
+       cell-traversal order. Every entry is charged regardless of whether
+       its pixel can still afford it -- feedback_iact_HII_maintain_ionized_
+       part's own budget check handles that, and it unconditionally accrues
+       mass_HII_region first (the mass this star HOLDS, not what it could
+       afford), so skipping entries here would silently shrink that output
+       field. This is under the same lock set Phase 1's traversal ran
+       under, so the sort's cost is reported (SWIFT_DEBUG_CHECKS_VERBOSE)
+       against the whole pass's cost for visibility into its lock-hold
+       contribution. */
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    const ticks tic_maintenance_sort = getticks();
+#endif
+    if (maintenance_ctx.buffer_count > 1) {
+      qsort(r->hii_maintenance_buffer, maintenance_ctx.buffer_count,
+            sizeof(struct hii_neighbor), runner_hii_maintenance_compare);
+    }
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    const ticks maintenance_sort_ticks = getticks() - tic_maintenance_sort;
+#endif
+    for (int k = 0; k < maintenance_ctx.buffer_count; k++) {
+      const struct hii_neighbor *nb = &r->hii_maintenance_buffer[k];
+      const double charged = feedback_iact_HII_maintain_ionized_part(
+          si, nb->p, nb->xp, nb->r2, nb->pixel, phys_const, hydro_props, us,
+          cosmo, cooling, time, dt_back);
+      if (charged > 0.0) maintenance_ctx.photons_charged += charged;
+    }
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message("HII maintenance sort: star %lld, n=%d, sort_ticks=%lld (%.4f ms)",
+            si->id, maintenance_ctx.buffer_count,
+            (long long)maintenance_sort_ticks,
+            clocks_from_ticks(maintenance_sort_ticks));
+#endif
 
     /* The region's extent is what this star still holds, not the high-water
        mark of everything it ever claimed: gas that drifted out of reach must

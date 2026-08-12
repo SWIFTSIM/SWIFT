@@ -4080,6 +4080,9 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #endif
     gravity_cache_clean(&e->runners[k].ci_gravity_cache);
     gravity_cache_clean(&e->runners[k].cj_gravity_cache);
+    if (e->runners[k].hii_maintenance_buffer != NULL)
+      swift_free("hii_maintenance_buffer",
+                 e->runners[k].hii_maintenance_buffer);
   }
   swift_free("runners", e->runners);
   free(e->snapshot_units);

@@ -127,8 +127,24 @@ struct hii_maintenance_context {
       traversal order. */
   float r2_max_maintained;
 
-  /*! (return) Photons charged to balance recombination this pass. */
+  /*! (return) Photons charged to balance recombination this pass. Filled in
+      by the caller after the traversal returns and the buffered candidates
+      below have been sorted and charged in (r2, id) order -- 0 during the
+      traversal itself. */
   double photons_charged;
+
+  /*! Runner performing this pass. Already-ionized candidates found during
+      the traversal are appended to r->hii_maintenance_buffer (growing it on
+      demand) instead of being charged immediately, so the whole set can be
+      sorted into ascending (r2, id) order first: charging in that order
+      means a budget shortfall lapses the outermost shell (largest r2) of
+      the region, not a spatially arbitrary set determined by cell-traversal
+      order. */
+  struct runner *r;
+
+  /*! Number of candidates appended to r->hii_maintenance_buffer so far this
+      pass. */
+  int buffer_count;
 };
 
 int runner_hii_check_cell_can_be_reached(const struct cell *ci,

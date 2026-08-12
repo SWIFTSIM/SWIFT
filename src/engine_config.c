@@ -1069,6 +1069,12 @@ void engine_config(int restart, int fof, struct engine *e,
     e->runners[k].cj_gravity_cache.count = 0;
     gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
     gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
+
+    /* HII maintenance scratch buffer (runner_radiation_feedback.c): grown
+       lazily on first use rather than sized here, since only GEAR-feedback
+       runs ever touch it. */
+    e->runners[k].hii_maintenance_buffer = NULL;
+    e->runners[k].hii_maintenance_buffer_size = 0;
 #ifdef WITH_VECTORIZATION
     e->runners[k].ci_cache.count = 0;
     e->runners[k].cj_cache.count = 0;
