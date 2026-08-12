@@ -924,7 +924,7 @@ Each interacting pair exchanges an interface flux by solving a Riemann
 problem for the full four-component state $\Uvec=(U_0,\Fdiff)$
 (\code{chemistry\_riemann\_solver\_HLL},
 \code{hyperbolic/chemistry\_riemann\_HLL.h}), reusing the same face
-geometry -- area $\Aij$, position $\xij$, normal $\nunit$ -- as
+geometry, i.e. area $\Aij$, position $\xij$, normal $\nunit$, as
 Part~\ref{part:parabolic}, Section~\ref{sec:fvpm-geometry}. Unlike the
 parabolic solver (Part~\ref{part:parabolic}, Section~\ref{sec:hll-flux}),
 which has no wave speed of its own and borrows the hydrodynamic one,
@@ -993,7 +993,9 @@ fluxes, giving a scalar $F_{\rm HLL}^{\rm par}$:
 \end{equation}
 with $\alpha\in[0,1]$ a per-pair blending factor
 (\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor}),
-derived in Section~\ref{sec:practical-tau0}. Only the mass-density
+$\alpha=\rho_\star/(0.1+\rho_\star)$ in terms of the pair's relaxation-time
+ratio $\rho_\star$, given in full and motivated in
+Eq.~\eqref{eq:berthon_alpha} (Section~\ref{sec:practical-tau0}). Only the mass-density
 component $F_0$ has a parabolic counterpart to blend with: the
 flux-vector components $F_{1,2,3}$ have no analogue in the parabolic
 scheme (Part~\ref{part:parabolic} carries no $\Fdiff$ state to blend
@@ -1023,14 +1025,14 @@ entries of $\Uvec$ rather than the single scalar $\rhoZ$.
 builds the left/right states handed to the Riemann solver by
 extrapolating both the conserved density $U_0=\rhoZ$ and the flux
 $\Fdiff$ from a particle's own position to the interparticle interface,
-over a half-timestep $h=\tfrac12\min(\dt_i,\dt_j)$. The two extrapolations
+over a half-timestep $\dth=\tfrac12\min(\dt_i,\dt_j)$. The two extrapolations
 differ in kind. $U_0$'s evolution equation, $\partial_tU_0=-\div\Fdiff$,
 carries no source term, so the code uses the ordinary first-order
 MUSCL-Hancock form, additive in space and time:
 \begin{equation}
-  U_0(\mathbf x_{\rm face},t^n+h) \approx
+  U_0(\mathbf x_{\rm face},t^n+\dth) \approx
   U_0(\mathbf x_{\rm cell},t^n) + \grad U_0\cdot\Delta\mathbf x
-  - h\,(\div\Fdiff)_{\mathbf x_{\rm cell}} ,
+  - \dth\,(\div\Fdiff)_{\mathbf x_{\rm cell}} ,
 \end{equation}
 with $\Delta\mathbf x=\mathbf x_{\rm face}-\mathbf x_{\rm cell}$ and
 $\div\Fdiff$ itself built from the cell-centred flux gradient. This is
@@ -1038,7 +1040,7 @@ the same predictor form used for hydro's own MUSCL-Hancock step, and
 needs no special treatment: $U_0$'s equation has no stiff source.
 
 The spatial term $\grad U_0\cdot\Delta\mathbf x$ and the temporal term
-$-h\,(\div\Fdiff)_{\mathbf x_{\rm cell}}$ are summed into a single
+$-\dth\,(\div\Fdiff)_{\mathbf x_{\rm cell}}$ are summed into a single
 $\Delta U_0$ \emph{before} the extrapolated state is handed to
 \code{chemistry\_slope\_limit\_face} (\code{hyperbolic/chemistry\_gradients.h},
 the same call that limits $\Fdiff$ below). The face limiter
@@ -1050,17 +1052,17 @@ sharp gradient.
 
 $\Fdiff$'s equation, Eq.~\eqref{eq:cattaneo}, does have a stiff source
 ($-\Fdiff/\taurelax$), so a first-order-in-time Taylor step would be
-inconsistent whenever $h\gtrsim\taurelax$: exactly why the source term
+inconsistent whenever $\dth\gtrsim\taurelax$. Therefore, the source term
 is integrated exactly rather than linearised elsewhere in the scheme
 (\code{chemistry\_part\_integrate\_flux\_source\_term}). The predictor
 applies that same exact integrator, but with the two operations ordered
 \emph{space, then time}:
 \begin{equation}
   \label{eq:predictor-order}
-  \Fdiff(\mathbf x_{\rm face},t^n+h) =
+  \Fdiff(\mathbf x_{\rm face},t^n+\dth) =
   \big[\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot\Delta\mathbf x\big]\,
-  e^{-h/\taurelax} + \Fdiff_{\rm parabolic}(\mathbf x_{\rm cell})\,
-  \big(1-e^{-h/\taurelax}\big)
+  e^{-\dth/\taurelax} + \Fdiff_{\rm parabolic}(\mathbf x_{\rm cell})\,
+  \big(1-e^{-\dth/\taurelax}\big)
 \end{equation}
 (\code{chemistry\_gradients.h}): first spatially reconstruct
 $\Fdiff$ to the interface using its own stored gradient, then relax the
@@ -1085,7 +1087,7 @@ $\mathbf x$ and every $t>t^n$ is
   \Fdiff(\mathbf x,t) = \Fdiff_{\rm parabolic} +
   \big[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}\big]\,e^{-(t-t^n)/\taurelax} .
 \end{equation}
-Evaluating at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+h$ reproduces
+Evaluating at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+\dth$ reproduces
 Eq.~\eqref{eq:predictor-order} exactly.
 \end{proposition}
 \begin{proof}
@@ -1100,18 +1102,18 @@ of how $\Fdiff(\mathbf x,t^n)$ depends on $\mathbf x$.
 Decompose Eq.~\eqref{eq:predictor-order} into a cell-mean piece and a
 gradient piece:
 \begin{equation}
-  \Fdiff(\mathbf x_{\rm face},t^n+h) =
-  \underbrace{\Fdiff(\mathbf x_{\rm cell},t^n)e^{-h/\taurelax}
-  +\Fdiff_{\rm parabolic}(1-e^{-h/\taurelax})}_{\text{exact cell-centre relaxation}}
+  \Fdiff(\mathbf x_{\rm face},t^n+\dth) =
+  \underbrace{\Fdiff(\mathbf x_{\rm cell},t^n)e^{-\dth/\taurelax}
+  +\Fdiff_{\rm parabolic}(1-e^{-\dth/\taurelax})}_{\text{exact cell-centre relaxation}}
   \;+\;
-  \underbrace{\big(\grad\Fdiff\cdot\Delta\mathbf x\big)\,e^{-h/\taurelax}}_{\text{gradient, decayed}} .
+  \underbrace{\big(\grad\Fdiff\cdot\Delta\mathbf x\big)\,e^{-\dth/\taurelax}}_{\text{gradient, decayed}} .
 \end{equation}
 The gradient contribution decays at the same rate as the mean, since
 $\Fdiff_{\rm parabolic}$ carries no gradient of its own in this local approximation
 -- both pieces of Proposition~\ref{prop:predictor}'s exact solution decay
 identically. The reverse order (relax the cell-centred value first, then
 add $\grad\Fdiff\cdot\Delta\mathbf x$ \emph{un}decayed) would instead give
-$\Fdiff_{\rm parabolic}+[\Fdiff(\mathbf x_{\rm cell},t^n)-\Fdiff_{\rm parabolic}]e^{-h/\taurelax}
+$\Fdiff_{\rm parabolic}+[\Fdiff(\mathbf x_{\rm cell},t^n)-\Fdiff_{\rm parabolic}]e^{-\dth/\taurelax}
 +\grad\Fdiff\cdot\Delta\mathbf x$: as $\taurelax\to0$ this tends to
 $\Fdiff_{\rm parabolic}+\grad\Fdiff\cdot\Delta\mathbf x$, a spurious residual
 gradient inherited from the pre-relaxation, hyperbolic-regime flux field,
@@ -1123,7 +1125,7 @@ Eq.~\eqref{eq:cattaneo} itself.
 \end{remark}
 
 \begin{remark}[The opposite limit, $\taurelax\to\infty$]
-As $\taurelax\to\infty$, $e^{-h/\taurelax}\to1-h/\taurelax+O(\taurelax^{-2})$
+As $\taurelax\to\infty$, $e^{-\dth/\taurelax}\to1-\dth/\taurelax+O(\taurelax^{-2})$
 and Eq.~\eqref{eq:predictor-order} tends, at leading order, to
 $\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot\Delta\mathbf x$, a
 pure spatial extrapolation with no time evolution, matching
@@ -1279,9 +1281,12 @@ step runs through the Hopkins-limited parabolic branch ($\alpha\to0$) or
 the plain, unlimited HLL branch of Section~\ref{sec:hll-consequence}
 ($\alpha\to1$).
 
-$\alpha=\rho_\star/(0.1+\rho_\star)$ with
-$\rho_\star=\taurelax_\star/\taurelax_{\rm num}$,
-$\taurelax_\star$ the harmonic mean of the pair's two relaxation times
+\begin{equation}
+  \label{eq:berthon_alpha}
+  \alpha = \frac{\rho_\star}{0.1+\rho_\star} ,
+  \qquad \rho_\star = \frac{\taurelax_\star}{\taurelax_{\rm num}} ,
+\end{equation}
+with $\taurelax_\star$ the harmonic mean of the pair's two relaxation times
 (equal to $\taurelax/2$ when $\taurelax_L=\taurelax_R=\taurelax$), and
 $\taurelax_{\rm num}=r_{ij}^2/D_\star$ the local parabolic crossing time
 built from the actual pair separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$
