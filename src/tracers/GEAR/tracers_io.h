@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "feedback.h"
 #include "io_properties.h"
 #include "tracers.h"
 
@@ -70,6 +71,26 @@ INLINE static void convert_sink_averaged_accretion_rate(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #IsIonizedFlags -- see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_is_ionized(const struct engine *e,
+                                           const struct part *p,
+                                           const struct xpart *xp, char *ret) {
+  ret[0] = feedback_is_part_tagged_as_ionized(p, xp);
+}
+
+/**
+ * @brief Snapshot converter for #HIIStarIDs -- see #tracers_write_particles.
+ */
+INLINE static void convert_part_HII_star_id(const struct engine *e,
+                                            const struct part *p,
+                                            const struct xpart *xp,
+                                            long long *ret) {
+  ret[0] = feedback_get_part_ionized_star_id(p, xp);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -84,14 +105,19 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   int num = 2;
 
-  list[0] = io_make_output_field(
-      "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-      tracers_data.HII_region.is_ionized,
+  /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
+     not tracers_xpart_data -- read through the feedback-model dispatch
+     wrapper (feedback_common.c) rather than the struct field directly, so
+     this compiles under any --with-feedback choice paired with
+     --with-tracers=GEAR, not only --with-feedback=GEAR. */
+  list[0] = io_make_output_field_convert_part(
+      "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_is_ionized,
       "Were the particles flagged as ionized by HII ionzation subgrid model?");
 
-  list[1] = io_make_output_field(
-      "HIIStarIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-      tracers_data.HII_region.star_id,
+  list[1] = io_make_output_field_convert_part(
+      "HIIStarIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_HII_star_id,
       "Star particle IDs that ionized these gas particles due to HII ionzation "
       "subgrid model?");
 

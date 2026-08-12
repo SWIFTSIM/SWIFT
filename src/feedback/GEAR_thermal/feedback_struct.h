@@ -38,8 +38,36 @@
 
 /**
  * @brief Feedback fields carried by each hydro particles
+ *
+ * Carries the HII ionization tag core (radiation.c's
+ * radiation_tag_part_as_ionized() and friends): a struct part field, not
+ * struct xpart, so it is included in the particle's normal MPI exchange and
+ * restart dump automatically, unlike xpart's owner-only payload
+ * (tracers_xpart_data.HII_region -- excess_photon_energy_HI,
+ * photoionization_rate_HI) which stays local to whichever rank currently
+ * owns the particle.
  */
-struct feedback_part_data {};
+struct feedback_part_data {
+
+  /*! Tag to mark the particle as ionized. */
+  char is_ionized;
+
+  /*! Id of the star that ionized this particle. */
+  long long star_id;
+
+  /*! Simulation time until which this particle stays flagged as ionized. */
+  double end_time;
+
+  /*! Neutral hydrogen mass fraction, cached by the cooling step right after
+      its species update (grackle_1+: HI_frac; grackle_0, which tracks no
+      species: 1.0f unconditionally). Not read by anything yet -- this is
+      the input a future MPI scheme's F3 latch will consume, and it MUST
+      read the PREVIOUS pass's value rather than the current step's (see
+      PLAN_radiation_mpi.md blocker F3: the owner's HII pass and a same-step
+      cooling call race on this same-step value today, on one rank as much
+      as across ranks). */
+  float neutral_H_frac;
+};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles

@@ -109,4 +109,17 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp, double time) {}
 
+/**
+ * @brief Cache this step's neutral hydrogen mass fraction on the
+ * particle's feedback-model core. No-op here: this subgrid model has no
+ * tag core to cache into.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+INLINE static void cooling_cache_neutral_H_fraction_subgrid(
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp) {}
+
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */

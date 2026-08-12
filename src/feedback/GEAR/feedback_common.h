@@ -101,6 +101,8 @@ void feedback_set_star_HII_last_attempt(struct spart *sp,
 
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);
+long long feedback_get_part_ionized_star_id(const struct part *p,
+                                            const struct xpart *xp);
 float feedback_get_star_HII_mass(const struct spart *sp);
 
 void feedback_init_after_star_formation(

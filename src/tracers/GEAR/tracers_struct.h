@@ -27,17 +27,12 @@
  */
 struct tracers_xpart_data {
 
-  /*! Radiation struct */
+  /*! Radiation struct. The tag core (is_ionized/star_id/end_time) lives on
+      struct part's feedback_data instead -- see
+      src/feedback/GEAR_thermal/feedback_struct.h -- so it gets automatic
+      MPI/restart coverage; only the owner-computed payload below, needed
+      solely alongside a live tag, stays here. */
   struct {
-
-    /*! Tag to ionize the part */
-    char is_ionized;
-
-    /*! Id of the star that ionized this particle */
-    long long star_id;
-
-    /*! Time when this particle is not ionized anymore */
-    double end_time;
 
     /*! Mean photon energy above the 13.6 eV HI ionization threshold for
         the tagging star, frozen at tag time (only set when

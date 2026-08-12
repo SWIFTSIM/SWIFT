@@ -126,6 +126,20 @@ feedback_is_part_tagged_as_ionized(const struct part *p,
 }
 
 /**
+ * @brief Id of the star that tagged this gas particle as HII-ionized.
+ *
+ * Nothing to do here for the no-feedback model.
+ *
+ * @param p The #part to query.
+ * @param xp The #part's extended data.
+ */
+__attribute__((always_inline)) INLINE static long long
+feedback_get_part_ionized_star_id(const struct part *p,
+                                  const struct xpart *xp) {
+  return 0;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Nothing to do here for the no-feedback model.

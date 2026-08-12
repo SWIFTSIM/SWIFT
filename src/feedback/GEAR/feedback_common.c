@@ -667,7 +667,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
     const struct cooling_function_data *cooling, const double time,
     const double dt_back, const double cost) {
 
-  if (xpj->tracers_data.HII_region.is_ionized != 0) return;
+  if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
 
   radiation_tag_part_as_ionized(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
@@ -956,6 +956,21 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp) {
   return radiation_is_part_tagged_as_ionized(p, xp);
+}
+
+/**
+ * @brief Id of the star that tagged this gas particle as HII-ionized.
+ *
+ * Thin dispatch wrapper, same reasoning as
+ * #feedback_is_part_tagged_as_ionized -- only meaningful while that
+ * function returns true.
+ *
+ * @param p The #part to query.
+ * @param xp The #part's extended data.
+ */
+long long feedback_get_part_ionized_star_id(const struct part *p,
+                                            const struct xpart *xp) {
+  return radiation_get_part_ionized_star_id(p, xp);
 }
 
 /**

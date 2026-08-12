@@ -270,4 +270,33 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
 #endif
 }
 
+/**
+ * @brief Cache this step's neutral hydrogen mass fraction on the particle's
+ * feedback-model core (struct part's feedback_data.neutral_H_frac).
+ *
+ * Called once per particle right after Grackle's own species update
+ * (cooling_copy_from_grackle) has run, so it reflects the state Grackle
+ * just solved for -- not called at all for a particle held at the
+ * subgrid-ionized floor this step (#cooling_ionize_part_subgrid), since
+ * that path skips Grackle's solve entirely and there is no fresh species
+ * update to cache. Nothing reads this field yet: it is the input a future
+ * MPI scheme's F3 latch will consume (PLAN_radiation_mpi.md), which must
+ * read the PREVIOUS pass's value rather than this step's.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+INLINE static void cooling_cache_neutral_H_fraction_subgrid(
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp) {
+#if COOLING_GRACKLE_MODE > 0
+  p->feedback_data.neutral_H_frac = xp->cooling_data.HI_frac;
+#else
+  /* No species tracked at this mode -- not a measurement, just the fixed
+     input the future F3 consumer will see until species tracking exists. */
+  p->feedback_data.neutral_H_frac = 1.0f;
+#endif
+}
+
 #endif /* SWIFT_GEAR_COOLING_SUBGRID_H */
