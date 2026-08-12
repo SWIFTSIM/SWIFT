@@ -184,6 +184,48 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   }
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ordering assertion for the feedback_ghost activation fix (Phase 5 item
+   * 13, cell_unskip.c's cell_radiation_activate_supers_in()). Every
+   * hydro.super this gather is about to read/write gas in must have already
+   * had its stars.feedback_ghost barrier RUN this step -- not merely
+   * "not skipped", since skip resets to 1 on task completion; ti_run ==
+   * e->ti_current is the reliable "did this actually execute this step"
+   * signal. A tripped assertion is direct proof that the wait edge wired at
+   * engine_maketasks.c:3586 (t_in waits on every covered super's
+   * feedback_ghost) failed to hold: this gather is about to touch a super
+   * whose local feedback pass either has not run yet or ran with no
+   * ordering guarantee relative to this task. */
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct cell *sides[2] = {l->t->ci, l->t->cj};
+    for (int side = 0; side < 2; side++) {
+      struct cell *cc = sides[side];
+      if (cc == NULL) continue;
+      if (cc->hydro.super == NULL) continue; /* radiation_level above super */
+      struct cell *super = cc->hydro.super;
+      if (super->stars.feedback_ghost == NULL) continue;
+
+      /* Only meaningful once this super was actually covered by radiation
+       * activation this step -- cell_flag_do_hydro_drift is set
+       * unconditionally by cell_radiation_activate_supers_in() for every
+       * covered super, so its presence marks "in scope for this pass". An
+       * untouched/irrelevant super legitimately carries a stale ti_run and
+       * is not part of the hazard. */
+      if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
+
+      if (super->stars.feedback != NULL /* had a feedback task registered */
+          && super->stars.feedback_ghost->ti_run != e->ti_current) {
+        error(
+            "hii_ionization_feedback about to touch hydro.super %lld whose "
+            "stars.feedback_ghost has NOT run this step (ti_run=%lld, "
+            "ti_current=%lld, skip=%d). Ordering edge severed.",
+            super->cellID, super->stars.feedback_ghost->ti_run, e->ti_current,
+            super->stars.feedback_ghost->skip);
+      }
+    }
+  }
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
     /* We have already handled the self case */
