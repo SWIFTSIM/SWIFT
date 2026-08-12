@@ -1788,24 +1788,29 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             piz > shift_threshold_z || piz < -shift_threshold_z ||
             pjx > shift_threshold_x || pjx < -shift_threshold_x ||
             pjy > shift_threshold_y || pjy < -shift_threshold_y ||
-            pjz > shift_threshold_z || pjz < -shift_threshold_z)
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          const struct xpart *xp_i = &ci->hydro.xparts[sort_i[pid].i];
+          const struct xpart *xp_j = &cj->hydro.xparts[sort_active_j[pjd].i];
           message(
               "OUT_OF_FRAME_PROBE step=%d nodeID=%d ci_cellID=%lld "
               "cj_cellID=%lld ci_sinks=%d cj_sinks=%d "
               "ci_dx_max_part=%e cj_dx_max_part=%e ci_h_max=%e cj_h_max=%e "
               "ci_ti_old_part=%lld cj_ti_old_part=%lld ti_current=%lld "
               "pi_id=%lld pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
-              "pi_ti_drift=%lld "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) "
               "pj_id=%lld pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d "
-              "pj_ti_drift=%lld",
+              "pj_ti_drift=%lld pj_x_diff=(%e,%e,%e)",
               e->step, e->nodeID, ci->cellID, cj->cellID, ci->sinks.count,
               cj->sinks.count, ci->hydro.dx_max_part, cj->hydro.dx_max_part,
               ci->hydro.h_max, cj->hydro.h_max,
               (long long)ci->hydro.ti_old_part,
               (long long)cj->hydro.ti_old_part, (long long)e->ti_current,
               pi->id, pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
-              (long long)pi->ti_drift, pj->id, pj->v[0], pj->v[1], pj->v[2],
-              pj->h, pj->time_bin, (long long)pj->ti_drift);
+              (long long)pi->ti_drift, xp_i->x_diff[0], xp_i->x_diff[1],
+              xp_i->x_diff[2], pj->id, pj->v[0], pj->v[1], pj->v[2], pj->h,
+              pj->time_bin, (long long)pj->ti_drift, xp_j->x_diff[0],
+              xp_j->x_diff[1], xp_j->x_diff[2]);
+        }
 
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
