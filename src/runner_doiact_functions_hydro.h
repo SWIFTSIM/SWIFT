@@ -1622,18 +1622,33 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
   struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
+  /* Get some other useful values. */
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
+  /* A foreign cell's dx_max_part is zeroed at rebuild and only refreshed
+   * by the end-of-step tend exchange, so on the step right after a
+   * rebuild it reads stale even though real (small) drift may already
+   * have happened on the owning rank. Substitute a full cell width as a
+   * generous stand-in for that one step only -- a genuine problem will
+   * still fire firmly on the next step, once dx_max_part is fresh. */
+  const int rebuild_step = (e->step_props & engine_step_prop_rebuild) != 0;
+  const float ci_dx_max_part_safe =
+      (rebuild_step && !local_i) ? ci->width[0] : ci->hydro.dx_max_part;
+  const float cj_dx_max_part_safe =
+      (rebuild_step && !local_j) ? cj->width[0] : cj->hydro.dx_max_part;
   const float shift_threshold_x =
       2.02 * ci->width[0] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_y =
       2.02 * ci->width[1] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_z =
       2.02 * ci->width[2] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the depth limits (if any) */
@@ -1646,9 +1661,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 #endif
 
-  /* Get some other useful values. */
-  const int local_i = ci->nodeID == e->nodeID;
-  const int local_j = cj->nodeID == e->nodeID;
   const double hi_max = ci->hydro.h_max;
   const double hj_max = cj->hydro.h_max;
   const int count_i = ci->hydro.count;
