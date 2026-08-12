@@ -1117,19 +1117,19 @@ already available at the point $F_{\rm diss}$ is assembled, so the bound
 costs one division and one \code{min} beyond the existing dissipation
 term.
 
-Equation~\eqref{eq:causal-bound} is the hyperbolic solver's only cap on
-$F_{\rm diss}$. The parabolic scheme bounds its own dissipation
-differently, by a two-argument minmod between $(1+\psi)F_{\rm transport}$
+Equation~\eqref{eq:causal-bound} is the hyperbolic solver's replacement
+for the parabolic-style minmod TVD bound the hyperbolic branch used to
+carry: a two-argument minmod between $(1+\psi)F_{\rm transport}$
 and $F_{\rm transport}+F_{\rm diss}$, with
 $\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
 per-simulation-tuned parameter (the Hopkins-HLL construction referenced in
 Section~\ref{sec:hll-consequence}). Through the Berthon blend that
 combines the two solvers, that minmod still acts on the parabolic
 contribution to a hyperbolic run's flux, but not on the hyperbolic one.
-The two mechanisms are not complementary: they rescale the same term in
+The two mechanisms were not complementary: they rescaled the same term in
 pursuit of the same goal, suppressing the raw HLL dissipation's tendency
-to over-transport, so applying both to the hyperbolic branch is
-redundant, and at a tight $\psi$ the minmod binds first and leaves
+to over-transport, so applying both to the hyperbolic branch was
+redundant, and at a tight $\psi$ the minmod bound first and left
 $\zeta_{ij}$ inert. The causal bound is the preferable formulation of the
 two, which is why it is the one the hyperbolic branch keeps: $\zeta_{ij}$
 has no tunable parameter to calibrate per problem, and it is derived
@@ -1138,20 +1138,57 @@ document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
 already fixes as exact or a tight, safe bound, rather than from a free
 constant chosen to match a given test problem.
 
+\begin{remark}[The causal bound is not the flux-memory limiter's replacement]
+\label{rem:causal-vs-flux-memory}
+Unlike its relationship to the minmod bound above, the causal bound is
+\emph{not} a substitute for the flux-memory limiter of
+Section~\ref{sec:hyperbolic-limiter}, and dropping the latter is not a
+safe simplification. The two rescale the same $F_{\rm diss}$ but answer
+different questions, and each is blind to the other's failure mode:
+\begin{itemize}
+\item $\zeta_{ij}$ asks \emph{how fast} the dissipation is, relative to
+  the one speed the Cattaneo system allows it to be, $\chyp$. It is built
+  purely from geometry and $\chyp$ and knows nothing about the actual
+  value of $\Fdiff$; it cannot tell a freshly-relaxed flux from a stale
+  one, both get the same $\zeta_{ij}$ if they sit at the same pair with
+  the same $\chyp$.
+\item The flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}
+  asks \emph{how stale} the dynamical flux $\Fdiff$ is, i.e.\ how far it
+  still is from its own Fickian relaxation target
+  $\Fdiff_{\rm parabolic}$. It is built purely from $\Fdiff$ and
+  $\Fdiff_{\rm parabolic}$ and knows nothing about $\chyp$ or $r_{ij}$; it
+  cannot tell a causally-bounded dissipation rate from an excessive one.
+\end{itemize}
+An un-relaxed flux transporting at an otherwise-causal rate ($\zeta_{ij}$
+close to $1$) is exactly the case the causal bound cannot see and the
+flux-memory limiter exists to catch, and vice versa. This is why both
+mechanisms are applied to $F_{\rm diss}$ in the code
+(\code{hyperbolic/chemistry\_riemann\_HLL.h}), one after the other, rather
+than either superseding the other the way the causal bound superseded the
+minmod bound above.
+\end{remark}
+
 \paragraph{Practical considerations.}
 
 \begin{itemize}
 \item \textbf{Length scale.} The chemistry CFL condition ties $\dt$ to the
   local particle size over $\chyp$ (Section~\ref{sec:speed-criterion}), so
-  $\chyp\dt_{ij}/r_{ij}$ is $O(\CCFL)$ for essentially every
+  $\chyp\dt_{ij}/(\text{length scale})$ is $O(\CCFL)$ for essentially every
   well-resolved pair, not a ratio that only binds in rare, badly-behaved
   configurations: Eq.~\eqref{eq:causal-bound} is a global reduction of the
-  dissipation's reach, applied on (almost) every face every step. Because
-  the von Neumann/Lax-Wendroff stability floor for this term is set by the
-  particle size rather than by the pair separation $r_{ij}$ itself (a
-  distinct, though comparable, length scale;
-  Section~\ref{sec:practical-tau0}), an implementation may prefer the
-  particle size in Eq.~\eqref{eq:causal-bound} in place of $r_{ij}$.
+  dissipation's reach, applied on (almost) every face every step. The
+  implementation uses $\min(\dx_i,\dx_j)$, the smaller of the two
+  particles' own physical sizes
+  (\code{chemistry\_get\_physical\_particle\_size}), in place of $r_{ij}$
+  in Eq.~\eqref{eq:causal-bound}, because the von Neumann/Lax-Wendroff
+  stability floor this term is meant to respect, and the $\dt$ the CFL
+  condition actually delivers, are both built from the particle size, not
+  from $r_{ij}$ (a distinct, though comparable, length scale;
+  Section~\ref{sec:practical-tau0}). For a close neighbour pair inside the
+  kernel, $r_{ij}$ can be smaller than the particle size: using it in
+  Eq.~\eqref{eq:causal-bound} would let $\zeta_{ij}$ read as less
+  restrictive than the stability analysis the CFL condition is actually
+  based on supports, for exactly the pairs where that matters most.
 \item \textbf{A floor is required.} $\zeta_{ij}\to0$ exactly would zero
   out the dissipation entirely whenever $\chyp\to0$, which happens in
   \code{turbulent\_mode} wherever the local shear vanishes
