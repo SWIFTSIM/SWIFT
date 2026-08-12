@@ -1014,8 +1014,8 @@ contribution.
 The resulting $F$ is scaled by the physical face area $\Aij$ and
 accumulated into each particle's flux buffer using the same pairwise
 sign convention as Part~\ref{part:parabolic},
-Section~\ref{sec:time-integration} -- subtracted from the left particle,
-added to the right -- extended component-by-component across all four
+Section~\ref{sec:time-integration}, subtracted from the left particle and
+added to the right, extended component-by-component across all four
 entries of $\Uvec$ rather than the single scalar $\rhoZ$.
 
 \subsection{The Half-Timestep Predictor}
@@ -1070,35 +1070,51 @@ whole extrapolated value toward $\Fdiff_{\rm parabolic}$ exactly. Since $\Fdiff_
 is only ever available at the cell centre
 (Remark~\ref{rem:cell-centred-gradients-only}), the alternative order
 (relax the cell-centred value first, then add the spatial gradient
-afterwards) is also conceivable. The two are not equivalent.
+afterwards) is also conceivable. The two are not equivalent, and, as
+Remark~\ref{rem:reverse-order-wrong} below shows, the alternative is the
+wrong choice.
 
-\begin{proposition}[Eq.~\eqref{eq:predictor-order} is the exact solution of the locally-available problem]
+Proposition~\ref{prop:predictor} makes precise what ``exact integrator''
+means for the predictor: freezing $\Fdiff_{\rm parabolic}$ at its only
+available cell-centre value turns $\Fdiff$'s governing equation into a
+plain, per-point relaxation ODE with no spatial coupling, and
+Eq.~\eqref{eq:predictor-order} is exactly that ODE's solution, not merely
+a discretisation of it.
+\begin{proposition}[Eq.~\eqref{eq:predictor-order} solves the frozen-$\Fdiff_{\rm parabolic}$ relaxation ODE exactly]
 \label{prop:predictor}
-Treat $\Fdiff_{\rm parabolic}$ as spatially uniform over the cell, equal to its only
-available value at $\mathbf x_{\rm cell}$, the same approximation
-already forced by Remark~\ref{rem:cell-centred-gradients-only}. Then
-$\partial_t\Fdiff=-(\Fdiff-\Fdiff_{\rm parabolic})/\taurelax$ has no spatial-derivative
-coupling: it is an independent ODE at every point $\mathbf x$, with
-$\Fdiff_{\rm parabolic}$ constant in $\mathbf x$. Given the linear initial profile
+Freeze $\Fdiff_{\rm parabolic}$ at its only available value,
+$\Fdiff_{\rm parabolic}(\mathbf x_{\rm cell})$, constant over the cell
+(the same approximation already forced by
+Remark~\ref{rem:cell-centred-gradients-only}). Then
+$\partial_t\Fdiff=-(\Fdiff-\Fdiff_{\rm parabolic})/\taurelax$ has no
+spatial-derivative coupling left in it: it is an independent ODE at
+every point $\mathbf x$. Given the linear initial profile
 $\Fdiff(\mathbf x,t^n)=\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot(\mathbf x-\mathbf x_{\rm cell})$
-supplied by the gradient estimator, the exact solution at every
+supplied by the gradient estimator, its exact solution at every
 $\mathbf x$ and every $t>t^n$ is
 \begin{equation}
   \Fdiff(\mathbf x,t) = \Fdiff_{\rm parabolic} +
-  \big[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}\big]\,e^{-(t-t^n)/\taurelax} .
+  \big[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}\big]\,e^{-(t-t^n)/\taurelax} ,
 \end{equation}
-Evaluating at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+\dth$ reproduces
-Eq.~\eqref{eq:predictor-order} exactly.
+which at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+\dth$ is exactly
+Eq.~\eqref{eq:predictor-order}.
 \end{proposition}
 \begin{proof}
-With $\Fdiff_{\rm parabolic}$ constant in $\mathbf x$,
-$\partial_t[\Fdiff-\Fdiff_{\rm parabolic}]=-[\Fdiff-\Fdiff_{\rm parabolic}]/\taurelax$ holds
-separately at each $\mathbf x$, solved by
-$[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}]\,e^{-(t-t^n)/\taurelax}$ regardless
-of how $\Fdiff(\mathbf x,t^n)$ depends on $\mathbf x$.
+Fix a point $\mathbf x$ and write $Y(t)=\Fdiff(\mathbf x,t)-\Fdiff_{\rm parabolic}$,
+with $\Fdiff_{\rm parabolic}$ held constant in both space and time (the
+freezing assumption above). Since the spatial coupling has already been
+discarded, the governing equation reduces at this fixed $\mathbf x$ to
+the linear, separable ODE $\dot Y=-Y/\taurelax$. Separating variables,
+$d(\ln Y)/dt=-1/\taurelax$, integrates to
+$Y(t)=Y(t^n)\,e^{-(t-t^n)/\taurelax}$. This derivation used no property
+of $\mathbf x$, so it holds independently at every point; substituting
+$Y(t^n)=\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}$ back in, and
+evaluating at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+\dth$, gives the
+proposition's claim.
 \end{proof}
 
 \begin{remark}[Why the reverse order is wrong]
+\label{rem:reverse-order-wrong}
 Decompose Eq.~\eqref{eq:predictor-order} into a cell-mean piece and a
 gradient piece:
 \begin{equation}
@@ -1109,9 +1125,10 @@ gradient piece:
   \underbrace{\big(\grad\Fdiff\cdot\Delta\mathbf x\big)\,e^{-\dth/\taurelax}}_{\text{gradient, decayed}} .
 \end{equation}
 The gradient contribution decays at the same rate as the mean, since
-$\Fdiff_{\rm parabolic}$ carries no gradient of its own in this local approximation
--- both pieces of Proposition~\ref{prop:predictor}'s exact solution decay
-identically. The reverse order (relax the cell-centred value first, then
+$\Fdiff_{\rm parabolic}$ carries no gradient of its own in this local
+approximation: both pieces of Proposition~\ref{prop:predictor}'s exact
+solution decay identically. The reverse order (relax the cell-centred
+value first, then
 add $\grad\Fdiff\cdot\Delta\mathbf x$ \emph{un}decayed) would instead give
 $\Fdiff_{\rm parabolic}+[\Fdiff(\mathbf x_{\rm cell},t^n)-\Fdiff_{\rm parabolic}]e^{-\dth/\taurelax}
 +\grad\Fdiff\cdot\Delta\mathbf x$: as $\taurelax\to0$ this tends to
