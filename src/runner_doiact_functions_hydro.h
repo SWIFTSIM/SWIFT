@@ -1783,6 +1783,24 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          message(
+              "OUT_OF_FRAME_PROBE step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_sinks=%d cj_sinks=%d "
+              "ci_dx_max_part=%e cj_dx_max_part=%e ci_h_max=%e cj_h_max=%e "
+              "pi_id=%lld pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pj_id=%lld pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d",
+              e->step, e->nodeID, ci->cellID, cj->cellID, ci->sinks.count,
+              cj->sinks.count, ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.h_max, cj->hydro.h_max, pi->id, pi->v[0], pi->v[1],
+              pi->v[2], pi->h, pi->time_bin, pj->id, pj->v[0], pj->v[1],
+              pj->v[2], pj->h, pj->time_bin);
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
