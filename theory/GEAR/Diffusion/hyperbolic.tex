@@ -968,7 +968,7 @@ Sections~\ref{sec:hll-consequence}--\ref{sec:hyperbolic-limiter} go on to
 refine: they only ever rescale $F_{\rm diss}$ before it re-enters
 Eq.~\eqref{eq:hyp_F_HLL}, never $F_{\rm transport}$.
 
-\subsubsection{The Berthon Blend with the Parabolic Solver}
+\subsection{The Berthon Blend with the Parabolic Solver}
 \label{sec:berthon-blend}
 The pure hyperbolic flux $F_{\rm HLL}$ is not by itself a stable
 discretisation of the $\taurelax\to0$ limit: as $\taurelax\to0$,
@@ -992,10 +992,24 @@ fluxes, giving a scalar $F_{\rm HLL}^{\rm par}$:
   F_k = \alpha\, (F_{\rm HLL})_k \quad (k=1,2,3) \; ,}
 \end{equation}
 with $\alpha\in[0,1]$ a per-pair blending factor
-(\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor}),
-$\alpha=\rho_\star/(0.1+\rho_\star)$ in terms of the pair's relaxation-time
-ratio $\rho_\star$, given in full and motivated in
-Eq.~\eqref{eq:berthon_alpha} (Section~\ref{sec:practical-tau0}). Only the mass-density
+(\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor}), defined by
+\begin{equation}
+  \label{eq:berthon_alpha}
+  \alpha = \frac{\Rstiff}{0.1+\Rstiff} ,
+  \qquad \Rstiff = \frac{\taurelax_\star}{\taurelax_{\rm num}} ,
+\end{equation}
+in terms of a dimensionless \emph{stiffness ratio} $\Rstiff$: the pair's
+relaxation time $\taurelax_\star$ (the harmonic mean of the two
+particles' own $\taurelax$, equal to $\taurelax/2$ when
+$\taurelax_L=\taurelax_R=\taurelax$) against the time
+$\taurelax_{\rm num}=r_{ij}^2/D_\star$ metal would take to cross the pair
+separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$ by ordinary (parabolic)
+diffusion alone. $\Rstiff\to0$ (relaxation much faster than that local
+crossing time, the near-equilibrium regime) sends $\alpha\to0$;
+$\Rstiff\to\infty$ (relaxation much slower, the wave-dominated regime)
+sends $\alpha\to1$. How $\Rstiff$ behaves under the code's actual
+$\taurelax_0$ normalisation is worked out in
+Section~\ref{sec:practical-tau0}. Only the mass-density
 component $F_0$ has a parabolic counterpart to blend with: the
 flux-vector components $F_{1,2,3}$ have no analogue in the parabolic
 scheme (Part~\ref{part:parabolic} carries no $\Fdiff$ state to blend
@@ -1017,6 +1031,269 @@ sign convention as Part~\ref{part:parabolic},
 Section~\ref{sec:time-integration}, subtracted from the left particle and
 added to the right, extended component-by-component across all four
 entries of $\Uvec$ rather than the single scalar $\rhoZ$.
+
+\subsection{Controlling the Dissipation Term}
+\label{sec:controlling-dissipation}
+
+\subsubsection{Consequence of an Overestimated Wave Speed}
+\label{sec:hll-consequence}
+
+\textbf{The problem.} $\chyp$ is not just a timestep bound: it is also
+the wave speed the Riemann solver uses to build $F_{\rm diss}$
+(Eq.~\eqref{eq:hyp_F_transport}), and $F_{\rm diss}$ is exactly what the
+Berthon blend passes through essentially unmixed once $\alpha\to1$ (the
+large-$\taurelax$, wave-dominated regime of
+Section~\ref{sec:berthon-blend}). So any looseness in $\chyp$ does not
+just make the timestep more conservative than necessary; it becomes
+\emph{extra numerical diffusion}, precisely in the regime where the
+scheme relies most on the raw HLL flux, unmoderated by the parabolic
+branch.
+
+Specialising Eq.~\eqref{eq:hyp_F_transport} to the near-symmetric case
+$\lambda_+=-\lambda_-\equiv\Lambda$ (a fair approximation whenever the
+relative particle velocity along $\nunit$ is small compared to $\chyp$,
+the diffusion-dominated regime this document is about) makes the
+mechanism explicit:
+\begin{equation}
+  F_{\rm diss} = \frac{\lambda_+\lambda_-\,(U_R-U_L)}{\lambda_+-\lambda_-}
+  = \frac{-\Lambda^2(U_R-U_L)}{2\Lambda} = -\frac{\Lambda}{2}(U_R-U_L) ,
+\end{equation}
+i.e.\ $F_{\rm diss}$ is \emph{linear} in the wave-speed estimate
+$\Lambda$: doubling $\Lambda$ doubles the numerical dissipation, with no
+saturation built in.
+
+\textbf{The two independent levers, and which one is left to pull.}
+There are exactly two ways to control this: tighten $\chyp$ itself, or
+cap $F_{\rm diss}$ once assembled, the way Part~\ref{part:parabolic}'s
+Hopkins-HLL solver caps its own dissipation (Section~\ref{sec:hll-flux}).
+The first lever is already exhausted:
+$\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
+and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), so
+there is no slack left to squeeze out of the wave-speed estimate itself.
+The remaining lever, capping $F_{\rm diss}$, is what the next two
+subsubsections do, from two different angles: a causal bound that stops
+the dissipation from outrunning $\chyp$ regardless of how far apart the
+pair sits (Section~\ref{sec:causal-bound}), and a Hopkins-style limiter
+that catches a second, physically distinct failure mode, a stale flux
+that keeps transporting metal after the gradient that produced it has
+moved on (Section~\ref{sec:hyperbolic-limiter}).
+
+\subsubsection{A Causal Bound on the Dissipation}
+\label{sec:causal-bound}
+
+The dissipation term itself, independent of any error in $\chyp$, has a
+structural problem: $F_{\rm diss}=-\tfrac12\Lambda(U_R-U_L)$ is applied in
+full across the entire pair separation
+$r_{ij}=|\mathbf x_i-\mathbf x_j|$ (the same notation as
+Section~\ref{sec:practical-tau0}) in a single step, regardless of how far
+apart the two particles actually are. Read as a diffusivity, this hands
+mass across $r_{ij}$ at rate $O(\chyp r_{ij})$, but the system's only
+physical signal speed is $\chyp$ (Proposition~\ref{prop:main}): a
+disturbance at one particle cannot have reached the other unless
+$\chyp\dt_{ij}\gtrsim r_{ij}$, with $\dt_{ij}$ the pair's flux timestep
+(the same pairwise minimum, $\min(\dt_i,\dt_j)$, entering the
+half-timestep predictor of Section~\ref{sec:predictor}). Whenever
+$\chyp\dt_{ij}<r_{ij}$, the HLL dissipation is therefore transporting
+mass beyond the causal front the Cattaneo system allows: an $O(\chyp
+r_{ij})$ upwind diffusivity that exceeds the physical
+$\Deff\sim\chyp^2\taurelax$ (Eq.~\eqref{eq:main_result}) once
+$r_{ij}\gtrsim\chyp\taurelax$, i.e.\ exactly the wave-dominated regime of
+Section~\ref{sec:main-theorem}.
+
+The fix multiplies all four components of $F_{\rm diss}$ by
+\begin{equation}
+  \label{eq:causal-bound}
+  \boxed{\;\zeta_{ij} = \min\!\left(1,\ \frac{\chyp\,\dt_{ij}}{r_{ij}}\right)\;} ,
+\end{equation}
+before it is recombined with the transport term. $\zeta_{ij}=1$ leaves the
+dissipation untouched whenever the wave has had time to cross the pair
+within one step; otherwise $\zeta_{ij}<1$ rescales it down to the distance
+actually reachable in $\dt_{ij}$. This converts the $O(\chyp r_{ij})$
+upwind estimate into an $O(\chyp^2\dt_{ij})$ one, the same order as the
+Lax-Wendroff (second-order, minimally dissipative) flux for a linear wave
+equation, so dissipative transport can no longer outrun $\chyp$
+regardless of $r_{ij}$. Every quantity in Eq.~\eqref{eq:causal-bound} is
+already available at the point $F_{\rm diss}$ is assembled, so the bound
+costs one division and one \code{min} beyond the existing dissipation
+term.
+
+Equation~\eqref{eq:causal-bound} is the hyperbolic solver's only cap on
+$F_{\rm diss}$. The parabolic scheme bounds its own dissipation
+differently, by a two-argument minmod between $(1+\psi)F_{\rm transport}$
+and $F_{\rm transport}+F_{\rm diss}$, with
+$\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
+per-simulation-tuned parameter (the Hopkins-HLL construction referenced in
+Section~\ref{sec:hll-consequence}). Through the Berthon blend that
+combines the two solvers, that minmod still acts on the parabolic
+contribution to a hyperbolic run's flux, but not on the hyperbolic one.
+The two mechanisms are not complementary: they rescale the same term in
+pursuit of the same goal, suppressing the raw HLL dissipation's tendency
+to over-transport, so applying both to the hyperbolic branch is
+redundant, and at a tight $\psi$ the minmod binds first and leaves
+$\zeta_{ij}$ inert. The causal bound is the preferable formulation of the
+two, which is why it is the one the hyperbolic branch keeps: $\zeta_{ij}$
+has no tunable parameter to calibrate per problem, and it is derived
+directly from $\chyp$, the one quantity the wave-speed analysis of this
+document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
+already fixes as exact or a tight, safe bound, rather than from a free
+constant chosen to match a given test problem.
+
+\paragraph{Practical considerations.}
+
+\begin{itemize}
+\item \textbf{Length scale.} The chemistry CFL condition ties $\dt$ to the
+  local particle size over $\chyp$ (Section~\ref{sec:speed-criterion}), so
+  $\chyp\dt_{ij}/r_{ij}$ is $O(\CCFL)$ for essentially every
+  well-resolved pair, not a ratio that only binds in rare, badly-behaved
+  configurations: Eq.~\eqref{eq:causal-bound} is a global reduction of the
+  dissipation's reach, applied on (almost) every face every step. Because
+  the von Neumann/Lax-Wendroff stability floor for this term is set by the
+  particle size rather than by the pair separation $r_{ij}$ itself (a
+  distinct, though comparable, length scale;
+  Section~\ref{sec:practical-tau0}), an implementation may prefer the
+  particle size in Eq.~\eqref{eq:causal-bound} in place of $r_{ij}$.
+\item \textbf{A floor is required.} $\zeta_{ij}\to0$ exactly would zero
+  out the dissipation entirely whenever $\chyp\to0$, which happens in
+  \code{turbulent\_mode} wherever the local shear vanishes
+  (Section~\ref{sec:tau-modes}), a legitimate part of the flow, not
+  a pathology, and one where some numerical dissipation is still needed
+  for stability. $\zeta_{ij}$ must therefore be floored at a small,
+  strictly positive value rather than left to reach zero.
+\item \textbf{Interaction with \code{hyperbolic\_limiter\_scope}.} Like
+  the flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}, the
+  causal bound scales all four components of $F_{\rm diss}$, but whether
+  components 1--3 (the flux-vector dissipation, as opposed to component 0,
+  the mass-density dissipation) are actually rescaled should follow the
+  same \code{hyperbolic\_limiter\_scope} choice the flux-memory limiter
+  already respects: suppressing the flux-component dissipation
+  unconditionally risks preserving, rather than dissipating, an
+  already-stale flux memory.
+\end{itemize}
+
+\subsubsection{Choosing $\taurelax_0$ in Practice}
+\label{sec:practical-tau0}
+
+Sections~\ref{sec:speed-criterion}--\ref{sec:speed-criterion-aniso} and
+this one are not independent: the same $\taurelax_0$ that must clear the
+speed threshold also fixes the stiffness ratio $\Rstiff$ and hence the
+blending factor $\alpha$ of Eq.~\eqref{eq:berthon_alpha}
+(Section~\ref{sec:berthon-blend}), which decides whether a
+step runs through the Hopkins-limited parabolic branch ($\alpha\to0$) or
+the plain, unlimited HLL branch of Section~\ref{sec:hll-consequence}
+($\alpha\to1$). Recall $\taurelax_\star$ is the harmonic mean of the
+pair's two relaxation times (equal to $\taurelax/2$ when
+$\taurelax_L=\taurelax_R=\taurelax$), and
+$\taurelax_{\rm num}=r_{ij}^2/D_\star$ the local parabolic crossing time
+built from the actual pair separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$
+(distinct from the Gizmo particle size $\dx$ used in the speed-criterion
+sections, a different, though comparable, length scale). For
+\code{isotropic\_smagorinsky}+\code{turbulent\_mode}, substituting
+$\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$ and
+$\Deff=\kappaC\gammak^2h^2\norm{\Shear}_F$:
+\begin{equation}
+  \Rstiff = \taurelax_0\,\frac{\sqrt3\,\gammak^2h^2}{2\,r_{ij}^2} ,
+\end{equation}
+i.e.\ $\Rstiff$ is \emph{exactly} proportional to $\taurelax_0$, with a
+fixed, resolution/shear/$\kappaC$-independent geometric prefactor. Since $\gammak h$
+and $r_{ij}$ are comparable length scales ($\gammak>1$, and the kernel
+support radius is typically a modest multiple of the interparticle
+spacing, not a fraction of it), this prefactor is unlikely to be
+$\ll1$, and $\alpha$ saturates fast regardless: $\alpha=0.5$ at
+$\Rstiff=0.1$, $\alpha\approx0.91$ at $\Rstiff=1$,
+$\alpha\approx0.98$ at $\Rstiff=4$. Since the speed-parity threshold
+itself is $\taurelax_0\gtrsim4$ (isotropic) to $\gtrsim4$--$10$
+(anisotropic, Eq.~\eqref{eq:aniso_threshold}'s $g=0$ limit), any
+$\taurelax_0$ large enough to win on raw timestep speed is, in the
+current implementation, already deep in the unlimited-HLL regime.
+
+``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
+independently reachable regimes under $\taurelax_0$ tuning alone; they
+are the same knob, pointing in opposite directions. The flux-memory
+limiter of Section~\ref{sec:hyperbolic-limiter}, and the causal bound of
+Section~\ref{sec:causal-bound}, each soften this tension from a
+different angle.
+
+\subsubsection{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
+\label{sec:hyperbolic-limiter}
+
+\subsubsection{Why the Obvious Port Doesn't Work}
+\label{sec:limiter-naive-port}
+The parabolic Hopkins-HLL solver limits its dissipation with
+\code{chemistry\_riemann\_compute\_alpha} (\code{chemistry\_riemann\_utils.h}),
+built around the ratio
+\begin{equation}
+  r = \frac{v_{\rm HLL}\,\dx\,\lvert\driver_\star\rvert}{\norm{\Kmat_\star}_F\,\lvert U_\star\rvert} ,
+  \qquad v_{\rm HLL} = \tfrac12\lvert u_R-u_L\rvert + \tfrac12(c_{s,L}+c_{s,R}) ,
+\end{equation}
+comparing a numerical transport rate ($v_{\rm HLL}$, the \emph{hydro}
+sound speed, an independent scale, since parabolic diffusion has no
+wave speed of its own) against a physical diffusion rate (built from
+$\Kmat$). The obvious port (reuse this formula verbatim, substituting
+the genuine hyperbolic wave speed $\chyp$ for $v_{\rm HLL}$) does not
+work: it is redundant with the blending factor $\alpha$
+(Section~\ref{sec:practical-tau0}) already computed for the same pair.
+
+\begin{remark}[The swapped ratio is a function of $\taurelax$ alone]
+\label{rem:limiter-redundant}
+Substituting $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ for $v_{\rm HLL}$
+and $\driver_\star/U_\star=\mu$ (Corollary~\ref{cor:isotropic}) puts
+$\Deff$ into both the numerator (through $\chyp$) and the denominator
+(through $\Kmat_\star$) of $r$. Holding every other quantity fixed and
+varying only $\taurelax$ (the one free parameter this section is about)
+gives $r\propto\taurelax^{-1/2}$, while the existing blending ratio
+$\Rstiff=\taurelax_\star/\taurelax_{\rm num}$
+(Section~\ref{sec:berthon-blend}) is $\propto\taurelax^{+1}$: an exact
+monotonic power-law relationship, $r\propto\Rstiff^{-1/2}$. The swapped $r$ therefore
+carries no information beyond what $\alpha$ already encodes: both are
+functions of the same scheme parameters ($\Deff$, $\taurelax$, $\dx$)
+alone, since $\driver_\star/U_\star=\mu$ is a fixed per-mode constant,
+not a diagnostic of the local metal field. A working limiter needs a
+signal $\alpha$ does not already see: something that depends on the
+actual local state, not just on scheme parameters.
+\end{remark}
+
+\subsubsection{Flux Memory}
+\label{sec:limiter-flux-memory}
+In the parabolic scheme, comparing dissipation against $\Kmat\grad\driver$
+is exactly right because the flux \emph{is} $\Kmat\grad\driver$
+algebraically; there is nothing else it could be. In the hyperbolic
+scheme this is no longer true: $\Fdiff$ is a dynamical variable that only
+relaxes toward $\Fdiff_{\rm parabolic}=-\Kmat\grad\driver$ on timescale
+$\taurelax$ (Eq.~\eqref{eq:cattaneo}). An un-relaxed flux that persists
+and keeps transporting metal after the local gradient that produced it
+has moved on (not a wave-speed error) is the mechanism identified
+(Section~\ref{sec:practical-tau0}) as the actual source of large-$\taurelax$
+over-transport, and it is precisely what Remark~\ref{rem:limiter-redundant}'s
+signal cannot see.
+
+Define the \emph{flux memory} as the (pair-averaged, exactly as
+$\Kmat_\star,\driver_\star,U_\star$ already are) residual between the
+dynamical flux and its own equilibrium target,
+\begin{equation}
+  \Fdiff_{\rm memory} = \tfrac12(\Fdiff_L+\Fdiff_R)
+  - \tfrac12(\Fdiff_{{\rm parabolic},L}+\Fdiff_{{\rm parabolic},R}) ,
+\end{equation}
+and the dimensionless ratio (subscripted to avoid colliding with the
+unrelated $s\equiv\sqrt{t^2-r^2/\chyp^2}$ of Section~\ref{sec:exact-solutions})
+\begin{equation}
+  s_{\rm mem} = \frac{\norm{\Fdiff_{\rm memory}}}{\norm{\Fdiff_\star}+\norm{\Fdiff_{{\rm parabolic},\star}}} ,
+  \qquad
+  \boxed{\;\eta = \frac{1}{1+s_{\rm mem}}\;} ,
+\end{equation}
+multiplying $F_{\rm diss}$ (\code{chemistry\_riemann\_compute\_hyperbolic\_diffusivity\_limiter},
+\code{chemistry\_riemann\_utils.h}). $\eta\to1$ (no suppression) when the
+flux has caught up to its Fickian target; $\eta\to0$ (suppress) when it
+is still coasting on a stale gradient. The sum-normalisation (rather than
+normalising by $\Fdiff_{\rm parabolic}$ alone) avoids a $0/0$ blind spot
+at a sharp initial discontinuity: there, each particle's own local
+gradient (and hence $\Fdiff_{\rm parabolic}$) can be exactly zero
+even though the pair straddles a real jump in $U_0$, which is legitimate
+transport to kick-start, not numerical excess; the limiter correctly
+leaves this case alone ($\eta=1$ when both $\Fdiff_\star$ and
+$\Fdiff_{{\rm parabolic},\star}$ vanish). This functional form is a
+starting point, not a derived result: Hopkins' own $r_{\rm term}$ is
+similarly an empirically-tuned saturating function, not a first-principles
+one.
 
 \subsection{The Half-Timestep Predictor}
 \label{sec:predictor}
@@ -1163,259 +1440,6 @@ The implemented order is not merely a reasonable choice between two
 options: Proposition~\ref{prop:predictor} shows it is the only one
 consistent with the exact solution of the locally-available (cell-centred
 $\Fdiff_{\rm parabolic}$) relaxation problem.
-
-\subsection{Consequence for the HLL Numerical Dissipation}
-\label{sec:hll-consequence}
-
-An overestimated $\chyp$ does not only affect the timestep; it directly
-inflates $F_{\rm diss}$ of Eq.~\eqref{eq:hyp_F_transport}, the numerical
-dissipation of the raw hyperbolic HLL flux, most visibly when $\alpha\to1$
-(the large-$\taurelax$ regime of the Berthon blend,
-Section~\ref{sec:berthon-blend}, where $F_{\rm diss}$ passes through to
-the final flux essentially unmixed with the parabolic branch).
-Specialising Eq.~\eqref{eq:hyp_F_transport} to the near-symmetric case
-$\lambda_+=-\lambda_-\equiv\Lambda$ (a fair approximation whenever the
-relative particle velocity along $\nunit$ is small compared to $\chyp$,
-the diffusion-dominated regime this document is about) makes the effect
-explicit:
-\begin{equation}
-  F_{\rm diss} = \frac{\lambda_+\lambda_-\,(U_R-U_L)}{\lambda_+-\lambda_-}
-  = \frac{-\Lambda^2(U_R-U_L)}{2\Lambda} = -\frac{\Lambda}{2}(U_R-U_L) ,
-\end{equation}
-i.e.\ \emph{linear} in the wave-speed estimate $\Lambda$. Any factor by
-which $\chyp$ is overestimated passes through directly into extra
-numerical diffusion in the large-$\taurelax$ ($\alpha\approx1$) regime,
-on top of, and independent from, a second lever: whether $F_{\rm diss}$
-itself is limited in that regime the way Part~\ref{part:parabolic}'s
-parabolic Hopkins-HLL solver limits its own dissipation
-(Section~\ref{sec:hll-flux}). Since
-$\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
-and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
-wave-speed lever is already pulled as far as it goes; the flux-memory
-limiter of Section~\ref{sec:hyperbolic-limiter} addresses the second.
-
-\subsection{A Causal Bound on the Dissipation}
-\label{sec:causal-bound}
-
-The dissipation term itself, independent of any error in $\chyp$, has a
-structural problem: $F_{\rm diss}=-\tfrac12\Lambda(U_R-U_L)$ is applied in
-full across the entire pair separation
-$r_{ij}=|\mathbf x_i-\mathbf x_j|$ (the same notation as
-Section~\ref{sec:practical-tau0}) in a single step, regardless of how far
-apart the two particles actually are. Read as a diffusivity, this hands
-mass across $r_{ij}$ at rate $O(\chyp r_{ij})$, but the system's only
-physical signal speed is $\chyp$ (Proposition~\ref{prop:main}): a
-disturbance at one particle cannot have reached the other unless
-$\chyp\dt_{ij}\gtrsim r_{ij}$, with $\dt_{ij}$ the pair's flux timestep
-(the same pairwise minimum, $\min(\dt_i,\dt_j)$, entering the
-half-timestep predictor of Section~\ref{sec:predictor}). Whenever
-$\chyp\dt_{ij}<r_{ij}$, the HLL dissipation is therefore transporting
-mass beyond the causal front the Cattaneo system allows: an $O(\chyp
-r_{ij})$ upwind diffusivity that exceeds the physical
-$\Deff\sim\chyp^2\taurelax$ (Eq.~\eqref{eq:main_result}) once
-$r_{ij}\gtrsim\chyp\taurelax$, i.e.\ exactly the wave-dominated regime of
-Section~\ref{sec:main-theorem}.
-
-The fix multiplies all four components of $F_{\rm diss}$ by
-\begin{equation}
-  \label{eq:causal-bound}
-  \boxed{\;\zeta_{ij} = \min\!\left(1,\ \frac{\chyp\,\dt_{ij}}{r_{ij}}\right)\;} ,
-\end{equation}
-before it is recombined with the transport term. $\zeta_{ij}=1$ leaves the
-dissipation untouched whenever the wave has had time to cross the pair
-within one step; otherwise $\zeta_{ij}<1$ rescales it down to the distance
-actually reachable in $\dt_{ij}$. This converts the $O(\chyp r_{ij})$
-upwind estimate into an $O(\chyp^2\dt_{ij})$ one, the same order as the
-Lax-Wendroff (second-order, minimally dissipative) flux for a linear wave
-equation, so dissipative transport can no longer outrun $\chyp$
-regardless of $r_{ij}$. Every quantity in Eq.~\eqref{eq:causal-bound} is
-already available at the point $F_{\rm diss}$ is assembled, so the bound
-costs one division and one \code{min} beyond the existing dissipation
-term.
-
-Equation~\eqref{eq:causal-bound} is the hyperbolic solver's only cap on
-$F_{\rm diss}$. The parabolic scheme bounds its own dissipation
-differently, by a two-argument minmod between $(1+\psi)F_{\rm transport}$
-and $F_{\rm transport}+F_{\rm diss}$, with
-$\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
-per-simulation-tuned parameter (the Hopkins-HLL construction referenced in
-Section~\ref{sec:hll-consequence}). Through the Berthon blend that
-combines the two solvers, that minmod still acts on the parabolic
-contribution to a hyperbolic run's flux, but not on the hyperbolic one.
-The two mechanisms are not complementary: they rescale the same term in
-pursuit of the same goal, suppressing the raw HLL dissipation's tendency
-to over-transport, so applying both to the hyperbolic branch is
-redundant, and at a tight $\psi$ the minmod binds first and leaves
-$\zeta_{ij}$ inert. The causal bound is the preferable formulation of the
-two, which is why it is the one the hyperbolic branch keeps: $\zeta_{ij}$
-has no tunable parameter to calibrate per problem, and it is derived
-directly from $\chyp$, the one quantity the wave-speed analysis of this
-document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
-already fixes as exact or a tight, safe bound, rather than from a free
-constant chosen to match a given test problem.
-
-\subsubsection{Practical Considerations}
-
-\begin{itemize}
-\item \textbf{Length scale.} The chemistry CFL condition ties $\dt$ to the
-  local particle size over $\chyp$ (Section~\ref{sec:speed-criterion}), so
-  $\chyp\dt_{ij}/r_{ij}$ is $O(\CCFL)$ for essentially every
-  well-resolved pair, not a ratio that only binds in rare, badly-behaved
-  configurations: Eq.~\eqref{eq:causal-bound} is a global reduction of the
-  dissipation's reach, applied on (almost) every face every step. Because
-  the von Neumann/Lax-Wendroff stability floor for this term is set by the
-  particle size rather than by the pair separation $r_{ij}$ itself (a
-  distinct, though comparable, length scale;
-  Section~\ref{sec:practical-tau0}), an implementation may prefer the
-  particle size in Eq.~\eqref{eq:causal-bound} in place of $r_{ij}$.
-\item \textbf{A floor is required.} $\zeta_{ij}\to0$ exactly would zero
-  out the dissipation entirely whenever $\chyp\to0$, which happens in
-  \code{turbulent\_mode} wherever the local shear vanishes
-  (Section~\ref{sec:tau-modes}), a legitimate part of the flow, not
-  a pathology, and one where some numerical dissipation is still needed
-  for stability. $\zeta_{ij}$ must therefore be floored at a small,
-  strictly positive value rather than left to reach zero.
-\item \textbf{Interaction with \code{hyperbolic\_limiter\_scope}.} Like
-  the flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}, the
-  causal bound scales all four components of $F_{\rm diss}$, but whether
-  components 1--3 (the flux-vector dissipation, as opposed to component 0,
-  the mass-density dissipation) are actually rescaled should follow the
-  same \code{hyperbolic\_limiter\_scope} choice the flux-memory limiter
-  already respects: suppressing the flux-component dissipation
-  unconditionally risks preserving, rather than dissipating, an
-  already-stale flux memory.
-\end{itemize}
-
-\subsection{Practical Guidance for Choosing $\taurelax_0$}
-\label{sec:practical-tau0}
-
-Sections~\ref{sec:speed-criterion}--\ref{sec:speed-criterion-aniso} and
-this one are not independent: the same $\taurelax_0$ that must clear the
-speed threshold also fixes the blending factor $\alpha$
-(\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor},
-\code{chemistry\_riemann\_utils.h}), which decides whether a
-step runs through the Hopkins-limited parabolic branch ($\alpha\to0$) or
-the plain, unlimited HLL branch of Section~\ref{sec:hll-consequence}
-($\alpha\to1$).
-
-\begin{equation}
-  \label{eq:berthon_alpha}
-  \alpha = \frac{\rho_\star}{0.1+\rho_\star} ,
-  \qquad \rho_\star = \frac{\taurelax_\star}{\taurelax_{\rm num}} ,
-\end{equation}
-with $\taurelax_\star$ the harmonic mean of the pair's two relaxation times
-(equal to $\taurelax/2$ when $\taurelax_L=\taurelax_R=\taurelax$), and
-$\taurelax_{\rm num}=r_{ij}^2/D_\star$ the local parabolic crossing time
-built from the actual pair separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$
-(distinct from the Gizmo particle size $\dx$ used in the speed-criterion
-sections, a different, though comparable, length scale). For
-\code{isotropic\_smagorinsky}+\code{turbulent\_mode}, substituting
-$\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$ and
-$\Deff=\kappaC\gammak^2h^2\norm{\Shear}_F$:
-\begin{equation}
-  \rho_\star = \taurelax_0\,\frac{\sqrt3\,\gammak^2h^2}{2\,r_{ij}^2} ,
-\end{equation}
-i.e.\ $\rho_\star$ is \emph{exactly} proportional to $\taurelax_0$, with a
-fixed, resolution/shear/$\kappaC$-independent geometric prefactor. Since $\gammak h$
-and $r_{ij}$ are comparable length scales ($\gammak>1$, and the kernel
-support radius is typically a modest multiple of the interparticle
-spacing, not a fraction of it), this prefactor is unlikely to be
-$\ll1$, and $\alpha$ saturates fast regardless: $\alpha=0.5$ at
-$\rho_\star=0.1$, $\alpha\approx0.91$ at $\rho_\star=1$,
-$\alpha\approx0.98$ at $\rho_\star=4$. Since the speed-parity threshold
-itself is $\taurelax_0\gtrsim4$ (isotropic) to $\gtrsim4$--$10$
-(anisotropic, Eq.~\eqref{eq:aniso_threshold}'s $g=0$ limit), any
-$\taurelax_0$ large enough to win on raw timestep speed is, in the
-current implementation, already deep in the unlimited-HLL regime.
-
-``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
-independently reachable regimes under $\taurelax_0$ tuning alone; they
-are the same knob, pointing in opposite directions. The flux-memory
-limiter of Section~\ref{sec:hyperbolic-limiter}, and the causal bound of
-Section~\ref{sec:causal-bound}, each soften this tension from a
-different angle.
-
-\subsection{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
-\label{sec:hyperbolic-limiter}
-
-\subsubsection{Why the Obvious Port Doesn't Work}
-\label{sec:limiter-naive-port}
-The parabolic Hopkins-HLL solver limits its dissipation with
-\code{chemistry\_riemann\_compute\_alpha} (\code{chemistry\_riemann\_utils.h}),
-built around the ratio
-\begin{equation}
-  r = \frac{v_{\rm HLL}\,\dx\,\lvert\driver_\star\rvert}{\norm{\Kmat_\star}_F\,\lvert U_\star\rvert} ,
-  \qquad v_{\rm HLL} = \tfrac12\lvert u_R-u_L\rvert + \tfrac12(c_{s,L}+c_{s,R}) ,
-\end{equation}
-comparing a numerical transport rate ($v_{\rm HLL}$, the \emph{hydro}
-sound speed, an independent scale, since parabolic diffusion has no
-wave speed of its own) against a physical diffusion rate (built from
-$\Kmat$). The obvious port (reuse this formula verbatim, substituting
-the genuine hyperbolic wave speed $\chyp$ for $v_{\rm HLL}$) does not
-work: it is redundant with the blending factor $\alpha$
-(Section~\ref{sec:practical-tau0}) already computed for the same pair.
-
-\begin{remark}[The swapped ratio is a function of $\taurelax$ alone]
-\label{rem:limiter-redundant}
-Substituting $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ for $v_{\rm HLL}$
-and $\driver_\star/U_\star=\mu$ (Corollary~\ref{cor:isotropic}) puts
-$\Deff$ into both the numerator (through $\chyp$) and the denominator
-(through $\Kmat_\star$) of $r$. Holding every other quantity fixed and
-varying only $\taurelax$ (the one free parameter this section is about)
-gives $r\propto\taurelax^{-1/2}$, while the existing blending ratio
-$\rho_\star=\taurelax_\star/\taurelax_{\rm num}$
-(Section~\ref{sec:practical-tau0}) is $\propto\taurelax^{+1}$: an exact
-monotonic power-law relationship, $r\propto\rho_\star^{-1/2}$. The swapped $r$ therefore
-carries no information beyond what $\alpha$ already encodes: both are
-functions of the same scheme parameters ($\Deff$, $\taurelax$, $\dx$)
-alone, since $\driver_\star/U_\star=\mu$ is a fixed per-mode constant,
-not a diagnostic of the local metal field. A working limiter needs a
-signal $\alpha$ does not already see: something that depends on the
-actual local state, not just on scheme parameters.
-\end{remark}
-
-\subsubsection{Flux Memory}
-\label{sec:limiter-flux-memory}
-In the parabolic scheme, comparing dissipation against $\Kmat\grad\driver$
-is exactly right because the flux \emph{is} $\Kmat\grad\driver$
-algebraically; there is nothing else it could be. In the hyperbolic
-scheme this is no longer true: $\Fdiff$ is a dynamical variable that only
-relaxes toward $\Fdiff_{\rm parabolic}=-\Kmat\grad\driver$ on timescale
-$\taurelax$ (Eq.~\eqref{eq:cattaneo}). An un-relaxed flux that persists
-and keeps transporting metal after the local gradient that produced it
-has moved on (not a wave-speed error) is the mechanism identified
-(Section~\ref{sec:practical-tau0}) as the actual source of large-$\taurelax$
-over-transport, and it is precisely what Remark~\ref{rem:limiter-redundant}'s
-signal cannot see.
-
-Define the \emph{flux memory} as the (pair-averaged, exactly as
-$\Kmat_\star,\driver_\star,U_\star$ already are) residual between the
-dynamical flux and its own equilibrium target,
-\begin{equation}
-  \Fdiff_{\rm memory} = \tfrac12(\Fdiff_L+\Fdiff_R)
-  - \tfrac12(\Fdiff_{{\rm parabolic},L}+\Fdiff_{{\rm parabolic},R}) ,
-\end{equation}
-and the dimensionless ratio (subscripted to avoid colliding with the
-unrelated $s\equiv\sqrt{t^2-r^2/\chyp^2}$ of Section~\ref{sec:exact-solutions})
-\begin{equation}
-  s_{\rm mem} = \frac{\norm{\Fdiff_{\rm memory}}}{\norm{\Fdiff_\star}+\norm{\Fdiff_{{\rm parabolic},\star}}} ,
-  \qquad
-  \boxed{\;\eta = \frac{1}{1+s_{\rm mem}}\;} ,
-\end{equation}
-multiplying $F_{\rm diss}$ (\code{chemistry\_riemann\_compute\_hyperbolic\_diffusivity\_limiter},
-\code{chemistry\_riemann\_utils.h}). $\eta\to1$ (no suppression) when the
-flux has caught up to its Fickian target; $\eta\to0$ (suppress) when it
-is still coasting on a stale gradient. The sum-normalisation (rather than
-normalising by $\Fdiff_{\rm parabolic}$ alone) avoids a $0/0$ blind spot
-at a sharp initial discontinuity: there, each particle's own local
-gradient (and hence $\Fdiff_{\rm parabolic}$) can be exactly zero
-even though the pair straddles a real jump in $U_0$, which is legitimate
-transport to kick-start, not numerical excess; the limiter correctly
-leaves this case alone ($\eta=1$ when both $\Fdiff_\star$ and
-$\Fdiff_{{\rm parabolic},\star}$ vanish). This functional form is a
-starting point, not a derived result: Hopkins' own $r_{\rm term}$ is
-similarly an empirically-tuned saturating function, not a first-principles
-one.
 
 \section{Validation and Verification}
 
