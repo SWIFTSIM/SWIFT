@@ -510,6 +510,25 @@ feedback_get_star_ionization_budget_max(const struct spart *sp) {
 }
 
 /**
+ * Get the raw sum of the remaining ionizing photon count over all of the
+ * #spart's active angular pixels, positive and negative contributions alike
+ * (a pixel in debt after #feedback_hii_claim_part's deterministic-boundary
+ * overdraw counts negatively). Diagnostic only -- the per-pixel budget is
+ * still what every spending decision above is gated on.
+ *
+ * @param sp The star.
+ * @return Sum of the remaining ionizing photon count over all active pixels.
+ */
+__attribute__((always_inline)) INLINE double
+feedback_get_star_ionization_budget_total(const struct spart *sp) {
+  double budget_total = 0.0;
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+    budget_total += sp->feedback_data.radiation.N_ion_budget_pix[p];
+  }
+  return budget_total;
+}
+
+/**
  * @brief Should this particle be doing any HII ionization feedback-related
  * operation?
  *

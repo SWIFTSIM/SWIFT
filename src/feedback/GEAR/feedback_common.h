@@ -67,6 +67,7 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget_max(const struct spart *sp);
+double feedback_get_star_ionization_budget_total(const struct spart *sp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
 void feedback_iact_HII_ionization(

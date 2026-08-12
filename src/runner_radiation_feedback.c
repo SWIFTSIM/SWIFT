@@ -593,12 +593,20 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #endif
 
     int num_empty_expansions = 0;
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+#ifdef SWIFT_DEBUG_CHECKS
     /* Newly claimed this pass, summed over every retry/expansion iteration.
        Only meaningful next to count_held: the two together say whether the
        region is growing, holding, or churning (claiming gas each pass that
-       has lapsed again by the next one). */
+       has lapsed again by the next one). Also the basis of the HII CHECKSUM
+       line below (n_claimed, claimed_id_hash), so this stays live under
+       plain SWIFT_DEBUG_CHECKS rather than only the VERBOSE build. */
     int count_claimed = 0;
+    /* Order-independent hash of this pass's claimed particle ids: a sum of
+       id*constant, so it compares equal across two runs that claim the same
+       set through different traversal orders (repeat-run determinism gate),
+       and across future scheme variants that may reorder claims further
+       (MPI). Unsigned so wraparound on overflow is defined, not UB. */
+    unsigned long long claimed_id_hash = 0;
 #endif
 
     while (1) {
@@ -641,10 +649,19 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                        hydro_props, us, cosmo, cooling,
                                        feedback_props, ti_begin, time, dt_back);
 
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+#ifdef SWIFT_DEBUG_CHECKS
+          /* A candidate starts this loop untagged (the gather filter,
+             feedback_part_can_be_ionized, requires it); tagged-with-si->id
+             afterwards is therefore exactly "this star just claimed it",
+             whether or not another concurrently-running star's task raced
+             it in between (that case tags it with a DIFFERENT star_id, or
+             leaves it tagged by neither, and is correctly excluded here). */
           if (radiation_is_part_tagged_as_ionized(pj, xpj) &&
-              radiation_get_part_ionized_star_id(pj, xpj) == si->id)
+              radiation_get_part_ionized_star_id(pj, xpj) == si->id) {
             ++count_claimed;
+            claimed_id_hash +=
+                (unsigned long long)pj->id * 0x9E3779B97F4A7C15ULL;
+          }
 #endif
         } /* Loop over the sorted particles */
       }
@@ -700,6 +717,20 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         ++num_radius_expansions;
       }
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Repeat-run/cross-scheme comparator: everything on this line is
+       order-independent (n_claimed/claimed_id_hash sum over claims
+       regardless of traversal order, held is the Phase-1 count, leftover
+       budget is a plain sum over pixels), so two runs that reach the same
+       physical decisions print identical lines regardless of thread
+       scheduling or cell-traversal order. */
+    message(
+        "HII CHECKSUM: star_id %lld ti_current %lld n_claimed %d "
+        "claimed_id_hash %llu held %d leftover_budget %.17e",
+        si->id, (long long)e->ti_current, count_claimed, claimed_id_hash,
+        count_held, feedback_get_star_ionization_budget_total(si));
+#endif
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
     c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, si->h_hii);
