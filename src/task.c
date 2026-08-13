@@ -168,7 +168,9 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "rt_gradient",
                                                    "rt_transport",
                                                    "stars_radiation_in",
-                                                   "stars_radiation_out"};
+                                                   "stars_radiation_out",
+                                                   "part_hii_tag",
+                                                   "part_hii_state"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sorts",    "resort",
@@ -1290,6 +1292,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_stars_radiation_out:
       strcpy(cluster, "RadiationOut");
+      break;
+    case task_subtype_part_hii_tag:
+      strcpy(cluster, "RadiationHIITag");
+      break;
+    case task_subtype_part_hii_state:
+      strcpy(cluster, "RadiationHIIState");
       break;
     default:
       strcpy(cluster, "None");
