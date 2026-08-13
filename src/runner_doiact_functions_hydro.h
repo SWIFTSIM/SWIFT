@@ -1629,17 +1629,15 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
-  /* A foreign cell's dx_max_part is zeroed at rebuild and only refreshed
-   * by the end-of-step tend exchange, so on the step right after a
-   * rebuild it reads stale even though real (small) drift may already
-   * have happened on the owning rank. Substitute a full cell width as a
-   * generous stand-in for that one step only -- a genuine problem will
-   * still fire firmly on the next step, once dx_max_part is fresh. */
-  const int rebuild_step = (e->step_props & engine_step_prop_rebuild) != 0;
+  /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+   * from the end-of-step tend exchange; right after a rebuild the true
+   * value is still tiny, so that lag is a large relative error. Substitute
+   * a full cell width on the foreign side -- the owning rank runs this
+   * same pair task with fresh bookkeeping, so real bugs are still caught. */
   const float ci_dx_max_part_safe =
-      (rebuild_step && !local_i) ? ci->width[0] : ci->hydro.dx_max_part;
+      local_i ? ci->hydro.dx_max_part : ci->width[0];
   const float cj_dx_max_part_safe =
-      (rebuild_step && !local_j) ? cj->width[0] : cj->hydro.dx_max_part;
+      local_j ? cj->hydro.dx_max_part : cj->width[0];
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
