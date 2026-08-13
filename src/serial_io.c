@@ -1291,7 +1291,7 @@ void write_output_serial(struct engine *e,
     io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                        swift_type_count);
     zoom_write_particle_counts(h_grp, N_total, zoom_layout.total_in_cells,
-                               numFields);
+                               N_total, zoom_layout.total_in_cells, numFields);
     double MassTable[swift_type_count] = {0};
     io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
     io_write_attribute(h_grp, "InitialMassTable", DOUBLE,

@@ -100,28 +100,45 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
  * @brief Write particle counts split between zoom and background particles.
  *
  * @param head_grp The snapshot Header group.
- * @param total Total number of particles of each type in the file.
- * @param in_cells Number of zoom particles of each type in the file.
+ * @param this_file Number of particles of each type in this file.
+ * @param in_cells_this_file Number of zoom particles of each type in this file.
+ * @param total Total number of particles of each type across all files.
+ * @param in_cells_total Number of zoom particles of each type across all files.
  * @param num_fields Number of fields selected for each particle type.
  */
-void zoom_write_particle_counts(hid_t head_grp,
-                                const long long total[swift_type_count],
-                                const long long in_cells[swift_type_count],
-                                const int num_fields[swift_type_count]) {
+void zoom_write_particle_counts(
+    hid_t head_grp, const long long this_file[swift_type_count],
+    const long long in_cells_this_file[swift_type_count],
+    const long long total[swift_type_count],
+    const long long in_cells_total[swift_type_count],
+    const int num_fields[swift_type_count]) {
 
-  long long num_in_cells[swift_type_count] = {0};
-  long long num_outside_cells[swift_type_count] = {0};
+  long long num_in_cells_this_file[swift_type_count] = {0};
+  long long num_outside_cells_this_file[swift_type_count] = {0};
+  long long num_in_cells_total[swift_type_count] = {0};
+  long long num_outside_cells_total[swift_type_count] = {0};
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
     if (num_fields[ptype] > 0) {
-      num_in_cells[ptype] = in_cells[ptype];
-      num_outside_cells[ptype] = total[ptype] - in_cells[ptype];
+      num_in_cells_this_file[ptype] = in_cells_this_file[ptype];
+      num_outside_cells_this_file[ptype] =
+          this_file[ptype] - in_cells_this_file[ptype];
+      num_in_cells_total[ptype] = in_cells_total[ptype];
+      num_outside_cells_total[ptype] = total[ptype] - in_cells_total[ptype];
     }
   }
 
-  io_write_attribute(head_grp, "NumParticles_InCells", LONGLONG, num_in_cells,
-                     swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_InCells", LONGLONG,
+                     num_in_cells_this_file, swift_type_count);
   io_write_attribute(head_grp, "NumParticles_OutsideCells", LONGLONG,
-                     num_outside_cells, swift_type_count);
+                     num_outside_cells_this_file, swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_InCells_ThisFile", LONGLONG,
+                     num_in_cells_this_file, swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_OutsideCells_ThisFile", LONGLONG,
+                     num_outside_cells_this_file, swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_InCells_Total", LONGLONG,
+                     num_in_cells_total, swift_type_count);
+  io_write_attribute(head_grp, "NumParticles_OutsideCells_Total", LONGLONG,
+                     num_outside_cells_total, swift_type_count);
 }
 
 /**

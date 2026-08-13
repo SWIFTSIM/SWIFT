@@ -1100,7 +1100,8 @@ void write_output_single(struct engine *e,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
-  zoom_write_particle_counts(h_grp, N_total, N_total_zoom, numFields);
+  zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
+                             N_total_zoom, numFields);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,

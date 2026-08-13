@@ -129,10 +129,12 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
 #endif
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
-void zoom_write_particle_counts(hid_t head_grp,
-                                const long long total[swift_type_count],
-                                const long long in_cells[swift_type_count],
-                                const int num_fields[swift_type_count]);
+void zoom_write_particle_counts(
+    hid_t head_grp, const long long this_file[swift_type_count],
+    const long long in_cells_this_file[swift_type_count],
+    const long long total[swift_type_count],
+    const long long in_cells_total[swift_type_count],
+    const int num_fields[swift_type_count]);
 void zoom_io_count_particles_in_cells(
     const struct engine *e, const int subsample[swift_type_count],
     const float subsample_fraction[swift_type_count],
