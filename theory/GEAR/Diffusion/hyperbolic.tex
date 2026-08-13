@@ -597,8 +597,7 @@ set by $\kappaC$, this comparison timescale is not independent of
 $\kappaC$: doubling $\kappaC$ halves $\taurelax_{\rm par}$, so a
 $\taurelax_0$ that does not track $\kappaC$ silently drifts to a different
 point on the parabolic$\leftrightarrow$hyperbolic spectrum every time
-$\kappaC$ is retuned (e.g.\ during the flux-limiter calibration of
-Section~\ref{sec:hyperbolic-limiter}). A physically meaningful
+$\kappaC$ is retuned (e.g.\ when moving to a different problem). A physically meaningful
 $\taurelax_0$ must therefore be defined \emph{relative to} $\kappaC$, not
 alongside it.
 
@@ -1070,13 +1069,11 @@ The first lever is already exhausted:
 $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
 and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), so
 there is no slack left to squeeze out of the wave-speed estimate itself.
-The remaining lever, capping $F_{\rm diss}$, is what the next two
-subsubsections do, from two different angles: a causal bound that stops
+The remaining lever, capping $F_{\rm diss}$, is a causal bound that stops
 the dissipation from outrunning $\chyp$ regardless of how far apart the
-pair sits (Section~\ref{sec:causal-bound}), and a Hopkins-style limiter
-that catches a second, physically distinct failure mode, a stale flux
-that keeps transporting metal after the gradient that produced it has
-moved on (Section~\ref{sec:hyperbolic-limiter}).
+pair sits (Section~\ref{sec:causal-bound}); it is the only rescaling this
+solver applies to $F_{\rm diss}$, for reasons
+Section~\ref{sec:hyperbolic-limiter} sets out.
 
 \subsubsection{A Causal Bound on the Dissipation}
 \label{sec:causal-bound}
@@ -1138,36 +1135,6 @@ document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
 already fixes as exact or a tight, safe bound, rather than from a free
 constant chosen to match a given test problem.
 
-\begin{remark}[The causal bound is not the flux-memory limiter's replacement]
-\label{rem:causal-vs-flux-memory}
-Unlike its relationship to the minmod bound above, the causal bound is
-\emph{not} a substitute for the flux-memory limiter of
-Section~\ref{sec:hyperbolic-limiter}, and dropping the latter is not a
-safe simplification. The two rescale the same $F_{\rm diss}$ but answer
-different questions, and each is blind to the other's failure mode:
-\begin{itemize}
-\item $\zeta_{ij}$ asks \emph{how fast} the dissipation is, relative to
-  the one speed the Cattaneo system allows it to be, $\chyp$. It is built
-  purely from geometry and $\chyp$ and knows nothing about the actual
-  value of $\Fdiff$; it cannot tell a freshly-relaxed flux from a stale
-  one, both get the same $\zeta_{ij}$ if they sit at the same pair with
-  the same $\chyp$.
-\item The flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}
-  asks \emph{how stale} the dynamical flux $\Fdiff$ is, i.e.\ how far it
-  still is from its own Fickian relaxation target
-  $\Fdiff_{\rm parabolic}$. It is built purely from $\Fdiff$ and
-  $\Fdiff_{\rm parabolic}$ and knows nothing about $\chyp$ or $r_{ij}$; it
-  cannot tell a causally-bounded dissipation rate from an excessive one.
-\end{itemize}
-An un-relaxed flux transporting at an otherwise-causal rate ($\zeta_{ij}$
-close to $1$) is exactly the case the causal bound cannot see and the
-flux-memory limiter exists to catch, and vice versa. This is why both
-mechanisms are applied to $F_{\rm diss}$ in the code
-(\code{hyperbolic/chemistry\_riemann\_HLL.h}), one after the other, rather
-than either superseding the other the way the causal bound superseded the
-minmod bound above.
-\end{remark}
-
 \paragraph{Practical considerations.}
 
 \begin{itemize}
@@ -1196,15 +1163,13 @@ minmod bound above.
   a pathology, and one where some numerical dissipation is still needed
   for stability. $\zeta_{ij}$ must therefore be floored at a small,
   strictly positive value rather than left to reach zero.
-\item \textbf{Interaction with \code{hyperbolic\_limiter\_scope}.} Like
-  the flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}, the
+\item \textbf{Interaction with \code{hyperbolic\_limiter\_scope}.} The
   causal bound scales all four components of $F_{\rm diss}$, but whether
   components 1--3 (the flux-vector dissipation, as opposed to component 0,
-  the mass-density dissipation) are actually rescaled should follow the
-  same \code{hyperbolic\_limiter\_scope} choice the flux-memory limiter
-  already respects: suppressing the flux-component dissipation
-  unconditionally risks preserving, rather than dissipating, an
-  already-stale flux memory.
+  the mass-density dissipation) are actually rescaled follows the
+  \code{hyperbolic\_limiter\_scope} choice: suppressing the
+  flux-component dissipation unconditionally would preserve, rather than
+  decay, an already-stale flux.
 \end{itemize}
 
 \subsubsection{Choosing $\taurelax_0$ in Practice}
@@ -1245,13 +1210,22 @@ current implementation, already deep in the unlimited-HLL regime.
 
 ``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
 independently reachable regimes under $\taurelax_0$ tuning alone; they
-are the same knob, pointing in opposite directions. The flux-memory
-limiter of Section~\ref{sec:hyperbolic-limiter}, and the causal bound of
-Section~\ref{sec:causal-bound}, each soften this tension from a
-different angle.
+are the same knob, pointing in opposite directions. The causal bound of
+Section~\ref{sec:causal-bound} softens this tension somewhat;
+Section~\ref{sec:hyperbolic-limiter} explains why no second, independent
+lever is added on top of it.
 
-\subsubsection{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
+\subsubsection{Why $F_{\rm diss}$ Carries No Flux-Memory Limiter}
 \label{sec:hyperbolic-limiter}
+
+The causal bound of Section~\ref{sec:causal-bound} is the only rescaling
+this solver applies to $F_{\rm diss}$. This section explains why a second
+mechanism, built by comparing the dynamical flux $\Fdiff$ against its own
+Fickian relaxation target, is not layered on top of it: the obvious port
+of the parabolic solver's own limiter is redundant with the Berthon blend
+$\alpha$ (Section~\ref{sec:limiter-naive-port} and
+Remark~\ref{rem:limiter-redundant}), and a purpose-built flux-memory
+signal fares no better (Section~\ref{sec:limiter-flux-memory}).
 
 \subsubsection{Why the Obvious Port Doesn't Work}
 \label{sec:limiter-naive-port}
@@ -1289,48 +1263,38 @@ signal $\alpha$ does not already see: something that depends on the
 actual local state, not just on scheme parameters.
 \end{remark}
 
-\subsubsection{Flux Memory}
+\subsubsection{Why a Flux-Memory Signal Fares No Better}
 \label{sec:limiter-flux-memory}
 In the parabolic scheme, comparing dissipation against $\Kmat\grad\driver$
 is exactly right because the flux \emph{is} $\Kmat\grad\driver$
 algebraically; there is nothing else it could be. In the hyperbolic
 scheme this is no longer true: $\Fdiff$ is a dynamical variable that only
 relaxes toward $\Fdiff_{\rm parabolic}=-\Kmat\grad\driver$ on timescale
-$\taurelax$ (Eq.~\eqref{eq:cattaneo}). An un-relaxed flux that persists
-and keeps transporting metal after the local gradient that produced it
-has moved on (not a wave-speed error) is the mechanism identified
-(Section~\ref{sec:practical-tau0}) as the actual source of large-$\taurelax$
-over-transport, and it is precisely what Remark~\ref{rem:limiter-redundant}'s
-signal cannot see.
+$\taurelax$ (Eq.~\eqref{eq:cattaneo}), and the two disagreeing,
+$\Fdiff\neq\Fdiff_{\rm parabolic}$, is not by itself a defect: at large
+$\taurelax$ it is exactly the correct wave physics the hyperbolic branch
+exists to capture. A signal built from the instantaneous residual between
+$\Fdiff$ and $\Fdiff_{\rm parabolic}$ cannot tell that case apart from the
+one failure mode such a comparison would actually be useful for, an
+un-relaxed flux that keeps transporting metal after the local gradient
+that produced it has moved on, since both produce the same large
+disagreement between $\Fdiff$ and its target. A limiter built on this
+residual therefore suppresses the stabilising dissipation hardest
+precisely in the large-$\taurelax$ wave regime where $\Fdiff\neq\Fdiff_{\rm
+parabolic}$ is correct, not where it is stale.
 
-Define the \emph{flux memory} as the (pair-averaged, exactly as
-$\Kmat_\star,\driver_\star,U_\star$ already are) residual between the
-dynamical flux and its own equilibrium target,
-\begin{equation}
-  \Fdiff_{\rm memory} = \tfrac12(\Fdiff_L+\Fdiff_R)
-  - \tfrac12(\Fdiff_{{\rm parabolic},L}+\Fdiff_{{\rm parabolic},R}) ,
-\end{equation}
-and the dimensionless ratio (subscripted to avoid colliding with the
-unrelated $s\equiv\sqrt{t^2-r^2/\chyp^2}$ of Section~\ref{sec:exact-solutions})
-\begin{equation}
-  s_{\rm mem} = \frac{\norm{\Fdiff_{\rm memory}}}{\norm{\Fdiff_\star}+\norm{\Fdiff_{{\rm parabolic},\star}}} ,
-  \qquad
-  \boxed{\;\eta = \frac{1}{1+s_{\rm mem}}\;} ,
-\end{equation}
-multiplying $F_{\rm diss}$ (\code{chemistry\_riemann\_compute\_hyperbolic\_diffusivity\_limiter},
-\code{chemistry\_riemann\_utils.h}). $\eta\to1$ (no suppression) when the
-flux has caught up to its Fickian target; $\eta\to0$ (suppress) when it
-is still coasting on a stale gradient. The sum-normalisation (rather than
-normalising by $\Fdiff_{\rm parabolic}$ alone) avoids a $0/0$ blind spot
-at a sharp initial discontinuity: there, each particle's own local
-gradient (and hence $\Fdiff_{\rm parabolic}$) can be exactly zero
-even though the pair straddles a real jump in $U_0$, which is legitimate
-transport to kick-start, not numerical excess; the limiter correctly
-leaves this case alone ($\eta=1$ when both $\Fdiff_\star$ and
-$\Fdiff_{{\rm parabolic},\star}$ vanish). This functional form is a
-starting point, not a derived result: Hopkins' own $r_{\rm term}$ is
-similarly an empirically-tuned saturating function, not a first-principles
-one.
+The signal that Remark~\ref{rem:limiter-redundant} shows is missing from
+the naive port, one that depends on the actual local state rather than
+only on scheme parameters, does not have to be built from the flux
+residual at all. The natural alternative, tracking the relaxation regime
+directly through $\taurelax$, is what the Berthon blend $\alpha$
+(Eq.~\eqref{eq:berthon_alpha}, Section~\ref{sec:berthon-blend}) already
+does for every pair, so it adds no distinction $\alpha$ does not already
+make. Between a residual-based signal that cannot separate correct
+wave-lag from staleness and a $\taurelax$-based one that duplicates
+$\alpha$, neither clears the bar Remark~\ref{rem:limiter-redundant} sets:
+the causal bound of Section~\ref{sec:causal-bound} is therefore the sole
+rescaling this solver applies to $F_{\rm diss}$.
 
 \subsection{The Half-Timestep Predictor}
 \label{sec:predictor}
@@ -1494,12 +1458,60 @@ metal-density spike with \emph{zero} initial flux,
 $U_0(\mathbf x,0)=q_0\delta^d(\mathbf x)$, $\Fdiff(\mathbf x,0)=0$), and
 $a\equiv1/(2\taurelax)$, $s\equiv\sqrt{t^2-r^2/\chyp^2}$.
 
+Both closed forms below come from the same two-transform route: a spatial
+Fourier transform turns Eq.~\eqref{eq:telegrapher} (isotropic scalar
+$\Deff=\kappa\mathbf I$) into an ordinary differential equation in $t$ for
+each wavenumber, and a Laplace transform in $t$ then solves that equation
+algebraically. Because the diffusive term contributes only through the
+Laplacian eigenvalue $-k^2$, the transformed equation does not know its
+spatial dimension; the 1D and 3D solutions are two different real-space
+inversions of the \emph{same} transformed object, not two independent
+calculations.
+
+\begin{proposition}[Transform solution]
+\label{prop:transform-solution}
+Let $\hat U_0(\mathbf k,t)=\int U_0(\mathbf x,t)\,e^{-i\mathbf k\cdot\mathbf
+x}\,\dd^d\mathbf x$ be the spatial Fourier transform of the
+isotropic-scalar solution of Eq.~\eqref{eq:telegrapher} with the initial
+data of this section, and let
+$\tilde U_0(\mathbf k,p)=\int_0^\infty\hat U_0(\mathbf k,t)\,e^{-pt}\,\dd t$
+be its Laplace transform in time. Then, independently of the spatial
+dimension $d$,
+\begin{equation}
+  \label{eq:transform-solution}
+  \tilde U_0(\mathbf k,p) = \frac{q_0(\taurelax p+1)}{\taurelax p^2+p+\kappa k^2} ,
+  \qquad k\equiv|\mathbf k| .
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The Fourier transform replaces $\grad$ by $i\mathbf k$ termwise, so
+$\div(\Deff\grad U_0)\to-\kappa k^2\hat U_0$ for any $d$ (only $|\mathbf
+k|^2$ survives), turning Eq.~\eqref{eq:telegrapher} into
+\begin{equation}
+  \taurelax\,\ddot{\hat U}_0 + \dot{\hat U}_0 = -\kappa k^2\hat U_0 ,
+  \qquad \hat U_0(\mathbf k,0)=q_0, \quad \dot{\hat U}_0(\mathbf k,0)=0 ,
+\end{equation}
+the initial data following from $\int q_0\delta^d(\mathbf
+x)e^{-i\mathbf k\cdot\mathbf x}\dd^d\mathbf x=q_0$ and, via
+Eq.~\eqref{eq:mass_conservation}, $\dot U_0(\mathbf x,0)=-\div\Fdiff(\mathbf
+x,0)=0$. Laplace transforming in $t$,
+\begin{equation}
+  \taurelax\big[p^2\tilde U_0-pq_0\big] + \big[p\tilde U_0-q_0\big] = -\kappa k^2\tilde U_0 ,
+\end{equation}
+and collecting $\tilde U_0$ gives $\tilde U_0(\taurelax
+p^2+p+\kappa k^2)=q_0(\taurelax p+1)$, which is
+Eq.~\eqref{eq:transform-solution}.
+\end{proof}
+
 \subsubsection{One Dimension}
 \label{sec:exact-1d}
 
-In 1D the solution has two pieces: a ballistic front carrying a finite
-fraction of the mass at $|x|=\chyp t$, and a smooth interior behind it
-\cite{MasoliverPorraWeiss1993} (restated in
+\begin{proposition}[1D exact Green's function]
+\label{prop:exact-1d}
+In 1D the solution of Eq.~\eqref{eq:transform-solution} has two pieces: a
+ballistic front carrying a finite fraction of the mass at $|x|=\chyp t$,
+and a smooth interior behind it \cite{MasoliverPorraWeiss1993} (restated in
 \cite{PruestelMeierSchellersheim2013}, Eqs.~(2.1)--(2.5)),
 \begin{equation}
   \label{eq:exact-green}
@@ -1509,6 +1521,36 @@ fraction of the mass at $|x|=\chyp t$, and a smooth interior behind it
       \left(I_0(as)+\frac{t\,I_1(as)}{s}\right)}_{\text{smooth interior}}
   \right] .
 \end{equation}
+\end{proposition}
+
+\begin{proof}
+At $d=1$, Eq.~\eqref{eq:transform-solution} is a Lorentzian in $k$,
+\begin{equation}
+  \tilde U_0(k,p) = \frac{q_0(\taurelax p+1)}{\kappa}\cdot\frac{1}{k^2+\lambda(p)^2} ,
+  \qquad
+  \lambda(p) \equiv \sqrt{\frac{p(\taurelax p+1)}{\kappa}} = \frac{1}{\chyp}\sqrt{(p+a)^2-a^2} ,
+\end{equation}
+using $\kappa=\chyp^2\taurelax$ and $a=1/(2\taurelax)$; $\lambda(p)$ is the
+Laplace-domain field's spatial decay rate, real and finite for $p>0$ since
+$\Deff\propto\kappa>0$ damps every wavenumber. Its inverse Fourier
+transform is elementary,
+$\tfrac1{2\pi}\int_{-\infty}^\infty\tfrac{e^{ikx}}{k^2+\lambda^2}\dd
+k=\tfrac{e^{-\lambda|x|}}{2\lambda}$, giving the Laplace-domain Green's
+function
+\begin{equation}
+  \label{eq:U1-laplace}
+  \tilde U_0(x,p) = \frac{q_0(\taurelax p+1)}{2\kappa\,\lambda(p)}\,e^{-\lambda(p)|x|} .
+\end{equation}
+Eq.~\eqref{eq:U1-laplace} is the Laplace transform of the persistent
+random walk (telegraph process) propagator; inverting it in $t$ is a
+classical result \cite{MasoliverPorraWeiss1993} (restated in
+\cite{PruestelMeierSchellersheim2013}, Eqs.~(2.1)--(2.5)) and reproduces
+Eq.~\eqref{eq:exact-green} term by term: the leading $e^{-\lambda(p)|x|}$
+singularity as $p\to\infty$ inverts to the ballistic-front delta at
+$|x|=\chyp t$, and the regular remainder inverts to the modified-Bessel
+interior.
+\end{proof}
+
 Integrating each piece, the front carries a mass fraction $e^{-at}$ (split
 evenly between $\pm\chyp t$) and the interior the remaining $1-e^{-at}$;
 the two sum to $q_0$ identically.
@@ -1521,26 +1563,48 @@ travelling spikes, not by the smooth interior.
 \subsubsection{Three Dimensions}
 \label{sec:exact-3d}
 
-The 3D case is \emph{not} obtained by reusing Eq.~\eqref{eq:exact-green}.
-It is still elementary, but both the front and the interior differ.
+The 3D case is \emph{not} obtained by treating Eq.~\eqref{eq:exact-green}
+as a 3D Gaussian-type solution in disguise; both the front and the
+interior differ. It is, however, obtained from
+Eq.~\eqref{eq:exact-green} exactly, through a dimension-reduction identity
+that holds precisely because Eq.~\eqref{eq:transform-solution} depends on
+$\mathbf k$ only through $k=|\mathbf k|$: the transformed 1D and 3D
+problems share the same right-hand side, so their real-space solutions
+are two different inversions of one function.
 
-Substituting $U_0=e^{-at}w$ removes the first-order time derivative from
-Eq.~\eqref{eq:telegrapher} and leaves a Klein-Gordon equation with a
-positive mass-squared term,
+\begin{proposition}[Dimension reduction]
+\label{prop:dimension-reduction}
+For $r>0$, the 3D radial Laplace-domain Green's function is related to the
+1D one, Eq.~\eqref{eq:U1-laplace}, by
 \begin{equation}
-  \label{eq:kg}
-  \partial_t^2w = \chyp^2\nabla^2w + a^2w ,
+  \label{eq:dim-reduction}
+  \tilde U_0^{(3)}(r,p) = -\frac{1}{2\pi r}\,\partial_r\tilde U_0^{(1)}(r,p) .
 \end{equation}
-whose sign gives \emph{modified} Bessel functions rather than ordinary
-ones. For radially symmetric fields $\nabla^2w=\tfrac1r\partial_r^2(rw)$,
-so the 3D radial Green's function follows from the 1D one by
-$w_3=-\tfrac{1}{2\pi r}\partial_rw_1$ with
-$w_1=\tfrac{1}{2\chyp}\Theta(\chyp t-r)I_0(as)$. That propagator answers
-the momentum-kick problem ($w=0$, $\partial_tw=\delta^3$); our initial
-condition is the density spike ($w=\delta^3$, $\partial_tw=a\delta^3$,
-the second following from $\partial_tU_0=0$ at $t=0$), so the physical
-solution is $(\partial_t+a)$ applied to it. For the smooth interior $r<\chyp t$ this
-gives
+\end{proposition}
+
+\begin{proof}
+The 3D inverse Fourier transform of a function of $\mathbf k$ depending on
+$\mathbf k$ only through $k=|\mathbf k|$ is, in radial coordinates,
+$\tfrac1{2\pi^2r}\int_0^\infty(\cdot)\,k\sin(kr)\,\dd k$. Applying this
+directly to $\tilde U_0(k,p)$ itself, the Laplace-domain solution of
+Proposition~\ref{prop:transform-solution} (the same function of $k$ used
+for the 1D case, since it does not depend on $d$), the standard integral
+$\int_0^\infty\tfrac{k\sin(kr)}{k^2+\lambda^2}\dd k=\tfrac\pi2e^{-\lambda
+r}$ gives
+\begin{equation}
+  \tilde U_0^{(3)}(r,p) = \frac{q_0(\taurelax p+1)}{4\pi\kappa r}\,e^{-\lambda(p) r} .
+\end{equation}
+Comparing with Eq.~\eqref{eq:U1-laplace} and using $\partial_r
+e^{-\lambda r}=-\lambda e^{-\lambda r}$ reproduces
+Eq.~\eqref{eq:dim-reduction} directly. Both sides are elementary
+exponentials at this stage, so the identity is an ordinary algebraic fact
+about $\tilde U_0^{(1)}$ and $\tilde U_0^{(3)}$ for every $p$ and every
+$r>0$, not yet a distributional statement.
+\end{proof}
+
+\begin{corollary}[3D smooth interior]
+\label{cor:3d-smooth}
+For $r<\chyp t$,
 \begin{equation}
   \label{eq:U3d-smooth}
   U_0(r,t) = q_0e^{-at}\frac{a}{4\pi\chyp^3}\left[
@@ -1548,21 +1612,71 @@ gives
     + \frac{a\,I_1(as)}{s}\right] ,
 \end{equation}
 which is strictly positive.
+\end{corollary}
+
+\begin{proof}
+Write the interior of Eq.~\eqref{eq:exact-green} as $q_0e^{-at}G(r,t)$,
+$G(r,t)=\tfrac{a}{2\chyp}\big[I_0(as)+tI_1(as)/s\big]$, and recall
+$\partial_rs=-r/(\chyp^2s)$. Since $r<\chyp t$ is away from the front,
+Laplace inversion commutes with $\partial_r$ there, so
+Eq.~\eqref{eq:dim-reduction} applies termwise to $G$. Using $I_0'=I_1$ and
+the recurrence $I_1'(z)=I_0(z)-I_1(z)/z$,
+\begin{equation}
+  \partial_rG = \frac{a}{2\chyp}\,\partial_rs\left[aI_1(as)
+    + t\,\partial_s\!\left(\frac{I_1(as)}{s}\right)\right]
+  = -\frac{ar}{2\chyp^3s}\left[aI_1(as)
+    + \frac{t\big(as\,I_0(as)-2I_1(as)\big)}{s^2}\right] ,
+\end{equation}
+where $\partial_s\big(I_1(as)/s\big)=\big(as\,I_1'(as)-I_1(as)\big)/s^2
+=\big(as\,I_0(as)-2I_1(as)\big)/s^2$. Substituting into
+Eq.~\eqref{eq:dim-reduction}, the explicit factor of $r$ in $\partial_rG$
+cancels the $1/r$ prefactor, leaving Eq.~\eqref{eq:U3d-smooth}.
+\end{proof}
 
 \begin{remark}[The 3D front carries three distributions, not one]
 \label{rem:3d-front-dipole}
-Differentiating $w_3$ produces a $\delta'(\chyp t-r)$ from the delta
-itself, plus two further $\delta(\chyp t-r)$ terms: one from the $1/r$
-geometry, one from $\partial_t\Theta(\chyp t-r)$. Collected as a radial
-mass density (per unit $r$), the front is
+Eq.~\eqref{eq:dim-reduction} extends to the front once the derivative is
+read distributionally. Write the full 1D solution, front included, as
+$U_0^{(1)}(r,t)=q_0e^{-at}\big[\tfrac12\delta(r-\chyp
+t)+\Theta(\chyp t-r)G(r,t)\big]$ for $r>0$ ($G$ as in the proof of
+Corollary~\ref{cor:3d-smooth}). Differentiating uses
+$\partial_r\Theta(\chyp t-r)=-\delta(r-\chyp t)$ and, for the $r$-weighting
+carried by the $-1/2\pi r$ prefactor of Eq.~\eqref{eq:dim-reduction}, the
+distributional product rule
+$f(r)\delta'(r-r_0)=f(r_0)\delta'(r-r_0)-f'(r_0)\delta(r-r_0)$ applied to
+$f(r)=r$:
+\begin{equation}
+  \partial_rU_0^{(1)} = q_0e^{-at}\Big[\tfrac12\delta'(r-\chyp t)
+    - G(\chyp t,t)\,\delta(r-\chyp t) + \Theta(\chyp t-r)\,\partial_rG\Big] ,
+\end{equation}
+using, for the $r$-weighting,
+\begin{equation}
+  r\,\delta'(r-\chyp t) = \chyp t\,\delta'(r-\chyp t) - \delta(r-\chyp t) ,
+\end{equation}
+with $G(\chyp t,t)=\lim_{s\to0}G(r,t)=\tfrac{a}{2\chyp}\big(1+\tfrac12at\big)$
+(from $I_0(0)=1$ and $I_1(z)/z\to\tfrac12$ as $z\to0$). Three distinct
+distributional contributions therefore appear at the front: the
+$\delta'(r-\chyp t)$ from differentiating the front delta itself, a
+$\delta(r-\chyp t)$ picked up from the $r$-weighting via the product rule
+above, and a further $\delta(r-\chyp t)$ from the $\partial_r\Theta$
+boundary term. Collected into a radial mass density (per unit $r$, i.e.\
+$4\pi r^2$ times the front part of $-\tfrac1{2\pi r}\partial_rU_0^{(1)}$),
 \begin{equation}
   \label{eq:front-measure-3d}
   \mu_{\rm front}(r,t) = q_0e^{-at}\left[
     -\chyp t\,\delta'\!\big(r-\chyp t\big)
     +\Big(1+at+\tfrac12(at)^2\Big)\,\delta\big(r-\chyp t\big)\right] ,
 \end{equation}
-a signed dipole layer plus a monopole shell. The dipole carries no net
-mass, so the 3D front mass fraction is
+using $2\chyp t\,G(\chyp t,t)=at\big(1+\tfrac12at\big)$: a signed dipole
+layer plus a monopole shell. Mass conservation by itself does not fix this
+split: any pair $c\,\delta'(r-\chyp t)+\delta(r-\chyp t)$ integrates to the
+same total regardless of $c$, since a dipole layer carries no net mass.
+What fixes both coefficients is the differentiation above, applied to the
+actual density-spike solution rather than to an auxiliary problem; as an
+independent check, Section~\ref{sec:exact-comparison} below shows the same
+pair also closes the exact second-moment budget of
+Eq.~\eqref{eq:moment-identity}. The dipole carries no net mass, so the 3D
+front mass fraction is
 \begin{equation}
   \label{eq:front-mass-3d}
   \frac{M_{\rm front}(t)}{q_0} = e^{-at}\left(1+at+\tfrac12(at)^2\right) ,
@@ -1582,11 +1696,54 @@ preserve positivity in three dimensions for sharp initial data; only the
 smooth interior, Eq.~\eqref{eq:U3d-smooth}, is sign-definite.
 \end{remark}
 
-Because of the $\delta'$, Eqs.~\eqref{eq:U3d-smooth} and
-\eqref{eq:front-mass-3d} should be evaluated directly rather than by
-numerically inverting the Laplace-domain solution: Bromwich-type
-quadrature rings at the front, and the closed form is both exact and
-cheaper.
+Collecting the interior and the front into a single field, parallel in
+structure to the 1D result Eq.~\eqref{eq:exact-green}, gives the complete
+3D Green's function.
+
+\begin{proposition}[3D exact Green's function]
+\label{prop:exact-3d}
+For $r>0$,
+\begin{equation}
+  \label{eq:exact-green-3d}
+  \begin{split}
+    U_0(r,t) = q_0e^{-at}\Bigg[\;
+      &\underbrace{-\frac{\delta'(r-\chyp t)}{4\pi\chyp t}
+        +\frac{at+\tfrac12(at)^2-1}{4\pi(\chyp t)^2}\,\delta(r-\chyp t)}_{\text{front}} \\
+      +\;&\underbrace{\Theta(\chyp t-r)\,\frac{a}{4\pi\chyp^3}\left[
+        \frac{t\big(as\,I_0(as)-2I_1(as)\big)}{s^3}+\frac{a\,I_1(as)}{s}\right]}_{\text{smooth interior}}
+    \Bigg] .
+  \end{split}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The interior term is Corollary~\ref{cor:3d-smooth}. For the front,
+$\mu_{\rm front}=4\pi r^2\,U_0^{\rm front}$ by construction
+(Remark~\ref{rem:3d-front-dipole}), so $U_0^{\rm
+front}(r,t)=f(r)\,\mu_{\rm front}(r,t)$ with $f(r)\equiv1/(4\pi r^2)$.
+Applying the distributional product rule
+$f(r)\delta'(r-r_0)=f(r_0)\delta'(r-r_0)-f'(r_0)\delta(r-r_0)$ to
+Eq.~\eqref{eq:front-measure-3d}'s dipole term, with $f(\chyp
+t)=1/(4\pi(\chyp t)^2)$ and $f'(\chyp t)=-1/(2\pi(\chyp t)^3)$, and
+$f(r)\delta(r-\chyp t)=f(\chyp t)\delta(r-\chyp t)$ for its monopole term,
+gives
+\begin{equation}
+  \begin{split}
+    U_0^{\rm front}(r,t) = q_0e^{-at}\Bigg[\;
+      &-\chyp t\left(\frac{\delta'(r-\chyp t)}{4\pi(\chyp t)^2}
+        +\frac{\delta(r-\chyp t)}{2\pi(\chyp t)^3}\right) \\
+      +\;&\Big(1+at+\tfrac12(at)^2\Big)\frac{\delta(r-\chyp t)}{4\pi(\chyp t)^2}
+    \Bigg] ,
+  \end{split}
+\end{equation}
+which collects to the front term of Eq.~\eqref{eq:exact-green-3d}.
+\end{proof}
+
+Because of the $\delta'$, Eq.~\eqref{eq:exact-green-3d} should be
+evaluated from this closed form directly rather than by numerically
+inverting the Laplace-domain solutions, Eq.~\eqref{eq:U1-laplace} or its
+3D counterpart: Bromwich-type quadrature rings at the front, and the
+closed form is both exact and cheaper.
 
 \subsubsection{Comparing Against a Simulated Profile}
 \label{sec:exact-comparison}
@@ -1682,11 +1839,10 @@ speed $\chyp$ exactly (isotropic $\Deff$) or as a safe, tight bound
 (Corollary~\ref{cor:frobenius}), so the wave-speed CFL condition of
 Section~\ref{sec:speed-criterion} rests on solid ground. A
 von-Neumann-style sufficient condition on $\CCFL$ for the full nonlinear
-scheme remains open: the HLL flux, the causal bound of
-Section~\ref{sec:causal-bound}, and the flux-memory limiter of
-Section~\ref{sec:limiter-flux-memory} (itself flagged there as ``a
-starting point, not a derived result'') act together in a way not closed
-in closed form here, exactly as Part~\ref{part:parabolic},
+scheme remains open: the HLL flux and the causal bound of
+Section~\ref{sec:causal-bound} (the sole rescaling applied to
+$F_{\rm diss}$, Section~\ref{sec:limiter-flux-memory}) act together in a
+way not closed in closed form here, exactly as Part~\ref{part:parabolic},
 Section~\ref{sec:timestep} leaves the fully nonlinear parabolic scheme's
 stability unproven beyond its own linear, unlimited appendix bound
 (Appendix~\ref{app:von-neumann}).

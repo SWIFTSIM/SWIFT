@@ -137,12 +137,11 @@ Cattaneo/telegraph equation:
   Any other value raises a configuration error.
 * ``hyperbolic_limiter_scope`` (optional string, default
   ``AllComponents``): which components of the HLL solver's dissipative
-  flux the Hopkins-2017-style diffusivity limiter is applied to. Must be
-  one of:
+  flux the causal bound rescales. Must be one of:
 
-  * ``Density``: limit only the mass-density (monopole) dissipation term,
-    matching the original 1-component scope of Hopkins (2017).
-  * ``AllComponents``: also limit the dissipation of the flux-vector
+  * ``Density``: rescale only the mass-density (monopole) dissipation
+    term.
+  * ``AllComponents``: also rescale the dissipation of the flux-vector
     components, not only the density term.
 
   Any other value raises a configuration error.

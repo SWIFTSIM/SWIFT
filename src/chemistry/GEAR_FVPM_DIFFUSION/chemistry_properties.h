@@ -104,12 +104,11 @@ enum chemistry_relaxation_time_mode {
 
 /**
  * @brief Which components of the hyperbolic HLL solver's F_diss the
- * Hopkins-2017-style diffusivity limiter applies to.
+ * causal bound rescales.
  */
 enum chemistry_hyperbolic_limiter_scope {
-  limiter_density_only,  /* Limit only the mass-density dissipation (matches
-                             Hopkins 2017's original 1-component scope) */
-  limiter_all_components /* Limit the flux-component dissipation too */
+  limiter_density_only,  /* Rescale only the mass-density dissipation */
+  limiter_all_components /* Rescale the flux-component dissipation too */
 };
 
 #ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
@@ -150,8 +149,8 @@ struct chemistry_global_data {
   /*! Relaxation time mode. 0: constant, 1: . */
   enum chemistry_relaxation_time_mode relaxation_time_mode;
 
-  /*! Scope of the Hopkins-2017-style diffusivity limiter applied to the
-      hyperbolic HLL solver's F_diss. */
+  /*! Scope of the causal bound applied to the hyperbolic HLL solver's
+      F_diss. */
   enum chemistry_hyperbolic_limiter_scope hyperbolic_limiter_scope;
 #endif
 
