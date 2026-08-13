@@ -204,20 +204,24 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param t_rt_gradient The send_rt_gradient #task, if it has already been
  * created.
  * @param t_rt_transport The send_rt_transport #task, if it has already been
+ * @param t_hii_tag_recv The recv_part_hii_tag #task (MPI plan S3.1, inverted
+ * direction: created here since this is pre-exchange over this rank's own
+ * local cells), if it has already been created.
+ * @param t_hii_state The send_part_hii_state #task (MPI plan S3.1b), if it
+ * has already been created.
  * @param with_feedback Are we running with stellar feedback?
  * @param with_limiter Are we running with the time-step limiter?
  * @param with_sync Are we running with time-step synchronization?
  * @param with_rt Are we running with radiative transfer?
  */
-void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_xv,
-                                struct task *t_rho, struct task *t_gradient,
-                                struct task *t_prep1, struct task *t_limiter,
-                                struct task *t_pack_limiter,
-                                struct task *t_rt_gradient,
-                                struct task *t_rt_transport,
-                                const int with_feedback, const int with_limiter,
-                                const int with_sync, const int with_rt) {
+void engine_addtasks_send_hydro(
+    struct engine *e, struct cell *ci, struct cell *cj, struct task *t_xv,
+    struct task *t_rho, struct task *t_gradient, struct task *t_prep1,
+    struct task *t_limiter, struct task *t_pack_limiter,
+    struct task *t_rt_gradient, struct task *t_rt_transport,
+    struct task *t_hii_tag_recv, struct task *t_hii_state,
+    const int with_feedback, const int with_limiter, const int with_sync,
+    const int with_rt) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -370,6 +374,24 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
          * these two tasks will/may activate the sorts.*/
         scheduler_addunlock(s, t_xv, t_rt_gradient);
       }
+
+      if (radiation_reaches_node) {
+        /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
+         * (never unskipped, so never enqueued). Seam 3 (phase ordering):
+         * the inverted recv only needs this rank's own tag, already minted
+         * above via cell_ensure_tagged(ci), so it can be created here,
+         * pre-exchange. Seam 1 (source-rank derivation): cj carries the
+         * computing rank's identity in t->cj, consumed by
+         * scheduler_enqueue's MPI_Irecv (scheduler.c). */
+        t_hii_tag_recv =
+            scheduler_addtask(s, task_type_recv, task_subtype_part_hii_tag,
+                              ci->mpi.tag, 0, ci, cj);
+
+        /* Normal direction (S3.1b): no inversion seam needed. */
+        t_hii_state =
+            scheduler_addtask(s, task_type_send, task_subtype_part_hii_state,
+                              ci->mpi.tag, 0, ci, cj);
+      }
     } /* if t_xv == NULL */
 
     /* Add them to the local cell. */
@@ -378,6 +400,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->mpi.send, t_gradient);
 #endif
+    if (t_hii_tag_recv != NULL) {
+      engine_addlink(e, &ci->mpi.recv, t_hii_tag_recv);
+      engine_addlink(e, &ci->mpi.send, t_hii_state);
+    }
     if (with_limiter) {
       engine_addlink(e, &ci->mpi.send, t_limiter);
       engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
@@ -399,8 +425,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_hydro(
             e, ci->progeny[k], cj, t_xv, t_rho, t_gradient, t_prep1, t_limiter,
-            t_pack_limiter, t_rt_gradient, t_rt_transport, with_feedback,
-            with_limiter, with_sync, with_rt);
+            t_pack_limiter, t_rt_gradient, t_rt_transport, t_hii_tag_recv,
+            t_hii_state, with_feedback, with_limiter, with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -693,6 +719,15 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
  * @param with_limiter Are we running with the time-step limiter?
  * @param with_sync Are we running with time-step synchronization?
  * @param with_rt Are we running with radiative transfer?
+ * @param cj_hii_tag Dummy cell carrying the destination nodeID for the
+ * inverted send_part_hii_tag (MPI plan S3.1, seam 3: this rank is the
+ * computing rank here, and the destination is @p c's owner). Kept distinct
+ * from @p c itself so the send task's ci and cj are never the same cell.
+ * @param t_hii_tag_send The send_part_hii_tag #task (MPI plan S3.1,
+ * inverted direction: created here since this is post-exchange over this
+ * rank's foreign cells and needs @p c's tag), if already created.
+ * @param t_hii_state_recv The recv_part_hii_state #task (MPI plan S3.1b),
+ * if already created.
  */
 void engine_addtasks_recv_hydro(
     struct engine *e, struct cell *c, struct task *t_xv, struct task *t_rho,
@@ -701,7 +736,8 @@ void engine_addtasks_recv_hydro(
     struct task *t_rt_transport, struct task *t_rt_sorts,
     struct task *const tend, const int with_feedback,
     const int with_black_holes, const int with_sinks, const int with_limiter,
-    const int with_sync, const int with_rt) {
+    const int with_sync, const int with_rt, struct cell *cj_hii_tag,
+    struct task *t_hii_tag_send, struct task *t_hii_state_recv) {
 
 #ifdef WITH_MPI
 #if !defined(SWIFT_DEBUG_CHECKS)
@@ -816,6 +852,27 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_gradient, t_rt_gradient);
 #endif
     }
+
+    if (c->stars.radiation_in != NULL) {
+      /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
+       * (never unskipped, so never enqueued). Seam 3 (phase ordering): the
+       * inverted send needs @p c's own tag, only known post-exchange, so
+       * it is created here rather than in the send-phase function. */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (c->mpi.tag < 0) error("Trying to send from untagged cell.");
+#endif
+
+      /* Inverted direction (S3.1): ci = c, the foreign cell being reported
+       * on; cj carries the destination (c's owner) so ci != cj. */
+      t_hii_tag_send =
+          scheduler_addtask(s, task_type_send, task_subtype_part_hii_tag,
+                            c->mpi.tag, 0, c, cj_hii_tag);
+
+      /* Normal direction (S3.1b): no inversion seam needed. */
+      t_hii_state_recv =
+          scheduler_addtask(s, task_type_recv, task_subtype_part_hii_state,
+                            c->mpi.tag, 0, c, NULL);
+    }
   }
 
   if (t_xv != NULL) {
@@ -831,6 +888,10 @@ void engine_addtasks_recv_hydro(
 #ifdef EXTRA_STAR_LOOPS
     if (with_feedback) engine_addlink(e, &c->mpi.recv, t_prep1);
 #endif
+    if (t_hii_tag_send != NULL) {
+      engine_addlink(e, &c->mpi.send, t_hii_tag_send);
+      engine_addlink(e, &c->mpi.recv, t_hii_state_recv);
+    }
 
     /* Add dependencies. */
     if (c->hydro.sorts != NULL) {
@@ -939,7 +1000,7 @@ void engine_addtasks_recv_hydro(
             e, c->progeny[k], t_xv, t_rho, t_gradient, t_prep1, t_limiter,
             t_unpack_limiter, t_rt_gradient, t_rt_transport, t_rt_sorts, tend,
             with_feedback, with_black_holes, with_sinks, with_limiter,
-            with_sync, with_rt);
+            with_sync, with_rt, cj_hii_tag, t_hii_tag_send, t_hii_state_recv);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4507,7 +4568,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
                                  /*t_rt_gradient=*/NULL,
-                                 /*t_rt_transport=*/NULL, with_feedback,
+                                 /*t_rt_transport=*/NULL,
+                                 /*t_hii_tag_recv=*/NULL,
+                                 /*t_hii_state=*/NULL, with_feedback,
                                  with_limiter, with_sync, with_rt);
 
     /* Add the send tasks for the cells in the proxy that have a stars
@@ -4571,6 +4634,10 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
+    /* Dummy cell carrying the destination nodeID for the inverted
+     * send_part_hii_tag (MPI plan S3.1, seam 3): any cell of this rank's
+     * proxy cells_in set shares the same remote nodeID as ci. */
+    struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
     struct task *tend = NULL;
 
@@ -4620,7 +4687,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
           /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
           /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
           /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
-          with_sinks, with_limiter, with_sync, with_rt);
+          with_sinks, with_limiter, with_sync, with_rt, cj,
+          /*t_hii_tag_send=*/NULL, /*t_hii_state_recv=*/NULL);
     }
 
     /* Add the recv tasks for the cells in the proxy that have a stars
@@ -5101,6 +5169,10 @@ void engine_maketasks(struct engine *e) {
       struct proxy *p = &e->proxies[pid];
       for (int k = 0; k < p->nr_cells_in; k++) {
         recv_cell_type_pairs[num_recv_cells].ci = p->cells_in[k];
+        /* Dummy destination-nodeID carrier for the inverted
+         * send_part_hii_tag (MPI plan S3.1, seam 3), mirroring the send
+         * phase's own cj = p->cells_in[0] a few lines above. */
+        recv_cell_type_pairs[num_recv_cells].cj = p->cells_in[0];
         recv_cell_type_pairs[num_recv_cells++].type = p->cells_in_type[k];
       }
     }

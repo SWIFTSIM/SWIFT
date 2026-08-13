@@ -1007,6 +1007,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
+        } else if (t->subtype == task_subtype_part_hii_tag) {
+
+          /* MPI plan S3.1 skeleton: never activated (t->skip stays 1), so
+           * this branch is compiled but not yet exercised. */
+          count = size = t->ci->hydro.count * sizeof(struct hii_tag_report);
+          buff = t->buff = malloc(size);
+
+        } else if (t->subtype == task_subtype_part_hii_state) {
+
+          /* MPI plan S3.1b skeleton, same status as part_hii_tag above. */
+          count = size = t->ci->hydro.count * sizeof(struct hii_state_update);
+          buff = t->buff = malloc(size);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -1072,7 +1085,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+        /* Seam 1 (MPI plan S3.1): source-rank derivation. Every other recv
+         * subtype's t->ci is the FOREIGN cell, so t->ci->nodeID is the
+         * source. The inverted part_hii_tag recv is the one exception:
+         * t->ci is the OWNER's own local cell (needed for its hydro.count
+         * and tag), so the source instead comes from t->cj, which
+         * engine_addtasks_send_hydro set to carry the computing rank's
+         * identity (existing recvs never use cj, leaving the field free). */
+        const int source = (t->subtype == task_subtype_part_hii_tag)
+                               ? t->cj->nodeID
+                               : t->ci->nodeID;
+
+        err = MPI_Irecv(buff, count, type, source, t->flags,
                         subtaskMPI_comms[t->subtype], &t->req);
 
         if (err != MPI_SUCCESS) {
@@ -1080,8 +1104,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              t->ci->nodeID, t->flags);
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size, source,
+                              t->flags);
 
         qid = 1 % s->nr_queues;
       }
@@ -1117,6 +1141,23 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(size);
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
+
+        } else if (t->subtype == task_subtype_part_hii_tag) {
+
+          /* MPI plan S3.1 skeleton: never activated (t->skip stays 1), so
+           * this branch is compiled but not yet exercised. Inverted
+           * direction: t->ci is the (possibly foreign) cell being reported
+           * on, per engine_addtasks_recv_hydro. */
+          size = count = t->ci->hydro.count * sizeof(struct hii_tag_report);
+          buff = t->buff = malloc(size);
+          cell_pack_part_hii_tag(t->ci, (struct hii_tag_report *)t->buff);
+
+        } else if (t->subtype == task_subtype_part_hii_state) {
+
+          /* MPI plan S3.1b skeleton, same status as part_hii_tag above. */
+          size = count = t->ci->hydro.count * sizeof(struct hii_state_update);
+          buff = t->buff = malloc(size);
+          cell_pack_part_hii_state(t->ci, (struct hii_state_update *)t->buff);
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
