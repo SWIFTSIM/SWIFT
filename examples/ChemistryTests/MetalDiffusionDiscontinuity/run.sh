@@ -22,6 +22,13 @@ with_hydro_MFM=${with_hydro_MFM:=0}
 random_positions=${random_positions:=0} # Use random positions instead of regular grid?
 run_name=${run_name:=""} # Name of the run to store in a dedicated folder when the simulation is completed
 dimension=${dimension:=3} # Dimensionality of the problem.
+tau=${tau:=""}  # Override GEARChemistry:tau (hyperbolic relaxation time); empty = use params.yml
+
+# Build the parameter override flags for swift
+param_overrides=""
+if [ -n "$tau" ]; then
+    param_overrides="-P GEARChemistry:tau:$tau"
+fi
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -95,11 +102,11 @@ printf "Running simulation..."
 if [ "$with_hydro_MFM" -eq 1 ]; then
     echo "Running with MFM hydro solver..."
     $swift --hydro --external-gravity --stars \
-		     --threads=$n_threads params.yml 2>&1 | tee output.log
+		     --threads=$n_threads $param_overrides params.yml 2>&1 | tee output.log
 else
     echo "Running with SPH hydro solver"
     $swift --hydro --external-gravity --stars --feedback --limiter \
-            --threads=$n_threads params.yml 2>&1 | tee output.log
+            --threads=$n_threads $param_overrides params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box

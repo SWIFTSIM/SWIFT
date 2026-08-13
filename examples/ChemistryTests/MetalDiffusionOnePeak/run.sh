@@ -19,6 +19,13 @@ random_positions=${random_positions:=0} # Use random positions instead of regula
 run_name=${run_name:=""}  # Name of the run
 epsilon=${epsilon:=0.04}  # Size of the sphere of particles containing an initial non null metallicity
 dimension=${dimension:=3} # Dimensionality of the problem.
+tau=${tau:=""}  # Override GEARChemistry:tau (hyperbolic relaxation time); empty = use params.yml
+
+# Build the parameter override flags for swift
+param_overrides=""
+if [ -n "$tau" ]; then
+    param_overrides="-P GEARChemistry:tau:$tau"
+fi
 
 
 ICs_name="metal_diffusion_one_peak.hdf5"
@@ -90,12 +97,12 @@ if [ "$with_hydro_MFM" -eq 1 ]; then
     # ./configure --with-hydro=gizmo-mfm --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-stars=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks --with-riemann-solver=hllc && make clean && make -j12
     echo "Running with MFM hydro solver..."
     $swift --hydro --external-gravity --stars \
-		     --threads=$n_threads params.yml 2>&1 | tee output.log
+		     --threads=$n_threads $param_overrides params.yml 2>&1 | tee output.log
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
     $swift --hydro --external-gravity --stars --feedback \
-		     --threads=$n_threads params.yml 2>&1 | tee output.log
+		     --threads=$n_threads $param_overrides params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box
