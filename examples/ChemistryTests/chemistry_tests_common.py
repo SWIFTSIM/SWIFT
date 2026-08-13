@@ -32,6 +32,20 @@ def get_fe_metal_mass(data):
     return m_fe
 
 
+def lattice_bin_count(x0, L, cap=512, floor=16):
+    """Bin count matched to the seed lattice spacing (else bins that don't
+    evenly divide the static IC grid alias into spurious spikes: a bin
+    boundary landing mid-lattice-spacing pulls two planes' worth of mass
+    into one bin while its neighbour gets none)."""
+    ux = np.unique(np.round(x0 % L, 8))
+    if len(ux) < 2:
+        return cap
+    spacing = np.median(np.diff(ux))
+    if spacing <= 0:
+        return cap
+    return int(np.clip(round(L / spacing), floor, cap))
+
+
 def radial_profile(value, r, r_max, cross_section_area, n_bins=30):
     """Compute a 1D density profile (mass / bin volume) across -r_max to
     r_max. Summing mass and dividing by bin volume (rather than averaging
