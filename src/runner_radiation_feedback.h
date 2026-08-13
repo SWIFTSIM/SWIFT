@@ -33,16 +33,66 @@
 
 /* Local headers. */
 #include "error.h"
+#include "feedback.h"
 #include "hydro.h"
+#include "minmax.h"
 #include "stars.h"
 
 /* Avoid cyclic inclusions. */
 struct runner;
 struct cell;
+struct engine;
 
 /* radiation_search_radius_factor lives in cell_stars.h: cell.h's rebuild
  * and split predicates need the same value and cannot depend on this
  * feedback-scheme header. */
+
+/**
+ * @brief Does this engine policy need the radiation subgrid task layer
+ * (the per-region hii_ionization_feedback task and its super pointer)?
+ *
+ * True only when GEAR ionization feedback is compiled in and both the
+ * stars and feedback policies are active.
+ *
+ * @param with_stars Is engine_policy_stars set?
+ * @param with_feedback Is engine_policy_feedback set?
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
+  return with_stars && with_feedback;
+}
+#else
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
+  return 0;
+}
+#endif
+
+/**
+ * @brief Does this engine policy need the radiation gather task layer
+ * (radiation_in/radiation_out self and pair tasks)?
+ *
+ * True only when GEAR ionization feedback is compiled in and both the
+ * hydro and stars policies are active. Unlike
+ * #feedback_radiation_subgrid_needed, the feedback policy is not required:
+ * the geometric gather task graph is built from hydro + stars alone, with
+ * the ionization task itself gated separately.
+ *
+ * @param with_hydro Is engine_policy_hydro set?
+ * @param with_stars Is engine_policy_stars set?
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
+  return with_hydro && with_stars;
+}
+#else
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
+  return 0;
+}
+#endif
 
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
  * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
@@ -151,8 +201,39 @@ int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const struct spart *si,
                                          const float search_radius);
 
+/**
+ * @brief Top-level steering function for HII ionization feedback, called
+ * unconditionally from the runner's task dispatch (runner_main.c).
+ *
+ * A no-op when GEAR ionization feedback is compiled out: the task type
+ * still exists in the enum, but with_radiation_tasks
+ * (#feedback_radiation_gather_tasks_needed) never creates the task, so
+ * this is dead code reachable only by construction, not at runtime.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer);
+#else
+__attribute__((always_inline)) INLINE static void
+runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
+                                        int timer) {}
+#endif
+
+/**
+ * @brief Print startup warnings about the HII search-radius / box-size
+ * relationship, called unconditionally from engine_config().
+ *
+ * A no-op when GEAR ionization feedback is compiled out.
+ *
+ * @param e The #engine.
+ */
+#ifdef IONIZATION_FEEDBACK_LOOP
+void feedback_radiation_startup_diagnostics(const struct engine *e);
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_startup_diagnostics(const struct engine *e) {}
+#endif
+
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                                 struct cell *c,
                                                 const float interaction_limit);

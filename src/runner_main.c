@@ -40,10 +40,10 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
-/* Import radiation feedback loop function */
-#ifdef IONIZATION_FEEDBACK_LOOP
+/* Import radiation feedback loop function. Always included: the header
+ * itself supplies a no-op stub for runner_do_stars_hii_ionization_feedback
+ * when GEAR ionization feedback is compiled out. */
 #include "runner_radiation_feedback.h"
-#endif
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -578,11 +578,9 @@ void *runner_main(void *data) {
         case task_type_rt_advance_cell_time:
           runner_do_rt_advance_cell_time(r, t->ci, 1);
           break;
-#ifdef IONIZATION_FEEDBACK_LOOP
         case task_type_stars_hii_ionization_feedback:
           runner_do_stars_hii_ionization_feedback(r, t->ci, 1);
           break;
-#endif
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
