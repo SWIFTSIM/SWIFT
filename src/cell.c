@@ -51,6 +51,7 @@
 #include "error.h"
 #include "multipole.h"
 #include "multipole_accept.h"
+#include "runner_radiation_feedback.h"
 #include "space.h"
 #include "tools.h"
 
@@ -1439,13 +1440,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
-#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_radiation_subgrid = with_stars && with_feedback;
-#else
-  const int with_radiation_subgrid = 0;
-#endif
+  const int with_radiation_subgrid =
+      feedback_radiation_subgrid_needed(with_stars, with_feedback);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];

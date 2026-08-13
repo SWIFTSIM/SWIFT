@@ -57,6 +57,7 @@
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
+#include "runner_radiation_feedback.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -2137,13 +2138,10 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
-#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_HII_ionization_feedback = with_stars && with_feedback;
-#else
-  const int with_HII_ionization_feedback = 0;
-#endif
+  const int with_HII_ionization_feedback =
+      feedback_radiation_subgrid_needed(with_stars, with_feedback);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -4778,18 +4776,14 @@ void engine_maketasks(struct engine *e) {
   const int nr_cells = s->nr_cells;
   const ticks tic = getticks();
 
-#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
-  const int with_subgrid_radiation_feedback = with_stars && with_feedback;
+  const int with_subgrid_radiation_feedback =
+      feedback_radiation_subgrid_needed(with_stars, with_feedback);
   /* Radiation tasks only need hydro + stars (feedback pulls in the extra
    * radiation_out loop and wiring, handled separately below). */
-  const int with_radiation_tasks =
-      (e->policy & engine_policy_hydro) && with_stars;
-#else
-  const int with_subgrid_radiation_feedback = 0;
-  const int with_radiation_tasks = 0;
-#endif
+  const int with_radiation_tasks = feedback_radiation_gather_tasks_needed(
+      e->policy & engine_policy_hydro, with_stars);
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
