@@ -485,17 +485,18 @@ struct engine {
   /* Force the engine to rebuild? */
   int forcerebuild;
 
-  /*! Radiation-pair rebuild demands accumulated since the last rebuild
-   * (diagnostic; reported/reset in engine_rebuild()). */
-  long long radiation_rebuild_demand_count;
-
+#ifdef SWIFT_DEBUG_CHECKS
   /*! Cumulative HII search-radius expansions clamped at the reachable
-   * radiation_in stencil bound (diagnostic). */
+   * radiation_in stencil bound. A persistently growing count means a star's
+   * physical front is waiting on the next rebuild instead of being
+   * reach-limited by configuration; reported as a warning in
+   * engine_step(). */
   long long radiation_reach_clamp_count;
 
   /*! radiation_reach_clamp_count at the last per-step report, for printing the
    * per-step delta. */
   long long radiation_reach_clamp_count_last_step;
+#endif
 
   /* Force the engine to repartition ? */
   int forcerepart;

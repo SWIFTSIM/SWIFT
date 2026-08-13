@@ -2394,12 +2394,10 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       if (!(top_stencil_ok && ci->top == ci) &&
           cell_need_rebuild_for_radiation_pair(ci, cj)) {
         rebuild = 1;
-        atomic_inc(&e->radiation_rebuild_demand_count);
       }
       if (!(top_stencil_ok && cj->top == cj) &&
           cell_need_rebuild_for_radiation_pair(cj, ci)) {
         rebuild = 1;
-        atomic_inc(&e->radiation_rebuild_demand_count);
       }
     }
     /* Nothing more to do here, all drifts and sorts activated above */
