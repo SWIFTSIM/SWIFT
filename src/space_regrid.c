@@ -215,12 +215,18 @@ void space_regrid(struct space *s, int verbose) {
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] || cdim[2] != s->cdim[2]) {
+  if (s->cells_top != NULL && (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
+                               cdim[2] != s->cdim[2])) {
 
     /* Capture state of current space. h_max_no_hii_hwm's ratchet (see
        above) means cdim can now also come out larger (finer) than before
        -- only ever via h_hii shrinking, never via ordinary physics -- so
-       this capture must trigger on any change, not just a decrease. */
+       this capture must trigger on any change, not just a decrease. It
+       still requires an existing grid: on the first call (from
+       space_init) and on restart, s->cells_top is NULL while s->cdim may
+       already differ, and both the capture loop and the repartition it
+       triggers need live cells and a live engine. Those cases go through
+       the no_regrid path below instead. */
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
     oldcdim[2] = s->cdim[2];
