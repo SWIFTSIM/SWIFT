@@ -117,8 +117,8 @@ printf "Running simulation..."
 	       --threads=$n_threads $parameter_file 2>&1 | tee output.log
 
 #Do some data analysis to show what's in this box
-python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5 #--symlog
-python3 metal_projection.py snap/snapshot_*0.hdf5 --vmin=-13 --vmax=-8 --log
+python3 ../plot_metal_mass_conservation_in_time.py snap/*.hdf5 #--symlog
+python3 ../metal_projection.py snap/snapshot_*0.hdf5 --vmin=-13 --vmax=-8 --log
 python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log
 python3 plot_projected_qty.py --qty "pressure" snap/snapshot_*0.hdf5 --log
 
