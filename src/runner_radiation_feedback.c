@@ -49,10 +49,8 @@
  * @p needed entries.
  *
  * Doubling grow-on-demand, like gravity_cache_init's pattern
- * (runner_doiact_grav.c): never shrinks, so a region size seen once does
- * not repeatedly pay realloc cost on every later pass at or below that
- * size. Existing content is not preserved -- callers refill the buffer
- * from scratch every maintenance pass, so nothing needs to survive a grow.
+ * (runner_doiact_grav.c): never shrinks. Existing content is not
+ * preserved; callers refill the buffer from scratch every maintenance pass.
  *
  * @param r The #runner whose buffer to grow.
  * @param needed The minimum required capacity, in entries.
@@ -79,12 +77,10 @@ static INLINE void runner_hii_maintenance_buffer_ensure(struct runner *r,
 /**
  * @brief qsort() comparator for ascending (r2, id) order.
  *
- * id is the tiebreak: r2 alone is not a total order (distinct particles can
- * sit at the identical squared distance), and processing order must be
- * reproducible across runs/threads for the maintenance charging pass to be
- * deterministic. Explicit branches rather than subtraction -- `a - b` on
- * r2's magnitudes or on a `long long` id either loses precision or
- * overflows.
+ * id is the tiebreak: r2 alone is not a total order, since distinct
+ * particles can sit at the identical squared distance. Explicit branches
+ * rather than subtraction, since `a - b` on r2's magnitudes or on a
+ * `long long` id either loses precision or overflows.
  */
 static int runner_hii_maintenance_compare(const void *a, const void *b) {
   const struct hii_neighbor *na = (const struct hii_neighbor *)a;
@@ -144,21 +140,17 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
 
   if (mode == hii_gather_already_ionized) {
     /* Extent and count track what this star still HOLDS, not what it could
-       afford this pass. Gating them on the eventual charge would make them
-       depend on traversal order -- gas is visited own-cell-first, so a star
-       short of photons would report only its innermost region, shrink
-       h_hii to match, and drop the rest out of next pass's search radius
-       entirely. Both are therefore still updated live here; only the
-       charge itself (order-sensitive: which shell lapses under a shortfall)
-       is deferred to the caller's (r2, id)-ordered pass below. */
+       afford this pass, and are updated live regardless of traversal order:
+       gating them on the charge would shrink h_hii and drop the region's
+       outskirts from the next pass's search radius. Only the charge itself
+       (which shell lapses under a shortfall) is deferred to the caller's
+       (r2, id)-ordered pass below. */
     ctx->r2_max_maintained = max(ctx->r2_max_maintained, r2);
     (*count_found)++;
 
     /* Buffer this candidate for (r2, id)-ordered charging once the whole
-       traversal has returned (runner_dosub_stars_hii_ionization_feedback):
-       this set is the whole ionized region, which has no reason to fit in
-       max_ngbs, so the buffer grows to match rather than dropping
-       outskirts the way the fixed-capacity new-candidate buffer would. */
+       traversal returns. The region has no reason to fit in max_ngbs, so
+       the buffer grows to match rather than dropping outskirts. */
     runner_hii_maintenance_buffer_ensure(ctx->r, ctx->buffer_count + 1);
     struct hii_neighbor *slot =
         &ctx->r->hii_maintenance_buffer[ctx->buffer_count++];
@@ -254,17 +246,12 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ordering assertion for the feedback_ghost activation fix (Phase 5 item
-   * 13, cell_unskip.c's cell_radiation_activate_supers_in()). Every
-   * hydro.super this gather is about to read/write gas in must have already
-   * had its stars.feedback_ghost barrier RUN this step -- not merely
-   * "not skipped", since skip resets to 1 on task completion; ti_run ==
-   * e->ti_current is the reliable "did this actually execute this step"
-   * signal. A tripped assertion is direct proof that the wait edge wired at
-   * engine_maketasks.c:3586 (t_in waits on every covered super's
-   * feedback_ghost) failed to hold: this gather is about to touch a super
-   * whose local feedback pass either has not run yet or ran with no
-   * ordering guarantee relative to this task. */
+  /* Ordering assertion for the feedback_ghost activation fix in
+   * cell_radiation_activate_supers_in(). Every hydro.super this gather
+   * touches must have its stars.feedback_ghost already RUN this step
+   * (ti_run == e->ti_current, not merely unskipped, since skip resets to 1
+   * on completion). A trip means the wait edge wired at
+   * engine_maketasks.c:3586 failed to hold. */
   for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
     struct cell *sides[2] = {l->t->ci, l->t->cj};
     for (int side = 0; side < 2; side++) {
@@ -274,12 +261,9 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       struct cell *super = cc->hydro.super;
       if (super->stars.feedback_ghost == NULL) continue;
 
-      /* Only meaningful once this super was actually covered by radiation
-       * activation this step -- cell_flag_do_hydro_drift is set
-       * unconditionally by cell_radiation_activate_supers_in() for every
-       * covered super, so its presence marks "in scope for this pass". An
-       * untouched/irrelevant super legitimately carries a stale ti_run and
-       * is not part of the hazard. */
+      /* Only meaningful if this super was covered by radiation activation
+       * this step: cell_flag_do_hydro_drift marks that scope. An untouched
+       * super legitimately carries a stale ti_run. */
       if (!cell_get_flag(super, cell_flag_do_hydro_drift)) continue;
 
       if (super->stars.feedback != NULL /* had a feedback task registered */
@@ -636,28 +620,21 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                &maintenance_ctx);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* hii_gather_already_ionized increments both counters together for
-       every already-ionized candidate it visits -- one entry buffered per
-       particle held. A mismatch means the buffer and the count it drives
-       (num_empty_expansions, the CHECKSUM line) have silently gone out of
-       sync. */
+    /* hii_gather_already_ionized increments both counters together, one
+       entry buffered per particle held. A mismatch means the buffer and
+       the counters that drive it have silently gone out of sync. */
     if (count_held != maintenance_ctx.buffer_count)
       error("count_held (%d) != maintenance buffer_count (%d)", count_held,
             maintenance_ctx.buffer_count);
 #endif
 
     /* Charge every buffered already-ionized candidate in ascending (r2, id)
-       order: a budget shortfall then lapses the outermost shell of the
-       region first (the recession front), instead of a set determined by
-       cell-traversal order. Every entry is charged regardless of whether
-       its pixel can still afford it -- feedback_iact_HII_maintain_ionized_
-       part's own budget check handles that, and it unconditionally accrues
-       mass_HII_region first (the mass this star HOLDS, not what it could
-       afford), so skipping entries here would silently shrink that output
-       field. This is under the same lock set Phase 1's traversal ran
-       under, so the sort's cost is reported (SWIFT_DEBUG_CHECKS_VERBOSE)
-       against the whole pass's cost for visibility into its lock-hold
-       contribution. */
+       order: a budget shortfall then lapses the outermost shell first (the
+       recession front), instead of a set determined by cell-traversal
+       order. Every entry is charged regardless of pixel budget;
+       feedback_iact_HII_maintain_ionized_part's own check handles that and
+       unconditionally accrues mass_HII_region first, so skipping entries
+       here would silently shrink that output field. */
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     const ticks tic_maintenance_sort = getticks();
 #endif
@@ -713,17 +690,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     int num_empty_expansions = 0;
 #ifdef SWIFT_DEBUG_CHECKS
     /* Newly claimed this pass, summed over every retry/expansion iteration.
-       Only meaningful next to count_held: the two together say whether the
-       region is growing, holding, or churning (claiming gas each pass that
-       has lapsed again by the next one). Also the basis of the HII CHECKSUM
-       line below (n_claimed, claimed_id_hash), so this stays live under
-       plain SWIFT_DEBUG_CHECKS rather than only the VERBOSE build. */
+       Read alongside count_held to tell growing, holding, or churning
+       regions apart; also feeds the HII CHECKSUM line below. */
     int count_claimed = 0;
-    /* Order-independent hash of this pass's claimed particle ids: a sum of
-       id*constant, so it compares equal across two runs that claim the same
-       set through different traversal orders (repeat-run determinism gate),
-       and across future scheme variants that may reorder claims further
-       (MPI). Unsigned so wraparound on overflow is defined, not UB. */
+    /* Order-independent hash of this pass's claimed particle ids (sum of
+       id*constant), so it matches across runs that claim the same set via
+       different traversal orders. Unsigned: overflow wraparound is
+       defined, not UB. */
     unsigned long long claimed_id_hash = 0;
 #endif
 
@@ -768,12 +741,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                        feedback_props, ti_begin, time, dt_back);
 
 #ifdef SWIFT_DEBUG_CHECKS
-          /* A candidate starts this loop untagged (the gather filter,
-             feedback_part_can_be_ionized, requires it); tagged-with-si->id
-             afterwards is therefore exactly "this star just claimed it",
-             whether or not another concurrently-running star's task raced
-             it in between (that case tags it with a DIFFERENT star_id, or
-             leaves it tagged by neither, and is correctly excluded here). */
+          /* A candidate starts this loop untagged, so tagged-with-si->id
+             afterwards means this star just claimed it. A concurrent
+             claim by another star's task tags a different id instead and
+             is correctly excluded here. */
           if (radiation_is_part_tagged_as_ionized(pj, xpj) &&
               radiation_get_part_ionized_star_id(pj, xpj) == si->id) {
             ++count_claimed;
@@ -837,12 +808,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Repeat-run/cross-scheme comparator: everything on this line is
-       order-independent (n_claimed/claimed_id_hash sum over claims
-       regardless of traversal order, held is the Phase-1 count, leftover
-       budget is a plain sum over pixels), so two runs that reach the same
-       physical decisions print identical lines regardless of thread
-       scheduling or cell-traversal order. */
+    /* Repeat-run/cross-scheme comparator: every field here is order
+       independent, so two runs reaching the same physical decisions print
+       identical lines regardless of thread scheduling or traversal order. */
     message(
         "HII CHECKSUM: star_id %lld ti_current %lld n_claimed %d "
         "claimed_id_hash %llu held %d leftover_budget %.17e",

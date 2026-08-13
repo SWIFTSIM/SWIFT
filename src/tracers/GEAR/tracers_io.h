@@ -71,7 +71,7 @@ INLINE static void convert_sink_averaged_accretion_rate(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #IsIonizedFlags -- see
+ * @brief Snapshot converter for #IsIonizedFlags, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_is_ionized(const struct engine *e,
@@ -81,7 +81,7 @@ INLINE static void convert_part_is_ionized(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #HIIStarIDs -- see #tracers_write_particles.
+ * @brief Snapshot converter for #HIIStarIDs, see #tracers_write_particles.
  */
 INLINE static void convert_part_HII_star_id(const struct engine *e,
                                             const struct part *p,
@@ -106,10 +106,9 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   int num = 2;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
-     not tracers_xpart_data -- read through the feedback-model dispatch
-     wrapper (feedback_common.c) rather than the struct field directly, so
-     this compiles under any --with-feedback choice paired with
-     --with-tracers=GEAR, not only --with-feedback=GEAR. */
+     not tracers_xpart_data, so read it through the feedback-model dispatch
+     wrapper: this must compile under any --with-feedback choice paired
+     with --with-tracers=GEAR, not only --with-feedback=GEAR. */
   list[0] = io_make_output_field_convert_part(
       "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_part_is_ionized,

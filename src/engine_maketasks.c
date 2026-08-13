@@ -3596,18 +3596,16 @@ static void engine_radiation_wire_super_deps(struct scheduler *sched,
 
 /**
  * @brief Sorts-only mirror of #engine_radiation_wire_super_deps, for the
- * foreign side of a radiation_in pair (ci or cj not local to this rank --
- * MPI, not yet supported: this recurses down the SAME cell hierarchy but is
- * exercised only once cross-rank radiation is enabled).
+ * foreign side of a radiation_in pair (ci or cj not local to this rank; MPI
+ * not yet supported, exercised only once cross-rank radiation is enabled).
  *
  * The foreign owner is responsible for its own drift/cooling/feedback_ghost
- * ordering; this rank only needs @p c's sorted gas to be current before @p
- * t reads it, hence sorts-only rather than the full super-deps set.
+ * ordering; this rank only needs @p c's sorted gas current before @p t
+ * reads it, hence sorts-only rather than the full super-deps set.
  *
- * NULL-safe in the same sense as #engine_radiation_wire_super_deps: @p c's
- * hydro.super can be NULL when its radiation_level cell sits above its own
- * hydro.super, in which case this recurses into progeny instead of
- * dereferencing a NULL pointer.
+ * NULL-safe like #engine_radiation_wire_super_deps: @p c's hydro.super can
+ * be NULL when its radiation_level cell sits above its own hydro.super, in
+ * which case this recurses into progeny instead of dereferencing NULL.
  *
  * @param sched The #scheduler.
  * @param c The cell whose covered hydro.supers to wire (ci or cj of the

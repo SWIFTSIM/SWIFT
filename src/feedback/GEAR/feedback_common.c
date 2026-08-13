@@ -513,7 +513,7 @@ feedback_get_star_ionization_budget_max(const struct spart *sp) {
  * Get the raw sum of the remaining ionizing photon count over all of the
  * #spart's active angular pixels, positive and negative contributions alike
  * (a pixel in debt after #feedback_hii_claim_part's deterministic-boundary
- * overdraw counts negatively). Diagnostic only -- the per-pixel budget is
+ * overdraw counts negatively). Diagnostic only: the per-pixel budget is
  * still what every spending decision above is gated on.
  *
  * @param sp The star.
@@ -696,10 +696,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * renewed and cooling expires those tags at end_time. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
- * the outermost shell (largest r2) first -- the physically sensible
- * recession front -- rather than a set determined by cell-traversal order.
- * At equilibrium the shortfall is only the marginal budget deficit, so that
- * shell is thin.
+ * the outermost shell (largest r2, the recession front) first, rather than
+ * a set determined by cell-traversal order.
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being maintained.
@@ -962,8 +960,8 @@ char feedback_is_part_tagged_as_ionized(const struct part *p,
  * @brief Id of the star that tagged this gas particle as HII-ionized.
  *
  * Thin dispatch wrapper, same reasoning as
- * #feedback_is_part_tagged_as_ionized -- only meaningful while that
- * function returns true.
+ * #feedback_is_part_tagged_as_ionized. Only meaningful while that function
+ * returns true.
  *
  * @param p The #part to query.
  * @param xp The #part's extended data.

@@ -1013,9 +1013,9 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(&data, p, xp, density, cooling);
 
-  /* Cache the species update just solved for above (does not run for a
-     particle held at the subgrid-ionized floor -- that path returned
-     already, before reaching Grackle's own solve). */
+  /* Cache the species update just solved for above. Does not run for a
+     particle held at the subgrid-ionized floor: that path already
+     returned before reaching Grackle's own solve. */
   cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
 
   return energy;

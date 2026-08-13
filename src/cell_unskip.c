@@ -2200,32 +2200,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * every leaf beneath the super; the naive dopair remains correct if no sort
  * is available at all (e.g. the request hasn't propagated down yet).
  *
- * Also activates the super's stars.feedback_ghost. radiation_in's own
- * barrier is wired at maketasks time to wait on every covered super's
- * feedback_ghost (engine_radiation_wire_super_deps,
- * engine_maketasks.c:3586), so that SN feedback writes into a super's gas
- * happen-before the HII gather reads it. That edge only has an effect if
- * feedback_ghost is actually unskipped this step: on a star-inactive super
- * engine_do_unskip_stars() never visits the cell at all (early return,
- * engine_unskip.c:132-133), so cell_unskip_stars_tasks() never runs and
- * feedback_ghost stays skip=1 -- a skipped task propagates no wait to its
- * dependents (scheduler_rewait_mapper, scheduler.c:820-821), silently
- * severing the edge and leaving the gather's ordering relative to feedback a
- * lock-acquisition coin flip. Activating it here, unconditionally on every
- * covered super, closes that gap. It is a correctness-only, no-op-safe
- * addition on a genuinely star-inactive super: feedback_ghost is Implicit
- * (task_type_stars_feedback_ghost) and its only upstream -- the star
- * feedback self/pair tasks -- stay skipped there (nothing in this function
- * activates them), so it has no unskipped predecessor, clears its wait
- * immediately, and cascades straight to stars.stars_out (already activated
- * unconditionally for the matching radiation_out task by
- * cell_radiation_activate_supers_out below). A super with star-formation- or
- * sink-eligible gas is never misclassified as inactive here:
- * cell_need_activating_stars() (active.h:309-318) already folds
- * with_star_formation/with_star_formation_sink into its activity test, so
- * such supers take the normal engine_do_unskip_stars() ->
- * cell_unskip_stars_tasks() path (cell_unskip.c:~2741) with real upstream
- * wiring instead of ever reaching this branch as "inactive".
+ * Also activates the super's stars.feedback_ghost. radiation_in's barrier
+ * waits on it (engine_radiation_wire_super_deps, engine_maketasks.c:3586) so
+ * SN feedback writes happen-before the HII gather reads. On a star-inactive
+ * super, engine_do_unskip_stars() never visits the cell, so without this
+ * call feedback_ghost stays skipped and that wait silently has no effect.
+ * Activating it here is safe: on such a super feedback_ghost is Implicit
+ * with no active upstream, so it clears immediately and cascades to
+ * stars_out (already activated below).
  */
 static void cell_radiation_activate_supers_in(struct cell *c,
                                               struct scheduler *s,
@@ -2346,13 +2328,10 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           cell_radiation_activate_supers_in(cj, s, with_timestep_sync);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Positive-fire precondition probe for the feedback_ghost
-         * activation fix above: on an asymmetric radiation pair
-         * (ci_active != cj_active), does the inactive side's covered
-         * hydro.super have a locally-pending ACTIVE stars.feedback task?
-         * A fire here is the exact precondition the fix targets -- gas
-         * about to be written by SN feedback on a super this radiation
-         * pair also gathers from. */
+        /* Precondition probe for the feedback_ghost activation fix above:
+         * fires when an asymmetric radiation pair's inactive side has a
+         * locally-pending active stars.feedback task on its covered super,
+         * the exact case the fix targets. */
         if (ci_active != cj_active) {
           struct cell *inactive_side = ci_active ? cj : ci;
 

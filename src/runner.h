@@ -74,12 +74,11 @@ struct runner {
   struct gravity_cache cj_gravity_cache;
 
   /*! Per-runner scratch buffer for the HII maintenance pass's (r2, id)
-      -ordered charging (runner_radiation_feedback.c): holds every
+      ordered charging (runner_radiation_feedback.c): holds every
       already-ionized candidate found by one star's Phase-1 traversal before
-      it is sorted and charged in ascending order. Grows on demand (never
-      shrinks), like ci_gravity_cache above -- region membership can reach
-      1e4-1e5 particles at level 7, too large for a stack buffer. Freed at
-      engine shutdown. */
+      it is sorted and charged in ascending order. Grows on demand, like
+      ci_gravity_cache above; region membership can reach 1e4-1e5 particles
+      at level 7, too large for a stack buffer. Freed at engine shutdown. */
   struct hii_neighbor *hii_maintenance_buffer;
 
   /*! Current capacity (entries) of #hii_maintenance_buffer. */

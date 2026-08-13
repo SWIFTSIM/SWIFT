@@ -129,17 +129,14 @@ struct hii_maintenance_context {
 
   /*! (return) Photons charged to balance recombination this pass. Filled in
       by the caller after the traversal returns and the buffered candidates
-      below have been sorted and charged in (r2, id) order -- 0 during the
+      below have been sorted and charged in (r2, id) order; 0 during the
       traversal itself. */
   double photons_charged;
 
   /*! Runner performing this pass. Already-ionized candidates found during
-      the traversal are appended to r->hii_maintenance_buffer (growing it on
-      demand) instead of being charged immediately, so the whole set can be
-      sorted into ascending (r2, id) order first: charging in that order
-      means a budget shortfall lapses the outermost shell (largest r2) of
-      the region, not a spatially arbitrary set determined by cell-traversal
-      order. */
+      the traversal are appended to r->hii_maintenance_buffer instead of
+      being charged immediately, so the whole set can be sorted into
+      ascending (r2, id) order first. */
   struct runner *r;
 
   /*! Number of candidates appended to r->hii_maintenance_buffer so far this
@@ -188,9 +185,8 @@ void runner_dopair_stars_hii_ionization_feedback(
  * @p b_r2/@p b_id in the buffer's sort order?
  *
  * id is the tiebreak: r2 alone is not a total order (distinct particles can
- * sit at the identical squared distance -- e.g. a symmetric IC), and the
- * insertion order below must be reproducible across runs/threads for the
- * repeat-run determinism gate.
+ * sit at the identical squared distance, e.g. a symmetric IC), and the
+ * insertion order must be reproducible across runs and threads.
  */
 __attribute__((always_inline)) INLINE static int runner_hii_r2_id_before(
     float a_r2, long long a_id, float b_r2, long long b_id) {
@@ -312,8 +308,8 @@ runner_do_stars_hii_ionization_feedback_check_sort(
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < count_found - 1; k++) {
     /* Strict: (r2, id) is a total order over distinct particles (unique
-       ids), so two adjacent entries failing this is either a genuine
-       ordering bug or a duplicate particle -- both real bugs. */
+       ids), so two adjacent entries failing this means a genuine ordering
+       bug or a duplicate particle. */
     if (!runner_hii_r2_id_before(ngb_buffer[k].r2, ngb_buffer[k].p->id,
                                  ngb_buffer[k + 1].r2,
                                  ngb_buffer[k + 1].p->id)) {

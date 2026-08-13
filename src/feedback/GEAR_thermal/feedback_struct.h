@@ -40,12 +40,11 @@
  * @brief Feedback fields carried by each hydro particles
  *
  * Carries the HII ionization tag core (radiation.c's
- * radiation_tag_part_as_ionized() and friends): a struct part field, not
- * struct xpart, so it is included in the particle's normal MPI exchange and
- * restart dump automatically, unlike xpart's owner-only payload
- * (tracers_xpart_data.HII_region -- excess_photon_energy_HI,
- * photoionization_rate_HI) which stays local to whichever rank currently
- * owns the particle.
+ * radiation_tag_part_as_ionized() and friends). A struct part field, not
+ * struct xpart, so it rides the particle's normal MPI exchange and restart
+ * dump automatically, unlike xpart's owner-only payload
+ * (tracers_xpart_data.HII_region: excess_photon_energy_HI,
+ * photoionization_rate_HI), which stays local to the owning rank.
  */
 struct feedback_part_data {
 
@@ -59,22 +58,18 @@ struct feedback_part_data {
   double end_time;
 
   /*! Neutral hydrogen mass fraction, cached by the cooling step right after
-      its species update (grackle_1+: HI_frac; grackle_0, which tracks no
-      species: 1.0f unconditionally). Not read by anything yet -- this is
-      the input a future MPI scheme's F3 latch will consume, and it MUST
-      read the PREVIOUS pass's value rather than the current step's (see
-      PLAN_radiation_mpi.md blocker F3: the owner's HII pass and a same-step
-      cooling call race on this same-step value today, on one rank as much
-      as across ranks).
+      its species update (grackle_1+: HI_frac; grackle_0: 1.0f
+      unconditionally, no species tracked). Not read by anything yet: a
+      future MPI scheme's F3 latch must consume the PREVIOUS pass's value,
+      not the current step's.
 
       The cache write is skipped on cooling_new_energy()'s early-return
-      paths (a particle held at the subgrid-ionized floor, or pinned by
-      IONIZATION_FEEDBACK_DEBUG_FIXED_*_TEMPERATURE_K): on those steps this
-      field keeps its previous value, which on a particle's very first such
-      step is still the struct's zero-init default, 0.0f -- the OPPOSITE of
-      the 1.0f "no data" sentinel above. A future reader must not treat 0.0f
-      as "fully ionized" without first checking whether the cache has ever
-      actually been written for that particle. */
+      paths (subgrid-ionized floor, or pinned by
+      IONIZATION_FEEDBACK_DEBUG_FIXED_*_TEMPERATURE_K), so on a particle's
+      first such step this field is still its zero-init default, 0.0f, the
+      OPPOSITE of the 1.0f "no data" sentinel above. A reader must not treat
+      0.0f as "fully ionized" without checking the cache has actually been
+      written for that particle. */
   float neutral_H_frac;
 };
 
