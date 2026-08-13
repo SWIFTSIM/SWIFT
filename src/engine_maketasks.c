@@ -239,16 +239,20 @@ void engine_addtasks_send_hydro(
 
   /* S3.0: the HII gather reaches the whole radiation-pair foreign subtree,
    * not just the hydro density-linked boundary strip, so a radiation_in
-   * link to the target node also requires the xv/rho channel. */
+   * link to the target node also requires the xv/rho channel. Computed
+   * unconditionally (not only when l == NULL): the S3.1/S3.1b channel
+   * gate below needs this to reflect radiation reach on its own, since a
+   * cell can be both hydro.super (l != NULL) and radiation_level at once
+   * (radiation_level == hydro.super is the common case). Gating this on
+   * l == NULL would silently drop the channel there, since it would never
+   * fire when hydro.density already satisfied the xv/rho predicate. */
   int radiation_reaches_node = 0;
-  if (l == NULL) {
-    for (struct link *rl = ci->stars.radiation_in; rl != NULL; rl = rl->next)
-      if (rl->t->ci->nodeID == nodeID ||
-          (rl->t->cj != NULL && rl->t->cj->nodeID == nodeID)) {
-        radiation_reaches_node = 1;
-        break;
-      }
-  }
+  for (struct link *rl = ci->stars.radiation_in; rl != NULL; rl = rl->next)
+    if (rl->t->ci->nodeID == nodeID ||
+        (rl->t->cj != NULL && rl->t->cj->nodeID == nodeID)) {
+      radiation_reaches_node = 1;
+      break;
+    }
 
   /* If so, attach send tasks. */
   if (l != NULL || radiation_reaches_node) {

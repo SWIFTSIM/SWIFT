@@ -1245,6 +1245,18 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          24-38 actual tasks/cell against a 118-139 estimated max here
          (~20-30% utilisation) with this margin. */
       n2 += 4 * 27;
+
+#ifdef WITH_MPI
+      /* MPI plan S3.1/S3.1b skeleton: recv_part_hii_tag + send_part_hii_state
+         (owner side, engine_addtasks_send_hydro) or send_part_hii_tag +
+         recv_part_hii_state (computing side, engine_addtasks_recv_hydro) --
+         4 task instances total, created at the same S3.0-extended xv/rho
+         predicate site as the hydro MPI overhead below, which per the
+         comment above this block can sit below the top level. Bumping both
+         n1 and n2 for the same reason. */
+      n1 += 4;
+      n2 += 4;
+#endif
     }
 
 #ifdef WITH_MPI
