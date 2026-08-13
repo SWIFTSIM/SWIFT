@@ -487,7 +487,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
         struct cell *splitting = can_split_ci ? ci : cj;
         struct cell *fixed = can_split_ci ? cj : ci;
 
-        int n_facing = 0;  /* Geometrically facing, empty or not. */
+#ifdef SWIFT_DEBUG_CHECKS
+        int n_facing = 0; /* Geometrically facing, empty or not. */
+#endif
         int n_created = 0; /* Facing AND non-empty -- these get a task. */
 
         for (int k = 0; k < 8; k++) {
@@ -502,7 +504,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
               can_split_ci ? cell_boxes_touch_under_shift(p, fixed, shift)
                            : cell_boxes_touch_under_shift(fixed, p, shift);
           if (!touches) continue;
+#ifdef SWIFT_DEBUG_CHECKS
           n_facing++;
+#endif
 
           if (!(p->hydro.count > 0 || (with_stars && p->stars.count > 0)))
             continue;
