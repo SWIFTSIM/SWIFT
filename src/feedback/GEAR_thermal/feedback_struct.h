@@ -71,6 +71,88 @@ struct feedback_part_data {
       0.0f as "fully ionized" without checking the cache has actually been
       written for that particle. */
   float neutral_H_frac;
+
+  /*! Eligibility temperature cache (S3.3/F3): written at cooling time so a
+      foreign copy with no struct xpart can still pass
+      feedback_part_can_be_ionized's temperature gate. NOT yet written by
+      any cooling path (that lands in S3.3): like neutral_H_frac above,
+      this field has no first-init hook in this codebase, so before its
+      first cooling-time write it holds struct part's zero-init default,
+      0.0f, not a real "no data" sentinel. A reader must gate on the S3.3
+      write actually having happened, not on the field's numeric value. */
+  float T_eligibility;
+};
+
+/**
+ * @brief Report-back payload for the task_subtype_part_hii_tag channel
+ * (MPI plan S3.1).
+ *
+ * One entry per particle of the covered cell, packed by the computing
+ * (star-owning) rank from its foreign gas copies and shipped back to the
+ * gas-owning rank, which merges only the stamped entries into its local
+ * particles. This is the report-back half of owner-computes: the star's
+ * pass runs entirely on the computing rank, over local and imported gas;
+ * this struct is how a claim made on an imported copy reaches the gas's
+ * true owner.
+ */
+struct hii_tag_report {
+
+  /*! The tag state written on the computing rank's foreign copy. */
+  struct feedback_part_data tag;
+
+  /*! Squared distance to the claiming star, computed at claim time. Ships
+      claim-time state rather than relying on the owner re-deriving it, since
+      the owner may hold no copy of the claiming star (S3.1/F4: a star deep
+      in the foreign cell, beyond kernel reach but within HII reach). Used
+      as the S3.4 cross-rank tiebreak, smallest (r2, star_id) wins. */
+  float r2;
+
+  /*! Excess photoionization energy deposited this pass, mirroring
+      tracers_xpart_data.HII_region.excess_photon_energy_HI, which never
+      otherwise leaves the owning rank. */
+  float excess_photon_energy_HI;
+
+  /*! Photoionization heating rate, mirroring
+      tracers_xpart_data.HII_region.photoionization_rate_HI, same rationale
+      as excess_photon_energy_HI above. */
+  float photoionization_rate_HI;
+
+  /*! Pass stamp (S3.1/F2): the report covers every particle of the cell,
+      so an unstamped entry carries stale ambient tag state rather than a
+      real claim this pass. The owner merges only stamped entries. */
+  char claimed_this_pass;
+};
+
+/**
+ * @brief Post-cooling gas state, sent owner -> computing rank
+ * (MPI plan S3.1b).
+ *
+ * One entry per particle of the covered cell, in the normal send
+ * direction (unlike hii_tag_report above): the gas owner ships its own
+ * post-cooling state to every rank holding a foreign copy, so a star's
+ * HII pass on the computing rank sees the same-step eligibility state and
+ * tag as the owner, instead of the pre-cooling snapshot the whole-part
+ * xv/rho channel alone would provide. The unpack on the receiving side
+ * writes only these fields into the foreign copy, never u/rho/v.
+ */
+struct hii_state_update {
+
+  /*! Cooling-time eligibility temperature cache, see
+      feedback_part_data.T_eligibility. Carried again here (redundant with
+      tag.T_eligibility once that field exists) because this struct is the
+      one guaranteed same-step-fresh delivery path for it; tag is mirrored
+      for the reason below, not as the primary read path. */
+  float T_eligibility;
+
+  /*! Neutral hydrogen mass fraction, same value as tag.neutral_H_frac at
+      send time; kept as its own field for the same same-step-freshness
+      reason as T_eligibility above. */
+  float neutral_H_frac;
+
+  /*! The owner's current-step tag state, so the computing rank's pass sees
+      it before running (S3.1b: shrinks, but does not close, the cross-rank
+      double-claim window; S3.4's merge is still required). */
+  struct feedback_part_data tag;
 };
 
 /**

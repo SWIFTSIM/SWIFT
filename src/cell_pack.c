@@ -235,6 +235,117 @@ void cell_unpack_bpart_swallow(struct cell *c,
 }
 
 /**
+ * @brief Pack the HII tag report-back payload for a cell's #part array
+ * (MPI plan S3.1, task_subtype_part_hii_tag).
+ *
+ * Runs on the computing (star-owning) rank, over its (possibly foreign)
+ * copy of the covered cell: @p c is the cell whose gas the local HII pass
+ * gathered over, so its tag state may include claims made this pass. The
+ * three fields beyond @c tag (r2, the two xpart floats, claimed_this_pass)
+ * have no per-part storage yet -- the compute-on-copies pass that would
+ * write them is separate, still-missing work (see the plan's Status
+ * section); until it lands, they are placeholders (0, and
+ * claimed_this_pass = 0, i.e. "nothing claimed this pass" for every
+ * entry), keeping the channel inert end to end rather than half-wired.
+ *
+ * @param c The #cell to pack (local or a foreign copy).
+ * @param data The destination buffer, one entry per particle of @p c.
+ */
+void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i].tag = parts[i].feedback_data;
+    data[i].r2 = 0.0f;
+    data[i].excess_photon_energy_HI = 0.0f;
+    data[i].photoionization_rate_HI = 0.0f;
+    data[i].claimed_this_pass = 0;
+  }
+}
+
+/**
+ * @brief Unpack the HII tag report-back payload into a cell's #part array
+ * (MPI plan S3.1, task_subtype_part_hii_tag).
+ *
+ * Runs on the owner rank, over its local copy of the covered cell. Only
+ * stamped entries (S3.1/F2) are merged; an unstamped entry's tag state is
+ * stale ambient data riding along in the pack, not a claim to apply. This
+ * is the raw per-particle merge only: the S2 helper pair that also writes
+ * the two xpart floats, and the S3.4 (r2, id) cross-rank tiebreak against
+ * concurrently arriving reports, are a later stage's job (this channel is
+ * inert until then; see cell_pack_part_hii_tag's note on the placeholder
+ * fields upstream of this call).
+ *
+ * @param c The owner's local #cell.
+ * @param data The source buffer, one entry per particle of @p c.
+ */
+void cell_unpack_part_hii_tag(struct cell *c,
+                              const struct hii_tag_report *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    if (data[i].claimed_this_pass) {
+      parts[i].feedback_data = data[i].tag;
+    }
+  }
+}
+
+/**
+ * @brief Pack the post-cooling gas state update payload for a cell's #part
+ * array (MPI plan S3.1b, task_subtype_part_hii_state).
+ *
+ * Runs on the gas owner rank, in the normal send direction: @p c is a
+ * local cell whose post-cooling state is being shipped to every rank
+ * holding a foreign copy of it.
+ *
+ * @param c The owner's local #cell.
+ * @param data The destination buffer, one entry per particle of @p c.
+ */
+void cell_pack_part_hii_state(const struct cell *c,
+                              struct hii_state_update *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i].T_eligibility = parts[i].feedback_data.T_eligibility;
+    data[i].neutral_H_frac = parts[i].feedback_data.neutral_H_frac;
+    data[i].tag = parts[i].feedback_data;
+  }
+}
+
+/**
+ * @brief Unpack the post-cooling gas state update payload into a cell's
+ * #part array (MPI plan S3.1b, task_subtype_part_hii_state).
+ *
+ * Runs on the computing rank, over its foreign copy of the covered cell.
+ * Writes only the state-channel fields, never u/rho/v: the hydro force
+ * pipeline on this rank must not see any change from this unpack.
+ *
+ * @param c The computing rank's (foreign) #cell copy.
+ * @param data The source buffer, one entry per particle of @p c.
+ */
+void cell_unpack_part_hii_state(struct cell *c,
+                                const struct hii_state_update *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    /* tag first: it is the wholesale mirror, not the primary read path
+       (see the struct's doxygen). The two standalone fields below are the
+       authoritative same-step values and must win if they ever diverge. */
+    parts[i].feedback_data = data[i].tag;
+    parts[i].feedback_data.T_eligibility = data[i].T_eligibility;
+    parts[i].feedback_data.neutral_H_frac = data[i].neutral_H_frac;
+  }
+}
+
+/**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
  * @param pc An array of packed #pcell.
