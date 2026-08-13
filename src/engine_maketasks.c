@@ -233,8 +233,21 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
+  /* S3.0: the HII gather reaches the whole radiation-pair foreign subtree,
+   * not just the hydro density-linked boundary strip, so a radiation_in
+   * link to the target node also requires the xv/rho channel. */
+  int radiation_reaches_node = 0;
+  if (l == NULL) {
+    for (struct link *rl = ci->stars.radiation_in; rl != NULL; rl = rl->next)
+      if (rl->t->ci->nodeID == nodeID ||
+          (rl->t->cj != NULL && rl->t->cj->nodeID == nodeID)) {
+        radiation_reaches_node = 1;
+        break;
+      }
+  }
+
   /* If so, attach send tasks. */
-  if (l != NULL) {
+  if (l != NULL || radiation_reaches_node) {
 
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
@@ -701,8 +714,11 @@ void engine_addtasks_recv_hydro(
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Have we reached a level where there are any hydro tasks ? */
-  if (t_xv == NULL && c->hydro.density != NULL) {
+  /* Have we reached a level where there are any hydro tasks, or does this
+   * cell carry a radiation_in link (S3.0: the HII gather's foreign reach
+   * exceeds the hydro density window, see engine_addtasks_send_hydro)? */
+  if (t_xv == NULL &&
+      (c->hydro.density != NULL || c->stars.radiation_in != NULL)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -2119,6 +2135,25 @@ void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e,
     c->stars.hii_ionization_feedback =
         scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
                           task_subtype_none, 0, 0, c, NULL);
+
+#ifdef WITH_MPI
+    /* scheduler_addtask() above only flags c->stars.hii_ionization_feedback's
+     * own ci (this cell) as cell_flag_has_tasks. The MPI xv/rho send/recv
+     * creation walk (engine_addtasks_send_hydro/engine_addtasks_recv_hydro)
+     * starts from the space's top-level cells and early-aborts down the
+     * hierarchy the moment it meets an unflagged cell, so it never reaches a
+     * radiation_level cell that sits several levels below top unless every
+     * ancestor in between also carries the flag. Hydro's own hierarchical
+     * walk does not flag those intermediate levels (it only creates tasks at
+     * c->top and c->hydro.super); self-gravity's tree tasks usually do, but
+     * radiation must not depend on gravity being enabled. Propagate the flag
+     * explicitly so the S3.0 foreign-coverage predicate extension is
+     * reachable regardless of the run's other physics. */
+    for (struct cell *ancestor = c->parent; ancestor != NULL;
+         ancestor = ancestor->parent) {
+      cell_set_flag(ancestor, cell_flag_has_tasks);
+    }
+#endif
 
   } else { /* We are above the super-cell so need to go deeper */
 

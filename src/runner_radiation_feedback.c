@@ -414,6 +414,23 @@ static void runner_hii_visit_neighbors(struct runner *r, struct cell *c,
       cj = (l->t->cj == c->stars.radiation_level) ? l->t->ci : l->t->cj;
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+    /* S3.0 coverage assert: every foreign radiation_in partner this gather
+     * is about to walk must have been fully allocated and linked, with a
+     * live rho recv keeping it refreshed. A trip here means the foreign
+     * coverage extension (engine_addtasks_send/recv_hydro) did not reach
+     * this cell. */
+    if (cj->nodeID != engine_rank) {
+      if (cj->hydro.count > 0 && cj->hydro.parts == NULL)
+        error("Foreign radiation_in partner %lld has NULL parts.", cj->cellID);
+      if (cell_get_recv(cj, task_subtype_rho) == NULL)
+        error("Foreign radiation_in partner %lld has no live rho recv.",
+              cj->cellID);
+    }
+#endif
+#endif
+
     /* Get the relative distance between the pairs, wrapping. */
     double shift[3] = {0.0, 0.0, 0.0};
     for (int k = 0; k < 3; k++) {
