@@ -119,7 +119,7 @@ GEARFeedback:
   with_photoelectric_heating:    0                         # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere. Note this needs to compile with GRACKLE_X, X=1,2 or 3 and will automatically turn on grackle
                                                            # photoelectric parameters. 1: Run with photoelectric heating, 0: Run without. (Default: 0)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
-  minimal_HII_ionization_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
 
