@@ -1011,32 +1011,8 @@ void write_output_single(struct engine *e,
   long long N_total_zoom[swift_type_count];
   memcpy(N_total_zoom, N_total, swift_type_count * sizeof(long long));
   if (e->s->with_zoom_region) {
-
-    N_total_zoom[swift_type_gas] = io_count_gas_in_zoom_to_write(
-        e->s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_dark_matter] =
-        io_count_dark_matter_in_zoom_to_write(
-            e->s, subsample[swift_type_dark_matter],
-            subsample_fraction[swift_type_dark_matter],
-            e->snapshot_output_count);
-    N_total_zoom[swift_type_dark_matter_background] =
-        io_count_background_dark_matter_in_zoom_to_write(
-            e->s, subsample[swift_type_dark_matter_background],
-            subsample_fraction[swift_type_dark_matter_background],
-            e->snapshot_output_count);
-    N_total_zoom[swift_type_sink] = io_count_sinks_in_zoom_to_write(
-        e->s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_stars] = io_count_stars_in_zoom_to_write(
-        e->s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
-        e->s, subsample[swift_type_black_hole],
-        subsample_fraction[swift_type_black_hole], e->snapshot_output_count);
-    N_total_zoom[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
-        e->s, subsample[swift_type_neutrino],
-        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
+    zoom_io_count_particles_in_cells(e, subsample, subsample_fraction, N_total,
+                                     N_total_zoom);
   }
 
   /* Set the minimal API version to avoid issues with advanced features */
@@ -1133,10 +1109,15 @@ void write_output_single(struct engine *e,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
-  io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
-                     numParticles_InCells, swift_type_count);
-  io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
-                     numParticles_OutsideCells, swift_type_count);
+  if (!e->s->with_zoom_region) {
+    io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                       numParticles_InCells, swift_type_count);
+    io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                       numParticles_OutsideCells, swift_type_count);
+  } else {
+    zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
+                               N_total_zoom, numFields);
+  }
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,

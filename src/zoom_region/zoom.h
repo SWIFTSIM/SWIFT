@@ -27,7 +27,12 @@
 #include <hdf5.h>
 
 /* Local includes */
+#include "part_type.h"
 #include "timeline.h"
+
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 /* METIS/ParMETIS headers only used when MPI is also available. */
 #ifdef HAVE_PARMETIS
@@ -42,6 +47,7 @@ struct swift_params;
 struct space;
 struct cell;
 struct engine;
+struct io_props;
 struct partition;
 
 /* Define a constant for the background task depth. */
@@ -106,8 +112,43 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                                int *nadjcny, idx_t *xadj, int *nxadj,
                                const int *cell_edge_offsets);
 #endif
+
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
+void zoom_write_particle_counts(
+    hid_t head_grp, const long long this_file[swift_type_count],
+    const long long in_cells_this_file[swift_type_count],
+    const long long total[swift_type_count],
+    const long long in_cells_total[swift_type_count],
+    const int num_fields[swift_type_count]);
+void zoom_io_count_particles_in_cells(
+    const struct engine *e, const int subsample[swift_type_count],
+    const float subsample_fraction[swift_type_count],
+    const long long local[swift_type_count],
+    long long local_in_cells[swift_type_count]);
+#ifdef WITH_MPI
+void zoom_io_prepare_particle_layout(
+    const struct engine *e, const int subsample[swift_type_count],
+    const float subsample_fraction[swift_type_count],
+    const long long local[swift_type_count],
+    const long long total[swift_type_count],
+    const long long offset[swift_type_count], MPI_Comm comm,
+    long long local_in_cells[swift_type_count],
+    long long total_in_cells[swift_type_count],
+    long long offset_in_cells[swift_type_count],
+    long long offset_outside_cells[swift_type_count]);
+#endif
+void zoom_io_advance_particle_pointers(struct io_props *props, size_t offset);
+void zoom_io_map_virtual_particle_regions(
+    hid_t h_prop, hid_t h_space, hid_t h_source_space, const char *file_name,
+    const char *source_dataset_name, int dimension, hsize_t particle_count,
+    hsize_t count_in_cells, hsize_t start_in_cells[2],
+    hsize_t start_outside_cells[2]);
+void zoom_io_write_serial_particle_regions(
+    hid_t h_data, hid_t h_memspace, hid_t h_filespace, hid_t h_type,
+    const void *buffer, int rank, int dimension, size_t count,
+    size_t count_in_cells, long long offset_in_cells,
+    long long offset_outside_cells, const char *field_name);
 void zoom_unshift_pos(const struct space *s, double pos[3]);
 
 #endif /* SWIFT_ZOOM_H */
