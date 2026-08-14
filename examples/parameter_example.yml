@@ -997,6 +997,8 @@ BasicSink:
 
 # GEAR sink particles
 GEARSink:
+  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this
+                                              # value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). In GEAR, if this is specified, the cutoff radius is fixed, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the
                                               # cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
