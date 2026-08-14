@@ -23,8 +23,9 @@ cells.
 
 The radiation search does not work this way, for two reasons: (1) the
 relevant length scale, $h_{\rm hii}$, is not a fixed smoothing length
-but a search radius that grows dynamically over many rebuild cycles,
-so no single tree level is guaranteed to contain it; and (2) the
+but a search radius that grows dynamically over many of a star's own
+HII rebuild passes, so no single tree level is guaranteed to contain
+it; and (2) the
 consumption logic is inherently sequential and global to one star (a
 star's photon budget must be spent in strict distance order across
 \emph{all} its candidates, not independently per cell-pair). So the
@@ -42,8 +43,16 @@ implementation splits the work into two different kinds of task:
     every drift/sort/cooling task that must finish before the search
     reads that region unlocks the matching \code{\_in} task; the
     \code{\_out} task unlocks \code{stars\_out} once the search is
-    done. They are never split further by
-    \code{scheduler\_splittasks}.
+    done. They \emph{are} split further, down to
+    \code{radiation\_level} (Section~\ref{sec:radiation-level} below),
+    but not by the generic \code{scheduler\_splittasks} pass that splits
+    hydro/gravity: radiation tasks do not exist yet when that pass
+    runs (they are created afterward, once the hydro-attach flags
+    their split criterion depends on are available), so a separate,
+    dedicated pass, \code{scheduler\_splittasks\_radiation}
+    (\code{scheduler\_splittasks.c:963}), walks exactly the
+    newly-created \code{radiation\_in} tasks and hands each to
+    \code{scheduler\_splittask\_radiation\_subgrid}.
   \item \textbf{\code{task\_type\_stars\_hii\_ionization\_feedback}}
     (subtype \code{none}): a \emph{single, coarse-grained} task
     created once per \code{radiation\_level} cell
@@ -58,6 +67,7 @@ implementation splits the work into two different kinds of task:
 \end{itemize}
 
 \subsection{\texttt{radiation\_level}: a coarsening criterion decoupled from \texttt{hydro.super}}
+\label{sec:radiation-level}
 
 \code{cell\_can\_split\_pair\_radiation\_subgrid\_task} /
 \code{cell\_can\_split\_self\_radiation\_subgrid\_task}
@@ -170,10 +180,13 @@ drift/sync/\code{stars\_in} (or \code{stars\_out}) over
 (\code{cell\_radiation\_activate\_supers\_in/out}, factored out
 specifically because a single \code{c->hydro.super} dereference
 would be NULL or wrong for a coarsened region). The pair branch also
-runs the radiation-specific rebuild check,
-\code{cell\_need\_rebuild\_for\_radiation\_pair}: the ordinary
-\code{cell\_need\_rebuild\_for\_stars\_pair} is blind to $h_{\rm
-hii}$ growth between rebuilds and would under-trigger.
+runs the radiation-specific \emph{tree}-rebuild check,
+\code{cell\_need\_rebuild\_for\_radiation\_pair}: this decides whether
+\swift's tree needs a full tree rebuild, not whether a star's own HII
+rebuild pass is due (Section~\ref{sec:persistence} of the algorithm
+document); the ordinary \code{cell\_need\_rebuild\_for\_stars\_pair}
+is blind to $h_{\rm hii}$ growth and would under-trigger the tree
+rebuild.
 \code{c->stars.hii\_ionization\_feedback} itself is unskipped
 unconditionally alongside the other per-cell tasks
 (\code{cell\_unskip.c:2807}) whenever the cell needs activating.
@@ -198,6 +211,8 @@ lock-order contention between neighbours is possible under load.
 
 \subsection{Run-time recursion and neighbour search}
 \label{sec:runtime}
+
+\subsubsection{The Per-Star Search Loop}
 
 Once \code{hii\_ionization\_feedback} actually runs
 (\code{runner\_do\_stars\_hii\_ionization\_feedback},
@@ -278,7 +293,9 @@ Validation section)
 shows up as the search radius simply never being allowed to expand past
 the configured ceiling, not as a scheduler-level task-graph error.
 
-\textbf{Expansion probes can outrun the coherent front.} Each radius
+\subsubsection{Expansion Probes Can Outrun the Coherent Front}
+
+Each radius
 expansion searches a strictly larger volume for the \emph{same} pixel
 budget. At \code{HII\_angular\_nside}$\,\ge1$, a cone whose remaining
 budget is already small relative to a single particle's cost can still
@@ -297,7 +314,9 @@ algorithm document) is specifically robust to it: an isolated particle
 tagged this way is exactly the gap-separated outlier that measure's
 rejection removes.
 
-\textbf{Gather-time pixel-budget starvation guard.} Without the
+\subsubsection{Gather-Time Pixel-Budget Starvation Guard}
+
+Without the
 per-candidate pixel-budget filter in step 1 above, a dense clump in one
 pixel's direction could exceed the buffer's capacity on its own,
 permanently monopolizing it: that pixel's own budget exhausts quickly,
@@ -328,7 +347,9 @@ does so differs structurally from the classic two-sided hydro
 adjacency requirement between the star's cell and the receiver
 (Fig.~\ref{fig:dopair-contrast}).
 
-\textbf{Sort entries live on a global axis.} A cell's sort entry along
+\subsubsection{Sort Entries Live on a Global Axis}
+
+A cell's sort entry along
 axis \code{sid} is the particle's \emph{absolute} position projected
 onto the unit vector \code{runner\_shift[sid]}
 (\code{runner\_do\_hydro\_sort}, \code{src/runner\_sort.c}): a
@@ -365,7 +386,9 @@ read.
   \label{fig:sorted-nonadjacent}
 \end{figure}
 
-\textbf{Any axis is conservative.} A 1D projection never exceeds the 3D
+\subsubsection{Any Axis Is Conservative}
+
+A 1D projection never exceeds the 3D
 distance, so every true neighbour within $R$ falls inside the window
 along \emph{any} of the 13 axes; the exact $r^2 < R^2$ test decides
 membership (Fig.~\ref{fig:any-axis}). Correctness is therefore
@@ -385,7 +408,9 @@ never completeness.
   \label{fig:any-axis}
 \end{figure}
 
-\textbf{sid selection and its degradation bound.} The per-link sid is
+\subsubsection{\texttt{sid} Selection and Its Degradation Bound}
+
+The per-link sid is
 chosen by per-axis \emph{sign} classification of the cell offset
 (\code{runner\_hii\_visit\_neighbors}), not by direction matching: a
 receiver offset by $(2,1,0)$ cell widths classifies as the $(1,1,0)$
@@ -402,7 +427,9 @@ unchanged down the receiver-side recursion, so off-axis leaves of a
 large partner region are exactly where the any-axis fallback and the
 exact test absorb the slack.
 
-\textbf{Reach stays inside the wiring.} Sorting narrows the scan within
+\subsubsection{Reach Stays Inside the Wiring}
+
+Sorting narrows the scan within
 a visited cell; \emph{which} cells are visited remains governed by the
 \code{radiation\_in} stencil of Section~\ref{sec:runtime}. The in-pass
 radius-expansion loop is clamped to the reach the wired stencil
@@ -410,8 +437,8 @@ guarantees
 (\code{max\_reachable\_search\_radius} in
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}), so the sorted
 machinery is never asked to find gas the task graph never wired; the
-deferred outer shell is picked up after the next rebuild re-levels the
-tasks.
+deferred outer shell is picked up after the next tree rebuild
+re-levels the tasks.
 
 \begin{figure}
   \centering
@@ -424,7 +451,9 @@ tasks.
   \label{fig:dopair-contrast}
 \end{figure}
 
-\textbf{The two-regions-away gap and its three guards.} When
+\subsubsection{The Two-Regions-Away Gap and Its Three Guards}
+
+When
 \code{radiation\_level} sits at leaf level (no coarsening has happened
 yet), the wired stencil of Section~\ref{sec:not-regular} is only a
 leaf's up-to-26 immediate neighbours: a cell two regions away is not
@@ -443,7 +472,7 @@ clamp above, \code{max\_reachable\_search\_radius}, stops a single
 pass from probing past what the \emph{current} stencil can reach, so a
 pass never silently drops a candidate it can see geometrically but
 cannot walk to: the outer shell it cannot yet reach is deferred to the
-next rebuild, never lost.
+next tree rebuild, never lost.
 
 \begin{figure}
   \centering
@@ -452,7 +481,7 @@ next rebuild, never lost.
     leaf level, cell C is two regions from the star and structurally
     absent from the wired stencil even though the search radius
     (dashed) geometrically reaches it. The three guards above bound
-    the gap; a rebuild coarsens the stencil so C eventually enters it
+    the gap; a tree rebuild coarsens the stencil so C eventually enters it
     (before/after insets).}
   \label{fig:stencil-gap}
 \end{figure}
@@ -463,7 +492,7 @@ next rebuild, never lost.
 Everything above assumes the top-level cell grid is coarse enough that
 a star's \code{radiation\_level} (Section~\ref{sec:not-regular}) can
 actually reach every gas particle within its current \code{h\_hii}. That
-grid is sized once per rebuild by \code{space\_regrid()}
+grid is sized once per tree rebuild by \code{space\_regrid()}
 (\code{src/space\_regrid.c}), which already folds ordinary hydro/star
 \code{h\_max} into the top-level cell width: \code{h\_hii} was not
 part of that calculation until this branch. Without it, a star whose
@@ -481,7 +510,9 @@ already used for \code{hydro.h\_max}/\code{stars.h\_max}, so a star's
 \code{h\_hii} can coarsen the top-level grid exactly like an ordinary
 large smoothing length would.
 
-\textbf{Why this needs a cap, not an unconditional fold.} Folding
+\subsubsection{Why This Needs a Cap, Not an Unconditional Fold}
+
+Folding
 \code{h\_hii} in unconditionally breaks the existing StromgrenSphere
 acceptance example (the GEAR radiation logbook's Validation section),
 which pins
@@ -497,7 +528,9 @@ pre-existing ``must have at least 3 cells'' error. This is a
 catch: there is nothing left to miss once periodic wrap already covers
 the whole box.
 
-\textbf{Fix: cap \texttt{h\_hii}'s own contribution to \texttt{h\_max}}
+\subsubsection{Fix: Cap \texttt{h\_hii}'s Own Contribution to \texttt{h\_max}}
+
+The cap is set
 at the value that would size cells down to exactly \code{cdim == 3}
 (\code{0.99 * dim\_min / (3 * kernel\_gamma * space\_stretch)}, the
 \code{0.99} matching \code{space.c}'s own \code{tol} margin against
@@ -509,7 +542,9 @@ floor, since nothing is gained once coverage is already total there.
 Ordinary hydro/star \code{h\_max} growth is \emph{not} capped: that
 remains a genuine problem worth the existing error firing.
 
-\textbf{Effect on \code{cdim}.} At the periodic floor
+\subsubsection{Effect on \texttt{cdim}}
+
+At the periodic floor
 (\code{max\_top\_level\_cells: 3}, the StromgrenSphere acceptance
 configuration above), the cap keeps the grid pinned at the correct
 \code{cdim=3} throughout: with the fold left uncapped, the same run
@@ -559,8 +594,14 @@ model must set explicitly.
 \end{tabular}
 \end{center}
 
-One further knob is set at \code{./configure} time, not in the
-parameter file: \code{--with-number-of-hii-angular-pixels} (default
+Two further knobs are set at \code{./configure} time, not in the
+parameter file. \code{--with-number-of-hii-angular-pixels} (default
 12, i.e.\ $\text{nside}\le1$) sizes each star's per-pixel array and
 bounds \code{GEARFeedback:HII\_angular\_nside} at runtime
 (Section~\ref{sec:angular-splitting} of the algorithm document).
+Separately, any run requesting \code{GEARFeedback:HII\_angular\_nside
+> 0} (i.e.\ angular splitting at all) must be configured with
+\code{--with-chealpix}: the angular pixel assignment itself goes
+through the HEALPix C API, and without it the code errors at start-up
+rather than silently falling back to the spherical ($\text{nside}=0$)
+case (\code{radiation.c:924}).
