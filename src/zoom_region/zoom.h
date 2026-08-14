@@ -50,21 +50,6 @@ struct engine;
 struct io_props;
 struct partition;
 
-/** @brief Particle counts and output offsets for a zoom snapshot. */
-struct zoom_io_particle_layout {
-  /*! Number of local particles in zoom cells. */
-  long long local_in_cells[swift_type_count];
-
-  /*! Number of particles in zoom cells across all ranks. */
-  long long total_in_cells[swift_type_count];
-
-  /*! Global offset of this rank's particles in zoom cells. */
-  long long offset_in_cells[swift_type_count];
-
-  /*! Global offset of this rank's particles in background cells. */
-  long long offset_outside_cells[swift_type_count];
-};
-
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
 extern int zoom_bkg_subdepth_diff_grav;
@@ -127,6 +112,7 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                                int *nadjcny, idx_t *xadj, int *nxadj,
                                const int *cell_edge_offsets);
 #endif
+
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
 void zoom_write_particle_counts(
@@ -147,9 +133,17 @@ void zoom_io_prepare_particle_layout(
     const long long local[swift_type_count],
     const long long total[swift_type_count],
     const long long offset[swift_type_count], MPI_Comm comm,
-    struct zoom_io_particle_layout *layout);
+    long long local_in_cells[swift_type_count],
+    long long total_in_cells[swift_type_count],
+    long long offset_in_cells[swift_type_count],
+    long long offset_outside_cells[swift_type_count]);
 #endif
-void zoom_io_offset_io_props(struct io_props *props, size_t offset);
+void zoom_io_advance_particle_pointers(struct io_props *props, size_t offset);
+void zoom_io_map_virtual_particle_regions(
+    hid_t h_prop, hid_t h_space, hid_t h_source_space, const char *file_name,
+    const char *source_dataset_name, int dimension, hsize_t particle_count,
+    hsize_t count_in_cells, hsize_t start_in_cells[2],
+    hsize_t start_outside_cells[2]);
 void zoom_io_write_serial_particle_regions(
     hid_t h_data, hid_t h_memspace, hid_t h_filespace, hid_t h_type,
     const void *buffer, int rank, int dimension, size_t count,

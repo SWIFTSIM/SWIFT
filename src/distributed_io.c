@@ -389,9 +389,6 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
 
     /* Get the number of particles of this type written on this rank */
     const hsize_t rank_count = N_counts[i * swift_type_count + ptype];
-    const hsize_t rank_in_cells =
-        N_in_cells_counts[i * swift_type_count + ptype];
-    const hsize_t rank_outside_cells = rank_count - rank_in_cells;
 
     /* Select the space in the (already existing) source file */
     source_shape[0] = rank_count;
@@ -401,40 +398,38 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
     char fileName[1024];
     sprintf(fileName, "%s.%d.hdf5", fileName_relative_base, i);
 
-    /* Make the virtual links */
-    if (rank_in_cells > 0) {
-      count[0] = rank_in_cells;
-      hsize_t source_start[2] = {0, 0};
+    /* Uniform boxes and zooms require a different treatment. */
+    if (!e->s->with_zoom_region) {
+      count[0] = rank_count;
+
+      /* Select the space in the virtual file */
       h_err = H5Sselect_hyperslab(h_space, H5S_SELECT_SET, start_in_cells, NULL,
                                   count, NULL);
-      if (h_err < 0) error("Error selecting in-cell virtual hyper-slab");
-      h_err = H5Sselect_hyperslab(h_source_space, H5S_SELECT_SET, source_start,
-                                  NULL, count, NULL);
-      if (h_err < 0) error("Error selecting in-cell source hyper-slab");
-      h_err = H5Pset_virtual(h_prop, h_space, fileName, source_dataset_name,
-                             h_source_space);
-      if (h_err < 0) error("Error setting in-cell virtual properties");
-    }
+      if (h_err < 0) {
+        error("Error selecting hyper-slab in the virtual file");
+      }
 
-    if (rank_outside_cells > 0) {
-      count[0] = rank_outside_cells;
-      hsize_t source_start[2] = {rank_in_cells, 0};
-      h_err = H5Sselect_hyperslab(h_space, H5S_SELECT_SET, start_outside_cells,
-                                  NULL, count, NULL);
-      if (h_err < 0) error("Error selecting outside-cell virtual hyper-slab");
-      h_err = H5Sselect_hyperslab(h_source_space, H5S_SELECT_SET, source_start,
-                                  NULL, count, NULL);
-      if (h_err < 0) error("Error selecting outside-cell source hyper-slab");
+      /* Make the virtual link */
       h_err = H5Pset_virtual(h_prop, h_space, fileName, source_dataset_name,
                              h_source_space);
-      if (h_err < 0) error("Error setting outside-cell virtual properties");
+      if (h_err < 0) {
+        error("Error setting the virtual properties");
+      }
+
+      /* Move to the next slab (i.e. next file) */
+      start_in_cells[0] += count[0];
+    } else {
+      /* In zoom land we need separate mappings for particles in zoom and
+       * background cells. */
+      const hsize_t rank_in_cells =
+          N_in_cells_counts[i * swift_type_count + ptype];
+      zoom_io_map_virtual_particle_regions(
+          h_prop, h_space, h_source_space, fileName, source_dataset_name,
+          props.dimension, rank_count, rank_in_cells, start_in_cells,
+          start_outside_cells);
     }
 
     H5Sclose(h_source_space);
-
-    /* Move to the next slabs (i.e. next file) */
-    start_in_cells[0] += rank_in_cells;
-    start_outside_cells[0] += rank_outside_cells;
   }
 
   /* Create virtual dataset */
@@ -644,8 +639,10 @@ void write_virtual_file(
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
-  zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
-                             N_total_zoom, numFields);
+  if (e->s->with_zoom_region) {
+    zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
+                               N_total_zoom, numFields);
+  }
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1035,23 +1032,38 @@ void write_output_distributed(struct engine *e,
   /* Gather the total number of particles to write */
   long long N_total[swift_type_count] = {0};
   MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
-  long long rank_offset[swift_type_count] = {0};
-  MPI_Exscan(N, rank_offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM,
-             comm);
 
-  struct zoom_io_particle_layout zoom_layout;
-  zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
-                                  rank_offset, comm, &zoom_layout);
+  long long N_in_cells[swift_type_count];
+  long long N_total_in_cells[swift_type_count];
+  long long offset_in_cells[swift_type_count] = {0};
+
+  /* In zoom land we need to compute the number of particles in the zoom region
+   * for each rank, and the total number of particles in the zoom region ready
+   * for the virtual mapping later. */
+  if (e->s->with_zoom_region) {
+    long long rank_offset[swift_type_count] = {0};
+    MPI_Exscan(N, rank_offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM,
+               comm);
+
+    zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N,
+                                    N_total, rank_offset, comm, N_in_cells,
+                                    N_total_in_cells, offset_in_cells, NULL);
+  }
 
   /* Collect the number of particles written by each rank */
   long long *N_counts =
       (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
-  long long *N_in_cells_counts =
-      (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
+  long long *N_in_cells_counts = NULL;
   MPI_Gather(N, swift_type_count, MPI_LONG_LONG_INT, N_counts, swift_type_count,
              MPI_LONG_LONG_INT, 0, comm);
-  MPI_Gather(zoom_layout.local_in_cells, swift_type_count, MPI_LONG_LONG_INT,
-             N_in_cells_counts, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
+
+  /* For a zoom we need per-rank zoom-cell counts for the virtual mappings. */
+  if (e->s->with_zoom_region) {
+    N_in_cells_counts =
+        (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
+    MPI_Gather(N_in_cells, swift_type_count, MPI_LONG_LONG_INT,
+               N_in_cells_counts, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
+  }
 
   /* List what fields to write.
    * Note that we want to want to write a 0-size dataset for some species
@@ -1200,8 +1212,10 @@ void write_output_distributed(struct engine *e,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
-  zoom_write_particle_counts(h_grp, N, zoom_layout.local_in_cells, N_total,
-                             zoom_layout.total_in_cells, numFields);
+  if (e->s->with_zoom_region) {
+    zoom_write_particle_counts(h_grp, N, N_in_cells, N_total, N_total_in_cells,
+                               numFields);
+  }
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1636,12 +1650,13 @@ void write_output_distributed(struct engine *e,
 #if H5_VERSION_GE(1, 10, 0)
 
   /* Write the virtual meta-file */
-  if (mpi_rank == 0)
+  if (mpi_rank == 0) {
     write_virtual_file(e, fileName_base, xmfFileName, N_total,
-                       zoom_layout.total_in_cells, N_counts, N_in_cells_counts,
-                       mpi_size, to_write, numFields, current_selection_name,
-                       internal_units, snapshot_units, fof, subsample_any,
-                       subsample_fraction);
+                       !e->s->with_zoom_region ? N_total : N_total_in_cells,
+                       N_counts, N_in_cells_counts, mpi_size, to_write,
+                       numFields, current_selection_name, internal_units,
+                       snapshot_units, fof, subsample_any, subsample_fraction);
+  }
 
   /* Make sure nobody is allowed to progress until rank 0 is done. */
   MPI_Barrier(comm);
@@ -1672,13 +1687,27 @@ void write_output_distributed(struct engine *e,
     if (h_grp_cells < 0) error("Error while creating cells group");
   }
 
+  /* We need to recompute the offsets since they are now with respect
+   * to a single file. */
+  if (!e->s->with_zoom_region) {
+    for (int i = 0; i < swift_type_count; ++i) {
+      global_offsets[i] = 0;
+    }
+    MPI_Exscan(N, global_offsets, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM,
+               comm);
+  } else {
+    /* zoom_io_prepare_particle_layout() has already called MPI_Exscan() to
+     * compute offsets into the reordered particle arrays so we can just copy
+     * those into the global_offsets array now. */
+    memcpy(global_offsets, offset_in_cells, sizeof(global_offsets));
+  }
+
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, cdim, e->s->dim, cells, nr_cells, width,
                         zoom_shift, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
-                        e->snapshot_output_count, N_total,
-                        zoom_layout.offset_in_cells, to_write, numFields,
-                        internal_units, snapshot_units);
+                        e->snapshot_output_count, N_total, global_offsets,
+                        to_write, numFields, internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -1691,7 +1720,9 @@ void write_output_distributed(struct engine *e,
 
   /* Free the counts-per-rank array */
   free(N_counts);
-  free(N_in_cells_counts);
+  if (N_in_cells_counts != NULL) {
+    free(N_in_cells_counts);
+  }
 
   /* Make sure nobody is allowed to progress until everyone is done. */
   MPI_Barrier(comm);

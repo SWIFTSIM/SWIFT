@@ -501,17 +501,24 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
   const hid_t h_filespace = H5Dget_space(h_data);
 
   /* Write temporary buffer to HDF5 dataspace */
-  if (e->s->with_zoom_region) {
-    zoom_io_write_serial_particle_regions(
-        h_data, h_memspace, h_filespace, io_hdf5_type(props.type), temp, rank,
-        props.dimension, N, N_in_cells, offset_in_cells, offset_outside_cells,
-        props.name);
-  } else {
+  if (!e->s->with_zoom_region) {
+    /* Uniform boxes write the local particle buffer to one contiguous file
+     * slab. */
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
     h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                      H5P_DEFAULT, temp);
-    if (h_err < 0) error("Error while writing data array '%s'.", props.name);
+    if (h_err < 0) {
+      error("Error while writing data array '%s'.", props.name);
+    }
+  } else {
+    /* In zooms the same buffer contains two particle regions that must be
+     * written to separate global file slabs, one for particles in zoom cells
+     * and one for particles in background cells. */
+    zoom_io_write_serial_particle_regions(
+        h_data, h_memspace, h_filespace, io_hdf5_type(props.type), temp, rank,
+        props.dimension, N, N_in_cells, offset_in_cells, offset_outside_cells,
+        props.name);
   }
 
   /* Free and close everything */
@@ -1182,9 +1189,20 @@ void write_output_serial(struct engine *e,
   /* The last rank now has the correct N_total. Let's broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-  struct zoom_io_particle_layout zoom_layout;
-  zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
-                                  offset, comm, &zoom_layout);
+  long long N_in_cells[swift_type_count];
+  long long N_total_in_cells[swift_type_count];
+  long long offset_in_cells[swift_type_count];
+  long long offset_outside_cells[swift_type_count] = {0};
+
+  /* In zoom land we need particles in zoom cells to precede particles in
+   * background cells, so compute separate counts and offsets for each region.
+   */
+  if (e->s->with_zoom_region) {
+    zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N,
+                                    N_total, offset, comm, N_in_cells,
+                                    N_total_in_cells, offset_in_cells,
+                                    offset_outside_cells);
+  }
 
   /* List what fields to write.
    * Note that we want to want to write a 0-size dataset for some species
@@ -1293,8 +1311,10 @@ void write_output_serial(struct engine *e,
                        numParticlesHighWord, swift_type_count);
     io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                        swift_type_count);
-    zoom_write_particle_counts(h_grp, N_total, zoom_layout.total_in_cells,
-                               N_total, zoom_layout.total_in_cells, numFields);
+    if (e->s->with_zoom_region) {
+      zoom_write_particle_counts(h_grp, N_total, N_total_in_cells, N_total,
+                                 N_total_in_cells, numFields);
+    }
     double MassTable[swift_type_count] = {0};
     io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
     io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1415,8 +1435,8 @@ void write_output_serial(struct engine *e,
                         zoom_shift, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total,
-                        zoom_layout.offset_in_cells, to_write, numFields,
-                        internal_units, snapshot_units);
+                        !e->s->with_zoom_region ? offset : offset_in_cells,
+                        to_write, numFields, internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -1770,12 +1790,18 @@ void write_output_serial(struct engine *e,
               io_field_is_named_column(h_file, list[i].name);
 
           if (compression_level != compression_do_not_write) {
-            write_array_serial(
-                e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                Nparticles, zoom_layout.local_in_cells[ptype], N_total[ptype],
-                mpi_rank, offset[ptype], zoom_layout.offset_in_cells[ptype],
-                zoom_layout.offset_outside_cells[ptype], compression_level,
-                internal_units, snapshot_units, is_named_column);
+            const size_t N_first =
+                !e->s->with_zoom_region ? Nparticles : N_in_cells[ptype];
+            const long long offset_first = !e->s->with_zoom_region
+                                               ? offset[ptype]
+                                               : offset_in_cells[ptype];
+            const long long offset_second =
+                !e->s->with_zoom_region ? 0 : offset_outside_cells[ptype];
+            write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
+                               list[i], Nparticles, N_first, N_total[ptype],
+                               mpi_rank, offset[ptype], offset_first,
+                               offset_second, compression_level, internal_units,
+                               snapshot_units, is_named_column);
             num_fields_written++;
           }
         }
