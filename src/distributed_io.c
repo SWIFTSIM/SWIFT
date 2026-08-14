@@ -304,10 +304,10 @@ void write_distributed_array(
  * @param partTypeGroupName The name of the group we are writing to.
  * @param props The #io_props of the field to write.
  * @param N_total The total number of particles to write in this array.
- * @param N_total_in_cells Total number of particles in zoom cells.
+ * @param N_total_in_cells Total number of particles in the first region.
  * @param N_counts Number of particles written by each rank.
- * @param N_in_cells_counts Number of particles in zoom cells written by each
- * rank.
+ * @param N_in_cells_counts Number of particles in the first region written by
+ * each rank.
  * @param num_ranks Number of MPI ranks contributing to the snapshot.
  * @param ptype Particle type being written.
  * @param lossy_compression Lossy compression filter applied to the field.
@@ -387,13 +387,13 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
   /* Create all the virtual mappings */
   for (int i = 0; i < num_ranks; ++i) {
 
-    /* Split this rank's source dataset into zoom and background particles. */
+    /* Get the number of particles of this type written on this rank */
     const hsize_t rank_count = N_counts[i * swift_type_count + ptype];
     const hsize_t rank_in_cells =
         N_in_cells_counts[i * swift_type_count + ptype];
     const hsize_t rank_outside_cells = rank_count - rank_in_cells;
 
-    /* Create the data space for this rank's existing source dataset. */
+    /* Select the space in the (already existing) source file */
     source_shape[0] = rank_count;
     hid_t h_source_space = H5Screate_simple(rank, source_shape, NULL);
     if (h_source_space < 0) error("Error creating space in the source file");
@@ -401,7 +401,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
     char fileName[1024];
     sprintf(fileName, "%s.%d.hdf5", fileName_relative_base, i);
 
-    /* Map zoom particles into the leading region of the virtual dataset. */
+    /* Make the virtual links */
     if (rank_in_cells > 0) {
       count[0] = rank_in_cells;
       hsize_t source_start[2] = {0, 0};
@@ -416,7 +416,6 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
       if (h_err < 0) error("Error setting in-cell virtual properties");
     }
 
-    /* Map background particles after all zoom particles. */
     if (rank_outside_cells > 0) {
       count[0] = rank_outside_cells;
       hsize_t source_start[2] = {rank_in_cells, 0};
@@ -433,7 +432,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
 
     H5Sclose(h_source_space);
 
-    /* Advance both destination regions to the next rank's slabs. */
+    /* Move to the next slabs (i.e. next file) */
     start_in_cells[0] += rank_in_cells;
     start_outside_cells[0] += rank_outside_cells;
   }
@@ -509,10 +508,10 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
- * @param N_total_zoom The total number of particles in zoom cells.
+ * @param N_total_zoom The total number of particles in the first region.
  * @param N_counts Number of particles written by each rank.
- * @param N_in_cells_counts Number of particles in zoom cells written by each
- * rank.
+ * @param N_in_cells_counts Number of particles in the first region written by
+ * each rank.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
@@ -1040,12 +1039,11 @@ void write_output_distributed(struct engine *e,
   MPI_Exscan(N, rank_offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM,
              comm);
 
-  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   rank_offset, comm, &zoom_layout);
 
-  /* Collect each rank's total and zoom counts for the virtual mappings. */
+  /* Collect the number of particles written by each rank */
   long long *N_counts =
       (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
   long long *N_in_cells_counts =

@@ -1170,7 +1170,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
- * @param N_total_zoom The total number of particles in zoom cells.
+ * @param N_total_zoom The total number of particles in the first region.
  * @param to_write Whether or not specific particle types must be written.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
@@ -1665,7 +1665,6 @@ void write_output_parallel(struct engine *e,
    * broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   offset, comm, &zoom_layout);
@@ -2120,20 +2119,16 @@ void write_output_parallel(struct engine *e,
 
       if (compression_level != compression_do_not_write) {
         if (e->s->with_zoom_region) {
-          /* Write this rank's particles in zoom and background cells into their
-           * respective global regions. */
+          /* Write this rank's particles into their respective global regions. */
           write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
                                zoom_layout.local_in_cells[ptype],
                                N_total[ptype], mpi_rank,
                                zoom_layout.offset_in_cells[ptype],
                                internal_units, snapshot_units);
 
-          /* Advance the input pointers past the particles in zoom cells. */
           struct io_props outside_props = list[i];
           const size_t outside_offset = zoom_layout.local_in_cells[ptype];
           zoom_io_offset_io_props(&outside_props, outside_offset);
-
-          /* Write the remaining particles after the global zoom region. */
           write_array_parallel(
               e, h_grp, fileName, partTypeGroupName, outside_props,
               Nparticles - zoom_layout.local_in_cells[ptype], N_total[ptype],

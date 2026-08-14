@@ -130,7 +130,6 @@ void zoom_write_particle_counts(
     }
   }
 
-  /* Keep the original attributes and provide explicit file and total forms. */
   io_write_attribute(head_grp, "NumParticles_InCells", LONGLONG,
                      num_in_cells_this_file, swift_type_count);
   io_write_attribute(head_grp, "NumParticles_OutsideCells", LONGLONG,
@@ -164,7 +163,6 @@ void zoom_io_count_particles_in_cells(
   memcpy(local_in_cells, local, swift_type_count * sizeof(long long));
   if (!e->s->with_zoom_region) return;
 
-  /* Count each particle type using the same snapshot subsampling rules. */
   const struct space *s = e->s;
   const int snap_num = e->snapshot_output_count;
   local_in_cells[swift_type_gas] = io_count_gas_in_zoom_to_write(
@@ -254,7 +252,6 @@ void zoom_io_prepare_particle_layout(
  * background cells.
  */
 void zoom_io_offset_io_props(struct io_props *props, size_t offset) {
-  /* Advance every possible backing array represented by the I/O property. */
   if (props->field != NULL) props->field += offset * props->partSize;
   if (props->parts != NULL) props->parts += offset;
   if (props->xparts != NULL) props->xparts += offset;
@@ -299,8 +296,6 @@ void zoom_io_write_serial_particle_regions(
   for (int region = 0; region < 2; ++region) {
     shape[0] = region_sizes[region];
     offset[0] = memory_offsets[region];
-
-    /* Select matching slabs in memory and in the global file layout. */
     if (shape[0] > 0) {
       herr_t err = H5Sselect_hyperslab(h_memspace, H5S_SELECT_SET, offset, NULL,
                                        shape, NULL);
@@ -314,7 +309,7 @@ void zoom_io_write_serial_particle_regions(
       H5Sselect_none(h_filespace);
     }
 
-    /* Participate in both collective writes, including empty regions. */
+    /* Issue both writes, using empty selections for empty regions. */
     const herr_t err =
         H5Dwrite(h_data, h_type, h_memspace, h_filespace, H5P_DEFAULT, buffer);
     if (err < 0) error("Error while writing data array '%s'.", field_name);

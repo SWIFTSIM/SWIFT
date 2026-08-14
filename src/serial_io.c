@@ -414,12 +414,12 @@ void prepare_array_serial(
  * the HDF5 file.
  * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param N_in_cells Number of local particles in zoom cells.
+ * @param N_in_cells Number of local particles in the first region.
  * @param N_total The total number of particles on all ranks.
  * @param offset The offset position where this rank starts writing.
- * @param offset_in_cells Offset of this rank's particles in zoom cells.
- * @param offset_outside_cells Offset of this rank's particles in background
- * cells.
+ * @param offset_in_cells Offset of this rank's particles in the first region.
+ * @param offset_outside_cells Offset of this rank's particles in the second
+ * region.
  * @param lossy_compression Lossy compression filter to apply.
  * @param mpi_rank The MPI rank of this node
  * @param internal_units The #unit_system used internally
@@ -499,18 +499,16 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
 
   /* Select data space in that data set */
   const hid_t h_filespace = H5Dget_space(h_data);
+
+  /* Write temporary buffer to HDF5 dataspace */
   if (e->s->with_zoom_region) {
-    /* Write zoom and background particles into their global file regions. */
     zoom_io_write_serial_particle_regions(
         h_data, h_memspace, h_filespace, io_hdf5_type(props.type), temp, rank,
         props.dimension, N, N_in_cells, offset_in_cells, offset_outside_cells,
         props.name);
   } else {
-    /* Select this rank's slab in the conventional rank-ordered layout. */
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
-
-    /* Write the temporary buffer to the selected HDF5 dataspace. */
     h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                      H5P_DEFAULT, temp);
     if (h_err < 0) error("Error while writing data array '%s'.", props.name);
@@ -1184,7 +1182,6 @@ void write_output_serial(struct engine *e,
   /* The last rank now has the correct N_total. Let's broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   offset, comm, &zoom_layout);
