@@ -86,7 +86,7 @@ printf "Running simulation..."
 
 #Do some data analysis to show what's in this box
 python3 ../plot_metal_mass_conservation_in_time.py snap/*.hdf5
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30
+python3 metal_profile.py snap/snapshot_*0.hdf5
 if [ "$dimension" -eq 3 ]; then
     python3 ../metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -15 --vmax -9.5
     python3 ../metal_projection.py snap/snapshot_*0.hdf5 --vmin "1e-15" --vmax "1e-9"
