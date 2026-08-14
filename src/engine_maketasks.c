@@ -2272,24 +2272,37 @@ void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e,
   /* Are we in a radiation level cell ? */
   if (c->stars.radiation_level == c) {
 
-    /* Subgrid tasks: HII ionization feedback */
-    c->stars.hii_ionization_feedback =
-        scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
-                          task_subtype_none, 0, 0, c, NULL);
+    /* Subgrid tasks: HII ionization feedback. A2: only the owning rank
+     * mints the real work task -- a foreign radiation_level cell must never
+     * run its own copy of the whole HII pass (replicated execution). Every
+     * dereference of stars.hii_ionization_feedback elsewhere
+     * (engine_make_extra_radiationloop_tasks_mapper) is already gated on
+     * ci/cj->nodeID == nodeID, so leaving it NULL on a foreign cell is
+     * safe. */
+    if (c->nodeID == e->nodeID) {
+      c->stars.hii_ionization_feedback =
+          scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+                            task_subtype_none, 0, 0, c, NULL);
+    }
+
+    /* scheduler_addtask() above only flags its own ci (this cell) as
+     * cell_flag_has_tasks, and only when the task above was actually
+     * minted. Set it explicitly so a foreign radiation_level cell is
+     * flagged too: the MPI xv/rho send/recv creation walk
+     * (engine_addtasks_send_hydro/engine_addtasks_recv_hydro) starts from
+     * the space's top-level cells and early-aborts down the hierarchy the
+     * moment it meets an unflagged cell, so it never reaches a
+     * radiation_level cell that sits several levels below top unless every
+     * ancestor in between also carries the flag. */
+    cell_set_flag(c, cell_flag_has_tasks);
 
 #ifdef WITH_MPI
-    /* scheduler_addtask() above only flags c->stars.hii_ionization_feedback's
-     * own ci (this cell) as cell_flag_has_tasks. The MPI xv/rho send/recv
-     * creation walk (engine_addtasks_send_hydro/engine_addtasks_recv_hydro)
-     * starts from the space's top-level cells and early-aborts down the
-     * hierarchy the moment it meets an unflagged cell, so it never reaches a
-     * radiation_level cell that sits several levels below top unless every
-     * ancestor in between also carries the flag. Hydro's own hierarchical
-     * walk does not flag those intermediate levels (it only creates tasks at
-     * c->top and c->hydro.super); self-gravity's tree tasks usually do, but
-     * radiation must not depend on gravity being enabled. Propagate the flag
-     * explicitly so the S3.0 foreign-coverage predicate extension is
-     * reachable regardless of the run's other physics. */
+    /* Hydro's own hierarchical walk does not flag those intermediate
+     * levels (it only creates tasks at c->top and c->hydro.super);
+     * self-gravity's tree tasks usually do, but radiation must not depend
+     * on gravity being enabled. Propagate the flag explicitly so the S3.0
+     * foreign-coverage predicate extension is reachable regardless of the
+     * run's other physics. */
     for (struct cell *ancestor = c->parent; ancestor != NULL;
          ancestor = ancestor->parent) {
       cell_set_flag(ancestor, cell_flag_has_tasks);
