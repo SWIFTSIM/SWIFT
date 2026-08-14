@@ -618,8 +618,6 @@ GrackleCooling:
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
@@ -781,7 +779,6 @@ GEARFeedback:
   stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
-  metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
   imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
