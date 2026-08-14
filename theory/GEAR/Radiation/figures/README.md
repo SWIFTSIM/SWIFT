@@ -31,5 +31,7 @@ or run the document build with figure regeneration: `../run.sh --figures`.
   (adjacency-bound) vs this one-sided star-centric scan (receiver's sorts
   only).
 
-`fig3`, `fig4`, and `fig6` are included in `02_task_graph.tex`
-(Section "Sorted gather mechanics"); the others are reference/talk material.
+All six figures are included in `02_task_graph.tex`: `fig1` and `fig2` in
+"Run-time recursion and neighbour search", `fig3`, `fig4`, and `fig6` in
+"Sorted gather mechanics", and `fig5` in "Sorted gather mechanics" alongside
+the two-regions-away gap it illustrates.

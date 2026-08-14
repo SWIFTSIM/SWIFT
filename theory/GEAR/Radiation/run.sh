@@ -6,7 +6,8 @@ if [ "$1" = "--figures" ]; then
   (cd figures && for f in fig*.py; do python3 "$f" || exit 1; done) || exit 1
 fi
 echo "Generating PDF..."
-pdflatex -jobname=radiation radiation.tex
+PDFLATEX="pdflatex -interaction=nonstopmode -halt-on-error -jobname=radiation"
+$PDFLATEX radiation.tex || { echo "pdflatex failed, see radiation.log"; exit 1; }
 bibtex radiation.aux
-pdflatex -jobname=radiation radiation.tex
-pdflatex -jobname=radiation radiation.tex
+$PDFLATEX radiation.tex || { echo "pdflatex failed, see radiation.log"; exit 1; }
+$PDFLATEX radiation.tex || { echo "pdflatex failed, see radiation.log"; exit 1; }

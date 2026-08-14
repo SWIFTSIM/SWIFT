@@ -3,9 +3,10 @@
 
 This section documents how the HII search is wired into \swift's task
 graph, focused on the stellar/radiation part only (not hydro or
-gravity, except where radiation depends on them). All line references
-are current as of \code{darwin/gear\_radiation},
-2026-07-16.
+gravity, except where radiation depends on them). Source-line
+references below point to specific lines in the current
+implementation; identifiers (function and variable names), not line
+numbers, are the stable anchor if the code shifts.
 
 \subsection{Why this is not a regular self/pair task}
 \label{sec:not-regular}
@@ -34,7 +35,7 @@ implementation splits the work into two different kinds of task:
     \code{\_out}} (self and pair): created once at the
     \emph{top-level} cell grid (27-neighbour stencil,
     \code{engine\_make\_radiationloop\_tasks\_mapper},
-    \code{engine\_maketasks.c:3902}), \textbf{as implicit tasks}
+    \code{engine\_maketasks.c:4250}), \textbf{as implicit tasks}
     (\code{implicit=1} in \code{scheduler\_addtask}): they run no
     compute code at all (no case for them in \code{runner\_main.c}'s
     dispatch switch). Their only job is to exist as dependency nodes:
@@ -47,7 +48,7 @@ implementation splits the work into two different kinds of task:
     (subtype \code{none}): a \emph{single, coarse-grained} task
     created once per \code{radiation\_level} cell
     (\code{engine\_make\_hierarchical\_tasks\_radiation\_subgrid},
-    \code{engine\_maketasks.c:2109}). This is the only task that
+    \code{engine\_maketasks.c:2110}). This is the only task that
     actually runs code (\code{runner\_do\_stars\_hii\_\allowbreak
     ionization\_feedback}, dispatched at \code{runner\_main.c:582}).
     It performs its own manual, run-time recursion down to the
@@ -60,7 +61,7 @@ implementation splits the work into two different kinds of task:
 
 \code{cell\_can\_split\_pair\_radiation\_subgrid\_task} /
 \code{cell\_can\_split\_self\_radiation\_subgrid\_task}
-(\code{cell.h:1201}, \code{1239}) are radiation's own splitting
+(\code{cell.h:1276}, \code{1332}) are radiation's own splitting
 criteria, structurally identical to the hydro ones but with an extra
 term: a cell stops splitting (and \code{radiation\_level} is pinned
 there) once
@@ -76,35 +77,38 @@ search radius expands, \code{radiation\_level} can sit strictly
 several \code{hydro.super} subtrees at once. When $h_{\rm hii}$ is
 small this term is inert and
 \texttt{radiation\_level\allowbreak{} == hydro.super} for free. \code{cell\_set\_super\_radiation\_subgrid}
-(\code{cell.c:1361}) walks the tree and stamps
+(\code{cell.c:1368}) walks the tree and stamps
 \code{c->stars.radiation\_level} to the shallowest ancestor holding
 a \code{radiation\_in} link.
 
-\textbf{Known, code-verified, not-yet-observed risk} (guarded by a
-\code{SWIFT\_DEBUG\_CHECKS} assertion, \code{cell.c:1387}): the
-run-time search
+\textbf{Why an orphaned link cannot occur.} The run-time search
 (\code{runner\_dosub\_stars\_hii\_ionization\_feedback}) only ever
 reads \code{radiation\_level}'s \emph{own} link list, never descends
-into its children's links. If two neighbouring regions end up with
-\code{hydro.super} at different depths (e.g.\ from non-uniform
-density), a cell can hold its own \code{radiation\_in} link while an
-ancestor is found first and claims \code{radiation\_level}: the
-child's link then becomes permanently invisible to the flat walk, a
-silent search-incompleteness bug, not a crash. Confirmed by
-code-reading only; uniform-density ICs never trigger the depth
-mismatch, but the clump examples in this branch are exactly the kind
-of non-uniform setup that could. See item~T1 in the GEAR radiation
-logbook's Open Items section.
+into its children's links: if a cell held its own \code{radiation\_in}
+link while an ancestor was stamped as \code{radiation\_level} instead
+(e.g.\ from two neighbouring regions with \code{hydro.super} at
+different depths, as non-uniform density can produce), that link would
+become permanently invisible to the flat walk, a silent
+search-incompleteness bug rather than a crash. This is prevented by
+construction: \code{scheduler\_splittask\_radiation\_subgrid}
+(\code{src/scheduler\_splittasks.c}) splits a radiation pair
+\emph{asymmetrically} whenever only one side can still descend,
+enumerating that side's facing progeny geometrically against the
+other, coarser side rather than forcing both to a shared depth, so
+each cell always settles at its \emph{own} \code{radiation\_level} and
+never leaves a link stranded above it. A \code{SWIFT\_DEBUG\_CHECKS}
+assertion (\code{cell.c:1393}) is kept as a live regression tripwire
+for this invariant.
 
 \subsection{Dependency wiring}
 
 For every \code{radiation\_in} self/pair task \code{t} covering
 cell(s) \code{ci}/\code{cj}, \code{engine\_\allowbreak
 make\_extra\_radiationloop\_tasks\_mapper}
-(\code{engine\_maketasks.c:3608}) creates the matching
+(\code{engine\_maketasks.c:3636}) creates the matching
 \code{radiation\_out} task and wires, via
 \code{engine\_radiation\_wire\_super\_deps}
-(\code{engine\_maketasks.c:3574}, which recurses down to every
+(\code{engine\_maketasks.c:3572}, which recurses down to every
 \code{hydro.super} beneath a coarse \code{radiation\_level} cell,
 visiting each disjoint subtree exactly once), the dependency chain
 shown in Figure~\ref{fig:dep-chain}: for every \code{hydro.super}
@@ -150,13 +154,14 @@ is active).
 
 A \code{SWIFT\_DEBUG\_CHECKS} invariant enforces that a
 \code{radiation\_in} pair task always connects two \emph{distinct}
-\code{radiation\_level} regions (\code{engine\_maketasks.c:3691}):
+\code{radiation\_level} regions (\code{engine\_maketasks.c:3722}):
 otherwise both sides would wire identical unlocks onto the same
 \code{hii\_ionization\_feedback} task, a duplicate-unlock error.
 
 \subsection{Activation (unskip)}
+\label{sec:unskip}
 
-\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2243})
+\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2273})
 walks \code{c->stars.radiation\_in} and \code{radiation\_out}
 each timestep. For every active task it also activates
 drift/sync/\code{stars\_in} (or \code{stars\_out}) over
@@ -171,13 +176,13 @@ runs the radiation-specific rebuild check,
 hii}$ growth between rebuilds and would under-trigger.
 \code{c->stars.hii\_ionization\_feedback} itself is unskipped
 unconditionally alongside the other per-cell tasks
-(\code{cell\_unskip.c:2731}) whenever the cell needs activating.
+(\code{cell\_unskip.c:2807}) whenever the cell needs activating.
 
 \subsection{Locking}
 
 \code{hii\_ionization\_feedback}'s search reads and writes gas across
 \code{ci}'s own subtree plus every neighbouring region reachable
-through \code{ci->stars.radiation\_in} (\code{task.c:805}, lock;
+through \code{ci->stars.radiation\_in} (\code{task.c:808}, lock;
 \code{task.c:577}, unlock). Locking proceeds in
 \code{radiation\_in}'s link order: \code{ci}'s own star and hydro
 trees first, then each linked pair task's ``other'' cell's hydro tree
@@ -196,14 +201,26 @@ lock-order contention between neighbours is possible under load.
 
 Once \code{hii\_ionization\_feedback} actually runs
 (\code{runner\_do\_stars\_hii\_ionization\_feedback},
-\code{runner\_radiation\_feedback.c:52}), it manually recurses down
+\code{runner\_radiation\_feedback.c:259}), it manually recurses down
 \code{c->progeny} (mirroring what \code{scheduler\_splittasks}
 would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:158}). For each active star at
-that level:
+(\code{runner\_radiation\_feedback.c:471}).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.75\linewidth]{figures/fig1_traversal_structure.pdf}
+  \caption{Star-centric traversal from a \texttt{radiation\_level} cell:
+    the self link descends the star's own region, and each pair link
+    descends one of up to 26 neighbour regions. There are no
+    neighbour-of-neighbour hops: every cell the search visits is
+    reached directly from \texttt{radiation\_level}'s own link list.}
+  \label{fig:traversal-structure}
+\end{figure}
+
+For each active star at that level:
 \begin{enumerate}
   \item Gather candidates within the current search radius via
     \code{runner\_do(self/dopair)\_stars\_hii\_ionization\_feedback},
@@ -213,14 +230,19 @@ that level:
     distance-sorted buffer (\code{max\_ngbs}), filtered by
     \code{feedback\_part\_can\_be\_ionized} (not already tagged, cold
     enough, dense enough) and, if angular splitting is on, by whether
-    the candidate's assigned pixel still has budget.
+    the candidate's assigned pixel still has budget. When the search
+    radius spans several wired leaf cells, each is tested
+    independently and its candidates merge into this one global,
+    distance-sorted buffer (Fig.~\ref{fig:multi-leaf-merge}), so
+    ``closest-first'' in step 2 below means closest across the whole
+    search, not just within one leaf.
   \item Consume the star's budget on the sorted buffer, closest first
     (Eq.~\ref{eq:recomb-cost}), applying the deterministic/probabilistic
     boundary-particle rule at exhaustion.
   \item Retry: if the buffer filled up (more candidates may exist at
     the \emph{same} radius, just bumped out by the buffer's size cap),
     retry at the same radius, up to
-    \code{Stars:max\_HII\_retry\_full\_buffer} times, but only if the
+    \code{Stars:HII\_max\_retry\_full\_buffer} times, but only if the
     attempt that just ran claimed at least one candidate anywhere. A
     same-radius retry re-runs the identical search over the identical
     eligible set, meets the identical per-pixel budgets, and draws the
@@ -232,16 +254,26 @@ that level:
     configured retry count. If the buffer did \emph{not} fill up but
     budget remains, the radius itself is the bottleneck: expand it
     by \code{Stars:HII\_radius\_expansion\_factor}, up to
-    \code{Stars:max\_HII\_radius\_expansion\_tries} times, bounded by
-    \code{Stars:max\_HII\_search\_radius}. These two retry kinds are
+    \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
+    \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:213}); the
+    the comment at \code{runner\_radiation\_feedback.c:613}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\linewidth]{figures/fig2_case1_independent_merge.pdf}
+  \caption{Step 1's multi-leaf gather: a search radius covering several
+    wired leaf cells tests each independently, then merges their
+    candidates into one global nearest-\texttt{max\_ngbs} buffer.}
+  \label{fig:multi-leaf-merge}
+\end{figure}
+
 This retry/expansion loop, not \code{scheduler\_splittasks}, is what
 makes the search radius-adaptive: it is why hitting
-\code{Stars:max\_HII\_search\_radius} (the GEAR radiation logbook's
+\code{Stars:HII\_max\_search\_radius} (the GEAR radiation logbook's
 Validation section)
 shows up as the search radius simply never being allowed to expand past
 the configured ceiling, not as a scheduler-level task-graph error.
@@ -265,20 +297,20 @@ algorithm document) is specifically robust to it: an isolated particle
 tagged this way is exactly the gap-separated outlier that measure's
 rejection removes.
 
-\textbf{Gather-time pixel-budget starvation guard: confirmed shipped
-(2026-07-18).} Without the per-candidate pixel-budget filter in step 1
-above, a dense clump in one pixel's direction could exceed the buffer's
-capacity on its own, permanently monopolizing it: that pixel's own
-budget exhausts quickly, but its now-dead candidates keep re-winning
-the nearest-distance ranking on every retry, burning out
-\code{max\_HII\_retry\_full\_buffer} re-finding the same dead pixel
+\textbf{Gather-time pixel-budget starvation guard.} Without the
+per-candidate pixel-budget filter in step 1 above, a dense clump in one
+pixel's direction could exceed the buffer's capacity on its own,
+permanently monopolizing it: that pixel's own budget exhausts quickly,
+but its now-dead candidates keep re-winning the nearest-distance
+ranking on every retry, burning out
+\code{HII\_max\_retry\_full\_buffer} re-finding the same dead pixel
 before the search ever reaches radius expansion: leaving a sparse
 pixel's budget completely unspent. All four
 \code{runner\_hii\_buffer\_insert} call sites (self, dopair-naive, and
 both branches of the sorted dopair) gate the insert on
 \code{feedback\_get\_star\_ionization\_rate(si, pixel) > 0.0}, so a
 pixel with an exhausted budget can no longer monopolize buffer slots on
-retry, confirmed present at all four sites. A milder residual (two live
+retry. A milder residual (two live
 pixels, one much denser, slowing rather than deadlocking the sparse
 one's service rate) remains deliberately unaddressed: would need
 per-pixel bounded buffer segments to fix robustly, only worth building
@@ -392,10 +424,38 @@ tasks.
   \label{fig:dopair-contrast}
 \end{figure}
 
-The remaining schematics of the search (traversal structure, multi-leaf
-gather with the global nearest-\code{max\_ngbs} buffer, and the unwired
-two-regions-away case with its three guards) are kept alongside the
-document in \code{figures/} (\code{fig1}, \code{fig2}, \code{fig5}).
+\textbf{The two-regions-away gap and its three guards.} When
+\code{radiation\_level} sits at leaf level (no coarsening has happened
+yet), the wired stencil of Section~\ref{sec:not-regular} is only a
+leaf's up-to-26 immediate neighbours: a cell two regions away is not
+filtered out, it is simply absent from \code{radiation\_in}, no edge
+in the graph reaches it, even where the search radius geometrically
+extends into it (Fig.~\ref{fig:stencil-gap}). Three guards bound how
+far this gap can matter: (1) the split-gate equation of
+Section~\ref{sec:not-regular} stops a region from splitting once its
+own $h_{\rm hii}$ grows large enough, which coarsens
+\code{radiation\_level} and folds the two-regions-away cell into the
+now-larger wired stencil; (2) the radiation-specific rebuild check of
+Section~\ref{sec:unskip} fires a whole-tree rebuild once the search
+reach plus accumulated drift exceeds \code{dmin}, re-levelling the
+stencil before the geometric gap can be exploited; (3) the in-pass
+clamp above, \code{max\_reachable\_search\_radius}, stops a single
+pass from probing past what the \emph{current} stencil can reach, so a
+pass never silently drops a candidate it can see geometrically but
+cannot walk to: the outer shell it cannot yet reach is deferred to the
+next rebuild, never lost.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\linewidth]{figures/fig5_case2_stencil_gap.pdf}
+  \caption{The two-regions-away gap: with \texttt{radiation\_level} at
+    leaf level, cell C is two regions from the star and structurally
+    absent from the wired stencil even though the search radius
+    (dashed) geometrically reaches it. The three guards above bound
+    the gap; a rebuild coarsens the stencil so C eventually enters it
+    (before/after insets).}
+  \label{fig:stencil-gap}
+\end{figure}
 
 \subsection{Cell sizing: folding \texttt{h\_hii} into \texttt{space\_regrid}}
 \label{sec:space-regrid-hhii}
@@ -449,32 +509,58 @@ floor, since nothing is gained once coverage is already total there.
 Ordinary hydro/star \code{h\_max} growth is \emph{not} capped: that
 remains a genuine problem worth the existing error firing.
 
-\textbf{Verified:} \code{make -j\$(nproc)} builds \code{swift}+\code{swift\_mpi}
-clean; \code{testRadiationRebuildCheck} and
-\code{test27cellsStars -n 3 -N 3 -r 5} both pass. The StromgrenSphere
-\code{gas\_mass=0.1} (154k particles, 2927 steps) and \code{gas\_mass=0.01}
-(1.54M particles, 1442 steps) acceptance runs both reach \code{time\_end}
-cleanly with the capped version, against the \emph{uncapped} version
-failing at $t=29.7\,$Myr ($\sim$15\% through) with the same ``must have
-at least 3 cells'' error: confirming the crash is real and caused by
-folding \code{h\_hii} in, and that the cap resolves it without breaking
-anything else. Committed as \code{d7f4644cf}.
+\textbf{Effect on \code{cdim}.} At the periodic floor
+(\code{max\_top\_level\_cells: 3}, the StromgrenSphere acceptance
+configuration above), the cap keeps the grid pinned at the correct
+\code{cdim=3} throughout: with the fold left uncapped, the same run
+instead crashes on the ``must have at least 3 cells'' error once
+\code{h\_hii} grows large enough to push \code{cdim} below the
+periodic floor, well before the box's true Str\"omgren radius is
+reached. At a finer starting configuration
+(\code{max\_top\_level\_cells} raised so the box starts at, say,
+\code{cdim=16}, set by ordinary hydro resolution rather than the
+radiation cap), the grid coarsens progressively as \code{h\_hii}
+grows, passing through intermediate \code{cdim} values before settling
+at \code{cdim=3} only once the fold's own cap requires it. This
+progressive coarsening, not merely the crash-avoidance floor being
+hit, is what confirms \code{h\_hii} is genuinely driving the grid
+coarser to preserve radiation-search coverage.
 
-\textbf{Dedicated \code{cdim >= 4} regression: done, feature confirmed
-working (2026-07-20).} The existing StromgrenSphere acceptance runs can
-only ever test ``does the cap correctly avoid a spurious crash'': they
-are permanently pinned at the periodic floor. Built a dedicated case
-instead (single star, uniform gas, \code{--enable-debugging-checks}
-build, same e10-style box but \code{Scheduler:max\_top\_level\_cells}
-raised from 3 to 16 so ordinary hydro resolution: not the radiation
-cap, sets the starting grid): \code{space\_regrid}'s own
-\code{SWIFT\_DEBUG\_CHECKS} regrid message shows
-\code{cdim=(16,16,16)} at $t=0$ (hydro resolution, uncapped by
-\code{h\_hii} yet), coarsening to \code{cdim=(4,4,4)} by step 146 as
-\code{h\_hii} grows, and finally to \code{cdim=(3,3,3)} (the
-crash-avoidance cap) by step 1148, holding there for the rest of the
-run ($\approx2050$ steps total, completed cleanly to \code{time\_end}).
-The intermediate \code{cdim=4} state, held for roughly 1000 steps, is
-direct confirmation that \code{h\_hii} genuinely coarsens the grid to
-preserve radiation-search coverage, not merely that the cap prevents a
-crash at the periodic floor.
+\subsection{Configuration reference}
+\label{sec:config-reference}
+
+Every \code{Stars:}/\code{GEARFeedback:} identifier used above and in
+the algorithm document is a parameter-file key, read with
+\code{parser\_get\_opt\_param\_*} unless noted otherwise. All are
+optional (default shown) except
+\code{Stars:HII\_max\_search\_radius}, which every run using this
+model must set explicitly.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{5.6cm}p{1.5cm}p{7.6cm}@{}}
+  \hline
+  Parameter key & Default & Role \\
+  \hline
+  \code{GEARFeedback:with\_photoionization} & 0 & master enable switch \\
+  \code{GEARFeedback:HII\_min\_density\_Hpcm3} & 1.0 & candidate density gate (algorithm doc, \S\ref{sec:photon-budget}) \\
+  \code{GEARFeedback:HII\_max\_age\_Myr} & 50.0 & star age past which it stops competing for budget \\
+  \code{GEARFeedback:HII\_rebuild\_time\_Myr} & 0.5 & per-star rebuild cadence (algorithm doc, \S\ref{sec:persistence}) \\
+  \code{GEARFeedback:HII\_rebuild\_floor\_Myr} & $10^{-4}$ & floor on $\Delta t_{\rm back}$ (algorithm doc, \S\ref{sec:angular-splitting}) \\
+  \code{GEARFeedback:HII\_deterministic\_boundary\_ionization} & 0 & boundary-particle rule (algorithm doc, \S\ref{sec:angular-splitting}) \\
+  \code{GEARFeedback:HII\_angular\_nside} & 0 & angular pixel count (algorithm doc, \S\ref{sec:angular-splitting}) \\
+  \code{GEARFeedback:HII\_couple\_ionization\_rate} & 0 & flag-and-floor vs.\ rate-coupled (algorithm doc, \S\ref{sec:rate-coupled}) \\
+  \code{Stars:HII\_max\_search\_radius} & \emph{required} & hard ceiling on search-radius expansion (\S\ref{sec:runtime}) \\
+  \code{Stars:HII\_max\_retry\_full\_buffer} & 10 & same-radius retry count (\S\ref{sec:runtime}) \\
+  \code{Stars:HII\_max\_radius\_expansion\_tries} & 5 & radius-expansion retry count (\S\ref{sec:runtime}) \\
+  \code{Stars:HII\_radius\_expansion\_factor} & 1.1 & radius growth per expansion (\S\ref{sec:runtime}) \\
+  \code{Stars:min\_star\_timestep\_Myr} & $10^{-4}$ & generic star $dt$ floor, distinct from \code{HII\_rebuild\_floor\_Myr} \\
+  \hline
+\end{tabular}
+\end{center}
+
+One further knob is set at \code{./configure} time, not in the
+parameter file: \code{--with-number-of-hii-angular-pixels} (default
+12, i.e.\ $\text{nside}\le1$) sizes each star's per-pixel array and
+bounds \code{GEARFeedback:HII\_angular\_nside} at runtime
+(Section~\ref{sec:angular-splitting} of the algorithm document).
