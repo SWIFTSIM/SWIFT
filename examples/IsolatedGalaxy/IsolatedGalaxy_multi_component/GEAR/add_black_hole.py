@@ -18,7 +18,6 @@ import numpy as np
 
 # Initial dynamical and subgrid mass of the seed black hole.
 SEED_MASS_MSUN = 1.5e5
-# Matches SWIFT's own const_solar_mass_cgs (src/physical_constants_cgs.h).
 SOLAR_MASS_IN_G = 1.98841e33
 
 
