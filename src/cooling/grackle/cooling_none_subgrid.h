@@ -38,6 +38,7 @@
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @param u_out (return) The forced internal energy. Unused.
  * @return Always 0 -- this subgrid model never floors a particle's energy.
  */
 INLINE static int cooling_update_part_subgrid(
@@ -45,7 +46,7 @@ INLINE static int cooling_update_part_subgrid(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time) {
+    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
   return 0;
 }
 

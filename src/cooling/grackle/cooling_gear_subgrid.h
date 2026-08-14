@@ -45,6 +45,14 @@
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @param u_out (return) The internal energy the particle is held at while
+ *        ionized, only set if this returns 1. The caller must land this
+ *        value through its own du/dt integration rather than writing it to
+ *        the particle directly here: this function runs underneath
+ *        #cooling_new_energy, whose caller (cooling_cool_part) always
+ *        derives a du/dt from the returned energy and lets the kick apply
+ *        it. Writing u_full here as well would double-apply the same
+ *        energy change.
  * @return 1 if the particle was held at the subgrid-ionized floor this
  *         call, 0 otherwise. The caller uses this to skip Grackle's own
  *         chemistry/cooling solve for this step -- otherwise Grackle's
@@ -56,7 +64,7 @@ INLINE static int cooling_ionize_part_subgrid(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time) {
+    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
   if (!radiation_is_part_tagged_as_ionized(p, xp)) {
     return 0;
@@ -82,13 +90,7 @@ INLINE static int cooling_ionize_part_subgrid(
      recombination coefficient -- keeping the two consistent). */
   const float u_new = radiation_get_part_ionized_internal_energy(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
-
-  /* Now update the gas internal energy state */
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
-
-  /* Deactivate the cooling as we are heating the particle */
-  hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
+  *u_out = u_new;
 
 #if COOLING_GRACKLE_MODE > 0
   /* With the non-equilibrium network we can also set the ionization state
@@ -135,6 +137,8 @@ INLINE static int cooling_ionize_part_subgrid(
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @param u_out (return) The internal energy the particle is held at, only
+ *        set if this returns 1. See #cooling_ionize_part_subgrid.
  * @return 1 if the particle was held at the subgrid-ionized floor this
  *         call, 0 otherwise. See #cooling_ionize_part_subgrid.
  */
@@ -143,12 +147,12 @@ INLINE static int cooling_update_part_subgrid(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time) {
+    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
 
   /* Apply ionization */
   const int ionized_this_step = cooling_ionize_part_subgrid(
       phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
-      dt_therm, time);
+      dt_therm, time, u_out);
 
   /* TODO (future plan): Apply space-time varying UV background */
 
@@ -174,7 +178,9 @@ INLINE static int cooling_update_part_subgrid(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param u_out (return) The forced internal energy, only set if this
- *        returns 1.
+ *        returns 1. Not written to the particle here: the caller must land
+ *        it through its own du/dt integration (see #cooling_ionize_part_subgrid
+ *        for why writing u_full directly here would double-apply it).
  * @return 1 if the particle's energy was forced (caller should skip
  *         Grackle's own solve and return u_out directly), 0 otherwise
  *         (i.e. always 0 unless compiled with
@@ -195,9 +201,6 @@ INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
   const float u_o = cooling_internal_energy_from_T(
       T_o_internal, mu, phys_const->const_boltzmann_k,
       phys_const->const_proton_mass);
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_o);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_o);
-  hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
   *u_out = u_o;
   return 1;
 #else

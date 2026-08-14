@@ -953,16 +953,19 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   data.grid_end = grid_end;
 
   /* Do subgrid physics before feeding grackle with the gas properties. */
+  float u_ionized;
   const int ionized_this_step = cooling_update_part_subgrid(
       phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
-      dt_therm, time);
+      dt_therm, time, &u_ionized);
 
   /* A particle held at the subgrid-ionized floor this step must not also
      go through Grackle's own chemistry/cooling solve: Grackle's ODE
      integrator has no notion of the external photoionization forcing and
      would cool the just-floored energy back down within the same step. */
   if (ionized_this_step) {
-    return hydro_get_physical_internal_energy(p, xp, cosmo);
+    /* Return u_ionized itself, not a re-read of the particle: the caller
+       derives a du/dt from this return value and applies it once. */
+    return u_ionized;
   }
 
   {
