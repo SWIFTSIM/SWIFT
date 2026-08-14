@@ -8,7 +8,7 @@ InternalUnitSystem:
 
 Restarts:
   enable:        1
-  delta_hours:   6.                  # (Optional) decimal hours between dumps of restart files.
+  delta_hours:   0.5                  # (Optional) decimal hours between dumps of restart files.
 
 Scheduler:
   max_top_level_cells: 16
@@ -140,6 +140,8 @@ GEARChemistry:
 GEARAGN:
   subgrid_seed_mass_Msun:              1.5e5      # Black hole subgrid mass used only when a BH is seeded at runtime via FOF; not read for the BH already present in the ICs (see add_black_hole.py).
   use_subgrid_mass_from_ics:           1          # Read the initial subgrid mass from the ICs' SubgridMasses field, written by add_black_hole.py.
+
+  # Accretion parameters
   use_multi_phase_bondi:               0          # Compute Bondi rates per neighbour particle?
   with_angmom_limiter:                 1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                       1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term.
@@ -149,18 +151,24 @@ GEARAGN:
   eddington_fraction_for_recording:    0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
   use_nibbling:                        1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
   min_gas_mass_for_nibbling_Msun:      10         # Minimum mass for a gas particle to be nibbled from [M_Sun].
+
+  # AGN feedback parameters
   coupling_efficiency:                 0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_feedback_model:                  Isotropic  # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   AGN_use_deterministic_feedback:      1          # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
   AGN_delta_T_K:                       3.16228e8  # (Constant) change in temperature to apply to the gas particle in an AGN feedback event, in Kelvin.
-  use_variable_delta_T:                0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  use_variable_delta_T:                1          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_use_adaptive_energy_reservoir_threshold: 0  # Switch to calculate an adaptive AGN energy reservoir threshold.
   AGN_num_ngb_to_heat:                 1.         # Target number of gas neighbours to heat in an AGN feedback event.
+
+  # Repositioning parameters
   max_reposition_mass:                 2e8        # Maximal BH mass considered for BH repositioning in solar masses. Set to 0 to disable repositioning entirely.
   max_reposition_distance_ratio:       3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
   with_reposition_velocity_threshold:  0          # Should we only reposition to particles that move slowly w.r.t. the black hole?
   set_reposition_speed:                0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
   with_potential_correction:           1          # Should the BH's own contribution to the potential be removed from the neighbour's potentials when looking for repositioning targets.
+
+  # Merger parameters
   threshold_major_merger:              0.333      # Mass ratio threshold to consider a BH merger as 'major'
   threshold_minor_merger:              0.1        # Mass ratio threshold to consider a BH merger as 'minor'
   merger_threshold_type:               DynamicalEscapeVelocity  # Type of velocity threshold for BH mergers ('CircularVelocity', 'EscapeVelocity', 'DynamicalEscapeVelocity').
