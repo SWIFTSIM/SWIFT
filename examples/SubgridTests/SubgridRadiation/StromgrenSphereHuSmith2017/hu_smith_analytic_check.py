@@ -62,10 +62,15 @@ HIIRegionRadii (h_hii) -- generalizing the single-star version to Hu et
 al.'s own r_HII definition ("the maximum radius where a gas particle with
 an ionization fraction x_H+ > 0.95 can be found", i.e. a single front
 radius for the whole source cluster, not per-star). The reported extent is
-the 99.5th percentile, not the max, of these ever-tagged distances: since
+gap-rejected, not the max, of these ever-tagged distances: since
 HIIStarIDs is never cleared on tag expiry, a single particle that lapsed
 early and advected outward for several Myr can inflate a plain max() by
-double digits percent; the true max is still reported as a secondary
+double digits percent. Discarding particles by a blind percentile also
+works, but was found to cut several percent into a perfectly smooth,
+gap-free shell edge where nothing is actually an outlier; walking down
+from the top and discarding only points separated from the bulk by an
+anomalously large gap keeps the smooth case exact while still rejecting a
+genuine straggler. The true max is still reported as a secondary
 diagnostic.
 
 Usage:
@@ -174,22 +179,63 @@ def starbench_curve(
     return R_I, R_II, R_SB
 
 
-def robust_ever_tagged_radius(distances_kpc, percentile=99.5):
+# A point at the top of the sorted ever-tagged distances is rejected as an
+# outlier only if the gap to its next-lower neighbor exceeds this many times
+# the local point spacing -- an isolated advected straggler blows this
+# multiple by an order of magnitude or more (verified: ~20x on a real
+# straggler), but the front's own natural surface roughness does not
+# (verified: <2x on a smooth, gap-free shell edge).
+GAP_REJECTION_FACTOR = 5.0
+# Fraction of ever-tagged particles, counted in from the front, used to
+# estimate the local point spacing scale GAP_REJECTION_FACTOR is measured
+# against.
+GAP_SCALE_TOP_FRACTION = 0.05
+# Below this many ever-tagged particles there are too few points to estimate
+# a meaningful local spacing scale; trust the max unmodified.
+GAP_MIN_POINTS = 10
+
+
+def robust_ever_tagged_radius(distances_kpc):
     """Robust "ever-tagged" HII front radius from ever-tagged particle
-    distances.
+    distances, via gap-aware outlier rejection.
 
     HIIStarIDs is a one-way stamp (radiation_reset_part_ionized_tag never
     clears it -- the stamp intentionally marks the swept shell), so a
     single particle whose tag lapsed early and then advected outward for
     several Myr can dominate a plain max() and inflate the reported extent
-    by double digits percent. The given percentile of the distance
-    distribution is insensitive to a handful of such outliers.
+    by double digits percent. A blind percentile trim removes such
+    stragglers too, but was found to also cut several percent into a
+    perfectly smooth, gap-free shell edge where every particle is
+    legitimate. Instead, walk down from the largest distance and discard a
+    point only if the gap to its next-lower neighbor exceeds
+    GAP_REJECTION_FACTOR times the local point spacing (the median spacing
+    among the top GAP_SCALE_TOP_FRACTION of points); stop at the first
+    point that is not an outlier by this test.
 
     @param distances_kpc Ever-tagged particle distances from the source (kpc).
-    @param percentile Percentile of the distribution to report (default: 99.5).
-    @return (robust radius, true max), both in kpc.
+    @return (front radius after gap rejection, true max), both in kpc.
     """
-    return float(np.percentile(distances_kpc, percentile)), float(np.max(distances_kpc))
+    sorted_desc = np.sort(distances_kpc)[::-1]
+    true_max = float(sorted_desc[0])
+    n = len(sorted_desc)
+    if n < GAP_MIN_POINTS:
+        return true_max, true_max
+
+    n_top = min(max(2, int(np.ceil(GAP_SCALE_TOP_FRACTION * n))), n - 1)
+    top_gaps = -np.diff(sorted_desc[: n_top + 1])
+    local_scale = np.median(top_gaps)
+    if local_scale <= 0:
+        nonzero = top_gaps[top_gaps > 0]
+        local_scale = np.median(nonzero) if len(nonzero) else 0.0
+
+    i = 0
+    while (
+        i < n - 1
+        and local_scale > 0
+        and (sorted_desc[i] - sorted_desc[i + 1]) > GAP_REJECTION_FACTOR * local_scale
+    ):
+        i += 1
+    return float(sorted_desc[i]), true_max
 
 
 # -----------------------------------------------------------------------------
@@ -604,8 +650,8 @@ def main():
     for tt, rr, RR, ee, mm in zip(t_w, r_w, R_ref_w, rel_error_w, r_max_w):
         print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g}")
     print(
-        "  (r_max is the secondary diagnostic: the true, non-robust max "
-        "ever-tagged extent, not the percentile used for r_sim above)"
+        "  (r_max is the secondary diagnostic: the true, non-gap-rejected "
+        "max ever-tagged extent, not the r_sim value above)"
     )
     n_pass = np.sum(rel_error_w <= args.tol)
     median_error = np.median(rel_error_w)
