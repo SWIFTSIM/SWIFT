@@ -566,6 +566,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
          ~1e-10 of avail. Only binds on a particle draining completely. */
       const double cap = avail * (1.0 - 1e-6);
       chd->fct_theta[i] = (sum_out > cap) ? cap / sum_out : 1.0;
+      if (GEAR_FVPM_DIFF_FCT_VERBOSITY > 0 && chd->fct_theta[i] < 1.0) {
+        message("[%lld, %d] FCT engaged, theta = %e, sum_out = %e, avail = %e",
+                p->id, i, chd->fct_theta[i], sum_out, avail);
+      }
     } else {
       chd->fct_theta[i] = 1.0;
     }

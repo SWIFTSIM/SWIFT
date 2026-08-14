@@ -54,6 +54,10 @@
  * 0: Silent, 1+: Detailed per-interaction reports (high I/O overhead). */
 #define GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY 0
 
+/** @brief Toggle for logging FCT positivity-limiter engagements (theta<1).
+ * 0: Silent, 1+: One line per engaged (particle, element) per step. */
+#define GEAR_FVPM_DIFF_FCT_VERBOSITY 0
+
 /** @brief Default for the flux limiter's "Noise Gate" threshold (see
  * GEARChemistry:flux_limiter_noise_gate). */
 #define GEAR_FVPM_DIFF_NOISE_GATE_DEFAULT 1e-15
