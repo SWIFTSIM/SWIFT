@@ -601,9 +601,10 @@ void cell_pack_bpart_swallow(const struct cell *c,
                              struct black_holes_bpart_data *data);
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
-void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data);
-void cell_unpack_part_hii_tag(struct cell *c,
-                              const struct hii_tag_report *data);
+void cell_pack_part_hii_tag(struct cell *c, struct hii_tag_report *data);
+void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
+                              long long *collision_count,
+                              double *forfeited_budget);
 void cell_pack_part_hii_state(const struct cell *c,
                               struct hii_state_update *data);
 void cell_unpack_part_hii_state(struct cell *c,

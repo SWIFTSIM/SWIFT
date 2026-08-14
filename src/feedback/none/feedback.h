@@ -298,12 +298,13 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 
 /** @brief No-op HII tag-report pack: this module has no HII radiation. */
 __attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
-    const struct part *restrict p, struct hii_tag_report *restrict data) {}
+    struct part *restrict p, struct hii_tag_report *restrict data) {}
 
 /** @brief No-op HII tag-report unpack: this module has no HII radiation. */
 __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_tag_report(struct part *restrict p,
-                               const struct hii_tag_report *restrict data) {}
+                               const struct hii_tag_report *restrict data,
+                               char *collision, float *forfeited_cost) {}
 
 /** @brief No-op HII state-update pack: this module has no HII radiation. */
 __attribute__((always_inline)) INLINE static void

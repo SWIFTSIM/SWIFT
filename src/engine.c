@@ -2729,6 +2729,26 @@ int engine_step(struct engine *e) {
               e->radiation_reach_clamp_count_last_step);
       e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
     }
+
+    /* S3.4: two ranks' stars both reaching the same boundary gas is
+     * expected cross-rank contention, not a bug -- reported for visibility
+     * rather than as a warning. */
+    if (e->radiation_hii_merge_collision_count > 0) {
+      message(
+          "Radiation HII cross-rank merge collisions: %lld cumulative "
+          "(+%lld this step), forfeited budget %.3e cumulative (+%.3e this "
+          "step) photons.",
+          e->radiation_hii_merge_collision_count,
+          e->radiation_hii_merge_collision_count -
+              e->radiation_hii_merge_collision_count_last_step,
+          e->radiation_hii_forfeited_budget,
+          e->radiation_hii_forfeited_budget -
+              e->radiation_hii_forfeited_budget_last_step);
+      e->radiation_hii_merge_collision_count_last_step =
+          e->radiation_hii_merge_collision_count;
+      e->radiation_hii_forfeited_budget_last_step =
+          e->radiation_hii_forfeited_budget;
+    }
 #endif
 
     /* Write the star formation information to the file */

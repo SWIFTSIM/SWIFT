@@ -60,10 +60,10 @@ struct feedback_part_data {
   double end_time;
 
   /*! Neutral hydrogen mass fraction, cached by the cooling step right after
-      its species update (grackle_1+: HI_frac; grackle_0: 1.0f
-      unconditionally, no species tracked). Not read by anything yet: a
-      future MPI scheme's F3 latch must consume the PREVIOUS pass's value,
-      not the current step's.
+      its species update (grackle_1+: HI_frac, plus H2I_frac+HM_frac at
+      grackle_2+; grackle_0: 1.0f unconditionally, no species tracked).
+      Read by radiation_get_part_number_neutral_hydrogen_atoms for a
+      foreign copy with no struct xpart (S3.3/F3).
 
       The cache write is skipped on cooling_new_energy()'s early-return
       paths (subgrid-ionized floor, or pinned by
@@ -77,15 +77,46 @@ struct feedback_part_data {
 #ifdef WITH_MPI
   /*! Eligibility temperature cache (S3.3/F3): written at cooling time so a
       foreign copy with no struct xpart can still pass
-      feedback_part_can_be_ionized's temperature gate. NOT yet written by
-      any cooling path (that lands in S3.3): like neutral_H_frac above,
-      this field has no first-init hook in this codebase, so before its
-      first cooling-time write it holds struct part's zero-init default,
-      0.0f, not a real "no data" sentinel. A reader must gate on the S3.3
-      write actually having happened, not on the field's numeric value.
-      MPI-only: it exists solely to let a foreign copy pass the eligibility
-      gate without a struct xpart, so single-rank builds don't pay for it. */
+      feedback_part_can_be_ionized's temperature gate (feedback_get_
+      eligibility_temperature) and recover its mean molecular weight
+      (radiation_get_part_mean_molecular_weight). Like neutral_H_frac
+      above, this field has no first-init hook in this codebase, so before
+      its first cooling-time write it holds struct part's zero-init
+      default, 0.0f, not a real "no data" sentinel. A reader must gate on
+      the S3.3 write actually having happened, not on the field's numeric
+      value. MPI-only: it exists solely to let a foreign copy pass the
+      eligibility gate without a struct xpart, so single-rank builds don't
+      pay for it. */
   float T_eligibility;
+
+  /*! Squared comoving distance to the star holding this particle's
+      current claim, at claim time (S3.4). Only meaningful together with
+      is_ionized == 1, since both are always stamped by the same call
+      (feedback_hii_claim_part / feedback_iact_HII_maintain_ionized_part);
+      an unclaimed particle never has this read. The owner-side merge
+      (feedback_unpack_hii_tag_report) compares this against an incoming
+      report's r2 to decide which claim survives -- smallest (r2, star_id)
+      wins, the same tiebreak convention as S2's ordered lapse. MPI-only:
+      a single rank never needs a cross-claim tiebreak, since cell locking
+      already serializes every local writer of these fields to one claim
+      at a time. */
+  float r2;
+
+  /*! Ionizing photon count debited from the claiming star's pixel budget
+      for this claim, stamped alongside r2 above (S3.4). Read by the
+      owner-side merge only when this claim LOSES a collision, to
+      accumulate the forfeited-budget debug counter -- the photons were
+      already spent on the losing rank and cannot be recovered here, this
+      only measures how much was wasted. */
+  float cost;
+
+  /*! Set whenever feedback_hii_claim_part or feedback_iact_HII_maintain_
+      ionized_part touches this particle (S3.4). feedback_pack_hii_tag_
+      report reads this into the wire's own claimed_this_pass and clears
+      it, so it always reflects only the most recent pass: without the
+      clear, a particle claimed once would look claimed on every later
+      pack even where the current pass never reached it again. */
+  char claimed_this_pass;
 #endif
 };
 
@@ -112,6 +143,11 @@ struct hii_tag_report {
       in the foreign cell, beyond kernel reach but within HII reach). Used
       as the S3.4 cross-rank tiebreak, smallest (r2, star_id) wins. */
   float r2;
+
+  /*! Ionizing photon count debited for this claim, mirroring
+      feedback_part_data.cost (S3.4); used to size the forfeited-budget
+      debug counter when this report loses a merge collision. */
+  float cost;
 
   /*! Excess photoionization energy deposited this pass, mirroring
       tracers_xpart_data.HII_region.excess_photon_energy_HI, which never

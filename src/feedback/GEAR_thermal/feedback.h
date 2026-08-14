@@ -65,36 +65,74 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 /**
  * @brief Pack a #part's HII tag report-back entry (MPI plan S3.1).
  *
- * The three fields beyond @c tag have no per-part storage yet: the
- * compute-on-copies pass that would write real per-claim values is
- * separate, still-missing work (see the plan's Status section), so they
- * are left at their placeholder values. The struct is memset first so its
- * tail padding is deterministic on the wire (MSAN hygiene).
+ * excess_photon_energy_HI and photoionization_rate_HI have no per-part
+ * storage yet and are left at their placeholder values; r2, cost and
+ * claimed_this_pass (S3.4) are read from this pass's claim, if any, and
+ * the this-pass stamp on @p p is drained immediately after so a later
+ * pack without a fresh claim does not re-report a stale one. The struct
+ * is memset first so its tail padding is deterministic on the wire (MSAN
+ * hygiene).
  *
  * @param p The #part to pack from.
  * @param data The destination entry.
  */
 __attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
-    const struct part *restrict p, struct hii_tag_report *restrict data) {
+    struct part *restrict p, struct hii_tag_report *restrict data) {
 
   memset(data, 0, sizeof(struct hii_tag_report));
   data->tag = p->feedback_data;
+#ifdef WITH_MPI
+  data->r2 = p->feedback_data.r2;
+  data->cost = p->feedback_data.cost;
+  data->claimed_this_pass = p->feedback_data.claimed_this_pass;
+  p->feedback_data.claimed_this_pass = 0;
+#endif
 }
 
 /**
- * @brief Unpack a #part's HII tag report-back entry (MPI plan S3.1).
+ * @brief Unpack a #part's HII tag report-back entry and merge it against
+ * any existing claim (MPI plan S3.1, S3.4).
  *
  * Only a stamped entry (S3.1/F2) is merged; an unstamped entry's tag state
  * is stale ambient data riding along in the pack, not a claim to apply.
+ * A stamped entry competing against an existing claim (@p p already
+ * is_ionized) is resolved by the deterministic commutative rule: smallest
+ * (r2, star_id) wins, both values already on hand on either side (S3.4,
+ * no owner-side star lookup). The loser's photon spend is forfeit and
+ * only reported through @p collision / @p forfeited_cost for the debug
+ * counters; nothing here can recover it.
  *
  * @param p The #part to unpack into.
  * @param data The source entry.
+ * @param collision (return) Set to 1 if this entry competed against an
+ * existing claim, left untouched otherwise.
+ * @param forfeited_cost (return) Photon cost of whichever claim lost, set
+ * only when @p collision is set.
  */
 __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_tag_report(struct part *restrict p,
-                               const struct hii_tag_report *restrict data) {
+                               const struct hii_tag_report *restrict data,
+                               char *collision, float *forfeited_cost) {
 
-  if (data->claimed_this_pass) p->feedback_data = data->tag;
+  if (!data->claimed_this_pass) return;
+
+#ifdef WITH_MPI
+  if (p->feedback_data.is_ionized) {
+    *collision = 1;
+    const int incoming_wins = (data->r2 < p->feedback_data.r2) ||
+                              (data->r2 == p->feedback_data.r2 &&
+                               data->tag.star_id < p->feedback_data.star_id);
+    if (incoming_wins) {
+      *forfeited_cost = p->feedback_data.cost;
+      p->feedback_data = data->tag;
+    } else {
+      *forfeited_cost = data->cost;
+    }
+    return;
+  }
+#endif
+
+  p->feedback_data = data->tag;
 }
 
 /**

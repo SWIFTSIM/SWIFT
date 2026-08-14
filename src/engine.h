@@ -496,6 +496,24 @@ struct engine {
   /*! radiation_reach_clamp_count at the last per-step report, for printing the
    * per-step delta. */
   long long radiation_reach_clamp_count_last_step;
+
+  /*! Cumulative S3.4 owner-side merge collisions: particles where an
+   * incoming HII tag report competed against an existing claim. Expected
+   * to be nonzero whenever two ranks' stars both reach the same boundary
+   * gas; a growing count with no matching physics regression is normal
+   * cross-rank contention, not a bug. */
+  long long radiation_hii_merge_collision_count;
+
+  /*! radiation_hii_merge_collision_count at the last per-step report. */
+  long long radiation_hii_merge_collision_count_last_step;
+
+  /*! Cumulative ionizing photon count forfeited by losing claims in the
+   * S3.4 merge (S3.4's accept-and-merge design: the losing star's debit
+   * already happened on its own rank and cannot be recovered here). */
+  double radiation_hii_forfeited_budget;
+
+  /*! radiation_hii_forfeited_budget at the last per-step report. */
+  double radiation_hii_forfeited_budget_last_step;
 #endif
 
   /* Force the engine to repartition ? */

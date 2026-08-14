@@ -242,19 +242,20 @@ void cell_unpack_bpart_swallow(struct cell *c,
  * Runs on the computing (star-owning) rank, over its (possibly foreign)
  * copy of the covered cell: @p c is the cell whose gas the local HII pass
  * gathered over, so its tag state may include claims made this pass. The
- * per-field copy (including the placeholder values for the fields that
- * have no per-part storage yet; see the plan's Status section) is
- * flavour-specific and lives in feedback_pack_hii_tag_report() (feedback.h
- * of the active module): this function stays module-agnostic so it links
- * against every feedback flavour, not just GEAR_thermal.
+ * per-field copy is flavour-specific and lives in
+ * feedback_pack_hii_tag_report() (feedback.h of the active module): this
+ * function stays module-agnostic so it links against every feedback
+ * flavour, not just GEAR_thermal. @p c is mutable: the pack drains each
+ * particle's this-pass claim stamp (S3.4) so a later pack without a fresh
+ * claim does not re-report a stale one.
  *
  * @param c The #cell to pack (local or a foreign copy).
  * @param data The destination buffer, one entry per particle of @p c.
  */
-void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data) {
+void cell_pack_part_hii_tag(struct cell *c, struct hii_tag_report *data) {
 
   const size_t count = c->hydro.count;
-  const struct part *parts = c->hydro.parts;
+  struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
     feedback_pack_hii_tag_report(&parts[i], &data[i]);
@@ -266,24 +267,33 @@ void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data) {
  * (MPI plan S3.1, task_subtype_part_hii_tag).
  *
  * Runs on the owner rank, over its local copy of the covered cell. The
- * stamped-entries-only merge rule (S3.1/F2) is flavour-specific and lives
- * in feedback_unpack_hii_tag_report() (feedback.h of the active module).
- * This is the raw per-particle merge only: the S2 helper pair that also
- * writes the two xpart floats, and the S3.4 (r2, id) cross-rank tiebreak
- * against concurrently arriving reports, are a later stage's job (this
- * channel is inert until then).
+ * stamped-entries-only merge rule (S3.1/F2) and the S3.4 (r2, star_id)
+ * cross-rank tiebreak are flavour-specific and live in
+ * feedback_unpack_hii_tag_report() (feedback.h of the active module).
  *
  * @param c The owner's local #cell.
  * @param data The source buffer, one entry per particle of @p c.
+ * @param collision_count (return) Incremented once per particle whose
+ * merge competed against an existing claim (S3.4 debug counter).
+ * @param forfeited_budget (return) Summed photon cost of every losing
+ * claim across this cell's merge (S3.4 debug counter).
  */
-void cell_unpack_part_hii_tag(struct cell *c,
-                              const struct hii_tag_report *data) {
+void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
+                              long long *collision_count,
+                              double *forfeited_budget) {
 
   const size_t count = c->hydro.count;
   struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    feedback_unpack_hii_tag_report(&parts[i], &data[i]);
+    char collision = 0;
+    float forfeited_cost = 0.f;
+    feedback_unpack_hii_tag_report(&parts[i], &data[i], &collision,
+                                   &forfeited_cost);
+    if (collision) {
+      (*collision_count)++;
+      *forfeited_budget += forfeited_cost;
+    }
   }
 }
 

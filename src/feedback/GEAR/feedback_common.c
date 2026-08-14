@@ -729,6 +729,12 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef WITH_MPI
+  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
+  pj->feedback_data.r2 = r2;
+  pj->feedback_data.cost = (float)cost;
+  pj->feedback_data.claimed_this_pass = 1;
+#endif
   timestep_sync_part(pj);
 
   radiation_consume_ionizing_photons(si, pixel, cost);
@@ -799,6 +805,12 @@ feedback_iact_HII_maintain_ionized_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef WITH_MPI
+  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
+  pj->feedback_data.r2 = r2;
+  pj->feedback_data.cost = (float)cost;
+  pj->feedback_data.claimed_this_pass = 1;
+#endif
 
   return cost;
 }
