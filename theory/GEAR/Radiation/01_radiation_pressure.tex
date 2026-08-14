@@ -12,7 +12,7 @@ temperature, while radiation pressure injects momentum directly into
 gas neighbouring the star. The two channels draw on \emph{different}
 integrals of the star's spectrum ($Q_H$ vs.\ $L_{\rm bol}$, see
 Section~\ref{sec:rp-vs-hii} below) and use the same SPH gather around
-the star, but are otherwise independent -- a star can have one policy
+the star, but are otherwise independent: a star can have one policy
 enabled without the other. Not yet covered anywhere else in this
 document; written up here for the first time (2026-07-19).
 
@@ -26,12 +26,12 @@ bookkeeping categories of the same effect (clarified 2026-07-20).
 energy above $13.6\,$eV (Lyman continuum, $\lambda<912\,$\AA) is
 absorbed by a bound electron in hydrogen, ejecting it; the photon's
 energy above the ionization threshold becomes the photoelectron's
-kinetic energy, which thermalizes via collisions -- this is what heats
+kinetic energy, which thermalizes via collisions; this is what heats
 the gas to $\sim10^4\,$K, balanced against recombination/line cooling.
 Only photons above that specific energy threshold count, and the
 relevant budget is $Q_H$ (ionizing photon \emph{number} rate, the
 blackbody-fit section of the HII photoionization theory document), not energy.
-This is fundamentally a \textbf{thermal/chemical} effect -- it sets the
+This is fundamentally a \textbf{thermal/chemical} effect: it sets the
 gas's ionization state and temperature, and in this code drives
 dynamics only indirectly, through the resulting thermal-pressure
 contrast against the cold ambient medium (the classical Spitzer D-type
@@ -41,14 +41,13 @@ logbook's own validation section, checks).
 \textbf{Radiation pressure} is a mechanical process: \emph{any}
 absorbed or scattered photon, at any wavelength, transfers momentum
 $p=E/c$ to whatever absorbs or scatters it. This draws on $L_{\rm
-bol}$ -- the star's entire spectrum, dominated for most stars by the
+bol}$: the star's entire spectrum, dominated for most stars by the
 non-ionizing UV/optical continuum, not the ionizing band specifically
 (the mass-luminosity fit vs.\ the separate ionizing-rate fit behind
 $Q_H$, both in the HII photoionization theory document's blackbody-fit
-section
--- two different fits of the same underlying blackbody, not the same
+section. Two different fits of the same underlying blackbody, not the same
 fit reused). It is
-a \textbf{dynamical} effect -- a direct push, independent of whether
+a \textbf{dynamical} effect: a direct push, independent of whether
 the interaction happens to ionize anything, and in this code it acts
 through Eq.~\ref{eq:rp-momentum-rate} directly, with no thermal
 intermediary.
@@ -57,24 +56,24 @@ Two consequences worth keeping precise:
 \begin{itemize}
   \item \textbf{They are not disjoint at the photon level.} An
     ionizing-photon absorption \emph{also} transfers momentum
-    $h\nu/c$ in that same event -- momentum conservation does not care
+    $h\nu/c$ in that same event: momentum conservation does not care
     about the atomic-physics outcome. But that ionizing-photon
     momentum is a small slice of the total budget, since $Q_H$
     photons are only part of $L_{\rm bol}$ for most stars, and dust
     reprocessing/IR trapping (the $(1+\tau_{\rm IR})$ term,
     Eq.~\ref{eq:rp-tauIR}) adds momentum from photons that were never
     ionizing to begin with. This code does not attempt to avoid
-    double-counting this overlap -- see the open interaction question
+    double-counting this overlap; see the open interaction question
     in the GEAR radiation logbook's radiation-pressure open-questions
     section.
   \item \textbf{They drive HII region expansion through different,
     competing channels.} Photoionization heats gas against a cold
-    ambient medium ($\sim10$--$100\,$K) -- the resulting
+    ambient medium ($\sim10$--$100\,$K): the resulting
     \emph{thermal-pressure} contrast drives the D-type expansion.
     Radiation pressure drives expansion through \emph{direct momentum}
     deposition instead, no heating required.
-    \citet{KrumholzMatzner2009} -- already cited above for the Tier-2
-    validation proposal -- is literally a paper about comparing these
+    \citet{KrumholzMatzner2009}, already cited above for the Tier-2
+    validation proposal, is literally a paper about comparing these
     two channels: thermal-pressure-driven expansion dominates for the
     modest OB associations STARBENCH-style tests represent, while
     radiation pressure only becomes the dominant \emph{dynamical}
@@ -108,42 +107,42 @@ arXiv:1811.12462, distinct from the FIRE-2 numerics paper
 and grepped the full text directly: \citet{Hopkins2020}'s Appendix~A
 gives \textbf{exactly}
 $(\kappa_{\rm FUV},\kappa_{\rm NUV},\kappa_{\rm opt},\kappa_{\rm IR}) =
-(2000, 1800, 180, 10)\,(Z/Z_\odot)\,{\rm cm^2\,g^{-1}}$ -- this
+(2000, 1800, 180, 10)\,(Z/Z_\odot)\,{\rm cm^2\,g^{-1}}$: this
 codebase's $\kappa_{\rm IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$
 (Eq.~\ref{eq:rp-tauIR}) matches precisely, not just order-of-magnitude.
 \citet{Agertz2013}/\citet{Marinacci2019} remain plausible independent
 lineages sharing the same functional form but are no longer the
-open question -- \citet{Hopkins2020} is confirmed as the actual source.
+open question: \citet{Hopkins2020} is confirmed as the actual source.
 
 \textbf{New finding from the same primary-source check: a term this
 codebase is missing.} \citet{Hopkins2020} \S4.4, footnote 16 gives the
 full LEBRON momentum-coupling formula as
 $\dot p = \tilde\tau\,L_{\rm bol}/c$, with
-$\tilde\tau = (1-e^{-\tau_{\rm single}})\,(1+\tau_{\rm eff,IR})$ --
+$\tilde\tau = (1-e^{-\tau_{\rm single}})\,(1+\tau_{\rm eff,IR})$,
 \emph{not} simply $(1+\tau_{\rm IR})$ as
 Eq.~\ref{eq:rp-momentum-rate} implements. The
 $(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
 \emph{input} (non-ionizing UV/optical) luminosity actually absorbed
 before reaching the dust that reprocesses it into the trapped IR
-term -- this codebase's formula implicitly assumes
+term: this codebase's formula implicitly assumes
 $\tau_{\rm single}\to\infty$ (i.e.\ $(1-e^{-\tau_{\rm single}})=1$,
 full absorption), which only holds deep in a dense cloud. Hopkins et
 al.\ report their own galaxy-scale simulations couple only
 $\langle\tilde\tau\rangle\sim0.4$--$0.7$ of the bolometric luminosity
 on average (an order-unity fraction of sightlines are optically thin
-even in the optical) -- so at Darwin's production resolution
+even in the optical); so at Darwin's production resolution
 (10\,$M_\odot$ to a few $10^4\,M_\odot$ per gas particle), where much
 of the coupling volume around a star can be diffuse, this
 missing factor likely causes this codebase to \emph{over}-estimate
 direct/single-scattering radiation pressure, on top of (and largely
 independent from) the $\kappa_{\rm IR}$ bug's IR-trapping
 \emph{under}-estimate (GEAR radiation logbook, ``Bugs found and
-fixed (2026-07-23)'' section) -- the two
+fixed (2026-07-23)'' section): the two
 are separate errors, not a cancelling pair, and there is no reason to
 expect them to offset in general. Implementing this requires an
 opacity for the input band(s), which \citet{Hopkins2020}'s own
 $\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$ spread by over an
-order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$) -- a single
+order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$): a single
 effective $\kappa_{\rm single}$ (e.g.\ luminosity/temperature-weighted
 via the blackbody fit already computed for $T_K$, in the HII
 photoionization theory document) would capture the leading effect without adopting
@@ -154,7 +153,7 @@ channel, ahead of the resolution/banding items below.
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
 (the HII photoionization theory document's blackbody-fit section) and scaled
-by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}) --
+by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}):
 an overall dial on this channel independent of the photoionization
 budget, default behaviour unaffected unless explicitly set $\ne1$.
 
@@ -165,7 +164,7 @@ The IR optical depth is
   \label{eq:rp-tauIR}
 \end{equation}
 (\code{radiation\_get\_physical\_IR\_optical\_depth},
-\code{radiation\_get\_physical\_IR\_opacity}) -- a metallicity-linear
+\code{radiation\_get\_physical\_IR\_opacity}): a metallicity-linear
 dust opacity of $10\,{\rm cm^2\,g^{-1}}$ at solar metallicity, a
 standard order-of-magnitude value for dust-processed IR opacity in this
 class of model. $Z$ here is \code{sp->feedback\_data.Z\_star}, the
@@ -192,7 +191,7 @@ codes:
 \end{equation}
 (\code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}), i.e.\
 the local gas density times an effective path length: the kernel
-support radius $h_\star\gamma_k$ (a floor -- always included, not just
+support radius $h_\star\gamma_k$ (a floor: always included, not just
 a fallback) plus the Sobolev length $\rho/|\nabla\rho|$, the
 characteristic distance over which the density itself changes by a
 factor of $e$. $\rho_\star$ is \code{enrichment\_weight} (the star's
@@ -202,7 +201,7 @@ accumulator); $\nabla\rho_\star$ is
 \code{sp->feedback\_data.grad\_rho\_star}, an ordinary SPH kernel-gradient
 density estimate accumulated in the same density-loop pass as $Z_\star$
 above. \textbf{Degenerate case handled:} a locally uniform density
-field (zero gradient -- e.g.\ unperturbed glass/grid initial
+field (zero gradient, e.g.\ unperturbed glass/grid initial
 conditions, or a star with too few neighbours to resolve a gradient)
 makes $\ell_{\rm Sobolev}$ formally undefined (0/0); the code checks
 $|\nabla\rho_\star|>0$ explicitly and falls back to the kernel-radius
@@ -211,7 +210,7 @@ term alone in that case, rather than propagating a NaN.
 \textbf{Confirmed against the primary source (2026-07-23).}
 \citet{Hopkins2020} \S4.4 gives their own local column-density
 estimate as $\langle\Sigma\rangle \approx \rho\,[h + \rho/|\nabla\rho|]$,
-with $h=(m_i/\rho)^{1/3}$ the local resolution-element size --
+with $h=(m_i/\rho)^{1/3}$ the local resolution-element size,
 structurally identical to Eq.~\ref{eq:rp-sobolev}'s
 $\rho_\star(h_\star\gamma_k + \ell_{\rm Sobolev})$: same
 floor-plus-Sobolev-length sum, just a slightly different (arguably
@@ -220,14 +219,14 @@ radius rather than a generic mass/density cube root) floor term.
 \textbf{One correction to an earlier assumption in this discussion}:
 Darwin recalled FIRE capping the $\rho/|\nabla\rho|$ term at the
 smoothing length; the formula as quoted in \citet{Hopkins2020} \S4.4
-is a plain sum, no $\min(\cdot)$ -- i.e.\ no cap is visible in this
+is a plain sum, no $\min(\cdot)$: i.e.\ no cap is visible in this
 specific paper. This may be in \citet{Hopkins2018} (their ``Paper~I'',
-not yet checked) or a later code update, or simply a misremembering --
+not yet checked) or a later code update, or simply a misremembering;
 not resolved this pass. Practically: this codebase's formula already
 matches \citet{Hopkins2020}'s own documented approach as-is, so the
 resolution-robustness concern raised below (production runs at
 10--$10^4\,M_\odot$ per particle) is about noise in $|\nabla\rho|$
-at coarse resolution, not about deviating from the primary source --
+at coarse resolution, not about deviating from the primary source:
 a cap would be a robustness \emph{improvement over} what
 \citet{Hopkins2020} documents, not a correction to match it.
 
@@ -249,11 +248,11 @@ the unit vector pointing radially outward from the star to the gas
 particle (the code computes $-dx/r$ with $dx \equiv \vec x_\star -
 \vec x_j$, i.e.\ away from the star, with the usual comoving/physical
 $\times\,a$ conversion applied). The result accumulates into
-\code{xpj->feedback\_data.radiation.delta\_p} -- a field distinct from
+\code{xpj->feedback\_data.radiation.delta\_p}: a field distinct from
 the top-level \code{xpj->feedback\_data.delta\_p} used for
 supernova/wind momentum (\code{feedback\_struct.h}), applied separately
 in \code{feedback\_update\_part\_radiation}
-(\code{feedback\_data\_iact.h} -- see the bug fixed in the HII
+(\code{feedback\_data\_iact.h}: see the bug fixed in the HII
 photoionization logbook's bugs-and-fixes section,
 \code{hit\_by\_radiation} was never actually
 set until 2026-07-19, so this accumulated momentum was silently

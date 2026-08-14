@@ -37,7 +37,7 @@ i.e.\ a piecewise power-law mass--radius and mass--luminosity relation
 (\code{radiation\_get\_individual\_star\_radius},
 \code{radiation\_get\_individual\_star\_luminosity}), then $T_{\rm eff}$
 from the Stefan--Boltzmann law applied to $L$ and $R$ directly (not a
-separate mass--temperature fit -- see the note at the end of this
+separate mass--temperature fit: see the note at the end of this
 subsection). $\dot N_{\rm ion}$ is then the photon-number flux of a
 Planck spectrum of temperature $T_{\rm eff}$ above the H-ionizing edge
 $h\nu_0=13.6\,$eV:
@@ -58,10 +58,10 @@ evaluates it via the standard series expansion
   \left(x_0^2 + \frac{2x_0}{n} + \frac{2}{n^2}\right),
   \label{eq:planck-series}
 \end{equation}
-truncated at $n=5$ terms (or earlier once $e^{-nx_0}<10^{-10}$) --
+truncated at $n=5$ terms (or earlier once $e^{-nx_0}<10^{-10}$),
 sufficient given $x_0 \gtrsim 3$ for any star hot enough to ionize
 hydrogen at all, so the series converges geometrically fast. If
-$x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output --
+$x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output, as
 happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
 ion}=0$ is returned directly rather than evaluating the series.
 
@@ -74,7 +74,7 @@ $8\,M_\odot$, $25000\,{\rm K}\,(M/M_\odot/20)^{0.1}$ above), \emph{not}
 used by Eq.~\ref{eq:stefan-boltzmann} above, which derives $T_{\rm
 eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. A grep confirms
 \code{radiation\_get\_individual\_star\_temperature} has zero call
-sites anywhere in \code{src/} -- genuinely dead code, not merely
+sites anywhere in \code{src/}: genuinely dead code, not merely
 redundant. Evaluated both relations (plus the $R(M)$/$L(M)$ fits the
 Stefan--Boltzmann path depends on) across $0.1$--$150\,M_\odot$: they
 agree only near the two piecewise-boundary anchors ($\approx1\,M_\odot$,
@@ -83,7 +83,7 @@ like the Sun's $T_{\rm eff}$) and diverge by a factor
 $\sim1.5$--$2.7\times$ everywhere else, worst in the OB-star range that
 dominates ionizing photon production. The Stefan--Boltzmann path (the
 one actually used) also saturates at a fixed $\approx77{,}300\,$K for
-every mass above $\approx54\,M_\odot$ -- a structural artifact of the
+every mass above $\approx54\,M_\odot$: a structural artifact of the
 mass--luminosity fit turning linear ($L\propto M$) at exactly the mass
 the mass--radius fit is already $R\propto M^{0.5}$, making $L/R^2$ (and
 hence $T_{\rm eff}$) mass-independent there by construction, not
@@ -94,7 +94,7 @@ relation is used. This entire empirical-fit layer (radius, luminosity,
 temperature) is intended to be replaced by extending \texttt{pychem}
 (\texttt{\textasciitilde/programs/pychem/}, already the source of this
 project's GEAR chemical-yield tables) to emit proper
-$(M,Z)$-dependent stellar tables -- see the open items (item~T7 in the
+$(M,Z)$-dependent stellar tables: see the open items (item~T7 in the
 GEAR radiation logbook's Open Items section) for that standalone
 follow-up project. When it
 lands, the unused \code{radiation\_get\_individual\_star\_temperature}
@@ -144,9 +144,9 @@ and $N_{HI,b}$ is the particle's \emph{neutral}-hydrogen atom count
 (\code{radiation\_get\_part\_number\_neutral\_hydrogen\_atoms}), not
 the total $N_{H,b}$ of Eq.~\ref{eq:recomb-cost}. At
 \code{COOLING\_GRACKLE\_MODE}$\,\ge 1$, where species fractions are
-tracked, a candidate that is already partly or fully ionized -- gas
+tracked, a candidate that is already partly or fully ionized: gas
 re-tagged after its previous tag lapsed on a marginal budget shortfall,
-or pre-ionized by an external UV background -- does not need to pay
+or pre-ionized by an external UV background: does not need to pay
 again to strip electrons it has already lost; at mode~0, with no
 species tracked, $N_{HI,b}$ falls back to the conservative $N_{H,b}$.
 The maintenance charge levied on gas the star already holds ionized
@@ -166,14 +166,14 @@ whenever $\Delta t_{\rm back} \gg t_{\rm rec}$.
 (and every other electron-density calculation in this model, including
 the adaptive rebuild cadence's recombination timescale,
 Section~\ref{sec:adaptive-cadence}) assumes one free electron
-per hydrogen nucleus -- it does not track helium's ionization state at all.
+per hydrogen nucleus: it does not track helium's ionization state at all.
 For a standard cosmic He mass fraction ($\sim$24--28\%, $\sim$8--10\%
 by number relative to H), singly-ionized He alone (needs $>24.6\,$eV,
 present in any O-star spectrum energetic enough to ionize H at all)
 underestimates $n_e$ by $\sim$8--10\% if ignored; doubly-ionized He
 ($>54.4\,$eV, only the hottest O stars) up to $\sim$16--20\%. This is a
 structural simplification of the whole model (this branch does not add
-or remove it), not something any single feature here fixes -- any
+or remove it), not something any single feature here fixes: any
 future recombination-timescale or electron-density calculation added
 to this model inherits the same approximation.
 
@@ -182,7 +182,7 @@ to this model inherits the same approximation.
 
 \citet{HuiGnedin1997}, Appendix A, give a fit to the case-B H\,{\sc
 ii} recombination coefficient (from \citealt{Ferland1992}'s data,
-accurate to 0.7\% from 1\,K to $10^9\,$K -- effectively exact for our
+accurate to 0.7\% from 1\,K to $10^9\,$K: effectively exact for our
 purposes):
 \begin{equation}
   \alpha_B(T) = 2.753\times10^{-14}\,
@@ -191,16 +191,16 @@ purposes):
   \lambda = \frac{315614\,{\rm K}}{T}.
   \label{eq:alphaB-huignedin}
 \end{equation}
-This was already implemented correctly elsewhere in \swift --
+This was already implemented correctly elsewhere in \swift:
 identically in \code{src/rt/SPHM1RT/rt\_cooling\_rates.h}, and inside
 grackle's own \code{k2\_rate()} (which GEAR-RT delegates to for its own
-case-B recombination, via the \code{CaseBRecombination} flag -- GEAR-RT
-has no case-B formula of its own) -- and \textbf{is now also
+case-B recombination, via the \code{CaseBRecombination} flag: GEAR-RT
+has no case-B formula of its own), and \textbf{is now also
 implemented here (2026-07-16)}: $\beta$ in Eq.~\ref{eq:recomb-cost} is
 Eq.~\ref{eq:alphaB-huignedin} evaluated at $T$, not a fixed constant.
-$T$ is the particle's own applied ionized temperature -- the same
+$T$ is the particle's own applied ionized temperature: the same
 $u_{\rm new}$ from Eq.~\ref{eq:floor}, converted to a temperature via
-its own $\mu$ -- so the recombination cost charged against a star's
+its own $\mu$, so the recombination cost charged against a star's
 budget is always consistent with the temperature that particle is
 actually being held at
 (\code{radiation\_get\_part\_ionized\_internal\_energy}, shared between
@@ -211,8 +211,8 @@ coefficient\_cgs} implements Eq.~\ref{eq:alphaB-huignedin} itself).
 
 For reference, evaluating Eq.~\ref{eq:alphaB-huignedin} across the
 range this model's own temperature floor
-(Eq.~\ref{eq:floor}--\ref{eq:tcollisional}) applies --
-$\approx$8,600\,K at $Z=Z_\odot$ up to $\approx$47,500\,K at $Z=0$ --
+(Eq.~\ref{eq:floor}--\ref{eq:tcollisional}) applies
+($\approx$8,600\,K at $Z=Z_\odot$ up to $\approx$47,500\,K at $Z=0$)
 against the value $\beta$ used to take everywhere before this fix
 ($2.6\times10^{-13}\,{\rm cm^3\,s^{-1}}$, $\alpha_B(10^4\,{\rm K})$ to
 +0.3\%):
@@ -230,7 +230,7 @@ against the value $\beta$ used to take everywhere before this fix
 \end{center}
 Since $\alpha_B(T)$ falls with rising $T$, the old fixed value used to
 \emph{overestimate} the recombination cost at low metallicity by a
-factor of $\sim$4 at this example's $Z=0$ default -- the star's budget
+factor of $\sim$4 at this example's $Z=0$ default: the star's budget
 was spent roughly 4$\times$ faster than physically necessary, which
 artificially shrank the achieved $r_{\rm HII}$ in exactly the direction
 that could explain part of the residual gap to
@@ -260,8 +260,8 @@ particle to exactly one pixel (cone) by its direction from the star,
 hard assignment (no fractional overlap, matching both papers' own
 choice). \code{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's
 plain spherical behaviour. \code{nside} can be any non-negative
-integer -- the HEALPix RING scheme, unlike NEST, has no power-of-2
-restriction -- but the practical ceiling is memory, not geometry: each
+integer: the HEALPix RING scheme, unlike NEST, has no power-of-2
+restriction; but the practical ceiling is memory, not geometry: each
 star carries a fixed-size per-pixel array sized at configure time by
 \code{--with-number-of-hii-angular-pixels} (default 12, i.e.\
 $\text{nside}\le1$); requesting more pixels than the build supports
@@ -278,13 +278,13 @@ each rebuild pass, every pixel's photon count is (re)opened from
 where $\Delta t_{\rm back}$ is the time elapsed since this star's
 previous pass and $N_{{\rm ion},p}^{\rm prev}$ is whatever the pixel's
 count stood at when that pass ended. Unspent \emph{positive} budget is
-not carried forward -- those photons reached no gas and escaped --
+not carried forward: those photons reached no gas and escaped;
 but a \emph{negative} balance is: a pass can overdraw a pixel by up to
 one particle's cost (the boundary-particle rule below), and that debt
 is repaid out of the next pass's income before any new spending
 happens, rather than forgiven. Forgiving it every pass instead would
 over-issue photons in proportion to how many passes elapse per unit
-time, i.e.\ as $1/\Delta t_{\rm back}$ -- a cadence-dependent bias,
+time, i.e.\ as $1/\Delta t_{\rm back}$: a cadence-dependent bias,
 which this model is built to avoid.
 
 \textbf{Sequential spend within a pass.} A pass gathers its candidates
@@ -292,7 +292,7 @@ into a single buffer sorted by distance from the star, each entry
 tagged with the pixel its direction falls in. Scanning that buffer in
 order and skipping (not stopping at) entries whose pixel is already
 exhausted visits every pixel's own candidates in ascending-distance
-order -- a sorted sequence's subsequence is still sorted -- so each
+order: a sorted sequence's subsequence is still sorted, so each
 cone spends closest-first exactly like the spherical ($N_{\rm
 pix}=1$) case, just interleaved with every other cone's spending in
 the same traversal.
@@ -307,8 +307,8 @@ claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
   \item \code{HII\_deterministic\_boundary\_ionization=0} (the
     default): draw a single random number, keyed on the star id, the
     pixel, and the integer time at the start of the step
-    (\code{random\_number\_HII\_regions}) -- \emph{not} on the
-    candidate particle -- and ionize the boundary particle iff the
+    (\code{random\_number\_HII\_regions}): \emph{not} on the
+    candidate particle, and ionize the boundary particle iff the
     draw is at most the affordable fraction
     $\text{budget}_p/{\rm cost}_b$.
 \end{itemize}
@@ -319,7 +319,7 @@ so every later comparison in the same pixel this pass evaluates a
 non-positive affordable fraction and always loses. This is what gives
 expectation-level photon conservation,
 $\mathbb{E}[\text{spent}] = P_{\rm win}\cdot{\rm cost}_b +
-(1-P_{\rm win})\cdot 0 = \text{budget}_p$ -- and specifically requires
+(1-P_{\rm win})\cdot 0 = \text{budget}_p$, and specifically requires
 the single fixed draw: rolling independently per candidate in a loop
 that stops at the first win would instead claim a boundary particle
 almost surely, spending its full cost rather than the pixel's actual
@@ -343,7 +343,7 @@ energy needed to fully ionize the particle ($E_{\rm ion}=13.6\,$eV per
 H atom, metallicity-independent), and $u_{\rm collisional}$ comes from
 a metallicity-dependent equilibrium temperature. Unlike the rest of
 Section~\ref{sec:algorithm}, Eq.~\ref{eq:tcollisional} is not from
-FIRE-2 -- FIRE-2 clamps ionized gas to a flat $10^4\,$K -- but from
+FIRE-2: FIRE-2 clamps ionized gas to a flat $10^4\,$K, but from
 its successor, \citet[][the metallicity-dependent photoionization
 temperature fit]{Hopkins2023}:
 \begin{equation}
@@ -355,7 +355,7 @@ temperature fit]{Hopkins2023}:
   \label{eq:tcollisional}
 \end{equation}
 Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
-at all -- both simply clamp ionized gas to a flat $10^4\,$K. See the
+at all: both simply clamp ionized gas to a flat $10^4\,$K. See the
 GEAR radiation logbook's Metallicity and the ionized-gas temperature
 floor section for the numeric consequence of
 Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
@@ -365,15 +365,15 @@ Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 \code{cooling\_ionize\_part\_subgrid} (\code{cooling\_gear\_subgrid.h})
 returns it to its caller, \code{cooling\_new\_energy}, which returns
 immediately on a tagged particle without ever calling Grackle's own
-chemistry/cooling solve (\code{local\_solve\_chemistry}) -- the
+chemistry/cooling solve (\code{local\_solve\_chemistry}): the
 untagged path always calls it. Skipping that call is what makes the
 floor hold for the step: Grackle's ODE integrator has no notion of the
 external photoionizing forcing this model represents and would
 otherwise relax the just-floored energy back toward its own
 equilibrium within the same step it was applied. $u_{\rm new}$ then
 re-enters \code{cooling\_cool\_part} exactly like any other cooling
-function's return value -- floored again at
-\code{hydro\_props->minimal\_internal\_energy} if needed -- and is
+function's return value: floored again at
+\code{hydro\_props->minimal\_internal\_energy} if needed, and is
 turned into a rate,
 \begin{equation}
   \left.\D{u}{t}\right|_{\rm cool} =
@@ -386,8 +386,8 @@ integration path as ordinary cooling, subject to the same floors. It
 is also subject to the same suppression as ordinary cooling when
 \code{cooling->thermal\_time} delayed-cooling turn-off is active for
 this particle (\code{time - time\_last\_event < thermal\_time}): while
-that window is open, \code{cooling\_new\_energy} -- and with it
-\code{cooling\_ionize\_part\_subgrid} -- is not called at all, so a
+that window is open, \code{cooling\_new\_energy}: and with it
+\code{cooling\_ionize\_part\_subgrid}: is not called at all, so a
 tagged particle is not re-floored until the window closes.
 
 The bookkeeping this produces is exact, not merely consistent:
@@ -412,7 +412,7 @@ Metallicity and the ionized-gas temperature floor section),
 chosen specifically because $\log_{10}$ makes
 $T_{\rm collisional}=10^4\,$K there. With the natural-log bug, the code
 actually applied $T_{\rm collisional}\approx12{,}700\,$K at that same
-point -- not the intended, papers-matching $10^4\,$K -- which also
+point: not the intended, papers-matching $10^4\,$K, which also
 shifted the case-B $\beta$ (Section~\ref{sec:beta-temperature}, evaluated
 at this same temperature whenever $u_{\rm collisional} < \Delta
 u_{\rm ionized}$). Every deprecated result in the GEAR radiation
@@ -442,10 +442,10 @@ the stars are identical, not because the code enforces it.
 \textbf{Maintenance: renewing gas already held ionized.} Before a pass
 spends anything on new candidates, it first renews the gas the star
 already holds. \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-gathers every particle currently tagged with this star's own id --
+gathers every particle currently tagged with this star's own id,
 via a traversal exempt from the ordinary candidate filter
 (\code{feedback\_part\_can\_be\_ionized}), since held gas is neither
-cold nor untagged -- into a scratch buffer, then charges each one's
+cold nor untagged: into a scratch buffer, then charges each one's
 maintenance rate (Section~\ref{sec:photon-budget}) via
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}, which also renews
 its \texttt{end\_time} so the tag survives to the following pass. Every
@@ -455,8 +455,8 @@ once at claim time and never again.
 
 \textbf{Maintenance order: a receding front recedes from the outside
 in.} The scratch buffer is charged in ascending $(r^2,{\rm id})$
-order -- current squared distance from the star, with particle id as
-the tiebreak for particles at coincident $r^2$ -- \emph{not} the order
+order: current squared distance from the star, with particle id as
+the tiebreak for particles at coincident $r^2$: \emph{not} the order
 cell traversal happens to visit them in. This order is what determines
 which particles a budget shortfall lapses: charging nearest-first
 means an exhausted pixel simply stops renewing its most distant held
@@ -479,12 +479,12 @@ regardless of whether its renewal was affordable this pass, so a
 shrinking region promptly shrinks $h_{\rm hii}$, and with it the
 search radius and locking footprint, for a star doing correspondingly
 less work), not the historical high-water mark of everything the star
-has ever claimed -- see Section~\ref{sec:front-radius} for the
+has ever claimed: see Section~\ref{sec:front-radius} for the
 distinct, historical-extent measure used to read out this model's
 region from the outside.
 
-Budget carryover between passes -- unspent positive budget discarded,
-negative debt carried forward and repaid first -- is
+Budget carryover between passes: unspent positive budget discarded,
+negative debt carried forward and repaid first, is
 Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
 same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
@@ -514,7 +514,7 @@ stopped renewing therefore still carries that star's id and keeps
 advecting with the flow, marking where the swept shell has been even
 after the active front has receded past it. The largest current
 distance among a star's ever-owned gas is a historical-extent measure,
-distinct from -- and always at least as large as -- $h_{\rm hii}$.
+distinct from, and always at least as large as, $h_{\rm hii}$.
 
 For the default flag-and-floor scheme, the historical-extent measure
 is the more useful proxy for ``how far did this star's ionization
@@ -539,7 +539,7 @@ directly: sort ever-owned distances descending, estimate a local point
 spacing from the median gap among the outermost few percent of
 points, then walk inward from the largest distance and discard a
 point only while the gap to its next-lower neighbour exceeds several
-times that local spacing -- an isolated advected straggler produces a
+times that local spacing: an isolated advected straggler produces a
 gap an order of magnitude or more above the front's own natural
 surface roughness, so this stops at the first point that is not such
 an outlier. The true (unrejected) maximum is still reported alongside
@@ -568,7 +568,7 @@ interval in fixed-cadence mode too). The description below is kept as
 a historical record of the mechanism that was removed.
 
 The fixed \code{HII\_region\_rebuild\_time\_Myr} above is a single,
-problem-specific value with no principled way to choose it -- this
+problem-specific value with no principled way to choose it: this
 project has used both $0.01$ and $0.5\,$Myr across different examples.
 \code{GEARFeedback:HII\_adaptive\_rebuild\_cadence=1} replaces it with a
 physically-derived, per-star cadence,
@@ -579,7 +579,7 @@ physically-derived, per-star cadence,
 where $t_{\rm rec}=1/(\alpha_B(T_i)\,n_H)$ (recombination timescale,
 computed \emph{per active angular pixel} and combined via a minimum,
 since a dense clump-facing pixel and a diffuse one are physically
-different environments -- diluting via a star-wide mean would
+different environments: diluting via a star-wide mean would
 reintroduce a milder version of the mass-biasing problem angular
 splitting exists to solve), $t_{\rm cross}=R_{\rm hii}/c_s(T_i)$
 (sound-crossing timescale, star-wide, since $h_{\rm hii}$ is not
@@ -587,7 +587,7 @@ tracked per-pixel), and $f_{\rm safety}$ (default $0.2$) is a
 dimensionless safety factor, the direct analogue of a CFL number. The
 density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
 front candidates already gathered by the ordinary search pass (not from
-gas already tagged by this star in an earlier rebuild) -- simpler, no
+gas already tagged by this star in an earlier rebuild): simpler, no
 changes needed to \code{feedback\_part\_can\_be\_ionized}/the gather
 functions, and arguably the physically right population for
 recombination risk anyway (front gas is the marginal population, not
@@ -604,7 +604,7 @@ helper) and
 \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} in
 \code{radiation.c}, dispatched through a thin wrapper in
 \code{feedback\_common.\{h,c\}} so \code{runner\_radiation\_feedback.c}
--- generic cell-traversal code -- never includes GEAR-internal
+: generic cell-traversal code: never includes GEAR-internal
 \code{radiation.h} directly. The non-adaptive code path is untouched
 (only new \code{if}/\code{else if} branches added ahead of it), so
 every already-validated result stays reproducible with the feature off
@@ -615,7 +615,7 @@ fixed during verification: the cached rebuild deadline is only
 refreshed by an actual rebuild pass, and if that gate stays false for a
 reason unrelated to timing (photon budget exhausted, aged past
 \code{HII\_region\_max\_age}) the deadline goes stale and the timestep
-constraint returned exactly $0.0$ forever -- fixed by flooring the
+constraint returned exactly $0.0$ forever: fixed by flooring the
 fallback instead of returning a literal $0.0$ (the GEAR radiation
 logbook's ``star/HII timestep floor'' bug entry, 2026-07-20,
 generalized this floor further). With that fixed: \code{StromgrenSphere}
@@ -623,10 +623,10 @@ and all six \code{StromgrenSphereClumpSmith2021} sweep configurations
 completed cleanly with sane, bounded $r_{\rm HII}$; the e10 task-graph
 diagnostic showed a real, quantified improvement (time to reach
 $R_{\rm st}$ roughly $47\%$ faster) without fully closing that
-diagnostic's own shape mismatch -- consistent with the search-radius
+diagnostic's own shape mismatch: consistent with the search-radius
 cap being a separate, also-contributing factor there.
 
 \textbf{Not yet done (2026-07-20):} the user has indicated this should
 eventually become the default (replacing the fixed cadence), but wants
-more testing first -- it remains opt-in, off by default, until that
+more testing first: it remains opt-in, off by default, until that
 testing happens.

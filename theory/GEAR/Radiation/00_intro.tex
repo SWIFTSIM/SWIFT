@@ -14,7 +14,7 @@ related reference algorithms:
     mode reproduces directly;
   \item \citet{Smith2021}, Section 3.3.3--3.3.4 and Figs.~1--2: the
     same D-type test, plus an angular (HealPix) budget-splitting
-    scheme designed to avoid ``mass-biasing'' -- a dense clump near a
+    scheme designed to avoid ``mass-biasing'': a dense clump near a
     source absorbing a disproportionate share of the photon budget
     regardless of the small solid angle it subtends.
 
@@ -40,12 +40,12 @@ repository (\code{theory/radiation/}, branch
   \item a dated log of bugs found and fixed;
   \item the running validation campaign against Hu et al.\ (2017),
     Smith et al.\ (2021), STARBENCH, and the Grackle rate-coupled
-    (T5) checks -- tables, figures, and their interpretation;
+    (T5) checks: tables, figures, and their interpretation;
   \item what remains undecided or undone (open items).
 \end{itemize}
 The two documents cross-reference each other by name and section
 title rather than by automatic \code{\textbackslash ref}, since they
-compile separately in separate repositories -- a pointer like ``the
+compile separately in separate repositories: a pointer like ``the
 GEAR radiation logbook's Validation section'' is prose, not a live
 link; if this document's section titles change, check the logbook for
 stale pointers (and vice versa).
@@ -53,4 +53,4 @@ stale pointers (and vice versa).
 Update \code{01\_algorithm.tex} only when the code's physics actually
 changes; update \code{02\_task\_graph.tex} only when the task-graph
 implementation itself changes. Neither should accumulate validation
-results or dated narrative -- that belongs in the logbook.
+results or dated narrative; that belongs in the logbook.
