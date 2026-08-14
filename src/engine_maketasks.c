@@ -190,6 +190,113 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #endif
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Wire the drift/ghost/sorts dependencies of a hydro send to EVERY
+ * hydro.super cell beneath @p c.
+ *
+ * A radiation-only send (S3.0: created because a radiation_in link reaches
+ * the target node, with no matching hydro.density link) can fire at a
+ * @p c that sits ABOVE hydro.super -- radiation_level coarsens
+ * independently of hydro.super, so c->hydro.super == NULL there by
+ * construction. The comm tasks are created once per (ci, cj), but their
+ * per-super dependencies are not, so this recurses down until it hits a
+ * cell covered by a single hydro.super (c->hydro.super != NULL) and wires
+ * there, or descends further when c is a strict ancestor of several
+ * supers (c->hydro.super == NULL), mirroring
+ * #engine_radiation_wire_super_deps.
+ *
+ * @param s The #scheduler.
+ * @param c The cell whose covered hydro.supers to wire (ci of the send).
+ * @param t_xv The send_xv task.
+ * @param t_rho The send_rho task.
+ * @param t_gradient The send_gradient task (EXTRA_HYDRO_LOOP only).
+ * @param t_prep1 The send_prep1 task (EXTRA_STAR_LOOPS only).
+ * @param t_rt_gradient The send_rt_gradient task, if with_rt.
+ * @param t_rt_transport The send_rt_transport task, if with_rt.
+ * @param with_feedback Are we running with stellar feedback?
+ * @param with_rt Are we running with radiative transfer?
+ */
+static void engine_wire_send_hydro_super_deps(
+    struct scheduler *s, struct cell *c, struct task *t_xv, struct task *t_rho,
+    struct task *t_gradient, struct task *t_prep1, struct task *t_rt_gradient,
+    struct task *t_rt_transport, const int with_feedback, const int with_rt) {
+
+  if (c->hydro.super != NULL) {
+    struct cell *super = c->hydro.super;
+
+#ifdef EXTRA_HYDRO_LOOP
+    scheduler_addunlock(s, t_gradient, super->hydro.end_force);
+    scheduler_addunlock(s, super->hydro.extra_ghost, t_gradient);
+
+    /* The send_rho task should unlock the super_hydro-cell's extra_ghost
+     * task. */
+    scheduler_addunlock(s, t_rho, super->hydro.extra_ghost);
+
+    /* The send_rho task depends on the cell's ghost task. */
+    scheduler_addunlock(s, super->hydro.ghost_out, t_rho);
+
+    /* The send_xv task should unlock the super_hydro-cell's ghost task. */
+    scheduler_addunlock(s, t_xv, super->hydro.ghost_in);
+
+#else
+    /* The send_rho task should unlock the super_hydro-cell's kick task. */
+    scheduler_addunlock(s, t_rho, super->hydro.end_force);
+
+    /* The send_rho task depends on the cell's ghost task. */
+    scheduler_addunlock(s, super->hydro.ghost_out, t_rho);
+
+    /* The send_xv task should unlock the super_hydro-cell's ghost task. */
+    scheduler_addunlock(s, t_xv, super->hydro.ghost_in);
+
+#endif
+
+    scheduler_addunlock(s, super->hydro.drift, t_rho);
+
+    /* Drift before you send */
+    scheduler_addunlock(s, super->hydro.drift, t_xv);
+
+#ifdef EXTRA_STAR_LOOPS
+    /* In stellar feedback, send gas parts only after they have finished
+     * their hydro ghosts */
+    if (with_feedback) {
+      scheduler_addunlock(s, super->hydro.prep1_ghost, t_prep1);
+      scheduler_addunlock(s, t_prep1, super->stars.prep2_ghost);
+    }
+#endif
+
+    if (with_rt) {
+      /* The send_gradient task depends on the cell's ghost1 task. */
+      scheduler_addunlock(s, super->rt.rt_ghost1, t_rt_gradient);
+
+      /* The send_transport task depends on the cell's ghost2 task. */
+      scheduler_addunlock(s, super->rt.rt_ghost2, t_rt_transport);
+
+      /* Safety measure: collect dependencies and make sure data is sent
+       * before modifying it */
+      scheduler_addunlock(s, t_rt_gradient, super->rt.rt_ghost2);
+
+      /* Safety measure: collect dependencies and make sure data is sent
+       * before modifying it */
+      scheduler_addunlock(s, t_rt_transport, super->rt.rt_transport_out);
+
+      /* Drift before you send. Especially intended to cover inactive cells
+       * being sent. */
+      scheduler_addunlock(s, super->hydro.drift, t_rt_gradient);
+      scheduler_addunlock(s, super->hydro.drift, t_rt_transport);
+    }
+    return;
+  }
+
+  /* c is a strict ancestor of several supers: recurse to each. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_wire_send_hydro_super_deps(s, c->progeny[k], t_xv, t_rho,
+                                        t_gradient, t_prep1, t_rt_gradient,
+                                        t_rt_transport, with_feedback, with_rt);
+}
+#endif /* WITH_MPI */
+
 /**
  * @brief Add send tasks for the hydro pairs to a hierarchy of cells.
  *
@@ -302,74 +409,20 @@ void engine_addtasks_send_hydro(
                               ci->mpi.tag, 0, ci, cj);
       }
 
-#ifdef EXTRA_HYDRO_LOOP
-
-      scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
-
-      scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost, t_gradient);
-
-      /* The send_rho task should unlock the super_hydro-cell's extra_ghost
-       * task. */
-      scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.extra_ghost);
-
-      /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
-
-      /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
-
-#else
-      /* The send_rho task should unlock the super_hydro-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.end_force);
-
-      /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
-
-      /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
-
-#endif
-
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
-
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+      /* S3.0/C2: ci may sit above hydro.super (radiation-only reach, no
+       * hydro.density link), so the per-super drift/ghost/sorts deps below
+       * cannot dereference ci->hydro.super directly -- fan them out to
+       * every hydro.super beneath ci instead. */
+      engine_wire_send_hydro_super_deps(s, ci, t_xv, t_rho, t_gradient, t_prep1,
+                                        t_rt_gradient, t_rt_transport,
+                                        with_feedback, with_rt);
 
       if (with_limiter)
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
 
-#ifdef EXTRA_STAR_LOOPS
-      /* In stellar feedback, send gas parts only after they have finished their
-       * hydro ghosts */
-      if (with_feedback) {
-        scheduler_addunlock(s, ci->hydro.super->hydro.prep1_ghost, t_prep1);
-        scheduler_addunlock(s, t_prep1, ci->hydro.super->stars.prep2_ghost);
-      }
-#endif
-
       if (with_rt) {
         /* Don't send the transport stuff before the gradient stuff */
         scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
-
-        /* The send_gradient task depends on the cell's ghost1 task. */
-        scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost1, t_rt_gradient);
-
-        /* The send_transport task depends on the cell's ghost2 task. */
-        scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost2, t_rt_transport);
-
-        /* Safety measure: collect dependencies and make sure data is sent
-         * before modifying it */
-        scheduler_addunlock(s, t_rt_gradient, ci->hydro.super->rt.rt_ghost2);
-
-        /* Safety measure: collect dependencies and make sure data is sent
-         * before modifying it */
-        scheduler_addunlock(s, t_rt_transport,
-                            ci->hydro.super->rt.rt_transport_out);
-
-        /* Drift before you send. Especially intended to cover inactive cells
-         * being sent. */
-        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
-        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
 
         /* Make sure the gradient sends don't run before the xv is finished.
          * This can occur when a cell itself is inactive for both hydro and
@@ -378,25 +431,35 @@ void engine_addtasks_send_hydro(
          * these two tasks will/may activate the sorts.*/
         scheduler_addunlock(s, t_xv, t_rt_gradient);
       }
-
-      if (radiation_reaches_node) {
-        /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
-         * (never unskipped, so never enqueued). Seam 3 (phase ordering):
-         * the inverted recv only needs this rank's own tag, already minted
-         * above via cell_ensure_tagged(ci), so it can be created here,
-         * pre-exchange. Seam 1 (source-rank derivation): cj carries the
-         * computing rank's identity in t->cj, consumed by
-         * scheduler_enqueue's MPI_Irecv (scheduler.c). */
-        t_hii_tag_recv =
-            scheduler_addtask(s, task_type_recv, task_subtype_part_hii_tag,
-                              ci->mpi.tag, 0, ci, cj);
-
-        /* Normal direction (S3.1b): no inversion seam needed. */
-        t_hii_state =
-            scheduler_addtask(s, task_type_send, task_subtype_part_hii_state,
-                              ci->mpi.tag, 0, ci, cj);
-      }
     } /* if t_xv == NULL */
+
+    /* A1: independent of t_xv's own gate above. The walk can first satisfy
+     * l != NULL (density reaches the node) at an ancestor with
+     * radiation_reaches_node == 0, which creates t_xv there and passes it
+     * down non-NULL to every descendant; a deeper cell where
+     * radiation_reaches_node only later becomes true must still get its
+     * hii tasks, so this uses its own t_hii_tag_recv == NULL sentinel
+     * rather than piggy-backing on t_xv's. */
+    if (radiation_reaches_node && t_hii_tag_recv == NULL) {
+      /* Make sure this cell is tagged (idempotent: a no-op if the t_xv
+       * block above already tagged it). */
+      cell_ensure_tagged(ci);
+
+      /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
+       * (never unskipped, so never enqueued). Seam 3 (phase ordering):
+       * the inverted recv only needs this rank's own tag, already minted
+       * above via cell_ensure_tagged(ci), so it can be created here,
+       * pre-exchange. Seam 1 (source-rank derivation): cj carries the
+       * computing rank's identity in t->cj, consumed by
+       * scheduler_enqueue's MPI_Irecv (scheduler.c). */
+      t_hii_tag_recv = scheduler_addtask(
+          s, task_type_recv, task_subtype_part_hii_tag, ci->mpi.tag, 0, ci, cj);
+
+      /* Normal direction (S3.1b): no inversion seam needed. */
+      t_hii_state =
+          scheduler_addtask(s, task_type_send, task_subtype_part_hii_state,
+                            ci->mpi.tag, 0, ci, cj);
+    }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_xv);
@@ -725,8 +788,11 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
  * @param with_rt Are we running with radiative transfer?
  * @param cj_hii_tag Dummy cell carrying the destination nodeID for the
  * inverted send_part_hii_tag (MPI plan S3.1, seam 3: this rank is the
- * computing rank here, and the destination is @p c's owner). Kept distinct
- * from @p c itself so the send task's ci and cj are never the same cell.
+ * computing rank here, and the destination is @p c's owner). Only cj's
+ * nodeID is read by the send (task_type_send never dereferences cj's
+ * other fields); it can be the same #cell object as @p c itself (this
+ * happens for a proxy's first cell, k == 0, in the caller's construction
+ * loop), which is harmless since only the nodeID is ever consulted.
  * @param t_hii_tag_send The send_part_hii_tag #task (MPI plan S3.1,
  * inverted direction: created here since this is post-exchange over this
  * rank's foreign cells and needs @p c's tag), if already created.
@@ -856,27 +922,39 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_gradient, t_rt_gradient);
 #endif
     }
+  }
 
-    if (c->stars.radiation_in != NULL) {
-      /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
-       * (never unskipped, so never enqueued). Seam 3 (phase ordering): the
-       * inverted send needs @p c's own tag, only known post-exchange, so
-       * it is created here rather than in the send-phase function. */
+  /* A1: independent of t_xv's own gate above. The walk can first satisfy
+   * the outer condition via c->hydro.density at an ancestor with
+   * c->stars.radiation_in == NULL, which creates t_xv there and passes it
+   * down non-NULL to every descendant; a deeper cell that carries its own
+   * radiation_in link must still get its hii tasks, so this uses its own
+   * t_hii_tag_send == NULL sentinel rather than piggy-backing on t_xv's. */
+  if (c->stars.radiation_in != NULL && t_hii_tag_send == NULL) {
+    /* MPI plan S3.1/S3.1b skeleton, inert until S3.2 wires activation
+     * (never unskipped, so never enqueued). Seam 3 (phase ordering): the
+     * inverted send needs @p c's own tag, only known post-exchange, so
+     * it is created here rather than in the send-phase function. */
 #ifdef SWIFT_DEBUG_CHECKS
-      if (c->mpi.tag < 0) error("Trying to send from untagged cell.");
+    if (c->mpi.tag < 0) error("Trying to send from untagged cell.");
 #endif
 
-      /* Inverted direction (S3.1): ci = c, the foreign cell being reported
-       * on; cj carries the destination (c's owner) so ci != cj. */
-      t_hii_tag_send =
-          scheduler_addtask(s, task_type_send, task_subtype_part_hii_tag,
-                            c->mpi.tag, 0, c, cj_hii_tag);
+    /* Inverted direction (S3.1): ci = c, the foreign cell being reported
+     * on; cj carries the destination (c's owner) so ci != cj. */
+    t_hii_tag_send =
+        scheduler_addtask(s, task_type_send, task_subtype_part_hii_tag,
+                          c->mpi.tag, 0, c, cj_hii_tag);
 
-      /* Normal direction (S3.1b): no inversion seam needed. */
-      t_hii_state_recv =
-          scheduler_addtask(s, task_type_recv, task_subtype_part_hii_state,
-                            c->mpi.tag, 0, c, NULL);
-    }
+    /* Normal direction (S3.1b): no inversion seam needed. */
+    t_hii_state_recv = scheduler_addtask(
+        s, task_type_recv, task_subtype_part_hii_state, c->mpi.tag, 0, c, NULL);
+  }
+
+  /* A1: outside the t_xv != NULL gate below, since a radiation-only branch
+   * (no c->hydro.density anywhere in it) never sets t_xv at all. */
+  if (t_hii_tag_send != NULL) {
+    engine_addlink(e, &c->mpi.send, t_hii_tag_send);
+    engine_addlink(e, &c->mpi.recv, t_hii_state_recv);
   }
 
   if (t_xv != NULL) {
@@ -892,10 +970,6 @@ void engine_addtasks_recv_hydro(
 #ifdef EXTRA_STAR_LOOPS
     if (with_feedback) engine_addlink(e, &c->mpi.recv, t_prep1);
 #endif
-    if (t_hii_tag_send != NULL) {
-      engine_addlink(e, &c->mpi.send, t_hii_tag_send);
-      engine_addlink(e, &c->mpi.recv, t_hii_state_recv);
-    }
 
     /* Add dependencies. */
     if (c->hydro.sorts != NULL) {
@@ -4417,6 +4491,20 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair,
                             task_subtype_stars_radiation_in, sid, 1, ci, cj);
+
+          /* CAUTION (S3.1/C4): the skip above only drops BOTH-foreign
+           * pairs; a boundary pair with one local and one foreign side is
+           * created here even when the two ranks' independent
+           * cell_can_split_pair_radiation_subgrid_task calls disagree on
+           * how far to descend (the known 2-rank
+           * engine_radiation_check_pair_linked asymmetric-split case). If
+           * that happens, the computing rank's part_hii_tag send
+           * (engine_addtasks_recv_hydro) can need a tag the owner never
+           * minted -- debug builds die at "untagged cell", production
+           * builds send with flags=-1. S3.1's channel is inert (no
+           * activation yet) so this cannot yet manifest; S3.2 must not
+           * activate it here until boundary-pair splitting is made
+           * symmetric across ranks. */
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
