@@ -963,6 +963,12 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
      integrator has no notion of the external photoionization forcing and
      would cool the just-floored energy back down within the same step. */
   if (ionized_this_step) {
+    /* The subgrid floor forces species (mode >= 1) and energy together;
+       cache the resulting temperature against u_ionized, since that value
+       has not landed on the particle yet (see the cache function's
+       doxygen). */
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ionized);
     /* Return u_ionized itself, not a re-read of the particle: the caller
        derives a du/dt from this return value and applies it once. */
     return u_ionized;
@@ -973,6 +979,10 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     if (cooling_debug_fix_neutral_temperature_subgrid(
             phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
             &u_o)) {
+      /* Species are untouched here, only u changes: still refresh the
+         cache, since the eligibility temperature depends on both. */
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_o);
       return u_o;
     }
   }
@@ -1020,6 +1030,8 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
      particle held at the subgrid-ionized floor: that path already
      returned before reaching Grackle's own solve. */
   cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+  cooling_cache_eligibility_temperature_subgrid(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, energy);
 
   return energy;
 }

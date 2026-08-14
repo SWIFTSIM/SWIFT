@@ -1126,9 +1126,12 @@ void runner_doself_stars_hii_ionization_feedback(
   /* Loop over the parts in c. */
   for (int pjd = 0; pjd < count; pjd++) {
 
-    /* Get a pointer to the jth particle. */
+    /* Get a pointer to the jth particle. A foreign cell (S3.0) carries no
+     * local xparts array; xpj must resolve to a genuine NULL there rather
+     * than undefined NULL-based pointer arithmetic (feedback_get_
+     * eligibility_temperature owns the xp == NULL contract downstream). */
     struct part *restrict pj = &parts[pjd];
-    struct xpart *restrict xpj = &xparts[pjd];
+    struct xpart *restrict xpj = (xparts != NULL) ? &xparts[pjd] : NULL;
 
     /* Early abort? */
     if (part_is_inhibited(pj, e)) continue;
@@ -1212,9 +1215,10 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
 
     for (int pjd = 0; pjd < count_j; pjd++) {
 
-      /* Get a pointer to the jth particle. */
+      /* Get a pointer to the jth particle. See the doself version above for
+       * why xpj must be a genuine NULL when cj has no local xparts. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart *restrict xpj = (xparts_j != NULL) ? &xparts_j[pjd] : NULL;
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -1333,8 +1337,11 @@ void runner_dopair_stars_hii_ionization_feedback(
       /* Skip particles that haven't reached the interaction zone yet */
       if (sort_j[pjd].d < di_min) continue;
 
+      /* See the doself version (runner_doself_stars_hii_ionization_feedback)
+       * for why xpj must be a genuine NULL when cj has no local xparts. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+      struct xpart *restrict xpj =
+          (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
       if (part_is_inhibited(pj, e)) continue;
       if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
@@ -1363,7 +1370,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       if (sort_j[pjd].d > di_max) continue;
 
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+      struct xpart *restrict xpj =
+          (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
       if (part_is_inhibited(pj, e)) continue;
       if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))

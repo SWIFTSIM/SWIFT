@@ -299,4 +299,40 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
 #endif
 }
 
+/**
+ * @brief Cache this step's HII eligibility temperature on the particle
+ * (struct part's feedback_data.T_eligibility, S3.3/F3).
+ *
+ * WITH_MPI-only: a foreign copy carries no struct xpart, so
+ * feedback_get_eligibility_temperature() falls back to this cache instead
+ * of recomputing cooling_get_temperature() locally. Takes an explicit u
+ * rather than reading it off @p p, so a caller can pass the target energy
+ * of the subgrid-ionized floor (cooling_ionize_part_subgrid) before that
+ * value has actually landed on the particle through the caller's own
+ * du/dt integration. cooling_get_mean_molecular_weight() already branches
+ * on COOLING_GRACKLE_MODE internally, so this needs no mode-specific code
+ * of its own.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param u The specific internal energy to evaluate the temperature at.
+ */
+INLINE static void cooling_cache_eligibility_temperature_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp, const double u) {
+#ifdef WITH_MPI
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  p->feedback_data.T_eligibility = cooling_temperature_from_internal_energy(
+      u, mu, phys_const->const_boltzmann_k, phys_const->const_proton_mass);
+#endif
+}
+
 #endif /* SWIFT_GEAR_COOLING_SUBGRID_H */

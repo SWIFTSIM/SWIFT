@@ -68,6 +68,11 @@ double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget_max(const struct spart *sp);
 double feedback_get_star_ionization_budget_total(const struct spart *sp);
+float feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
 void feedback_iact_HII_ionization(

@@ -548,6 +548,62 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 }
 
 /**
+ * @brief HII eligibility temperature for a #part, foreign-copy safe.
+ *
+ * feedback_part_can_be_ionized's temperature gate needs
+ * cooling_get_temperature(), which under Grackle modes >= 1 reads
+ * xp->cooling_data species fractions. A foreign copy (the computing
+ * rank's imported gas, S3.0) carries no struct xpart, so that read
+ * would segfault; even at mode 0, where cooling_get_temperature never
+ * touches xp, the gather constructs xpj from a foreign cell's absent
+ * xparts array, which must resolve to a genuine NULL rather than
+ * undefined pointer arithmetic (see the xpj = NULL-guarded assignments
+ * in runner_radiation_feedback.c).
+ *
+ * This accessor owns the whole xp == NULL contract in one place: a
+ * real xpart computes the temperature exactly as today. xp == NULL
+ * returns the cache written at the owner's last cooling call (struct
+ * part's feedback_data.T_eligibility, WITH_MPI-only), shipped to every
+ * foreign copy via the post-cooling state channel (S3.1b) in the same
+ * message as the internal energy the gather reads for everything else,
+ * so the two stay mutually consistent -- caching the temperature
+ * directly, rather than the mean molecular weight and recombining it
+ * with a possibly-newer u, is therefore not an approximation here: nothing
+ * updates u between a cooling call and the state channel's send of that
+ * same call's T_eligibility, so the two arrive frozen together.
+ *
+ * Call sites must read this uniformly and never branch on local vs
+ * foreign; that branch lives here exactly once. A reduced foreign
+ * xpart (mirroring gravity's gpart_foreign) would plug in at this same
+ * seam without touching any call site, if the set of xpart-derived
+ * radiation inputs ever grows beyond this one value.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_props The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle, or NULL for a foreign
+ * copy with no local xpart.
+ * @return The particle's eligibility temperature.
+ */
+__attribute__((always_inline)) INLINE float
+feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef WITH_MPI
+  if (xp == NULL) return p->feedback_data.T_eligibility;
+#endif
+
+  return cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p,
+                                 xp);
+}
+
+/**
  * Determines whether a gas #part can be ionized.
  *
  * @param phys_const Physical constants.
@@ -570,8 +626,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   const struct cooling_function_data *cooling = e->cooling_func;
 
   /* Is T > 10^4 K ? */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
+  const float T = feedback_get_eligibility_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
