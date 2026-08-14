@@ -243,7 +243,7 @@ void cell_unpack_bpart_swallow(struct cell *c,
  * copy of the covered cell: @p c is the cell whose gas the local HII pass
  * gathered over, so its tag state may include claims made this pass. The
  * per-field copy (including the placeholder values for the fields that
- * have no per-part storage yet -- see the plan's Status section) is
+ * have no per-part storage yet; see the plan's Status section) is
  * flavour-specific and lives in feedback_pack_hii_tag_report() (feedback.h
  * of the active module): this function stays module-agnostic so it links
  * against every feedback flavour, not just GEAR_thermal.

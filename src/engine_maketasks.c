@@ -197,7 +197,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  *
  * A radiation-only send (S3.0: created because a radiation_in link reaches
  * the target node, with no matching hydro.density link) can fire at a
- * @p c that sits ABOVE hydro.super -- radiation_level coarsens
+ * @p c that sits ABOVE hydro.super: radiation_level coarsens
  * independently of hydro.super, so c->hydro.super == NULL there by
  * construction. The comm tasks are created once per (ci, cj), but their
  * per-super dependencies are not, so this recurses down until it hits a
@@ -314,7 +314,7 @@ static void engine_wire_send_hydro_super_deps(
  * @param t_hii_tag_recv The recv_part_hii_tag #task (MPI plan S3.1, inverted
  * direction: created here since this is pre-exchange over this rank's own
  * local cells), if it has already been created.
- * @param t_hii_state The send_part_hii_state #task (MPI plan S3.1b), if it
+ * @param t_hii_state_send The send_part_hii_state #task (MPI plan S3.1b), if it
  * has already been created.
  * @param with_feedback Are we running with stellar feedback?
  * @param with_limiter Are we running with the time-step limiter?
@@ -326,7 +326,7 @@ void engine_addtasks_send_hydro(
     struct task *t_rho, struct task *t_gradient, struct task *t_prep1,
     struct task *t_limiter, struct task *t_pack_limiter,
     struct task *t_rt_gradient, struct task *t_rt_transport,
-    struct task *t_hii_tag_recv, struct task *t_hii_state,
+    struct task *t_hii_tag_recv, struct task *t_hii_state_send,
     const int with_feedback, const int with_limiter, const int with_sync,
     const int with_rt) {
 
@@ -411,7 +411,7 @@ void engine_addtasks_send_hydro(
 
       /* S3.0/C2: ci may sit above hydro.super (radiation-only reach, no
        * hydro.density link), so the per-super drift/ghost/sorts deps below
-       * cannot dereference ci->hydro.super directly -- fan them out to
+       * cannot dereference ci->hydro.super directly; fan them out to
        * every hydro.super beneath ci instead. */
       engine_wire_send_hydro_super_deps(s, ci, t_xv, t_rho, t_gradient, t_prep1,
                                         t_rt_gradient, t_rt_transport,
@@ -456,7 +456,7 @@ void engine_addtasks_send_hydro(
           s, task_type_recv, task_subtype_part_hii_tag, ci->mpi.tag, 0, ci, cj);
 
       /* Normal direction (S3.1b): no inversion seam needed. */
-      t_hii_state =
+      t_hii_state_send =
           scheduler_addtask(s, task_type_send, task_subtype_part_hii_state,
                             ci->mpi.tag, 0, ci, cj);
     }
@@ -469,7 +469,7 @@ void engine_addtasks_send_hydro(
 #endif
     if (t_hii_tag_recv != NULL) {
       engine_addlink(e, &ci->mpi.recv, t_hii_tag_recv);
-      engine_addlink(e, &ci->mpi.send, t_hii_state);
+      engine_addlink(e, &ci->mpi.send, t_hii_state_send);
     }
     if (with_limiter) {
       engine_addlink(e, &ci->mpi.send, t_limiter);
@@ -493,7 +493,7 @@ void engine_addtasks_send_hydro(
         engine_addtasks_send_hydro(
             e, ci->progeny[k], cj, t_xv, t_rho, t_gradient, t_prep1, t_limiter,
             t_pack_limiter, t_rt_gradient, t_rt_transport, t_hii_tag_recv,
-            t_hii_state, with_feedback, with_limiter, with_sync, with_rt);
+            t_hii_state_send, with_feedback, with_limiter, with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -826,10 +826,12 @@ void engine_addtasks_recv_hydro(
   if (t_xv == NULL &&
       (c->hydro.density != NULL || c->stars.radiation_in != NULL)) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure this cell has a valid tag. */
+    /* Unconditional check: the radiation_in arm of the predicate above can
+     * legitimately disagree across ranks until boundary-pair splitting is
+     * symmetric (S3.2), and a tag of -1 passed to MPI_Irecv is MPI_ANY_TAG,
+     * i.e. a silent wildcard recv on the live hydro channel. Fail at
+     * creation time instead. */
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
-#endif /* SWIFT_DEBUG_CHECKS */
 
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
@@ -4503,13 +4505,16 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
            * radiation_reaches_node is nodeID-filtered, recv-side
            * c->stars.radiation_in != NULL is not), so an asymmetric split
            * can also make the two sides converge on different cells of the
-           * same subtree, not merely on a missing tag. If that happens, the
-           * computing rank's part_hii_tag send (engine_addtasks_recv_hydro)
-           * can need a tag the owner never minted, or minted at a different
-           * cell -- debug builds die at "untagged cell", production builds
-           * send with flags=-1. S3.1's channel is inert (no activation yet)
-           * so this cannot yet manifest; S3.2 must not activate it here
-           * until boundary-pair splitting is made symmetric across ranks. */
+           * same subtree, not merely on a missing tag. The same predicate
+           * asymmetry governs the S3.0 xv/rho re-placement, which is a LIVE
+           * production channel, not part of the inert hii skeleton: an
+           * untagged recv there would post MPI_Irecv with tag -1, i.e.
+           * MPI_ANY_TAG (now an unconditional creation-time error in
+           * engine_addtasks_recv_hydro). The hii-side "untagged cell" check
+           * also fires at task-creation time, regardless of activation, so
+           * inertness does not defer it. Symmetric boundary-pair splitting
+           * across ranks is therefore the precondition for BOTH channels
+           * and is S3.2's first work item. */
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4667,7 +4672,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_rt_gradient=*/NULL,
                                  /*t_rt_transport=*/NULL,
                                  /*t_hii_tag_recv=*/NULL,
-                                 /*t_hii_state=*/NULL, with_feedback,
+                                 /*t_hii_state_send=*/NULL, with_feedback,
                                  with_limiter, with_sync, with_rt);
 
     /* Add the send tasks for the cells in the proxy that have a stars

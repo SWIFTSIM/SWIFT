@@ -65,7 +65,7 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 /**
  * @brief Pack a #part's HII tag report-back entry (MPI plan S3.1).
  *
- * The three fields beyond @c tag have no per-part storage yet -- the
+ * The three fields beyond @c tag have no per-part storage yet: the
  * compute-on-copies pass that would write real per-claim values is
  * separate, still-missing work (see the plan's Status section), so they
  * are left at their placeholder values. The struct is memset first so its
