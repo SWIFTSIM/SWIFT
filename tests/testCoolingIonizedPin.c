@@ -24,7 +24,12 @@
 /* Local headers. */
 #include "swift.h"
 
-#ifdef GEAR_COOLING
+/* IONIZATION_FEEDBACK_DEBUG_NO_COOLING compiles cooling_ionize_part_subgrid
+   down to an unconditional "return 0" (cooling_gear_subgrid.h): under that
+   flag the pin this test targets never runs at all, by design (gas heated
+   by feedback simply never cools back down, so the per-step re-floor this
+   test exercises has nothing to do). Nothing to test in that configuration. */
+#if defined(GEAR_COOLING) && !defined(IONIZATION_FEEDBACK_DEBUG_NO_COOLING)
 
 /**
  * @brief Regression test for the ionized-gas temperature-pin energy
@@ -83,6 +88,16 @@ static void test_ionized_pin_lands_once(void) {
   bzero(&xp, sizeof(xp));
 
   p.mass = 1.0f;              /* Cancels out of the ionized-energy formula. */
+  p.rho = 1.67262192369e-24f; /* ~1 particle/cm^3, cgs -- only read at
+                                  COOLING_GRACKLE_MODE >= 1. */
+#if COOLING_GRACKLE_MODE > 0
+  /* At mode >= 1, cooling_get_mean_molecular_weight reads these species
+     fractions instead of HydrogenFractionByMass; left at their zero-init
+     they make mu a 0/0 that only stays finite by -ffinite-math-only's
+     instruction-selection luck. Physical, X_H-consistent values instead. */
+  xp.cooling_data.HI_frac = 0.75f;
+  xp.cooling_data.HeI_frac = 0.25f;
+#endif
   const float u_old = 1.0e8f; /* erg/g -- orders of magnitude below u_pin. */
   p.u = u_old;
   xp.u_full = u_old;
@@ -153,17 +168,21 @@ static void test_ionized_pin_lands_once(void) {
         u_pin, xp.u_full, rel_err);
 }
 
-#endif /* GEAR_COOLING */
+#endif /* GEAR_COOLING && !IONIZATION_FEEDBACK_DEBUG_NO_COOLING */
 
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-#ifdef GEAR_COOLING
+#if defined(GEAR_COOLING) && !defined(IONIZATION_FEEDBACK_DEBUG_NO_COOLING)
   test_ionized_pin_lands_once();
   message("testCoolingIonizedPin: PASS.");
-#else
+#elif !defined(GEAR_COOLING)
   message("testCoolingIonizedPin: skipped (not built with GEAR_COOLING).");
+#else
+  message(
+      "testCoolingIonizedPin: skipped (IONIZATION_FEEDBACK_DEBUG_NO_COOLING "
+      "disables the pin this test targets).");
 #endif
 
   return 0;
