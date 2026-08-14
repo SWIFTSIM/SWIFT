@@ -157,7 +157,7 @@ GEARAGN:
   AGN_feedback_model:                  Isotropic  # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   AGN_use_deterministic_feedback:      1          # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
   AGN_delta_T_K:                       3.16228e8  # (Constant) change in temperature to apply to the gas particle in an AGN feedback event, in Kelvin.
-  use_variable_delta_T:                1          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  use_variable_delta_T:                0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_use_adaptive_energy_reservoir_threshold: 0  # Switch to calculate an adaptive AGN energy reservoir threshold.
   AGN_num_ngb_to_heat:                 1.         # Target number of gas neighbours to heat in an AGN feedback event.
 
