@@ -2261,6 +2261,37 @@ static void cell_radiation_activate_supers_out(struct cell *c,
       cell_radiation_activate_supers_out(c->progeny[k], s);
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Activate hydro.sorts over every hydro.super beneath a (possibly
+ * coarse) FOREIGN radiation cell (S3.2).
+ *
+ * Mirrors cell_radiation_activate_supers_in for the recv-side gas channel:
+ * once xv/rho for the foreign subtree has been received, the local copy
+ * must be re-sorted before the gather can search it, and the recv_xv ->
+ * hydro.sorts -> recv_rho ordering wired at task creation
+ * (engine_addtasks_recv_hydro) needs hydro.sorts activated or the chain
+ * stalls. NULL-safe like cell_radiation_activate_supers_in: a foreign
+ * radiation_level cell can sit above every hydro.super in its subtree, in
+ * which case this recurses into progeny instead of dereferencing NULL; a
+ * subtree with no hydro.super anywhere (no density task ever reaches it,
+ * local or foreign) is a silent no-op, matching
+ * engine_radiation_wire_super_sorts_only's own NULL handling at task
+ * creation.
+ */
+static void cell_radiation_activate_foreign_sorts(struct cell *c,
+                                                  struct scheduler *s) {
+  if (c->hydro.super != NULL) {
+    const int sid = 0;
+    cell_activate_hydro_sorts(c->hydro.super, sid, s);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      cell_radiation_activate_foreign_sorts(c->progeny[k], s);
+}
+#endif
+
 /**
  * @brief Un-skip the subgrid radiation (HII ionization) tasks for a cell.
  *
@@ -2359,25 +2390,6 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       }
     }
 
-    else if (t->type == task_type_pair) {
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
-        scheduler_activate(s, t);
-      }
-#ifdef WITH_MPI
-      /* TODO: We need to activate the send and recv parts */
-      if (e->nr_nodes > 1) error("MPI is not yet implemented");
-#endif
-    }
-
     /* h_hii-aware rebuild check, exempted per direction: cell_need_rebuild_
        for_radiation_pair(ci, cj) reads only ci's own reach, so it is skipped
        only when ci itself is pinned at its own top level and the top-level
@@ -2399,6 +2411,56 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           cell_need_rebuild_for_radiation_pair(cj, ci)) {
         rebuild = 1;
       }
+
+#ifdef WITH_MPI
+      /* S3.2: activate the foreign side's gas channel and the S3.1/S3.1b
+       * report-back channels for a boundary radiation pair. Exactly one of
+       * ci/cj is foreign here (a both-foreign pair is never created, see
+       * engine_make_radiationloop_tasks_mapper). Tag exchange is gated on
+       * the local (computing) side's own activity: nothing to report if
+       * the local pass does not run this step. State exchange is
+       * unconditional for any active pair (bpart_rho precedent): whichever
+       * side turns out to compute, the owner's freshest gas state must
+       * already be in flight. */
+      if (ci_nodeID != nodeID) {
+        /* ci is foreign (owner elsewhere), cj is local. */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          cell_radiation_activate_foreign_sorts(ci, s);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_hii_tag,
+                                  ci_nodeID);
+        }
+        if (ci_active || cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_hii_state);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_state,
+                                  ci_nodeID);
+        }
+        if (ci_active) {
+          scheduler_activate_recv_by_node(s, cj->mpi.recv,
+                                          task_subtype_part_hii_tag, ci_nodeID);
+        }
+
+      } else if (cj_nodeID != nodeID) {
+        /* cj is foreign (owner elsewhere), ci is local. */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          cell_radiation_activate_foreign_sorts(cj, s);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_tag,
+                                  cj_nodeID);
+        }
+        if (ci_active || cj_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_hii_state);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_hii_state,
+                                  cj_nodeID);
+        }
+        if (cj_active) {
+          scheduler_activate_recv_by_node(s, ci->mpi.recv,
+                                          task_subtype_part_hii_tag, cj_nodeID);
+        }
+      }
+#endif
     }
     /* Nothing more to do here, all drifts and sorts activated above */
   }
