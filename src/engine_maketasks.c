@@ -4255,6 +4255,16 @@ static void engine_radiation_check_pair_linked(struct cell *a, struct cell *b,
                                                const double shift[3]) {
   if (!cell_boxes_touch_under_shift(a, b, shift)) return;
 
+#ifdef WITH_MPI
+  /* A pair with neither side local to this rank never gets a radiation_in
+   * task in the first place (engine_make_radiationloop_tasks_mapper skips
+   * both-foreign pairs -- this rank has nothing to compute for it and no
+   * need to hold a link), yet this check runs over every top-level cell
+   * regardless of ownership and would otherwise flag it as a hole. Mirror
+   * the same skip here. */
+  if (a->nodeID != engine_rank && b->nodeID != engine_rank) return;
+#endif
+
   const int a_is_level = (a->stars.radiation_level == a);
   const int b_is_level = (b->stars.radiation_level == b);
 
