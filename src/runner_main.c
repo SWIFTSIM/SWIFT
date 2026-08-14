@@ -453,6 +453,10 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_fof) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_tag) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_state) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -500,6 +504,16 @@ void *runner_main(void *data) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_part_hii_tag) {
+            /* MPI plan S3.1: owner-side application of the computing rank's
+             * tag report. Inert until S3.2 activates this channel. */
+            cell_unpack_part_hii_tag(ci, (struct hii_tag_report *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_state) {
+            /* MPI plan S3.1b: foreign-copy application of the owner's
+             * post-cooling state. Inert until S3.2 activates this channel. */
+            cell_unpack_part_hii_state(ci, (struct hii_state_update *)t->buff);
+            free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
