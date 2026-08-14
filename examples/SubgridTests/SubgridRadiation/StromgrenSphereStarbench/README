@@ -42,4 +42,7 @@ python3 starbench_analytic_check.py -s "snap/snapshot_*.hdf5"
 T_i is measured from the run's own tagged gas, so the same command is
 correct with or without the CFLAGS forcing flag above; pass
 `--T-ionized-K` only to override the measurement (it warns on mismatch).
-Only the T_i=1e4 K forced build is known to pass the tolerance.
+Only the T_i=1e4 K forced build is validated against this target. The
+front oscillates at this metallicity, so run-to-run and phase differences
+of several percent are expected; accepted validation runs read
+approximately 3-7% error at t=3 Myr, not a single sharper number.
