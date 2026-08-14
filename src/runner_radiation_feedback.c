@@ -744,10 +744,28 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        different traversal orders. Unsigned: overflow wraparound is
        defined, not UB. */
     unsigned long long claimed_id_hash = 0;
+    /* Per-pixel claim accounting for the compact debug line printed at pass
+       end (roll_state: -1 never rolled, 0 lost, 1 won -- last outcome only,
+       since the fixed per-pixel random draw makes every loss this pass
+       identical). Diagnostic only, mirrors what the retry-skip logic below
+       already derives from budget/tag state without needing these arrays. */
+    int pixel_claimed_count[HII_MAX_ANGULAR_PIXELS] = {0};
+    int pixel_roll_state[HII_MAX_ANGULAR_PIXELS];
+    double pixel_budget_start[HII_MAX_ANGULAR_PIXELS];
+    for (int p = 0; p < feedback_get_star_HII_pixel_count(si); p++) {
+      pixel_roll_state[p] = -1;
+      pixel_budget_start[p] = feedback_get_star_ionization_budget(si, p);
+    }
 #endif
 
     while (1) {
       int count_found = 0;
+      /* Any candidate actually claimed during THIS attempt (any pixel). A
+         same-radius retry (case 1 below) re-runs the identical search: if
+         this stays 0, no pixel's budget or tag state moved, so the fixed
+         (star, pixel, ti_begin) random draw guarantees the retry would
+         reproduce this exact attempt -- see the case-1 branch below. */
+      int attempt_claimed_count = 0;
 
       runner_hii_visit_neighbors(r, c, si, dynamic_search_radius, ngb_buffer,
                                  max_ngbs, &count_found,
@@ -780,22 +798,37 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           struct part *pj = ngb_buffer[k].p;
           struct xpart *xpj = ngb_buffer[k].xp;
           const float r2 = ngb_buffer[k].r2;
+          const int was_tagged_before =
+              radiation_is_part_tagged_as_ionized(pj, xpj);
 
           /* Do the ionization */
           feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
                                        hydro_props, us, cosmo, cooling,
                                        feedback_props, ti_begin, time, dt_back);
 
-#ifdef SWIFT_DEBUG_CHECKS
           /* A candidate starts this loop untagged, so tagged-with-si->id
-             afterwards means this star just claimed it. A concurrent
-             claim by another star's task tags a different id instead and
-             is correctly excluded here. */
-          if (radiation_is_part_tagged_as_ionized(pj, xpj) &&
-              radiation_get_part_ionized_star_id(pj, xpj) == si->id) {
+             afterwards means this star just claimed it. A concurrent claim
+             by another star's task tags a different id instead and is
+             correctly excluded here. feedback_hii_claim_part always tags
+             AND consumes budget together, so an untagged result here means
+             this pixel's budget is bit-identical to before the call -- the
+             probabilistic roll was lost (or the pixel had no budget left,
+             already filtered above). */
+          const int claimed_this_candidate =
+              !was_tagged_before &&
+              radiation_is_part_tagged_as_ionized(pj, xpj) &&
+              radiation_get_part_ionized_star_id(pj, xpj) == si->id;
+          if (claimed_this_candidate) ++attempt_claimed_count;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (claimed_this_candidate) {
             ++count_claimed;
             claimed_id_hash +=
                 (unsigned long long)pj->id * 0x9E3779B97F4A7C15ULL;
+            ++pixel_claimed_count[pixel];
+            pixel_roll_state[pixel] = 1;
+          } else if (!was_tagged_before) {
+            pixel_roll_state[pixel] = 0;
           }
 #endif
         } /* Loop over the sorted particles */
@@ -805,7 +838,18 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
 
       if (buffer_was_full) {
-        /* Case 1: more candidates may exist within the SAME radius. */
+        /* Case 1: more candidates may exist within the SAME radius --
+         * PROVIDED this attempt claimed at least one of them. If it
+         * claimed none, no pixel's budget or tag state changed anywhere,
+         * so a retry re-runs the identical search (same eligible set),
+         * meets the identical per-pixel budgets, and every pixel's fixed
+         * (star, pixel, ti_begin) random draw replays the identical
+         * win/lose outcome -- a provable no-op, not a heuristic. Angular
+         * splitting hands each pixel a photon sliver too small to often
+         * win its probabilistic roll, which is what let this retry burn
+         * its full Stars:HII_max_retry_full_buffer budget doing nothing;
+         * this exits as soon as that state is reached instead. */
+        if (attempt_claimed_count == 0) break;
         if (num_retry_full_buffer >= max_retry_full_buffer) break;
         ++num_retry_full_buffer;
         num_empty_expansions = 0;
@@ -864,6 +908,26 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         "claimed_id_hash %llu held %d leftover_budget %.17e",
         si->id, (long long)e->ti_current, count_claimed, claimed_id_hash,
         count_held, feedback_get_star_ionization_budget_total(si));
+
+    /* Compact per-pixel claim-accounting line: pixel index, claims, photons
+       spent/left, and the last probabilistic roll outcome -- the overnight
+       nside=1 investigation found this was unresolvable from any existing
+       output. One line per star per pass regardless of pixel count. */
+    {
+      char pixel_summary[2048];
+      size_t off = 0;
+      const int n_pix = feedback_get_star_HII_pixel_count(si);
+      for (int p = 0; p < n_pix && off < sizeof(pixel_summary); p++) {
+        const double left = feedback_get_star_ionization_budget(si, p);
+        const char roll =
+            pixel_roll_state[p] < 0 ? 'x' : (pixel_roll_state[p] ? 'W' : 'L');
+        off += (size_t)snprintf(
+            pixel_summary + off, sizeof(pixel_summary) - off,
+            "%s[%d:c=%d,sp=%.3e,lf=%.3e,r=%c]", p == 0 ? "" : " ", p,
+            pixel_claimed_count[p], pixel_budget_start[p] - left, left, roll);
+      }
+      message("HII pixels: star %lld %s", si->id, pixel_summary);
+    }
 #endif
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
