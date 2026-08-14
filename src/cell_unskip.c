@@ -2431,6 +2431,18 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_send(s, ci->mpi.send, task_subtype_part_hii_tag,
                                   ci_nodeID);
         }
+        if (ci_active) {
+          /* The owner of ci runs its own gather over our gas this step, so
+           * feed it: counterpart of the recv two clauses above, which the
+           * peer activates under the same ci_active. The gas we send is
+           * drifted by cell_radiation_activate_supers_in(cj), called above
+           * under the weaker (ci_active || cj_active) gate; a plain
+           * cell_activate_drift_part(cj) cannot serve here because a
+           * radiation_level cell may sit above every hydro.super it
+           * covers. */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+        }
         if (ci_active || cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_hii_state);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_state,
@@ -2449,6 +2461,11 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           cell_radiation_activate_foreign_sorts(cj, s);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_tag,
                                   cj_nodeID);
+        }
+        if (cj_active) {
+          /* Mirror of the ci_active clause in the branch above. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
         }
         if (ci_active || cj_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_hii_state);
