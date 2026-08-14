@@ -2119,7 +2119,7 @@ void write_output_parallel(struct engine *e,
 
       if (compression_level != compression_do_not_write) {
         if (e->s->with_zoom_region) {
-          /* Write this rank's zoom and background particles into their
+          /* Write this rank's particles in zoom and background cells into their
            * respective global regions. */
           write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
                                zoom_layout.local_in_cells[ptype],

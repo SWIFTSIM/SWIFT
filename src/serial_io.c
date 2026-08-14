@@ -414,11 +414,12 @@ void prepare_array_serial(
  * the HDF5 file.
  * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param N_in_cells Number of local zoom particles.
+ * @param N_in_cells Number of local particles in zoom cells.
  * @param N_total The total number of particles on all ranks.
  * @param offset The offset position where this rank starts writing.
- * @param offset_in_cells Offset of this rank's zoom particles.
- * @param offset_outside_cells Offset of this rank's background particles.
+ * @param offset_in_cells Offset of this rank's particles in zoom cells.
+ * @param offset_outside_cells Offset of this rank's particles in background
+ * cells.
  * @param lossy_compression Lossy compression filter to apply.
  * @param mpi_rank The MPI rank of this node
  * @param internal_units The #unit_system used internally

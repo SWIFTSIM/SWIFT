@@ -304,9 +304,10 @@ void write_distributed_array(
  * @param partTypeGroupName The name of the group we are writing to.
  * @param props The #io_props of the field to write.
  * @param N_total The total number of particles to write in this array.
- * @param N_total_in_cells Total number of zoom particles.
+ * @param N_total_in_cells Total number of particles in zoom cells.
  * @param N_counts Number of particles written by each rank.
- * @param N_in_cells_counts Number of zoom particles written by each rank.
+ * @param N_in_cells_counts Number of particles in zoom cells written by each
+ * rank.
  * @param num_ranks Number of MPI ranks contributing to the snapshot.
  * @param ptype Particle type being written.
  * @param lossy_compression Lossy compression filter applied to the field.
@@ -505,7 +506,8 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
  * @param N_total The total number of particles of each type to write.
  * @param N_total_zoom The total number of particles in zoom cells.
  * @param N_counts Number of particles written by each rank.
- * @param N_in_cells_counts Number of zoom particles written by each rank.
+ * @param N_in_cells_counts Number of particles in zoom cells written by each
+ * rank.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.

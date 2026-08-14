@@ -97,13 +97,15 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
 }
 
 /**
- * @brief Write particle counts split between zoom and background particles.
+ * @brief Write particle counts split between zoom and background cells.
  *
  * @param head_grp The snapshot Header group.
  * @param this_file Number of particles of each type in this file.
- * @param in_cells_this_file Number of zoom particles of each type in this file.
+ * @param in_cells_this_file Number of particles of each type in zoom cells in
+ * this file.
  * @param total Total number of particles of each type across all files.
- * @param in_cells_total Number of zoom particles of each type across all files.
+ * @param in_cells_total Number of particles of each type in zoom cells across
+ * all files.
  * @param num_fields Number of fields selected for each particle type.
  */
 void zoom_write_particle_counts(
@@ -142,13 +144,13 @@ void zoom_write_particle_counts(
 }
 
 /**
- * @brief Count local zoom particles for each particle type.
+ * @brief Count local particles in zoom cells for each particle type.
  *
  * @param e The #engine.
  * @param subsample Whether each particle type is being subsampled.
  * @param subsample_fraction Fraction of each particle type to retain.
  * @param local Total local particle counts for each particle type.
- * @param local_in_cells Local zoom particle counts for each particle type.
+ * @param local_in_cells Local counts in zoom cells for each particle type.
  */
 void zoom_io_count_particles_in_cells(
     const struct engine *e, const int subsample[swift_type_count],
@@ -229,8 +231,8 @@ void zoom_io_prepare_particle_layout(
   MPI_Allreduce(layout->local_in_cells, layout->total_in_cells,
                 swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
 
-  /* Background particles follow all zoom particles. Their rank prefix is the
-   * total rank prefix minus the zoom rank prefix. */
+  /* Particles in background cells follow all particles in zoom cells. Their
+   * rank prefix is the total rank prefix minus the zoom-cell rank prefix. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
     layout->offset_outside_cells[ptype] = layout->total_in_cells[ptype] +
                                           (e->nodeID == 0 ? 0 : offset[ptype]) -
@@ -242,7 +244,8 @@ void zoom_io_prepare_particle_layout(
  * @brief Advance all particle pointers to the background segment.
  *
  * @param props The I/O properties to update.
- * @param offset Number of local zoom particles preceding the background.
+ * @param offset Number of local particles in zoom cells preceding particles in
+ * background cells.
  */
 void zoom_io_offset_io_props(struct io_props *props, size_t offset) {
   if (props->field != NULL) props->field += offset * props->partSize;
@@ -255,7 +258,8 @@ void zoom_io_offset_io_props(struct io_props *props, size_t offset) {
 }
 
 /**
- * @brief Write local zoom and background data into their global regions.
+ * @brief Write local particle data from zoom and background cells into their
+ * global regions.
  *
  * @param h_data The HDF5 dataset to write.
  * @param h_memspace The HDF5 memory dataspace.
@@ -265,10 +269,10 @@ void zoom_io_offset_io_props(struct io_props *props, size_t offset) {
  * @param rank Rank of the HDF5 dataspace.
  * @param dimension Number of values per particle.
  * @param count Total number of local particles.
- * @param count_in_cells Number of local zoom particles.
- * @param offset_in_cells Global offset of this rank's zoom particles.
- * @param offset_outside_cells Global offset of this rank's background
- * particles.
+ * @param count_in_cells Number of local particles in zoom cells.
+ * @param offset_in_cells Global offset of this rank's particles in zoom cells.
+ * @param offset_outside_cells Global offset of this rank's particles in
+ * background cells.
  * @param field_name Name of the particle field being written.
  */
 void zoom_io_write_serial_particle_regions(

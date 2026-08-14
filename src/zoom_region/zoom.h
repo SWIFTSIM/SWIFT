@@ -52,16 +52,16 @@ struct partition;
 
 /** @brief Particle counts and output offsets for a zoom snapshot. */
 struct zoom_io_particle_layout {
-  /*! Number of local zoom particles. */
+  /*! Number of local particles in zoom cells. */
   long long local_in_cells[swift_type_count];
 
-  /*! Number of zoom particles across all ranks. */
+  /*! Number of particles in zoom cells across all ranks. */
   long long total_in_cells[swift_type_count];
 
-  /*! Global offset of this rank's zoom particles. */
+  /*! Global offset of this rank's particles in zoom cells. */
   long long offset_in_cells[swift_type_count];
 
-  /*! Global offset of this rank's background particles. */
+  /*! Global offset of this rank's particles in background cells. */
   long long offset_outside_cells[swift_type_count];
 };
 
