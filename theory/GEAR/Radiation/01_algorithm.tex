@@ -66,7 +66,7 @@ happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
 ion}=0$ is returned directly rather than evaluating the series.
 
 \textbf{Note: two independent mass--temperature relations coexist,
-confirmed to disagree (investigated 2026-07-20).}
+confirmed to disagree (investigated 2026-07-20) (TODO: Remove it once in pychem).}
 \code{radiation\_get\_individual\_star\_temperature} is a separate,
 piecewise mass--temperature fit ($3500\,{\rm K}\,(M/M_\odot)^{0.5}$
 below $1\,M_\odot$, $5800\,{\rm K}\,(M/M_\odot)^{0.5}$ up to
@@ -103,9 +103,9 @@ should simply be deleted.
 \subsection{Photon budget and recombination cost}
 \label{sec:photon-budget}
 
-The whole algorithm -- one-shot, distance-sorted photon-budget spending
-on the nearest candidate gas particles, closest-first, until exhausted
--- is the FIRE-2 subgrid photoionization scheme
+The whole algorithm (i.e. one-shot, distance-sorted photon-budget spending
+on the nearest candidate gas particles, closest-first, until exhausted)
+is the FIRE-2 subgrid photoionization scheme
 \citep[Appendix~E]{Hopkins2018}; Hu et al.\ and Smith et al.\ (and this
 branch) build directly on it. Each active star with ionizing photon
 rate $\dot N_{\rm ion}$ (Eq.~\ref{eq:planck-photon-rate},
@@ -127,10 +127,7 @@ $T=10^4\,$K (\code{phys\_const->const\_caseb\_recomb}), matching the
 convention both reference papers use. Equation~\ref{eq:recomb-cost} is
 identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 ``the number of hydrogen nuclei'', an unambiguous atom count) and to
-Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. Neither $N_H$
-nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
-see the GEAR radiation logbook's ``mean-molecular-weight factor'' bug
-entry (2026-07-16) for why our first attempt at this included one.
+Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
 
 \textbf{Claim cost vs.\ maintenance rate.} Equation~\ref{eq:recomb-cost}
 is a \emph{rate}: what it costs, per unit time, to keep a particle's
