@@ -507,6 +507,13 @@ void proxy_hydro_attach_exchange(struct proxy *proxies, int num_proxies,
     }
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int cid = proxies[k].cells_out[j] - s->cells_top;
+#ifdef SWIFT_DEBUG_CHECKS
+      /* The buffer is sized and packed over the sendto cells, so a cells_out
+       * entry outside that set would send an unwritten slice of it. The two
+       * are set together in engine_proxy.c; assert rather than trust. */
+      if (!proxies[k].cells_out[j]->mpi.sendto)
+        error("Proxy out-cell %d is not flagged for sending.", cid);
+#endif
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
           &flags_out[offset_out[cid]], proxies[k].cells_out[j]->mpi.pcell_size,
