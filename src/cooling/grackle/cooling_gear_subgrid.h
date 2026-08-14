@@ -154,7 +154,7 @@ INLINE static int cooling_update_part_subgrid(
       phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
       dt_therm, time, u_out);
 
-  /* TODO (future plan): Apply space-time varying UV background */
+  /* TODO: apply a space-time varying UV background. */
 
   return ionized_this_step;
 }

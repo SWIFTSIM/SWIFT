@@ -844,11 +844,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          * so a retry re-runs the identical search (same eligible set),
          * meets the identical per-pixel budgets, and every pixel's fixed
          * (star, pixel, ti_begin) random draw replays the identical
-         * win/lose outcome -- a provable no-op, not a heuristic. Angular
-         * splitting hands each pixel a photon sliver too small to often
-         * win its probabilistic roll, which is what let this retry burn
-         * its full Stars:HII_max_retry_full_buffer budget doing nothing;
-         * this exits as soon as that state is reached instead. */
+         * win/lose outcome -- a provable no-op, not a heuristic. */
         if (attempt_claimed_count == 0) break;
         if (num_retry_full_buffer >= max_retry_full_buffer) break;
         ++num_retry_full_buffer;
@@ -910,9 +906,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         count_held, feedback_get_star_ionization_budget_total(si));
 
     /* Compact per-pixel claim-accounting line: pixel index, claims, photons
-       spent/left, and the last probabilistic roll outcome -- the overnight
-       nside=1 investigation found this was unresolvable from any existing
-       output. One line per star per pass regardless of pixel count. */
+       spent/left, and the last probabilistic roll outcome. The per-star
+       CHECKSUM line above aggregates across pixels and cannot show this.
+       One line per star per pass regardless of pixel count. */
     {
       char pixel_summary[2048];
       size_t off = 0;

@@ -65,7 +65,7 @@ The ever-tagged extent itself is gap-rejected, not the max, of ever-tagged
 gas radii: HIIStarIDs is a one-way stamp (never cleared on tag expiry), so
 a single particle that lapsed early and advected outward for several Myr
 can inflate a plain max() by double digits percent. Discarding particles
-by a blind percentile also works, but was found to cut several percent
+by a blind percentile also works, but cuts several percent
 into a perfectly smooth, gap-free shell edge where nothing is actually an
 outlier; walking down from the top and discarding only points separated
 from the bulk by an anomalously large gap keeps the smooth case exact
@@ -179,10 +179,9 @@ def starbench_curve(
 
 # A point at the top of the sorted ever-tagged distances is rejected as an
 # outlier only if the gap to its next-lower neighbor exceeds this many times
-# the local point spacing -- an isolated advected straggler blows this
-# multiple by an order of magnitude or more (verified: ~20x on a real
-# straggler), but the front's own natural surface roughness does not
-# (verified: <2x on a smooth, gap-free shell edge).
+# the local point spacing: an isolated advected straggler produces a gap an
+# order of magnitude or more above the front's own natural surface
+# roughness.
 GAP_REJECTION_FACTOR = 5.0
 # Fraction of ever-tagged particles, counted in from the front, used to
 # estimate the local point spacing scale GAP_REJECTION_FACTOR is measured
@@ -202,7 +201,7 @@ def robust_ever_tagged_radius(distances_kpc):
     single particle whose tag lapsed early and then advected outward for
     several Myr can dominate a plain max() and inflate the reported extent
     by double digits percent. A blind percentile trim removes such
-    stragglers too, but was found to also cut several percent into a
+    stragglers too, but also cuts several percent into a
     perfectly smooth, gap-free shell edge where every particle is
     legitimate. Instead, walk down from the largest distance and discard a
     point only if the gap to its next-lower neighbor exceeds

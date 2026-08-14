@@ -105,10 +105,8 @@ GEARFeedback:
                                        # and phase differences of several percent are expected; accepted
                                        # validation runs read approximately 2-6% error at t=3 Myr (see
                                        # theory/GEAR/Radiation/04_validation.tex), not a single sharper number.
-                                       # Cadence-independence is verified at HuSmith2017's much lower density,
-                                       # not yet at this one -- this example's own two data points (2.19 pc
-                                       # adaptive-at-floor vs. 2.259 pc here) differ by ~3%, so re-check before
-                                       # pushing coarser.
+                                       # Cadence-independence has not been verified at this density (only at
+                                       # HuSmith2017's lower density); re-check before increasing this value.
   HII_rebuild_floor_Myr: 1e-4         # Floors the elapsed interval the per-pass photon budget is integrated
                                        # over.
 

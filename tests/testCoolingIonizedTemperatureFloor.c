@@ -26,31 +26,25 @@
 
 /* IONIZATION_FEEDBACK_DEBUG_NO_COOLING compiles cooling_ionize_part_subgrid
    down to an unconditional "return 0" (cooling_gear_subgrid.h): under that
-   flag the pin this test targets never runs at all, by design (gas heated
-   by feedback simply never cools back down, so the per-step re-floor this
-   test exercises has nothing to do). Nothing to test in that configuration. */
+   flag the ionized-gas temperature floor this test targets never runs at
+   all, by design (gas heated by feedback simply never cools back down, so
+   the per-step re-floor this test exercises has nothing to do). Nothing to
+   test in that configuration. */
 #if defined(GEAR_COOLING) && !defined(IONIZATION_FEEDBACK_DEBUG_NO_COOLING)
 
 /**
- * @brief Regression test for the ionized-gas temperature-pin energy
- * double-application bug (cooling_gear_subgrid.h).
+ * @brief Regression test: cooling_update_part_subgrid() must land the
+ * ionized-gas temperature floor's energy exactly once.
  *
- * cooling_ionize_part_subgrid() used to write the pinned energy straight to
- * xp->u_full (via hydro_set_physical_internal_energy) AND zero p->u_dt, while
- * cooling_new_energy() then returned that same just-written value. Back in
- * cooling_cool_part(), that return value was turned into a du/dt relative to
- * the PRE-pin energy and hydro_kick_extra() applied it on top of the energy
- * already written -- landing the pinned energy twice
- * (u_end = 2*u_pin - u_ad_before instead of u_pin).
- *
- * The fix makes the pin path return u_pin without touching the particle's
- * energy state, so the existing du/dt machinery (shared with every other
- * cooling_new_energy() return path) lands it exactly once. This test drives
- * the real cooling_update_part_subgrid(), then replays cooling_cool_part's
- * own du/dt bookkeeping (cooling.c) and the real hydro_kick_extra() kick, and
- * checks the particle ends up AT u_pin, not overshot.
+ * cooling_ionize_part_subgrid() returns the floor energy through an output
+ * parameter without touching the particle's energy state directly, so the
+ * du/dt machinery shared by every other cooling_new_energy() return path
+ * lands it exactly once. This test drives the real
+ * cooling_update_part_subgrid(), then replays cooling_cool_part's own du/dt
+ * bookkeeping (cooling.c) and the real hydro_kick_extra() kick, and checks
+ * the particle ends up AT u_floor, not overshot.
  */
-static void test_ionized_pin_lands_once(void) {
+static void test_ionized_temperature_floor_lands_once(void) {
 
   struct unit_system us;
   units_init_cgs(&us);
@@ -108,7 +102,7 @@ static void test_ionized_pin_lands_once(void) {
   xp.cooling_data.HI_frac = 0.75f;
   xp.cooling_data.HeI_frac = 0.25f;
 #endif
-  const float u_old = 1.0e8f; /* erg/g -- orders of magnitude below u_pin. */
+  const float u_old = 1.0e8f; /* erg/g -- orders of magnitude below u_floor. */
   p.u = u_old;
   xp.u_full = u_old;
   p.u_dt = 1.0e5f; /* Nonzero adiabatic derivative, to exercise the
@@ -127,37 +121,37 @@ static void test_ionized_pin_lands_once(void) {
   const float u_ad_before =
       u_old + dt_therm * hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
-  float u_pin = 0.f;
+  float u_floor = 0.f;
   const int ionized_this_step = cooling_update_part_subgrid(
       &phys_const, &us, &cosmo, &hydro_props, &pressure_floor, &cooling, &p,
-      &xp, dt, dt_therm, time, &u_pin);
+      &xp, dt, dt_therm, time, &u_floor);
 
   if (!ionized_this_step)
     error(
         "cooling_update_part_subgrid did not report the particle as "
         "ionized -- test setup error.");
 
-  if (u_pin <= u_old)
+  if (u_floor <= u_old)
     error(
-        "Test setup error: u_pin (%e) must sit well above u_old (%e) for "
-        "this test to discriminate the double-application bug.",
-        u_pin, u_old);
+        "Test setup error: u_floor (%e) must sit well above u_old (%e) for "
+        "this test to detect a doubly-applied floor energy.",
+        u_floor, u_old);
 
-  /* The fix's actual contract: the pin call must not have touched the
-     particle's energy state directly -- only returned u_pin. */
+  /* The fix's actual contract: enforcing T_HII must not touch the
+     particle's energy state directly -- only return u_floor. */
   if (xp.u_full != u_old)
     error(
         "cooling_update_part_subgrid wrote xp->u_full directly (got %e, "
-        "expected it untouched at %e) -- the pin must return u_pin instead "
-        "of writing it, or the caller's own du/dt integration below "
-        "double-applies it.",
+        "expected it untouched at %e) -- enforcing T_HII must return "
+        "u_floor instead of writing it, or the caller's own du/dt "
+        "integration below double-applies it.",
         xp.u_full, u_old);
 
   /* Mirrors cooling_cool_part's post-cooling bookkeeping
-     (cooling.c:1158-1169): derive du/dt from the returned pin energy and
+     (cooling.c:1158-1169): derive du/dt from the returned floor energy and
      land it through the same machinery every other cooling path uses. */
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(&p, &cosmo);
-  const float cool_du_dt = (u_pin - u_ad_before) / dt_therm;
+  const float cool_du_dt = (u_floor - u_ad_before) / dt_therm;
   const float du_dt = cool_du_dt + hydro_du_dt;
   hydro_set_physical_internal_energy_dt(&p, &cosmo, du_dt);
 
@@ -166,16 +160,16 @@ static void test_ionized_pin_lands_once(void) {
                    /*dt_hydro=*/dt_therm, /*dt_kick_corr=*/0.f, &cosmo,
                    &hydro_props, &floor_props);
 
-  const double rel_err = fabs((double)xp.u_full - (double)u_pin) / u_pin;
-  message("u_old=%e u_pin=%e u_full_after_kick=%e rel_err=%e", (double)u_old,
-          (double)u_pin, (double)xp.u_full, rel_err);
+  const double rel_err = fabs((double)xp.u_full - (double)u_floor) / u_floor;
+  message("u_old=%e u_floor=%e u_full_after_kick=%e rel_err=%e", (double)u_old,
+          (double)u_floor, (double)xp.u_full, rel_err);
 
   if (rel_err > 1e-5)
     error(
         "Energy double-application regression: expected xp->u_full == "
-        "u_pin (%e) after cooling+kick, got %e (rel_err=%e). The "
-        "ionized-gas pin must land its energy exactly once.",
-        u_pin, xp.u_full, rel_err);
+        "u_floor (%e) after cooling+kick, got %e (rel_err=%e). The "
+        "ionized-gas temperature floor must land its energy exactly once.",
+        u_floor, xp.u_full, rel_err);
 }
 
 #endif /* GEAR_COOLING && !IONIZATION_FEEDBACK_DEBUG_NO_COOLING */
@@ -185,14 +179,17 @@ int main(int argc, char *argv[]) {
   (void)argv;
 
 #if defined(GEAR_COOLING) && !defined(IONIZATION_FEEDBACK_DEBUG_NO_COOLING)
-  test_ionized_pin_lands_once();
-  message("testCoolingIonizedPin: PASS.");
+  test_ionized_temperature_floor_lands_once();
+  message("testCoolingIonizedTemperatureFloor: PASS.");
 #elif !defined(GEAR_COOLING)
-  message("testCoolingIonizedPin: skipped (not built with GEAR_COOLING).");
+  message(
+      "testCoolingIonizedTemperatureFloor: skipped (not built with "
+      "GEAR_COOLING).");
 #else
   message(
-      "testCoolingIonizedPin: skipped (IONIZATION_FEEDBACK_DEBUG_NO_COOLING "
-      "disables the pin this test targets).");
+      "testCoolingIonizedTemperatureFloor: skipped "
+      "(IONIZATION_FEEDBACK_DEBUG_NO_COOLING disables the floor "
+      "enforcement this test targets).");
 #endif
 
   return 0;
