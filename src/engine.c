@@ -1938,6 +1938,13 @@ void engine_launch(struct engine *e, const char *call) {
   space_reset_task_counters(e->s);
 #endif
 
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+  /* Confront this rank's activated communications with its peers' before the
+   * runners can start waiting on them: an unmatched send/recv pair otherwise
+   * hangs the step without emitting anything. */
+  scheduler_check_mpi_activation_symmetry(&e->sched);
+#endif
+
   /* reset the active time counters for the runners */
   for (int i = 0; i < e->nr_threads; ++i) {
     runner_reset_active_time(&e->runners[i]);

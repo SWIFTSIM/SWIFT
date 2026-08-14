@@ -327,6 +327,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s);
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+void scheduler_check_mpi_activation_symmetry(struct scheduler *s);
+#endif
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);

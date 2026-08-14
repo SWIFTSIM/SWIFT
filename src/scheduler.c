@@ -861,6 +861,146 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   pthread_cond_broadcast(&s->sleep_cond);
 }
 
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+
+/**
+ * @brief Per-peer, per-subtype digest of the MPI tasks a rank has activated.
+ *
+ * Exchanged wholesale between all ranks so that each rank can confront its
+ * own activation set with its peers'.
+ */
+struct scheduler_mpi_digest {
+
+  /*! Number of activated send tasks of this subtype towards the peer. */
+  int send_count;
+
+  /*! Number of activated recv tasks of this subtype from the peer. */
+  int recv_count;
+
+  /*! XOR over the cell MPI tags carried by those sends. */
+  long long send_tag_xor;
+
+  /*! XOR over the cell MPI tags carried by those recvs. */
+  long long recv_tag_xor;
+};
+
+/**
+ * @brief Verify that every activated MPI task has its counterpart activated
+ * on the peer rank.
+ *
+ * An MPI send whose matching recv was never unskipped on the peer (or the
+ * reverse) does not raise any error: the step simply never completes, one
+ * rank spinning in task_lock() on a request nobody will ever satisfy while
+ * the others wait in the next collective. That silence is what makes
+ * activation asymmetries so expensive to diagnose, so this check gives them
+ * a voice.
+ *
+ * Each rank reduces its activated send/recv set to a digest indexed by
+ * (peer, subtype), holding a count and the XOR of the cell MPI tags. One
+ * MPI_Alltoall then lets every rank compare its sends towards a peer against
+ * that peer's recvs from it, and vice versa. The work is O(activated tasks)
+ * plus O(nr_nodes * task_subtype_count) for the digest itself.
+ *
+ * When the counts differ by exactly one, the XOR of the two tag digests is
+ * the tag of the single unmatched cell, since every matched pair cancels.
+ *
+ * Must be called by every rank at the same point of the step, before the
+ * runners are let loose on the queues.
+ *
+ * @param s The #scheduler.
+ */
+void scheduler_check_mpi_activation_symmetry(struct scheduler *s) {
+
+  int nr_nodes = 1, nodeID = 0;
+  MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes);
+  MPI_Comm_rank(MPI_COMM_WORLD, &nodeID);
+  if (nr_nodes <= 1) return;
+
+  const size_t nr_entries = (size_t)nr_nodes * task_subtype_count;
+  struct scheduler_mpi_digest *mine =
+      (struct scheduler_mpi_digest *)calloc(nr_entries, sizeof(*mine));
+  struct scheduler_mpi_digest *theirs =
+      (struct scheduler_mpi_digest *)calloc(nr_entries, sizeof(*theirs));
+  if (mine == NULL || theirs == NULL)
+    error("Failed to allocate the MPI activation digests.");
+
+  /* Reduce this rank's activated communications to the digest. */
+  for (int k = 0; k < s->active_count; k++) {
+
+    const struct task *t = &s->tasks[s->tid_active[k]];
+    if (t->type != task_type_send && t->type != task_type_recv) continue;
+
+    /* Peer rank, derived exactly as scheduler_enqueue() derives it for the
+     * MPI_Isend()/MPI_Irecv() themselves. */
+    int peer;
+    if (t->type == task_type_send) {
+      if (t->cj == NULL) error("Send task with no destination cell.");
+      peer = t->cj->nodeID;
+    } else {
+      /* The inverted part_hii_tag recv carries its source in cj, every
+       * other recv in ci (see the seam 1 note in scheduler_enqueue). */
+      const struct cell *source =
+          (t->subtype == task_subtype_part_hii_tag) ? t->cj : t->ci;
+      if (source == NULL) error("Recv task with no source cell.");
+      peer = source->nodeID;
+    }
+
+    if (peer < 0 || peer >= nr_nodes)
+      error("Communication task with an out-of-range peer rank %d.", peer);
+
+    struct scheduler_mpi_digest *d =
+        &mine[(size_t)peer * task_subtype_count + t->subtype];
+    if (t->type == task_type_send) {
+      d->send_count++;
+      d->send_tag_xor ^= t->flags;
+    } else {
+      d->recv_count++;
+      d->recv_tag_xor ^= t->flags;
+    }
+  }
+
+  /* Every rank hands each peer the slice of the digest that concerns it. */
+  const int slice = task_subtype_count * sizeof(struct scheduler_mpi_digest);
+  if (MPI_Alltoall(mine, slice, MPI_BYTE, theirs, slice, MPI_BYTE,
+                   MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to exchange the MPI activation digests.");
+
+  for (int peer = 0; peer < nr_nodes; peer++) {
+    if (peer == nodeID) continue;
+
+    for (int st = 0; st < task_subtype_count; st++) {
+
+      const struct scheduler_mpi_digest *m =
+          &mine[(size_t)peer * task_subtype_count + st];
+      const struct scheduler_mpi_digest *o =
+          &theirs[(size_t)peer * task_subtype_count + st];
+
+      /* My sends towards the peer are the peer's recvs from me. */
+      if (m->send_count != o->recv_count || m->send_tag_xor != o->recv_tag_xor)
+        error(
+            "MPI activation asymmetry: rank %d activated %d send(s) of "
+            "subtype %s towards rank %d, which activated %d matching "
+            "recv(s). Unmatched cell tag (exact when the counts differ by "
+            "one): %lld.",
+            nodeID, m->send_count, subtaskID_names[st], peer, o->recv_count,
+            m->send_tag_xor ^ o->recv_tag_xor);
+
+      /* My recvs from the peer are the peer's sends towards me. */
+      if (m->recv_count != o->send_count || m->recv_tag_xor != o->send_tag_xor)
+        error(
+            "MPI activation asymmetry: rank %d activated %d recv(s) of "
+            "subtype %s from rank %d, which activated %d matching send(s). "
+            "Unmatched cell tag (exact when the counts differ by one): %lld.",
+            nodeID, m->recv_count, subtaskID_names[st], peer, o->send_count,
+            m->recv_tag_xor ^ o->send_tag_xor);
+    }
+  }
+
+  free(mine);
+  free(theirs);
+}
+#endif /* WITH_MPI && SWIFT_DEBUG_CHECKS */
+
 /**
  * @brief Start the scheduler, i.e. fill the queues with ready tasks.
  *
