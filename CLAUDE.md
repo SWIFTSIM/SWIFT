@@ -93,10 +93,25 @@ A task touching the task graph (types, subtypes, unskipping, dispatch) is done w
    `--enable-debugging-checks`. `gas_mass=0.01` is the real bar (it alone hits
    `radiation_level > hydro.super`). Invoke swift directly — run.sh's `tee`
    pipe masks the exit code. Then build with
-   `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` and check
-   `hii_anisotropy_check.py -s 'snap/snapshot_*.hdf5'` reports 0.00%
-   un-ionized in every octant (a glob, not one snapshot: the star dies at the
-   end and `h_hii` is legitimately 0 there).
+   `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` and run
+   `hii_anisotropy_check.py -s 'snap/snapshot_*.hdf5'` (a glob, not one
+   snapshot: the star dies at the end and `h_hii` is legitimately 0 there).
+   Pass bar, per resolution:
+   - `gas_mass=0.1`: 0.00% un-ionized in every octant (the region saturates
+     the half-box well before star death, so full ionization is achievable).
+   - `gas_mass=0.01`: an isotropic rim residue is EXPECTED, not a bug — the
+     region is still growing at star death and the check measures against
+     the peak radius, so the never-reached outer shell stays neutral (finite
+     photon budget). Pass = no octant/axis outlier (all octants within a few
+     tenths of a percent of each other, mean-cos-to-diagonal ~ 0) AND overall
+     residue at or below the 2.5% archived reference (run_A2_gm001,
+     `dod_6c96aaeeb_phaseC`; re-measured 2026-08-12). A directional
+     signature or a residue well above the reference indicates a real
+     coverage/task-graph problem.
+   (History: the criterion previously said "0.00% in every octant" at both
+   resolutions — that number was only ever real at `gas_mass=0.1`; the
+   phaseC archive's 0.01 "pass" cited a mislabeled 0.1-resolution log.
+   Amended by Darwin's decision, 2026-08-12.)
 
 Criteria 1-3 all run under `IONIZATION_FEEDBACK_DEBUG_NO_COOLING`, which
 compiles out every path that depends on tags expiring. Work touching the
