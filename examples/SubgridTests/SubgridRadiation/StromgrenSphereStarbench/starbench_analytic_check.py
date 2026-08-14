@@ -61,6 +61,12 @@ The PASS/FAIL verdict is attached to each line separately; when the two
 conventions diverge by more than 10% the region receded and the
 scheme-appropriate line is the meaningful one (see above).
 
+The ever-tagged extent itself is the 99.5th percentile, not the max, of
+ever-tagged gas radii: HIIStarIDs is a one-way stamp (never cleared on tag
+expiry), so a single particle that lapsed early and advected outward for
+several Myr can inflate a plain max() by double digits percent; the true
+max is still reported as a secondary diagnostic.
+
 Usage:
     python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
@@ -166,6 +172,24 @@ def starbench_curve(
     return R_I, R_II, R_SB
 
 
+def robust_ever_tagged_radius(distances_kpc, percentile=99.5):
+    """Robust "ever-tagged" HII front radius from ever-tagged particle
+    distances.
+
+    HIIStarIDs is a one-way stamp (radiation_reset_part_ionized_tag never
+    clears it -- the stamp intentionally marks the swept shell), so a
+    single particle whose tag lapsed early and then advected outward for
+    several Myr can dominate a plain max() and inflate the reported extent
+    by double digits percent. The given percentile of the distance
+    distribution is insensitive to a handful of such outliers.
+
+    @param distances_kpc Ever-tagged particle distances from the source (kpc).
+    @param percentile Percentile of the distribution to report (default: 99.5).
+    @return (robust radius, true max), both in kpc.
+    """
+    return float(np.percentile(distances_kpc, percentile)), float(np.max(distances_kpc))
+
+
 # -----------------------------------------------------------------------------
 # Q_H(mass): direct port of radiation_get_individual_star_ionizing_photon_
 # emission_rate_fit() and the radius/luminosity fits it calls
@@ -243,7 +267,7 @@ def read_simulated_r_hii(snapshot_glob):
     if not files:
         raise RuntimeError(f"No snapshots found matching {snapshot_glob!r}.")
 
-    times, r_hii, r_now = [], [], []
+    times, r_hii, r_hii_max, r_now = [], [], [], []
     star_mass_msun = None
     n_H_atom_cc = None
     boxsize_kpc = None
@@ -266,9 +290,13 @@ def read_simulated_r_hii(snapshot_glob):
             box_kpc = data.metadata.boxsize.to("kpc").value
             dx = gas_pos - star_pos
             dx -= box_kpc * np.round(dx / box_kpc)
-            r_hii.append(float(np.max(np.linalg.norm(dx, axis=1))))
+            distances = np.linalg.norm(dx, axis=1)
+            r_robust, r_max = robust_ever_tagged_radius(distances)
+            r_hii.append(r_robust)
+            r_hii_max.append(r_max)
         else:
             r_hii.append(r_now[-1])
+            r_hii_max.append(r_now[-1])
 
         if star_mass_msun is None:
             n_stars = len(data.stars.masses)
@@ -286,6 +314,7 @@ def read_simulated_r_hii(snapshot_glob):
     return (
         u.Quantity(times, u.Myr),
         u.Quantity(r_hii, u.kpc),
+        u.Quantity(r_hii_max, u.kpc),
         u.Quantity(r_now, u.kpc),
         star_mass_msun,
         n_H_atom_cc,
@@ -400,7 +429,7 @@ def main():
         args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
     )
 
-    t_sim, r_sim, r_now, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
+    t_sim, r_sim, r_sim_max, r_now, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
         args.snapshot_glob
     )
     box_half_width = 0.5 * boxsize
@@ -434,6 +463,7 @@ def main():
     R_SB_at_t_sim = np.interp(t_sim.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB)
 
     r_sim_pc = r_sim.to(u.pc).value
+    r_sim_max_pc = r_sim_max.to(u.pc).value
     r_now_pc = r_now.to(u.pc).value
     box_valid = R_SB_at_t_sim <= box_half_width.to(u.pc).value
     alive = r_sim_pc > 0
@@ -454,6 +484,10 @@ def main():
         print(
             f"  {label}: r_sim={r_c:.4g} pc  " f"rel_error={rel_error:.2%}  [{verdict}]"
         )
+    print(
+        f"  (secondary diagnostic, true max ever-tagged extent: "
+        f"{r_sim_max_pc[last]:.4g} pc)"
+    )
     if abs(r_sim_pc[last] - r_now_pc[last]) / max(r_now_pc[last], 1e-10) > 0.1:
         print(
             "  NOTE: the two conventions diverge by >10% -- the region "

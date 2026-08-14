@@ -34,6 +34,12 @@ radius/luminosity fits it calls), so this script isn't guessing at a
 different photon budget than the code itself used. Keep this in sync with
 that file if the fit ever changes.
 
+The ever-tagged r_hii is the 99.5th percentile, not the max, of ever-tagged
+gas radii: HIIStarIDs is a one-way stamp (never cleared on tag expiry), so a
+single particle that lapsed early and then advected outward for several Myr
+can inflate a plain max() by double digits percent. The true max is still
+reported alongside it as a secondary diagnostic.
+
 Usage:
     python3 stromgren_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
@@ -164,6 +170,24 @@ def dtype_expansion_radius(t, R_st, c_s):
     return R_st * (1.0 + 7.0 * c_s * t / (4.0 * R_st)) ** (4.0 / 7.0)
 
 
+def robust_ever_tagged_radius(distances_kpc, percentile=99.5):
+    """Robust "ever-tagged" HII front radius from ever-tagged particle
+    distances.
+
+    HIIStarIDs is a one-way stamp (radiation_reset_part_ionized_tag never
+    clears it -- the stamp intentionally marks the swept shell), so a
+    single particle whose tag lapsed early and then advected outward for
+    several Myr can dominate a plain max() and inflate the reported extent
+    by double digits percent. The given percentile of the distance
+    distribution is insensitive to a handful of such outliers.
+
+    @param distances_kpc Ever-tagged particle distances from the source (kpc).
+    @param percentile Percentile of the distribution to report (default: 99.5).
+    @return (robust radius, true max), both in kpc.
+    """
+    return float(np.percentile(distances_kpc, percentile)), float(np.max(distances_kpc))
+
+
 # -----------------------------------------------------------------------------
 # Read the simulated r_hii(t) from the snapshots
 # -----------------------------------------------------------------------------
@@ -177,6 +201,7 @@ def read_simulated_r_hii(snapshot_glob):
 
     times = []
     r_hii = []
+    r_hii_max = []
     star_mass_msun = None
     n_H_atom_cc = None
     boxsize_kpc = None
@@ -208,9 +233,11 @@ def read_simulated_r_hii(snapshot_glob):
         # particle is first ionized and, unlike IsIonizedFlags, is never
         # reset when that tag later expires (see
         # radiation_reset_part_ionized_tag, src/feedback/GEAR/radiation.c),
-        # so it survives the rebuild-cadence tag/re-tag cycle and gives the
-        # true maximum radius any ionized gas has reached, not just the
-        # radius at which it was found.
+        # so it survives the rebuild-cadence tag/re-tag cycle. A plain max()
+        # over these positions is fragile to a single lapsed-tag particle
+        # that keeps advecting outward, so robust_ever_tagged_radius reports
+        # the 99.5th percentile as the primary value and the true max as a
+        # secondary diagnostic.
         star_id = int(data.stars.particle_ids[0])
         ever_tagged = data.gas.hiistar_ids == star_id
         if np.any(ever_tagged):
@@ -219,15 +246,19 @@ def read_simulated_r_hii(snapshot_glob):
             box_kpc = data.metadata.boxsize.to("kpc").value
             # Minimum-image convention: a periodic box means the naive
             # difference can be wrong by a whole box length once gas has
-            # wrapped around, which would corrupt the max() with a single
+            # wrapped around, which would corrupt the extent with a single
             # spurious huge distance -- match the simulation's own
             # nearest-image distance convention here.
             dx = gas_pos - star_pos
             dx -= box_kpc * np.round(dx / box_kpc)
-            r_ever_tagged = float(np.max(np.linalg.norm(dx, axis=1)))
-            r_hii.append(r_ever_tagged)
+            distances = np.linalg.norm(dx, axis=1)
+            r_robust, r_max = robust_ever_tagged_radius(distances)
+            r_hii.append(r_robust)
+            r_hii_max.append(r_max)
         else:
-            r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
+            r_now = float(np.max(data.stars.hiiregion_radii).to("kpc").value)
+            r_hii.append(r_now)
+            r_hii_max.append(r_now)
 
         if star_mass_msun is None:
             n_stars = len(data.stars.masses)
@@ -261,6 +292,7 @@ def read_simulated_r_hii(snapshot_glob):
     return (
         u.Quantity(times, u.Myr),
         u.Quantity(r_hii, u.kpc),
+        u.Quantity(r_hii_max, u.kpc),
         star_mass_msun,
         n_H_atom_cc,
         boxsize_kpc * u.kpc,
@@ -383,7 +415,7 @@ def main():
     ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
     C_S_IONIZED = sound_speed_ionized(T_IONIZED_K)
 
-    t_sim, r_sim, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
+    t_sim, r_sim, r_sim_max, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
         args.snapshot_glob
     )
 
@@ -445,6 +477,7 @@ def main():
     last_valid = np.where(valid)[0][-1]
     t_sim_final = t_sim[last_valid]
     r_sim_final = r_sim[last_valid]
+    r_sim_max_final = r_sim_max[last_valid]
     r_analytic_final = r_analytic[last_valid]
     rel_error = float(
         (np.abs(r_sim_final - r_analytic_final) / r_analytic_final).decompose()
@@ -453,6 +486,10 @@ def main():
     print(
         f"Comparison time: t={t_sim_final:.4g}  r_sim={r_sim_final:.4g}  "
         f"r_analytic={r_analytic_final:.4g}  rel_error={rel_error:.2%}  [{verdict}]"
+    )
+    print(
+        f"  (secondary diagnostic, true max ever-tagged extent: "
+        f"{r_sim_max_final:.4g})"
     )
     if last_valid < len(t_sim) - 1:
         reason = []

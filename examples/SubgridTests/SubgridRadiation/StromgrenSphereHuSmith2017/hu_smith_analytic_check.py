@@ -61,7 +61,12 @@ co-located sources has ever tagged (HIIStarIDs), not any star's frozen
 HIIRegionRadii (h_hii) -- generalizing the single-star version to Hu et
 al.'s own r_HII definition ("the maximum radius where a gas particle with
 an ionization fraction x_H+ > 0.95 can be found", i.e. a single front
-radius for the whole source cluster, not per-star).
+radius for the whole source cluster, not per-star). The reported extent is
+the 99.5th percentile, not the max, of these ever-tagged distances: since
+HIIStarIDs is never cleared on tag expiry, a single particle that lapsed
+early and advected outward for several Myr can inflate a plain max() by
+double digits percent; the true max is still reported as a secondary
+diagnostic.
 
 Usage:
     python3 hu_smith_analytic_check.py [-s snap/snapshot] [-o out.png]
@@ -169,6 +174,24 @@ def starbench_curve(
     return R_I, R_II, R_SB
 
 
+def robust_ever_tagged_radius(distances_kpc, percentile=99.5):
+    """Robust "ever-tagged" HII front radius from ever-tagged particle
+    distances.
+
+    HIIStarIDs is a one-way stamp (radiation_reset_part_ionized_tag never
+    clears it -- the stamp intentionally marks the swept shell), so a
+    single particle whose tag lapsed early and then advected outward for
+    several Myr can dominate a plain max() and inflate the reported extent
+    by double digits percent. The given percentile of the distance
+    distribution is insensitive to a handful of such outliers.
+
+    @param distances_kpc Ever-tagged particle distances from the source (kpc).
+    @param percentile Percentile of the distribution to report (default: 99.5).
+    @return (robust radius, true max), both in kpc.
+    """
+    return float(np.percentile(distances_kpc, percentile)), float(np.max(distances_kpc))
+
+
 # -----------------------------------------------------------------------------
 # Q_H(mass): direct port of radiation_get_individual_star_ionizing_photon_
 # emission_rate_fit() and the radius/luminosity fits it calls
@@ -249,7 +272,7 @@ def read_simulated_r_hii(snapshot_glob):
     if not files:
         raise RuntimeError(f"No snapshots found matching {snapshot_glob!r}.")
 
-    times, r_hii = [], []
+    times, r_hii, r_hii_max = [], [], []
     star_mass_msun = None
     n_stars_found = None
     n_H_atom_cc = None
@@ -273,9 +296,14 @@ def read_simulated_r_hii(snapshot_glob):
             box_kpc = data.metadata.boxsize.to("kpc").value
             dx = gas_pos - cluster_pos
             dx -= box_kpc * np.round(dx / box_kpc)
-            r_hii.append(float(np.max(np.linalg.norm(dx, axis=1))))
+            distances = np.linalg.norm(dx, axis=1)
+            r_robust, r_max = robust_ever_tagged_radius(distances)
+            r_hii.append(r_robust)
+            r_hii_max.append(r_max)
         else:
-            r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
+            r_now = float(np.max(data.stars.hiiregion_radii).to("kpc").value)
+            r_hii.append(r_now)
+            r_hii_max.append(r_now)
 
         if star_mass_msun is None:
             n_stars_found = len(data.stars.masses)
@@ -298,6 +326,7 @@ def read_simulated_r_hii(snapshot_glob):
     return (
         u.Quantity(times, u.Myr),
         u.Quantity(r_hii, u.kpc),
+        u.Quantity(r_hii_max, u.kpc),
         star_mass_msun,
         n_stars_found,
         n_H_atom_cc,
@@ -492,9 +521,16 @@ def main():
     )
     args = parser.parse_args()
 
-    t_sim, r_sim, star_mass_msun, n_stars, n_H, boxsize, files = read_simulated_r_hii(
-        args.snapshot_glob
-    )
+    (
+        t_sim,
+        r_sim,
+        r_sim_max,
+        star_mass_msun,
+        n_stars,
+        n_H,
+        boxsize,
+        files,
+    ) = read_simulated_r_hii(args.snapshot_glob)
     box_half_width = 0.5 * boxsize
     T_ionized_K = resolve_T_ionized_K(args.T_ionized_K, files)
 
@@ -543,6 +579,7 @@ def main():
     # isn't representative of how well the run matches the reference
     # overall.
     r_sim_pc = r_sim.to(u.pc).value
+    r_sim_max_pc = r_sim_max.to(u.pc).value
     box_valid = R_ref_at_t_sim <= box_half_width.to(u.pc).value
     alive = r_sim_pc > 0
     ok = box_valid & alive
@@ -551,6 +588,7 @@ def main():
     window = np.where(ok)[0]
     t_w = t_sim[window]
     r_w = r_sim_pc[window]
+    r_max_w = r_sim_max_pc[window]
     R_ref_w = R_ref_at_t_sim[window]
     rel_error_w = np.abs(r_w - R_ref_w) / R_ref_w
 
@@ -559,9 +597,16 @@ def main():
         f"Comparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
         f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
     )
-    print(f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_ref [pc]':>11} {'rel_error':>10}")
-    for tt, rr, RR, ee in zip(t_w, r_w, R_ref_w, rel_error_w):
-        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%}")
+    print(
+        f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_ref [pc]':>11} {'rel_error':>10} "
+        f"{'r_max [pc]':>11}"
+    )
+    for tt, rr, RR, ee, mm in zip(t_w, r_w, R_ref_w, rel_error_w, r_max_w):
+        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g}")
+    print(
+        "  (r_max is the secondary diagnostic: the true, non-robust max "
+        "ever-tagged extent, not the percentile used for r_sim above)"
+    )
     n_pass = np.sum(rel_error_w <= args.tol)
     median_error = np.median(rel_error_w)
     verdict = "PASS" if median_error <= args.tol else "FAIL"
