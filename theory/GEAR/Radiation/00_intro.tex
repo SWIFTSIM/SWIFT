@@ -6,8 +6,13 @@ feedback scheme: each active star sorts nearby gas particles by
 distance and spends a photon-rate budget on them, closest first, until
 the budget is exhausted, tagging the affordable particles as
 ``ionized'' and holding their temperature at a floor value until the
-next rebuild. The model is validated against two published, closely
-related reference algorithms:
+next rebuild. Throughout this document, ``rebuild'' alone means a
+star's own periodic HII candidate-search pass
+(\code{GEARFeedback:HII\_rebuild\_time\_Myr}, typically sub-Myr); this
+is a different, unrelated cadence from \swift's own tree rebuild
+(\code{space\_rebuild}), which is always spelled out explicitly (e.g.\
+``tree rebuild'') where it is meant. The model is validated against two
+published, closely related reference algorithms:
 \begin{itemize}
   \item \citet{Hu2017}, Appendix A: the four-source D-type expansion
     convergence test that our own ``spherical'' (\code{nside=0})
@@ -20,9 +25,10 @@ related reference algorithms:
 
   Both papers are the ground truth this branch is being validated
   against; the example \code{examples/SubgridTests/\allowbreak
-  StromgrenSphereClumpSmith2021/} reproduces their exact test
-  geometry (four 19.2\,M$_\odot$ co-located sources, $n=100\,\rm
-  cm^{-3}$ background, a $10^4\,\rm cm^{-3}$ clump 20\,pc away).
+  SubgridRadiation/StromgrenSphereClumpSmith2021/} reproduces their
+  exact test geometry (four 19.2\,M$_\odot$ co-located sources,
+  $n=100\,\rm cm^{-3}$ background, a $10^4\,\rm cm^{-3}$ clump
+  20\,pc away).
 \end{itemize}
 
 \subsection{Scope of this document}

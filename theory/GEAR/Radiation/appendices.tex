@@ -1,0 +1,107 @@
+% theory/GEAR/Radiation/appendices.tex
+% Appendix material for the HII photoionization theory document. Input
+% from radiation.tex (the master document) after \appendix; not
+% standalone. Currently holds the ionizing-photon-rate blackbody fit,
+% moved out of 01_algorithm.tex's main line of argument since it is a
+% self-contained input (a star's mass -> ionizing photon rate mapping)
+% rather than part of the region-growth algorithm itself.
+
+\section{Ionizing photon rate: blackbody spectrum fit}
+\label{sec:blackbody}
+
+Every active star's ionizing photon rate $\dot N_{\rm ion}$ (the budget
+spent in Section~\ref{sec:photon-budget} of the algorithm document)
+comes from
+\code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_
+rate\_fit} (\code{src/feedback/GEAR/radiation.c}), used both directly
+for individual (non-SSP) star particles and to build the IMF-integrated
+lookup table population stars read from. Unlike a simple empirical
+$\dot N_{\rm ion}(M)$ fit, this derives $\dot N_{\rm ion}$ from the
+star's own blackbody spectrum, via a mass $\to$ radius $\to$
+luminosity $\to$ effective temperature chain:
+\begin{align}
+  R(M) &= R_\odot \times
+  \begin{cases}
+    (M/M_\odot)^{0.8} & M < 1\,M_\odot \\
+    (M/M_\odot)^{0.57} & 1 \le M/M_\odot < 8 \\
+    (M/M_\odot)^{0.5} & M/M_\odot \ge 8
+  \end{cases}
+  \label{eq:mass-radius} \\
+  L(M) &= L_\odot \times
+  \begin{cases}
+    0.185\,(M/M_\odot)^{2} & M/M_\odot < 0.43 \\
+    (M/M_\odot)^{4} & 0.43 \le M/M_\odot < 2 \\
+    1.5\,(M/M_\odot)^{3.5} & 2 \le M/M_\odot < 54 \\
+    32000\,(M/M_\odot) & M/M_\odot \ge 54
+  \end{cases}
+  \label{eq:mass-luminosity} \\
+  T_{\rm eff} &= 5780\,{\rm K} \times
+  \left(\frac{L/L_\odot}{(R/R_\odot)^2}\right)^{1/4},
+  \label{eq:stefan-boltzmann}
+\end{align}
+i.e.\ a piecewise power-law mass--radius and mass--luminosity relation
+(\code{radiation\_get\_individual\_star\_radius},
+\code{radiation\_get\_individual\_star\_luminosity}), then $T_{\rm eff}$
+from the Stefan--Boltzmann law applied to $L$ and $R$ directly (not a
+separate mass--temperature fit: see the note at the end of this
+section). $\dot N_{\rm ion}$ is then the photon-number flux of a
+Planck spectrum of temperature $T_{\rm eff}$ above the H-ionizing edge
+$h\nu_0=13.6\,$eV:
+\begin{equation}
+  \dot N_{\rm ion} = \frac{L}{k_B T_{\rm eff}} \times
+  \frac{15}{\pi^4} \int_{x_0}^{\infty} \frac{x^2}{e^x-1}\,dx, \qquad
+  x_0 = \frac{h\nu_0}{k_B T_{\rm eff}},
+  \label{eq:planck-photon-rate}
+\end{equation}
+the standard Planck photon-number integral normalized so the
+$15/\pi^4$ prefactor makes the \emph{bolometric} photon rate exact in
+the $x_0\to0$ limit. The incomplete integral in
+Eq.~\ref{eq:planck-photon-rate} has no closed form, so the code
+evaluates it via the standard series expansion
+\begin{equation}
+  \int_{x_0}^\infty \frac{x^2}{e^x-1}\,dx =
+  \sum_{n=1}^{\infty} \frac{e^{-nx_0}}{n}
+  \left(x_0^2 + \frac{2x_0}{n} + \frac{2}{n^2}\right),
+  \label{eq:planck-series}
+\end{equation}
+truncated at $n=5$ terms (or earlier once $e^{-nx_0}<10^{-10}$),
+sufficient given $x_0 \gtrsim 3$ for any star hot enough to ionize
+hydrogen at all, so the series converges geometrically fast. If
+$x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output, as
+happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
+ion}=0$ is returned directly rather than evaluating the series.
+
+\textbf{Note: two independent mass--temperature relations coexist and
+disagree.}
+\code{radiation\_get\_individual\_star\_temperature} is a separate,
+piecewise mass--temperature fit ($3500\,{\rm K}\,(M/M_\odot)^{0.5}$
+below $1\,M_\odot$, $5800\,{\rm K}\,(M/M_\odot)^{0.5}$ up to
+$8\,M_\odot$, $25000\,{\rm K}\,(M/M_\odot/20)^{0.1}$ above), \emph{not}
+used by Eq.~\ref{eq:stefan-boltzmann} above, which derives $T_{\rm
+eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. A grep confirms
+\code{radiation\_get\_individual\_star\_temperature} has zero call
+sites anywhere in \code{src/}: genuinely dead code, not merely
+redundant. Evaluated both relations (plus the $R(M)$/$L(M)$ fits the
+Stefan--Boltzmann path depends on) across $0.1$--$150\,M_\odot$: they
+agree only near the two piecewise-boundary anchors ($\approx1\,M_\odot$,
+$\approx8\,M_\odot$, almost certainly tuned to known reference points
+like the Sun's $T_{\rm eff}$) and diverge by a factor
+$\sim1.5$--$2.7\times$ everywhere else, worst in the OB-star range that
+dominates ionizing photon production. The Stefan--Boltzmann path (the
+one actually used) also saturates at a fixed $\approx77{,}300\,$K for
+every mass above $\approx54\,M_\odot$: a structural artifact of the
+mass--luminosity fit turning linear ($L\propto M$) at exactly the mass
+the mass--radius fit is already $R\propto M^{0.5}$, making $L/R^2$ (and
+hence $T_{\rm eff}$) mass-independent there by construction, not
+physical intent. \textbf{Not worth reconciling in place}: both fits are
+single-metallicity piecewise power laws with no $(M,Z)$ dependence at
+all, which is the actual limitation regardless of which temperature
+relation is used. This entire empirical-fit layer (radius, luminosity,
+temperature) is intended to be replaced by extending \texttt{pychem}
+(\texttt{\textasciitilde/programs/pychem/}, already the source of this
+project's GEAR chemical-yield tables) to emit proper
+$(M,Z)$-dependent stellar tables: see the open items (item~T7 in the
+GEAR radiation logbook's Open Items section) for that standalone
+follow-up project. When it
+lands, the unused \code{radiation\_get\_individual\_star\_temperature}
+should simply be deleted.
