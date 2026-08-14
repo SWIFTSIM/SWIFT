@@ -2357,36 +2357,6 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
         if (cj_nodeID == nodeID)
           cell_radiation_activate_supers_in(cj, s, with_timestep_sync);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Precondition probe for the feedback_ghost activation fix above:
-         * fires when an asymmetric radiation pair's inactive side has a
-         * locally-pending active stars.feedback task on its covered super,
-         * the exact case the fix targets. */
-        if (ci_active != cj_active) {
-          struct cell *inactive_side = ci_active ? cj : ci;
-
-          if ((inactive_side->nodeID == nodeID) &&
-              (inactive_side->hydro.super != NULL)) {
-            struct cell *super = inactive_side->hydro.super;
-
-            for (struct link *fl = super->stars.feedback; fl != NULL;
-                 fl = fl->next) {
-              if (!fl->t->skip) {
-                message(
-                    "RADIATION/FEEDBACK_GHOST PRECONDITION PROBE: "
-                    "radiation pair (ci=%lld active=%d, cj=%lld active=%d) "
-                    "activates supers_in on inactive-side super %lld which "
-                    "has an ACTIVE stars.feedback task (type=%s/%s) "
-                    "pending -- feedback_ghost's activation is exercised.",
-                    ci->cellID, ci_active, cj->cellID, cj_active, super->cellID,
-                    taskID_names[fl->t->type], subtaskID_names[fl->t->subtype]);
-                break;
-              }
-            }
-          }
-        }
-#endif
       }
     }
 
