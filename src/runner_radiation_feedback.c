@@ -74,6 +74,7 @@ static INLINE void runner_hii_maintenance_buffer_ensure(struct runner *r,
   r->hii_maintenance_buffer_size = new_size;
 }
 
+#ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
 /**
  * @brief qsort() comparator for ascending (r2, id) order.
  *
@@ -81,6 +82,11 @@ static INLINE void runner_hii_maintenance_buffer_ensure(struct runner *r,
  * particles can sit at the identical squared distance. Explicit branches
  * rather than subtraction, since `a - b` on r2's magnitudes or on a
  * `long long` id either loses precision or overflows.
+ *
+ * Guarded like its only call site (the maintenance-buffer sort in
+ * runner_dosub_stars_hii_ionization_feedback()): under NO_COOLING that call
+ * is compiled out, and an unused static function trips -Werror
+ * -Wunused-function.
  */
 static int runner_hii_maintenance_compare(const void *a, const void *b) {
   const struct hii_neighbor *na = (const struct hii_neighbor *)a;
@@ -91,6 +97,7 @@ static int runner_hii_maintenance_compare(const void *a, const void *b) {
   if (na->p->id > nb->p->id) return 1;
   return 0;
 }
+#endif
 
 /**
  * @brief Assign a gas candidate to its angular pixel and insert it into
