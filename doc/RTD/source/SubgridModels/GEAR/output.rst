@@ -121,3 +121,157 @@ Since hydro scheme writes its own set of outputs, we only provide the outputs th
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
 | ``HDI``                                  | | Mass fraction of :math:`\mathrm{HD}`                      | [-]                    | | *Only if* ``GRACKLE_3``                          |
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+
+Black holes
+~~~~~~~~~~~
+
+See :ref:`gear_black_holes` for the physics behind these fields. The averaged accretion-rate tracer is documented separately, on the :ref:`gear_tracers` page.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``DynamicalMasses``
+     - Dynamical (gravitational, resolved) mass of the black hole particle
+     - [U_M]
+     - Generic ``Masses`` is not written for black holes; use this field.
+   * - ``SubgridMasses``
+     - Subgrid (unresolved, physical) mass of the black hole
+     - [U_M]
+     - Starts at the dynamical mass at formation and diverges from it as the BH accretes; see :ref:`gear_black_holes`.
+   * - ``FormationScaleFactors`` / ``FormationTimes``
+     - Scale-factor / time at which the BH was formed
+     - [-] / [U_T]
+     - Scale-factor in cosmological runs, time otherwise.
+   * - ``GasDensities``
+     - Co-moving density of the gas around the black hole
+     - [U_M U_L^{-3}]
+     -
+   * - ``GasSoundSpeeds``
+     - Co-moving sound-speed of the gas around the black hole
+     - [U_L U_T^{-1}]
+     -
+   * - ``EnergyReservoirs``
+     - Energy currently stored in the AGN feedback reservoir
+     - [U_M U_L^2 U_T^{-2}]
+     -
+   * - ``AccretionRates``
+     - Physical instantaneous accretion rate
+     - [U_M U_T^{-1}]
+     -
+   * - ``TotalAccretedMasses``
+     - Total mass accreted since birth (main progenitor only)
+     - [U_M]
+     - Excludes mass accreted by any merged-in black holes.
+   * - ``CumulativeNumberOfSeeds``
+     - Number of BH seeds merged into this black hole (including itself)
+     - [-]
+     -
+   * - ``NumberOfMergers``
+     - Number of BH-BH mergers experienced
+     - [-]
+     - Excludes mergers accumulated by any merged-in black holes.
+   * - ``LastHighEddingtonFractionScaleFactors`` / ``LastHighEddingtonFractionTimes``
+     - Scale-factor / time the BH last exceeded ``eddington_fraction_for_recording``
+     - [-] / [U_T]
+     - -1 if never reached.
+   * - ``LastMinorMergerScaleFactors`` / ``LastMinorMergerTimes``
+     - Scale-factor / time of the last minor merger
+     - [-] / [U_T]
+     -
+   * - ``LastMajorMergerScaleFactors`` / ``LastMajorMergerTimes``
+     - Scale-factor / time of the last major merger
+     - [-] / [U_T]
+     -
+   * - ``SwallowedAngularMomenta``
+     - Angular momentum accumulated by swallowing gas particles
+     - [U_M U_L^2 U_T^{-1}]
+     -
+   * - ``AccretedAngularMomenta``
+     - Angular momentum accumulated through subgrid accretion
+     - [U_M U_L^2 U_T^{-1}]
+     -
+   * - ``GasRelativeVelocities``
+     - Peculiar velocity of the gas relative to the black hole
+     - [U_L U_T^{-1}]
+     -
+   * - ``GasCircularVelocities``
+     - Circular velocity of the gas at the smoothing radius
+     - [U_L U_T^{-1}]
+     -
+   * - ``NumberOfSwallows`` / ``NumberOfDirectSwallows``
+     - Number of gas particles swallowed, including / excluding those swallowed by merged-in black holes
+     - [-]
+     - ``NumberOfSwallows`` includes swallows by merged-in black holes.
+   * - ``NumberOfRepositions`` / ``NumberOfRepositionAttempts``
+     - Number of repositioning events / of steps with an eligible reposition target
+     - [-]
+     - See :ref:`gear_black_holes` for how to disable repositioning entirely.
+   * - ``NumberOfTimeSteps``
+     - Number of time steps the black hole was active
+     - [-]
+     -
+   * - ``ViscosityFactors``
+     - Suppression factor from the Rosas-Guevara et al. (2015) model
+     - [-]
+     - Only meaningful if ``with_angmom_limiter`` is enabled.
+   * - ``BirthGasDensities``
+     - Physical gas density at the time of birth
+     - [U_M U_L^{-3}]
+     -
+   * - ``NumberOfGasNeighbours``
+     - Number of gas neighbours within the black hole's kernel
+     - [-]
+     -
+   * - ``FeedbackDeltaT``
+     - Temperature increase applied in the most recent AGN feedback event
+     - [U_K]
+     -
+   * - ``LastRepositionVelocities``
+     - Speed of the most recent repositioning jump
+     - [U_L U_T^{-1}]
+     - 0 if never repositioned, or run without a prescribed repositioning speed.
+   * - ``NumberOfHeatingEvents``
+     - Number of (thermal) energy injections
+     - [-]
+     - A single AGN event can heat several particles, incrementing this by more than 1.
+   * - ``NumberOfAGNEvents``
+     - Number of time steps in which the BH did AGN feedback
+     - [-]
+     -
+   * - ``LastAGNFeedbackScaleFactors`` / ``LastAGNFeedbackTimes``
+     - Scale-factor / time of the last AGN feedback event
+     - [-] / [U_T]
+     -
+   * - ``AccretionLimitedTimeSteps``
+     - Accretion-limited time-step
+     - [U_T]
+     - The particle's actual time-step may be shorter due to the minimum allowed value.
+   * - ``AGNTotalInjectedEnergies``
+     - Cumulative energy injected into gas by AGN feedback
+     - [U_M U_L^2 U_T^{-2}]
+     -
+   * - ``AccretionBoostFactors``
+     - Booth & Schaye (2009) accretion boost factor
+     - [-]
+     - Only meaningful if ``with_boost_factor`` is enabled.
+   * - ``GasTemperatures``
+     - Temperature of the gas surrounding the black hole
+     - [U_K]
+     -
+   * - ``EnergyReservoirThresholds``
+     - Minimum reservoir energy required to do feedback
+     - [-]
+     - In units of the (constant) target heating temperature increase.
+   * - ``EddingtonFractions``
+     - Accretion rate in units of the Eddington rate
+     - [-]
+     - Based on the unlimited accretion rate, so can exceed ``max_eddington_fraction``.
+   * - ``Potentials``
+     - Gravitational potential of the black hole
+     - [U_L^2 U_T^{-2}]
+     -

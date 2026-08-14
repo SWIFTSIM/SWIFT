@@ -55,6 +55,28 @@ INLINE static void convert_sink_averaged_SFR(const struct engine *e,
   }
 }
 
+INLINE static void convert_bpart_averaged_accretion_rate(const struct engine *e,
+                                                         const struct bpart *bp,
+                                                         float *ret) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (e->snapshot_recording_triggers_started_bpart[i]) {
+      ret[i] = bp->tracers_data.averaged_accretion_rate[i] /
+               e->snapshot_recording_triggers_bpart[i];
+    } else {
+      ret[i] = 0.f;
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged accretion rate for black hole id=%lld "
+          "trigger=%d value=%e",
+          bp->id, i, ret[i]);
+#endif
+  }
+}
+
 INLINE static void convert_sink_averaged_accretion_rate(const struct engine *e,
                                                         const struct sink *sink,
                                                         float *ret) {
@@ -96,7 +118,14 @@ __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
     const struct bpart *bparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  list[0] = io_make_output_field_convert_bpart(
+      "AveragedAccretionRates", FLOAT, num_snapshot_triggers_bpart,
+      UNIT_CONV_MASS_PER_UNIT_TIME, 0.f, bparts,
+      convert_bpart_averaged_accretion_rate,
+      "Accretion rates of the black holes averaged over the period set by "
+      "the first N snapshot triggers");
+
+  return 1;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sinkparticles(

@@ -17,6 +17,7 @@ This model can be selected with the configuration option ``--with-subgrid=GEAR``
    feedback
    supernova_feedback
    sinks/index
+   black_holes
    output
    tracers
    dev_notes

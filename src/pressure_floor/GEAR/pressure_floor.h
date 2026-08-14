@@ -74,6 +74,11 @@ pressure_floor_get_comoving_pressure(const struct part *p,
                                      const float pressure_comoving,
                                      const struct cosmology *cosmo) {
 
+  /* Some callers (e.g. AGN feedback energy injection) pass NULL to signal
+   * that the floor need not be enforced, since they only ever increase the
+   * internal energy. Skip the floor in that case, like the 'none' model. */
+  if (pfloor == NULL) return pressure_comoving;
+
   const float a_coef = pow_three_gamma_minus_one(cosmo->a);
   const float rho = hydro_get_comoving_density(p);
 

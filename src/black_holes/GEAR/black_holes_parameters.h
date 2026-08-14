@@ -16,31 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_BLACK_HOLES_STRUCT_H
-#define SWIFT_BLACK_HOLES_STRUCT_H
+#ifndef SWIFT_GEAR_BLACK_HOLES_PARAMETERS_H
+#define SWIFT_GEAR_BLACK_HOLES_PARAMETERS_H
 
-/**
- * @file src/feedback_struct.h
- * @brief Branches between the different feedback functions.
- */
-
-/* Config parameters. */
+/* Configuration file */
 #include <config.h>
 
-/* Local includes */
-#include "inline.h"
+/**
+ * @file GEAR/black_holes_parameters.h
+ * @brief Parameters of the GEAR black holes
+ *        model that need to be defined at compile time.
+ *
+ * @note In this branch, these properties are not used anywhere!
+ */
 
-/* Import the right black holes definition */
-#if defined(BLACK_HOLES_NONE)
-#include "./black_holes/Default/black_holes_struct.h"
-#elif defined(BLACK_HOLES_EAGLE)
-#include "./black_holes/EAGLE/black_holes_struct.h"
-#elif defined(BLACK_HOLES_SPIN_JET)
-#include "./black_holes/SPIN_JET/black_holes_struct.h"
-#elif defined(BLACK_HOLES_GEAR)
-#include "./black_holes/GEAR/black_holes_struct.h"
-#else
-#error "Invalid choice of black hole model."
-#endif
+/*! Maximal distance for merging particles in units of the (spline not Plummer)
+ *  softening length. */
+#define const_max_merging_distance_ratio 3.f
 
-#endif /* SWIFT_BLACK_HOLES_STRUCT_H */
+/*! Maximal distance for repositioning particles in units of the (spline not
+ * Plummer) softening length. */
+#define const_max_repositioning_distance_ratio 3.f
+
+#endif /* SWIFT_GEAR_BLACK_HOLES_PARAMETERS_H */
