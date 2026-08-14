@@ -63,6 +63,16 @@ static void test_ionized_pin_lands_once(void) {
   struct cosmology cosmo;
   bzero(&cosmo, sizeof(cosmo));
   cosmo.a_factor_internal_energy = 1.0;
+  /* Present-epoch (a=1) scale-factor state. a3_inv matters here beyond
+     a_factor_internal_energy: hydro_get_physical_density() (SPHENIX
+     hydro.h) returns cosmo->a3_inv * p->rho, and at COOLING_GRACKLE_MODE
+     >= 1 cooling_get_mean_molecular_weight() computes every species number
+     density from that physical density. Left at bzero's 0, the density is
+     always 0 regardless of p.rho, so mu is a 0/0 that only stayed finite
+     by -ffinite-math-only's instruction-selection luck -- not by design. */
+  cosmo.a = 1.0;
+  cosmo.a_inv = 1.0;
+  cosmo.a3_inv = 1.0;
 
   struct hydro_props hydro_props;
   bzero(&hydro_props, sizeof(hydro_props));
