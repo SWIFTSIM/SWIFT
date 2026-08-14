@@ -292,7 +292,15 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp) {
 #if COOLING_GRACKLE_MODE > 0
-  p->feedback_data.neutral_H_frac = xp->cooling_data.HI_frac;
+  float X_HI = xp->cooling_data.HI_frac;
+#if COOLING_GRACKLE_MODE >= 2
+  /* Hydrogen locked in H2/H- is also neutral (not yet stripped): must match
+     radiation_get_part_number_neutral_hydrogen_atoms's own convention, or
+     a foreign copy reading this cache disagrees with a local particle's
+     direct species read at the same mode. */
+  X_HI += xp->cooling_data.H2I_frac + xp->cooling_data.HM_frac;
+#endif
+  p->feedback_data.neutral_H_frac = X_HI;
 #else
   /* No species tracked at this mode: fixed placeholder, not a measurement. */
   p->feedback_data.neutral_H_frac = 1.0f;

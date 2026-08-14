@@ -125,18 +125,30 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct xpart *xp) {
 
 #if COOLING_GRACKLE_MODE >= 1
+  double X_HI;
+#ifdef WITH_MPI
+  if (xp == NULL) {
+    /* Foreign copy: struct part's feedback_data.neutral_H_frac already
+       folds in the H2/H- arms at mode >= 2 (see cooling_cache_neutral_H_
+       fraction_subgrid), so this is the same quantity the branch below
+       would read from a real xpart. */
+    X_HI = p->feedback_data.neutral_H_frac;
+  } else
+#endif
+  {
+    const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+    X_HI = cool_data->HI_frac;
+#if COOLING_GRACKLE_MODE >= 2
+    /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
+       already singly-ionized, so it is excluded -- the same H2II
+       approximation radiation_get_part_total_hydrogen_mass_fraction's own
+       doxygen already notes for the total-hydrogen accounting. */
+    X_HI += cool_data->H2I_frac + cool_data->HM_frac;
+#endif
+  }
+
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
-  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-
-  double X_HI = cool_data->HI_frac;
-#if COOLING_GRACKLE_MODE >= 2
-  /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-     already singly-ionized, so it is excluded -- the same H2II
-     approximation radiation_get_part_total_hydrogen_mass_fraction's own
-     doxygen already notes for the total-hydrogen accounting. */
-  X_HI += cool_data->H2I_frac + cool_data->HM_frac;
-#endif
   const double N_HI = (X_HI * m) / m_p;
 
   /* Capped at the composition total: species can transiently drift above
@@ -190,6 +202,52 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
 }
 
 /**
+ * Mean molecular weight of a #part, foreign-copy safe.
+ *
+ * cooling_get_mean_molecular_weight reads xp->cooling_data species
+ * fractions at Grackle modes >= 1, which segfaults for a foreign copy
+ * with no struct xpart. This accessor owns that xp == NULL contract:
+ * a real xpart computes exactly as today. xp == NULL inverts the same
+ * relation cooling_cache_eligibility_temperature_subgrid used to write
+ * struct part's feedback_data.T_eligibility, mu = k_B T / ((gamma-1) u
+ * m_p), using the particle's current internal energy (rides the normal
+ * xv/rho exchange). T_eligibility and u are always written from the same
+ * cooling_new_energy call and shipped together whenever the owner-side
+ * state actually gets read by a foreign gather, so this recovers the
+ * owner's exact mu rather than approximating it, exactly like the
+ * temperature cache itself.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_properties The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle, or NULL for a foreign
+ * copy with no local xpart.
+ * @return Mean molecular weight.
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_mean_molecular_weight(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef WITH_MPI
+  if (xp == NULL) {
+    const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+    const double T = p->feedback_data.T_eligibility;
+    return phys_const->const_boltzmann_k * T /
+           (hydro_gamma_minus_one * u * phys_const->const_proton_mass);
+  }
+#endif
+
+  return cooling_get_mean_molecular_weight(phys_const, us, cosmo, hydro_props,
+                                           cooling, p, xp);
+}
+
+/**
  * Get the specific internal energy this #part would be held at once
  * ionized: the minimum of the energy needed to fully ionize it and the
  * metallicity-dependent collisional-equilibrium energy (see
@@ -227,8 +285,8 @@ radiation_get_part_ionized_internal_energy(
   const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
 
   const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   const double T_collisional =
       radiation_get_T_collisional_K(Z) /
@@ -300,8 +358,8 @@ radiation_get_part_rate_to_fully_ionize(
      instead of the fixed 1e4 K convention. */
   const double u_ionized = radiation_get_part_ionized_internal_energy(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const double T_ionized_K =
       cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
