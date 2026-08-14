@@ -121,11 +121,6 @@ GEARFeedback:
   HII_max_age_Myr:        50.0
   HII_rebuild_time_Myr:   0.5   # fixed cadence, the sibling examples' value
 
-  #Mechanical feedback
-  maximal_radius: 2
-  enable_multiple_SN_momentum_correction_factor: 0
-  f_kin_0: 0.28
-
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.

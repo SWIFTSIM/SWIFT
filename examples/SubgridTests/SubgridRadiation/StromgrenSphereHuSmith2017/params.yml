@@ -126,11 +126,6 @@ GEARFeedback:
                                        # algorithm, uniform medium, nothing for angular splitting to fix.
   HII_deterministic_boundary_ionization: 0  # Probabilistic, the validated default.
 
-  #Mechanical feedback
-  maximal_radius: 2
-  enable_multiple_SN_momentum_correction_factor: 0
-  f_kin_0: 0.28
-
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.

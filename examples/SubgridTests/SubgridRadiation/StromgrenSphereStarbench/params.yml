@@ -110,11 +110,6 @@ GEARFeedback:
   HII_rebuild_floor_Myr: 1e-4         # Floors the elapsed interval the per-pass photon budget is integrated
                                        # over.
 
-  #Mechanical feedback
-  maximal_radius: 2
-  enable_multiple_SN_momentum_correction_factor: 0
-  f_kin_0: 0.28
-
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
