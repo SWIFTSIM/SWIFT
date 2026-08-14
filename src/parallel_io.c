@@ -1665,6 +1665,7 @@ void write_output_parallel(struct engine *e,
    * broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
+  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   offset, comm, &zoom_layout);
@@ -2127,9 +2128,12 @@ void write_output_parallel(struct engine *e,
                                zoom_layout.offset_in_cells[ptype],
                                internal_units, snapshot_units);
 
+          /* Advance the input pointers past the particles in zoom cells. */
           struct io_props outside_props = list[i];
           const size_t outside_offset = zoom_layout.local_in_cells[ptype];
           zoom_io_offset_io_props(&outside_props, outside_offset);
+
+          /* Write the remaining particles after the global zoom region. */
           write_array_parallel(
               e, h_grp, fileName, partTypeGroupName, outside_props,
               Nparticles - zoom_layout.local_in_cells[ptype], N_total[ptype],

@@ -500,13 +500,17 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
   /* Select data space in that data set */
   const hid_t h_filespace = H5Dget_space(h_data);
   if (e->s->with_zoom_region) {
+    /* Write zoom and background particles into their global file regions. */
     zoom_io_write_serial_particle_regions(
         h_data, h_memspace, h_filespace, io_hdf5_type(props.type), temp, rank,
         props.dimension, N, N_in_cells, offset_in_cells, offset_outside_cells,
         props.name);
   } else {
+    /* Select this rank's slab in the conventional rank-ordered layout. */
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
+
+    /* Write the temporary buffer to the selected HDF5 dataspace. */
     h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                      H5P_DEFAULT, temp);
     if (h_err < 0) error("Error while writing data array '%s'.", props.name);
@@ -1180,6 +1184,7 @@ void write_output_serial(struct engine *e,
   /* The last rank now has the correct N_total. Let's broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
+  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   offset, comm, &zoom_layout);

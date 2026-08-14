@@ -384,14 +384,16 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
 
   sprintf(fileName_relative_base, "%s", &fileName_base[pos_last_slash + 1]);
 
-  /* Create all virtual mappings */
+  /* Create all the virtual mappings */
   for (int i = 0; i < num_ranks; ++i) {
 
+    /* Split this rank's source dataset into zoom and background particles. */
     const hsize_t rank_count = N_counts[i * swift_type_count + ptype];
     const hsize_t rank_in_cells =
         N_in_cells_counts[i * swift_type_count + ptype];
     const hsize_t rank_outside_cells = rank_count - rank_in_cells;
 
+    /* Create the data space for this rank's existing source dataset. */
     source_shape[0] = rank_count;
     hid_t h_source_space = H5Screate_simple(rank, source_shape, NULL);
     if (h_source_space < 0) error("Error creating space in the source file");
@@ -399,6 +401,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
     char fileName[1024];
     sprintf(fileName, "%s.%d.hdf5", fileName_relative_base, i);
 
+    /* Map zoom particles into the leading region of the virtual dataset. */
     if (rank_in_cells > 0) {
       count[0] = rank_in_cells;
       hsize_t source_start[2] = {0, 0};
@@ -413,6 +416,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
       if (h_err < 0) error("Error setting in-cell virtual properties");
     }
 
+    /* Map background particles after all zoom particles. */
     if (rank_outside_cells > 0) {
       count[0] = rank_outside_cells;
       hsize_t source_start[2] = {rank_in_cells, 0};
@@ -429,6 +433,7 @@ void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
 
     H5Sclose(h_source_space);
 
+    /* Advance both destination regions to the next rank's slabs. */
     start_in_cells[0] += rank_in_cells;
     start_outside_cells[0] += rank_outside_cells;
   }
@@ -1035,11 +1040,12 @@ void write_output_distributed(struct engine *e,
   MPI_Exscan(N, rank_offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM,
              comm);
 
+  /* Compute global offsets for the contiguous zoom and background regions. */
   struct zoom_io_particle_layout zoom_layout;
   zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N, N_total,
                                   rank_offset, comm, &zoom_layout);
 
-  /* Collect the number of particles written by each rank */
+  /* Collect each rank's total and zoom counts for the virtual mappings. */
   long long *N_counts =
       (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
   long long *N_in_cells_counts =
