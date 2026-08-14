@@ -68,8 +68,8 @@ GrackleCooling:
   with_UV_background: 0                                # Enable or not the UV background
   redshift:           -1                               # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                                # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0                  # User provide volumetric heating rates
-  provide_specific_heating_rates:   0                  # User provide specific heating rates
+  volumetric_heating_rates_cgs: 0                      # User provide volumetric heating rates
+  specific_heating_rates_cgs:   0                      # User provide specific heating rates
   self_shielding_method:            -1                 # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007         # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps:          1000

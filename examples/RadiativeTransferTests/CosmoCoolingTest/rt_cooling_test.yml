@@ -60,8 +60,8 @@ GrackleCooling:
   with_UV_background: 0                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 0                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+  volumetric_heating_rates_cgs: 0              # (optional) User provide volumetric heating rates
+  specific_heating_rates_cgs: 0                # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1                      # (optional) Convergence threshold (relative) for initial composition
   self_shielding_method: 0                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)

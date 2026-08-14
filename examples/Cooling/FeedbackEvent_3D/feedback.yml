@@ -48,15 +48,15 @@ GrackleCooling:
   with_UV_background: 0 # Enable or not the UV background
   redshift: 0 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1 # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
-  provide_specific_heating_rates: 0 # User provide specific heating rates
+  volumetric_heating_rates_cgs: 0 # User provide volumetric heating rates
+  specific_heating_rates_cgs: 0 # User provide specific heating rates
   self_shielding_method: 0 # Grackle (<= 3) or Gear self shielding method
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   maximal_density_Hpcm3: -1 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
   
-GearChemistry:
+GEARChemistry:
   initial_metallicity: 0.01295
 
 EAGLEChemistry:              # Solar abundances
