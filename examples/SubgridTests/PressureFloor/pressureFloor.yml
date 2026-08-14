@@ -41,7 +41,7 @@ LambdaCooling:
 
 # Parameters related to pressure floors    ----------------------------------------------
 GEARPressureFloor:
-  Jeans_factor: 10
+  jeans_factor: 10
 
   # Parameters for the self-gravity scheme
 Gravity:
