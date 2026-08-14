@@ -45,4 +45,4 @@ correct with or without the CFLAGS forcing flag above; pass
 Only the T_i=1e4 K forced build is validated against this target. The
 front oscillates at this metallicity, so run-to-run and phase differences
 of several percent are expected; accepted validation runs read
-approximately 3-7% error at t=3 Myr, not a single sharper number.
+approximately 2-6% error at t=3 Myr, not a single sharper number.

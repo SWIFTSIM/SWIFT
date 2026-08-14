@@ -103,7 +103,7 @@ GEARFeedback:
   HII_max_age_Myr:        50.0
   HII_rebuild_time_Myr:   0.005       # Fixed cadence. The front oscillates at this metallicity, so run-to-run
                                        # and phase differences of several percent are expected; accepted
-                                       # validation runs read approximately 3-7% error at t=3 Myr (see
+                                       # validation runs read approximately 2-6% error at t=3 Myr (see
                                        # theory/GEAR/Radiation/04_validation.tex), not a single sharper number.
                                        # Cadence-independence is verified at HuSmith2017's much lower density,
                                        # not yet at this one -- this example's own two data points (2.19 pc
