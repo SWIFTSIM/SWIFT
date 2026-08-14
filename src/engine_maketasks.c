@@ -4497,14 +4497,19 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
            * created here even when the two ranks' independent
            * cell_can_split_pair_radiation_subgrid_task calls disagree on
            * how far to descend (the known 2-rank
-           * engine_radiation_check_pair_linked asymmetric-split case). If
-           * that happens, the computing rank's part_hii_tag send
-           * (engine_addtasks_recv_hydro) can need a tag the owner never
-           * minted -- debug builds die at "untagged cell", production
-           * builds send with flags=-1. S3.1's channel is inert (no
-           * activation yet) so this cannot yet manifest; S3.2 must not
-           * activate it here until boundary-pair splitting is made
-           * symmetric across ranks. */
+           * engine_radiation_check_pair_linked asymmetric-split case). Each
+           * side of the S3.1/S3.1b channel independently mints its half at
+           * the SHALLOWEST cell satisfying its own predicate (A1: send-side
+           * radiation_reaches_node is nodeID-filtered, recv-side
+           * c->stars.radiation_in != NULL is not), so an asymmetric split
+           * can also make the two sides converge on different cells of the
+           * same subtree, not merely on a missing tag. If that happens, the
+           * computing rank's part_hii_tag send (engine_addtasks_recv_hydro)
+           * can need a tag the owner never minted, or minted at a different
+           * cell -- debug builds die at "untagged cell", production builds
+           * send with flags=-1. S3.1's channel is inert (no activation yet)
+           * so this cannot yet manifest; S3.2 must not activate it here
+           * until boundary-pair splitting is made symmetric across ranks. */
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
