@@ -132,6 +132,39 @@ nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
 see the GEAR radiation logbook's ``mean-molecular-weight factor'' bug
 entry (2026-07-16) for why our first attempt at this included one.
 
+\textbf{Claim cost vs.\ maintenance rate.} Equation~\ref{eq:recomb-cost}
+is a \emph{rate}: what it costs, per unit time, to keep a particle's
+recombinations replaced once it is ionized. The one-off cost actually
+charged to \emph{claim} a fresh candidate (Section~\ref{sec:angular-splitting})
+integrates that rate over the interval since the star's previous pass
+and adds a one-off stripping cost,
+\begin{equation}
+  {\rm cost}_b = N_{HI,b} + \Delta t_{\rm back}\,\Delta \dot N_b,
+  \label{eq:claim-cost}
+\end{equation}
+where $\Delta t_{\rm back}$ is the elapsed interval this pass covers
+and $N_{HI,b}$ is the particle's \emph{neutral}-hydrogen atom count
+(\code{radiation\_get\_part\_number\_neutral\_hydrogen\_atoms}), not
+the total $N_{H,b}$ of Eq.~\ref{eq:recomb-cost}. At
+\code{COOLING\_GRACKLE\_MODE}$\,\ge 1$, where species fractions are
+tracked, a candidate that is already partly or fully ionized -- gas
+re-tagged after its previous tag lapsed on a marginal budget shortfall,
+or pre-ionized by an external UV background -- does not need to pay
+again to strip electrons it has already lost; at mode~0, with no
+species tracked, $N_{HI,b}$ falls back to the conservative $N_{H,b}$.
+The maintenance charge levied on gas the star already holds ionized
+(Section~\ref{sec:persistence}) uses only the rate term,
+$\Delta t_{\rm back}\,\Delta \dot N_b$: those electrons are already
+stripped, so there is no neutral-hydrogen term to pay again. The
+$\Delta t_{\rm back}\,\Delta \dot N_b$ reserve in
+Eq.~\ref{eq:claim-cost} is also what makes newly-claimed region growth
+implicit rather than explicit: the growth equation
+$dS/dt=(Q-S)/t_{\rm rec}$ integrates, with this reserve included, as
+$\Delta S = (Q-S)\,\Delta t_{\rm back}/(t_{\rm rec}+\Delta t_{\rm back})$,
+unconditionally stable for any $\Delta t_{\rm back}$; dropping the
+reserve would give explicit Euler instead, which overshoots and churns
+whenever $\Delta t_{\rm back} \gg t_{\rm rec}$.
+
 \textbf{Known approximation: $n_e \approx n_H$.} Equation~\ref{eq:recomb-cost}
 (and every other electron-density calculation in this model, including
 the adaptive rebuild cadence's recombination timescale,
@@ -214,30 +247,11 @@ effect of this fix on the validation matrix.
 A particle is a candidate for ionization only if it is not already
 tagged, is denser than \code{HII\_region\_min\_density\_Hpcm3}, and
 is not already above $\approx 10^4\,$K
-(\code{feedback\_part\_can\_be\_ionized}). The star consumes its
-budget particle by particle until it can no longer afford the next
-one. The last, unaffordable particle is the ``boundary particle'':
-\begin{itemize}
-  \item \code{HII\_deterministic\_boundary\_ionization=1}: always
-    ionize it anyway (over-spending the budget for that cycle);
-  \item \code{HII\_deterministic\_boundary\_ionization=0}: ionize it
-    with probability equal to the affordable fraction, unbiased in
-    expectation.
-\end{itemize}
-See the GEAR radiation logbook's Validation section for the measured
-effect of this
-choice -- it turns out to matter a lot more than the name ``one
-boundary particle'' suggests. \textbf{Decided (2026-07-16):
-probabilistic is the default}, not deterministic -- the validation
-matrix showed deterministic mode over-ionizes (mildly for the uniform
-scheme, severely for the angular scheme, driving it straight into the
-search-radius cap) with no compensating benefit, so this is simply the
-better default rather than a papers-vs-production tradeoff. The code's
-own default (\code{default\_HII\_deterministic\_boundary\_ionization},
-\code{feedback\_properties.h}) was already 0; only example configs that
-had explicitly overridden it needed fixing.
+(\code{feedback\_part\_can\_be\_ionized}). Section~\ref{sec:angular-splitting}
+covers how a star spends its budget on the resulting candidates,
+including what happens once a pixel can no longer afford the next one.
 
-\subsection{Angular (HealPix) budget splitting}
+\subsection{Per-cone photon budget (angular splitting)}
 \label{sec:angular-splitting}
 
 To avoid a dense clump near a source absorbing a disproportionate
@@ -245,11 +259,78 @@ share of the photon budget regardless of the small solid angle it
 subtends (``mass-biasing''), \code{HII\_angular\_nside} splits the
 budget into $N_{\rm pix} = 12\,{\rm nside}^2$ equal shares
 ($\dot N_{\rm ion}/N_{\rm pix}$ each) and assigns each candidate
-particle to exactly one pixel by its direction from the star, hard
-assignment (no fractional overlap, matching both papers' own choice).
-\code{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's plain
-spherical behaviour. Only \code{nside=0} and \code{nside=1}
-($N_{\rm pix}=12$) are currently supported.
+particle to exactly one pixel (cone) by its direction from the star,
+hard assignment (no fractional overlap, matching both papers' own
+choice). \code{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's
+plain spherical behaviour. \code{nside} can be any non-negative
+integer -- the HEALPix RING scheme, unlike NEST, has no power-of-2
+restriction -- but the practical ceiling is memory, not geometry: each
+star carries a fixed-size per-pixel array sized at configure time by
+\code{--with-number-of-hii-angular-pixels} (default 12, i.e.\
+$\text{nside}\le1$); requesting more pixels than the build supports
+errors clearly at start-up rather than overflowing the array.
+
+\textbf{Opening a pass's budget: what carries over.} At the start of
+each rebuild pass, every pixel's photon count is (re)opened from
+\begin{equation}
+  N_{{\rm ion},p}^{\rm open} =
+  \min\!\left(N_{{\rm ion},p}^{\rm prev},\,0\right) +
+  \dot N_{{\rm ion},p}\,\Delta t_{\rm back},
+  \label{eq:budget-open}
+\end{equation}
+where $\Delta t_{\rm back}$ is the time elapsed since this star's
+previous pass and $N_{{\rm ion},p}^{\rm prev}$ is whatever the pixel's
+count stood at when that pass ended. Unspent \emph{positive} budget is
+not carried forward -- those photons reached no gas and escaped --
+but a \emph{negative} balance is: a pass can overdraw a pixel by up to
+one particle's cost (the boundary-particle rule below), and that debt
+is repaid out of the next pass's income before any new spending
+happens, rather than forgiven. Forgiving it every pass instead would
+over-issue photons in proportion to how many passes elapse per unit
+time, i.e.\ as $1/\Delta t_{\rm back}$ -- a cadence-dependent bias,
+which this model is built to avoid.
+
+\textbf{Sequential spend within a pass.} A pass gathers its candidates
+into a single buffer sorted by distance from the star, each entry
+tagged with the pixel its direction falls in. Scanning that buffer in
+order and skipping (not stopping at) entries whose pixel is already
+exhausted visits every pixel's own candidates in ascending-distance
+order -- a sorted sequence's subsequence is still sorted -- so each
+cone spends closest-first exactly like the spherical ($N_{\rm
+pix}=1$) case, just interleaved with every other cone's spending in
+the same traversal.
+
+\textbf{The boundary particle.} A pixel's boundary particle for the
+pass is the first candidate, in that pixel's own distance order, whose
+claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
+\begin{itemize}
+  \item \code{HII\_deterministic\_boundary\_ionization=1}: ionize it
+    anyway, overdrawing the pixel (bounded by Eq.~\ref{eq:budget-open}'s
+    debt carry to at most this one particle's cost);
+  \item \code{HII\_deterministic\_boundary\_ionization=0} (the
+    default): draw a single random number, keyed on the star id, the
+    pixel, and the integer time at the start of the step
+    (\code{random\_number\_HII\_regions}) -- \emph{not} on the
+    candidate particle -- and ionize the boundary particle iff the
+    draw is at most the affordable fraction
+    $\text{budget}_p/{\rm cost}_b$.
+\end{itemize}
+Because the draw is fixed for the whole pixel this pass, at most one
+particle per pixel can win it: a win drives the pixel's budget
+negative (never enough to also afford the next, farther candidate),
+so every later comparison in the same pixel this pass evaluates a
+non-positive affordable fraction and always loses. This is what gives
+expectation-level photon conservation,
+$\mathbb{E}[\text{spent}] = P_{\rm win}\cdot{\rm cost}_b +
+(1-P_{\rm win})\cdot 0 = \text{budget}_p$ -- and specifically requires
+the single fixed draw: rolling independently per candidate in a loop
+that stops at the first win would instead claim a boundary particle
+almost surely, spending its full cost rather than the pixel's actual
+remaining budget. The probabilistic default is the better choice in
+practice too: deterministic mode over-ionizes, mildly for the
+spherical scheme and severely for the angular one (each pixel's own
+small budget makes its one guaranteed over-spend a proportionally
+larger error), with no compensating benefit.
 
 \subsection{Temperature floor}
 
@@ -282,6 +363,49 @@ GEAR radiation logbook's Metallicity and the ionized-gas temperature
 floor section for the numeric consequence of
 Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 
+\textbf{Applying the floor: energy accounting.} $u_{\rm new}$
+(Eq.~\ref{eq:floor}) is never written to the particle directly.
+\code{cooling\_ionize\_part\_subgrid} (\code{cooling\_gear\_subgrid.h})
+returns it to its caller, \code{cooling\_new\_energy}, which returns
+immediately on a tagged particle without ever calling Grackle's own
+chemistry/cooling solve (\code{local\_solve\_chemistry}) -- the
+untagged path always calls it. Skipping that call is what makes the
+floor hold for the step: Grackle's ODE integrator has no notion of the
+external photoionizing forcing this model represents and would
+otherwise relax the just-floored energy back toward its own
+equilibrium within the same step it was applied. $u_{\rm new}$ then
+re-enters \code{cooling\_cool\_part} exactly like any other cooling
+function's return value -- floored again at
+\code{hydro\_props->minimal\_internal\_energy} if needed -- and is
+turned into a rate,
+\begin{equation}
+  \left.\D{u}{t}\right|_{\rm cool} =
+  \frac{u_{\rm new} - u_{\rm ad,\,before}}{dt_{\rm therm}},
+  \label{eq:cool-dudt}
+\end{equation}
+which is added to hydro's own $du/dt$ and handed to the kick: the
+ionization floor is applied exactly once per step, through the same
+integration path as ordinary cooling, subject to the same floors. It
+is also subject to the same suppression as ordinary cooling when
+\code{cooling->thermal\_time} delayed-cooling turn-off is active for
+this particle (\code{time - time\_last\_event < thermal\_time}): while
+that window is open, \code{cooling\_new\_energy} -- and with it
+\code{cooling\_ionize\_part\_subgrid} -- is not called at all, so a
+tagged particle is not re-floored until the window closes.
+
+The bookkeeping this produces is exact, not merely consistent:
+\code{cooling\_cool\_part} records, every step,
+\begin{equation}
+  \Delta E_{\rm radiated} = -m_b\left(u_{\rm new} - u_{\rm ad,\,before}\right)
+  = m_b\left(u_{\rm ad,\,before} - u_{\rm new}\right)
+\end{equation}
+into \code{xp->cooling\_data.radiated\_energy}, from the identical
+$u_{\rm new}$ Eq.~\ref{eq:cool-dudt} used. There is no separate
+accounting path for the ionization floor: the recorded
+radiated energy (negative, i.e.\ recorded as heating, whenever the
+floor raises the particle's energy) always equals the energy
+correction actually applied to the particle that step.
+
 \textbf{Bug found and fixed (2026-07-18):} Eq.~\ref{eq:tcollisional} is
 $\log_{10}$, but \code{radiation.c} computed it with C's \code{log()}
 (natural log) until this fix. This silently applied the wrong base
@@ -301,7 +425,8 @@ check) was therefore run at the wrong reference temperature;
 see the GEAR radiation logbook's ``$T_{\rm collisional}$ used natural
 log'' bug entry (2026-07-18) for the fix and its measured effect.
 
-\subsection{Persistence}
+\subsection{Persistence and maintenance}
+\label{sec:persistence}
 
 A tagged particle stays flagged (and re-floored, per
 Eq.~\ref{eq:floor}, every step) until
@@ -317,26 +442,117 @@ two). For the co-located, simultaneously-born stars in the validation
 example this produces synchronous rebuilds in practice, simply because
 the stars are identical, not because the code enforces it.
 
-There is no carryover of unspent budget or accumulated ``credit''
-between rebuild cycles -- each rebuild resets to the star's full,
-instantaneous $\dot N_{\rm ion}$. This is an equilibrium-rate model,
-not a time-integrated one.
+\textbf{Maintenance: renewing gas already held ionized.} Before a pass
+spends anything on new candidates, it first renews the gas the star
+already holds. \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
+gathers every particle currently tagged with this star's own id --
+via a traversal exempt from the ordinary candidate filter
+(\code{feedback\_part\_can\_be\_ionized}), since held gas is neither
+cold nor untagged -- into a scratch buffer, then charges each one's
+maintenance rate (Section~\ref{sec:photon-budget}) via
+\code{feedback\_iact\_HII\_maintain\_ionized\_part}, which also renews
+its \texttt{end\_time} so the tag survives to the following pass. Every
+rebuild after the one that first claimed a particle therefore
+re-charges its ongoing recombination cost, rather than charging it
+once at claim time and never again.
 
-\textbf{Interior-recombination-accounting gap: assessed, not an issue
-(2026-07-16).} Once a particle is ionized it never reappears as a
-search candidate (it fails the ``cold'' filter in
-\code{feedback\_part\_can\_be\_ionized}) until its tag expires, so its
-ongoing maintenance recombination cost is never re-charged against a
-star's budget at any rebuild after the one that first tagged it. This
-matches FIRE's own implementation (not a deviation to fix), and is
-bounded by design here: the rebuild cadence is set to track the
-recombination/cooling timescale, so interior gas has no time to
-meaningfully recombine away between rebuilds -- no example or test run
-has shown this gap actually matters in practice. Possible refinement,
-not confirmed necessary: add a small margin to \code{end\_time} beyond
-the nominal \code{tag\_time + HII\_region\_rebuild\_time}, to cover
-cases where SWIFT's own timestepping forces a rebuild slightly earlier
-than the nominal cadence -- untested, low priority given the above.
+\textbf{Maintenance order: a receding front recedes from the outside
+in.} The scratch buffer is charged in ascending $(r^2,{\rm id})$
+order -- current squared distance from the star, with particle id as
+the tiebreak for particles at coincident $r^2$ -- \emph{not} the order
+cell traversal happens to visit them in. This order is what determines
+which particles a budget shortfall lapses: charging nearest-first
+means an exhausted pixel simply stops renewing its most distant held
+particles first, which then reach their already-recorded
+\texttt{end\_time} unrenewed and expire on their own next cooling
+step. A receding region therefore shrinks from its outer shell inward,
+rather than developing a hole wherever the traversal order happened to
+run out of budget. Each held particle is re-priced against the same
+pixel it was assigned to when claimed or last renewed
+(\code{feedback\_iact\_HII\_maintain\_ionized\_part} passes the stored
+pixel index straight through to
+\code{radiation\_consume\_ionizing\_photons}), so upkeep tracks
+ownership, not a particle's current direction from the star even if it
+has since drifted into another cone.
+
+The star's extent measure, $h_{\rm hii}$, is updated from this same
+pass: it is set to the largest $r$ among particles the star still
+actually holds after maintenance (tracked for every held particle
+regardless of whether its renewal was affordable this pass, so a
+shrinking region promptly shrinks $h_{\rm hii}$, and with it the
+search radius and locking footprint, for a star doing correspondingly
+less work), not the historical high-water mark of everything the star
+has ever claimed -- see Section~\ref{sec:front-radius} for the
+distinct, historical-extent measure used to read out this model's
+region from the outside.
+
+Budget carryover between passes -- unspent positive budget discarded,
+negative debt carried forward and repaid first -- is
+Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
+same rule governs every pixel a star's maintenance and new-candidate
+spending draw from.
+
+\subsection{Front-radius measure}
+\label{sec:front-radius}
+
+Two on-particle quantities give two different readings of how far a
+star's ionizing influence currently reaches, and they can diverge
+whenever a region recedes (Section~\ref{sec:persistence}).
+
+\textbf{Instantaneous front: \code{h\_hii} (\code{HIIRegionRadii}).}
+The star's own $h_{\rm hii}$, updated every maintenance pass
+(Section~\ref{sec:persistence}), is the distance out to which the
+star's budget \emph{currently} keeps gas ionized. It shrinks as soon
+as a shortfall stops renewing the outer shell, tracking the region's
+present state exactly.
+
+\textbf{Historical extent: the ownership stamp.} A gas particle's
+ionizing-star id (\code{radiation\_tag\_part\_as\_ionized}'s
+\code{star\_id}, exposed to snapshots as \texttt{HIIStarIDs}) is a
+one-way stamp:
+\code{radiation\_reset\_part\_ionized\_tag} clears the active
+\emph{tag} once a particle's \texttt{end\_time} lapses, but never
+clears which star last owned it. A particle the star ionized and later
+stopped renewing therefore still carries that star's id and keeps
+advecting with the flow, marking where the swept shell has been even
+after the active front has receded past it. The largest current
+distance among a star's ever-owned gas is a historical-extent measure,
+distinct from -- and always at least as large as -- $h_{\rm hii}$.
+
+For the default flag-and-floor scheme, the historical-extent measure
+is the more useful proxy for ``how far did this star's ionization
+front get'': the swept shell keeps its ownership stamp after tag
+expiry, so it directly reads the front's high-water mark. For a
+rate-coupled configuration (\code{HII\_couple\_ionization\_rate}),
+where the tag instead drives Grackle's own non-equilibrium ionization
+state, $h_{\rm hii}$ is the measure that coincides with the actual
+$x_{\rm HII}$ front; the historical-extent measure would instead
+freeze at the historical maximum once the region starts to recede.
+
+\textbf{Robust historical extent: gap-aware outlier rejection.} A
+single particle whose tag lapsed early and then advected outward for
+several dynamical times can dominate a plain maximum over ever-owned
+distances and inflate the reported extent by double digits percent,
+without any genuine coverage problem. The validation checks
+(\code{examples/SubgridTests/SubgridRadiation/\{StromgrenSphere,\allowbreak
+StromgrenSphereHuSmith2017,\allowbreak StromgrenSphereStarbench\}/
+*\_analytic\_check.py}, function \code{robust\_ever\_tagged\_radius})
+read the historical extent robustly instead of taking this maximum
+directly: sort ever-owned distances descending, estimate a local point
+spacing from the median gap among the outermost few percent of
+points, then walk inward from the largest distance and discard a
+point only while the gap to its next-lower neighbour exceeds several
+times that local spacing -- an isolated advected straggler produces a
+gap an order of magnitude or more above the front's own natural
+surface roughness, so this stops at the first point that is not such
+an outlier. The true (unrejected) maximum is still reported alongside
+it as a secondary diagnostic.
+
+This robustness is also what makes the search-radius expansion
+artifact of Section~\ref{sec:runtime} (in the task-graph document)
+harmless to the measurement: an isolated particle tagged by an
+expansion probe beyond the coherent front is exactly the
+gap-separated case this rejection removes.
 
 \subsection{Adaptive rebuild cadence (opt-in 2026-07-18, removed Phase 4c
 2026-07-28)}

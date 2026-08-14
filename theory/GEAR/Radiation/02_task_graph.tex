@@ -220,10 +220,18 @@ that level:
   \item Retry: if the buffer filled up (more candidates may exist at
     the \emph{same} radius, just bumped out by the buffer's size cap),
     retry at the same radius, up to
-    \code{Stars:max\_HII\_retry\_full\_buffer} times. If the buffer
-    did \emph{not} fill up but budget remains, the radius itself is
-    the bottleneck -- expand it by
-    \code{Stars:HII\_radius\_expansion\_factor}, up to
+    \code{Stars:max\_HII\_retry\_full\_buffer} times -- but only if the
+    attempt that just ran claimed at least one candidate anywhere. A
+    same-radius retry re-runs the identical search over the identical
+    eligible set, meets the identical per-pixel budgets, and draws the
+    identical fixed (star, pixel, \code{ti\_begin}) random number
+    (Section~\ref{sec:angular-splitting} of the algorithm document) at
+    every pixel: if the previous attempt claimed nothing, none of
+    these three inputs changed, so a retry is provably a no-op, and
+    the loop exits immediately rather than repeating it up to the
+    configured retry count. If the buffer did \emph{not} fill up but
+    budget remains, the radius itself is the bottleneck -- expand it
+    by \code{Stars:HII\_radius\_expansion\_factor}, up to
     \code{Stars:max\_HII\_radius\_expansion\_tries} times, bounded by
     \code{Stars:max\_HII\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
@@ -237,6 +245,25 @@ makes the search radius-adaptive: it is why hitting
 Validation section)
 shows up as the search radius simply never being allowed to expand past
 the configured ceiling, not as a scheduler-level task-graph error.
+
+\textbf{Expansion probes can outrun the coherent front.} Each radius
+expansion searches a strictly larger volume for the \emph{same} pixel
+budget. At \code{HII\_angular\_nside}$\,\ge1$, a cone whose remaining
+budget is already small relative to a single particle's cost can still
+win its probabilistic boundary draw on a candidate found only after
+several expansions -- well outside the volume that cone has actually
+been paying to keep ionized. The result is an isolated tagged particle
+beyond the coherent ionization front: bounded (Eq.~\ref{eq:budget-open}
+of the algorithm document caps the overdraft at one particle's cost)
+and accepted, not a task-graph defect -- the search itself is bounded
+by \code{max\_reachable\_search\_radius}
+(Section~\ref{sec:sorted-gather}) and
+\code{Stars:HII\_max\_search\_radius}, so the artifact cannot grow
+without limit. The historical-extent front-radius measure used to read
+out this model's ionized region (Section~\ref{sec:front-radius} of the
+algorithm document) is specifically robust to it: an isolated particle
+tagged this way is exactly the gap-separated outlier that measure's
+rejection removes.
 
 \textbf{Gather-time pixel-budget starvation guard: confirmed shipped
 (2026-07-18).} Without the per-candidate pixel-budget filter in step 1
