@@ -513,7 +513,12 @@ static void dumpCells_map(struct cell *c, void *data) {
      * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
-    ismpiactive = (c->mpi.send != NULL);
+    /* Catch both a local cell with foreign partners (send) and a foreign
+     * cell mirrored locally (recv): these were aliased into one field
+     * until the radiation report-back channel required both lists on the
+     * same cell, so a single c->mpi.send check no longer sees the
+     * recv-only case. */
+    ismpiactive = (c->mpi.send != NULL || c->mpi.recv != NULL);
     if (mpiactive)
       mpiactive = ismpiactive;
     else

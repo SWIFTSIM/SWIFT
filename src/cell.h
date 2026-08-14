@@ -429,13 +429,22 @@ struct cell {
   /*! MPI variables */
   struct {
 
-    union {
-      /* Single list of all send tasks associated with this cell. */
-      struct link *send;
+    /* Single list of all send tasks associated with this cell.
+     *
+     * Was unioned with recv until the radiation report-back channel
+     * (task_subtype_part_hii_tag/part_hii_state): every other channel has
+     * each cell acting as either a sender or a receiver from this rank's
+     * point of view, never both, so aliasing the two was safe. That
+     * channel is bidirectional per cell on both sides of a boundary
+     * radiation pair -- a foreign cell holds a normal recv_xv/rho AND its
+     * own send_part_hii_tag; the local owner cell holds a normal
+     * send_xv/rho AND a recv_part_hii_tag -- so the two lists must be
+     * genuinely distinct. */
+    struct link *send;
 
-      /* Single list of all recv tasks associated with this cell. */
-      struct link *recv;
-    };
+    /* Single list of all recv tasks associated with this cell. See the
+     * send field's comment for why this is no longer unioned with it. */
+    struct link *recv;
 
     union {
       /* Single list of all pack tasks associated with this cell. */
