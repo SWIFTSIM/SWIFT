@@ -4423,6 +4423,96 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
 }
 #endif /* SWIFT_DEBUG_CHECKS */
 
+#ifdef WITH_MPI
+/**
+ * @brief qsort comparator for task_subtype_part_hii_tag recv tasks: groups
+ * by owner cell (t->ci), then orders within a group by sending rank
+ * (t->cj->nodeID, the S3.1 seam-1 carrier).
+ */
+static int engine_radiation_hii_tag_recv_cmp(const void *a, const void *b) {
+  const struct task *ta = *(const struct task *const *)a;
+  const struct task *tb = *(const struct task *const *)b;
+  if (ta->ci != tb->ci) return (ta->ci < tb->ci) ? -1 : 1;
+  return ta->cj->nodeID - tb->cj->nodeID;
+}
+
+/**
+ * @brief Chain an owner cell's task_subtype_part_hii_tag recv tasks in
+ * sending-rank order, and anchor the owner's own hydro sends before the
+ * first recv of the chain (S3.2, edges item 4).
+ *
+ * An owner cell facing more than one neighbouring rank at once gets one
+ * recv_part_hii_tag per computing rank (engine_addtasks_send_hydro, once
+ * per outbound proxy); nothing orders them against each other by default,
+ * so concurrent unpacks into the same cell's part array could tear it.
+ * Chaining does not change the result -- the owner-side merge rule
+ * (S3.4) is commutative -- it only serialises the writes. The owner's own
+ * send_xv/send_rho/send_gradient tasks are in-flight Isend buffers with no
+ * separate staging (scheduler.c), so the chain's first recv is anchored
+ * behind all of them unconditionally, whether or not any recv exists yet.
+ *
+ * @param e The #engine.
+ */
+static void engine_radiation_chain_hii_tag_recvs(struct engine *e) {
+  struct scheduler *sched = &e->sched;
+
+  struct task **tags = NULL;
+  int n_tags = 0;
+  int cap = 16;
+  if ((tags = (struct task **)malloc(sizeof(struct task *) * cap)) == NULL)
+    error("Failed to allocate temporary hii-tag recv list.");
+
+  for (int i = 0; i < sched->nr_tasks; i++) {
+    struct task *t = &sched->tasks[i];
+    if (t->type != task_type_recv || t->subtype != task_subtype_part_hii_tag)
+      continue;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (t->cj == NULL)
+      error("recv_part_hii_tag task missing the sending-rank carrier cj.");
+#endif
+    if (n_tags == cap) {
+      cap *= 2;
+      if ((tags = (struct task **)realloc(tags, sizeof(struct task *) * cap)) ==
+          NULL)
+        error("Failed to grow temporary hii-tag recv list.");
+    }
+    tags[n_tags++] = t;
+  }
+
+  if (n_tags == 0) {
+    free(tags);
+    return;
+  }
+
+  qsort(tags, n_tags, sizeof(struct task *), engine_radiation_hii_tag_recv_cmp);
+
+  for (int i = 0; i < n_tags; i++) {
+    struct task *t = tags[i];
+    struct cell *owner = t->ci;
+
+    if (i == 0 || tags[i - 1]->ci != owner) {
+      /* First recv for this owner cell in the chain: anchor behind its own
+       * hydro sends, unconditionally. */
+      for (struct link *l = owner->mpi.send; l != NULL; l = l->next) {
+        if (l->t->subtype == task_subtype_xv ||
+            l->t->subtype == task_subtype_rho
+#ifdef EXTRA_HYDRO_LOOP
+            || l->t->subtype == task_subtype_gradient
+#endif
+        ) {
+          scheduler_addunlock(sched, l->t, t);
+        }
+      }
+    } else {
+      /* Chained after the previous sending rank's recv for this owner. */
+      scheduler_addunlock(sched, tags[i - 1], t);
+    }
+  }
+
+  free(tags);
+}
+#endif /* WITH_MPI */
+
 /**
  * @brief Constructs the top-level pair tasks for the first radiation subgrid
  * loop over neighbours
@@ -5296,6 +5386,12 @@ void engine_maketasks(struct engine *e) {
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
                    e);
     free(recv_cell_type_pairs);
+
+    /* S3.2: order an owner cell's possibly-multiple recv_part_hii_tag
+     * tasks and anchor them behind its own hydro sends. Needs both the
+     * send phase (owner's hydro sends, above) and the recv phase (the
+     * hii-tag recvs themselves, just created) to have run. */
+    if (with_radiation_tasks) engine_radiation_chain_hii_tag_recvs(e);
 
     if (e->verbose)
       message("Creating recv tasks took %.3f %s.",
