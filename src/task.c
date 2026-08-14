@@ -1293,12 +1293,10 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_stars_radiation_out:
       strcpy(cluster, "RadiationOut");
       break;
-    case task_subtype_part_hii_tag:
-      strcpy(cluster, "RadiationHIITag");
-      break;
-    case task_subtype_part_hii_state:
-      strcpy(cluster, "RadiationHIIState");
-      break;
+    /* part_hii_tag/part_hii_state only ever exist as task_type_send/recv
+     * (never self/pair), so they fall through to "None" like every other
+     * comm-only subtype (e.g. xv, rho) rather than getting their own
+     * named cluster here. */
     default:
       strcpy(cluster, "None");
       break;
