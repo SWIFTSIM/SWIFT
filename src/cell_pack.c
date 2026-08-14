@@ -118,6 +118,83 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 }
 
 /**
+ * @brief Pack cell_flag_hydro_task_attached for the given cell and all its
+ * sub-cells.
+ *
+ * The stamp records where a split hydro density task came to rest, i.e. where
+ * hydro.super will end up, and the radiation split predicate
+ * (cell_can_split_pair/self_radiation_subgrid_task) reads it as its stop
+ * condition. A rank only stamps from the tasks IT creates, and its task set
+ * over a cell it does not own is a subset of the owner's, so an owner and a
+ * foreign copy of the same cell disagree unless the stamp is exchanged.
+ *
+ * @param c The #cell.
+ * @param flags Pointer to an array of packed flags.
+ *
+ * @return The number of packed flags.
+ */
+int cell_pack_hydro_attach(const struct cell *c, int *flags) {
+#ifdef WITH_MPI
+
+  flags[0] = cell_get_flag(c, cell_flag_hydro_task_attached) ? 1 : 0;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_hydro_attach(c->progeny[k], &flags[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent hydro-attach flag and pcell count!");
+#endif
+
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Merge a packed cell_flag_hydro_task_attached array into a given cell
+ * and its sub-cells.
+ *
+ * The flags are OR-ed in rather than assigned. The owner's stamp is the
+ * authoritative one, being drawn from the complete task set, but OR is also
+ * the safe direction on its own terms: more cells stamped means the radiation
+ * split stops higher, and a coarser radiation_level is always valid.
+ *
+ * @param flags Pointer to an array of packed flags.
+ * @param c The #cell.
+ *
+ * @return The number of unpacked flags.
+ */
+int cell_unpack_hydro_attach(const int *flags, struct cell *restrict c) {
+#ifdef WITH_MPI
+
+  if (flags[0]) cell_set_flag(c, cell_flag_hydro_task_attached);
+
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_unpack_hydro_attach(&flags[count], c->progeny[k]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent hydro-attach flag and pcell count!");
+#endif
+
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
  * @brief Pack the tag of the given cell and all it's sub-cells.
  *
  * @param c The #cell.

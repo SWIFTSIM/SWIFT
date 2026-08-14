@@ -4217,7 +4217,13 @@ static void engine_radiation_check_hydro_attach_matches_super(struct cell *c) {
 
 /**
  * @brief Mapper wrapper for engine_radiation_check_hydro_attach_matches_
- * super(), one top-level cell (and its full subtree) per element.
+ * super(), one LOCAL top-level cell (and its full subtree) per element.
+ *
+ * Foreign cells are skipped: proxy_hydro_attach_exchange() merges the owner's
+ * stamps into them, and the owner's attach points are where the OWNER's
+ * hydro.super lands, which this rank's cell_set_super_hydro() has no reason to
+ * reproduce from its own boundary-only task set. Ownership is a top-level
+ * property, so one test per top-level cell covers its whole subtree.
  *
  * @param map_data The top-level #cell's to visit.
  * @param num_elements The number of top-level cells.
@@ -4227,8 +4233,10 @@ static void engine_radiation_check_hydro_attach_matches_super_mapper(
     void *map_data, int num_elements, void *extra_data) {
   struct cell *cells = (struct cell *)map_data;
 
-  for (int ind = 0; ind < num_elements; ind++)
+  for (int ind = 0; ind < num_elements; ind++) {
+    if (cells[ind].nodeID != engine_rank) continue;
     engine_radiation_check_hydro_attach_matches_super(&cells[ind]);
+  }
 }
 
 /**
@@ -5155,6 +5163,18 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_radiation_stamp_hydro_attach_mapper,
                    sched->tasks, sched->nr_tasks, sizeof(struct task),
                    threadpool_auto_chunk_size, e);
+
+#ifdef WITH_MPI
+    /* A rank stamps from its own tasks only, and the tasks it holds over a
+     * cell it does not own are a subset of the owner's, so its stamp on a
+     * foreign cell can sit deeper than the owner's. Merge the owner's stamps
+     * in before propagating: the radiation split reads the propagated flag,
+     * and a split that differs across ranks puts the two ranks' radiation
+     * pairs at different depths, which in turn mints the xv/rho channel at
+     * different cells on the two sides. */
+    if (e->nr_nodes > 1)
+      proxy_hydro_attach_exchange(e->proxies, e->nr_proxies, s);
+#endif
 
     /* Propagate the stamp down: a cell is at-or-below a hydro attach point
      * if it carries the stamp itself or an ancestor does. */

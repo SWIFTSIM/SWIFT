@@ -412,6 +412,137 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 }
 
 /**
+ * @brief Exchange the cell_flag_hydro_task_attached stamps between nodes.
+ *
+ * Each rank stamps the flag from its own hydro tasks only, so its view of a
+ * cell it does not own is a subset of the owner's. Every rank sends the stamps
+ * over its local cells and OR-s in what it receives, after which all ranks hold
+ * the owner's answer for every cell they see. That is what makes the radiation
+ * split predicate reading the flag (cell.h) a rank-invariant function, and
+ * hence the radiation task graph identical on every rank.
+ *
+ * Unlike #proxy_tags_exchange this runs mid-#engine_maketasks, after the hydro
+ * split has placed the density tasks the stamps come from and before the
+ * radiation tasks that consume them are created.
+ *
+ * Note that this function assumes that the cell structures have already
+ * been exchanged, e.g. via #proxy_cells_exchange.
+ *
+ * @param proxies The list of #proxy that will send/recv stamps.
+ * @param num_proxies The number of proxies.
+ * @param s The space into which the stamps will be merged.
+ */
+void proxy_hydro_attach_exchange(struct proxy *proxies, int num_proxies,
+                                 struct space *s) {
+#ifdef WITH_MPI
+
+  if (num_proxies == 0) return;
+
+  /* Size and lay out the outgoing buffer over the cells we send. */
+  int count_out = 0;
+  int *offset_out =
+      (int *)swift_malloc("attach_offsets_out", s->nr_cells * sizeof(int));
+  if (offset_out == NULL)
+    error("Error allocating memory for hydro-attach offsets");
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    offset_out[k] = count_out;
+    if (s->cells_top[k].mpi.sendto) count_out += s->cells_top[k].mpi.pcell_size;
+  }
+
+  /* Same for the incoming buffer, over the cells the proxies bring in. */
+  int count_in = 0;
+  int *offset_in =
+      (int *)swift_malloc("attach_offsets_in", s->nr_cells * sizeof(int));
+  if (offset_in == NULL)
+    error("Error allocating memory for hydro-attach offsets");
+
+  for (int k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      offset_in[proxies[k].cells_in[j] - s->cells_top] = count_in;
+      count_in += proxies[k].cells_in[j]->mpi.pcell_size;
+    }
+  }
+
+  int *flags_in = NULL;
+  int *flags_out = NULL;
+  if (swift_memalign("attach_flags_in", (void **)&flags_in,
+                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_in) != 0 ||
+      swift_memalign("attach_flags_out", (void **)&flags_out,
+                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_out) != 0)
+    error("Failed to allocate hydro-attach flag buffers.");
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].mpi.sendto)
+      cell_pack_hydro_attach(&s->cells_top[k], &flags_out[offset_out[k]]);
+  }
+
+  /* Allocate the incoming and outgoing request handles. */
+  int num_reqs_out = 0;
+  int num_reqs_in = 0;
+  for (int k = 0; k < num_proxies; k++) {
+    num_reqs_in += proxies[k].nr_cells_in;
+    num_reqs_out += proxies[k].nr_cells_out;
+  }
+  MPI_Request *reqs_in = NULL;
+  int *cids_in = NULL;
+  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
+                                       (num_reqs_in + num_reqs_out))) == NULL ||
+      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
+          NULL)
+    error("Failed to allocate MPI_Request arrays.");
+  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
+  int *cids_out = &cids_in[num_reqs_in];
+
+  /* Emit the sends and recvs, one per exchanged top-level cell. */
+  for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      cids_in[recv_rid] = cid;
+      int err = MPI_Irecv(
+          &flags_in[offset_in[cid]], proxies[k].cells_in[j]->mpi.pcell_size,
+          MPI_INT, proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_in[recv_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv hydro-attach.");
+      recv_rid += 1;
+    }
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      cids_out[send_rid] = cid;
+      int err = MPI_Isend(
+          &flags_out[offset_out[cid]], proxies[k].cells_out[j]->mpi.pcell_size,
+          MPI_INT, proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_out[send_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend hydro-attach.");
+      send_rid += 1;
+    }
+  }
+
+  /* Wait for each recv and merge the owner's stamps into the local copy. */
+  for (int k = 0; k < num_reqs_in; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    const int cid = cids_in[pid];
+    cell_unpack_hydro_attach(&flags_in[offset_in[cid]], &s->cells_top[cid]);
+  }
+
+  if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  swift_free("attach_flags_in", flags_in);
+  swift_free("attach_flags_out", flags_out);
+  swift_free("attach_offsets_in", offset_in);
+  swift_free("attach_offsets_out", offset_out);
+  free(reqs_in);
+  free(cids_in);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Exchange extra information about the grid construction between nodes.
  *
  * Note that this function assumes that the cell structures have already
