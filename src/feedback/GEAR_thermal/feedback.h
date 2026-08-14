@@ -28,6 +28,7 @@
 #include "part.h"
 #include "units.h"
 
+#include <string.h>
 #include <strings.h>
 
 void feedback_update_part(struct part *p, struct xpart *xp,
@@ -60,5 +61,84 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
 };
+
+/**
+ * @brief Pack a #part's HII tag report-back entry (MPI plan S3.1).
+ *
+ * The three fields beyond @c tag have no per-part storage yet -- the
+ * compute-on-copies pass that would write real per-claim values is
+ * separate, still-missing work (see the plan's Status section), so they
+ * are left at their placeholder values. The struct is memset first so its
+ * tail padding is deterministic on the wire (MSAN hygiene).
+ *
+ * @param p The #part to pack from.
+ * @param data The destination entry.
+ */
+__attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
+    const struct part *restrict p, struct hii_tag_report *restrict data) {
+
+  memset(data, 0, sizeof(struct hii_tag_report));
+  data->tag = p->feedback_data;
+}
+
+/**
+ * @brief Unpack a #part's HII tag report-back entry (MPI plan S3.1).
+ *
+ * Only a stamped entry (S3.1/F2) is merged; an unstamped entry's tag state
+ * is stale ambient data riding along in the pack, not a claim to apply.
+ *
+ * @param p The #part to unpack into.
+ * @param data The source entry.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_unpack_hii_tag_report(struct part *restrict p,
+                               const struct hii_tag_report *restrict data) {
+
+  if (data->claimed_this_pass) p->feedback_data = data->tag;
+}
+
+/**
+ * @brief Pack a #part's post-cooling HII state update entry (MPI plan
+ * S3.1b).
+ *
+ * The struct is memset first so its tail padding is deterministic on the
+ * wire (MSAN hygiene).
+ *
+ * @param p The #part to pack from.
+ * @param data The destination entry.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_pack_hii_state_update(const struct part *restrict p,
+                               struct hii_state_update *restrict data) {
+
+  memset(data, 0, sizeof(struct hii_state_update));
+#ifdef WITH_MPI
+  data->T_eligibility = p->feedback_data.T_eligibility;
+#endif
+  data->neutral_H_frac = p->feedback_data.neutral_H_frac;
+  data->tag = p->feedback_data;
+}
+
+/**
+ * @brief Unpack a #part's post-cooling HII state update entry (MPI plan
+ * S3.1b).
+ *
+ * tag is written first as the wholesale mirror, not the primary read path
+ * (see the struct's doxygen); the two standalone fields are the
+ * authoritative same-step values and must win if they ever diverge.
+ *
+ * @param p The #part to unpack into.
+ * @param data The source entry.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_unpack_hii_state_update(struct part *restrict p,
+                                 const struct hii_state_update *restrict data) {
+
+  p->feedback_data = data->tag;
+#ifdef WITH_MPI
+  p->feedback_data.T_eligibility = data->T_eligibility;
+#endif
+  p->feedback_data.neutral_H_frac = data->neutral_H_frac;
+}
 
 #endif /* SWIFT_FEEDBACK_GEAR_H */

@@ -292,4 +292,24 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 };
 #endif
 
+/** @brief No-op HII tag-report pack: this module has no HII radiation. */
+__attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
+    const struct part *restrict p, struct hii_tag_report *restrict data) {}
+
+/** @brief No-op HII tag-report unpack: this module has no HII radiation. */
+__attribute__((always_inline)) INLINE static void
+feedback_unpack_hii_tag_report(struct part *restrict p,
+                               const struct hii_tag_report *restrict data) {}
+
+/** @brief No-op HII state-update pack: this module has no HII radiation. */
+__attribute__((always_inline)) INLINE static void
+feedback_pack_hii_state_update(const struct part *restrict p,
+                               struct hii_state_update *restrict data) {}
+
+/** @brief No-op HII state-update unpack: this module has no HII radiation. */
+__attribute__((always_inline)) INLINE static void
+feedback_unpack_hii_state_update(struct part *restrict p,
+                                 const struct hii_state_update *restrict data) {
+}
+
 #endif /* SWIFT_FEEDBACK_AGORA_H */

@@ -26,6 +26,7 @@
 #include "cell.h"
 
 /* Local headers */
+#include "feedback.h"
 #include "gravity.h"
 
 /**
@@ -241,12 +242,11 @@ void cell_unpack_bpart_swallow(struct cell *c,
  * Runs on the computing (star-owning) rank, over its (possibly foreign)
  * copy of the covered cell: @p c is the cell whose gas the local HII pass
  * gathered over, so its tag state may include claims made this pass. The
- * three fields beyond @c tag (r2, the two xpart floats, claimed_this_pass)
- * have no per-part storage yet -- the compute-on-copies pass that would
- * write them is separate, still-missing work (see the plan's Status
- * section); until it lands, they are placeholders (0, and
- * claimed_this_pass = 0, i.e. "nothing claimed this pass" for every
- * entry), keeping the channel inert end to end rather than half-wired.
+ * per-field copy (including the placeholder values for the fields that
+ * have no per-part storage yet -- see the plan's Status section) is
+ * flavour-specific and lives in feedback_pack_hii_tag_report() (feedback.h
+ * of the active module): this function stays module-agnostic so it links
+ * against every feedback flavour, not just GEAR_thermal.
  *
  * @param c The #cell to pack (local or a foreign copy).
  * @param data The destination buffer, one entry per particle of @p c.
@@ -257,11 +257,7 @@ void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data) {
   const struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    data[i].tag = parts[i].feedback_data;
-    data[i].r2 = 0.0f;
-    data[i].excess_photon_energy_HI = 0.0f;
-    data[i].photoionization_rate_HI = 0.0f;
-    data[i].claimed_this_pass = 0;
+    feedback_pack_hii_tag_report(&parts[i], &data[i]);
   }
 }
 
@@ -269,14 +265,13 @@ void cell_pack_part_hii_tag(const struct cell *c, struct hii_tag_report *data) {
  * @brief Unpack the HII tag report-back payload into a cell's #part array
  * (MPI plan S3.1, task_subtype_part_hii_tag).
  *
- * Runs on the owner rank, over its local copy of the covered cell. Only
- * stamped entries (S3.1/F2) are merged; an unstamped entry's tag state is
- * stale ambient data riding along in the pack, not a claim to apply. This
- * is the raw per-particle merge only: the S2 helper pair that also writes
- * the two xpart floats, and the S3.4 (r2, id) cross-rank tiebreak against
- * concurrently arriving reports, are a later stage's job (this channel is
- * inert until then; see cell_pack_part_hii_tag's note on the placeholder
- * fields upstream of this call).
+ * Runs on the owner rank, over its local copy of the covered cell. The
+ * stamped-entries-only merge rule (S3.1/F2) is flavour-specific and lives
+ * in feedback_unpack_hii_tag_report() (feedback.h of the active module).
+ * This is the raw per-particle merge only: the S2 helper pair that also
+ * writes the two xpart floats, and the S3.4 (r2, id) cross-rank tiebreak
+ * against concurrently arriving reports, are a later stage's job (this
+ * channel is inert until then).
  *
  * @param c The owner's local #cell.
  * @param data The source buffer, one entry per particle of @p c.
@@ -288,9 +283,7 @@ void cell_unpack_part_hii_tag(struct cell *c,
   struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    if (data[i].claimed_this_pass) {
-      parts[i].feedback_data = data[i].tag;
-    }
+    feedback_unpack_hii_tag_report(&parts[i], &data[i]);
   }
 }
 
@@ -300,7 +293,9 @@ void cell_unpack_part_hii_tag(struct cell *c,
  *
  * Runs on the gas owner rank, in the normal send direction: @p c is a
  * local cell whose post-cooling state is being shipped to every rank
- * holding a foreign copy of it.
+ * holding a foreign copy of it. The per-field copy is flavour-specific and
+ * lives in feedback_pack_hii_state_update() (feedback.h of the active
+ * module).
  *
  * @param c The owner's local #cell.
  * @param data The destination buffer, one entry per particle of @p c.
@@ -312,9 +307,7 @@ void cell_pack_part_hii_state(const struct cell *c,
   const struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    data[i].T_eligibility = parts[i].feedback_data.T_eligibility;
-    data[i].neutral_H_frac = parts[i].feedback_data.neutral_H_frac;
-    data[i].tag = parts[i].feedback_data;
+    feedback_pack_hii_state_update(&parts[i], &data[i]);
   }
 }
 
@@ -324,7 +317,9 @@ void cell_pack_part_hii_state(const struct cell *c,
  *
  * Runs on the computing rank, over its foreign copy of the covered cell.
  * Writes only the state-channel fields, never u/rho/v: the hydro force
- * pipeline on this rank must not see any change from this unpack.
+ * pipeline on this rank must not see any change from this unpack. The
+ * per-field copy is flavour-specific and lives in
+ * feedback_unpack_hii_state_update() (feedback.h of the active module).
  *
  * @param c The computing rank's (foreign) #cell copy.
  * @param data The source buffer, one entry per particle of @p c.
@@ -336,12 +331,7 @@ void cell_unpack_part_hii_state(struct cell *c,
   struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    /* tag first: it is the wholesale mirror, not the primary read path
-       (see the struct's doxygen). The two standalone fields below are the
-       authoritative same-step values and must win if they ever diverge. */
-    parts[i].feedback_data = data[i].tag;
-    parts[i].feedback_data.T_eligibility = data[i].T_eligibility;
-    parts[i].feedback_data.neutral_H_frac = data[i].neutral_H_frac;
+    feedback_unpack_hii_state_update(&parts[i], &data[i]);
   }
 }
 

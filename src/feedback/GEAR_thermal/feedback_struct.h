@@ -21,6 +21,8 @@
 
 #include "chemistry_struct.h"
 
+#include <config.h>
+
 /*! Maximum number of HEALPix angular pixels the HII ionization budget can
     be split across (12*nside_max^2). Every star carries a fixed-size
     array of this length regardless of the run's actual
@@ -72,6 +74,7 @@ struct feedback_part_data {
       written for that particle. */
   float neutral_H_frac;
 
+#ifdef WITH_MPI
   /*! Eligibility temperature cache (S3.3/F3): written at cooling time so a
       foreign copy with no struct xpart can still pass
       feedback_part_can_be_ionized's temperature gate. NOT yet written by
@@ -79,8 +82,11 @@ struct feedback_part_data {
       this field has no first-init hook in this codebase, so before its
       first cooling-time write it holds struct part's zero-init default,
       0.0f, not a real "no data" sentinel. A reader must gate on the S3.3
-      write actually having happened, not on the field's numeric value. */
+      write actually having happened, not on the field's numeric value.
+      MPI-only: it exists solely to let a foreign copy pass the eligibility
+      gate without a struct xpart, so single-rank builds don't pay for it. */
   float T_eligibility;
+#endif
 };
 
 /**
