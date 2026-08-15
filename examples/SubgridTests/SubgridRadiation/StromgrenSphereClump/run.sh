@@ -3,8 +3,12 @@
 
 # Shared GEAR example scripts (tables, plotting)
 scripts_location="../../../GEAR_ICs_and_SCRIPTS"
-# make run.sh fail if a subcommand fails
-set -e
+# make run.sh fail if a subcommand fails. pipefail matters here specifically:
+# swift's own exit code is piped into `tee output.log`, and without it a
+# crashed/errored swift run still lets the pipeline "succeed" (tee's own
+# exit code), silently producing a run_name output directory that looks
+# complete but only contains a startup-error log.
+set -eo pipefail
 
 n_threads=${n_threads:=8}          # Number of threads to use
 gas_density=${gas_density:=100}    # Diffuse background gas density in atom/cm^3
