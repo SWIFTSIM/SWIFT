@@ -10,32 +10,21 @@ scripts_location="../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-# Defaults reproduce STARBENCH's (Bisbas et al. 2015, arXiv:1507.05621)
-# late-phase D-type expansion test: rho_o=5.21e-21 g/cm3 (n_H~3115/cm3),
-# Q_H=1e49 photons/s (star_mass=26.75 Msun in this code's mass-luminosity
-# fit), T_o=1e3 K, t_end=3.0 Myr. T_i=1e4 K (STARBENCH's own convention)
-# additionally requires a compile-time flag -- see README, "Building to
-# match STARBENCH's own T_i convention" -- the plain default build
-# instead gives this code's own natural, metallicity-dependent T_i.
+# Defaults reproduce STARBENCH's late-phase D-type expansion test; see README.
 n_threads=${n_threads:=8}  #Number of threads to use
-gas_density=${gas_density:=3115} #Gas density in atom/cm^3 -- STARBENCH's rho_o=5.21e-21 g/cm3
-gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun) -- ~2.9 particles across R_St, a resolution
-                                    #compromise vs. the paper's own SPH tests (up to 8e6 particles); see README.
-star_mass=${star_mass:=26.75} #Star mass giving Q_H=1e49 photons/s in this code's fit
+gas_density=${gas_density:=3115} #Gas density in atom/cm^3
+gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun); see README's Resolution section
+star_mass=${star_mass:=26.75} #Star mass (Msun); see README's Star mass section
 star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
-L=${boxsize:=0.01} #boxsize in kpc (10 pc, ~2.16x R_STAG=2.32 pc half-width margin)
+L=${boxsize:=0.01} #boxsize in kpc
 time_end=${time_end:=3.068e-3} #TimeIntegration:time_end override (internal units) -- 3.0 Myr
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must stay
                         #below time_end (engine_config() errors otherwise) -- lower
                         #this if you shorten time_end below the default.
-initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override --
-                        #Z=0, literally pure hydrogen matching STARBENCH's own medium; gives this
-                        #code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override -- passes at
-                        #0.52% error (theory/GEAR/Radiation/04_validation.tex); see README before changing
-max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc,
-                        #just inside the 5 pc box half-width)
+initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override; see README's Temperature section
+rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override; see README's Cadence section
+max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc)
 max_retry_full_buffer=${max_retry_full_buffer:=30} #Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override
