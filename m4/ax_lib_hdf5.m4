@@ -257,6 +257,11 @@ HDF5 support is being disabled.
         dnl Add this to the CPPFLAGS
         HDF5_CPPFLAGS="-I${HDF5_tmp_inst}/include"
 
+        dnl CMake-built HDF5 reports its "Extra libraries" as a single
+        dnl semicolon-joined token (e.g. "-lm;-ldl;-lz"); turn those into
+        dnl separate words so the prefix-sorting loop below sees them.
+        HDF5_tmp_flags=$(echo "$HDF5_tmp_flags" | $SED 's/;/ /g')
+
         dnl Now sort the flags out based upon their prefixes
         for arg in $HDF5_SHOW $HDF5_tmp_flags ; do
           case "$arg" in

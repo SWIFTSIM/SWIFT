@@ -644,12 +644,14 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
+void cell_set_sink_resort_flag(struct cell *c);
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
                                         const int with_feedback);
 void cell_activate_star_formation_sink_tasks(struct cell *c,
                                              struct scheduler *s,
                                              const int with_feedback);
 void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s);
+void cell_activate_sink_resort_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter);

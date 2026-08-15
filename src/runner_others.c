@@ -713,6 +713,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
+  const int current_sinks_count = c->sinks.count;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
@@ -801,6 +802,12 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
         }
       }
     } /* Loop over particles */
+  }
+
+  /* If we formed any sinks, the sink sorts are now invalid. We need to
+   * re-compute them. */
+  if ((c == c->top) && (current_sinks_count != c->sinks.count)) {
+    cell_set_sink_resort_flag(c);
   }
 }
 

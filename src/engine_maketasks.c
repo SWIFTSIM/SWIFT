@@ -1884,6 +1884,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                            task_subtype_none, 0, 0, c, NULL);
         scheduler_addunlock(s, c->sinks.drift, c->super->kick2);
 
+        /* The sort (and resort) tasks read the sinks' positions, so they
+         * must not run before this cell's sinks have been drifted. Neither
+         * task otherwise has any dependency forcing that order. */
+        if (c->sinks.sorts != NULL)
+          scheduler_addunlock(s, c->sinks.drift, c->sinks.sorts);
+        if (c->hydro.sink_resort != NULL)
+          scheduler_addunlock(s, c->sinks.drift, c->hydro.sink_resort);
+
         c->sinks.sink_in =
             scheduler_addtask(s, task_type_sink_in, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
@@ -2113,8 +2121,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     if (c->split)
       for (int k = 0; k < 8; k++)
         if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_hydro(e, c->progeny[k],
-                                               star_resort_cell);
+          engine_make_hierarchical_tasks_hydro(
+              e, c->progeny[k], star_resort_cell, sink_resort_cell);
   }
 }
 
@@ -2132,7 +2140,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
     if (with_hydro)
-      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
+      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL,
+                                           /*sink_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);

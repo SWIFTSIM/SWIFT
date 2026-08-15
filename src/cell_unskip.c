@@ -140,6 +140,54 @@ void cell_activate_star_formation_sink_tasks(struct cell *c,
 }
 
 /**
+ * @brief Recursively clear the sink_resort flag in a cell hierarchy.
+ *
+ * @param c The #cell to act on.
+ */
+void cell_set_sink_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_sink_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_sink_resort_flag(c->progeny[k]);
+  }
+}
+
+/**
+ * @brief Recurses in a cell hierarchy down to the level where the
+ * sink resort tasks are and activates them.
+ *
+ * The function will fail if called *below* the super-level
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_sink_resort_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
+  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
+      (c->hydro.count > 0 || c->sinks.count > 0)) {
+    scheduler_activate(s, c->hydro.sink_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_sink_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
+/**
  * @brief Activate the sink formation task.
  *
  * Must be called at the top-level in the tree (where the SF task is...)
@@ -158,6 +206,9 @@ void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s) {
 
   /* Activate the star formation task */
   scheduler_activate(s, c->sinks.sink_formation);
+
+  /* Activate the sink resort tasks at whatever level they are */
+  cell_activate_sink_resort_tasks(c, s);
 }
 
 /**
@@ -833,6 +884,70 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the sorts up a cell hierarchy.
+ */
+void cell_activate_sinks_sorts_up(struct cell *c, struct scheduler *s) {
+
+  if (c == c->hydro.super) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sinks.sorts == NULL)
+      error("Trying to activate un-existing c->sinks.sorts");
+#endif
+    scheduler_activate(s, c->sinks.sorts);
+    if (c->nodeID == engine_rank) {
+      cell_activate_drift_sink(c, s);
+    }
+  } else {
+
+    /* Climb up the tree and set the flags */
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_sink_sub_sort);
+         parent = parent->parent) {
+
+      cell_set_flag(parent, cell_flag_do_sink_sub_sort);
+
+      /* Reached the super-level? Activate the task and abort */
+      if (parent == c->hydro.super) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->sinks.sorts == NULL)
+          error("Trying to activate un-existing parents->sinks.sorts");
+#endif
+        scheduler_activate(s, parent->sinks.sorts);
+        if (parent->nodeID == engine_rank) cell_activate_drift_sink(parent, s);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_sinks_sorts(struct cell *c, int sid, struct scheduler *s) {
+
+  /* Do we need to re-sort? */
+  if (c->sinks.dx_max_sort > space_maxreldx * c->dmin) {
+
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->sinks.requires_sorts) {
+        atomic_or(&finger->sinks.do_sort, finger->sinks.requires_sorts);
+        cell_activate_sinks_sorts_up(finger, s);
+      }
+      finger->sinks.sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->sinks.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->sinks.do_sort, (1 << sid));
+    cell_activate_sinks_sorts_up(c, s);
+  }
+}
+
+/**
  * @brief Activate the sorts on a given cell, if needed.
  */
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
@@ -1301,6 +1416,33 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
         if (ci->nodeID == engine_rank && cj_active)
           cell_activate_drift_part(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
+      }
+
+      /* The gas-sink interaction is one-sided: only the sink cell needs to
+       * be active, and only that side's sinks/gas pair needs sorting. */
+      const int ci_active_sinks = cell_is_active_sinks(ci, e);
+      const int cj_active_sinks = cell_is_active_sinks(cj, e);
+
+      if (ci_active_sinks && cj->hydro.count > 0) {
+        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+        atomic_or(&ci->sinks.requires_sorts, 1 << sid);
+
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        ci->sinks.dx_max_sort_old = ci->sinks.dx_max_sort;
+
+        cell_activate_hydro_sorts(cj, sid, s);
+        cell_activate_sinks_sorts(ci, sid, s);
+      }
+
+      if (cj_active_sinks && ci->hydro.count > 0) {
+        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+        atomic_or(&cj->sinks.requires_sorts, 1 << sid);
+
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->sinks.dx_max_sort_old = cj->sinks.dx_max_sort;
+
+        cell_activate_hydro_sorts(ci, sid, s);
+        cell_activate_sinks_sorts(cj, sid, s);
       }
     }
   } /* Otherwise, pair interation */

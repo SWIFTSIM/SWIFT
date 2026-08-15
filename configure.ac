@@ -391,6 +391,18 @@ if test "$enable_naive_interactions_stars" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_STARS],1,[Enable use of naive cell interaction functions for stars])
 fi
 
+# Check whether we want to default to naive cell interactions (sinks)
+AC_ARG_ENABLE([naive-interactions-sinks],
+   [AS_HELP_STRING([--enable-naive-interactions-sinks],
+     [Activate use of naive cell interaction functions for sinks @<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions_sinks="$enableval"],
+   [enable_naive_interactions_sinks="no"]
+)
+if test "$enable_naive_interactions_sinks" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_SINKS],1,[Enable use of naive cell interaction functions for sinks])
+fi
+
 # Check whether we want to default to naive cell interactions (stars)
 AC_ARG_ENABLE([naive-interactions-rt],
    [AS_HELP_STRING([--enable-naive-interactions-rt],

@@ -160,6 +160,81 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(TIMER_DOSELF_SINKS);
 }
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+/**
+ * @brief Calculate sink-sink swallow interactions between the sinks of ci
+ * and the sinks of cj (one direction). Brute-force: sink counts per cell
+ * are tiny, so the sorted search used for the gas loop buys nothing here.
+ *
+ * @param r runner task
+ * @param ci The first #cell
+ * @param cj The second #cell
+ * @param shift The shift vector to apply to the particles in ci.
+ */
+void DO_SINKS_SINKS_SWALLOW_NAIVE(struct runner *r, struct cell *restrict ci,
+                                  struct cell *restrict cj,
+                                  const double *shift) {
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  const int scount_i = ci->sinks.count;
+  const int scount_j = cj->sinks.count;
+  struct sink *restrict sinks_i = ci->sinks.parts;
+  struct sink *restrict sinks_j = cj->sinks.parts;
+
+  /* Loop over the sinks in ci. */
+  for (int sid = 0; sid < scount_i; sid++) {
+
+    /* Get a hold of the ith sink in ci. */
+    struct sink *restrict si = &sinks_i[sid];
+
+    /* Skip inactive particles */
+    if (!sink_is_active(si, e)) continue;
+
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
+    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+    /* Loop over the sinks in cj. */
+    for (int sjd = 0; sjd < scount_j; sjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct sink *restrict sj = &sinks_j[sjd];
+      const float hj = sj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      /* Skip inhibited particles. */
+      if (sink_is_inhibited(sj, e)) continue;
+
+      /* Compute the pairwise distance. */
+      const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
+                            (float)(sj->x[1] - cj->loc[1]),
+                            (float)(sj->x[2] - cj->loc[2])};
+      const float dx[3] = {six[0] - sjx[0], six[1] - sjx[1], six[2] - sjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (si->ti_drift != e->ti_current)
+        error("Particle si not drifted to current time");
+      if (sj->ti_drift != e->ti_current)
+        error("Particle sj not drifted to current time");
+#endif
+
+      if (r2 < hig2 || r2 < hjg2) {
+        IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time, e->time_base);
+      }
+    } /* loop over the sinks in cj. */
+  } /* loop over the sinks in ci. */
+}
+#endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
+
 /**
  * @brief Calculate gas and sink interaction around #sink
  *
@@ -253,59 +328,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   /* When doing sink swallowing, we need a quick loop also over the sinks
    * neighbours */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-
-  const int scount_j = cj->sinks.count;
-  struct sink *restrict sinks_j = cj->sinks.parts;
-
-  /* Loop over the sinks in ci. */
-  for (int sid = 0; sid < scount_i; sid++) {
-
-    /* Get a hold of the ith sink in ci. */
-    struct sink *restrict si = &sinks_i[sid];
-
-    /* Skip inactive particles */
-    if (!sink_is_active(si, e)) continue;
-
-    const float hi = si->h;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
-
-    /* Loop over the sinks in cj. */
-    for (int sjd = 0; sjd < scount_j; sjd++) {
-
-      /* Get a pointer to the jth particle. */
-      struct sink *restrict sj = &sinks_j[sjd];
-      const float hj = sj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
-
-      /* Skip inhibited particles. */
-      if (sink_is_inhibited(sj, e)) continue;
-
-      /* Compute the pairwise distance. */
-      const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
-                            (float)(sj->x[1] - cj->loc[1]),
-                            (float)(sj->x[2] - cj->loc[2])};
-      const float dx[3] = {six[0] - sjx[0], six[1] - sjx[1], six[2] - sjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (si->ti_drift != e->ti_current)
-        error("Particle si not drifted to current time");
-      if (sj->ti_drift != e->ti_current)
-        error("Particle sj not drifted to current time");
-#endif
-
-      if (r2 < hig2 || r2 < hjg2) {
-        IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties,
-                        e->ti_current, e->time, e->time_base);
-      }
-    } /* loop over the sinks in cj. */
-  } /* loop over the sinks in ci. */
-
+  DO_SINKS_SINKS_SWALLOW_NAIVE(r, ci, cj, shift);
 #endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
 }
 
@@ -659,6 +682,282 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
 }
 
 /**
+ * @brief Compute the sink-gas interactions between a cell pair using the
+ * sorted particle lists (both directions), plus the (brute-force)
+ * sink-sink swallow interactions when relevant.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param sid The direction of the pair.
+ * @param shift The shift vector to apply to the particles in ci.
+ */
+void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *restrict ci,
+                        struct cell *restrict cj, const int sid,
+                        const double shift[3]) {
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int do_ci_sink = ci->nodeID == e->nodeID;
+  const int do_cj_sink = cj->nodeID == e->nodeID;
+#else
+  /* The swallow task is executed on both sides */
+  const int do_ci_sink = 1;
+  const int do_cj_sink = 1;
+#endif
+
+  const int do_ci = do_ci_sink && ci->sinks.count != 0 &&
+                    cj->hydro.count != 0 && cell_is_active_sinks(ci, e);
+  const int do_cj = do_cj_sink && cj->sinks.count != 0 &&
+                    ci->hydro.count != 0 && cell_is_active_sinks(cj, e);
+
+  /* Get the cutoff shift. */
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+  if (do_ci) {
+
+    /* Pick-out the sorted lists. */
+    const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+    const struct sort_entry *restrict sort_i = cell_get_sinks_sorts(ci, sid);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Some constants used to checks that the parts are in the right frame */
+    const float shift_threshold_x =
+        2. * ci->width[0] +
+        2. * max(ci->sinks.dx_max_part, cj->hydro.dx_max_part);
+    const float shift_threshold_y =
+        2. * ci->width[1] +
+        2. * max(ci->sinks.dx_max_part, cj->hydro.dx_max_part);
+    const float shift_threshold_z =
+        2. * ci->width[2] +
+        2. * max(ci->sinks.dx_max_part, cj->hydro.dx_max_part);
+#endif /* SWIFT_DEBUG_CHECKS */
+
+    /* Get some other useful values. */
+    const double hi_max = ci->sinks.h_max_active * kernel_gamma - rshift;
+    const int count_i = ci->sinks.count;
+    const int count_j = cj->hydro.count;
+    struct sink *sinks_i = ci->sinks.parts;
+    struct part *parts_j = cj->hydro.parts;
+    const double dj_min = sort_j[0].d;
+    const float dx_max = (ci->sinks.dx_max_sort + cj->hydro.dx_max_sort);
+
+    /* Loop over the *active* sinks in ci that are within range (on the axis)
+       of any particle in cj. */
+    for (int pid = count_i - 1;
+         pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+
+      /* Get a hold of the ith sink in ci. */
+      struct sink *si = &sinks_i[sort_i[pid].i];
+
+      /* Skip inactive particles */
+      if (!sink_is_active(si, e)) continue;
+
+      const float hi = si->h;
+
+      /* Is there anything we need to interact with ? */
+      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+      if (di < dj_min) continue;
+
+      /* Get some additional information about si */
+      const float hig2 = hi * hi * kernel_gamma2;
+      const float six = si->x[0] - (cj->loc[0] + shift[0]);
+      const float siy = si->x[1] - (cj->loc[1] + shift[1]);
+      const float siz = si->x[2] - (cj->loc[2] + shift[2]);
+
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+
+        /* Recover pj */
+        struct part *pj = &parts_j[sort_j[pjd].i];
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
+
+        const float hj = pj->h;
+        const float pjx = pj->x[0] - cj->loc[0];
+        const float pjy = pj->x[1] - cj->loc[1];
+        const float pjz = pj->x[2] - cj->loc[2];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {six - pjx, siy - pjy, siz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (six > shift_threshold_x || six < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for si (six=%e ci->width[0]=%e)",
+              six, ci->width[0]);
+        if (siy > shift_threshold_y || siy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for si (siy=%e ci->width[1]=%e)",
+              siy, ci->width[1]);
+        if (siz > shift_threshold_z || siz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for si (siz=%e ci->width[2]=%e)",
+              siz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
+        /* Check that particles have been drifted to the current time */
+        if (si->ti_drift != e->ti_current)
+          error("Particle si not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+          IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time, e->time_base);
+        }
+      } /* loop over the parts in cj. */
+    } /* loop over the sinks in ci. */
+  } /* do_ci */
+
+  if (do_cj) {
+
+    /* Pick-out the sorted lists. */
+    const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+    const struct sort_entry *restrict sort_j = cell_get_sinks_sorts(cj, sid);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Some constants used to checks that the parts are in the right frame */
+    const float shift_threshold_x =
+        2. * ci->width[0] +
+        2. * max(ci->hydro.dx_max_part, cj->sinks.dx_max_part);
+    const float shift_threshold_y =
+        2. * ci->width[1] +
+        2. * max(ci->hydro.dx_max_part, cj->sinks.dx_max_part);
+    const float shift_threshold_z =
+        2. * ci->width[2] +
+        2. * max(ci->hydro.dx_max_part, cj->sinks.dx_max_part);
+#endif /* SWIFT_DEBUG_CHECKS */
+
+    /* Get some other useful values. */
+    const double hj_max = cj->sinks.h_max_active * kernel_gamma;
+    const int count_i = ci->hydro.count;
+    const int count_j = cj->sinks.count;
+    struct sink *restrict sinks_j = cj->sinks.parts;
+    struct part *restrict parts_i = ci->hydro.parts;
+    const double di_max = sort_i[count_i - 1].d - rshift;
+    const float dx_max = (ci->hydro.dx_max_sort + cj->sinks.dx_max_sort);
+
+    /* Loop over the *active* sinks in cj that are within range (on the axis)
+       of any particle in ci. */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+         pjd++) {
+
+      /* Get a hold of the jth sink in cj. */
+      struct sink *sj = &sinks_j[sort_j[pjd].i];
+
+      /* Skip inactive particles */
+      if (!sink_is_active(sj, e)) continue;
+
+      const float hj = sj->h;
+
+      /* Is there anything we need to interact with ? */
+      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
+      if (dj - rshift > di_max) continue;
+
+      /* Get some additional information about sj */
+      const float hjg2 = hj * hj * kernel_gamma2;
+      const float sjx = sj->x[0] - cj->loc[0];
+      const float sjy = sj->x[1] - cj->loc[1];
+      const float sjz = sj->x[2] - cj->loc[2];
+
+      /* Loop over the parts in ci. */
+      for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+
+        /* Recover pi */
+        struct part *pi = &parts_i[sort_i[pid].i];
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pi, e)) continue;
+
+        const float hi = pi->h;
+        const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
+        const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
+        const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {sjx - pix, sjy - piy, sjz - piz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (sjx > shift_threshold_x || sjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for sj (sjx=%e ci->width[0]=%e)",
+              sjx, ci->width[0]);
+        if (sjy > shift_threshold_y || sjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for sj (sjy=%e ci->width[1]=%e)",
+              sjy, ci->width[1]);
+        if (sjz > shift_threshold_z || sjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for sj (sjz=%e ci->width[2]=%e)",
+              sjz, ci->width[2]);
+
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (sj->ti_drift != e->ti_current)
+          error("Particle sj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hjg2) {
+          IACT_SINKS_GAS(r2, dx, hj, hi, sj, pi, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time, e->time_base);
+        }
+      } /* loop over the parts in ci. */
+    } /* loop over the sinks in cj. */
+  } /* do_cj */
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* Sink-sink swallow interactions: sink counts per cell are tiny, so a
+   * brute-force search is used here regardless of the gas-loop strategy. */
+  if (ci->sinks.count != 0 && cj->sinks.count != 0) {
+    DO_SINKS_SINKS_SWALLOW_NAIVE(r, ci, cj, shift);
+  }
+#endif
+
+  TIMER_TOC(TIMER_DOPAIR_SINKS);
+}
+
+/**
  * @brief Wrapper for runner_dopair_sinks_naive_swallow.
  *
  * @param r #runner
@@ -706,17 +1005,30 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
-  /* Have the cells been sorted? */
-  if (!(ci->sinks.sorted & (1 << sid)) ||
-      ci->sinks.dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells (ci).");
+  /* Have the cells been sorted? Only the sides we are actually going to
+   * interact need to be checked (a cell with no active sinks, or whose
+   * neighbour has no gas, never got its sort activated). */
+  if (do_ci && (!(ci->sinks.sorted & (1 << sid)) ||
+                ci->sinks.dx_max_sort_old > space_maxreldx * ci->dmin))
+    error("Interacting unsorted cells (ci sinks).");
 
-  if (!(cj->sinks.sorted & (1 << sid)) ||
-      cj->sinks.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells (cj).");
+  if (do_ci && (!(cj->hydro.sorted & (1 << sid)) ||
+                cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin))
+    error("Interacting unsorted cells (cj hydro).");
 
-  /* No sorted interactions here -> use the naive ones */
+  if (do_cj && (!(ci->hydro.sorted & (1 << sid)) ||
+                ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin))
+    error("Interacting unsorted cells (ci hydro).");
+
+  if (do_cj && (!(cj->sinks.sorted & (1 << sid)) ||
+                cj->sinks.dx_max_sort_old > space_maxreldx * cj->dmin))
+    error("Interacting unsorted cells (cj sinks).");
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS_SINKS
   DOPAIR1_SINKS_NAIVE(r, ci, cj, 1);
+#else
+  DO_SYM_PAIR1_SINKS(r, ci, cj, sid, shift);
+#endif
 }
 
 /**
@@ -798,6 +1110,32 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (!cell_are_sink_drifted(cj, e))
         error("Interacting undrifted cells (sinks).");
+    }
+
+    /* Do any of the cells need to be (re-)sorted first? With an adaptive
+     * cutoff, h_max_active can grow between the unskip and this call, so the
+     * sort activated during unskip may no longer cover this direction. */
+    if (do_ci) {
+      if (!(ci->sinks.sorted & (1 << sid)) ||
+          ci->sinks.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_sink_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->hydro.sorted & (1 << sid)) ||
+          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*rt_request=*/0, /*clock=*/0);
+      }
+    }
+    if (do_cj) {
+      if (!(ci->hydro.sorted & (1 << sid)) ||
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*rt_request=*/0, /*clock=*/0);
+      }
+      if (!(cj->sinks.sorted & (1 << sid)) ||
+          cj->sinks.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_sink_sort(r, cj, (1 << sid), 0, 0);
+      }
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_SINKS(r, ci, cj);

@@ -357,6 +357,7 @@ __attribute__((always_inline)) INLINE static void drift_sink(
   for (int k = 0; k < 3; k++) {
     const float dx = sink->v[k] * dt_drift;
     sink->x_diff[k] -= dx;
+    sink->x_diff_sort[k] -= dx;
   }
 }
 

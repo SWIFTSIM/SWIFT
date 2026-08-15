@@ -800,8 +800,15 @@ void runner_do_sink_sort(struct runner *r, struct cell *c, int flags,
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_sink_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
-  if (flags && !cell_are_spart_drifted(c, r->e)) {
-    error("Sorting un-drifted cell c->nodeID=%d", c->nodeID);
+  if (flags && !cell_are_sink_drifted(c, r->e)) {
+    error(
+        "Sorting un-drifted cell c->nodeID=%d count=%d ti_old_part=%lld "
+        "ti_current=%lld resort_flag=%d hydro_active=%d sinks_active=%d "
+        "depth=%d is_super=%d",
+        c->nodeID, c->sinks.count, c->sinks.ti_old_part, r->e->ti_current,
+        cell_get_flag(c, cell_flag_do_sink_resort),
+        cell_is_active_hydro(c, r->e), cell_is_active_sinks(c, r->e), c->depth,
+        c->hydro.super == c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

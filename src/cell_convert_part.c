@@ -142,6 +142,11 @@ void cell_recursively_shift_sinks(struct cell *c,
     }
   }
 
+  /* Indicate that the cell is not sorted and cancel the pointer sorting
+   * arrays. */
+  c->sinks.sorted = 0;
+  cell_free_sinks_sorts(c);
+
   /* When directly above the leaf with the new particle: increase the particle
    * count */
   /* When after the leaf with the new particle: shift by one position */
