@@ -9,6 +9,9 @@ average temperature per pixel needs num = project(mass*T), den =
 project(mass), then num/den.
 """
 
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,6 +22,12 @@ import unyt
 from unyt import mh, cm
 from matplotlib.colors import LogNorm
 
+# plot_gas_density.py lives in the shared GEAR_ICs_and_SCRIPTS/ directory.
+sys.path.append(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "../../../GEAR_ICs_and_SCRIPTS"
+    )
+)
 from plot_gas_density import get_gas_temperatures, get_sink_and_stars_positions
 
 image_resolution = 1024
