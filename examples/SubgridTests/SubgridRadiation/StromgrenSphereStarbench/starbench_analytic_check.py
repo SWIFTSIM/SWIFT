@@ -61,16 +61,15 @@ The PASS/FAIL verdict is attached to each line separately; when the two
 conventions diverge by more than 10% the region receded and the
 scheme-appropriate line is the meaningful one (see above).
 
-The ever-tagged extent itself is gap-rejected, not the max, of ever-tagged
-gas radii: HIIStarIDs is a one-way stamp (never cleared on tag expiry), so
-a single particle that lapsed early and advected outward for several Myr
-can inflate a plain max() by double digits percent. Discarding particles
-by a blind percentile also works, but cuts several percent
-into a perfectly smooth, gap-free shell edge where nothing is actually an
-outlier; walking down from the top and discarding only points separated
-from the bulk by an anomalously large gap keeps the smooth case exact
-while still rejecting a genuine straggler. The true max is still reported
-as a secondary diagnostic.
+The ever-tagged extent itself is outlier-rejected, not the max, of
+ever-tagged gas radii: HIIStarIDs is a one-way stamp (never cleared on tag
+expiry), so a single particle that lapsed early and advected outward for
+several Myr can inflate a plain max() by double digits percent.
+robust_ever_tagged_radius() rejects such a particle only when it is
+detached from the population both radially and in its own direction, which
+leaves a smooth shell edge exact and keeps a genuinely anisotropic front
+(a leading HEALPix cone at HII_angular_nside > 0, a breakout finger)
+intact. The true max is still reported as a secondary diagnostic.
 
 Usage:
     python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
@@ -78,6 +77,8 @@ Usage:
 
 import argparse
 import glob
+import os
+import re
 
 import numpy as np
 from astropy import constants as const
@@ -177,62 +178,186 @@ def starbench_curve(
     return R_I, R_II, R_SB
 
 
-# A point at the top of the sorted ever-tagged distances is rejected as an
-# outlier only if the gap to its next-lower neighbor exceeds this many times
-# the local point spacing: an isolated advected straggler produces a gap an
-# order of magnitude or more above the front's own natural surface
-# roughness.
+# -----------------------------------------------------------------------------
+# Robust ever-tagged front radius. This block is duplicated verbatim in
+# StromgrenSphere/stromgren_analytic_check.py,
+# StromgrenSphereStarbench/starbench_analytic_check.py,
+# StromgrenSphereHuSmith2017/hu_smith_analytic_check.py and
+# StromgrenSphereCosmo/cosmo_stromgren_analytic_check.py. The examples share
+# no import path, so the four copies are kept identical by hand -- change one,
+# change all four.
+# -----------------------------------------------------------------------------
+
+# A candidate is radially detached only if the gap down to the next-lower
+# ever-tagged distance exceeds this many times the local radial spacing.
 GAP_REJECTION_FACTOR = 5.0
-# Fraction of ever-tagged particles, counted in from the front, used to
-# estimate the local point spacing scale GAP_REJECTION_FACTOR is measured
-# against.
+# Fraction of the ever-tagged particles, counted in from the front, whose
+# radial gaps set that local spacing. It is measured at the front rather than
+# over the whole population because an anisotropic region's outer radii are
+# populated by its leading directions alone, and are therefore genuinely
+# sparser than its interior.
 GAP_SCALE_TOP_FRACTION = 0.05
+# ... but never from fewer than this many gaps. The median of two gaps is
+# their mean, so "one gap exceeds GAP_REJECTION_FACTOR times the median of
+# the top two" cannot be satisfied by non-negative gaps, and the whole test
+# switches itself off below ~40 ever-tagged particles.
+GAP_SCALE_MIN_GAPS = 5
+# Half-angle of the cone searched for angular support. 30 deg is roughly one
+# HEALPix nside=1 pixel (4*pi/12 sr is a 33.6 deg cap), the coarsest angular
+# structure HII_angular_nside can impose on the front.
+ANGULAR_SUPPORT_HALFANGLE_DEG = 30.0
+# A candidate is angularly supported when another retained ever-tagged
+# particle in its cone reaches at least this fraction of its own radius.
+ANGULAR_SUPPORT_RADIUS_FRACTION = 0.95
+# Ceiling on how many particles may be rejected, so a mis-estimated spacing
+# can never consume a large part of the front.
+GAP_MAX_REJECT_FRACTION = 0.02
+GAP_MIN_REJECT = 3
+GAP_MAX_REJECT = 32
 # Below this many ever-tagged particles there are too few points to estimate
-# a meaningful local spacing scale; trust the max unmodified.
+# a spacing scale at all; trust the max unmodified.
 GAP_MIN_POINTS = 10
 
 
-def robust_ever_tagged_radius(distances_kpc):
-    """Robust "ever-tagged" HII front radius from ever-tagged particle
-    distances, via gap-aware outlier rejection.
+def robust_ever_tagged_radius(offsets_kpc):
+    """Robust "ever-tagged" HII front radius, rejecting particles that are
+    isolated both radially and in their own direction.
 
     HIIStarIDs is a one-way stamp (radiation_reset_part_ionized_tag never
-    clears it -- the stamp intentionally marks the swept shell), so a
-    single particle whose tag lapsed early and then advected outward for
-    several Myr can dominate a plain max() and inflate the reported extent
-    by double digits percent. A blind percentile trim removes such
-    stragglers too, but also cuts several percent into a
-    perfectly smooth, gap-free shell edge where every particle is
-    legitimate. Instead, walk down from the largest distance and discard a
-    point only if the gap to its next-lower neighbor exceeds
-    GAP_REJECTION_FACTOR times the local point spacing (the median spacing
-    among the top GAP_SCALE_TOP_FRACTION of points); stop at the first
-    point that is not an outlier by this test.
+    clears it, the stamp intentionally marks the swept shell), so a particle
+    whose tag lapsed early and then advected outward for several Myr can
+    dominate a plain max() and inflate the reported extent by double digits
+    percent. A blind percentile trim removes such stragglers too, but also
+    cuts several percent into a perfectly smooth, gap-free shell edge where
+    every particle is legitimate.
 
-    @param distances_kpc Ever-tagged particle distances from the source (kpc).
-    @return (front radius after gap rejection, true max), both in kpc.
+    A purely radial gap test cannot tell a straggler from the leading edge of
+    an anisotropic front: at HII_angular_nside > 0 the region advances at a
+    different rate in each HEALPix cone, so the outermost cone's tip is
+    radially separated from every other cone's gas and a radial test alone
+    eats it. The two cases differ in direction, not in radius. A leading edge
+    has companions at a comparable radius inside its own cone; an advected
+    straggler has none anywhere near it. Both conditions are therefore
+    required before anything is rejected:
+
+      1. radial detachment: the gap down to the next ever-tagged particle
+         exceeds GAP_REJECTION_FACTOR times the local radial spacing (the
+         median gap over the front-most GAP_SCALE_TOP_FRACTION of the
+         points, taken over no fewer than GAP_SCALE_MIN_GAPS gaps);
+      2. angular isolation: no retained ever-tagged particle within
+         ANGULAR_SUPPORT_HALFANGLE_DEG of the candidate's direction reaches
+         ANGULAR_SUPPORT_RADIUS_FRACTION of the candidate's radius.
+
+    The largest cut satisfying both is taken, so a small clump of stragglers
+    that advected together, and that would shield each other from a
+    stop-at-the-first-survivor walk, is rejected as a group. At most
+    max(GAP_MIN_REJECT, GAP_MAX_REJECT_FRACTION * n) particles are removed,
+    and never more than GAP_MAX_REJECT.
+
+    Assumes the offsets are already minimum-imaged about the source, so the
+    directions and radii are the physical ones.
+
+    @param offsets_kpc (N, 3) ever-tagged particle offsets from the source
+    (kpc), minimum-imaged.
+    @return (front radius after outlier rejection, true max), both in kpc.
     """
-    sorted_desc = np.sort(distances_kpc)[::-1]
-    true_max = float(sorted_desc[0])
-    n = len(sorted_desc)
+    offsets = np.asarray(offsets_kpc, dtype=np.float64)
+    radii = np.linalg.norm(offsets, axis=1)
+    order = np.argsort(radii)[::-1]
+    r_sorted = radii[order]
+    true_max = float(r_sorted[0])
+    n = len(r_sorted)
     if n < GAP_MIN_POINTS:
         return true_max, true_max
 
-    n_top = min(max(2, int(np.ceil(GAP_SCALE_TOP_FRACTION * n))), n - 1)
-    top_gaps = -np.diff(sorted_desc[: n_top + 1])
-    local_scale = np.median(top_gaps)
-    if local_scale <= 0:
-        nonzero = top_gaps[top_gaps > 0]
-        local_scale = np.median(nonzero) if len(nonzero) else 0.0
+    gaps = -np.diff(r_sorted)
+    n_top = min(
+        max(GAP_SCALE_MIN_GAPS, int(np.ceil(GAP_SCALE_TOP_FRACTION * n))), n - 1
+    )
+    local_scale = float(np.median(gaps[:n_top]))
+    if local_scale <= 0.0:
+        positive = gaps[gaps > 0.0]
+        local_scale = float(np.median(positive)) if len(positive) else 0.0
+    if local_scale <= 0.0:
+        return true_max, true_max
+    threshold = GAP_REJECTION_FACTOR * local_scale
 
-    i = 0
-    while (
-        i < n - 1
-        and local_scale > 0
-        and (sorted_desc[i] - sorted_desc[i + 1]) > GAP_REJECTION_FACTOR * local_scale
-    ):
-        i += 1
-    return float(sorted_desc[i]), true_max
+    max_reject = min(
+        max(GAP_MIN_REJECT, int(np.ceil(GAP_MAX_REJECT_FRACTION * n))),
+        GAP_MAX_REJECT,
+        n - 1,
+    )
+
+    # Directions, in the same descending-radius order. A particle sitting
+    # exactly on the source has no direction; leave its unit vector at zero so
+    # it never enters anyone's cone.
+    unit = np.zeros((n, 3))
+    has_direction = r_sorted > 0.0
+    unit[has_direction] = offsets[order][has_direction] / r_sorted[has_direction, None]
+    cos_halfangle = np.cos(np.radians(ANGULAR_SUPPORT_HALFANGLE_DEG))
+    # cone_ranks[k]: descending-radius ranks of the particles inside candidate
+    # k's cone, ascending, so the first entry past a cut is the largest radius
+    # that cut retains in that direction.
+    cone_ranks = []
+    for k in range(max_reject):
+        in_cone = (unit @ unit[k]) >= cos_halfangle
+        in_cone[k] = False
+        cone_ranks.append(np.flatnonzero(in_cone))
+
+    cut = -1
+    for i in range(max_reject):
+        if gaps[i] <= threshold:
+            continue
+        supported = False
+        for k in range(i + 1):
+            ranks = cone_ranks[k]
+            first_retained = np.searchsorted(ranks, i, side="right")
+            if (
+                first_retained < len(ranks)
+                and r_sorted[ranks[first_retained]]
+                >= ANGULAR_SUPPORT_RADIUS_FRACTION * r_sorted[k]
+            ):
+                supported = True
+                break
+        if not supported:
+            cut = i
+    if cut < 0:
+        return true_max, true_max
+    return float(r_sorted[cut + 1]), true_max
+
+
+def snapshot_index(filename):
+    """Trailing integer of a snapshot filename (snapshot_0007.hdf5 -> 7), or
+    None when the stem carries no such index."""
+    stem = os.path.splitext(os.path.basename(filename))[0]
+    match = re.search(r"(\d+)$", stem)
+    return int(match.group(1)) if match else None
+
+
+def print_n_H_with_source(n_H, source, files, label="n_H"):
+    """Print n_H together with the snapshot it was measured in, and warn when
+    that snapshot is not the run's own first one.
+
+    n_H is read once, from the first snapshot of the glob that holds a live
+    star, and never revisited. A glob that skips the run's early snapshots
+    samples a post-expansion, shell-biased density instead of the initial
+    uniform one, which shifts every reference curve computed from it -- so
+    the source has to be visible in the output rather than implicit.
+    """
+    print(f"{label:<19}: {n_H:.4g}  (measured in {source})")
+    if source != files[0]:
+        print(
+            f"  NOTE: not the earliest snapshot in the glob ({files[0]}); "
+            f"that one holds no live star yet."
+        )
+    first_index = snapshot_index(files[0])
+    if first_index is not None and first_index != 0:
+        print(
+            f"  WARNING: the snapshot glob starts at index {first_index}, not "
+            f"0. n_H is then measured after the region has already expanded, "
+            f"so it is a shell-biased density and every reference curve below "
+            f"is shifted. Re-run against the complete snapshot series."
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -315,6 +440,7 @@ def read_simulated_r_hii(snapshot_glob):
     times, r_hii, r_hii_max, r_now = [], [], [], []
     star_mass_msun = None
     n_H_atom_cc = None
+    n_H_source = None
     boxsize_kpc = None
 
     for f in files:
@@ -335,8 +461,7 @@ def read_simulated_r_hii(snapshot_glob):
             box_kpc = data.metadata.boxsize.to("kpc").value
             dx = gas_pos - star_pos
             dx -= box_kpc * np.round(dx / box_kpc)
-            distances = np.linalg.norm(dx, axis=1)
-            r_robust, r_max = robust_ever_tagged_radius(distances)
+            r_robust, r_max = robust_ever_tagged_radius(dx)
             r_hii.append(r_robust)
             r_hii_max.append(r_max)
         else:
@@ -355,6 +480,7 @@ def read_simulated_r_hii(snapshot_glob):
             )
             X_H = float(X_H_raw) if X_H_raw is not None else 0.76
             n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
+            n_H_source = f
 
     return (
         u.Quantity(times, u.Myr),
@@ -363,7 +489,9 @@ def read_simulated_r_hii(snapshot_glob):
         u.Quantity(r_now, u.kpc),
         star_mass_msun,
         n_H_atom_cc,
+        n_H_source,
         boxsize_kpc * u.kpc,
+        files,
     )
 
 
@@ -412,9 +540,20 @@ def measure_ionized_temperature_K(files, min_count=20):
 
 
 def resolve_T_ionized_K(requested_K, files):
-    """Return the T_i [K] the reference is computed at: the measured value
-    by default (requested_K is None), or the explicit one with a loud
-    warning when it disagrees with the measurement by more than 10%."""
+    """Return (T_i [K] the reference is computed at, verdict marker).
+
+    None (the default) means "measure it from the run's own tagged gas". An
+    explicit value is honoured, but when it disagrees with the measured one
+    by more than 10% the reference describes a temperature the run never
+    held. The marker returned alongside is appended to every verdict token
+    below: a banner printed at the top of the output does not survive a
+    harness grepping for PASS/FAIL, so without it such a harness records a
+    clean verdict reached against the wrong temperature.
+
+    @param requested_K Explicit T_i [K], or None to measure it.
+    @param files Snapshot filenames, in time order.
+    @return (T_i [K], "" or a " (T_i MISMATCH: ...)" verdict marker).
+    """
     T_measured_K, source = measure_ionized_temperature_K(files)
     if requested_K is None:
         if T_measured_K is None:
@@ -426,7 +565,7 @@ def resolve_T_ionized_K(requested_K, files):
             f"T_ionized          : {T_measured_K:.4g} K "
             f"(measured from tagged gas, {source})"
         )
-        return T_measured_K
+        return T_measured_K, ""
     if T_measured_K is not None and abs(T_measured_K / requested_K - 1.0) > 0.1:
         print("\n" + "!" * 72)
         print(
@@ -435,12 +574,16 @@ def resolve_T_ionized_K(requested_K, files):
             f"({T_measured_K:.4g} K, measured in {source})."
         )
         print(
-            "The reference below is computed at a temperature the run did "
-            "not use, so the verdict is not meaningful. Omit --T-ionized-K "
-            "to use the measured value."
+            "Every reference curve below is computed at a temperature the "
+            "run did not use, so the verdict is not meaningful. Omit "
+            "--T-ionized-K to use the measured value."
         )
         print("!" * 72 + "\n")
-    return requested_K
+        return requested_K, (
+            f" (T_i MISMATCH: reference {requested_K:.4g} K vs measured "
+            f"{T_measured_K:.4g} K)"
+        )
+    return requested_K, ""
 
 
 def main():
@@ -470,13 +613,21 @@ def main():
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
     args = parser.parse_args()
-    T_ionized_K = resolve_T_ionized_K(
+    T_ionized_K, T_i_marker = resolve_T_ionized_K(
         args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
     )
 
-    t_sim, r_sim, r_sim_max, r_now, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
-        args.snapshot_glob
-    )
+    (
+        t_sim,
+        r_sim,
+        r_sim_max,
+        r_now,
+        star_mass_msun,
+        n_H,
+        n_H_source,
+        boxsize,
+        files,
+    ) = read_simulated_r_hii(args.snapshot_glob)
     box_half_width = 0.5 * boxsize
 
     Q_H = ionizing_photon_rate(star_mass_msun)
@@ -486,7 +637,7 @@ def main():
     c_o = (np.sqrt(const.k_B * args.T_neutral_K * u.K / const.m_p)).to(u.km / u.s)
 
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
-    print(f"n_H                : {n_H:.4g}")
+    print_n_H_with_source(n_H, n_H_source, files)
     print(f"Q_H                : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
     print(f"c_i = {c_i:.4g}, c_o = {c_o:.4g}")
@@ -511,7 +662,11 @@ def main():
     r_sim_max_pc = r_sim_max.to(u.pc).value
     r_now_pc = r_now.to(u.pc).value
     box_valid = R_SB_at_t_sim <= box_half_width.to(u.pc).value
-    alive = r_sim_pc > 0
+    # Liveness must come from h_hii, not from the ever-tagged extent: the
+    # HIIStarIDs stamp is never cleared, so r_sim keeps growing by advection
+    # after the star dies and never returns to 0, which would silently
+    # compare pure advection against a live-source analytic curve.
+    alive = r_now_pc > 0
     ok = box_valid & alive
     if not np.any(ok):
         raise RuntimeError("No box-valid, alive snapshot to compare at.")
@@ -520,6 +675,23 @@ def main():
     R_SB_c = R_SB_at_t_sim[last]
 
     print(f"\nComparison time: t={t_c:.4g}  R_SB={R_SB_c:.4g} pc")
+    if last < len(t_sim) - 1:
+        reason = []
+        if np.any(~box_valid):
+            reason.append(
+                f"reference curve leaves the box from "
+                f"t={t_sim[np.where(~box_valid)[0][0]]:.4g}"
+            )
+        first_live = np.where(alive)[0][0]
+        dead = np.where(~alive[first_live:])[0]
+        if len(dead) > 0:
+            reason.append(
+                f"star inactive/dead from t={t_sim[first_live + dead[0]]:.4g}"
+            )
+        print(
+            f"  (not the final simulated time t={t_sim[-1]:.4g}: "
+            f"{'; '.join(reason) if reason else 'no reason recorded'})"
+        )
     for label, r_c in [
         ("ever-tagged extent ", r_sim_pc[last]),
         ("instantaneous front", r_now_pc[last]),
@@ -527,7 +699,8 @@ def main():
         rel_error = abs(r_c - R_SB_c) / R_SB_c
         verdict = "PASS" if rel_error <= args.tol else "FAIL"
         print(
-            f"  {label}: r_sim={r_c:.4g} pc  " f"rel_error={rel_error:.2%}  [{verdict}]"
+            f"  {label}: r_sim={r_c:.4g} pc  "
+            f"rel_error={rel_error:.2%}  [{verdict}{T_i_marker}]"
         )
     print(
         f"  (secondary diagnostic, true max ever-tagged extent: "

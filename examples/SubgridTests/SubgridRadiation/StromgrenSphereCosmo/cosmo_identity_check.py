@@ -30,7 +30,10 @@ Both runs are read through read_simulated_r_hii() from
 cosmo_stromgren_analytic_check.py, which always converts comoving snapshot
 fields to physical using each field's own a-scale exponent -- for the
 non-cosmological control this is a no-op (a=1 throughout), so the same code
-path handles both runs identically.
+path handles both runs identically. That reader applies the same
+robust_ever_tagged_radius() outlier rejection as the non-cosmological
+checks, so an advected lapsed-tag straggler cannot inflate either run's
+r_hii and enter this verdict or its window-selection cuts.
 
 Usage:
     python3 cosmo_identity_check.py --control 'control/snap/snapshot_*.hdf5' \\
@@ -88,8 +91,12 @@ def main():
     if not glob.glob(args.cosmo):
         raise RuntimeError(f"No cosmological snapshots found matching {args.cosmo!r}.")
 
-    t_ctrl, r_ctrl, m_ctrl, n_H_ctrl = read_simulated_r_hii(args.control)
-    t_cosmo, r_cosmo, m_cosmo, n_H_cosmo = read_simulated_r_hii(args.cosmo)
+    t_ctrl, r_ctrl, _, r_now_ctrl, m_ctrl, n_H_ctrl, _, _ = read_simulated_r_hii(
+        args.control
+    )
+    t_cosmo, r_cosmo, _, r_now_cosmo, m_cosmo, n_H_cosmo, _, _ = read_simulated_r_hii(
+        args.cosmo
+    )
 
     print(
         f"Control : star={m_ctrl:.3f} Msun, n_H(t=0)={n_H_ctrl:.4g}, "
@@ -105,7 +112,10 @@ def main():
     # Only the overlapping, both-alive (r>0) time range is meaningful.
     t_lo = max(t_ctrl.min(), t_cosmo.min())
     t_hi = min(t_ctrl.max(), t_cosmo.max())
-    in_range = (t_cosmo >= t_lo) & (t_cosmo <= t_hi) & (r_cosmo > 0)
+    # Aliveness from h_hii (r_now), not from the ever-tagged extent: the
+    # latter never returns to 0 once the star dies, so it cannot end the
+    # comparison there.
+    in_range = (t_cosmo >= t_lo) & (t_cosmo <= t_hi) & (r_now_cosmo > 0)
     if not np.any(in_range):
         raise RuntimeError(
             "No overlapping, alive-star time range between the control and "
