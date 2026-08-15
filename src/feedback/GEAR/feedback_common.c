@@ -729,6 +729,16 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Same claim path for local and foreign pj under owner-computes, so this
+     also guards the report-back channel against a silent-zero-rate bug. */
+  if (cooling->HII_couple_ionization_rate &&
+      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+    error(
+        "Fresh HII claim with HII_couple_ionization_rate on but a "
+        "non-positive photoionization rate coefficient (part %lld).",
+        pj->id);
+#endif
 #ifdef WITH_MPI
   /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
   pj->feedback_data.r2 = r2;
@@ -805,6 +815,14 @@ feedback_iact_HII_maintain_ionized_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->HII_couple_ionization_rate &&
+      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+    error(
+        "HII maintenance renewal with HII_couple_ionization_rate on but a "
+        "non-positive photoionization rate coefficient (part %lld).",
+        pj->id);
+#endif
 #ifdef WITH_MPI
   /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
   pj->feedback_data.r2 = r2;

@@ -119,6 +119,12 @@ feedback_unpack_hii_tag_report(struct part *restrict p,
 #ifdef WITH_MPI
   if (p->feedback_data.is_ionized) {
     *collision = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Stamped-entry provenance (S3.1/F2): a claim reaching the merge must
+       carry a live ionization, not an empty/default struct. */
+    if (!data->tag.is_ionized)
+      error("Stamped HII report for part %lld carries no live claim.", p->id);
+#endif
     const int incoming_wins = (data->r2 < p->feedback_data.r2) ||
                               (data->r2 == p->feedback_data.r2 &&
                                data->tag.star_id < p->feedback_data.star_id);
