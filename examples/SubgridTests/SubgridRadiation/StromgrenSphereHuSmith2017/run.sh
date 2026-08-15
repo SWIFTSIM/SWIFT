@@ -10,45 +10,29 @@ scripts_location="../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-# Defaults reproduce Hu et al. (2017, MNRAS 471, 2151) Appendix A's D-type
-# expansion convergence test: 4 co-located 19.2 Msun sources (Q_H~2.5e48/s
-# each, 1e49/s combined), n_H=100/cm3 uniform pure-hydrogen medium,
-# T_o=1e3 K, run to t=8 Myr. gas_mass=4.0 Msun is their own coarsest tested
-# resolution (they also tested 0.5, 0.0625, 0.0078125 Msun -- see README
-# for the resolution/runtime tradeoff before going finer). No clump --
-# reuses StromgrenSphereClumpSmith2021's makeIC_clump.py with
-# clump_radius_pc=0, which cleanly degenerates to a uniform box (verified:
-# 0 clump particles, no carve-out). Validated against the STARBENCH
-# semi-empirical formula (hu_smith_analytic_check.py), the same way Hu et
-# al. and Smith et al. (2021) validate their own D-type test -- see README.
+# Defaults reproduce Hu et al. (2017) Appendix A's D-type expansion
+# convergence test; see README.
 n_threads=${n_threads:=8}          # Number of threads to use
-gas_density=${gas_density:=100}    # Uniform gas density in atom/cm^3 (Hu et al. 2017)
-gas_particle_mass=${gas_mass:=4.0} # Gas particle mass (Msun) -- Hu et al.'s own coarsest resolution
-star_mass=${star_mass:=19.2}       # Mass of each source in M_sun (Q_H ~ 2.5e48/s)
+gas_density=${gas_density:=100}    # Uniform gas density in atom/cm^3
+gas_particle_mass=${gas_mass:=4.0} # Gas particle mass (Msun); see README's Resolution section
+star_mass=${star_mass:=19.2}       # Mass of each source (Msun)
 n_stars=${n_stars:=4}               # Number of co-located sources at the box center
 star_type=${star_type:="single_star"}
 density_factor=${density_factor:=1.0} # Unused at clump_radius_pc=0, kept for makeIC_clump.py compatibility
 clump_distance_pc=${clump_distance_pc:=20.0} # Unused at clump_radius_pc=0
-clump_radius_pc=${clump_radius_pc:=0.0}      # 0 = no clump, uniform box (verified: 0 clump particles)
+clump_radius_pc=${clump_radius_pc:=0.0}      # 0 = no clump, uniform box
 with_cooling=${with_cooling:=1}
-L=${boxsize:=0.1}                  # boxsize in kpc (100 pc, 50 pc half-width -- see README for
-                                    # the STARBENCH-curve-based box-size derivation)
-time_end=${time_end:=8.182e-3}     # TimeIntegration:time_end override (internal units) -- 8.0 Myr,
-                                    # matching Hu et al. (2017) Fig. A1's reported test duration.
+L=${boxsize:=0.1}                  # boxsize in kpc; see README's Box size section
+time_end=${time_end:=8.182e-3}     # TimeIntegration:time_end override (internal units) -- 8.0 Myr
 dt_max=${dt_max:=1e-5}             # TimeIntegration:dt_max override (internal units). Must stay
                                     # below time_end (engine_config() errors otherwise) -- lower
                                     # this if you shorten time_end below the default.
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
-nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override -- 0 by default (Hu et al.'s
-                                     # own algorithm has no angular splitting; this test is uniform anyway)
-rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override -- a purely
-                        # numerical parameter (sweep-verified, theory/GEAR/Radiation/04_validation.tex)
+nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override
+rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override; see README's Cadence section
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
-initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override --
-                        # Z=0, literally pure hydrogen matching Hu/Smith's own medium; gives this
-                        # code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-max_search_radius=${max_search_radius:=0.04} # Stars:HII_max_search_radius override (internal units, 40 pc,
-                                    # just inside the 50 pc box half-width)
+initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override; see README's Temperature section
+max_search_radius=${max_search_radius:=0.04} # Stars:HII_max_search_radius override (internal units, 40 pc)
 max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override

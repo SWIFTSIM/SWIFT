@@ -19,17 +19,21 @@ Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, 0.0078125 Msun (each 
 `--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching both papers' purely hydrodynamical test.
 
 ## Cadence
-`HII_rebuild_time_Myr=0.01` (fixed cadence). Cadence is a numerical parameter, not a physical one -- a 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` found the converged answer cadence-independent for values this fine or finer, so it may be changed freely.
+`HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
+a physical one, and may be changed freely at this value or finer.
 
 # Configure
-Validated configuration (matches both papers' `T_i=1e4 K` convention):
+Configuration matching both papers' `T_i=1e4 K` convention:
 ```
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
-Dropping the `CFLAGS` forcing flag builds with this code's own natural,
-metallicity-dependent `T_i` instead, not the configuration this target was
-validated against.
+`grackle_1` prices the ionizing photon budget against the neutral
+hydrogen fraction from Grackle's own H/He species network rather than
+total hydrogen, which the convergence physics this example reproduces
+depends on. Dropping the `CFLAGS` forcing flag builds with this code's
+own natural, metallicity-dependent `T_i` instead, which does not
+reproduce the papers' `T_i=1e4 K` convention (see Temperature above).
 
 # Run
 ```
