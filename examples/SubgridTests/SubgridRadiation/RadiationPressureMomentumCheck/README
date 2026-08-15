@@ -30,6 +30,9 @@ the kick stays small relative to the kick itself.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
+`run.sh` never passes `--cooling` to `swift` (this test isolates the
+radiation-pressure momentum channel from thermal effects), so cooling is
+never enabled and the configured Grackle mode has no effect on this run.
 
 # Run
 ```
