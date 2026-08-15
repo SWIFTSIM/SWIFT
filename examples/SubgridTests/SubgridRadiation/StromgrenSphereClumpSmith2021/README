@@ -17,12 +17,11 @@ scale.
 default. This code's own ionized-gas temperature floor is
 metallicity-dependent, reaching ~47,500 K at Z=0, not the paper's flat
 1e4 K -- so `r_HII` runs systematically larger than the paper's own
-numbers. The validated erosion-matrix results use `initial_metallicity=0`
-combined with the `IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`
-build flag (see Configure above) to match the paper's 1e4 K convention
-instead. `initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
-T_collisional=1e4 K exactly) is an alternative, untested by the erosion
-matrix, that reaches the same T_i without the build flag.
+numbers. Combine `initial_metallicity=0` with the
+`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4` build flag
+(see Configure below) to match the paper's 1e4 K convention instead.
+`initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
+T_collisional=1e4 K exactly) reaches the same T_i without the build flag.
 
 ## Resolution
 Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
@@ -41,20 +40,26 @@ per-particle IC values.
 `gas_mass`, and `density_factor` are all overridable via env var (see
 run.sh). `density_factor=1 ./run.sh` degenerates the clump to the
 background density, reproducing the paper's own no-clump reference
-test.
+test. `max_search_radius`, `max_retry_full_buffer`,
+`max_radius_expansion_tries`, and `radius_expansion_factor` set
+`Stars:HII_*`; the search radius can grow by at most
+`radius_expansion_factor^max_radius_expansion_tries` per rebuild.
 
 ## Cadence
-`GEARFeedback:HII_rebuild_time_Myr=0.01` (fixed, unchanged by Phase 4b) is
-a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in
-`theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (default 0.01 Myr, fixed cadence) is a
+numerical parameter, not a physical one, and may be changed freely.
 
 # Configure
-Validated configuration (matches the papers' `T_i=1e4 K` convention):
+Configuration matching the paper's `T_i=1e4 K` convention:
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
-`--with-chealpix` is required for `nside=1`; `nside=0` works without it.
+`grackle_1` prices the ionizing photon budget against the neutral
+hydrogen fraction from Grackle's own H/He species network rather than
+total hydrogen, which the erosion physics this example reproduces
+depends on. `--with-chealpix` is required for `nside=1`; `nside=0` works
+without it.
 
 # Run
 `nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh`
@@ -72,14 +77,25 @@ output.
 Identify clump-member particles once, by particle ID, at
 `snapshot_0000` (position within `clump_radius_pc` of the clump
 centre, density above the clump's own IC threshold), then track the
-same IDs to the final snapshot -- not a fresh position-based
-selection, since the clump drifts.
+same IDs to the final snapshot.
 ```
 python3 clump_erosion_matrix.py            # total mass remaining, bar chart
 python3 clump_hemisphere_erosion.py        # near (star-facing) vs. far split + mass-conservation check
 python3 clump_hemisphere_density_change.py # near vs. far median n_H, final/t=0 (continuous, not threshold-based)
 ```
 All three take `--gas-mass`/`--metallicity`/`--rebuild` to select a
-subset of a matrix of runs (see `--help`); run directories are
-expected to be named
-`gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr}`.
+subset of a matrix of runs (see `--help`); run directories are expected
+to be named `gas${gas_mass}_${z_label}_nside${nside}_rebuild${rebuild}`,
+where `z_label` already includes the leading `z` (e.g. `z0231`, `z0`),
+`nside` is the literal string `nside0` or `nside1`, and `rebuild`
+replaces `.` with `p` (e.g. `0p01` for a 0.01 Myr cadence).
+
+To produce one matrix cell, set the matching env vars and `run_name` to
+the directory name the matrix scripts expect, e.g. gas_mass=20,
+Z/Zsun=0.231, uniform (`nside=0`) scheme, 0.01 Myr cadence:
+```
+gas_mass=20 initial_metallicity=0.231 nside=0 rebuild_time_myr=0.01 \
+    run_name=gas20_z0231_nside0_rebuild0p01 ./run.sh
+```
+Repeat for each `nside`/`initial_metallicity`/`rebuild_time_myr`/`gas_mass`
+combination needed, then run the three scripts above from this directory.

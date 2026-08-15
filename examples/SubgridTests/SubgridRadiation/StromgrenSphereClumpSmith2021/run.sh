@@ -3,8 +3,12 @@
 
 # Shared GEAR example scripts (tables, plotting)
 scripts_location="../../../GEAR_ICs_and_SCRIPTS"
-# make run.sh fail if a subcommand fails
-set -e
+# make run.sh fail if a subcommand fails. pipefail matters here specifically:
+# swift's own exit code is piped into `tee output.log`, and without it a
+# crashed/errored swift run still lets the pipeline "succeed" (tee's own
+# exit code), silently producing a run_name output directory that looks
+# complete but only contains a startup-error log.
+set -eo pipefail
 
 n_threads=${n_threads:=8}          # Number of threads to use
 gas_density=${gas_density:=100}    # Diffuse background gas density in atom/cm^3
@@ -30,8 +34,6 @@ max_search_radius=${max_search_radius:=0.045} # Stars:HII_max_search_radius over
 max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
-                                    # (max per-rebuild search-radius growth is
-                                    # radius_expansion_factor^max_radius_expansion_tries, see T8)
 run_name=${run_name:=""}
 restart=${restart:=0}
 run_analysis=${run_analysis:=1}         # Run plot_temperature_hii.py (temperature slice +
