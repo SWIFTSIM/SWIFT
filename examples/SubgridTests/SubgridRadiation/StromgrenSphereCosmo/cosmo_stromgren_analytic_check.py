@@ -30,6 +30,13 @@ per field name. That conversion is the entire point of this script: for
 params_identity.yml (a~=1 throughout) it should barely matter, but for
 params_highz.yml (a_begin=0.1) skipping it would be a ~1000x density error.
 
+Composition is treated the same way as T_i. The Spitzer solution is
+parameterised by n_H, T_i, Q_H and the ionized mean molecular weight, none
+of which is tied to the classical setup, so c_s is evaluated at the run's
+OWN measured mu_i rather than at the pure-hydrogen mu_i=0.5 that gives the
+familiar 12.85 km/s. The neutral mu is measured and printed too, but this
+curve has no T_o term and does not use it. See resolve_composition().
+
 Usage:
     python3 cosmo_stromgren_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
@@ -133,11 +140,13 @@ def alpha_b_hui_gnedin(T):
     )
 
 
-def sound_speed_ionized(T_ionized):
-    """Isothermal sound speed of photoionized hydrogen gas, scaled from the
-    standard 1e4 K reference value (12.85 km/s) to the actual applied
-    ionized temperature (c_s ~ sqrt(T) at fixed composition)."""
-    return 12.85 * u.km / u.s * np.sqrt(T_ionized / (1e4 * u.K))
+def sound_speed_ionized(T_ionized, mu_ionized):
+    """Isothermal sound speed of the photoionized gas, c_s = sqrt(kT/(mu m_p)).
+
+    Evaluated at the run's own ionized mean molecular weight rather than at
+    the classical pure-hydrogen mu = 0.5 (which gives the familiar 12.85
+    km/s at 1e4 K), for the reason given in resolve_composition()."""
+    return (np.sqrt(const.k_B * T_ionized / (mu_ionized * const.m_p))).to(u.km / u.s)
 
 
 def stromgren_radius(Q_H, n_H, alpha_B):
@@ -477,8 +486,12 @@ def measure_ionized_temperature_K(files, min_count=20):
     """Median PHYSICAL temperature of the currently-tagged (ionized) gas,
     from the latest snapshot holding at least min_count tagged particles.
 
-    @return (median T [K], source filename), or (None, None) if no
-    snapshot holds enough tagged gas.
+    mu is returned alongside so the sound speeds can be evaluated at the same
+    composition this temperature was derived from.
+
+    @return (median T [K], median mu, mu came from species arrays, source
+    filename), or (None, None, False, None) if no snapshot holds enough
+    tagged gas.
     """
     for filename in reversed(files):
         with h5py.File(filename, "r") as h:
@@ -502,11 +515,13 @@ def measure_ionized_temperature_K(files, min_count=20):
                     + 0.75 * gas["HeIII"][...][ionized]
                 )
                 mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+                mu_measured = True
             else:
                 # No species arrays (COOLING_GRACKLE_MODE 0): this selection
                 # is fully ionized by construction, so use the fully-ionized
                 # primordial mu.
-                mu = 0.6
+                mu = MU_IONIZED_FALLBACK
+                mu_measured = False
             u_cgs_physical = (
                 gas["InternalEnergies"][...][ionized] * a**a_u * u_to_cgs_comoving
             )
@@ -518,8 +533,116 @@ def measure_ionized_temperature_K(files, min_count=20):
                 * const.m_p.cgs.value
                 / const.k_B.cgs.value
             )
-            return float(np.median(T)), filename
-    return None, None
+            return (
+                float(np.median(T)),
+                float(np.median(mu)) if mu_measured else mu,
+                mu_measured,
+                filename,
+            )
+    return None, None, False, None
+
+
+# -----------------------------------------------------------------------------
+# Composition the reference curves are evaluated at. Duplicated verbatim in all
+# four analytic checks, same rule as the estimator block above: change one,
+# change all four.
+#
+# The Raga/Spitzer/Bisbas solutions are parameterised by n_H, T_i, T_o, Q_H and
+# the mean molecular weights. None of that is tied to the source papers' own
+# setup, so the reference is evaluated at THIS run's own composition rather
+# than at the papers' pure-hydrogen convention (mu_i = 0.5 for fully ionized
+# hydrogen, mu_o = 1 for neutral atomic hydrogen), which this run does not
+# have: it carries helium, and Grackle sets the ionization state.
+#
+# Fallbacks, used only when a run carries no species arrays
+# (COOLING_GRACKLE_MODE 0) and marked in the verdict token when they are:
+# primordial X=0.76, Y=0.24, fully ionized (1/mu = 2X + 3Y/4) and fully
+# neutral (1/mu = X + Y/4) respectively.
+# -----------------------------------------------------------------------------
+MU_IONIZED_FALLBACK = 0.6
+MU_NEUTRAL_FALLBACK = 1.0 / (0.76 + 0.24 / 4.0)
+
+
+def measure_neutral_mu(files, min_count=20):
+    """Median mean molecular weight of the gas no source has ever tagged.
+
+    That selection is the undisturbed ambient medium the front expands into,
+    which is exactly what c_o describes. Species mass fractions are
+    dimensionless, so no comoving-to-physical conversion applies and this
+    reads the same in a cosmological snapshot as in a plain one.
+
+    @param files Snapshot filenames, in time order.
+    @param min_count Fewest never-tagged particles a snapshot must hold.
+    @return (median mu, mu came from species arrays, source filename). Falls
+    back to (MU_NEUTRAL_FALLBACK, False, None) when no snapshot qualifies or
+    the run carries no species arrays.
+    """
+    for filename in reversed(files):
+        with h5py.File(filename, "r") as h:
+            gas = h["PartType0"]
+            if "HI" not in gas:
+                return MU_NEUTRAL_FALLBACK, False, None
+            star_ids = (
+                h["PartType4"]["ParticleIDs"][:] if "PartType4" in h else np.array([])
+            )
+            never = ~np.isin(gas["HIIStarIDs"][:], star_ids)
+            if np.sum(never) < min_count:
+                continue
+            inv_mu = (
+                gas["HI"][:][never]
+                + 2.0 * gas["HII"][:][never]
+                + 0.25 * gas["HeI"][:][never]
+                + 0.5 * gas["HeII"][:][never]
+                + 0.75 * gas["HeIII"][:][never]
+            )
+            mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+            return float(np.median(mu)), True, filename
+    return MU_NEUTRAL_FALLBACK, False, None
+
+
+def resolve_composition(files, uses_neutral):
+    """Return (mu_i, mu_o, verdict marker) the sound speeds are evaluated at.
+
+    Both are measured from the run's own species arrays, the same arrays the
+    temperature measurement already uses to convert internal energy to T, so
+    c_i, c_o and T are all read off one composition instead of mixing a
+    measured T with an assumed mu. See the block comment above.
+
+    @param files Snapshot filenames, in time order.
+    @param uses_neutral Whether this check's curve contains a T_o term. The
+    Spitzer D-type solution does not, so mu_o is reported there for
+    reference but must not reach the verdict token.
+    @return (mu_i, mu_o, "" or a " (COMPOSITION FALLBACK: ...)" marker).
+    """
+    _, mu_i, mu_i_measured, source_i = measure_ionized_temperature_K(files)
+    mu_o, mu_o_measured, source_o = measure_neutral_mu(files)
+    if mu_i is None:
+        mu_i, mu_i_measured, source_i = MU_IONIZED_FALLBACK, False, None
+
+    def describe(measured, source):
+        if measured:
+            return f"measured from species, {source}"
+        return "primordial fallback, no species arrays in this run"
+
+    print(f"mu_ionized         : {mu_i:.4f} ({describe(mu_i_measured, source_i)})")
+    unused = "" if uses_neutral else ", not used: this curve has no T_o term"
+    print(
+        f"mu_neutral         : {mu_o:.4f} "
+        f"({describe(mu_o_measured, source_o)}{unused})"
+    )
+
+    fell_back = []
+    if not mu_i_measured:
+        fell_back.append("mu_i")
+    if uses_neutral and not mu_o_measured:
+        fell_back.append("mu_o")
+    if not fell_back:
+        return mu_i, mu_o, ""
+    return (
+        mu_i,
+        mu_o,
+        f" (COMPOSITION FALLBACK: {', '.join(fell_back)} assumed, not measured)",
+    )
 
 
 def resolve_T_ionized_K(requested_K, files):
@@ -537,7 +660,7 @@ def resolve_T_ionized_K(requested_K, files):
     @param files Snapshot filenames, in time order.
     @return (T_i [K], "" or a " (T_i MISMATCH: ...)" verdict marker).
     """
-    T_measured_K, source = measure_ionized_temperature_K(files)
+    T_measured_K, _, _, source = measure_ionized_temperature_K(files)
     if requested_K is None:
         if T_measured_K is None:
             raise RuntimeError(
@@ -603,7 +726,11 @@ def main():
 
     T_IONIZED_K = T_ionized_K * u.K
     ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
-    C_S_IONIZED = sound_speed_ionized(T_IONIZED_K)
+    mu_i, mu_o, mu_marker = resolve_composition(
+        sorted(glob.glob(args.snapshot_glob)), uses_neutral=False
+    )
+    verdict_marker = T_i_marker + mu_marker
+    C_S_IONIZED = sound_speed_ionized(T_IONIZED_K, mu_i)
 
     (
         t_sim,
@@ -636,7 +763,7 @@ def main():
     print(f"Q_H                : {Q_H:.4g}")
     print(
         f"T_ionized (applied): {T_IONIZED_K:.4g}  ->  alpha_B = {ALPHA_B:.4g}, "
-        f"c_s = {C_S_IONIZED:.4g}"
+        f"c_s = {C_S_IONIZED:.4g} (mu_i={mu_i:.4f})"
     )
     print(f"Equilibrium R_st   : {R_st.to(u.pc):.4g} = {R_st.to(u.kpc):.4g}")
     print(f"Physical box half-width (t=0): {box_half_width0.to(u.pc):.4g}")
@@ -681,7 +808,7 @@ def main():
     print(
         f"Comparison time: t={t_sim_final:.4g}  r_sim={r_sim_final:.4g}  "
         f"r_analytic={r_analytic_final:.4g}  rel_error={rel_error:.2%}  "
-        f"[{verdict}{T_i_marker}]"
+        f"[{verdict}{verdict_marker}]"
     )
     print(
         f"  (secondary diagnostic, true max ever-tagged extent: "
