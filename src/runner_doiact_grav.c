@@ -946,6 +946,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
+
+  /* GRAV_FOREIGN_INHIBITED_PROBE: entry-time snapshot to catch a concurrent
+   * recv/unpack of gparts_foreign_j during this function's interaction loop.
+   */
+  const integertime_t entry_data_recv_at_tic =
+      foreign_j ? cj->grav.data_recv_at_tic : 0;
+  const int entry_data_recv_count = foreign_j ? cj->grav.data_recv_count : 0;
 #endif
 
   /* Loop over all particles in ci... */
@@ -1067,13 +1074,16 @@ static INLINE void runner_dopair_grav_pp_truncated(
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
             "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d "
-            "raw_mass=%f cached_mass=%f time_bin=%d ti_drift=%lld "
-            "ti_current=%lld",
+            "raw_mass=%.3e cached_mass=%.3e time_bin=%d ti_drift=%lld "
+            "ti_current=%lld entry_recv_at_tic=%lld now_recv_at_tic=%lld "
+            "entry_recv_count=%d now_recv_count=%d",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, gparts_foreign_j[pjd].mass, mass_j,
             gparts_foreign_j[pjd].time_bin,
-            (long long)gparts_foreign_j[pjd].ti_drift,
-            (long long)e->ti_current);
+            (long long)gparts_foreign_j[pjd].ti_drift, (long long)e->ti_current,
+            (long long)entry_data_recv_at_tic,
+            (long long)cj->grav.data_recv_at_tic, entry_data_recv_count,
+            cj->grav.data_recv_count);
         error("Inhibited particle used as gravity source.");
       }
 
