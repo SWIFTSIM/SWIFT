@@ -71,6 +71,14 @@ leaves a smooth shell edge exact and keeps a genuinely anisotropic front
 (a leading HEALPix cone at HII_angular_nside > 0, a breakout finger)
 intact. The true max is still reported as a secondary diagnostic.
 
+Composition is treated the same way as T_i. These solutions are
+parameterised by n_H, T_i, T_o, Q_H and the mean molecular weights, none of
+which is tied to the source papers' own setup, so the curves are evaluated
+at the run's OWN measured mu_i and mu_o rather than at the papers'
+pure-hydrogen convention (mu_i=0.5, mu_o=1), which this run does not have:
+it carries helium and Grackle sets the ionization state. Both values are
+printed with their source. See resolve_composition().
+
 Usage:
     python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
@@ -80,6 +88,7 @@ import glob
 import os
 import re
 
+import h5py
 import numpy as np
 from astropy import constants as const
 from astropy import units as u
@@ -111,20 +120,22 @@ def alpha_b_hui_gnedin(T):
 # -----------------------------------------------------------------------------
 # STARBENCH semi-empirical formula (Bisbas et al. 2015)
 # -----------------------------------------------------------------------------
-def starbench_curve(
-    t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i=0.5, mu_o=1.0, T_i_K=1e4, T_o_K=1e3
-):
+def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K):
     """Solve Eqns 8 and 11 numerically and blend via Eqns 28-29.
 
-    mu_i=0.5 (fully ionized pure H, proton+electron) and mu_o=1.0 (neutral
-    atomic H) are the paper's implicit values -- confirmed by cross-checking
-    against its own stated "ratio ~ 1/200" for the early-phase test
-    (T_o=100 K) and its quoted c_i/c_o for the late-phase test; do not
-    change these without re-deriving them the same way.
+    mu_i and mu_o are the ionized and neutral mean molecular weights the
+    curve is evaluated at, and must be the same ones c_i_km_s and c_o_km_s
+    were computed from: Eqn 8's second term is (mu_i T_o)/(mu_o T_i), i.e.
+    (c_o/c_i)^2, so mixing conventions between the two silently changes the
+    equation. The papers assume pure hydrogen (mu_i = 0.5, mu_o = 1); these
+    checks pass the run's own measured composition instead, see
+    resolve_composition().
 
     @param t_myr Array of times (Myr) to evaluate at, must start > 0.
     @param R_St_pc Initial Stromgren radius (pc).
     @param c_i_km_s, c_o_km_s Ionized/neutral isothermal sound speeds (km/s).
+    @param mu_i, mu_o Ionized/neutral mean molecular weights.
+    @param T_i_K, T_o_K Ionized/neutral temperatures (K).
     @return (R_I, R_II, R_SB) arrays in pc, same shape as t_myr.
     """
     pc_to_km = 3.0857e13
@@ -504,11 +515,13 @@ def measure_ionized_temperature_K(files, min_count=20):
     metallicity; measuring it removes the silent tens-of-percent error of
     computing the reference at a temperature the run never used.
 
-    @return (median T [K], source filename), or (None, None) if no
-    snapshot holds enough tagged gas.
-    """
-    import h5py
+    mu is returned alongside so the sound speeds can be evaluated at the same
+    composition this temperature was derived from.
 
+    @return (median T [K], median mu, mu came from species arrays, source
+    filename), or (None, None, False, None) if no snapshot holds enough
+    tagged gas.
+    """
     for filename in reversed(files):
         with h5py.File(filename, "r") as h:
             gas = h["PartType0"]
@@ -527,16 +540,126 @@ def measure_ionized_temperature_K(files, min_count=20):
                     + 0.75 * gas["HeIII"][ionized]
                 )
                 mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+                mu_measured = True
             else:
                 # No species arrays (COOLING_GRACKLE_MODE 0): this selection
                 # is fully ionized by construction, so use the fully-ionized
                 # primordial mu.
-                mu = 0.6
+                mu = MU_IONIZED_FALLBACK
+                mu_measured = False
             u_cgs = gas["InternalEnergies"][ionized] * u_to_cgs
             gamma_m1 = 2.0 / 3.0
             T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
-            return float(np.median(T)), filename
-    return None, None
+            return (
+                float(np.median(T)),
+                float(np.median(mu)) if mu_measured else mu,
+                mu_measured,
+                filename,
+            )
+    return None, None, False, None
+
+
+# -----------------------------------------------------------------------------
+# Composition the reference curves are evaluated at. Duplicated verbatim in all
+# four analytic checks, same rule as the estimator block above: change one,
+# change all four.
+#
+# The Raga/Spitzer/Bisbas solutions are parameterised by n_H, T_i, T_o, Q_H and
+# the mean molecular weights. None of that is tied to the source papers' own
+# setup, so the reference is evaluated at THIS run's own composition rather
+# than at the papers' pure-hydrogen convention (mu_i = 0.5 for fully ionized
+# hydrogen, mu_o = 1 for neutral atomic hydrogen), which this run does not
+# have: it carries helium, and Grackle sets the ionization state.
+#
+# Fallbacks, used only when a run carries no species arrays
+# (COOLING_GRACKLE_MODE 0) and marked in the verdict token when they are:
+# primordial X=0.76, Y=0.24, fully ionized (1/mu = 2X + 3Y/4) and fully
+# neutral (1/mu = X + Y/4) respectively.
+# -----------------------------------------------------------------------------
+MU_IONIZED_FALLBACK = 0.6
+MU_NEUTRAL_FALLBACK = 1.0 / (0.76 + 0.24 / 4.0)
+
+
+def measure_neutral_mu(files, min_count=20):
+    """Median mean molecular weight of the gas no source has ever tagged.
+
+    That selection is the undisturbed ambient medium the front expands into,
+    which is exactly what c_o describes. Species mass fractions are
+    dimensionless, so no comoving-to-physical conversion applies and this
+    reads the same in a cosmological snapshot as in a plain one.
+
+    @param files Snapshot filenames, in time order.
+    @param min_count Fewest never-tagged particles a snapshot must hold.
+    @return (median mu, mu came from species arrays, source filename). Falls
+    back to (MU_NEUTRAL_FALLBACK, False, None) when no snapshot qualifies or
+    the run carries no species arrays.
+    """
+    for filename in reversed(files):
+        with h5py.File(filename, "r") as h:
+            gas = h["PartType0"]
+            if "HI" not in gas:
+                return MU_NEUTRAL_FALLBACK, False, None
+            star_ids = (
+                h["PartType4"]["ParticleIDs"][:] if "PartType4" in h else np.array([])
+            )
+            never = ~np.isin(gas["HIIStarIDs"][:], star_ids)
+            if np.sum(never) < min_count:
+                continue
+            inv_mu = (
+                gas["HI"][:][never]
+                + 2.0 * gas["HII"][:][never]
+                + 0.25 * gas["HeI"][:][never]
+                + 0.5 * gas["HeII"][:][never]
+                + 0.75 * gas["HeIII"][:][never]
+            )
+            mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+            return float(np.median(mu)), True, filename
+    return MU_NEUTRAL_FALLBACK, False, None
+
+
+def resolve_composition(files, uses_neutral):
+    """Return (mu_i, mu_o, verdict marker) the sound speeds are evaluated at.
+
+    Both are measured from the run's own species arrays, the same arrays the
+    temperature measurement already uses to convert internal energy to T, so
+    c_i, c_o and T are all read off one composition instead of mixing a
+    measured T with an assumed mu. See the block comment above.
+
+    @param files Snapshot filenames, in time order.
+    @param uses_neutral Whether this check's curve contains a T_o term. The
+    Spitzer D-type solution does not, so mu_o is reported there for
+    reference but must not reach the verdict token.
+    @return (mu_i, mu_o, "" or a " (COMPOSITION FALLBACK: ...)" marker).
+    """
+    _, mu_i, mu_i_measured, source_i = measure_ionized_temperature_K(files)
+    mu_o, mu_o_measured, source_o = measure_neutral_mu(files)
+    if mu_i is None:
+        mu_i, mu_i_measured, source_i = MU_IONIZED_FALLBACK, False, None
+
+    def describe(measured, source):
+        if measured:
+            return f"measured from species, {source}"
+        return "primordial fallback, no species arrays in this run"
+
+    print(f"mu_ionized         : {mu_i:.4f} ({describe(mu_i_measured, source_i)})")
+    unused = "" if uses_neutral else ", not used: this curve has no T_o term"
+    print(
+        f"mu_neutral         : {mu_o:.4f} "
+        f"({describe(mu_o_measured, source_o)}{unused})"
+    )
+
+    fell_back = []
+    if not mu_i_measured:
+        fell_back.append("mu_i")
+    if uses_neutral and not mu_o_measured:
+        fell_back.append("mu_o")
+    if not fell_back:
+        return mu_i, mu_o, ""
+    return (
+        mu_i,
+        mu_o,
+        f" (COMPOSITION FALLBACK: {', '.join(fell_back)} assumed, not measured)",
+    )
 
 
 def resolve_T_ionized_K(requested_K, files):
@@ -554,7 +677,7 @@ def resolve_T_ionized_K(requested_K, files):
     @param files Snapshot filenames, in time order.
     @return (T_i [K], "" or a " (T_i MISMATCH: ...)" verdict marker).
     """
-    T_measured_K, source = measure_ionized_temperature_K(files)
+    T_measured_K, _, _, source = measure_ionized_temperature_K(files)
     if requested_K is None:
         if T_measured_K is None:
             raise RuntimeError(
@@ -616,6 +739,10 @@ def main():
     T_ionized_K, T_i_marker = resolve_T_ionized_K(
         args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
     )
+    mu_i, mu_o, mu_marker = resolve_composition(
+        sorted(glob.glob(args.snapshot_glob)), uses_neutral=True
+    )
+    verdict_marker = T_i_marker + mu_marker
 
     (
         t_sim,
@@ -633,14 +760,16 @@ def main():
     Q_H = ionizing_photon_rate(star_mass_msun)
     alpha_B = alpha_b_hui_gnedin(T_ionized_K * u.K)
     R_St = ((3 * Q_H / (4 * np.pi * alpha_B * n_H**2)) ** (1 / 3.0)).to(u.pc)
-    c_i = (np.sqrt(const.k_B * T_ionized_K * u.K / (0.5 * const.m_p))).to(u.km / u.s)
-    c_o = (np.sqrt(const.k_B * args.T_neutral_K * u.K / const.m_p)).to(u.km / u.s)
+    c_i = (np.sqrt(const.k_B * T_ionized_K * u.K / (mu_i * const.m_p))).to(u.km / u.s)
+    c_o = (np.sqrt(const.k_B * args.T_neutral_K * u.K / (mu_o * const.m_p))).to(
+        u.km / u.s
+    )
 
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
     print_n_H_with_source(n_H, n_H_source, files)
     print(f"Q_H                : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
-    print(f"c_i = {c_i:.4g}, c_o = {c_o:.4g}")
+    print(f"c_i = {c_i:.4g} (mu_i={mu_i:.4f}), c_o = {c_o:.4g} (mu_o={mu_o:.4f})")
     print(f"Box half-width     : {box_half_width.to(u.pc):.4g}")
 
     t_grid = np.linspace(max(t_sim.min().value, 1e-4), t_sim.max().value, 400) * u.Myr
@@ -649,8 +778,10 @@ def main():
         R_St.to(u.pc).value,
         c_i.value,
         c_o.value,
-        T_i_K=T_ionized_K,
-        T_o_K=args.T_neutral_K,
+        mu_i,
+        mu_o,
+        T_ionized_K,
+        args.T_neutral_K,
     )
 
     # Interpolate the STARBENCH curve onto the simulation's own snapshot
@@ -700,7 +831,7 @@ def main():
         verdict = "PASS" if rel_error <= args.tol else "FAIL"
         print(
             f"  {label}: r_sim={r_c:.4g} pc  "
-            f"rel_error={rel_error:.2%}  [{verdict}{T_i_marker}]"
+            f"rel_error={rel_error:.2%}  [{verdict}{verdict_marker}]"
         )
     print(
         f"  (secondary diagnostic, true max ever-tagged extent: "
