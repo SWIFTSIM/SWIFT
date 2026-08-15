@@ -8,10 +8,7 @@
 set -eo pipefail
 
 n_threads=${n_threads:=8}  #Number of threads to use
-gas_density=${gas_density:=1e4} #Gas density in atom/cm^3 -- dense enough that
-                        #tau_IR (Eq. rp-tauIR) is non-negligible (see README);
-                        #the low densities used elsewhere in this example
-                        #suite would make the IR-trapping term untestable
+gas_density=${gas_density:=1e4} #Gas density in atom/cm^3; see README's Density and metallicity section
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
@@ -45,11 +42,8 @@ fi
 
 printf "Running simulation..."
 
-# --external-gravity with no Potential: block, matching the sibling
-# StromgrenSphere* examples' idiom for "no gravitational force" (rather than
-# omitting gravity from the task graph entirely). No --cooling: this test
-# isolates the radiation-pressure momentum channel from photoionization and
-# thermal effects (see README).
+# --external-gravity with no Potential: block gives zero gravitational
+# force. No --cooling: see README's Configure section.
 ../../../../swift --hydro --stars --external-gravity --feedback \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
