@@ -5,14 +5,17 @@ This example tests the GEAR subgrid ionization algorithm across two concurrently
 
 **Role: software-correctness test, not a physics validation target.** This checks task-graph locking/concurrency, not agreement with any published result. See `../StromgrenSphereStarbench/`, `../StromgrenSphereHuSmith2017/`, and `../StromgrenSphereClumpSmith2021/` for the actual validation targets.
 
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
+
+`gas_mass` defaults to 0.3 Msun, heavier than the single-star `../StromgrenSphere/` default of 0.1 -- this box holds ~33x more gas at the same density, so the heavier default particle keeps the particle count comparable.
 
 # Configure
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --disable-mpi --enable-debugging-checks --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 ```
+`--enable-debugging-checks` is what makes the lock-contention assertions this test targets bite. The cooling mode is not critical for this test; any `--with-cooling=grackle_N` works.
 
 Then, type
 
@@ -24,4 +27,13 @@ make -j
 The run.sh script calls the `makeIC_pair.py` script with default values. Run `python3 makeIC_pair.py --help` for the list of parameters. `--n_cells` must match `Scheduler:max_top_level_cells` in params.yml: the two stars are placed at the centers of two consecutive top-level cells (not symmetric about the box center, which can land exactly on a cell boundary), so the radiation task graph links them as neighbours regardless of search-radius value.
 
 # Run
-Type run.sh, and let's go!
+```
+./run.sh
+```
+
+# Checking
+This is a software-correctness test, not a physics comparison: a correct
+result is the run reaching `time_end` with no `error()`-shaped lines in
+`output.log`, under `--enable-debugging-checks`, without a `task_lock`
+deadlock or assertion failure from the two regions' concurrent
+`hii_ionization_feedback` tasks.

@@ -3,15 +3,17 @@
 
 # Shared GEAR example scripts (tables, plotting)
 scripts_location="../../../GEAR_ICs_and_SCRIPTS"
-# make run.sh fail if a subcommand fails
-set -e
+# make run.sh fail if a subcommand fails. pipefail matters here specifically:
+# swift's own exit code is piped into `tee output.log`, and without it a
+# crashed/errored swift run still lets the pipeline "succeed" (tee's own
+# exit code), silently producing a run_name output directory that looks
+# complete but only contains a startup-error log.
+set -eo pipefail
 
 n_threads=${n_threads:=8}     # Number of threads to use
 gas_density=${gas_density:=5} # Gas density in atom/cm^3
-gas_particle_mass=${gas_mass:=0.3} # Mass of the gas particles (heavier than the single-star
-                               # StromgrenSphere default of 0.1 -- this box holds ~33x more gas at
-                               # the same density, so keep particle count comparable at default settings).
-star_mass=${star_mass:=29.7}  # Mass of each star
+gas_particle_mass=${gas_mass:=0.3} # Mass of the gas particles (Msun); see README
+star_mass=${star_mass:=29.7}  # Mass of each star (Msun)
 star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.16}            # boxsize in kpc
