@@ -11,10 +11,7 @@ star_mass=${star_mass:=29.7}   #Mass of the star in Msun
 run_name=${run_name:=""}
 restart=${restart:=0}
 
-# boxsize/gas_mass defaults are tier-dependent: identity mirrors
-# ../StromgrenSphere exactly (0.05 kpc, 0.1 Msun/particle); highz needs a
-# bigger physical box for its own R_st to fit (see params_highz.yml), with
-# gas_mass scaled up to keep the particle count/runtime unchanged.
+# boxsize/gas_mass defaults are tier-dependent; see README.
 case "$tier" in
     identity)
         a_begin=0.99865

@@ -12,7 +12,7 @@ Cosmological counterpart of `../StromgrenSphere/`: same homogeneous periodic box
 make -j
 ```
 
-The `CFLAGS` forcing flag pins the ionized-gas temperature to the flat
+The cooling mode is not critical for this test; any `--with-cooling=grackle_N` works. The `CFLAGS` forcing flag pins the ionized-gas temperature to the flat
 `T_i = 1e4 K` convention every sibling radiation example validates
 against; the tier-1 identity comparison additionally requires the
 control `../StromgrenSphere` run to be built with the *same* flag and
@@ -23,20 +23,19 @@ binary, since it compares the two runs directly.
 tier=identity ./run.sh
 tier=highz ./run.sh
 ```
-`run_name=identity ./run.sh` / `run_name=highz ./run.sh` move each tier's output into its own directory so both can be kept side by side. See `run.sh` for the other overridable variables (`n_threads`, `gas_density`, `gas_mass`, `star_mass`, `boxsize` -- all PHYSICAL values at `a_begin`). The non-cosmological control for `tier=identity` is `../StromgrenSphere`, run
+`tier=identity run_name=identity ./run.sh` / `tier=highz run_name=highz ./run.sh` move each tier's output into its own directory so both can be kept side by side. See `run.sh` for the other overridable variables (`n_threads`, `gas_density`, `gas_mass`, `star_mass`, `boxsize` -- all PHYSICAL values at `a_begin`). The non-cosmological control for `tier=identity` is `../StromgrenSphere`, run
 with the SAME binary and matching cadence/duration:
 ```
 cd ../StromgrenSphere && rebuild_time_myr=0.05 time_end=3.1e-3 dt_max=1e-3 ./run.sh
 ```
-Matching the rebuild cadence matters: the proper-time and d(ln a) integer
-timelines quantize a star's timestep differently, so at coarse cadence the
-two runs' rebuild passes land up to one cadence apart -- a discretization
-phase offset, not a frame error -- and the identity comparison only tightens
-as the cadence shrinks.
+Match the rebuild cadence between the two runs: the proper-time and d(ln a)
+integer timelines quantize a star's timestep differently, so a coarser
+cadence widens the discretization offset between the two runs' rebuild
+passes.
 
 # Checking
 ```
-python3 cosmo_identity_check.py --control path/to/StromgrenSphere/snap/snapshot_*.hdf5 --cosmo identity/snap/snapshot_*.hdf5
+python3 cosmo_identity_check.py --control 'path/to/StromgrenSphere/snap/snapshot_*.hdf5' --cosmo 'identity/snap/snapshot_*.hdf5'
 python3 cosmo_stromgren_analytic_check.py -s 'highz/snap/snapshot_*.hdf5'
 ```
 `cosmo_identity_check.py` compares `tier=identity`'s simulated `r_hii(t)` directly against the control run's own -- both converted from comoving to physical using each snapshot field's own `a-scale exponent` attribute (a no-op for the non-cosmological control, since it sits at `a=1` throughout).
