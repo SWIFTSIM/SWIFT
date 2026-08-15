@@ -81,6 +81,22 @@ def load_buckets(snapshot_path, clump_direction, pixel_halfangle_deg):
     }
 
 
+def counting_sigma(bucket):
+    """Binomial standard error on a bucket's ionized fraction.
+
+    A LOWER BOUND on the real uncertainty only: the ionized field is
+    spatially correlated (neighbouring particles are ionized together), so
+    the effective number of independent samples is well below n_tot. It is
+    used here as a floor a claimed effect must clear, never as the true
+    error bar.
+    """
+    n_tot = bucket["n_tot"]
+    if n_tot == 0:
+        return float("nan")
+    f = bucket["frac"]
+    return np.sqrt(max(f * (1.0 - f), 0.0) / n_tot)
+
+
 def print_bucket_table(label, buckets):
     print(f"\n--- {label} ---")
     for name in ("clump_pixel", "other_pixels"):
@@ -111,6 +127,24 @@ def main():
         help="Half-angle (degrees) defining the 'clump pixel' bucket. "
         "Default 29 matches nside=1 pixel 4's inscribed-cap radius "
         "around its center direction.",
+    )
+    parser.add_argument(
+        "--min-effect-pp",
+        type=float,
+        default=1.0,
+        help="Smallest 'other pixels' ionized-fraction gain (percentage "
+        "points) that counts as redistribution (default: 1.0). Without a "
+        "minimum effect size the verdict is a sign test between two "
+        "independent simulations, which coin-flips to PASS about half the "
+        "time when the true effect is zero.",
+    )
+    parser.add_argument(
+        "--n-sigma",
+        type=float,
+        default=3.0,
+        help="The gain must also exceed this many combined counting sigmas "
+        "(default: 3.0). See counting_sigma(): that sigma is a lower bound "
+        "on the real noise, so this is a floor, not a confidence level.",
     )
     args = parser.parse_args()
 
@@ -150,22 +184,53 @@ def main():
         f"nside=1={total_mass_1:.4g} Msun"
     )
 
-    redistribution_detected = (other_frac_1 > other_frac_0) and (
-        clump_frac_1 <= clump_frac_0 + 1e-6
+    # The two runs are independent simulations, so a bare sign comparison
+    # (other_frac_1 > other_frac_0) passes about half the time when the true
+    # effect is zero. The gain has to clear both an explicit minimum effect
+    # size and a counting-noise floor, and the clump pixel is allowed to move
+    # up by the same noise before it counts as doing better.
+    sigma_other = np.hypot(
+        counting_sigma(b0["other_pixels"]), counting_sigma(b1["other_pixels"])
+    )
+    sigma_clump = np.hypot(
+        counting_sigma(b0["clump_pixel"]), counting_sigma(b1["clump_pixel"])
+    )
+    other_gain = other_frac_1 - other_frac_0
+    clump_gain = clump_frac_1 - clump_frac_0
+    other_threshold = max(0.01 * args.min_effect_pp, args.n_sigma * sigma_other)
+    clump_threshold = args.n_sigma * sigma_clump
+
+    print(
+        f"Redistribution threshold       : 'other pixels' gain must exceed "
+        f"{100 * other_threshold:.2f} pp "
+        f"(max of {args.min_effect_pp:.2f} pp minimum effect and "
+        f"{args.n_sigma:.1f} x {100 * sigma_other:.3f} pp counting sigma, "
+        f"itself a lower bound on the noise), while the 'clump pixel' gain "
+        f"stays below {100 * clump_threshold:.2f} pp"
+    )
+
+    redistribution_detected = (other_gain > other_threshold) and (
+        clump_gain <= clump_threshold
     )
     if redistribution_detected:
         print(
-            "\nPASS: nside=1 ionizes a larger fraction of the diffuse "
-            "gas outside the clump's pixel than nside=0, without the "
-            "clump's own pixel doing better -- the angular split is "
-            "redistributing the budget as intended."
+            f"\nPASS: 'other pixels' gained {100 * other_gain:+.2f} pp "
+            f"(> {100 * other_threshold:.2f} pp) while the clump's own pixel "
+            f"gained {100 * clump_gain:+.2f} pp (<= "
+            f"{100 * clump_threshold:.2f} pp) -- nside=1 ionizes more of the "
+            f"diffuse gas outside the clump's pixel without the clump's pixel "
+            f"doing better, so the angular split is redistributing the budget "
+            f"as intended."
         )
     else:
         print(
-            "\nFAIL (or inconclusive): no clear redistribution signal. Try "
-            "increasing makeIC_clump.py's --density_factor or "
-            "--clump_radius_pc, or check the clump is within the front's "
-            "reach (see README)."
+            f"\nFAIL (or inconclusive): 'other pixels' gained "
+            f"{100 * other_gain:+.2f} pp against a "
+            f"{100 * other_threshold:.2f} pp threshold, clump pixel gained "
+            f"{100 * clump_gain:+.2f} pp against {100 * clump_threshold:.2f} "
+            f"pp. No redistribution signal above the noise. Try increasing "
+            f"makeIC_clump.py's --density_factor or --clump_radius_pc, or "
+            f"check the clump is within the front's reach (see README)."
         )
 
 
