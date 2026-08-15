@@ -33,8 +33,8 @@ non-cosmological control this is a no-op (a=1 throughout), so the same code
 path handles both runs identically.
 
 Usage:
-    python3 cosmo_identity_check.py --control control/snap/snapshot_*.hdf5 \\
-        --cosmo identity/snap/snapshot_*.hdf5
+    python3 cosmo_identity_check.py --control 'control/snap/snapshot_*.hdf5' \\
+        --cosmo 'identity/snap/snapshot_*.hdf5'
 """
 
 import argparse
