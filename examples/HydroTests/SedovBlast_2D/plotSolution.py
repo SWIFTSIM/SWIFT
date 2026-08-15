@@ -57,7 +57,7 @@ pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x ** 2 + y ** 2)
+r = sqrt(x**2 + y**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1]) / r
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -84,34 +84,34 @@ v_bin, _, _ = stats.binned_statistic(r, v_r, statistic="mean", bins=r_bin_edge)
 P_bin, _, _ = stats.binned_statistic(r, P, statistic="mean", bins=r_bin_edge)
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v_r ** 2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v_r**2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 if plot_diffusion:
     alpha_diff_bin, _, _ = stats.binned_statistic(
         r, diffusion, statistic="mean", bins=r_bin_edge
     )
     alpha2_diff_bin, _, _ = stats.binned_statistic(
-        r, diffusion ** 2, statistic="mean", bins=r_bin_edge
+        r, diffusion**2, statistic="mean", bins=r_bin_edge
     )
-    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin ** 2)
+    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin**2)
 
 if plot_viscosity:
     alpha_visc_bin, _, _ = stats.binned_statistic(
         r, viscosity, statistic="mean", bins=r_bin_edge
     )
     alpha2_visc_bin, _, _ = stats.binned_statistic(
-        r, viscosity ** 2, statistic="mean", bins=r_bin_edge
+        r, viscosity**2, statistic="mean", bins=r_bin_edge
     )
-    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin ** 2)
+    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin**2)
 
 # Now, work our the solution....
 
@@ -120,7 +120,7 @@ from numpy import *
 
 
 def calc_a(g, nu=3):
-    """ 
+    """
     exponents of the polynomials of the sedov solution
     g - the polytropic gamma
     nu - the dimension
@@ -142,8 +142,8 @@ def calc_a(g, nu=3):
 
 
 def calc_beta(v, g, nu=3):
-    """ 
-    beta values for the sedov solution (coefficients of the polynomials of the similarity variables) 
+    """
+    beta values for the sedov solution (coefficients of the polynomials of the similarity variables)
     v - the similarity variable
     g - the polytropic gamma
     nu- the dimension
@@ -181,7 +181,7 @@ def calc_beta(v, g, nu=3):
 
 
 def sedov(t, E0, rho0, g, n=1000, nu=3):
-    """ 
+    """
     solve the sedov problem
     t - the time
     E0 - the initial energy
@@ -232,7 +232,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     q = inner(de[1:] + de[:-1], diff(vol)) * 0.5
 
     # the factor to convert to this particular problem
-    fac = (q * (t ** nu) * rho0 / E0) ** (-1.0 / (nu + 2))
+    fac = (q * (t**nu) * rho0 / E0) ** (-1.0 / (nu + 2))
 
     # shock speed
     shock_speed = fac * (2.0 / (nu + 2))
@@ -259,7 +259,7 @@ v_s = np.insert(v_s, np.size(v_s), [0, 0])
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 
 # Plot the interesting quantities

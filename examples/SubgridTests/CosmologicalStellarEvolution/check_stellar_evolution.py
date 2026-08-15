@@ -147,7 +147,7 @@ if (
         / (total_part_mass[0] + total_spart_mass[0])
         - 1.0
     )
-    < eps ** 3
+    < eps**3
 ):
     print("total mass conserved")
 else:

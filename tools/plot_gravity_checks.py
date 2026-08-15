@@ -34,8 +34,8 @@ num_bins = 64
 bin_edges = np.linspace(np.log10(min_error), np.log10(max_error), num_bins + 1)
 bin_size = (np.log10(max_error) - np.log10(min_error)) / num_bins
 bins = 0.5 * (bin_edges[1:] + bin_edges[:-1])
-bin_edges = 10 ** bin_edges
-bins = 10 ** bins
+bin_edges = 10**bin_edges
+bins = 10**bins
 
 # Colours
 cols = ["#332288", "#88CCEE", "#117733", "#DDCC77", "#CC6677"]

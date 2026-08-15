@@ -24,7 +24,7 @@
 # GADGET .hdf5 file *handle*. It should also function as a piece of
 # documentation on the required attributes for SWIFT to function when running
 # in GADGET compatibility mode.
-# 
+#
 # Example Usage:
 #
 # import write_gadget as wg
@@ -73,43 +73,43 @@ $ import numpy as np
 
 
 def write_header(f, boxsize, flag_entropy, np_total, np_total_hw, other=False):
-    """ Writes the "Header" section of the hdf5 file. The parameters in this
-        function that are required are the ones that are required for SWIFT
-        to function; note that the MassTable is **ignored** and that all
-        particle masses should be placed into the particle data arrays.
+    """Writes the "Header" section of the hdf5 file. The parameters in this
+    function that are required are the ones that are required for SWIFT
+    to function; note that the MassTable is **ignored** and that all
+    particle masses should be placed into the particle data arrays.
 
-        @param: f | file handle
-            - the file handle of the hdf5 object (use h5py.File(filename, "w")
-              to open a file handle of the correct type).
+    @param: f | file handle
+        - the file handle of the hdf5 object (use h5py.File(filename, "w")
+          to open a file handle of the correct type).
 
-        @param boxsize | float / list (2D / 3D)
-            - the boxsize. If a float is given it is assumed that the box is
-              the same size in all directions.
+    @param boxsize | float / list (2D / 3D)
+        - the boxsize. If a float is given it is assumed that the box is
+          the same size in all directions.
 
-        @param flag_entropy | int (0/1)
-            - sets Flag_Entropy_ICs. This is a historical variable for cross
-              compatibility with Gadget-3
+    @param flag_entropy | int (0/1)
+        - sets Flag_Entropy_ICs. This is a historical variable for cross
+          compatibility with Gadget-3
 
-        @param np_total | list (6D)
-            - the total number of particles required of each type.
+    @param np_total | list (6D)
+        - the total number of particles required of each type.
 
-                Type/Index | Symbolic Type Name
-               ------------|--------------------
-                    0      |       Gas
-                    1      |       Halo
-                    2      |       Disk
-                    3      |       Bulge
-                    4      |       Stars
-                    5      |       Bndry
+            Type/Index | Symbolic Type Name
+           ------------|--------------------
+                0      |       Gas
+                1      |       Halo
+                2      |       Disk
+                3      |       Bulge
+                4      |       Stars
+                5      |       Bndry
 
-        @param np_total_hw | list (6D)
-            - the number of high-word particles in the file.
+    @param np_total_hw | list (6D)
+        - the number of high-word particles in the file.
 
 
-        @param other | dictionary | optional
-            - a dictionary with any other parameters that you wish to pass into
-              the file header. They will be passed such that the key is the
-              name of the attribute in the hdf5 file.
+    @param other | dictionary | optional
+        - a dictionary with any other parameters that you wish to pass into
+          the file header. They will be passed such that the key is the
+          name of the attribute in the hdf5 file.
 
     """
 
@@ -141,25 +141,25 @@ def write_header(f, boxsize, flag_entropy, np_total, np_total_hw, other=False):
 
 
 def write_runtime_pars(f, periodic_boundary, other=False):
-    """ Writes the "RuntimeParams" section in the hdf5 file. The parameters in
-        this function that are required are also required for SWIFT to function.
-        If you wish to pass extra arguments into the runtime parameters you
-        may do that by providing a dictionary to other.
+    """Writes the "RuntimeParams" section in the hdf5 file. The parameters in
+    this function that are required are also required for SWIFT to function.
+    If you wish to pass extra arguments into the runtime parameters you
+    may do that by providing a dictionary to other.
 
-        @param: f | file handle
-            - the file handle of the hdf5 object (use h5py.File(filename, "w")
-              to open a file handle of the correct type).
+    @param: f | file handle
+        - the file handle of the hdf5 object (use h5py.File(filename, "w")
+          to open a file handle of the correct type).
 
-        @param: periodic_boundary | int (0/1)
-            - the condition for periodic boundary conditions -- they are 'on'
-              if this variable is 1, and off if it is 0. Note that SWIFT
-              currently requires periodic boundary conditions to run (as of
-              August 2017).
+    @param: periodic_boundary | int (0/1)
+        - the condition for periodic boundary conditions -- they are 'on'
+          if this variable is 1, and off if it is 0. Note that SWIFT
+          currently requires periodic boundary conditions to run (as of
+          August 2017).
 
-        @param other | dictionary | optional
-            - a dictionary with any other parameters that you wish to pass into
-              the RuntimePars. They will be passed such that the key is the
-              name of the attribute in the hdf5 file.
+    @param other | dictionary | optional
+        - a dictionary with any other parameters that you wish to pass into
+          the RuntimePars. They will be passed such that the key is the
+          name of the attribute in the hdf5 file.
     """
 
     # First build the dictionary
@@ -180,34 +180,34 @@ def write_runtime_pars(f, periodic_boundary, other=False):
 
 
 def write_units(f, current, length, mass, temperature, time, other=False):
-    """ Writes the "RuntimeParams" section in the hdf5 file. The parameters in
-        this function that are required are also required for SWIFT to function.
-        If you wish to pass extra arguments into the runtime parameters you
-        may do that by providing a dictionary to other.
+    """Writes the "RuntimeParams" section in the hdf5 file. The parameters in
+    this function that are required are also required for SWIFT to function.
+    If you wish to pass extra arguments into the runtime parameters you
+    may do that by providing a dictionary to other.
 
-        @param: f | file handle
-            - the file handle of the hdf5 object (use h5py.File(filename, "w")
-              to open a file handle of the correct type).
+    @param: f | file handle
+        - the file handle of the hdf5 object (use h5py.File(filename, "w")
+          to open a file handle of the correct type).
 
-        @param: current | float
-            - the current conversion factor in cgs units.
+    @param: current | float
+        - the current conversion factor in cgs units.
 
-        @param: length | float
-            - the length conversion factor in cgs units.
+    @param: length | float
+        - the length conversion factor in cgs units.
 
-        @param: mass | float
-            - the mass conversion factor in cgs units.
+    @param: mass | float
+        - the mass conversion factor in cgs units.
 
-        @param: temperature | float
-            - the temperature conversion factor in cgs units.
+    @param: temperature | float
+        - the temperature conversion factor in cgs units.
 
-        @param: time | float
-            - the time conversion factor in cgs units.
+    @param: time | float
+        - the time conversion factor in cgs units.
 
-        @param: other | dictionary | optional
-            - a dictionary with any other parameters that you wish to pass into
-              the units attributes. They will be passed such that the key is
-              the name of the attribute in the hdf5 file.
+    @param: other | dictionary | optional
+        - a dictionary with any other parameters that you wish to pass into
+          the units attributes. They will be passed such that the key is
+          the name of the attribute in the hdf5 file.
     """
 
     # First build the dictionary
@@ -234,52 +234,52 @@ def write_units(f, current, length, mass, temperature, time, other=False):
 
 
 def write_block(f, part_type, pos, vel, ids, mass, int_energy, smoothing, other=False):
-    """ Writes a given block of data to PartType{part_type}. The above
-        required parameters are required for SWIFT to run.
+    """Writes a given block of data to PartType{part_type}. The above
+    required parameters are required for SWIFT to run.
 
-        @param: f | file handle
-            - the file handle of the hdf5 object.
+    @param: f | file handle
+        - the file handle of the hdf5 object.
 
-        @param part_type | int (0-5):
-            - the identifiying number of the particle type.
+    @param part_type | int (0-5):
+        - the identifiying number of the particle type.
 
-                Type/Index | Symbolic Type Name
-               ------------|--------------------
-                    0      |       Gas
-                    1      |       Halo
-                    2      |       Disk
-                    3      |       Bulge
-                    4      |       Stars
-                    5      |       Bndry
+            Type/Index | Symbolic Type Name
+           ------------|--------------------
+                0      |       Gas
+                1      |       Halo
+                2      |       Disk
+                3      |       Bulge
+                4      |       Stars
+                5      |       Bndry
 
-        @param pos | numpy.array
-            - the array of particle positions with shape (n_particles, 3).
+    @param pos | numpy.array
+        - the array of particle positions with shape (n_particles, 3).
 
-        @param vel | numpy.array
-            - the array of particle velocities with shape (n_particles, 3).
+    @param vel | numpy.array
+        - the array of particle velocities with shape (n_particles, 3).
 
-        @param ids | numpy.array
-            - the ids of the particles. Please note that particle IDs in
-              SWIFT must be strictly positive. Shape (n_particles, 1)
+    @param ids | numpy.array
+        - the ids of the particles. Please note that particle IDs in
+          SWIFT must be strictly positive. Shape (n_particles, 1)
 
-        @param mass | numpy.array
-            - the masses of the particles. In SWIFT MassTable in the header
-              is ignored and so particle masses must be provided here. Shape
-              (n_particles, 1)
+    @param mass | numpy.array
+        - the masses of the particles. In SWIFT MassTable in the header
+          is ignored and so particle masses must be provided here. Shape
+          (n_particles, 1)
 
-        @param int_energy | numpy.array
-            - the internal energies of the particles. Shape (n_particles, 1)
+    @param int_energy | numpy.array
+        - the internal energies of the particles. Shape (n_particles, 1)
 
-        @param smoothing | numpy.array
-            - the smoothing lenghts of the individual particles. Please note 
-              that this cannot be supplied only in the parameterfile and must
-              be provided on a particle-by-particle basis in SWIFT. Shape
-              (n_particles, 1)
+    @param smoothing | numpy.array
+        - the smoothing lenghts of the individual particles. Please note
+          that this cannot be supplied only in the parameterfile and must
+          be provided on a particle-by-particle basis in SWIFT. Shape
+          (n_particles, 1)
 
-        @param: other | dictionary | optional
-            - a dictionary with any other parameters that you wish to pass into
-              the particle data. They will be passed such that the key is
-              the name of the dataset in the hdf5 file.
+    @param: other | dictionary | optional
+        - a dictionary with any other parameters that you wish to pass into
+          the particle data. They will be passed such that the key is
+          the name of the dataset in the hdf5 file.
     """
 
     # Build the dictionary

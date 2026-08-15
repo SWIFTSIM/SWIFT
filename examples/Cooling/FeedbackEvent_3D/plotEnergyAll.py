@@ -38,7 +38,7 @@ for diffusion in diffusion_parameters:
     # Snapshot for grabbing the units.
     snapshot = load(f"{directory_name}/feedback_0000.hdf5")
     units = snapshot.metadata.units
-    energy_units = units.mass * units.length ** 2 / (units.time ** 2)
+    energy_units = units.mass * units.length**2 / (units.time**2)
 
     data = np.loadtxt(f"{directory_name}/statistics.txt").T
 

@@ -89,7 +89,7 @@ def load_data(filename, silent=True, extra=None, logextra=True, exclude=None):
 
 
 def rms(x):
-    return np.sqrt(sum(x ** 2))
+    return np.sqrt(sum(x**2))
 
 
 def rotation_velocity_at_r(r, params):
@@ -126,7 +126,7 @@ def get_rotation_period_at_r(r, params):
 
 
 def get_metadata(filename, r=1):
-    """ The metadata should be extracted from the first snapshot. """
+    """The metadata should be extracted from the first snapshot."""
     with h5.File(filename, "r") as file_handle:
         header = file_handle["Header"].attrs
         code = file_handle["Code"].attrs
@@ -172,12 +172,10 @@ if __name__ == "__main__":
     import os
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
                    Plots a movie of the current snapshots in your
                    directory. Can also colourmap your information.
-                   """
-    )
+                   """)
 
     parser.add_argument(
         "-e",

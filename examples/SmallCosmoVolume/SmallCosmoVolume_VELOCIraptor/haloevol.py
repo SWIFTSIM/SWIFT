@@ -45,12 +45,12 @@ for j in itervalues:
     a = cosmo.attrs["Scale-factor"][0]
 
     # Determine the HMF
-    errormassn = massnlarger ** 0.5
+    errormassn = massnlarger**0.5
     numbden = massnlarger / V
     numbdenerr = errormassn / V
     massplot = (massrange[0:15] + massrange[1:16]) / 2
     dernumbden = -np.diff(numbden) / np.diff(np.log10(massplot))
-    dererr = 2 ** 0.5 / dlogm * (numbdenerr[0:14] + numbdenerr[1:15]) / 2
+    dererr = 2**0.5 / dlogm * (numbdenerr[0:14] + numbdenerr[1:15]) / 2
 
     plt.plot(
         (massplot[0:14] + massplot[1:15]) / 2, dernumbden, label="SWIFT - SPH $64^3$"
@@ -63,20 +63,20 @@ for j in itervalues:
     )
     plt.xscale("log")
     plt.ylim(1e-6, 1e-1)
-    plt.xlim(10 ** 11, 10 ** 15.5)
+    plt.xlim(10**11, 10**15.5)
 
-    xplace = 10 ** 14.5
-    plt.text(xplace, 10 ** -2.3, "$\Omega_m=0.276$")
-    plt.text(xplace, 10 ** -2.6, "$\Omega_b=0.0455$")
-    plt.text(xplace, 10 ** -2.9, "$\Omega_\Lambda=0.724$")
-    plt.text(xplace, 10 ** -3.2, "$h=0.703$")
-    plt.text(xplace, 10 ** -3.5, "$z=%2.2f$" % redshift)
+    xplace = 10**14.5
+    plt.text(xplace, 10**-2.3, "$\Omega_m=0.276$")
+    plt.text(xplace, 10**-2.6, "$\Omega_b=0.0455$")
+    plt.text(xplace, 10**-2.9, "$\Omega_\Lambda=0.724$")
+    plt.text(xplace, 10**-3.2, "$h=0.703$")
+    plt.text(xplace, 10**-3.5, "$z=%2.2f$" % redshift)
 
     m, dndlogm = getHMFz(redshift)
-    plt.plot(m / h, dndlogm * h ** 3, label="Sheth et al. 2001")
+    plt.plot(m / h, dndlogm * h**3, label="Sheth et al. 2001")
 
     m, dndlogm = getHMFztinker(redshift)
-    plt.plot(m / h, dndlogm * h ** 3, label="Tinker et al. 2008")
+    plt.plot(m / h, dndlogm * h**3, label="Tinker et al. 2008")
 
     plt.xlabel("M${}_{200}$ ($M_\odot$)")
     plt.ylabel("dn/d($\log$10(M${}_{200}$) ($Mpc^{-3}$)")

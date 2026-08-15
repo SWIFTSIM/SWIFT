@@ -58,7 +58,7 @@ year_in_cgs = 3600.0 * 24 * 365.0
 Msun_in_cgs = 1.98848e33
 G_in_cgs = 6.67259e-8
 pc_in_cgs = 3.08567758e18
-Msun_p_pc2 = Msun_in_cgs / pc_in_cgs ** 2
+Msun_p_pc2 = Msun_in_cgs / pc_in_cgs**2
 
 # Gemoetry info
 boxsize = f["/Header"].attrs["BoxSize"]
@@ -70,9 +70,7 @@ unit_mass_in_cgs = f["/Units"].attrs["Unit mass in cgs (U_M)"]
 unit_time_in_cgs = f["/Units"].attrs["Unit time in cgs (U_t)"]
 
 # Calculate Gravitational constant in internal units
-G = G_in_cgs * (unit_length_in_cgs ** 3 / unit_mass_in_cgs / unit_time_in_cgs ** 2) ** (
-    -1
-)
+G = G_in_cgs * (unit_length_in_cgs**3 / unit_mass_in_cgs / unit_time_in_cgs**2) ** (-1)
 
 # Read reference metallicity
 EAGLE_Z = float(f["/Parameters"].attrs["EAGLEChemistry:init_abundance_metal"])
@@ -132,7 +130,7 @@ except:
 
 
 # Properties of the KS law
-KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / (1e6 * pc_in_cgs ** 2 * year_in_cgs)
+KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / (1e6 * pc_in_cgs**2 * year_in_cgs)
 gamma = 5.0 / 3.0
 EOS_press_norm = k_in_cgs * EOS_temp_norm * EOS_density_norm
 
@@ -178,11 +176,11 @@ gas_SFR /= unit_time_in_cgs / year_in_cgs
 gas_SFR *= unit_mass_in_cgs / Msun_in_cgs
 
 # Make it a Hydrogen number density
-gas_nH = gas_rho * unit_mass_in_cgs / unit_length_in_cgs ** 3
+gas_nH = gas_rho * unit_mass_in_cgs / unit_length_in_cgs**3
 gas_nH /= mH_in_cgs
 gas_nH *= gas_XH
 
-stars_BirthDensity *= unit_mass_in_cgs / unit_length_in_cgs ** 3
+stars_BirthDensity *= unit_mass_in_cgs / unit_length_in_cgs**3
 stars_BirthDensity /= mH_in_cgs
 stars_BirthDensity *= stars_XH
 
@@ -328,7 +326,7 @@ plot(rhoshigh, SFR_high, "k--", lw=1, label="SFR high density EAGLE")
 xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
 xlim(1e-2, 1e5)
-ylim(10 ** SFR_low_min, 10 ** (SFR_high_max + 0.1))
+ylim(10**SFR_low_min, 10 ** (SFR_high_max + 0.1))
 savefig("rho_SFR.png", dpi=200)
 rcParams.update({"figure.subplot.left": 0.15})
 ########################################################################3
@@ -433,7 +431,7 @@ KS_sigma_thresh = 29.0 * np.sqrt(KS_gas_fraction) * np.sqrt(KS_n_thresh)
 
 # Theoretical KS law
 KS_sigma_mass = np.logspace(-1, 3, 100)
-KS_sigma_SFR = KS_law_norm * KS_sigma_mass ** KS_law_slope
+KS_sigma_SFR = KS_law_norm * KS_sigma_mass**KS_law_slope
 
 # KS relation
 rcParams.update({"figure.figsize": (3.15, 3.15), "figure.subplot.left": 0.18})
@@ -457,7 +455,7 @@ text(
     "${\\rm K\\textendash S~law}$:\n$\\Sigma_{\\rm SFR} = A \\times \\Sigma_g^n$\n$n=%.1f$\n$A=%.3f\\times10^{-4}~{\\rm M_\\odot / yr^{1} / kpc^{2}}$\n$f_{\\rm g} = %.1f$\n$\gamma_{\\rm eos} = %.3f$\n$Z=%1.4f$"
     % (
         KS_law_slope,
-        KS_law_norm * 10 ** 4,
+        KS_law_norm * 10**4,
         KS_gas_fraction,
         EOS_gamma_effective,
         EAGLE_Z,

@@ -85,8 +85,8 @@ unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
 unit_temp_in_cgs = sim["/Units"].attrs["Unit temperature in cgs (U_T)"]
 unit_vel_in_cgs = unit_length_in_cgs / unit_time_in_cgs
 unit_energy_in_cgs = unit_mass_in_cgs * unit_vel_in_cgs * unit_vel_in_cgs
-unit_density_in_cgs = unit_mass_in_cgs * unit_length_in_cgs ** -3
-unit_pressure_in_cgs = unit_mass_in_cgs / unit_length_in_cgs * unit_time_in_cgs ** -2
+unit_density_in_cgs = unit_mass_in_cgs * unit_length_in_cgs**-3
+unit_pressure_in_cgs = unit_mass_in_cgs / unit_length_in_cgs * unit_time_in_cgs**-2
 unit_int_energy_in_cgs = unit_energy_in_cgs / unit_mass_in_cgs
 unit_entropy_in_cgs = unit_energy_in_cgs / unit_temp_in_cgs
 Gyr_in_cgs = 1e9 * 365.0 * 24 * 3600.0
@@ -176,7 +176,7 @@ for line in eagle_data:
             * unit_int_energy_in_cgs
         )
         eagle_energy_ejecta_cgs[i] = (
-            0.5 * (eagle_total_mass[i] * Msun_in_cgs) * ejecta_vel_cgs ** 2
+            0.5 * (eagle_total_mass[i] * Msun_in_cgs) * ejecta_vel_cgs**2
         )
     i += 1
 

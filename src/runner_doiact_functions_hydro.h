@@ -1256,7 +1256,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);

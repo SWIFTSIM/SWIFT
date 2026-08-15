@@ -34,7 +34,7 @@ uL = 1e3 * pc  # cm, 1 kpc
 uM = 6.757e41  # g, 3.398×10^8 M_sun
 ut = 8.071e14  # s, 2.5577×10^7  years
 uv = 38.23e5  # cm / s, 38.23 km/s
-uU = uv ** 2  # (cm / s)^2
+uU = uv**2  # (cm / s)^2
 uA = 1e10
 
 # paramters
@@ -43,7 +43,7 @@ P0 = 0.3  # Baground pressure
 L = 0.2  # boxsize
 
 B0 = 3.64731873  # microgauss
-B0 /= 1e7 * uM / (ut ** 2 * uA)  # code units
+B0 /= 1e7 * uM / (ut**2 * uA)  # code units
 
 
 fileName = "BalsaraKim.hdf5"
@@ -67,7 +67,7 @@ numPart = size(h)
 print("smoothing lengths (all,min,max):", h, h.min(), h.max())
 
 numPart = size(h)
-vol = L ** 3
+vol = L**3
 
 # Generate extra arrays
 v = zeros((numPart, 3))
@@ -113,7 +113,7 @@ m_stars[:] = (
 )  # corresponds to an available energy of ~E_sn per star part
 birthtimes = injection_data[:, 0] * Myr / ut
 z_stars[:] = 0.1 * 0.0127
-n0_stars[:] = 0.67 * uL ** 3
+n0_stars[:] = 0.67 * uL**3
 h_stars[:] = 5 * pc / uL
 
 # --------------------------------------------------

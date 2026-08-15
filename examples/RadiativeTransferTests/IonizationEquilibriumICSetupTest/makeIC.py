@@ -28,8 +28,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 # define unit system to use
 #  unitsystem = unyt.unit_systems.cgs_unit_system
@@ -47,7 +47,7 @@ boxsize = boxsize.to(unitsystem["length"])
 
 # number of particles in each dimension
 n_p = 15
-nparts = n_p ** 3
+nparts = n_p**3
 
 # filename of ICs to be generated
 outputfilename = "ionization_equilibrium_test.hdf5"
@@ -71,17 +71,41 @@ for i in range(n_p):
             ind += 1
 
 
-w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=3)
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system, boxsize=boxsize_cosmo, dimension=3
+)
 
-w.gas.coordinates = xp
-w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * pmass
-w.gas.internal_energy = (
-    np.logspace(np.log10(umin.v), np.log10(umax.v), nparts) * umax.units
+w.gas.coordinates = sw.cosmo_array(
+    xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.gas.velocities = sw.cosmo_array(
+    np.zeros(xp.shape),
+    unyt.cm / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.gas.masses = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=np.float64) * pmass.value,
+    pmass.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+ie_vals = np.logspace(np.log10(umin.v), np.log10(umax.v), nparts)
+w.gas.internal_energy = sw.cosmo_array(
+    ie_vals, umax.units, comoving=True, scale_factor=1.0, scale_exponent=-2
 )
 
 # Generate initial guess for smoothing lengths based on MIPS
-w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+w.gas.generate_smoothing_lengths()
 
 # If IDs are not present, this automatically generates
 w.write(outputfilename)

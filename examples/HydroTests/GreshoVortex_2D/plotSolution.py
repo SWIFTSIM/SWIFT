@@ -31,21 +31,24 @@ P0 = 0.0  # Constant additional pressure (should have no impact on the dynamics)
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+from matplotlib import pyplot as plt
+import numpy as np
+
 from scipy import stats
 import h5py
+import sys
 
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+matplotlib.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
 # Generate the analytic solution at this time
 N = 200
 R_max = 0.8
-solution_r = arange(0, R_max, R_max / N)
-solution_P = zeros(N)
-solution_v_phi = zeros(N)
-solution_v_r = zeros(N)
+solution_r = np.arange(0, R_max, R_max / N)
+solution_P = np.zeros(N)
+solution_v_phi = np.zeros(N)
+solution_v_r = np.zeros(N)
 
 for i in range(N):
     if solution_r[i] < 0.2:
@@ -57,35 +60,35 @@ for i in range(N):
             + 9.0
             + 12.5 * solution_r[i] ** 2
             - 20.0 * solution_r[i]
-            + 4.0 * log(solution_r[i] / 0.2)
+            + 4.0 * np.log(solution_r[i] / 0.2)
         )
         solution_v_phi[i] = 2.0 - 5.0 * solution_r[i]
     else:
-        solution_P[i] = P0 + 3.0 + 4.0 * log(2.0)
+        solution_P[i] = P0 + 3.0 + 4.0 * np.log(2.0)
         solution_v_phi[i] = 0.0
 
-solution_rho = ones(N) * rho0
-solution_s = solution_P / solution_rho ** gas_gamma
+solution_rho = np.ones(N) * rho0
+solution_s = solution_P / solution_rho**gas_gamma
 solution_u = solution_P / ((gas_gamma - 1.0) * solution_rho)
 
 # Read the simulation data
-sim = h5py.File("gresho_%04d.hdf5" % snap, "r")
+sim = h5py.File(f"gresho_{snap:04d}.hdf5", "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x ** 2 + y ** 2)
+r = np.sqrt(x**2 + y**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1]) / r
 v_phi = (-y * vel[:, 0] + x * vel[:, 1]) / r
-v_norm = sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
+v_norm = np.sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
 rho = sim["/PartType0/Densities"][:]
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -99,20 +102,20 @@ v_bin, _, _ = stats.binned_statistic(r, v_phi, statistic="mean", bins=r_bin_edge
 P_bin, _, _ = stats.binned_statistic(r, P, statistic="mean", bins=r_bin_edge)
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v_phi ** 2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v_phi**2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+fig = plt.figure(figsize=(7, 7 / 1.6))
 
 line_color = "C4"
 binned_color = "C2"
@@ -131,100 +134,100 @@ scatter_props = dict(
 errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Azimuthal velocity profile -----------------------------
-subplot(231)
+plt.subplot(231)
 
-plot(r, v_phi, **scatter_props)
-plot(solution_r, solution_v_phi, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
-plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Azimuthal velocity $v_\\phi$")
-xlim(0, R_max)
-ylim(-0.1, 1.2)
+plt.plot(r, v_phi, **scatter_props)
+plt.plot(solution_r, solution_v_phi, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
+plt.plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Azimuthal velocity $v_\\phi$")
+plt.xlim(0, R_max)
+plt.ylim(-0.1, 1.2)
 
 # Radial density profile --------------------------------
-subplot(232)
+plt.subplot(232)
 
-plot(r, rho, **scatter_props)
-plot(solution_r, solution_rho, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
-plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Density $\\rho$")
-xlim(0, R_max)
-ylim(rho0 - 0.3, rho0 + 0.3)
-# yticks([-0.2, -0.1, 0., 0.1, 0.2])
+plt.plot(r, rho, **scatter_props)
+plt.plot(solution_r, solution_rho, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
+plt.plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Density $\\rho$")
+plt.xlim(0, R_max)
+plt.ylim(rho0 - 0.3, rho0 + 0.3)
+# plt.yticks([-0.2, -0.1, 0., 0.1, 0.2])
 
 # Radial pressure profile --------------------------------
-subplot(233)
+plt.subplot(233)
 
-plot(r, P, **scatter_props)
-plot(solution_r, solution_P, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
-plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Pressure $P$")
-xlim(0, R_max)
-ylim(4.9 + P0, P0 + 6.1)
+plt.plot(r, P, **scatter_props)
+plt.plot(solution_r, solution_P, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+plt.plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Pressure $P$")
+plt.xlim(0, R_max)
+plt.ylim(4.9 + P0, P0 + 6.1)
 
 # Internal energy profile --------------------------------
-subplot(234)
+plt.subplot(234)
 
-plot(r, u, **scatter_props)
-plot(solution_r, solution_u, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
-plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-xlabel("$Radius $r$")
-ylabel("Internal Energy $u$")
-xlim(0, R_max)
-ylim(7.3, 9.1)
+plt.plot(r, u, **scatter_props)
+plt.plot(solution_r, solution_u, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
+plt.plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Internal Energy $u$")
+plt.xlim(0, R_max)
+plt.ylim(7.3, 9.1)
 
 
 # Radial entropy profile --------------------------------
-subplot(235)
+plt.subplot(235)
 
-plot(r, S, **scatter_props)
-plot(solution_r, solution_s, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
-plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Entropy $S$")
-xlim(0, R_max)
-ylim(4.9 + P0, P0 + 6.1)
+plt.plot(r, S, **scatter_props)
+plt.plot(solution_r, solution_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
+plt.plot([0.2, 0.2], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.plot([0.4, 0.4], [-100, 100], ":", color=line_color, alpha=0.4, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Entropy $S$")
+plt.xlim(0, R_max)
+plt.ylim(4.9 + P0, P0 + 6.1)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
 text_fontsize = 5
 
-text(
+plt.text(
     -0.49,
     0.9,
     "Gresho-Chan vortex (2D) with $\\gamma=%.3f$ at $t=%.2f$" % (gas_gamma, time),
     fontsize=text_fontsize,
 )
-text(-0.49, 0.8, "Background $\\rho_0=%.3f$" % rho0, fontsize=text_fontsize)
-text(-0.49, 0.7, "Background $P_0=%.3f$" % P0, fontsize=text_fontsize)
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
-text(-0.49, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
-text(-0.49, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
-text(
+plt.text(-0.49, 0.8, "Background $\\rho_0=%.3f$" % rho0, fontsize=text_fontsize)
+plt.text(-0.49, 0.7, "Background $P_0=%.3f$" % P0, fontsize=text_fontsize)
+plt.plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.49, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.49, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.49, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
     -0.49,
     0.2,
-    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    f"${neighbours:.2f}$ neighbours ($\\eta={eta:.3f}$)",
     fontsize=text_fontsize,
 )
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-tight_layout()
+plt.tight_layout()
 
-savefig("GreshoVortex.png")
+plt.savefig("GreshoVortex.png", dpi=300)

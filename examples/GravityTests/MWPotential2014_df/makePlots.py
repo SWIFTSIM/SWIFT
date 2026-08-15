@@ -20,8 +20,7 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 
-
-#%%Functions
+# %%Functions
 
 
 def get_positions_and_time(N_snapshots, N_part, output_dir, boxsize):
@@ -94,7 +93,7 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
     y = data[:, 2]
     z = data[:, 3]
 
-    r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+    r = np.sqrt(x**2 + y**2 + z**2)
 
     ax[0].plot(x, y, "grey", alpha=0.5, lw=5)
     ax[1].plot(x, z, "grey", alpha=0.5, lw=5, label="pNbody solution")
@@ -107,7 +106,7 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
     plt.close()
 
 
-#%%Plots the orbits, the deviation from the circular orbit and the deviation from the original precomputed data
+# %%Plots the orbits, the deviation from the circular orbit and the deviation from the original precomputed data
 # Notice that in this examples, the ouputs are set in suitable units in the parameters files.
 
 # General parameters

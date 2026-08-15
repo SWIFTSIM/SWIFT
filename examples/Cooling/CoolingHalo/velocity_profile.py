@@ -57,7 +57,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
@@ -91,7 +91,7 @@ for i in range(n_snaps):
         v_r[j] = -np.dot(coords[j, :], vel[j, :]) / radius[j]
 
     bin_edges = np.linspace(0, max_r, n_radial_bins + 1)
-    (hist, v_r_totals) = do_binning(r, v_r, bin_edges)
+    hist, v_r_totals = do_binning(r, v_r, bin_edges)
 
     bin_widths = bin_edges[1] - bin_edges[0]
     radial_bin_mids = np.linspace(

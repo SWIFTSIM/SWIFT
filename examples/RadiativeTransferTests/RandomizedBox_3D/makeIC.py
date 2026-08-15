@@ -28,8 +28,8 @@
 
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 np.random.seed(666)
 
@@ -59,7 +59,7 @@ for i in range(n_p):
             z = (k + 0.501) * dx
             xp.append(np.array([x, y, z], dtype=np.float64))
 xp = np.array(xp)
-velp = np.zeros((n_p ** 3, 3), dtype=np.float64)
+velp = np.zeros((n_p**3, 3), dtype=np.float64)
 
 for i in range(n_s):
     x = (i + 0.001) * ds
@@ -69,7 +69,7 @@ for i in range(n_s):
             z = (k + 0.001) * ds
             xs.append(np.array([x, y, z], dtype=np.float64))
 xs = np.array(xs)
-vels = np.zeros((n_s ** 3, 3), dtype=np.float64)
+vels = np.zeros((n_s**3, 3), dtype=np.float64)
 
 
 amplitude = 0.5
@@ -90,7 +90,7 @@ def sample(n):
 
         found = False
         while not found:
-            pick = np.random.uniform(0.0, boxsize.value, 1)
+            pick = np.random.uniform(0.0, boxsize.value)
             prob_x = sine(pick, amplitude)
             confirm = np.random.uniform(0.0, 1.0) * (amplitude + 1.01)
             if confirm <= prob_x:
@@ -98,7 +98,7 @@ def sample(n):
                 found = True
         found = False
         while not found:
-            pick = np.random.uniform(0.0, boxsize.value, 1)
+            pick = np.random.uniform(0.0, boxsize.value)
             prob_y = sine(pick, amplitude)
             confirm = np.random.uniform(0.0, 1.0) * (amplitude + 1.01)
             if confirm <= prob_y:
@@ -106,7 +106,7 @@ def sample(n):
                 found = True
         found = False
         while not found:
-            pick = np.random.uniform(0.0, boxsize.value, 1)
+            pick = np.random.uniform(0.0, boxsize.value)
             prob_z = sine(pick, amplitude)
             confirm = np.random.uniform(0.0, 1.0) * (amplitude + 1.01)
             if confirm <= prob_z:
@@ -128,8 +128,8 @@ velp_sampled = np.random.uniform(-1, 1, xp_sampled.shape) * velp_max
 xs_sampled = sample(n_sample_s)
 vels_sampled = np.random.uniform(-1, 1, xs_sampled.shape) * vels_max
 
-vels_norm = np.sqrt(np.sum(vels_sampled ** 2, axis=1))
-velp_norm = np.sqrt(np.sum(velp_sampled ** 2, axis=1))
+vels_norm = np.sqrt(np.sum(vels_sampled**2, axis=1))
+velp_norm = np.sqrt(np.sum(velp_sampled**2, axis=1))
 #  print("min/max vels:", velp_norm.min(), velp_norm.max())
 #  print("min/max vels:", vels_norm.min(), vels_norm.max())
 
@@ -147,24 +147,53 @@ vs_tot = np.vstack((vels, vels_sampled))
 vs = unyt.unyt_array(vs_tot, unyt.km / unyt.s)
 
 
-w = Writer(cosmo_units, boxsize, compress=False)
-w.gas.coordinates = xp
-w.stars.coordinates = xs
-w.gas.velocities = vp
-w.stars.velocities = vs
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1e6 * unyt.msun
-w.stars.masses = np.random.uniform(1e8, 1e10, size=xs.shape[0]) * unyt.msun
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+w = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo, compress=False)
+w.gas.coordinates = sw.cosmo_array(
+    xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.stars.coordinates = sw.cosmo_array(
+    xs.value, xs.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.gas.velocities = sw.cosmo_array(
+    vp.value, vp.units, comoving=True, scale_factor=1.0, scale_exponent=0
+)
+w.stars.velocities = sw.cosmo_array(
+    vs.value, vs.units, comoving=True, scale_factor=1.0, scale_exponent=0
+)
+w.gas.masses = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=np.float64) * 1e6,
+    unyt.msun,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.stars.masses = sw.cosmo_array(
+    np.random.uniform(1e8, 1e10, size=xs.shape[0]),
+    unyt.msun,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
 # Generate internal energy corresponding to 10^4 K
-w.gas.internal_energy = (
-    np.ones(xp.shape[0], dtype=np.float64)
-    * (1e4 * unyt.kb * unyt.K)
-    / (1e6 * unyt.msun)
+u = (1e4 * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+w.gas.internal_energy = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=np.float64) * u.value,
+    u.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=-2,
 )
 
-
 # Generate initial guess for smoothing lengths based on MIPS
-w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
-w.stars.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+w.gas.generate_smoothing_lengths()
+w.stars.generate_smoothing_lengths()
 
 # If IDs are not present, this automatically generates
 w.write("randomized-sine.hdf5")

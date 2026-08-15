@@ -86,9 +86,9 @@ x_s2[s2neg] -= 2.0
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 u_s2 = P_s2 / (rho_s2 * (gas_gamma - 1.0))  # internal energy
-s_s2 = P_s2 / rho_s2 ** gas_gamma  # entropic function
+s_s2 = P_s2 / rho_s2**gas_gamma  # entropic function
 
 
 # Plot the interesting quantities
