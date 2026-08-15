@@ -11,23 +11,28 @@ STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This 
 `gas_mass=0.1 Msun` (default), ~770k particles.
 
 ## Box size
-`boxsize=0.01` kpc (10 pc). Sized for the `T_i=1e4 K` build, where `R_STAG` stays inside the box for the full 3 Myr run. At the plain build's natural `T_i~47500 K`, `R_STAG` exceeds the box; `starbench_analytic_check.py` automatically limits its comparison window to when the analytic prediction is still box-valid.
+`boxsize=0.01` kpc (10 pc), `Stars:HII_max_search_radius=0.0049` (4.9 pc, just inside the 5 pc box half-width). Sized for the `T_i=1e4 K` build, where `R_STAG` stays inside the box for the full 3 Myr run. At the plain build's natural `T_i~47500 K`, `R_STAG` exceeds the box; `starbench_analytic_check.py` automatically limits its comparison window to when the analytic prediction is still box-valid. If you shrink `boxsize`, shrink `max_search_radius` to match.
 
 ## Gravity
 `--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching STARBENCH's own purely hydrodynamical test.
 
 ## Cadence
-`HII_rebuild_time_Myr=0.005` (fixed cadence). Cadence is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` (at this example's much higher density than that sweep used, so it may be changed freely, but stays worth re-checking if pushed much coarser).
+`HII_rebuild_time_Myr=0.005` (fixed cadence) is a numerical parameter, not
+a physical one. This example runs at a much higher density than a typical
+cadence sweep, so it is worth re-checking if pushed much coarser.
 
 # Configure
-Validated configuration (matches STARBENCH's own `T_i=1e4 K` convention):
+Configuration matching STARBENCH's own `T_i=1e4 K` convention:
 ```
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
-Dropping the `CFLAGS` forcing flag builds with this code's own natural,
-metallicity-dependent `T_i` instead -- known to fail this validation target
-(see Checking below), not currently supported as a passing configuration.
+`grackle_1` prices the ionizing photon budget against the neutral
+hydrogen fraction from Grackle's own H/He species network rather than
+total hydrogen, which the D-type expansion physics this example
+reproduces depends on. Dropping the `CFLAGS` forcing flag builds with
+this code's own natural, metallicity-dependent `T_i` instead, which does
+not reproduce STARBENCH's `T_i=1e4 K` convention (see Temperature above).
 
 # Run
 ```
@@ -42,7 +47,5 @@ python3 starbench_analytic_check.py -s "snap/snapshot_*.hdf5"
 T_i is measured from the run's own tagged gas, so the same command is
 correct with or without the CFLAGS forcing flag above; pass
 `--T-ionized-K` only to override the measurement (it warns on mismatch).
-Only the T_i=1e4 K forced build is validated against this target. The
-front oscillates at this metallicity, so run-to-run and phase differences
-of several percent are expected; accepted validation runs read
-approximately 2-6% error at t=3 Myr, not a single sharper number.
+The front oscillates at this metallicity, so run-to-run and phase
+differences of several percent at t=3 Myr are expected.
