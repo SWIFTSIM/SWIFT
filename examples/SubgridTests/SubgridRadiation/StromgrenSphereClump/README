@@ -8,7 +8,7 @@ Default densities (n_H = 100 cm^-3 background, 1e4 cm^-3 clump) match the test c
 **Role: algorithm-feature test, not a physics validation target.** This checks whether angular (HEALPix) budget-splitting actually protects diffuse gas from a nearby dense clump's mass-biasing (a single-star setup, purpose-built to isolate that one mechanism). It is not a reproduction of Smith et al. 2021's own published result -- for that, see `../StromgrenSphereClumpSmith2021/` (4 co-located stars, matching the paper's Fig. 2 configuration and numbers directly).
 
 ## Clump geometry: why it's set in parsec, not from R_st
-The classical Stromgren radius formula assumes the code's ionization budget accounting matches the textbook relation. A clump-free control run (`--density_factor 1`) shows the ionization front actually plateaus (budget-limited, under NO_COOLING) well short of that analytic radius. So the clump's distance and size are set directly in parsec (`--clump_distance_pc`, `--clump_radius_pc` or `--clump_halfangle_deg`), calibrated against the *measured* front, not the formula. The measured reference values are in `makeIC_clump.py` as `MEASURED_FRONT_REACH_PC` / `MEASURED_FRONT_IONIZED_MASS_MSUN`. If you change `--rho`, `--star_mass`, or `--mass`, re-measure the front with `--density_factor 1` and update those two constants before trusting the geometry defaults.
+The classical Stromgren radius formula assumes the code's ionization budget accounting matches the textbook relation, which does not hold here: the front is budget-limited, not radius-limited. So the clump's distance and size are set directly in parsec (`--clump_distance_pc`, `--clump_radius_pc` or `--clump_halfangle_deg`), calibrated against the *measured* front, not the formula. The measured reference values are in `makeIC_clump.py` as `MEASURED_FRONT_REACH_PC` / `MEASURED_FRONT_IONIZED_MASS_MSUN`. If you change `--rho`, `--star_mass`, or `--mass`, re-measure the front with `--density_factor 1` and update those two constants before trusting the geometry defaults.
 
 ## Varying the clump size
 `--clump_radius_pc` sets the clump's physical radius directly, overriding the `--clump_halfangle_deg`-derived value, for a size sweep at fixed `--clump_distance_pc` (e.g. a Smith+2021-style comparison). The implied half-angle `atan(radius/distance)` must stay under ~29 degrees (nside=1 pixel 4's inscribed-cap margin around +x) or the clump straddles neighbouring pixels. `makeIC_clump.py` prints a warning if this, the front-reach bound, or the box-margin bound is violated.
@@ -16,13 +16,13 @@ The classical Stromgren radius formula assumes the code's ionization budget acco
 The redistribution signal's strength depends on this geometry (and on `--density_factor`), not just on the density contrast -- run `clump_anisotropy_check.py` after each size to check.
 
 ## Cadence
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
 
 # Configure
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix
 ```
-`--with-chealpix` (e.g. via pacman/AUR's `healpix` package) is required to run at `nside=1`; `nside=0` (the default) works without it.
+`grackle_1` prices the ionizing photon budget against the neutral hydrogen fraction from Grackle's own H/He species network rather than total hydrogen, which the angular budget-splitting this example tests depends on. `--with-chealpix` (e.g. via pacman/AUR's `healpix` package) is required to run at `nside=1`; `nside=0` (the default) works without it.
 
 ```
 make -j
