@@ -55,17 +55,6 @@ precursor recheck. See this example's README for the
 box-size derivation and why Z=0 is used here instead of the
 Z/Zsun~0.231 workaround used elsewhere in this project.
 
-The verdict is the median relative error over the D-TYPE WINDOW: the
-snapshots from the first one whose measured front has reached R_St to the
-end of the box-valid, alive range. All three curves are integrated from
-R = R_St at t=0 and describe only the pressure-driven expansion that
-follows the R-type phase, so a snapshot taken before the front reaches
-R_St is outside every one of them. The full-window median is printed
-alongside on its own line, labelled as including the pre-D-type phase and
-marked "not a verdict", so the restriction can never hide what it trimmed.
-Both lines name their window, so a harness grepping PASS/FAIL cannot
-confuse them.
-
 The same applies to composition. These solutions are parameterised by n_H,
 T_i, T_o, Q_H and the mean molecular weights, none of which is tied to the
 papers' own setup, so the curves are evaluated at the run's OWN measured
@@ -931,50 +920,17 @@ def main():
     ok = box_valid & alive
     if not np.any(ok):
         raise RuntimeError("No box-valid, alive snapshot to compare at.")
-    full_window = np.where(ok)[0]
-
-    # Verdict window. All three reference curves are integrated from R = R_St
-    # at t = 0: they describe the pressure-driven D-type expansion that
-    # FOLLOWS the R-type phase, and say nothing about how the front reached
-    # R_St. The verdict therefore starts at the first snapshot whose measured
-    # front has reached R_St, and runs to the end of the box-valid, alive
-    # range. No tolerance is applied to R_St: the condition is a lower bound
-    # on where the model is defined at all, and loosening it would admit
-    # points the model does not describe. A later dip back below R_St is not
-    # a return to the R-type phase, so the window stays contiguous once open.
-    #
-    # In practice this is usually already satisfied at the first alive
-    # snapshot, because the first HII rebuild pass tags a region wider than
-    # R_St. It is enforced explicitly so the rule is stated rather than
-    # inherited from the aliveness gate, and so it still holds for a
-    # configuration whose first pass does NOT reach R_St (lower Q_H, denser
-    # gas, or a rebuild cadence coarse enough to sample only part of a pass).
-    dtype_valid = r_sim_pc >= R_St.to(u.pc).value
-    opened = np.where(ok & dtype_valid)[0]
-    if len(opened) == 0:
-        raise RuntimeError(
-            f"The simulated front never reaches R_St = {R_St:.4g} inside the "
-            f"box-valid, alive range, so the D-type reference is nowhere "
-            f"defined for this run. Check Q_H, n_H and the rebuild cadence."
-        )
-    window = full_window[full_window >= opened[0]]
-    n_dropped = len(full_window) - len(window)
-
+    window = np.where(ok)[0]
     t_w = t_sim[window]
     r_w = r_sim_pc[window]
     r_max_w = r_sim_max_pc[window]
     R_ref_w = R_ref_at_t_sim[window]
     rel_error_w = np.abs(r_w - R_ref_w) / R_ref_w
 
-    R_ref_full = R_ref_at_t_sim[full_window]
-    rel_error_full = np.abs(r_sim_pc[full_window] - R_ref_full) / R_ref_full
-
     print(f"\nReference curve: {ref_label}")
     print(
-        f"Verdict window (D-type valid, r_sim >= R_St = {R_St.to(u.pc).value:.4g} pc): "
-        f"t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] ({len(window)} snapshots, "
-        f"{n_dropped} pre-D-type snapshots dropped), "
-        f"fixed T_o={args.T_neutral_K:.0f} K"
+        f"Comparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
+        f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
     )
     if window[-1] < len(t_sim) - 1:
         reason = []
@@ -1009,31 +965,20 @@ def main():
     median_error = np.median(rel_error_w)
     verdict = "PASS" if median_error <= args.tol else "FAIL"
     print(
-        f"Verdict window summary: min={rel_error_w.min():.2%} "
-        f"(t={t_w[np.argmin(rel_error_w)]:.4g})  "
+        f"Window summary: min={rel_error_w.min():.2%} (t={t_w[np.argmin(rel_error_w)]:.4g})  "
         f"median={median_error:.2%}  max={rel_error_w.max():.2%} "
         f"(t={t_w[np.argmax(rel_error_w)]:.4g})  "
         f"{n_pass}/{len(window)} snapshots within tol={args.tol:.0%}  "
-        f"[{verdict} by median over the D-type window{verdict_marker}]"
-    )
-    # Always printed alongside, so trimming the window can never hide what it
-    # trimmed. Identical to the line above whenever nothing was dropped.
-    print(
-        f"Full window summary (t=[{t_sim[full_window[0]]:.4g}, "
-        f"{t_sim[full_window[-1]]:.4g}], {len(full_window)} snapshots, "
-        f"INCLUDES the pre-D-type phase): "
-        f"min={rel_error_full.min():.2%}  median={np.median(rel_error_full):.2%}  "
-        f"max={rel_error_full.max():.2%}  "
-        f"{np.sum(rel_error_full <= args.tol)}/{len(full_window)} within "
-        f"tol={args.tol:.0%}  [not a verdict]"
+        f"[{verdict} by median{verdict_marker}]"
     )
 
     # The two published reference conventions (Raga-II vs the Bisbas blend)
     # disagree by ~15-25% for this multi-source configuration, so a single
     # median can read as FAIL while the run is bracketed by the references.
-    # Report all three, with the t_end error separately as the
-    # equilibrium-quality number.
-    print("\nAll reference curves over the verdict window (verdict uses --reference):")
+    # Report all three, with the t_end error separately -- the late-time
+    # value is the equilibrium-quality number the window median dilutes
+    # with the unmodeled R-type onset.
+    print("\nAll reference curves over the same window (verdict uses --reference):")
     for lbl, RC in (("Raga-I", R_I), ("Raga-II", R_II), ("STARBENCH blend", R_SB)):
         RC_w = np.interp(t_w.to(u.Myr).value, t_grid.to(u.Myr).value, RC)
         e = np.abs(r_w - RC_w) / RC_w
@@ -1130,7 +1075,7 @@ def main():
         t_w[-1].to(u.Myr).value,
         color="black",
         alpha=0.08,
-        label="Verdict window (D-type)",
+        label="Comparison window",
     )
     ax.set_xlabel("Time [Myr]")
     ax.set_ylabel(r"HII region radius $r_{\rm HII}$ [pc]")
