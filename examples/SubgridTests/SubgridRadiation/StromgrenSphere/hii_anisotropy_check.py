@@ -34,7 +34,8 @@ deficit.
 
 Requires a run built with -DIONIZATION_FEEDBACK_DEBUG_NO_COOLING (so ionized
 particles stay tagged forever and the deficit isn't confounded by cooling/
-re-ionization) -- see the configure line in the project's memory/plan notes.
+re-ionization), e.g. `CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING"
+./configure ...` -- see the README's Configure section for the full line.
 
 Usage:
     python3 hii_anisotropy_check.py [-s snap/snapshot_*.hdf5] [-r 0.02]
