@@ -12,8 +12,8 @@ set -eo pipefail
 
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=5} #Gas density in atom/cm^3
-gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles
-star_mass=${star_mass:=29.7} #Mass of the gas particles
+gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
+star_mass=${star_mass:=29.7} #Mass of the star (Msun)
 star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.05} #boxsize in kpc
@@ -22,12 +22,10 @@ dt_max=${dt_max:=1e-2} #TimeIntegration:dt_max override (internal units). Must s
                         #below time_end (engine_config() errors otherwise) -- lower
                         #this if you shorten time_end below the default 1e-2.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override
-rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_rebuild_time_Myr override
+rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_rebuild_time_Myr override (Myr)
 max_retry_full_buffer=${max_retry_full_buffer:=10} #Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override
-radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override
-                        #(max per-rebuild search-radius growth is
-                        #radius_expansion_factor^max_radius_expansion_tries, see T8)
+radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override (see README)
 run_name=${run_name:=""}
 restart=${restart:=0}
 
@@ -61,7 +59,7 @@ then
 fi
 
 # Create output directory
-DIR=snap #First test of units conversion
+DIR=snap
 if [ -d "$DIR" ];
 then
     if [ "$restart" -ne 1 ]; then
@@ -105,54 +103,6 @@ else
 		   params.yml 2>&1 | tee output.log
 fi
 
-#Do some data analysis to show what's in this box
-
-# Gas density projection
-# python3 "$scripts_location"/plot_gas_density.py -i 0 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 1 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 2 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 3 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 4 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 5 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 6 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 7 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 8 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 9 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 10 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 20 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 30 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 40 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 50 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 100 -s 'snap/snapshot'
-
-# # Phase space diagram
-# python3 "$scripts_location"/rhoTPlot.py -i 0 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 1 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 2 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 3 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 4 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 5 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 6 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 7 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 8 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 9 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 10 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 20 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 30 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 40 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 50 -s 'snap/snapshot'
-# python3 "$scripts_location"/rhoTPlot.py -i 100 -s 'snap/snapshot'
-
-
-# # Internal energy projection
-# python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_000*.hdf5 --log --vmin 2 --vmax 6
-# python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log --vmin 2 --vmax 6
-
-# # Movies
-# # python3 "$scripts_location"/rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
-# python3 "$scripts_location"/plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
-
-
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -167,7 +117,5 @@ else
 	mv statistics.txt $run_name
 	mv unused_parameters.yml $run_name
 	mv used_parameters.yml $run_name
-	mv *.png $run_name
-	mv *.mp4 $run_name
     fi
 fi
