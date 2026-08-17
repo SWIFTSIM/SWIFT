@@ -941,7 +941,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
     const struct gpart_foreign *restrict gparts_foreign_j, const int foreign_j,
-    const struct cell *restrict cj) {
+    const struct cell *restrict cj, const integertime_t pre_call_recv_at_tic,
+    const int pre_call_recv_count) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -949,7 +950,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
   /* GRAV_FOREIGN_INHIBITED_PROBE: entry-time snapshot to catch a concurrent
    * recv/unpack of gparts_foreign_j during this function's interaction loop.
-   */
+   * pre_call_recv_{at_tic,count} were captured by the caller right after
+   * gravity_cache_populate_foreign(), so the comparison below also covers
+   * the gap between cache population and this function being entered, not
+   * just this function's own interaction loop. */
   const integertime_t entry_data_recv_at_tic =
       foreign_j ? cj->grav.data_recv_at_tic : 0;
   const int entry_data_recv_count = foreign_j ? cj->grav.data_recv_count : 0;
@@ -1073,17 +1077,18 @@ static INLINE void runner_dopair_grav_pp_truncated(
           mass_j != 0.f) {
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
-            "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d "
+            "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d "
             "raw_mass=%.3e cached_mass=%.3e time_bin=%d ti_drift=%lld "
-            "ti_current=%lld entry_recv_at_tic=%lld now_recv_at_tic=%lld "
-            "entry_recv_count=%d now_recv_count=%d",
+            "ti_current=%lld pre_call_recv_at_tic=%lld entry_recv_at_tic=%lld "
+            "now_recv_at_tic=%lld pre_call_recv_count=%d entry_recv_count=%d "
+            "now_recv_count=%d",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
-            gcount_j, gparts_foreign_j[pjd].mass, mass_j,
-            gparts_foreign_j[pjd].time_bin,
+            gcount_j, (int)gparts_foreign_j[pjd].type,
+            gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
             (long long)gparts_foreign_j[pjd].ti_drift, (long long)e->ti_current,
-            (long long)entry_data_recv_at_tic,
-            (long long)cj->grav.data_recv_at_tic, entry_data_recv_count,
-            cj->grav.data_recv_count);
+            (long long)pre_call_recv_at_tic, (long long)entry_data_recv_at_tic,
+            (long long)cj->grav.data_recv_at_tic, pre_call_recv_count,
+            entry_data_recv_count, cj->grav.data_recv_count);
         error("Inhibited particle used as gravity source.");
       }
 
@@ -1523,6 +1528,14 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         periodic, dim, ci_cache, ci->grav.parts_foreign, gcount_i,
         gcount_padded_i, shift_i, ci, e->gravity_properties);
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* GRAV_FOREIGN_INHIBITED_PROBE: snapshot right after population, to catch
+   * a recv/unpack racing the gap between here and the interaction loop. */
+  const integertime_t ci_post_populate_recv_at_tic =
+      (ci->nodeID != e->nodeID) ? ci->grav.data_recv_at_tic : 0;
+  const int ci_post_populate_recv_count =
+      (ci->nodeID != e->nodeID) ? ci->grav.data_recv_count : 0;
+#endif
 
   if (cj->nodeID == e->nodeID) {
     gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
@@ -1534,6 +1547,17 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         periodic, dim, cj_cache, cj->grav.parts_foreign, gcount_j,
         gcount_padded_j, shift_j, cj, e->gravity_properties);
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t cj_post_populate_recv_at_tic =
+      (cj->nodeID != e->nodeID) ? cj->grav.data_recv_at_tic : 0;
+  const int cj_post_populate_recv_count =
+      (cj->nodeID != e->nodeID) ? cj->grav.data_recv_count : 0;
+#else
+  const integertime_t ci_post_populate_recv_at_tic = 0;
+  const int ci_post_populate_recv_count = 0;
+  const integertime_t cj_post_populate_recv_at_tic = 0;
+  const int cj_post_populate_recv_count = 0;
+#endif
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -1598,7 +1622,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, dim,
             r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
-            cj->nodeID != e->nodeID, cj);
+            cj->nodeID != e->nodeID, cj, cj_post_populate_recv_at_tic,
+            cj_post_populate_recv_count);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1612,7 +1637,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, dim,
             r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
-            ci->nodeID != e->nodeID, ci);
+            ci->nodeID != e->nodeID, ci, ci_post_populate_recv_at_tic,
+            ci_post_populate_recv_count);
 
         /* Then the M2P */
         if (allow_multipole_i)
