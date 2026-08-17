@@ -116,6 +116,11 @@ else
 fi
 
 output_dir="."
+if [ "$run_analysis" -eq 1 ]; then
+    echo "Running plot_temperature_hii.py on the final snapshot..."
+    python3 plot_temperature_hii.py -s "$output_dir/snap/snapshot"
+fi
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -130,11 +135,7 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
+	mv *.png $run_name
         output_dir="$run_name"
     fi
-fi
-
-if [ "$run_analysis" -eq 1 ]; then
-    echo "Running plot_temperature_hii.py on the final snapshot..."
-    python3 plot_temperature_hii.py -s "$output_dir/snap/snapshot"
 fi
