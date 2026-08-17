@@ -8,16 +8,16 @@ Q_H ~ 1e49 s^-1.
 
 See `../StromgrenSphereClump/` for the sibling example that instead
 calibrates clump placement against this code's own measured ionization
-front reach -- useful for testing the angular budget-splitting
-mechanism in isolation, rather than reproducing this paper's absolute
-scale.
+front reach.
 
 ## Metallicity
 `initial_metallicity=0` (pure hydrogen, matching the paper) is the
 default. This code's own ionized-gas temperature floor is
 metallicity-dependent, reaching ~47,500 K at Z=0, not the paper's flat
-1e4 K -- so `r_HII` runs systematically larger than the paper's own
-numbers. Combine `initial_metallicity=0` with the
+1e4 K. So `r_HII` runs systematically larger than the paper's own
+numbers.
+
+Combine `initial_metallicity=0` with the
 `IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4` build flag
 (see Configure below) to match the paper's 1e4 K convention instead.
 `initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
@@ -33,21 +33,8 @@ levels (4, 0.5, 0.0625, 0.0078125 Msun) are also available via
 The diffuse background and clump are set to different temperatures in
 pressure equilibrium (n*T equal on both sides) by `makeIC_clump.py`'s
 `--temperature` (background 1000 K by default). `SPH:initial_temperature: 0`
-in params.yml is required for this -- otherwise it overwrites the
+in params.yml is required for this, otherwise it overwrites the
 per-particle IC values.
-
-`rebuild_time_myr`, `deterministic`, `nside`, `initial_metallicity`,
-`gas_mass`, and `density_factor` are all overridable via env var (see
-run.sh). `density_factor=1 ./run.sh` degenerates the clump to the
-background density, reproducing the paper's own no-clump reference
-test. `max_search_radius`, `max_retry_full_buffer`,
-`max_radius_expansion_tries`, and `radius_expansion_factor` set
-`Stars:HII_*`; the search radius can grow by at most
-`radius_expansion_factor^max_radius_expansion_tries` per rebuild.
-
-## Cadence
-`GEARFeedback:HII_rebuild_time_Myr` (default 0.01 Myr, fixed cadence) is a
-numerical parameter, not a physical one, and may be changed freely.
 
 # Configure
 Configuration matching the paper's `T_i=1e4 K` convention:
@@ -99,3 +86,4 @@ gas_mass=20 initial_metallicity=0.231 nside=0 rebuild_time_myr=0.01 \
 ```
 Repeat for each `nside`/`initial_metallicity`/`rebuild_time_myr`/`gas_mass`
 combination needed, then run the three scripts above from this directory.
+
