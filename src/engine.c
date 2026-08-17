@@ -2719,6 +2719,14 @@ int engine_step(struct engine *e) {
     if (e->verbose)
       message("Writing step info to files took %.3f %s",
               clocks_from_ticks(getticks() - tic_files), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* INHIBITED_TREND_PROBE: does the global inhibited-gpart population
+     * only reach the size needed to trigger GRAV_FOREIGN_INHIBITED_PROBE
+     * after long continuous runtime, and reset on restart? */
+    message("INHIBITED_TREND_PROBE step=%d nr_inhibited_gparts=%lld", e->step,
+            (long long)e->nr_inhibited_gparts);
+#endif
   }
 
   /* When restarting, we may have had some i/o to do on the step
