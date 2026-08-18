@@ -943,7 +943,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const struct gpart_foreign *restrict gparts_foreign_j, const int foreign_j,
     const struct cell *restrict cj, const integertime_t pre_call_recv_at_tic,
     const int pre_call_recv_count,
-    const long long pre_call_populate_generation) {
+    const integertime_t pre_call_counts_recv_at_tic,
+    const struct gpart_foreign *restrict pre_call_parts_foreign) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1076,6 +1077,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (foreign_j && pjd < gcount_j &&
           gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f) {
+        /* Does cj->grav.parts_foreign (the pointer itself, not its
+         * contents) differ across the three points where it's read:
+         * right after populate in the caller, the value actually handed
+         * to this call (gparts_foreign_j), and a live re-read now? A
+         * runtime reassignment (cell_unpack_grav_counts, cell_pack.c)
+         * would show up here even though the recv-count bookkeeping
+         * above cannot catch it. */
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
             "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d "
@@ -1084,8 +1092,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "now_recv_at_tic=%lld pre_call_recv_count=%d entry_recv_count=%d "
             "now_recv_count=%d top_recv_at_tic=%lld top_recv_count=%d "
             "cache_populated_cellID=%lld cache_populated_gcount=%d "
-            "pre_call_populate_generation=%lld now_populate_generation=%lld "
-            "cache_populated_time_bin_min=%d cache_populated_time_bin_max=%d",
+            "pre_call_counts_recv_at_tic=%lld now_counts_recv_at_tic=%lld "
+            "pre_call_ptr=%p entry_ptr=%p now_ptr=%p",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
             gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
@@ -1095,9 +1103,11 @@ static INLINE void runner_dopair_grav_pp_truncated(
             entry_data_recv_count, cj->grav.data_recv_count,
             (long long)cj->top->grav.data_recv_at_tic,
             cj->top->grav.data_recv_count, cj_cache->populated_cellID,
-            cj_cache->populated_gcount, pre_call_populate_generation,
-            cj_cache->populate_generation, cj_cache->populated_time_bin_min,
-            cj_cache->populated_time_bin_max);
+            cj_cache->populated_gcount, (long long)pre_call_counts_recv_at_tic,
+            (long long)cj->grav.counts_recv_at_tic,
+            (const void *)pre_call_parts_foreign,
+            (const void *)gparts_foreign_j,
+            (const void *)cj->grav.parts_foreign);
         error("Inhibited particle used as gravity source.");
       }
 
@@ -1544,7 +1554,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       (ci->nodeID != e->nodeID) ? ci->grav.data_recv_at_tic : 0;
   const int ci_post_populate_recv_count =
       (ci->nodeID != e->nodeID) ? ci->grav.data_recv_count : 0;
-  const long long ci_post_populate_generation = ci_cache->populate_generation;
+  const integertime_t ci_post_populate_counts_recv_at_tic =
+      (ci->nodeID != e->nodeID) ? ci->grav.counts_recv_at_tic : 0;
+  const struct gpart_foreign *const ci_post_populate_parts_foreign =
+      ci->grav.parts_foreign;
 #endif
 
   if (cj->nodeID == e->nodeID) {
@@ -1562,14 +1575,19 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       (cj->nodeID != e->nodeID) ? cj->grav.data_recv_at_tic : 0;
   const int cj_post_populate_recv_count =
       (cj->nodeID != e->nodeID) ? cj->grav.data_recv_count : 0;
-  const long long cj_post_populate_generation = cj_cache->populate_generation;
+  const integertime_t cj_post_populate_counts_recv_at_tic =
+      (cj->nodeID != e->nodeID) ? cj->grav.counts_recv_at_tic : 0;
+  const struct gpart_foreign *const cj_post_populate_parts_foreign =
+      cj->grav.parts_foreign;
 #else
   const integertime_t ci_post_populate_recv_at_tic = 0;
   const int ci_post_populate_recv_count = 0;
   const integertime_t cj_post_populate_recv_at_tic = 0;
   const int cj_post_populate_recv_count = 0;
-  const long long ci_post_populate_generation = 0;
-  const long long cj_post_populate_generation = 0;
+  const integertime_t ci_post_populate_counts_recv_at_tic = 0;
+  const integertime_t cj_post_populate_counts_recv_at_tic = 0;
+  const struct gpart_foreign *const ci_post_populate_parts_foreign = NULL;
+  const struct gpart_foreign *const cj_post_populate_parts_foreign = NULL;
 #endif
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
@@ -1636,7 +1654,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
             ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, dim,
             r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
             cj->nodeID != e->nodeID, cj, cj_post_populate_recv_at_tic,
-            cj_post_populate_recv_count, cj_post_populate_generation);
+            cj_post_populate_recv_count, cj_post_populate_counts_recv_at_tic,
+            cj_post_populate_parts_foreign);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1651,7 +1670,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
             cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, dim,
             r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
             ci->nodeID != e->nodeID, ci, ci_post_populate_recv_at_tic,
-            ci_post_populate_recv_count, ci_post_populate_generation);
+            ci_post_populate_recv_count, ci_post_populate_counts_recv_at_tic,
+            ci_post_populate_parts_foreign);
 
         /* Then the M2P */
         if (allow_multipole_i)
