@@ -1200,10 +1200,10 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
     }
   } else {
 
-    /* Check that cells are drifted. */
+    /* Gas comes from cj, the star from ci: check each for what it supplies. */
     if (!cell_are_part_drifted(cj, e))
       error("Interacting undrifted cell (hydro).");
-    if (!cell_are_spart_drifted(cj, e))
+    if (!cell_are_spart_drifted(ci, e))
       error("Interacting undrifted cell (stars).");
 
     struct part *restrict parts_j = cj->hydro.parts;
@@ -1284,10 +1284,10 @@ void runner_dopair_stars_hii_ionization_feedback(
   /* Anything to do here?*/
   if (count_j == 0) return;
 
-  /* Check that cells are drifted. */
+  /* Gas comes from cj, the star from ci: check each for what it supplies. */
   if (!cell_are_part_drifted(cj, e))
     error("Interacting undrifted cell (hydro).");
-  if (!cell_are_spart_drifted(cj, e))
+  if (!cell_are_spart_drifted(ci, e))
     error("Interacting undrifted cell (stars).");
 
   /* Get the hydro sorts for our gas cell */
