@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -e
+
 # List each test that should be run
 declare -a TEST_LIST=(test27cellsStars test27cellsStars_subset)
 
@@ -8,7 +11,7 @@ for TEST in "${TEST_LIST[@]}"
 do
   # Test for particles with the same smoothing length
     echo ""
-    
+
     rm -f star_brute_force_27_standard.dat swift_star_dopair_27_standard.dat
 
     echo "Running ./$TEST -n 6 -N 7 -r 1 -d 0 -f standard"

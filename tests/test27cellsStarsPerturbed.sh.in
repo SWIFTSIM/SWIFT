@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -e
+
 # Test for particles with the same smoothing length
     echo ""
 

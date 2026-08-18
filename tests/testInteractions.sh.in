@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -e
+
 echo ""
 
 rm -f test_nonsym_density_serial.dat test_nonsym_density_1_vec.dat test_nonsym_density_2_vec.dat test_nonsym_force_1_vec.dat test_nonsym_force_2_vec.dat
