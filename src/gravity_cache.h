@@ -79,6 +79,15 @@ struct gravity_cache {
 
   /*! gcount this cache was last populated with (foreign path only). */
   int populated_gcount;
+
+  /*! Incremented every foreign populate call, to detect a repopulation
+   * between a caller's populate call and a later read of this cache. */
+  long long populate_generation;
+
+  /*! Smallest/largest time_bin seen among the real (non-padded) particles
+   * at the last foreign populate. */
+  int populated_time_bin_min;
+  int populated_time_bin_max;
 #endif
 };
 
@@ -350,6 +359,11 @@ INLINE static void gravity_cache_populate_foreign(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  int populated_time_bin_min = num_time_bins + 10;
+  int populated_time_bin_max = -1;
+#endif
+
   /* Fill the input caches */
 #if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
 #pragma omp simd
@@ -367,6 +381,10 @@ INLINE static void gravity_cache_populate_foreign(
     if (gparts_foreign[i].time_bin == time_bin_not_created) {
       error("Found an extra gpart in the gravity cache");
     }
+    populated_time_bin_min =
+        min(populated_time_bin_min, (int)gparts_foreign[i].time_bin);
+    populated_time_bin_max =
+        max(populated_time_bin_max, (int)gparts_foreign[i].time_bin);
 #endif
 
     /* Make a dummy particle out of the inhibted ones */
@@ -402,6 +420,9 @@ INLINE static void gravity_cache_populate_foreign(
 #ifdef SWIFT_DEBUG_CHECKS
   c->populated_cellID = cell->cellID;
   c->populated_gcount = gcount;
+  c->populate_generation += 1;
+  c->populated_time_bin_min = populated_time_bin_min;
+  c->populated_time_bin_max = populated_time_bin_max;
 #endif
 }
 
