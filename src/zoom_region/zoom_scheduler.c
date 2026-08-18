@@ -237,7 +237,8 @@ void zoom_scheduler_report_task_times(const struct scheduler *s,
     message("*** CPU time spent in different zoom task categories:");
     for (int i = 0; i < task_category_count; ++i) {
       message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i],
-              zoom_time[i], clocks_getunit(), time[i] / total_zoom_time * 100.);
+              zoom_time[i], clocks_getunit(),
+              zoom_time[i] / total_zoom_time * 100.);
     }
     message("*** CPU time spent in different background task categories:");
     for (int i = 0; i < task_category_count; ++i) {
