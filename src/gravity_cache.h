@@ -72,6 +72,14 @@ struct gravity_cache {
 
   /*! Cache size */
   int count;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! cellID this cache was last populated from (foreign path only). */
+  long long populated_cellID;
+
+  /*! gcount this cache was last populated with (foreign path only). */
+  int populated_gcount;
+#endif
 };
 
 /**
@@ -390,6 +398,11 @@ INLINE static void gravity_cache_populate_foreign(
     active[i] = 0;
     use_mpole[i] = 0;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  c->populated_cellID = cell->cellID;
+  c->populated_gcount = gcount;
+#endif
 }
 
 /**

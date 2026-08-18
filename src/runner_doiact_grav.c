@@ -1081,14 +1081,18 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "raw_mass=%.3e cached_mass=%.3e time_bin=%d ti_drift=%lld "
             "ti_current=%lld pre_call_recv_at_tic=%lld entry_recv_at_tic=%lld "
             "now_recv_at_tic=%lld pre_call_recv_count=%d entry_recv_count=%d "
-            "now_recv_count=%d",
+            "now_recv_count=%d top_recv_at_tic=%lld top_recv_count=%d "
+            "cache_populated_cellID=%lld cache_populated_gcount=%d",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
             gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
             (long long)gparts_foreign_j[pjd].ti_drift, (long long)e->ti_current,
             (long long)pre_call_recv_at_tic, (long long)entry_data_recv_at_tic,
             (long long)cj->grav.data_recv_at_tic, pre_call_recv_count,
-            entry_data_recv_count, cj->grav.data_recv_count);
+            entry_data_recv_count, cj->grav.data_recv_count,
+            (long long)cj->top->grav.data_recv_at_tic,
+            cj->top->grav.data_recv_count, cj_cache->populated_cellID,
+            cj_cache->populated_gcount);
         error("Inhibited particle used as gravity source.");
       }
 
