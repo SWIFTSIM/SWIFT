@@ -99,6 +99,9 @@ void zoom_scheduler_report_zoom_task_times_mapper(void *map_data,
     /* Get the task */
     const struct task *t = &tasks[i];
 
+    /* Skip, skipped tasks. */
+    if (t->skip) continue;
+
     /* Did it only involve zoom cells? */
     if (zoom_scheduler_zoom_only_task(t)) {
 
@@ -137,6 +140,9 @@ void zoom_scheduler_report_bkg_task_times_mapper(void *map_data,
     /* Get the task */
     const struct task *t = &tasks[i];
 
+    /* Skip, skipped tasks. */
+    if (t->skip) continue;
+
     /* Did it only involve background cells? */
     if (zoom_scheduler_bkg_only_task(t)) {
 
@@ -174,6 +180,9 @@ void zoom_scheduler_report_mixed_task_times_mapper(void *map_data,
 
     /* Get the task */
     const struct task *t = &tasks[i];
+
+    /* Skip, skipped tasks. */
+    if (t->skip) continue;
 
     /* Did it involve zoom and background cells? */
     if (zoom_scheduler_zoom_task(t) && zoom_scheduler_bkg_task(t)) {
