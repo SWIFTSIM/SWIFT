@@ -1077,15 +1077,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (foreign_j && pjd < gcount_j &&
           gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f) {
-        /* Does cj->grav.parts_foreign (the pointer itself, not its
-         * contents) differ across the three points where it's read? A
-         * runtime reassignment (cell_unpack_grav_counts, cell_pack.c)
-         * would show up here even though the recv-count bookkeeping
-         * above cannot catch it. populated_time_bin_at_pjd is the most
-         * direct test: it's exactly what gravity_cache_populate_foreign
-         * read for THIS index, not a cell-level summary -- if it differs
-         * from now_time_bin_at_pjd, this index's memory genuinely changed
-         * between populate and the check. */
+        /* populated_time_bin_at_pjd is entailed by the crash condition
+         * (mass_j != 0 implies populate saw != inhibited) -- not
+         * decisive on its own. The decisive check is cache_x/y/z vs
+         * raw_x/y/z: shift_j is exactly {0,0,0} here, so they must be
+         * bit-identical unless the whole struct was overwritten between
+         * populate and this read, independent of the mass/time_bin
+         * question entirely. */
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
             "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d "
@@ -1096,7 +1094,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "cache_populated_cellID=%lld cache_populated_gcount=%d "
             "pre_call_counts_recv_at_tic=%lld now_counts_recv_at_tic=%lld "
             "pre_call_ptr=%p entry_ptr=%p now_ptr=%p "
-            "populated_time_bin_at_pjd=%d now_time_bin_at_pjd=%d",
+            "populated_time_bin_at_pjd=%d now_time_bin_at_pjd=%d "
+            "cache_x=%.9e raw_x=%.9e cache_y=%.9e raw_y=%.9e cache_z=%.9e "
+            "raw_z=%.9e",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
             gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
@@ -1111,7 +1111,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
             (const void *)pre_call_parts_foreign,
             (const void *)gparts_foreign_j,
             (const void *)cj->grav.parts_foreign,
-            cj_cache->populated_time_bin[pjd], gparts_foreign_j[pjd].time_bin);
+            cj_cache->populated_time_bin[pjd], gparts_foreign_j[pjd].time_bin,
+            (double)x_j, (double)gparts_foreign_j[pjd].x[0], (double)y_j,
+            (double)gparts_foreign_j[pjd].x[1], (double)z_j,
+            (double)gparts_foreign_j[pjd].x[2]);
         error("Inhibited particle used as gravity source.");
       }
 
