@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # crash if anything in this script fails
-set -e
+set -euo pipefail
 
 # List each test that should be run
 declare -a TEST_LIST=(test27cells test27cells_subset)

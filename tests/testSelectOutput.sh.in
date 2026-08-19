@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # crash if anything in this script fails
-set -e
+set -euo pipefail
 
 echo "Creating initial conditions"
 python3 @srcdir@/makeInput.py

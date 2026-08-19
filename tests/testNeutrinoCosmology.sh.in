@@ -1,6 +1,6 @@
 #!/bin/bash
 
 # crash if anything in this script fails
-set -e
+set -euo pipefail
 
 ./testNeutrinoCosmology @srcdir@/testNeutrinoCosmology.dat
