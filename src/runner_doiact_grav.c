@@ -1078,12 +1078,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
           gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f) {
         /* Does cj->grav.parts_foreign (the pointer itself, not its
-         * contents) differ across the three points where it's read:
-         * right after populate in the caller, the value actually handed
-         * to this call (gparts_foreign_j), and a live re-read now? A
+         * contents) differ across the three points where it's read? A
          * runtime reassignment (cell_unpack_grav_counts, cell_pack.c)
          * would show up here even though the recv-count bookkeeping
-         * above cannot catch it. */
+         * above cannot catch it. populated_time_bin_at_pjd is the most
+         * direct test: it's exactly what gravity_cache_populate_foreign
+         * read for THIS index, not a cell-level summary -- if it differs
+         * from now_time_bin_at_pjd, this index's memory genuinely changed
+         * between populate and the check. */
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
             "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d "
@@ -1093,7 +1095,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "now_recv_count=%d top_recv_at_tic=%lld top_recv_count=%d "
             "cache_populated_cellID=%lld cache_populated_gcount=%d "
             "pre_call_counts_recv_at_tic=%lld now_counts_recv_at_tic=%lld "
-            "pre_call_ptr=%p entry_ptr=%p now_ptr=%p",
+            "pre_call_ptr=%p entry_ptr=%p now_ptr=%p "
+            "populated_time_bin_at_pjd=%d now_time_bin_at_pjd=%d",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
             gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
@@ -1107,7 +1110,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
             (long long)cj->grav.counts_recv_at_tic,
             (const void *)pre_call_parts_foreign,
             (const void *)gparts_foreign_j,
-            (const void *)cj->grav.parts_foreign);
+            (const void *)cj->grav.parts_foreign,
+            cj_cache->populated_time_bin[pjd], gparts_foreign_j[pjd].time_bin);
         error("Inhibited particle used as gravity source.");
       }
 

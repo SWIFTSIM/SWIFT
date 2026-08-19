@@ -79,6 +79,11 @@ struct gravity_cache {
 
   /*! gcount this cache was last populated with (foreign path only). */
   int populated_gcount;
+
+  /*! Per-index time_bin exactly as read by the last foreign populate call,
+   * to prove (or disprove) that a specific index's raw time_bin genuinely
+   * differed between populate time and a later read of the same memory. */
+  int *restrict populated_time_bin SWIFT_CACHE_ALIGN;
 #endif
 };
 
@@ -101,6 +106,9 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
     swift_free("gravity_cache", c->pot);
     swift_free("gravity_cache", c->active);
     swift_free("gravity_cache", c->use_mpole);
+#ifdef SWIFT_DEBUG_CHECKS
+    swift_free("gravity_cache", c->populated_time_bin);
+#endif
   }
   c->count = 0;
 }
@@ -149,6 +157,10 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
   e += swift_memalign("gravity_cache", (void **)&c->use_mpole,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
+#ifdef SWIFT_DEBUG_CHECKS
+  e += swift_memalign("gravity_cache", (void **)&c->populated_time_bin,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesI);
+#endif
 
   if (e != 0) error("Couldn't allocate gravity cache, size: %d", padded_count);
 
@@ -367,6 +379,7 @@ INLINE static void gravity_cache_populate_foreign(
     if (gparts_foreign[i].time_bin == time_bin_not_created) {
       error("Found an extra gpart in the gravity cache");
     }
+    c->populated_time_bin[i] = gparts_foreign[i].time_bin;
 #endif
 
     /* Make a dummy particle out of the inhibted ones */
