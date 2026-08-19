@@ -437,7 +437,10 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * Tag the #part as ionized to be ionized in feedback_update_part().
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle, or NULL for a foreign gas
+ * copy under MPI owner-computes. The two tracer floats below are then
+ * skipped (not stored anywhere retrievable for that copy); the #part fields
+ * above are always written, since @p p is never NULL.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which this particle should
  * stay flagged as ionized (the ionizing star's next HII rebuild) -- cooling
@@ -450,6 +453,13 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
   p->feedback_data.is_ionized = 1;
   p->feedback_data.star_id = star_id;
   p->feedback_data.end_time = end_time;
+  /* xp == NULL for a foreign gas copy (owner-computes MPI contract, see
+     radiation_get_part_mean_molecular_weight). Nothing to store the two
+     tracer floats in for that copy; they are already documented as
+     "carried on the wire but not applied" for a foreign part
+     (GEAR_thermal/feedback.h:108-111), so skipping them here is not new
+     staleness. */
+  if (xp == NULL) return;
   xp->tracers_data.HII_region.excess_photon_energy_HI = excess_photon_energy_HI;
   xp->tracers_data.HII_region.photoionization_rate_HI = photoionization_rate_HI;
   return;
@@ -512,11 +522,21 @@ radiation_get_part_ionized_star_id(const struct part *p,
  * meaningful while radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle. Must not be NULL: a foreign
+ * gas copy never has this value stored (radiation_tag_part_as_ionized skips
+ * the write when xp == NULL), so there is nothing valid to read back for
+ * one; callers that may hold a foreign copy must not reach this getter.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                            const struct xpart *xp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (xp == NULL)
+    error(
+        "radiation_get_part_excess_photon_energy_HI called with xp == NULL "
+        "(part %lld); this value is never stored for a foreign gas copy.",
+        p->id);
+#endif
   return xp->tracers_data.HII_region.excess_photon_energy_HI;
 }
 
@@ -526,11 +546,20 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
  * radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle. Must not be NULL, for the
+ * same reason as radiation_get_part_excess_photon_energy_HI.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
                                                     const struct xpart *xp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (xp == NULL)
+    error(
+        "radiation_get_part_photoionization_rate_coefficient called with "
+        "xp == NULL (part %lld); this value is never stored for a foreign "
+        "gas copy.",
+        p->id);
+#endif
   return xp->tracers_data.HII_region.photoionization_rate_HI;
 }
 

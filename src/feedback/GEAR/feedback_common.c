@@ -706,7 +706,8 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being ionized.
- * @param xpj The #xpart (gas) being ionized.
+ * @param xpj The #xpart (gas) being ionized, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param us Internal unit system.
@@ -731,8 +732,11 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
 #ifdef SWIFT_DEBUG_CHECKS
   /* Same claim path for local and foreign pj under owner-computes, so this
-     also guards the report-back channel against a silent-zero-rate bug. */
-  if (cooling->HII_couple_ionization_rate &&
+     also guards the report-back channel against a silent-zero-rate bug.
+     xpj == NULL for a foreign copy: radiation_tag_part_as_ionized just
+     skipped storing the rate for it, so there is nothing valid to read back
+     and the check does not apply. */
+  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
       radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
     error(
         "Fresh HII claim with HII_couple_ionization_rate on but a "
@@ -783,7 +787,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being maintained.
- * @param xpj The #xpart (gas) being maintained.
+ * @param xpj The #xpart (gas) being maintained, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param phys_const Physics constants.
@@ -826,7 +831,9 @@ feedback_iact_HII_maintain_ionized_part(
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
 #ifdef SWIFT_DEBUG_CHECKS
-  if (cooling->HII_couple_ionization_rate &&
+  /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
+     guard for why the check does not apply there. */
+  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
       radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
     error(
         "HII maintenance renewal with HII_couple_ionization_rate on but a "
