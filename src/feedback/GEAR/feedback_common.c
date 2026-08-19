@@ -740,10 +740,20 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
         pj->id);
 #endif
 #ifdef WITH_MPI
-  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
-  pj->feedback_data.r2 = r2;
-  pj->feedback_data.cost = (float)cost;
-  pj->feedback_data.claimed_this_pass = 1;
+  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting: only
+     meaningful when pj is a foreign copy (xpj == NULL, this subsystem's
+     established xp == NULL contract, see feedback_get_eligibility_temperature)
+     and this claim must be reported to pj's real owner. A claim on this
+     rank's own local pj (xpj != NULL) has no owner to report to, so leaving
+     these fields untouched avoids latching claimed_this_pass at 1 on a
+     local part, which would otherwise re-echo as a phantom claim every time
+     the whole-part xv/rho/gradient channels re-deliver it to foreign
+     mirrors. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost = (float)cost;
+    pj->feedback_data.claimed_this_pass = 1;
+  }
 #endif
   timestep_sync_part(pj);
 
@@ -824,10 +834,13 @@ feedback_iact_HII_maintain_ionized_part(
         pj->id);
 #endif
 #ifdef WITH_MPI
-  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting. */
-  pj->feedback_data.r2 = r2;
-  pj->feedback_data.cost = (float)cost;
-  pj->feedback_data.claimed_this_pass = 1;
+  /* Foreign-copy guard: see feedback_hii_claim_part's identical block for
+     why this only applies when xpj == NULL. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost = (float)cost;
+    pj->feedback_data.claimed_this_pass = 1;
+  }
 #endif
 
   return cost;

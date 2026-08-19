@@ -110,12 +110,17 @@ struct feedback_part_data {
       only measures how much was wasted. */
   float cost;
 
-  /*! Set whenever feedback_hii_claim_part or feedback_iact_HII_maintain_
-      ionized_part touches this particle (S3.4). feedback_pack_hii_tag_
-      report reads this into the wire's own claimed_this_pass and clears
-      it, so it always reflects only the most recent pass: without the
-      clear, a particle claimed once would look claimed on every later
-      pack even where the current pass never reached it again. */
+  /*! Set only when feedback_hii_claim_part or feedback_iact_HII_maintain_
+      ionized_part claims a FOREIGN copy of this particle (xpj == NULL;
+      S3.4), since only a foreign claim has an owner to report to -- a
+      claim on this rank's own local gas leaves the field untouched.
+      feedback_pack_hii_tag_report reads it into the wire's own
+      claimed_this_pass and clears it right after, so it always reflects
+      only the most recent pass and never latches. Because a rank's own
+      local gas never sets this field in the first place, the whole-part
+      recv_xv/recv_rho/recv_gradient channels (which overwrite a foreign
+      copy in place, this field included) never carry a stale local claim
+      either: there is nothing nonzero at the source to re-deliver. */
   char claimed_this_pass;
 #endif
 };

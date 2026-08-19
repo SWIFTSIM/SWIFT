@@ -90,6 +90,41 @@ __attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
 }
 
 /**
+ * @brief Apply an incoming HII tag report's claim onto @p p (S3.1),
+ * touching only the fields the report is authoritative for.
+ *
+ * is_ionized, star_id and end_time are the claim core; r2 and cost are
+ * its MPI tiebreak state; all five are always stamped together by
+ * whichever rank ran the claim (feedback_hii_claim_part /
+ * feedback_iact_HII_maintain_ionized_part), so they move as one unit.
+ * neutral_H_frac and T_eligibility are cooling-time caches this rank's
+ * own cooling task writes; @p data's copies exist only so a foreign
+ * mirror can pass the eligibility gate for its OWN pass and are never
+ * authoritative here, even when the incoming claim wins.
+ * claimed_this_pass is this rank's own pass-local bookkeeping for @p p's
+ * next pack (relevant only if this rank is itself a foreign-copy holder
+ * for some other rank's star); an incoming report from a different
+ * rank's pass must not touch it.
+ * @p data's excess_photon_energy_HI/photoionization_rate_HI are carried on
+ * the wire but not applied here (no per-part storage exists yet, see
+ * feedback_pack_hii_tag_report); the owner's xpart tracer rate fields are
+ * therefore stale after a winning incoming claim.
+ *
+ * @param p The #part to apply the claim to.
+ * @param data The source entry.
+ */
+__attribute__((always_inline)) INLINE static void feedback_apply_hii_tag_claim(
+    struct part *restrict p, const struct hii_tag_report *restrict data) {
+  p->feedback_data.is_ionized = data->tag.is_ionized;
+  p->feedback_data.star_id = data->tag.star_id;
+  p->feedback_data.end_time = data->tag.end_time;
+#ifdef WITH_MPI
+  p->feedback_data.r2 = data->r2;
+  p->feedback_data.cost = data->cost;
+#endif
+}
+
+/**
  * @brief Unpack a #part's HII tag report-back entry and merge it against
  * any existing claim (MPI plan S3.1, S3.4).
  *
@@ -130,7 +165,7 @@ feedback_unpack_hii_tag_report(struct part *restrict p,
                                data->tag.star_id < p->feedback_data.star_id);
     if (incoming_wins) {
       *forfeited_cost = p->feedback_data.cost;
-      p->feedback_data = data->tag;
+      feedback_apply_hii_tag_claim(p, data);
     } else {
       *forfeited_cost = data->cost;
     }
@@ -138,7 +173,7 @@ feedback_unpack_hii_tag_report(struct part *restrict p,
   }
 #endif
 
-  p->feedback_data = data->tag;
+  feedback_apply_hii_tag_claim(p, data);
 }
 
 /**
@@ -170,6 +205,20 @@ feedback_pack_hii_state_update(const struct part *restrict p,
  * tag is written first as the wholesale mirror, not the primary read path
  * (see the struct's doxygen); the two standalone fields are the
  * authoritative same-step values and must win if they ever diverge.
+ * claimed_this_pass is excluded from that mirror on purpose: unlike
+ * is_ionized/star_id/end_time/r2/cost, which are a physical claim this
+ * rank's own pass needs to see (and which correctly move together as one
+ * unit, per feedback_apply_hii_tag_claim's contract), claimed_this_pass is
+ * the receiver's own pass-local bookkeeping. Inheriting the sender's value
+ * would make @p p look claimed by this rank's pass when it was not, and
+ * feedback_pack_hii_tag_report would then echo a phantom claim back to the
+ * owner on the next report; the preserve here guards this rank's own
+ * in-progress pass against that. The whole-part xv/rho/gradient recv
+ * channels no longer need the same guard: feedback_hii_claim_part and
+ * feedback_iact_HII_maintain_ionized_part now set claimed_this_pass only on
+ * a foreign copy (see feedback_part_data.claimed_this_pass's doxygen), so a
+ * rank's own local gas never carries a stale nonzero value for those
+ * channels to redeliver.
  *
  * @param p The #part to unpack into.
  * @param data The source entry.
@@ -178,9 +227,13 @@ __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_state_update(struct part *restrict p,
                                  const struct hii_state_update *restrict data) {
 
+#ifdef WITH_MPI
+  const char local_claimed_this_pass = p->feedback_data.claimed_this_pass;
+#endif
   p->feedback_data = data->tag;
 #ifdef WITH_MPI
   p->feedback_data.T_eligibility = data->T_eligibility;
+  p->feedback_data.claimed_this_pass = local_claimed_this_pass;
 #endif
   p->feedback_data.neutral_H_frac = data->neutral_H_frac;
 }
