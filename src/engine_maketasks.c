@@ -4018,7 +4018,7 @@ static void engine_radiation_wire_super_sorts_only(struct scheduler *sched,
                                                    struct cell *c,
                                                    struct task *t) {
   if (c->hydro.super != NULL) {
-    scheduler_addunlock(sched, c->hydro.super->stars.sorts, t);
+    scheduler_addunlock(sched, c->hydro.super->hydro.sorts, t);
     return;
   }
   for (int k = 0; k < 8; k++)
