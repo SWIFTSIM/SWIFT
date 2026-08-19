@@ -297,6 +297,174 @@ static void engine_wire_send_hydro_super_deps(
 }
 #endif /* WITH_MPI */
 
+#ifdef WITH_MPI
+/**
+ * @brief Growable, dedup-on-insert set of #task pointers, used to collect
+ * distinct hii_ionization_feedback tasks over a cell subtree.
+ */
+struct hii_dedup_set {
+  struct task **tasks;
+  int n;
+  int cap;
+};
+
+/**
+ * @brief Add @p hii to @p set if not already present.
+ */
+static void engine_radiation_hii_dedup_add(struct hii_dedup_set *set,
+                                           struct task *hii) {
+  for (int i = 0; i < set->n; i++)
+    if (set->tasks[i] == hii) return;
+
+  if (set->n == set->cap) {
+    set->cap *= 2;
+    if ((set->tasks = (struct task **)realloc(
+             set->tasks, sizeof(struct task *) * set->cap)) == NULL)
+      error("Failed to grow temporary hii dedup set.");
+  }
+  set->tasks[set->n++] = hii;
+}
+
+/**
+ * @brief Recurse @p c's subtree and collect every distinct local
+ * hii_ionization_feedback task reachable via any cell's own
+ * stars.radiation_in links.
+ *
+ * A radiation_in link's local side is @p c itself for a self task (self
+ * radiation_in tasks are only ever created for a local cell), or
+ * whichever of ci/cj is local for a pair task, checked independently,
+ * since a fully-local pair has TWO local radiation_level regions and both
+ * must be collected, not just one (mirrors
+ * engine_make_extra_radiationloop_tasks_mapper's own independent ci/cj
+ * handling, :3915-3965). A cell holding a radiation_in link may not have
+ * any descendant that also holds one (cell_set_super_radiation_subgrid
+ * errors on that under SWIFT_DEBUG_CHECKS, src/cell.c ~:1411-1417), so the
+ * recursion below never contributes an extra task in a build with that
+ * check compiled in; it is defence in depth against a splitting bug for
+ * builds without it, at the cost of a subtree descent per creation cell
+ * per rebuild.
+ *
+ * @param c The #cell to visit (and recurse below).
+ * @param nodeID This rank's node id.
+ * @param set The dedup set to collect into.
+ */
+static void engine_radiation_collect_local_hii(struct cell *c, const int nodeID,
+                                               struct hii_dedup_set *set) {
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct task *t = l->t;
+
+    if (t->type == task_type_self) {
+      engine_radiation_hii_dedup_add(
+          set, t->ci->stars.radiation_level->stars.hii_ionization_feedback);
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (t->ci->nodeID != nodeID && t->cj->nodeID != nodeID)
+        error(
+            "radiation_in pair task with neither side local to this rank "
+            "(both-foreign pairs must never get a radiation_in link, see "
+            "engine_make_radiationloop_tasks_mapper).");
+#endif
+      /* A fully-local pair has two local radiation_level regions, both of
+       * which write this subtree's gas; check ci and cj independently. */
+      if (t->ci->nodeID == nodeID)
+        engine_radiation_hii_dedup_add(
+            set, t->ci->stars.radiation_level->stars.hii_ionization_feedback);
+      if (t->cj->nodeID == nodeID)
+        engine_radiation_hii_dedup_add(
+            set, t->cj->stars.radiation_level->stars.hii_ionization_feedback);
+    }
+  }
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_radiation_collect_local_hii(c->progeny[k], nodeID, set);
+}
+
+/**
+ * @brief Wire every distinct local hii_ionization_feedback task reachable
+ * from @p from_cell's subtree against up to two MPI comm tasks (S3.2
+ * edges: A/F2-anchor and D).
+ *
+ * Two distinct links (anywhere in the subtree) can resolve to the same
+ * hii_ionization_feedback task (a boundary cell reachable from several
+ * local regions, a self link and a pair link sharing an ancestor
+ * radiation_level, or the same pair task reached via both its ci and cj
+ * list membership); each such task is (un)locked at most once, since
+ * scheduler_set_unlocks() aborts on a duplicate unlock under
+ * SWIFT_DEBUG_CHECKS.
+ *
+ * @param s The #scheduler.
+ * @param from_cell The cell whose subtree's stars.radiation_in links to
+ * walk (the comm tasks' own creation cell; they cover this cell's whole
+ * subtree).
+ * @param nodeID This rank's node id (locality test for pair tasks).
+ * @param unlocked_by_hii If not NULL, add hii_ionization_feedback ->
+ * @p unlocked_by_hii once per distinct hii task found (Edge A / F2 anchor
+ * direction).
+ * @param unlocks_hii If not NULL, add @p unlocks_hii ->
+ * hii_ionization_feedback once per distinct hii task found (Edge D
+ * direction).
+ */
+static void engine_radiation_wire_local_hii_deps(struct scheduler *s,
+                                                 struct cell *from_cell,
+                                                 const int nodeID,
+                                                 struct task *unlocked_by_hii,
+                                                 struct task *unlocks_hii) {
+  struct hii_dedup_set set = {NULL, 0, 8};
+  set.tasks = (struct task **)malloc(sizeof(struct task *) * set.cap);
+  if (set.tasks == NULL) error("Failed to allocate temporary hii dedup set.");
+
+  engine_radiation_collect_local_hii(from_cell, nodeID, &set);
+
+  for (int i = 0; i < set.n; i++) {
+    if (unlocked_by_hii != NULL)
+      scheduler_addunlock(s, set.tasks[i], unlocked_by_hii);
+    if (unlocks_hii != NULL) scheduler_addunlock(s, unlocks_hii, set.tasks[i]);
+  }
+
+  free(set.tasks);
+}
+
+/**
+ * @brief Wire cooling_out -> @p t_hii_state_send for every hydro.super
+ * cell beneath @p c (Edge C).
+ *
+ * send_part_hii_state's ci can sit ABOVE hydro.super for the same reason
+ * #engine_wire_send_hydro_super_deps does (S3.0: radiation_reaches_node
+ * fires independently of the hydro density window), so this mirrors that
+ * recursion shape. Only called when the cooling policy is active:
+ * hydro.super->hydro.cooling_out is NULL otherwise
+ * (engine_maketasks.c:2053-2062).
+ *
+ * Limitation, not a bug, in two failure modes. (1) This only orders the
+ * send behind cooling for hydro.super cells where cooling_out is activated
+ * this step. When gas is hydro-inactive but a star covering it is active,
+ * cooling_out is skipped (no wait added) and the send ships the last
+ * cooling call's state, physically correct (no cooling ran to be fresher
+ * than), but not a same-step-fresh guarantee in that regime. (2) A subtree
+ * with no hydro.super at all (no gas) recurses to no-op silently: nothing
+ * is wired, but there is also nothing to wire, matching the same
+ * silent-no-op shape documented on
+ * #engine_radiation_wire_super_sorts_only.
+ *
+ * @param s The #scheduler.
+ * @param c The cell whose covered hydro.supers to wire (ci of the send).
+ * @param t_hii_state_send The send_part_hii_state #task.
+ */
+static void engine_wire_send_hii_state_cooling_dep(
+    struct scheduler *s, struct cell *c, struct task *t_hii_state_send) {
+  if (c->hydro.super != NULL) {
+    scheduler_addunlock(s, c->hydro.super->hydro.cooling_out, t_hii_state_send);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_wire_send_hii_state_cooling_dep(s, c->progeny[k],
+                                             t_hii_state_send);
+}
+#endif /* WITH_MPI */
+
 /**
  * @brief Add send tasks for the hydro pairs to a hierarchy of cells.
  *
@@ -459,6 +627,11 @@ void engine_addtasks_send_hydro(
       t_hii_state_send =
           scheduler_addtask(s, task_type_send, task_subtype_part_hii_state,
                             ci->mpi.tag, 0, ci, cj);
+
+      /* Edge C: order the send behind this rank's own post-cooling write
+       * of the state it ships. */
+      if (e->policy & engine_policy_cooling)
+        engine_wire_send_hii_state_cooling_dep(s, ci, t_hii_state_send);
     }
 
     /* Add them to the local cell. */
@@ -950,6 +1123,33 @@ void engine_addtasks_recv_hydro(
     /* Normal direction (S3.1b): no inversion seam needed. */
     t_hii_state_recv = scheduler_addtask(
         s, task_type_recv, task_subtype_part_hii_state, c->mpi.tag, 0, c, NULL);
+
+    /* recv_xv/recv_rho/recv_gradient -> recv_part_hii_state: part_mpi_type
+     * ships the WHOLE struct part for all three channels, so any of them
+     * landing after the state message would clobber the freshly delivered
+     * T_eligibility/neutral_H_frac with the owner's pre-cooling snapshot.
+     * Safe to fire unconditionally here (not in the if (t_xv != NULL) block
+     * below): this creation guard only runs once per cell, whereas
+     * t_xv/t_rho/t_gradient are inherited unchanged through the recursion
+     * and would otherwise be paired with the same t_hii_state_recv at every
+     * descendant level. */
+    scheduler_addunlock(s, t_xv, t_hii_state_recv);
+    scheduler_addunlock(s, t_rho, t_hii_state_recv);
+#ifdef EXTRA_HYDRO_LOOP
+    scheduler_addunlock(s, t_gradient, t_hii_state_recv);
+#endif
+
+    /* Edge A: this rank's local hii_ionization_feedback pass(es) over the
+     * foreign copy of c must finish (and drain their claim stamps, see
+     * feedback_pack_hii_tag_report) before the report-back send packs
+     * them. Edge D: the freshly received owner state must land before the
+     * local pass reads it. Unlocks from/to EVERY local
+     * hii_ionization_feedback reachable via c's radiation_in links, not
+     * just one: the pack mutates the parts it reads
+     * (claimed_this_pass = 0), so a partial edge set would silently lose
+     * claims from the omitted region. */
+    engine_radiation_wire_local_hii_deps(s, c, e->nodeID, t_hii_tag_send,
+                                         t_hii_state_recv);
   }
 
   /* A1: outside the t_xv != NULL gate below, since a radiation-only branch
@@ -1038,6 +1238,21 @@ void engine_addtasks_recv_hydro(
         scheduler_addunlock(s, t_xv, l->t);
         scheduler_addunlock(s, t_rho, l->t);
       }
+    }
+
+    /* F1: make sure the foreign gas has been received before the local
+     * radiation_in pass(es) over it run. t_rho alone is not sufficient,
+     * same reasoning as the black_holes.density loop above: it is not
+     * activated for cells with no active hydro. t_gradient carries the
+     * same whole-struct part_mpi_type payload and lands last of the three,
+     * so it must also be wired or a claim written mid-pass can be wiped by
+     * an in-flight recv_gradient (the original Bug A class). */
+    for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+      scheduler_addunlock(s, t_rho, l->t);
+#ifdef EXTRA_HYDRO_LOOP
+      scheduler_addunlock(s, t_gradient, l->t);
+#endif
     }
 
     if (with_rt) {
@@ -4468,6 +4683,9 @@ static int engine_radiation_hii_tag_recv_cmp(const void *a, const void *b) {
  * send_xv/send_rho/send_gradient tasks are in-flight Isend buffers with no
  * separate staging (scheduler.c), so the chain's first recv is anchored
  * behind all of them unconditionally, whether or not any recv exists yet.
+ * The first recv is also anchored behind every local hii_ionization_feedback
+ * task covering the owner cell (Edge F2), since the unpack is an unlocked
+ * read-modify-write of the same parts those tasks write under cell locks.
  *
  * @param e The #engine.
  */
@@ -4521,6 +4739,15 @@ static void engine_radiation_chain_hii_tag_recvs(struct engine *e) {
           scheduler_addunlock(sched, l->t, t);
         }
       }
+
+      /* F2 anchor: recv_part_hii_tag does an unlocked read-modify-write
+       * of owner's local parts (feedback_unpack_hii_tag_report), racing
+       * this rank's own hii_ionization_feedback, which writes the same
+       * particles under cell locks (feedback_common.c). Anchor behind
+       * every local hii_ionization_feedback that covers owner, once,
+       * ahead of the chain's first recv; the chain already orders every
+       * later recv in the group after this one. */
+      engine_radiation_wire_local_hii_deps(sched, owner, e->nodeID, t, NULL);
     } else {
       /* Chained after the previous sending rank's recv for this owner. */
       scheduler_addunlock(sched, tags[i - 1], t);
