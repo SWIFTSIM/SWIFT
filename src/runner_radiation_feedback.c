@@ -913,9 +913,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Repeat-run/cross-scheme comparator: every field here is order
-       independent, so two runs reaching the same physical decisions print
-       identical lines regardless of thread scheduling or traversal order. */
+    /* Repeat-run comparator: claimed_id_hash (a sum of id * constant) is
+       order independent, but leftover_budget on the same line is a
+       floating-point accumulation and is NOT; compare the hash, not the
+       budget. */
     message(
         "HII CHECKSUM: star_id %lld ti_current %lld n_claimed %d "
         "claimed_id_hash %llu held %d leftover_budget %.17e",
