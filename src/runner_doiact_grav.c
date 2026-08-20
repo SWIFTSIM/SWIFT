@@ -944,7 +944,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const struct cell *restrict cj, const integertime_t pre_call_recv_at_tic,
     const int pre_call_recv_count,
     const integertime_t pre_call_counts_recv_at_tic,
-    const struct gpart_foreign *restrict pre_call_parts_foreign) {
+    const struct gpart_foreign *restrict pre_call_parts_foreign,
+    const int pre_call_gpart_exec, const int pre_call_top_gpart_exec) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1083,10 +1084,12 @@ static INLINE void runner_dopair_grav_pp_truncated(
          * raw_x/y/z: shift_j is exactly {0,0,0} here, so they must be
          * bit-identical unless the whole struct was overwritten between
          * populate and this read, independent of the mass/time_bin
-         * question entirely. */
+         * question entirely.
+         * The gpart_exec/grav_counts_exec fields diff pre_call vs now to
+         * catch a second recv/relink firing on cj (or cj->top) mid-call. */
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
-            "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d "
+            "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d id=%lld "
             "raw_mass=%.3e cached_mass=%.3e time_bin=%d ti_drift=%lld "
             "ti_current=%lld pre_call_recv_at_tic=%lld entry_recv_at_tic=%lld "
             "now_recv_at_tic=%lld pre_call_recv_count=%d entry_recv_count=%d "
@@ -1096,10 +1099,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "pre_call_ptr=%p entry_ptr=%p now_ptr=%p "
             "populated_time_bin_at_pjd=%d now_time_bin_at_pjd=%d "
             "cache_x=%.9e raw_x=%.9e cache_y=%.9e raw_y=%.9e cache_z=%.9e "
-            "raw_z=%.9e",
+            "raw_z=%.9e pre_call_gpart_exec=%d now_gpart_exec=%d "
+            "pre_call_top_gpart_exec=%d now_top_gpart_exec=%d "
+            "now_grav_counts_exec=%d now_top_grav_counts_exec=%d",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
-            gparts_foreign_j[pjd].mass, mass_j, gparts_foreign_j[pjd].time_bin,
+            gparts_foreign_j[pjd].id_or_neg_offset, gparts_foreign_j[pjd].mass,
+            mass_j, gparts_foreign_j[pjd].time_bin,
             (long long)gparts_foreign_j[pjd].ti_drift, (long long)e->ti_current,
             (long long)pre_call_recv_at_tic, (long long)entry_data_recv_at_tic,
             (long long)cj->grav.data_recv_at_tic, pre_call_recv_count,
@@ -1114,7 +1120,12 @@ static INLINE void runner_dopair_grav_pp_truncated(
             cj_cache->populated_time_bin[pjd], gparts_foreign_j[pjd].time_bin,
             (double)x_j, (double)gparts_foreign_j[pjd].x[0], (double)y_j,
             (double)gparts_foreign_j[pjd].x[1], (double)z_j,
-            (double)gparts_foreign_j[pjd].x[2]);
+            (double)gparts_foreign_j[pjd].x[2], pre_call_gpart_exec,
+            (int)cj->subtasks_executed[task_subtype_gpart],
+            pre_call_top_gpart_exec,
+            (int)cj->top->subtasks_executed[task_subtype_gpart],
+            (int)cj->subtasks_executed[task_subtype_grav_counts],
+            (int)cj->top->subtasks_executed[task_subtype_grav_counts]);
         error("Inhibited particle used as gravity source.");
       }
 
@@ -1565,6 +1576,11 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       (ci->nodeID != e->nodeID) ? ci->grav.counts_recv_at_tic : 0;
   const struct gpart_foreign *const ci_post_populate_parts_foreign =
       ci->grav.parts_foreign;
+  const int ci_post_populate_gpart_exec =
+      (ci->nodeID != e->nodeID) ? ci->subtasks_executed[task_subtype_gpart] : 0;
+  const int ci_post_populate_top_gpart_exec =
+      (ci->nodeID != e->nodeID) ? ci->top->subtasks_executed[task_subtype_gpart]
+                                : 0;
 #endif
 
   if (cj->nodeID == e->nodeID) {
@@ -1586,6 +1602,11 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       (cj->nodeID != e->nodeID) ? cj->grav.counts_recv_at_tic : 0;
   const struct gpart_foreign *const cj_post_populate_parts_foreign =
       cj->grav.parts_foreign;
+  const int cj_post_populate_gpart_exec =
+      (cj->nodeID != e->nodeID) ? cj->subtasks_executed[task_subtype_gpart] : 0;
+  const int cj_post_populate_top_gpart_exec =
+      (cj->nodeID != e->nodeID) ? cj->top->subtasks_executed[task_subtype_gpart]
+                                : 0;
 #else
   const integertime_t ci_post_populate_recv_at_tic = 0;
   const int ci_post_populate_recv_count = 0;
@@ -1595,6 +1616,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const integertime_t cj_post_populate_counts_recv_at_tic = 0;
   const struct gpart_foreign *const ci_post_populate_parts_foreign = NULL;
   const struct gpart_foreign *const cj_post_populate_parts_foreign = NULL;
+  const int ci_post_populate_gpart_exec = 0;
+  const int ci_post_populate_top_gpart_exec = 0;
+  const int cj_post_populate_gpart_exec = 0;
+  const int cj_post_populate_top_gpart_exec = 0;
 #endif
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
@@ -1662,7 +1687,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
             r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
             cj->nodeID != e->nodeID, cj, cj_post_populate_recv_at_tic,
             cj_post_populate_recv_count, cj_post_populate_counts_recv_at_tic,
-            cj_post_populate_parts_foreign);
+            cj_post_populate_parts_foreign, cj_post_populate_gpart_exec,
+            cj_post_populate_top_gpart_exec);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1678,7 +1704,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
             r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
             ci->nodeID != e->nodeID, ci, ci_post_populate_recv_at_tic,
             ci_post_populate_recv_count, ci_post_populate_counts_recv_at_tic,
-            ci_post_populate_parts_foreign);
+            ci_post_populate_parts_foreign, ci_post_populate_gpart_exec,
+            ci_post_populate_top_gpart_exec);
 
         /* Then the M2P */
         if (allow_multipole_i)

@@ -47,6 +47,7 @@ __attribute__((always_inline)) INLINE static void gravity_foreign_copy(
 
 #ifdef SWIFT_DEBUG_CHECKS
   packed->ti_drift = full->ti_drift;
+  packed->id_or_neg_offset = full->id_or_neg_offset;
 #endif
 }
 
