@@ -152,7 +152,9 @@ for i in range(num_files):
         for i in range(len(tasks)):
 
             # Extract the different blocks
-            if re.search("scheduler_report_task_times: \\*\\*\\*  ", line):
+            # Match only the standard report; zoom_scheduler_report_task_times
+            # lines contain this string as a substring and must be excluded.
+            if re.search(r"(?<!zoom_)scheduler_report_task_times: \*\*\*  ", line):
                 if re.search("%s" % tasks[i], line):
                     counts_tasks[i] += 1.0
                     times_tasks[i] += float(
