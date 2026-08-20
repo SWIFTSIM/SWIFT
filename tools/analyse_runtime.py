@@ -299,11 +299,12 @@ if counts_zoom_tasks.sum() > 0:
         )
         for i in range(len(tasks) - 1):
             print(
-                " - '%-40s' (%5d calls): %.4f%%"
+                " - '%-40s' (%5d calls): %.4f%% within type, %.4f%% of total"
                 % (
                     tasks[i],
                     counts_zoom_tasks[b][i],
                     100.0 * times_zoom_tasks[b][i] / total_b,
+                    100.0 * times_zoom_tasks[b][i] / times_tasks[-1],
                 )
             )
         print("")
