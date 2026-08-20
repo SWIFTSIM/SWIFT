@@ -429,16 +429,22 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
     const struct sort_entry *restrict sort_i = cell_get_stars_sorts(ci, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Some constants used to checks that the parts are in the right frame */
+    /* Some constants used to checks that the parts are in the right frame.
+     * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+     * from the end-of-step tend exchange; substitute a full cell width on
+     * the foreign side (see afcc4326c). */
+    const int local_i = ci->nodeID == e->nodeID;
+    const int local_j = cj->nodeID == e->nodeID;
+    const float ci_dx_max_part_safe =
+        local_i ? ci->stars.dx_max_part : ci->width[0];
+    const float cj_dx_max_part_safe =
+        local_j ? cj->hydro.dx_max_part : cj->width[0];
     const float shift_threshold_x =
-        2. * ci->width[0] +
-        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[0] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
     const float shift_threshold_y =
-        2. * ci->width[1] +
-        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[1] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
     const float shift_threshold_z =
-        2. * ci->width[2] +
-        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[2] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
@@ -612,16 +618,22 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
     const struct sort_entry *restrict sort_j = cell_get_stars_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Some constants used to checks that the parts are in the right frame */
+    /* Some constants used to checks that the parts are in the right frame.
+     * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+     * from the end-of-step tend exchange; substitute a full cell width on
+     * the foreign side (see afcc4326c). */
+    const int local_i = ci->nodeID == e->nodeID;
+    const int local_j = cj->nodeID == e->nodeID;
+    const float ci_dx_max_part_safe =
+        local_i ? ci->hydro.dx_max_part : ci->width[0];
+    const float cj_dx_max_part_safe =
+        local_j ? cj->stars.dx_max_part : cj->width[0];
     const float shift_threshold_x =
-        2. * ci->width[0] +
-        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[0] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
     const float shift_threshold_y =
-        2. * ci->width[1] +
-        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[1] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
     const float shift_threshold_z =
-        2. * ci->width[2] +
-        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[2] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */

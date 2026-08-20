@@ -695,15 +695,21 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+   * from the end-of-step tend exchange; substitute a full cell width on
+   * the foreign side (see afcc4326c). */
+  const int local_i = ci->nodeID == engine_rank;
+  const int local_j = cj->nodeID == engine_rank;
+  const float ci_dx_max_part_safe =
+      local_i ? ci->hydro.dx_max_part : ci->width[0];
+  const float cj_dx_max_part_safe =
+      local_j ? cj->hydro.dx_max_part : cj->width[0];
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2. * ci->width[0] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2. * ci->width[1] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2. * ci->width[2] + 2. * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
