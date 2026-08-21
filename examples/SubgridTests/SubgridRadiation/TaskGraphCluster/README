@@ -3,7 +3,7 @@ This example consists of a homogeneous and periodic box filled with gas particle
 
 This example tests the GEAR subgrid ionization algorithm under many-way concurrent execution: the center cell is a task-graph neighbour of all 6 surrounding cells simultaneously, making its `hii_ionization_feedback` task a lock-contention point against up to 6 sibling tasks at once -- the strongest available stress test of the `task_lock`/`task_unlock` rollback path for this task type (src/task.c).
 
-**Role: software-correctness test, not a physics validation target.** This checks task-graph lock contention, not agreement with any published result. See `../StromgrenSphereStarbench/`, `../StromgrenSphereHuSmith2017/`, and `../StromgrenSphereClumpSmith2021/` for the actual validation targets.
+**Role: software-correctness test, not a physics validation target.** This checks task-graph lock contention, not agreement with any published result. See `../Starbench/`, `../HuSmith2017/`, and `../ClumpSmith2021/` for the actual validation targets.
 
 `GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
 

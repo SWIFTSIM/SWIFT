@@ -59,7 +59,7 @@ SPH:
   resolution_eta:        1.2348
   CFL_condition:         0.1
   minimal_temperature:   1000     # Floors the neutral gas near Hu/Smith's T_o=1e3 K. A direct check
-                                   # on the sibling StromgrenSphereStarbench example found real
+                                   # on the sibling Starbench example found real
                                    # Grackle cooling (metal-line cooling at Z/Zsun~0.231) collapses
                                    # the neutral gas to ~2-5 K almost immediately without this floor
                                    # -- removing the pressure confinement the STARBENCH stagnation
@@ -72,7 +72,7 @@ SPH:
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5  # Standard table -- n_H=100 cm^-3 is well within its range,
-                                           # unlike the sibling StromgrenSphereClumpSmith2021's 1e4 cm^-3 clump.
+                                           # unlike the sibling ClumpSmith2021's 1e4 cm^-3 clump.
   with_UV_background: 0
   redshift: -1
   with_metal_cooling: 1
@@ -103,7 +103,7 @@ GEARChemistry:
   # Z/Zsun~0.231 to hit the papers' flat T_i=1e4 K target via this code's
   # metallicity-dependent collisional-equilibrium fit, but that introduces
   # real metal-line cooling the papers' idealized medium doesn't have --
-  # see StromgrenSphereStarbench/README's "What actually happened" section
+  # see Starbench/README's "What actually happened" section
   # for the direct measurement (neutral gas collapsing to ~2-5 K instead
   # of T_o) that motivated switching to Z=0 here too. This code's own Z=0
   # floor gives T_i~47500 K, not 1e4 K -- the STARBENCH comparison is
