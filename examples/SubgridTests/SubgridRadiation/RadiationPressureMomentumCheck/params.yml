@@ -2,9 +2,9 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
   UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
-  UnitVelocity_in_cgs: 1e5   # km/s
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
 
 Restarts:
   enable: 0
@@ -23,16 +23,16 @@ Gravity:
 # cheap momentum-conservation self-check, not a dynamical run (see README).
 TimeIntegration:
   time_begin:        0.
-  time_end:          1e-4    # ~0.098 Myr
+  time_end:          1e-4  # ~0.098 Myr
   dt_min:            1e-12
-  dt_max:            1e-5    # ~0.0098 Myr
+  dt_max:            1e-5  # ~0.0098 Myr
 
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1e-5          # 10 snapshots over the run
+  delta_time: 1e-5  # 10 snapshots over the run
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -74,19 +74,19 @@ GrackleCooling:
   convergence_limit: 1e-2
   thermal_time_myr: 0
   maximal_density_Hpcm3: 1e4
-  HydrogenFractionByMass: 0.76                  # Hydrogen fraction by mass. (Default: 0.76)
-  use_radiative_transfer: 0                     # Arrays of ionization/heating rates are provided. (Default: 0)
-  cmb_temperature_floor: 1                      # Enable/disable an effective CMB temperature floor. (Default: 1)
-  RT_heating_rate_cgs: 0                        # Heating rate in units of / nHI_cgs. (Default: 0)
-  RT_HI_ionization_rate_cgs: 0                  # HI ionization rate in cgs [1/s]. (Default: 0)
-  RT_HeI_ionization_rate_cgs: 0                 # HeI ionization rate in cgs [1/s]. (Default: 0)
-  RT_HeII_ionization_rate_cgs: 0                # HeII ionization rate in cgs [1/s]. (Default: 0)
-  volumetric_heating_rates_cgs: 0               # Volumetric heating rate in cgs [erg/s/cm3]. (Default: 0)
-  specific_heating_rates_cgs: 0                 # Specific heating rate in cgs [erg/s/g]. (Default: 0)
-  initial_nHII_to_nH_ratio: -1                  # Initial nHII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeI_to_nH_ratio: -1                  # Initial nHeI to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeII_to_nH_ratio: -1                 # Initial nHeII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeIII_to_nH_ratio: -1                # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  HydrogenFractionByMass: 0.76     # Hydrogen fraction by mass. (Default: 0.76)
+  use_radiative_transfer: 0        # Arrays of ionization/heating rates are provided. (Default: 0)
+  cmb_temperature_floor: 1         # Enable/disable an effective CMB temperature floor. (Default: 1)
+  RT_heating_rate_cgs: 0           # Heating rate in units of / nHI_cgs. (Default: 0)
+  RT_HI_ionization_rate_cgs: 0     # HI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0    # HeI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0   # HeII ionization rate in cgs [1/s]. (Default: 0)
+  volumetric_heating_rates_cgs: 0  # Volumetric heating rate in cgs [erg/s/cm3]. (Default: 0)
+  specific_heating_rates_cgs: 0    # Specific heating rate in cgs [erg/s/g]. (Default: 0)
+  initial_nHII_to_nH_ratio: -1     # Initial nHII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeI_to_nH_ratio: -1     # Initial nHeI to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeII_to_nH_ratio: -1    # Initial nHeII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeIII_to_nH_ratio: -1   # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
 
 GEARChemistry:
   # Solar (Z/Zsun=1), not the Z=0 the other StromgrenSphere* examples use --
@@ -94,7 +94,7 @@ GEARChemistry:
   # (Eq. rp-tauIR) to actually exercise the (1+tau_IR) term (see README).
   initial_metallicity: 1
   scale_initial_metallicity: 1
-  diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
+  diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
 GEARFeedback:
   supernovae_Ia_energy_erg: 1e51
@@ -120,14 +120,14 @@ Stars:
   timestep_age_threshold_Myr:           7.
   max_timestep_young_Myr:               0.5
   max_timestep_old_Myr:                 1
-  min_star_timestep_Myr: 1e-4                    # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
+  min_star_timestep_Myr: 1e-4     # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
   HII_max_search_radius: 0.1
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5
   HII_radius_expansion_factor: 1.1
-  overwrite_birth_time: 0                        # Overwrite the birth time of stars read from the ICs? (Default: 0)
-  birth_time: -1                                 # Birth time used for all stars if overwrite_birth_time is 1 (-1 means the stars remain inactive feedback-wise throughout the run).
-  overwrite_birth_density: 0                      # Overwrite the birth density of stars read from the ICs? (Default: 0)
-  birth_density: -1                               # Birth density used for all stars if overwrite_birth_density is 1.
-  overwrite_birth_temperature: 0                  # Overwrite the birth temperature of stars read from the ICs? (Default: 0)
-  birth_temperature: -1                           # Birth temperature used for all stars if overwrite_birth_temperature is 1.
+  overwrite_birth_time: 0         # Overwrite the birth time of stars read from the ICs? (Default: 0)
+  birth_time: -1                  # Birth time used for all stars if overwrite_birth_time is 1 (-1 means the stars remain inactive feedback-wise throughout the run).
+  overwrite_birth_density: 0      # Overwrite the birth density of stars read from the ICs? (Default: 0)
+  birth_density: -1               # Birth density used for all stars if overwrite_birth_density is 1.
+  overwrite_birth_temperature: 0  # Overwrite the birth temperature of stars read from the ICs? (Default: 0)
+  birth_temperature: -1           # Birth temperature used for all stars if overwrite_birth_temperature is 1.
