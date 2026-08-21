@@ -17,9 +17,11 @@ STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This 
 `--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching STARBENCH's own purely hydrodynamical test.
 
 ## Cadence
-`HII_rebuild_time_Myr=0.005` (fixed cadence) is a numerical parameter, not
-a physical one. This example runs at a much higher density than a typical
-cadence sweep, so it is worth re-checking if pushed much coarser.
+`HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
+a physical one, but is not free to increase arbitrarily here: too coarse
+a cadence updates the ionization state less often than the swept shell's
+hydrodynamic response needs, and the front growth diverges from the
+analytic solution. Keep at or below this value.
 
 # Configure
 Configuration matching STARBENCH's own `T_i=1e4 K` convention:
