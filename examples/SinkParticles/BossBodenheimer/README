@@ -1,0 +1,37 @@
+# Intro
+This example reproduces the classic Boss & Bodenheimer (1979) collapse test: a
+uniform-density, rigidly-rotating sphere of gas with an m=2 azimuthal density
+perturbation. The perturbation grows as the sphere collapses, producing the
+characteristic bar/two-arm fragmentation pattern, which makes this a standard
+test for sink particle formation from gravitational fragmentation.
+
+The default resolution contains 500k particles. `python3 makeIC.py --help` lists
+every parameter (sphere radius, mass, rotation rate, perturbation amplitude, etc);
+raise `-N` for production/paper-quality runs, and reduce
+`Gravity:max_physical_baryon_softening` accordingly. `GEARSink:cut_off_radius`
+and `GEARSink:density_threshold_Hpcm3` are coupled (the smoothing-length
+formation criterion needs kernel_gamma*h < cut_off_radius, and h shrinks with
+resolution). Rescale both together, not just one.
+
+Sink particles are expected to start forming around 1.3-1.6 free-fall times
+(t_ff ~= 3689 internal units for the default sphere).
+
+# Configure
+To run this example with the GEAR model,
+
+    ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-equation-of-state=isothermal-gas --with-grackle=path/to/grackle
+
+and then
+
+    make -j
+
+# ICs
+The run.sh script calls `makeIC.py` with default values. Run
+`python3 makeIC.py --help` to see all the available options.
+
+# Run
+Type `./run.sh` (`N=<value>` overrides the particle number), and let's go!
+
+Sink particles form and accrete gas in this test, but do not spawn stars
+(`GEARSink:disable_star_formation: 1` in params.yml). This test targets
+sink formation/accretion physics, not the stellar feedback loop.
