@@ -1,20 +1,14 @@
 # Intro
-Reproduces STARBENCH's (Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621) late-phase D-type expansion test: a single ionizing source at the center of a uniform pure-hydrogen medium (`n_H ~ 3115 cm^-3`, `Q_H = 1e49` photons/s). Validated against STARBENCH's own semi-empirical solution (Eqns 8, 11, 28, 29 -- a blend of the pressure-driven and shell-inertia ODEs), not the classical Spitzer (1978) formula the sibling `../StromgrenSphere/` example uses (Spitzer over-predicts at late times, the whole reason STARBENCH exists). Use `starbench_analytic_check.py`, not `stromgren_analytic_check.py`.
+Reproduces STARBENCH's (Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621) late-phase D-type expansion test: a single ionizing source at the center of a uniform pure-hydrogen medium (`n_H ~ 3115 cm^-3`, `Q_H = 1e49` photons/s). Validated against STARBENCH's own semi-empirical solution (Eqns 8, 11, 28, 29: a blend of the pressure-driven and shell-inertia ODEs), not the classical Spitzer (1978) formula the sibling `../StromgrenSphere/` example uses (Spitzer over-predicts at late times, which is why STARBENCH exists). 
 
 ## Temperature
 STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This code computes `T_i` from metallicity instead; at `Z=0` (this example's default) it gives `T_i~47500 K`. To match STARBENCH's own convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
 
 ## Star mass
-`star_mass=26.75 Msun` gives `Q_H=1e49 s^-1` in this code's mass-luminosity fit (`radiation_get_individual_star_ionizing_photon_emission_rate_fit`, `src/feedback/GEAR/radiation.c`).
+`star_mass=26.75 Msun` gives `Q_H=1e49 s^-1` in SWIFT-GEAR '''mass-luminosity fit.
 
 ## Resolution
 `gas_mass=0.1 Msun` (default), ~770k particles.
-
-## Box size
-`boxsize=0.01` kpc (10 pc), `Stars:HII_max_search_radius=0.0049` (4.9 pc, just inside the 5 pc box half-width). Sized for the `T_i=1e4 K` build, where `R_STAG` stays inside the box for the full 3 Myr run. At the plain build's natural `T_i~47500 K`, `R_STAG` exceeds the box; `starbench_analytic_check.py` automatically limits its comparison window to when the analytic prediction is still box-valid. If you shrink `boxsize`, shrink `max_search_radius` to match.
-
-## Gravity
-`--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching STARBENCH's own purely hydrodynamical test.
 
 ## Cadence
 `HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
@@ -29,11 +23,11 @@ Configuration matching STARBENCH's own `T_i=1e4 K` convention:
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
-`grackle_1` prices the ionizing photon budget against the neutral
-hydrogen fraction from Grackle's own H/He species network rather than
-total hydrogen, which the D-type expansion physics this example
-reproduces depends on. Dropping the `CFLAGS` forcing flag builds with
-this code's own natural, metallicity-dependent `T_i` instead, which does
+`grackle_1` prices the ionizing photon budget against the neutral hydrogen
+fraction from Grackle's own H/He species network rather than total hydrogen,
+which the D-type expansion physics this example reproduces depends on. Dropping
+the `CFLAGS` forcing flag builds with SWIFT-GEAR's own natural,
+metallicity-dependent `T_i` instead, which does
 not reproduce STARBENCH's `T_i=1e4 K` convention (see Temperature above).
 
 # Run
