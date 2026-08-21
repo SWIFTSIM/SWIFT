@@ -20,7 +20,7 @@
 Reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: four ionizing
 sources at the centre of a uniform 100 cm^-3 background, plus a 10 pc-radius
 clump of 1e4 cm^-3 gas centered 20 pc away along +x. See the README for the
-source values and how this differs from ../StromgrenSphereClump (which uses
+source values and how this differs from ../AngularSplitClump (which uses
 a geometry calibrated against this code's own measured ionization front
 instead of the paper's absolute scale).
 """
