@@ -296,6 +296,8 @@ if counts_zoom_tasks.sum() > 0:
             % zoom_names[b]
         )
         for i in range(len(tasks) - 1):
+            if times_zoom_tasks[b][i] == 0.0:
+                continue
             print(
                 " - '%-40s' (%5d calls): %8.4f%% of %-18s, %8.4f%% of total"
                 % (

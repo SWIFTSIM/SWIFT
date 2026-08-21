@@ -253,6 +253,7 @@ void zoom_scheduler_report_task_times(const struct scheduler *s,
         "*** CPU time spent in different zoom task categories "
         "(within %% / total %%):");
     for (int i = 0; i < task_category_count; ++i) {
+      if (zoom_time[i] == 0.f) continue;
       message("*** %20s: %12.2f %s (%6.2f %% / %5.2f %%)",
               task_category_names[i], zoom_time[i], clocks_getunit(),
               zoom_time[i] / total_zoom_time * 100.,
@@ -262,6 +263,7 @@ void zoom_scheduler_report_task_times(const struct scheduler *s,
         "*** CPU time spent in different background task categories "
         "(within %% / total %%):");
     for (int i = 0; i < task_category_count; ++i) {
+      if (bkg_time[i] == 0.f) continue;
       message("*** %20s: %12.2f %s (%6.2f %% / %5.2f %%)",
               task_category_names[i], bkg_time[i], clocks_getunit(),
               bkg_time[i] / total_bkg_time * 100.,
@@ -271,6 +273,7 @@ void zoom_scheduler_report_task_times(const struct scheduler *s,
         "*** CPU time spent in different mixed (zoom + background) task "
         "categories (within %% / total %%):");
     for (int i = 0; i < task_category_count; ++i) {
+      if (mixed_time[i] == 0.f) continue;
       message("*** %20s: %12.2f %s (%6.2f %% / %5.2f %%)",
               task_category_names[i], mixed_time[i], clocks_getunit(),
               mixed_time[i] / total_mixed_time * 100.,
