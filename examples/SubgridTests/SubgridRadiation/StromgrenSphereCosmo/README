@@ -2,9 +2,7 @@
 Cosmological counterpart of `../StromgrenSphere/`: same homogeneous periodic box and single star, run with `Cosmology:` turned on instead of a purely hydrodynamical, non-expanding background. Two tiers, selected by the `tier` env var:
 
 - `tier=identity` (default): `../StromgrenSphere/`'s own box/density/star (0.05 kpc, 5 atom/cm3, 29.7 Msun), confined to a tiny scale-factor span at `a~=1` (`a_begin=0.99865`, `a_end=0.99886`, ~3 Myr) so cosmological dilution is negligible over the run. Checked directly against `../StromgrenSphere/`'s own `r_hii(t)`: any missing or spurious scale-factor conversion in the comoving/physical bookkeeping shows up as a deviation here even though the underlying physics is unchanged.
-- `tier=highz`: the same physical gas density and star, placed at `z~=9` (`a_begin=0.1`) and run for ~10 Myr, over which `a` changes by only ~1.2%. `makeIC.py` sizes the comoving box/density so the PHYSICAL density at `a_begin` matches `tier=identity`'s (see its docstring). The physical boxsize is larger here (0.15 kpc, gas particle mass scaled up to 2.7 Msun to keep the same particle count) so the equilibrium Stromgren radius actually fits inside it -- checked against the Stromgren/Spitzer analytic formulas evaluated at the instantaneous physical density.
-
-`params_identity.yml` and `params_highz.yml` hold each tier's `Cosmology`/`Snapshots`/`Statistics`/`InitialConditions` blocks; everything else is shared.
+- `tier=highz`: the same physical gas density and star, placed at `z~=9` (`a_begin=0.1`) and run for ~10 Myr, over which `a` changes by only ~1.2%. `makeIC.py` sizes the comoving box/density so the PHYSICAL density at `a_begin` matches `tier=identity`'s (see its docstring). The physical boxsize is larger here (0.15 kpc, gas particle mass scaled up to 2.7 Msun to keep the same particle count) so the equilibrium Stromgren radius actually fits inside it.
 
 # Configure
 ```
@@ -12,18 +10,16 @@ Cosmological counterpart of `../StromgrenSphere/`: same homogeneous periodic box
 make -j
 ```
 
-The cooling mode is not critical for this test; any `--with-cooling=grackle_N` works. The `CFLAGS` forcing flag pins the ionized-gas temperature to the flat
-`T_i = 1e4 K` convention every sibling radiation example validates
-against; the tier-1 identity comparison additionally requires the
-control `../StromgrenSphere` run to be built with the *same* flag and
-binary, since it compares the two runs directly.
+The cooling mode is not critical for this test; any `--with-cooling=grackle_N` works. The `CFLAGS` forcing flag pins the ionized-gas temperature to the flat `T_i = 1e4 K` convention every sibling radiation example validates against; the tier-1 identity comparison additionally requires the control `../StromgrenSphere` run to be built with the *same* flag and binary, since it compares the two runs directly.
 
 # Run
 ```
 tier=identity ./run.sh
 tier=highz ./run.sh
 ```
-`tier=identity run_name=identity ./run.sh` / `tier=highz run_name=highz ./run.sh` move each tier's output into its own directory so both can be kept side by side. See `run.sh` for the other overridable variables (`n_threads`, `gas_density`, `gas_mass`, `star_mass`, `boxsize` -- all PHYSICAL values at `a_begin`). The non-cosmological control for `tier=identity` is `../StromgrenSphere`, run
+`tier=identity run_name=identity ./run.sh` / `tier=highz run_name=highz ./run.sh` move each tier's output into its own directory so both can be kept side by side.
+
+See `run.sh` for the other overridable variables (`n_threads`, `gas_density`, `gas_mass`, `star_mass`, `boxsize`; all PHYSICAL values at `a_begin`). The non-cosmological control for `tier=identity` is `../StromgrenSphere`, run
 with the SAME binary and matching cadence/duration:
 ```
 cd ../StromgrenSphere && rebuild_time_myr=0.05 time_end=3.1e-3 dt_max=1e-3 ./run.sh
@@ -38,6 +34,6 @@ passes.
 python3 cosmo_identity_check.py --control 'path/to/StromgrenSphere/snap/snapshot_*.hdf5' --cosmo 'identity/snap/snapshot_*.hdf5'
 python3 cosmo_stromgren_analytic_check.py -s 'highz/snap/snapshot_*.hdf5'
 ```
-`cosmo_identity_check.py` compares `tier=identity`'s simulated `r_hii(t)` directly against the control run's own -- both converted from comoving to physical using each snapshot field's own `a-scale exponent` attribute (a no-op for the non-cosmological control, since it sits at `a=1` throughout).
+`cosmo_identity_check.py` compares `tier=identity`'s simulated `r_hii(t)` against the control run's own: both converted from comoving to physical using each snapshot field's own `a-scale exponent` attribute.
 
 `cosmo_stromgren_analytic_check.py` compares `tier=highz` against the equilibrium Stromgren radius and Spitzer (1978) D-type expansion, the same physics as `../StromgrenSphere/stromgren_analytic_check.py`. `T_ionized` is measured from the run's own tagged gas; pass `--T-ionized-K` only to override it.
