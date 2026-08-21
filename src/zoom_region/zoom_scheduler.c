@@ -249,32 +249,40 @@ void zoom_scheduler_report_task_times(const struct scheduler *s,
       total_mixed_time += mixed_time[i];
     }
 
-    message("*** CPU time spent in different zoom task categories:");
+    message(
+        "*** CPU time spent in different zoom task categories "
+        "(within % / total %):");
     for (int i = 0; i < task_category_count; ++i) {
-      message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i],
-              zoom_time[i], clocks_getunit(),
-              zoom_time[i] / total_zoom_time * 100.);
+      message("*** %20s: %12.2f %s (%5.2f %% / %5.2f %%)",
+              task_category_names[i], zoom_time[i], clocks_getunit(),
+              zoom_time[i] / total_zoom_time * 100.,
+              zoom_time[i] / total_tasks_time * 100.);
     }
-    message("*** CPU time spent in different background task categories:");
+    message(
+        "*** CPU time spent in different background task categories "
+        "(within % / total %):");
     for (int i = 0; i < task_category_count; ++i) {
-      message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i],
-              bkg_time[i], clocks_getunit(),
-              bkg_time[i] / total_bkg_time * 100.);
+      message("*** %20s: %12.2f %s (%5.2f %% / %5.2f %%)",
+              task_category_names[i], bkg_time[i], clocks_getunit(),
+              bkg_time[i] / total_bkg_time * 100.,
+              bkg_time[i] / total_tasks_time * 100.);
     }
     message(
         "*** CPU time spent in different mixed (zoom + background) task "
-        "categories:");
+        "categories (within % / total %):");
     for (int i = 0; i < task_category_count; ++i) {
-      message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i],
-              mixed_time[i], clocks_getunit(),
-              mixed_time[i] / total_mixed_time * 100.);
+      message("*** %20s: %12.2f %s (%5.2f %% / %5.2f %%)",
+              task_category_names[i], mixed_time[i], clocks_getunit(),
+              mixed_time[i] / total_mixed_time * 100.,
+              mixed_time[i] / total_tasks_time * 100.);
     }
     message("*** Fraction of total CPU time spent in different combinations:");
-    message("*** %20s: %8.2f %s (%.2f %%)", "zoom total", total_zoom_time,
+    message("*** %20s: %12.2f %s (%5.2f %%)", "zoom total", total_zoom_time,
             clocks_getunit(), total_zoom_time / total_tasks_time * 100.);
-    message("*** %20s: %8.2f %s (%.2f %%)", "background total", total_bkg_time,
-            clocks_getunit(), total_bkg_time / total_tasks_time * 100.);
-    message("*** %20s: %8.2f %s (%.2f %%)", "mixed total", total_mixed_time,
+    message("*** %20s: %12.2f %s (%5.2f %%)", "background total",
+            total_bkg_time, clocks_getunit(),
+            total_bkg_time / total_tasks_time * 100.);
+    message("*** %20s: %12.2f %s (%5.2f %%)", "mixed total", total_mixed_time,
             clocks_getunit(), total_mixed_time / total_tasks_time * 100.);
   }
 

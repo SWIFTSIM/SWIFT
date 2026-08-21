@@ -104,6 +104,11 @@ counts_tasks = np.zeros(len(tasks))
 # Zoom vs background breakdown (only populated if the zoom report produced by
 # zoom_scheduler_report_task_times() is present in the log).
 zoom_names = ["zoom", "background", "mixed (zoom + background)"]
+zoom_fraction_names = [
+    "zoom_i || zoom_j",
+    "bkg_i || bkg_j",
+    "zoom || bkg",
+]
 times_zoom_tasks = np.zeros((3, len(tasks)))
 counts_zoom_tasks = np.zeros((3, len(tasks)))
 
@@ -111,7 +116,6 @@ total_time = 0
 lastline = ""
 
 for i in range(num_files):
-
     # First analyse the code sections
 
     filename = sys.argv[i + 1]
@@ -122,13 +126,10 @@ for i in range(num_files):
 
     # Search the different phrases
     for line in file:
-
         # Loop over the possbile labels
         for i in range(len(labels)):
-
             # Extract the different blocks
             if re.search("%s took" % labels[i][0], line):
-
                 counts[i] += 1.0
                 times[i] += float(
                     re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)[-1][0]
@@ -156,10 +157,8 @@ for i in range(num_files):
 
     # Search the different phrases
     for line in file:
-
         # Handle lines from the zoom-specific task time report (if present).
         if "zoom_scheduler_report_task_times:" in line:
-
             # Header lines switch the current block (check mixed first: its
             # header also mentions zoom and background).
             if "mixed" in line and "task categories" in line:
@@ -187,7 +186,6 @@ for i in range(num_files):
 
         # Loop over the possbile labels
         for i in range(len(tasks)):
-
             # Extract the different blocks
             # Match only the standard report; zoom_scheduler_report_task_times
             # lines contain this string as a substring and must be excluded.
@@ -299,11 +297,12 @@ if counts_zoom_tasks.sum() > 0:
         )
         for i in range(len(tasks) - 1):
             print(
-                " - '%-40s' (%5d calls): %8.4f%% within type, %8.4f%% of total"
+                " - '%-40s' (%5d calls): %8.4f%% of %-18s, %8.4f%% of total"
                 % (
                     tasks[i],
                     counts_zoom_tasks[b][i],
                     100.0 * times_zoom_tasks[b][i] / total_b,
+                    zoom_fraction_names[b],
                     100.0 * times_zoom_tasks[b][i] / times_tasks[-1],
                 )
             )
