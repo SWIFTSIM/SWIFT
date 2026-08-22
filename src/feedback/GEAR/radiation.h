@@ -88,6 +88,26 @@ struct radiation_grid_metadata {
       radiation_read_data()'s own comment on the approximation this forces
       for interpolate_2d_init(). */
   float *metallicity;
+
+  /*! Mass-axis boundary condition for the "Luminosity" dataset (2D tables
+      only; boundary_condition_error otherwise), from the group's
+      edge_policy_luminosity_below/above attributes. The metallicity axis
+      always clamps (boundary_condition_const), matching pychem's own
+      "clamp to nearest grid Z, never extrapolated" convention; see
+      radiation_build_tables(). */
+  enum interpolate_boundary_condition edge_policy_luminosity;
+
+  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only).
+      Dispatched on the group's "source" attribute between
+      edge_policy_q_h_blackbody_* and edge_policy_q_h_parsec_*, matching
+      which Q_H variant pychem wrote as the table's primary Q_H. */
+  enum interpolate_boundary_condition edge_policy_q_h;
+
+  /*! Mass-axis boundary condition for the "DotEExcess" dataset (2D tables
+      only). Always edge_policy_q_h_blackbody_*, regardless of "source":
+      pychem computes DotEExcess as Q_H_Blackbody * MeanExcessPhotonEnergyHI
+      unconditionally. */
+  enum interpolate_boundary_condition edge_policy_dot_e_excess;
 };
 
 double radiation_get_part_number_hydrogen_atoms(

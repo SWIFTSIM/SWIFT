@@ -272,9 +272,44 @@ struct interpolation_2d {
   /* Number of element in the y direction of the data */
   int Ny;
 
-  /* Type of boundary conditions. */
-  enum interpolate_boundary_condition boundary_condition;
+  /* Type of boundary condition applied when x is out of the data range. */
+  enum interpolate_boundary_condition boundary_condition_x;
+
+  /* Type of boundary condition applied when y is out of the data range. */
+  enum interpolate_boundary_condition boundary_condition_y;
 };
+
+/**
+ * @brief Does this #interpolate_boundary_condition mean "return zero" on the
+ * lower-bound (index < 0) side?
+ *
+ * boundary_condition_zero_const is asymmetric: zero below, constant above
+ * (see #interpolate_boundary_condition), so it groups with
+ * boundary_condition_zero here but not in
+ * #interpolate_boundary_is_zero_above().
+ */
+__attribute__((always_inline)) static INLINE int
+interpolate_boundary_is_zero_below(enum interpolate_boundary_condition bc) {
+  return bc == boundary_condition_zero || bc == boundary_condition_zero_const;
+}
+
+/**
+ * @brief Does this #interpolate_boundary_condition mean "return zero" on the
+ * upper-bound (index >= N) side?
+ */
+__attribute__((always_inline)) static INLINE int
+interpolate_boundary_is_zero_above(enum interpolate_boundary_condition bc) {
+  return bc == boundary_condition_zero;
+}
+
+/**
+ * @brief Raise an error if this #interpolate_boundary_condition is
+ * boundary_condition_error; a no-op otherwise.
+ */
+__attribute__((always_inline)) static INLINE void
+interpolate_boundary_check_error(enum interpolate_boundary_condition bc) {
+  if (bc == boundary_condition_error) error("Cannot extrapolate");
+}
 
 /**
  * @brief Initialize the #interpolation_2d.
@@ -296,21 +331,26 @@ struct interpolation_2d {
  * @param log_step_size_y The size of the y steps (in log).   Data limits
  * @param N_data_x The number of element in the data x axis. Data limits
  * @param N_data_y The number of element in the data y axis. Data limits
+ * @param boundary_condition_x The #interpolate_boundary_condition applied
+ * when x is out of the data range.
+ * @param boundary_condition_y The #interpolate_boundary_condition applied
+ * when y is out of the data range.
  * @param data The data  coming from hdf5 table to interpolate.
- * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_2d_init(
     struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx,
     float log_ymin, float log_ymax, int Ny, float log_data_xmin,
     float log_data_ymin, float log_step_size_x, float log_step_size_y,
     int N_data_x, int N_data_y, const double *data,
-    enum interpolate_boundary_condition boundary_condition) {
+    enum interpolate_boundary_condition boundary_condition_x,
+    enum interpolate_boundary_condition boundary_condition_y) {
 
   /* Save the variables */
   interp->Nx = Nx;
   interp->xmin = log_xmin;
   interp->dx = (log_xmax - log_xmin) / (Nx - 1.f);
-  interp->boundary_condition = boundary_condition;
+  interp->boundary_condition_x = boundary_condition_x;
+  interp->boundary_condition_y = boundary_condition_y;
 
   interp->Ny = Ny;
   interp->ymin = log_ymin;
@@ -341,32 +381,51 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       if (current_cell >= Nx * Ny) {
         error("Index %d out of boundaries for interp->data", current_cell);
       }
-      /* Extrapolate? */
-      if (idx < 0 || idx + 1 >= N_data_x || idy < 0 || idy + 1 >= N_data_y) {
-        switch (boundary_condition) {
-          case boundary_condition_error:
-            error("Cannot extrapolate");
-            break;
-          case boundary_condition_zero:
-            interp->data[current_cell] = 0;
-            break;
-          case boundary_condition_const: {
-            const int midx = max(idx, 0);
-            const int midy = max(idy, 0);
-            const int row = min(midx, N_data_x - 1);
-            const int col = min(midy, N_data_y - 1);
-            const int cell_to_get = row * N_data_y + col;
-            if (cell_to_get >= N_data_x * N_data_y) {
-              error(
-                  "Index row=%d col=%d is out of boundary for the target data "
-                  "which has dimension row=%d col=%d",
-                  row, col, N_data_x, N_data_y);
-            }
-            interp->data[current_cell] = data[cell_to_get];
-            break;
+      /* Extrapolate? Tested on the raw x_k/y_k floats, not the truncated
+         idx/idy ints: for x_k (or y_k) in (-1, 0), C's truncate-towards-
+         zero gives idx = 0, which would wrongly read as "in range" and
+         fall through to interpolation with a negative fx/fy -- silently
+         extrapolating instead of applying the boundary condition. Each
+         axis is checked, and treated, independently: a zero policy on
+         the side that is actually out of range wins over a const policy
+         on the other axis, since "zero" means the physical quantity
+         vanishes there regardless of the other axis's value. */
+      if (x_k < 0 || x_k >= N_data_x - 1 || y_k < 0 || y_k >= N_data_y - 1) {
+        const int x_below = x_k < 0;
+        const int x_above = !x_below && x_k >= N_data_x - 1;
+        const int y_below = y_k < 0;
+        const int y_above = !y_below && y_k >= N_data_y - 1;
+
+        if (x_below || x_above)
+          interpolate_boundary_check_error(boundary_condition_x);
+        if (y_below || y_above)
+          interpolate_boundary_check_error(boundary_condition_y);
+
+        const int is_zero =
+            (x_below &&
+             interpolate_boundary_is_zero_below(boundary_condition_x)) ||
+            (x_above &&
+             interpolate_boundary_is_zero_above(boundary_condition_x)) ||
+            (y_below &&
+             interpolate_boundary_is_zero_below(boundary_condition_y)) ||
+            (y_above &&
+             interpolate_boundary_is_zero_above(boundary_condition_y));
+
+        if (is_zero) {
+          interp->data[current_cell] = 0;
+        } else {
+          const int midx = max(idx, 0);
+          const int midy = max(idy, 0);
+          const int row = min(midx, N_data_x - 1);
+          const int col = min(midy, N_data_y - 1);
+          const int cell_to_get = row * N_data_y + col;
+          if (cell_to_get >= N_data_x * N_data_y) {
+            error(
+                "Index row=%d col=%d is out of boundary for the target data "
+                "which has dimension row=%d col=%d",
+                row, col, N_data_x, N_data_y);
           }
-          default:
-            error("Interpolation type not implemented");
+          interp->data[current_cell] = data[cell_to_get];
         }
         continue;
       }
@@ -406,44 +465,58 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
   const int idy = j;
   const float dy = j - idy;
 
-  /* Extrapolate? */
-  if (idx < 0 || idx + 1 >= Nx || idy < 0 || idy + 1 >= Ny) {
-    switch (interp->boundary_condition) {
-      case boundary_condition_error:
-        error("Cannot extrapolate");
-        break;
-      case boundary_condition_zero:
+  /* Extrapolate? Tested on the raw i/j floats, not the truncated idx/idy
+     ints -- see interpolate_2d_init() for why, and for why a zero policy
+     wins over a const policy on the other axis. */
+  if (i < 0 || i >= Nx - 1 || j < 0 || j >= Ny - 1) {
+    const int x_below = i < 0;
+    const int x_above = !x_below && i >= Nx - 1;
+    const int y_below = j < 0;
+    const int y_above = !y_below && j >= Ny - 1;
+
+    if (x_below || x_above)
+      interpolate_boundary_check_error(interp->boundary_condition_x);
+    if (y_below || y_above)
+      interpolate_boundary_check_error(interp->boundary_condition_y);
+
+    const int is_zero =
+        (x_below &&
+         interpolate_boundary_is_zero_below(interp->boundary_condition_x)) ||
+        (x_above &&
+         interpolate_boundary_is_zero_above(interp->boundary_condition_x)) ||
+        (y_below &&
+         interpolate_boundary_is_zero_below(interp->boundary_condition_y)) ||
+        (y_above &&
+         interpolate_boundary_is_zero_above(interp->boundary_condition_y));
+
+    if (is_zero) {
 #if defined(SWIFT_TEST_STELLAR_WIND)
-        message(
-            "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
-            "interp->dx=%g interp->dy=%g idx=%d idy=%d "
-            "out_of_boundary_type=zero",
-            Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
-            idy);
+      message(
+          "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+          "interp->dx=%g interp->dy=%g idx=%d idy=%d "
+          "out_of_boundary_type=zero",
+          Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
-        return 0;
-      case boundary_condition_const: {
-        const int midx = max(idx, 0);
-        const int midy = max(idy, 0);
-        const int row = min(midx, Nx - 1);
-        const int col = min(midy, Ny - 1);
-        const int cell_to_get = row * Ny + col;
-        if (cell_to_get >= array_size) {
-          error("Index %d is out of boundary for the target data", cell_to_get);
-        }
-#if defined(SWIFT_TEST_STELLAR_WIND)
-        message(
-            "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
-            "interp->dx=%g interp->dy=%g idx=%d idy=%d "
-            "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
-            Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
-            idy, cell_to_get, row, col, exp10(interp->data[cell_to_get]));
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
-        return interp->data[cell_to_get];
-      }
-      default:
-        error("Interpolation type not implemented");
+      return 0;
     }
+
+    const int midx = max(idx, 0);
+    const int midy = max(idy, 0);
+    const int row = min(midx, Nx - 1);
+    const int col = min(midy, Ny - 1);
+    const int cell_to_get = row * Ny + col;
+    if (cell_to_get >= array_size) {
+      error("Index %d is out of boundary for the target data", cell_to_get);
+    }
+#if defined(SWIFT_TEST_STELLAR_WIND)
+    message(
+        "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+        "interp->dx=%g interp->dy=%g idx=%d idy=%d "
+        "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
+        Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy,
+        cell_to_get, row, col, exp10(interp->data[cell_to_get]));
+#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+    return interp->data[cell_to_get];
   }
 
   /* interpolate */
@@ -497,7 +570,8 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
   interp->dx = 0.0;
   interp->ymin = 0.0;
   interp->dy = 0.0;
-  interp->boundary_condition = boundary_condition_error;
+  interp->boundary_condition_x = boundary_condition_error;
+  interp->boundary_condition_y = boundary_condition_error;
 }
 
 #endif  // SWIFT_GEAR_INTERPOLATION_H

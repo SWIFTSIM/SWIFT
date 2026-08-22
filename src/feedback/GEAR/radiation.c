@@ -1116,10 +1116,68 @@ static void radiation_check_dataset_units(hid_t group_id,
 }
 
 /**
+ * @brief Turn one field's edge_policy_<field>_below/above attribute pair
+ * into the #interpolate_boundary_condition SWIFT's 2D interpolator can
+ * apply on the mass axis.
+ *
+ * pychem's schema allows "constant", "zero" or "linear" independently per
+ * side (PyChemInitTable/libradiation.py's ExtrapolationPolicy); SWIFT has
+ * no "linear" extrapolation mode, and #interpolate_boundary_condition can
+ * only express "zero both sides", "zero below/constant above" or "constant
+ * both sides" -- not "constant below/zero above". Every real shipped
+ * table so far only uses the three representable combinations (see
+ * radiation_parsec_popIII.hdf5's edge_policy_* attributes); this errors
+ * loudly on anything else rather than silently misapplying a policy.
+ *
+ * @param below The field's edge_policy_<field>_below value.
+ * @param above The field's edge_policy_<field>_above value.
+ * @param field_name Name of the field these came from, for the error
+ * message only.
+ * @return The matching #interpolate_boundary_condition.
+ */
+static enum interpolate_boundary_condition radiation_parse_edge_policy(
+    const char *below, const char *above, const char *field_name) {
+
+  int zero_below = 0;
+  if (strcmp(below, "zero") == 0) {
+    zero_below = 1;
+  } else if (strcmp(below, "constant") != 0) {
+    error(
+        "Data/Radiation field '%s': edge_policy_%s_below='%s' has no SWIFT "
+        "#interpolate_boundary_condition equivalent (only \"zero\" and "
+        "\"constant\" are supported).",
+        field_name, field_name, below);
+  }
+
+  int zero_above = 0;
+  if (strcmp(above, "zero") == 0) {
+    zero_above = 1;
+  } else if (strcmp(above, "constant") != 0) {
+    error(
+        "Data/Radiation field '%s': edge_policy_%s_above='%s' has no SWIFT "
+        "#interpolate_boundary_condition equivalent (only \"zero\" and "
+        "\"constant\" are supported).",
+        field_name, field_name, above);
+  }
+
+  if (zero_below && zero_above) return boundary_condition_zero;
+  if (zero_below && !zero_above) return boundary_condition_zero_const;
+  if (!zero_below && !zero_above) return boundary_condition_const;
+
+  error(
+      "Data/Radiation field '%s': edge policy 'constant below / zero "
+      "above' has no SWIFT #interpolate_boundary_condition equivalent.",
+      field_name);
+  return boundary_condition_error;
+}
+
+/**
  * @brief Read the Data/Radiation group's own grid metadata: the
  * "dimensionality" attribute ("M" or "M,Z") and the group-level
  * "m0"/"dm"/"nm" mass-grid attributes shared by every dataset in the
- * group, plus, for a 2D ("M,Z") table, "nz" and the "Metallicity" dataset.
+ * group, plus, for a 2D ("M,Z") table, "nz", the "Metallicity" dataset,
+ * and the mass-axis edge_policy_* attributes (dispatched through "source"
+ * for Q_H; see radiation_parse_edge_policy()).
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
@@ -1176,8 +1234,54 @@ static void radiation_read_grid_metadata(hid_t group_id,
             "which requires every entry to be strictly positive.",
             i, (double)grid->metallicity[i]);
     }
+
+    char source[32];
+    radiation_read_string_attribute(group_id, "source", source, sizeof(source));
+
+    char luminosity_below[16], luminosity_above[16];
+    char q_h_blackbody_below[16], q_h_blackbody_above[16];
+    char q_h_parsec_below[16], q_h_parsec_above[16];
+    radiation_read_string_attribute(group_id, "edge_policy_luminosity_below",
+                                    luminosity_below, sizeof(luminosity_below));
+    radiation_read_string_attribute(group_id, "edge_policy_luminosity_above",
+                                    luminosity_above, sizeof(luminosity_above));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_blackbody_below",
+                                    q_h_blackbody_below,
+                                    sizeof(q_h_blackbody_below));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_blackbody_above",
+                                    q_h_blackbody_above,
+                                    sizeof(q_h_blackbody_above));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_parsec_below",
+                                    q_h_parsec_below, sizeof(q_h_parsec_below));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_parsec_above",
+                                    q_h_parsec_above, sizeof(q_h_parsec_above));
+
+    grid->edge_policy_luminosity = radiation_parse_edge_policy(
+        luminosity_below, luminosity_above, "luminosity");
+    const enum interpolate_boundary_condition edge_policy_q_h_blackbody =
+        radiation_parse_edge_policy(q_h_blackbody_below, q_h_blackbody_above,
+                                    "q_h_blackbody");
+    const enum interpolate_boundary_condition edge_policy_q_h_parsec =
+        radiation_parse_edge_policy(q_h_parsec_below, q_h_parsec_above,
+                                    "q_h_parsec");
+    grid->edge_policy_dot_e_excess = edge_policy_q_h_blackbody;
+
+    if (strcmp(source, "parsec_blackbody") == 0) {
+      grid->edge_policy_q_h = edge_policy_q_h_blackbody;
+    } else if (strcmp(source, "parsec_qtable") == 0) {
+      grid->edge_policy_q_h = edge_policy_q_h_parsec;
+    } else {
+      error(
+          "Data/Radiation's 'source' attribute is '%s' (expected "
+          "'parsec_blackbody' or 'parsec_qtable'): cannot tell which "
+          "Q_H edge policy applies to the table's primary 'Q_H' dataset.",
+          source);
+    }
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
+    grid->edge_policy_luminosity = boundary_condition_error;
+    grid->edge_policy_q_h = boundary_condition_error;
+    grid->edge_policy_dot_e_excess = boundary_condition_error;
   } else {
     error(
         "Data/Radiation has an unrecognised 'dimensionality' attribute "
@@ -1369,6 +1473,12 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * this function's own doxygen for why.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
+ * @param boundary_condition_mass Mass-axis #interpolate_boundary_condition
+ * for @p dataset_name (2D tables only; ignored for a 1D table, which always
+ * clamps -- see radiation_read_grid_metadata()'s edge_policy_* fields for
+ * where this comes from). The metallicity axis always clamps
+ * (boundary_condition_const), matching pychem's "clamp to nearest grid Z,
+ * never extrapolated" convention.
  */
 static void radiation_build_tables(
     hid_t group_id, const char *dataset_name,
@@ -1376,7 +1486,8 @@ static void radiation_build_tables(
     int interpolation_size_mass, int interpolation_size_metallicity,
     double conversion_factor, double extra_scaling, const char *expected_units,
     struct interpolation_1d *raw_1d, struct interpolation_1d *integrated_1d,
-    struct interpolation_2d *raw_2d) {
+    struct interpolation_2d *raw_2d,
+    enum interpolate_boundary_condition boundary_condition_mass) {
 
   const float log_mass_min_out = log10f(sm->imf.mass_min);
   const float log_mass_max_out = log10f(sm->imf.mass_max);
@@ -1410,11 +1521,12 @@ static void radiation_build_tables(
     for (hsize_t i = 0; i < count; i++)
       log_data_double[i] = (double)log_data[i];
 
-    interpolate_2d_init(
-        raw_2d, log_z_min, log_z_max, interpolation_size_metallicity,
-        log_mass_min_out, log_mass_max_out, interpolation_size_mass, log_z_min,
-        grid->log_mass_min, log_z_step, grid->mass_step, grid->n_metallicity,
-        grid->n_mass, log_data_double, boundary_condition_const);
+    interpolate_2d_init(raw_2d, log_z_min, log_z_max,
+                        interpolation_size_metallicity, log_mass_min_out,
+                        log_mass_max_out, interpolation_size_mass, log_z_min,
+                        grid->log_mass_min, log_z_step, grid->mass_step,
+                        grid->n_metallicity, grid->n_mass, log_data_double,
+                        boundary_condition_const, boundary_condition_mass);
 
     free(log_data_double);
     free(log_data);
@@ -1469,7 +1581,7 @@ void radiation_read_luminosities_array(
       rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
       &rad->raw.luminosities, &rad->integrated.luminosities,
-      &rad->raw.luminosities_2d);
+      &rad->raw.luminosities_2d, grid->edge_policy_luminosity);
 }
 
 /**
@@ -1491,7 +1603,8 @@ void radiation_read_ionization_rate_array(
       rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "1/s", &rad->raw.dot_N_ion,
-      &rad->integrated.dot_N_ion, &rad->raw.dot_N_ion_2d);
+      &rad->integrated.dot_N_ion, &rad->raw.dot_N_ion_2d,
+      grid->edge_policy_q_h);
 }
 
 /**
@@ -1532,7 +1645,8 @@ void radiation_read_mean_excess_photon_energy_array(
       rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
-      &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d);
+      &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
+      grid->edge_policy_dot_e_excess);
 }
 
 /**
