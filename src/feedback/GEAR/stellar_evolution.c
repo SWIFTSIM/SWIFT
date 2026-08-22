@@ -484,7 +484,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
   /* Sum the contributions from SNIa and SNII */
   sp->feedback_data.supernovae.mass_ejected =
-      mass_frac_snii * sp->sf_data.birth_mass +
+      mass_frac_snii * m_init * phys_const->const_solar_mass +
       mass_snia * phys_const->const_solar_mass;
 
   /* Check whether the mass that has to be expelled by SN in case the cumulated
@@ -526,8 +526,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
           &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
-  const float birth_mass_Msun =
-      sp->sf_data.birth_mass * phys_const->const_solar_mass;
+  const float birth_mass_Msun = m_init;
   chemistry_set_star_supernovae_ejected_yields(
       sp, birth_mass_Msun, non_processed,
       /*number_snii*/ 1, number_snia_f, snii_yields, snia_yields, phys_const);
@@ -1492,13 +1491,11 @@ void stellar_evolution_compute_preSN_feedback_spart(
         &sm->rad, log10f(m_min), log10f(m_end_step));
 
     /* Convert to total luminosities */
-    sp->feedback_data.radiation.L_bol =
-        L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+    sp->feedback_data.radiation.L_bol = L_bol * m_init;
 
     /* Convert to total ionizing emission rate and split it across the
        active angular pixels. */
-    const double dot_N_ion_total =
-        dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+    const double dot_N_ion_total = dot_N_ion * m_init;
     radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
                                        sm->rad.n_HII_pixels);
 
