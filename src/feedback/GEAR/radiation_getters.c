@@ -31,47 +31,41 @@
 #include "minmax.h"
 
 /**
- * @brief Abort with a clear message if #rad holds a 2D (mass x
- * metallicity) table: the getters below are 1D-only for now, since no
- * caller passes a metallicity yet.
+ * @brief Abort with a clear message if #rad's table dimensionality does not
+ * match what the calling getter expects.
+ *
+ * For an expected 2D (mass x metallicity) table, checks #is_active before
+ * #is_2d: a #radiation with no table loaded at all (photoionization and
+ * radiation pressure both off -- radiation_zero_pointers()) also has
+ * is_2d = 0, and reporting that case as "holds a mass-only (1D) table"
+ * would be actively misleading -- there is no table of either
+ * dimensionality, not a 1D one. An expected-1D check does not need this:
+ * every 1D getter below is only ever reached from an #is_active branch
+ * upstream already.
  *
  * @param rad The #radiation model.
+ * @param expect_2d Nonzero if the caller needs a mass x metallicity (2D)
+ * table; 0 if it needs a mass-only (1D) table.
  * @param caller Name of the calling getter, for the error message.
  */
-__attribute__((always_inline)) INLINE static void radiation_check_is_1d(
-    const struct radiation *rad, const char *caller) {
-  if (rad->is_2d) {
-    error(
-        "%s does not support a mass x metallicity (2D) radiation table yet: "
-        "no caller passes a metallicity.",
-        caller);
-  }
-}
-
-/**
- * @brief Abort with a clear message if #rad does not hold an active mass x
- * metallicity (2D, "M,Z") table: the 2D getters below need a metallicity
- * axis to interpolate.
- *
- * Checks #is_active before #is_2d: a #radiation with no table loaded at
- * all (photoionization and radiation pressure both off --
- * radiation_zero_pointers()) also has is_2d = 0, and reporting that case
- * as "holds a mass-only (1D) table" would be actively misleading -- there
- * is no table of either dimensionality, not a 1D one.
- *
- * @param rad The #radiation model.
- * @param caller Name of the calling getter, for the error message.
- */
-__attribute__((always_inline)) INLINE static void radiation_check_is_2d(
-    const struct radiation *rad, const char *caller) {
-  if (!rad->is_active) {
-    error("%s called with no radiation table loaded (#rad->is_active = 0).",
+__attribute__((always_inline)) INLINE static void
+radiation_check_dimensionality(const struct radiation *rad, int expect_2d,
+                               const char *caller) {
+  if (expect_2d) {
+    if (!rad->is_active) {
+      error("%s called with no radiation table loaded (#rad->is_active = 0).",
+            caller);
+    }
+    if (!rad->is_2d) {
+      error(
+          "%s requires a mass x metallicity (2D) radiation table: #rad "
+          "holds a mass-only (1D) table.",
           caller);
-  }
-  if (!rad->is_2d) {
+    }
+  } else if (rad->is_2d) {
     error(
-        "%s requires a mass x metallicity (2D) radiation table: #rad holds "
-        "a mass-only (1D) table.",
+        "%s has no metallicity argument and cannot read a mass x "
+        "metallicity (2D) radiation table.",
         caller);
   }
 }
@@ -132,7 +126,7 @@ float radiation_get_log_metallicity(float Z) {
 float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2) {
 
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   float luminosity_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
   float luminosity_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
   return luminosity_2 - luminosity_1;
@@ -154,7 +148,7 @@ float radiation_get_luminosities_from_integral(const struct radiation *rad,
  */
 float radiation_get_luminosities_from_raw(const struct radiation *rad,
                                           float log_m) {
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   return (float)exp10(interpolate_1d(&rad->raw.luminosities, log_m));
 };
 
@@ -169,7 +163,7 @@ float radiation_get_luminosities_from_raw(const struct radiation *rad,
 double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2) {
 
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   double dot_N_ion_1 = interpolate_1d(&rad->integrated.dot_N_ion, log_m1) *
                        RADIATION_DOT_N_ION_TABLE_SCALING;
   double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2) *
@@ -202,7 +196,7 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
  */
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const float dot_N_ion_scaled =
       (float)exp10(interpolate_1d(&rad->raw.dot_N_ion, log_m));
   return (double)dot_N_ion_scaled * RADIATION_DOT_N_ION_TABLE_SCALING;
@@ -230,7 +224,7 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
 double radiation_get_mean_excess_photon_energy_HI_from_integral(
     const struct radiation *rad, float log_m1, float log_m2) {
 
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const double dot_N_ion_1 = interpolate_1d(&rad->integrated.dot_N_ion, log_m1);
   const double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2);
   const double delta_dot_N_ion = dot_N_ion_2 - dot_N_ion_1;
@@ -276,7 +270,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
 double radiation_get_mean_excess_photon_energy_HI_from_raw(
     const struct radiation *rad, float log_m) {
 
-  radiation_check_is_1d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const double dot_N_ion =
       (float)exp10(interpolate_1d(&rad->raw.dot_N_ion, log_m));
 
@@ -313,9 +307,35 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw(
  */
 float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
                                              float log_z, float log_m) {
-  radiation_check_is_2d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   return (float)exp10(interpolate_2d(&rad->raw.luminosities_2d, log_z, log_m));
 };
+
+/**
+ * @brief Return whether a star has evolved past MainSequenceLifetime(Z, M)
+ * in the 2D ("M,Z") table.
+ *
+ * Shared by #radiation_get_ionization_rate_from_raw_2d and
+ * #radiation_get_mean_excess_photon_energy_HI_from_raw_2d, which both cap
+ * their output to exactly 0 once this returns true -- see either getter's
+ * own doxygen for why.
+ *
+ * @param rad The #radiation model (must hold an active 2D table).
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m The mass in log.
+ * @param star_age_myr The star's current age, in Myr, ZAMS-anchored -- see
+ * #radiation_get_ionization_rate_from_raw_2d's own doxygen for why this
+ * normalization matters.
+ * @return 1 if @p star_age_myr exceeds MainSequenceLifetime(Z, M), 0
+ * otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_is_past_main_sequence_2d(const struct radiation *rad, float log_z,
+                                   float log_m, float star_age_myr) {
+  const float ms_lifetime_myr = (float)exp10(
+      interpolate_2d(&rad->raw.main_sequence_lifetime_2d, log_z, log_m));
+  return star_age_myr > ms_lifetime_myr;
+}
 
 /**
  * @brief Get the non-IMF-integrated ionization rate at a given mass,
@@ -352,11 +372,10 @@ float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
 double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
                                                  float log_z, float log_m,
                                                  float star_age_myr) {
-  radiation_check_is_2d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
 
-  const float ms_lifetime_myr = (float)exp10(
-      interpolate_2d(&rad->raw.main_sequence_lifetime_2d, log_z, log_m));
-  if (star_age_myr > ms_lifetime_myr) return 0.;
+  if (radiation_is_past_main_sequence_2d(rad, log_z, log_m, star_age_myr))
+    return 0.;
 
   const float dot_N_ion_scaled =
       (float)exp10(interpolate_2d(&rad->raw.dot_N_ion_2d, log_z, log_m));
@@ -391,11 +410,10 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
 double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m, float star_age_myr) {
 
-  radiation_check_is_2d(rad, __func__);
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
 
-  const float ms_lifetime_myr = (float)exp10(
-      interpolate_2d(&rad->raw.main_sequence_lifetime_2d, log_z, log_m));
-  if (star_age_myr > ms_lifetime_myr) return 0.;
+  if (radiation_is_past_main_sequence_2d(rad, log_z, log_m, star_age_myr))
+    return 0.;
 
   const double dot_N_ion =
       (float)exp10(interpolate_2d(&rad->raw.dot_N_ion_2d, log_z, log_m));
@@ -407,3 +425,69 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
       (float)exp10(interpolate_2d(&rad->raw.dot_E_excess_2d, log_z, log_m));
   return dot_E_excess / dot_N_ion;
 };
+
+/**
+ * @brief Get a single star's bolometric luminosity at a given mass,
+ * dispatching on #rad->is_2d between the 1D (mass-only) and 2D (mass x
+ * metallicity) raw tables.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if #rad holds a 2D table.
+ * @return The bolometric luminosity, internal units.
+ */
+float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
+                                    float log_z) {
+  if (rad->is_2d) {
+    return radiation_get_luminosities_from_raw_2d(rad, log_z, log_m);
+  }
+  return radiation_get_luminosities_from_raw(rad, log_m);
+}
+
+/**
+ * @brief Get a single star's ionization rate at a given mass, dispatching
+ * on #rad->is_2d between the 1D (mass-only) and 2D (mass x metallicity) raw
+ * tables.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if #rad holds a 2D table.
+ * @param star_age_myr The star's current age, in Myr, ZAMS-anchored (see
+ * #radiation_get_ionization_rate_from_raw_2d's own doxygen); used only if
+ * #rad holds a 2D table.
+ * @return The ionization rate, internal units.
+ */
+double radiation_get_star_ionization_rate(const struct radiation *rad,
+                                          float log_m, float log_z,
+                                          float star_age_myr) {
+  if (rad->is_2d) {
+    return radiation_get_ionization_rate_from_raw_2d(rad, log_z, log_m,
+                                                     star_age_myr);
+  }
+  return radiation_get_ionization_rate_from_raw(rad, log_m);
+}
+
+/**
+ * @brief Get a single star's mean excess photon energy above the 13.6 eV HI
+ * ionization threshold at a given mass, dispatching on #rad->is_2d between
+ * the 1D (mass-only) and 2D (mass x metallicity) raw tables.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if #rad holds a 2D table.
+ * @param star_age_myr The star's current age, in Myr, ZAMS-anchored (see
+ * #radiation_get_ionization_rate_from_raw_2d's own doxygen); used only if
+ * #rad holds a 2D table.
+ * @return Mean excess photon energy in cgs erg.
+ */
+double radiation_get_star_mean_excess_photon_energy_HI(
+    const struct radiation *rad, float log_m, float log_z, float star_age_myr) {
+  if (rad->is_2d) {
+    return radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
+        rad, log_z, log_m, star_age_myr);
+  }
+  return radiation_get_mean_excess_photon_energy_HI_from_raw(rad, log_m);
+}

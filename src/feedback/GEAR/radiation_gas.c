@@ -334,6 +334,27 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 }
 
 /**
+ * Zero a #spart's radiation feedback output (L_bol,
+ * mean_excess_photon_energy_HI, and the ionizing photon rate), for the case
+ * where no radiation table is loaded (#radiation.is_active = 0).
+ *
+ * Shared by stellar_evolution_compute_preSN_feedback_individual_star() and
+ * stellar_evolution_compute_preSN_feedback_spart(): leaves every radiation
+ * output at its safe zeroed default instead of reading the zero-pointered
+ * interpolation tables (radiation_get_*_from_raw() would divide by a zeroed
+ * dx, and dividing by n_HII_pixels=0 in radiation_set_ionizing_photon_rate()
+ * would too).
+ *
+ * @param sp The star to zero.
+ */
+__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
+    struct spart *sp) {
+  sp->feedback_data.radiation.L_bol = 0.f;
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+}
+
+/**
  * Open this #spart's ionizing photon budget for one HII rebuild pass:
  * convert its emission rate into the photon count emitted over dt_back, the
  * time elapsed since the previous pass, plus any overdraft carried from it.

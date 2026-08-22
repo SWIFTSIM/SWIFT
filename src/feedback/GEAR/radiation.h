@@ -173,6 +173,7 @@ double radiation_get_photoionization_rate_coefficient_from_flux_HI(
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
+void radiation_zero_spart_output(struct spart *sp);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
@@ -230,6 +231,14 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
                                                  float star_age_myr);
 double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m, float star_age_myr);
+
+float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
+                                    float log_z);
+double radiation_get_star_ionization_rate(const struct radiation *rad,
+                                          float log_m, float log_z,
+                                          float star_age_myr);
+double radiation_get_star_mean_excess_photon_energy_HI(
+    const struct radiation *rad, float log_m, float log_z, float star_age_myr);
 
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,

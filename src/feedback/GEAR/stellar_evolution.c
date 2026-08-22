@@ -1240,8 +1240,13 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
+  /* Needed by both the radiation and stellar-winds blocks below. */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
   if (sm->rad.is_active) {
-    const float log_m = log10f(sp->mass / phys_const->const_solar_mass);
+    const float mass_msun = sp->mass / phys_const->const_solar_mass;
+    const float log_m = log10f(mass_msun);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* 1D and 2D tables share the same mass-axis range [sm->imf.mass_min,
@@ -1254,94 +1259,63 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        this migration. Warn rather than stay silent, matching this file's
        own fail-loud-on-boundary-violation convention elsewhere (the
        FLT_MAX guard in radiation.c). */
-    if (log_m > log10f(sm->imf.mass_max)) {
+    if (mass_msun > sm->imf.mass_max) {
       message(
           "WARNING: [id=%lld] star mass %g Msun exceeds the radiation "
           "table's IMF mass_max=%g Msun; L_bol/dot_N_ion/mean_excess_photon_"
           "energy_HI will be clamped or zeroed at the mass_max edge instead "
           "of using this star's own mass.",
-          sp->id, sp->mass / phys_const->const_solar_mass, sm->imf.mass_max);
+          sp->id, mass_msun, sm->imf.mass_max);
     }
 #endif
 
-    double dot_N_ion_total;
+    /* Only used by the 2D getters below (harmless, if unused, for a 1D
+       table); star_age_beg_step_myr is already ZAMS-anchored: GEAR's star
+       particles have no modeled pre-main-sequence phase.
+       lifetime_get_log_lifetime_from_mass() (src/feedback/GEAR/lifetime.h)
+       computes the Poirier main-sequence lifetime directly from a star's
+       spawn mass/metallicity, and
+       star_formation_set_spart_birth_time_or_scale_factor() (called from
+       the spawning code in src/sink/GEAR/sink.h) stamps birth_time at the
+       spawning event itself; no separate contraction stage is tracked
+       anywhere in this codebase's stellar treatment. So no ZAMS offset is
+       needed here to match MainSequenceLifetime's own ZAMS-to-TAMS
+       definition. */
+    const float log_z = radiation_get_log_metallicity(metallicity);
+    const float star_age_myr = (float)star_age_beg_step_myr;
 
-    if (sm->rad.is_2d) {
-      const float log_z = radiation_get_log_metallicity(metallicity);
+    /* Get the bolometric luminosity */
+    sp->feedback_data.radiation.L_bol =
+        radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
-      /* star_age_beg_step is already ZAMS-anchored: GEAR's star particles
-         have no modeled pre-main-sequence phase.
-         lifetime_get_log_lifetime_from_mass() (src/feedback/GEAR/
-         lifetime.h) computes the Poirier main-sequence lifetime directly
-         from a star's spawn mass/metallicity, and
-         star_formation_set_spart_birth_time_or_scale_factor() (called from
-         the spawning code in src/sink/GEAR/sink.h) stamps birth_time at the
-         spawning event itself; no separate contraction stage is tracked
-         anywhere in this codebase's stellar treatment. So no ZAMS offset
-         is needed here to match MainSequenceLifetime's own ZAMS-to-TAMS
-         definition. Same expression as star_age_beg_step_myr below. */
-      const float star_age_myr =
-          (float)(star_age_beg_step / (phys_const->const_year * 1e6));
+    /* For the ionizing band, get the number of photons produced and split
+       it across the active angular pixels. Zeroed past the table's own
+       MainSequenceLifetime(Z, M) for a 2D table --
+       see radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
+    const double dot_N_ion_total = radiation_get_star_ionization_rate(
+        &sm->rad, log_m, log_z, star_age_myr);
+    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                       sm->rad.n_HII_pixels);
 
-      /* Get the bolometric luminosity */
-      sp->feedback_data.radiation.L_bol =
-          radiation_get_luminosities_from_raw_2d(&sm->rad, log_z, log_m);
-
-      /* For the ionizing band, get the number of photons produced and split
-         it across the active angular pixels. Zeroed past the table's own
-         MainSequenceLifetime(Z, M) --
-         see radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
-      dot_N_ion_total = radiation_get_ionization_rate_from_raw_2d(
-          &sm->rad, log_z, log_m, star_age_myr);
-      radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
-                                         sm->rad.n_HII_pixels);
-
-      /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
-         Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
-         (cooling reads this field only when that flag is on). Computed
-         unconditionally: it is a cheap single lookup, and keeping it in sync
-         with dot_N_ion_total avoids a second flag check here. */
-      sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-          (float)radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
-              &sm->rad, log_z, log_m, star_age_myr);
-    } else {
-      /* Get the bolometric luminosity */
-      sp->feedback_data.radiation.L_bol =
-          radiation_get_luminosities_from_raw(&sm->rad, log_m);
-
-      /* For the ionizing band, get the number of photons produced and split
-         it across the active angular pixels. */
-      dot_N_ion_total = radiation_get_ionization_rate_from_raw(&sm->rad, log_m);
-      radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
-                                         sm->rad.n_HII_pixels);
-
-      /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
-         Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
-         (cooling reads this field only when that flag is on). Computed
-         unconditionally: it is a cheap single lookup, and keeping it in sync
-         with dot_N_ion_total avoids a second flag check here. */
-      sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-          (float)radiation_get_mean_excess_photon_energy_HI_from_raw(&sm->rad,
-                                                                     log_m);
-    }
+    /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
+       (cooling reads this field only when that flag is on). Computed
+       unconditionally: it is a cheap single lookup, and keeping it in sync
+       with dot_N_ion_total avoids a second flag check here. */
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+        (float)radiation_get_star_mean_excess_photon_energy_HI(
+            &sm->rad, log_m, log_z, star_age_myr);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message(
         "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
         "internal",
-        sp->id, sp->star_type, sp->mass / phys_const->const_solar_mass,
+        sp->id, sp->star_type, mass_msun,
         dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
         sp->feedback_data.radiation.L_bol);
 #endif
   } else {
-    /* No radiation table loaded (see stellar_evolution_props_init()): leave
-       every radiation output at its safe zeroed default instead of reading
-       the zero-pointered interpolation tables (radiation_get_*_from_raw()
-       would divide by a zeroed dx, and dividing by n_HII_pixels=0 in
-       radiation_set_ionizing_photon_rate() below would too). */
-    sp->feedback_data.radiation.L_bol = 0.f;
-    sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
-    radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+    radiation_zero_spart_output(sp);
   }
 
   /*****************************************/
@@ -1350,9 +1324,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   if (!with_stellar_winds) return;
 
   /* Convert the inputs */
-  const double conversion_to_myr = phys_const->const_year * 1e6;
   double star_age_end_step_myr = (star_age_beg_step + dt) / conversion_to_myr;
-  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
@@ -1508,12 +1480,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
         (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
             &sm->rad, log10f(m_min), log10f(m_end_step));
   } else {
-    /* No radiation table loaded (see stellar_evolution_props_init()): leave
-       every radiation output at its safe zeroed default, matching the
-       individual-star sibling function's else branch. */
-    sp->feedback_data.radiation.L_bol = 0.f;
-    sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
-    radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+    radiation_zero_spart_output(sp);
   }
 
   /*****************************************/

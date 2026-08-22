@@ -905,7 +905,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Fail at load time, not at the first star's feedback computation: every
      radiation_get_*_from_raw()/_from_integral() getter aborts on a 2D
-     table (see radiation_check_is_1d()), since no caller passes a
+     table (see radiation_check_dimensionality()), since no caller passes a
      metallicity yet. */
   if (rad->is_2d && engine_rank == 0) {
     message(
