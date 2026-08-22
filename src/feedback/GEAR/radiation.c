@@ -45,11 +45,11 @@
     ionization-threshold mass, where pychem defines them to be exactly 0 --
     see PyChemInitTable/libradiation.py) does not produce log10(0) = -inf.
     Matches pychem's own floor bit-for-bit (PyChemInitTable/
-    libparsec_radiation.py's `_LOG_FLOOR`), per Darwin's explicit ruling that
-    SWIFT's radiation interpolation must match pychem's own
-    log10(mass)-vs-log10(value) interpolation scheme, not just approximate
-    it. Applied to the CGS value itself (before the internal-unit
-    conversion), not the converted value: this is the number pychem's own
+    libparsec_radiation.py's `_LOG_FLOOR`): SWIFT's radiation interpolation
+    must match pychem's own log10(mass)-vs-log10(value) interpolation
+    scheme, not just approximate it. Applied to the CGS value itself
+    (before the internal-unit conversion), not the converted value: this
+    is the number pychem's own
     floor actually clamps, so a query that is "native-zero" in SWIFT means
     exactly what it means in pychem, independently of SWIFT's unit
     system. */
@@ -825,14 +825,25 @@ __attribute__((always_inline)) INLINE static void radiation_check_is_1d(
 }
 
 /**
- * @brief Abort with a clear message if #rad holds a mass-only (1D, "M")
- * table: the 2D getters below need a metallicity axis to interpolate.
+ * @brief Abort with a clear message if #rad does not hold an active mass x
+ * metallicity (2D, "M,Z") table: the 2D getters below need a metallicity
+ * axis to interpolate.
+ *
+ * Checks #is_active before #is_2d: a #radiation with no table loaded at
+ * all (photoionization and radiation pressure both off --
+ * radiation_zero_pointers()) also has is_2d = 0, and reporting that case
+ * as "holds a mass-only (1D) table" would be actively misleading -- there
+ * is no table of either dimensionality, not a 1D one.
  *
  * @param rad The #radiation model.
  * @param caller Name of the calling getter, for the error message.
  */
 __attribute__((always_inline)) INLINE static void radiation_check_is_2d(
     const struct radiation *rad, const char *caller) {
+  if (!rad->is_active) {
+    error("%s called with no radiation table loaded (#rad->is_active = 0).",
+          caller);
+  }
   if (!rad->is_2d) {
     error(
         "%s requires a mass x metallicity (2D) radiation table: #rad holds "
@@ -857,7 +868,15 @@ __attribute__((always_inline)) INLINE static void radiation_check_is_2d(
  * clamps any out-of-range query to the table's lowest tabulated row
  * regardless of how far below it Z sits, so this floor changes nothing
  * about which row a very-low-Z star lands on; it only keeps the log10()
- * call itself finite.
+ * call itself finite. It does not, however, preserve mass-axis
+ * interpolation for those stars: #interpolate_2d's out-of-range branch
+ * (metallicity below the table's lowest tabulated value, which is exactly
+ * what a floored Z=0 query is) returns a single clamped cell rather than
+ * blending between neighbouring mass points, so every star at or below
+ * the table's lowest tabulated Z is quantized onto the mass grid's own
+ * resolution instead of interpolated -- a real, if small, discontinuity
+ * for the pristine/Pop III population #radiation_get_log_metallicity()
+ * exists specifically to route down this path.
  *
  * Computed in double throughout, narrowed to float only on the return:
  * doing the max() in float would first narrow #RADIATION_LOG_FLOOR_CGS
@@ -1051,11 +1070,17 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw(
  *
  * Mirrors #radiation_get_luminosities_from_raw exactly, on the 2D table
  * instead of the 1D one -- see that getter's own doxygen for the log-log
- * storage convention. Not capped by #main_sequence_lifetime_2d: bolometric
- * luminosity is a real physical property of the star at its current age,
- * independent of the Q_H/DotEExcess main-sequence-averaging convention
- * that cap exists for -- see
- * #radiation_get_ionization_rate_from_raw_2d's own doxygen.
+ * storage convention. Not capped by #main_sequence_lifetime_2d, even
+ * though Luminosity is collapsed over the same main-sequence window as
+ * Q_H/DotEExcess (pychem's single group-level "time_collapse" attribute
+ * applies uniformly, there is no per-field exception): a post-main-sequence
+ * star remains genuinely luminous, and truncating radiation pressure (which
+ * #radiation_get_star_physical_radiation_pressure() derives from L_bol) to
+ * exactly 0 at TAMS would be a worse approximation than over-extending its
+ * main-sequence-averaged luminosity. Q_H/DotEExcess are capped instead
+ * because an ionizing photon rate that no longer matches the star's real
+ * state actively misleads the HII-region budget, whereas an over-extended
+ * L_bol only makes radiation pressure conservative.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -1078,8 +1103,8 @@ float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
  * (Z, M) is pychem's own documented time-averaging window for the table's
  * Q_H (see #radiation's raw.main_sequence_lifetime_2d doxygen), so past
  * that age the tabulated Q_H no longer describes the star's real state and
- * this returns exactly 0.0 rather than an over-extended value. This is
- * Darwin's ruling, and distinct from GEAR's own (typically longer) Poirier
+ * this returns exactly 0.0 rather than an over-extended value. This cap is
+ * distinct from, and independent of, GEAR's own (typically longer) Poirier
  * stellar-lifetime death and #feedback_properties.HII_max_age, both of
  * which still gate this star's feedback independently upstream
  * (feedback_common.c): PARSEC's own main-sequence duration can run several
@@ -1089,7 +1114,14 @@ float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @param star_age_myr The star's current age, in Myr.
+ * @param star_age_myr The star's current age, in Myr, anchored at the ZAMS
+ * (birth of the star as a hydrogen-burning main-sequence object), matching
+ * MainSequenceLifetime's own ZAMS-to-TAMS definition -- NOT anchored at
+ * protostellar formation. A caller deriving this from SWIFT's own star
+ * particle age (which starts at particle birth/spawn, including any
+ * pre-main-sequence contraction phase the model represents) must confirm
+ * that normalization matches before wiring a call site; see pychem's own
+ * warning on this in its MainSequenceLifetime dataset description.
  * @return The ionization rate, internal units, or exactly 0.0 if
  * @p star_age_myr exceeds the table's MainSequenceLifetime(Z, M).
  */
@@ -1125,7 +1157,9 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @param star_age_myr The star's current age, in Myr.
+ * @param star_age_myr The star's current age, in Myr, ZAMS-anchored -- see
+ * #radiation_get_ionization_rate_from_raw_2d's own doxygen for why this
+ * normalization matters.
  * @return Mean excess photon energy in cgs erg, or 0 if this (mass,
  * metallicity, age) produces no ionizing photons (dot_N_ion <= 0, or
  * @p star_age_myr exceeds MainSequenceLifetime(Z, M)).
@@ -1847,6 +1881,18 @@ void radiation_read_main_sequence_lifetime_array(
         "('M') table: MainSequenceLifetime has no 1D analogue.");
   }
 
+  const htri_t exists =
+      H5Lexists(group_id, "MainSequenceLifetime", H5P_DEFAULT);
+  if (exists <= 0) {
+    error(
+        "This 2D ('M,Z') Data/Radiation group has no 'MainSequenceLifetime' "
+        "dataset. This table was generated before pychem added it and "
+        "needs regenerating: run pychem's pychem_generate_hdf5_parameters "
+        "on this table's own chimieparam file, then point "
+        "GEARFeedback:yields_table (or yields_table_first_stars, for the "
+        "PopIII model) at the regenerated file.");
+  }
+
   radiation_build_tables(
       group_id, "MainSequenceLifetime", grid, sm, rad->interpolation_size,
       rad->interpolation_size_metallicity, 1., 1., "Myr", NULL, NULL,
@@ -1897,7 +1943,10 @@ static void radiation_open_data_group(const char *filename, hid_t *file_id,
 /**
  * @brief Read the RAD yields from the table.
  *
- * The tables are in internal units at the end of this function.
+ * The tables are in internal units at the end of this function, with one
+ * exception: for a 2D ("M,Z") table, raw.main_sequence_lifetime_2d stays
+ * in Myr, deliberately not run through the unit system -- see its own
+ * doxygen on #radiation's raw sub-struct for why.
  *
  * @param rad The #radiation model.
  * @param params The simulation parameters.
