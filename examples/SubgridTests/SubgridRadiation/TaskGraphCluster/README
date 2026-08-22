@@ -1,13 +1,11 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. Seven individual star particles are hand-placed: one at the center top-level cell of a 3x3x3 grid, and one at each of its 6 face-adjacent cells.
 
-This example tests the GEAR subgrid ionization algorithm under many-way concurrent execution: the center cell is a task-graph neighbour of all 6 surrounding cells simultaneously, making its `hii_ionization_feedback` task a lock-contention point against up to 6 sibling tasks at once -- the strongest available stress test of the `task_lock`/`task_unlock` rollback path for this task type (src/task.c).
+This example tests the GEAR subgrid ionization algorithm under many-way concurrent execution: the center cell is a task-graph neighbour of all 6 surrounding cells simultaneously, making its `hii_ionization_feedback` task a lock-contention point against up to 6 sibling tasks at once. This is the strongest available stress test of the `task_lock`/`task_unlock` rollback path for this task type (src/task.c).
 
-**Role: software-correctness test, not a physics validation target.** This checks task-graph lock contention, not agreement with any published result. See `../Starbench/`, `../HuSmith2017/`, and `../ClumpSmith2021/` for the actual validation targets.
+**Role: software-correctness test.** This checks task-graph lock contention, not agreement with any published result. See `../Starbench/`, `../HuSmith2017/`, and `../ClumpSmith2021/` for the actual validation targets.
 
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
-
-`gas_mass` defaults to 1.0 Msun, coarser than `../StromgrenSphere/`'s default of 0.1 -- this box holds ~110x more gas at the same density than the single-star example, so the coarser default keeps the particle count manageable. `n_cells` must stay 3: the center+6-face-neighbours placement pattern requires exactly a 3x3x3 top-level grid.
+`gas_mass` defaults to 1.0 Msun, coarser than `../StromgrenSphere/`'s default of 0.1. This box holds ~110x more gas at the same density than the single-star example, so the coarser default keeps the particle count manageable. `n_cells` must stay 3: the center+6-face-neighbours placement pattern requires exactly a 3x3x3 top-level grid.
 
 # Configure
 To run this example with the GEAR model,
@@ -24,7 +22,7 @@ make -j
 ```
 
 # ICs
-The run.sh script calls the `makeIC_cluster.py` script with default values. Run `python3 makeIC_cluster.py --help` for the list of parameters. `--n_cells` must stay 3, matching `Scheduler:max_top_level_cells` in params.yml -- the center+6-face-neighbours placement pattern requires exactly a 3x3x3 top-level grid.
+The run.sh script calls the `makeIC_cluster.py` script with default values. Run `python3 makeIC_cluster.py --help` for the list of parameters. `--n_cells` must stay 3, matching `Scheduler:max_top_level_cells` in params.yml as the center+6-face-neighbours placement pattern requires exactly a 3x3x3 top-level grid.
 
 # Run
 ```
@@ -32,19 +30,7 @@ The run.sh script calls the `makeIC_cluster.py` script with default values. Run 
 ```
 
 # Checking
-This is a software-correctness test, not a physics comparison. A correct
-result is the run reaching `time_end` with no `error()`-shaped lines in
-`output.log`, under `--enable-debugging-checks`, without a `task_lock`
-deadlock or assertion failure from the 6-way concurrent
-`hii_ionization_feedback` contention. Qualitatively, the 7 HII regions
-should grow independently and merge where they touch, with no region left
-un-ionized on the side facing the center star.
+This is a software-correctness test, not a physics comparison. A correct result is the run reaching `time_end` with no `error()`-shaped lines in `output.log`, under `--enable-debugging-checks`, without a `task_lock` deadlock or assertion failure from the 6-way concurrent `hii_ionization_feedback` contention. Qualitatively, the 7 HII regions should grow independently and merge where they touch, with no region left un-ionized on the side facing the center star.
 
 # Plotting
-`plot_gas_density.py` and `rhoTPlot.py` live in the shared
-`examples/GEAR_ICs_and_SCRIPTS/` directory; `plot_projected_qty.py` is
-copied from `../StromgrenSphere/`. `plot_temperature_map.py` is new: a
-mass-weighted gas temperature projection (companion to
-`plot_gas_density.py`'s mass projection), same CLI convention
-(`-s snap/snapshot -i N`, where `-i`/`--initial` is the snapshot index,
-default 0).
+`plot_gas_density.py` and `rhoTPlot.py` live in the shared `examples/GEAR_ICs_and_SCRIPTS/` directory; `plot_projected_qty.py` is copied from `../StromgrenSphere/`. `plot_temperature_map.py` is new: a mass-weighted gas temperature projection (companion to `plot_gas_density.py`'s mass projection), same CLI convention (`-s snap/snapshot -i N`, where `-i`/`--initial` is the snapshot index, default 0).
