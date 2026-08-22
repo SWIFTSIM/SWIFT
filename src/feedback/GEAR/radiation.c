@@ -1596,7 +1596,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   if (!restart) {
     rad->interpolation_size = parser_get_opt_param_int(
-        params, "GEARFeedback:radiation_interpolation_size_mass", 200);
+        params, "GEARFeedback:radiation_interpolation_size_mass", 500);
     rad->interpolation_size_metallicity = parser_get_opt_param_int(
         params, "GEARFeedback:radiation_interpolation_size_metallicity", 110);
     if (rad->interpolation_size < 2) {
