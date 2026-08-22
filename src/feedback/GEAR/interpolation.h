@@ -312,6 +312,53 @@ interpolate_boundary_check_error(enum interpolate_boundary_condition bc) {
 }
 
 /**
+ * @brief Decide whether an out-of-range 2D interpolation query evaluates to
+ * zero, and raise an error for any out-of-range axis whose boundary
+ * condition is boundary_condition_error.
+ *
+ * Must be called only once the caller has established that x_raw or y_raw
+ * is out of range. x_raw/y_raw must be the raw (untruncated) index-space
+ * coordinates: truncating first would let a value in (-1, 0) wrongly read
+ * as "in range". A zero policy on the out-of-range axis wins over a const
+ * policy on the other axis.
+ *
+ * @param boundary_condition_x The #interpolate_boundary_condition applied
+ * when x is out of range.
+ * @param boundary_condition_y The #interpolate_boundary_condition applied
+ * when y is out of range.
+ * @param x_raw The raw (untruncated) x coordinate in index space.
+ * @param y_raw The raw (untruncated) y coordinate in index space.
+ * @param nx The number of indices along x.
+ * @param ny The number of indices along y.
+ *
+ * @return 1 if the query should evaluate to zero, 0 otherwise.
+ */
+__attribute__((always_inline)) static INLINE int
+interpolate_2d_boundary_is_zero(
+    enum interpolate_boundary_condition boundary_condition_x,
+    enum interpolate_boundary_condition boundary_condition_y, float x_raw,
+    float y_raw, int nx, int ny) {
+
+  const int x_below = x_raw < 0;
+  const int x_above = !x_below && x_raw >= nx - 1;
+  const int y_below = y_raw < 0;
+  const int y_above = !y_below && y_raw >= ny - 1;
+
+  if (x_below || x_above)
+    interpolate_boundary_check_error(boundary_condition_x);
+  if (y_below || y_above)
+    interpolate_boundary_check_error(boundary_condition_y);
+
+  return (x_below &&
+          interpolate_boundary_is_zero_below(boundary_condition_x)) ||
+         (x_above &&
+          interpolate_boundary_is_zero_above(boundary_condition_x)) ||
+         (y_below &&
+          interpolate_boundary_is_zero_below(boundary_condition_y)) ||
+         (y_above && interpolate_boundary_is_zero_above(boundary_condition_y));
+}
+
+/**
  * @brief Initialize the #interpolation_2d.
  * Store the data (with "Data limits" proportion) into a flattened 1D array
  * (with "Interpolation limits" proportion).
@@ -381,35 +428,11 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       if (current_cell >= Nx * Ny) {
         error("Index %d out of boundaries for interp->data", current_cell);
       }
-      /* Extrapolate? Tested on the raw x_k/y_k floats, not the truncated
-         idx/idy ints: for x_k (or y_k) in (-1, 0), C's truncate-towards-
-         zero gives idx = 0, which would wrongly read as "in range" and
-         fall through to interpolation with a negative fx/fy -- silently
-         extrapolating instead of applying the boundary condition. Each
-         axis is checked, and treated, independently: a zero policy on
-         the side that is actually out of range wins over a const policy
-         on the other axis, since "zero" means the physical quantity
-         vanishes there regardless of the other axis's value. */
+      /* Extrapolate? See #interpolate_2d_boundary_is_zero(). */
       if (x_k < 0 || x_k >= N_data_x - 1 || y_k < 0 || y_k >= N_data_y - 1) {
-        const int x_below = x_k < 0;
-        const int x_above = !x_below && x_k >= N_data_x - 1;
-        const int y_below = y_k < 0;
-        const int y_above = !y_below && y_k >= N_data_y - 1;
-
-        if (x_below || x_above)
-          interpolate_boundary_check_error(boundary_condition_x);
-        if (y_below || y_above)
-          interpolate_boundary_check_error(boundary_condition_y);
-
-        const int is_zero =
-            (x_below &&
-             interpolate_boundary_is_zero_below(boundary_condition_x)) ||
-            (x_above &&
-             interpolate_boundary_is_zero_above(boundary_condition_x)) ||
-            (y_below &&
-             interpolate_boundary_is_zero_below(boundary_condition_y)) ||
-            (y_above &&
-             interpolate_boundary_is_zero_above(boundary_condition_y));
+        const int is_zero = interpolate_2d_boundary_is_zero(
+            boundary_condition_x, boundary_condition_y, x_k, y_k, N_data_x,
+            N_data_y);
 
         if (is_zero) {
           interp->data[current_cell] = 0;
@@ -465,29 +488,11 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
   const int idy = j;
   const float dy = j - idy;
 
-  /* Extrapolate? Tested on the raw i/j floats, not the truncated idx/idy
-     ints -- see interpolate_2d_init() for why, and for why a zero policy
-     wins over a const policy on the other axis. */
+  /* Extrapolate? See #interpolate_2d_boundary_is_zero(). */
   if (i < 0 || i >= Nx - 1 || j < 0 || j >= Ny - 1) {
-    const int x_below = i < 0;
-    const int x_above = !x_below && i >= Nx - 1;
-    const int y_below = j < 0;
-    const int y_above = !y_below && j >= Ny - 1;
-
-    if (x_below || x_above)
-      interpolate_boundary_check_error(interp->boundary_condition_x);
-    if (y_below || y_above)
-      interpolate_boundary_check_error(interp->boundary_condition_y);
-
-    const int is_zero =
-        (x_below &&
-         interpolate_boundary_is_zero_below(interp->boundary_condition_x)) ||
-        (x_above &&
-         interpolate_boundary_is_zero_above(interp->boundary_condition_x)) ||
-        (y_below &&
-         interpolate_boundary_is_zero_below(interp->boundary_condition_y)) ||
-        (y_above &&
-         interpolate_boundary_is_zero_above(interp->boundary_condition_y));
+    const int is_zero = interpolate_2d_boundary_is_zero(
+        interp->boundary_condition_x, interp->boundary_condition_y, i, j, Nx,
+        Ny);
 
     if (is_zero) {
 #if defined(SWIFT_TEST_STELLAR_WIND)
