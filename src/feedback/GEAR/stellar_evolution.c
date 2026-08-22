@@ -1235,46 +1235,96 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - optical/near-IR: single scattering --> radiation pressure
      - mid/far-IR : reserved for light re-radiated by dust */
 
+  /* Needed by the 2D radiation getters below and by the stellar-winds block
+     further down; hoisted here since it is a pure read of sp's own state,
+     independent of anything computed in between. */
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
   if (sm->rad.is_active) {
     const float log_m = log10f(sp->mass / phys_const->const_solar_mass);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* The raw radiation table's boundary condition is
-       boundary_condition_const (radiation_build_tables(), radiation.c): a
-       star above the table's own IMF mass_max silently gets the mass_max
-       edge value instead of its own, where the code used to abort ("Cannot
-       extrapolate") before this migration. Warn rather than stay silent,
-       matching this file's own fail-loud-on-boundary-violation convention
-       elsewhere (the FLT_MAX guard in radiation.c). */
+    /* 1D and 2D tables share the same mass-axis range [sm->imf.mass_min,
+       sm->imf.mass_max] (radiation_build_tables(), radiation.c): a star
+       above the table's own IMF mass_max silently gets its mass-axis
+       boundary condition applied (always clamped to the mass_max edge
+       value for a 1D table; clamped or zeroed, depending on the table's
+       own edge_policy_* attributes, for a 2D one) instead of its own
+       value, where the code used to abort ("Cannot extrapolate") before
+       this migration. Warn rather than stay silent, matching this file's
+       own fail-loud-on-boundary-violation convention elsewhere (the
+       FLT_MAX guard in radiation.c). */
     if (log_m > log10f(sm->imf.mass_max)) {
       message(
           "WARNING: [id=%lld] star mass %g Msun exceeds the radiation "
           "table's IMF mass_max=%g Msun; L_bol/dot_N_ion/mean_excess_photon_"
-          "energy_HI will be clamped to the mass_max edge value instead of "
-          "this star's own.",
+          "energy_HI will be clamped or zeroed at the mass_max edge instead "
+          "of using this star's own mass.",
           sp->id, sp->mass / phys_const->const_solar_mass, sm->imf.mass_max);
     }
 #endif
 
-    /* Get the bolometric luminosity */
-    sp->feedback_data.radiation.L_bol =
-        radiation_get_luminosities_from_raw(&sm->rad, log_m);
+    double dot_N_ion_total;
 
-    /* For the ionizing band, get the number of photons produced and split it
-       across the active angular pixels. */
-    const double dot_N_ion_total =
-        radiation_get_ionization_rate_from_raw(&sm->rad, log_m);
-    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
-                                       sm->rad.n_HII_pixels);
+    if (sm->rad.is_2d) {
+      const float log_z = radiation_get_log_metallicity(metallicity);
 
-    /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
-       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
-       (cooling reads this field only when that flag is on). Computed
-       unconditionally: it is a cheap single lookup, and keeping it in sync
-       with dot_N_ion_total avoids a second flag check here. */
-    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-        (float)radiation_get_mean_excess_photon_energy_HI_from_raw(&sm->rad,
-                                                                   log_m);
+      /* star_age_beg_step is already ZAMS-anchored: GEAR's star particles
+         have no modeled pre-main-sequence phase.
+         lifetime_get_log_lifetime_from_mass() (src/feedback/GEAR/
+         lifetime.h) computes the Poirier main-sequence lifetime directly
+         from a star's spawn mass/metallicity, and
+         star_formation_set_spart_birth_time_or_scale_factor() (called from
+         the spawning code in src/sink/GEAR/sink.h) stamps birth_time at the
+         spawning event itself; no separate contraction stage is tracked
+         anywhere in this codebase's stellar treatment. So no ZAMS offset
+         is needed here to match MainSequenceLifetime's own ZAMS-to-TAMS
+         definition. Same expression as star_age_beg_step_myr below. */
+      const float star_age_myr =
+          (float)(star_age_beg_step / (phys_const->const_year * 1e6));
+
+      /* Get the bolometric luminosity */
+      sp->feedback_data.radiation.L_bol =
+          radiation_get_luminosities_from_raw_2d(&sm->rad, log_z, log_m);
+
+      /* For the ionizing band, get the number of photons produced and split
+         it across the active angular pixels. Zeroed past the table's own
+         MainSequenceLifetime(Z, M) --
+         see radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
+      dot_N_ion_total = radiation_get_ionization_rate_from_raw_2d(
+          &sm->rad, log_z, log_m, star_age_myr);
+      radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                         sm->rad.n_HII_pixels);
+
+      /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+         Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
+         (cooling reads this field only when that flag is on). Computed
+         unconditionally: it is a cheap single lookup, and keeping it in sync
+         with dot_N_ion_total avoids a second flag check here. */
+      sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
+              &sm->rad, log_z, log_m, star_age_myr);
+    } else {
+      /* Get the bolometric luminosity */
+      sp->feedback_data.radiation.L_bol =
+          radiation_get_luminosities_from_raw(&sm->rad, log_m);
+
+      /* For the ionizing band, get the number of photons produced and split
+         it across the active angular pixels. */
+      dot_N_ion_total = radiation_get_ionization_rate_from_raw(&sm->rad, log_m);
+      radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                         sm->rad.n_HII_pixels);
+
+      /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+         Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
+         (cooling reads this field only when that flag is on). Computed
+         unconditionally: it is a cheap single lookup, and keeping it in sync
+         with dot_N_ion_total avoids a second flag check here. */
+      sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_raw(&sm->rad,
+                                                                     log_m);
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message(
@@ -1304,10 +1354,6 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const double conversion_to_myr = phys_const->const_year * 1e6;
   double star_age_end_step_myr = (star_age_beg_step + dt) / conversion_to_myr;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
-
-  /* Get the metallicity */
-  const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
