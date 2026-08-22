@@ -1431,8 +1431,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
      at all. This includes failed SN (that end up as black holes or neutron
      stars). So, the mass range is [M_min_IMF, M_not_dead_yet]. */
 
-  /* The minimal mass fixed for SSP and continuous stars */
-  const float m_min = sm->imf.mass_min * phys_const->const_solar_mass;
+  /* The minimal mass fixed for SSP and continuous stars, in Msun (matching
+     m_end_step's own convention below, not internal mass units). */
+  const float m_min = sm->imf.mass_min;
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
