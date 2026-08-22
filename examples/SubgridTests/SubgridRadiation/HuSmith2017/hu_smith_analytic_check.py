@@ -107,7 +107,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from radiation_table_reader import open_radiation_table
+from radiation_table_reader import ionizing_photon_rate, load_radiation_table
 
 
 def alpha_b_hui_gnedin(T):
@@ -374,29 +374,6 @@ def print_n_H_with_source(n_H, source, files, label="n_H"):
             f"so it is a shell-biased density and every reference curve below "
             f"is shifted. Re-run against the complete snapshot series."
         )
-
-
-# -----------------------------------------------------------------------------
-# Q_H(mass): read from this run's own Data/Radiation table (see
-# ../radiation_table_reader.py). load_radiation_table() opens the table
-# GEARFeedback:yields_table actually pointed at, per this run's own
-# Parameters group -- never a hardcoded filename.
-# -----------------------------------------------------------------------------
-def load_radiation_table(files):
-    """Open this run's Data/Radiation table, from its own recorded
-    GEARFeedback:yields_table path (never hardcoded); see
-    radiation_table_reader.resolve_yields_table_path() for the fallback
-    search order used when that path is not found relative to cwd (e.g. an
-    archived run directory)."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    return open_radiation_table(files, script_dir)
-
-
-def ionizing_photon_rate(table, mass_msun):
-    """Q_H, the ionizing photon emission rate for a single star of the
-    given mass (radiation_get_ionization_rate_from_raw(), see
-    ../radiation_table_reader.py)."""
-    return table.ionizing_photon_rate_s(mass_msun) / u.s
 
 
 # -----------------------------------------------------------------------------
@@ -825,7 +802,8 @@ def main():
 
     # n_stars identical co-located sources: sum Q_H per star, not
     # Q_H(n_stars * mass) -- the table is nonlinear in mass.
-    radiation_table = load_radiation_table(files)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    radiation_table = load_radiation_table(files, script_dir)
     Q_H = n_stars * ionizing_photon_rate(radiation_table, star_mass_msun)
     alpha_B = alpha_b_hui_gnedin(T_ionized_K * u.K)
     R_St = ((3 * Q_H / (4 * np.pi * alpha_B * n_H**2)) ** (1 / 3.0)).to(u.pc)

@@ -58,36 +58,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from radiation_table_reader import open_radiation_table
+from radiation_table_reader import ionizing_photon_rate, load_radiation_table
 
 
 def a_scale_exponent(dataset):
     """The "a-scale exponent" n such that physical = comoving * a**n for
     this HDF5 dataset (written by SWIFT on every field it outputs)."""
     return float(dataset.attrs["a-scale exponent"][0])
-
-
-# -----------------------------------------------------------------------------
-# Q_H(mass): read from this run's own Data/Radiation table (see
-# ../radiation_table_reader.py). load_radiation_table() opens the table
-# GEARFeedback:yields_table actually pointed at, per this run's own
-# Parameters group -- never a hardcoded filename.
-# -----------------------------------------------------------------------------
-def load_radiation_table(files):
-    """Open this run's Data/Radiation table, from its own recorded
-    GEARFeedback:yields_table path (never hardcoded); see
-    radiation_table_reader.resolve_yields_table_path() for the fallback
-    search order used when that path is not found relative to cwd (e.g. an
-    archived run directory)."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    return open_radiation_table(files, script_dir)
-
-
-def ionizing_photon_rate(table, mass_msun):
-    """Q_H, the ionizing photon emission rate for a single star of the
-    given mass (radiation_get_ionization_rate_from_raw(), see
-    ../radiation_table_reader.py)."""
-    return table.ionizing_photon_rate_s(mass_msun) / u.s
 
 
 # -----------------------------------------------------------------------------
@@ -712,7 +689,8 @@ def main():
     if star_mass_msun is None or n_H is None:
         raise RuntimeError("Could not infer star mass / n_H from the snapshots.")
 
-    radiation_table = load_radiation_table(files)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    radiation_table = load_radiation_table(files, script_dir)
     Q_H = ionizing_photon_rate(radiation_table, star_mass_msun)
     R_st = stromgren_radius(Q_H, n_H, ALPHA_B)
 

@@ -88,6 +88,7 @@ from typing import Sequence
 
 import h5py
 import numpy as np
+from astropy import units as u
 
 #: Default for GEARFeedback:radiation_interpolation_size_mass
 #: (src/feedback/GEAR/radiation.c, examples/parameter_example.yml).
@@ -664,3 +665,48 @@ class RadiationTable:
         )
         dot_e = _exp10_with_zero_passthrough(log_dot_e, dot_e_zero)
         return dot_e / q_h
+
+
+def load_radiation_table(files: Sequence[str], script_dir: str) -> "RadiationTable":
+    """Open a check script's own Data/Radiation table.
+
+    Thin wrapper around :func:`open_radiation_table` for the
+    ``*_analytic_check.py`` scripts: `script_dir` must be the CALLING
+    script's own directory, not this module's -- passing ``__file__``
+    resolved inside this module would resolve to
+    ``radiation_table_reader.py``'s own location instead.
+
+    Parameters
+    ----------
+    files : Sequence[str]
+        The run's sorted snapshot filenames (any one holds the Parameters
+        group this reads).
+    script_dir : str
+        Directory of the calling check script (see
+        :func:`resolve_yields_table_path`'s fallback search order).
+
+    Returns
+    -------
+    RadiationTable
+        The opened table, resampled onto this run's own interpolation grid.
+    """
+    return open_radiation_table(files, script_dir)
+
+
+def ionizing_photon_rate(table: "RadiationTable", mass_msun: float) -> u.Quantity:
+    """Return Q_H for a single star, as an astropy Quantity in 1/s.
+
+    Parameters
+    ----------
+    table : RadiationTable
+        The opened table (see :func:`load_radiation_table`).
+    mass_msun : float
+        Stellar mass, in Msun.
+
+    Returns
+    -------
+    astropy.units.Quantity
+        Ionizing photon emission rate (``radiation_get_ionization_rate_from_raw()``),
+        in 1/s.
+    """
+    return table.ionizing_photon_rate_s(mass_msun) / u.s
