@@ -27,6 +27,7 @@
 
 #include "../../feedback_properties.h"
 #include "cooling_properties.h"
+#include "hdf5_functions.h"
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -54,6 +55,40 @@
     without bound; the photons emitted meanwhile escaped an empty cell rather
     than being stored, so they must not be handed to the next landing pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
+
+/**
+ * @brief Transient, read-time-only grid metadata shared by every dataset in
+ * a Data/Radiation HDF5 group. Not part of the persistent #radiation
+ * struct: rebuilt fresh by radiation_read_data() on every read, including
+ * on restart.
+ */
+struct radiation_grid_metadata {
+  /*! "M" (mass-only) or "M,Z" (mass x metallicity), from the group's own
+      "dimensionality" attribute. */
+  char dimensionality[8];
+
+  /*! Is this a 2D ("M,Z") table? Derived from #dimensionality. */
+  int is_2d;
+
+  /*! log10(mass grid minimum), from the group's "m0" attribute. */
+  float log_mass_min;
+
+  /*! log10 mass grid step, from the group's "dm" attribute. */
+  float mass_step;
+
+  /*! Number of mass grid points, from the group's "nm" attribute. */
+  int n_mass;
+
+  /*! Number of metallicity grid points (0 for a 1D table), from the
+      group's "nz" attribute. */
+  int n_metallicity;
+
+  /*! Metallicity grid values (mass fraction Z, native units; NULL for a
+      1D table). Not guaranteed log-uniformly spaced by the file -- see
+      radiation_read_data()'s own comment on the approximation this forces
+      for interpolate_2d_init(). */
+  float *metallicity;
+};
 
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -120,25 +155,6 @@ float radiation_get_star_physical_radiation_pressure(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo);
 
-float radiation_get_individual_star_radius(const float mass,
-                                           const struct unit_system *us,
-                                           const struct phys_const *phys_const);
-float radiation_get_individual_star_temperature(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-float radiation_get_individual_star_luminosity(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-double radiation_get_individual_star_mean_excess_photon_energy_HI(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
 /******************************************************************************/
 /* Functions to deal with integrated data over an IMF. These functions read,
    interpolate and integrate. */
@@ -153,8 +169,10 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
 void radiation_restore(struct radiation *rad, FILE *stream,
                        const struct stellar_model *sm,
                        const struct unit_system *us,
-                       const struct phys_const *phys_const);
+                       const struct phys_const *phys_const,
+                       const char with_radiation);
 void radiation_clean(struct radiation *rad);
+void radiation_zero_pointers(struct radiation *rad);
 
 float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2);
@@ -166,30 +184,25 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m);
 double radiation_get_mean_excess_photon_energy_HI_from_integral(
     const struct radiation *rad, float log_m1, float log_m2);
+double radiation_get_mean_excess_photon_energy_HI_from_raw(
+    const struct radiation *rad, float log_m);
 
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
                          const struct phys_const *phys_const,
                          const int restart);
-void radiation_read_luminosities_array(struct radiation *rad,
-                                       struct interpolation_1d *interp_raw,
-                                       struct interpolation_1d *interp_int,
-                                       const struct stellar_model *sm,
-                                       int interpolation_size,
-                                       const struct unit_system *us,
-                                       const struct phys_const *phys_const);
-void radiation_read_ionization_rate_array(struct radiation *rad,
-                                          struct interpolation_1d *interp_raw,
-                                          struct interpolation_1d *interp_int,
-                                          const struct stellar_model *sm,
-                                          int interpolation_size,
-                                          const struct unit_system *us,
-                                          const struct phys_const *phys_const);
+void radiation_read_luminosities_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_ionization_rate_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, struct interpolation_1d *interp_raw,
-    struct interpolation_1d *interp_int, const struct stellar_model *sm,
-    int interpolation_size, const struct unit_system *us,
-    const struct phys_const *phys_const);
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

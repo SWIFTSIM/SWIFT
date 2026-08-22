@@ -185,7 +185,10 @@ struct supernovae_ii {
  */
 struct radiation {
 
-  /*! Yields not integrated */
+  /*! Yields not integrated, mass-only ("M" dimensionality) tables. Store
+      log10(value in internal units), pychem-floored, not the raw value --
+      see radiation.c's radiation_build_tables()/radiation_read_cgs_array()
+      doxygen; every radiation_get_*_from_raw() getter exponentiates back. */
   struct {
     /*! Bolometric luminosity emitted. */
     struct interpolation_1d luminosities;
@@ -197,9 +200,21 @@ struct radiation {
         dot_N_ion(m) * mean_excess_photon_energy_HI(m); see
         #radiation_get_mean_excess_photon_energy_HI_from_integral. */
     struct interpolation_1d dot_E_excess;
+
+    /*! Same three quantities, mass x metallicity ("M,Z" dimensionality)
+        variant. Populated instead of the fields above when #is_2d is set;
+        see radiation_read_data(). Ships with zero test coverage until the
+        PARSEC/2D validation track (plan Phase 6) exercises it. */
+    struct interpolation_2d luminosities_2d;
+    struct interpolation_2d dot_N_ion_2d;
+    struct interpolation_2d dot_E_excess_2d;
   } raw;
 
-  /*! Yields integrated */
+  /*! Yields integrated (IMF-integrated). Mass-only ("M") tables only: a 2D
+      (mass x metallicity) integrated table needs per-metallicity IMF
+      integration, which no caller needs yet -- see #is_2d and
+      radiation_get_luminosities_from_integral() and friends, which error
+      if called on a 2D table. */
   struct {
 
     /*! Bolometric luminosity emitted. */
@@ -212,19 +227,33 @@ struct radiation {
     struct interpolation_1d dot_E_excess;
   } integrated;
 
-  /* /\*! Minimal mass for a SNII *\/ */
-  /* float mass_min; */
+  /*! Is this a mass x metallicity ("M,Z") table rather than a mass-only
+      ("M") one? Set from the Data/Radiation group's own "dimensionality"
+      attribute in radiation_read_data(); dispatches between the raw 1D
+      and 2D fields above in the read functions, and gates the getters
+      that do not yet take a metallicity argument. */
+  int is_2d;
 
-  /* /\*! Maximal mass for a SNII *\/ */
-  /* float mass_max; */
-
-  /*! Number of element in the interpolation array */
+  /*! Number of element in the interpolation array (mass axis) */
   int interpolation_size;
+
+  /*! Number of element in the interpolation array (metallicity axis,
+      2D tables only) */
+  int interpolation_size_metallicity;
 
   /*! Number of active angular (HEALPix) pixels the HII ionization budget is
       split across (1 = spherical/HEALPix disabled). Set from
       GEARFeedback:HII_angular_nside in radiation_init(). */
   int n_HII_pixels;
+
+  /*! Is a radiation table actually loaded? False when neither
+      photoionization nor radiation pressure is enabled (see
+      stellar_evolution_props_init()): every other field above is then
+      zero-pointered by #radiation_zero_pointers, so callers must check this
+      before touching them (radiation_get_*_from_raw()/_from_integral()
+      would read a zeroed interpolation table otherwise). Set to 1 at the
+      end of radiation_read_data(), 0 by #radiation_zero_pointers. */
+  int is_active;
 };
 
 /**

@@ -239,7 +239,8 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
   *HI_ionization_rate = Gamma_HI;
 
   /* excess_photon_energy_HI is cached in cgs already (see
-     radiation_get_individual_star_mean_excess_photon_energy_HI). */
+     radiation_get_mean_excess_photon_energy_HI_from_raw /
+     radiation_get_mean_excess_photon_energy_HI_from_integral). */
   const double Gamma_HI_cgs = Gamma_HI / time_units;
   const double E_excess_cgs =
       (double)radiation_get_part_excess_photon_energy_HI(p, xp);

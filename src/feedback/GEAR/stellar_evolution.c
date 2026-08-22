@@ -47,13 +47,18 @@
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_stellar_wind_feedback Are we running with stellar wind
+ * feedback?
+ * @param with_radiation Are we running with photoionization and/or
+ * radiation pressure?
  */
 void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct phys_const *phys_const,
                                   const struct unit_system *us,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo,
-                                  const char with_stellar_wind_feedback) {
+                                  const char with_stellar_wind_feedback,
+                                  const char with_radiation) {
 
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
@@ -78,8 +83,16 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   /* Initialize the supernovae II model */
   supernovae_ii_init(&sm->snii, params, sm, us);
 
-  /* Initialize the radiation model */
-  radiation_init(&sm->rad, params, sm, us, phys_const);
+  /* Initialize the radiation model if needed. The radiation table is
+   * scheme-specific and not guaranteed to exist for a non-radiation run
+   * (e.g. StellarWindInjection, StellarWindBubble), so skip opening it
+   * entirely when neither photoionization nor radiation pressure is
+   * enabled. */
+  if (with_radiation) {
+    radiation_init(&sm->rad, params, sm, us, phys_const);
+  } else {
+    radiation_zero_pointers(&sm->rad);
+  }
 
   /* Initialize the stellar wind model if needed */
   if (with_stellar_wind_feedback) {
@@ -1222,35 +1235,65 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - optical/near-IR: single scattering --> radiation pressure
      - mid/far-IR : reserved for light re-radiated by dust */
 
-  /* TODO: Add a with radiation mode */
-  /* Get the bolometric luminosity */
-  sp->feedback_data.radiation.L_bol =
-      radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
+  if (sm->rad.is_active) {
+    const float log_m = log10f(sp->mass / phys_const->const_solar_mass);
 
-  /* For the ionizing band, get the number of photons produced and split it
-     across the active angular pixels. */
-  const double dot_N_ion_total =
-      radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-          sp->mass, us, phys_const);
-  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
+#ifdef SWIFT_DEBUG_CHECKS
+    /* The raw radiation table's boundary condition is
+       boundary_condition_const (radiation_build_tables(), radiation.c): a
+       star above the table's own IMF mass_max silently gets the mass_max
+       edge value instead of its own, where the code used to abort ("Cannot
+       extrapolate") before this migration. Warn rather than stay silent,
+       matching this file's own fail-loud-on-boundary-violation convention
+       elsewhere (the FLT_MAX guard in radiation.c). */
+    if (log_m > log10f(sm->imf.mass_max)) {
+      message(
+          "WARNING: [id=%lld] star mass %g Msun exceeds the radiation "
+          "table's IMF mass_max=%g Msun; L_bol/dot_N_ion/mean_excess_photon_"
+          "energy_HI will be clamped to the mass_max edge value instead of "
+          "this star's own.",
+          sp->id, sp->mass / phys_const->const_solar_mass, sm->imf.mass_max);
+    }
+#endif
 
-  /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
-     Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
-     (cooling reads this field only when that flag is on). Computed
-     unconditionally: it is a cheap single lookup, and keeping it in sync
-     with dot_N_ion_total avoids a second flag check here. */
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-      (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
-          sp->mass, us, phys_const);
+    /* Get the bolometric luminosity */
+    sp->feedback_data.radiation.L_bol =
+        radiation_get_luminosities_from_raw(&sm->rad, log_m);
+
+    /* For the ionizing band, get the number of photons produced and split it
+       across the active angular pixels. */
+    const double dot_N_ion_total =
+        radiation_get_ionization_rate_from_raw(&sm->rad, log_m);
+    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                       sm->rad.n_HII_pixels);
+
+    /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
+       (cooling reads this field only when that flag is on). Computed
+       unconditionally: it is a cheap single lookup, and keeping it in sync
+       with dot_N_ion_total avoids a second flag check here. */
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+        (float)radiation_get_mean_excess_photon_energy_HI_from_raw(&sm->rad,
+                                                                   log_m);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  message(
-      "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
-      "internal",
-      sp->id, sp->star_type, sp->mass / phys_const->const_solar_mass,
-      dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
-      sp->feedback_data.radiation.L_bol);
+    message(
+        "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
+        "internal",
+        sp->id, sp->star_type, sp->mass / phys_const->const_solar_mass,
+        dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+        sp->feedback_data.radiation.L_bol);
 #endif
+  } else {
+    /* No radiation table loaded (see stellar_evolution_props_init()): leave
+       every radiation output at its safe zeroed default instead of reading
+       the zero-pointered interpolation tables (radiation_get_*_from_raw()
+       would divide by a zeroed dx, and dividing by n_HII_pixels=0 in
+       radiation_set_ionizing_photon_rate() below would too). */
+    sp->feedback_data.radiation.L_bol = 0.f;
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+    radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+  }
 
   /*****************************************/
   /* Stellar winds */
@@ -1388,30 +1431,40 @@ void stellar_evolution_compute_preSN_feedback_spart(
   const float m_init =
       stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
-  /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
-  const float L_bol = radiation_get_luminosities_from_integral(
-      &sm->rad, log10f(m_min), log10f(m_end_step));
-  const double dot_N_ion = radiation_get_ionization_rate_from_integral(
-      &sm->rad, log10f(m_min), log10f(m_end_step));
+  if (sm->rad.is_active) {
+    /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
+    const float L_bol = radiation_get_luminosities_from_integral(
+        &sm->rad, log10f(m_min), log10f(m_end_step));
+    const double dot_N_ion = radiation_get_ionization_rate_from_integral(
+        &sm->rad, log10f(m_min), log10f(m_end_step));
 
-  /* Convert to total luminosities */
-  sp->feedback_data.radiation.L_bol =
-      L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+    /* Convert to total luminosities */
+    sp->feedback_data.radiation.L_bol =
+        L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
-  /* Convert to total ionizing emission rate and split it across the
-     active angular pixels. */
-  const double dot_N_ion_total =
-      dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
-  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
+    /* Convert to total ionizing emission rate and split it across the
+       active angular pixels. */
+    const double dot_N_ion_total =
+        dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                       sm->rad.n_HII_pixels);
 
-  /* Q-weighted mean excess photon energy above the 13.6 eV HI threshold,
-     over the same mass window as dot_N_ion above. A ratio of per-unit-mass
-     integrals, so unlike L_bol/dot_N_ion it is NOT rescaled by birth_mass:
-     the mean photon energy of a population does not depend on how many
-     stars it has, only on which masses are still alive. */
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-      (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
-          &sm->rad, log10f(m_min), log10f(m_end_step));
+    /* Q-weighted mean excess photon energy above the 13.6 eV HI threshold,
+       over the same mass window as dot_N_ion above. A ratio of per-unit-mass
+       integrals, so unlike L_bol/dot_N_ion it is NOT rescaled by birth_mass:
+       the mean photon energy of a population does not depend on how many
+       stars it has, only on which masses are still alive. */
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+        (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
+            &sm->rad, log10f(m_min), log10f(m_end_step));
+  } else {
+    /* No radiation table loaded (see stellar_evolution_props_init()): leave
+       every radiation output at its safe zeroed default, matching the
+       individual-star sibling function's else branch. */
+    sp->feedback_data.radiation.L_bol = 0.f;
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+    radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+  }
 
   /*****************************************/
   /* Stellar winds */
@@ -1448,8 +1501,13 @@ void stellar_evolution_zero_pointers(struct stellar_model sm) {
   supernovae_ii_zero_pointers(&sm.snii);
   supernovae_ia_zero_pointers(&sm.snia);
   stellar_wind_zero_pointers(&sm.sw);
-
-  /* TODO: Zero radiation pointers */
+  /* NOTE: radiation_zero_pointers() here would be a no-op: sm is passed by
+     value, so every call above and this one mutate a discarded stack
+     copy, not the caller's own struct. Left unfixed: changing this
+     function's signature to take a pointer would make these zeroing
+     calls live on the restart-dump path, which needs a full restart-
+     safety re-verification before landing (see CLAUDE.md, "Restart
+     works"). */
 }
 
 /**
@@ -1494,11 +1552,14 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
  * @param stream the file stream
  * @param with_stellar_wind_feedback Are we restoring with stellar wind
  * feedback?
+ * @param with_radiation Are we restoring with photoionization and/or
+ * radiation pressure?
  * @param us The unit system.
  * @param phys_const The physical constants in internal units.
  */
 void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
                                const char with_stellar_wind_feedback,
+                               const char with_radiation,
                                const struct unit_system *us,
                                const struct phys_const *phys_const) {
 
@@ -1521,8 +1582,12 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
     stellar_wind_zero_pointers(&sm->sw);
   }
 
-  /* Restore the radiation model */
-  radiation_restore(&sm->rad, stream, sm, us, phys_const);
+  /* Restore the radiation model. Unlike the stellar wind branch above,
+   * radiation_dump() is never a no-op (it always writes sizeof(struct
+   * radiation) bytes), so radiation_restore() must always be called to keep
+   * the stream in sync; it is the one that internally skips re-deriving the
+   * tables when radiation is disabled. */
+  radiation_restore(&sm->rad, stream, sm, us, phys_const, with_radiation);
 }
 
 /**

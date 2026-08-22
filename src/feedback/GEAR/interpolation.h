@@ -229,6 +229,22 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_free(
   interp->data = NULL;
 }
 
+/**
+ * @brief Zero pointers in an #interpolation_1d struct, so a struct that was
+ * never (or is not yet) initialized can still be safely passed to
+ * #interpolate_1d_free.
+ *
+ * @param interp The #interpolation_1d.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_1d_zero_pointers(
+    struct interpolation_1d *interp) {
+  interp->data = NULL;
+  interp->xmin = 0.0;
+  interp->dx = 0.0;
+  interp->N = 0;
+  interp->boundary_condition = boundary_condition_error;
+}
+
 /**************************** Interpolation 2D ********************************/
 
 /**
