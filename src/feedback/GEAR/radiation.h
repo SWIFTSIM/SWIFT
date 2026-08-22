@@ -56,6 +56,21 @@
     than being stored, so they must not be handed to the next landing pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
 
+/*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
+    genuinely-zero table entry (Q_H/DotEExcess below the source table's own
+    ionization-threshold mass, where pychem defines them to be exactly 0 --
+    see PyChemInitTable/libradiation.py) does not produce log10(0) = -inf.
+    Matches pychem's own floor bit-for-bit (PyChemInitTable/
+    libparsec_radiation.py's `_LOG_FLOOR`): SWIFT's radiation interpolation
+    must match pychem's own log10(mass)-vs-log10(value) interpolation
+    scheme, not just approximate it. Applied to the CGS value itself
+    (before the internal-unit conversion), not the converted value: this
+    is the number pychem's own
+    floor actually clamps, so a query that is "native-zero" in SWIFT means
+    exactly what it means in pychem, independently of SWIFT's unit
+    system. */
+#define RADIATION_LOG_FLOOR_CGS 1e-300
+
 /**
  * @brief Transient, read-time-only grid metadata shared by every dataset in
  * a Data/Radiation HDF5 group. Not part of the persistent #radiation
