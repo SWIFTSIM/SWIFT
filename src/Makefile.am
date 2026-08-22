@@ -144,7 +144,9 @@ COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
     feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
-COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_gas.c \
+    feedback/GEAR/radiation_pressure.c feedback/GEAR/radiation_getters.c \
+    feedback/GEAR/radiation_table_io.c
 COMMON_GEAR_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
