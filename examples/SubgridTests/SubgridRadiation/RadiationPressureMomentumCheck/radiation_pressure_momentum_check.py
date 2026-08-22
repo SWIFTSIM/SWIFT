@@ -46,8 +46,10 @@ import unyt as u
 
 
 def blackbody_bolometric_luminosity(mass_msun):
-    """Piecewise mass-luminosity fit, replicating
-    radiation_get_individual_star_luminosity (src/feedback/GEAR/radiation.c).
+    """Standalone piecewise mass-luminosity fit, kept as a fixed historical
+    reference for this example only. It is not synced with the current C
+    code: src/feedback/GEAR/radiation.c now reads this quantity from a
+    pychem-generated table instead of computing it inline.
     """
     M = mass_msun
     if M < 0.43:
