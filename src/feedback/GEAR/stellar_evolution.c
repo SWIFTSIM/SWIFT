@@ -640,7 +640,7 @@ void stellar_evolution_compute_preSN_properties(
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const float log_metallicity =
       log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
-  const float log_m = log10(m_beg_step);
+  const float log_m = log10(m_end_lim);
 
   /* If the star particle is single_star the calculation is straight forward */
   if (sp->star_type == single_star) {
@@ -1313,9 +1313,17 @@ void stellar_evolution_compute_preSN_feedback_spart(
   special treatment. They do not contain stars above the mass that separate the
   IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
   module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback for the discrete part. */
+  feedback for the discrete part. m_end_step needs the same clamp: stellar
+  winds are a continuous emission (unlike SN's discrete death events), so a
+  young population where even m_end_step exceeds minimal_discrete_mass_Msun
+  is not "nothing to do yet" -- every star this particle can contain, up to
+  minimal_discrete_mass_Msun, is still alive and still emitting, so the
+  m_end_lim query point computed downstream (stellar_evolution_compute_
+  preSN_properties) must reach exactly that far, not stop early or reach
+  past it. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
+    m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
   }
 
   /* Compute the initial mass. The initial mass is different if the star
