@@ -188,7 +188,9 @@ struct radiation {
   /*! Yields not integrated, mass-only ("M" dimensionality) tables. Store
       log10(value in internal units), pychem-floored, not the raw value --
       see radiation.c's radiation_build_tables()/radiation_read_cgs_array()
-      doxygen; every radiation_get_*_from_raw() getter exponentiates back. */
+      doxygen; every radiation_get_*_from_raw() getter exponentiates back.
+      Exception: #main_sequence_lifetime_2d stores log10(Myr), not
+      log10(internal units) -- see its own doxygen below for why. */
   struct {
     /*! Bolometric luminosity emitted. */
     struct interpolation_1d luminosities;
@@ -208,6 +210,25 @@ struct radiation {
     struct interpolation_2d luminosities_2d;
     struct interpolation_2d dot_N_ion_2d;
     struct interpolation_2d dot_E_excess_2d;
+
+    /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
+        metallicity, 2D-only ("MainSequenceLifetime" has no 1D/"M"-table
+        analogue). Stored log10(Myr), in the same log-log scheme
+        #interpolate_2d_init() applies to the three fields above (see
+        radiation_build_tables()'s doxygen) -- but deliberately left in
+        Myr rather than converted to internal units, since it is only ever
+        compared against a star's age in Myr
+        (radiation_get_ionization_rate_from_raw_2d(),
+        radiation_get_mean_excess_photon_energy_HI_from_raw_2d()), which
+        take that age directly with no #unit_system available to convert
+        back with. Matches how GEAR's own Poirier lifetime model already
+        works natively in log10(Myr)
+        (lifetime_get_log_lifetime_from_mass(),
+        src/feedback/GEAR/lifetime.h). Used to cap Q_H/DotEExcess to 0 once
+        a star exceeds the table's own main-sequence window;
+        #luminosities_2d is a real physical property independent of that
+        window and is never capped by it. */
+    struct interpolation_2d main_sequence_lifetime_2d;
   } raw;
 
   /*! Yields integrated (IMF-integrated). Mass-only ("M") tables only: a 2D

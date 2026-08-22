@@ -207,6 +207,15 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
 double radiation_get_mean_excess_photon_energy_HI_from_raw(
     const struct radiation *rad, float log_m);
 
+float radiation_get_log_metallicity(float Z);
+float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
+                                             float log_z, float log_m);
+double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
+                                                 float log_z, float log_m,
+                                                 float star_age_myr);
+double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
+    const struct radiation *rad, float log_z, float log_m, float star_age_myr);
+
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
@@ -221,6 +230,10 @@ void radiation_read_ionization_rate_array(
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
 void radiation_read_mean_excess_photon_energy_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
