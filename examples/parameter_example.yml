@@ -799,8 +799,10 @@ GEARFeedback:
   HII_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass ionizing photon budget is integrated over. (Default: 1e-4)
   HII_couple_ionization_rate: 0                     # Rate-couple HII photoionization into Grackle's own RT_HI_ionization_rate/RT_heating_rate fields (a physically derived, distance-dependent per-particle rate) instead of the instant flag-and-floor
                                                     # scheme. Requires COOLING_GRACKLE_MODE >= 1; forces GrackleCooling:use_radiative_transfer on internally. 1: on, 0: off. (Default: 0)
-  radiation_interpolation_size_mass:        500     # Number of elements to keep in the mass interpolation of the Data/Radiation table. Matches the shipped table's own native grid size (500), avoiding a lossy down-sample: a smaller value costs up to ~17.6% per-star error near the source fits' own mass-relation breakpoints. (Default: 500)
-  radiation_interpolation_size_metallicity: 110     # Number of elements to keep in the metallicity interpolation of the Data/Radiation table (only used for a mass x metallicity table). (Default: 110)
+
+GEARRadiation:
+  interpolation_size_mass:        500       # Number of elements to keep in the mass interpolation of the Data/Radiation table. Matches the shipped table's own native grid size (500), avoiding a lossy down-sample: a smaller value costs up to ~17.6% per-star error near the source fits' own mass-relation breakpoints. (Default: 500)
+  interpolation_size_metallicity: 110       # Number of elements to keep in the metallicity interpolation of the Data/Radiation table (only used for a mass x metallicity table). (Default: 110)
 
 GEARSupernovaeII:
     interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
