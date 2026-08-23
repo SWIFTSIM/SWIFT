@@ -19,13 +19,13 @@
 
 /* Include header */
 #include "feedback_common.h"
+#include "radiation.h"
 
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "radiation.h"
 #include "stellar_evolution.h"
 #include "timestep_sync_part.h"
 #include "units.h"

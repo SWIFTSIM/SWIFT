@@ -21,13 +21,14 @@
 #include "stellar_evolution.h"
 
 /* Include local headers */
+#include "radiation.h"
+
 #include "../../feedback_struct.h"
 #include "exp10.h"
 #include "feedback_struct.h"
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
-#include "radiation.h"
 #include "random.h"
 #include "stellar_evolution_struct.h"
 #include "stellar_wind.h"

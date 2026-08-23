@@ -28,11 +28,12 @@
  * duplication.
  */
 
+#include "radiation.h"
+
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "feedback_properties.h"
-#include "radiation.h"
 #include "random.h"
 
 /**
