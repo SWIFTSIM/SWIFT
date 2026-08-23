@@ -84,6 +84,17 @@ struct gravity_cache {
    * to prove (or disprove) that a specific index's raw time_bin genuinely
    * differed between populate time and a later read of the same memory. */
   int *restrict populated_time_bin SWIFT_CACHE_ALIGN;
+
+  /*! Per-index id_or_neg_offset as read by the last foreign populate call
+   * -- pre-removal identity, since cell_remove_* overwrites the raw field
+   * to the particle's own id on removal (was a fixed placeholder before
+   * this was captured here). */
+  long long *restrict populated_id SWIFT_CACHE_ALIGN;
+
+  /*! Per-index type as read by the last foreign populate call -- the raw
+   * field is always overwritten to swift_type_dark_matter on removal, so
+   * this is the only way to know what the particle actually was. */
+  int *restrict populated_type SWIFT_CACHE_ALIGN;
 #endif
 };
 
@@ -108,6 +119,8 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
     swift_free("gravity_cache", c->use_mpole);
 #ifdef SWIFT_DEBUG_CHECKS
     swift_free("gravity_cache", c->populated_time_bin);
+    swift_free("gravity_cache", c->populated_id);
+    swift_free("gravity_cache", c->populated_type);
 #endif
   }
   c->count = 0;
@@ -130,6 +143,9 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
   const int padded_count = count - (count % VEC_SIZE) + VEC_SIZE;
   const size_t sizeBytesF = padded_count * sizeof(float);
   const size_t sizeBytesI = padded_count * sizeof(int);
+#ifdef SWIFT_DEBUG_CHECKS
+  const size_t sizeBytesLL = padded_count * sizeof(long long);
+#endif
 
   /* Delete old stuff if any */
   gravity_cache_clean(c);
@@ -159,6 +175,10 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
 #ifdef SWIFT_DEBUG_CHECKS
   e += swift_memalign("gravity_cache", (void **)&c->populated_time_bin,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesI);
+  e += swift_memalign("gravity_cache", (void **)&c->populated_id,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesLL);
+  e += swift_memalign("gravity_cache", (void **)&c->populated_type,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
 #endif
 
@@ -380,6 +400,8 @@ INLINE static void gravity_cache_populate_foreign(
       error("Found an extra gpart in the gravity cache");
     }
     c->populated_time_bin[i] = gparts_foreign[i].time_bin;
+    c->populated_id[i] = gparts_foreign[i].id_or_neg_offset;
+    c->populated_type[i] = gparts_foreign[i].type;
 #endif
 
     /* Make a dummy particle out of the inhibted ones */

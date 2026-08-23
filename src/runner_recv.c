@@ -161,6 +161,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
   c->grav.data_recv_at_tic = ti_current;
   c->grav.data_recv_count = (int)nr_gparts;
+  c->grav.data_recv_exec_count++;
 #endif
 
   TIMER_TIC;

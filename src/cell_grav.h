@@ -138,6 +138,12 @@ struct cell_grav {
 
   /*! #count at that last DATA delivery. */
   int data_recv_count;
+
+  /*! Monotonic count of how many times runner_do_recv_gpart actually
+   * visited THIS cell (top-level call or internal recursion into a
+   * progeny) -- unlike subtasks_executed, which only counts on a task's
+   * own ci/cj and never on cells reached via a task's own recursion. */
+  int data_recv_exec_count;
 #endif
 
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
