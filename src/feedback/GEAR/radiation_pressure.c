@@ -23,9 +23,14 @@
  * dust opacity and optical depth, and the radiation pressure they imply.
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /* Include header */
 #include "radiation.h"
 
+#include "error.h"
+#include "inline.h"
 #include "kernel_hydro.h"
 
 /**

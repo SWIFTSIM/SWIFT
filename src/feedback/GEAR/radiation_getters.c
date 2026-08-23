@@ -24,9 +24,14 @@
  * metallicity) interpolation tables built by radiation_read_data().
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /* Include header */
 #include "radiation.h"
 
+#include "error.h"
+#include "inline.h"
 #include "interpolation.h"
 #include "minmax.h"
 

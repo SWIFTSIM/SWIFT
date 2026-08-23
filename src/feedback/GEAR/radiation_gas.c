@@ -23,11 +23,16 @@
  * photon budget, and the ionization tag carried on each #part.
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /* Include header */
 #include "radiation.h"
 
 #include "chemistry.h"
 #include "cooling.h"
+#include "error.h"
+#include "inline.h"
 #include "minmax.h"
 #include "units.h"
 

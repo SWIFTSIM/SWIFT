@@ -25,11 +25,16 @@
  * points plus radiation_read_data() itself.
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /* Include header */
 #include "radiation.h"
 
 #include "engine.h"
+#include "error.h"
 #include "hdf5_functions.h"
+#include "inline.h"
 #include "interpolation.h"
 #include "minmax.h"
 #include "stellar_evolution.h"
