@@ -29,14 +29,13 @@
 #include <config.h>
 
 /* Include header */
-#include "radiation.h"
-
 #include "engine.h"
 #include "error.h"
 #include "hdf5_functions.h"
 #include "inline.h"
 #include "interpolation.h"
 #include "minmax.h"
+#include "radiation.h"
 #include "stellar_evolution.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"

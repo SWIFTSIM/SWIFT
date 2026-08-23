@@ -27,13 +27,12 @@
 #include <config.h>
 
 /* Include header */
-#include "radiation.h"
-
 #include "chemistry.h"
 #include "cooling.h"
 #include "error.h"
 #include "inline.h"
 #include "minmax.h"
+#include "radiation.h"
 #include "units.h"
 
 /**

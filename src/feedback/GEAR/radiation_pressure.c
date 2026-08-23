@@ -27,11 +27,10 @@
 #include <config.h>
 
 /* Include header */
-#include "radiation.h"
-
 #include "error.h"
 #include "inline.h"
 #include "kernel_hydro.h"
+#include "radiation.h"
 
 /**
  * Compute the gas comoving column density at the star's location using the

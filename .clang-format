@@ -15,9 +15,6 @@ IncludeCategories:
     Priority:        4
   - Regex:           '<[[:alnum:].]+>'
     Priority:        5
-  - Regex:           '^"radiation\.h"$'
-    Priority:        0
-    SortPriority:    0
   - Regex:           '.*'
     Priority:        2
     SortPriority:    0

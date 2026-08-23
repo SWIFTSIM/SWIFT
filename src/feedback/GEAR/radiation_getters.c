@@ -28,12 +28,11 @@
 #include <config.h>
 
 /* Include header */
-#include "radiation.h"
-
 #include "error.h"
 #include "inline.h"
 #include "interpolation.h"
 #include "minmax.h"
+#include "radiation.h"
 
 /**
  * @brief Abort with a clear message if #rad's table dimensionality does not
