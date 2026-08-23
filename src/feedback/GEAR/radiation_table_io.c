@@ -339,6 +339,127 @@ static void radiation_read_grid_metadata(hid_t group_id,
 }
 
 /**
+ * @brief Cross-check a table's "imf_a_s"/"imf_m_s"/"mass_min_msun"/
+ * "mass_max_msun" attributes against @p sm's own #initial_mass_function,
+ * for a table carrying pychem's precomputed IMF-integrated datasets.
+ *
+ * pychem's Integrated_* cumulative datasets (see radiation_build_tables())
+ * were computed against a specific IMF; if that IMF differs from the one
+ * this run configured (#sm->imf), the precomputed integral is silently
+ * wrong for this run -- exactly the class of bug this migration exists to
+ * close. Only tables with the precomputed datasets write these attrs, so a
+ * table without "Integrated_Q_H" is skipped here (not an error: an
+ * old-format table is instead caught when a reader tries to open
+ * "Integrated_Q_H" directly, in radiation_build_tables()). "imf_m_s" holds
+ * only the IMF's *interior* breakpoints, so it is compared against
+ * #initial_mass_function.mass_limits[1 .. n_parts - 1], with
+ * mass_min_msun/mass_max_msun standing in for its outer two entries.
+ *
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param sm The #stellar_model (its imf must already be initialised).
+ */
+static void radiation_check_imf_consistency(hid_t group_id,
+                                            const struct stellar_model *sm) {
+
+  const htri_t exists = H5Lexists(group_id, "Integrated_Q_H", H5P_DEFAULT);
+  if (exists <= 0) return;
+
+  const struct initial_mass_function *imf = &sm->imf;
+
+  double mass_min_msun, mass_max_msun;
+  io_read_attribute(group_id, "mass_min_msun", DOUBLE, &mass_min_msun);
+  io_read_attribute(group_id, "mass_max_msun", DOUBLE, &mass_max_msun);
+
+  /* A segment-count mismatch is not a rounding question: check it here,
+     with the same actionable framing as the value mismatches below,
+     before io_read_array_attribute()'s own generic "different number of
+     elements than expected" error would fire instead. */
+  const hid_t attr_a_s = H5Aopen(group_id, "imf_a_s", H5P_DEFAULT);
+  if (attr_a_s < 0) error("Error while opening attribute 'imf_a_s'");
+  const hsize_t n_a_s = io_get_number_element_in_attribute(attr_a_s);
+  H5Aclose(attr_a_s);
+  if (n_a_s != (hsize_t)imf->n_parts)
+    error(
+        "Data/Radiation's 'imf_a_s' attribute has %llu segment(s), but "
+        "sm->imf (read from this same file's Data/IMF group) has %d: "
+        "Data/Radiation's Integrated_* datasets were precomputed against a "
+        "different IMF than this file's own Data/IMF. Regenerate this "
+        "table with pychem so Data/Radiation and Data/IMF agree, or point "
+        "GEARFeedback:yields_table (or yields_table_first_stars) at a "
+        "table whose Data/IMF already matches its own Integrated_* "
+        "datasets.",
+        (unsigned long long)n_a_s, imf->n_parts);
+
+  double *imf_a_s = (double *)malloc(sizeof(double) * imf->n_parts);
+  if (imf_a_s == NULL) error("Failed to allocate the 'imf_a_s' buffer.");
+  io_read_array_attribute(group_id, "imf_a_s", DOUBLE, imf_a_s,
+                          (hsize_t)imf->n_parts);
+
+  const int n_interior = imf->n_parts - 1;
+  double *imf_m_s = NULL;
+  if (n_interior > 0) {
+    const hid_t attr_m_s = H5Aopen(group_id, "imf_m_s", H5P_DEFAULT);
+    if (attr_m_s < 0) error("Error while opening attribute 'imf_m_s'");
+    const hsize_t n_m_s = io_get_number_element_in_attribute(attr_m_s);
+    H5Aclose(attr_m_s);
+    if (n_m_s != (hsize_t)n_interior)
+      error(
+          "Data/Radiation's 'imf_m_s' attribute has %llu segment(s), but "
+          "sm->imf (read from this same file's Data/IMF group) has %d "
+          "interior breakpoint(s): Data/Radiation's Integrated_* datasets "
+          "were precomputed against a different IMF than this file's own "
+          "Data/IMF. Regenerate this table with pychem so Data/Radiation "
+          "and Data/IMF agree, or point GEARFeedback:yields_table (or "
+          "yields_table_first_stars) at a table whose Data/IMF already "
+          "matches its own Integrated_* datasets.",
+          (unsigned long long)n_m_s, n_interior);
+
+    imf_m_s = (double *)malloc(sizeof(double) * n_interior);
+    if (imf_m_s == NULL) error("Failed to allocate the 'imf_m_s' buffer.");
+    io_read_array_attribute(group_id, "imf_m_s", DOUBLE, imf_m_s,
+                            (hsize_t)n_interior);
+  }
+
+  for (int k = 0; k <= imf->n_parts; k++) {
+    const double expected = (k == 0)              ? mass_min_msun
+                            : (k == imf->n_parts) ? mass_max_msun
+                                                  : imf_m_s[k - 1];
+    const float a = imf->mass_limits[k];
+    const float b = (float)expected;
+    if (fabsf(a - b) > 1e-4f * fmaxf(1.f, fabsf(a)))
+      error(
+          "Data/Radiation's IMF attrs disagree with sm->imf.mass_limits[%d] "
+          "(table=%.8g Msun, SWIFT=%.8g Msun, read from this same file's "
+          "Data/IMF group): Data/Radiation's Integrated_* datasets were "
+          "precomputed against a different IMF than this file's own "
+          "Data/IMF. Regenerate this table with pychem so Data/Radiation "
+          "and Data/IMF agree, or point GEARFeedback:yields_table (or "
+          "yields_table_first_stars) at a table whose Data/IMF already "
+          "matches its own Integrated_* datasets.",
+          k, b, a);
+  }
+
+  for (int k = 0; k < imf->n_parts; k++) {
+    const float a = imf->exp[k];
+    const float b = (float)imf_a_s[k];
+    if (fabsf(a - b) > 1e-4f * fmaxf(1.f, fabsf(a)))
+      error(
+          "Data/Radiation's 'imf_a_s' attribute disagrees with "
+          "sm->imf.exp[%d] (table=%.8g, SWIFT=%.8g, read from this same "
+          "file's Data/IMF group): Data/Radiation's Integrated_* datasets "
+          "were precomputed against a different IMF than this file's own "
+          "Data/IMF. Regenerate this table with pychem so Data/Radiation "
+          "and Data/IMF agree, or point GEARFeedback:yields_table (or "
+          "yields_table_first_stars) at a table whose Data/IMF already "
+          "matches its own Integrated_* datasets.",
+          k, b, a);
+  }
+
+  free(imf_a_s);
+  free(imf_m_s);
+}
+
+/**
  * @brief Read one CGS-valued dataset from an open Data/Radiation group,
  * convert it to internal units and (for Q_H/DotEExcess)
  * #RADIATION_DOT_N_ION_TABLE_SCALING, narrow it to float, and (optionally)
@@ -381,8 +502,10 @@ static void radiation_read_grid_metadata(hid_t group_id,
  * radiation_build_tables()'s own doxygen for why the IMF-integrated table
  * stays in linear space).
  * @return Newly malloc'd float array of length count, in internal
- * (optionally rescaled) units, NOT logged -- this is the value the
- * IMF integration in radiation_build_tables() needs. Caller must free().
+ * (optionally rescaled) units, NOT logged -- this is the value a raw
+ * dataset read needs (@p log_data_internal built alongside it) or, with
+ * @p log_data_internal NULL, the linear-space value an "Integrated_*"
+ * cumulative-table read needs. Caller must free().
  */
 static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
                                        hsize_t count, double conversion_factor,
@@ -479,16 +602,12 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  *
  * The IMF-integrated table (1D only) is deliberately left in linear
  * (un-logged) value space, unlike the raw table above: it is not the same
- * kind of quantity pychem's log-log scheme governs. Pychem's convention
- * interpolates a single tabulated property value as a function of mass;
- * #initial_mass_function_integrate() instead turns `data` in place into a
- * cumulative IMF-weighted integral (a running sum starting at exactly 0 at
- * the IMF's own mass_min) -- a SWIFT-side population-synthesis technique
- * with no pychem analogue to match (pychem never computes or interpolates
- * such a quantity). Integrating log10(value) instead of value itself would
- * not even compute the right integral, so this ordering (raw table built
- * from the logged copy, then the *un-logged* `data` handed to
- * initial_mass_function_integrate()) is required, not just a style choice.
+ * kind of quantity pychem's log-log scheme governs. It is read directly
+ * from the table's own "Integrated_<dataset_name>" dataset -- pychem's
+ * precomputed, number-weighted (n(m), not #initial_mass_function_integrate()'s
+ * mass-weighted m*n(m)), cumulative-from-Mmin integral -- rather than
+ * integrated on the SWIFT side, so no logged/un-logged ordering constraint
+ * applies to it the way it does to the raw table above.
  *
  * The 2D ("M,Z") branch only builds the raw table: no caller integrates a
  * 2D table over the IMF yet (see #radiation's own doxygen), so
@@ -593,21 +712,58 @@ static void radiation_build_tables(
                       interpolation_size_mass, grid->log_mass_min,
                       grid->mass_step, grid->n_mass, log_data,
                       boundary_condition_const);
+  free(data);
+  free(log_data);
 
-  /* initial_mass_function_integrate() mutates data (the LINEAR, un-logged
-     copy -- see this function's own doxygen) in place into its cumulative
-     IMF integral; must run after the raw table above is built from the
-     un-integrated values. */
-  initial_mass_function_integrate(&sm->imf, data, grid->n_mass,
-                                  grid->log_mass_min, grid->mass_step);
+  /* integrated_1d is built from pychem's own precomputed, number-weighted,
+     cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
+     integrating the raw values above -- see this function's own doxygen. */
+  char integrated_dataset_name[64];
+  int written =
+      snprintf(integrated_dataset_name, sizeof(integrated_dataset_name),
+               "Integrated_%s", dataset_name);
+  if (written < 0 || (size_t)written >= sizeof(integrated_dataset_name))
+    error("Dataset name 'Integrated_%s' does not fit in the buffer.",
+          dataset_name);
+
+  const htri_t integrated_exists =
+      H5Lexists(group_id, integrated_dataset_name, H5P_DEFAULT);
+  if (integrated_exists <= 0) {
+    error(
+        "This Data/Radiation group has no '%s' dataset. This table was "
+        "generated before pychem added the precomputed IMF-integrated "
+        "datasets and needs regenerating: run pychem's "
+        "pychem_generate_hdf5_parameters on this table's own chimieparam "
+        "file, then point GEARFeedback:yields_table (or "
+        "yields_table_first_stars, for the PopIII model) at the "
+        "regenerated file.",
+        integrated_dataset_name);
+  }
+
+  /* "per Msun of stars formed" is a fixed physical mass unit, not a SWIFT
+     internal-unit-system quantity, so the SAME conversion_factor/
+     extra_scaling this dataset's raw sibling already uses apply unchanged
+     to the "erg/s" or "1/s" part of the stored value. */
+  char integrated_expected_units[32];
+  written =
+      snprintf(integrated_expected_units, sizeof(integrated_expected_units),
+               "%s/Msun", expected_units);
+  if (written < 0 || (size_t)written >= sizeof(integrated_expected_units))
+    error("Units string '%s/Msun' does not fit in the buffer.", expected_units);
+
+  /* log_data_internal = NULL: the cumulative integral stays in linear
+     (un-logged) value space, unlike the raw table -- see this function's
+     own doxygen for why. */
+  float *integrated_data = radiation_read_cgs_array(
+      group_id, integrated_dataset_name, (hsize_t)grid->n_mass,
+      conversion_factor, extra_scaling, integrated_expected_units, NULL);
 
   interpolate_1d_init(integrated_1d, log_mass_min_out, log_mass_max_out,
                       interpolation_size_mass, grid->log_mass_min,
-                      grid->mass_step, grid->n_mass, data,
+                      grid->mass_step, grid->n_mass, integrated_data,
                       boundary_condition_const);
 
-  free(data);
-  free(log_data);
+  free(integrated_data);
 }
 
 /**
@@ -867,6 +1023,11 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   struct radiation_grid_metadata grid;
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
+
+  /* A no-op on a table without pychem's precomputed IMF-integrated
+     datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
+     for both 1D and 2D tables. */
+  radiation_check_imf_consistency(group_id, sm);
 
   /* Table-coverage check: the raw table's boundary condition is
      boundary_condition_const (radiation_build_tables()), so a star outside
