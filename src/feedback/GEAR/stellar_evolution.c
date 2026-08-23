@@ -600,6 +600,64 @@ void stellar_evolution_compute_discrete_feedback_properties(
 }
 
 /**
+ * @brief Pick the upper-mass bound for a continuous-emission feedback
+ * channel (radiation, radiation pressure, stellar winds) over this
+ * timestep's mass window.
+ *
+ * m_beg_step credits stars that die partway through the step with the
+ * FULL step's emission (overestimate); m_end_step drops the partial
+ * contribution of every star that died during the step (underestimate,
+ * today's validated default). The other schemes are point-estimate
+ * compromises between the two. All schemes agree when the window has zero
+ * width (single stars, or a continuous-IMF particle clamped at the
+ * discrete-mass split, see f493e9158).
+ *
+ * @param sm The #stellar_model (only used for the IMF, needed by
+ * mass_sup_scheme_imf_weighted).
+ * @param m_end_step Mass of a star ending its life at the end of the step
+ * (solMass).
+ * @param m_beg_step Mass of a star ending its life at the beginning of the
+ * step (solMass).
+ * @param scheme Which point estimate to return.
+ * @return The representative mass to use as the channel's upper bound
+ * (solMass).
+ */
+float stellar_evolution_get_continuous_feedback_mass_sup(
+    const struct stellar_model *sm, float m_end_step, float m_beg_step,
+    enum stellar_evolution_mass_sup_scheme scheme) {
+
+  /* The physically valid ordering is m_end_step <= m_beg_step; normalise
+     defensively so every scheme below can assume it. */
+  const float m_lo = min(m_end_step, m_beg_step);
+  const float m_hi = max(m_end_step, m_beg_step);
+
+  /* Zero-width window: every scheme must return the single mass available. */
+  if (m_lo == m_hi) return m_lo;
+
+  switch (scheme) {
+    case mass_sup_scheme_beg_step:
+      return m_hi;
+    case mass_sup_scheme_end_step:
+      return m_lo;
+    case mass_sup_scheme_midpoint:
+      return 0.5f * (m_lo + m_hi);
+    case mass_sup_scheme_imf_weighted: {
+      const float number_fraction =
+          initial_mass_function_get_imf_number_fraction(&sm->imf, m_lo, m_hi);
+      /* Guard against dividing by zero if the IMF puts no stars in this
+         (already non-zero-width) window. */
+      if (number_fraction <= 0.0f) return m_lo;
+      const float mass_fraction =
+          initial_mass_function_get_imf_mass_fraction(&sm->imf, m_lo, m_hi);
+      return mass_fraction / number_fraction;
+    }
+    default:
+      error("Unknown stellar_evolution_mass_sup_scheme: %d", (int)scheme);
+      return m_lo;
+  }
+}
+
+/**
  * @brief Compute the pre-supernova feedback's properties.
  * At the end of this function, the mass and energy ejected by stellar wind are
  * correctly stored in the feedback_data struct in internal units.
@@ -622,24 +680,20 @@ void stellar_evolution_compute_preSN_properties(
     const float dt_myr, const float m_beg_step, const float m_end_step,
     const float m_init) {
 
-  /* the end/beg step mass are already limited to the imf if SSP or continuous
-   * IMF stars */
-  float m_end_lim = m_end_step;
-
-  /* Here, for SSP and continuous part of IMF stars,
-   it means the part of stars that explode is behind the IMF considered.
-   Thus we do not take into account this part.
-   */
-  if (m_beg_step < m_end_lim) {
-    m_end_lim = m_beg_step;
-  }
+  /* The end/beg step mass are already limited to the imf if SSP or
+     continuous IMF stars. Upper mass bound for this continuous-emission
+     channel this step; see
+     stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
+     overestimate/underestimate tradeoff. */
+  const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
+      sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
   /* Get the log of the metallicity normalised by solar metallicity */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const float log_metallicity =
       log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
-  const float log_m = log10(m_end_lim);
+  const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
   if (sp->star_type == single_star) {
@@ -1317,9 +1371,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
   young population where even m_end_step exceeds minimal_discrete_mass_Msun
   is not "nothing to do yet" -- every star this particle can contain, up to
   minimal_discrete_mass_Msun, is still alive and still emitting, so the
-  m_end_lim query point computed downstream (stellar_evolution_compute_
-  preSN_properties) must reach exactly that far, not stop early or reach
-  past it. */
+  m_sup query point computed downstream (stellar_evolution_get_continuous_
+  feedback_mass_sup, via stellar_evolution_compute_preSN_properties) must
+  reach exactly that far, not stop early or reach past it. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
     m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);

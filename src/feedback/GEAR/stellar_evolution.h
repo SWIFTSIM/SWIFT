@@ -30,6 +30,44 @@
 #include <math.h>
 #include <stddef.h>
 
+/**
+ * @brief Scheme used to pick a single representative upper-mass bound for a
+ * continuous-emission feedback channel (radiation, radiation pressure,
+ * stellar winds, ...) over one timestep's mass window.
+ *
+ * A population particle's mass window this step is (m_end_step, m_beg_step],
+ * with m_end_step <= m_beg_step: stars above m_beg_step were already dead
+ * before the step began, stars in the window die sometime during the step,
+ * and stars at or below m_end_step survive the whole step. A continuous
+ * channel needs one representative mass to integrate/query up to; the two
+ * extremes each bias the result in opposite directions (see
+ * stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen).
+ */
+enum stellar_evolution_mass_sup_scheme {
+  mass_sup_scheme_beg_step,     /* overestimate: m_beg_step */
+  mass_sup_scheme_end_step,     /* underestimate: m_end_step, today's default */
+  mass_sup_scheme_midpoint,     /* (m_beg_step + m_end_step) / 2 */
+  mass_sup_scheme_imf_weighted, /* IMF-number-weighted mean over the window */
+};
+
+/**
+ * Compile-time default scheme for
+ * stellar_evolution_get_continuous_feedback_mass_sup(), overridable at
+ * configure time, e.g.
+ * CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint"
+ * ./configure mass_sup_scheme_end_step is the default because it reproduces
+ * today's already-validated behaviour exactly; the other schemes exist for a
+ * future bias-quantification study (HomogeneousBox), not for production use
+ * yet.
+ */
+#ifndef STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME
+#define STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME mass_sup_scheme_end_step
+#endif
+
+float stellar_evolution_get_continuous_feedback_mass_sup(
+    const struct stellar_model *sm, float m_end_step, float m_beg_step,
+    enum stellar_evolution_mass_sup_scheme scheme);
+
 void stellar_model_print(const struct stellar_model *sm);
 int stellar_evolution_compute_integer_number_supernovae(
     struct spart *restrict sp, float number_supernovae_f,
