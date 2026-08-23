@@ -71,6 +71,13 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
+/*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
+    the integrated table's own top mass edge before calling interpolate_2d(),
+    so an exact-mass_max query deterministically takes the blended (not
+    boundary-clamped) branch -- see radiation_get_luminosities_from_
+    integral_2d()'s own doxygen for why this matters. */
+#define RADIATION_2D_EDGE_EPS 1e-5f
+
 /**
  * @brief Transient, read-time-only grid metadata shared by every dataset in
  * a Data/Radiation HDF5 group. Not part of the persistent #radiation
@@ -232,6 +239,17 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
 double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m, float star_age_myr);
 
+float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
+double radiation_get_ionization_rate_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
+double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
+float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
+                                                float log_z, float star_age_myr,
+                                                float m_min);
+
 float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
                                     float log_z);
 double radiation_get_star_ionization_rate(const struct radiation *rad,
@@ -258,6 +276,10 @@ void radiation_read_mean_excess_photon_energy_array(
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_main_sequence_lifetime_inverse_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);

@@ -1518,11 +1518,50 @@ void stellar_evolution_compute_preSN_feedback_spart(
         sm, m_end_step, m_beg_step,
         STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-    /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
-    const float L_bol = radiation_get_luminosities_from_integral(
-        &sm->rad, log10f(m_min), log10f(m_sup));
-    const double dot_N_ion = radiation_get_ionization_rate_from_integral(
-        &sm->rad, log10f(m_min), log10f(m_sup));
+    float L_bol;
+    double dot_N_ion;
+    float mean_excess_photon_energy_HI;
+
+    if (sm->rad.is_2d) {
+      const float log_z = radiation_get_log_metallicity(metallicity);
+
+      /* Luminosity is never MS-lifetime capped, matching the individual-
+         star asymmetry (radiation_get_luminosities_from_raw_2d()'s own
+         doxygen). */
+      L_bol = radiation_get_luminosities_from_integral_2d(
+          &sm->rad, log_z, log10f(m_min), log10f(m_sup));
+
+      /* Population-level MS-lifetime cap for Q_H/DotEExcess only: which
+         mass is leaving PARSEC's own main sequence at this step's END-of-
+         step age, matching the reference time m_end_step (and hence m_sup,
+         under the default mass_sup_scheme_end_step) is itself derived from
+         via GEAR's own Poirier lifetime above -- both caps then describe
+         the same point in time. Floored at m_min like every other mass
+         bound in this function; the table's own age_max_myr/min()-gate can
+         only push m_ms_end_step down to m_min, never below it, but the
+         floor is kept explicit rather than relied upon implicitly. */
+      const float star_age_end_step_myr =
+          (float)(star_age_beg_step_myr + dt_myr);
+      const float m_ms_end_step = radiation_get_ms_lifetime_inverse_mass_2d(
+          &sm->rad, log_z, star_age_end_step_myr, m_min);
+      const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
+      const float m_sup_capped = max(m_min, m_sup_or_ms_end_step);
+
+      dot_N_ion = radiation_get_ionization_rate_from_integral_2d(
+          &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+      mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
+              &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+    } else {
+      /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
+      L_bol = radiation_get_luminosities_from_integral(&sm->rad, log10f(m_min),
+                                                       log10f(m_sup));
+      dot_N_ion = radiation_get_ionization_rate_from_integral(
+          &sm->rad, log10f(m_min), log10f(m_sup));
+      mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
+              &sm->rad, log10f(m_min), log10f(m_sup));
+    }
 
     /* Convert to total luminosities */
     sp->feedback_data.radiation.L_bol = L_bol * m_init;
@@ -1539,8 +1578,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
        the mean photon energy of a population does not depend on how many
        stars it has, only on which masses are still alive. */
     sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-        (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
-            &sm->rad, log10f(m_min), log10f(m_sup));
+        mean_excess_photon_energy_HI;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     /* Population equivalent of the individual-star print above. */

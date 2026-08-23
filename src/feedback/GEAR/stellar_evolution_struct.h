@@ -180,6 +180,13 @@ struct supernovae_ii {
   struct interpolation_1d energy_per_progenitor_mass;
 };
 
+/*! Cap on the number of metallicity rows #radiation.longest_ms_lifetime_myr
+    can hold, as a fixed-size struct member rather than a separately
+    allocated pointer -- see that field's own doxygen for why. Defined here,
+    not in radiation.h (radiation.h includes this file, not the other way
+    round), so it is in scope where #radiation itself is declared. */
+#define RADIATION_MAX_METALLICITY_ROWS 64
+
 /**
  * @brief Model for radiation.
  */
@@ -190,26 +197,43 @@ struct radiation {
       see radiation.c's radiation_build_tables()/radiation_read_cgs_array()
       doxygen; every radiation_get_*_from_raw() getter exponentiates back.
       Exception: #main_sequence_lifetime_2d stores log10(Myr), not
-      log10(internal units) -- see its own doxygen below for why. */
+      log10(internal units) -- see its own doxygen below for why.
+      #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess
+      counterparts are each an anonymous union (mirroring src/hydro/SPHENIX/
+      hydro_part.h's density/force union idiom): #is_2d is fixed for a given
+      #radiation instance's whole lifetime, so only one dimensionality's
+      interpolation table is ever live, and storing both simultaneously as
+      separate members would waste memory. Every read site already gates on
+      #is_2d before touching either name (radiation_check_dimensionality()/
+      the is_2d dispatch in radiation_get_star_*()); #radiation_zero_pointers
+      /#radiation_clean must do the same -- see their own doxygen. */
   struct {
-    /*! Bolometric luminosity emitted. */
-    struct interpolation_1d luminosities;
+    union {
+      /*! Bolometric luminosity emitted. */
+      struct interpolation_1d luminosities;
 
-    /*! Ionization emission rate. */
-    struct interpolation_1d dot_N_ion;
+      /*! Bolometric luminosity emitted, mass x metallicity ("M,Z"
+          dimensionality) variant. */
+      struct interpolation_2d luminosities_2d;
+    };
 
-    /*! Excess-energy emission rate above the 13.6 eV HI threshold,
-        dot_N_ion(m) * mean_excess_photon_energy_HI(m); see
-        #radiation_get_mean_excess_photon_energy_HI_from_integral. */
-    struct interpolation_1d dot_E_excess;
+    union {
+      /*! Ionization emission rate. */
+      struct interpolation_1d dot_N_ion;
 
-    /*! Same three quantities, mass x metallicity ("M,Z" dimensionality)
-        variant. Populated instead of the fields above when #is_2d is set;
-        see radiation_read_data(). Ships with zero test coverage until the
-        PARSEC/2D validation track (plan Phase 6) exercises it. */
-    struct interpolation_2d luminosities_2d;
-    struct interpolation_2d dot_N_ion_2d;
-    struct interpolation_2d dot_E_excess_2d;
+      /*! Ionization emission rate, mass x metallicity variant. */
+      struct interpolation_2d dot_N_ion_2d;
+    };
+
+    union {
+      /*! Excess-energy emission rate above the 13.6 eV HI threshold,
+          dot_N_ion(m) * mean_excess_photon_energy_HI(m); see
+          #radiation_get_mean_excess_photon_energy_HI_from_integral. */
+      struct interpolation_1d dot_E_excess;
+
+      /*! Excess-energy emission rate, mass x metallicity variant. */
+      struct interpolation_2d dot_E_excess_2d;
+    };
 
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
         metallicity, 2D-only ("MainSequenceLifetime" has no 1D/"M"-table
@@ -229,31 +253,61 @@ struct radiation {
         #luminosities_2d is a real physical property independent of that
         window and is never capped by it. */
     struct interpolation_2d main_sequence_lifetime_2d;
+
+    /*! (Z, age) -> mass inverse of #main_sequence_lifetime_2d: the mass
+        whose PARSEC main-sequence lifetime equals a population's own age,
+        at a given metallicity. Population-feedback-only cap (used by
+        stellar_evolution_compute_preSN_feedback_spart(), a different call
+        site than #main_sequence_lifetime_2d's single-star cap). Age axis
+        identity-resampled from the native "Age"/a0/da/na grid (Ny = na,
+        exact native bounds), NOT #interpolation_size_metallicity's
+        resolution -- see radiation_read_main_sequence_lifetime_inverse_
+        array()'s own doxygen for why. Z axis uses that resolution, like
+        every other 2D field above. Stored log10(Msun), same log-log scheme
+        as the fields above; radiation_get_ms_lifetime_inverse_mass_2d()
+        exponentiates back. 2D-only, no 1D analogue. */
+    struct interpolation_2d main_sequence_lifetime_inverse_2d;
   } raw;
 
-  /*! Yields integrated (IMF-integrated). Mass-only ("M") tables only: a 2D
-      (mass x metallicity) integrated table needs per-metallicity IMF
-      integration, which no caller needs yet -- see #is_2d and
-      radiation_get_luminosities_from_integral() and friends, which error
-      if called on a 2D table. */
+  /*! Yields integrated (IMF-integrated), read directly from pychem's own
+      precomputed, number-weighted, cumulative-from-Mmin "Integrated_*"
+      datasets (radiation_table_io.c's radiation_build_tables() doxygen) --
+      never integrated on the SWIFT side. Same union-per-field layout as
+      #raw above, for the same reason (see its own doxygen). */
   struct {
 
-    /*! Bolometric luminosity emitted. */
-    struct interpolation_1d luminosities;
+    union {
+      /*! Bolometric luminosity emitted. */
+      struct interpolation_1d luminosities;
 
-    /*! Ionization emission rate. */
-    struct interpolation_1d dot_N_ion;
+      /*! Bolometric luminosity emitted, mass x metallicity variant. */
+      struct interpolation_2d luminosities_2d;
+    };
 
-    /*! Excess-energy emission rate above the 13.6 eV HI threshold. */
-    struct interpolation_1d dot_E_excess;
+    union {
+      /*! Ionization emission rate. */
+      struct interpolation_1d dot_N_ion;
+
+      /*! Ionization emission rate, mass x metallicity variant. */
+      struct interpolation_2d dot_N_ion_2d;
+    };
+
+    union {
+      /*! Excess-energy emission rate above the 13.6 eV HI threshold. */
+      struct interpolation_1d dot_E_excess;
+
+      /*! Excess-energy emission rate, mass x metallicity variant. */
+      struct interpolation_2d dot_E_excess_2d;
+    };
   } integrated;
 
   /*! Is this a mass x metallicity ("M,Z") table rather than a mass-only
       ("M") one? Set from the Data/Radiation group's own "dimensionality"
       attribute in radiation_read_data(); dispatches between the raw 1D
-      and 2D fields above in the read functions, and gates the getters
-      that do not yet take a metallicity argument. */
-  int is_2d;
+      and 2D fields above in the read functions, selects the live member of
+      each union'd field pair above (see #raw's own doxygen), and gates the
+      getters that do not yet take a metallicity argument. */
+  char is_2d;
 
   /*! Number of element in the interpolation array (mass axis) */
   int interpolation_size;
@@ -266,6 +320,35 @@ struct radiation {
       split across (1 = spherical/HEALPix disabled). Set from
       GEARFeedback:HII_angular_nside in radiation_init(). */
   int n_HII_pixels;
+
+  /*! Longest tabulated MS lifetime (Myr) per native metallicity row (index
+      by #ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity below),
+      reduced at read time from MainSequenceLifetimeInverseExcluded (2D
+      tables only). +INFINITY for a row with no Excluded cells at all.
+      Fixed-size, not a separately allocated pointer, so it needs neither a
+      #radiation_zero_pointers nor a #radiation_clean entry -- see
+      radiation_read_main_sequence_lifetime_inverse_array()'s own doxygen. */
+  float longest_ms_lifetime_myr[RADIATION_MAX_METALLICITY_ROWS];
+
+  /*! Longest tabulated age across every metallicity row (Myr), from the
+      "Age" dataset's own "age_max_myr" group attr (2D tables only, 0
+      otherwise). A population age above this has no grid point at all in
+      #raw.main_sequence_lifetime_inverse_2d, a separate case from
+      #longest_ms_lifetime_myr (which only covers in-grid ages beyond one
+      row's own longest tabulated lifetime). */
+  float age_max_myr;
+
+  /*! Native metallicity-grid parameters (log10(Z) space, same convention as
+      every other 2D field's Z axis) #longest_ms_lifetime_myr is indexed by.
+      NOT the same as #raw.main_sequence_lifetime_inverse_2d's own xmin/dx,
+      which describe its OUTPUT-resampled grid (#interpolation_size_
+      metallicity points, generally finer than the native nz-row grid these
+      three fields describe) -- see radiation_get_ms_lifetime_inverse_mass_
+      2d()'s own doxygen for why the distinction matters. 0/0/0 for a 1D
+      table. */
+  float ms_lifetime_inverse_log_z_min;
+  float ms_lifetime_inverse_log_z_step;
+  int ms_lifetime_inverse_n_metallicity;
 
   /*! Is a radiation table actually loaded? False when neither
       photoionization nor radiation pressure is enabled (see

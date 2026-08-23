@@ -176,21 +176,42 @@ void radiation_restore(struct radiation *rad, FILE *stream,
 /**
  * @brief Clean the allocated memory.
  *
+ * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess fields are each an
+ * anonymous union of a #interpolation_1d and a #interpolation_2d variant
+ * (see #radiation's own doxygen); #is_2d selects which one is actually live
+ * and must be freed via the matching interpolate_*d_free() -- freeing
+ * through the other union member's helper on aliased memory would be wrong
+ * (though not unsafe here: both #interpolation_1d and #interpolation_2d
+ * have their `data` pointer as their first member, verified with
+ * `offsetof()`, so either helper happens to null/free the right pointer
+ * regardless of #is_2d -- not relied upon, since the non-pointer tail
+ * fields still differ, but noted as the reason this is not a
+ * memory-safety hazard even if #is_2d were ever wrong here).
+ * #main_sequence_lifetime_2d/#main_sequence_lifetime_inverse_2d have no 1D
+ * counterpart, so they are always freed unconditionally.
+ *
  * @param rad the #radiation.
  */
 void radiation_clean(struct radiation *rad) {
 
-  interpolate_1d_free(&rad->integrated.luminosities);
-  interpolate_1d_free(&rad->raw.luminosities);
-  interpolate_1d_free(&rad->integrated.dot_N_ion);
-  interpolate_1d_free(&rad->raw.dot_N_ion);
-  interpolate_1d_free(&rad->integrated.dot_E_excess);
-  interpolate_1d_free(&rad->raw.dot_E_excess);
+  if (rad->is_2d) {
+    interpolate_2d_free(&rad->raw.luminosities_2d);
+    interpolate_2d_free(&rad->raw.dot_N_ion_2d);
+    interpolate_2d_free(&rad->raw.dot_E_excess_2d);
+    interpolate_2d_free(&rad->integrated.luminosities_2d);
+    interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
+    interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
+  } else {
+    interpolate_1d_free(&rad->raw.luminosities);
+    interpolate_1d_free(&rad->raw.dot_N_ion);
+    interpolate_1d_free(&rad->raw.dot_E_excess);
+    interpolate_1d_free(&rad->integrated.luminosities);
+    interpolate_1d_free(&rad->integrated.dot_N_ion);
+    interpolate_1d_free(&rad->integrated.dot_E_excess);
+  }
 
-  interpolate_2d_free(&rad->raw.luminosities_2d);
-  interpolate_2d_free(&rad->raw.dot_N_ion_2d);
-  interpolate_2d_free(&rad->raw.dot_E_excess_2d);
   interpolate_2d_free(&rad->raw.main_sequence_lifetime_2d);
+  interpolate_2d_free(&rad->raw.main_sequence_lifetime_inverse_2d);
 }
 
 /**
@@ -203,24 +224,63 @@ void radiation_clean(struct radiation *rad) {
  * save/restore around that call for why is_2d is the only field here it can
  * leave zeroed going in.
  *
+ * #raw/#integrated's union'd fields (see #radiation's own doxygen) are
+ * zero-pointered via the union member matching the INCOMING #is_2d (read
+ * into @c was_2d before it is overwritten below), not both -- zero-
+ * pointering through the other member's helper would target the same
+ * `data` pointer (offset 0 in both #interpolation_1d and #interpolation_2d,
+ * verified with `offsetof()`) but leave the two structs' differently-shaped
+ * tail fields (xmin/dx/N/boundary_condition vs xmin/dx/ymin/dy/Nx/Ny/
+ * boundary_condition_x/_y) only partially cleared.
+ *
+ * One caller reads @c was_2d from memory this function cannot prove was
+ * ever initialised: #stellar_evolution_props_init's `!with_radiation`
+ * branch calls this directly on a fresh, never-yet-built #radiation (part
+ * of a #stellar_model that is itself part of a non-`bzero`'d
+ * `struct feedback_props` on the stack in swift.c) -- @c was_2d there may
+ * be garbage, not a real prior dimensionality. This is not a
+ * memory-safety hazard even so: whichever dispatch branch runs still nulls
+ * the SAME `data` pointer (the offset-0 property above), which is the only
+ * field #radiation_clean's later interpolate_*d_free() call can actually
+ * dereference; the non-pointer tail fields left in whatever pre-call state
+ * they were in are inert scalars, always overwritten by the next
+ * #radiation_build_tables() call before anything ever reads them. Confirmed
+ * by tracing every call site (radiation_table_io.c's radiation_read_data(),
+ * this file's own radiation_restore(), and stellar_evolution.c's
+ * stellar_evolution_props_init()), not assumed.
+ *
  * @param rad The #radiation.
  */
 void radiation_zero_pointers(struct radiation *rad) {
+
+  const char was_2d = rad->is_2d;
 
   rad->is_active = 0;
   rad->is_2d = 0;
   rad->interpolation_size = 0;
   rad->interpolation_size_metallicity = 0;
   rad->n_HII_pixels = 0;
+  rad->age_max_myr = 0.f;
+  rad->ms_lifetime_inverse_log_z_min = 0.f;
+  rad->ms_lifetime_inverse_log_z_step = 0.f;
+  rad->ms_lifetime_inverse_n_metallicity = 0;
 
-  interpolate_1d_zero_pointers(&rad->raw.luminosities);
-  interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
-  interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
-  interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
-  interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
-  interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
+  if (was_2d) {
+    interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
+    interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
+    interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
+    interpolate_2d_zero_pointers(&rad->integrated.luminosities_2d);
+    interpolate_2d_zero_pointers(&rad->integrated.dot_N_ion_2d);
+    interpolate_2d_zero_pointers(&rad->integrated.dot_E_excess_2d);
+  } else {
+    interpolate_1d_zero_pointers(&rad->raw.luminosities);
+    interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
+    interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
+    interpolate_1d_zero_pointers(&rad->integrated.luminosities);
+    interpolate_1d_zero_pointers(&rad->integrated.dot_N_ion);
+    interpolate_1d_zero_pointers(&rad->integrated.dot_E_excess);
+  }
+
   interpolate_2d_zero_pointers(&rad->raw.main_sequence_lifetime_2d);
-  interpolate_1d_zero_pointers(&rad->integrated.luminosities);
-  interpolate_1d_zero_pointers(&rad->integrated.dot_N_ion);
-  interpolate_1d_zero_pointers(&rad->integrated.dot_E_excess);
+  interpolate_2d_zero_pointers(&rad->raw.main_sequence_lifetime_inverse_2d);
 }

@@ -609,17 +609,24 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * integrated on the SWIFT side, so no logged/un-logged ordering constraint
  * applies to it the way it does to the raw table above.
  *
- * The 2D ("M,Z") branch only builds the raw table: no caller integrates a
- * 2D table over the IMF yet (see #radiation's own doxygen), so
- * @p integrated_1d is left untouched -- radiation_read_data() zeroes it
- * beforehand so radiation_clean() stays safe either way. It also
- * approximates the metallicity axis as log-uniformly spaced from the
+ * The 2D ("M,Z") branch builds the raw table always, and, when @p
+ * integrated_2d is not NULL, also builds an IMF-integrated 2D table --
+ * mirroring the 1D integrated table above, read directly from the table's
+ * own "Integrated_<dataset_name>" dataset rather than integrated on the
+ * SWIFT side, with the SAME log_mass_min_out/log_mass_max_out output-grid
+ * bounds as @p raw_2d. That bound-sharing is load-bearing, not incidental:
+ * it is what guarantees a two-point-subtraction query
+ * (radiation_get_luminosities_from_integral_2d() and friends) never sees a
+ * Z-axis mismatch between its two interpolate_2d() calls -- see Decision #1
+ * in design-radiation-integrated-table-migration.md for the full argument.
+ * @p integrated_2d stays untouched (NULL) for a dataset with no IMF-
+ * integrated concept (MainSequenceLifetime); radiation_read_data() zeroes
+ * it beforehand so radiation_clean() stays safe either way. This branch
+ * also approximates the metallicity axis as log-uniformly spaced from the
  * "Metallicity" dataset's first/last values: pychem does not guarantee
  * this (it is the curated set of PARSEC metallicities actually collapsed
  * into the table, not a synthetic grid), but interpolate_2d_init()
- * requires a uniform grid. Acceptable only because this 2D path has zero
- * test coverage until the PARSEC validation track (plan Phase 6)
- * exercises it.
+ * requires a uniform grid.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param dataset_name Name of the dataset to read.
@@ -640,12 +647,20 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * this function's own doxygen for why.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
+ * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
+ * table (2D tables only), holding the linear (un-logged) cumulative value
+ * -- see this function's own doxygen. Pass NULL for a dataset with no
+ * IMF-integrated concept (MainSequenceLifetime); left untouched then.
  * @param boundary_condition_mass Mass-axis #interpolate_boundary_condition
- * for @p dataset_name (2D tables only; ignored for a 1D table, which always
- * clamps -- see radiation_read_grid_metadata()'s edge_policy_* fields for
- * where this comes from). The metallicity axis always clamps
- * (boundary_condition_const), matching pychem's "clamp to nearest grid Z,
- * never extrapolated" convention.
+ * for @p dataset_name's raw table (2D tables only; ignored for a 1D table,
+ * which always clamps -- see radiation_read_grid_metadata()'s edge_policy_*
+ * fields for where this comes from). @p integrated_2d always clamps on
+ * both axes regardless, mirroring @p integrated_1d's own hardcoded
+ * boundary_condition_const (a cumulative integral is monotonic; clamping to
+ * the nearest tabulated total is the only sane universal edge policy). The
+ * metallicity axis of @p raw_2d always clamps too (boundary_condition_const),
+ * matching pychem's "clamp to nearest grid Z, never extrapolated"
+ * convention.
  */
 static void radiation_build_tables(
     hid_t group_id, const char *dataset_name,
@@ -653,7 +668,7 @@ static void radiation_build_tables(
     int interpolation_size_mass, int interpolation_size_metallicity,
     double conversion_factor, double extra_scaling, const char *expected_units,
     struct interpolation_1d *raw_1d, struct interpolation_1d *integrated_1d,
-    struct interpolation_2d *raw_2d,
+    struct interpolation_2d *raw_2d, struct interpolation_2d *integrated_2d,
     enum interpolate_boundary_condition boundary_condition_mass) {
 
   const float log_mass_min_out = log10f(sm->imf.mass_min);
@@ -698,6 +713,67 @@ static void radiation_build_tables(
     free(log_data_double);
     free(log_data);
     free(data);
+
+    if (integrated_2d == NULL) return;
+
+    /* integrated_2d is built from pychem's own precomputed, number-weighted,
+       cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
+       integrating the raw values above -- mirrors the 1D branch below. */
+    char integrated_dataset_name[64];
+    int written =
+        snprintf(integrated_dataset_name, sizeof(integrated_dataset_name),
+                 "Integrated_%s", dataset_name);
+    if (written < 0 || (size_t)written >= sizeof(integrated_dataset_name))
+      error("Dataset name 'Integrated_%s' does not fit in the buffer.",
+            dataset_name);
+
+    const htri_t integrated_exists =
+        H5Lexists(group_id, integrated_dataset_name, H5P_DEFAULT);
+    if (integrated_exists <= 0) {
+      error(
+          "This Data/Radiation group has no '%s' dataset. This table was "
+          "generated before pychem added the precomputed IMF-integrated "
+          "datasets and needs regenerating: run pychem's "
+          "pychem_generate_hdf5_parameters on this table's own chimieparam "
+          "file, then point GEARFeedback:yields_table (or "
+          "yields_table_first_stars, for the PopIII model) at the "
+          "regenerated file.",
+          integrated_dataset_name);
+    }
+
+    char integrated_expected_units[32];
+    written =
+        snprintf(integrated_expected_units, sizeof(integrated_expected_units),
+                 "%s/Msun", expected_units);
+    if (written < 0 || (size_t)written >= sizeof(integrated_expected_units))
+      error("Units string '%s/Msun' does not fit in the buffer.",
+            expected_units);
+
+    /* log_data_internal = NULL: the cumulative integral stays in linear
+       (un-logged) value space, unlike the raw table -- see this function's
+       own doxygen for why. */
+    float *integrated_data = radiation_read_cgs_array(
+        group_id, integrated_dataset_name, count, conversion_factor,
+        extra_scaling, integrated_expected_units, NULL);
+
+    double *integrated_data_double = (double *)malloc(sizeof(double) * count);
+    if (integrated_data_double == NULL)
+      error("Failed to allocate the RAD 2D integrated yields for %s.",
+            dataset_name);
+    for (hsize_t i = 0; i < count; i++)
+      integrated_data_double[i] = (double)integrated_data[i];
+
+    /* Both axes clamp (boundary_condition_const), regardless of @p
+       boundary_condition_mass -- see this function's own doxygen. */
+    interpolate_2d_init(
+        integrated_2d, log_z_min, log_z_max, interpolation_size_metallicity,
+        log_mass_min_out, log_mass_max_out, interpolation_size_mass, log_z_min,
+        grid->log_mass_min, log_z_step, grid->mass_step, grid->n_metallicity,
+        grid->n_mass, integrated_data_double, boundary_condition_const,
+        boundary_condition_const);
+
+    free(integrated_data_double);
+    free(integrated_data);
     return;
   }
 
@@ -785,7 +861,8 @@ void radiation_read_luminosities_array(
       rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
       &rad->raw.luminosities, &rad->integrated.luminosities,
-      &rad->raw.luminosities_2d, grid->edge_policy_luminosity);
+      &rad->raw.luminosities_2d, &rad->integrated.luminosities_2d,
+      grid->edge_policy_luminosity);
 }
 
 /**
@@ -808,7 +885,7 @@ void radiation_read_ionization_rate_array(
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "1/s", &rad->raw.dot_N_ion,
       &rad->integrated.dot_N_ion, &rad->raw.dot_N_ion_2d,
-      grid->edge_policy_q_h);
+      &rad->integrated.dot_N_ion_2d, grid->edge_policy_q_h);
 }
 
 /**
@@ -850,7 +927,7 @@ void radiation_read_mean_excess_photon_energy_array(
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
       &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
-      grid->edge_policy_dot_e_excess);
+      &rad->integrated.dot_E_excess_2d, grid->edge_policy_dot_e_excess);
 }
 
 /**
@@ -911,7 +988,213 @@ void radiation_read_main_sequence_lifetime_array(
   radiation_build_tables(
       group_id, "MainSequenceLifetime", grid, sm, rad->interpolation_size,
       rad->interpolation_size_metallicity, 1., 1., "Myr", NULL, NULL,
-      &rad->raw.main_sequence_lifetime_2d, boundary_condition_const);
+      &rad->raw.main_sequence_lifetime_2d, NULL, boundary_condition_const);
+}
+
+/**
+ * @brief Read the main-sequence-lifetime-inverse table (2D "M,Z" tables
+ * only): "Age"/"MainSequenceLifetimeInverse"/
+ * "MainSequenceLifetimeInverseExcluded", the population-level analogue of
+ * #radiation_read_main_sequence_lifetime_array's single-star cap.
+ *
+ * Does NOT reuse #radiation_build_tables(): that helper's mass-axis output
+ * bounds (sm->imf.mass_min/mass_max) do not apply to an age axis, and a
+ * bool mask cannot go through #interpolate_2d_init() meaningfully. Instead:
+ * - #radiation.raw.main_sequence_lifetime_inverse_2d's Z axis is built from
+ *   the same native log10(Z) grid every other 2D field here uses, output-
+ *   resampled to @p rad's own interpolation_size_metallicity, exactly like
+ *   #radiation_build_tables()'s 2D branch.
+ * - Its age axis is an IDENTITY resample of the native "Age"/a0/da/na grid
+ *   (Ny = na, exact native bounds), NOT independently resampled to some
+ *   other resolution: MainSequenceLifetimeInverse's placeholder value at an
+ *   Excluded cell is a finite, non-NaN sentinel, so a differently-resampled
+ *   output grid could blend a real value with that sentinel at output nodes
+ *   near a row's own Excluded transition -- exactly the age range the
+ *   min()-gate in #radiation_get_ms_lifetime_inverse_mass_2d() exists to
+ *   protect. An identity resample makes every output age node map 1:1 onto
+ *   one native age cell, closing this off structurally.
+ * - "MainSequenceLifetimeInverseExcluded" is reduced, in the same pass, to
+ *   one #radiation.longest_ms_lifetime_myr scalar per native Z row: the
+ *   largest non-Excluded tabulated age in that row (or FLT_MAX for a row
+ *   with no Excluded cells at all -- this build's -ffast-math disallows the
+ *   IEEE INFINITY macro, and #radiation.age_max_myr already gates every
+ *   real query well below FLT_MAX anyway, so the two sentinels are
+ *   equivalent in practice; see design-radiation-integrated-table-
+ *   migration.md's Data layout section, which explicitly allows either). The
+ * scan asserts each row's Excluded cells are
+ * contiguous-from-that-age-to-the-end -- #radiation_get_ms_
+ *   lifetime_inverse_mass_2d()'s min()-gate safety proof depends on this
+ *   shape, so it is enforced here rather than silently assumed.
+ * - #radiation.ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity
+ *   record the same native Z grid (log10(Z) space, native row count) so a
+ *   query can bracket the two native rows #longest_ms_lifetime_myr is
+ *   indexed by -- deliberately NOT the same as #raw.main_sequence_lifetime_
+ *   inverse_2d's own xmin/dx/Nx, which describe the OUTPUT-resampled grid
+ *   (interpolation_size_metallicity points, generally finer than the
+ *   native nz-row grid).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata; must be a 2D ("M,Z") table.
+ * @param sm The #stellar_model; unused, kept only for signature symmetry
+ * with the other four _array() readers.
+ * @param us The unit system; unused (Age is Myr-native, MainSequenceLifetime
+ * Inverse is Msun-native), kept only for signature symmetry.
+ */
+void radiation_read_main_sequence_lifetime_inverse_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
+
+  if (!grid->is_2d) {
+    error(
+        "radiation_read_main_sequence_lifetime_inverse_array() called on a "
+        "1D ('M') table: MainSequenceLifetimeInverse has no 1D analogue.");
+  }
+
+  if (grid->n_metallicity > RADIATION_MAX_METALLICITY_ROWS) {
+    error(
+        "Data/Radiation's 'nz' attribute is %d, exceeding this build's "
+        "RADIATION_MAX_METALLICITY_ROWS=%d. Increase that compile-time cap "
+        "(stellar_evolution_struct.h) and rebuild to load this table.",
+        grid->n_metallicity, RADIATION_MAX_METALLICITY_ROWS);
+  }
+
+  const htri_t age_exists = H5Lexists(group_id, "Age", H5P_DEFAULT);
+  const htri_t msli_exists =
+      H5Lexists(group_id, "MainSequenceLifetimeInverse", H5P_DEFAULT);
+  const htri_t excl_exists =
+      H5Lexists(group_id, "MainSequenceLifetimeInverseExcluded", H5P_DEFAULT);
+  if (age_exists <= 0 || msli_exists <= 0 || excl_exists <= 0) {
+    error(
+        "This 2D ('M,Z') Data/Radiation group is missing one of 'Age'/"
+        "'MainSequenceLifetimeInverse'/'MainSequenceLifetimeInverseExcluded'. "
+        "This table was generated before pychem added the population "
+        "main-sequence-lifetime cap and needs regenerating: run pychem's "
+        "pychem_generate_hdf5_parameters on this table's own chimieparam "
+        "file, then point GEARFeedback:yields_table (or "
+        "yields_table_first_stars, for the PopIII model) at the "
+        "regenerated file.");
+  }
+
+  double a0, da, age_max_myr;
+  int na;
+  io_read_attribute(group_id, "a0", DOUBLE, &a0);
+  io_read_attribute(group_id, "da", DOUBLE, &da);
+  io_read_attribute(group_id, "na", INT, &na);
+  io_read_attribute(group_id, "age_max_myr", DOUBLE, &age_max_myr);
+
+  if (!(da > 0.))
+    error(
+        "Data/Radiation's 'da' attribute is %.4g; it must be a strictly "
+        "positive log10(age) grid step.",
+        da);
+  if (na < 2)
+    error(
+        "Data/Radiation's 'na' attribute is %d; at least 2 age points are "
+        "needed to interpolate.",
+        na);
+
+  rad->age_max_myr = (float)age_max_myr;
+
+  /* Same native log10(Z) axis every other 2D field in this file uses
+     (radiation_build_tables()), stored on #rad so a query can bracket the
+     two native rows #longest_ms_lifetime_myr is indexed by -- see this
+     function's own doxygen for why that differs from the interpolation_2d
+     struct's own (output-resampled) xmin/dx. */
+  const float log_z_min = log10f(grid->metallicity[0]);
+  const float log_z_max = log10f(grid->metallicity[grid->n_metallicity - 1]);
+  const float log_z_step =
+      grid->n_metallicity > 1
+          ? (log_z_max - log_z_min) / (grid->n_metallicity - 1)
+          : 0.f;
+  rad->ms_lifetime_inverse_log_z_min = log_z_min;
+  rad->ms_lifetime_inverse_log_z_step = log_z_step;
+  rad->ms_lifetime_inverse_n_metallicity = grid->n_metallicity;
+
+  /* Identity resample of the native age grid: Ny = na, exact native bounds
+     -- see this function's own doxygen. */
+  const float log_age_min = (float)a0;
+  const float log_age_max = (float)(a0 + (na - 1) * da);
+
+  const hsize_t count = (hsize_t)grid->n_metallicity * (hsize_t)na;
+
+  float *log_data = (float *)malloc(sizeof(float) * count);
+  if (log_data == NULL)
+    error(
+        "Failed to allocate the RAD MainSequenceLifetimeInverse log-value "
+        "buffer.");
+  float *data = radiation_read_cgs_array(
+      group_id, "MainSequenceLifetimeInverse", count, 1., 1., "Msun", log_data);
+
+  double *log_data_double = (double *)malloc(sizeof(double) * count);
+  if (log_data_double == NULL)
+    error(
+        "Failed to allocate the RAD MainSequenceLifetimeInverse log-value "
+        "double buffer.");
+  for (hsize_t i = 0; i < count; i++) log_data_double[i] = (double)log_data[i];
+
+  interpolate_2d_init(
+      &rad->raw.main_sequence_lifetime_inverse_2d, log_z_min, log_z_max,
+      rad->interpolation_size_metallicity, log_age_min, log_age_max, na,
+      log_z_min, log_age_min, log_z_step, (float)da, grid->n_metallicity, na,
+      log_data_double, boundary_condition_const, boundary_condition_const);
+
+  free(log_data_double);
+  free(log_data);
+  free(data);
+
+  /* Reduce MainSequenceLifetimeInverseExcluded to one longest-tabulated-
+     MS-lifetime scalar per native Z row -- see this function's own
+     doxygen for the contiguity assertion's role. */
+  hbool_t *excluded = (hbool_t *)malloc(sizeof(hbool_t) * count);
+  if (excluded == NULL)
+    error(
+        "Failed to allocate the RAD MainSequenceLifetimeInverseExcluded "
+        "buffer.");
+  io_read_array_dataset(group_id, "MainSequenceLifetimeInverseExcluded", BOOL,
+                        excluded, count);
+
+  double *age = (double *)malloc(sizeof(double) * na);
+  if (age == NULL) error("Failed to allocate the RAD Age buffer.");
+  io_read_array_dataset(group_id, "Age", DOUBLE, age, na);
+
+  for (int z = 0; z < grid->n_metallicity; z++) {
+    int longest_index = -1;
+    int seen_excluded = 0;
+    for (int a = 0; a < na; a++) {
+      const int is_excluded = excluded[(hsize_t)z * na + a] != 0;
+      if (!is_excluded) {
+        if (seen_excluded)
+          error(
+              "Data/Radiation's 'MainSequenceLifetimeInverseExcluded' row "
+              "%d is not contiguous-True-to-the-end (a non-Excluded age "
+              "follows an Excluded one at age index %d): the MS-lifetime "
+              "cap's min()-gate safety proof requires this shape. "
+              "Regenerate the table with pychem, or report this as a "
+              "genuine pychem bug.",
+              z, a);
+        longest_index = a;
+      } else {
+        seen_excluded = 1;
+      }
+    }
+    if (!seen_excluded) {
+      rad->longest_ms_lifetime_myr[z] = FLT_MAX;
+    } else if (longest_index >= 0) {
+      rad->longest_ms_lifetime_myr[z] = (float)age[longest_index];
+    } else {
+      /* Every tabulated age in this row is Excluded: no MS-active mass at
+         any age this table covers. A threshold of exactly 0 makes the
+         min()-gate below reject every real query for this row -- the
+         correct, conservative behaviour; not seen in any real table
+         checked so far (see this function's own doxygen). */
+      rad->longest_ms_lifetime_myr[z] = 0.f;
+    }
+  }
+
+  free(age);
+  free(excluded);
 }
 
 /**
@@ -957,10 +1240,11 @@ static void radiation_open_data_group(const char *filename, hid_t *file_id,
 /**
  * @brief Read the RAD yields from the table.
  *
- * The tables are in internal units at the end of this function, with one
- * exception: for a 2D ("M,Z") table, raw.main_sequence_lifetime_2d stays
- * in Myr, deliberately not run through the unit system -- see its own
- * doxygen on #radiation's raw sub-struct for why.
+ * The tables are in internal units at the end of this function, with two
+ * exceptions: for a 2D ("M,Z") table, raw.main_sequence_lifetime_2d stays
+ * in Myr and raw.main_sequence_lifetime_inverse_2d stays in Msun,
+ * deliberately not run through the unit system -- see their own doxygen on
+ * #radiation's raw sub-struct for why.
  *
  * @param rad The #radiation model.
  * @param params The simulation parameters.
@@ -1068,15 +1352,11 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
         (double)sm->imf.mass_max);
   }
 
-  /* Fail at load time, not at the first star's feedback computation: every
-     radiation_get_*_from_raw()/_from_integral() getter aborts on a 2D
-     table (see radiation_check_dimensionality()), since no caller passes a
-     metallicity yet. */
   if (rad->is_2d && engine_rank == 0) {
     message(
-        "WARNING: '%s' is a mass x metallicity (2D) radiation table; no "
-        "individual-star or population feedback getter supports one yet -- "
-        "any star reaching feedback will abort the run.",
+        "'%s' is a mass x metallicity (2D) radiation table; both "
+        "individual-star and population (SSP/continuous_IMF) feedback are "
+        "supported.",
         sm->yields_table);
   }
 
@@ -1089,10 +1369,13 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
 
-  /* MainSequenceLifetime has no 1D ("M") table analogue: only read it for
-     a 2D table, where the HDF5 dataset actually exists. */
+  /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
+     analogue: only read them for a 2D table, where the HDF5 datasets
+     actually exist. */
   if (grid.is_2d) {
     radiation_read_main_sequence_lifetime_array(rad, group_id, &grid, sm, us);
+    radiation_read_main_sequence_lifetime_inverse_array(rad, group_id, &grid,
+                                                        sm, us);
   }
 
   free(grid.metallicity);

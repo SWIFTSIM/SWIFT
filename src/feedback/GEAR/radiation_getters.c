@@ -431,6 +431,197 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
 };
 
 /**
+ * @brief Nudge a mass-axis log-mass query strictly inside a 2D IMF-
+ * integrated table's own top edge, so an exact-mass_max query
+ * deterministically takes the blended (Z-interpolated), not
+ * boundary-clamped, branch of #interpolate_2d.
+ *
+ * A query at @p log_m exactly equal to @p interp's own top edge (`j ==
+ * Ny - 1` exactly) takes #interpolate_2d's out-of-range branch, which
+ * floor-snaps the Z axis to the nearest tabulated row instead of blending
+ * it -- unlike the bottom edge (`j == 0`), which is safely in-range. This
+ * is not a rare corner case: stellar_evolution_compute_preSN_feedback_
+ * spart() clamps its upper mass bound to sm->imf.mass_max, and the default
+ * mass_sup_scheme_end_step scheme routinely returns exactly that value for
+ * an early-age population (before its first star has died) -- see Decision
+ * #1 in design-radiation-integrated-table-migration.md. The nudge is a
+ * #RADIATION_2D_EDGE_EPS relative fraction of the table's own mass-axis
+ * span, physically negligible.
+ *
+ * @param interp The 2D IMF-integrated table the caller is about to query.
+ * @param log_m The mass-axis query, in log10.
+ * @return @p log_m, or the table's top edge minus a small margin,
+ * whichever is smaller.
+ */
+__attribute__((always_inline)) INLINE static float radiation_nudge_mass_edge_2d(
+    const struct interpolation_2d *interp, float log_m) {
+  const float cap = interp->ymin + (interp->Ny - 1) * interp->dy *
+                                       (1.f - RADIATION_2D_EDGE_EPS);
+  return min(log_m, cap);
+}
+
+/**
+ * @brief Get the IMF-averaged bolometric luminosity per mass, at a given
+ * metallicity, from a 2D ("M,Z") table.
+ *
+ * Mirrors #radiation_get_luminosities_from_integral exactly, blended across
+ * the metallicity axis at fixed @p log_z -- see that getter's own doxygen
+ * for the two-point-subtraction shape, and this file's own #radiation_
+ * nudge_mass_edge_2d for the top-edge-boundary fix this 2D getter needs
+ * that the 1D one does not. Below the table's own native mass floor (e.g.
+ * a PopIII-like table with mass_min above the IMF's own mass_min), the
+ * integrated table is flat at exactly 0 (cumulative-from-Mmin, zero at
+ * every native floor cell) with no Z-dependence, so the subtraction stays
+ * exact there too.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return The bolometric luminosity.
+ */
+float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  const struct interpolation_2d *interp = &rad->integrated.luminosities_2d;
+  const float luminosity_1 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+  const float luminosity_2 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+  return luminosity_2 - luminosity_1;
+};
+
+/**
+ * @brief Get the IMF-averaged ionization rate per mass, at a given
+ * metallicity, from a 2D ("M,Z") table.
+ *
+ * Mirrors #radiation_get_ionization_rate_from_integral exactly -- see
+ * #radiation_get_luminosities_from_integral_2d's own doxygen for the
+ * shared 2D-specific caveats (top-edge nudge, sub-native-floor flat
+ * region).
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return The ionization rate, internal units.
+ */
+double radiation_get_ionization_rate_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  const struct interpolation_2d *interp = &rad->integrated.dot_N_ion_2d;
+  const double dot_N_ion_1 =
+      interpolate_2d(interp, log_z,
+                     radiation_nudge_mass_edge_2d(interp, log_m1)) *
+      RADIATION_DOT_N_ION_TABLE_SCALING;
+  const double dot_N_ion_2 =
+      interpolate_2d(interp, log_z,
+                     radiation_nudge_mass_edge_2d(interp, log_m2)) *
+      RADIATION_DOT_N_ION_TABLE_SCALING;
+  return dot_N_ion_2 - dot_N_ion_1;
+};
+
+/**
+ * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
+ * the 13.6 eV HI ionization threshold, at a given metallicity, from a 2D
+ * ("M,Z") table.
+ *
+ * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_integral
+ * exactly, including the degenerate-ratio guard -- more load-bearing here
+ * than in the 1D case, since Z-axis blending introduces its own roundoff on
+ * top of the mass-axis interpolation roundoff the guard already exists to
+ * catch. See #radiation_get_luminosities_from_integral_2d's own doxygen
+ * for the shared 2D-specific caveats (top-edge nudge, sub-native-floor
+ * flat region).
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return Q-weighted mean excess photon energy in cgs erg, or 0 if no
+ * ionizing photons are produced over the window.
+ */
+double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+
+  const struct interpolation_2d *dot_N_ion_interp =
+      &rad->integrated.dot_N_ion_2d;
+  const double dot_N_ion_1 =
+      interpolate_2d(dot_N_ion_interp, log_z,
+                     radiation_nudge_mass_edge_2d(dot_N_ion_interp, log_m1));
+  const double dot_N_ion_2 =
+      interpolate_2d(dot_N_ion_interp, log_z,
+                     radiation_nudge_mass_edge_2d(dot_N_ion_interp, log_m2));
+  const double delta_dot_N_ion = dot_N_ion_2 - dot_N_ion_1;
+
+  /* Same degenerate-ratio guard as the 1D getter. */
+  if (delta_dot_N_ion <= 0.) return 0.;
+
+  const struct interpolation_2d *dot_E_excess_interp =
+      &rad->integrated.dot_E_excess_2d;
+  const double dot_E_excess_1 =
+      interpolate_2d(dot_E_excess_interp, log_z,
+                     radiation_nudge_mass_edge_2d(dot_E_excess_interp, log_m1));
+  const double dot_E_excess_2 =
+      interpolate_2d(dot_E_excess_interp, log_z,
+                     radiation_nudge_mass_edge_2d(dot_E_excess_interp, log_m2));
+  const double delta_dot_E_excess = dot_E_excess_2 - dot_E_excess_1;
+
+  return delta_dot_E_excess / delta_dot_N_ion;
+};
+
+/**
+ * @brief Get the population-level main-sequence-lifetime-capped upper mass
+ * bound, at a given metallicity and population age, from a 2D ("M,Z")
+ * table's MainSequenceLifetimeInverse dataset.
+ *
+ * Implements the 4-step query-time algorithm in design-radiation-
+ * integrated-table-migration.md's "Data layout" section: brackets the two
+ * native metallicity rows #radiation.longest_ms_lifetime_myr is indexed by
+ * (duplicating #interpolate_2d's own index arithmetic against the NATIVE
+ * log10(Z) grid stored in #radiation.ms_lifetime_inverse_log_z_min/_step --
+ * deliberately not #radiation.raw.main_sequence_lifetime_inverse_2d's own
+ * xmin/dx, which describe its OUTPUT-resampled grid, a different, finer
+ * index space; see that field's own doxygen), takes the min() of their two
+ * longest-tabulated-MS-lifetimes (not a blend -- Decision #6: a blended
+ * threshold can admit a query one row's own Excluded mask had already
+ * rejected), and gates on both that threshold and #radiation.age_max_myr
+ * before trusting the interpolated value.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param star_age_myr The population's age in Myr.
+ * @param m_min Returned when no MS-active mass remains at this (Z, age):
+ * the caller's own floor mass (sm->imf.mass_min in every call site so far).
+ * @return m_MS_end_step, in Msun -- the mass whose PARSEC main-sequence
+ * lifetime equals @p star_age_myr at @p log_z, or @p m_min if none of the
+ * table's masses are still on the main sequence at that age.
+ */
+float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
+                                                float log_z, float star_age_myr,
+                                                float m_min) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+
+  const float z_idx_f = (log_z - rad->ms_lifetime_inverse_log_z_min) /
+                        rad->ms_lifetime_inverse_log_z_step;
+  const int midx = max((int)z_idx_f, 0);
+  const int z_lo = min(midx, rad->ms_lifetime_inverse_n_metallicity - 1);
+  const int z_hi = min(z_lo + 1, rad->ms_lifetime_inverse_n_metallicity - 1);
+
+  const float threshold_myr = min(rad->longest_ms_lifetime_myr[z_lo],
+                                  rad->longest_ms_lifetime_myr[z_hi]);
+
+  if (star_age_myr > rad->age_max_myr || star_age_myr > threshold_myr)
+    return m_min;
+
+  return (float)exp10(
+      interpolate_2d(&rad->raw.main_sequence_lifetime_inverse_2d, log_z,
+                     log10f(star_age_myr)));
+}
+
+/**
  * @brief Get a single star's bolometric luminosity at a given mass,
  * dispatching on #rad->is_2d between the 1D (mass-only) and 2D (mass x
  * metallicity) raw tables.
