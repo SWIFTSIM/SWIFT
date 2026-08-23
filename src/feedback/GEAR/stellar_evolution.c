@@ -1483,6 +1483,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* Limit the mass interval to the IMF boundaries */
   m_end_step = max(m_end_step, sm->imf.mass_min);
+  m_end_step = min(m_end_step, sm->imf.mass_max);
   m_beg_step = min(m_beg_step, sm->imf.mass_max);
 
   /* considering only the "alive" part of the IMF, i.e., we stop only if we are
