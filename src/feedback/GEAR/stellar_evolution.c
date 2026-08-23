@@ -1540,6 +1540,17 @@ void stellar_evolution_compute_preSN_feedback_spart(
     sp->feedback_data.radiation.mean_excess_photon_energy_HI =
         (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
             &sm->rad, log10f(m_min), log10f(m_sup));
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    /* Population equivalent of the individual-star print above. */
+    message(
+        "[id=%lld, type=%d] m_init = %e Msun, m_sup = %e Msun, N_dot_ion "
+        "= %e /s, L_bol = %e internal, mean_excess_photon_energy_HI = %e",
+        sp->id, sp->star_type, m_init, m_sup,
+        dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+        sp->feedback_data.radiation.L_bol,
+        sp->feedback_data.radiation.mean_excess_photon_energy_HI);
+#endif
   } else {
     radiation_zero_spart_output(sp);
   }
