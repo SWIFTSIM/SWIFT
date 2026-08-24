@@ -131,16 +131,19 @@ __attribute__((always_inline)) INLINE static void feedback_apply_hii_tag_claim(
  * Only a stamped entry (S3.1/F2) is merged; an unstamped entry's tag state
  * is stale ambient data riding along in the pack, not a claim to apply.
  * A stamped entry competing against an existing claim (@p p already
- * is_ionized) is resolved by the deterministic commutative rule: smallest
- * (r2, star_id) wins, both values already on hand on either side (S3.4,
- * no owner-side star lookup). The loser's photon spend is forfeit and
- * only reported through @p collision / @p forfeited_cost for the debug
- * counters; nothing here can recover it.
+ * is_ionized, held by a DIFFERENT star) is resolved by the deterministic
+ * commutative rule: smallest (r2, star_id) wins, both values already on
+ * hand on either side (S3.4, no owner-side star lookup). The loser's
+ * photon spend is forfeit and only reported through @p collision /
+ * @p forfeited_cost for the debug counters; nothing here can recover it.
+ * An incoming report from the SAME star that already holds @p p (a
+ * maintenance-pass re-affirmation, not competing contention) is applied
+ * directly and never counted as a collision.
  *
  * @param p The #part to unpack into.
  * @param data The source entry.
  * @param collision (return) Set to 1 if this entry competed against an
- * existing claim, left untouched otherwise.
+ * existing claim held by a different star, left untouched otherwise.
  * @param forfeited_cost (return) Photon cost of whichever claim lost, set
  * only when @p collision is set.
  */
@@ -152,7 +155,8 @@ feedback_unpack_hii_tag_report(struct part *restrict p,
   if (!data->claimed_this_pass) return;
 
 #ifdef WITH_MPI
-  if (p->feedback_data.is_ionized) {
+  if (p->feedback_data.is_ionized &&
+      data->tag.star_id != p->feedback_data.star_id) {
     *collision = 1;
 #ifdef SWIFT_DEBUG_CHECKS
     /* Stamped-entry provenance (S3.1/F2): a claim reaching the merge must

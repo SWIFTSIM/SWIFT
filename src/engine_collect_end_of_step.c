@@ -274,6 +274,26 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   collectgroup1_reduce(&e->collect_group1);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* S3.4 MPI radiation HII merge-collision debug counters: each rank only
+   * accumulates its own owner-side merges into the _local fields
+   * (runner_main.c), so the engine.c per-step report (rank 0 only) needs
+   * a cross-rank sum, not the rank-0-local value, to mean what its
+   * message text claims. */
+  {
+    long long global_collisions = 0;
+    double global_forfeited = 0.;
+    if (MPI_Allreduce(&e->radiation_hii_merge_collision_count_local,
+                      &global_collisions, 1, MPI_LONG_LONG_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate radiation_hii_merge_collision_count.");
+    if (MPI_Allreduce(&e->radiation_hii_forfeited_budget_local,
+                      &global_forfeited, 1, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate radiation_hii_forfeited_budget.");
+    e->radiation_hii_merge_collision_count = global_collisions;
+    e->radiation_hii_forfeited_budget = global_forfeited;
+  }
+
   {
     /* Check the above using the original MPI calls. */
     integertime_t in_i[2], out_i[2];
