@@ -28,6 +28,7 @@
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
+#include <unistd.h>
 
 /* Local includes. */
 #include "error.h"
@@ -192,6 +193,10 @@ static INLINE void potential_init_backend(
   char agama_potential_filename[32];
   parser_get_param_string(parameter_file, "AGAMAPotential:filename",
                           agama_potential_filename);
+
+  /* Check file exists */
+  if (access(agama_potential_filename, F_OK) != 0)
+    error("File %s not found !\n", agama_potential_filename);
 
   /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "AGAMAPotential:position", 3,
