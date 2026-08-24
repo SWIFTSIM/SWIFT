@@ -990,6 +990,18 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts_foreign);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Logs each top cell's slice of the shared s->gparts_foreign buffer, to
+         * cross-check pjd's offset for cross-rank overlap on a fire. */
+        message(
+            "GPARTS_FOREIGN_RELINK this_rank=%d remote_rank=%d cellID=%lld "
+            "offset=%ld count=%zd count_total=%d",
+            e->nodeID, e->proxies[k].nodeID, e->proxies[k].cells_in[j]->cellID,
+            (long)(gparts_foreign - s->gparts_foreign), count_gparts,
+            e->proxies[k].cells_in[j]->grav.count_total);
+#endif
+
         gparts_foreign = &gparts_foreign[count_gparts + space_extra_gparts];
       }
 

@@ -26,6 +26,7 @@
 #include "cell.h"
 
 /* Local headers */
+#include "error.h"
 #include "gravity.h"
 
 /**
@@ -640,8 +641,20 @@ void cell_pack_gpart(const struct cell *const c,
   swift_declare_aligned_ptr(struct gpart_foreign, b_align, b,
                             SWIFT_CACHE_ALIGNMENT);
 
-  for (int i = 0; i < c->grav.count; ++i)
+  for (int i = 0; i < c->grav.count; ++i) {
     gravity_foreign_copy(&b_align[i], &c->grav.parts[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Correlates against the receiver's crash-time read at the same (cellID,
+     * idx). */
+    if (c->grav.parts[i].time_bin == time_bin_inhibited)
+      message(
+          "PACK_INHIBITED_PROBE sender_rank=%d cellID=%lld idx=%d "
+          "id=%lld type=%d",
+          c->nodeID, c->cellID, i, c->grav.parts[i].id_or_neg_offset,
+          (int)c->grav.parts[i].type);
+#endif
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");

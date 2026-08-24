@@ -1079,6 +1079,15 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (foreign_j && pjd < gcount_j &&
           gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f) {
+
+        /* e->s->gparts_foreign only exists in an MPI build. */
+#ifdef WITH_MPI
+        const long pjd_abs_offset =
+            (long)(&gparts_foreign_j[pjd] - e->s->gparts_foreign);
+#else
+        const long pjd_abs_offset = -1;
+#endif
+
         /* populated_time_bin_at_pjd is entailed by the crash condition
          * (mass_j != 0 implies populate saw != inhibited) -- not
          * decisive on its own. The decisive check is cache_x/y/z vs
@@ -1104,7 +1113,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
             "raw_z=%.9e pre_call_gpart_exec=%d now_gpart_exec=%d "
             "pre_call_top_gpart_exec=%d now_top_gpart_exec=%d "
             "now_grav_counts_exec=%d now_top_grav_counts_exec=%d "
-            "pre_call_data_recv_exec=%d now_data_recv_exec=%d",
+            "pre_call_data_recv_exec=%d now_data_recv_exec=%d "
+            "pjd_abs_offset=%ld",
             e->step, e->nodeID, cj->nodeID, cj->cellID, cj->depth, pjd,
             gcount_j, (int)gparts_foreign_j[pjd].type,
             gparts_foreign_j[pjd].id_or_neg_offset, gparts_foreign_j[pjd].mass,
@@ -1130,7 +1140,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
             (int)cj->top->subtasks_executed[task_subtype_gpart],
             (int)cj->subtasks_executed[task_subtype_grav_counts],
             (int)cj->top->subtasks_executed[task_subtype_grav_counts],
-            pre_call_data_recv_exec, cj->grav.data_recv_exec_count);
+            pre_call_data_recv_exec, cj->grav.data_recv_exec_count,
+            pjd_abs_offset);
         error("Inhibited particle used as gravity source.");
       }
 
