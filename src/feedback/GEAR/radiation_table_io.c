@@ -75,7 +75,7 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
        character set (ASCII vs UTF-8), and this HDF5 build has no
        registered ASCII<->UTF-8 conversion path, so H5Aread() into the
        mismatched type fails ("no appropriate function for conversion
-       path") -- caught by actually running this against a real pychem
+       path"). Caught by actually running this against a real pychem
        table, not just compiling it. */
     char *tmp = NULL;
     if (H5Aread(h_attr, h_type, &tmp) < 0)
@@ -157,7 +157,7 @@ static void radiation_check_dataset_units(hid_t group_id,
     error(
         "Data/Radiation/%s declares units='%s', but SWIFT's reader assumes "
         "'%s'. This table's unit convention no longer matches what this "
-        "code converts -- aborting rather than silently misinterpreting "
+        "code converts. Aborting rather than silently misinterpreting "
         "the physics.",
         dataset_name, actual_units, expected_units);
   }
@@ -172,7 +172,7 @@ static void radiation_check_dataset_units(hid_t group_id,
  * side (PyChemInitTable/libradiation.py's ExtrapolationPolicy); SWIFT has
  * no "linear" extrapolation mode, and #interpolate_boundary_condition can
  * only express "zero both sides", "zero below/constant above" or "constant
- * both sides" -- not "constant below/zero above". Every real shipped
+ * both sides", not "constant below/zero above". Every real shipped
  * table so far only uses the three representable combinations (see
  * radiation_parsec_popIII.hdf5's edge_policy_* attributes); this errors
  * loudly on anything else rather than silently misapplying a policy.
@@ -346,7 +346,7 @@ static void radiation_read_grid_metadata(hid_t group_id,
  * pychem's Integrated_* cumulative datasets (see radiation_build_tables())
  * were computed against a specific IMF; if that IMF differs from the one
  * this run configured (#sm->imf), the precomputed integral is silently
- * wrong for this run -- exactly the class of bug this migration exists to
+ * wrong for this run: exactly the class of bug this migration exists to
  * close. Only tables with the precomputed datasets write these attrs, so a
  * table without "Integrated_Q_H" is skipped here (not an error: an
  * old-format table is instead caught when a reader tries to open
@@ -472,8 +472,8 @@ static void radiation_check_imf_consistency(hid_t group_id,
  * read/convert/guard boilerplate.
  *
  * Guards against float overflow the way stellar_evolution.c:676-695 does:
- * error() aborts (MPI_Abort/swift_abort, src/error.h) rather than capping
- * -- a units/scaling bug should stop the run, not silently corrupt the
+ * error() aborts (MPI_Abort/swift_abort, src/error.h) rather than capping.
+ * A units/scaling bug should stop the run, not silently corrupt the
  * physics. Also flags (debug-checks only) an implausible collapse to
  * exactly zero for a CGS input that was not itself zero: pychem bakes a
  * literal 0 into Q_H/DotEExcess below its own ionization threshold, so an
@@ -495,14 +495,14 @@ static void radiation_check_imf_consistency(hid_t group_id,
  * @param log_data_internal (output, optional) If not NULL, a caller-owned
  * float array of length @p count filled with log10 of the same
  * internal-unit value #RADIATION_LOG_FLOOR_CGS-floored on the CGS side
- * before conversion (see that macro's own doxygen) -- exactly pychem's
+ * before conversion (see that macro's own doxygen), exactly pychem's
  * log-log convention, used to build a raw table's #interpolation_1d /
  * #interpolation_2d in log-value space instead of raw-value space. Left
  * untouched if NULL (the integrated-table caller has no use for it: see
  * radiation_build_tables()'s own doxygen for why the IMF-integrated table
  * stays in linear space).
  * @return Newly malloc'd float array of length count, in internal
- * (optionally rescaled) units, NOT logged -- this is the value a raw
+ * (optionally rescaled) units, NOT logged. This is the value a raw
  * dataset read needs (@p log_data_internal built alongside it) or, with
  * @p log_data_internal NULL, the linear-space value an "Integrated_*"
  * cumulative-table read needs. Caller must free().
@@ -545,8 +545,8 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
     if (data_cgs[j] != 0. && (float)value_internal == 0.0f) {
       message(
           "WARNING: radiation table '%s' entry %llu (%e cgs, nonzero) "
-          "collapsed to exactly 0 in internal units after conversion -- "
-          "check RADIATION_DOT_N_ION_TABLE_SCALING and the unit system.",
+          "collapsed to exactly 0 in internal units after conversion. "
+          "Check RADIATION_DOT_N_ION_TABLE_SCALING and the unit system.",
           dataset_name, (unsigned long long)j, data_cgs[j]);
     }
 #endif
@@ -603,21 +603,21 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * The IMF-integrated table (1D only) is deliberately left in linear
  * (un-logged) value space, unlike the raw table above: it is not the same
  * kind of quantity pychem's log-log scheme governs. It is read directly
- * from the table's own "Integrated_<dataset_name>" dataset -- pychem's
+ * from the table's own "Integrated_<dataset_name>" dataset: pychem's
  * precomputed, number-weighted (n(m), not #initial_mass_function_integrate()'s
- * mass-weighted m*n(m)), cumulative-from-Mmin integral -- rather than
+ * mass-weighted m*n(m)), cumulative-from-Mmin integral, rather than
  * integrated on the SWIFT side, so no logged/un-logged ordering constraint
  * applies to it the way it does to the raw table above.
  *
  * The 2D ("M,Z") branch builds the raw table always, and, when @p
- * integrated_2d is not NULL, also builds an IMF-integrated 2D table --
+ * integrated_2d is not NULL, also builds an IMF-integrated 2D table,
  * mirroring the 1D integrated table above, read directly from the table's
  * own "Integrated_<dataset_name>" dataset rather than integrated on the
  * SWIFT side, with the SAME log_mass_min_out/log_mass_max_out output-grid
  * bounds as @p raw_2d. That bound-sharing is load-bearing, not incidental:
  * it is what guarantees a two-point-subtraction query
  * (radiation_get_luminosities_from_integral_2d() and friends) never sees a
- * Z-axis mismatch between its two interpolate_2d() calls -- see Decision #1
+ * Z-axis mismatch between its two interpolate_2d() calls; see Decision #1
  * in design-radiation-integrated-table-migration.md for the full argument.
  * @p integrated_2d stays untouched (NULL) for a dataset with no IMF-
  * integrated concept (MainSequenceLifetime); radiation_read_data() zeroes
@@ -643,17 +643,17 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * @param raw_1d (output) Raw 1D interpolation table (1D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_1d (output) IMF-integrated 1D interpolation table (1D
- * tables only), holding the linear (un-logged) cumulative value -- see
+ * tables only), holding the linear (un-logged) cumulative value; see
  * this function's own doxygen for why.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
- * table (2D tables only), holding the linear (un-logged) cumulative value
- * -- see this function's own doxygen. Pass NULL for a dataset with no
+ * table (2D tables only), holding the linear (un-logged) cumulative value;
+ * see this function's own doxygen. Pass NULL for a dataset with no
  * IMF-integrated concept (MainSequenceLifetime); left untouched then.
  * @param boundary_condition_mass Mass-axis #interpolate_boundary_condition
  * for @p dataset_name's raw table (2D tables only; ignored for a 1D table,
- * which always clamps -- see radiation_read_grid_metadata()'s edge_policy_*
+ * which always clamps; see radiation_read_grid_metadata()'s edge_policy_*
  * fields for where this comes from). @p integrated_2d always clamps on
  * both axes regardless, mirroring @p integrated_1d's own hardcoded
  * boundary_condition_const (a cumulative integral is monotonic; clamping to
@@ -718,7 +718,7 @@ static void radiation_build_tables(
 
     /* integrated_2d is built from pychem's own precomputed, number-weighted,
        cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
-       integrating the raw values above -- mirrors the 1D branch below. */
+       integrating the raw values above. Mirrors the 1D branch below. */
     char integrated_dataset_name[64];
     int written =
         snprintf(integrated_dataset_name, sizeof(integrated_dataset_name),
@@ -750,7 +750,7 @@ static void radiation_build_tables(
             expected_units);
 
     /* log_data_internal = NULL: the cumulative integral stays in linear
-       (un-logged) value space, unlike the raw table -- see this function's
+       (un-logged) value space, unlike the raw table; see this function's
        own doxygen for why. */
     float *integrated_data = radiation_read_cgs_array(
         group_id, integrated_dataset_name, count, conversion_factor,
@@ -764,7 +764,7 @@ static void radiation_build_tables(
       integrated_data_double[i] = (double)integrated_data[i];
 
     /* Both axes clamp (boundary_condition_const), regardless of @p
-       boundary_condition_mass -- see this function's own doxygen. */
+       boundary_condition_mass; see this function's own doxygen. */
     interpolate_2d_init(
         integrated_2d, log_z_min, log_z_max, interpolation_size_metallicity,
         log_mass_min_out, log_mass_max_out, interpolation_size_mass, log_z_min,
@@ -793,7 +793,7 @@ static void radiation_build_tables(
 
   /* integrated_1d is built from pychem's own precomputed, number-weighted,
      cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
-     integrating the raw values above -- see this function's own doxygen. */
+     integrating the raw values above. See this function's own doxygen. */
   char integrated_dataset_name[64];
   int written =
       snprintf(integrated_dataset_name, sizeof(integrated_dataset_name),
@@ -828,7 +828,7 @@ static void radiation_build_tables(
     error("Units string '%s/Msun' does not fit in the buffer.", expected_units);
 
   /* log_data_internal = NULL: the cumulative integral stays in linear
-     (un-logged) value space, unlike the raw table -- see this function's
+     (un-logged) value space, unlike the raw table. See this function's
      own doxygen for why. */
   float *integrated_data = radiation_read_cgs_array(
       group_id, integrated_dataset_name, (hsize_t)grid->n_mass,
@@ -893,14 +893,14 @@ void radiation_read_ionization_rate_array(
  * table: DotEExcess(m) = Q_H(m) * MeanExcessPhotonEnergyHI(m).
  *
  * Converted with the SAME (rate-only) #UNIT_CONV_PHOTONS_PER_TIME factor
- * used for Q_H, not #UNIT_CONV_POWER -- deliberately, even though the file
- * stores DotEExcess in erg/s (a power): dividing only the rate part by
+ * used for Q_H, not #UNIT_CONV_POWER. This is deliberate, even though the
+ * file stores DotEExcess in erg/s (a power): dividing only the rate part by
  * #RADIATION_DOT_N_ION_TABLE_SCALING and the unit conversion, while
  * leaving the "erg" part of the product in cgs, reproduces the mixed-unit
  * convention #radiation_get_mean_excess_photon_energy_HI_from_integral (an
  * existing, unmodified function/call site) already relies on: both raw
  * tables share the same rate-only scaling, so it cancels exactly in that
- * ratio, and the result comes out in cgs erg -- matching
+ * ratio, and the result comes out in cgs erg, matching
  * feedback_struct.h's documented cgs-erg convention for
  * mean_excess_photon_energy_HI, without needing a unit_system argument on
  * the getters. Using #UNIT_CONV_POWER here instead would leave that ratio
@@ -933,8 +933,8 @@ void radiation_read_mean_excess_photon_energy_array(
 /**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
  *
- * MainSequenceLifetime has no 1D/"M"-table analogue -- pychem only writes
- * it for a PARSEC table -- so the caller must only call this on a 2D grid
+ * MainSequenceLifetime has no 1D/"M"-table analogue: pychem only writes
+ * it for a PARSEC table, so the caller must only call this on a 2D grid
  * (checked below); see radiation_read_data()'s own #radiation_grid_metadata
  * .is_2d gate around this call.
  *
@@ -942,7 +942,7 @@ void radiation_read_mean_excess_photon_energy_array(
  * are both the identity (1.0), so the table's own "Myr" values are stored
  * as-is rather than run through units_cgs_conversion_factor(us,
  * UNIT_CONV_TIME), which would treat the stored value as if it were
- * already in CGS seconds -- see #radiation's raw.main_sequence_lifetime_2d
+ * already in CGS seconds. See #radiation's raw.main_sequence_lifetime_2d
  * doxygen for why staying in Myr is the deliberate choice here.
  *
  * The mass-axis boundary condition is hardcoded to boundary_condition_const
@@ -1005,30 +1005,29 @@ void radiation_read_main_sequence_lifetime_array(
  *   resampled to @p rad's own interpolation_size_metallicity, exactly like
  *   #radiation_build_tables()'s 2D branch.
  * - Its age axis is an IDENTITY resample of the native "Age"/a0/da/na grid
- *   (Ny = na, exact native bounds), NOT independently resampled to some
- *   other resolution: MainSequenceLifetimeInverse's placeholder value at an
+ *   (Ny = na, exact native bounds), not independently resampled to some
+ *   other resolution. MainSequenceLifetimeInverse's placeholder value at an
  *   Excluded cell is a finite, non-NaN sentinel, so a differently-resampled
- *   output grid could blend a real value with that sentinel at output nodes
- *   near a row's own Excluded transition -- exactly the age range the
- *   min()-gate in #radiation_get_ms_lifetime_inverse_mass_2d() exists to
- *   protect. An identity resample makes every output age node map 1:1 onto
- *   one native age cell, closing this off structurally.
+ *   output grid could blend a real value with that sentinel near a row's
+ *   own Excluded transition, exactly the age range the min()-gate in
+ *   #radiation_get_ms_lifetime_inverse_mass_2d() exists to protect. An
+ *   identity resample maps every output age node 1:1 onto one native age
+ *   cell, closing this off structurally.
  * - "MainSequenceLifetimeInverseExcluded" is reduced, in the same pass, to
  *   one #radiation.longest_ms_lifetime_myr scalar per native Z row: the
- *   largest non-Excluded tabulated age in that row (or FLT_MAX for a row
- *   with no Excluded cells at all -- this build's -ffast-math disallows the
- *   IEEE INFINITY macro, and #radiation.age_max_myr already gates every
- *   real query well below FLT_MAX anyway, so the two sentinels are
- *   equivalent in practice; see design-radiation-integrated-table-
- *   migration.md's Data layout section, which explicitly allows either). The
- * scan asserts each row's Excluded cells are
- * contiguous-from-that-age-to-the-end -- #radiation_get_ms_
- *   lifetime_inverse_mass_2d()'s min()-gate safety proof depends on this
- *   shape, so it is enforced here rather than silently assumed.
+ *   largest non-Excluded tabulated age in that row, or FLT_MAX for a row
+ *   with no Excluded cells at all (this build's -ffast-math disallows the
+ *   IEEE INFINITY macro; #radiation.age_max_myr already gates every real
+ *   query well below FLT_MAX, so the two sentinels are equivalent in
+ *   practice; see design-radiation-integrated-table-migration.md's Data
+ *   layout section, which explicitly allows either). The scan asserts each
+ *   row's Excluded cells are contiguous-from-that-age-to-the-end, since
+ *   #radiation_get_ms_lifetime_inverse_mass_2d()'s min()-gate safety proof
+ *   depends on this shape.
  * - #radiation.ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity
  *   record the same native Z grid (log10(Z) space, native row count) so a
  *   query can bracket the two native rows #longest_ms_lifetime_myr is
- *   indexed by -- deliberately NOT the same as #raw.main_sequence_lifetime_
+ *   indexed by. Deliberately not the same as #raw.main_sequence_lifetime_
  *   inverse_2d's own xmin/dx/Nx, which describe the OUTPUT-resampled grid
  *   (interpolation_size_metallicity points, generally finer than the
  *   native nz-row grid).
@@ -1099,7 +1098,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
 
   /* Same native log10(Z) axis every other 2D field in this file uses
      (radiation_build_tables()), stored on #rad so a query can bracket the
-     two native rows #longest_ms_lifetime_myr is indexed by -- see this
+     two native rows #longest_ms_lifetime_myr is indexed by. See this
      function's own doxygen for why that differs from the interpolation_2d
      struct's own (output-resampled) xmin/dx. */
   const float log_z_min = log10f(grid->metallicity[0]);
@@ -1112,8 +1111,8 @@ void radiation_read_main_sequence_lifetime_inverse_array(
   rad->ms_lifetime_inverse_log_z_step = log_z_step;
   rad->ms_lifetime_inverse_n_metallicity = grid->n_metallicity;
 
-  /* Identity resample of the native age grid: Ny = na, exact native bounds
-     -- see this function's own doxygen. */
+  /* Identity resample of the native age grid: Ny = na, exact native bounds.
+     See this function's own doxygen. */
   const float log_age_min = (float)a0;
   const float log_age_max = (float)(a0 + (na - 1) * da);
 
@@ -1145,7 +1144,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
   free(data);
 
   /* Reduce MainSequenceLifetimeInverseExcluded to one longest-tabulated-
-     MS-lifetime scalar per native Z row -- see this function's own
+     MS-lifetime scalar per native Z row. See this function's own
      doxygen for the contiguity assertion's role. */
   hbool_t *excluded = (hbool_t *)malloc(sizeof(hbool_t) * count);
   if (excluded == NULL)
@@ -1186,7 +1185,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
     } else {
       /* Every tabulated age in this row is Excluded: no MS-active mass at
          any age this table covers. A threshold of exactly 0 makes the
-         min()-gate below reject every real query for this row -- the
+         min()-gate below reject every real query for this row, the
          correct, conservative behaviour; not seen in any real table
          checked so far (see this function's own doxygen). */
       rad->longest_ms_lifetime_myr[z] = 0.f;
@@ -1206,11 +1205,11 @@ void radiation_read_main_sequence_lifetime_inverse_array(
  * committed/fetched for the 8 radiation examples included) lacks this
  * group, and #h5_open_group's own generic "unable to open group" message
  * gives no hint that regenerating the table, not fixing a typo, is the
- * actual fix -- mirrors the actionable-message convention radiation_init()
+ * actual fix. Mirrors the actionable-message convention radiation_init()
  * (radiation.c) already uses for GEARFeedback:HII_angular_nside.
  *
  * @param filename The yields table filename (sm->yields_table or
- * sm->yields_table for the first-stars model -- same check either way).
+ * sm->yields_table for the first-stars model; same check either way).
  * @param file_id (output) The opened HDF5 file id.
  * @param group_id (output) The opened "Data/Radiation" group id.
  */
@@ -1243,7 +1242,7 @@ static void radiation_open_data_group(const char *filename, hid_t *file_id,
  * The tables are in internal units at the end of this function, with two
  * exceptions: for a 2D ("M,Z") table, raw.main_sequence_lifetime_2d stays
  * in Myr and raw.main_sequence_lifetime_inverse_2d stays in Msun,
- * deliberately not run through the unit system -- see their own doxygen on
+ * deliberately not run through the unit system. See their own doxygen on
  * #radiation's raw sub-struct for why.
  *
  * @param rad The #radiation model.
@@ -1280,7 +1279,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* radiation_zero_pointers() below also clears interpolation_size(_
      metallicity) and n_HII_pixels, so callers with radiation disabled
-     don't inherit uninitialized garbage in them -- but on this call path
+     don't inherit uninitialized garbage in them. On this call path,
      those three either were just set above (!restart) or hold the values
      radiation_restore() flat-restored moments ago (restart), and
      radiation_build_tables() below needs them either way. Round-trip them
@@ -1292,7 +1291,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Zero every table up front: radiation_build_tables() only populates the
      _1d or _2d variant matching this table's dimensionality, and only the
-     2D path's raw tables at that (see its own doxygen) -- the rest must be
+     2D path's raw tables at that (see its own doxygen). The rest must be
      safe no-ops for radiation_clean()'s interpolate_1d_free()/
      interpolate_2d_free() calls regardless of which branch ran. */
   radiation_zero_pointers(rad);
@@ -1316,7 +1315,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Table-coverage check: the raw table's boundary condition is
      boundary_condition_const (radiation_build_tables()), so a star outside
      the table's own native mass grid silently gets the nearest edge's
-     value instead of its own -- e.g. pychem's real PopIII table has a
+     value instead of its own. E.g. pychem's real PopIII table has a
      native floor of 13 Msun, well above a typical IMF's own mass_min.
      Fail loudly instead, matching this file's existing convention (the
      FLT_MAX guard above) and radiation_init()'s HII_angular_nside checks

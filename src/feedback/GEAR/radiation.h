@@ -43,7 +43,7 @@
 /*! Lifetime granted to an ionization tag, in units of the rebuild interval
     that produced it. Must exceed 1: a tag has to outlive the gap to its own
     star's next rebuild pass, or cooling (which expires tags on the gas
-    particle's own, independently-binned timestep --
+    particle's own, independently-binned timestep; see
     src/cooling/grackle/cooling_gear_subgrid.h) can clear it before the star
     ever gets the chance to renew it. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
@@ -58,15 +58,14 @@
 
 /*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
     genuinely-zero table entry (Q_H/DotEExcess below the source table's own
-    ionization-threshold mass, where pychem defines them to be exactly 0 --
+    ionization-threshold mass, where pychem defines them to be exactly 0;
     see PyChemInitTable/libradiation.py) does not produce log10(0) = -inf.
     Matches pychem's own floor bit-for-bit (PyChemInitTable/
     libparsec_radiation.py's `_LOG_FLOOR`): SWIFT's radiation interpolation
     must match pychem's own log10(mass)-vs-log10(value) interpolation
-    scheme, not just approximate it. Applied to the CGS value itself
-    (before the internal-unit conversion), not the converted value: this
-    is the number pychem's own
-    floor actually clamps, so a query that is "native-zero" in SWIFT means
+    scheme. Applied to the CGS value itself (before the internal-unit
+    conversion), not the converted value: this is the number pychem's own
+    floor actually clamps. So, a query that is "native-zero" in SWIFT means
     exactly what it means in pychem, independently of SWIFT's unit
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
@@ -74,7 +73,7 @@
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
     the integrated table's own top mass edge before calling interpolate_2d(),
     so an exact-mass_max query deterministically takes the blended (not
-    boundary-clamped) branch -- see radiation_get_luminosities_from_
+    boundary-clamped) branch. See radiation_get_luminosities_from_
     integral_2d()'s own doxygen for why this matters. */
 #define RADIATION_2D_EDGE_EPS 1e-5f
 
@@ -106,7 +105,7 @@ struct radiation_grid_metadata {
   int n_metallicity;
 
   /*! Metallicity grid values (mass fraction Z, native units; NULL for a
-      1D table). Not guaranteed log-uniformly spaced by the file -- see
+      1D table). Not guaranteed log-uniformly spaced by the file. See
       radiation_read_data()'s own comment on the approximation this forces
       for interpolate_2d_init(). */
   float *metallicity;

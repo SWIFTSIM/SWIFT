@@ -70,7 +70,7 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
   /* Angular (HEALPix) splitting of the HII ionization budget. nside=0 means
      spherical (HEALPix disabled, today's behaviour, n_HII_pixels=1); any
      nside>=1 means the standard HEALPix RING-scheme tessellation
-     (n_HII_pixels=12*nside^2) -- RING, unlike NEST, has no power-of-2
+     (n_HII_pixels=12*nside^2). RING, unlike NEST, has no power-of-2
      restriction on nside, so any positive integer is mathematically valid
      here (see /usr/include/chealpix.h). The practical ceiling is memory,
      not geometry: every star carries a fixed-size
@@ -129,13 +129,13 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
  * bytes.
  *
  * The flat restore below copies the interpolation tables' internal data
- * pointers as raw bytes -- meaningless in the new process, since they held
+ * pointers as raw bytes, meaningless in the new process, since they held
  * the old process's heap addresses. radiation_read_data() re-derives those
  * tables from scratch instead of trying to serialize them, avoiding ever
  * leaving a dangling pointer for radiation_clean() to free(). Re-derivation
  * reads sm->yields_table again (Data/Radiation) rather than recomputing
  * from mass/Z alone, so it is exact only if that path still resolves and
- * the file is unchanged since the run started -- the same uncanonicalized-
+ * the file is unchanged since the run started, the same uncanonicalized-
  * path caveat already noted for GEARFeedback:yields_table in general
  * (feedback_properties.h); a restart resubmitted from a different working
  * directory with a relative path can fail here.
@@ -148,7 +148,7 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
  * @param with_radiation Are we restoring with photoionization and/or
  * radiation pressure? The raw struct bytes are always read back
  * (radiation_dump() always writes them, unlike e.g. stellar_wind_dump()),
- * but the tables -- and #radiation.is_active -- are only re-derived, and
+ * but the tables, and #radiation.is_active, are only re-derived, and
  * sm->yields_table only re-opened, when this is set; otherwise
  * #radiation_zero_pointers overwrites whatever stale value the raw restore
  * above just wrote into is_active.
@@ -179,12 +179,12 @@ void radiation_restore(struct radiation *rad, FILE *stream,
  * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess fields are each an
  * anonymous union of a #interpolation_1d and a #interpolation_2d variant
  * (see #radiation's own doxygen); #is_2d selects which one is actually live
- * and must be freed via the matching interpolate_*d_free() -- freeing
+ * and must be freed via the matching interpolate_*d_free(). Freeing
  * through the other union member's helper on aliased memory would be wrong
  * (though not unsafe here: both #interpolation_1d and #interpolation_2d
  * have their `data` pointer as their first member, verified with
  * `offsetof()`, so either helper happens to null/free the right pointer
- * regardless of #is_2d -- not relied upon, since the non-pointer tail
+ * regardless of #is_2d. Not relied upon, since the non-pointer tail
  * fields still differ, but noted as the reason this is not a
  * memory-safety hazard even if #is_2d were ever wrong here).
  * #main_sequence_lifetime_2d/#main_sequence_lifetime_inverse_2d have no 1D
@@ -215,7 +215,7 @@ void radiation_clean(struct radiation *rad) {
 }
 
 /**
- * @brief Zero a #radiation struct -- pointers, dimensions and #is_active --
+ * @brief Zero a #radiation struct (pointers, dimensions and #is_active)
  * so a struct that was never (or is not yet) initialized can be safely
  * passed to #radiation_clean, printed, or read by any of the getters (which
  * must check #is_active first; the getters themselves do not, and would
@@ -226,7 +226,7 @@ void radiation_clean(struct radiation *rad) {
  *
  * #raw/#integrated's union'd fields (see #radiation's own doxygen) are
  * zero-pointered via the union member matching the INCOMING #is_2d (read
- * into @c was_2d before it is overwritten below), not both -- zero-
+ * into @c was_2d before it is overwritten below), not both. Zero-
  * pointering through the other member's helper would target the same
  * `data` pointer (offset 0 in both #interpolation_1d and #interpolation_2d,
  * verified with `offsetof()`) but leave the two structs' differently-shaped
@@ -237,7 +237,7 @@ void radiation_clean(struct radiation *rad) {
  * ever initialised: #stellar_evolution_props_init's `!with_radiation`
  * branch calls this directly on a fresh, never-yet-built #radiation (part
  * of a #stellar_model that is itself part of a non-`bzero`'d
- * `struct feedback_props` on the stack in swift.c) -- @c was_2d there may
+ * `struct feedback_props` on the stack in swift.c): @c was_2d there may
  * be garbage, not a real prior dimensionality. This is not a
  * memory-safety hazard even so: whichever dispatch branch runs still nulls
  * the SAME `data` pointer (the offset-0 property above), which is the only

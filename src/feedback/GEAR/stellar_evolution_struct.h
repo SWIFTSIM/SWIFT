@@ -182,7 +182,7 @@ struct supernovae_ii {
 
 /*! Cap on the number of metallicity rows #radiation.longest_ms_lifetime_myr
     can hold, as a fixed-size struct member rather than a separately
-    allocated pointer -- see that field's own doxygen for why. Defined here,
+    allocated pointer. See that field's own doxygen for why. Defined here,
     not in radiation.h (radiation.h includes this file, not the other way
     round), so it is in scope where #radiation itself is declared. */
 #define RADIATION_MAX_METALLICITY_ROWS 64
@@ -193,11 +193,11 @@ struct supernovae_ii {
 struct radiation {
 
   /*! Yields not integrated, mass-only ("M" dimensionality) tables. Store
-      log10(value in internal units), pychem-floored, not the raw value --
-      see radiation.c's radiation_build_tables()/radiation_read_cgs_array()
+      log10(value in internal units), pychem-floored, not the raw value.
+      See radiation.c's radiation_build_tables()/radiation_read_cgs_array()
       doxygen; every radiation_get_*_from_raw() getter exponentiates back.
       Exception: #main_sequence_lifetime_2d stores log10(Myr), not
-      log10(internal units) -- see its own doxygen below for why.
+      log10(internal units); see its own doxygen below for why.
       #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess
       counterparts are each an anonymous union (mirroring src/hydro/SPHENIX/
       hydro_part.h's density/force union idiom): #is_2d is fixed for a given
@@ -206,7 +206,7 @@ struct radiation {
       separate members would waste memory. Every read site already gates on
       #is_2d before touching either name (radiation_check_dimensionality()/
       the is_2d dispatch in radiation_get_star_*()); #radiation_zero_pointers
-      /#radiation_clean must do the same -- see their own doxygen. */
+      /#radiation_clean must do the same. See their own doxygen. */
   struct {
     union {
       /*! Bolometric luminosity emitted. */
@@ -239,7 +239,7 @@ struct radiation {
         metallicity, 2D-only ("MainSequenceLifetime" has no 1D/"M"-table
         analogue). Stored log10(Myr), in the same log-log scheme
         #interpolate_2d_init() applies to the three fields above (see
-        radiation_build_tables()'s doxygen) -- but deliberately left in
+        radiation_build_tables()'s doxygen), but deliberately left in
         Myr rather than converted to internal units, since it is only ever
         compared against a star's age in Myr
         (radiation_get_ionization_rate_from_raw_2d(),
@@ -261,7 +261,7 @@ struct radiation {
         site than #main_sequence_lifetime_2d's single-star cap). Age axis
         identity-resampled from the native "Age"/a0/da/na grid (Ny = na,
         exact native bounds), NOT #interpolation_size_metallicity's
-        resolution -- see radiation_read_main_sequence_lifetime_inverse_
+        resolution. See radiation_read_main_sequence_lifetime_inverse_
         array()'s own doxygen for why. Z axis uses that resolution, like
         every other 2D field above. Stored log10(Msun), same log-log scheme
         as the fields above; radiation_get_ms_lifetime_inverse_mass_2d()
@@ -271,7 +271,7 @@ struct radiation {
 
   /*! Yields integrated (IMF-integrated), read directly from pychem's own
       precomputed, number-weighted, cumulative-from-Mmin "Integrated_*"
-      datasets (radiation_table_io.c's radiation_build_tables() doxygen) --
+      datasets (radiation_table_io.c's radiation_build_tables() doxygen),
       never integrated on the SWIFT side. Same union-per-field layout as
       #raw above, for the same reason (see its own doxygen). */
   struct {
@@ -324,9 +324,10 @@ struct radiation {
   /*! Longest tabulated MS lifetime (Myr) per native metallicity row (index
       by #ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity below),
       reduced at read time from MainSequenceLifetimeInverseExcluded (2D
-      tables only). +INFINITY for a row with no Excluded cells at all.
+      tables only). FLT_MAX for a row with no Excluded cells at all (not
+      INFINITY: this build's -ffast-math disallows it).
       Fixed-size, not a separately allocated pointer, so it needs neither a
-      #radiation_zero_pointers nor a #radiation_clean entry -- see
+      #radiation_zero_pointers nor a #radiation_clean entry. See
       radiation_read_main_sequence_lifetime_inverse_array()'s own doxygen. */
   float longest_ms_lifetime_myr[RADIATION_MAX_METALLICITY_ROWS];
 
@@ -343,7 +344,7 @@ struct radiation {
       NOT the same as #raw.main_sequence_lifetime_inverse_2d's own xmin/dx,
       which describe its OUTPUT-resampled grid (#interpolation_size_
       metallicity points, generally finer than the native nz-row grid these
-      three fields describe) -- see radiation_get_ms_lifetime_inverse_mass_
+      three fields describe). See radiation_get_ms_lifetime_inverse_mass_
       2d()'s own doxygen for why the distinction matters. 0/0/0 for a 1D
       table. */
   float ms_lifetime_inverse_log_z_min;

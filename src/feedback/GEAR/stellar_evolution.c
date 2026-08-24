@@ -1344,8 +1344,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
     /* For the ionizing band, get the number of photons produced and split
        it across the active angular pixels. Zeroed past the table's own
-       MainSequenceLifetime(Z, M) for a 2D table --
-       see radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
+       MainSequenceLifetime(Z, M) for a 2D table.
+       See radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
     const double dot_N_ion_total = radiation_get_star_ionization_rate(
         &sm->rad, log_m, log_z, star_age_myr);
     radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
@@ -1497,7 +1497,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   feedback for the discrete part. m_end_step needs the same clamp: radiation
   is a continuous emission (unlike SN's discrete death events), so a young
   population where even m_end_step exceeds minimal_discrete_mass_Msun is not
-  "nothing to do yet" -- every star this particle can contain, up to
+  "nothing to do yet": every star this particle can contain, up to
   minimal_discrete_mass_Msun, is still alive and still emitting, so the
   integral must reach exactly that far, not stop early or reach past it. */
   if (sp->star_type == star_population_continuous_IMF) {
@@ -1535,7 +1535,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
          mass is leaving PARSEC's own main sequence at this step's END-of-
          step age, matching the reference time m_end_step (and hence m_sup,
          under the default mass_sup_scheme_end_step) is itself derived from
-         via GEAR's own Poirier lifetime above -- both caps then describe
+         via GEAR's own Poirier lifetime above: both caps then describe
          the same point in time. Floored at m_min like every other mass
          bound in this function; the table's own age_max_myr/min()-gate can
          only push m_ms_end_step down to m_min, never below it, but the
