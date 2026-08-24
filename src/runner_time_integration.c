@@ -1566,8 +1566,27 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
       if (p->limiter_data.to_be_synchronized) {
 
+        /* Old time-step length in physical units, computed before
+         * timestep_process_sync_part changes p->time_bin. */
+        const integertime_t ti_old_beg =
+            get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_old_step = ti_current - ti_old_beg;
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, ti_current - ti_old_step, ti_current);
+        } else {
+          old_time_step_length = ti_old_step * e->time_base;
+        }
+
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            old_time_step_length, e->snapshot_recording_triggers_started_part);
 
         /* Note that at this moment the new RT time step is only used to
          * limit the hydro time step here. */
@@ -1590,25 +1609,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         new_time_bin = min(new_time_bin, e->max_active_bin);
         ti_new_step = get_integer_timestep(new_time_bin);
 
-        /* Time-step length in physical units */
-        // MATTHIEU: TODO: think about this one!
-        double time_step_length;
-        if (with_cosmology) {
-          time_step_length = cosmology_get_delta_time(
-              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
-        } else {
-          time_step_length = get_timestep(new_time_bin, e->time_base);
-        }
-
         /* Update particle */
         p->time_bin = new_time_bin;
         if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
-
-        /* Update the tracers properties */
-        tracers_after_timestep_part(
-            p, xp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
-            0 * time_step_length, e->snapshot_recording_triggers_started_part);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
         p->limited_part = 1;

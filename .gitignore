@@ -5,6 +5,7 @@
 Makefile
 Makefile.in
 INSTALL
+config.cache
 config.guess
 config.h
 config.status
@@ -211,6 +212,7 @@ tests/testZoomVoidTree
 tests/testZoomVoidTree.sh
 tests/testZoomMeshGravity
 tests/testZoomMeshResolutionGuard
+tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt
 

@@ -176,7 +176,8 @@ endif
 ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
     zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c \ 
     zoom_region/zoom_split.c zoom_region/zoom_proxy.c \ 
-    zoom_region/zoom_partition.c zoom_region/zoom_io.c
+    zoom_region/zoom_partition.c zoom_region/zoom_io.c \
+    zoom_region/zoom_scheduler.c
 
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
@@ -420,7 +421,8 @@ nobase_noinst_HEADERS += cooling/const_du/cooling_io.h cooling/const_du/cooling_
 nobase_noinst_HEADERS += cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h
 nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h cooling/const_lambda/cooling_debug.h
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
-nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h cooling/grackle/cooling_debug.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h

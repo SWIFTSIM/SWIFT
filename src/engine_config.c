@@ -690,7 +690,7 @@ void engine_config(int restart, int fof, struct engine *e,
               e->time_end - e->time_begin);
 
     /* Read (or re-read the list of outputs */
-    engine_init_output_lists(e, params, e->output_options);
+    engine_init_output_lists(e, params, e->output_options, restart);
 
     /* Check whether output quantities make sense */
     if (e->policy & engine_policy_cosmology) {
@@ -971,6 +971,9 @@ void engine_config(int restart, int fof, struct engine *e,
     zoom_bkg_subdepth_diff_grav =
         parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                  zoom_bkg_subdepth_diff_grav_default);
+    if (zoom_bkg_subdepth_diff_grav < 0) {
+      error("ZoomRegion:bkg_subdepth_diff_grav must be non-negative.");
+    }
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

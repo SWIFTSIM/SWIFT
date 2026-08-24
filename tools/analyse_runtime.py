@@ -101,11 +101,21 @@ tasks = [
 times_tasks = np.zeros(len(tasks))
 counts_tasks = np.zeros(len(tasks))
 
+# Zoom vs background breakdown (only populated if the zoom report produced by
+# zoom_scheduler_report_task_times() is present in the log).
+zoom_names = ["zoom", "background", "mixed (zoom + background)"]
+zoom_fraction_names = [
+    "zoom_i || zoom_j",
+    "bkg_i || bkg_j",
+    "zoom || bkg",
+]
+times_zoom_tasks = np.zeros((3, len(tasks)))
+counts_zoom_tasks = np.zeros((3, len(tasks)))
+
 total_time = 0
 lastline = ""
 
 for i in range(num_files):
-
     # First analyse the code sections
 
     filename = sys.argv[i + 1]
@@ -116,13 +126,10 @@ for i in range(num_files):
 
     # Search the different phrases
     for line in file:
-
         # Loop over the possbile labels
         for i in range(len(labels)):
-
             # Extract the different blocks
             if re.search("%s took" % labels[i][0], line):
-
                 counts[i] += 1.0
                 times[i] += float(
                     re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)[-1][0]
@@ -145,14 +152,44 @@ for i in range(num_files):
 
     file = open(filename, "r")
 
+    # Track which zoom report block we are in (-1 = outside the zoom report).
+    zoom_block = -1
+
     # Search the different phrases
     for line in file:
+        # Handle lines from the zoom-specific task time report (if present).
+        if "zoom_scheduler_report_task_times:" in line:
+            # Header lines switch the current block (check mixed first: its
+            # header also mentions zoom and background).
+            if "mixed" in line and "task categories" in line:
+                zoom_block = 2
+                continue
+            if "zoom task categories" in line:
+                zoom_block = 0
+                continue
+            if "background task categories" in line:
+                zoom_block = 1
+                continue
+            if "Fraction of total" in line:
+                zoom_block = -1
+                continue
+
+            # Category lines: accumulate into the current block.
+            if zoom_block >= 0:
+                for i in range(len(tasks)):
+                    if re.search("%s" % tasks[i], line):
+                        counts_zoom_tasks[zoom_block][i] += 1.0
+                        times_zoom_tasks[zoom_block][i] += float(
+                            re.findall(r":[ ]*[-+]?\d*\.\d+|\d+ ms", line)[0][1:]
+                        )
+            continue
 
         # Loop over the possbile labels
         for i in range(len(tasks)):
-
             # Extract the different blocks
-            if re.search("scheduler_report_task_times: \\*\\*\\*  ", line):
+            # Match only the standard report; zoom_scheduler_report_task_times
+            # lines contain this string as a substring and must be excluded.
+            if re.search(r"(?<!zoom_)scheduler_report_task_times: \*\*\*  ", line):
                 if re.search("%s" % tasks[i], line):
                     counts_tasks[i] += 1.0
                     times_tasks[i] += float(
@@ -164,6 +201,7 @@ for i in range(num_files):
 # Conver to seconds
 times /= 1000.0
 times_tasks /= 1000.0
+times_zoom_tasks /= 1000.0
 
 # Total time
 total_measured_time = np.sum(times)
@@ -247,6 +285,31 @@ for i in range(len(tasks) - 1):
     )
 print("")
 
+# Print the zoom vs background breakdown, if the report was found in the logs.
+if counts_zoom_tasks.sum() > 0:
+    for b in range(3):
+        total_b = np.sum(times_zoom_tasks[b])
+        if total_b == 0.0:
+            continue
+        print(
+            "Time spent in %s task categories (i.e. inside engine_launch()):"
+            % zoom_names[b]
+        )
+        for i in range(len(tasks) - 1):
+            if times_zoom_tasks[b][i] == 0.0:
+                continue
+            print(
+                " - '%-40s' (%5d calls): %8.4f%% of %-18s, %8.4f%% of total"
+                % (
+                    tasks[i],
+                    counts_zoom_tasks[b][i],
+                    100.0 * times_zoom_tasks[b][i] / total_b,
+                    zoom_fraction_names[b],
+                    100.0 * times_zoom_tasks[b][i] / times_tasks[-1],
+                )
+            )
+        print("")
+
 figure()
 
 # Main code sections
@@ -303,3 +366,43 @@ tasks_pie, _, _ = pie(
 legend(tasks_pie, tasks, title="SWIFT task categories", loc="upper left")
 
 savefig("time_pie.pdf", dpi=150)
+
+# Zoom vs background pie, if the report was found in the logs. Combining the
+# cell types in one pie keeps every wedge relative to the total task time.
+if counts_zoom_tasks.sum() > 0 and times_tasks[-1] > 0:
+    figure()
+
+    pie_times = []
+    pie_labels = []
+    pie_colors = []
+    for b in range(3):
+        for i in range(len(tasks) - 1):
+            if times_zoom_tasks[b][i] > 0:
+                pie_times.append(times_zoom_tasks[b][i])
+                pie_labels.append("%s: %s" % (zoom_names[b], tasks[i]))
+                pie_colors.append(cols[i % len(cols)])
+
+    # Include time not assigned to a cell type so the pie sums to the total.
+    other_time = times_tasks[-1] - np.sum(pie_times)
+    if other_time > 0:
+        pie_times.append(other_time)
+        pie_labels.append("dead/unclassified")
+        pie_colors.append("0.5")
+
+    zoom_pie, _, _ = pie(
+        pie_times,
+        autopct=lambda pct: func(pct),
+        textprops=dict(color="0.1", fontsize=14),
+        labeldistance=0.7,
+        pctdistance=0.85,
+        startangle=-15,
+        colors=pie_colors,
+    )
+    legend(
+        zoom_pie,
+        pie_labels,
+        title="SWIFT task categories by cell type",
+        loc="upper left",
+    )
+
+    savefig("time_pie_zoom.pdf", dpi=150)

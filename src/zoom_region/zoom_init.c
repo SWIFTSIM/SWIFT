@@ -124,6 +124,8 @@ void zoom_parse_params(struct swift_params *params,
   zoom_bkg_subdepth_diff_grav =
       parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                zoom_bkg_subdepth_diff_grav_default);
+  if (zoom_bkg_subdepth_diff_grav < 0)
+    error("ZoomRegion:bkg_subdepth_diff_grav must be non-negative.");
 
   /* Extract the maximum shift of the zoom region we will allow in units of
    * the zoom region extent. */
@@ -181,16 +183,16 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
     /* Unpack the particle properties. */
     /* NOTE: these will have already been shifted by the user requested amount
      * in space_init if shift in the parameter file is non-zero. */
-    const double x = gparts[k].x[0];
-    const double y = gparts[k].x[1];
-    const double z = gparts[k].x[2];
+    double x = gparts[k].x[0];
+    double y = gparts[k].x[1];
+    double z = gparts[k].x[2];
     const double mass = gparts[k].mass;
 
     /* Wrap if periodic. */
     if (s->periodic) {
-      box_wrap(x, 0.0, s->dim[0]);
-      box_wrap(y, 0.0, s->dim[1]);
-      box_wrap(z, 0.0, s->dim[2]);
+      x = box_wrap(x, 0.0, s->dim[0]);
+      y = box_wrap(y, 0.0, s->dim[1]);
+      z = box_wrap(z, 0.0, s->dim[2]);
     }
 
     /* Ammend boundaries for this particle. */

@@ -1610,12 +1610,12 @@ void scheduler_report_task_times(const struct scheduler *s,
 
     message("*** CPU time spent in different task categories:");
     for (int i = 0; i < task_category_count; ++i) {
-      message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i], time[i],
+      message("*** %20s: %12.2f %s (%.2f %%)", task_category_names[i], time[i],
               clocks_getunit(), time[i] / total_tasks_time * 100.);
     }
-    message("*** %20s: %8.2f %s (%.2f %%)", "dead time", dead_time,
+    message("*** %20s: %12.2f %s (%.2f %%)", "dead time", dead_time,
             clocks_getunit(), dead_time / total_tasks_time * 100.);
-    message("*** %20s: %8.2f %s (%.2f %%)", "total", total_tasks_time,
+    message("*** %20s: %12.2f %s (%.2f %%)", "total", total_tasks_time,
             clocks_getunit(), total_tasks_time / total_tasks_time * 100.);
   }
 
