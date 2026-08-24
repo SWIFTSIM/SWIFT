@@ -504,6 +504,12 @@ MWPotential2014Potential:
   df_polyfit_coeffs16:  1.85478908e+02     # Polynomial fit coefficient for the velocity dispersion model (order 0)
   df_timestep_mult : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
 
+# AGAMA potential
+AGAMAPotential:
+  filename:        potential.txt    # file name of an AGAMA potential
+  position:        [40.,40.,40.]    # location of the potential center in internal units
+  timestep_mult:   0.01             # controls time step
+
 # Parameters related to forcing terms     ----------------------------------------------
 
 # Boundary particles
