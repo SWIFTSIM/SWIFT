@@ -26,7 +26,14 @@
 #include "cell.h"
 
 /* Local headers */
+#include "atomic.h"
+#include "error.h"
 #include "gravity.h"
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+/*! Rate-limiter for the foreign gpart layout divergence report. */
+static int cell_grav_layout_divergence_reported = 0;
+#endif
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
@@ -858,6 +865,9 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
  * @brief Unpack the counts for star formation of a given cell and its
  * sub-cells.
  *
+ * Counts only. The matching #gpart_foreign pointers are re-derived from them
+ * by cell_relink_foreign_gparts(), which knows the receiver's layout.
+ *
  * @param c The #cell
  * @param pcells The multipole information to unpack
  *
@@ -872,30 +882,23 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. delta_from_rebuild is the sender's absolute,
-   * always-fresh offset from its own top (see cell_pack_grav_counts) --
-   * reconstruct against our own top->grav.parts_foreign the same way,
-   * never against a per-cell cached baseline. For c == top this is a
-   * self-referential no-op (delta is always 0 at depth 0), relying on
-   * top->grav.parts_foreign already being valid from the last relink. */
+  /* Unpack this cell's data. The pointers are not reconstructed from
+   * delta_from_rebuild: the sender's layout is not compacted the way the
+   * receiver's is. cell_relink_foreign_gparts() re-derives them from these
+   * counts instead, in the receiver's own layout. */
   c->grav.count = pcells[0].count;
-  c->grav.parts_foreign =
-      c->top->grav.parts_foreign + pcells[0].delta_from_rebuild;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Mirror of the sender-side check, applied to the receiver's reconstruction.
-   */
-  {
-    const ptrdiff_t rel_end =
-        (c->grav.parts_foreign + c->grav.count) - c->top->grav.parts_foreign;
-    if (rel_end > c->top->grav.count)
-      error(
-          "UNPACK: cell's local range exceeds its top-level ancestor's "
-          "count! c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
-          "top->cellID=%lld top->grav.count=%d top->grav.count_total=%d",
-          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
-          c->top->grav.count, c->top->grav.count_total);
-  }
+  /* The sender holds more gparts here than this rank reserved, so its offsets
+   * are in the uncompacted layout and the old reconstruction would have walked
+   * out of the slice. Top level only: the counter is shared by all runners. */
+  if (c->depth == 0 && c->grav.count > c->grav.count_total &&
+      atomic_inc(&cell_grav_layout_divergence_reported) < 20)
+    message(
+        "GRAV_COUNTS_LAYOUT_DIVERGENCE cellID=%lld grav.count=%d "
+        "grav.count_total=%d delta_from_rebuild=%td",
+        c->cellID, c->grav.count, c->grav.count_total,
+        (ptrdiff_t)pcells[0].delta_from_rebuild);
 #endif
 
   /* Fill in the progeny, depth-first recursion. */

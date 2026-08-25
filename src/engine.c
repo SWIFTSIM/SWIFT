@@ -989,6 +989,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts_foreign);
+
+        /* Mirror the cursor advance below: the cell's own gpart count also
+         * covers sub-trees with no gravity task, which reserve nothing. */
+        e->proxies[k].cells_in[j]->grav.count_total =
+            (int)count_gparts + space_extra_gparts;
+
         gparts_foreign = &gparts_foreign[count_gparts + space_extra_gparts];
       }
 
