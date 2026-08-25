@@ -3453,14 +3453,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_star_pair_density);
-
-          /* Neighbour case for sink_swallow-vs-stars-density: ci's stars
-           * may read gas ci itself hosts no sink for, but a sink in ci
-           * could still be swallowing that same gas concurrently. */
-          if (with_sink)
-            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
-                                t_star_pair_density);
-
           scheduler_addunlock(sched, t_star_pair_density,
                               ci->hydro.super->stars.ghost_in);
 #ifdef EXTRA_STAR_LOOPS
@@ -3624,11 +3616,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
                                 t_star_pair_density);
-
-            if (with_sink)
-              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
-                                  t_star_pair_density);
-
             scheduler_addunlock(sched, t_star_pair_density,
                                 cj->hydro.super->stars.ghost_in);
 #ifdef EXTRA_STAR_LOOPS
