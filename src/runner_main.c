@@ -535,6 +535,17 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
             cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
+
+            /* The counts just moved: re-derive the pointers the gpart recv
+             * will be posted into. */
+            const int count_relinked =
+                cell_relink_foreign_gparts(ci, ci->grav.parts_foreign_rebuild);
+            if (count_relinked > ci->grav.count_total)
+              error(
+                  "Foreign gparts no longer fit the slice reserved at the "
+                  "last rebuild! ci->cellID=%lld count_relinked=%d "
+                  "count_total=%d",
+                  ci->cellID, count_relinked, ci->grav.count_total);
 #ifdef SWIFT_DEBUG_CHECKS
             cell_debug_stamp_grav_counts_recv(ci, r->e->ti_current);
 #endif
