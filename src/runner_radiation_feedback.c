@@ -489,7 +489,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   const int scount = c->stars.count;
 
   /* Anything to do here? c->hydro.count == 0 is deliberately NOT checked
-     here -- see the per-star gas-free-skip continue below, and the
+     here; see the per-star gas-free-skip continue below, and the
      matching comment in runner_do_stars_hii_ionization_feedback's own
      early-return. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
