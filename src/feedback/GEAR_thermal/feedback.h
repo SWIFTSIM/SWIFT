@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static void feedback_apply_hii_tag_claim(
 __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_tag_report(struct part *restrict p,
                                const struct hii_tag_report *restrict data,
-                               char *collision, float *forfeited_cost) {
+                               char *collision, double *forfeited_cost) {
 
   if (!data->claimed_this_pass) return;
 

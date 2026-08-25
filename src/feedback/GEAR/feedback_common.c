@@ -755,7 +755,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
      mirrors. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
-    pj->feedback_data.cost = (float)cost;
+    pj->feedback_data.cost = cost;
     pj->feedback_data.claimed_this_pass = 1;
   }
 #endif
@@ -845,7 +845,7 @@ feedback_iact_HII_maintain_ionized_part(
      why this only applies when xpj == NULL. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
-    pj->feedback_data.cost = (float)cost;
+    pj->feedback_data.cost = cost;
     pj->feedback_data.claimed_this_pass = 1;
   }
 #endif

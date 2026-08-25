@@ -304,7 +304,7 @@ __attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
 __attribute__((always_inline)) INLINE static void
 feedback_unpack_hii_tag_report(struct part *restrict p,
                                const struct hii_tag_report *restrict data,
-                               char *collision, float *forfeited_cost) {}
+                               char *collision, double *forfeited_cost) {}
 
 /** @brief No-op HII state-update pack: this module has no HII radiation. */
 __attribute__((always_inline)) INLINE static void

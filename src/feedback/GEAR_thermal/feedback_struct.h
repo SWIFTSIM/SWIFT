@@ -59,6 +59,16 @@ struct feedback_part_data {
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
 
+#ifdef WITH_MPI
+  /*! Ionizing photon count debited from the claiming star's pixel budget
+      for this claim, stamped alongside r2 above (S3.4). Read by the
+      owner-side merge only when this claim LOSES a collision, to
+      accumulate the forfeited-budget debug counter -- the photons were
+      already spent on the losing rank and cannot be recovered here, this
+      only measures how much was wasted. */
+  double cost;
+#endif
+
   /*! Neutral hydrogen mass fraction, cached by the cooling step right after
       its species update (grackle_1+: HI_frac, plus H2I_frac+HM_frac at
       grackle_2+; grackle_0: 1.0f unconditionally, no species tracked).
@@ -102,14 +112,6 @@ struct feedback_part_data {
       at a time. */
   float r2;
 
-  /*! Ionizing photon count debited from the claiming star's pixel budget
-      for this claim, stamped alongside r2 above (S3.4). Read by the
-      owner-side merge only when this claim LOSES a collision, to
-      accumulate the forfeited-budget debug counter -- the photons were
-      already spent on the losing rank and cannot be recovered here, this
-      only measures how much was wasted. */
-  float cost;
-
   /*! Set only when feedback_hii_claim_part or feedback_iact_HII_maintain_
       ionized_part claims a FOREIGN copy of this particle (xpj == NULL;
       S3.4), since only a foreign claim has an owner to report to -- a
@@ -142,17 +144,17 @@ struct hii_tag_report {
   /*! The tag state written on the computing rank's foreign copy. */
   struct feedback_part_data tag;
 
+  /*! Ionizing photon count debited for this claim, mirroring
+      feedback_part_data.cost (S3.4); used to size the forfeited-budget
+      debug counter when this report loses a merge collision. */
+  double cost;
+
   /*! Squared distance to the claiming star, computed at claim time. Ships
       claim-time state rather than relying on the owner re-deriving it, since
       the owner may hold no copy of the claiming star (S3.1/F4: a star deep
       in the foreign cell, beyond kernel reach but within HII reach). Used
       as the S3.4 cross-rank tiebreak, smallest (r2, star_id) wins. */
   float r2;
-
-  /*! Ionizing photon count debited for this claim, mirroring
-      feedback_part_data.cost (S3.4); used to size the forfeited-budget
-      debug counter when this report loses a merge collision. */
-  float cost;
 
   /*! Excess photoionization energy deposited this pass, mirroring
       tracers_xpart_data.HII_region.excess_photon_energy_HI, which never

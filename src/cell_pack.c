@@ -364,7 +364,7 @@ void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
 
   for (size_t i = 0; i < count; ++i) {
     char collision = 0;
-    float forfeited_cost = 0.f;
+    double forfeited_cost = 0.0;
     feedback_unpack_hii_tag_report(&parts[i], &data[i], &collision,
                                    &forfeited_cost);
     if (collision) {
