@@ -33,11 +33,10 @@ configuration for the comparison to be meaningful.
 
 | Example | Exercises |
 |---|---|
-| `AngularSplitClump` | The angular budget splitting (`GEARFeedback:HII_angular_nside`), by placing a dense clump in one HEALPix cone. Clump placement is calibrated against this code's own front reach rather than a paper, which isolates the mechanism. |
 | `TaskGraphPair` | A source whose region spans a pair of top-level cells, so the neighbour search crosses a cell boundary. |
 | `TaskGraphCluster` | Many co-located sources competing for gas in the same region, which exercises the locking in the star loops. |
 
-These three have no analytic reference. A correct result is a run that
+These two have no analytic reference. A correct result is a run that
 reaches `time_end` with no error in the log, plus whatever qualitative
 expectation the example's own README states.
 
@@ -51,8 +50,7 @@ and `RadiationPressureMomentumCheck` if you are interested in the
 momentum channel rather than ionization.
 
 Note that the required Grackle cooling mode differs between examples.
-`Starbench`, `Hu2017`,
-`AngularSplitClump` and `ClumpSmith2021` need
+`Starbench`, `Hu2017`, and `ClumpSmith2021` need
 `--with-cooling=grackle_1`: at mode 1 and above the photon budget is
 priced against the neutral hydrogen fraction from the species network
 rather than against total hydrogen, which is part of the physics they
