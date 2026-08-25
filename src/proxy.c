@@ -1198,10 +1198,10 @@ void proxy_parts_exchange_second(struct proxy *p) {
     } while (p->nr_parts_in > p->size_parts_in);
     swift_free("parts_in", p->parts_in);
     swift_free("xparts_in", p->xparts_in);
-    if ((p->parts_in = (struct part *)swift_malloc(
-             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)swift_malloc(
-             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
+    if (swift_memalign("parts_in", (void **)&p->parts_in, part_align,
+                       sizeof(struct part) * p->size_parts_in) != 0 ||
+        swift_memalign("xparts_in", (void **)&p->xparts_in, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_in) != 0)
       error("Failed to re-allocate parts_in buffers.");
   }
   if (p->nr_gparts_in > p->size_gparts_in) {
@@ -1209,8 +1209,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
     swift_free("gparts_in", p->gparts_in);
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
-             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
+    if (swift_memalign("gparts_in", (void **)&p->gparts_in, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_in) != 0)
       error("Failed to re-allocate gparts_in buffers.");
   }
   if (p->nr_sparts_in > p->size_sparts_in) {
@@ -1218,8 +1218,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_sparts_in *= proxy_buffgrow;
     } while (p->nr_sparts_in > p->size_sparts_in);
     swift_free("sparts_in", p->sparts_in);
-    if ((p->sparts_in = (struct spart *)swift_malloc(
-             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
+    if (swift_memalign("sparts_in", (void **)&p->sparts_in, spart_align,
+                       sizeof(struct spart) * p->size_sparts_in) != 0)
       error("Failed to re-allocate sparts_in buffers.");
   }
   if (p->nr_bparts_in > p->size_bparts_in) {
@@ -1227,8 +1227,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_bparts_in *= proxy_buffgrow;
     } while (p->nr_bparts_in > p->size_bparts_in);
     swift_free("bparts_in", p->bparts_in);
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
-             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+    if (swift_memalign("bparts_in", (void **)&p->bparts_in, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_in) != 0)
       error("Failed to re-allocate bparts_in buffers.");
   }
   if (p->nr_sinks_in > p->size_sinks_in) {
@@ -1236,8 +1236,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_sinks_in *= proxy_buffgrow;
     } while (p->nr_sinks_in > p->size_sinks_in);
     swift_free("sinks_in", p->sinks_in);
-    if ((p->sinks_in = (struct sink *)swift_malloc(
-             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+    if (swift_memalign("sinks_in", (void **)&p->sinks_in, sink_align,
+                       sizeof(struct sink) * p->size_sinks_in) != 0)
       error("Failed to re-allocate sinks_in buffers.");
   }
 
@@ -1342,10 +1342,10 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     } while (p->nr_parts_out + N > p->size_parts_out);
     struct part *tp = NULL;
     struct xpart *txp = NULL;
-    if ((tp = (struct part *)swift_malloc(
-             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
-        (txp = (struct xpart *)swift_malloc(
-             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
+    if (swift_memalign("parts_out", (void **)&tp, part_align,
+                       sizeof(struct part) * p->size_parts_out) != 0 ||
+        swift_memalign("xparts_out", (void **)&txp, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_out) != 0)
       error("Failed to re-allocate parts_out buffers.");
     memcpy(tp, p->parts_out, sizeof(struct part) * p->nr_parts_out);
     memcpy(txp, p->xparts_out, sizeof(struct xpart) * p->nr_parts_out);
@@ -1377,9 +1377,9 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
     do {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
-    struct gpart *tp;
-    if ((tp = (struct gpart *)swift_malloc(
-             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
+    struct gpart *tp = NULL;
+    if (swift_memalign("gparts_out", (void **)&tp, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_out) != 0)
       error("Failed to re-allocate gparts_out buffers.");
     memcpy(tp, p->gparts_out, sizeof(struct gpart) * p->nr_gparts_out);
     swift_free("gparts_out", p->gparts_out);
@@ -1407,9 +1407,9 @@ void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
     do {
       p->size_sparts_out *= proxy_buffgrow;
     } while (p->nr_sparts_out + N > p->size_sparts_out);
-    struct spart *tp;
-    if ((tp = (struct spart *)swift_malloc(
-             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
+    struct spart *tp = NULL;
+    if (swift_memalign("sparts_out", (void **)&tp, spart_align,
+                       sizeof(struct spart) * p->size_sparts_out) != 0)
       error("Failed to re-allocate sparts_out buffers.");
     memcpy(tp, p->sparts_out, sizeof(struct spart) * p->nr_sparts_out);
     swift_free("sparts_out", p->sparts_out);
@@ -1437,9 +1437,9 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
     do {
       p->size_bparts_out *= proxy_buffgrow;
     } while (p->nr_bparts_out + N > p->size_bparts_out);
-    struct bpart *tp;
-    if ((tp = (struct bpart *)swift_malloc(
-             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+    struct bpart *tp = NULL;
+    if (swift_memalign("bparts_out", (void **)&tp, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_out) != 0)
       error("Failed to re-allocate bparts_out buffers.");
     memcpy(tp, p->bparts_out, sizeof(struct bpart) * p->nr_bparts_out);
     swift_free("bparts_out", p->bparts_out);
@@ -1467,9 +1467,9 @@ void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N) {
     do {
       p->size_sinks_out *= proxy_buffgrow;
     } while (p->nr_sinks_out + N > p->size_sinks_out);
-    struct sink *tp;
-    if ((tp = (struct sink *)swift_malloc(
-             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+    struct sink *tp = NULL;
+    if (swift_memalign("sinks_out", (void **)&tp, sink_align,
+                       sizeof(struct sink) * p->size_sinks_out) != 0)
       error("Failed to re-allocate sinks_out buffers.");
     memcpy(tp, p->sinks_out, sizeof(struct sink) * p->nr_sinks_out);
     swift_free("sinks_out", p->sinks_out);
@@ -1495,82 +1495,82 @@ void proxy_free_particle_buffers(struct proxy *p) {
     swift_free("parts_out", p->parts_out);
     swift_free("xparts_out", p->xparts_out);
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)swift_malloc(
-             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL)
+    if (swift_memalign("parts_out", (void **)&p->parts_out, part_align,
+                       sizeof(struct part) * p->size_parts_out) != 0)
       error("Failed to allocate parts_out buffers.");
-    if ((p->xparts_out = (struct xpart *)swift_malloc(
-             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
+    if (swift_memalign("xparts_out", (void **)&p->xparts_out, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_out) != 0)
       error("Failed to allocate xparts_out buffers.");
   }
   if (p->size_parts_in > proxy_buffinit) {
     swift_free("parts_in", p->parts_in);
     swift_free("xparts_in", p->xparts_in);
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)swift_malloc(
-             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL)
+    if (swift_memalign("parts_in", (void **)&p->parts_in, part_align,
+                       sizeof(struct part) * p->size_parts_in) != 0)
       error("Failed to allocate parts_in buffers.");
-    if ((p->xparts_in = (struct xpart *)swift_malloc(
-             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
+    if (swift_memalign("xparts_in", (void **)&p->xparts_in, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_in) != 0)
       error("Failed to allocate xparts_in buffers.");
   }
 
   if (p->size_gparts_out > proxy_buffinit) {
     swift_free("gparts_out", p->gparts_out);
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)swift_malloc(
-             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
+    if (swift_memalign("gparts_out", (void **)&p->gparts_out, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_out) != 0)
       error("Failed to allocate gparts_out buffers.");
   }
   if (p->size_gparts_in > proxy_buffinit) {
     swift_free("gparts_in", p->gparts_in);
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
-             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
+    if (swift_memalign("gparts_in", (void **)&p->gparts_in, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_in) != 0)
       error("Failed to allocate gparts_in buffers.");
   }
 
   if (p->size_sparts_out > proxy_buffinit) {
     swift_free("sparts_out", p->sparts_out);
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)swift_malloc(
-             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
+    if (swift_memalign("sparts_out", (void **)&p->sparts_out, spart_align,
+                       sizeof(struct spart) * p->size_sparts_out) != 0)
       error("Failed to allocate sparts_out buffers.");
   }
   if (p->size_sparts_in > proxy_buffinit) {
     swift_free("sparts_in", p->sparts_in);
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)swift_malloc(
-             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
+    if (swift_memalign("sparts_in", (void **)&p->sparts_in, spart_align,
+                       sizeof(struct spart) * p->size_sparts_in) != 0)
       error("Failed to allocate sparts_in buffers.");
   }
 
   if (p->size_bparts_out > proxy_buffinit) {
     swift_free("bparts_out", p->bparts_out);
     p->size_bparts_out = proxy_buffinit;
-    if ((p->bparts_out = (struct bpart *)swift_malloc(
-             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+    if (swift_memalign("bparts_out", (void **)&p->bparts_out, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_out) != 0)
       error("Failed to allocate bparts_out buffers.");
   }
   if (p->size_bparts_in > proxy_buffinit) {
     swift_free("bparts_in", p->bparts_in);
     p->size_bparts_in = proxy_buffinit;
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
-             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+    if (swift_memalign("bparts_in", (void **)&p->bparts_in, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_in) != 0)
       error("Failed to allocate bparts_in buffers.");
   }
 
   if (p->size_sinks_out > proxy_buffinit) {
     swift_free("sinks_out", p->sinks_out);
     p->size_sinks_out = proxy_buffinit;
-    if ((p->sinks_out = (struct sink *)swift_malloc(
-             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+    if (swift_memalign("sinks_out", (void **)&p->sinks_out, sink_align,
+                       sizeof(struct sink) * p->size_sinks_out) != 0)
       error("Failed to allocate sinks_out buffers.");
   }
   if (p->size_sinks_in > proxy_buffinit) {
     swift_free("sinks_in", p->sinks_in);
     p->size_sinks_in = proxy_buffinit;
-    if ((p->sinks_in = (struct sink *)swift_malloc(
-             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+    if (swift_memalign("sinks_in", (void **)&p->sinks_in, sink_align,
+                       sizeof(struct sink) * p->size_sinks_in) != 0)
       error("Failed to allocate sinks_in buffers.");
   }
 }
@@ -1613,19 +1613,19 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the part send and receive buffers, if needed. */
   if (p->parts_in == NULL) {
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)swift_malloc(
-             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)swift_malloc(
-             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
+    if (swift_memalign("parts_in", (void **)&p->parts_in, part_align,
+                       sizeof(struct part) * p->size_parts_in) != 0 ||
+        swift_memalign("xparts_in", (void **)&p->xparts_in, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_in) != 0)
       error("Failed to allocate parts_in buffers.");
   }
   p->nr_parts_in = 0;
   if (p->parts_out == NULL) {
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)swift_malloc(
-             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
-        (p->xparts_out = (struct xpart *)swift_malloc(
-             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
+    if (swift_memalign("parts_out", (void **)&p->parts_out, part_align,
+                       sizeof(struct part) * p->size_parts_out) != 0 ||
+        swift_memalign("xparts_out", (void **)&p->xparts_out, xpart_align,
+                       sizeof(struct xpart) * p->size_parts_out) != 0)
       error("Failed to allocate parts_out buffers.");
   }
   p->nr_parts_out = 0;
@@ -1633,15 +1633,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the gpart send and receive buffers, if needed. */
   if (p->gparts_in == NULL) {
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
-             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
+    if (swift_memalign("gparts_in", (void **)&p->gparts_in, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_in) != 0)
       error("Failed to allocate gparts_in buffers.");
   }
   p->nr_gparts_in = 0;
   if (p->gparts_out == NULL) {
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)swift_malloc(
-             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
+    if (swift_memalign("gparts_out", (void **)&p->gparts_out, gpart_align,
+                       sizeof(struct gpart) * p->size_gparts_out) != 0)
       error("Failed to allocate gparts_out buffers.");
   }
   p->nr_gparts_out = 0;
@@ -1649,15 +1649,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the spart send and receive buffers, if needed. */
   if (p->sparts_in == NULL) {
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)swift_malloc(
-             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
+    if (swift_memalign("sparts_in", (void **)&p->sparts_in, spart_align,
+                       sizeof(struct spart) * p->size_sparts_in) != 0)
       error("Failed to allocate sparts_in buffers.");
   }
   p->nr_sparts_in = 0;
   if (p->sparts_out == NULL) {
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)swift_malloc(
-             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
+    if (swift_memalign("sparts_out", (void **)&p->sparts_out, spart_align,
+                       sizeof(struct spart) * p->size_sparts_out) != 0)
       error("Failed to allocate sparts_out buffers.");
   }
   p->nr_sparts_out = 0;
@@ -1665,15 +1665,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the bpart send and receive buffers, if needed. */
   if (p->bparts_in == NULL) {
     p->size_bparts_in = proxy_buffinit;
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
-             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+    if (swift_memalign("bparts_in", (void **)&p->bparts_in, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_in) != 0)
       error("Failed to allocate bparts_in buffers.");
   }
   p->nr_bparts_in = 0;
   if (p->bparts_out == NULL) {
     p->size_bparts_out = proxy_buffinit;
-    if ((p->bparts_out = (struct bpart *)swift_malloc(
-             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+    if (swift_memalign("bparts_out", (void **)&p->bparts_out, bpart_align,
+                       sizeof(struct bpart) * p->size_bparts_out) != 0)
       error("Failed to allocate bparts_out buffers.");
   }
   p->nr_bparts_out = 0;
@@ -1681,15 +1681,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the sinks send and receive buffers, if needed. */
   if (p->sinks_in == NULL) {
     p->size_sinks_in = proxy_buffinit;
-    if ((p->sinks_in = (struct sink *)swift_malloc(
-             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+    if (swift_memalign("sinks_in", (void **)&p->sinks_in, sink_align,
+                       sizeof(struct sink) * p->size_sinks_in) != 0)
       error("Failed to allocate sinks_in buffers.");
   }
   p->nr_sinks_in = 0;
   if (p->sinks_out == NULL) {
     p->size_sinks_out = proxy_buffinit;
-    if ((p->sinks_out = (struct sink *)swift_malloc(
-             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+    if (swift_memalign("sinks_out", (void **)&p->sinks_out, sink_align,
+                       sizeof(struct sink) * p->size_sinks_out) != 0)
       error("Failed to allocate sinks_out buffers.");
   }
   p->nr_sinks_out = 0;
