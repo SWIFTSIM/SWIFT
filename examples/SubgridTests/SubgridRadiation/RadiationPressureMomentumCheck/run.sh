@@ -50,6 +50,10 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_max:$dt_max \
 		   params.yml 2>&1 | tee output.log
 
+# Independently recompute the expected momentum output and compare
+# against the gas's actual momentum gain
+python3 radiation_pressure_momentum_check.py
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else

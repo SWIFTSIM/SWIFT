@@ -77,6 +77,15 @@ printf "Running simulation (tier=%s)...\n" "$tier"
                    --threads=$n_threads \
                    "$params" 2>&1 | tee output.log
 
+# cosmo_stromgren_analytic_check.py only applies to tier=highz (compares
+# against the equilibrium Stromgren radius and Spitzer D-type expansion).
+# tier=identity's check (cosmo_identity_check.py) needs a second,
+# separately-run control (../StromgrenSphere) and stays a documented
+# manual cross-run step, see README's Checking section.
+if [ "$tier" = "highz" ]; then
+    python3 cosmo_stromgren_analytic_check.py -s 'snap/snapshot_*.hdf5'
+fi
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -90,5 +99,10 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
+        # Only tier=highz produces a plot (see Checking section above);
+        # guard the glob so tier=identity's archive doesn't fail on it.
+        if ls *.png >/dev/null 2>&1; then
+            mv *.png $run_name
+        fi
     fi
 fi

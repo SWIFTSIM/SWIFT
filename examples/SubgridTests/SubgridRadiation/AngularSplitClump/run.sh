@@ -88,6 +88,13 @@ else
                params.yml 2>&1 | tee output.log
 fi
 
+# Plot the final mass-weighted temperature projection and slice, with the
+# star and its HIIRegionRadii circle overlaid (defaults to the last
+# snapshot in snap/). clump_anisotropy_check.py, this example's actual
+# pass/fail check, needs a completed nside=0 AND nside=1 run pair and
+# stays a documented manual step, see README's Checking section.
+python3 plot_temperature_hii.py
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -102,5 +109,6 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
+        mv *.png $run_name
     fi
 fi

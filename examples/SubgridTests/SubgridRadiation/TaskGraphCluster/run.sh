@@ -76,6 +76,18 @@ else
                params.yml 2>&1 | tee output.log
 fi
 
+# Plot the final mass-weighted temperature projection: the Checking section
+# above's pass criterion (all 7 regions merged, no un-ionized gap facing the
+# center star) is a qualitative, visual check, not a pass/fail script.
+last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1)
+if [ -n "$last_snap_file" ]; then
+    snap_num=$(echo "$last_snap_file" | grep -oE '[0-9]{4}')
+    last_snap=$((10#$snap_num))
+    python3 plot_temperature_map.py -s snap/snapshot -i $last_snap
+else
+    echo "No snapshots found in snap/ directory! Skipping plot_temperature_map.py."
+fi
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -90,5 +102,8 @@ else
         mv statistics.txt $run_name
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
+        if ls *.png >/dev/null 2>&1; then
+            mv *.png $run_name
+        fi
     fi
 fi
