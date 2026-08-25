@@ -13,7 +13,7 @@ for this task type (src/task.c).
 
 **Role: software-correctness test.** This checks task-graph lock contention,
   not agreement with any published result. See `../Starbench/`,
-  `../HuSmith2017/`, and `../ClumpSmith2021/` for the actual validation
+  `../Hu2017/`, and `../ClumpSmith2021/` for the actual validation
   targets.
 
 `gas_mass` defaults to 1.0 Msun, coarser than `../StromgrenSphere/`'s default

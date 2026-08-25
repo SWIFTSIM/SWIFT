@@ -19,7 +19,7 @@ particular task-graph or geometry configuration where the answer is
 |---|---|
 | `StromgrenSphere` | Equilibrium Stromgren radius and Spitzer (1978) D-type expansion for a single source in a uniform box. The simplest case, and the base configuration the others vary. |
 | `Starbench` | The STARBENCH late-phase D-type expansion test (Bisbas et al. 2015, MNRAS 453, 1324). Uses that paper's own semi-empirical solution, not Spitzer, which over-predicts at late times. |
-| `HuSmith2017` | Four co-located sources in a dense uniform medium (Hu et al. 2017, MNRAS 471, 2151, Appendix A; the same test appears in Smith et al. 2021). Also the setup used for cadence studies. |
+| `Hu2017` | Four co-located sources in a dense uniform medium (Hu et al. 2017, MNRAS 471, 2151, Appendix A; the same test appears in Smith et al. 2021). Also the setup used for cadence studies. |
 | `ClumpSmith2021` | Erosion of a dense clump by a nearby source (Smith et al. 2021, MNRAS 506, 3882, Fig. 2). Its erosion measurement compares several runs, so it ships matrix-analysis scripts as well as a single-run one. |
 | `StromgrenSphereCosmo` | The `StromgrenSphere` box with cosmology enabled, in two tiers: an identity tier at a ~ 1 that must reproduce the non-cosmological result, and a high-redshift tier checked against the analytic formulas at the instantaneous physical density. |
 | `RadiationPressureMomentumCheck` | The radiation-pressure momentum channel alone, with photoionization, cooling and gravity off. Momentum delivered to the gas is compared against the analytic rate. |
@@ -45,13 +45,13 @@ expectation the example's own README states.
 
 `StromgrenSphere` is the place to start: it is the fastest, and every other
 example is a variation on it. Use `Starbench` or
-`HuSmith2017` to compare front expansion against the
+`Hu2017` to compare front expansion against the
 literature, `ClumpSmith2021` for the effect on a dense clump,
 and `RadiationPressureMomentumCheck` if you are interested in the
 momentum channel rather than ionization.
 
 Note that the required Grackle cooling mode differs between examples.
-`Starbench`, `HuSmith2017`,
+`Starbench`, `Hu2017`,
 `AngularSplitClump` and `ClumpSmith2021` need
 `--with-cooling=grackle_1`: at mode 1 and above the photon budget is
 priced against the neutral hydrogen fraction from the species network

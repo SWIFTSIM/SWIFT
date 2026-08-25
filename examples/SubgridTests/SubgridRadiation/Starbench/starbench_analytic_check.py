@@ -197,7 +197,7 @@ def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K
 # Robust ever-tagged front radius. This block is duplicated verbatim in
 # StromgrenSphere/stromgren_analytic_check.py,
 # Starbench/starbench_analytic_check.py,
-# HuSmith2017/hu_smith_analytic_check.py and
+# Hu2017/hu_smith_analytic_check.py and
 # StromgrenSphereCosmo/cosmo_stromgren_analytic_check.py. The examples share
 # no import path, so the four copies are kept identical by hand -- change one,
 # change all four.
