@@ -514,9 +514,8 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
             if (collisions > 0) {
               atomic_add(&e->radiation_hii_merge_collision_count_local,
-                        collisions);
-              atomic_add_d(&e->radiation_hii_forfeited_budget_local,
-                          forfeited);
+                         collisions);
+              atomic_add_d(&e->radiation_hii_forfeited_budget_local, forfeited);
             }
 #endif
             free(t->buff);

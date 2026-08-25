@@ -149,11 +149,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
                 ? "deterministic"
                 : "probabilistic");
     message("HII max age (internal units)                               = %g",
-            feedback_props->HII_max_age);        
+            feedback_props->HII_max_age);
     message("HII rebuild time (internal units)                          = %g",
-            feedback_props->HII_rebuild_time);    
+            feedback_props->HII_rebuild_time);
     message("HII rebuild floor (internal units)                         = %g",
-            feedback_props->HII_rebuild_floor_Myr);    
+            feedback_props->HII_rebuild_floor_Myr);
   }
 
   message(

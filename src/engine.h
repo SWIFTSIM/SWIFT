@@ -498,11 +498,12 @@ struct engine {
   long long radiation_reach_clamp_count_last_step;
 
   /*! Cumulative S3.4 owner-side merge collisions, summed across all ranks
-   * (engine_collect_end_of_step.c reduces radiation_hii_merge_collision_count_local
-   * into this field every step). Expected to be nonzero whenever two
-   * ranks' stars both reach the same boundary gas; a growing count with
-   * no matching physics regression is normal cross-rank contention, not
-   * a bug. Read this field for reporting/gating, never the _local one. */
+   * (engine_collect_end_of_step.c reduces
+   * radiation_hii_merge_collision_count_local into this field every step).
+   * Expected to be nonzero whenever two ranks' stars both reach the same
+   * boundary gas; a growing count with no matching physics regression is normal
+   * cross-rank contention, not a bug. Read this field for reporting/gating,
+   * never the _local one. */
   long long radiation_hii_merge_collision_count;
 
   /*! radiation_hii_merge_collision_count at the last per-step report. */
