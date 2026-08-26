@@ -17,77 +17,77 @@
 #
 ################################################################################
 """
-Compare the simulated growth of the HII region radius against Hosokawa &
-Inutsuka (2006)'s shell-inertia D-type expansion ODE (Raga-II, Eqn 11 in
-the numbering below) -- the curve Hu et al. (2017, MNRAS 471, 2151,
-Appendix A) and Smith et al. (2021, MNRAS 506, 3882, Fig. 1) actually plot
-and label "STARBENCH" in their own figures for this exact configuration
-(reaching ~25 pc by t=8 Myr, confirmed against their published curves),
-not the full Bisbas et al. (2015, MNRAS 453, 1324, arXiv:1507.05621)
-Eqn 28-29 blend that name refers to in the single-source STARBENCH
-project itself (which reads ~20 pc here for the same configuration --
-its time-dependent blend weight was calibrated against single-source RHD
-sims and does not transfer to this multi-source case). All curves are
-computed and reported every run (the verdict follows --reference): the
-two conventions disagree by ~15-25% here, and a simulation bracketed by
-them is agreeing with the references to within their own systematic
-spread.
+Compare the simulated growth of the HII region radius against the STARBENCH
+semi-empirical D-type expansion formula (Bisbas et al. 2015, MNRAS 453, 1324,
+arXiv:1507.05621), Eqns 8, 11, 28 and 29.
+
+Unlike the classical Spitzer (1978) solution used by
+stromgren_analytic_check.py, STARBENCH is a numerically-integrated blend of
+two ODEs, tuned against 12 independent radiation-hydrodynamics codes to
+agree with high-resolution simulations to <~2%:
 
   Eqn 8  (Raga-I):  the exact pressure-driven thin-shell ODE (Spitzer's
                      closed-form solution is what you get by dropping the
                      small mu_i*T_o/(mu_o*T_i) term from this).
   Eqn 11 (Raga-II): Hosokawa & Inutsuka (2006)'s ODE, including the inertia
-                     of the swept-up shell (2nd order in R) -- this
-                     example's actual validation target, see above.
-  Eqn 28: R_SB = R_II + f_SB * (R_I - R_II) -- Bisbas et al. (2015)'s own
-                     single-source blend, available via --reference
-                     starbench but not this example's target.
+                     of the swept-up shell (2nd order in R).
+  Eqn 28: R_SB = R_II + f_SB * (R_I - R_II)
   Eqn 29: f_SB = 1 - 0.733 * exp(-t / 1 Myr)
 
-Default config matches Hu et al. (2017) Appendix A's D-type convergence
-test: 4 co-located 19.2 Msun sources (Q_H~2.5e48/s each, ~1e49/s combined),
-n_H=100/cm3, t_end=8 Myr, at this code's own Z=0 ionized/neutral
+This is the STARBENCH paper's own late-phase test density and source
+(rho_o=5.21e-21 g/cm3, Q_H=1e49/s) at this code's own Z=0 ionized/neutral
 temperature floors (T_i~47500 K, T_o~1e3 K via SPH:minimal_temperature),
-not the papers' flat T_i=1e4 K -- T_i is therefore MEASURED from the
-run's own tagged gas by default (override via --T-ionized-K, which warns
-on a >10% mismatch), and T_o via --T-neutral-K plus the measured
-precursor recheck. See this example's README for the
-box-size derivation and why Z=0 is used here instead of the
-Z/Zsun~0.231 workaround used elsewhere in this project.
+not the papers' flat T_i=1e4 K -- the comparison is evaluated at whatever
+T_i/T_o this run actually used (--T-ionized-K/--T-neutral-K), not
+hardcoded to the papers' own numbers. See this example's README for the
+full parameter derivation and why Z=0 (not the Z/Zsun~0.231 workaround
+used elsewhere in this project) is the right choice here.
 
-The same applies to composition. These solutions are parameterised by n_H,
-T_i, T_o, Q_H and the mean molecular weights, none of which is tied to the
-papers' own setup, so the curves are evaluated at the run's OWN measured
-mu_i and mu_o rather than at the papers' pure-hydrogen convention
-(mu_i=0.5, mu_o=1), which this run does not have: it carries helium and
-Grackle sets the ionization state. Both values are printed with their
-source. See resolve_composition().
+Two r_hii conventions are reported, because the photon-count budget can
+genuinely recede a region and the two then diverge:
 
-r_hii is read the same way as stromgren_analytic_check.py's corrected
-measure: the current position of every gas particle *any* of the n_stars
-co-located sources has ever tagged (HIIStarIDs), not any star's frozen
-HIIRegionRadii (h_hii) -- generalizing the single-star version to Hu et
-al.'s own r_HII definition ("the maximum radius where a gas particle with
-an ionization fraction x_H+ > 0.95 can be found", i.e. a single front
-radius for the whole source cluster, not per-star). The reported extent is
-outlier-rejected, not the max, of these ever-tagged distances: since
-HIIStarIDs is never cleared on tag expiry, a single particle that lapsed
-early and advected outward for several Myr can inflate a plain max() by
-double digits percent. robust_ever_tagged_radius() rejects such a particle
-only when it is detached from the population both radially and in its own
-direction, which leaves a smooth shell edge exact and keeps a genuinely
-anisotropic front (a leading HEALPix cone at HII_angular_nside > 0, a
-breakout finger) intact. The true max is still reported as a secondary
-diagnostic.
+  ever-tagged extent: the current position of every gas particle the star
+    has *ever* tagged (HIIStarIDs) -- a historical-extent measure. The
+    right front proxy for the default flag-and-floor scheme, where the
+    dense swept shell keeps its ownership stamp after tag expiry.
+  instantaneous front: the star's own current HIIRegionRadii (h_hii),
+    per snapshot -- the distance the budget maintains *right now*. The
+    right measure for rate-coupled (HII_couple_ionization_rate) runs,
+    where it coincides with the actual x_HII front; the ever-tagged
+    extent instead freezes at the historical maximum when the region
+    recedes.
+
+The PASS/FAIL verdict is attached to each line separately; when the two
+conventions diverge by more than 10% the region receded and the
+scheme-appropriate line is the meaningful one (see above).
+
+The ever-tagged extent itself is outlier-rejected, not the max, of
+ever-tagged gas radii: HIIStarIDs is a one-way stamp (never cleared on tag
+expiry), so a single particle that lapsed early and advected outward for
+several Myr can inflate a plain max() by double digits percent.
+robust_ever_tagged_radius() rejects such a particle only when it is
+detached from the population both radially and in its own direction, which
+leaves a smooth shell edge exact and keeps a genuinely anisotropic front
+(a leading HEALPix cone at HII_angular_nside > 0, a breakout finger)
+intact. The true max is still reported as a secondary diagnostic.
+
+Composition is treated the same way as T_i. These solutions are
+parameterised by n_H, T_i, T_o, Q_H and the mean molecular weights, none of
+which is tied to the source papers' own setup, so the curves are evaluated
+at the run's OWN measured mu_i and mu_o rather than at the papers'
+pure-hydrogen convention (mu_i=0.5, mu_o=1), which this run does not have:
+it carries helium and Grackle sets the ionization state. Both values are
+printed with their source. See resolve_composition().
 
 Usage:
-    python3 hu_smith_analytic_check.py [-s snap/snapshot] [-o out.png]
+    python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
 
 import argparse
 import glob
 import os
 import re
+import sys
 
 import h5py
 import numpy as np
@@ -104,6 +104,9 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from radiation_table_reader import ionizing_photon_rate, load_radiation_table
 
 
 def alpha_b_hui_gnedin(T):
@@ -193,8 +196,8 @@ def starbench_curve(t_myr, R_St_pc, c_i_km_s, c_o_km_s, mu_i, mu_o, T_i_K, T_o_K
 # -----------------------------------------------------------------------------
 # Robust ever-tagged front radius. This block is duplicated verbatim in
 # StromgrenSphere/stromgren_analytic_check.py,
-# StromgrenSphereStarbench/starbench_analytic_check.py,
-# StromgrenSphereHuSmith2017/hu_smith_analytic_check.py and
+# Starbench/starbench_analytic_check.py,
+# Hu2017/hu_smith_analytic_check.py and
 # StromgrenSphereCosmo/cosmo_stromgren_analytic_check.py. The examples share
 # no import path, so the four copies are kept identical by hand -- change one,
 # change all four.
@@ -373,76 +376,9 @@ def print_n_H_with_source(n_H, source, files, label="n_H"):
 
 
 # -----------------------------------------------------------------------------
-# Q_H(mass): direct port of radiation_get_individual_star_ionizing_photon_
-# emission_rate_fit() and the radius/luminosity fits it calls
-# (src/feedback/GEAR/radiation.c). Copied verbatim from
-# stromgren_analytic_check.py (not imported, to keep this example
-# self-contained) -- keep both in sync if the fit ever changes.
-# -----------------------------------------------------------------------------
-def star_radius(mass_msun):
-    """Empirical mass-radius relation (radiation_get_individual_star_radius)."""
-    if mass_msun < 1.0:
-        return (mass_msun**0.8) * const.R_sun
-    elif mass_msun < 8.0:
-        return (mass_msun**0.57) * const.R_sun
-    else:
-        return (mass_msun**0.5) * const.R_sun
-
-
-def star_luminosity(mass_msun):
-    """Empirical mass-luminosity relation (radiation_get_individual_star_luminosity)."""
-    if mass_msun < 0.43:
-        lum_sol = 0.185 * mass_msun**2
-    elif mass_msun < 2.0:
-        lum_sol = mass_msun**4
-    elif mass_msun < 54.0:
-        lum_sol = 1.5 * mass_msun**3.5
-    else:
-        lum_sol = 32000.0 * mass_msun
-    return lum_sol * const.L_sun
-
-
-def ionizing_photon_rate(mass_msun):
-    """
-    Q_H, the ionizing photon emission rate for a single star of the given
-    mass, from a blackbody fit to its (R, L) -- direct port of
-    radiation_get_individual_star_ionizing_photon_emission_rate_fit().
-    """
-    R = star_radius(mass_msun)
-    L = star_luminosity(mass_msun)
-    if R <= 0 or L <= 0:
-        return 0.0 / u.s
-
-    R_in_Rsun = (R / const.R_sun).decompose().value
-    L_in_Lsun = (L / const.L_sun).decompose().value
-
-    T = 5780.0 * (L_in_Lsun / R_in_Rsun**2) ** 0.25 * u.K
-
-    E_threshold = 13.605 * u.eV
-    x_0 = (E_threshold / (const.k_B * T)).decompose().value
-
-    if x_0 > 45.0:
-        return 0.0 / u.s
-
-    photon_integral_sum = 0.0
-    for n in range(1, 6):
-        exp_term = np.exp(-n * x_0)
-        if exp_term < 1e-10:
-            break
-        photon_integral_sum += (exp_term / n) * (x_0**2 + (2.0 * x_0) / n + 2.0 / n**2)
-
-    prefactor = 15.0 / np.pi**4
-    N_dot_ion = (L / (const.k_B * T)) * prefactor * photon_integral_sum
-    return N_dot_ion.to(1 / u.s)
-
-
-# -----------------------------------------------------------------------------
-# Read the simulated r_hii(t) from the snapshots. Generalizes the
-# single-star ever-tagged measure (stromgren_analytic_check.py,
-# starbench_analytic_check.py) to n_stars co-located sources: a gas
-# particle counts if it was ever tagged by *any* of them (np.isin, not a
-# single ID match), matching Hu et al.'s own r_HII definition -- one front
-# radius for the whole source cluster, not per-star.
+# Read the simulated r_hii(t) from the snapshots, in both conventions (see
+# the module docstring): ever-tagged gas extent and the star's own current
+# HIIRegionRadii (instantaneous front).
 # -----------------------------------------------------------------------------
 def read_simulated_r_hii(snapshot_glob):
     if sw is None:
@@ -454,7 +390,6 @@ def read_simulated_r_hii(snapshot_glob):
 
     times, r_hii, r_hii_max, r_now = [], [], [], []
     star_mass_msun = None
-    n_stars_found = None
     n_H_atom_cc = None
     n_H_source = None
     boxsize_kpc = None
@@ -467,23 +402,15 @@ def read_simulated_r_hii(snapshot_glob):
             continue
 
         times.append(data.metadata.time.to("Myr").value)
-
-        # h_hii of the widest-reaching source. Unlike the ever-tagged extent
-        # this returns to exactly 0 when a star dies or ages past
-        # HII_max_age (feedback_common.c retires it to the tracers there and
-        # nowhere else), so it, not r_hii, is what tells the comparison
-        # window when the sources went dark. With co-located sources the max
-        # only reaches 0 once every source has.
         r_now.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
 
-        star_ids = data.stars.particle_ids.value.astype(np.int64)
-        ever_tagged = np.isin(data.gas.hiistar_ids, star_ids)
+        star_id = int(data.stars.particle_ids[0])
+        ever_tagged = data.gas.hiistar_ids == star_id
         if np.any(ever_tagged):
-            # Co-located sources: use the mean position as the common center.
-            cluster_pos = data.stars.coordinates.to("kpc").value.mean(axis=0)
+            star_pos = data.stars.coordinates[0].to("kpc").value
             gas_pos = data.gas.coordinates[ever_tagged].to("kpc").value
             box_kpc = data.metadata.boxsize.to("kpc").value
-            dx = gas_pos - cluster_pos
+            dx = gas_pos - star_pos
             dx -= box_kpc * np.round(dx / box_kpc)
             r_robust, r_max = robust_ever_tagged_radius(dx)
             r_hii.append(r_robust)
@@ -493,21 +420,16 @@ def read_simulated_r_hii(snapshot_glob):
             r_hii_max.append(r_now[-1])
 
         if star_mass_msun is None:
-            n_stars_found = len(data.stars.masses)
-            masses = data.stars.masses.to("Msun").value
-            if not np.allclose(masses, masses[0], rtol=1e-6):
-                raise RuntimeError(
-                    f"Expected {n_stars_found} equal-mass co-located sources, "
-                    f"found masses {masses} Msun -- this script sums Q_H(mass) "
-                    f"per identical star, not for a mixed population."
-                )
-            star_mass_msun = float(masses[0])
+            n_stars = len(data.stars.masses)
+            if n_stars != 1:
+                raise RuntimeError(f"Expected exactly 1 star, found {n_stars}.")
+            star_mass_msun = float(np.max(data.stars.masses).to("Msun").value)
         if n_H_atom_cc is None:
             rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
             X_H_raw = data.metadata.parameters.get(
                 "GrackleCooling:HydrogenFractionByMass"
             )
-            X_H = float(X_H_raw) if X_H_raw is not None else 0.716
+            X_H = float(X_H_raw) if X_H_raw is not None else 0.76
             n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
             n_H_source = f
 
@@ -517,72 +439,11 @@ def read_simulated_r_hii(snapshot_glob):
         u.Quantity(r_hii_max, u.kpc),
         u.Quantity(r_now, u.kpc),
         star_mass_msun,
-        n_stars_found,
         n_H_atom_cc,
         n_H_source,
         boxsize_kpc * u.kpc,
         files,
     )
-
-
-def measure_precursor_temperature_K(filename, r_hii_pc, shell_width_pc=5.0):
-    """Median temperature of never-ionized gas in a thin shell just outside
-    the current r_hii(t) front.
-
-    STARBENCH's T_o is meant to be the undisturbed exterior temperature,
-    but a real D-type expansion does hydrodynamic work on the swept-up
-    neutral gas ahead of the front, heating a precursor shell well above
-    the far-field floor before that gas is ever ionized -- an effect the
-    idealized two-state analytic model has no term for. Sampling the
-    actual local temperature there, instead of the fixed far-field floor,
-    gives c_o the value the front is actually pushing against.
-
-    @return Median T [K] in the shell, or None if it's empty (e.g. r_hii_pc
-    already exceeds the box).
-    """
-    with h5py.File(filename, "r") as h:
-        stars = h["PartType4"]
-        if len(stars["Coordinates"]) == 0:
-            return None
-        star_ids = stars["ParticleIDs"][:]
-        cluster_pos_kpc = stars["Coordinates"][:].mean(axis=0)
-        box_kpc = h["Header"].attrs["BoxSize"]
-
-        gas = h["PartType0"]
-        pos_kpc = gas["Coordinates"][:]
-        never = ~np.isin(gas["HIIStarIDs"][:], star_ids)
-
-        dx = pos_kpc - cluster_pos_kpc
-        dx -= box_kpc * np.round(dx / box_kpc)
-        r_pc = np.linalg.norm(dx, axis=1) * 1000.0
-
-        shell = never & (r_pc >= r_hii_pc) & (r_pc < r_hii_pc + shell_width_pc)
-        if not np.any(shell):
-            return None
-
-        u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
-        u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
-        u_to_cgs = (u_L / u_t) ** 2  # internal energy unit -> erg/g
-
-        if "HI" in gas:
-            X_HI = gas["HI"][shell]
-            X_HII = gas["HII"][shell]
-            X_HeI = gas["HeI"][shell]
-            X_HeII = gas["HeII"][shell]
-            X_HeIII = gas["HeIII"][shell]
-            inv_mu = X_HI + 2.0 * X_HII + 0.25 * X_HeI + 0.5 * X_HeII + 0.75 * X_HeIII
-            mu = 1.0 / np.clip(inv_mu, 1e-10, None)
-        else:
-            # No species arrays (COOLING_GRACKLE_MODE 0), same guard as
-            # measure_ionized_temperature_K. This selection is never-ionized
-            # by construction, so use the neutral primordial mu (X=0.76,
-            # Y=0.24: 1/mu = X + Y/4).
-            mu = 1.0 / (0.76 + 0.24 / 4.0)
-
-        u_cgs = gas["InternalEnergies"][shell] * u_to_cgs
-        gamma_m1 = 2.0 / 3.0  # monatomic ideal gas, matching this project's EoS
-        T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
-        return float(np.median(T))
 
 
 def measure_ionized_temperature_K(files, min_count=20):
@@ -592,7 +453,7 @@ def measure_ionized_temperature_K(files, min_count=20):
     The run's actual T_i depends on build flags
     (IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K) and
     metallicity; measuring it removes the silent tens-of-percent error of
-    computing the reference curves at a temperature the run never used.
+    computing the reference at a temperature the run never used.
 
     mu is returned alongside so the sound speeds can be evaluated at the same
     composition this temperature was derived from.
@@ -610,7 +471,6 @@ def measure_ionized_temperature_K(files, min_count=20):
             u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
             u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
             u_to_cgs = (u_L / u_t) ** 2  # internal energy unit -> erg/g
-
             if "HI" in gas:
                 inv_mu = (
                     gas["HI"][ionized]
@@ -627,7 +487,6 @@ def measure_ionized_temperature_K(files, min_count=20):
                 # primordial mu.
                 mu = MU_IONIZED_FALLBACK
                 mu_measured = False
-
             u_cgs = gas["InternalEnergies"][ionized] * u_to_cgs
             gamma_m1 = 2.0 / 3.0
             T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
@@ -795,7 +654,7 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("-s", "--snapshot-glob", default="snap/snapshot_*.hdf5")
-    parser.add_argument("-o", "--output", default="hu_smith_check.png")
+    parser.add_argument("-o", "--output", default="starbench_check.png")
     parser.add_argument(
         "--tol",
         type=float,
@@ -809,39 +668,21 @@ def main():
         type=float,
         default=None,
         dest="T_ionized_K",
-        help="Ionized-gas temperature the reference curves are computed at. "
-        "Default: measured from the run's own tagged gas, which always "
-        "matches whatever build flag/metallicity convention the run used. "
-        "An explicit value overrides the measurement but warns loudly if "
-        "the two disagree by >10%%.",
+        help="Ionized-gas temperature the reference is computed at. Default: "
+        "measured from the run's own tagged gas, which always matches "
+        "whatever build flag/metallicity convention the run used. An "
+        "explicit value overrides the measurement but warns loudly if the "
+        "two disagree by >10%%.",
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
-    parser.add_argument(
-        "--precursor-shell-pc",
-        type=float,
-        default=5.0,
-        dest="precursor_shell_pc",
-        help="Width (pc) of the never-ionized shell just outside r_hii(t) "
-        "sampled for the measured-T_o recheck (default: 5.0).",
-    )
-    parser.add_argument(
-        "--reference",
-        choices=["starbench", "raga1", "raga2"],
-        default="raga2",
-        help="Which analytic curve to check the window/verdict against "
-        "(default: raga2, Hosokawa & Inutsuka (2006)'s shell-inertia "
-        "equation, Eqn 11). This is the curve Hu et al. (2017) and Smith "
-        "et al. (2021) actually plot and label 'STARBENCH' in their own "
-        "figures for this exact configuration (~25 pc by t=8 Myr) -- not "
-        "the Bisbas et al. (2015) Eqn 28-29 blend that name refers to in "
-        "the single-source STARBENCH project itself, which reads ~20 pc "
-        "here (its time-dependent weight was calibrated against "
-        "single-source RHD sims). All curves are reported every run; a "
-        "simulation bracketed by Raga-II and the blend agrees with the "
-        "references to within their own ~15-25%% systematic spread. See "
-        "README.",
-    )
     args = parser.parse_args()
+    T_ionized_K, T_i_marker = resolve_T_ionized_K(
+        args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
+    )
+    mu_i, mu_o, mu_marker = resolve_composition(
+        sorted(glob.glob(args.snapshot_glob)), uses_neutral=True
+    )
+    verdict_marker = T_i_marker + mu_marker
 
     (
         t_sim,
@@ -849,20 +690,16 @@ def main():
         r_sim_max,
         r_now,
         star_mass_msun,
-        n_stars,
         n_H,
         n_H_source,
         boxsize,
         files,
     ) = read_simulated_r_hii(args.snapshot_glob)
     box_half_width = 0.5 * boxsize
-    T_ionized_K, T_i_marker = resolve_T_ionized_K(args.T_ionized_K, files)
-    mu_i, mu_o, mu_marker = resolve_composition(files, uses_neutral=True)
-    verdict_marker = T_i_marker + mu_marker
 
-    # n_stars identical co-located sources: sum Q_H per star, not
-    # Q_H(n_stars * mass) -- the fit is nonlinear in mass.
-    Q_H = n_stars * ionizing_photon_rate(star_mass_msun)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    radiation_table = load_radiation_table(files, script_dir)
+    Q_H = ionizing_photon_rate(radiation_table, star_mass_msun)
     alpha_B = alpha_b_hui_gnedin(T_ionized_K * u.K)
     R_St = ((3 * Q_H / (4 * np.pi * alpha_B * n_H**2)) ** (1 / 3.0)).to(u.pc)
     c_i = (np.sqrt(const.k_B * T_ionized_K * u.K / (mu_i * const.m_p))).to(u.km / u.s)
@@ -870,9 +707,9 @@ def main():
         u.km / u.s
     )
 
-    print(f"Star mass (each)   : {star_mass_msun:.3f} Msun x {n_stars} sources")
+    print(f"Star mass          : {star_mass_msun:.3f} Msun")
     print_n_H_with_source(n_H, n_H_source, files)
-    print(f"Q_H (combined)     : {Q_H.to(1/u.s).value:.3e} 1/s")
+    print(f"Q_H                : {Q_H.to(1/u.s).value:.3e} 1/s")
     print(f"R_St               : {R_St:.4g}")
     print(f"c_i = {c_i:.4g} (mu_i={mu_i:.4f}), c_o = {c_o:.4g} (mu_o={mu_o:.4f})")
     print(f"Box half-width     : {box_half_width.to(u.pc):.4g}")
@@ -888,157 +725,66 @@ def main():
         T_ionized_K,
         args.T_neutral_K,
     )
-    R_ref, ref_label = {
-        "starbench": (R_SB, "STARBENCH blend (Eqns 28-29)"),
-        "raga1": (R_I, "Raga-I (Eqn 8)"),
-        "raga2": (R_II, "Raga-II (Eqn 11)"),
-    }[args.reference]
 
-    # Interpolate the chosen reference curve onto the simulation's own
-    # snapshot times for the comparison-point error (avoid re-solving the
-    # ODE once per snapshot).
-    R_ref_at_t_sim = np.interp(t_sim.to(u.Myr).value, t_grid.to(u.Myr).value, R_ref)
+    # Interpolate the STARBENCH curve onto the simulation's own snapshot
+    # times for the comparison-point error (avoid re-solving the ODE once
+    # per snapshot).
+    R_SB_at_t_sim = np.interp(t_sim.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB)
 
-    # The comparison window is every snapshot where the *analytic
-    # prediction itself* is still within the box (this model assumes an
-    # unbounded uniform medium; once the reference curve exceeds the box
-    # half-width the formula is being asked a question the box's own
-    # periodicity can no longer answer). Report the error across this
-    # whole window rather than a single point -- a single "last valid"
-    # instant can land anywhere in a still-transient part of the curve and
-    # isn't representative of how well the run matches the reference
-    # overall.
     r_sim_pc = r_sim.to(u.pc).value
     r_sim_max_pc = r_sim_max.to(u.pc).value
     r_now_pc = r_now.to(u.pc).value
-    box_valid = R_ref_at_t_sim <= box_half_width.to(u.pc).value
+    box_valid = R_SB_at_t_sim <= box_half_width.to(u.pc).value
     # Liveness must come from h_hii, not from the ever-tagged extent: the
     # HIIStarIDs stamp is never cleared, so r_sim keeps growing by advection
-    # after the last source dies and never returns to 0. Comparing there
-    # would put pure advection against a live-source analytic curve.
+    # after the star dies and never returns to 0, which would silently
+    # compare pure advection against a live-source analytic curve.
     alive = r_now_pc > 0
     ok = box_valid & alive
     if not np.any(ok):
         raise RuntimeError("No box-valid, alive snapshot to compare at.")
-    window = np.where(ok)[0]
-    t_w = t_sim[window]
-    r_w = r_sim_pc[window]
-    r_max_w = r_sim_max_pc[window]
-    R_ref_w = R_ref_at_t_sim[window]
-    rel_error_w = np.abs(r_w - R_ref_w) / R_ref_w
+    last = np.where(ok)[0][-1]
+    t_c = t_sim[last]
+    R_SB_c = R_SB_at_t_sim[last]
 
-    print(f"\nReference curve: {ref_label}")
-    print(
-        f"Comparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
-        f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
-    )
-    if window[-1] < len(t_sim) - 1:
+    print(f"\nComparison time: t={t_c:.4g}  R_SB={R_SB_c:.4g} pc")
+    if last < len(t_sim) - 1:
         reason = []
         if np.any(~box_valid):
             reason.append(
                 f"reference curve leaves the box from "
                 f"t={t_sim[np.where(~box_valid)[0][0]]:.4g}"
             )
-        if np.any(~alive):
-            first_live = np.where(alive)[0][0]
-            dead = np.where(~alive[first_live:])[0]
-            if len(dead) > 0:
-                reason.append(
-                    f"all sources inactive/dead from "
-                    f"t={t_sim[first_live + dead[0]]:.4g}"
-                )
+        first_live = np.where(alive)[0][0]
+        dead = np.where(~alive[first_live:])[0]
+        if len(dead) > 0:
+            reason.append(
+                f"star inactive/dead from t={t_sim[first_live + dead[0]]:.4g}"
+            )
         print(
-            f"  (window ends before the last snapshot t={t_sim[-1]:.4g}: "
+            f"  (not the final simulated time t={t_sim[-1]:.4g}: "
             f"{'; '.join(reason) if reason else 'no reason recorded'})"
         )
-    print(
-        f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_ref [pc]':>11} {'rel_error':>10} "
-        f"{'r_max [pc]':>11}"
-    )
-    for tt, rr, RR, ee, mm in zip(t_w, r_w, R_ref_w, rel_error_w, r_max_w):
-        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%} {mm:11.4g}")
-    print(
-        "  (r_max is the secondary diagnostic: the true, non-outlier-rejected "
-        "max ever-tagged extent, not the r_sim value above)"
-    )
-    n_pass = np.sum(rel_error_w <= args.tol)
-    median_error = np.median(rel_error_w)
-    verdict = "PASS" if median_error <= args.tol else "FAIL"
-    print(
-        f"Window summary: min={rel_error_w.min():.2%} (t={t_w[np.argmin(rel_error_w)]:.4g})  "
-        f"median={median_error:.2%}  max={rel_error_w.max():.2%} "
-        f"(t={t_w[np.argmax(rel_error_w)]:.4g})  "
-        f"{n_pass}/{len(window)} snapshots within tol={args.tol:.0%}  "
-        f"[{verdict} by median{verdict_marker}]"
-    )
-
-    # The two published reference conventions (Raga-II vs the Bisbas blend)
-    # disagree by ~15-25% for this multi-source configuration, so a single
-    # median can read as FAIL while the run is bracketed by the references.
-    # Report all three, with the t_end error separately -- the late-time
-    # value is the equilibrium-quality number the window median dilutes
-    # with the unmodeled R-type onset.
-    print("\nAll reference curves over the same window (verdict uses --reference):")
-    for lbl, RC in (("Raga-I", R_I), ("Raga-II", R_II), ("STARBENCH blend", R_SB)):
-        RC_w = np.interp(t_w.to(u.Myr).value, t_grid.to(u.Myr).value, RC)
-        e = np.abs(r_w - RC_w) / RC_w
+    for label, r_c in [
+        ("ever-tagged extent ", r_sim_pc[last]),
+        ("instantaneous front", r_now_pc[last]),
+    ]:
+        rel_error = abs(r_c - R_SB_c) / R_SB_c
+        verdict = "PASS" if rel_error <= args.tol else "FAIL"
         print(
-            f"  {lbl:16s}: median={np.median(e):.2%}  "
-            f"t_end={e[-1]:.2%} (t={t_w[-1]:.4g})  "
-            f"{np.sum(e <= args.tol)}/{len(e)} within tol"
+            f"  {label}: r_sim={r_c:.4g} pc  "
+            f"rel_error={rel_error:.2%}  [{verdict}{verdict_marker}]"
         )
-
-    # Same window, but against the measured local precursor temperature
-    # instead of the fixed far-field T_o: a real D-type front does
-    # hydrodynamic work on the swept-up neutral gas ahead of it, heating a
-    # precursor shell the idealized two-state STARBENCH model has no term
-    # for -- see measure_precursor_temperature_K's docstring.
-    t_prec, err_prec, T_prec_list = [], [], []
-    for idx, tt, rr in zip(window, t_w, r_w):
-        T_precursor_K = measure_precursor_temperature_K(
-            files[idx], rr, shell_width_pc=args.precursor_shell_pc
-        )
-        if T_precursor_K is None:
-            continue
-        c_o_precursor = (
-            np.sqrt(const.k_B * T_precursor_K * u.K / (mu_o * const.m_p))
-        ).to(u.km / u.s)
-        curves_p = starbench_curve(
-            t_grid.to(u.Myr).value,
-            R_St.to(u.pc).value,
-            c_i.value,
-            c_o_precursor.value,
-            mu_i,
-            mu_o,
-            T_ionized_K,
-            T_precursor_K,
-        )
-        curve = curves_p[{"raga1": 0, "raga2": 1, "starbench": 2}[args.reference]]
-        R_SB_p = np.interp(tt.to(u.Myr).value, t_grid.to(u.Myr).value, curve)
-        t_prec.append(tt.value)
-        err_prec.append(abs(rr - R_SB_p) / R_SB_p)
-        T_prec_list.append(T_precursor_K)
-
-    # Printed without a PASS/FAIL token on purpose: this is a sensitivity
-    # diagnostic on T_o, not a second verdict, and a line formatted like the
-    # primary one is indistinguishable from it to a reader or to a harness
-    # grepping for PASS/FAIL. The verdict of record is the window summary
-    # above.
-    if err_prec:
-        err_prec = np.array(err_prec)
-        median_error_prec = np.median(err_prec)
+    print(
+        f"  (secondary diagnostic, true max ever-tagged extent: "
+        f"{r_sim_max_pc[last]:.4g} pc)"
+    )
+    if abs(r_sim_pc[last] - r_now_pc[last]) / max(r_now_pc[last], 1e-10) > 0.1:
         print(
-            f"\nDIAGNOSTIC (not a verdict) -- same window recomputed against "
-            f"the measured precursor T_o "
-            f"({min(T_prec_list):.4g}-{max(T_prec_list):.4g} K): "
-            f"min={err_prec.min():.2%}  median={median_error_prec:.2%}  "
-            f"max={err_prec.max():.2%}  "
-            f"{np.sum(err_prec <= args.tol)}/{len(err_prec)} within tol={args.tol:.0%}"
-        )
-    else:
-        print(
-            "\nDIAGNOSTIC (not a verdict): no never-ionized gas found near "
-            "the front in this window -- skipping the measured-T_o recheck."
+            "  NOTE: the two conventions diverge by >10% -- the region "
+            "receded. The scheme-appropriate line is the meaningful one: "
+            "ever-tagged for flag-and-floor, instantaneous for rate-coupled "
+            "(HII_couple_ionization_rate) runs. See the module docstring."
         )
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -1050,19 +796,18 @@ def main():
         markersize=4,
         label="Simulation (ever-tagged $r_{\\rm HII}$)",
     )
-    ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
-    ax.plot(t_grid, R_II, "-", color="black", label="Raga-II (Eqn 11)")
-    # Labeled by its equations, NOT "STARBENCH": the curve Hu et al. (2017)
-    # and Smith et al. (2021) label "STARBENCH" is Raga-II above. The blend
-    # is plotted because the simulation typically lies between the two --
-    # the bracket is the honest statement of reference-model uncertainty.
     ax.plot(
-        t_grid,
-        R_SB,
-        "--",
-        color="tab:blue",
-        label="Bisbas+15 blend (Eqns 28-29, single-source calibration)",
+        t_sim.to(u.Myr),
+        r_now_pc,
+        "s-",
+        color="#1f77b4",
+        markersize=3,
+        alpha=0.8,
+        label="Simulation (instantaneous $h_{\\rm HII}$)",
     )
+    ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
+    ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 11)")
+    ax.plot(t_grid, R_SB, "--", color="black", label="STARBENCH (Eqns 28-29)")
     ax.axhline(
         box_half_width.to(u.pc).value,
         color="firebrick",
@@ -1070,21 +815,16 @@ def main():
         alpha=0.6,
         label="Box half-width",
     )
-    ax.axvspan(
-        t_w[0].to(u.Myr).value,
-        t_w[-1].to(u.Myr).value,
+    ax.axvline(
+        t_c.to(u.Myr).value,
         color="black",
-        alpha=0.08,
-        label="Comparison window",
+        linestyle="-.",
+        alpha=0.4,
+        label="Comparison point",
     )
     ax.set_xlabel("Time [Myr]")
     ax.set_ylabel(r"HII region radius $r_{\rm HII}$ [pc]")
     ax.legend(loc="lower right", fontsize=9)
-    ax.set_title(
-        f"Reference: {ref_label} -- median error {median_error:.2%} "
-        f"[{verdict}{verdict_marker}]",
-        fontsize=9,
-    )
     ax.grid(True, linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(args.output, dpi=150)

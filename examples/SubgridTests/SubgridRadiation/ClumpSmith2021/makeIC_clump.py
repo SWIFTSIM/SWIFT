@@ -17,14 +17,10 @@
 #
 ################################################################################
 """
-Single-star variant of ../StromgrenSphere/makeIC.py: a uniform diffuse
-background plus a small, dense gas clump placed near the star along +x
-(HEALPix nside=1 pixel 4's center direction). See the README for why this
-geometry, and for the clump-sizing rationale.
-
-Clump placement/size are set in parsec directly (--clump_distance_pc,
---clump_radius_pc or --clump_halfangle_deg), not derived from the classical
-Stromgren radius -- see the README.
+Reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: four ionizing
+sources at the centre of a uniform 100 cm^-3 background, plus a 10 pc-radius
+clump of 1e4 cm^-3 gas centered 20 pc away along +x. See the README for the
+source values.
 """
 
 import h5py
@@ -47,24 +43,37 @@ def parse_options():
     parser.add_argument(
         "--mass",
         type=float,
-        default=0.001,
-        help="Gas particle mass in solar mass (diffuse and clump)",
+        default=4.0,
+        help="Gas particle mass in solar mass (diffuse and clump). "
+        "4.0 is Hu et al. 2017's coarsest convergence-test "
+        "resolution; see README for the finer levels (0.5, "
+        "0.0625, 0.0078125) and why they need a lot more particles.",
     )
-    parser.add_argument("--boxsize", type=float, default=0.004, help="Boxsize in kpc")
+    parser.add_argument("--boxsize", type=float, default=0.1, help="Boxsize in kpc")
     parser.add_argument(
-        "--star_mass", type=float, default=29.7, help="Mass of the star in M_sun"
+        "--star_mass",
+        type=float,
+        default=19.2,
+        help="Mass of each of the 4 stars in M_sun "
+        "(Q_H ~ 2.5e48/s per star, matching Smith "
+        "et al.'s 4 sources)",
+    )
+    parser.add_argument(
+        "--n_stars",
+        type=int,
+        default=4,
+        help="Number of ionizing sources clustered at the box center",
     )
     parser.add_argument(
         "--density_factor",
         type=float,
         default=100.0,
-        help="Clump density, as a multiple of --rho. Set to "
-        "1 for a clump-free control run.",
+        help="Clump density, as a multiple of --rho",
     )
     parser.add_argument(
         "--temperature",
         type=float,
-        default=10.0,
+        default=1000.0,
         help="Diffuse background temperature in K. The clump "
         "is set to temperature/density_factor so both "
         "populations start in pressure equilibrium "
@@ -75,24 +84,11 @@ def parse_options():
     parser.add_argument(
         "--clump_distance_pc",
         type=float,
-        default=0.35,
+        default=20.0,
         help="Distance from the star to the clump center, in parsec",
     )
     parser.add_argument(
-        "--clump_halfangle_deg",
-        type=float,
-        default=20.0,
-        help="Angular half-size of the clump as seen from the "
-        "star (degrees); sets the clump radius unless "
-        "--clump_radius_pc is given",
-    )
-    parser.add_argument(
-        "--clump_radius_pc",
-        type=float,
-        default=None,
-        help="Clump radius in parsec, overriding "
-        "--clump_halfangle_deg -- use to vary the "
-        "clump's size at fixed distance",
+        "--clump_radius_pc", type=float, default=10.0, help="Clump radius in parsec"
     )
     parser.add_argument(
         "--n_cells",
@@ -113,82 +109,6 @@ def parse_options():
     return parser.parse_args()
 
 
-# Measured with --density_factor 1 (no clump) at the default rho/star_mass/
-# mass; not physical constants -- re-measure if those change (see README).
-MEASURED_FRONT_REACH_PC = 0.87
-MEASURED_FRONT_IONIZED_MASS_MSUN = 7.2
-
-
-def pick_clump_geometry(opt):
-    """Place and size the clump relative to the measured ionization front
-    (see README), not the classical Stromgren radius."""
-    r_clump = opt.clump_distance_pc * units.pc
-    if opt.clump_radius_pc is not None:
-        R_clump = opt.clump_radius_pc * units.pc
-        halfangle = np.arctan((R_clump / r_clump).decompose())
-    else:
-        halfangle = np.radians(opt.clump_halfangle_deg)
-        R_clump = r_clump * np.tan(halfangle)
-    V_clump = (4.0 / 3.0) * np.pi * R_clump**3
-
-    clump_mass = (
-        opt.density_factor * opt.rho / units.cm**3 * constants.m_p * V_clump
-    ).to(units.Msun)
-    demand_fraction = (
-        clump_mass / (MEASURED_FRONT_IONIZED_MASS_MSUN * units.Msun)
-    ).decompose()
-
-    print("--- Empirically-calibrated clump sizing ---")
-    print(f"Measured front reach (reference)      : {MEASURED_FRONT_REACH_PC} pc")
-    print(
-        f"Measured front ionized mass (reference): {MEASURED_FRONT_IONIZED_MASS_MSUN} Msun"
-    )
-    print(f"Clump center distance from star        : {r_clump.to(units.pc):.4g}")
-    print(f"Clump radius                           : {R_clump.to(units.pc):.4g}")
-    print(f"Clump implied half-angle from star      : {np.degrees(halfangle):.4g} deg")
-    print(
-        f"Clump density                          : {opt.density_factor * opt.rho:.4g} atom/cm3"
-    )
-    print(f"Clump mass                             : {clump_mass:.4g}")
-    print(f"Clump mass / front ionized mass         : {demand_fraction:.2%}")
-    if np.degrees(halfangle) > 29.0:
-        print(
-            "  WARNING: clump half-angle exceeds nside=1 pixel 4's ~29 "
-            "degree inscribed-cap margin -- it straddles neighbouring "
-            "pixels, weakening the clean single-pixel signal. Decrease "
-            "--clump_radius_pc / --clump_halfangle_deg or increase "
-            "--clump_distance_pc."
-        )
-    if opt.clump_distance_pc + R_clump.to(units.pc).value > MEASURED_FRONT_REACH_PC:
-        print(
-            "  WARNING: clump extends past the measured front reach -- it "
-            "may never be fully reached by the ionization search. Decrease "
-            "--clump_distance_pc, --clump_radius_pc, or --clump_halfangle_deg."
-        )
-    if demand_fraction < 0.1:
-        print(
-            "  WARNING: clump mass is small relative to the front's total "
-            "budget -- nside=0 vs nside=1 may not show a clearly "
-            "distinguishable signal. Increase --density_factor."
-        )
-    if demand_fraction > 0.8:
-        print(
-            "  WARNING: clump mass is very large relative to the front's "
-            "total budget -- the clump may starve the diffuse gas almost "
-            "completely even at nside=1. Decrease --density_factor."
-        )
-
-    half_width = (opt.boxsize / 2.0) * units.kpc
-    if (r_clump + R_clump) > 0.5 * half_width:
-        print(
-            "  WARNING: clump extends past half the box half-width -- "
-            "risks periodic self-interaction or exceeding "
-            "Stars:HII_max_search_radius."
-        )
-
-    return r_clump.to(units.kpc).value, R_clump.to(units.kpc).value
-
-
 opt = parse_options()
 
 UnitMass_in_cgs = 1.988409870698051e43
@@ -203,8 +123,6 @@ UnitLength = UnitLength_in_cgs * units.cm
 
 np.random.seed(1)
 
-r_clump_kpc, R_clump_kpc = pick_clump_geometry(opt)
-
 rho = opt.rho * constants.m_p / units.cm**3
 m = opt.mass * units.Msun
 
@@ -218,9 +136,21 @@ rho_code = rho.to(UnitMass / UnitLength**3).value
 
 star_pos = np.array([L_code / 2.0, L_code / 2.0, L_code / 2.0])
 # +x is HEALPix nside=1 pixel 4's center direction (see README).
-r_clump_code = (r_clump_kpc * units.kpc).to(UnitLength).value
-R_clump_code = (R_clump_kpc * units.kpc).to(UnitLength).value
+r_clump_code = (opt.clump_distance_pc * units.pc).to(UnitLength).value
+R_clump_code = (opt.clump_radius_pc * units.pc).to(UnitLength).value
 clump_center = star_pos + np.array([r_clump_code, 0.0, 0.0])
+
+clump_mass = (
+    opt.density_factor
+    * rho
+    * (4.0 / 3.0)
+    * np.pi
+    * (opt.clump_radius_pc * units.pc) ** 3
+).to(units.Msun)
+print(
+    f"Clump mass: {clump_mass:.4g}, clump particles: "
+    f"~{int(clump_mass / (opt.mass * units.Msun))}"
+)
 
 #####################
 # Diffuse background, with the clump's volume carved out.
@@ -242,13 +172,18 @@ print(
 # Dense clump, uniform within a sphere of radius R_clump around clump_center.
 #####################
 mass_clump_code = (
-    (opt.density_factor * rho * (4.0 / 3.0) * np.pi * (R_clump_kpc * units.kpc) ** 3)
+    (
+        opt.density_factor
+        * rho
+        * (4.0 / 3.0)
+        * np.pi
+        * (opt.clump_radius_pc * units.pc) ** 3
+    )
     .to(UnitMass)
     .value
 )
 N_clump = int(np.ceil(mass_clump_code / m_code))
 
-# Uniform sampling within a sphere via rejection (fast enough at this N).
 pos_clump = np.empty([N_clump, 3])
 n_filled = 0
 while n_filled < N_clump:
@@ -317,31 +252,43 @@ rho_arr = np.concatenate(
 )
 
 print(f"Total gas particles                                   : {N}")
-print(f"Diffuse smoothing length guess (code unit)            : {h_diffuse:e}")
-print(f"Clump smoothing length guess (code unit)               : {h_clump:e}")
+
 
 #####################
-# The star, at the box center.
+# The N_stars sources, clustered at the box center. SWIFT aborts if two gas
+# particles share a position and warns for gravity particles (engine.c), so
+# the stars are spread on a sphere far smaller than the gas resolution
+# (a fraction of h_diffuse) instead of being placed at the exact same point.
 #####################
-N_star = 1
+def sphere_points(n, radius):
+    """n points ~evenly spread on a sphere of the given radius (n=1: origin).
+    Uses open-interval y sampling (never +/-1) so no point falls exactly on
+    an axis -- avoids landing back on a cell boundary aligned with it."""
+    if n == 1:
+        return np.zeros((1, 3))
+    golden_angle = np.pi * (3.0 - np.sqrt(5.0))
+    i = np.arange(n)
+    y = 1.0 - 2.0 * (i + 0.5) / n
+    r = np.sqrt(np.maximum(0.0, 1.0 - y * y))
+    theta = golden_angle * i
+    return radius * np.stack([r * np.cos(theta), y, r * np.sin(theta)], axis=1)
+
+
+N_star = opt.n_stars
 M_star_val = (opt.star_mass * units.M_sun).to(UnitMass).value
-M_star = np.array([M_star_val])
-pos_star = np.array([star_pos])
+M_star = np.ones(N_star) * M_star_val
+pos_star = star_pos + sphere_points(N_star, 1e-3 * h_diffuse)
 vel_star = np.zeros([N_star, 3])
 h_star = np.ones(N_star) * h_diffuse
 
 star_type_map = {"single_star": 0, "continuous_IMF": 1, "SSP": 2}
 star_type = star_type_map[opt.star_type]
 star_particle_type = np.ones(N_star) * star_type
-star_id = np.array([N + 1])
+star_id = np.arange(N + 1, N + 1 + N_star)
 star_birth_time = np.zeros(N_star)
 
-print(f"Star position (code unit)                             : {pos_star[0]}")
+print(f"Stars ({N_star}) clustered around (code unit)               : {star_pos}")
 print(f"Clump center (code unit)                              : {clump_center}")
-print(
-    f"Clump-star direction                                  : "
-    f"{(clump_center - pos_star[0]) / np.linalg.norm(clump_center - pos_star[0])}"
-)
 
 fileOutput = h5py.File(opt.outputfilename, "w")
 print("{} saved.".format(opt.outputfilename))

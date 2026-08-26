@@ -17,9 +17,9 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
   UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
-  UnitVelocity_in_cgs: 1e5   # km/s
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
 
 Restarts:
   enable: 1
@@ -32,8 +32,8 @@ Restarts:
 # a(t) relation used by the cosmological time integration, not any force.
 Cosmology:
   h:              0.6777
-  a_begin:        0.1        # z = 9
-  a_end:          0.10121212 # ~10 Myr later; Delta a / a ~= 1.2%
+  a_begin:        0.1         # z = 9
+  a_end:          0.10121212  # ~10 Myr later; Delta a / a ~= 1.2%
   Omega_lambda:   0.693
   Omega_cdm:      0.2587481
   Omega_b:        0.0482519
@@ -61,7 +61,7 @@ Snapshots:
   subdir: snap
   basename:   snapshot
   scale_factor_first: 0.1
-  delta_time:          1.000241   # multiplicative in a: ~50 outputs
+  delta_time:          1.000241  # multiplicative in a: ~50 outputs
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -69,12 +69,12 @@ Scheduler:
   cell_extra_gparts: 10
   cell_extra_sinks:  10
   cell_extra_sparts: 10
-  max_top_level_cells: 3   # keep the cdim=={3,3,3} periodic radiation stencil floor
+  max_top_level_cells: 3  # keep the cdim=={3,3,3} periodic radiation stencil floor
   tasks_per_cell: 100
 
 Statistics:
   scale_factor_first: 0.1
-  delta_time:          1.0000602   # multiplicative in a: ~200 points
+  delta_time:          1.0000602  # multiplicative in a: ~200 points
 
 InitialConditions:
   file_name:          ICs_stromgren_cosmo_highz.hdf5
@@ -98,15 +98,31 @@ GrackleCooling:
   convergence_limit: 1e-2
   thermal_time_myr: 0
   maximal_density_Hpcm3: 1e4
+  HydrogenFractionByMass: 0.76     # Hydrogen fraction by mass. (Default: 0.76)
+  use_radiative_transfer: 0        # Arrays of ionization/heating rates are provided. (Default: 0)
+  cmb_temperature_floor: 1         # Enable/disable an effective CMB temperature floor. (Default: 1)
+  RT_heating_rate_cgs: 0           # Heating rate in units of / nHI_cgs. (Default: 0)
+  RT_HI_ionization_rate_cgs: 0     # HI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0    # HeI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0   # HeII ionization rate in cgs [1/s]. (Default: 0)
+  volumetric_heating_rates_cgs: 0  # Volumetric heating rate in cgs [erg/s/cm3]. (Default: 0)
+  specific_heating_rates_cgs: 0    # Specific heating rate in cgs [erg/s/g]. (Default: 0)
+  initial_nHII_to_nH_ratio: -1     # Initial nHII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeI_to_nH_ratio: -1     # Initial nHeI to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeII_to_nH_ratio: -1    # Initial nHeII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeIII_to_nH_ratio: -1   # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
 
 GEARChemistry:
   initial_metallicity: 0
   scale_initial_metallicity: 1
+  diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
 GEARFeedback:
   supernovae_Ia_energy_erg: 1e51
   supernovae_efficiency: 0
   with_stellar_wind_feedback: 0
+  stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
+  discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
   yields_table: POPIIsw.h5
   yields_table_first_stars: POPIIsw.h5
   discrete_yields: 1
@@ -119,15 +135,28 @@ GEARFeedback:
   HII_min_density_Hpcm3: 0.01
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
-  HII_rebuild_time_Myr:   0.5   # fixed cadence, the sibling examples' value
+  HII_rebuild_time_Myr:   0.5               # fixed cadence, the sibling examples' value
+  HII_rebuild_floor_Myr: 1e-4               # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass photon budget is integrated over. (Default: 1e-4)
+  HII_angular_nside:             0          # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. (Default: 0)
+  HII_deterministic_boundary_ionization: 0  # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
+  HII_couple_ionization_rate: 0             # Rate-couple HII photoionization into Grackle's own RT fields instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1. (Default: 0)
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
   max_timestep_young_Myr:               0.5
   max_timestep_old_Myr:                 1
-  HII_max_search_radius: 3.0   # comoving; physical reach = a * value = 0.3,
-                                # 2x the physical boxsize (same margin as
-                                # the other tiers' 0.1 reach vs. their 0.05
-                                # boxsize)
+  min_star_timestep_Myr: 1e-4        # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
+  HII_max_search_radius: 3.0         # comoving; physical reach = a * value = 0.3,
+                                     # 2x the physical boxsize (same margin as
+                                     # the other tiers' 0.1 reach vs. their 0.05
+                                     # boxsize)
   HII_max_retry_full_buffer: 30
+  HII_max_radius_expansion_tries: 5  # Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)
+  HII_radius_expansion_factor: 1.1   # Growth factor applied to the HII search radius at each expansion try. (Default: 1.1)
+  overwrite_birth_time: 0            # Overwrite the birth time of stars read from the ICs? (Default: 0)
+  birth_time: -1                     # Birth time used for all stars if overwrite_birth_time is 1 (-1 means the stars remain inactive feedback-wise throughout the run).
+  overwrite_birth_density: 0         # Overwrite the birth density of stars read from the ICs? (Default: 0)
+  birth_density: -1                  # Birth density used for all stars if overwrite_birth_density is 1.
+  overwrite_birth_temperature: 0     # Overwrite the birth temperature of stars read from the ICs? (Default: 0)
+  birth_temperature: -1              # Birth temperature used for all stars if overwrite_birth_temperature is 1.

@@ -7,34 +7,35 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1                       # Kelvin
 
 Restarts:
-  enable: 0
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
 
-# No Potential: block -- --external-gravity (run.sh) is a no-op force,
-# matching the sibling StromgrenSphere* examples' idiom for "no gravity".
+# Parameters for the self-gravity scheme
 Gravity:
-  MAC:                           adaptive
-  epsilon_fmm:                   0.001
-  theta_cr:                      0.7
-  eta:          0.025
-  max_physical_baryon_softening: 0.005
+  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
+  eta:          0.025                      # Constant dimensionless multiplier for time integration.
+  max_physical_baryon_softening: 0.005     # Physical softening length (in internal units)
   mesh_side_length:        32
 
-# Parameters governing the time integration -- short on purpose: this is a
-# cheap momentum-conservation self-check, not a dynamical run (see README).
+# Parameters governing the time integration -- time_end=3.068e-3 is exactly
+# 3.0 Myr, matching STARBENCH's (Bisbas et al. 2015) late-phase test.
 TimeIntegration:
   time_begin:        0.
-  time_end:          1e-4  # ~0.098 Myr
-  dt_min:            1e-12
-  dt_max:            1e-5  # ~0.0098 Myr
+  time_end:          3.068e-3
+  dt_min:            1e-10
+  dt_max:            1e-5
 
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1e-5  # 10 snapshots over the run
+  delta_time: 5e-5
   recording_triggers_sink:   [-1, -1, -1]
-  compression: 9
+  compression: 9  # Lossless HDF5 gzip compression
 
 Scheduler:
   cell_extra_gparts: 10
@@ -44,12 +45,12 @@ Scheduler:
   tasks_per_cell: 100
 
 Statistics:
-  delta_time:           1e-5
+  delta_time:           5e-5
   time_first:             0.
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          ICs_radiation_pressure.hdf5
+  file_name:          ICs_starbench.hdf5
   periodic:                 1
   shift:              [0.0, 0.0, 0.0]
 
@@ -57,12 +58,17 @@ InitialConditions:
 SPH:
   resolution_eta:        1.2348
   CFL_condition:         0.1
-  minimal_temperature:   1
-  initial_temperature:   1000
+  minimal_temperature:   1000  # Floors the neutral gas near STARBENCH's T_o=1e3 K. A direct check
+                               # found this code's real cooling physics (metal-line cooling at
+                               # Z/Zsun~0.231, needed to hit T_i=1e4 K) collapses the neutral gas to
+                               # ~2-5 K almost immediately -- nowhere near T_o -- which removes the
+                               # pressure confinement the STARBENCH stagnation radius depends on.
+                               # This floor does not hold gas fixed at T_o (it can still heat freely,
+                               # just not cool below this), so the ionization front still propagates
+                               # normally. See README.
+  initial_temperature:   1000  # Initial neutral-gas temperature, matching the floor above.
 
-# Cooling with Grackle 3.0 -- present for parser completeness; never invoked
-# since run.sh does not pass --cooling (this test isolates radiation pressure
-# from photoionization/thermal effects, see README).
+# Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5
   with_UV_background: 0
@@ -89,10 +95,7 @@ GrackleCooling:
   initial_nHeIII_to_nH_ratio: -1   # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
 
 GEARChemistry:
-  # Solar (Z/Zsun=1), not the Z=0 the other StromgrenSphere* examples use --
-  # this test needs a non-negligible IR opacity kappa_IR=10 cm^2/g*(Z/Zsun)
-  # (Eq. rp-tauIR) to actually exercise the (1+tau_IR) term (see README).
-  initial_metallicity: 1
+  initial_metallicity: 0
   scale_initial_metallicity: 1
   diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
@@ -108,23 +111,34 @@ GEARFeedback:
   imf_transition_metallicity: -5
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
-  # Radiation -- photoionization off, radiation pressure on: isolates the
-  # momentum-injection channel from the (separate) thermal/ionization one.
+  # Radiation
   with_photoelectric_heating:    0
-  with_photoionization:          0
-  radiation_pressure_efficiency: 1
-  HII_rebuild_time_Myr:   0.5
+  with_photoionization:          1
+  HII_min_density_Hpcm3: 1
+  radiation_pressure_efficiency: 0
+  HII_max_age_Myr:        50.0
+  HII_rebuild_time_Myr:   0.01              # Fixed cadence, not a physical parameter (see README's Cadence
+                                            # section). Keep at or below this value; do not increase without
+                                            # re-checking against the analytic solution.
+  HII_rebuild_floor_Myr: 1e-4               # Floors the elapsed interval the per-pass photon budget is integrated
+                                            # over.
+  HII_angular_nside:             0          # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. (Default: 0)
+  HII_deterministic_boundary_ionization: 0  # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
+  HII_couple_ionization_rate: 0             # Rate-couple HII photoionization into Grackle's own RT fields instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1. (Default: 0)
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
   max_timestep_young_Myr:               0.5
   max_timestep_old_Myr:                 1
-  min_star_timestep_Myr: 1e-4     # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
-  HII_max_search_radius: 0.1
+  HII_max_search_radius: 0.0049   # 4.9 pc: just inside the box half-width (5 pc), so the
+                                  # search can reach essentially the full box without tripping
+                                  # the T6 startup warning about exceeding the periodic wrap
+                                  # distance.
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5
   HII_radius_expansion_factor: 1.1
+  min_star_timestep_Myr: 1e-4
   overwrite_birth_time: 0         # Overwrite the birth time of stars read from the ICs? (Default: 0)
   birth_time: -1                  # Birth time used for all stars if overwrite_birth_time is 1 (-1 means the stars remain inactive feedback-wise throughout the run).
   overwrite_birth_density: 0      # Overwrite the birth density of stars read from the ICs? (Default: 0)

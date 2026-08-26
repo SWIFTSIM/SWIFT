@@ -1,7 +1,6 @@
 # Intro
 A single star at the center of a uniform, periodic gas box, with only the
-radiation-pressure momentum channel (`GEARFeedback:radiation_pressure_efficiency`)
-active -- photoionization, cooling and gravity are all off. This is the Tier-1
+radiation-pressure momentum channel active. Photoionization, cooling and gravity are all off. This is a
 momentum-conservation self-check: it verifies that the code applies exactly
 what its own momentum-injection formula says (Eq. rp-momentum-rate in
 `theory/GEAR/Radiation/01_radiation_pressure.tex`), with no missing factor,
@@ -30,9 +29,6 @@ the kick stays small relative to the kick itself.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-`run.sh` never passes `--cooling` to `swift` (this test isolates the
-radiation-pressure momentum channel from thermal effects), so cooling is
-never enabled and the configured Grackle mode has no effect on this run.
 
 # Run
 ```

@@ -27,6 +27,7 @@
 
 #include "../../feedback_properties.h"
 #include "cooling_properties.h"
+#include "hdf5_functions.h"
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -42,7 +43,7 @@
 /*! Lifetime granted to an ionization tag, in units of the rebuild interval
     that produced it. Must exceed 1: a tag has to outlive the gap to its own
     star's next rebuild pass, or cooling (which expires tags on the gas
-    particle's own, independently-binned timestep --
+    particle's own, independently-binned timestep; see
     src/cooling/grackle/cooling_gear_subgrid.h) can clear it before the star
     ever gets the chance to renew it. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
@@ -54,6 +55,81 @@
     without bound; the photons emitted meanwhile escaped an empty cell rather
     than being stored, so they must not be handed to the next landing pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
+
+/*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
+    genuinely-zero table entry (Q_H/DotEExcess below the source table's own
+    ionization-threshold mass, where pychem defines them to be exactly 0;
+    see PyChemInitTable/libradiation.py) does not produce log10(0) = -inf.
+    Matches pychem's own floor bit-for-bit (PyChemInitTable/
+    libparsec_radiation.py's `_LOG_FLOOR`): SWIFT's radiation interpolation
+    must match pychem's own log10(mass)-vs-log10(value) interpolation
+    scheme. Applied to the CGS value itself (before the internal-unit
+    conversion), not the converted value: this is the number pychem's own
+    floor actually clamps. So, a query that is "native-zero" in SWIFT means
+    exactly what it means in pychem, independently of SWIFT's unit
+    system. */
+#define RADIATION_LOG_FLOOR_CGS 1e-300
+
+/*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
+    the integrated table's own top mass edge before calling interpolate_2d(),
+    so an exact-mass_max query deterministically takes the blended (not
+    boundary-clamped) branch. See radiation_get_luminosities_from_
+    integral_2d()'s own doxygen for why this matters. */
+#define RADIATION_2D_EDGE_EPS 1e-5f
+
+/**
+ * @brief Transient, read-time-only grid metadata shared by every dataset in
+ * a Data/Radiation HDF5 group. Not part of the persistent #radiation
+ * struct: rebuilt fresh by radiation_read_data() on every read, including
+ * on restart.
+ */
+struct radiation_grid_metadata {
+  /*! "M" (mass-only) or "M,Z" (mass x metallicity), from the group's own
+      "dimensionality" attribute. */
+  char dimensionality[8];
+
+  /*! Is this a 2D ("M,Z") table? Derived from #dimensionality. */
+  int is_2d;
+
+  /*! log10(mass grid minimum), from the group's "m0" attribute. */
+  float log_mass_min;
+
+  /*! log10 mass grid step, from the group's "dm" attribute. */
+  float mass_step;
+
+  /*! Number of mass grid points, from the group's "nm" attribute. */
+  int n_mass;
+
+  /*! Number of metallicity grid points (0 for a 1D table), from the
+      group's "nz" attribute. */
+  int n_metallicity;
+
+  /*! Metallicity grid values (mass fraction Z, native units; NULL for a
+      1D table). Not guaranteed log-uniformly spaced by the file. See
+      radiation_read_data()'s own comment on the approximation this forces
+      for interpolate_2d_init(). */
+  float *metallicity;
+
+  /*! Mass-axis boundary condition for the "Luminosity" dataset (2D tables
+      only; boundary_condition_error otherwise), from the group's
+      edge_policy_luminosity_below/above attributes. The metallicity axis
+      always clamps (boundary_condition_const), matching pychem's own
+      "clamp to nearest grid Z, never extrapolated" convention; see
+      radiation_build_tables(). */
+  enum interpolate_boundary_condition edge_policy_luminosity;
+
+  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only).
+      Dispatched on the group's "source" attribute between
+      edge_policy_q_h_blackbody_* and edge_policy_q_h_parsec_*, matching
+      which Q_H variant pychem wrote as the table's primary Q_H. */
+  enum interpolate_boundary_condition edge_policy_q_h;
+
+  /*! Mass-axis boundary condition for the "DotEExcess" dataset (2D tables
+      only). Always edge_policy_q_h_blackbody_*, regardless of "source":
+      pychem computes DotEExcess as Q_H_Blackbody * MeanExcessPhotonEnergyHI
+      unconditionally. */
+  enum interpolate_boundary_condition edge_policy_dot_e_excess;
+};
 
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -109,6 +185,7 @@ double radiation_get_photoionization_rate_coefficient_from_flux_HI(
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
+void radiation_zero_spart_output(struct spart *sp);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
@@ -126,25 +203,6 @@ float radiation_get_star_physical_radiation_pressure(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo);
 
-float radiation_get_individual_star_radius(const float mass,
-                                           const struct unit_system *us,
-                                           const struct phys_const *phys_const);
-float radiation_get_individual_star_temperature(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-float radiation_get_individual_star_luminosity(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
-double radiation_get_individual_star_mean_excess_photon_energy_HI(
-    const float mass, const struct unit_system *us,
-    const struct phys_const *phys_const);
-
 /******************************************************************************/
 /* Functions to deal with integrated data over an IMF. These functions read,
    interpolate and integrate. */
@@ -159,8 +217,10 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
 void radiation_restore(struct radiation *rad, FILE *stream,
                        const struct stellar_model *sm,
                        const struct unit_system *us,
-                       const struct phys_const *phys_const);
+                       const struct phys_const *phys_const,
+                       const char with_radiation);
 void radiation_clean(struct radiation *rad);
+void radiation_zero_pointers(struct radiation *rad);
 
 float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2);
@@ -172,30 +232,61 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m);
 double radiation_get_mean_excess_photon_energy_HI_from_integral(
     const struct radiation *rad, float log_m1, float log_m2);
+double radiation_get_mean_excess_photon_energy_HI_from_raw(
+    const struct radiation *rad, float log_m);
+
+float radiation_get_log_metallicity(float Z);
+float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
+                                             float log_z, float log_m);
+double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
+                                                 float log_z, float log_m,
+                                                 float star_age_myr);
+double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
+    const struct radiation *rad, float log_z, float log_m, float star_age_myr);
+
+float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
+double radiation_get_ionization_rate_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
+double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
+float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
+                                                float log_z, float star_age_myr,
+                                                float m_min);
+
+float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
+                                    float log_z);
+double radiation_get_star_ionization_rate(const struct radiation *rad,
+                                          float log_m, float log_z,
+                                          float star_age_myr);
+double radiation_get_star_mean_excess_photon_energy_HI(
+    const struct radiation *rad, float log_m, float log_z, float star_age_myr);
 
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
                          const struct phys_const *phys_const,
                          const int restart);
-void radiation_read_luminosities_array(struct radiation *rad,
-                                       struct interpolation_1d *interp_raw,
-                                       struct interpolation_1d *interp_int,
-                                       const struct stellar_model *sm,
-                                       int interpolation_size,
-                                       const struct unit_system *us,
-                                       const struct phys_const *phys_const);
-void radiation_read_ionization_rate_array(struct radiation *rad,
-                                          struct interpolation_1d *interp_raw,
-                                          struct interpolation_1d *interp_int,
-                                          const struct stellar_model *sm,
-                                          int interpolation_size,
-                                          const struct unit_system *us,
-                                          const struct phys_const *phys_const);
+void radiation_read_luminosities_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_ionization_rate_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, struct interpolation_1d *interp_raw,
-    struct interpolation_1d *interp_int, const struct stellar_model *sm,
-    int interpolation_size, const struct unit_system *us,
-    const struct phys_const *phys_const);
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_main_sequence_lifetime_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_main_sequence_lifetime_inverse_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

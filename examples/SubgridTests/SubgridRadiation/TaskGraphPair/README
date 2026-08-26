@@ -1,13 +1,13 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. Two individual star particles are hand-placed at the centers of two consecutive top-level cells, so their HII regions grow independently and eventually meet.
 
-This example tests the GEAR subgrid ionization algorithm across two concurrently-active, task-graph-neighbouring `radiation_level` regions -- in particular, the locking that prevents the two regions' `hii_ionization_feedback` tasks from racing on shared gas.
+This example tests the GEAR subgrid ionization algorithm across two concurrently-active, task-graph-neighbouring `radiation_level` region. In particular, the locking that prevents the two regions' `hii_ionization_feedback` tasks from racing on shared gas.
 
-**Role: software-correctness test, not a physics validation target.** This checks task-graph locking/concurrency, not agreement with any published result. See `../StromgrenSphereStarbench/`, `../StromgrenSphereHuSmith2017/`, and `../StromgrenSphereClumpSmith2021/` for the actual validation targets.
+**Role: software-correctness test.** This checks task-graph locking/concurrency, not agreement with any published result. See `../Starbench/`, `../Hu2017/`, and `../ClumpSmith2021/` for the actual validation targets.
 
 `GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
 
-`gas_mass` defaults to 0.3 Msun, heavier than the single-star `../StromgrenSphere/` default of 0.1 -- this box holds ~33x more gas at the same density, so the heavier default particle keeps the particle count comparable.
+`gas_mass` defaults to 0.3 Msun.
 
 # Configure
 To run this example with the GEAR model,
@@ -32,8 +32,4 @@ The run.sh script calls the `makeIC_pair.py` script with default values. Run `py
 ```
 
 # Checking
-This is a software-correctness test, not a physics comparison: a correct
-result is the run reaching `time_end` with no `error()`-shaped lines in
-`output.log`, under `--enable-debugging-checks`, without a `task_lock`
-deadlock or assertion failure from the two regions' concurrent
-`hii_ionization_feedback` tasks.
+This is a software-correctness test, not a physics comparison: a correct result is the run reaching `time_end` with no `error()`-shaped lines in `output.log`, under `--enable-debugging-checks`, without a `task_lock` deadlock or assertion failure from the two regions' concurrent `hii_ionization_feedback` tasks.

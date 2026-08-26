@@ -23,7 +23,7 @@ dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must s
                         #below time_end (engine_config() errors otherwise) -- lower
                         #this if you shorten time_end below the default.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override; see README's Temperature section
-rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override; see README's Cadence section
+rebuild_time_myr=${rebuild_time_myr:=0.01} #GEARFeedback:HII_rebuild_time_Myr override; see README's Cadence section
 max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc)
 max_retry_full_buffer=${max_retry_full_buffer:=30} #Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override

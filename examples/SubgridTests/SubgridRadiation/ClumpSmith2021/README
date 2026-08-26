@@ -6,10 +6,6 @@ nside=1 pixel 4's center direction). Each source is 19.2 Msun
 (Q_H ~ 2.5e48 s^-1), matching the paper's 4 sources totalling
 Q_H ~ 1e49 s^-1.
 
-See `../StromgrenSphereClump/` for the sibling example that instead
-calibrates clump placement against this code's own measured ionization
-front reach.
-
 ## Metallicity
 `initial_metallicity=0` (pure hydrogen, matching the paper) is the
 default. This code's own ionized-gas temperature floor is

@@ -103,6 +103,18 @@ else
 		   params.yml 2>&1 | tee output.log
 fi
 
+# Compare to the analytical solution
+python3 stromgren_analytic_check.py -s 'snap/snapshot_*.hdf5'
+
+# hii_anisotropy_check.py only gives a meaningful result under the
+# IONIZATION_FEEDBACK_DEBUG_NO_COOLING build (see README's Configure
+# section); skip it otherwise rather than report a misleading result.
+if ../../../../swift --version 2>&1 | grep -q IONIZATION_FEEDBACK_DEBUG_NO_COOLING; then
+    python3 hii_anisotropy_check.py -s 'snap/snapshot_*.hdf5'
+else
+    echo "Skipping hii_anisotropy_check.py: swift was not built with -DIONIZATION_FEEDBACK_DEBUG_NO_COOLING."
+fi
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
@@ -117,5 +129,6 @@ else
 	mv statistics.txt $run_name
 	mv unused_parameters.yml $run_name
 	mv used_parameters.yml $run_name
+	mv *.png $run_name
     fi
 fi

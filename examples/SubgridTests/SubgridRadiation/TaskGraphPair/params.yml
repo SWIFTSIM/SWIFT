@@ -23,7 +23,8 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.     # The starting time of the simulation (in internal units).
-  time_end:          2e-2   # The end time of the simulation (in internal units).
+  time_end:          5e-2   # The end time of the simulation (in internal units, ~49 Myr -- long enough for
+                            # both HII regions to grow past R_st and overlap, short of HII_max_age_Myr).
   dt_min:            1e-10  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2   # The maximal time-step size of the simulation (in internal units).
 
@@ -32,25 +33,28 @@ Snapshots:
   subdir: snap
   basename:   snapshot                     # Common part of the name of output files
   time_first: 0.0                          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-4                         # Time difference between consecutive outputs (in internal units)
+  delta_time: 2e-3                         # Time difference between consecutive outputs (in internal units)
   recording_triggers_sink:   [-1, -1, -1]  # Recording starts 10M, 1M and 0.1M years before a snapshot
-  compression: 9                           # Lossless HDF5 gzip compression -- this example's fine time sampling and repeated sweeps generate a lot of snapshot data
+  compression: 9                           # Lossless HDF5 gzip compression to save disk space
 
 Scheduler:
-  cell_extra_gparts: 10  # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks:  10  # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 10  # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  max_top_level_cells: 3
+  cell_extra_gparts: 10   # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:  10   # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 10   # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  max_top_level_cells: 4  # Cell width = boxsize/4 = 0.04 kpc. makeIC_pair.py places the two stars at
+                          # the centers of two CONSECUTIVE cells (not on any boundary) so their
+                          # radiation_level regions are genuine task-graph neighbours -- keep this in
+                          # sync with makeIC_pair.py's --n_cells (also 4) if you change either.
   tasks_per_cell: 100
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-4  # Time between statistics output
+  delta_time:           1e-3  # Time between statistics output
   time_first:             0.  # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          ICs_homogeneous_box.hdf5
+  file_name:          ICs_stromgren_pair.hdf5
   periodic:                 1  # Are we running with periodic ICs?
   shift:              [0.0, 0.0, 0.0]
 
@@ -112,8 +116,7 @@ GEARFeedback:
                                             # test evacuates its own ionized region down to ~0.1-1 H/cm^3, which self-quenches the region against that default.
   radiation_pressure_efficiency: 0          # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   HII_max_age_Myr:        50.0              # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_rebuild_time_Myr:   0.5               # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5)
-                                            # Numerical parameter, not a physical one; may be changed freely.
+  HII_rebuild_time_Myr:   0.5               # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
   HII_rebuild_floor_Myr: 1e-4               # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass photon budget is integrated over. (Default: 1e-4)
   HII_angular_nside:             0          # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. (Default: 0)
   HII_deterministic_boundary_ionization: 0  # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
@@ -125,7 +128,8 @@ Stars:
   max_timestep_young_Myr:               0.5  # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1    # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
   min_star_timestep_Myr: 1e-4                # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
-  HII_max_search_radius: 0.1                 # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+  HII_max_search_radius: 0.06                # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+                                             # Kept below the box half-width (0.08) to avoid periodic self-interaction.
   HII_max_retry_full_buffer: 30              # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold
                                              # several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)
   HII_max_radius_expansion_tries: 5          # Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)

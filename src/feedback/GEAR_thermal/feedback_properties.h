@@ -208,6 +208,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       params, "GEARFeedback:with_stellar_wind_feedback");
   fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
 
+  /* Are we running with photoionization? Read early, like
+   * with_stellar_wind_feedback above, so stellar_evolution_props_init() can
+   * skip opening the radiation table for non-radiation runs. */
+  const char with_photoionization = (char)parser_get_opt_param_int(
+      params, "GEARFeedback:with_photoionization", 0);
+
+  /* Radiation pressure efficiency, read early for the same reason: its sign
+   * decides whether the radiation table is needed too, independently of
+   * with_photoionization. */
+  const float radiation_pressure_efficiency = parser_get_opt_param_float(
+      params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
+
+  /* The radiation table backs both the HII photoionization band and the
+   * bolometric radiation-pressure band (see
+   * stellar_evolution_compute_preSN_feedback_individual_star()/_spart());
+   * photoelectric heating has no downstream consumer yet, so it does not
+   * gate this. */
+  const char with_radiation =
+      with_photoionization || (radiation_pressure_efficiency > 0.0f);
+
   /* Pre-Supernovae energy efficiency */
   double w_efficiency = 0.0;
   if (with_stellar_wind_feedback) {
@@ -223,7 +243,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-                               cosmo, fp->with_stellar_wind_feedback);
+                               cosmo, fp->with_stellar_wind_feedback,
+                               with_radiation);
 
   /* Read the metallicity threashold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -258,7 +279,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo, fp->with_stellar_wind_feedback);
+                                 params, cosmo, fp->with_stellar_wind_feedback,
+                                 with_radiation);
   }
 
   /* ------------- Subgrid Radiation properties ------------- */
@@ -267,8 +289,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* TODO: For the future, enforce these to have a non-zero value */
 
   /* Radiation pressure */
-  fp->radiation_pressure_efficiency = parser_get_opt_param_float(
-      params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
+  fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
   if (fp->radiation_pressure_efficiency > 0.0) {
     fp->radiation_policy |= radiation_policy_radiation_pressure;
@@ -280,10 +301,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
   }
-
-  /* Are we running with photoionization? */
-  const int with_photoionization =
-      parser_get_opt_param_int(params, "GEARFeedback:with_photoionization", 0);
 
   if (with_photoionization) {
     fp->radiation_policy |= radiation_policy_photoionization;

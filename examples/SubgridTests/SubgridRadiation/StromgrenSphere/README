@@ -1,11 +1,12 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
 
-**Role: algorithm/task-graph diagnostic, not a physics validation target.** `stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../StromgrenSphereStarbench/`'s own README) -- a PASS here is not evidence of correct physics. This example exists to exercise the model's own task-graph/rebuild-cadence behaviour (search-radius expansion, rebuild cadence, and their interaction), using the Spitzer curve as a cheap, always-available reference shape, not a certified target. `hii_anisotropy_check.py` additionally checks tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build. For actual published-physics validation, see `../StromgrenSphereStarbench/` (single star vs. the STARBENCH consensus solution), `../StromgrenSphereHuSmith2017/` (4 co-located stars vs. Hu et al. 2017/Smith et al. 2021), and `../StromgrenSphereClumpSmith2021/` (4 stars + clump vs. Smith et al. 2021's own Fig. 2).
+This example exists to exercise the model's own task-graph/rebuild-cadence behaviour (search-radius expansion,
+rebuild cadence, and their interaction), using the Spitzer curve as a reference shape. 
 
-`GEARFeedback:HII_rebuild_time_Myr` (default 0.5 Myr, fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
+`stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../Starbench/`'s README). `hii_anisotropy_check.py` additionally checks tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build.
 
-`Stars:HII_radius_expansion_factor` and `Stars:HII_max_radius_expansion_tries` bound how fast the search radius can grow: at most a factor `radius_expansion_factor^max_radius_expansion_tries` per rebuild.
+Note `Stars:HII_radius_expansion_factor` and `Stars:HII_max_radius_expansion_tries` bound how fast the search radius can grow: at most a factor `radius_expansion_factor^max_radius_expansion_tries` per rebuild.
 
 # Configure
 Standard build, for the physics run:

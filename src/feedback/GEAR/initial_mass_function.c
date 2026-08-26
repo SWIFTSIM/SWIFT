@@ -110,6 +110,12 @@ float initial_mass_function_sample(const struct initial_mass_function *imf,
  *
  * The x are supposed to be linear in log.
  *
+ * Uses the mass-weighted kernel m*n(m): correct for supernovae_ii.c's
+ * per-progenitor-mass SNII yield fractions, its only remaining caller.
+ * Radiation needs the number-weighted kernel n(m) instead, so it reads
+ * pychem's precomputed Integrated_* datasets directly rather than calling
+ * this function.
+ *
  * @param imf The #initial_mass_function.
  * @param data The data to integrate.
  * @param count The number of element in data.

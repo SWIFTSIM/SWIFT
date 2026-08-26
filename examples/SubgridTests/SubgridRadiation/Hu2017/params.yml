@@ -1,0 +1,161 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
+
+Restarts:
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:                           adaptive
+  epsilon_fmm:                   0.001
+  theta_cr:                      0.7
+  eta:          0.025
+  max_physical_baryon_softening: 0.005
+  mesh_side_length:        32
+
+# Parameters governing the time integration -- time_end=8.182e-3 is 8.0 Myr,
+# matching Hu et al. (2017) Fig. A1's reported test duration.
+TimeIntegration:
+  time_begin:        0.
+  time_end:          8.182e-3
+  dt_min:            1e-10
+  dt_max:            1e-5
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir: snap
+  basename:   snapshot
+  time_first: 0.0
+  delta_time: 1e-4  # ~82 snapshots over the run
+  recording_triggers_sink:   [-1, -1, -1]
+  compression: 9
+
+Scheduler:
+  cell_extra_gparts: 10
+  cell_extra_sinks:  10
+  cell_extra_sparts: 10
+  max_top_level_cells: 3  # Odd, so the star cluster at the box center sits mid-cell.
+  tasks_per_cell: 100
+
+Statistics:
+  delta_time:           1e-3
+  time_first:             0.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          ICs_husmith.hdf5
+  periodic:                 1
+  shift:              [0.0, 0.0, 0.0]
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1000  # Floors the neutral gas near Hu/Smith's T_o=1e3 K. A direct check
+                               # on the sibling Starbench example found real
+                               # Grackle cooling (metal-line cooling at Z/Zsun~0.231) collapses
+                               # the neutral gas to ~2-5 K almost immediately without this floor
+                               # -- removing the pressure confinement the STARBENCH stagnation
+                               # radius depends on. Does not force a full isothermal EOS (gas can
+                               # still heat freely). See README.
+  initial_temperature:   0     # 0 = use the per-particle InternalEnergy from the IC file
+                               # (makeIC_clump.py's --temperature, default 1000 K, matching
+                               # Hu et al. 2017's T_o exactly -- see README).
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5  # Standard table -- n_H=100 cm^-3 is well within its range,
+                                          # unlike the sibling ClumpSmith2021's 1e4 cm^-3 clump.
+  with_UV_background: 0
+  redshift: -1
+  with_metal_cooling: 1
+  self_shielding_method: -1
+  self_shielding_threshold_atom_per_cm3: 0.007
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+  maximal_density_Hpcm3: 1e4
+  HydrogenFractionByMass: 0.76            # Hydrogen fraction by mass. (Default: 0.76)
+  use_radiative_transfer: 0               # Arrays of ionization/heating rates are provided. (Default: 0)
+  cmb_temperature_floor: 1                # Enable/disable an effective CMB temperature floor. (Default: 1)
+  RT_heating_rate_cgs: 0                  # Heating rate in units of / nHI_cgs. (Default: 0)
+  RT_HI_ionization_rate_cgs: 0            # HI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0           # HeI ionization rate in cgs [1/s]. (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0          # HeII ionization rate in cgs [1/s]. (Default: 0)
+  volumetric_heating_rates_cgs: 0         # Volumetric heating rate in cgs [erg/s/cm3]. (Default: 0)
+  specific_heating_rates_cgs: 0           # Specific heating rate in cgs [erg/s/g]. (Default: 0)
+  initial_nHII_to_nH_ratio: -1            # Initial nHII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeI_to_nH_ratio: -1            # Initial nHeI to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeII_to_nH_ratio: -1           # Initial nHeII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  initial_nHeIII_to_nH_ratio: -1          # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+
+GEARChemistry:
+  # Z=0 -- literally pure hydrogen, matching Hu et al. (2017) and Smith et
+  # al. (2021)'s own medium exactly (X_H=1, no metal term in either
+  # paper's algorithm). An earlier version of this example used
+  # Z/Zsun~0.231 to hit the papers' flat T_i=1e4 K target via this code's
+  # metallicity-dependent collisional-equilibrium fit, but that introduces
+  # real metal-line cooling the papers' idealized medium doesn't have --
+  # see Starbench/README's "What actually happened" section
+  # for the direct measurement (neutral gas collapsing to ~2-5 K instead
+  # of T_o) that motivated switching to Z=0 here too. This code's own Z=0
+  # floor gives T_i~47500 K, not 1e4 K -- the STARBENCH comparison is
+  # evaluated at this run's actual T_i/T_o
+  # (hu_smith_analytic_check.py --T-ionized-K), not hardcoded to the
+  # papers' own numbers.
+  initial_metallicity: 0
+  scale_initial_metallicity: 1
+  diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
+
+GEARFeedback:
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0
+  with_stellar_wind_feedback: 0
+  stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
+  discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+
+  # Radiation
+  with_photoelectric_heating:    0
+  with_photoionization:          1
+  HII_min_density_Hpcm3: 1
+  radiation_pressure_efficiency: 0
+  HII_max_age_Myr:        50.0
+  HII_rebuild_time_Myr:   0.01              # Fixed cadence, ~8x t_rec(n_H=100cm^-3, 1e4K)~1.2e-3 Myr. Numerical
+                                            # parameter, not a physical one; may be changed freely for cadences
+                                            # <=0.03 Myr.
+  HII_rebuild_floor_Myr: 1e-4               # Floors the elapsed interval the per-pass photon budget is integrated
+                                            # over.
+  HII_angular_nside: 0                      # Spherical (no angular splitting) -- this is Hu et al.'s own
+                                            # algorithm, uniform medium, nothing for angular splitting to fix.
+  HII_deterministic_boundary_ionization: 0  # Probabilistic, the validated default.
+  HII_couple_ionization_rate: 0             # Rate-couple HII photoionization into Grackle's own RT fields instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1. (Default: 0)
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.
+  timestep_age_threshold_Myr:           7.
+  max_timestep_young_Myr:               0.5
+  max_timestep_old_Myr:                 1
+  min_star_timestep_Myr: 1e-4     # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
+  HII_max_search_radius: 0.04     # 40 pc -- inside the 50 pc box half-width, comfortably
+                                  # beyond R_STAG~23.2 pc (with overshoot margin); see README.
+  HII_max_retry_full_buffer: 30
+  HII_max_radius_expansion_tries: 5
+  HII_radius_expansion_factor: 1.1
+  overwrite_birth_time: 0         # Overwrite the birth time of stars read from the ICs? (Default: 0)
+  birth_time: -1                  # Birth time used for all stars if overwrite_birth_time is 1 (-1 means the stars remain inactive feedback-wise throughout the run).
+  overwrite_birth_density: 0      # Overwrite the birth density of stars read from the ICs? (Default: 0)
+  birth_density: -1               # Birth density used for all stars if overwrite_birth_density is 1.
+  overwrite_birth_temperature: 0  # Overwrite the birth temperature of stars read from the ICs? (Default: 0)
+  birth_temperature: -1           # Birth temperature used for all stars if overwrite_birth_temperature is 1.

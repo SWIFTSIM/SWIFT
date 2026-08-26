@@ -1222,14 +1222,22 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
+  /* radiation_policy is a plain scalar in feedback_props, so it is already
+   * restored by the flat block read above. Both photoionization and
+   * radiation pressure consume the radiation table (see
+   * stellar_evolution_props_init()); photoelectric heating does not. */
+  const char with_radiation =
+      (feedback->radiation_policy & (radiation_policy_photoionization |
+                                     radiation_policy_radiation_pressure)) != 0;
+
   stellar_evolution_restore(&feedback->stellar_model, stream,
-                            feedback->with_stellar_wind_feedback, us,
-                            phys_const);
+                            feedback->with_stellar_wind_feedback,
+                            with_radiation, us, phys_const);
 
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
-                              feedback->with_stellar_wind_feedback, us,
-                              phys_const);
+                              feedback->with_stellar_wind_feedback,
+                              with_radiation, us, phys_const);
   }
 }
 
