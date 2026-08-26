@@ -216,18 +216,42 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 #ifdef DEBUG_INTERACTIONS_STARS
 
   list += *num_fields;
-  *num_fields += 4;
+  *num_fields += 7;
 
-  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_density);
-  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_force);
-  list[2] = io_make_output_field("Ids_ngb_density", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
-  list[3] = io_make_output_field("Ids_ngb_force", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
+  list[0] = io_make_output_field(
+      "Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_density, "Number of interactions in the density SELF and PAIR");
+  list[1] = io_make_output_field(
+      "Num_ngb_feedback", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_feedback, "Number of interactions in the feedback SELF and PAIR");
+  list[2] = io_make_output_field(
+      "Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_density,
+      "List of interacting particles in the density SELF and PAIR");
+  list[3] = io_make_output_field(
+      "Ids_ngb_feedback", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_feedback,
+      "List of interacting particles in the feedback SELF and PAIR");
+
+  list[4] = io_make_output_field(
+      "EnrichmentWeight", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      feedback_data.enrichment_weight,
+      "Star's SPH-kernel-weighted local gas density, as used by the "
+      "radiation-pressure Sobolev column-density estimate "
+      "(radiation_get_comoving_gas_column_density_at_star). Debug-only "
+      "diagnostic, not meant for physics analysis outside this build.");
+
+  list[5] = io_make_output_field(
+      "GradRhoStar", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      feedback_data.grad_rho_star,
+      "Star's SPH-kernel gas density gradient (internal density/length "
+      "units), feeding the Sobolev length in the radiation-pressure column "
+      "density. Debug-only diagnostic.");
+
+  list[6] = io_make_output_field(
+      "ZStar", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_data.Z_star,
+      "Star's SPH-kernel-weighted local gas metallicity mass fraction, used "
+      "by the radiation-pressure opacity. Debug-only diagnostic.");
 #endif
 }
 

@@ -35,9 +35,9 @@
  * formula in isolation; this unit test replaces it as the Tier-1 formula
  * regression check.
  */
-static double expected_p_rad(float rho_gas, float h_star,
-                             float grad_rho_norm, float Z_star, double L_bol,
-                             double Delta_t, double c) {
+static double expected_p_rad(float rho_gas, float h_star, float grad_rho_norm,
+                             float Z_star, double L_bol, double Delta_t,
+                             double c) {
   const double Z_sun = 0.02;
   const float h_gas = h_star * kernel_gamma;
   const float grad_rho_floor =
@@ -76,8 +76,8 @@ static void check_case(const char *name, float rho_gas, float h_star,
   cosmo.a2_inv = 1.0;
   cosmo.a = 1.0;
 
-  const double expected = expected_p_rad(rho_gas, h_star, grad_rho_norm,
-                                         Z_star, L_bol, Delta_t, c);
+  const double expected =
+      expected_p_rad(rho_gas, h_star, grad_rho_norm, Z_star, L_bol, Delta_t, c);
   const float actual = radiation_get_star_physical_radiation_pressure(
       &sp, (float)Delta_t, &phys_const, &us, &cosmo);
 
@@ -99,15 +99,15 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-  const double c_cgs = 2.99792458e10;    /* cm/s */
-  const double L_bol = 1.0e38;           /* erg/s */
+  const double c_cgs = 2.99792458e10; /* cm/s */
+  const double L_bol = 1.0e38;        /* erg/s */
   /* Delta_t * L_bol is computed as a single float32 product inside
    * radiation_get_star_physical_radiation_pressure before dividing by c;
    * keep it well under FLT_MAX (~3.4e38) here even though the final ratio
    * would be representable at a much larger Delta_t. */
-  const double Delta_t = 1.0;            /* s */
-  const float rho_gas = 1.0f;            /* g/cm^3 */
-  const float h_star = 1.0e-4f;          /* cm: keeps tau_NUV unsaturated */
+  const double Delta_t = 1.0;   /* s */
+  const float rho_gas = 1.0f;   /* g/cm^3 */
+  const float h_star = 1.0e-4f; /* cm: keeps tau_NUV unsaturated */
 
   /* Case 1: solar metallicity, no density gradient -- exercises the
    * unsaturated (1-exp(-tau_NUV)) regime this whole factor was added for
@@ -127,8 +127,8 @@ int main(int argc, char *argv[]) {
 
   /* Case 3: Z_star == 0 -- must give exactly zero radiation pressure
    * (both opacities scale with Z_star, so tau_IR = tau_NUV = 0). */
-  check_case("zero metallicity", rho_gas, h_star, 0.0f, /*Z_star=*/0.0f,
-             L_bol, Delta_t, c_cgs);
+  check_case("zero metallicity", rho_gas, h_star, 0.0f, /*Z_star=*/0.0f, L_bol,
+             Delta_t, c_cgs);
 
   /* Case 4: a well-resolved density gradient, comfortably above
    * RADIATION_MIN_RELATIVE_DENSITY_GRADIENT -- exercises the Sobolev-length
@@ -150,8 +150,8 @@ int main(int argc, char *argv[]) {
     const float grad_rho_floor =
         RADIATION_MIN_RELATIVE_DENSITY_GRADIENT * rho_gas / h_gas;
     check_case("sub-floor density gradient discarded", rho_gas, h_star,
-               /*grad_rho_norm=*/0.5f * grad_rho_floor, /*Z_star=*/0.02f,
-               L_bol, Delta_t, c_cgs);
+               /*grad_rho_norm=*/0.5f * grad_rho_floor, /*Z_star=*/0.02f, L_bol,
+               Delta_t, c_cgs);
   }
 
   return 0;

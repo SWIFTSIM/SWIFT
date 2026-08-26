@@ -83,11 +83,11 @@ runner_iact_nonsym_stars_feedback(const float r2, const float dx[3],
                                   const float H) {
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
-  if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_STARS)
-    si->ids_ngbs_force[si->num_ngb_force] = pj->id;
+  if (si->num_ngb_feedback < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_feedback[si->num_ngb_feedback] = pj->id;
 
   /* Update ngb counters */
-  ++si->num_ngb_force;
+  ++si->num_ngb_feedback;
 #endif
 }
 
