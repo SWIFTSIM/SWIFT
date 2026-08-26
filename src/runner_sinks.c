@@ -31,7 +31,44 @@
 #include "sink.h"
 #include "sink_iact.h"
 #include "space_getsid.h"
+#include "stars.h"
 #include "timers.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Error out if a star under @c c already converged its density this
+ * step and a neighbouring gas particle it may have read is about to be
+ * swallowed. No scheduler dependency currently stops this from happening;
+ * this check exists to find out, on a real run, whether it ever does.
+ *
+ * @param c The #cell to recurse into (pass the swallowed part's hydro.super).
+ * @param p The gas #part about to be swallowed.
+ * @param sink_id The id of the sink swallowing it.
+ * @param e The #engine.
+ */
+static void runner_check_sink_swallow_locks_in_converged_star(
+    struct cell *c, const struct part *p, long long sink_id,
+    const struct engine *e) {
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        runner_check_sink_swallow_locks_in_converged_star(c->progeny[k], p,
+                                                          sink_id, e);
+    return;
+  }
+
+  for (int i = 0; i < c->stars.count; i++) {
+    const struct spart *si = &c->stars.parts[i];
+    if (si->debug_density_converged_at_tic == e->ti_current)
+      error(
+          "Sink swallow locked in a converged star's density! step=%d "
+          "sink_id=%lld gas_id=%lld star_id=%lld star_wcount=%.6e "
+          "star_h=%.6e",
+          e->step, sink_id, p->id, si->id, si->density.wcount, si->h);
+  }
+}
+#endif
 
 /**
  * @brief Process all the gas particles in a cell that have been flagged for
@@ -155,6 +192,11 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
                * by another thread before we do the deed. */
               if (!part_is_inhibited(p, e)) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+                runner_check_sink_swallow_locks_in_converged_star(
+                    c->hydro.super, p, sp->id, e);
+#endif
+
                 /* Finally, remove the gas particle from the system
                  * Recall that the gpart associated with it is also removed
                  * at the same time. */
@@ -198,6 +240,11 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
               /* Re-check that the particle has not been removed
                * by another thread before we do the deed. */
               if (!part_is_inhibited(p, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+                runner_check_sink_swallow_locks_in_converged_star(
+                    c->hydro.super, p, sink->id, e);
+#endif
 
                 /* Finally, remove the gas particle from the system */
                 cell_remove_part(e, c, p, xp);
