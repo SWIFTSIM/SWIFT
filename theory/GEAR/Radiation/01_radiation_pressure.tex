@@ -87,12 +87,19 @@ Two consequences worth keeping precise:
 
 Each active star's momentum injection rate is
 (\code{radiation\_get\_star\_physical\_radiation\_pressure},
-\code{src/feedback/GEAR/radiation.c}):
+\code{src/feedback/GEAR/radiation\_pressure.c}):
 \begin{equation}
-  \dot p_{\rm rad} = \frac{L_{\rm bol}}{c}\,(1+\tau_{\rm IR}),
+  \dot p_{\rm rad} = \frac{L_{\rm bol}}{c}\,(1-e^{-\tau_{\rm NUV}})\,(1+\tau_{\rm IR}),
   \label{eq:rp-momentum-rate}
 \end{equation}
-the standard single-UV-scattering-plus-dust-IR-trapping recipe: direct
+implemented 2026-08-26 (commit \texttt{92399e7ad}): the
+$(1-e^{-\tau_{\rm NUV}})$ factor is the fraction of the star's non-ionizing
+continuum actually absorbed before dust reprocessing, using
+$\kappa_{\rm NUV}=1800\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ (the value where
+\citet{Hopkins2012a}'s single flux-mean estimate and
+\citet{Hopkins2020}'s own NUV sub-band agree; see the git history of this
+section for the "missing term" discussion that preceded the fix). The
+standard single-UV-scattering-plus-dust-IR-trapping recipe: direct
 absorption/scattering of the star's own UV/optical photons deposits
 $L_{\rm bol}/c$ of momentum per unit time; photons re-radiated in the
 IR by dust can scatter multiple times in an optically thick shell
@@ -114,41 +121,40 @@ codebase's $\kappa_{\rm IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$
 lineages sharing the same functional form but are no longer the
 open question: \citet{Hopkins2020} is confirmed as the actual source.
 
-\textbf{New finding from the same primary-source check: a term this
-codebase is missing.} \citet{Hopkins2020} \S4.4, footnote 16 gives the
-full LEBRON momentum-coupling formula as
-$\dot p = \tilde\tau\,L_{\rm bol}/c$, with
+\textbf{Fixed 2026-08-26 (commit \texttt{92399e7ad}): a term this codebase
+was missing.} \citet{Hopkins2020} \S4.4, footnote 16 (also
+\citealt{Hopkins2014}, Appendix~A) gives the full LEBRON momentum-coupling
+formula as $\dot p = \tilde\tau\,L_{\rm bol}/c$, with
 $\tilde\tau = (1-e^{-\tau_{\rm single}})\,(1+\tau_{\rm eff,IR})$,
-\emph{not} simply $(1+\tau_{\rm IR})$ as
-Eq.~\ref{eq:rp-momentum-rate} implements. The
-$(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
-\emph{input} (non-ionizing UV/optical) luminosity actually absorbed
-before reaching the dust that reprocesses it into the trapped IR
-term: this codebase's formula implicitly assumes
-$\tau_{\rm single}\to\infty$ (i.e.\ $(1-e^{-\tau_{\rm single}})=1$,
-full absorption), which only holds deep in a dense cloud. Hopkins et
-al.\ report their own galaxy-scale simulations couple only
-$\langle\tilde\tau\rangle\sim0.4$--$0.7$ of the bolometric luminosity
-on average (an order-unity fraction of sightlines are optically thin
-even in the optical); so at Darwin's production resolution
-(10\,$M_\odot$ to a few $10^4\,M_\odot$ per gas particle), where much
-of the coupling volume around a star can be diffuse, this
-missing factor likely causes this codebase to \emph{over}-estimate
-direct/single-scattering radiation pressure, on top of (and largely
-independent from) the $\kappa_{\rm IR}$ bug's IR-trapping
-\emph{under}-estimate (GEAR radiation logbook, ``Bugs found and
-fixed (2026-07-23)'' section): the two
-are separate errors, not a cancelling pair, and there is no reason to
-expect them to offset in general. Implementing this requires an
-opacity for the input band(s), which \citet{Hopkins2020}'s own
-$\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$ spread by over an
-order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$): a single
-effective $\kappa_{\rm single}$ (e.g.\ luminosity/temperature-weighted
-via the blackbody fit already computed for $T_K$, in the HII
-photoionization theory document) would capture the leading effect without adopting
-\citet{Hopkins2020}'s full 5-band architecture. Not yet implemented;
-this is judged the single most valuable remaining physics gap in this
-channel, ahead of the resolution/banding items below.
+\emph{not} simply $(1+\tau_{\rm IR})$ as this codebase implemented before
+that commit. The $(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
+\emph{input} (non-ionizing UV/optical) luminosity actually absorbed before
+reaching the dust that reprocesses it into the trapped IR term: the old
+formula implicitly assumed $\tau_{\rm single}\to\infty$ (full absorption),
+which only holds deep in a dense cloud, over-estimating direct/single-
+scattering radiation pressure at Darwin's production resolution
+(10\,$M_\odot$ to a few $10^4\,M_\odot$ per gas particle), where much of
+the coupling volume around a star can be diffuse.
+
+A temperature-weighted single opacity (blending
+\citet{Hopkins2020}'s $\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$
+via the star's own blackbody fit) was considered and rejected: the
+blackbody fit is known (pychem validation) to be measurably wrong, up to
+35\%, for \code{single\_star}-type particles at this codebase's mass
+range, making a blackbody-weighted opacity indefensible for the actual
+spectral model in use. Implemented instead: a single fixed
+$\kappa_{\rm NUV}=1800\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$
+(Eq.~\ref{eq:rp-momentum-rate}), the value where \citet{Hopkins2012a}'s own
+single flux-mean UV opacity estimate (their \S2.1, using this same
+Sobolev column) and \citet{Hopkins2020}'s NUV sub-band agree -- two
+independent papers converging on the same number, a stronger
+justification than either alone. No band-by-band transport is
+implemented (a single effective opacity, not \citet{Hopkins2020}'s full
+5-band architecture): consistent with this channel's local, SPH-kernel
+momentum-sharing scheme, which does not propagate radiation between
+particles at all; a genuine multi-band scheme would need that transport
+first, judged out of scope (see \S\ref{sec:rp-shell-tier2}'s roadmap
+note).
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
@@ -257,4 +263,64 @@ photoionization logbook's bugs-and-fixes section,
 \code{hit\_by\_radiation} was never actually
 set until 2026-07-19, so this accumulated momentum was silently
 discarded every step until then).
+
+\subsection{Tier 2: dynamical shell-expansion validation}
+\label{sec:rp-shell-tier2}
+
+Eq.~\ref{eq:rp-momentum-rate}'s correctness in isolation (weight
+normalization, no missing/double-counted factor) is a formula-level
+question, covered by \code{tests/testRadiationPressureFormula.c} with no
+hydro involved. A separate, harder question is dynamical: does the
+momentum this formula injects actually drive the gas the way momentum-
+driven feedback theory predicts. \citet{KrumholzMatzner2009} give the
+self-similar solution for a momentum-conserving shell swept up by a
+constant momentum injection rate $\dot p = f_{\rm trap}L_{\rm bol}/c$ in a
+uniform ambient medium ($k_\rho=0$): their Eq.~11,
+$x = [(4-k_\rho)/2\,\tau^2]^{1/(4-k_\rho)}$ with $x=R/r_{\rm ch}$,
+$\tau=t/t_{\rm ch}$, is \emph{their own radiation-only limit} (no
+competing gas-pressure/photoionization driver), matching this codebase's
+\texttt{RadiationPressureShellExpansion} example exactly (photoionization
+off, no thermal driver at all).
+
+Substituting their Eq.~9 definition of $t_{\rm ch}$ into Eq.~11 at
+$k_\rho=0$, $r_{\rm ch}$ cancels exactly, giving the same result as
+directly integrating the thin-shell ODE
+$\mathrm{d}/\mathrm{d}t\,(M(R)\,\dot R) = f_{\rm trap}L_{\rm bol}/c$ with
+$M(R)=\tfrac{4}{3}\pi\rho_0 R^3$ from rest:
+\begin{equation}
+  R(t) = \left[\frac{3\,f_{\rm trap}\,L_{\rm bol}\,t^2}
+  {2\pi\,\rho_0\,c}\right]^{1/4},
+  \label{eq:rp-shell-radius}
+\end{equation}
+$\rho_0$ the (known, uniform) ambient density and $f_{\rm trap}$ this
+codebase's own $(1-e^{-\tau_{\rm NUV}})(1+\tau_{\rm IR})$ (their trapping
+factor, minus the winds/Lyman-$\alpha$ channels not modeled here) --
+self-contained, no need for \citet{KrumholzMatzner2009}'s own
+$T_i$/$T_o$-dependent $r_{\rm ch}$ machinery, which was built for their
+combined radiation-plus-gas-pressure problem.
+
+Unlike \citet{KrumholzMatzner2009}'s constant $f_{\rm trap}$, this
+codebase's is not constant: it depends on the star's own local
+SPH-kernel gas column (Sec.~\ref{sec:rp-sobolev}), which changes as
+radiation pressure empties the region around the star. The check script
+measures it directly per snapshot (from debug-gated
+\code{EnrichmentWeight}/\code{GradRhoStar}/\code{ZStar} star output
+fields, \code{src/stars/GEAR/stars\_io.h}) rather than assuming a
+literature fiducial value, and reports how much it drifts over a run --
+this tests, rather than assumes, whether the star's adaptive smoothing
+length keeps its local coupling tracking the swept-up shell as the
+interior cavity grows.
+
+First run (level 5, $\rho_0=10^3\,{\rm cm^{-3}}$, $\sim0.5\,$Myr): median
+relative error 14\% against a 25\% tolerance, PASS, using the Lagrangian-
+mass shell radius (the radius at which the simulation's own current
+cumulative gas-mass profile reaches the theoretically-predicted swept
+mass $\tfrac{4}{3}\pi\rho_0 R(t)^3$ -- the same accounting
+Eq.~\ref{eq:rp-shell-radius}'s own derivation assumes, avoiding a noisy
+density-peak fit). $f_{\rm trap}$ drifted by up to 69\% of its reference
+value over that run: real, non-negligible, and not yet folded into the
+reference curve itself (Eq.~\ref{eq:rp-shell-radius} currently uses
+$f_{\rm trap}$ held at its earliest-measured value; using the full
+measured $f_{\rm trap}(t)$ in a numerically-integrated version of the ODE
+above is the natural next refinement, not yet implemented).
 
