@@ -41,7 +41,7 @@ Scheduler:
   cell_extra_sinks:  10
   cell_extra_sparts: 10
   max_top_level_cells: 3
-  tasks_per_cell: 100
+  tasks_per_cell: 150
 
 Statistics:
   delta_time:           1e-5
@@ -118,7 +118,7 @@ GEARFeedback:
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
-  max_timestep_young_Myr:               0.5
+  max_timestep_young_Myr:               0.1
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr: 1e-4     # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
   HII_max_search_radius: 0.1
