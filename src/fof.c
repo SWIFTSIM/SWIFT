@@ -429,13 +429,20 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
     }
   }
 
-#ifdef WITH_MPI
-  /* Check size of linking length against the top-level cell dimensions. */
-  if (props->l_x2 > s->width[0] * s->width[0])
+  /* Check size of linking length against the top-level cell dimensions. The
+   * FOF only ever searches one layer of neighbouring top-level cells (see
+   * engine_make_fofloop_tasks_mapper), so the linking length has to fit
+   * inside a single cell. In a zoom that search runs over the zoom cells,
+   * whose width is s->dim / (s->cdim * 2^depth) and so shrinks with the box:
+   * checking the (2^depth wider) background cells would let a too-large
+   * linking length through and silently fragment haloes. This is not an MPI
+   * specific restriction, so check it whether or not we are distributed. */
+  const double fof_search_width =
+      s->with_zoom_region ? s->zoom_props->width[0] : s->width[0];
+  if (props->l_x2 > fof_search_width * fof_search_width)
     error(
         "Linking length greater than the width of a top-level cell. Need to "
         "check more than one layer of top-level cells for links.");
-#endif
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,

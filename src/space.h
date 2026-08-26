@@ -406,6 +406,11 @@ struct zoom_region_properties {
   /*! Extent of the high resolution particles. */
   double part_dim[3];
 
+  /*! Midpoint of the high resolution particle extent. Unlike zoom_shift this
+   * is never snapped to zero, so it is the safe way to ask where the high
+   * resolution region actually is. */
+  double part_mid[3];
+
   /*! Dimensions of the zoom region (includes the part_dim, the padding, and
    * and any additional padding to make the zoom region fit in the background
    * void cells). */

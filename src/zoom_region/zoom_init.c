@@ -348,8 +348,15 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     }
   }
 
-  /* Store the particle extent in the zoom properties. */
-  for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
+  /* Store the particle extent and its midpoint in the zoom properties. The
+   * midpoint is the un-snapped counterpart of zoom_shift above: callers that
+   * need to know where the high resolution region really is (e.g.
+   * zoom_truncate_bkg) must use it rather than the shift, which is zeroed
+   * below the 1% threshold. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->part_dim[i] = ini_dims[i];
+    s->zoom_props->part_mid[i] = midpoint[i];
+  }
 
   if (verbose) {
     message("Computing high resolution particle dim and shift took %f %s",
@@ -534,6 +541,32 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
       threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_sink_mapper,
                      s->sinks, s->nr_sinks, sizeof(struct sink),
                      threadpool_auto_chunk_size, s->zoom_props);
+  }
+
+  /* Wrap the shifted positions back into the box. The shift above is a bare
+   * translation (the mappers do not wrap), and nothing downstream will do it
+   * for us before the particles are binned into cells: cell_getid_from_pos
+   * truncates a small negative coordinate toward zero and silently files the
+   * particle in the first cell layer rather than at the opposite face. */
+  if (s->periodic) {
+    for (size_t k = 0; k < s->nr_parts; k++)
+      for (int i = 0; i < 3; i++)
+        s->parts[k].x[i] = box_wrap_multiple(s->parts[k].x[i], 0.0, s->dim[i]);
+    for (size_t k = 0; k < s->nr_gparts; k++)
+      for (int i = 0; i < 3; i++)
+        s->gparts[k].x[i] =
+            box_wrap_multiple(s->gparts[k].x[i], 0.0, s->dim[i]);
+    for (size_t k = 0; k < s->nr_sparts; k++)
+      for (int i = 0; i < 3; i++)
+        s->sparts[k].x[i] =
+            box_wrap_multiple(s->sparts[k].x[i], 0.0, s->dim[i]);
+    for (size_t k = 0; k < s->nr_bparts; k++)
+      for (int i = 0; i < 3; i++)
+        s->bparts[k].x[i] =
+            box_wrap_multiple(s->bparts[k].x[i], 0.0, s->dim[i]);
+    for (size_t k = 0; k < s->nr_sinks; k++)
+      for (int i = 0; i < 3; i++)
+        s->sinks[k].x[i] = box_wrap_multiple(s->sinks[k].x[i], 0.0, s->dim[i]);
   }
 
   /* Shift the CoM. */

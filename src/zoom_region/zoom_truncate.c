@@ -28,7 +28,6 @@
 #include "minmax.h"
 #include "parser.h"
 #include "part.h"
-#include "periodic.h"
 #include "space.h"
 #include "timers.h"
 #include "zoom.h"
@@ -177,44 +176,24 @@ void zoom_truncate_bkg(struct swift_params *params, struct space *s,
         fmin(old_dim[0], fmin(old_dim[1], old_dim[2])));
   }
 
-  /* Add the shift that moves the high-resolution centre from the middle of
-   * the parent box to the middle of the retained box. */
+  /* Shift the measured high-resolution midpoint onto the centre of the
+   * retained cube. We deliberately do not build on the shift computed by
+   * zoom_get_region_dim_and_shift() above: that one is snapped to zero below
+   * 1% of the *current* box, so a small but real off-centring would be
+   * dropped here (leaving the cube off-centre from the region it is meant to
+   * protect, which breaks the symmetry the tidal bound above assumes) and
+   * then reappear against the smaller 1% threshold of the truncated box on
+   * the next call. The midpoint is never snapped, so use that. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->zoom_shift[i] += retained_half_width - old_dim[i] / 2.0;
+    s->zoom_props->zoom_shift[i] =
+        retained_half_width - s->zoom_props->part_mid[i];
   }
 
-  /* Apply the combined (centring + truncation) shift to all particles. */
+  /* Apply the truncation shift to all particles. This also wraps them back
+   * into the parent box, so in the shifted frame the retained cube is exactly
+   * [0, 2R) along each axis and a particle is retained if and only if all of
+   * its coordinates are below 2R. */
   zoom_apply_zoom_shift_to_particles(s, verbose);
-
-  /* Wrap the shifted positions back into the parent box. In the shifted
-   * frame the retained cube is exactly [0, 2R) along each axis, so after
-   * wrapping a particle is retained if and only if all its coordinates are
-   * below 2R. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->parts[k].x[i] = box_wrap_multiple(s->parts[k].x[i], 0.0, old_dim[i]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->gparts[k].x[i] = box_wrap_multiple(s->gparts[k].x[i], 0.0, old_dim[i]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->sparts[k].x[i] = box_wrap_multiple(s->sparts[k].x[i], 0.0, old_dim[i]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->bparts[k].x[i] = box_wrap_multiple(s->bparts[k].x[i], 0.0, old_dim[i]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->sinks[k].x[i] = box_wrap_multiple(s->sinks[k].x[i], 0.0, old_dim[i]);
-    }
-  }
 
   /* Loop over all the gparts and inhibit background particles outside the
    * retained cube. */
