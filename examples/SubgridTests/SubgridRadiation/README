@@ -22,7 +22,7 @@ particular task-graph or geometry configuration where the answer is
 | `Hu2017` | Four co-located sources in a dense uniform medium (Hu et al. 2017, MNRAS 471, 2151, Appendix A; the same test appears in Smith et al. 2021). Also the setup used for cadence studies. |
 | `ClumpSmith2021` | Erosion of a dense clump by a nearby source (Smith et al. 2021, MNRAS 506, 3882, Fig. 2). Its erosion measurement compares several runs, so it ships matrix-analysis scripts as well as a single-run one. |
 | `StromgrenSphereCosmo` | The `StromgrenSphere` box with cosmology enabled, in two tiers: an identity tier at a ~ 1 that must reproduce the non-cosmological result, and a high-redshift tier checked against the analytic formulas at the instantaneous physical density. |
-| `RadiationPressureMomentumCheck` | The radiation-pressure momentum channel alone, with photoionization, cooling and gravity off. Momentum delivered to the gas is compared against the analytic rate. |
+| `RadiationPressureShellExpansion` | The radiation-pressure momentum channel alone, with photoionization, cooling and gravity off. The shell it drives outward is compared against the momentum-conserving analytic solution of Krumholz & Matzner (2009, ApJ 703, 1352). |
 
 The analytic formulas take the gas density, temperatures, ionizing photon
 rate and mean molecular weight as inputs, so each check is evaluated at its
@@ -46,7 +46,7 @@ expectation the example's own README states.
 example is a variation on it. Use `Starbench` or
 `Hu2017` to compare front expansion against the
 literature, `ClumpSmith2021` for the effect on a dense clump,
-and `RadiationPressureMomentumCheck` if you are interested in the
+and `RadiationPressureShellExpansion` if you are interested in the
 momentum channel rather than ionization.
 
 Note that the required Grackle cooling mode differs between examples.
