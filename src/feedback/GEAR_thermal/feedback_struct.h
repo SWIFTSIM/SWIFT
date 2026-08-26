@@ -75,13 +75,17 @@ struct feedback_part_data {
       Read by radiation_get_part_number_neutral_hydrogen_atoms for a
       foreign copy with no struct xpart (S3.3/F3).
 
-      The cache write is skipped on cooling_new_energy()'s early-return
-      paths (subgrid-ionized floor, or pinned by
-      IONIZATION_FEEDBACK_DEBUG_FIXED_*_TEMPERATURE_K), so on a particle's
-      first such step this field is still its zero-init default, 0.0f, the
-      OPPOSITE of the 1.0f "no data" sentinel above. A reader must not treat
-      0.0f as "fully ionized" without checking the cache has actually been
-      written for that particle. */
+      Every path through cooling_new_energy() writes it, including the two
+      that bypass Grackle's own solve (the subgrid-ionized floor, which
+      forces the species itself, and the
+      IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K debug path,
+      which leaves them untouched), so it tracks the particle's current
+      composition for as long as a tag is held instead of freezing at the
+      composition it had before that episode started. Before a particle's
+      first cooling call it still holds struct part's zero-init default,
+      0.0f, the OPPOSITE of the 1.0f "no data" sentinel above. A reader must
+      not treat 0.0f as "fully ionized" without checking the cache has
+      actually been written for that particle. */
   float neutral_H_frac;
 
 #ifdef WITH_MPI
@@ -98,6 +102,18 @@ struct feedback_part_data {
       eligibility gate without a struct xpart, so single-rank builds don't
       pay for it. */
   float T_eligibility;
+
+  /*! Mean molecular weight cache (S3.3/F3), written by the same cooling-time
+      call as T_eligibility above, from the same species state and the same
+      internal energy. A foreign copy with no struct xpart returns it as it
+      stands (radiation_get_part_mean_molecular_weight) instead of inverting
+      T_eligibility against the internal energy the whole-part xv/rho channel
+      delivered, which is a different, earlier snapshot; the two caches are
+      therefore a matched pair satisfying the ideal-gas relation for one
+      single energy. Shares T_eligibility's lack of a first-init hook: before
+      its first cooling-time write it holds struct part's zero-init default,
+      0.0f. MPI-only, for the same reason as T_eligibility. */
+  float mu_eligibility;
 
   /*! Squared comoving distance to the star holding this particle's
       current claim, at claim time (S3.4). Only meaningful together with
@@ -192,6 +208,12 @@ struct hii_state_update {
       one guaranteed same-step-fresh delivery path for it; tag is mirrored
       for the reason below, not as the primary read path. */
   float T_eligibility;
+
+  /*! Cooling-time mean molecular weight cache, see
+      feedback_part_data.mu_eligibility. Kept as its own field for the same
+      same-step-freshness reason as T_eligibility above, and always travels
+      with it so the pair stays mutually consistent. */
+  float mu_eligibility;
 
   /*! Neutral hydrogen mass fraction, same value as tag.neutral_H_frac at
       send time; kept as its own field for the same same-step-freshness

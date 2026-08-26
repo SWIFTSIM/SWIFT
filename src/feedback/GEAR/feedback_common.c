@@ -564,13 +564,13 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
  * real xpart computes the temperature exactly as today. xp == NULL
  * returns the cache written at the owner's last cooling call (struct
  * part's feedback_data.T_eligibility, WITH_MPI-only), shipped to every
- * foreign copy via the post-cooling state channel (S3.1b) in the same
- * message as the internal energy the gather reads for everything else,
- * so the two stay mutually consistent -- caching the temperature
- * directly, rather than the mean molecular weight and recombining it
- * with a possibly-newer u, is therefore not an approximation here: nothing
- * updates u between a cooling call and the state channel's send of that
- * same call's T_eligibility, so the two arrive frozen together.
+ * foreign copy via the post-cooling state channel (S3.1b). The cache is
+ * returned as it stands and never recombined with the particle's internal
+ * energy, which reaches a foreign copy on the separate whole-part xv/rho
+ * channel carrying the owner's pre-cooling snapshot, so the two are not
+ * from the same instant. radiation_get_part_mean_molecular_weight reads
+ * feedback_data.mu_eligibility under the same rule; one cooling call writes
+ * both caches, so they stay a mutually consistent pair.
  *
  * Call sites must read this uniformly and never branch on local vs
  * foreign; that branch lives here exactly once. A reduced foreign

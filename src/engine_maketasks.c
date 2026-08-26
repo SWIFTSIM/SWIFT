@@ -1127,7 +1127,8 @@ void engine_addtasks_recv_hydro(
     /* recv_xv/recv_rho/recv_gradient -> recv_part_hii_state: part_mpi_type
      * ships the WHOLE struct part for all three channels, so any of them
      * landing after the state message would clobber the freshly delivered
-     * T_eligibility/neutral_H_frac with the owner's pre-cooling snapshot.
+     * T_eligibility/mu_eligibility/neutral_H_frac with the owner's
+     * pre-cooling snapshot.
      * Safe to fire unconditionally here (not in the if (t_xv != NULL) block
      * below): this creation guard only runs once per cell, whereas
      * t_xv/t_rho/t_gradient are inherited unchanged through the recursion

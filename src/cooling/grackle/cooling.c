@@ -966,7 +966,11 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     /* The subgrid floor forces species (mode >= 1) and energy together;
        cache the resulting temperature against u_ionized, since that value
        has not landed on the particle yet (see the cache function's
-       doxygen). */
+       doxygen). The species cache is refreshed here too: this path runs for
+       every step a tag is held, so leaving that write to Grackle's own solve
+       would freeze the cache at the pre-episode composition for the whole
+       episode. */
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
     cooling_cache_eligibility_temperature_subgrid(
         phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ionized);
     /* Return u_ionized itself, not a re-read of the particle: the caller
@@ -979,8 +983,11 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     if (cooling_debug_fix_neutral_temperature_subgrid(
             phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
             &u_o)) {
-      /* Species are untouched here, only u changes: still refresh the
-         cache, since the eligibility temperature depends on both. */
+      /* Species are untouched here, only u changes, but this path replaces
+         Grackle's solve for every non-ionized particle: both caches are
+         written here or they are never written at all in this
+         configuration. */
+      cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
       cooling_cache_eligibility_temperature_subgrid(
           phys_const, us, cosmo, hydro_props, cooling, p, xp, u_o);
       return u_o;
@@ -1026,9 +1033,8 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(&data, p, xp, density, cooling);
 
-  /* Cache the species update just solved for above. Does not run for a
-     particle held at the subgrid-ionized floor: that path already
-     returned before reaching Grackle's own solve. */
+  /* Cache the species update just solved for above; the two paths that
+     return before this solve write the same caches themselves. */
   cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
   cooling_cache_eligibility_temperature_subgrid(
       phys_const, us, cosmo, hydro_props, cooling, p, xp, energy);

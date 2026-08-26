@@ -207,15 +207,20 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
  * cooling_get_mean_molecular_weight reads xp->cooling_data species
  * fractions at Grackle modes >= 1, which segfaults for a foreign copy
  * with no struct xpart. This accessor owns that xp == NULL contract:
- * a real xpart computes exactly as today. xp == NULL inverts the same
- * relation cooling_cache_eligibility_temperature_subgrid used to write
- * struct part's feedback_data.T_eligibility, mu = k_B T / ((gamma-1) u
- * m_p), using the particle's current internal energy (rides the normal
- * xv/rho exchange). T_eligibility and u are always written from the same
- * cooling_new_energy call and shipped together whenever the owner-side
- * state actually gets read by a foreign gather, so this recovers the
- * owner's exact mu rather than approximating it, exactly like the
- * temperature cache itself.
+ * a real xpart computes exactly as today. xp == NULL returns the value
+ * cooling_cache_eligibility_temperature_subgrid cached on struct part's
+ * feedback_data.mu_eligibility at the owner's last cooling call, shipped to
+ * every foreign copy by the post-cooling state channel (S3.1b).
+ *
+ * The cache is returned as it stands, never recovered by inverting
+ * T_eligibility against the particle's internal energy: that energy reaches
+ * a foreign copy on the separate whole-part xv/rho channel, which carries
+ * the owner's pre-cooling snapshot rather than the state T_eligibility was
+ * written from, and would additionally be converted with the current scale
+ * factor instead of the one in force at cache time. Reading the two caches
+ * as written keeps them a matched pair, both describing one single internal
+ * energy, which feedback_part_can_be_ionized (temperature gate) and
+ * radiation_get_part_ionized_internal_energy (mu) rely on to agree.
  *
  * @param phys_const Physical constants.
  * @param hydro_properties The #hydro_props.
@@ -235,12 +240,7 @@ radiation_get_part_mean_molecular_weight(
     const struct xpart *xp) {
 
 #ifdef WITH_MPI
-  if (xp == NULL) {
-    const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-    const double T = p->feedback_data.T_eligibility;
-    return phys_const->const_boltzmann_k * T /
-           (hydro_gamma_minus_one * u * phys_const->const_proton_mass);
-  }
+  if (xp == NULL) return p->feedback_data.mu_eligibility;
 #endif
 
   return cooling_get_mean_molecular_weight(phys_const, us, cosmo, hydro_props,

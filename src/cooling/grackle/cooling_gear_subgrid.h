@@ -278,12 +278,16 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
  * @brief Cache this step's neutral hydrogen mass fraction on the particle's
  * feedback-model core (struct part's feedback_data.neutral_H_frac).
  *
- * Called once per particle right after Grackle's own species update
- * (cooling_copy_from_grackle) has run. Not called for a particle held at
- * the subgrid-ionized floor this step (#cooling_ionize_part_subgrid),
- * since that path skips Grackle's solve entirely. Nothing reads this field
- * yet: a future MPI scheme's F3 latch must consume the PREVIOUS pass's
- * value rather than this step's.
+ * Called once per particle per cooling call, on every path through
+ * #cooling_new_energy: right after Grackle's own species update
+ * (cooling_copy_from_grackle) has run, and also on the two paths that
+ * bypass that solve, namely the subgrid-ionized floor
+ * (#cooling_ionize_part_subgrid, which forces the species itself) and
+ * #cooling_debug_fix_neutral_temperature_subgrid (which leaves them
+ * untouched). radiation_get_part_number_neutral_hydrogen_atoms prices a
+ * foreign copy's fresh HII claim against this field, so it must follow the
+ * particle's current composition rather than hold the one it had before its
+ * most recent ionized episode.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
@@ -309,18 +313,32 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
 }
 
 /**
- * @brief Cache this step's HII eligibility temperature on the particle
- * (struct part's feedback_data.T_eligibility, S3.3/F3).
+ * @brief Cache this step's HII eligibility temperature and mean molecular
+ * weight on the particle (struct part's feedback_data.T_eligibility and
+ * mu_eligibility, S3.3/F3).
  *
  * WITH_MPI-only: a foreign copy carries no struct xpart, so
- * feedback_get_eligibility_temperature() falls back to this cache instead
- * of recomputing cooling_get_temperature() locally. Takes an explicit u
+ * feedback_get_eligibility_temperature() and
+ * radiation_get_part_mean_molecular_weight() fall back to these caches
+ * instead of recomputing cooling_get_temperature() and
+ * cooling_get_mean_molecular_weight() locally. Both are written here from
+ * one state, so a reader that needs both gets a mutually consistent pair;
+ * mu is stored rather than left to be recovered from T_eligibility and the
+ * particle's internal energy, which reaches a foreign copy on a separate,
+ * differently timed channel. Takes an explicit u
  * rather than reading it off @p p, so a caller can pass the target energy
  * of the subgrid-ionized floor (cooling_ionize_part_subgrid) before that
  * value has actually landed on the particle through the caller's own
- * du/dt integration. cooling_get_mean_molecular_weight() already branches
- * on COOLING_GRACKLE_MODE internally, so this needs no mode-specific code
- * of its own.
+ * du/dt integration. That same u also fixes mu at COOLING_GRACKLE_MODE 0,
+ * where mu is an equilibrium function of the gas energy alone
+ * (cooling_get_equilibrium_mean_molecular_weight) rather than of tracked
+ * species: taking it off @p p there would pair a temperature evaluated at
+ * the target energy with a mu evaluated at the energy the particle still
+ * holds, two states that straddle
+ * hydro_props->hydrogen_ionization_temperature on the very step the
+ * subgrid-ionized floor first applies. At modes >= 1 mu follows
+ * xp->cooling_data's species fractions and carries no energy dependence of
+ * its own, so both caches describe one single energy state at every mode.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -329,7 +347,7 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param u The specific internal energy to evaluate the temperature at.
+ * @param u The specific internal energy both caches are evaluated at.
  */
 INLINE static void cooling_cache_eligibility_temperature_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
@@ -337,8 +355,14 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp, const double u) {
 #ifdef WITH_MPI
+#if COOLING_GRACKLE_MODE == 0
+  const double mu = cooling_get_equilibrium_mean_molecular_weight(
+      u, phys_const, hydro_props, cooling);
+#else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
+#endif
+  p->feedback_data.mu_eligibility = mu;
   p->feedback_data.T_eligibility = cooling_temperature_from_internal_energy(
       u, mu, phys_const->const_boltzmann_k, phys_const->const_proton_mass);
 #endif

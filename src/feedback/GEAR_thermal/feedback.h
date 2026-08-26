@@ -97,10 +97,10 @@ __attribute__((always_inline)) INLINE static void feedback_pack_hii_tag_report(
  * its MPI tiebreak state; all five are always stamped together by
  * whichever rank ran the claim (feedback_hii_claim_part /
  * feedback_iact_HII_maintain_ionized_part), so they move as one unit.
- * neutral_H_frac and T_eligibility are cooling-time caches this rank's
- * own cooling task writes; @p data's copies exist only so a foreign
- * mirror can pass the eligibility gate for its OWN pass and are never
- * authoritative here, even when the incoming claim wins.
+ * neutral_H_frac, T_eligibility and mu_eligibility are cooling-time caches
+ * this rank's own cooling task writes; @p data's copies exist only so a
+ * foreign mirror can pass the eligibility gate for its OWN pass and are
+ * never authoritative here, even when the incoming claim wins.
  * claimed_this_pass is this rank's own pass-local bookkeeping for @p p's
  * next pack (relevant only if this rank is itself a foreign-copy holder
  * for some other rank's star); an incoming report from a different
@@ -197,6 +197,7 @@ feedback_pack_hii_state_update(const struct part *restrict p,
   memset(data, 0, sizeof(struct hii_state_update));
 #ifdef WITH_MPI
   data->T_eligibility = p->feedback_data.T_eligibility;
+  data->mu_eligibility = p->feedback_data.mu_eligibility;
 #endif
   data->neutral_H_frac = p->feedback_data.neutral_H_frac;
   data->tag = p->feedback_data;
@@ -237,6 +238,7 @@ feedback_unpack_hii_state_update(struct part *restrict p,
   p->feedback_data = data->tag;
 #ifdef WITH_MPI
   p->feedback_data.T_eligibility = data->T_eligibility;
+  p->feedback_data.mu_eligibility = data->mu_eligibility;
   p->feedback_data.claimed_this_pass = local_claimed_this_pass;
 #endif
   p->feedback_data.neutral_H_frac = data->neutral_H_frac;
