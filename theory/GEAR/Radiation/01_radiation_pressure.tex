@@ -311,16 +311,13 @@ this tests, rather than assumes, whether the star's adaptive smoothing
 length keeps its local coupling tracking the swept-up shell as the
 interior cavity grows.
 
-First run (level 5, $\rho_0=10^3\,{\rm cm^{-3}}$, $\sim0.5\,$Myr): median
-relative error 14\% against a 25\% tolerance, PASS, using the Lagrangian-
-mass shell radius (the radius at which the simulation's own current
-cumulative gas-mass profile reaches the theoretically-predicted swept
-mass $\tfrac{4}{3}\pi\rho_0 R(t)^3$ -- the same accounting
+The simulated shell radius itself is measured as a Lagrangian-mass
+radius: the radius at which the run's own current cumulative gas-mass
+profile reaches the theoretically-predicted swept mass
+$\tfrac{4}{3}\pi\rho_0 R(t)^3$ -- the same accounting
 Eq.~\ref{eq:rp-shell-radius}'s own derivation assumes, avoiding a noisy
-density-peak fit). $f_{\rm trap}$ drifted by up to 69\% of its reference
-value over that run: real, non-negligible, and not yet folded into the
-reference curve itself (Eq.~\ref{eq:rp-shell-radius} currently uses
-$f_{\rm trap}$ held at its earliest-measured value; using the full
-measured $f_{\rm trap}(t)$ in a numerically-integrated version of the ODE
-above is the natural next refinement, not yet implemented).
+density-peak fit. Run results and their caveats are validation-campaign
+content, not design: they are logged in the GEAR radiation logbook
+(\code{swift-gear} repository, \code{theory/radiation/
+04\_radiation\_pressure\_and\_isrf.tex}), not here.
 
