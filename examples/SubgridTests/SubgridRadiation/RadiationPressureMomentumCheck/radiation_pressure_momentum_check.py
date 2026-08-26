@@ -20,12 +20,14 @@
 
 Independently recomputes, in Python, the same momentum-injection rate the C
 code derives (radiation_get_star_physical_radiation_pressure, src/feedback/
-GEAR/radiation.c): p_dot_rad = L_bol / c * (1 + tau_IR). Integrating this over
-the run and comparing against the gas's actual total momentum gain checks
-that the implementation applies exactly what that formula says -- no missing
-factor, no double-counting, no silently-dropped kick. It does NOT validate
-that the formula itself is the right physical model (see README/logbook for
-that separate question).
+GEAR/radiation_pressure.c): p_dot_rad = L_bol / c * (1 - exp(-tau_NUV)) *
+(1 + tau_IR) (Hopkins et al. 2014, MNRAS 445, 581, Appendix A; Hopkins et al.
+2020, arXiv:1811.12462, footnote 16). Integrating this over the run and
+comparing against the gas's actual total momentum gain checks that the
+implementation applies exactly what that formula says -- no missing factor,
+no double-counting, no silently-dropped kick. It does NOT validate that the
+formula itself is the right physical model (see README/logbook for that
+separate question).
 
 Two approximations, both a direct consequence of this test's uniform-box, no
 photoionization/cooling/gravity design (see README): the star's local gas
@@ -115,12 +117,19 @@ def main():
     Z_gas = float(np.mean(data0.gas.smoothed_metal_mass_fractions.metals))
     Z_sun = 0.02
     kappa_IR = 10.0 * (u.cm**2 / u.g) * (Z_gas / Z_sun)
+    # Flux-mean opacity for the whole non-ionizing continuum, standing in for
+    # a full multi-band split (see radiation_get_star_physical_radiation_
+    # pressure's docstring for the Hopkins+2012/2020 provenance of 1800).
+    kappa_NUV = 1800.0 * (u.cm**2 / u.g) * (Z_gas / Z_sun)
 
     kernel_gamma_wendlandC2_3D = 1.936492  # src/kernel_hydro.h, 3D branch
     Sigma_gas = rho_gas * (h_star * kernel_gamma_wendlandC2_3D)  # Sobolev term ~0
     tau_IR = (kappa_IR * Sigma_gas).to(u.dimensionless).value
+    tau_NUV = (kappa_NUV * Sigma_gas).to(u.dimensionless).value
 
-    p_dot_rad = (L_bol / c * (1.0 + tau_IR)).to(u.g * u.cm / u.s**2)
+    p_dot_rad = (L_bol / c * (1.0 - np.exp(-tau_NUV)) * (1.0 + tau_IR)).to(
+        u.g * u.cm / u.s**2
+    )
 
     t0 = data0.metadata.time.to(u.s)
     t1 = data1.metadata.time.to(u.s)
@@ -150,6 +159,8 @@ def main():
     print(f"Gas metallicity (mass frac.) : {Z_gas:.4f} (Z/Zsun = {Z_gas / Z_sun:.4f})")
     print(f"kappa_IR                     : {kappa_IR:.4f}")
     print(f"tau_IR                       : {tau_IR:.6e}")
+    print(f"kappa_NUV                    : {kappa_NUV:.4f}")
+    print(f"tau_NUV                      : {tau_NUV:.6e}")
     print(f"Elapsed time (t1 - t0)       : {dt:.6e}")
     print(f"Theoretical injected |p|     : {p_theory:.6e}")
     print(f"Actual   Sum_j |m_j v_j|     : {p_actual:.6e}")
