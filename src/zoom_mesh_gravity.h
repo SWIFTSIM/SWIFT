@@ -80,6 +80,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const struct gravity_props *props, const struct space *s,
                     const int verbose);
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
+void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
+                              const struct space *s);
 void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose);

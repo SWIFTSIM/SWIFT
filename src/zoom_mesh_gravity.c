@@ -140,6 +140,15 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   if (r_cut_min_ratio > r_cut_max_ratio)
     error("Gravity:zoom_r_cut_min must be <= Gravity:zoom_r_cut_max.");
 
+  /* The truncated tree force must fit inside the mesh domain, mirroring the
+   * background mesh's own r_cut_max check in gravity_props_init. */
+  if (2. * props->a_smooth * r_cut_max_ratio > side_length)
+    error(
+        "Zoom mesh too small given Gravity:zoom_r_cut_max. "
+        "Gravity:zoom_mesh_side_length should be at least %d cells wide "
+        "(currently: %d).",
+        (int)(2. * props->a_smooth * r_cut_max_ratio) + 1, side_length);
+
   const int buffer_cells =
       parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 1);
   if (buffer_cells < 1)
@@ -990,6 +999,70 @@ __attribute__((nonnull)) static int zoom_mesh_cell_is_inside(
   }
 
   return 1;
+}
+
+/**
+ * @brief Check the zoom mesh geometry against the zoom region it must cover.
+ *
+ * When the zoom mesh is enabled it, rather than the background mesh, supplies
+ * the long-range forces inside the zoom region. It therefore inherits the two
+ * requirements the background mesh has to satisfy for the background cells
+ * (see gravity_props_init):
+ *
+ *   1. It must resolve the top-level cells it is responsible for, i.e. its
+ *      cells must be no wider than the zoom top-level cells.
+ *   2. Its active region must actually contain those cells. Only cells fully
+ *      inside the active region are covered (zoom_mesh_cell_is_covered); any
+ *      zoom cell left outside would fall back on the background mesh, which is
+ *      not guaranteed to resolve it.
+ *
+ * Both depend on the zoom region geometry, so this is called from space_regrid
+ * and re-validated whenever the region is rebuilt.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space.
+ */
+void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
+                              const struct space *s) {
+
+  /* A disabled or absent mesh covers nothing and constrains nothing. */
+  if (mesh == NULL || !mesh->enabled) return;
+
+  const struct zoom_region_properties *z = s->zoom_props;
+
+  for (int i = 0; i < 3; ++i) {
+
+    const double cell_width = 1. / mesh->cell_fac[i];
+
+    /* 1. The zoom mesh must resolve the top-level zoom cells. */
+    if (cell_width > z->width[i])
+      error(
+          "Zoom mesh too coarse given the size of top-level zoom cells "
+          "(zoom cell width= %.4f, zoom mesh cell width= %.4f along axis %d). "
+          "Gravity:zoom_mesh_side_length should be at least %d (currently: "
+          "%d).",
+          z->width[i], cell_width, i, (int)ceil(mesh->dim[i] / z->width[i]),
+          mesh->N[i]);
+
+    /* 2. The active region must contain the whole zoom region. The bounds here
+     * must match zoom_mesh_cell_is_inside: two cells of inset on the low side
+     * for the i-2 stencil point, three on the high side because the i+2 point
+     * is CIC-interpolated and so also reads i+3. */
+    const double active_min = mesh->loc[i] + 2. * cell_width;
+    const double active_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width;
+    const double tol = 1e-6 * mesh->dim[i];
+
+    if (z->region_lower_bounds[i] < active_min - tol ||
+        z->region_upper_bounds[i] > active_max + tol)
+      error(
+          "The active zoom mesh region ([%.4f, %.4f] along axis %d) does not "
+          "contain the zoom region ([%.4f, %.4f]), so some zoom cells would "
+          "not be covered by the zoom mesh. Increase "
+          "Gravity:zoom_mesh_side_length or "
+          "Gravity:zoom_mesh_bkg_buffer_cells.",
+          active_min, active_max, i, z->region_lower_bounds[i],
+          z->region_upper_bounds[i]);
+  }
 }
 
 /**
