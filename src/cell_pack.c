@@ -33,6 +33,11 @@
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
 /*! Rate-limiter for the foreign gpart layout divergence report. */
 static int cell_grav_layout_divergence_reported = 0;
+/*! Rate-limiters for the debug checks below. They should never fire; if
+ * they do, cell_link_sparts()/cell_link_sinks() started skipping sub-cells
+ * like cell_link_foreign_gparts() does. */
+static int cell_sf_layout_divergence_reported = 0;
+static int cell_sink_formation_layout_divergence_reported = 0;
 #endif
 
 /**
@@ -827,6 +832,18 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
   c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Only fires if cell_link_sparts() ever stops linking the whole tree,
+   * breaking the shared-layout assumption above. */
+  if (c->depth == 0 && c->stars.count > c->stars.count_total &&
+      atomic_inc(&cell_sf_layout_divergence_reported) < 20)
+    message(
+        "SF_COUNTS_LAYOUT_DIVERGENCE cellID=%lld stars.count=%d "
+        "stars.count_total=%d delta_from_rebuild=%td",
+        c->cellID, c->stars.count, c->stars.count_total,
+        (ptrdiff_t)pcells[0].delta_from_rebuild);
+#endif
+
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -1082,6 +1099,18 @@ int cell_unpack_sink_formation_counts(
   c->sinks.count = pcells[0].count;
   c->sinks.parts = c->top->sinks.parts + pcells[0].delta_from_rebuild;
   c->sinks.dx_max_part = pcells[0].dx_max_part;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Only fires if cell_link_sinks() ever stops linking the whole tree,
+   * breaking the shared-layout assumption above. */
+  if (c->depth == 0 && c->sinks.count > c->sinks.count_total &&
+      atomic_inc(&cell_sink_formation_layout_divergence_reported) < 20)
+    message(
+        "SINK_FORMATION_COUNTS_LAYOUT_DIVERGENCE cellID=%lld sinks.count=%d "
+        "sinks.count_total=%d delta_from_rebuild=%td",
+        c->cellID, c->sinks.count, c->sinks.count_total,
+        (ptrdiff_t)pcells[0].delta_from_rebuild);
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

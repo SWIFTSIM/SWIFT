@@ -275,6 +275,11 @@ int cell_link_fof_gparts(struct cell *c,
 /**
  * @brief Link the cells recursively to the given #spart array.
  *
+ * Unlike cell_link_foreign_gparts(), this recurses into every sub-cell:
+ * stars have no long-range/multipole split, so sender and receiver share
+ * one layout. If that changes, cell_unpack_sf_counts() needs the same
+ * relink treatment as gparts.
+ *
  * @param c The #cell.
  * @param sparts The #spart array.
  *
@@ -340,6 +345,11 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 
 /**
  * @brief Link the cells recursively to the given #sink array.
+ *
+ * Unlike cell_link_foreign_gparts(), this recurses into every sub-cell:
+ * sinks have no long-range/multipole split, so sender and receiver share
+ * one layout. If that changes, cell_unpack_sink_formation_counts() needs
+ * the same relink treatment as gparts.
  *
  * @param c The #cell.
  * @param sinks The #sink array.
@@ -427,6 +437,9 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
  * Sub-trees with no gravity recv task receive no data and therefore occupy
  * no space here: the layout this builds is a compacted version of the
  * sender's own, and the two agree only when every sub-tree has a task.
+ * Unlike cell_link_sparts()/cell_link_sinks(), which link every sub-cell:
+ * gravity has a long-range, multipole-only region that never sends
+ * particle data, but stars and sinks do not.
  *
  * @param c The #cell.
  * @param gparts_foreign The #gpart_foreign array.
