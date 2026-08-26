@@ -12,7 +12,7 @@ gas_density=${gas_density:=1e4} #Gas density in atom/cm^3; see README's Density 
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
-level=${level:=4} #Resolution level: N = (2**level)**3 gas particles
+level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 time_end=${time_end:=1e-4} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 run_name=${run_name:=""}
