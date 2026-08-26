@@ -23,6 +23,14 @@ then
     rm ICs_radiation_pressure.hdf5
 fi
 
+glass_n=$((2**level))
+glass_file="glassCube_${glass_n}.hdf5"
+if [ ! -e "$glass_file" ]
+then
+    echo "Fetching initial glass file (${glass_file})..."
+    ./getGlass.sh $glass_n
+fi
+
 echo "Generating initial conditions to run the example..."
 python3 makeIC.py --level $level --rho $gas_density \
 	--mass $gas_particle_mass --star_mass $star_mass \
@@ -49,10 +57,6 @@ printf "Running simulation..."
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
 		   params.yml 2>&1 | tee output.log
-
-# Independently recompute the expected momentum output and compare
-# against the gas's actual momentum gain
-python3 radiation_pressure_momentum_check.py
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

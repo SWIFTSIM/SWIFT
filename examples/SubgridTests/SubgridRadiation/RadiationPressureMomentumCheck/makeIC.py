@@ -18,6 +18,7 @@
 #
 ################################################################################
 
+import os
 import h5py
 import numpy as np
 import argparse
@@ -185,13 +186,37 @@ m = m.to(UnitMass).value
 L = L.to(UnitLength).value
 rho = rho.to(UnitMass / UnitLength**3).value
 
-# Generate the particles
-pos = np.random.random([N, 3]) * np.array([L, L, L])
+# Pre-relaxed glass (getGlass.sh): random placement's settling noise swamps the kick.
+if opt.level is not None and opt.boxsize is None:
+    glass_n = 2**opt.level
+    glass_filename = f"glassCube_{glass_n}.hdf5"
+    if not os.path.exists(glass_filename):
+        raise RuntimeError(
+            f"Missing {glass_filename}. Run ./getGlass.sh {glass_n} first."
+        )
+    with h5py.File(glass_filename, "r") as glass:
+        pos = glass["/PartType0/Coordinates"][:, :]
+        h_glass = glass["/PartType0/SmoothingLength"][:]
+    if pos.shape[0] != N:
+        raise RuntimeError(
+            f"{glass_filename} has {pos.shape[0]} particles, expected {N} "
+            f"for level={opt.level}."
+        )
+    eps = 1e-6
+    pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * L
+    h = h_glass * L
+else:
+    print(
+        "No matching glass file for this --boxsize/--level combination; "
+        "falling back to a random, non-thermally-relaxed placement."
+    )
+    pos = np.random.random([N, 3]) * np.array([L, L, L])
+    h = np.ones(N) * 3 * L / N ** (1 / 3.0)
+
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N)
 ids = np.arange(N)
-h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))

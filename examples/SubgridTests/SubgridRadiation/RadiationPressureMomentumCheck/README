@@ -1,12 +1,13 @@
 # Intro
 A single star at the center of a uniform, periodic gas box, with only the
-radiation-pressure momentum channel active. Photoionization, cooling and gravity are all off. This is a
-momentum-conservation self-check: it verifies that the code applies exactly
-what its own momentum-injection formula says (Eq. rp-momentum-rate in
-`theory/GEAR/Radiation/01_radiation_pressure.tex`), with no missing factor,
-double-counting, or silently-dropped kick. It does not validate that the
-underlying physical model itself is correct -- that is a separate, harder
-question (Tier 2, a future `Krumholz & Matzner 2009` comparison).
+radiation-pressure momentum channel active. Photoionization, cooling and
+gravity are all off. Formula-level correctness of the momentum-injection
+rate (Eq. rp-momentum-rate in `theory/GEAR/Radiation/01_radiation_pressure.tex`)
+is covered by `tests/testRadiationPressureFormula.c`, not by this example: a
+gas-kinematics comparison here is contaminated by the surrounding SPH's own
+hydrodynamical response to the kick and cannot isolate the injection formula
+on its own. This example is a scaffold for a future dynamical comparison
+against `Krumholz & Matzner 2009`.
 
 ## Density and metallicity
 `gas_density` defaults to `1e4 cm^-3` and `GEARChemistry:initial_metallicity`
@@ -18,11 +19,9 @@ This example's density is chosen so `tau_IR` is a non-negligible (but still
 modest, ~0.1) correction.
 
 ## Run duration
-`TimeIntegration:time_end` is short (~0.1 Myr) on purpose: this is a cheap
-correctness check, not a dynamical run. The window is short enough that the
-star's mass, and the gas density/metallicity near it, do not evolve
-appreciably, and short enough that the gas's own hydrodynamical response to
-the kick stays small relative to the kick itself.
+`TimeIntegration:time_end` is short (~0.1 Myr): short enough that the star's
+mass, and the gas density/metallicity near it, do not evolve appreciably
+over the run.
 
 # Configure
 ```
@@ -35,13 +34,3 @@ make -j
 ./run.sh
 ```
 Override any parameter via the matching env var, e.g. `gas_density=1e5 ./run.sh` -- see `run.sh` for the full list.
-
-# Checking
-```
-python3 radiation_pressure_momentum_check.py
-```
-Independently recomputes the star's expected total momentum output
-(`L_bol/c * (1+tau_IR)`, integrated over the run) from the initial snapshot,
-and compares it against the gas's actual total momentum gain in the final
-snapshot. Reports a PASS/FAIL against a relative-error tolerance
-(`--tolerance`, default 15%).
