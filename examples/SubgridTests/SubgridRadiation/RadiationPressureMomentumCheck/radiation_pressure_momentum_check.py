@@ -51,7 +51,7 @@ def blackbody_bolometric_luminosity(mass_msun):
     code: src/feedback/GEAR/radiation.c now reads this quantity from a
     pychem-generated table instead of computing it inline.
     """
-    M = mass_msun
+    M = float(mass_msun)
     if M < 0.43:
         lum_sol = 0.185 * M**2
     elif M < 2.0:
@@ -101,7 +101,10 @@ def main():
     # --- Gas properties at t=0 (uniform box: mean == local-at-star) ---
     box = data0.metadata.boxsize.to(u.cm)
     volume = box[0] * box[1] * box[2]
-    M_gas_tot = np.sum(data0.gas.masses).to(u.g)
+    # float32 gas masses carry an internal-mass-unit-to-g conversion factor
+    # (~2e43) that overflows float32 on its own, well before the physical
+    # value does; go via Msun first, whose conversion factor is small.
+    M_gas_tot = np.sum(data0.gas.masses).to(u.Msun).to(u.g)
     rho_gas = (M_gas_tot / volume).to(u.g / u.cm**3)
 
     # GEAR stores the TOTAL metal mass fraction as a synthetic extra "metals"
