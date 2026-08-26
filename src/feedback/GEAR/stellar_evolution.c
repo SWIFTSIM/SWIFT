@@ -27,6 +27,7 @@
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
+#include "minmax.h"
 #include "radiation.h"
 #include "random.h"
 #include "stellar_evolution_struct.h"
@@ -707,11 +708,13 @@ void stellar_evolution_compute_preSN_properties(
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-  /* Get the log of the metallicity normalised by solar metallicity */
+  /* Data/SW is now indexed by absolute Z, not Z/Zsun; floor as
+   * radiation_get_log_metallicity() does to avoid log10(0). */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float log_metallicity =
-      log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
+  const double metallicity_floored =
+      max((double)metallicity, RADIATION_LOG_FLOOR_CGS);
+  const float log_metallicity = (float)log10(metallicity_floored);
   const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
