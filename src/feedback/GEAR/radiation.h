@@ -56,6 +56,14 @@
     than being stored, so they must not be handed to the next landing pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
 
+/*! Floor, as a fraction of rho_gas/h, below which a star's SPH-estimated
+    local density gradient is discarded (not clamped) rather than trusted
+    for the Sobolev-length estimate in radiation_pressure.c: below it the
+    gradient is indistinguishable from SPH noise on a locally uniform field
+    (e.g. an unperturbed lattice/glass IC), and dividing by it would blow
+    the Sobolev length up to an arbitrary value. */
+#define RADIATION_MIN_RELATIVE_DENSITY_GRADIENT 0.01
+
 /*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
     genuinely-zero table entry (Q_H/DotEExcess below the source table's own
     ionization-threshold mass, where pychem defines them to be exactly 0;

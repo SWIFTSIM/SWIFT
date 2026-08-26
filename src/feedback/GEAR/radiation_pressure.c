@@ -50,12 +50,17 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
       sqrtf(grad_rho[0] * grad_rho[0] + grad_rho[1] * grad_rho[1] +
             grad_rho[2] * grad_rho[2]);
 
-  /* A locally uniform density field (zero gradient, e.g. unperturbed
-     glass/grid ICs) makes the Sobolev length rho/|grad rho| undefined;
-     fall back to just the kernel support radius in that case. */
+  /* A locally uniform density field (zero or near-zero gradient, e.g.
+     unperturbed glass/grid ICs) makes the Sobolev length rho/|grad rho|
+     undefined, or dominated by SPH summation noise rather than a resolved
+     trend: fall back to just the kernel support radius in that case (see
+     RADIATION_MIN_RELATIVE_DENSITY_GRADIENT). */
+  const float h_gas = sp->h * kernel_gamma;
+  const float grad_rho_floor =
+      RADIATION_MIN_RELATIVE_DENSITY_GRADIENT * rho_gas / h_gas;
   const float sobolev_length =
-      norm_grad_rho > 0.0f ? rho_gas / norm_grad_rho : 0.0f;
-  const float length_gas = sp->h * kernel_gamma + sobolev_length;
+      norm_grad_rho > grad_rho_floor ? rho_gas / norm_grad_rho : 0.0f;
+  const float length_gas = h_gas + sobolev_length;
   return length_gas * rho_gas;
 }
 
