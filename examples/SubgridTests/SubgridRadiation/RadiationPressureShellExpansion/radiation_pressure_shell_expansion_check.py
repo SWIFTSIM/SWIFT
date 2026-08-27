@@ -36,10 +36,14 @@ than assumed -- this checks a previously-unverified hypothesis that the
 star's adaptive smoothing length keeps its local coupling roughly tracking
 the swept-up shell as the interior cavity empties out.
 
-The current reference curve uses f_trap measured at the earliest snapshot,
-held constant (a first pass -- see the module's own TODO on refining this to
-a numerically-integrated ODE using the full measured f_trap(t), matched to
-this check's own drift report).
+The primary reference curve numerically integrates the thin-shell ODE
+d/dt(M(R) dR/dt) = f_trap(t)*L_bol/c using the full measured f_trap(t)
+(interpolated between snapshots), not a value held constant at the
+reference snapshot -- this is what the earlier constant-f_trap version's own
+drift report (up to ~69% of the reference value in the first Tier 2a run)
+flagged as worth doing. The closed-form K&M2009 curve (constant f_trap) is
+still computed and reported alongside it, purely as an audit of how much the
+refinement moves the result.
 
 Formula-level correctness of radiation_get_star_physical_radiation_pressure
 is NOT this script's job: that's tests/testRadiationPressureFormula.c (no
@@ -57,6 +61,7 @@ import sys
 
 import h5py
 import numpy as np
+from scipy.integrate import solve_ivp
 
 import matplotlib
 
@@ -199,6 +204,60 @@ def density_peak_radius(r_sorted, cum_mass, box_half_width, n_bins=40):
     return 0.5 * (edges[peak] + edges[peak + 1])
 
 
+def integrate_shell_ode(t_sim_s, f_trap_t, nonzero, ref_idx, rho_0_cgs, L_bol_cgs):
+    """Refine the closed-form curve using the actually-measured f_trap(t).
+
+    d/dt(M(R) dR/dt) = f_trap(t)*L_bol/c, M(R) = (4/3)*pi*rho_0*R^3, in the
+    momentum-like state variable p = M(R)*dR/dt (so dp/dt is simply the
+    forcing term, no R-dependence to divide through by inside the RHS).
+
+    dR/dt diverges as R -> 0 (the same integrable singularity the closed
+    form has), so integration starts at t_sim_s[ref_idx] -- the first
+    snapshot with a real f_trap measurement -- seeded from the closed-form
+    solution at that instant (f_trap approx constant over the short
+    pre-reference interval; this is the same approximation the "constant
+    f_trap" curve already made for the entire run). f_trap(t) is
+    interpolated linearly between measured (nonzero) snapshots and held flat
+    outside their range.
+    """
+    f_trap_ref = f_trap_t[ref_idx]
+    t_ref = t_sim_s[ref_idx]
+    prefactor = (
+        3.0 * f_trap_ref * L_bol_cgs / (2.0 * np.pi * rho_0_cgs * C_LIGHT_CGS)
+    ) ** 0.25
+    R_ref = prefactor * np.sqrt(t_ref)
+    Rdot_ref = 0.5 * R_ref / t_ref
+    M_ref = (4.0 / 3.0) * np.pi * rho_0_cgs * R_ref**3
+    p_ref = M_ref * Rdot_ref
+
+    t_meas = t_sim_s[nonzero]
+    f_meas = f_trap_t[nonzero]
+
+    def f_trap_interp(t):
+        return np.interp(t, t_meas, f_meas)
+
+    def rhs(t, y):
+        R, p = y
+        M = (4.0 / 3.0) * np.pi * rho_0_cgs * max(R, 0.0) ** 3
+        Rdot = p / M if M > 0.0 else 0.0
+        pdot = f_trap_interp(t) * L_bol_cgs / C_LIGHT_CGS
+        return [Rdot, pdot]
+
+    t_tail = t_sim_s[t_sim_s >= t_ref]
+    sol = solve_ivp(
+        rhs, (t_ref, t_tail[-1]), [R_ref, p_ref], t_eval=t_tail, rtol=1e-8, atol=1e-6
+    )
+    if sol.status != 0:
+        raise RuntimeError(f"Shell-expansion ODE integration failed: {sol.message}")
+
+    R_ode_cgs = np.array(t_sim_s, dtype=float)
+    R_ode_cgs[t_sim_s < t_ref] = prefactor * np.sqrt(
+        np.maximum(t_sim_s[t_sim_s < t_ref], 0.0)
+    )
+    R_ode_cgs[t_sim_s >= t_ref] = sol.y[0]
+    return R_ode_cgs
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -313,14 +372,25 @@ def main():
         f"{((f_trap_t[nonzero].max() - f_trap_t[nonzero].min()) / f_trap_t[ref_idx]):.2%})"
     )
 
-    # Closed-form analytic curve, f_trap held at its reference measured
-    # value (first-pass reference -- see module docstring's TODO on refining
-    # this to an ODE using the full measured f_trap(t)).
+    # Closed-form curve (constant f_trap), audit only -- see integrate_shell_ode.
     f_trap_ref = f_trap_t[ref_idx]
     prefactor = (
         3.0 * f_trap_ref * L_bol_cgs / (2.0 * np.pi * rho_0_cgs * C_LIGHT_CGS)
     ) ** (0.25)
-    R_analytic_cgs = prefactor * np.sqrt(t_sim_s)
+    R_closed_form_cgs = prefactor * np.sqrt(t_sim_s)
+
+    # Primary reference curve: ODE-integrated using the full measured f_trap(t).
+    R_analytic_cgs = integrate_shell_ode(
+        t_sim_s, f_trap_t, nonzero, ref_idx, rho_0_cgs, L_bol_cgs
+    )
+    ode_vs_closed_form = np.abs(R_analytic_cgs - R_closed_form_cgs) / np.maximum(
+        R_closed_form_cgs, 1e-30
+    )
+    print(
+        f"ODE vs closed form : up to {ode_vs_closed_form.max():.2%} "
+        f"disagreement (this is the effect of using the measured f_trap(t) "
+        f"instead of holding it at the reference value)"
+    )
 
     # Now the Lagrangian shell radius, using the theory's own M_theory(t).
     R_lagrangian_cgs = []
@@ -400,7 +470,15 @@ def main():
         R_analytic_cgs / PC_IN_CGS,
         "--",
         color="black",
-        label="Krumholz & Matzner (2009), radiation-only limit",
+        label="Krumholz & Matzner (2009), ODE with measured f_trap(t)",
+    )
+    ax.plot(
+        t_myr,
+        R_closed_form_cgs / PC_IN_CGS,
+        ":",
+        color="gray",
+        alpha=0.7,
+        label="Krumholz & Matzner (2009), closed form (constant f_trap)",
     )
     ax.axhline(
         box_half_width_cgs / PC_IN_CGS,
