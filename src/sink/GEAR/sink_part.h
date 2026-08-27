@@ -95,10 +95,10 @@ struct sink {
     union {
 
       /*! Birth time */
-      float time;
+      double time;
 
       /*! Birth scale factor */
-      float scale_factor;
+      double scale_factor;
     };
 
     /*! The birth density */
