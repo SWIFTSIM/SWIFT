@@ -426,6 +426,8 @@ void engine_unskip(struct engine *e) {
   ProfilerStart(filename);
 #endif  // WITH_PROFILER
 
+  const ticks tic2 = getticks();
+
   /* Move the active local cells to the top of the list. */
   int *local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
@@ -449,6 +451,15 @@ void engine_unskip(struct engine *e) {
       num_active_cells += 1;
     }
   }
+
+  if (e->verbose) {
+    message("Found %d active cells out of %d local cells with tasks.",
+            num_active_cells, s->nr_local_cells_with_tasks);
+    message("took %.3f %s to find active cells.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
+
+  tic2 = getticks();
 
   /* What kind of tasks do we have? */
   struct unskip_data data;
@@ -499,6 +510,16 @@ void engine_unskip(struct engine *e) {
     }
   } else {
     local_active_cells = local_cells;
+  }
+
+  /* Did we make a copy? */
+  if (e->verbose && multiplier > 1) {
+    message(
+        "Duplicated the list of active cells %d times to better parallelise "
+        "the unskip over the threads.",
+        multiplier);
+    message("took %.3f %s to duplicate the list.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 
   /* We now have a list of local active cells duplicated as many times as
