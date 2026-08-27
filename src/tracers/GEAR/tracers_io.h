@@ -104,14 +104,115 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  int num = 6;
+
+  list[0] = io_make_output_field(
+      "CumulativeMomentumFromSN", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
+      tracers_data.feedback_cumulative.momentum_SN,
+      "Cumulative momentum magnitude received from SN over this particle's "
+      "lifetime (scalar sum of |delta_p| per event, not a vector sum: "
+      "isotropic kicks would otherwise cancel out).");
+
+  list[1] = io_make_output_field(
+      "CumulativeMomentumFromWinds", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
+      tracers_data.feedback_cumulative.momentum_winds,
+      "Cumulative momentum magnitude received from stellar winds over this "
+      "particle's lifetime. Same scalar-sum convention as "
+      "CumulativeMomentumFromSN.");
+
+  list[2] = io_make_output_field(
+      "CumulativeEnergyFromSN", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      xparts, tracers_data.feedback_cumulative.energy_SN,
+      "Cumulative specific internal energy received from SN over this "
+      "particle's lifetime.");
+
+  list[3] = io_make_output_field(
+      "CumulativeEnergyFromWinds", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
+      "Cumulative specific internal energy received from stellar winds over "
+      "this particle's lifetime. Unlike CumulativeEnergyFromSN this is a "
+      "conservation residual (budgeted energy minus the actual kinetic "
+      "energy change from the kick), not a strictly positive injected "
+      "quantity: known to go negative when the gas was already moving "
+      "towards the star before the kick.");
+
+  list[4] = io_make_output_field(
+      "MaxKickVelocityFromSN", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
+      tracers_data.feedback_cumulative.max_kick_velocity_SN,
+      "Largest single-event kick velocity this particle received from SN "
+      "(outflow diagnostic: peak coupling speed near the source, before "
+      "deceleration).");
+
+  list[5] = io_make_output_field(
+      "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
+      tracers_data.feedback_cumulative.max_kick_velocity_winds,
+      "Largest single-event kick velocity this particle received from "
+      "stellar winds. Same convention as MaxKickVelocityFromSN.");
+
+  return num;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  int num = 6;
+
+  list[0] = io_make_output_field(
+      "NumberOfSNIIEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      tracers_data.snii_events.n_events,
+      "Number of SNII events this star produced over its lifetime so far "
+      "(fractional for a continuously-sampled population particle; always "
+      "0 or 1 for a discrete star).");
+
+  list[1] = io_make_output_field(
+      "DensityAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      tracers_data.snii_events.density_at_last_event,
+      "Physical gas density at the star's own location (kernel-averaged, "
+      "same value the enrichment loop already computes) at its most recent "
+      "SNII event. 0 if it has never had one. Compare NumberOfSNIIEvents "
+      "between two snapshots to see if any events were missed between "
+      "them.");
+
+  if (with_cosmology) {
+    list[2] = io_make_output_field(
+        "ScaleFactorAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        tracers_data.snii_events.last_event_scale_factor,
+        "Scale-factor at this star's most recent SNII event. 0 if it has "
+        "never had one.");
+  } else {
+    list[2] = io_make_output_field(
+        "TimeAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
+        tracers_data.snii_events.last_event_time,
+        "Simulation time at this star's most recent SNII event. 0 if it "
+        "has never had one.");
+  }
+
+  list[3] = io_make_output_field(
+      "NumberOfSNIaEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      tracers_data.snia_events.n_events,
+      "Number of SNIa events this star produced over its lifetime so far. "
+      "Always 0 for a discrete (single_star) particle: SNIa is a "
+      "population-level channel in this model.");
+
+  list[4] = io_make_output_field(
+      "DensityAtLastSNIaEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      tracers_data.snia_events.density_at_last_event,
+      "Same as DensityAtLastSNIIEvent, for the SNIa channel.");
+
+  if (with_cosmology) {
+    list[5] = io_make_output_field(
+        "ScaleFactorAtLastSNIaEvent", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        tracers_data.snia_events.last_event_scale_factor,
+        "Same as ScaleFactorAtLastSNIIEvent, for the SNIa channel.");
+  } else {
+    list[5] = io_make_output_field(
+        "TimeAtLastSNIaEvent", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
+        tracers_data.snia_events.last_event_time,
+        "Same as TimeAtLastSNIIEvent, for the SNIa channel.");
+  }
+
+  return num;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
