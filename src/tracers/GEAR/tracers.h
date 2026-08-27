@@ -24,6 +24,7 @@
 
 /* Local includes */
 #include "cooling.h"
+#include "cosmology.h"
 #include "engine.h"
 #include "part.h"
 #include "sink.h"
@@ -224,7 +225,54 @@ static INLINE void tracers_first_init_xpart(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling) {}
+    const struct cooling_function_data *cooling) {
+
+  xp->tracers_data.feedback_cumulative.momentum_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
+}
+
+/**
+ * @brief Accumulate one channel's contribution to a gas particle's
+ * lifetime-cumulative feedback tracers.
+ *
+ * Called once per channel per feedback event, from inside that channel's
+ * own branch in the SN/winds/radiation-pressure interaction code, using
+ * that branch's own locally-computed momentum/energy, not read back from
+ * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
+ * winds can both fire on the same gas particle in the same step and would
+ * otherwise be inseparable.
+ *
+ * @param momentum_channel Pointer to this channel's cumulative-momentum
+ * field (feedback_cumulative.momentum_SN/winds/radiation).
+ * @param energy_channel Pointer to this channel's cumulative-energy field,
+ * or NULL (radiation pressure has no separate thermal channel).
+ * @param max_kick_velocity_channel Pointer to this channel's max-kick
+ * -velocity field.
+ * @param delta_p_magnitude Momentum magnitude received this event
+ * (physical internal units, except the SN caller: see its own comoving
+ * -frame caveat in GEAR_thermal/feedback_iact.h).
+ * @param delta_energy Specific internal energy received this event
+ * (physical internal units), ignored if energy_channel is NULL.
+ * @param kick_velocity Velocity magnitude of this event's kick (same
+ * frame as delta_p_magnitude).
+ */
+static INLINE void tracers_gear_accumulate_feedback(
+    float *momentum_channel, float *energy_channel,
+    float *max_kick_velocity_channel, const float delta_p_magnitude,
+    const float delta_energy, const float kick_velocity) {
+
+  *momentum_channel += delta_p_magnitude;
+  if (energy_channel != NULL) *energy_channel += delta_energy;
+  if (kick_velocity > *max_kick_velocity_channel) {
+    *max_kick_velocity_channel = kick_velocity;
+  }
+}
 
 /**
  * @brief Initialise the star tracer data at the start of a calculation.
@@ -241,7 +289,53 @@ static INLINE void tracers_first_init_xpart(
 static INLINE void tracers_first_init_spart(struct spart *sp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+                                            const struct cosmology *cosmo) {
+
+  sp->tracers_data.snii_events = (struct tracers_sn_event_data){0};
+  sp->tracers_data.snia_events = (struct tracers_sn_event_data){0};
+}
+
+/**
+ * @brief Update one channel's SN-event tracer (count, density and
+ * time/scale-factor at the last event) after this star produced
+ * `number_events` SN(e) this step.
+ *
+ * Shared by both the discrete (single_star, always number_events == 1) and
+ * population (star_population/star_population_continuous_IMF, possibly
+ * fractional) SN feedback paths. Called only when number_events > 0.
+ *
+ * @param ev The channel's #tracers_sn_event_data to update.
+ * @param number_events Number of SN(e) this channel produced this step.
+ * @param comoving_density The star's own local gas density
+ * (enrichment_weight), comoving. Converted to physical here before storing,
+ * matching part->rho's own comoving convention and hydro_get_physical_density.
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current simulation time (internal units, only used if
+ * !with_cosmology).
+ */
+static INLINE void tracers_gear_update_sn_event(
+    struct tracers_sn_event_data *ev, const float number_events,
+    const float comoving_density, const int with_cosmology,
+    const struct cosmology *cosmo, const double time) {
+
+  if (number_events <= 0.f) return;
+
+  const float density = comoving_density * (float)cosmo->a3_inv;
+
+  /* Assumes this runs exactly once per active star per step (true today:
+     the sole call chain is feedback_will_do_feedback, the timestep task).
+     Unlike every other field feedback_will_do_feedback sets this step
+     (plain assignment), this one accumulates, so a future double-dispatch
+     bug here would silently double-count instead of self-healing. */
+  ev->n_events += number_events;
+  ev->density_at_last_event = density;
+  if (with_cosmology) {
+    ev->last_event_scale_factor = cosmo->a;
+  } else {
+    ev->last_event_time = (float)time;
+  }
+}
 
 /**
  * @brief Initialise the black hole tracer data at the start of a calculation.

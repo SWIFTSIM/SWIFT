@@ -267,7 +267,7 @@ void feedback_will_do_feedback(
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(
-        sp, model, cosmo, us, phys_const,
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
         feedback_props->with_stellar_wind_feedback, ti_begin,
         star_age_beg_step_safe, dt_enrichment);
   } else {
@@ -275,10 +275,10 @@ void feedback_will_do_feedback(
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
-                                   feedback_props->with_stellar_wind_feedback,
-                                   ti_begin, star_age_beg_step_safe,
-                                   dt_enrichment);
+    stellar_evolution_evolve_spart(
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */

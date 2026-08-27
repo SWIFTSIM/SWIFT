@@ -25,6 +25,7 @@
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -273,6 +274,16 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
+      /* Lifetime-cumulative tracer, using this branch's own locally-computed
+         momentum/energy (not the shared feedback_data.delta_p/delta_u,
+         which the SN branch below can also add to this same step). */
+      const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
+      tracers_gear_accumulate_feedback(
+          &xpj->tracers_data.feedback_cumulative.momentum_winds,
+          &xpj->tracers_data.feedback_cumulative.energy_winds,
+          &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
+          delta_p_mag_winds, (float)du, delta_p_mag_winds / (float)new_mass);
+
       xpj->feedback_data.hit_by_winds = 1;
     }
   }
@@ -299,8 +310,10 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
+    float delta_p_SN[3];
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
+      delta_p_SN[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += delta_p_SN[i];
     }
 
     /* Add the metals */
@@ -308,6 +321,20 @@ runner_iact_nonsym_feedback_apply(
       pj->chemistry_data.metal_mass[i] +=
           weight * si->feedback_data.metal_mass_ejected[i];
     }
+
+    /* Lifetime-cumulative tracer. Comoving-frame momentum (this branch,
+       unlike the winds one above, never converts to physical velocities),
+       exact for the non-cosmological runs this is used for so far; revisit
+       the comoving/physical distinction here before trusting it in a
+       cosmological run. */
+    const float delta_p_mag_SN =
+        sqrtf(delta_p_SN[0] * delta_p_SN[0] + delta_p_SN[1] * delta_p_SN[1] +
+              delta_p_SN[2] * delta_p_SN[2]);
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_SN,
+        &xpj->tracers_data.feedback_cumulative.energy_SN,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_SN,
+        delta_p_mag_SN, (float)du, delta_p_mag_SN / (float)new_mass);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;

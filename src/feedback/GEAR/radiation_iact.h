@@ -34,6 +34,7 @@
 #include "feedback_properties.h"
 #include "radiation.h"
 #include "random.h"
+#include "tracers.h"
 
 /**
  * @brief Radiation density interaction between two particles (non-symmetric).
@@ -217,6 +218,15 @@ radiation_iact_nonsym_feedback_apply(
       xpj->feedback_data.radiation.delta_p[i] -=
           delta_p_rad * dx[i] / r * cosmo->a;
     }
+
+    /* Lifetime-cumulative tracer. delta_p_rad is already the physical
+       momentum magnitude for this star-gas pair, before it gets projected
+       onto the radial direction above. No separate energy channel (see
+       tracers_struct.h). */
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_radiation, NULL,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
+        delta_p_rad, 0.f, delta_p_rad / mj);
 
     /* Set the indication of a radiation-pressure event, matching
        hit_by_SN/hit_by_winds -- without this, feedback_update_part_radiation()
