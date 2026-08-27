@@ -1086,15 +1086,41 @@ void space_split(struct space *s, int verbose) {
         for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
           zoom_power[n] = max(zoom_power[n], m->power[n]);
       }
+      int worst_cid = -1;
+      double bkg_mass_sum = 0., zoom_mass_sum = 0.;
       for (int k = 0; k < s->zoom_props->nr_local_bkg_cells_with_particles;
            k++) {
-        const struct multipole *m =
-            &s->cells_top[s->zoom_props->local_bkg_cells_with_particles_top[k]]
-                 .grav.multipole->m_pole;
+        const int cid = s->zoom_props->local_bkg_cells_with_particles_top[k];
+        const struct multipole *m = &s->cells_top[cid].grav.multipole->m_pole;
         bkg_min = min(bkg_min, m->min_old_a_grav_norm);
         bkg_soft = max(bkg_soft, m->max_softening);
+        if (m->power[0] > bkg_power[0]) worst_cid = cid;
         for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
           bkg_power[n] = max(bkg_power[n], m->power[n]);
+        bkg_mass_sum += m->M_000;
+      }
+      for (int k = 0; k < s->zoom_props->nr_local_zoom_cells_with_particles;
+           k++)
+        zoom_mass_sum +=
+            s->cells_top[s->zoom_props->local_zoom_cells_with_particles_top[k]]
+                .grav.multipole->m_pole.M_000;
+
+      /* Which background cell attains the maximal monopole, and is that
+       * monopole even physical? A single top-level cell cannot hold more mass
+       * than the whole box. The void cell is the prime suspect: it is a
+       * background cell whose progeny are the zoom cells. */
+      if (worst_cid >= 0) {
+        const struct cell *wc = &s->cells_top[worst_cid];
+        message(
+            "MAC worst bkg monopole: cid=%d type=%d subtype=%d "
+            "contains_zoom_cells=%d grav.count=%d M_000=%.6e width=%.4f",
+            worst_cid, (int)wc->type, (int)wc->subtype, wc->contains_zoom_cells,
+            wc->grav.count, wc->grav.multipole->m_pole.M_000, wc->width[0]);
+        message(
+            "MAC mass audit: sum(bkg M_000)=%.6e sum(zoom M_000)=%.6e "
+            "total=%.6e, worst single bkg cell / total = %.4f",
+            bkg_mass_sum, zoom_mass_sum, bkg_mass_sum + zoom_mass_sum,
+            wc->grav.multipole->m_pole.M_000 / (bkg_mass_sum + zoom_mass_sum));
       }
 
       message(
