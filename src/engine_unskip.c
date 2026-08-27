@@ -426,7 +426,7 @@ void engine_unskip(struct engine *e) {
   ProfilerStart(filename);
 #endif  // WITH_PROFILER
 
-  const ticks tic2 = getticks();
+  ticks tic2 = getticks();
 
   /* Move the active local cells to the top of the list. */
   int *local_cells = e->s->local_cells_with_tasks_top;
