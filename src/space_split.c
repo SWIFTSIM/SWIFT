@@ -1064,33 +1064,76 @@ void space_split(struct space *s, int verbose) {
           s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
           s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
 
-    /* Break the min_a_grav reduction down by cell type. The MAC search
-     * distance goes as min_a_grav^(-1/(p+2)) and min_a_grav is a single
-     * global minimum, so a near-empty background can inflate the search
-     * distance for the entire volume. Diagnostic only: this repeats the
-     * reduction the mappers already did rather than changing it. */
+    /* Break the MAC reduction down by cell type. E_BA_term multiplies the
+     * globally-maximal multipole powers by a per-cell-type size, so in a zoom
+     * run the background search distance can be built from zoom-cell powers
+     * scaled by the (much larger) background cell size. In a non-zoom run this
+     * cannot happen: every cell has the same width. Diagnostic only, this
+     * repeats the reduction the mappers already did rather than changing it. */
     if (s->with_self_gravity && s->with_zoom_region) {
-      float zoom_min = FLT_MAX;
-      float bkg_min = FLT_MAX;
+      float zoom_min = FLT_MAX, bkg_min = FLT_MAX;
+      float zoom_soft = 0.f, bkg_soft = 0.f;
+      float zoom_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+      float bkg_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
       for (int k = 0; k < s->zoom_props->nr_local_zoom_cells_with_particles;
            k++) {
-        const struct cell *c =
-            &s->cells_top[s->zoom_props
-                              ->local_zoom_cells_with_particles_top[k]];
-        zoom_min = min(zoom_min, c->grav.multipole->m_pole.min_old_a_grav_norm);
+        const struct multipole *m =
+            &s->cells_top[s->zoom_props->local_zoom_cells_with_particles_top[k]]
+                 .grav.multipole->m_pole;
+        zoom_min = min(zoom_min, m->min_old_a_grav_norm);
+        zoom_soft = max(zoom_soft, m->max_softening);
+        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+          zoom_power[n] = max(zoom_power[n], m->power[n]);
       }
       for (int k = 0; k < s->zoom_props->nr_local_bkg_cells_with_particles;
            k++) {
-        const struct cell *c =
-            &s->cells_top[s->zoom_props->local_bkg_cells_with_particles_top[k]];
-        bkg_min = min(bkg_min, c->grav.multipole->m_pole.min_old_a_grav_norm);
+        const struct multipole *m =
+            &s->cells_top[s->zoom_props->local_bkg_cells_with_particles_top[k]]
+                 .grav.multipole->m_pole;
+        bkg_min = min(bkg_min, m->min_old_a_grav_norm);
+        bkg_soft = max(bkg_soft, m->max_softening);
+        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+          bkg_power[n] = max(bkg_power[n], m->power[n]);
       }
+
       message(
           "MAC inputs by cell type: min_a_grav zoom=%.6e (%d cells) "
           "bkg=%.6e (%d cells), global=%.6e, bkg/zoom=%.6e",
           zoom_min, s->zoom_props->nr_local_zoom_cells_with_particles, bkg_min,
           s->zoom_props->nr_local_bkg_cells_with_particles, s->min_a_grav,
           zoom_min > 0.f ? bkg_min / zoom_min : -1.f);
+      message(
+          "MAC inputs by cell type: max_softening zoom=%.6e bkg=%.6e "
+          "global=%.6e",
+          zoom_soft, bkg_soft, s->max_softening);
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        message(
+            "MAC inputs by cell type: max_mpole_power[%d] zoom=%.6e bkg=%.6e "
+            "global=%.6e, zoom dominates=%s",
+            n, zoom_power[n], bkg_power[n], s->max_mpole_power[n],
+            zoom_power[n] > bkg_power[n] ? "YES" : "no");
+
+      /* Would a fully background-only reduction escape the delta saturation?
+       * Both distances use the background cell width, so this isolates the
+       * effect of mixing zoom-cell powers/accelerations into a
+       * background-sized E_BA_term. */
+      const double bkg_width = s->zoom_props->bkg_cells_top[0].width[0];
+      const float d_global = gravity_M2L_min_accept_distance(
+          s->e->gravity_properties, sqrtf(3) * bkg_width, s->max_softening,
+          s->min_a_grav, s->max_mpole_power, s->periodic);
+      const float d_bkg = gravity_M2L_min_accept_distance(
+          s->e->gravity_properties, sqrtf(3) * bkg_width, bkg_soft, bkg_min,
+          bkg_power, s->periodic);
+      const int delta_global =
+          max((int)(sqrt(3) * d_global / bkg_width) + 1, 2);
+      const int delta_bkg = max((int)(sqrt(3) * d_bkg / bkg_width) + 1, 2);
+      message(
+          "MAC bkg-only vs global: distance %.6e -> %.6e, delta %d -> %d "
+          "(saturates at %d) %s",
+          d_global, d_bkg, delta_global, delta_bkg, s->cdim[0] / 2,
+          delta_bkg >= s->cdim[0] / 2 ? "STILL SATURATED"
+                                      : "<== ESCAPES SATURATION");
     }
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
