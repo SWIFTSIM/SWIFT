@@ -1053,6 +1053,16 @@ void space_split(struct space *s, int verbose) {
     }
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
+    /* These feed gravity_M2L_min_accept_distance and hence the delta used to
+     * bound the gravity pair loops. min_a_grav in particular is a global
+     * minimum over every non-empty top-level cell, so a near-empty background
+     * can drag it down and inflate delta everywhere. */
+    if (s->with_self_gravity)
+      message(
+          "MAC inputs: min_a_grav=%.6e max_softening=%.6e "
+          "max_mpole_power[%d]=%.6e",
+          s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
+          s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }

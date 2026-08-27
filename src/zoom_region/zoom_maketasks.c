@@ -138,6 +138,24 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
 
+  /* Report the search range the background mappers will use. This mirrors the
+   * computation in engine_make_self_gravity_tasks_mapper_bkg_cells, done once
+   * here rather than once per threadpool chunk. When delta saturates at
+   * cdim/2 the pair loops degenerate to all-pairs. */
+  if (e->verbose) {
+    struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+    const float distance = gravity_M2L_min_accept_distance(
+        e->gravity_properties, sqrtf(3) * bkg_cells[0].width[0],
+        s->max_softening, s->min_a_grav, s->max_mpole_power, s->periodic);
+    const int delta =
+        max((int)(sqrt(3) * distance / bkg_cells[0].width[0]) + 1, 2);
+    message(
+        "Background pair search: distance=%.6e (%.2f bkg cell widths) "
+        "delta=%d, bkg_cdim=%d, saturates at delta>=%d%s",
+        distance, distance / bkg_cells[0].width[0], delta, s->cdim[0],
+        s->cdim[0] / 2, delta >= s->cdim[0] / 2 ? " <== SATURATED" : "");
+  }
+
   /* Background -> Background */
   threadpool_map(&e->threadpool,
                  engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
