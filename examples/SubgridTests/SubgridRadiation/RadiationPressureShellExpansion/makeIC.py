@@ -62,7 +62,7 @@ def parse_options():
         action="store",
         dest="level",
         type=int,
-        default=5,
+        default=6,
         help="Resolution level: N = (2**l)**3",
     )
 

@@ -19,11 +19,11 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration -- short on purpose: this is a
-# cheap momentum-conservation self-check, not a dynamical run (see README).
+# Parameters governing the time integration -- long enough to track the
+# shell's dynamical response to radiation pressure (see README).
 TimeIntegration:
   time_begin:        0.
-  time_end:          1e-4  # ~0.098 Myr
+  time_end:          3.1e-3  # ~3 Myr
   dt_min:            1e-12
   dt_max:            1e-5  # ~0.0098 Myr
 
@@ -32,7 +32,7 @@ Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1e-5  # 10 snapshots over the run
+  delta_time: 5e-5  # ~62 snapshots over the run
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 

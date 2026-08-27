@@ -12,10 +12,10 @@ gas_density=${gas_density:=1e3} #Gas density in atom/cm^3; see README's Density 
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
-level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
-time_end=${time_end:=5e-4} #TimeIntegration:time_end override (internal units)
+level=${level:=6} #Resolution level: N = (2**level)**3 gas particles
+time_end=${time_end:=3.1e-3} #TimeIntegration:time_end override (internal units, ~3 Myr)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
-delta_time=${delta_time:=2e-5} #Snapshots:delta_time override (internal units)
+delta_time=${delta_time:=5e-5} #Snapshots:delta_time override (internal units)
 run_name=${run_name:=""}
 
 # Remove the ICs
