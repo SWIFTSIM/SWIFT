@@ -964,61 +964,94 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
   }
 }
 
-void self_all_sidm_force(struct runner *r, struct cell *ci) {
-  float hi, hj, hig2, hjg2;
-  struct sipart *sipi, *sipj;
+void self_all_sidm_force(struct runner *r, struct cell *c,
+                         const int limit_min_h, const int limit_max_h) {
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
-  /* Implements a double-for loop and checks every interaction */
-  for (int i = 0; i < ci->sidm.count; ++i) {
+  const int count = c->sidm.count;
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
 
-    sipi = &ci->sidm.parts[i];
-    hi = sipi->h;
-    hig2 = hi * hi * kernel_gamma2;
+  for (int i = 0; i < count; i++) {
 
+    struct sipart *restrict sipi = &siparts[i];
+    if (sipart_is_inhibited(sipi, e)) continue;
+
+    const char depth_i = sipi->depth_h;
+    const float hi = sipi->h;
+    const float hig2 = hi * hi * kernel_gamma2;
     const double sipix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
 
-    for (int j = i + 1; j < ci->sidm.count; ++j) {
+    const int doi = sipart_is_active(sipi, e) && (depth_i >= min_depth) &&
+                    (depth_i <= max_depth);
 
-      sipj = &ci->sidm.parts[j];
-      hj = sipj->h;
-      hjg2 = hj * hj * kernel_gamma2;
+    for (int j = i + 1; j < count; j++) {
 
-      if (sipi == sipj) continue;
+      struct sipart *restrict sipj = &siparts[j];
+      if (sipart_is_inhibited(sipj, e)) continue;
+
+      const char depth_j = sipj->depth_h;
+      const float hj = sipj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      const int doj = sipart_is_active(sipj, e) && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth);
+
+      if (!doi && !doj) continue;
 
       const double sipjx[3] = {sipj->x[0], sipj->x[1], sipj->x[2]};
-
-      /* Pairwise distance */
-      float dx[3] = {(float)(sipix[0] - sipjx[0]), (float)(sipix[1] - sipjx[1]),
-                     (float)(sipix[2] - sipjx[2])};
+      const float dx[3] = {(float)(sipix[0] - sipjx[0]),
+                           (float)(sipix[1] - sipjx[1]),
+                           (float)(sipix[2] - sipjx[2])};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* Hit or miss? */
       if (r2 < hig2 || r2 < hjg2) {
 
-        /* Interact */
-        runner_iact_sidm_force(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
-                               cosmo, e->sidm_properties, e->ti_current,
-                               e->time_base);
+        if (doi && doj) {
+          runner_iact_sidm_force(r2, dx, hi, hj, sipi, sipj, a, H,
+                                 with_cosmology, cosmo, e->sidm_properties,
+                                 e->ti_current, e->time_base);
+        } else if (doi) {
+          runner_iact_nonsym_sidm_force(
+              r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+              e->sidm_properties, e->ti_current, e->time_base);
+        } else /* doj only */ {
+          const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+          runner_iact_nonsym_sidm_force(
+              r2, dx_ji, hj, hi, sipj, sipi, a, H, with_cosmology, cosmo,
+              e->sidm_properties, e->ti_current, e->time_base);
+        }
       }
     }
   }
 }
 
-void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj) {
+void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int limit_min_h, const int limit_max_h) {
 
   float hi, hj, hig2, hjg2;
   struct sipart *sipi, *sipj;
-  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
+
+  const int count_i = ci->sidm.count;
+  const int count_j = cj->sidm.count;
 
   double shift[3] = {0.0, 0.0, 0.0};
   space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
@@ -1026,84 +1059,81 @@ void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj) {
                              cj->loc[2] + shift[2]};
   const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
 
-  /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->sidm.count; ++i) {
 
     sipi = &ci->sidm.parts[i];
+
+    if (sipart_is_inhibited(sipi, e)) continue;
+
+    const char depth_i = sipi->depth_h;
     hi = sipi->h;
     hig2 = hi * hi * kernel_gamma2;
-
-    /* Skip inactive particles. */
-    if (!sipart_is_active(sipi, e)) continue;
 
     const float sipix = sipi->x[0] - shift_i[0];
     const float sipiy = sipi->x[1] - shift_i[1];
     const float sipiz = sipi->x[2] - shift_i[2];
 
+    const int doi = sipart_is_active(sipi, e) && local_i &&
+                    (depth_i >= min_depth) && (depth_i <= max_depth);
+
     for (int j = 0; j < cj->sidm.count; ++j) {
 
       sipj = &cj->sidm.parts[j];
+
+      if (sipart_is_inhibited(sipj, e)) continue;
+
+      const char depth_j = sipj->depth_h;
       hj = sipj->h;
       hjg2 = hj * hj * kernel_gamma2;
+
+      const int doj = sipart_is_active(sipj, e) && local_j &&
+                      (depth_j >= min_depth) && (depth_j <= max_depth);
+      if (!doi && !doj) continue;
 
       const float sipjx = sipj->x[0] - shift_j[0];
       const float sipjy = sipj->x[1] - shift_j[1];
       const float sipjz = sipj->x[2] - shift_j[2];
 
       /* Pairwise distance */
-      const float dx[3] = {nearest(sipix - sipjx, dim[0]),
-                           nearest(sipiy - sipjy, dim[1]),
-                           nearest(sipiz - sipjz, dim[2])};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      const float dxA[3] = {sipix - sipjx, sipiy - sipjy, sipiz - sipjz};
+      const float dxB[3] = {sipjx - sipix, sipjy - sipiy, sipjz - sipiz};
+      const float r2 = dxA[0] * dxA[0] + dxA[1] * dxA[1] + dxA[2] * dxA[2];
 
-      /* Hit or miss? */
-      if (r2 < hig2 || r2 < hjg2) {
+      if (r2 < hig2) {
 
-        /* Interact */
-        runner_iact_nonsym_sidm_force(r2, dx, hi, hj, sipi, sipj, a, H,
-                                      with_cosmology, cosmo, e->sidm_properties,
-                                      e->ti_current, e->time_base);
-      }
-    }
-  }
+        if (doi) {
+          if (doj) {
+            runner_iact_sidm_force(r2, dxA, hi, hj, sipi, sipj, a, H,
+                                   with_cosmology, cosmo, e->sidm_properties,
+                                   e->ti_current, e->time_base);
+          } else {
+            runner_iact_nonsym_sidm_force(
+                r2, dxA, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+                e->sidm_properties, e->ti_current, e->time_base);
+          }
+        } else if (doj) {
+          runner_iact_nonsym_sidm_force(
+              r2, dxB, hj, hi, sipj, sipi, a, H, with_cosmology, cosmo,
+              e->sidm_properties, e->ti_current, e->time_base);
+        }
 
-  /* Reverse double-for loop and checks every interaction */
-  for (int j = 0; j < cj->sidm.count; ++j) {
+      } else if (r2 < hjg2) {
 
-    sipj = &cj->sidm.parts[j];
-    hj = sipj->h;
-    hjg2 = hj * hj * kernel_gamma2;
-
-    /* Skip inactive particles. */
-    if (!sipart_is_active(sipj, e)) continue;
-
-    const float sipjx = sipj->x[0] - shift_j[0];
-    const float sipjy = sipj->x[1] - shift_j[1];
-    const float sipjz = sipj->x[2] - shift_j[2];
-
-    for (int i = 0; i < ci->sidm.count; ++i) {
-
-      sipi = &ci->sidm.parts[i];
-      hi = sipi->h;
-      hig2 = hi * hi * kernel_gamma2;
-
-      const float sipix = sipi->x[0] - shift_i[0];
-      const float sipiy = sipi->x[1] - shift_i[1];
-      const float sipiz = sipi->x[2] - shift_i[2];
-
-      /* Pairwise distance */
-      const float dx[3] = {nearest(sipjx - sipix, dim[0]),
-                           nearest(sipjy - sipiy, dim[1]),
-                           nearest(sipjz - sipiz, dim[2])};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      /* Hit or miss? */
-      if (r2 < hjg2 || r2 < hig2) {
-
-        /* Interact */
-        runner_iact_nonsym_sidm_force(r2, dx, hj, sipi->h, sipj, sipi, a, H,
-                                      with_cosmology, cosmo, e->sidm_properties,
-                                      e->ti_current, e->time_base);
+        if (doj) {
+          if (doi) {
+            runner_iact_sidm_force(r2, dxB, hj, hi, sipj, sipi, a, H,
+                                   with_cosmology, cosmo, e->sidm_properties,
+                                   e->ti_current, e->time_base);
+          } else {
+            runner_iact_nonsym_sidm_force(
+                r2, dxB, hj, hi, sipj, sipi, a, H, with_cosmology, cosmo,
+                e->sidm_properties, e->ti_current, e->time_base);
+          }
+        } else if (doi) {
+          runner_iact_nonsym_sidm_force(
+              r2, dxA, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+              e->sidm_properties, e->ti_current, e->time_base);
+        }
       }
     }
   }

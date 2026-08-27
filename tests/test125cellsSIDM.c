@@ -368,6 +368,7 @@ int main(int argc, char *argv[]) {
   bzero(&engine, sizeof(struct engine));
   engine.s = &space;
   engine.time = 0.1f;
+  engine.time_base = 1.0f;
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
@@ -483,26 +484,26 @@ int main(int argc, char *argv[]) {
 
     /* Do the force calculation */
 
-    int ctr = 0;
-    /* Do the pairs (for the central 27 cells) */
-    for (int i = 1; i < 4; i++) {
-      for (int j = 1; j < 4; j++) {
-        for (int k = 1; k < 4; k++) {
+    // int ctr = 0;
+    // /* Do the pairs (for the central 27 cells) */
+    // for (int i = 1; i < 4; i++) {
+    //   for (int j = 1; j < 4; j++) {
+    //     for (int k = 1; k < 4; k++) {
 
-          struct cell *cj = cells[i * 25 + j * 5 + k];
+    //       struct cell *cj = cells[i * 25 + j * 5 + k];
 
-          if (main_cell != cj) {
-            const ticks sub_tic = getticks();
+    //       if (main_cell != cj) {
+    //         const ticks sub_tic = getticks();
 
-            runner_dopair2_branch_sidm_force(&runner, main_cell, cj,
-                                             /*limit_h_min=*/0,
-                                             /*limit_h_max=*/0);
+    //         runner_dopair2_branch_sidm_force(&runner, main_cell, cj,
+    //                                          /*limit_h_min=*/0,
+    //                                          /*limit_h_max=*/0);
 
-            timings[ctr++] += getticks() - sub_tic;
-          }
-        }
-      }
-    }
+    //         timings[ctr++] += getticks() - sub_tic;
+    //       }
+    //     }
+    //   }
+    // }
 
     const ticks self_tic = getticks();
 
@@ -604,19 +605,22 @@ int main(int argc, char *argv[]) {
   /* Do the force calculation */
 
   /* Do the pairs (for the central 27 cells) */
-  for (int i = 1; i < 4; i++) {
-    for (int j = 1; j < 4; j++) {
-      for (int k = 1; k < 4; k++) {
+  // for (int i = 1; i < 4; i++) {
+  //   for (int j = 1; j < 4; j++) {
+  //     for (int k = 1; k < 4; k++) {
 
-        struct cell *cj = cells[i * 25 + j * 5 + k];
+  //       struct cell *cj = cells[i * 25 + j * 5 + k];
 
-        if (main_cell != cj) pairs_all_sidm_force(&runner, main_cell, cj);
-      }
-    }
-  }
+  //       if (main_cell != cj) pairs_all_sidm_force(&runner, main_cell, cj,
+  //                                             /*limit_h_min=*/0,
+  //                                            /*limit_h_max=*/0);
+  //     }
+  //   }
+  // }
 
   /* And now the self-interaction for the main cell */
-  self_all_sidm_force(&runner, main_cell);
+  self_all_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
+                      /*limit_h_max=*/0);
 
   /* Finally, end the force loop */
   runner_do_end_sidm_force(&runner, main_cell, 0);

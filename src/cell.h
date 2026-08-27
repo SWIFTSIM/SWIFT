@@ -1230,7 +1230,7 @@ cell_can_recurse_in_subpair_sidm_task(const struct cell *c) {
 }
 
 /**
- * @brief Can a sub-pair hydro task recurse to a lower level based
+ * @brief Can a sub-pair sidm task recurse to a lower level based
  * on the status of the particles in the cell.
  *
  * @param c The #cell.
