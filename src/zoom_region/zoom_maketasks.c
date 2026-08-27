@@ -151,9 +151,14 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
         max((int)(sqrt(3) * distance / bkg_cells[0].width[0]) + 1, 2);
     message(
         "Background pair search: distance=%.6e (%.2f bkg cell widths) "
-        "delta=%d, bkg_cdim=%d, saturates at delta>=%d%s",
+        "delta=%d, bkg_cdim=%d, saturates at delta>=%d%s "
+        "[from min_a_grav=%.6e max_softening=%.6e size=%.6e "
+        "size_sum/theta_crit=%.6e]",
         distance, distance / bkg_cells[0].width[0], delta, s->cdim[0],
-        s->cdim[0] / 2, delta >= s->cdim[0] / 2 ? " <== SATURATED" : "");
+        s->cdim[0] / 2, delta >= s->cdim[0] / 2 ? " <== SATURATED" : "",
+        s->min_a_grav, s->max_softening, sqrtf(3) * bkg_cells[0].width[0],
+        2.f * sqrtf(3) * bkg_cells[0].width[0] /
+            e->gravity_properties->theta_crit);
   }
 
   /* Background -> Background */

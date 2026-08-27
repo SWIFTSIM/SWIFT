@@ -1063,6 +1063,35 @@ void space_split(struct space *s, int verbose) {
           "max_mpole_power[%d]=%.6e",
           s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
           s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
+
+    /* Break the min_a_grav reduction down by cell type. The MAC search
+     * distance goes as min_a_grav^(-1/(p+2)) and min_a_grav is a single
+     * global minimum, so a near-empty background can inflate the search
+     * distance for the entire volume. Diagnostic only: this repeats the
+     * reduction the mappers already did rather than changing it. */
+    if (s->with_self_gravity && s->with_zoom_region) {
+      float zoom_min = FLT_MAX;
+      float bkg_min = FLT_MAX;
+      for (int k = 0; k < s->zoom_props->nr_local_zoom_cells_with_particles;
+           k++) {
+        const struct cell *c =
+            &s->cells_top[s->zoom_props
+                              ->local_zoom_cells_with_particles_top[k]];
+        zoom_min = min(zoom_min, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      }
+      for (int k = 0; k < s->zoom_props->nr_local_bkg_cells_with_particles;
+           k++) {
+        const struct cell *c =
+            &s->cells_top[s->zoom_props->local_bkg_cells_with_particles_top[k]];
+        bkg_min = min(bkg_min, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      }
+      message(
+          "MAC inputs by cell type: min_a_grav zoom=%.6e (%d cells) "
+          "bkg=%.6e (%d cells), global=%.6e, bkg/zoom=%.6e",
+          zoom_min, s->zoom_props->nr_local_zoom_cells_with_particles, bkg_min,
+          s->zoom_props->nr_local_bkg_cells_with_particles, s->min_a_grav,
+          zoom_min > 0.f ? bkg_min / zoom_min : -1.f);
+    }
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
