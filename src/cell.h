@@ -581,6 +581,10 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+#ifdef SWIFT_DEBUG_CHECKS
+void cell_debug_stamp_grav_counts_recv(struct cell *c,
+                                       integertime_t ti_current);
+#endif
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts);
@@ -1667,6 +1671,21 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
 #ifdef WITH_MPI
   struct link *l = c->mpi.recv;
   while (l != NULL && l->t->subtype != subtype) l = l->next;
+  return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
+}
+
+/**
+ * @brief Check if a cell has a send task of the given subtype to nodeID.
+ */
+__attribute__((always_inline)) INLINE static struct task *cell_get_send_task(
+    const struct cell *c, enum task_subtypes subtype, int nodeID) {
+#ifdef WITH_MPI
+  struct link *l = c->mpi.send;
+  while (l != NULL && !(l->t->subtype == subtype && l->t->cj->nodeID == nodeID))
+    l = l->next;
   return (l != NULL) ? l->t : NULL;
 #else
   return NULL;
