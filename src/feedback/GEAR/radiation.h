@@ -126,16 +126,23 @@ struct radiation_grid_metadata {
       radiation_build_tables(). */
   enum interpolate_boundary_condition edge_policy_luminosity;
 
-  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only).
-      Dispatched on the group's "source" attribute between
-      edge_policy_q_h_blackbody_* and edge_policy_q_h_parsec_*, matching
-      which Q_H variant pychem wrote as the table's primary Q_H. */
+  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only),
+      from the group's generic edge_policy_q_h_below/above attributes.
+      pychem sets these, at write time, to whichever per-variant edge
+      policy (e.g. edge_policy_q_h_blackbody_*, edge_policy_q_h_parsec_*)
+      matches the table's own primary Q_H; SWIFT reads them directly and
+      never dispatches on the group's "source" attribute itself, so a new
+      pychem source mode needs no companion SWIFT change. */
   enum interpolate_boundary_condition edge_policy_q_h;
 
   /*! Mass-axis boundary condition for the "DotEExcess" dataset (2D tables
-      only). Always edge_policy_q_h_blackbody_*, regardless of "source":
-      pychem computes DotEExcess as Q_H_Blackbody * MeanExcessPhotonEnergyHI
-      unconditionally. */
+      only), from the group's generic
+      edge_policy_mean_excess_energy_below/above attributes (mirroring
+      #edge_policy_q_h above). DotEExcess's VALUE is (the primary Q_H
+      variant "source" selects) times MeanExcessPhotonEnergyHI; this field
+      only records the edge policy pychem assigns to
+      MeanExcessPhotonEnergyHI/DotEExcess's own primary content, which
+      need not match #edge_policy_q_h's variant. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
 };
 
