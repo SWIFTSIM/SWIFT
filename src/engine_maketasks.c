@@ -107,9 +107,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
           "c->count=%d",
           ci->depth, ci->hydro.count);
 #endif
+    /* Create the task. Packed pre-SF, same snapshot as the gpart data pack
+     * (see the t_grav_counts -> t_pack_grav unlock below) so the count this
+     * message reports always matches what the data pack actually sends. */
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts);
   }
 
   /* Check if any of the gravity tasks are for the target node. */
@@ -158,6 +160,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       if (gravity_after_hydro_density)
         scheduler_addunlock(s, ci->grav.super->grav.init_out, t_pack_grav);
+
+      /* Counts pack before the gpart data pack: same pre-SF snapshot. */
+      if (t_grav_counts != NULL)
+        scheduler_addunlock(s, t_grav_counts, t_pack_grav);
     }
 
     /* Add them to the local cell. */
@@ -167,7 +173,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_fof);
       engine_addlink(e, &ci->mpi.pack, t_pack_fof);
     }
-    if (with_star_formation && ci->hydro.count > 0) {
+    /* t_grav_counts, once created, covers this whole subtree, not just
+     * cells with a local count, so gate on its existence, not the count. */
+    if (t_grav_counts != NULL) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
   }
@@ -1325,7 +1333,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
 
-    if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
+    /* Counts arrive and get unpacked before the data: the data recv is
+     * posted using the count this delivers, from the same pre-SF snapshot
+     * the sender packed the data from. */
+    if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav_counts, t_grav);
 
     if (with_fof)
       t_fof = scheduler_addtask(s, task_type_recv, task_subtype_fof, c->mpi.tag,
@@ -1337,7 +1348,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_grav);
     if (with_fof) engine_addlink(e, &c->mpi.recv, t_fof);
 
-    if (with_star_formation && c->hydro.count > 0) {
+    /* t_grav_counts, once created, covers this whole subtree, not just
+     * cells with a local count, so gate on its existence, not the count. */
+    if (t_grav_counts != NULL) {
       engine_addlink(e, &c->mpi.recv, t_grav_counts);
     }
 
