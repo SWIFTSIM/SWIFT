@@ -1641,7 +1641,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
    * from the end-of-step tend exchange; right after a rebuild the true
    * value is still tiny, so that lag is a large relative error. Substitute
-   * a full cell width on the foreign side -- the owning rank runs this
+   * a full cell width on the foreign side. The owning rank runs this
    * same pair task with fresh bookkeeping, so real bugs are still caught. */
   const float ci_dx_max_part_safe =
       local_i ? ci->hydro.dx_max_part : ci->width[0];
@@ -1809,7 +1809,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             pjy > shift_threshold_y || pjy < -shift_threshold_y ||
             pjz > shift_threshold_z || pjz < -shift_threshold_z) {
           /* hydro.xparts is only ever populated for LOCAL cells (see
-           * space_rebuild.c/cell_split.c) -- never for a foreign cj/ci, so
+           * space_rebuild.c/cell_split.c), never for a foreign cj/ci, so
            * guard on local_i/local_j before dereferencing it. Use a
            * sentinel clearly distinct from a real x_diff (unlike 0.f,
            * which a genuinely-unmoved local particle could also report)

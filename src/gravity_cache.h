@@ -85,13 +85,13 @@ struct gravity_cache {
    * differed between populate time and a later read of the same memory. */
   int *restrict populated_time_bin SWIFT_CACHE_ALIGN;
 
-  /*! Per-index id_or_neg_offset as read by the last foreign populate call
-   * -- pre-removal identity, since cell_remove_* overwrites the raw field
+  /*! Per-index id_or_neg_offset as read by the last foreign populate call.
+   * Pre-removal identity, since cell_remove_* overwrites the raw field
    * to the particle's own id on removal (was a fixed placeholder before
    * this was captured here). */
   long long *restrict populated_id SWIFT_CACHE_ALIGN;
 
-  /*! Per-index type as read by the last foreign populate call -- the raw
+  /*! Per-index type as read by the last foreign populate call. The raw
    * field is always overwritten to swift_type_dark_matter on removal, so
    * this is the only way to know what the particle actually was. */
   int *restrict populated_type SWIFT_CACHE_ALIGN;

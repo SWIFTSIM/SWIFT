@@ -1176,7 +1176,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = t->ci->grav.count;
 #ifdef SWIFT_DEBUG_CHECKS
           /* A sub-cell's own count_total is a zero-headroom split-time
-           * snapshot (cell_split.c), not a live capacity ceiling -- only
+           * snapshot (cell_split.c), not a live capacity ceiling. Only
            * the top-level cell owns real, headroom-bearing storage. Bound
            * against the top's allocation via pointer arithmetic instead. */
           {

@@ -31,8 +31,6 @@
 #include "gravity.h"
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
-/*! Rate-limiter for the foreign gpart layout divergence report. */
-static int cell_grav_layout_divergence_reported = 0;
 /*! Rate-limiters for the debug checks below. They should never fire; if
  * they do, cell_link_sparts()/cell_link_sinks() started skipping sub-cells
  * like cell_link_foreign_gparts() does. */
@@ -654,17 +652,6 @@ void cell_pack_gpart(const struct cell *const c,
 
   for (int i = 0; i < c->grav.count; ++i) {
     gravity_foreign_copy(&b_align[i], &c->grav.parts[i]);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Correlates against the receiver's crash-time read at the same (cellID,
-     * idx). */
-    if (c->grav.parts[i].time_bin == time_bin_inhibited)
-      message(
-          "PACK_INHIBITED_PROBE sender_rank=%d cellID=%lld idx=%d "
-          "id=%lld type=%d",
-          c->nodeID, c->cellID, i, c->grav.parts[i].id_or_neg_offset,
-          (int)c->grav.parts[i].type);
-#endif
   }
 
 #else
@@ -773,7 +760,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #ifdef WITH_MPI
 
   /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
-   * offset from c->top->stars.parts -- see cell_pack_grav_counts for why. */
+   * offset from c->top->stars.parts. See cell_pack_grav_counts for why. */
   pcells[0].delta_from_rebuild = c->stars.parts - c->top->stars.parts;
   pcells[0].count = c->stars.count;
   pcells[0].dx_max_part = c->stars.dx_max_part;
@@ -978,19 +965,6 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
    * counts instead, in the receiver's own layout. */
   c->grav.count = pcells[0].count;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* The sender holds more gparts here than this rank reserved, so its offsets
-   * are in the uncompacted layout and the old reconstruction would have walked
-   * out of the slice. Top level only: the counter is shared by all runners. */
-  if (c->depth == 0 && c->grav.count > c->grav.count_total &&
-      atomic_inc(&cell_grav_layout_divergence_reported) < 20)
-    message(
-        "GRAV_COUNTS_LAYOUT_DIVERGENCE cellID=%lld grav.count=%d "
-        "grav.count_total=%d delta_from_rebuild=%td",
-        c->cellID, c->grav.count, c->grav.count_total,
-        (ptrdiff_t)pcells[0].delta_from_rebuild);
-#endif
-
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -1040,7 +1014,7 @@ int cell_pack_sink_formation_counts(struct cell *c,
 #ifdef WITH_MPI
 
   /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
-   * offset from c->top->sinks.parts -- see cell_pack_grav_counts for why. */
+   * offset from c->top->sinks.parts. See cell_pack_grav_counts for why. */
   pcells[0].delta_from_rebuild = c->sinks.parts - c->top->sinks.parts;
   pcells[0].count = c->sinks.count;
   pcells[0].dx_max_part = c->sinks.dx_max_part;

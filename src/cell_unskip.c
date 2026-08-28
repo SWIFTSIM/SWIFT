@@ -2620,7 +2620,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
       /* TODO(sink_mpi_physics): same per-side-active gating bug fixed for
-       * sinks in a722fbb14 and for stars alongside this comment -- gate on
+       * sinks in a722fbb14 and for stars alongside this comment. Gate on
        * (ci_active || cj_active) instead, mirroring bh_in/bh_out above.
        * Left as-is: black holes aren't compiled in this checkout
        * (BLACK_HOLES_NONE), so the fix can't be tested here. */

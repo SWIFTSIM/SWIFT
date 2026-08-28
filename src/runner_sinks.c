@@ -62,10 +62,10 @@ static void runner_check_sink_swallow_locks_in_converged_star(
     const struct spart *si = &c->stars.parts[i];
     if (si->debug_density_converged_at_tic == e->ti_current)
       error(
-          "Sink swallow locked in a converged star's density! step=%d "
-          "sink_id=%lld gas_id=%lld star_id=%lld star_wcount=%.6e "
-          "star_h=%.6e",
-          e->step, sink_id, p->id, si->id, si->density.wcount, si->h);
+          "Sink %lld swallowed gas particle %lld after star %lld had "
+          "already finished converging its smoothing length this step "
+          "(wcount=%.6e, h=%.6e). step=%d",
+          sink_id, p->id, si->id, si->density.wcount, si->h, e->step);
   }
 }
 #endif

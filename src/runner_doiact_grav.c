@@ -1089,7 +1089,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #endif
 
         /* populated_time_bin_at_pjd is entailed by the crash condition
-         * (mass_j != 0 implies populate saw != inhibited) -- not
+         * (mass_j != 0 implies populate saw != inhibited), not
          * decisive on its own. The decisive check is cache_x/y/z vs
          * raw_x/y/z: shift_j is exactly {0,0,0} here, so they must be
          * bit-identical unless the whole struct was overwritten between

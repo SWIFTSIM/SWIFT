@@ -996,18 +996,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         e->proxies[k].cells_in[j]->grav.count_total =
             (int)count_gparts + space_extra_gparts;
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Logs each top cell's slice of the shared s->gparts_foreign buffer, to
-         * cross-check pjd's offset for cross-rank overlap on a fire. */
-        message(
-            "GPARTS_FOREIGN_RELINK this_rank=%d remote_rank=%d cellID=%lld "
-            "offset=%ld count=%zd cell_count=%d count_total=%d",
-            e->nodeID, e->proxies[k].nodeID, e->proxies[k].cells_in[j]->cellID,
-            (long)(gparts_foreign - s->gparts_foreign), count_gparts,
-            e->proxies[k].cells_in[j]->grav.count,
-            e->proxies[k].cells_in[j]->grav.count_total);
-#endif
-
         gparts_foreign = &gparts_foreign[count_gparts + space_extra_gparts];
       }
 
@@ -2737,14 +2725,6 @@ int engine_step(struct engine *e) {
     if (e->verbose)
       message("Writing step info to files took %.3f %s",
               clocks_from_ticks(getticks() - tic_files), clocks_getunit());
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* INHIBITED_TREND_PROBE: does the global inhibited-gpart population
-     * only reach the size needed to trigger GRAV_FOREIGN_INHIBITED_PROBE
-     * after long continuous runtime, and reset on restart? */
-    message("INHIBITED_TREND_PROBE step=%d nr_inhibited_gparts=%lld", e->step,
-            (long long)e->nr_inhibited_gparts);
-#endif
   }
 
   /* When restarting, we may have had some i/o to do on the step

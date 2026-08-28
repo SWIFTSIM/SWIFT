@@ -141,7 +141,7 @@ struct cell_grav {
 
   /*! Monotonic count of how many times runner_do_recv_gpart actually
    * visited THIS cell (top-level call or internal recursion into a
-   * progeny) -- unlike subtasks_executed, which only counts on a task's
+   * progeny). Unlike subtasks_executed, which only counts on a task's
    * own ci/cj and never on cells reached via a task's own recursion. */
   int data_recv_exec_count;
 #endif

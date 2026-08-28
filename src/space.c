@@ -2431,7 +2431,7 @@ static const struct cell *space_locate_part_cell(const struct cell *c,
       if (found != NULL) return found;
     }
     /* In range for this split cell but not found in any current progeny's
-     * own sub-range -- report the ancestor itself, still useful context. */
+     * own sub-range. Report the ancestor itself, still useful context. */
     return c;
   }
 
@@ -2459,7 +2459,7 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 
     if (swallow_id != -1) {
 
-      /* Find the owning cell to report its drift/activation state -- was
+      /* Find the owning cell to report its drift/activation state: was
        * its subtree ever visited by runner_do_sinks_gas_swallow() this
        * step? */
       const struct cell *owner = NULL;
@@ -2560,7 +2560,7 @@ static const struct cell *space_locate_sink_cell(const struct cell *c,
       if (found != NULL) return found;
     }
     /* In range for this split cell but not found in any current progeny's
-     * own sub-range -- report the ancestor itself, still useful context. */
+     * own sub-range. Report the ancestor itself, still useful context. */
     return c;
   }
 
@@ -2589,7 +2589,7 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
 
     if (swallow_id != -1) {
 
-      /* Find the owning cell to report its drift/activation state -- was
+      /* Find the owning cell to report its drift/activation state: was
        * its subtree ever visited by runner_do_sinks_sink_swallow() this
        * step? */
       const struct cell *owner = NULL;
@@ -2603,7 +2603,7 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
          * task links was enough: sink_do_sink_swallow tasks can be linked
          * at any ancestor depth (same as any other pair task), and
          * cell_drift_sink() only maintains ti_old_part from hydro.super
-         * downward -- above it the field is never touched at all. Walk the
+         * downward, above it the field is never touched at all. Walk the
          * whole chain and dump both at every level, so we can see which
          * depth actually hosts the task and whether that depth is inside
          * or outside the drift-covered range. */
@@ -2636,7 +2636,7 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
           }
           if (nr_tasks == 0) message("    no do_sink_swallow task here");
 
-          /* Layer B: proves the severed-edge mechanism directly -- if a
+          /* Layer B: proves the severed-edge mechanism directly. If a
            * do_sink_swallow link above shows a fresh ti_run while these
            * ghosts show skip==1, the ghost chain never ran this step. */
           if (anc == anc->hydro.super) {

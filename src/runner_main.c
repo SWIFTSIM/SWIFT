@@ -153,7 +153,7 @@
  * `ci_active || cj_active`), but the `stars.ghost_in`/`stars.ghost_out`
  * chain that sequences density before feedback is only *activated* via the
  * catch-all gated on `cell_need_activating_stars(c, ...)` for the cell
- * itself -- never from a neighbour's activity. That is the same structural
+ * itself, never from a neighbour's activity. That is the same structural
  * gap that caused the sink-sink swallow bug fixed by a722fbb14.
  *
  * `engine_maketasks.c` unconditionally wires `scheduler_addunlock(sched,
