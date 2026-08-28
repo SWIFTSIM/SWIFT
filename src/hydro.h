@@ -81,7 +81,12 @@
 #elif defined(MAGMA_SPH)
 #include "./hydro/MAGMA/hydro.h"
 #include "./hydro/MAGMA/hydro_iact.h"
-#define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020)"
+/* TODO Merge this parte into MHD flavors */
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+#define SPH_IMPLEMENTATION "MAGMA-2-MI1 (Rosswog+ 2020)"
+#else
+#define SPH_IMPLEMENTATION "MAGMA-2-MI2 (Rosswog+ 2020)"
+#endif
 #elif defined(MAGMA_SPMHD_DI)
 #include "./hydro/MAGMA_MHD_DI/hydro.h"
 #include "./hydro/MAGMA_MHD_DI/hydro_iact.h"

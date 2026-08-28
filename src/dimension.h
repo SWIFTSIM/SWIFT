@@ -180,12 +180,15 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
 /**
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
- * @param A A 3x3 matrix of which we want to invert the top left dxd part
+ * @param A 3x3 matrix of which we want to invert the top left dxd part
+ * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
+ * values will trigger the singular matrix case.
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
 invert_dimension_by_dimension_matrix(
-    float A[hydro_dimension_integer][hydro_dimension_integer]) {
+    float A[hydro_dimension_integer][hydro_dimension_integer],
+    const float min_cond_num) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -222,7 +225,7 @@ invert_dimension_by_dimension_matrix(
       }
     }
 
-    if (Smax < 1.e-8f) {
+    if (Smax < min_cond_num) {
       /* singular matrix. Early abort */
       for (int j = 0; j < 3; j++) {
         for (int k = 0; k < 3; k++) {
@@ -331,7 +334,7 @@ invert_dimension_by_dimension_matrix(
 
   const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  if (fabsf(detA) < 1e-8f) {
+  if (fabsf(detA) < min_cond_num) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < 2; k++) {
         A[j][k] = 0.0f;
@@ -374,6 +377,165 @@ invert_dimension_by_dimension_matrix(
   error("The dimension is not defined !");
 
 #endif
+}
+
+/**
+ * @brief Computes the 2-norm condition number of a 3x3
+ * row-major matrix.
+ *
+ * Textbook implementation matchin the result of a GSL call to
+ * gsl_linalg_SV_decomp() and taking the max/min ratio of the sigma values.
+ *
+ * @param m The matrix.
+ */
+__attribute__((always_inline)) INLINE static double
+matrix_3x3_2norm_condition_number(const double m[3][3]) {
+
+  /* Form the symmetric matrix S = m^T * m */
+  const double s0 = m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0];
+  const double s1 = m[0][0] * m[0][1] + m[1][0] * m[1][1] + m[2][0] * m[2][1];
+  const double s2 = m[0][0] * m[0][2] + m[1][0] * m[1][2] + m[2][0] * m[2][2];
+  const double s4 = m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1];
+  const double s5 = m[0][1] * m[0][2] + m[1][1] * m[1][2] + m[2][1] * m[2][2];
+  const double s8 = m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2];
+
+  /* Compute invariants of S (coefficients of characteristic polynomial) */
+  const double c2 = s0 + s4 + s8;
+  const double c1 =
+      (s0 * s4 - s1 * s1) + (s0 * s8 - s2 * s2) + (s4 * s8 - s5 * s5);
+  const double c0 = s0 * (s4 * s8 - s5 * s5) - s1 * (s1 * s8 - s2 * s5) +
+                    s2 * (s1 * s5 - s2 * s4);
+
+  /* Solve the cubic equation analytically using Cardano's formulation */
+  const double p = c1 - (c2 * c2) / 3.0;
+  const double q = c0 - (c2 * c1) / 3.0 + (2.0 * c2 * c2 * c2) / 27.0;
+
+  double ev_max, ev_min;
+
+  if (p >= 0.0) {
+    ev_max = c2 / 3.0;
+    ev_min = c2 / 3.0;
+  } else {
+    const double r = sqrt(-p / 3.0);
+    double val = q / (2.0 * r * r * r);
+
+    /* Clamp to prevent out-of-bounds inputs to acos due to numerical drift */
+    if (val > 1.0) val = 1.0;
+    if (val < -1.0) val = -1.0;
+
+    const double phi = acos(val);
+
+    /* Find the three roots (eigenvalues of m^T*m) */
+    const double r1 = c2 / 3.0 + 2.0 * r * cos(phi / 3.0);
+    const double r2 = c2 / 3.0 + 2.0 * r * cos((phi + 2.0 * M_PI) / 3.0);
+    const double r3 = c2 / 3.0 + 2.0 * r * cos((phi + 4.0 * M_PI) / 3.0);
+
+    /* Sort to isolate max and min eigenvalues */
+    ev_max = r1;
+    if (r2 > ev_max) ev_max = r2;
+    if (r3 > ev_max) ev_max = r3;
+    ev_min = r1;
+    if (r2 < ev_min) ev_min = r2;
+    if (r3 < ev_min) ev_min = r3;
+  }
+
+  /* Return condition number (sigma_max / sigma_min) */
+  if (ev_min <= 1e-15) return INFINITY;
+
+  return sqrt(ev_max / ev_min);
+}
+
+/**
+ * @brief Compute the inverse of 3x3 matrix using LU decomposition.
+ *
+ * Textbook implementation matching a call to gsl_linalg_LU_decomp()
+ * and gsl_linalg_LU_invert().
+ *
+ * @param A the matrix to invert.
+ * @param inv (return) The inverse of the matrix.
+ * @return 1 if the inversion failed, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int invert3x3_matrix_LU(
+    const double A[3][3], double inv[3][3]) {
+  double mat[3][3];
+  double scale_factors[3];
+
+  /* Initialize identity matrix and compute row scale factors */
+  for (int i = 0; i < 3; ++i) {
+    double max_val = 0.0;
+    for (int j = 0; j < 3; ++j) {
+      mat[i][j] = A[i][j];
+      inv[i][j] = (i == j) ? 1.0 : 0.0;
+
+      double abs_val = fabs(A[i][j]);
+      if (abs_val > max_val) max_val = abs_val;
+    }
+
+    /* If an entire row is 0, the matrix is singular */
+    if (max_val < 1e-15) return 1;
+    scale_factors[i] = 1.0 / max_val;
+  }
+
+  /* Gaussian elimination with scaled partial pivoting */
+  for (int i = 0; i < 3; ++i) {
+
+    /* Find pivot row using scaled values to eliminate magnitude bias */
+    int pivot = i;
+    double max_scaled_val = fabs(mat[i][i]) * scale_factors[i];
+
+    for (int r = i + 1; r < 3; ++r) {
+      const double scaled_val = fabs(mat[r][i]) * scale_factors[r];
+      if (scaled_val > max_scaled_val) {
+        max_scaled_val = scaled_val;
+        pivot = r;
+      }
+    }
+
+    /* Singularity check based on machine epsilon threshold */
+    if (max_scaled_val < 1e-15) return 1;
+
+    /* Swap rows if a better pivot was found */
+    if (pivot != i) {
+
+      /* Swap scale factors */
+      const double ts = scale_factors[i];
+      scale_factors[i] = scale_factors[pivot];
+      scale_factors[pivot] = ts;
+
+      /* Swap working matrix rows */
+      for (int j = 0; j < 3; ++j) {
+        double t = mat[i][j];
+        mat[i][j] = mat[pivot][j];
+        mat[pivot][j] = t;
+        t = inv[i][j];
+        inv[i][j] = inv[pivot][j];
+        inv[pivot][j] = t;
+      }
+    }
+
+    /* Eliminate column elements below the pivot */
+    for (int r = i + 1; r < 3; ++r) {
+      double factor = mat[r][i] / mat[i][i];
+      for (int j = 0; j < 3; ++j) {
+        mat[r][j] -= factor * mat[i][j];
+        inv[r][j] -= factor * inv[i][j];
+      }
+    }
+  }
+
+  /* Back-substitution to finalize the inverse */
+  for (int i = 2; i >= 0; --i) {
+    for (int r = i - 1; r >= 0; --r) {
+      double factor = mat[r][i] / mat[i][i];
+      for (int j = 0; j < 3; ++j) {
+        inv[r][j] -= factor * inv[i][j];
+      }
+    }
+    double d = 1.0 / mat[i][i];
+    for (int j = 0; j < 3; ++j) inv[i][j] *= d;
+  }
+
+  return 0;
 }
 
 /**

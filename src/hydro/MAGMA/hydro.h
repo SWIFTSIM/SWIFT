@@ -38,6 +38,7 @@
 #include "pressure_floor.h"
 
 /* System includes */
+#include <float.h>
 #include <string.h>
 
 /**
@@ -694,19 +695,26 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
+  /* Local variables to allow for gradient -> force transition */
+  struct sym_matrix c_matrix;
+  float gradient_vx[3];
+  float gradient_vy[3];
+  float gradient_vz[3];
+  float gradient_u[3];
+
   /* Invert the c-matrix */
-  const int res =
-      sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+  const int res = sym_matrix_invert(&c_matrix, &p->gradient.c_matrix_inv,
+                                    /*max_cond_num=*/60.);
 
   /* The matrix could not be inverted
    * --> Revert to base SPH, no reconstruction to the interface. */
   if (res) {
-    sym_matrix_identity(&p->force.c_matrix);
+    sym_matrix_identity(&c_matrix);
     p->use_base_SPH = 1;
   }
 
   /* The particle has h close to h_max
-   * --> Rever to base SPH, no reconstruction to the interface. */
+   * --> Revert to base SPH, no reconstruction to the interface. */
   if (p->h > 0.99 * hydro_props->h_max) {
     p->use_base_SPH = 1;
   }
@@ -719,18 +727,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   }
 
   /* Finish computation of velocity gradient (eq. 18) */
-  sym_matrix_multiply_by_vector(p->force.gradient_vx, &p->force.c_matrix,
+  sym_matrix_multiply_by_vector(gradient_vx, &c_matrix,
                                 p->gradient.gradient_vx);
-  sym_matrix_multiply_by_vector(p->force.gradient_vy, &p->force.c_matrix,
+  sym_matrix_multiply_by_vector(gradient_vy, &c_matrix,
                                 p->gradient.gradient_vy);
-  sym_matrix_multiply_by_vector(p->force.gradient_vz, &p->force.c_matrix,
+  sym_matrix_multiply_by_vector(gradient_vz, &c_matrix,
                                 p->gradient.gradient_vz);
 
   /* Finish computation of u gradient (same as eq. 18) */
-  sym_matrix_multiply_by_vector(p->force.gradient_u, &p->force.c_matrix,
-                                p->gradient.gradient_u);
+  sym_matrix_multiply_by_vector(gradient_u, &c_matrix, p->gradient.gradient_u);
 
-  /* Update other variables. */
+  /* Finally, update the 'force' sub-structure' */
+  memcpy(&p->force.c_matrix, &c_matrix, sizeof(struct sym_matrix));
+  memcpy(&p->force.gradient_vx, gradient_vx, 3 * sizeof(float));
+  memcpy(&p->force.gradient_vy, gradient_vy, 3 * sizeof(float));
+  memcpy(&p->force.gradient_vz, gradient_vz, 3 * sizeof(float));
+  memcpy(&p->force.gradient_u, gradient_u, 3 * sizeof(float));
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 }

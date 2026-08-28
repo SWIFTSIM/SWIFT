@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -205,9 +205,9 @@ INLINE static void hydro_write_particles(const struct part *parts,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Co-moving thermal energies per unit mass of the particles");
 
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho,
@@ -227,16 +227,23 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Co-moving gravitational potential at position of the particles");
 
   list[10] = io_make_output_field(
-      "Gradient vx", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vx,
-      "Gradient of x-Coordinates of velocity field");
+      "GradientsXVelocities", FLOAT, 3, UNIT_CONV_FREQUENCY, 0.f, parts,
+      force.gradient_vx,
+      "Co-moving gradient of x-coordinates of the peculiar velocity field");
   list[11] = io_make_output_field(
-      "Gradient vy", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vy,
-      "Gradient of y-Coordinates of velocity field");
+      "GradientsYVelocities", FLOAT, 3, UNIT_CONV_FREQUENCY, 0.f, parts,
+      force.gradient_vy,
+      "Co-moving gradient of y-coordinates of the peculiar velocity field");
   list[12] = io_make_output_field(
-      "Gradient vz", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vz,
-      "Gradient of z-Coordinates of velocity field");
+      "GradientsZVelocities", FLOAT, 3, UNIT_CONV_FREQUENCY, 0.f, parts,
+      force.gradient_vz,
+      "Co-moving gradient of z-coordinates of the peculiar velocity field");
+  list[13] = io_make_output_field(
+      "GradientsInternalEnergies", FLOAT, 3, UNIT_CONV_ACCELERATION, 0.f, parts,
+      force.gradient_u,
+      "Co-moving gradient of the internal energies per unit mass");
 
-  list[13] = io_make_output_field_convert_part(
+  list[14] = io_make_output_field_convert_part(
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
