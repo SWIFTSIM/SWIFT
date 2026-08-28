@@ -158,6 +158,12 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   const size_t nr_gparts = c->grav.count;
   const integertime_t ti_current = r->e->ti_current;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  c->grav.data_recv_at_tic = ti_current;
+  c->grav.data_recv_count = (int)nr_gparts;
+  c->grav.data_recv_exec_count++;
+#endif
+
   TIMER_TIC;
 
   integertime_t ti_gravity_end_min = max_nr_timesteps;
@@ -199,8 +205,10 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
-        "e->ti_current=%lld.",
-        ti_gravity_end_min, ti_current);
+        "e->ti_current=%lld. hydro super = %lld, grav super = %lld, top cell = "
+        "%lld, cell = %lld",
+        ti_gravity_end_min, ti_current, c->hydro.super->cellID,
+        c->grav.super->cellID, c->top->cellID, c->cellID);
 #endif
 
   /* ... and store. */
