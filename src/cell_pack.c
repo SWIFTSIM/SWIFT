@@ -33,11 +33,10 @@
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
 /*! Rate-limiter for the foreign gpart layout divergence report. */
 static int cell_grav_layout_divergence_reported = 0;
-/*! Rate-limiters for the debug checks below. They should never fire; if
- * they do, cell_link_sparts()/cell_link_sinks() started skipping sub-cells
- * like cell_link_foreign_gparts() does. */
+/*! Rate-limiter for the debug check below. It should never fire; if it
+ * does, cell_link_sparts() started skipping sub-cells like
+ * cell_link_foreign_gparts() does. */
 static int cell_sf_layout_divergence_reported = 0;
-static int cell_sink_formation_layout_divergence_reported = 0;
 #endif
 
 /**
