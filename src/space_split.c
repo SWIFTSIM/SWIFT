@@ -910,6 +910,14 @@ static void space_split_mapper(void *map_data, int num_cells,
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
+  /* The same information split by top-level cell type. Only used (and only
+   * meaningful) when running with a zoom region, where the two cell grids have
+   * different widths and hugely different particle masses and softenings. */
+  float zoom_min_a_grav = FLT_MAX, bkg_min_a_grav = FLT_MAX;
+  float zoom_max_softening = 0.f, bkg_max_softening = 0.f;
+  float zoom_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+  float bkg_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
@@ -935,6 +943,22 @@ static void space_split_mapper(void *map_data, int num_cells,
       for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+
+      /* Repeat the reduction into the bucket for this cell's grid. */
+      if (s->with_zoom_region) {
+        const struct multipole *m = &c->grav.multipole->m_pole;
+        if (c->type == cell_type_zoom) {
+          zoom_min_a_grav = min(zoom_min_a_grav, m->min_old_a_grav_norm);
+          zoom_max_softening = max(zoom_max_softening, m->max_softening);
+          for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+            zoom_max_mpole_power[n] = max(zoom_max_mpole_power[n], m->power[n]);
+        } else {
+          bkg_min_a_grav = min(bkg_min_a_grav, m->min_old_a_grav_norm);
+          bkg_max_softening = max(bkg_max_softening, m->max_softening);
+          for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+            bkg_max_mpole_power[n] = max(bkg_max_mpole_power[n], m->power[n]);
+        }
+      }
     }
   }
 
@@ -951,6 +975,17 @@ static void space_split_mapper(void *map_data, int num_cells,
   atomic_max_f(&s->max_softening, max_softening);
   for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
     atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
+
+  if (s->with_zoom_region) {
+    atomic_min_f(&s->zoom_min_a_grav, zoom_min_a_grav);
+    atomic_max_f(&s->zoom_max_softening, zoom_max_softening);
+    atomic_min_f(&s->bkg_min_a_grav, bkg_min_a_grav);
+    atomic_max_f(&s->bkg_max_softening, bkg_max_softening);
+    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n) {
+      atomic_max_f(&s->zoom_max_mpole_power[n], zoom_max_mpole_power[n]);
+      atomic_max_f(&s->bkg_max_mpole_power[n], bkg_max_mpole_power[n]);
+    }
+  }
 }
 
 /**
@@ -1001,6 +1036,15 @@ void space_split(struct space *s, int verbose) {
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
+
+  s->zoom_min_a_grav = FLT_MAX;
+  s->zoom_max_softening = 0.f;
+  s->bkg_min_a_grav = FLT_MAX;
+  s->bkg_max_softening = 0.f;
+  bzero(s->zoom_max_mpole_power,
+        (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
+  bzero(s->bkg_max_mpole_power,
+        (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   if (!s->with_zoom_region) {
 
@@ -1053,113 +1097,30 @@ void space_split(struct space *s, int verbose) {
     }
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
-    /* These feed gravity_M2L_min_accept_distance and hence the delta used to
-     * bound the gravity pair loops. min_a_grav in particular is a global
-     * minimum over every non-empty top-level cell, so a near-empty background
-     * can drag it down and inflate delta everywhere. */
-    if (s->with_self_gravity)
-      message(
-          "MAC inputs: min_a_grav=%.6e max_softening=%.6e "
-          "max_mpole_power[%d]=%.6e",
-          s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
-          s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
-
-    /* Break the MAC reduction down by cell type. E_BA_term multiplies the
-     * globally-maximal multipole powers by a per-cell-type size, so in a zoom
-     * run the background search distance can be built from zoom-cell powers
-     * scaled by the (much larger) background cell size. In a non-zoom run this
-     * cannot happen: every cell has the same width. Diagnostic only, this
-     * repeats the reduction the mappers already did rather than changing it. */
-    if (s->with_self_gravity && s->with_zoom_region) {
-      float zoom_min = FLT_MAX, bkg_min = FLT_MAX;
-      float zoom_soft = 0.f, bkg_soft = 0.f;
-      float zoom_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-      float bkg_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
-      for (int k = 0; k < s->zoom_props->nr_local_zoom_cells_with_particles;
-           k++) {
-        const struct multipole *m =
-            &s->cells_top[s->zoom_props->local_zoom_cells_with_particles_top[k]]
-                 .grav.multipole->m_pole;
-        zoom_min = min(zoom_min, m->min_old_a_grav_norm);
-        zoom_soft = max(zoom_soft, m->max_softening);
-        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-          zoom_power[n] = max(zoom_power[n], m->power[n]);
-      }
-      int worst_cid = -1;
-      double bkg_mass_sum = 0., zoom_mass_sum = 0.;
-      for (int k = 0; k < s->zoom_props->nr_local_bkg_cells_with_particles;
-           k++) {
-        const int cid = s->zoom_props->local_bkg_cells_with_particles_top[k];
-        const struct multipole *m = &s->cells_top[cid].grav.multipole->m_pole;
-        bkg_min = min(bkg_min, m->min_old_a_grav_norm);
-        bkg_soft = max(bkg_soft, m->max_softening);
-        if (m->power[0] > bkg_power[0]) worst_cid = cid;
-        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-          bkg_power[n] = max(bkg_power[n], m->power[n]);
-        bkg_mass_sum += m->M_000;
-      }
-      for (int k = 0; k < s->zoom_props->nr_local_zoom_cells_with_particles;
-           k++)
-        zoom_mass_sum +=
-            s->cells_top[s->zoom_props->local_zoom_cells_with_particles_top[k]]
-                .grav.multipole->m_pole.M_000;
-
-      /* Which background cell attains the maximal monopole, and is that
-       * monopole even physical? A single top-level cell cannot hold more mass
-       * than the whole box. The void cell is the prime suspect: it is a
-       * background cell whose progeny are the zoom cells. */
-      if (worst_cid >= 0) {
-        const struct cell *wc = &s->cells_top[worst_cid];
+    /* Report the inputs to the multipole acceptance criterion. These set the
+     * search distance, and hence the delta used to bound the gravity pair
+     * loops. With a zoom region each grid has its own reduction. */
+    if (s->with_self_gravity) {
+      if (!s->with_zoom_region) {
         message(
-            "MAC worst bkg monopole: cid=%d type=%d subtype=%d "
-            "contains_zoom_cells=%d grav.count=%d M_000=%.6e width=%.4f",
-            worst_cid, (int)wc->type, (int)wc->subtype, wc->contains_zoom_cells,
-            wc->grav.count, wc->grav.multipole->m_pole.M_000, wc->width[0]);
+            "MAC inputs: min_a_grav=%.6e max_softening=%.6e "
+            "max_mpole_power[%d]=%.6e",
+            s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
+            s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
+      } else {
         message(
-            "MAC mass audit: sum(bkg M_000)=%.6e sum(zoom M_000)=%.6e "
-            "total=%.6e, worst single bkg cell / total = %.4f",
-            bkg_mass_sum, zoom_mass_sum, bkg_mass_sum + zoom_mass_sum,
-            wc->grav.multipole->m_pole.M_000 / (bkg_mass_sum + zoom_mass_sum));
+            "MAC inputs (zoom cells): min_a_grav=%.6e max_softening=%.6e "
+            "max_mpole_power[0]=%.6e max_mpole_power[%d]=%.6e",
+            s->zoom_min_a_grav, s->zoom_max_softening,
+            s->zoom_max_mpole_power[0], SELF_GRAVITY_MULTIPOLE_ORDER,
+            s->zoom_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
+        message(
+            "MAC inputs (bkg cells):  min_a_grav=%.6e max_softening=%.6e "
+            "max_mpole_power[0]=%.6e max_mpole_power[%d]=%.6e",
+            s->bkg_min_a_grav, s->bkg_max_softening, s->bkg_max_mpole_power[0],
+            SELF_GRAVITY_MULTIPOLE_ORDER,
+            s->bkg_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
       }
-
-      message(
-          "MAC inputs by cell type: min_a_grav zoom=%.6e (%d cells) "
-          "bkg=%.6e (%d cells), global=%.6e, bkg/zoom=%.6e",
-          zoom_min, s->zoom_props->nr_local_zoom_cells_with_particles, bkg_min,
-          s->zoom_props->nr_local_bkg_cells_with_particles, s->min_a_grav,
-          zoom_min > 0.f ? bkg_min / zoom_min : -1.f);
-      message(
-          "MAC inputs by cell type: max_softening zoom=%.6e bkg=%.6e "
-          "global=%.6e",
-          zoom_soft, bkg_soft, s->max_softening);
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        message(
-            "MAC inputs by cell type: max_mpole_power[%d] zoom=%.6e bkg=%.6e "
-            "global=%.6e, zoom dominates=%s",
-            n, zoom_power[n], bkg_power[n], s->max_mpole_power[n],
-            zoom_power[n] > bkg_power[n] ? "YES" : "no");
-
-      /* Would a fully background-only reduction escape the delta saturation?
-       * Both distances use the background cell width, so this isolates the
-       * effect of mixing zoom-cell powers/accelerations into a
-       * background-sized E_BA_term. */
-      const double bkg_width = s->zoom_props->bkg_cells_top[0].width[0];
-      const float d_global = gravity_M2L_min_accept_distance(
-          s->e->gravity_properties, sqrtf(3) * bkg_width, s->max_softening,
-          s->min_a_grav, s->max_mpole_power, s->periodic);
-      const float d_bkg = gravity_M2L_min_accept_distance(
-          s->e->gravity_properties, sqrtf(3) * bkg_width, bkg_soft, bkg_min,
-          bkg_power, s->periodic);
-      const int delta_global =
-          max((int)(sqrt(3) * d_global / bkg_width) + 1, 2);
-      const int delta_bkg = max((int)(sqrt(3) * d_bkg / bkg_width) + 1, 2);
-      message(
-          "MAC bkg-only vs global: distance %.6e -> %.6e, delta %d -> %d "
-          "(saturates at %d) %s",
-          d_global, d_bkg, delta_global, delta_bkg, s->cdim[0] / 2,
-          delta_bkg >= s->cdim[0] / 2 ? "STILL SATURATED"
-                                      : "<== ESCAPES SATURATION");
     }
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

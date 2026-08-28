@@ -43,6 +43,7 @@ struct space;
 struct cell;
 struct engine;
 struct partition;
+struct gravity_props;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -73,6 +74,14 @@ void zoom_allocate_cells(struct space *s);
 void zoom_void_split_recursive(struct space *s, struct cell *c,
                                const short int tpid);
 void zoom_void_space_split(struct space *s, int verbose);
+
+/* Gravity pair search geometry. */
+float zoom_bkg_M2L_min_accept_distance(const struct space *s,
+                                       const struct gravity_props *props);
+float zoom_zoom_M2L_min_accept_distance(const struct space *s,
+                                        const struct gravity_props *props);
+void zoom_bkg_gravity_search_delta(const struct engine *e, int *delta_m,
+                                   int *delta_p);
 
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);

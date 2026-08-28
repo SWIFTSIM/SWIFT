@@ -53,6 +53,7 @@
 #include "multipole_accept.h"
 #include "space.h"
 #include "tools.h"
+#include "zoom_region/zoom.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -2421,37 +2422,12 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
 
-  /* Compute maximal distance where we can expect a direct interaction. Beyond
-   * this the pair was never a candidate for a task, so there is no task
-   * geometry to revalidate. This mirrors the bound used when the pair tasks
-   * were created (see engine_make_self_gravity_tasks_mapper_bkg_cells). */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * bkg_cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells */
-  const int delta =
-      max((int)(sqrt(3) * distance / bkg_cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-  }
+  /* Compute the range of background cells we need to search. Beyond this the
+   * pair was never a candidate for a task, so there is no task geometry to
+   * revalidate. This uses the same background-only quantities as the pair task
+   * creation (see engine_make_self_gravity_tasks_mapper_bkg_cells). */
+  int delta_m, delta_p;
+  zoom_bkg_gravity_search_delta(e, &delta_m, &delta_p);
 
   /* Integer indices of this cell in the background top-level grid. Note that
    * bkg_cells aliases &cells_top[bkg_cell_offset], so this index is in the
