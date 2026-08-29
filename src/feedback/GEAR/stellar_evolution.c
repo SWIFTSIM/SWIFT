@@ -847,6 +847,13 @@ void stellar_evolution_evolve_individual_star(
     error("This function can only be called for single/individual star!");
   }
 
+  /* One-shot latch: never re-enter a star that has already exploded, since
+     star_age_beg_step is rebuilt from sp->time_bin every call and can fall
+     back below lifetime_myr on a later call. */
+  if (sp->feedback_data.is_dead) {
+    return;
+  }
+
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
@@ -1005,6 +1012,13 @@ void stellar_evolution_compute_SN_feedback_individual_star(
     error("This function can only be called for single/individual star!");
   }
 
+  /* Self-contained one-shot guard: do not trust the caller alone to keep
+     an already-exploded star out (see
+     stellar_evolution_evolve_individual_star). */
+  if (sp->feedback_data.is_dead) {
+    return;
+  }
+
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_end_step_myr =
@@ -1037,6 +1051,10 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   /* Get the integer number of supernovae */
   const int number_snia = 0;
   const int number_snii = 1;
+
+  /* A single star has now had its one core-collapse SN: latch it dead here,
+     at the injection itself, rather than only relying on a later age check. */
+  sp->feedback_data.is_dead = 1;
 
   /* Save the number of supernovae */
   sp->feedback_data.number_snia = number_snia;

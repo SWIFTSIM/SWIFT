@@ -123,6 +123,7 @@ tests/test27cells_subset
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
 tests/testRadiationGridMetadata
+tests/testStellarEvolutionSNOnce
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset
 tests/testPeriodicBC
