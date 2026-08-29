@@ -424,6 +424,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running star formation task on a foreign node!");
+  c->hydro.sf_ran_at_tic = ti_current;
 #endif
 
   /* Anything to do here? */

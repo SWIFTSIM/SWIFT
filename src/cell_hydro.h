@@ -147,6 +147,27 @@ struct cell_hydro {
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
 
+    /*! ti_old_part on entry to the last cell_drift_part() call on this
+     * cell, captured before any drift happens. Diagnostic for the
+     * out-of-frame position check: distinguishes a cell that simply
+     * hasn't been drifted this step from one whose drift ran with
+     * force=0. */
+    integertime_t ti_old_part_on_entry;
+
+    /*! Whether force was already true when the last cell_drift_part()
+     * call reached this cell (i.e. cell_flag_do_hydro_drift was set
+     * directly on it, not just inherited cell_flag_do_hydro_sub_drift on
+     * an ancestor). If 0 for a split cell, only the sub-path with its own
+     * flags got force-drifted; siblings outside that path were skipped
+     * despite ti_old_part being stamped as current. */
+    int drift_force_on_entry;
+
+    /*! ti_current the last time runner_do_star_formation actually ran on
+     * this cell's top-level ancestor (that task is only ever posted at
+     * depth 0). Diagnostic for whether a star-formation event coincided
+     * with an out-of-frame position violation in this cell's subtree. */
+    integertime_t sf_ran_at_tic;
+
 #endif
 
 #ifdef NONE_SPH

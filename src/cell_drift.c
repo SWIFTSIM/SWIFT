@@ -179,6 +179,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
+  c->hydro.ti_old_part_on_entry = ti_old_part;
+  c->hydro.drift_force_on_entry = force;
+
   /* Check that we only drift local cells. */
   if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
 
