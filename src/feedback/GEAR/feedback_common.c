@@ -135,13 +135,13 @@ float feedback_compute_spart_timestep(
     const double target = HII_region_last_rebuild + HII_region_rebuild_dt;
     double next_rebuild_age;
     if (star_age_beg_step > target) {
-      /* Already past due (e.g. after a lag) -- jump to the next integer
-         interval instead of the immediately-overshot one. */
-      const double intervals =
-          ceil((star_age_beg_step - HII_region_last_rebuild) /
-               HII_region_rebuild_dt);
-      next_rebuild_age =
-          HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
+      /* Already past due, possibly because HII_region_last_rebuild is
+         stuck at a stale age (it only advances on a rebuild that finds
+         gas), which would make a grid anchored there a Zeno approach:
+         dt_HII_safe shrinking every step without ever reaching the next
+         grid point. Re-anchor to now instead; nothing downstream needs
+         this bound phase-aligned to HII_region_last_rebuild. */
+      next_rebuild_age = star_age_beg_step + HII_region_rebuild_dt;
     } else {
       next_rebuild_age = target;
     }
@@ -311,21 +311,24 @@ void feedback_will_do_feedback(
   /* Only rebuild every HII_rebuild_time (internal units) and at the
      first timestep the star is born. A negative rebuild time means "every
      step". */
-  const double HII_region_last_rebuild =
-      sp->feedback_data.radiation.HII_region_last_rebuild;
+  const double HII_region_last_attempt = feedback_get_star_HII_last_attempt(sp);
   const float HII_rebuild_time = feedback_props->HII_rebuild_time;
 
   char need_HII_region_rebuild = 0;
   if (HII_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
   } else {
-    /* HII_region_last_rebuild zero-inits with the rest of the spart
-       struct (never seeded negative), so "0.0 = never rebuilt yet" below
-       already covers a brand-new star -- its very first rebuild is
-       triggered separately, by the star_age_end_step == 0.0 special case
-       above. */
+    /* Gated on HII_region_last_attempt, not HII_region_last_rebuild: both
+       zero-init the same way (0.0 = never yet, covering a brand-new star,
+       whose first rebuild is triggered separately by the
+       star_age_end_step == 0.0 case above) and coincide after any real
+       rebuild, but only last_attempt also advances on a gas-free pass
+       (see runner_radiation_feedback.c). Gating on last_rebuild would
+       leave this latched true every step for as long as a local void
+       persists, instead of re-arming once per HII_rebuild_time like a
+       real rebuild does. */
     const double next_rebuild_target =
-        HII_region_last_rebuild + HII_rebuild_time;
+        HII_region_last_attempt + HII_rebuild_time;
     const double eps = 1e-4 * HII_rebuild_time;
 
     if (star_age_end_step >= next_rebuild_target - eps) {
@@ -335,11 +338,12 @@ void feedback_will_do_feedback(
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
-      "HII_region_last_rebuild = %e, age_beg_step = %e, age_end_step = %e, "
-      "next_rebuild_time "
-      "= %e, need_HII_region_rebuild = %i",
-      HII_region_last_rebuild, star_age_beg_step, star_age_end_step,
-      HII_region_last_rebuild + HII_rebuild_time, need_HII_region_rebuild);
+      "HII_region_last_rebuild = %e, HII_region_last_attempt = %e, "
+      "age_beg_step = %e, age_end_step = %e, next_rebuild_time = %e, "
+      "need_HII_region_rebuild = %i",
+      sp->feedback_data.radiation.HII_region_last_rebuild,
+      HII_region_last_attempt, star_age_beg_step, star_age_end_step,
+      HII_region_last_attempt + HII_rebuild_time, need_HII_region_rebuild);
 #endif
 
   sp->feedback_data.will_do_HII_ionization =
