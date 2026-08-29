@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the contribution to the gravitational tidal tensor 
  * from a Hernquist potential.
  *
- * T_xx = GM * ( r^2 * (r+a) - x^2 * (3r+a) ) / r^3 * (r+a^3)
+ * T_xx = GM * ( r^2 * (r+a) - x^2 * (3r+a) ) / ( r^3 * (r+a)^3 )
  * T_xy = - GM * xy * (3r+a) / r^3(r+a)^3
  *
  * @param time The current time.
@@ -182,7 +182,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_tidal_tensor(
   const float r_plus_a = (r + potential->al);
   const float r_plus_a_inv = 1.f / r_plus_a;
   const float r_plus_a_inv2 = r_plus_a_inv * r_plus_a_inv;
-  const float part1 = (r_plus_a + r + r) * r_plus_a_inv2 * r_plus_a_inv * r_inv3;
+  const float r_plus_a_inv3 = r_plus_a_inv2 * r_plus_a_inv;
+  const float part1 = (r_plus_a + r + r) * r_plus_a_inv3 * r_inv3;
   const float part2 = r_inv * r_plus_a_inv2;
 
   /* Calculate final tensor contributions */

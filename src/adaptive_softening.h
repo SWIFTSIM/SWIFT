@@ -192,8 +192,6 @@ INLINE static void gravity_update_softening_tidal(
   const float new_softening = kernel_gravity_softening_plummer_equivalent *
                           cbrt(grav_props->G_Newton * gp->mass / norm_T);
 
-  // const float new_softening = grav_props->G_Newton;
-
   /* Update the softening but respect limits */
   if (new_softening > grav_props->max_adaptive_softening)
     gp->epsilon = grav_props->max_adaptive_softening;

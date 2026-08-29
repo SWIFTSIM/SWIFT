@@ -2670,7 +2670,7 @@ __attribute__((nonnull)) INLINE static void gravity_M2P_tidaltensors(
                                     rs_inv, &d);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l->F_200 != 0. || l->F_020 != 0. || l->F_020 != 0.)
+  if (l->F_200 != 0. || l->F_020 != 0. || l->F_002 != 0.)
     error("Working on uninitialised reduced tensor!");
 #endif
 
