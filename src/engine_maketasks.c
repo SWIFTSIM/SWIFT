@@ -1914,7 +1914,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.drift_out);
           scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.init_out);
         }
-      } else if (with_grid_hydro) {
+      } else if (with_grid_hydro && c->hydro.super == c) {
         /* No self-gravity, but external gravity.
          * Add implicit task for moving mesh hydro dependencies */
         /* NOTE: we are below the gravity super level */
