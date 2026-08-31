@@ -2317,6 +2317,76 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
 }
 
 /**
+ * @brief Compute the range of top-level cells the gravity pair loops must
+ *        search for pairs that may still need a direct (P2P) interaction, and
+ *        store it on the #space.
+ *
+ * This distance is given by gravity_M2L_min_accept_distance, which is the
+ * distance at which the multipole-multipole interaction is expected to be
+ * accurate enough. However, in periodic runs the mesh cut-off may be smaller
+ * than this distance, so we also account for that making the search distance
+ * for a direct gravity interaction the minimum of the two.
+ *
+ * Note that in zoom land the top-level grid is the background cell grid, so
+ * s->cdim and s->width already refer to it and we don't need to draw a
+ * distinction.
+ *
+ * @param e The #engine.
+ */
+static void engine_gravity_get_P2P_search_delta(struct engine *e) {
+
+  struct space *s = e->s;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+
+  /* Compute maximal distance where we can expect a direct interaction */
+  float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * s->width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, s->periodic);
+
+  /* Beyond the mesh cut-off the truncated forces are zero and the pair is
+   * handed to the mesh, so it can never need a direct interaction. */
+  if (s->periodic) distance = min(distance, (float)e->mesh->r_cut_max);
+
+  s->grav_P2P_search_distance = distance;
+
+  /* Convert the maximal search distance to a number of cells */
+  /* NOTE: The 2 in the max below may not be necessary but does insure some
+   * safety buffer. */
+  const int delta = max((int)(sqrt(3) * distance / s->width[0]) + 1, 2);
+
+  /* Define a lower and upper delta in case things are not symmetric */
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (s->periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
+
+  /* Store the deltas on the space for later use */
+  s->grav_P2P_search_delta_m = delta_m;
+  s->grav_P2P_search_delta_p = delta_p;
+
+  if (e->verbose) {
+    message("P2P search distance is %.6e (delta_m=%d delta_p=%d)", distance,
+            delta_m, delta_p);
+  }
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
@@ -2336,34 +2406,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-  }
+  /* The range to search, computed once in engine_gravity_get_P2P_search_delta.
+   */
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -4246,6 +4292,11 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
+
+  /* Compute the pairwise gravity search deltas for all cells. Computing and
+   * caching them now means we can always remember the search distances used
+   * between rebuilds. */
+  engine_gravity_get_P2P_search_delta(e);
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {

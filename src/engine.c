@@ -1726,24 +1726,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-
-  /* The zoom and background grids each keep their own reduction. */
-  if (e->s->with_zoom_region) {
-    MPI_Allreduce(MPI_IN_PLACE, &e->s->zoom_min_a_grav, 1, MPI_FLOAT, MPI_MIN,
-                  MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &e->s->bkg_min_a_grav, 1, MPI_FLOAT, MPI_MIN,
-                  MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &e->s->zoom_max_softening, 1, MPI_FLOAT,
-                  MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &e->s->bkg_max_softening, 1, MPI_FLOAT, MPI_MAX,
-                  MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, e->s->zoom_max_mpole_power,
-                  SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
-                  MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, e->s->bkg_max_mpole_power,
-                  SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
-                  MPI_COMM_WORLD);
-  }
 #endif
 
   /* Flag that there are no inhibited particles */
