@@ -323,6 +323,20 @@ struct space {
   /*! Max multipole power accross all top-level cells */
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 
+  /*! Maximal distance at which a pair of top-level cells can still require a
+   * direct (P2P) gravity interaction. Set once per rebuild when the gravity
+   * tasks are made, so that the pair loops and the between-rebuild mesh pair
+   * checks agree by construction rather than by repeating the same
+   * calculation. */
+  float grav_P2P_search_distance;
+
+  /*! The above as a number of top-level cells, in the -ve direction */
+  int grav_P2P_search_delta_m;
+
+  /*! The above as a number of top-level cells, in the +ve direction (this can
+   * differ from the -ve direction for an even cdim) */
+  int grav_P2P_search_delta_p;
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 

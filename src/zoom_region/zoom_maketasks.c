@@ -41,7 +41,9 @@
  *
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
+ *   criterion get a pair task, up to the range worked out once per rebuild in
+ *   engine_gravity_get_P2P_search_delta (which also bounds it by the mesh
+ * cut-off).
  *
  * This will create pair tasks between void cells and background cells. These
  * pair tasks will be split into smaller
@@ -68,36 +70,10 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
    * the space is periodic. */
   const int periodic = s->periodic;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  /* NOTE: The 2 in the max below may not be necessary but does insure some
-   * safety buffer. */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-  }
+  /* The range to search, computed once in engine_gravity_get_P2P_search_delta.
+   */
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
