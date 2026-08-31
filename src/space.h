@@ -323,32 +323,19 @@ struct space {
   /*! Max multipole power accross all top-level cells */
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 
-  /* The quantities below repeat the three reductions above but split by
-   * top-level cell type. They are only populated when running with a zoom
-   * region. The multipole acceptance criterion combines a multipole power, a
-   * softening and a minimal acceleration with the width of the cells being
-   * paired. In a zoom simulation those populations differ by orders of
-   * magnitude and the two grids have different widths, so a single global
-   * reduction pairs a quantity drawn from one grid with the cell size of the
-   * other. Each grid therefore keeps its own copy. */
+  /*! Maximal distance at which a pair of top-level cells can still require a
+   * direct (P2P) gravity interaction. Set once per rebuild when the gravity
+   * tasks are made, so that the pair loops and the between-rebuild mesh pair
+   * checks agree by construction rather than by repeating the same
+   * calculation. */
+  float grav_P2P_search_distance;
 
-  /*! Minimal gravity acceleration accross all particles in zoom cells */
-  float zoom_min_a_grav;
+  /*! The above as a number of top-level cells, in the -ve direction */
+  int grav_P2P_search_delta_m;
 
-  /*! Max gravity softening accross all particles in zoom cells */
-  float zoom_max_softening;
-
-  /*! Max multipole power accross all zoom top-level cells */
-  float zoom_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
-
-  /*! Minimal gravity acceleration accross all particles in background cells */
-  float bkg_min_a_grav;
-
-  /*! Max gravity softening accross all particles in background cells */
-  float bkg_max_softening;
-
-  /*! Max multipole power accross all background top-level cells */
-  float bkg_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+  /*! The above as a number of top-level cells, in the +ve direction (this can
+   * differ from the -ve direction for an even cdim) */
+  int grav_P2P_search_delta_p;
 
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
