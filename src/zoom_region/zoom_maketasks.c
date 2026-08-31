@@ -29,126 +29,9 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "multipole.h"
-#include "multipole_accept.h"
 #include "proxy.h"
 #include "space.h"
 #include "zoom_region/zoom.h"
-
-/**
- * @brief Compute the maximal distance at which a pair of background cells can
- *        still require a direct interaction.
- *
- * The multipole acceptance criterion combines the maximal multipole powers,
- * the maximal softening and the minimal particle acceleration with the size of
- * the cells being paired. In a zoom simulation the zoom and background grids
- * have different widths and their particle populations differ by orders of
- * magnitude in mass, softening and acceleration. A single reduction over every
- * top-level cell therefore pairs a quantity drawn from one grid with the cell
- * size of the other, which is meaningless. The background search uses the
- * background reduction only.
- *
- * @param s The #space.
- * @param props The properties of the gravity scheme.
- *
- * @return The maximal distance for a direct interaction.
- */
-float zoom_bkg_M2L_min_accept_distance(const struct space *s,
-                                       const struct gravity_props *props) {
-
-  const struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
-
-  return gravity_M2L_min_accept_distance(
-      props, sqrtf(3.f) * bkg_cells[0].width[0], s->bkg_max_softening,
-      s->bkg_min_a_grav, s->bkg_max_mpole_power, s->periodic);
-}
-
-/**
- * @brief Compute the maximal distance at which a pair of zoom cells can still
- *        require a direct interaction.
- *
- * The zoom counterpart of zoom_bkg_M2L_min_accept_distance, built entirely
- * from the zoom cell width and the zoom particle population.
- *
- * @param s The #space.
- * @param props The properties of the gravity scheme.
- *
- * @return The maximal distance for a direct interaction.
- */
-float zoom_zoom_M2L_min_accept_distance(const struct space *s,
-                                        const struct gravity_props *props) {
-
-  const struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
-
-  return gravity_M2L_min_accept_distance(
-      props, sqrtf(3.f) * zoom_cells[0].width[0], s->zoom_max_softening,
-      s->zoom_min_a_grav, s->zoom_max_mpole_power, s->periodic);
-}
-
-/**
- * @brief Convert the background search distance into a number of cells.
- *
- * Defines a lower and upper delta in case things are not symmetric. If every
- * cell is in range of every other one the deltas are clamped so that the pair
- * loops cover the grid exactly once.
- *
- * When the mesh is in use the search is additionally bounded by the mesh
- * cut-off. Beyond r_cut_max the truncated forces are zero and cell_can_use_mesh
- * hands the pair to the mesh unconditionally, before any multipole acceptance
- * test is reached, so no pair further apart than that can ever need a task.
- * This is the same ball the long-range task searches over this same grid (see
- * runner_do_grav_long_range_zoom_periodic), and the two are complements: the
- * long-range task performs the M-M interactions that the pair tasks do not.
- * Searching further here creates work the long-range task will never ask for.
- *
- * NOTE: The 2 in the max below may not be necessary but does insure some
- * safety buffer.
- *
- * @param e The #engine.
- * @param delta_m (return) The number of cells to search in the -ve direction.
- * @param delta_p (return) The number of cells to search in the +ve direction.
- */
-void zoom_bkg_gravity_search_delta(const struct engine *e, int *delta_m,
-                                   int *delta_p) {
-
-  const struct space *s = e->s;
-  const struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
-  const int cdim = s->cdim[0];
-
-  const float distance =
-      zoom_bkg_M2L_min_accept_distance(s, e->gravity_properties);
-
-  int delta = max((int)(sqrt(3) * distance / bkg_cells[0].width[0]) + 1, 2);
-
-  /* Bound the search by the mesh cut-off. */
-  if (s->periodic) {
-    const int delta_mesh =
-        ceil(e->mesh->r_cut_max *
-             max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) +
-        1;
-    if (delta_mesh < delta) delta = delta_mesh;
-  }
-
-  *delta_m = delta;
-  *delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (s->periodic) {
-    if (delta >= cdim / 2) {
-      if (cdim % 2 == 0) {
-        *delta_m = cdim / 2;
-        *delta_p = cdim / 2 - 1;
-      } else {
-        *delta_m = cdim / 2;
-        *delta_p = cdim / 2;
-      }
-    }
-  } else {
-    if (delta > cdim) {
-      *delta_m = cdim;
-      *delta_p = cdim;
-    }
-  }
-}
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
@@ -158,7 +41,9 @@ void zoom_bkg_gravity_search_delta(const struct engine *e, int *delta_m,
  *
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
+ *   criterion get a pair task, up to the range worked out once per rebuild in
+ *   engine_gravity_get_P2P_search_delta (which also bounds it by the mesh
+ * cut-off).
  *
  * This will create pair tasks between void cells and background cells. These
  * pair tasks will be split into smaller
@@ -185,10 +70,10 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
    * the space is periodic. */
   const int periodic = s->periodic;
 
-  /* Compute the range of background cells we need to search, using the
-   * background cell width and the background particle population. */
-  int delta_m, delta_p;
-  zoom_bkg_gravity_search_delta(e, &delta_m, &delta_p);
+  /* The range to search, computed once in engine_gravity_get_P2P_search_delta.
+   */
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -228,39 +113,6 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
-
-  /* Report the search range the background mappers will use, alongside the
-   * equivalent zoom quantity. Each is built from its own cell width and its
-   * own particle population. When delta saturates at cdim/2 the pair loops
-   * degenerate to all-pairs. */
-  if (e->verbose) {
-    const struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
-    const struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
-
-    const float bkg_distance =
-        zoom_bkg_M2L_min_accept_distance(s, e->gravity_properties);
-    const float zoom_distance =
-        zoom_zoom_M2L_min_accept_distance(s, e->gravity_properties);
-
-    int delta_m, delta_p;
-    zoom_bkg_gravity_search_delta(e, &delta_m, &delta_p);
-    const int bkg_delta =
-        max((int)(sqrt(3) * bkg_distance / bkg_cells[0].width[0]) + 1, 2);
-    const int zoom_delta =
-        max((int)(sqrt(3) * zoom_distance / zoom_cells[0].width[0]) + 1, 2);
-
-    message(
-        "Background pair search: distance=%.6e (%.2f bkg cell widths) "
-        "delta=%d (clamped to -%d/+%d), bkg_cdim=%d, saturates at delta>=%d%s",
-        bkg_distance, bkg_distance / bkg_cells[0].width[0], bkg_delta, delta_m,
-        delta_p, s->cdim[0], s->cdim[0] / 2,
-        bkg_delta >= s->cdim[0] / 2 ? " <== SATURATED" : "");
-    message(
-        "Zoom pair search:       distance=%.6e (%.2f zoom cell widths) "
-        "delta=%d, zoom_cdim=%d",
-        zoom_distance, zoom_distance / zoom_cells[0].width[0], zoom_delta,
-        s->zoom_props->cdim[0]);
-  }
 
   /* Background -> Background */
   threadpool_map(&e->threadpool,
