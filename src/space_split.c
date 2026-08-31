@@ -910,14 +910,6 @@ static void space_split_mapper(void *map_data, int num_cells,
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
-  /* The same information split by top-level cell type. Only used (and only
-   * meaningful) when running with a zoom region, where the two cell grids have
-   * different widths and hugely different particle masses and softenings. */
-  float zoom_min_a_grav = FLT_MAX, bkg_min_a_grav = FLT_MAX;
-  float zoom_max_softening = 0.f, bkg_max_softening = 0.f;
-  float zoom_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-  float bkg_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
@@ -943,22 +935,6 @@ static void space_split_mapper(void *map_data, int num_cells,
       for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-
-      /* Repeat the reduction into the bucket for this cell's grid. */
-      if (s->with_zoom_region) {
-        const struct multipole *m = &c->grav.multipole->m_pole;
-        if (c->type == cell_type_zoom) {
-          zoom_min_a_grav = min(zoom_min_a_grav, m->min_old_a_grav_norm);
-          zoom_max_softening = max(zoom_max_softening, m->max_softening);
-          for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-            zoom_max_mpole_power[n] = max(zoom_max_mpole_power[n], m->power[n]);
-        } else {
-          bkg_min_a_grav = min(bkg_min_a_grav, m->min_old_a_grav_norm);
-          bkg_max_softening = max(bkg_max_softening, m->max_softening);
-          for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-            bkg_max_mpole_power[n] = max(bkg_max_mpole_power[n], m->power[n]);
-        }
-      }
     }
   }
 
@@ -975,17 +951,6 @@ static void space_split_mapper(void *map_data, int num_cells,
   atomic_max_f(&s->max_softening, max_softening);
   for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
     atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
-
-  if (s->with_zoom_region) {
-    atomic_min_f(&s->zoom_min_a_grav, zoom_min_a_grav);
-    atomic_max_f(&s->zoom_max_softening, zoom_max_softening);
-    atomic_min_f(&s->bkg_min_a_grav, bkg_min_a_grav);
-    atomic_max_f(&s->bkg_max_softening, bkg_max_softening);
-    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n) {
-      atomic_max_f(&s->zoom_max_mpole_power[n], zoom_max_mpole_power[n]);
-      atomic_max_f(&s->bkg_max_mpole_power[n], bkg_max_mpole_power[n]);
-    }
-  }
 }
 
 /**
@@ -1036,15 +1001,6 @@ void space_split(struct space *s, int verbose) {
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
-
-  s->zoom_min_a_grav = FLT_MAX;
-  s->zoom_max_softening = 0.f;
-  s->bkg_min_a_grav = FLT_MAX;
-  s->bkg_max_softening = 0.f;
-  bzero(s->zoom_max_mpole_power,
-        (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
-  bzero(s->bkg_max_mpole_power,
-        (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   if (!s->with_zoom_region) {
 
@@ -1097,31 +1053,6 @@ void space_split(struct space *s, int verbose) {
     }
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
-    /* Report the inputs to the multipole acceptance criterion. These set the
-     * search distance, and hence the delta used to bound the gravity pair
-     * loops. With a zoom region each grid has its own reduction. */
-    if (s->with_self_gravity) {
-      if (!s->with_zoom_region) {
-        message(
-            "MAC inputs: min_a_grav=%.6e max_softening=%.6e "
-            "max_mpole_power[%d]=%.6e",
-            s->min_a_grav, s->max_softening, SELF_GRAVITY_MULTIPOLE_ORDER,
-            s->max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
-      } else {
-        message(
-            "MAC inputs (zoom cells): min_a_grav=%.6e max_softening=%.6e "
-            "max_mpole_power[0]=%.6e max_mpole_power[%d]=%.6e",
-            s->zoom_min_a_grav, s->zoom_max_softening,
-            s->zoom_max_mpole_power[0], SELF_GRAVITY_MULTIPOLE_ORDER,
-            s->zoom_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
-        message(
-            "MAC inputs (bkg cells):  min_a_grav=%.6e max_softening=%.6e "
-            "max_mpole_power[0]=%.6e max_mpole_power[%d]=%.6e",
-            s->bkg_min_a_grav, s->bkg_max_softening, s->bkg_max_mpole_power[0],
-            SELF_GRAVITY_MULTIPOLE_ORDER,
-            s->bkg_max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER]);
-      }
-    }
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
