@@ -30,6 +30,7 @@
 
 /* Some standard headers. */
 #include <pthread.h>
+#include <time.h>
 
 /* Includes. */
 #include "cell.h"
@@ -45,10 +46,22 @@
 #define scheduler_dosub 1
 #define scheduler_maxsteal 10
 #define scheduler_maxtries 2
+/* Deadline (ms) for the idle-runner pthread_cond_timedwait() in
+ * scheduler_gettask(), bounding a lost wakeup to a short re-poll. */
+#define scheduler_sleep_timeout_ms 2
 #define scheduler_doforcesplit            \
   0 /* Beware: switching this on can/will \
        break engine_addlink as it assumes \
        a maximum number of tasks per cell. */
+
+/* macOS libc has no pthread_condattr_setclock(); s->sleep_cond stays on its
+ * pthread_cond_init() default, CLOCK_REALTIME, there (see src/random.h's
+ * #ifndef __APPLE__ precedent). One macro so init and every deadline agree. */
+#ifndef __APPLE__
+#define scheduler_sleep_clock CLOCK_MONOTONIC
+#else
+#define scheduler_sleep_clock CLOCK_REALTIME
+#endif
 
 /* Flags . */
 #define scheduler_flag_none 0

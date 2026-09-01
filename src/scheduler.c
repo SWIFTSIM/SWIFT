@@ -1442,7 +1442,17 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
-        pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+        struct timespec ts;
+        clock_gettime(scheduler_sleep_clock, &ts);
+        ts.tv_nsec += scheduler_sleep_timeout_ms * 1000000L;
+        ts.tv_sec += ts.tv_nsec / 1000000000L;
+        ts.tv_nsec %= 1000000000L;
+        /* Return value deliberately ignored: a timeout, a spurious wake and
+         * a real broadcast all fall through to the enclosing
+         * while (s->waiting > 0 && res == NULL) loop, which already retries
+         * unconditionally regardless of why the wait returned. Do not add a
+         * branch on ETIMEDOUT. */
+        (void)pthread_cond_timedwait(&s->sleep_cond, &s->sleep_mutex, &ts);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
@@ -1488,9 +1498,21 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   /* Initialize each queue. */
   for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
 
-  /* Init the sleep mutex and cond. */
-  if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
-      pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
+  /* Init the sleep mutex and cond, on scheduler_sleep_clock so the
+   * pthread_cond_timedwait() deadlines in scheduler_gettask() are immune to
+   * CLOCK_REALTIME steps (e.g. NTP). */
+#ifndef __APPLE__
+  pthread_condattr_t sleep_cond_attr;
+  if (pthread_condattr_init(&sleep_cond_attr) != 0 ||
+      pthread_condattr_setclock(&sleep_cond_attr, scheduler_sleep_clock) != 0 ||
+      pthread_cond_init(&s->sleep_cond, &sleep_cond_attr) != 0 ||
+      pthread_condattr_destroy(&sleep_cond_attr) != 0)
+    error("Failed to initialize sleep barrier.");
+#else
+  if (pthread_cond_init(&s->sleep_cond, NULL) != 0)
+    error("Failed to initialize sleep barrier.");
+#endif
+  if (pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
     error("Failed to initialize sleep barrier.");
 
   /* Init the unlocks. */
