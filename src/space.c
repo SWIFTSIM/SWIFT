@@ -4381,6 +4381,8 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
       /* Reset the guess */
       prolongate_solution(u_coarser, u, cdim[0]/2, cdim[0]);
       V_cycles -= 1; //Pretend the previous V-cycle never happened...
+      residual_start = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+      residual = residual_start;
     }
     if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
             V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
