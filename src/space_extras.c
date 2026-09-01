@@ -78,13 +78,19 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
-  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  /* In a zoom simulation only the zoom cells can ever need extra particles:
+   * the background cells hold only low-resolution collisionless DM, which
+   * never spawns anything. The zoom cells are cells_top[0, nr_zoom_cells). */
+  const int nr_candidate_cells =
+      s->with_zoom_region ? s->zoom_props->nr_zoom_cells : s->nr_cells;
+
+  int *local_cells = (int *)malloc(sizeof(int) * nr_candidate_cells);
   if (local_cells == NULL)
     error("Failed to allocate list of local top-level cells");
 
   /* List the local cells */
   size_t nr_local_cells = 0;
-  for (int i = 0; i < s->nr_cells; ++i) {
+  for (int i = 0; i < nr_candidate_cells; ++i) {
     if (s->cells_top[i].nodeID == local_nodeID &&
         s->cells_top[i].subtype != cell_subtype_void) {
       local_cells[nr_local_cells] = i;
@@ -114,26 +120,26 @@ void space_allocate_extras(struct space *s, int verbose) {
         expected_num_extra_bparts);
   }
 
-  if (expected_num_extra_parts < s->nr_extra_parts)
-    error(
-        "Reduction in top-level cells number not handled. Please set a lower "
-        "h_max or reduce the number of top level cells.");
-  if (expected_num_extra_gparts < s->nr_extra_gparts)
-    error(
-        "Reduction in top-level cells number not handled. Please set a lower "
-        "h_max or reduce the number of top level cells.");
-  if (expected_num_extra_sparts < s->nr_extra_sparts)
-    error(
-        "Reduction in top-level cells number not handled. Please set a lower "
-        "h_max or reduce the number of top level cells.");
-  if (expected_num_extra_bparts < s->nr_extra_bparts)
-    error(
-        "Reduction in top-level cells number not handled. Please set a lower "
-        "h_max or reduce the number of top level cells.");
-  if (expected_num_extra_sinks < s->nr_extra_sinks)
-    error(
-        "Reduction in top-level cells number not handled. Please set a lower "
-        "h_max or reduce the number of top level cells.");
+  /* We cannot cope with a reduction in the number of extra particles: they are
+   * laid out one block per top-level cell, so with fewer cells the surplus
+   * would be stranded in cells that no longer exist. */
+  const size_t expected_extra[5] = {
+      expected_num_extra_parts, expected_num_extra_gparts,
+      expected_num_extra_sparts, expected_num_extra_bparts,
+      expected_num_extra_sinks};
+  const size_t current_extra[5] = {s->nr_extra_parts, s->nr_extra_gparts,
+                                   s->nr_extra_sparts, s->nr_extra_bparts,
+                                   s->nr_extra_sinks};
+  const char *extra_names[5] = {"parts", "gparts", "sparts", "bparts", "sinks"};
+  for (int i = 0; i < 5; ++i) {
+    if (expected_extra[i] < current_extra[i])
+      error(
+          "Reduction in the number of top-level cells is not handled: the "
+          "number of extra %s would fall from %zd to %zd (%zd local cells "
+          "requesting extras). The number of top-level cells has decreased "
+          "since the last rebuild.",
+          extra_names[i], current_extra[i], expected_extra[i], nr_local_cells);
+  }
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
