@@ -3252,14 +3252,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_timestep_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_pair,
                                       task_subtype_limiter, flags, 0, ci, cj);
-
-        /* Make the limiter task depend on the sorts, same as density/force:
-         * it reads cell_get_hydro_sorts() too, but previously had no edge
-         * enforcing that the sort task had actually finished first. */
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_limiter);
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_limiter);
-        }
       }
 
       /* The stellar feedback tasks */
