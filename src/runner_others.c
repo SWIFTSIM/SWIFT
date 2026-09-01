@@ -570,6 +570,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
+#ifdef SWIFT_DEBUG_CHECKS
+                /* p keeps existing (reduced mass) only on a spawn, not a
+                 * full conversion -- count how many times this exact
+                 * particle has been partially depleted this way. */
+                if (!part_converted) xp->sf_data.n_sf_spawn_events++;
+#endif
+
                 sp->x_diff[0] += displacement[0];
                 sp->x_diff[1] += displacement[1];
                 sp->x_diff[2] += displacement[2];
