@@ -204,13 +204,18 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       message(
           "Adjusting background cell size to find acceptable zoom geometry ("
           "bkg_cdim=(%d,%d,%d)).",
-          s->zoom_props->bkg_cdim[0] - 1, s->zoom_props->bkg_cdim[1] - 1,
-          s->zoom_props->bkg_cdim[2] - 1);
+          s->zoom_props->bkg_cdim[0] - 2, s->zoom_props->bkg_cdim[1] - 2,
+          s->zoom_props->bkg_cdim[2] - 2);
 
-      /* Decrement the background cdim. */
-      s->zoom_props->bkg_cdim[0]--;
-      s->zoom_props->bkg_cdim[1]--;
-      s->zoom_props->bkg_cdim[2]--;
+      /* Decrement the background cdim, stepping by 2 to preserve the parity of
+       * the background cell grid. An odd cdim places the centre of the box at
+       * the centre of a background cell while an even cdim places it on a cell
+       * boundary, and that is what sets how many background cells the (centred)
+       * zoom region spans. Stepping by 1 would flip the parity and change the
+       * size of the void region discontinuously. */
+      s->zoom_props->bkg_cdim[0] -= 2;
+      s->zoom_props->bkg_cdim[1] -= 2;
+      s->zoom_props->bkg_cdim[2] -= 2;
 
       /* Recalculate the zoom region geometry. */
       zoom_region_init(s, /*regridding=*/1, /*verbose=*/1);
