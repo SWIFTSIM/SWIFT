@@ -436,9 +436,10 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
               "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
               "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
-              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d pi_ti_drift=%lld "
-              "pi_x_diff=(%e,%e,%e) pj_id=%lld pj_v=(%e,%e,%e) pj_h=%e "
-              "pj_time_bin=%d pj_ti_drift=%lld pj_x_diff=(%e,%e,%e)",
+              "pi_mass=%e pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
               e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
               ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
               ci->hydro.dx_max_part, cj->hydro.dx_max_part,
@@ -452,10 +453,10 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
               (long long)ci->hydro.sf_ran_at_tic,
               (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current, pid,
-              sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->v[0], pi->v[1],
-              pi->v[2], pi->h, pi->time_bin, (long long)pi->ti_drift,
-              xi_diff[0], xi_diff[1], xi_diff[2], pj->id, pj->v[0], pj->v[1],
-              pj->v[2], pj->h, pj->time_bin, (long long)pj->ti_drift,
+              sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass, pi->v[0],
+              pi->v[1], pi->v[2], pi->h, pi->time_bin, (long long)pi->ti_drift,
+              xi_diff[0], xi_diff[1], xi_diff[2], pj->id, pj->mass, pj->v[0],
+              pj->v[1], pj->v[2], pj->h, pj->time_bin, (long long)pj->ti_drift,
               xj_diff[0], xj_diff[1], xj_diff[2]);
         }
 
@@ -587,9 +588,10 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
               "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
               "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
-              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d pi_ti_drift=%lld "
-              "pi_x_diff=(%e,%e,%e) pj_id=%lld pj_v=(%e,%e,%e) pj_h=%e "
-              "pj_time_bin=%d pj_ti_drift=%lld pj_x_diff=(%e,%e,%e)",
+              "pi_mass=%e pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
               e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
               ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
               ci->hydro.dx_max_part, cj->hydro.dx_max_part,
@@ -603,10 +605,10 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
               (long long)ci->hydro.sf_ran_at_tic,
               (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current, pid,
-              sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->v[0], pi->v[1],
-              pi->v[2], pi->h, pi->time_bin, (long long)pi->ti_drift,
-              xi_diff[0], xi_diff[1], xi_diff[2], pj->id, pj->v[0], pj->v[1],
-              pj->v[2], pj->h, pj->time_bin, (long long)pj->ti_drift,
+              sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass, pi->v[0],
+              pi->v[1], pi->v[2], pi->h, pi->time_bin, (long long)pi->ti_drift,
+              xi_diff[0], xi_diff[1], xi_diff[2], pj->id, pj->mass, pj->v[0],
+              pj->v[1], pj->v[2], pj->h, pj->time_bin, (long long)pj->ti_drift,
               xj_diff[0], xj_diff[1], xj_diff[2]);
         }
 
