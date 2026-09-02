@@ -73,39 +73,49 @@ float feedback_compute_spart_timestep(
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
-  double star_age_end_step =
-      compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
 
-  /* Convert mass to M_sun. The lifetime function assumes solar masses */
-  const float log_mass =
-      (sp->star_type == single_star)
-          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-          : log10(1.0);
-
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
-                                         &sm->lifetime, log_mass, metallicity));
+  float lifetime_myr;
+  if (sp->star_type == single_star) {
+    /* Convert mass to M_sun. The lifetime function assumes solar masses. */
+    const float log_mass =
+        log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+    lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+                               &sm->lifetime, log_mass, metallicity));
+  } else {
+    /* SSP: no single mass, so use the population's current age directly
+       as lifetime_myr (equivalent, by the exact lifetime<->mass
+       inversion, to the turnoff mass driving feedback right now).
+       star_age_beg_step can be slightly negative here (compute_time()
+       subtracts the full timestep-bin length, not time-since-birth, from
+       a >=0-clamped end-of-step age -- routinely negative right after a
+       star forms), so clamp the same way this file already does at the
+       other star_age_beg_step use site below. */
+    const double star_age_beg_step_safe =
+        star_age_beg_step < 0 ? 0 : star_age_beg_step;
+    const double conversion_to_myr = phys_const->const_year * 1e6;
+    lifetime_myr = (float)(star_age_beg_step_safe / conversion_to_myr);
+  }
   const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
   /* Adapt the factor depending on the star lifetime to provide adequate
-     timesteps for different star lifetimes. */
-  float factor = 0.0;
-  if (lifetime_myr >= 100) {
-    factor = 1;
-  } else if (lifetime_myr < 100 && lifetime_myr >= 50) {
-    factor = 20;
-  } else {
-    factor = 300;
-  }
+     timesteps for different star lifetimes: a logistic transition in
+     log10(lifetime_myr), from dt_evolution_factor_max (short-lived stars)
+     down to 1 (long-lived stars), centred on dt_evolution_lifetime_myr_0
+     with steepness dt_evolution_steepness. Purely a numerical resolution
+     heuristic, not a physical law, so this need not match any particular
+     calibration. */
+  const float factor =
+      1.f +
+      (feedback_props->dt_evolution_factor_max - 1.f) /
+          (1.f + expf(feedback_props->dt_evolution_steepness *
+                      (log10f(lifetime_myr) -
+                       log10f(feedback_props->dt_evolution_lifetime_myr_0))));
 
-  /* Ensure that the age is positive (rounding errors) */
-  const double star_age_beg_step_safe =
-      star_age_beg_step < 0 ? star_age_end_step : star_age_beg_step;
-
-  /* To avoid very small timesteps for star_age_beg_step, take the mean */
-  const double star_age = 0.5 * (star_age_beg_step_safe + star_age_end_step);
-
-  const float dt_evolution =
-      (star_age_beg_step <= 0) ? FLT_MAX : star_age / (factor * lifetime);
+  /* single_star: lifetime_myr is fixed for the star's whole life, so this
+     resolution scales with lifetime, not with star_age. SSP: lifetime_myr
+     is star_age_beg_step itself, so this deliberately tracks the
+     population's current age instead, tightening as the star ages. */
+  const float dt_evolution = lifetime / factor;
   /*----------------------------------------*/
 
   /* HII region constraint to rebuild the HII region every

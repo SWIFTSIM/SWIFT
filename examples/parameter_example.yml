@@ -783,6 +783,9 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+  dt_evolution_factor_max: 300                              # Timestep refinement factor applied to short-lived stars (lifetime_myr -> 0), transitioning logistically to 1 for long-lived stars. Used for every star, not just radiation runs. (Default: 300)
+  dt_evolution_lifetime_myr_0: 30                           # Transition midpoint (in Myr) of that logistic: factor = 1 + (factor_max-1)/2 there. (Default: 30)
+  dt_evolution_steepness: 8                                 # Steepness of the logistic transition in log10(lifetime_myr); higher is sharper. (Default: 8)
 
   # Radiation parameters
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)

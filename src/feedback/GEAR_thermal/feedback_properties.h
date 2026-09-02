@@ -29,6 +29,9 @@
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_rebuild_floor_Myr 1e-4
+#define default_dt_evolution_factor_max 300.0
+#define default_dt_evolution_lifetime_myr_0 30.0
+#define default_dt_evolution_steepness 8.0
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -64,6 +67,23 @@ struct feedback_props {
 
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /* ------------- Star evolution timestep properties ------------- */
+
+  /*! Timestep refinement factor as lifetime_myr -> 0, used by
+   * feedback_compute_spart_timestep()'s logistic transition. */
+  float dt_evolution_factor_max;
+
+  /*! Transition midpoint (Myr) of that logistic: factor = 1 +
+   * (factor_max-1)/2 there. Compared directly against the plain-Myr
+   * lifetime_myr local variable in feedback_compute_spart_timestep(), so
+   * unlike the HII_*_Myr parameters below this is deliberately NOT
+   * converted to internal units. */
+  float dt_evolution_lifetime_myr_0;
+
+  /*! Steepness of the logistic transition in log10(lifetime_myr); higher
+   * is a sharper (more step-like) transition. */
+  float dt_evolution_steepness;
 
   /* ------------- Subgrid Radiation properties ------------- */
 
@@ -135,6 +155,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
+  message("dt_evolution factor_max                                    = %g",
+          feedback_props->dt_evolution_factor_max);
+  message("dt_evolution lifetime_myr_0 (Myr)                          = %.2g",
+          feedback_props->dt_evolution_lifetime_myr_0);
+  message("dt_evolution steepness                                     = %.2g",
+          feedback_props->dt_evolution_steepness);
 
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
@@ -282,6 +308,34 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                  params, cosmo, fp->with_stellar_wind_feedback,
                                  with_radiation);
   }
+
+  /* ------------- Star evolution timestep properties ------------- */
+  /* Runs for every star regardless of radiation, so parsed unconditionally
+   * (feedback_compute_spart_timestep() uses this factor for all stars). */
+
+  fp->dt_evolution_factor_max =
+      parser_get_opt_param_float(params, "GEARFeedback:dt_evolution_factor_max",
+                                 default_dt_evolution_factor_max);
+
+  fp->dt_evolution_lifetime_myr_0 = parser_get_opt_param_float(
+      params, "GEARFeedback:dt_evolution_lifetime_myr_0",
+      default_dt_evolution_lifetime_myr_0);
+
+  fp->dt_evolution_steepness =
+      parser_get_opt_param_float(params, "GEARFeedback:dt_evolution_steepness",
+                                 default_dt_evolution_steepness);
+
+  if (fp->dt_evolution_factor_max < 1.f)
+    error("GEARFeedback:dt_evolution_factor_max must be >= 1 (got %g).",
+          fp->dt_evolution_factor_max);
+
+  if (fp->dt_evolution_lifetime_myr_0 <= 0.f)
+    error("GEARFeedback:dt_evolution_lifetime_myr_0 must be > 0 (got %g).",
+          fp->dt_evolution_lifetime_myr_0);
+
+  if (fp->dt_evolution_steepness <= 0.f)
+    error("GEARFeedback:dt_evolution_steepness must be > 0 (got %g).",
+          fp->dt_evolution_steepness);
 
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
