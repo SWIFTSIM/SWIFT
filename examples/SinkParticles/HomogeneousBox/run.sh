@@ -10,6 +10,7 @@ jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
 debug=${debug:=0}
 run_name=${run_name:=""}
 with_star_formation=${with_star_formation=0}
+restart=${restart=0} # Shall we start from a restart file
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -59,12 +60,22 @@ else
     parameter_file="params.yml"
 fi
 
+if [[ "$restart" -eq 0 ]]; then
+    runtime_params="$runtime_params"
+else
+    runtime_params="--restart $runtime_params"
+fi
+
 # Create output directory
 DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+
+    # Don't remove the snap if we restart
+    if [[ "$restart" -eq 0 ]]; then
+	rm -r $DIR
+    fi
 else
     echo "$DIR directory does not exists. It will be created."
     mkdir $DIR
@@ -77,11 +88,12 @@ else
 fi
 
 if [[ "$with_star_formation" -eq 0 ]]; then
-    runtime_params="--sinks"
+    runtime_params="$runtime_params --sinks"
 else
-    runtime_params="--star-formation"
+    runtime_params="$runtime_params --star-formation"
 fi
 
+echo $runtime_params
 echo "========================================"
 echo "Running simulation..."
 echo "========================================"
