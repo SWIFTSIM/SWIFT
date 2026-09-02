@@ -114,11 +114,10 @@ int main(int argc, char *argv[]) {
      end just above it: this must fire the star's one and only SN. */
   const double beg0 = (lifetime_myr - 0.01) * conversion_to_myr;
   double dt = 0.02 * conversion_to_myr;
-  stellar_evolution_evolve_individual_star(&sp, &sm, /*with_cosmology=*/0,
-                                           &cosmo, /*time=*/0.0, &us,
-                                           &phys_const,
-                                           /*with_stellar_wind_feedback=*/0,
-                                           /*ti_begin=*/0, beg0, dt);
+  stellar_evolution_evolve_individual_star(
+      &sp, &sm, /*with_cosmology=*/0, &cosmo, /*time=*/0.0, &us, &phys_const,
+      /*with_stellar_wind_feedback=*/0,
+      /*ti_begin=*/0, beg0, dt);
 
   if (sp.feedback_data.number_snii != 1)
     error("Step 1 should have fired the star's SN (number_snii=%g).",
@@ -151,11 +150,10 @@ int main(int argc, char *argv[]) {
      each time. */
   for (int i = 0; i < 4; i++) {
     dt *= 2.0;
-    stellar_evolution_evolve_individual_star(&sp, &sm, /*with_cosmology=*/0,
-                                             &cosmo, /*time=*/0.0, &us,
-                                             &phys_const,
-                                             /*with_stellar_wind_feedback=*/0,
-                                             /*ti_begin=*/0, beg0, dt);
+    stellar_evolution_evolve_individual_star(
+        &sp, &sm, /*with_cosmology=*/0, &cosmo, /*time=*/0.0, &us, &phys_const,
+        /*with_stellar_wind_feedback=*/0,
+        /*ti_begin=*/0, beg0, dt);
   }
 
   /* ------------------------------------------------------------------ */
