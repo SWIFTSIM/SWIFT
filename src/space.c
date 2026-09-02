@@ -1271,21 +1271,13 @@ void space_init(struct space *s, struct swift_params *params,
   const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
   s->cell_min = tol * dmax / maxtcells;
 
-  /* Check that it is big enough. */
-  const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
-  int needtcells = 3 * dmax / dmin;
-  if (maxtcells < needtcells)
-    error(
-        "Scheduler:max_top_level_cells is too small %d, needs to be at "
-        "least %d",
-        maxtcells, needtcells);
-
   /* Decide on the maximal top-level cell width -- the complement of the
      above, bounding how coarse the grid is ever allowed to get regardless
      of what is driving the coarsening (ordinary hydro/star/black-hole/sink
      h_max, or a star's h_hii). space_regrid() clamps the effective cell
      width at this value instead of coarsening past it, and stops a periodic
      run whose search radius outgrows it. */
+  const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
   int mintcells =
       parser_get_opt_param_int(params, "Scheduler:min_top_level_cells",
                                space_min_top_level_cells_default);
@@ -1304,23 +1296,33 @@ void space_init(struct space *s, struct swift_params *params,
         mintcells, maxtcells);
   s->cell_max_width = dmin / mintcells;
 
+  /* Check that max_top_level_cells is big enough for the grid that
+     min_top_level_cells actually forces along the longest axis.
+     space_regrid() clamps the cell width to cell_max_width whenever
+     cell_min > cell_max_width (see below), so needtcells must be derived
+     from cell_max_width itself rather than recomputed as
+     mintcells * dmax / dmin: the two expressions are not guaranteed to
+     agree bit-for-bit under -ffast-math. */
+  int needtcells = (int)floor(dmax / s->cell_max_width);
+  if (maxtcells < needtcells)
+    error(
+        "Scheduler:max_top_level_cells is too small %d, needs to be at "
+        "least %d",
+        maxtcells, needtcells);
+
   /* cell_min derives from dmax and cell_max_width from dmin, so the two
      bounds can invert on a non-cubic box. space_regrid() then always clamps
      to cell_max_width: min_top_level_cells silently wins and
-     max_top_level_cells is not honoured. Not fatal, but worth saying. The
-     suggested value uses dmax rather than tol * dmax, since tol grows with
-     maxtcells and would otherwise make the suggestion one too small. */
+     max_top_level_cells is not honoured. Not fatal, but worth saying. */
   if (engine_rank == 0 && s->cell_min > s->cell_max_width)
     message(
         "Scheduler:min_top_level_cells (%d) overrides "
         "Scheduler:max_top_level_cells (%d) for this box (dim = [%g %g %g]): "
         "it asks for a top-level cell width of at most %g, while "
         "max_top_level_cells asks for no less than %g. The grid will use %g "
-        "and may exceed %d cells along the longest axis. Raise "
-        "max_top_level_cells to at least %d to honour both.",
+        "and will need %d cells along the longest axis.",
         mintcells, maxtcells, s->dim[0], s->dim[1], s->dim[2],
-        s->cell_max_width, s->cell_min, s->cell_max_width, maxtcells,
-        (int)ceil(dmax / s->cell_max_width));
+        s->cell_max_width, s->cell_min, s->cell_max_width, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
