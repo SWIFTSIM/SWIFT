@@ -1,9 +1,12 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -euo pipefail
+
 for v in {0..3}
 do
     echo ""
-	
+
     rm -f brute_force_periodic_BC_perturbed.dat swift_periodic_BC_perturbed.dat
 
     echo "Running ./testPeriodicBC -n 6 -r 1 -d 0.1 -f perturbed -v $v"
@@ -24,7 +27,7 @@ do
     fi
 
     echo "------------"
-    
+
 done
 
 exit $?
