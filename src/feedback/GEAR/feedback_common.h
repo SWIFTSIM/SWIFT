@@ -33,11 +33,12 @@
  * feedback modules.
  */
 
-float feedback_compute_spart_timestep(
+void feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base);
+    const integertime_t ti_current, const double time, const double time_base,
+    float *dt_event_side, float *dt_evolution_ssp);
 
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,

@@ -577,6 +577,10 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_stars_hii_ionization_feedback:
+      /* Mirror task_lock's early-out: a starless ci took no lock, so there
+       * is nothing to unlock (see task_lock's case for the safety
+       * argument). */
+      if (ci->stars.count == 0) break;
       /* Mirror task_lock: re-walk the same (stable, unchanged between lock
        * and unlock) radiation_in list to unlock every neighbouring
        * region's hydro tree, then ci's own hydro and star trees. */
@@ -808,6 +812,41 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_stars_hii_ionization_feedback:
+      /* A starless ci is a guaranteed no-op:
+       * runner_do_stars_hii_ionization_feedback() early-returns on the same
+       * ci->stars.count field before touching any gas. Reading the count
+       * here without a lock is safe because the task-graph closure between
+       * unskip and this task's own run window holds ci->stars.count fixed
+       * for the whole step (see the personal wiki page "SWIFT task graph
+       * invariants: link resets and rebuild criteria" for the full
+       * argument; not re-derived here). One specific writer worth calling
+       * out: cell_recursively_shift_sparts() (star formation / sink-to-star
+       * conversion) mutates stars.count on ancestor cells mid-step, not
+       * just at rebuild. It cannot race this read: engine_maketasks.c wires
+       * star_formation to start only after kick2 completes for the
+       * top-level cell, and kick2 itself cannot run until this task has
+       * already finished (via the radiation_out/timestep_sync chain), so by
+       * the time star_formation could mutate stars.count, this task's own
+       * lock/run/unlock window for the current step has already closed.
+       * This also leans on a current MPI boundary: radiation activation is
+       * single-node only (cell_unskip.c hard-errors above one rank under
+       * WITH_MPI) and every cell_radiation_activate_hii() call site passes
+       * a local cell, so ci is guaranteed local -- an activation-side
+       * invariant, not a structural one, so it needs re-verification the
+       * day cross-rank radiation activation is wired (see the
+       * SWIFT_DEBUG_CHECKS trip-wire below). */
+      if (ci->stars.count == 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci->nodeID != engine_rank)
+          error(
+              "Skipping the lock for a starless stars_hii_ionization_feedback "
+              "task on a foreign cell (ci->nodeID=%d, engine_rank=%d): the "
+              "single-node MPI boundary this early-out leans on no longer "
+              "holds.",
+              ci->nodeID, engine_rank);
+#endif
+        break;
+      }
       /* The search reads and writes gas across ci's own subtree plus every
        * neighbouring radiation_level region reachable through ci's
        * radiation_in link list (see

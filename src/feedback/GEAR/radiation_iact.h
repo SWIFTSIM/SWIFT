@@ -34,6 +34,7 @@
 #include "feedback_properties.h"
 #include "radiation.h"
 #include "random.h"
+#include "tracers.h"
 
 /**
  * @brief Radiation density interaction between two particles (non-symmetric).
@@ -89,9 +90,11 @@ radiation_iact_nonsym_feedback_density(
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Metallicity at the star location */
+  /* Metallicity at the star location, mass-weighted like enrichment_weight
+     (feedback_iact.h's enrichment_weight += mj * wi) so the two finish with
+     matching kernel normalizations in feedback_prepare_radiation_feedback(). */
   si->feedback_data.Z_star +=
-      chemistry_get_total_metal_mass_fraction_for_feedback(pj) * wi;
+      chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
 
 /**
@@ -132,9 +135,14 @@ feedback_prepare_radiation_feedback(
   /* enrichment_weight is 0 for a star with no gas neighbours this step
      (e.g. freshly formed in a very sparse region); Z_star's own
      accumulation is weighted identically, so it is still exactly 0 in
-     that case and the multiply can simply be skipped. */
+     that case and the multiply can simply be skipped. Divide by the
+     already-hi_inv_dim-normalized enrichment_weight (set just above, by
+     feedback_prepare_feedback() before this call) using the matching
+     hi_inv_dim, not hi_inv: Z_star's own raw sum needs the same 1/h^d the
+     density estimate got, not an extra stray 1/h. */
   if (sp->feedback_data.enrichment_weight > 0.0f) {
-    sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.enrichment_weight;
+    sp->feedback_data.Z_star *=
+        hi_inv_dim / sp->feedback_data.enrichment_weight;
   }
 }
 
@@ -210,6 +218,15 @@ radiation_iact_nonsym_feedback_apply(
       xpj->feedback_data.radiation.delta_p[i] -=
           delta_p_rad * dx[i] / r * cosmo->a;
     }
+
+    /* Lifetime-cumulative tracer. delta_p_rad is already the physical
+       momentum magnitude for this star-gas pair, before it gets projected
+       onto the radial direction above. No separate energy channel (see
+       tracers_struct.h). */
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_radiation, NULL,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
+        delta_p_rad, 0.f, delta_p_rad / mj);
 
     /* Set the indication of a radiation-pressure event, matching
        hit_by_SN/hit_by_winds -- without this, feedback_update_part_radiation()

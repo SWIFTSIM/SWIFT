@@ -25,6 +25,51 @@
 #include <float.h>
 
 /**
+ * @brief Computes the CFL timestep criterion for a star from its gas
+ * neighbours, mirroring sink_compute_timestep()'s CFL term exactly
+ * (src/sink/GEAR/sink.h:70-93), cosmology conversion and h_min definition
+ * included.
+ *
+ * @param sp Pointer to the s-particle data.
+ * @param stars_properties Properties of the stars model.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float stars_compute_dt_cfl(
+    const struct spart *const sp, const struct stars_props *stars_properties,
+    const struct cosmology *cosmo) {
+
+  const float CFL_condition = stars_properties->CFL_condition_stars;
+
+  /* Conversion to physical units -- to_collect_gas is comoving-normalized
+     by stars_end_density(), so this conversion must happen here, not
+     there. */
+  const double gas_v_phys[3] = {
+      sp->to_collect_gas.velocity_gas[0] * cosmo->a_inv,
+      sp->to_collect_gas.velocity_gas[1] * cosmo->a_inv,
+      sp->to_collect_gas.velocity_gas[2] * cosmo->a_inv};
+  const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+                             gas_v_phys[1] * gas_v_phys[1] +
+                             gas_v_phys[2] * gas_v_phys[2];
+
+  const double gas_c_phys =
+      sp->to_collect_gas.sound_speed_gas * cosmo->a_factor_sound_speed;
+  const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+  const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
+  const float h_min =
+      cosmo->a * kernel_gamma * min(sp->h, sp->to_collect_gas.minimal_h_gas);
+
+  /* This guard only fires when the star itself is at rest: for a star with
+     no gas neighbours, stars_spart_has_no_neighbours() sets velocity_gas =
+     sp->v (the star's own absolute velocity, not a relative one), so a
+     moving star with no neighbours still gets a real dt_cfl from its own
+     motion. */
+  if (gas_v_norm2 == 0.0) {
+    return FLT_MAX;
+  }
+  return 2.f * CFL_condition * h_min / denominator;
+}
+
+/**
  * @brief Computes the time-step length of a given star particle from star
  * physics
  *
@@ -90,9 +135,10 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
      anymore so they don't need to be waken up often.
   */
 
-  const float dt_feedback = feedback_compute_spart_timestep(
-      sp, feedback_props, phys_const, us, with_cosmology, cosmo, ti_current,
-      time, time_base);
+  float dt_event_side, dt_evolution_ssp;
+  feedback_compute_spart_timestep(sp, feedback_props, phys_const, us,
+                                  with_cosmology, cosmo, ti_current, time,
+                                  time_base, &dt_event_side, &dt_evolution_ssp);
 
   float dt_age = 0.0;
   /* What age category are we in? */
@@ -104,12 +150,23 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     dt_age = stars_properties->max_time_step_young;
   }
 
-  /* Floor the combined result, not each criterion individually: some
-     feedback-module criteria (e.g. GEAR's dt_evolution/dt_HII_safe) can
-     pass through a near-zero remainder as the star approaches a
-     scheduled event, which would otherwise violate dt_min. */
-  const float dt = min(dt_age, dt_feedback);
-  return (float)max(dt, stars_properties->min_star_timestep);
+  /* Dead star: skip the gas CFL bound too, like feedback's own dead-star
+     early return above. */
+  const float dt_cfl = sp->feedback_data.is_dead
+                           ? FLT_MAX
+                           : stars_compute_dt_cfl(sp, stars_properties, cosmo);
+
+  /* Event-anchored terms (dt_event_side, already floored at
+     event_dt_floor_Myr by feedback_compute_spart_timestep()) and the rest
+     (dt_evolution_ssp/dt_cfl/dt_age, floored at the coarser
+     min_star_timestep) are combined on separate sides: min_star_timestep
+     must not clip an event-anchored bound back up past its scheduled
+     target (the bug this split fixes). */
+  const float dt_other_side_unfloored = min3(dt_evolution_ssp, dt_cfl, dt_age);
+  const float dt_other_side =
+      (float)max(dt_other_side_unfloored, stars_properties->min_star_timestep);
+
+  return min(dt_event_side, dt_other_side);
 }
 
 /**
@@ -149,6 +206,15 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+
+  /* Reset the gas gather for stars_compute_dt_cfl(), mirroring
+     sink_init_sink()'s to_collect reset (src/sink/GEAR/sink.h). */
+  sp->to_collect_gas.minimal_h_gas = FLT_MAX;
+  sp->to_collect_gas.rho_gas = 0.f;
+  sp->to_collect_gas.sound_speed_gas = 0.f;
+  sp->to_collect_gas.velocity_gas[0] = 0.f;
+  sp->to_collect_gas.velocity_gas[1] = 0.f;
+  sp->to_collect_gas.velocity_gas[2] = 0.f;
 }
 
 /**
@@ -231,6 +297,18 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
+
+  /* Normalize the gas gather for stars_compute_dt_cfl(), mirroring
+     sink_end_density()'s normalization exactly (src/sink/GEAR/sink.h):
+     rho_gas is the missing mass-weighting denominator that turns
+     sound_speed_gas/velocity_gas from raw kernel-weighted sums into actual
+     mass-weighted averages. */
+  sp->to_collect_gas.rho_gas *= h_inv_dim;
+  const float rho_inv = 1.f / sp->to_collect_gas.rho_gas;
+  sp->to_collect_gas.sound_speed_gas *= h_inv_dim * rho_inv;
+  sp->to_collect_gas.velocity_gas[0] *= h_inv_dim * rho_inv;
+  sp->to_collect_gas.velocity_gas[1] *= h_inv_dim * rho_inv;
+  sp->to_collect_gas.velocity_gas[2] *= h_inv_dim * rho_inv;
 }
 
 /**
@@ -251,6 +329,17 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   /* Re-set problematic values */
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+
+  /* Sentinels for the gas gather, mirroring
+     sinks_sink_has_no_neighbours() exactly (src/sink/GEAR/sink.h:388-408):
+     assigns the star's own absolute velocity (not gas velocity relative to
+     the star). stars_compute_dt_cfl()'s gas_v_norm2 == 0.0 guard then only
+     fires when the star itself is at rest, rather than relying on
+     rho_inv's division succeeding. */
+  sp->to_collect_gas.velocity_gas[0] = sp->v[0];
+  sp->to_collect_gas.velocity_gas[1] = sp->v[1];
+  sp->to_collect_gas.velocity_gas[2] = sp->v[2];
+  sp->to_collect_gas.minimal_h_gas = sp->h;
 }
 
 /**

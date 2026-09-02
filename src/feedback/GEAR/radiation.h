@@ -56,6 +56,14 @@
     than being stored, so they must not be handed to the next landing pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
 
+/*! Floor, as a fraction of rho_gas/h, below which a star's SPH-estimated
+    local density gradient is discarded (not clamped) rather than trusted
+    for the Sobolev-length estimate in radiation_pressure.c: below it the
+    gradient is indistinguishable from SPH noise on a locally uniform field
+    (e.g. an unperturbed lattice/glass IC), and dividing by it would blow
+    the Sobolev length up to an arbitrary value. */
+#define RADIATION_MIN_RELATIVE_DENSITY_GRADIENT 0.01
+
 /*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
     genuinely-zero table entry (Q_H/DotEExcess below the source table's own
     ionization-threshold mass, where pychem defines them to be exactly 0;
@@ -118,16 +126,23 @@ struct radiation_grid_metadata {
       radiation_build_tables(). */
   enum interpolate_boundary_condition edge_policy_luminosity;
 
-  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only).
-      Dispatched on the group's "source" attribute between
-      edge_policy_q_h_blackbody_* and edge_policy_q_h_parsec_*, matching
-      which Q_H variant pychem wrote as the table's primary Q_H. */
+  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only),
+      from the group's generic edge_policy_q_h_below/above attributes.
+      pychem sets these, at write time, to whichever per-variant edge
+      policy (e.g. edge_policy_q_h_blackbody_*, edge_policy_q_h_parsec_*)
+      matches the table's own primary Q_H; SWIFT reads them directly and
+      never dispatches on the group's "source" attribute itself, so a new
+      pychem source mode needs no companion SWIFT change. */
   enum interpolate_boundary_condition edge_policy_q_h;
 
   /*! Mass-axis boundary condition for the "DotEExcess" dataset (2D tables
-      only). Always edge_policy_q_h_blackbody_*, regardless of "source":
-      pychem computes DotEExcess as Q_H_Blackbody * MeanExcessPhotonEnergyHI
-      unconditionally. */
+      only), from the group's generic
+      edge_policy_mean_excess_energy_below/above attributes (mirroring
+      #edge_policy_q_h above). DotEExcess's VALUE is (the primary Q_H
+      variant "source" selects) times MeanExcessPhotonEnergyHI; this field
+      only records the edge policy pychem assigns to
+      MeanExcessPhotonEnergyHI/DotEExcess's own primary content, which
+      need not match #edge_policy_q_h's variant. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
 };
 
@@ -190,13 +205,6 @@ void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
-
-float radiation_get_physical_IR_opacity(const struct spart *sp,
-                                        const struct unit_system *us);
-
-float radiation_get_physical_IR_optical_depth(const struct spart *sp,
-                                              const struct unit_system *us,
-                                              const struct cosmology *cosmo);
 
 float radiation_get_star_physical_radiation_pressure(
     const struct spart *sp, const float Delta_t,

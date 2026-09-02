@@ -1,0 +1,62 @@
+# Intro
+A single star at the center of a uniform, periodic gas box, with only the
+radiation-pressure momentum channel active. Photoionization, cooling and
+gravity are all off. Compares the shell the star's radiation pressure drives
+outward against the momentum-conserving analytic solution of Krumholz &
+Matzner (2009, ApJ 703, 1352), radiation-only limit: `R(t) = [3 f_trap
+L_bol t^2 / (2 pi rho_0 c)]^(1/4)`, with `f_trap` this code's own
+`(1-exp(-tau_NUV))*(1+tau_IR)`.
+
+Formula-level correctness of the momentum-injection rate itself (Eq.
+rp-momentum-rate in `theory/GEAR/Radiation/01_radiation_pressure.tex`) is
+covered separately by `tests/testRadiationPressureFormula.c`, with no hydro
+involved: a gas-kinematics comparison cannot isolate the formula from the
+gas's own hydrodynamical response to the kick, which is exactly what this
+example measures instead.
+
+## Density and metallicity
+`gas_density` defaults to `1e3 cm^-3`: dense enough for the shell to grow
+measurably within an affordable run, while keeping the box large enough
+that the shell stays inside it for the whole comparison window.
+`GEARChemistry:initial_metallicity` is solar (`1`, i.e. `Z/Zsun=1`).
+
+## f_trap is measured, not assumed
+`f_trap` depends on the star's own local gas column, which changes as
+radiation pressure empties the region around it. The check script reads it
+directly from each snapshot's `EnrichmentWeight`/`GradRhoStar`/`ZStar`
+star fields and reports how much it drifts over the run, rather than
+assuming it stays at its literature fiducial value. Those fields only
+exist in a build configured with `--enable-debug-interactions-stars` (see
+Configure below) -- without it, the check script raises an error asking
+for a rebuild.
+
+## SPH:h_max
+The star's own smoothing length grows as its local neighbourhood empties
+out, and is otherwise unbounded (`SPH:h_max` defaults to `FLT_MAX`).
+`run.sh` computes and sets it from the run's own box size (just under
+`(boxsize/3)/kernel_gamma`, this example's cell-grid limit) to avoid a
+`cell_set_spart_h_depth()` crash once the shell has grown enough to matter.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --enable-debug-interactions-stars=64
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var, e.g. `gas_density=1e5 ./run.sh` -- see `run.sh` for the full list.
+
+# Checking
+```
+python3 radiation_pressure_shell_expansion_check.py
+```
+Tracks the simulated shell radius two ways (a Lagrangian-mass radius, the
+primary metric matched to the analytic model's own thin-shell accounting;
+a density-peak radius, a secondary audit diagnostic), compares the primary
+one against the analytic curve over the run's box-valid window, and
+reports PASS/FAIL against a median relative-error tolerance (`--tol`,
+default 25%). Produces a comparison plot (`--output`, default
+`shell_expansion_check.png`).

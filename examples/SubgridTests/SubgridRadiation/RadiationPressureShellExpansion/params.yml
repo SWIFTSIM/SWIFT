@@ -19,11 +19,11 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration -- short on purpose: this is a
-# cheap momentum-conservation self-check, not a dynamical run (see README).
+# Parameters governing the time integration -- long enough to track the
+# shell's dynamical response to radiation pressure (see README).
 TimeIntegration:
   time_begin:        0.
-  time_end:          1e-4  # ~0.098 Myr
+  time_end:          3.1e-3  # ~3 Myr
   dt_min:            1e-12
   dt_max:            1e-5  # ~0.0098 Myr
 
@@ -32,7 +32,7 @@ Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1e-5  # 10 snapshots over the run
+  delta_time: 5e-5  # ~62 snapshots over the run
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -41,7 +41,7 @@ Scheduler:
   cell_extra_sinks:  10
   cell_extra_sparts: 10
   max_top_level_cells: 3
-  tasks_per_cell: 100
+  tasks_per_cell: 150
 
 Statistics:
   delta_time:           1e-5
@@ -118,10 +118,15 @@ GEARFeedback:
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
-  max_timestep_young_Myr:               0.5
+  max_timestep_young_Myr:               0.1
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr: 1e-4     # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
-  HII_max_search_radius: 0.1
+  # Photoionization is off in this example (see GEARFeedback above), so this
+  # search radius is otherwise inert -- but it must still stay under the
+  # box half-width, or SWIFT's startup check refuses the run (a search
+  # radius the grid cannot provide triggers an endless rebuild demand).
+  # 1 pc is safely under this example's box at any resolution level.
+  HII_max_search_radius: 0.001
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5
   HII_radius_expansion_factor: 1.1

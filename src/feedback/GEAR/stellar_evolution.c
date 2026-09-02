@@ -27,12 +27,14 @@
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
+#include "minmax.h"
 #include "radiation.h"
 #include "random.h"
 #include "stellar_evolution_struct.h"
 #include "stellar_wind.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
+#include "tracers.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -707,11 +709,13 @@ void stellar_evolution_compute_preSN_properties(
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-  /* Get the log of the metallicity normalised by solar metallicity */
+  /* Data/SW is now indexed by absolute Z, not Z/Zsun; floor as
+   * radiation_get_log_metallicity() does to avoid log10(0). */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float log_metallicity =
-      log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
+  const double metallicity_floored =
+      max((double)metallicity, RADIATION_LOG_FLOOR_CGS);
+  const float log_metallicity = (float)log10(metallicity_floored);
   const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
@@ -833,14 +837,21 @@ void stellar_evolution_compute_preSN_properties(
  */
 void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const char with_stellar_wind_feedback, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for single_star only. */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
+  }
+
+  /* One-shot latch: never re-enter a star that has already exploded, since
+     star_age_beg_step is rebuilt from sp->time_bin every call and can fall
+     back below lifetime_myr on a later call. */
+  if (sp->feedback_data.is_dead) {
+    return;
   }
 
   /* Convert the inputs */
@@ -873,7 +884,8 @@ void stellar_evolution_evolve_individual_star(
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
-      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
+      sp, sm, with_cosmology, cosmo, time, us, phys_const, ti_begin,
+      star_age_beg_step, dt);
 }
 
 /**
@@ -897,10 +909,10 @@ void stellar_evolution_evolve_individual_star(
  */
 void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const char with_stellar_wind_feedback, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -926,8 +938,9 @@ void stellar_evolution_evolve_spart(
       star_age_beg_step, dt);
 
   /* Supernova feedback */
-  stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
-                                              ti_begin, star_age_beg_step, dt);
+  stellar_evolution_compute_SN_feedback_spart(sp, sm, with_cosmology, cosmo,
+                                              time, us, phys_const, ti_begin,
+                                              star_age_beg_step, dt);
 }
 
 /**
@@ -989,13 +1002,21 @@ float stellar_evolution_compute_initial_mass(
  */
 void stellar_evolution_compute_SN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
+  }
+
+  /* Self-contained one-shot guard: do not trust the caller alone to keep
+     an already-exploded star out (see
+     stellar_evolution_evolve_individual_star). */
+  if (sp->feedback_data.is_dead) {
+    return;
   }
 
   /* Convert the inputs */
@@ -1031,9 +1052,20 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   const int number_snia = 0;
   const int number_snii = 1;
 
+  /* A single star has now had its one core-collapse SN: latch it dead here,
+     at the injection itself, rather than only relying on a later age check. */
+  sp->feedback_data.is_dead = 1;
+
   /* Save the number of supernovae */
   sp->feedback_data.number_snia = number_snia;
   sp->feedback_data.number_snii = number_snii;
+
+  /* Record this star's own SN-event history (single_star always fires
+     exactly one SNII, never SNIa; see stellar_evolution_evolve_spart()'s
+     own population-only counterpart for the SNIa channel). */
+  tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
+                               sp->feedback_data.enrichment_weight,
+                               with_cosmology, cosmo, time);
 
   /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
    */
@@ -1093,9 +1125,10 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  */
 void stellar_evolution_compute_SN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -1212,6 +1245,15 @@ void stellar_evolution_compute_SN_feedback_spart(
     sp->feedback_data.number_snia = number_snia;
     sp->feedback_data.number_snii = number_snii;
 
+    /* Record this star's own SN-event history for each channel that fired
+       this step. */
+    tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
+    tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
+
     /* Compute the yields */
     stellar_evolution_compute_discrete_feedback_properties(
         sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
@@ -1221,6 +1263,15 @@ void stellar_evolution_compute_SN_feedback_spart(
     /* Save the number of supernovae */
     sp->feedback_data.number_snia = number_snia_f;
     sp->feedback_data.number_snii = number_snii_f;
+
+    /* Record this star's own SN-event history for each channel that fired
+       this step. */
+    tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia_f,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
+    tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii_f,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
 
     /* Compute the yields */
     stellar_evolution_compute_continuous_feedback_properties(

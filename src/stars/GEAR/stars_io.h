@@ -216,18 +216,42 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 #ifdef DEBUG_INTERACTIONS_STARS
 
   list += *num_fields;
-  *num_fields += 4;
+  *num_fields += 7;
 
-  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_density);
-  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_force);
-  list[2] = io_make_output_field("Ids_ngb_density", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
-  list[3] = io_make_output_field("Ids_ngb_force", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
+  list[0] = io_make_output_field(
+      "Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_density, "Number of interactions in the density SELF and PAIR");
+  list[1] = io_make_output_field(
+      "Num_ngb_feedback", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_feedback, "Number of interactions in the feedback SELF and PAIR");
+  list[2] = io_make_output_field(
+      "Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_density,
+      "List of interacting particles in the density SELF and PAIR");
+  list[3] = io_make_output_field(
+      "Ids_ngb_feedback", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_feedback,
+      "List of interacting particles in the feedback SELF and PAIR");
+
+  list[4] = io_make_output_field(
+      "EnrichmentWeight", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      feedback_data.enrichment_weight,
+      "Star's SPH-kernel-weighted local gas density, as used by the "
+      "radiation-pressure Sobolev column-density estimate "
+      "(radiation_get_comoving_gas_column_density_at_star). Debug-only "
+      "diagnostic, not meant for physics analysis outside this build.");
+
+  list[5] = io_make_output_field(
+      "GradRhoStar", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      feedback_data.grad_rho_star,
+      "Star's SPH-kernel gas density gradient (internal density/length "
+      "units), feeding the Sobolev length in the radiation-pressure column "
+      "density. Debug-only diagnostic.");
+
+  list[6] = io_make_output_field(
+      "ZStar", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_data.Z_star,
+      "Star's SPH-kernel-weighted local gas metallicity mass fraction, used "
+      "by the radiation-pressure opacity. Debug-only diagnostic.");
 #endif
 }
 
@@ -316,6 +340,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
       age_threshold_unlimited_Myr * Myr_internal_units;
   sp->min_star_timestep = min_star_timestep_Myr * Myr_internal_units;
 
+  /* CFL condition for stars_compute_dt_cfl() (dt_cfl), mirroring
+     GEARSink:CFL_condition. Not radiation-gated: dt_cfl applies to every
+     star type regardless of feedback/radiation configuration. */
+  sp->CFL_condition_stars =
+      parser_get_opt_param_float(params, "Stars:CFL_condition_stars", 0.1f);
+  if (sp->CFL_condition_stars <= 0.f)
+    error("Stars:CFL_condition_stars must be > 0 (got %g).",
+          sp->CFL_condition_stars);
+
   /* Do we want to overwrite the stars' birth properties? */
   sp->overwrite_birth_time =
       parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
@@ -374,6 +407,8 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
+
+  message("Stars CFL condition: %g", sp->CFL_condition_stars);
 
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",

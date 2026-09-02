@@ -29,6 +29,8 @@
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_rebuild_floor_Myr 1e-4
+#define default_dt_evolution_factor_max 300.0
+#define default_event_dt_floor_Myr 1e-4
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -64,6 +66,27 @@ struct feedback_props {
 
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /* ------------- Star evolution timestep properties ------------- */
+
+  /*! Timestep refinement factor as lifetime_myr -> 0, used by
+   * feedback_compute_spart_timestep()'s logistic transition (SSP particles
+   * only; single_star particles use the exact, zero-tuning-parameter
+   * dt_event instead -- see event_dt_floor_Myr below). The logistic's
+   * midpoint and steepness are fixed internal constants
+   * (GEAR_dt_evolution_lifetime_myr_0/GEAR_dt_evolution_steepness in
+   * feedback_common.c), not parsed from params.yml. */
+  float dt_evolution_factor_max;
+
+  /*! Floors the event-anchored timestep terms (single_star's dt_event,
+   * and dt_HII_safe for every star type) in internal units, before they are
+   * combined with the coarser min_star_timestep-floored non-event terms
+   * (stars_compute_timestep(), src/stars/GEAR/stars.h). Runs for every
+   * star regardless of radiation, so parsed unconditionally -- unlike
+   * HII_rebuild_floor_Myr, which stays 0.0 (no floor at all) whenever
+   * with_photoionization is off, this constant must never be zero, since
+   * dt_event applies to every single_star particle unconditionally. */
+  float event_dt_floor_Myr;
 
   /* ------------- Subgrid Radiation properties ------------- */
 
@@ -135,6 +158,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
+  message("dt_evolution factor_max                                    = %g",
+          feedback_props->dt_evolution_factor_max);
+  message("event_dt_floor (internal units)                            = %g",
+          feedback_props->event_dt_floor_Myr);
 
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
@@ -283,6 +310,53 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                  with_radiation);
   }
 
+  /* ------------- Star evolution timestep properties ------------- */
+  /* Runs for every star regardless of radiation, so parsed unconditionally
+   * (feedback_compute_spart_timestep() uses this factor for all stars). */
+
+  /* Needed unconditionally below (event_dt_floor_Myr's conversion), unlike
+   * HII_max_age/HII_rebuild_time/HII_rebuild_floor_Myr further down, which
+   * stay gated behind with_photoionization. */
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
+
+  fp->dt_evolution_factor_max =
+      parser_get_opt_param_float(params, "GEARFeedback:dt_evolution_factor_max",
+                                 default_dt_evolution_factor_max);
+
+  if (fp->dt_evolution_factor_max < 1.f)
+    error("GEARFeedback:dt_evolution_factor_max must be >= 1 (got %g).",
+          fp->dt_evolution_factor_max);
+
+  fp->event_dt_floor_Myr = parser_get_opt_param_float(
+      params, "GEARFeedback:event_dt_floor_Myr", default_event_dt_floor_Myr);
+
+  if (fp->event_dt_floor_Myr <= 0.f)
+    error(
+        "GEARFeedback:event_dt_floor_Myr must be > 0 (got %g): it floors "
+        "single_star's event-anchored death timestep (dt_event) in every "
+        "run, not just radiation ones -- <= 0 reopens the get_spart_timestep "
+        "crash this parameter exists to prevent.",
+        fp->event_dt_floor_Myr);
+
+  fp->event_dt_floor_Myr *= Myr_internal_units;
+
+  /* Startup cross-check: event_dt_floor_Myr is the sole crash guard for
+   * every single_star death (get_spart_timestep()'s dt_min error()), so it
+   * must itself clear dt_min. TimeIntegration:dt_min is a mandatory
+   * parameter already fully parsed into `params` at this point (engine_init
+   * has not run yet, but that only matters for e->dt_min the struct field --
+   * the parsed value is available directly from `params` regardless of
+   * init order). */
+  const double dt_min =
+      parser_get_param_double(params, "TimeIntegration:dt_min");
+  if (fp->event_dt_floor_Myr <= dt_min)
+    error(
+        "GEARFeedback:event_dt_floor_Myr (%g, internal units) must exceed "
+        "TimeIntegration:dt_min (%g, internal units): otherwise the floor "
+        "itself can still trip get_spart_timestep()'s dt_min error() at a "
+        "single_star's death.",
+        fp->event_dt_floor_Myr, dt_min);
+
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
@@ -341,7 +415,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_min_density *=
         m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
-    const double Myr_internal_units = 1e6 * phys_const->const_year;
+    /* Myr_internal_units already computed above, unconditionally. */
     fp->HII_max_age *= Myr_internal_units;
     fp->HII_rebuild_time *= Myr_internal_units;
     fp->HII_rebuild_floor_Myr *= Myr_internal_units;

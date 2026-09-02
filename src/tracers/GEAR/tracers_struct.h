@@ -49,6 +49,68 @@ struct tracers_xpart_data {
     float photoionization_rate_HI;
 
   } HII_region;
+
+  /*! Feedback received over this particle's whole lifetime, physical internal
+   * units. */
+  struct {
+
+    /*! Cumulative momentum magnitude received from SN, stellar winds and
+        radiation pressure. momentum_SN is comoving-frame (the SN branch in
+        feedback_iact.h doesn't convert to physical velocities the way the
+        winds branch does); exact for non-cosmological runs, revisit before
+        trusting in a cosmological one. */
+    float momentum_SN;
+    float momentum_winds;
+    float momentum_radiation;
+
+    /*! Cumulative specific internal energy received from SN and stellar
+        winds (radiation pressure carries no separate thermal channel) */
+    float energy_SN;
+    float energy_winds;
+
+    /*! Largest single-event kick velocity received from each channel
+        (outflow diagnostic; the peak coupling velocity near the source,
+        before deceleration) */
+    float max_kick_velocity_SN;
+    float max_kick_velocity_winds;
+    float max_kick_velocity_radiation;
+
+  } feedback_cumulative;
+};
+
+/**
+ * @brief Per-channel record of a star's own SN events over its lifetime.
+ *
+ * One event for a discrete (single_star) particle, possibly many for a
+ * population particle (star_population/star_population_continuous_IMF)
+ * sampled over its life. For a population particle, "event" means an
+ * active step with nonzero fractional SN count, not a single discrete
+ * explosion: the model spreads its SN injection continuously over an
+ * extended window, so density_at_last_event there reads more like "density
+ * at the star's last SN-active step" than "density at one specific blast".
+ * Density is the star's own kernel-averaged local gas density
+ * (feedback_data.enrichment_weight, comoving, converted to physical here),
+ * not any one neighbour's.
+ */
+struct tracers_sn_event_data {
+
+  /*! Number of events so far (fractional for a continuously-sampled
+      population particle, matching feedback_data.number_snii/snia's own
+      type) */
+  float n_events;
+
+  /*! Density at the most recent event, physical internal units. Whether
+      this was the star's only event since the last snapshot is readable
+      from n_events itself: compare it against the previous snapshot's
+      value for the same star. */
+  float density_at_last_event;
+
+  /*! Scale-factor (cosmological runs) or time (non-cosmological), of the
+      most recent event */
+  union {
+    float last_event_scale_factor;
+    float last_event_time;
+  };
 };
 
 /**
@@ -62,6 +124,10 @@ struct tracers_spart_data {
 
   /*! Ionized gas mass of that same final HII region */
   float final_HII_mass;
+
+  /*! SN event tracers, one per channel */
+  struct tracers_sn_event_data snii_events;
+  struct tracers_sn_event_data snia_events;
 };
 
 /**

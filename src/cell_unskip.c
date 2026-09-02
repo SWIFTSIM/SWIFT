@@ -2293,6 +2293,25 @@ static void cell_radiation_activate_foreign_sorts(struct cell *c,
 #endif
 
 /**
+ * @brief Activate the HII ionization feedback task owned by @p c's
+ * radiation_level region, if it exists.
+ *
+ * Must track the region's radiation_in activation, not its own
+ * cell_need_activating_stars(): a starless neighbour region searched into by
+ * another region's active star otherwise never joins the active-task list,
+ * so its wait, bumped as an unlock target by scheduler_rewait_mapper() but
+ * never drained (scheduler_done() skips wait-decrements on skipped tasks),
+ * leaves it and every stars_radiation_out depending on it stuck forever.
+ *
+ * @param s The #scheduler.
+ * @param c The #cell whose radiation_level's HII task to activate.
+ */
+static void cell_radiation_activate_hii(struct scheduler *s, struct cell *c) {
+  struct task *t_hii = c->stars.radiation_level->stars.hii_ionization_feedback;
+  if (t_hii != NULL) scheduler_activate(s, t_hii);
+}
+
+/**
  * @brief Un-skip the subgrid radiation (HII ionization) tasks for a cell.
  *
  * @param c The #cell.
@@ -2334,6 +2353,12 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
+
+      /* Match engine_make_extra_radiationloop_tasks_mapper(): every local
+       * side got its own hii_ionization_feedback unlock edge from t, so
+       * every local side's HII task must join this step's active set too. */
+      if (ci_nodeID == nodeID) cell_radiation_activate_hii(s, ci);
+      if (cj != NULL && cj_nodeID == nodeID) cell_radiation_activate_hii(s, cj);
 
       if (t->type == task_type_self) {
         /* Drift/sync + stars_in + sorts over every hydro.super beneath ci.
@@ -2853,8 +2878,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
       if (c->top->timestep_collect != NULL)
         scheduler_activate(s, c->top->timestep_collect);
-      if (c->stars.hii_ionization_feedback != NULL)
-        scheduler_activate(s, c->stars.hii_ionization_feedback);
+      /* hii_ionization_feedback is activated in cell_unskip_radiation_tasks()
+       * alongside the radiation_in task(s) that unlock it, not here: gating
+       * it on this cell's own star/gas activity misses a starless region
+       * searched into by a neighbour's active star. See
+       * cell_radiation_activate_hii()'s docstring. */
 #ifdef WITH_CSDS
       if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

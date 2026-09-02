@@ -10,6 +10,12 @@ STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This 
 ## Resolution
 `gas_mass=0.1 Msun` (default), ~770k particles.
 
+## Star CFL condition
+`Stars:CFL_condition_stars=0.5` in `params.yml` is looser than the code's
+global `0.1` default: this example stress-tests HII ionization physics, not
+stellar dynamical resolution, so it does not need a tight CFL bound on the
+star's own timestep.
+
 ## Cadence
 `HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
 a physical one, but is not free to increase arbitrarily here: too coarse

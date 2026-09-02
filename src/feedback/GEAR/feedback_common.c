@@ -30,9 +30,26 @@
 #include "timestep_sync_part.h"
 #include "units.h"
 
+/*! Fixed midpoint (Myr) of dt_evolution_ssp's logistic transition: factor =
+ * 1 + (factor_max-1)/2 there. Not exposed as a parameter (see
+ * feedback_properties.h's dt_evolution_factor_max comment): this branch's
+ * fine-tuning pain centred on factor_max, not this midpoint. */
+#define GEAR_dt_evolution_lifetime_myr_0 30.0
+
+/*! Fixed steepness of that logistic transition in log10(lifetime_myr);
+ * higher is a sharper (more step-like) transition. */
+#define GEAR_dt_evolution_steepness 8.0
+
 /**
  * @brief Computes the time-step length of a given star particle from feedback
  * physics
+ *
+ * Splits the result into two event-anchored/evolution terms rather than one
+ * combined value: dt_event_side (single_star's exact death moment and
+ * dt_HII_safe, both floored at feedback_props->event_dt_floor_Myr) must not
+ * be floored by the same coarse min_star_timestep applied to the other
+ * criteria (stars_compute_timestep(), src/stars/GEAR/stars.h), or an
+ * event-anchored bound gets clipped back up past its scheduled target.
  *
  * @param sp Pointer to the s-particle data.
  * @param feedback_props Properties of the feedback model.
@@ -44,17 +61,26 @@
  * @param ti_current The current time (in integer).
  * @param time  The current time (in double, used if running without cosmology).
  * @param time_base The time base.
+ * @param dt_event_side (out) single_star's exact death-anchored timestep
+ * combined with dt_HII_safe and floored at event_dt_floor_Myr; FLT_MAX if
+ * the star is dead.
+ * @param dt_evolution_ssp (out) SSP's logistic evolution timestep; FLT_MAX
+ * for single_star particles and for a dead star.
  */
-float feedback_compute_spart_timestep(
+void feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base) {
+    const integertime_t ti_current, const double time, const double time_base,
+    float *dt_event_side, float *dt_evolution_ssp) {
 
-  float dt = FLT_MAX;
+  /* If the star is dead, do not limit its timestep with either term. */
+  if (sp->feedback_data.is_dead) {
+    *dt_event_side = FLT_MAX;
+    *dt_evolution_ssp = FLT_MAX;
+    return;
+  }
 
-  /*----------------------------------------*/
-  /* Timestep based on the evolutionnary stage */
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metallicity =
       chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
@@ -73,43 +99,57 @@ float feedback_compute_spart_timestep(
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
-  double star_age_end_step =
-      compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
 
-  /* Convert mass to M_sun. The lifetime function assumes solar masses */
-  const float log_mass =
-      (sp->star_type == single_star)
-          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-          : log10(1.0);
+  /*----------------------------------------*/
+  /* dt_event (single_star only): the star's own fixed death/SN moment,
+     exact, zero tuning parameters. dt_evolution_ssp (SSP only): the
+     logistic transition, tightening as the population ages. Mutually
+     exclusive by star_type. */
+  float dt_event = FLT_MAX;
+  *dt_evolution_ssp = FLT_MAX;
 
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
-                                         &sm->lifetime, log_mass, metallicity));
-  const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
-
-  /* Adapt the factor depending on the star lifetime to provide adequate
-     timesteps for different star lifetimes. */
-  float factor = 0.0;
-  if (lifetime_myr >= 100) {
-    factor = 1;
-  } else if (lifetime_myr < 100 && lifetime_myr >= 50) {
-    factor = 20;
+  if (sp->star_type == single_star) {
+    /* Convert mass to M_sun. The lifetime function assumes solar masses. */
+    const float log_mass =
+        log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+    const float lifetime_myr =
+        pow(10, lifetime_get_log_lifetime_from_mass(&sm->lifetime, log_mass,
+                                                    metallicity));
+    const double lifetime = lifetime_myr * 1e6 * phys_const->const_year;
+    dt_event = (float)(lifetime - star_age_beg_step);
   } else {
-    factor = 300;
+    /* SSP: no single mass, so use the population's current age directly
+       as lifetime_myr (equivalent, by the exact lifetime<->mass
+       inversion, to the turnoff mass driving feedback right now).
+       star_age_beg_step can be slightly negative here (compute_time()
+       subtracts the full timestep-bin length, not time-since-birth, from
+       a >=0-clamped end-of-step age -- routinely negative right after a
+       star forms), so clamp it. */
+    const double star_age_beg_step_safe =
+        star_age_beg_step < 0 ? 0 : star_age_beg_step;
+    const double conversion_to_myr = phys_const->const_year * 1e6;
+    const float lifetime_myr =
+        (float)(star_age_beg_step_safe / conversion_to_myr);
+    const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
+
+    /* Adapt the factor depending on the population's current age to
+       provide adequate timesteps as it evolves: a logistic transition in
+       log10(lifetime_myr), from dt_evolution_factor_max (young population)
+       down to 1 (old population), centred on the fixed
+       GEAR_dt_evolution_lifetime_myr_0 with steepness
+       GEAR_dt_evolution_steepness. Purely a numerical resolution
+       heuristic, not a physical law. */
+    const float factor =
+        1.f + (feedback_props->dt_evolution_factor_max - 1.f) /
+                  (1.f + expf(GEAR_dt_evolution_steepness *
+                              (log10f(lifetime_myr) -
+                               log10f(GEAR_dt_evolution_lifetime_myr_0))));
+    *dt_evolution_ssp = lifetime / factor;
   }
-
-  /* Ensure that the age is positive (rounding errors) */
-  const double star_age_beg_step_safe =
-      star_age_beg_step < 0 ? star_age_end_step : star_age_beg_step;
-
-  /* To avoid very small timesteps for star_age_beg_step, take the mean */
-  const double star_age = 0.5 * (star_age_beg_step_safe + star_age_end_step);
-
-  const float dt_evolution =
-      (star_age_beg_step <= 0) ? FLT_MAX : star_age / (factor * lifetime);
   /*----------------------------------------*/
 
   /* HII region constraint to rebuild the HII region every
-   * feedback_props->HII_rebuild_time. */
+   * feedback_props->HII_rebuild_time. Applies to every star_type. */
   const float HII_region_rebuild_dt = feedback_props->HII_rebuild_time;
   const double HII_max_age = feedback_props->HII_max_age;
 
@@ -119,7 +159,7 @@ float feedback_compute_spart_timestep(
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
        treats this as unconditional). Force a small step so the star is
-       reliably active every step; stars_compute_timestep()'s final floor
+       reliably active every step; the event_dt_floor_Myr floor below
        guards against this ever reaching 0.0. */
     dt_HII_safe = (float)feedback_props->HII_rebuild_floor_Myr;
   } else if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_max_age) {
@@ -135,13 +175,13 @@ float feedback_compute_spart_timestep(
     const double target = HII_region_last_rebuild + HII_region_rebuild_dt;
     double next_rebuild_age;
     if (star_age_beg_step > target) {
-      /* Already past due (e.g. after a lag) -- jump to the next integer
-         interval instead of the immediately-overshot one. */
-      const double intervals =
-          ceil((star_age_beg_step - HII_region_last_rebuild) /
-               HII_region_rebuild_dt);
-      next_rebuild_age =
-          HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
+      /* Already past due, possibly because HII_region_last_rebuild is
+         stuck at a stale age (it only advances on a rebuild that finds
+         gas), which would make a grid anchored there a Zeno approach:
+         dt_HII_safe shrinking every step without ever reaching the next
+         grid point. Re-anchor to now instead; nothing downstream needs
+         this bound phase-aligned to HII_region_last_rebuild. */
+      next_rebuild_age = star_age_beg_step + HII_region_rebuild_dt;
     } else {
       next_rebuild_age = target;
     }
@@ -152,24 +192,18 @@ float feedback_compute_spart_timestep(
     }
 
     /* The maximum allowable time-step size to avoid overshooting the
-       rebuild point. Floored uniformly with every other criterion in
-       stars_compute_timestep(). */
+       rebuild point. */
     dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
   }
 
-  /*----------------------------------------*/
-  /* If the star is dead, do not limit its timestep */
-  if (sp->feedback_data.is_dead) {
-    return FLT_MAX;
-  } else {
-    /* Not floored here: dt_evolution and dt_HII_safe are combined with
-       the age-based criterion and floored uniformly in
-       stars_compute_timestep() (src/stars/GEAR/stars.h), the
-       model-agnostic layer where the sibling age-based bounds
-       (max_time_step_young/old) already live. */
-    dt = min3(dt, dt_evolution, dt_HII_safe);
-    return dt;
-  }
+  /* Event-anchored side: dt_event is FLT_MAX for SSP particles, so this
+     degenerates to max(dt_HII_safe, floor) there. Floored at the
+     unconditionally-parsed event_dt_floor_Myr, not at min_star_timestep
+     (see stars_compute_timestep()): the latter is applied to the *other*
+     side (dt_cfl/dt_evolution_ssp/dt_age) by the caller. */
+  const float dt_event_side_unfloored = min(dt_event, dt_HII_safe);
+  *dt_event_side =
+      max(dt_event_side_unfloored, feedback_props->event_dt_floor_Myr);
 }
 
 /**
@@ -267,7 +301,7 @@ void feedback_will_do_feedback(
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(
-        sp, model, cosmo, us, phys_const,
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
         feedback_props->with_stellar_wind_feedback, ti_begin,
         star_age_beg_step_safe, dt_enrichment);
   } else {
@@ -275,10 +309,10 @@ void feedback_will_do_feedback(
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
-                                   feedback_props->with_stellar_wind_feedback,
-                                   ti_begin, star_age_beg_step_safe,
-                                   dt_enrichment);
+    stellar_evolution_evolve_spart(
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */
@@ -311,21 +345,24 @@ void feedback_will_do_feedback(
   /* Only rebuild every HII_rebuild_time (internal units) and at the
      first timestep the star is born. A negative rebuild time means "every
      step". */
-  const double HII_region_last_rebuild =
-      sp->feedback_data.radiation.HII_region_last_rebuild;
+  const double HII_region_last_attempt = feedback_get_star_HII_last_attempt(sp);
   const float HII_rebuild_time = feedback_props->HII_rebuild_time;
 
   char need_HII_region_rebuild = 0;
   if (HII_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
   } else {
-    /* HII_region_last_rebuild zero-inits with the rest of the spart
-       struct (never seeded negative), so "0.0 = never rebuilt yet" below
-       already covers a brand-new star -- its very first rebuild is
-       triggered separately, by the star_age_end_step == 0.0 special case
-       above. */
+    /* Gated on HII_region_last_attempt, not HII_region_last_rebuild: both
+       zero-init the same way (0.0 = never yet, covering a brand-new star,
+       whose first rebuild is triggered separately by the
+       star_age_end_step == 0.0 case above) and coincide after any real
+       rebuild, but only last_attempt also advances on a gas-free pass
+       (see runner_radiation_feedback.c). Gating on last_rebuild would
+       leave this latched true every step for as long as a local void
+       persists, instead of re-arming once per HII_rebuild_time like a
+       real rebuild does. */
     const double next_rebuild_target =
-        HII_region_last_rebuild + HII_rebuild_time;
+        HII_region_last_attempt + HII_rebuild_time;
     const double eps = 1e-4 * HII_rebuild_time;
 
     if (star_age_end_step >= next_rebuild_target - eps) {
@@ -335,11 +372,12 @@ void feedback_will_do_feedback(
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
-      "HII_region_last_rebuild = %e, age_beg_step = %e, age_end_step = %e, "
-      "next_rebuild_time "
-      "= %e, need_HII_region_rebuild = %i",
-      HII_region_last_rebuild, star_age_beg_step, star_age_end_step,
-      HII_region_last_rebuild + HII_rebuild_time, need_HII_region_rebuild);
+      "HII_region_last_rebuild = %e, HII_region_last_attempt = %e, "
+      "age_beg_step = %e, age_end_step = %e, next_rebuild_time = %e, "
+      "need_HII_region_rebuild = %i",
+      sp->feedback_data.radiation.HII_region_last_rebuild,
+      HII_region_last_attempt, star_age_beg_step, star_age_end_step,
+      HII_region_last_attempt + HII_rebuild_time, need_HII_region_rebuild);
 #endif
 
   sp->feedback_data.will_do_HII_ionization =

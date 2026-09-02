@@ -75,8 +75,8 @@ Stars:
   timestep_age_threshold_Myr:           10.          # (Optional) Age at which stars switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               0.1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
-  min_star_timestep_Myr:                1e-4         # (Optional) Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...).
-                                                     # Guards against a near-zero remainder violating dt_min. (Default: 1e-4)
+  min_star_timestep_Myr:                1e-4         # (Optional) Floor (in Myr) applied to the star's non-event-anchored time-step terms (dt_cfl, dt_evolution_ssp, dt_age). Guards against a near-zero remainder violating dt_min. (Default: 1e-4)
+  CFL_condition_stars:                  0.1          # (Optional) CFL condition for the star's dt_cfl criterion (gas neighbours' sound speed/velocity), mirroring GEARSink:CFL_condition. (Default: 0.1)
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
   HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (comoving internal units; physical reach = a * this value).
   HII_max_retry_full_buffer: 10                 # (Optional) Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. (Default: 10)
@@ -152,7 +152,7 @@ Scheduler:
   cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   min_top_level_cells:       3         # (Optional) Minimal number of top-level cells in any dimension (this is the default value; must be at least 3 if periodic). space_regrid() will not coarsen the grid past this, regardless of what is driving the
-                                       # coarsening (ordinary smoothing lengths or a star's HII search radius).
+                                       # coarsening (ordinary smoothing lengths or a star's HII search radius). A periodic run whose particle search radius outgrows the resulting cell width is stopped with an error.
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
@@ -166,8 +166,8 @@ Scheduler:
   task_level_output_frequency:      0  # (Optional) Dumping frequency of the task level data. By default, writes only at the first step.
   free_foreign_during_restart:      0  # (Optional) Should the code free the foreign data when dumping restart files in order to get breathing space?
   free_foreign_during_rebuild:      0  # (Optional) Should the code free the foreign data when calling a rebuld in order to get breathing space?
-  deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and MPI to take
-                                       # effect.
+  deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and a
+                                       # positive value here to take effect.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -783,6 +783,8 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+  dt_evolution_factor_max: 300                              # Timestep refinement factor applied to a young SSP population, transitioning logistically to 1 as it ages. single_star particles use the exact dt_event instead. Used for every SSP star, not just radiation runs. (Default: 300)
+  event_dt_floor_Myr: 1e-4                                  # Floor (in Myr) applied to the event-anchored timestep terms (single_star's exact death moment, and dt_HII_safe for every star type). Used for every star, not just radiation runs; must exceed TimeIntegration:dt_min. (Default: 1e-4)
 
   # Radiation parameters
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)

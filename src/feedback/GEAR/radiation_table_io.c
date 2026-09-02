@@ -224,14 +224,19 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * "dimensionality" attribute ("M" or "M,Z") and the group-level
  * "m0"/"dm"/"nm" mass-grid attributes shared by every dataset in the
  * group, plus, for a 2D ("M,Z") table, "nz", the "Metallicity" dataset,
- * and the mass-axis edge_policy_* attributes (dispatched through "source"
- * for Q_H; see radiation_parse_edge_policy()).
+ * and the mass-axis edge_policy_* attributes (read directly from the
+ * group's generic edge_policy_q_h_below/above and
+ * edge_policy_mean_excess_energy_below/above attributes; see
+ * radiation_parse_edge_policy()). This function never inspects the
+ * group's "source" attribute: it only requires the specific attributes
+ * it needs to be present, so a new pychem source mode works without a
+ * companion SWIFT change.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
  */
-static void radiation_read_grid_metadata(hid_t group_id,
-                                         struct radiation_grid_metadata *grid) {
+void radiation_read_grid_metadata(hid_t group_id,
+                                  struct radiation_grid_metadata *grid) {
 
   radiation_read_string_attribute(group_id, "dimensionality",
                                   grid->dimensionality,
@@ -283,48 +288,31 @@ static void radiation_read_grid_metadata(hid_t group_id,
             i, (double)grid->metallicity[i]);
     }
 
-    char source[32];
-    radiation_read_string_attribute(group_id, "source", source, sizeof(source));
-
     char luminosity_below[16], luminosity_above[16];
-    char q_h_blackbody_below[16], q_h_blackbody_above[16];
-    char q_h_parsec_below[16], q_h_parsec_above[16];
+    char q_h_below[16], q_h_above[16];
+    char mean_excess_energy_below[16], mean_excess_energy_above[16];
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_below",
                                     luminosity_below, sizeof(luminosity_below));
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_above",
                                     luminosity_above, sizeof(luminosity_above));
-    radiation_read_string_attribute(group_id, "edge_policy_q_h_blackbody_below",
-                                    q_h_blackbody_below,
-                                    sizeof(q_h_blackbody_below));
-    radiation_read_string_attribute(group_id, "edge_policy_q_h_blackbody_above",
-                                    q_h_blackbody_above,
-                                    sizeof(q_h_blackbody_above));
-    radiation_read_string_attribute(group_id, "edge_policy_q_h_parsec_below",
-                                    q_h_parsec_below, sizeof(q_h_parsec_below));
-    radiation_read_string_attribute(group_id, "edge_policy_q_h_parsec_above",
-                                    q_h_parsec_above, sizeof(q_h_parsec_above));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_below",
+                                    q_h_below, sizeof(q_h_below));
+    radiation_read_string_attribute(group_id, "edge_policy_q_h_above",
+                                    q_h_above, sizeof(q_h_above));
+    radiation_read_string_attribute(
+        group_id, "edge_policy_mean_excess_energy_below",
+        mean_excess_energy_below, sizeof(mean_excess_energy_below));
+    radiation_read_string_attribute(
+        group_id, "edge_policy_mean_excess_energy_above",
+        mean_excess_energy_above, sizeof(mean_excess_energy_above));
 
     grid->edge_policy_luminosity = radiation_parse_edge_policy(
         luminosity_below, luminosity_above, "luminosity");
-    const enum interpolate_boundary_condition edge_policy_q_h_blackbody =
-        radiation_parse_edge_policy(q_h_blackbody_below, q_h_blackbody_above,
-                                    "q_h_blackbody");
-    const enum interpolate_boundary_condition edge_policy_q_h_parsec =
-        radiation_parse_edge_policy(q_h_parsec_below, q_h_parsec_above,
-                                    "q_h_parsec");
-    grid->edge_policy_dot_e_excess = edge_policy_q_h_blackbody;
-
-    if (strcmp(source, "parsec_blackbody") == 0) {
-      grid->edge_policy_q_h = edge_policy_q_h_blackbody;
-    } else if (strcmp(source, "parsec_qtable") == 0) {
-      grid->edge_policy_q_h = edge_policy_q_h_parsec;
-    } else {
-      error(
-          "Data/Radiation's 'source' attribute is '%s' (expected "
-          "'parsec_blackbody' or 'parsec_qtable'): cannot tell which "
-          "Q_H edge policy applies to the table's primary 'Q_H' dataset.",
-          source);
-    }
+    grid->edge_policy_q_h =
+        radiation_parse_edge_policy(q_h_below, q_h_above, "q_h");
+    grid->edge_policy_dot_e_excess = radiation_parse_edge_policy(
+        mean_excess_energy_below, mean_excess_energy_above,
+        "mean_excess_energy");
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
     grid->edge_policy_luminosity = boundary_condition_error;

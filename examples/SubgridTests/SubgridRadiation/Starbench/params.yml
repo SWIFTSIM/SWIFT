@@ -131,6 +131,8 @@ Stars:
   timestep_age_threshold_Myr:           7.
   max_timestep_young_Myr:               0.5
   max_timestep_old_Myr:                 1
+  CFL_condition_stars: 0.5  # Looser than the global 0.1 default: this example stress-tests
+                            # HII ionization physics, not stellar dynamical resolution.
   HII_max_search_radius: 0.0049   # 4.9 pc: just inside the box half-width (5 pc), so the
                                   # search can reach essentially the full box without tripping
                                   # the T6 startup warning about exceeding the periodic wrap

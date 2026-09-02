@@ -59,19 +59,18 @@ void space_regrid(struct space *s, int verbose) {
   /* h_hii (the star HII ionization search radius) is a fundamentally
      different, much larger-scale quantity than any ordinary smoothing
      length, and is allowed to grow far beyond the box's characteristic
-     cell size. Once cdim is already at the periodic minimum of 3
-     cells/axis, the 27-cell radiation stencil wraps around and already
-     covers the entire box, so h_hii cannot miss any gas no matter how
-     large it grows from there. Cap h_hii's own contribution to h_max at
-     the value that would size cells down to exactly that minimum: it can
-     still widen cells toward full h_hii coverage at finer configurations
-     (cdim >= 4), just never push cdim below 3 for a quantity that buys
-     nothing once coverage is already total. Ordinary hydro/star h_max
-     growth is NOT capped -- that remains a genuine problem worth the
-     existing "too few cells" error. */
-  const float dim_min = min3(s->dim[0], s->dim[1], s->dim[2]);
+     cell size. Once cdim is already at the coarsest grid the run allows
+     (Scheduler:min_top_level_cells, at least 3 when periodic), the 27-cell
+     radiation stencil wraps around and already covers the entire box, so
+     h_hii cannot miss any gas no matter how large it grows from there. Cap
+     h_hii's own contribution to h_max at the value that would size cells
+     down to exactly that minimum: it can still widen cells toward full
+     h_hii coverage at finer configurations, just never push cdim to the
+     floor for a quantity that buys nothing once coverage is already total.
+     Ordinary hydro/star h_max growth is NOT capped -- that remains a
+     genuine problem worth the "too few cells" error below. */
   const float h_hii_max_for_regrid =
-      0.99f * dim_min / (3.f * kernel_gamma * space_stretch);
+      0.99f * (float)s->cell_max_width / (kernel_gamma * space_stretch);
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -177,9 +176,9 @@ void space_regrid(struct space *s, int verbose) {
      is capped there instead, so cdim never drops below
      Scheduler:min_top_level_cells regardless of what is driving the
      coarsening. */
+  const double search_radius = h_max * kernel_gamma * space_stretch;
   const double cell_width =
-      fmin(fmax(h_max * kernel_gamma * space_stretch, s->cell_min),
-           s->cell_max_width);
+      fmin(fmax(search_radius, s->cell_min), s->cell_max_width);
   const int cdim[3] = {(int)floor(s->dim[0] / cell_width),
                        (int)floor(s->dim[1] / cell_width),
                        (int)floor(s->dim[2] / cell_width)};
@@ -194,19 +193,33 @@ void space_regrid(struct space *s, int verbose) {
         cdim[0], cdim[1], cdim[2]);
   }
 
-  /* Check if we have enough cells for periodicity. */
-  if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
+  /* Check if we have enough cells for periodicity. The clamp above bounds
+     the grid at cell_max_width, so cdim can no longer report this: test the
+     search radius directly instead. The h_max > h_max_floor term keeps the
+     test on real particle reach. h_max is floored at cell_min, which on a
+     non-cubic box can exceed cell_max_width (cell_min derives from dmax,
+     cell_max_width from dmin), and that floor alone must not be reported as
+     a smoothing length too large for the box. Comparing against the float
+     that seeded h_max is exact, where comparing the reconstructed width
+     against cell_min is not. */
+  if (s->periodic && h_max > h_max_floor && search_radius > s->cell_max_width)
     error(
-        "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on.\nThis error is often caused by any of the "
-        "followings:\n"
+        "Must have at least Scheduler:min_top_level_cells cells in each "
+        "spatial dimension when periodicity is switched on (h_max = %g gives "
+        "a search radius of %g, but the coarsest top-level cell allowed is "
+        "%g).\nThe bound is the shortest box side divided by "
+        "Scheduler:min_top_level_cells, so raising "
+        "Scheduler:max_top_level_cells does not help. This error is often "
+        "caused by any of the followings:\n"
         " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'Scheduler:max_top_level_cells' is too "
-        "small,\n"
+        " - 'Scheduler:min_top_level_cells' is too large (it cannot go below "
+        "3 when periodicity is switched on, in which case the box itself is "
+        "too small for these smoothing lengths),\n"
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n");
+        "box sizes per time-step.\n",
+        h_max, search_radius, s->cell_max_width);
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
