@@ -1284,7 +1284,8 @@ void space_init(struct space *s, struct swift_params *params,
      above, bounding how coarse the grid is ever allowed to get regardless
      of what is driving the coarsening (ordinary hydro/star/black-hole/sink
      h_max, or a star's h_hii). space_regrid() clamps the effective cell
-     width at this value instead of coarsening past it. */
+     width at this value instead of coarsening past it, and stops a periodic
+     run whose search radius outgrows it. */
   int mintcells =
       parser_get_opt_param_int(params, "Scheduler:min_top_level_cells",
                                space_min_top_level_cells_default);
@@ -1302,6 +1303,24 @@ void space_init(struct space *s, struct swift_params *params,
         "Scheduler:max_top_level_cells (%d)",
         mintcells, maxtcells);
   s->cell_max_width = dmin / mintcells;
+
+  /* cell_min derives from dmax and cell_max_width from dmin, so the two
+     bounds can invert on a non-cubic box. space_regrid() then always clamps
+     to cell_max_width: min_top_level_cells silently wins and
+     max_top_level_cells is not honoured. Not fatal, but worth saying. The
+     suggested value uses dmax rather than tol * dmax, since tol grows with
+     maxtcells and would otherwise make the suggestion one too small. */
+  if (engine_rank == 0 && s->cell_min > s->cell_max_width)
+    message(
+        "Scheduler:min_top_level_cells (%d) overrides "
+        "Scheduler:max_top_level_cells (%d) for this box (dim = [%g %g %g]): "
+        "it asks for a top-level cell width of at most %g, while "
+        "max_top_level_cells asks for no less than %g. The grid will use %g "
+        "and may exceed %d cells along the longest axis. Raise "
+        "max_top_level_cells to at least %d to honour both.",
+        mintcells, maxtcells, s->dim[0], s->dim[1], s->dim[2],
+        s->cell_max_width, s->cell_min, s->cell_max_width, maxtcells,
+        (int)ceil(dmax / s->cell_max_width));
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",

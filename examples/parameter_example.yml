@@ -152,7 +152,7 @@ Scheduler:
   cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   min_top_level_cells:       3         # (Optional) Minimal number of top-level cells in any dimension (this is the default value; must be at least 3 if periodic). space_regrid() will not coarsen the grid past this, regardless of what is driving the
-                                       # coarsening (ordinary smoothing lengths or a star's HII search radius).
+                                       # coarsening (ordinary smoothing lengths or a star's HII search radius). A periodic run whose particle search radius outgrows the resulting cell width is stopped with an error.
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.

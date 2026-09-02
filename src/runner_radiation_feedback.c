@@ -231,16 +231,19 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
   /* Once a star's HII reach outgrows the top-level cell width there is no
      coarser grid to rebuild into, and only the stencil-completeness
      fallback keeps the rebuild criterion satisfiable. Configurations that
-     can never reach it hit a fatal "engine_unskip failed after a rebuild"
-     instead, mid-run and without an obvious cause. */
+     can never reach it abort mid-run: on an unsatisfiable rebuild for a
+     non-periodic box, or on space_regrid()'s "not enough cells" error for
+     a periodic one. */
   if (e->nodeID == 0 && !space_radiation_top_stencil_can_cover_box(e->s))
     warning(
         "This box cannot coarsen to 3 top-level cells along every axis "
         "(non-cubic box, non-periodic, or Scheduler:min_top_level_cells "
         "> 3). Subgrid radiation then has no fallback if a star's HII "
-        "reach outgrows the top-level cell width, and the run aborts on "
-        "an unsatisfiable rebuild. Keep h_hii well below the top-level "
-        "cell width, e.g. via Stars:HII_max_search_radius.");
+        "reach outgrows the top-level cell width, and the run aborts: on "
+        "an unsatisfiable rebuild if the box is non-periodic, or on "
+        "space_regrid()'s 'not enough cells' error if it is periodic. "
+        "Keep h_hii well below the top-level cell width, e.g. via "
+        "Stars:HII_max_search_radius.");
 }
 #endif
 

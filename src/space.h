@@ -160,7 +160,9 @@ struct space {
    * any single coarsening event (ordinary h_max growth, or h_hii) can
    * push the grid: once the effective cell width would exceed this, it
    * is clamped here instead, so cdim never drops below
-   * Scheduler:min_top_level_cells. */
+   * Scheduler:min_top_level_cells. A periodic run whose search radius
+   * outgrows this width has no satisfiable grid left and is stopped by
+   * space_regrid(). */
   double cell_max_width;
 
   /*! Space dimensions in number of top-cells. */
