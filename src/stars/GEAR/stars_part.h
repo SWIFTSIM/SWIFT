@@ -209,7 +209,7 @@ struct stars_props {
 
   /*! CFL condition for stars_compute_dt_cfl(), mirroring
    * sink_props->CFL_condition (src/sink/GEAR/sink_properties.h). */
-  float CFL_condition_stars;
+  float CFL_condition;
 
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;

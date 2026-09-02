@@ -343,11 +343,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* CFL condition for stars_compute_dt_cfl() (dt_cfl), mirroring
      GEARSink:CFL_condition. Not radiation-gated: dt_cfl applies to every
      star type regardless of feedback/radiation configuration. */
-  sp->CFL_condition_stars =
-      parser_get_opt_param_float(params, "Stars:CFL_condition_stars", 0.1f);
-  if (sp->CFL_condition_stars <= 0.f)
-    error("Stars:CFL_condition_stars must be > 0 (got %g).",
-          sp->CFL_condition_stars);
+  sp->CFL_condition =
+      parser_get_opt_param_float(params, "Stars:CFL_condition", 0.1f);
+  if (sp->CFL_condition <= 0.f)
+    error("Stars:CFL_condition must be > 0 (got %g).", sp->CFL_condition);
 
   /* Do we want to overwrite the stars' birth properties? */
   sp->overwrite_birth_time =
@@ -408,7 +407,7 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
 
-  message("Stars CFL condition: %g", sp->CFL_condition_stars);
+  message("Stars CFL condition: %g", sp->CFL_condition);
 
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",

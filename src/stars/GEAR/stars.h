@@ -38,7 +38,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_dt_cfl(
     const struct spart *const sp, const struct stars_props *stars_properties,
     const struct cosmology *cosmo) {
 
-  const float CFL_condition = stars_properties->CFL_condition_stars;
+  const float CFL_condition = stars_properties->CFL_condition;
 
   /* Conversion to physical units -- to_collect_gas is comoving-normalized
      by stars_end_density(), so this conversion must happen here, not
