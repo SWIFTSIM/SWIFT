@@ -271,18 +271,18 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      increased.
 
      TODO: Implement retry if search radius is too small */
-  const float r_hii_max =
-      max(c->stars.h_hii_max_active, c->stars.h_max_active) * kernel_gamma;
-  const float max_search_radius = star_props->HII_max_search_radius;
-  const float interaction_limit =
-      min(radiation_search_radius_factor * r_hii_max, max_search_radius);
-
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
      runner_dosub_stars_hii_ionization_feedback() to have its
      HII_region_last_attempt stamped (see there) -- only the recursion
      into progeny and the search itself may be skipped for lack of gas. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
+
+  const float r_hii_max =
+      max(c->stars.h_hii_max_active, c->stars.h_max_active) * kernel_gamma;
+  const float max_search_radius = star_props->HII_max_search_radius;
+  const float interaction_limit =
+      min(radiation_search_radius_factor * r_hii_max, max_search_radius);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
