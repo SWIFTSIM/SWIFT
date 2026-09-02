@@ -75,6 +75,29 @@ struct spart {
 
   } density;
 
+  /*! Gas properties gathered over the star's density-loop gas neighbours,
+   * mirroring struct sink's to_collect (src/sink/GEAR/sink_part.h) exactly.
+   * Feeds stars_compute_dt_cfl()'s CFL criterion; reset every density-loop
+   * init (stars_init_spart()) and normalized in stars_end_density(). */
+  struct {
+
+    /*! Mass-weighted kernel-smoothed gas density (internal units,
+     * comoving). */
+    float rho_gas;
+
+    /*! Mass-weighted kernel-smoothed gas sound speed (comoving; converted
+     * to physical units at the dt_cfl use site, not here). */
+    float sound_speed_gas;
+
+    /*! Mass-weighted kernel-smoothed gas velocity in the star's own frame
+     * (comoving; converted to physical units at the dt_cfl use site). */
+    float velocity_gas[3];
+
+    /*! Minimum smoothing length across the gas neighbours. */
+    float minimal_h_gas;
+
+  } to_collect_gas;
+
   /*! Union for the birth time and birth scale factor */
   union {
 
@@ -183,6 +206,10 @@ struct stars_props {
    * guarding against a near-zero remainder violating dt_min (internal
    * units). */
   double min_star_timestep;
+
+  /*! CFL condition for stars_compute_dt_cfl(), mirroring
+   * sink_props->CFL_condition (src/sink/GEAR/sink_properties.h). */
+  float CFL_condition_stars;
 
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;

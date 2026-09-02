@@ -52,6 +52,23 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  /* Gather gas properties for stars_compute_dt_cfl(), mirroring
+   * runner_iact_nonsym_sinks_gas_density() (src/sink/GEAR/sink_iact.h)
+   * exactly. */
+  const float mj = hydro_get_mass(pj);
+
+  si->to_collect_gas.minimal_h_gas = min(hj, si->to_collect_gas.minimal_h_gas);
+  si->to_collect_gas.rho_gas += mj * wi;
+  si->to_collect_gas.sound_speed_gas +=
+      mj * wi * hydro_get_comoving_soundspeed(pj);
+
+  /* Neighbour's (drifted) velocity in the frame of the star. */
+  const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+                       pj->v[2] - si->v[2]};
+  si->to_collect_gas.velocity_gas[0] += mj * dv[0] * wi;
+  si->to_collect_gas.velocity_gas[1] += mj * dv[1] * wi;
+  si->to_collect_gas.velocity_gas[2] += mj * dv[2] * wi;
+
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
