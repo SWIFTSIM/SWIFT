@@ -89,17 +89,41 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
                        long long N_total, long long offset,
                        const struct unit_system *internal_units,
                        const struct unit_system *ic_units, int cleanup_h,
-                       int cleanup_sqrt_a, double h, double a) {
+                       int cleanup_sqrt_a, double h, double a,
+                       const int accept_snapshot) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
+  const char *dataset_name = props.name;
+
   /* Check whether the dataspace exists or not */
-  const htri_t exist = H5Lexists(grp, props.name, 0);
+  htri_t exist = H5Lexists(grp, dataset_name, 0);
   if (exist < 0) {
-    error("Error while checking the existence of data set '%s'.", props.name);
-  } else if (exist == 0) {
+    error("Error while checking the existence of data set '%s'.", dataset_name);
+  }
+
+  if (exist == 0) {
+    const char *alias = io_get_input_field_alias(props.name);
+    if (alias != NULL) {
+      const htri_t alias_exist = H5Lexists(grp, alias, 0);
+      if (alias_exist < 0) {
+        error("Error while checking the existence of data set '%s'.", alias);
+      } else if (alias_exist > 0 && accept_snapshot) {
+        dataset_name = alias;
+        exist = alias_exist;
+      } else if (alias_exist > 0 && props.importance == COMPULSORY) {
+        error(
+            "Compulsory data set '%s' not present in the file. Found snapshot "
+            "field '%s' instead. Set InitialConditions:accept_snapshot to 1 "
+            "to accept snapshot field names.",
+            props.name, alias);
+      }
+    }
+  }
+
+  if (exist == 0) {
     if (props.importance == COMPULSORY) {
       error("Compulsory data set '%s' not present in the file.", props.name);
     } else {
@@ -122,8 +146,8 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
   /* fflush(stdout); */
 
   /* Open data space */
-  const hid_t h_data = H5Dopen(grp, props.name, H5P_DEFAULT);
-  if (h_data < 0) error("Error while opening data space '%s'.", props.name);
+  const hid_t h_data = H5Dopen(grp, dataset_name, H5P_DEFAULT);
+  if (h_data < 0) error("Error while opening data space '%s'.", dataset_name);
 
   /* Allocate temporary buffer */
   void *temp = malloc(num_elements * typeSize);
@@ -158,7 +182,7 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), h_memspace,
                               h_filespace, H5P_DEFAULT, temp);
-  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
+  if (h_err < 0) error("Error while reading data array '%s'.", dataset_name);
 
   /* Unit conversion if necessary */
   const double factor =
@@ -569,7 +593,8 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
                     const int cleanup_sqrt_a, double h, double a,
                     const int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info, const int n_threads, const int dry_run,
-                    const int remap_ids, struct ic_info *ics_metadata) {
+                    const int remap_ids, const int accept_snapshot,
+                    struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -905,7 +930,8 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
             /* Read array. */
             read_array_serial(h_grp, list[i], Nparticles, N_total[ptype],
                               offset[ptype], internal_units, ic_units,
-                              cleanup_h, cleanup_sqrt_a, h, a);
+                              cleanup_h, cleanup_sqrt_a, h, a,
+                              accept_snapshot);
           }
 
         /* Close particle group */

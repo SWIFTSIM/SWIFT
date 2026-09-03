@@ -1115,6 +1115,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:generate_gas_in_ics", 0);
     const int remap_ids =
         parser_get_opt_param_int(params, "InitialConditions:remap_ids", 0);
+    const int accept_snapshot =
+        parser_get_opt_param_int(params, "InitialConditions:accept_snapshot", 0);
 
     /* Initialise the cosmology */
     if (with_cosmology)
@@ -1301,7 +1303,8 @@ int main(int argc, char *argv[]) {
                      with_gravity, with_sinks, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run, remap_ids, &ics_metadata);
+                     nr_threads, dry_run, remap_ids, accept_snapshot,
+                     &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
@@ -1309,7 +1312,7 @@ int main(int argc, char *argv[]) {
                    with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids, &ics_metadata);
+                   dry_run, remap_ids, accept_snapshot, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -1317,7 +1320,8 @@ int main(int argc, char *argv[]) {
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                    with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids, &ics_metadata);
+                   nr_threads, dry_run, remap_ids, accept_snapshot,
+                   &ics_metadata);
 #endif
 #endif
 
