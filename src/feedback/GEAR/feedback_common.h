@@ -46,6 +46,10 @@ void feedback_will_do_feedback(
     const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base);
 
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step);
+
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,

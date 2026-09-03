@@ -27,6 +27,7 @@
 #include "part.h"
 #include "radiation.h"
 #include "stellar_evolution.h"
+#include "timeline.h"
 #include "timestep_sync_part.h"
 #include "units.h"
 
@@ -208,6 +209,17 @@ void feedback_compute_spart_timestep(
     dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
   }
 
+  /* Floor to make_integer_timestep()'s power-of-two grid so the bin can ramp
+     up; a no-op below dti=4 (get_time_bin()'s smallest nonzero bin), rescued
+     by event_dt_floor_Myr below regardless. */
+  if (dt_HII_safe > 0.f && dt_HII_safe < FLT_MAX) {
+    const integertime_t dti = (integertime_t)(dt_HII_safe / time_base);
+    if (dti > 0) {
+      const timebin_t bin = get_time_bin(dti);
+      if (bin > 0) dt_HII_safe = (float)get_timestep(bin, time_base);
+    }
+  }
+
   /* Event-anchored side: dt_event is FLT_MAX for SSP particles, so this
      degenerates to max(dt_HII_safe, floor) there. Floored at the
      unconditionally-parsed event_dt_floor_Myr, not at min_star_timestep
@@ -355,7 +367,25 @@ void feedback_will_do_feedback(
       sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
 
-  /* TODO: Move all these into a dedicated function...? */
+  feedback_will_do_HII_ionization(sp, feedback_props, star_age_beg_step,
+                                  star_age_end_step);
+}
+
+/**
+ * @brief Determines whether this star does HII ionization feedback during
+ * the next time-step, and retires its HII region once it stops doing so.
+ *
+ * @param sp The particle to act upon.
+ * @param feedback_props The #feedback_props structure.
+ * @param star_age_beg_step The star's age at the start of the step (internal
+ * units).
+ * @param star_age_end_step The star's age at the end of the step (internal
+ * units).
+ */
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step) {
+
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
