@@ -216,6 +216,17 @@ void feedback_compute_spart_timestep(
   const float dt_event_side_unfloored = min(dt_event, dt_HII_safe);
   *dt_event_side =
       max(dt_event_side_unfloored, feedback_props->event_dt_floor_Myr);
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  {
+    const double to_myr = 1.0 / (1e6 * phys_const->const_year);
+    message(
+        "Star %lld (star_type=%d): dt_event=%e dt_HII_safe=%e "
+        "dt_event_side=%e dt_evolution_ssp=%e [Myr]",
+        sp->id, (int)sp->star_type, dt_event * to_myr, dt_HII_safe * to_myr,
+        *dt_event_side * to_myr, *dt_evolution_ssp * to_myr);
+  }
+#endif
 }
 
 /**

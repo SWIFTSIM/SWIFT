@@ -143,7 +143,21 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
   const float dt_other_side =
       (float)max(dt_other_side_unfloored, stars_properties->min_star_timestep);
 
-  return min(dt_event_side, dt_other_side);
+  const float dt_final = min(dt_event_side, dt_other_side);
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  {
+    const double to_myr = 1.0 / (1e6 * phys_const->const_year);
+    message(
+        "Star %lld (star_type=%d): dt_event_side=%e dt_other_side=%e "
+        "[dt_evolution_ssp=%e dt_cfl=%e dt_age=%e] dt_final=%e [Myr]",
+        sp->id, (int)sp->star_type, dt_event_side * to_myr,
+        dt_other_side * to_myr, dt_evolution_ssp * to_myr, dt_cfl * to_myr,
+        dt_age * to_myr, dt_final * to_myr);
+  }
+#endif
+
+  return dt_final;
 }
 
 /**
