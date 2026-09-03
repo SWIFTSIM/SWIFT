@@ -979,7 +979,7 @@ void self_all_sidm_force(struct runner *r, struct cell *c,
 
   for (int i = 0; i < count; i++) {
 
-    struct sipart *restrict sipi = &siparts[i];
+    struct sipart *restrict sipi = &c->sidm.parts[i];
     if (sipart_is_inhibited(sipi, e)) continue;
 
     const char depth_i = sipi->depth_h;
@@ -992,7 +992,7 @@ void self_all_sidm_force(struct runner *r, struct cell *c,
 
     for (int j = i + 1; j < count; j++) {
 
-      struct sipart *restrict sipj = &siparts[j];
+      struct sipart *restrict sipj = &c->sidm.parts[j];
       if (sipart_is_inhibited(sipj, e)) continue;
 
       const char depth_j = sipj->depth_h;
@@ -1049,9 +1049,6 @@ void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
 
   const int local_i = ci->nodeID == e->nodeID;
   const int local_j = cj->nodeID == e->nodeID;
-
-  const int count_i = ci->sidm.count;
-  const int count_j = cj->sidm.count;
 
   double shift[3] = {0.0, 0.0, 0.0};
   space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
