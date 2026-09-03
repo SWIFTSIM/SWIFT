@@ -112,29 +112,6 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     star_age = time - sp->birth_time;
   }
 
-  /* Note (01.08.2024):
-     The following lines come from the EAGLE model. However, in GEAR, a star
-     particle can now be a stellar population, a single star on a part of a
-     population (continuous IMF).
-     The two populations types are similar in behaviour and I think we can use
-     the code below as-is. However, the single stars must be treated in a
-     different way. They only have one SN feedback. Thus, they can be 'old' only
-     after this explosion. The question is how to do that...
-     Maybe we should flag the stars as being old or young? The discrete stars
-     then will only become old after their SN feedback.
-
-     Notice however that this require knowledge of the star_type, which is
-     currently in the feedback module. I planned to move this from the feedback
-     to the stars module (it makes more sense to be with the stars), but this
-     require care because the sink module also need to know about this
-     star_type. Moving the star type to the stars module simplifies the above
-     since we would know the type of the star. Hence, no flag is needed.
-
-     The purpose of taking care about the discrete stars is to avoid them
-     having small timesteps when they are already dead. They won't do anything
-     anymore so they don't need to be waken up often.
-  */
-
   float dt_event_side, dt_evolution_ssp;
   feedback_compute_spart_timestep(sp, feedback_props, phys_const, us,
                                   with_cosmology, cosmo, ti_current, time,
