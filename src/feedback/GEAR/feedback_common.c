@@ -128,8 +128,20 @@ void feedback_compute_spart_timestep(
     const double star_age_beg_step_safe =
         star_age_beg_step < 0 ? 0 : star_age_beg_step;
     const double conversion_to_myr = phys_const->const_year * 1e6;
-    const float lifetime_myr =
-        (float)(star_age_beg_step_safe / conversion_to_myr);
+    float lifetime_myr = (float)(star_age_beg_step_safe / conversion_to_myr);
+
+    /* Floor age-as-lifetime at the IMF tail's shortest-lived star;
+     * with_sinks-gated since minimal_discrete_mass_Msun is only populated when
+     * sinks are configured. */
+    if (sp->star_type == star_population_continuous_IMF &&
+        feedback_props->with_sinks) {
+      const float min_discrete_mass_Msun = sm->imf.minimal_discrete_mass_Msun;
+      const float lifetime_myr_floor = pow(
+          10, lifetime_get_log_lifetime_from_mass(
+                  &sm->lifetime, log10f(min_discrete_mass_Msun), metallicity));
+      lifetime_myr = max(lifetime_myr, lifetime_myr_floor);
+    }
+
     const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
     /* Adapt the factor depending on the population's current age to

@@ -424,6 +424,8 @@ INLINE static void sink_props_init(
   sm = &fp->stellar_model;
   imf = &sm->imf;
 
+  fp->with_sinks = 1;
+
   /* Initialize for the stellar models (PopII) */
   sink_props_init_probabilities(sp, imf, phys_const, 0);
 
