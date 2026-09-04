@@ -409,6 +409,8 @@ struct MG_props {
   int N_min;
   double tolerance;
   int test;
+  int guess_available;
+  double *f_R;
 };
 
 /* Function prototypes. */
@@ -550,7 +552,7 @@ double get_Laplacian(struct MG_props *MG, const double *phi, const int cdim[3], 
 double get_residual_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_props *MG, int cdim[3], double mean_density, double delta, int verbose);
 double get_derivative(double *phi, struct MG_props *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta);
 void perform_red_black_sweep_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_props *MG, int cdim[3], double mean_density, double delta);
-void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, const double *u_coarser, struct MG_props *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, struct MG_props *MG, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
 int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_props *MG, int cdim[3], double delta, const int N_stop, int *depth);
 double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_props *MG, int cdim[3], double delta);
 void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_props *MG, int cdim[3], double delta);

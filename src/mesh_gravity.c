@@ -979,8 +979,11 @@ void add_modified_gravity_contribution(struct engine *e, struct space *s, struct
   
   /* Initialise u = exp(f_R/bar{f}_R), here called f_R */
   double *f_R = NULL; 
-  f_R = (double*)swift_calloc("fR_field", N_MG * N_MG * N_MG, sizeof(double));
-  if (f_R == NULL) error("Error allocating memory for the density mesh.");
+  if (!MG->guess_available) {
+    MG->f_R = (double*)swift_calloc("fR_field", N_MG * N_MG * N_MG, sizeof(double));
+    if (MG->f_R == NULL) error("Error allocating memory for the density mesh.");
+  }
+  f_R = MG->f_R;
   //memuse_log_allocation("mesh.fR", f_R, 1, sizeof(double) * N_MG * N_MG * N_MG);
 
   int test = MG->test; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
@@ -1079,7 +1082,6 @@ void add_modified_gravity_contribution(struct engine *e, struct space *s, struct
   }
 
   swift_free("density_copy", rho_copy);
-  swift_free("fR_field", f_R);
   if (MG->timing) message("Solving the field equation took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
 }
@@ -1106,6 +1108,8 @@ void MG_init(struct MG_props *MG_props, struct swift_params *params, const struc
   MG_props->overdensity = 0; //Do we know the overdensity instead of the density? Relevant for test cases
   double fR_evo = ((1. + 4. * MG_props->Omega_ratio)/(MG_props->a3_inv + 4. * MG_props->Omega_ratio));
   MG_props->fR_bar = MG_props->fR0 * fR_evo * fR_evo;
+  MG_props->guess_available = 0;
+  MG_props->f_R = NULL;
 }
 
 /**
@@ -1663,6 +1667,14 @@ void modified_gravity_struct_restore(struct MG_props* MG, FILE* stream) {
   restart_read_blocks(&(MG->N_min), sizeof(int), 1, stream, NULL, "N_min");
   restart_read_blocks(&(MG->tolerance), sizeof(double), 1, stream, NULL, "tolerance");
   restart_read_blocks(&(MG->test), sizeof(int), 1, stream, NULL, "test");
+
+  //Always reinitialise the first guess of the MG grid
+  MG->guess_available = 0;
+  MG->f_R = NULL;
+}
+
+void modified_gravity_clean(struct MG_props *MG) {
+  swift_free("fR_field", MG->f_R);
 }
 
 /**

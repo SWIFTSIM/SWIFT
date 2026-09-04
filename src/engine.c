@@ -2282,6 +2282,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     /* Compute mesh forces */
     pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->verbose);
+    e->MG_properties->guess_available = 1; //We now have a first guess!
 
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);

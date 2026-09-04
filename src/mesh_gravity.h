@@ -105,6 +105,7 @@ void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
 void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
 void modified_gravity_struct_dump(struct MG_props* MG, FILE* stream);
 void modified_gravity_struct_restore(struct MG_props* MG, FILE* stream);
+void modified_gravity_clean(struct MG_props *MG);
 
 void get_cell_acc(double **acc, double *rho, int N, double fac);
 void add_modified_gravity_contribution(struct engine *e, struct space *s, struct threadpool *tp, struct MG_props *MG, double *rho_MG, int N_MG);
