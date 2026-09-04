@@ -141,6 +141,9 @@ struct part {
 
     /* Time derivative of Gauge */
     float Gau_dt;
+    
+    /* Time derivative of Gauge */
+    float grad_Gau[3];
 
     /*! Predicted magnetic field */
     float BPred[3];
@@ -173,7 +176,7 @@ struct part {
 
   /**
    * @brief Structure for the variables only used in the density loop over
-   * neighbours.
+   * neighbours
    *
    * Quantities in this sub-structure should only be accessed in the density
    * loop over neighbours and the ghost task.

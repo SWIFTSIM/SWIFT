@@ -71,6 +71,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* MHD variables ----------------------------------------------*/
+  float Ai[3], Aj[3];
+  for (int k = 0; k < 3; k++) {
+    Ai[k] = pi->mhd.APred[k];
+    Aj[k] = pj->mhd.APred[k];
+  }
+  float dA[3];
+  for (int i = 0; i < 3; ++i) dA[i] = Aj[i] - Ai[i];
+  
+  const float common_term = wi_dx * mj;
+  
+  pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
+  pi->gradient.c_matrix_inv.yy += common_term * dx[1] * dx[1];
+  pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
+  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
+  pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
+  pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
+
+  pi->mhd.grad_A_tensor[0][0] -= common_term * dA[0] * dx[0];
+  pi->mhd.grad_A_tensor[0][1] -= common_term * dA[0] * dx[1];
+  pi->mhd.grad_A_tensor[0][2] -= common_term * dA[0] * dx[2];
+
+  pi->mhd.grad_A_tensor[1][0] -= common_term * dA[1] * dx[0];
+  pi->mhd.grad_A_tensor[1][1] -= common_term * dA[1] * dx[1];
+  pi->mhd.grad_A_tensor[1][2] -= common_term * dA[1] * dx[2];
+
+  pi->mhd.grad_A_tensor[2][0] -= common_term * dA[2] * dx[0];
+  pi->mhd.grad_A_tensor[2][1] -= common_term * dA[2] * dx[1];
+  pi->mhd.grad_A_tensor[2][2] -= common_term * dA[2] * dx[2];
+  
+  /* END MHD variables ------------------------------------------*/
+
 }
 
 /**
@@ -145,7 +178,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
 #if defined(HYDRO_DIMENSION_3D)
   pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
-  pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
+//  pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
   pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
 #endif
@@ -168,18 +201,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
 
   /* MHD variables ----------------------------------------------*/
-  float Ai[3], Aj[3];
+  
+  //float Ai[3], Aj[3];
+  float Bi[3], Bj[3];
   for (int k = 0; k < 3; k++) {
-    Ai[k] = pi->mhd.APred[k];
-    Aj[k] = pj->mhd.APred[k];
+    //Ai[k] = pi->mhd.APred[k];
+    //Aj[k] = pj->mhd.APred[k];
+    Bi[k] = pi->mhd.BPred[k];
+    Bj[k] = pj->mhd.BPred[k];
   }
+  const float dgau = pj->mhd.Gau - pi->mhd.Gau;
 
-  float dA[3];
-  for (int i = 0; i < 3; ++i) dA[i] = Aj[i] - Ai[i];
+  //float dA[3];
+  //for (int i = 0; i < 3; ++i) dA[i] = Aj[i] - Ai[i];
+  
+  float dB[3];
+  for (int i = 0; i < 3; ++i) dB[i] = Bj[i] - Bi[i];
 
-  /* Compute local plasma beta mean square */
+  pi->mhd.grad_B_tensor[0][0] -= common_term * dB[0] * dx[0];
+  pi->mhd.grad_B_tensor[0][1] -= common_term * dB[0] * dx[1];
+  pi->mhd.grad_B_tensor[0][2] -= common_term * dB[0] * dx[2];
 
-  pi->mhd.grad_A_tensor[0][0] -= common_term * dA[0] * dx[0];
+  pi->mhd.grad_B_tensor[1][0] -= common_term * dB[1] * dx[0];
+  pi->mhd.grad_B_tensor[1][1] -= common_term * dB[1] * dx[1];
+  pi->mhd.grad_B_tensor[1][2] -= common_term * dB[1] * dx[2];
+
+  pi->mhd.grad_B_tensor[2][0] -= common_term * dB[2] * dx[0];
+  pi->mhd.grad_B_tensor[2][1] -= common_term * dB[2] * dx[1];
+  pi->mhd.grad_B_tensor[2][2] -= common_term * dB[2] * dx[2];
+  
+
+  pi->mhd.grad_A_tensor[0][0] += mj * w * Bi[0];
+  pi->mhd.grad_A_tensor[0][1] += mj * w * Bi[1];
+  pi->mhd.grad_A_tensor[0][2] += mj * w * Bi[2];
+  pi->mhd.grad_A_tensor[1][0] += mj * w;
+  /*pi->mhd.grad_A_tensor[0][0] -= common_term * dA[0] * dx[0];
   pi->mhd.grad_A_tensor[0][1] -= common_term * dA[0] * dx[1];
   pi->mhd.grad_A_tensor[0][2] -= common_term * dA[0] * dx[2];
 
@@ -190,7 +246,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->mhd.grad_A_tensor[2][0] -= common_term * dA[2] * dx[0];
   pi->mhd.grad_A_tensor[2][1] -= common_term * dA[2] * dx[1];
   pi->mhd.grad_A_tensor[2][2] -= common_term * dA[2] * dx[2];
-
+  */
+  pi->mhd.grad_Gau[0] -= common_term * dgau * dx[0];
+  pi->mhd.grad_Gau[1] -= common_term * dgau * dx[1];
+  pi->mhd.grad_Gau[2] -= common_term * dgau * dx[2];
   /* END MHD variables ------------------------------------------*/
 }
 
@@ -534,7 +593,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
 
   /* MHD variables ----------------------------------------------*/
-  float Bi[3], Bj[3], dB[3], dA[3];
+  float Bi[3], Bj[3];
 
   Bi[0] = pi->mhd.BPred[0];
   Bi[1] = pi->mhd.BPred[1];
@@ -543,15 +602,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Bj[1] = pj->mhd.BPred[1];
   Bj[2] = pj->mhd.BPred[2];
 
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
+  //, dB[3];
+  //dB[0] = Bi[0] - Bj[0];
+  //dB[1] = Bi[1] - Bj[1];
+  //dB[2] = Bi[2] - Bj[2];
 
-  dA[0] = pi->mhd.APred[0] - pj->mhd.APred[0];
-  dA[1] = pi->mhd.APred[1] - pj->mhd.APred[1];
-  dA[2] = pi->mhd.APred[2] - pj->mhd.APred[2];
+  //dA[3];
+  //dA[0] = pi->mhd.APred[0] - pj->mhd.APred[0];
+  //dA[1] = pi->mhd.APred[1] - pj->mhd.APred[1];
+  //dA[2] = pi->mhd.APred[2] - pj->mhd.APred[2];
 
-  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  //const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
 
   float mm_i[3][3], mm_j[3][3];
 
@@ -580,36 +641,61 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] += mj *
+                        //(mm_i[i][j] + mm_j[i][j]) * (G_j[j]+G_i[j]) / 2.f / (rhoj * rhoj) /
                         (mm_i[i][j] * G_i[j] / (rhoi * rhoi) +
                          mm_j[i][j] * G_j[j] / (rhoj * rhoj)) /
                         (mu_0);
       pi->a_hydro[i] -=
           mj * Bi[i] * t_corr *
-          (Bi[j] * G_i[j] / (rhoi * rhoi) + Bj[j] * G_j[j] / rhoj / rhoj) /
+      	    (Bi[j] * G_i[j] / (rhoi * rhoi) + Bj[j] * G_j[j] / (rhoj * rhoj)) /
+          //(Bi[j]+Bj[j]) / (rhoi+rhoj)  * (G_i[j] + G_j[j]) / rhoi /
           (mu_0);
     }
 
+
+  //for (int j = 0; j < 3; j++)
+  //pi->mhd.divB -= 
+  //    mj * (Bi[j]+Bj[j]) / (rhoi+rhoj) * (G_i[j]+G_j[j]);
+      //mj * 0.5f *
+      //  (Bi[j] / rhoi * G_i[j] +
+      //   Bj[j] / rhoj * G_j[j]);
+	
   /* Induction Equation*/
-  for (int i = 0; i < 3; i++)
-    pi->mhd.dAdt[i] -=
-        mj * (G_i[i] / rhoi * pi->mhd.Gau + G_j[i] / rhoj * pj->mhd.Gau);
-  // pi->mhd.dAdt[i] -= mj * G_i[i] / rhoi *	(pj->mhd.Gau - pi->mhd.Gau);
   /* Physical resistivity */
-  const float permeability_inv = 1.0f / mu_0;
-  const float resistive_eta_i = pi->mhd.resistive_eta;
+  //const float resistive_eta_i = pi->mhd.resistive_eta;
+  
+  /*for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++)
+      pi->mhd.dAdt[i] +=
+        mj * resistive_eta_i * 
+        //(pi->mhd.grad_A_tensor[i][j] + pj->mhd.grad_A_tensor[i][j]) / (rhoi+rhoj) * (G_i[j]+G_j[j]);
+        (pi->mhd.grad_A_tensor[i][j] / rhoi * G_i[j] +
+         pj->mhd.grad_A_tensor[i][j] / rhoj * G_j[j]);
+    */    // (pi->mhd.grad_A_tensor[i][1] / rhoi * G_i[1] +
+        //  pj->mhd.grad_A_tensor[i][1] / rhoj * G_j[1]) +
+        // (pi->mhd.grad_A_tensor[i][2] / rhoi * G_i[2] +
+        //  pj->mhd.grad_A_tensor[i][2] / rhoj * G_j[2]));
 
-  const float rho_term_PR = 1.0f / (rhoi * rhoj);
-
-  const float dt_pref_PR = rho_term_PR * rho_term_PR * rhoi * norm_sum_G;
-
-  for (int k = 0; k < 3; k++)
-    pi->mhd.dAdt[k] += resistive_eta_i * 8.0 * mj * dt_pref_PR * dA[k];
-
-  pi->mhd.Gau_dt +=
-      resistive_eta_i * 8.0 * mj * dt_pref_PR * (pj->mhd.Gau - pi->mhd.Gau);
-
-  pi->u_dt -=
-      0.5f * permeability_inv * resistive_eta_i * mj * dt_pref_PR * dB_2;
+  /*for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++)
+    pi->u_dt -=
+       0.5f / mu_0 * resistive_eta_i * mj *
+        //(pi->mhd.grad_A_tensor[i][j] + pj->mhd.grad_A_tensor[i][j]) / (rhoi+rhoj) * (G_i[j]+G_j[j]);
+        (pi->mhd.grad_A_tensor[i][j] / rhoi * G_i[j] +
+         pj->mhd.grad_A_tensor[i][j] / rhoj * G_j[j]);
+  */
+  //pi->u_dt -=
+  //    0.5f * permeability_inv * resistive_eta_i * mj * dt_pref_PR * dB_2;
+    
+   /* pi->mhd.Gau_dt +=
+        mj * resistive_eta_i * 0.f* 
+        ((pi->mhd.grad_Gau[0] / rhoi * G_i[0] +
+          pj->mhd.grad_Gau[0] / rhoj * G_j[0]) +
+         (pi->mhd.grad_Gau[1] / rhoi * G_i[1] +
+          pj->mhd.grad_Gau[1] / rhoj * G_j[1]) +
+         (pi->mhd.grad_Gau[2] / rhoi * G_i[2] +
+          pj->mhd.grad_Gau[2] / rhoj * G_j[2]));
+    */
 }
 
 /**

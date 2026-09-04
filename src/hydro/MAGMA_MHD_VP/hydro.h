@@ -447,10 +447,15 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       p->mhd.divB != 0.0f
           ? afac_divB * sqrtf(p->rho / (p->mhd.divB * p->mhd.divB) * mu_0)
           : FLT_MAX;
+  float dt_divA =
+      p->mhd.divA != 0.0f
+          ? afac_divB * p->h * sqrtf(p->rho / (p->mhd.divA * p->mhd.divA) * mu_0)
+          : FLT_MAX;
   const float resistive_eta = p->mhd.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * p->h * p->h / resistive_eta
                            : FLT_MAX;
+  dt_divB = fminf(dt_divB, dt_divA);
   float dt_mhd = fminf(dt_eta, dt_divB);
 
   dt_Courant = fminf(dt_Courant, dt_mhd);
@@ -515,13 +520,9 @@ mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
 
   /* Recover some data */
   const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd.BPred[0];
-  B[1] = p->mhd.BPred[1];
-  B[2] = p->mhd.BPred[2];
 
   /* B dot r. */
-  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float Br = p->mhd.BPred[0] * dx[0] + p->mhd.BPred[1] * dx[1] + p->mhd.BPred[2] * dx[2];
   const float permeability_inv = 1.0f / mu_0;
 
   /* Compute effective sound speeds */
@@ -552,11 +553,6 @@ mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
     const float mu_ij, const float beta, const float mu_0) {
-
-  /* Compute pairwise MHD signal velocity,
-   * the sum of two particles' fast magnetosonic speeds
-   * (i.e. the Pythagorean addition of their sound speed and Alfven speed),
-   * and a von Neumann-type correction. */
 
   const float v_sigi = mhd_get_comoving_magnetosonic_speed(pi, mu_0);
   const float v_sigj = mhd_get_comoving_magnetosonic_speed(pj, mu_0);
@@ -598,6 +594,30 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
     struct part *p, const float dt) {}
 
 /**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_v_sig_based_on_velocity_kick(struct part *p,
+                                     const struct cosmology *cosmo,
+                                     const float dv_phys, const float mu_0) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Fast magnetosonic speed */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+
+  /* Update the signal velocity */
+  p->mhd.v_sig = fmaxf(2.f * cms, p->mhd.v_sig + const_viscosity_beta * dv);
+}
+
+/**
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
@@ -615,6 +635,13 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
   p->force.f = 0.f;
+  
+  zero_sym_matrix(&p->gradient.c_matrix_inv);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd.grad_A_tensor[i][j] = 0.0f;
+    }
+  }
 }
 
 /**
@@ -648,6 +675,39 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
+
+  /* MHD variables ----------------------------------------------*/
+  sym_matrix_multiply_by_scalar(&p->gradient.c_matrix_inv, h_inv_dim);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j){ 
+       p->mhd.grad_A_tensor[i][j] *= h_inv_dim;
+    }
+  }
+  /* Invert the c-matrix */
+  sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+  
+  float c_mat[3][3];
+  get_matrix_from_sym_matrix(c_mat, &p->force.c_matrix);
+
+  const float g_dA[3][3] = {
+  {p->mhd.grad_A_tensor[0][0], p->mhd.grad_A_tensor[0][1], p->mhd.grad_A_tensor[0][2]},
+  {p->mhd.grad_A_tensor[1][0], p->mhd.grad_A_tensor[1][1], p->mhd.grad_A_tensor[1][2]},
+  {p->mhd.grad_A_tensor[2][0], p->mhd.grad_A_tensor[2][1], p->mhd.grad_A_tensor[2][2]}};
+
+  for (int i = 0; i < 3; i++) 
+    for (int j = 0; j < 3; j++){ 
+         p->mhd.grad_A_tensor[i][j] = 0.f;
+      for (int k = 0; k < 3; k++){ 
+         p->mhd.grad_A_tensor[i][j] += c_mat[j][k] * g_dA[i][k];
+	 }
+  }
+  p->mhd.divA = p->mhd.grad_A_tensor[0][0] + p->mhd.grad_A_tensor[1][1] +
+                p->mhd.grad_A_tensor[2][2];
+  p->mhd.BPred[0] = p->mhd.grad_A_tensor[2][1] - p->mhd.grad_A_tensor[1][2];
+  p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][2] - p->mhd.grad_A_tensor[2][0];
+  p->mhd.BPred[2] = p->mhd.grad_A_tensor[1][0] - p->mhd.grad_A_tensor[0][1];
+  
+  /* END MHD variables ------------------------------------------*/
 }
 
 /**
@@ -666,8 +726,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float mu_0) {
+  
   /* MHD variables ----------------------------------------------*/
   p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
   /* END MHD variables ------------------------------------------*/
 }
 
@@ -690,10 +753,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
 
   /* MHD variables ----------------------------------------------*/
+  //p->mhd.curl_B[0] = 0.0f;
+  //p->mhd.curl_B[1] = 0.0f;
+  //p->mhd.curl_B[2] = 0.0f;
 
   for (int i = 0; i < 3; i++) {
+    p->mhd.grad_Gau[i] = 0.f;
     for (int j = 0; j < 3; j++) {
       p->mhd.grad_A_tensor[i][j] = 0.0f;
+      p->mhd.grad_B_tensor[i][j] = 0.0f;
     }
   }
 
@@ -735,8 +803,75 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* MHD variables ----------------------------------------------*/
 
-  for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j) p->mhd.grad_A_tensor[i][j] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) {
+    p->mhd.grad_Gau[i] *= h_inv_dim;
+    for (int j = 0; j < 3; ++j){ 
+       //p->mhd.grad_A_tensor[i][j] *= h_inv_dim;
+       p->mhd.grad_B_tensor[i][j] *= h_inv_dim;
+    }
+  }
+  
+  /* Invert the c-matrix */
+  sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+  
+  /* Finish computation of Grad_B gradient (eq. 18) */
+  float tmp_Grad_in[3], tmp_Grad_out[3];
+  /*for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) tmp_Grad_in[j] = p->mhd.grad_A_tensor[i][j];
+    sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
+                                  tmp_Grad_in);
+    for (int j = 0; j < 3; j++) p->mhd.grad_A_tensor[i][j] = tmp_Grad_out[j];
+  }*/
+  /* Invert the c-matrix */
+  
+  /*float c_mat[3][3];
+  get_matrix_from_sym_matrix(c_mat, &p->force.c_matrix);
+
+  const float g_dA[3][3] = {
+  {p->mhd.grad_A_tensor[0][0], p->mhd.grad_A_tensor[0][1], p->mhd.grad_A_tensor[0][2]},
+  {p->mhd.grad_A_tensor[1][0], p->mhd.grad_A_tensor[1][1], p->mhd.grad_A_tensor[1][2]},
+  {p->mhd.grad_A_tensor[2][0], p->mhd.grad_A_tensor[2][1], p->mhd.grad_A_tensor[2][2]}};
+
+  for (int i = 0; i < 3; i++) 
+    for (int j = 0; j < 3; j++){ 
+         p->mhd.grad_A_tensor[i][j] = 0.f;
+      for (int k = 0; k < 3; k++){ 
+         p->mhd.grad_A_tensor[i][j] += c_mat[j][k] * g_dA[i][k];
+	 }
+  }
+  p->mhd.divA = p->mhd.grad_A_tensor[0][0] + p->mhd.grad_A_tensor[1][1] +
+                p->mhd.grad_A_tensor[2][2];
+  p->mhd.BPred[0] = p->mhd.grad_A_tensor[2][1] - p->mhd.grad_A_tensor[1][2];
+  p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][2] - p->mhd.grad_A_tensor[2][0];
+  p->mhd.BPred[2] = p->mhd.grad_A_tensor[1][0] - p->mhd.grad_A_tensor[0][1];
+  */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) tmp_Grad_in[j] = p->mhd.grad_B_tensor[i][j];
+    sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
+                                  tmp_Grad_in);
+    for (int j = 0; j < 3; j++) p->mhd.grad_B_tensor[i][j] = tmp_Grad_out[j];
+  }
+  p->mhd.divB = p->mhd.grad_B_tensor[0][0] + p->mhd.grad_B_tensor[1][1] +
+                p->mhd.grad_B_tensor[2][2];
+  p->mhd.curl_B[0] = p->mhd.grad_B_tensor[2][1] - p->mhd.grad_B_tensor[1][2];
+  p->mhd.curl_B[1] = p->mhd.grad_B_tensor[0][2] - p->mhd.grad_B_tensor[2][0];
+  p->mhd.curl_B[2] = p->mhd.grad_B_tensor[1][0] - p->mhd.grad_B_tensor[0][1];
+  
+  p->mhd.grad_A_tensor[0][0] = p->mass * p->mhd.BPred[0] * kernel_root;
+  p->mhd.grad_A_tensor[0][1] = p->mass * p->mhd.BPred[1] * kernel_root;
+  p->mhd.grad_A_tensor[0][2] = p->mass * p->mhd.BPred[2] * kernel_root;
+  p->mhd.grad_A_tensor[1][0] = p->mass * kernel_root;
+  
+  p->mhd.BPred[0] = p->mhd.grad_A_tensor[0][0] / p->mhd.grad_A_tensor[1][0];
+  p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][1] / p->mhd.grad_A_tensor[1][0];
+  p->mhd.BPred[2] = p->mhd.grad_A_tensor[0][2] / p->mhd.grad_A_tensor[1][0];
+
+  for (int j = 0; j < 3; j++) tmp_Grad_in[j] = p->mhd.grad_Gau[j];
+  sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix, tmp_Grad_in);
+  for (int j = 0; j < 3; j++) p->mhd.grad_Gau[j] = tmp_Grad_out[j];
+  
+  const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
 
   /* END MHD variables -------------------------------------------*/
 }
@@ -773,8 +908,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* MHD variables ----------------------------------------------*/
 
-  p->mhd.divB = 0.0f;
-  p->mhd.divA = 0.0f;
+  //p->mhd.divB = 0.0f;
+  //p->mhd.divA = 0.0f;
 
   /* END MHD variables -------------------------------------------*/
 }
@@ -830,22 +965,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* MHD variables ----------------------------------------------*/
 
-  /* Finish computation of Grad_B gradient (eq. 18) */
-  float tmp_Grad_in[3], tmp_Grad_out[3];
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) tmp_Grad_in[j] = p->mhd.grad_A_tensor[i][j];
+
+  /*for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) tmp_Grad_in[j] = p->mhd.grad_B_tensor[i][j];
     sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
                                   tmp_Grad_in);
-    for (int j = 0; j < 3; j++) p->mhd.grad_A_tensor[i][j] = tmp_Grad_out[j];
+    for (int j = 0; j < 3; j++) p->mhd.grad_B_tensor[i][j] = tmp_Grad_out[j];
   }
-  p->mhd.divA = p->mhd.grad_A_tensor[0][0] + p->mhd.grad_A_tensor[1][1] +
-                p->mhd.grad_A_tensor[2][2];
-  p->mhd.BPred[0] = p->mhd.grad_A_tensor[2][1] - p->mhd.grad_A_tensor[1][2];
-  p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][2] - p->mhd.grad_A_tensor[2][0];
-  p->mhd.BPred[2] = p->mhd.grad_A_tensor[1][0] - p->mhd.grad_A_tensor[0][1];
-
-  p->mhd.Gau_dt = -p->mhd.v_sig * p->mhd.v_sig * p->mhd.divA;
-
+  
+  p->mhd.divB = p->mhd.grad_B_tensor[0][0] + p->mhd.grad_B_tensor[1][1] +
+                p->mhd.grad_B_tensor[2][2];
+  p->mhd.curl_B[0] = p->mhd.grad_B_tensor[2][1] - p->mhd.grad_B_tensor[1][2];
+  p->mhd.curl_B[1] = p->mhd.grad_B_tensor[0][2] - p->mhd.grad_B_tensor[2][0];
+  p->mhd.curl_B[2] = p->mhd.grad_B_tensor[1][0] - p->mhd.grad_B_tensor[0][1];
+  */
+  p->mhd.Gau_dt = - p->mhd.v_sig * p->mhd.v_sig * p->mhd.divA - 
+  			0.5f * p->mhd.v_sig / p->h * p->mhd.Gau;
   /* END MHD variables -------------------------------------------*/
 }
 
@@ -871,14 +1006,13 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.mu_tilde = 0.0f;
 
   /* MHD variables ----------------------------------------------*/
-
+  
   /* Zero the fields updated by the mhd force loop */
 
   p->mhd.dAdt[0] = 0.0f;
   p->mhd.dAdt[1] = 0.0f;
   p->mhd.dAdt[2] = 0.0f;
-  p->mhd.divB = 0.f;
-  p->mhd.Gau_dt = 0.f;
+  //p->mhd.divB = 0.f;
 
   /* END MHD variables -------------------------------------------*/
 }
@@ -926,6 +1060,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->mhd.Gau = xp->mhd.Gau_full;
 
   p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  
   /* Re-set MHD signal velocity */
   const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
   p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
@@ -1012,7 +1147,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->mhd.Gau += p->mhd.Gau_dt * dt_therm;
 
   p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  
   /* Initialise MHD signal velocity */
+
   const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
   p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
 
@@ -1054,6 +1191,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->mhd.dAdt[2] -= p->mhd.APred[0] * p->force.gradient_vx[2] +
                     p->mhd.APred[1] * p->force.gradient_vy[2] +
                     p->mhd.APred[2] * p->force.gradient_vz[2];
+  
+  p->mhd.dAdt[0] -= p->mhd.grad_Gau[0];
+  p->mhd.dAdt[1] -= p->mhd.grad_Gau[1];
+  p->mhd.dAdt[2] -= p->mhd.grad_Gau[2];
+  
+  p->mhd.dAdt[0] -= p->mhd.resistive_eta * p->mhd.curl_B[0];
+  p->mhd.dAdt[1] -= p->mhd.resistive_eta * p->mhd.curl_B[1];
+  p->mhd.dAdt[2] -= p->mhd.resistive_eta * p->mhd.curl_B[2];
   /* END MHD variables -------------------------------------------*/
 }
 
@@ -1176,6 +1321,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Instantiate Alfven speed */
   p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
   /* END MHD variables -------------------------------------------*/
 }
 

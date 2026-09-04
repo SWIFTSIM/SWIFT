@@ -54,7 +54,7 @@ cat <<-EOF > ./run.sh
 	./sw_run --hydro --threads=16 ../FastRotor_schemes.yml 2>&1 > out.log 
 	
 	# Plot the evolution
-	python3 ../plot_schemes.py 0 16 2>&1 > plot.log
+	python3 ../plot_schemes.py 0 11 2>&1 > plot.log
 	EOF
 chmod u+x ./run.sh
 ./run.sh &
