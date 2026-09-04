@@ -1255,16 +1255,25 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Some constants used to checks that the parts are in the right frame */
+  /* Some constants used to checks that the parts are in the right frame.
+   * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+   * from the end-of-step tend exchange; substitute a full cell width on
+   * the foreign side (see afcc4326c). */
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
+  const float ci_dx_max_part_safe =
+      local_i ? ci->hydro.dx_max_part : ci->width[0];
+  const float cj_dx_max_part_safe =
+      local_j ? cj->hydro.dx_max_part : cj->width[0];
   const float shift_threshold_x =
       2.02 * ci->width[0] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_y =
       2.02 * ci->width[1] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_z =
       2.02 * ci->width[2] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the depth limits (if any) */
@@ -1348,6 +1357,98 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells, never for
+           * a foreign cj/ci, so guard on local_i/local_j before
+           * dereferencing it. Sentinel clearly distinct from a real
+           * x_diff. A received (foreign) part's ->gpart is explicitly
+           * NULLed on receipt (runner_recv.c), so guard that the same way. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff = local_j
+                                     ? cj->hydro.xparts[sort_j[pjd].i].x_diff
+                                     : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j
+                  ? cj->hydro.xparts[sort_j[pjd].i].sf_data.n_sf_spawn_events
+                  : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR1 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_depth=%d "
+              "cj_depth=%d ci_count=%d cj_count=%d ci_dx_max_part=%e "
+              "cj_dx_max_part=%e ci_dx_max_sort=%e cj_dx_max_sort=%e "
+              "ci_h_max=%e cj_h_max=%e ci_ti_old_part=%lld "
+              "cj_ti_old_part=%lld ci_ti_old_part_on_entry=%lld "
+              "cj_ti_old_part_on_entry=%lld ci_drift_force_on_entry=%d "
+              "cj_drift_force_on_entry=%d ci_is_own_hydro_super=%d "
+              "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
+              "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
+              "pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_gpart_mass=%e pj_n_sf_spawn_events=%d pj_rho=%e pj_u=%e "
+              "pj_pressure=%e pj_soundspeed=%e pj_a_hydro=(%e,%e,%e) "
+              "pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.dx_max_sort, cj->hydro.dx_max_sort, ci->hydro.h_max,
+              cj->hydro.h_max, (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
@@ -1467,6 +1568,98 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells, never for
+           * a foreign cj/ci, so guard on local_i/local_j before
+           * dereferencing it. Sentinel clearly distinct from a real
+           * x_diff. A received (foreign) part's ->gpart is explicitly
+           * NULLed on receipt (runner_recv.c), so guard that the same way. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff = local_j
+                                     ? cj->hydro.xparts[sort_j[pjd].i].x_diff
+                                     : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j
+                  ? cj->hydro.xparts[sort_j[pjd].i].sf_data.n_sf_spawn_events
+                  : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR1 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_depth=%d "
+              "cj_depth=%d ci_count=%d cj_count=%d ci_dx_max_part=%e "
+              "cj_dx_max_part=%e ci_dx_max_sort=%e cj_dx_max_sort=%e "
+              "ci_h_max=%e cj_h_max=%e ci_ti_old_part=%lld "
+              "cj_ti_old_part=%lld ci_ti_old_part_on_entry=%lld "
+              "cj_ti_old_part_on_entry=%lld ci_drift_force_on_entry=%d "
+              "cj_drift_force_on_entry=%d ci_is_own_hydro_super=%d "
+              "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
+              "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
+              "pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_gpart_mass=%e pj_n_sf_spawn_events=%d pj_rho=%e pj_u=%e "
+              "pj_pressure=%e pj_soundspeed=%e pj_a_hydro=(%e,%e,%e) "
+              "pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.dx_max_sort, cj->hydro.dx_max_sort, ci->hydro.h_max,
+              cj->hydro.h_max, (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
@@ -1622,18 +1815,31 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
   struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
+  /* Get some other useful values. */
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
+  /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
+   * from the end-of-step tend exchange; right after a rebuild the true
+   * value is still tiny, so that lag is a large relative error. Substitute
+   * a full cell width on the foreign side. The owning rank runs this
+   * same pair task with fresh bookkeeping, so real bugs are still caught. */
+  const float ci_dx_max_part_safe =
+      local_i ? ci->hydro.dx_max_part : ci->width[0];
+  const float cj_dx_max_part_safe =
+      local_j ? cj->hydro.dx_max_part : cj->width[0];
   const float shift_threshold_x =
       2.02 * ci->width[0] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_y =
       2.02 * ci->width[1] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
   const float shift_threshold_z =
       2.02 * ci->width[2] +
-      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the depth limits (if any) */
@@ -1646,9 +1852,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 #endif
 
-  /* Get some other useful values. */
-  const int local_i = ci->nodeID == e->nodeID;
-  const int local_j = cj->nodeID == e->nodeID;
   const double hi_max = ci->hydro.h_max;
   const double hj_max = cj->hydro.h_max;
   const int count_i = ci->hydro.count;
@@ -1783,6 +1986,102 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells (see
+           * space_rebuild.c/cell_split.c), never for a foreign cj/ci, so
+           * guard on local_i/local_j before dereferencing it. Use a
+           * sentinel clearly distinct from a real x_diff (unlike 0.f,
+           * which a genuinely-unmoved local particle could also report)
+           * so the two cases can never be confused when reading the log. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff =
+              local_j ? cj->hydro.xparts[sort_active_j[pjd].i].x_diff
+                      : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j ? cj->hydro.xparts[sort_active_j[pjd].i]
+                            .sf_data.n_sf_spawn_events
+                      : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR2 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_sinks=%d "
+              "cj_sinks=%d ci_depth=%d cj_depth=%d ci_count=%d cj_count=%d "
+              "ci_dx_max_part=%e cj_dx_max_part=%e ci_dx_max_sort=%e "
+              "cj_dx_max_sort=%e ci_h_max=%e cj_h_max=%e "
+              "ci_ti_old_part=%lld cj_ti_old_part=%lld "
+              "ci_ti_old_part_on_entry=%lld cj_ti_old_part_on_entry=%lld "
+              "ci_drift_force_on_entry=%d cj_drift_force_on_entry=%d "
+              "ci_is_own_hydro_super=%d cj_is_own_hydro_super=%d "
+              "ci_ti_sort=%lld cj_ti_sort=%lld ci_sf_ran_at_tic=%lld "
+              "cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d "
+              "pjd=%d sort_j_idx=%d "
+              "pi_id=%lld pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) "
+              "pj_id=%lld pj_mass=%e pj_gpart_mass=%e pj_n_sf_spawn_events=%d "
+              "pj_rho=%e pj_u=%e pj_pressure=%e pj_soundspeed=%e "
+              "pj_a_hydro=(%e,%e,%e) pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d "
+              "pj_ti_drift=%lld pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->sinks.count, cj->sinks.count, ci->depth, cj->depth,
+              ci->hydro.count, cj->hydro.count, ci->hydro.dx_max_part,
+              cj->hydro.dx_max_part, ci->hydro.dx_max_sort,
+              cj->hydro.dx_max_sort, ci->hydro.h_max, cj->hydro.h_max,
+              (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_active_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
@@ -1874,6 +2173,98 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells, never for
+           * a foreign cj/ci, so guard on local_i/local_j before
+           * dereferencing it. Sentinel clearly distinct from a real
+           * x_diff. A received (foreign) part's ->gpart is explicitly
+           * NULLed on receipt (runner_recv.c), so guard that the same way. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff = local_j
+                                     ? cj->hydro.xparts[sort_j[pjd].i].x_diff
+                                     : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j
+                  ? cj->hydro.xparts[sort_j[pjd].i].sf_data.n_sf_spawn_events
+                  : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR1 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_depth=%d "
+              "cj_depth=%d ci_count=%d cj_count=%d ci_dx_max_part=%e "
+              "cj_dx_max_part=%e ci_dx_max_sort=%e cj_dx_max_sort=%e "
+              "ci_h_max=%e cj_h_max=%e ci_ti_old_part=%lld "
+              "cj_ti_old_part=%lld ci_ti_old_part_on_entry=%lld "
+              "cj_ti_old_part_on_entry=%lld ci_drift_force_on_entry=%d "
+              "cj_drift_force_on_entry=%d ci_is_own_hydro_super=%d "
+              "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
+              "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
+              "pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_gpart_mass=%e pj_n_sf_spawn_events=%d pj_rho=%e pj_u=%e "
+              "pj_pressure=%e pj_soundspeed=%e pj_a_hydro=(%e,%e,%e) "
+              "pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.dx_max_sort, cj->hydro.dx_max_sort, ci->hydro.h_max,
+              cj->hydro.h_max, (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
@@ -2036,6 +2427,98 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells, never for
+           * a foreign cj/ci, so guard on local_i/local_j before
+           * dereferencing it. Sentinel clearly distinct from a real
+           * x_diff. A received (foreign) part's ->gpart is explicitly
+           * NULLed on receipt (runner_recv.c), so guard that the same way. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff = local_j
+                                     ? cj->hydro.xparts[sort_j[pjd].i].x_diff
+                                     : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j
+                  ? cj->hydro.xparts[sort_j[pjd].i].sf_data.n_sf_spawn_events
+                  : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR1 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_depth=%d "
+              "cj_depth=%d ci_count=%d cj_count=%d ci_dx_max_part=%e "
+              "cj_dx_max_part=%e ci_dx_max_sort=%e cj_dx_max_sort=%e "
+              "ci_h_max=%e cj_h_max=%e ci_ti_old_part=%lld "
+              "cj_ti_old_part=%lld ci_ti_old_part_on_entry=%lld "
+              "cj_ti_old_part_on_entry=%lld ci_drift_force_on_entry=%d "
+              "cj_drift_force_on_entry=%d ci_is_own_hydro_super=%d "
+              "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
+              "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
+              "pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_gpart_mass=%e pj_n_sf_spawn_events=%d pj_rho=%e pj_u=%e "
+              "pj_pressure=%e pj_soundspeed=%e pj_a_hydro=(%e,%e,%e) "
+              "pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.dx_max_sort, cj->hydro.dx_max_sort, ci->hydro.h_max,
+              cj->hydro.h_max, (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
@@ -2128,6 +2611,98 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
+            piy > shift_threshold_y || piy < -shift_threshold_y ||
+            piz > shift_threshold_z || piz < -shift_threshold_z ||
+            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
+            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
+            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+          /* hydro.xparts is only ever populated for LOCAL cells, never for
+           * a foreign cj/ci, so guard on local_i/local_j before
+           * dereferencing it. Sentinel clearly distinct from a real
+           * x_diff. A received (foreign) part's ->gpart is explicitly
+           * NULLed on receipt (runner_recv.c), so guard that the same way. */
+          const float x_diff_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float *xi_diff = local_i
+                                     ? ci->hydro.xparts[sort_i[pid].i].x_diff
+                                     : x_diff_unavailable;
+          const float *xj_diff = local_j
+                                     ? cj->hydro.xparts[sort_j[pjd].i].x_diff
+                                     : x_diff_unavailable;
+#ifdef SWIFT_DEBUG_CHECKS
+          const int pi_n_sf_spawn_events =
+              local_i
+                  ? ci->hydro.xparts[sort_i[pid].i].sf_data.n_sf_spawn_events
+                  : -1;
+          const int pj_n_sf_spawn_events =
+              local_j
+                  ? cj->hydro.xparts[sort_j[pjd].i].sf_data.n_sf_spawn_events
+                  : -1;
+#else
+          const int pi_n_sf_spawn_events = -1;
+          const int pj_n_sf_spawn_events = -1;
+#endif
+          const float grav_unavailable[3] = {-999.f, -999.f, -999.f};
+          const float pi_gpart_mass =
+              (local_i && pi->gpart) ? pi->gpart->mass : -999.f;
+          const float pj_gpart_mass =
+              (local_j && pj->gpart) ? pj->gpart->mass : -999.f;
+          const float *pi_a_grav =
+              (local_i && pi->gpart) ? pi->gpart->a_grav : grav_unavailable;
+          const float *pj_a_grav =
+              (local_j && pj->gpart) ? pj->gpart->a_grav : grav_unavailable;
+          message(
+              "OUT_OF_FRAME_PROBE_DOPAIR1 step=%d nodeID=%d ci_cellID=%lld "
+              "cj_cellID=%lld ci_local=%d cj_local=%d ci_depth=%d "
+              "cj_depth=%d ci_count=%d cj_count=%d ci_dx_max_part=%e "
+              "cj_dx_max_part=%e ci_dx_max_sort=%e cj_dx_max_sort=%e "
+              "ci_h_max=%e cj_h_max=%e ci_ti_old_part=%lld "
+              "cj_ti_old_part=%lld ci_ti_old_part_on_entry=%lld "
+              "cj_ti_old_part_on_entry=%lld ci_drift_force_on_entry=%d "
+              "cj_drift_force_on_entry=%d ci_is_own_hydro_super=%d "
+              "cj_is_own_hydro_super=%d ci_ti_sort=%lld cj_ti_sort=%lld "
+              "ci_sf_ran_at_tic=%lld cj_sf_ran_at_tic=%lld ti_current=%lld "
+              "sf_mass_stars=%e sf_min_mass_frac_plus_one=%e "
+              "pid=%d sort_i_idx=%d pjd=%d sort_j_idx=%d pi_id=%lld "
+              "pi_mass=%e pi_gpart_mass=%e pi_n_sf_spawn_events=%d "
+              "pi_rho=%e pi_u=%e pi_pressure=%e pi_soundspeed=%e "
+              "pi_a_hydro=(%e,%e,%e) pi_a_grav=(%e,%e,%e) "
+              "pi_v=(%e,%e,%e) pi_h=%e pi_time_bin=%d "
+              "pi_ti_drift=%lld pi_x_diff=(%e,%e,%e) pj_id=%lld pj_mass=%e "
+              "pj_gpart_mass=%e pj_n_sf_spawn_events=%d pj_rho=%e pj_u=%e "
+              "pj_pressure=%e pj_soundspeed=%e pj_a_hydro=(%e,%e,%e) "
+              "pj_a_grav=(%e,%e,%e) "
+              "pj_v=(%e,%e,%e) pj_h=%e pj_time_bin=%d pj_ti_drift=%lld "
+              "pj_x_diff=(%e,%e,%e)",
+              e->step, e->nodeID, ci->cellID, cj->cellID, local_i, local_j,
+              ci->depth, cj->depth, ci->hydro.count, cj->hydro.count,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part,
+              ci->hydro.dx_max_sort, cj->hydro.dx_max_sort, ci->hydro.h_max,
+              cj->hydro.h_max, (long long)ci->hydro.ti_old_part,
+              (long long)cj->hydro.ti_old_part,
+              (long long)ci->hydro.ti_old_part_on_entry,
+              (long long)cj->hydro.ti_old_part_on_entry,
+              ci->hydro.drift_force_on_entry, cj->hydro.drift_force_on_entry,
+              ci == ci->hydro.super, cj == cj->hydro.super,
+              (long long)ci->hydro.ti_sort, (long long)cj->hydro.ti_sort,
+              (long long)ci->hydro.sf_ran_at_tic,
+              (long long)cj->hydro.sf_ran_at_tic, (long long)e->ti_current,
+              e->star_formation ? e->star_formation->mass_stars : -1.f,
+              e->star_formation ? e->star_formation->min_mass_frac_plus_one
+                                : -1.f,
+              pid, sort_i[pid].i, pjd, sort_j[pjd].i, pi->id, pi->mass,
+              pi_gpart_mass, pi_n_sf_spawn_events, pi->rho, pi->u,
+              pi->force.pressure, pi->force.soundspeed, pi->a_hydro[0],
+              pi->a_hydro[1], pi->a_hydro[2], pi_a_grav[0], pi_a_grav[1],
+              pi_a_grav[2], pi->v[0], pi->v[1], pi->v[2], pi->h, pi->time_bin,
+              (long long)pi->ti_drift, xi_diff[0], xi_diff[1], xi_diff[2],
+              pj->id, pj->mass, pj_gpart_mass, pj_n_sf_spawn_events, pj->rho,
+              pj->u, pj->force.pressure, pj->force.soundspeed, pj->a_hydro[0],
+              pj->a_hydro[1], pj->a_hydro[2], pj_a_grav[0], pj_a_grav[1],
+              pj_a_grav[2], pj->v[0], pj->v[1], pj->v[2], pj->h, pj->time_bin,
+              (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
+        }
+
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",

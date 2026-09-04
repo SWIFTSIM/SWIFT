@@ -26,7 +26,17 @@
 #include "cell.h"
 
 /* Local headers */
+#include "atomic.h"
+#include "error.h"
 #include "gravity.h"
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+/*! Rate-limiters for the debug checks below. They should never fire; if
+ * they do, cell_link_sparts()/cell_link_sinks() started skipping sub-cells
+ * like cell_link_foreign_gparts() does. */
+static int cell_sf_layout_divergence_reported = 0;
+static int cell_sink_formation_layout_divergence_reported = 0;
+#endif
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
@@ -189,6 +199,7 @@ int cell_pack_grid_extra(const struct cell *c,
 #endif
 }
 
+/* TODO: Add doxygen documentation to the functions below */
 void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data) {
 
@@ -230,6 +241,49 @@ void cell_unpack_bpart_swallow(struct cell *c,
 
   for (size_t i = 0; i < count; ++i) {
     bparts[i].merger_data = data[i];
+  }
+}
+
+void cell_pack_sink_gas_swallow(const struct cell *c,
+                                struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = parts[i].sink_data;
+  }
+}
+
+void cell_unpack_sink_gas_swallow(struct cell *c,
+                                  const struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    parts[i].sink_data = data[i];
+  }
+}
+
+void cell_pack_sink_swallow(const struct cell *c, struct sink_sink_data *data) {
+
+  const size_t count = c->sinks.count;
+  const struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = sinks[i].merger_data;
+  }
+}
+
+void cell_unpack_sink_swallow(struct cell *c,
+                              const struct sink_sink_data *data) {
+
+  const size_t count = c->sinks.count;
+  struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    sinks[i].merger_data = data[i];
   }
 }
 
@@ -596,8 +650,9 @@ void cell_pack_gpart(const struct cell *const c,
   swift_declare_aligned_ptr(struct gpart_foreign, b_align, b,
                             SWIFT_CACHE_ALIGNMENT);
 
-  for (int i = 0; i < c->grav.count; ++i)
+  for (int i = 0; i < c->grav.count; ++i) {
     gravity_foreign_copy(&b_align[i], &c->grav.parts[i]);
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -704,8 +759,9 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->stars.parts. See cell_pack_grav_counts for why. */
+  pcells[0].delta_from_rebuild = c->stars.parts - c->top->stars.parts;
   pcells[0].count = c->stars.count;
   pcells[0].dx_max_part = c->stars.dx_max_part;
 
@@ -715,7 +771,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Stars part pointer moved in the wrong direction!");
+    error("Stars part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
@@ -755,10 +811,25 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. Reconstructing against our own top->stars.parts
+   * is only valid because cell_link_sparts() links the whole tree, so the two
+   * ranks share one layout. Compacting it here would need the gpart treatment
+   * (cell_relink_foreign_gparts) instead. */
   c->stars.count = pcells[0].count;
-  c->stars.parts = c->stars.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Only fires if cell_link_sparts() ever stops linking the whole tree,
+   * breaking the shared-layout assumption above. */
+  if (c->depth == 0 && c->stars.count > c->stars.count_total &&
+      atomic_inc(&cell_sf_layout_divergence_reported) < 20)
+    message(
+        "SF_COUNTS_LAYOUT_DIVERGENCE cellID=%lld stars.count=%d "
+        "stars.count_total=%d delta_from_rebuild=%td",
+        c->cellID, c->stars.count, c->stars.count_total,
+        (ptrdiff_t)pcells[0].delta_from_rebuild);
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -776,6 +847,23 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #endif
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debug-only: stamp when an sf_counts delivery touched this cell
+ * and its sub-cells, for the stars h_max_active staleness investigation.
+ *
+ * @param c The #cell.
+ * @param ti_current The current integer time.
+ */
+void cell_debug_stamp_sf_counts_recv(struct cell *c, integertime_t ti_current) {
+  c->stars.sf_counts_recv_at_tic = ti_current;
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_debug_stamp_sf_counts_recv(c->progeny[k], ti_current);
+}
+#endif
+
 /**
  * @brief Pack the counts for star formation of the given cell and all it's
  * sub-cells.
@@ -789,8 +877,10 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an offset into the sender's
+   * own layout: the receiver's is compacted, so it rebuilds its pointers from
+   * the counts instead and only reads this back as a diagnostic. */
+  pcells[0].delta_from_rebuild = c->grav.parts - c->top->grav.parts;
   pcells[0].count = c->grav.count;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -799,18 +889,45 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Grav part pointer moved in the wrong direction!");
+    error("Grav part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
+
+  /* Localizes a layout bug to the sender vs the receiver's reconstruction. */
+  {
+    const ptrdiff_t rel_end =
+        (c->grav.parts + c->grav.count) - c->top->grav.parts;
+    if (rel_end > c->top->grav.count)
+      error(
+          "PACK: cell's local range exceeds its top-level ancestor's count! "
+          "c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
+          "top->cellID=%lld top->grav.count=%d",
+          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
+          c->top->grav.count);
+  }
 #endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+  int progeny_count_sum = 0;
+#endif
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       count += cell_pack_grav_counts(c->progeny[k], &pcells[count]);
+#ifdef SWIFT_DEBUG_CHECKS
+      progeny_count_sum += c->progeny[k]->grav.count;
+#endif
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->split && progeny_count_sum != c->grav.count)
+    error(
+        "Split cell's grav.count=%d does not match the sum of its progeny's "
+        "counts=%d at pack time (c->cellID=%lld c->depth=%d)",
+        c->grav.count, progeny_count_sum, c->cellID, c->depth);
+#endif
 
   /* Return the number of packed values. */
   return count;
@@ -824,6 +941,9 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 /**
  * @brief Unpack the counts for star formation of a given cell and its
  * sub-cells.
+ *
+ * Counts only. The matching #gpart_foreign pointers are re-derived from them
+ * by cell_relink_foreign_gparts(), which knows the receiver's layout.
  *
  * @param c The #cell
  * @param pcells The multipole information to unpack
@@ -839,16 +959,138 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. The pointers are not reconstructed from
+   * delta_from_rebuild: the sender's layout is not compacted the way the
+   * receiver's is. cell_relink_foreign_gparts() re-derives them from these
+   * counts instead, in the receiver's own layout. */
   c->grav.count = pcells[0].count;
-  c->grav.parts_foreign =
-      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       count += cell_unpack_grav_counts(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debug-only: stamp when a grav_counts delivery touched this cell
+ * and its sub-cells, for the foreign gpart staleness investigation.
+ *
+ * @param c The #cell.
+ * @param ti_current The current integer time.
+ */
+void cell_debug_stamp_grav_counts_recv(struct cell *c,
+                                       integertime_t ti_current) {
+  c->grav.counts_recv_at_tic = ti_current;
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_debug_stamp_grav_counts_recv(c->progeny[k], ti_current);
+}
+#endif
+
+/**
+ * @brief Pack the counts for sink formation of the given cell and all it's
+ * sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The multipole information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_sink_formation_counts(struct cell *c,
+                                    struct pcell_sink_formation_sinks *pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->sinks.parts. See cell_pack_grav_counts for why. */
+  pcells[0].delta_from_rebuild = c->sinks.parts - c->top->sinks.parts;
+  pcells[0].count = c->sinks.count;
+  pcells[0].dx_max_part = c->sinks.dx_max_part;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Stars */
+  if (c->sinks.parts_rebuild == NULL)
+    error("Sink particles array at rebuild is NULL! c->depth=%d", c->depth);
+
+  if (pcells[0].delta_from_rebuild < 0)
+    error("Sinks part pointer precedes its top-level ancestor's array!");
+
+  if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
+    error("Shifting the top-level pointer is not allowed!");
+#endif
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_sink_formation_counts(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the counts for sink formation of a given cell and its
+ * sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The multipole information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_sink_formation_counts(
+    struct cell *c, struct pcell_sink_formation_sinks *pcells) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sinks.parts_rebuild == NULL)
+    error("Sink particles array at rebuild is NULL!");
+#endif
+
+  /* Unpack this cell's data. Reconstructing against our own top->sinks.parts
+   * is only valid because cell_link_sinks() links the whole tree, so the two
+   * ranks share one layout. Compacting it here would need the gpart treatment
+   * (cell_relink_foreign_gparts) instead. */
+  c->sinks.count = pcells[0].count;
+  c->sinks.parts = c->top->sinks.parts + pcells[0].delta_from_rebuild;
+  c->sinks.dx_max_part = pcells[0].dx_max_part;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Only fires if cell_link_sinks() ever stops linking the whole tree,
+   * breaking the shared-layout assumption above. */
+  if (c->depth == 0 && c->sinks.count > c->sinks.count_total &&
+      atomic_inc(&cell_sink_formation_layout_divergence_reported) < 20)
+    message(
+        "SINK_FORMATION_COUNTS_LAYOUT_DIVERGENCE cellID=%lld sinks.count=%d "
+        "sinks.count_total=%d delta_from_rebuild=%td",
+        c->cellID, c->sinks.count, c->sinks.count_total,
+        (ptrdiff_t)pcells[0].delta_from_rebuild);
+#endif
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_sink_formation_counts(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */

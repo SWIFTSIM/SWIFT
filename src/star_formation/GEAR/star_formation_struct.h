@@ -38,6 +38,13 @@ enum star_formation_mode {
 struct star_formation_xpart_data {
   /*! Particle velocity divergence. */
   float div_v;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Number of times this gas particle has spawned a star (partial mass
+   * transfer, particle not removed), for the SF-only limiter out-of-frame
+   * crash investigation. */
+  int n_sf_spawn_events;
+#endif
 };
 
 /**

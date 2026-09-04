@@ -141,6 +141,60 @@
 #include "likwid_wrapper.h"
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+/**
+ * @brief Verify that one side of a stars feedback task had its stars ghost
+ * chain (`ghost_in`/`ghost_out`) actually run this step, if that side's own
+ * stars are active.
+ *
+ * `cell_unskip.c`'s pair-task activation for the stars density/feedback
+ * loops uses the "either side active" pattern (activates on
+ * `ci_active || cj_active`), but the `stars.ghost_in`/`stars.ghost_out`
+ * chain that sequences density before feedback is only *activated* via the
+ * catch-all gated on `cell_need_activating_stars(c, ...)` for the cell
+ * itself, never from a neighbour's activity. That is the same structural
+ * gap that caused the sink-sink swallow bug fixed by a722fbb14.
+ *
+ * `engine_maketasks.c` unconditionally wires `scheduler_addunlock(sched,
+ * side->hydro.super->stars.ghost_out, t_star_feedback)` for every feedback
+ * task, so if the edge is intact, `ghost_out` (and transitively `ghost_in`)
+ * must have already run by the time the feedback task using it starts.
+ * `task->skip` cannot detect a stale ghost here: it is reset to 1 both when
+ * a task is never activated and when it completes normally (see
+ * `scheduler_enqueue()`/`scheduler_done()`). `task->ti_run` is the reliable
+ * signal: implicit tasks such as the ghosts are stamped with `e->ti_current`
+ * in `scheduler_enqueue()` only when they actually run this step.
+ *
+ * @param e The #engine.
+ * @param t The running stars feedback #task.
+ * @param c The #cell to check (may be NULL for a self task's `cj`).
+ */
+static void runner_check_star_feedback_ghost_ran(const struct engine *e,
+                                                 const struct task *t,
+                                                 const struct cell *c) {
+
+  if (c == NULL || c->nodeID != e->nodeID || c->stars.count == 0) return;
+  if (!cell_is_active_stars(c, e)) return;
+
+  const struct cell *sup = c->hydro.super;
+  const struct task *gin = sup->stars.ghost_in;
+  const struct task *gout = sup->stars.ghost_out;
+
+  if (gin == NULL || gout == NULL) return;
+
+  if (gin->ti_run != e->ti_current || gout->ti_run != e->ti_current)
+    error(
+        "Stars feedback task is running for an active-stars cell whose "
+        "ghost chain did not run this step! sub=%s cellID=%lld depth=%d "
+        "supID=%lld supdepth=%d scount=%d ti_current=%lld "
+        "ghost_in: skip=%d ti_run=%lld ghost_out: skip=%d ti_run=%lld",
+        subtaskID_names[t->subtype], c->cellID, c->depth, sup->cellID,
+        sup->depth, c->stars.count, (long long)e->ti_current, gin->skip,
+        (long long)gin->ti_run, gout->skip, (long long)gout->ti_run);
+}
+#endif /* SWIFT_DEBUG_CHECKS */
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -207,6 +261,12 @@ void *runner_main(void *data) {
       t->ti_run = e->ti_current;
       /* Store the task that will be running (for debugging only) */
       r->t = t;
+
+      if (t->subtype == task_subtype_stars_feedback &&
+          (t->type == task_type_self || t->type == task_type_pair)) {
+        runner_check_star_feedback_ghost_ran(e, t, ci);
+        runner_check_star_feedback_ghost_ran(e, t, cj);
+      }
 #endif
 
       const ticks task_beg = getticks();
@@ -434,6 +494,9 @@ void *runner_main(void *data) {
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
+            /* TODO: sf_sinks and sf will use the same function and
+               structs. Hence, add  || (t->subtype ==
+               task_subtype_sf_sinks_counts) */
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
@@ -441,6 +504,12 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_formation_counts) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
@@ -454,12 +523,36 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
+            /* TODO: sf_sinks and sf will use the same function and
+               structs. Hence, add  || (t->subtype ==
+               task_subtype_sf_sinks_counts) */
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
+#ifdef SWIFT_DEBUG_CHECKS
+            cell_debug_stamp_sf_counts_recv(ci, r->e->ti_current);
+#endif
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
             cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
+
+            /* The counts just moved: re-derive the pointers the gpart recv
+             * will be posted into. */
+            const int count_relinked =
+                cell_relink_foreign_gparts(ci, ci->grav.parts_foreign_rebuild);
+            if (count_relinked > ci->grav.count_total)
+              error(
+                  "Foreign gparts no longer fit the slice reserved at the "
+                  "last rebuild! ci->cellID=%lld count_relinked=%d "
+                  "count_total=%d",
+                  ci->cellID, count_relinked, ci->grav.count_total);
+#ifdef SWIFT_DEBUG_CHECKS
+            cell_debug_stamp_grav_counts_recv(ci, r->e->ti_current);
+#endif
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_formation_counts) {
+            cell_unpack_sink_formation_counts(
+                ci, (struct pcell_sink_formation_sinks *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -479,6 +572,12 @@ void *runner_main(void *data) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
+          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            cell_unpack_sink_gas_swallow(ci, (struct sink_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            cell_unpack_sink_swallow(ci, (struct sink_sink_data *)t->buff);
+            free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
@@ -493,6 +592,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_sink_rho) {
+            runner_do_recv_sink(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
           } else {
