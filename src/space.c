@@ -3870,11 +3870,27 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
   if (s->e->neutrino_properties->use_delta_f_mesh_only)
     gather_neutrino_consts(s, &nu_model);
   data.nu_model = &nu_model;
+  ticks tic;
 
-  /* Initialise arrays for density and potential calculation. Except on the largest grid; there we already have them*/
+  /* Initialise arrays for potential calculation */
+  for (int i=0; i<N_levels-1; i++) {
+    u_levels[i] = swift_calloc("level_solution", grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
+  }
+
+  if (MG->guess_available) { //Only do convergence for the largest grid. Except if this fails, then do the full procedure
+    message("Going to the level with grid size %d \n", grid_sizes[N_levels-1]);
+    int N = grid_sizes[N_levels-1];
+    int cdim[3] = {N,N,N};
+    tic = getticks();
+    apply_multigrid_fR(tp, rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim, mean_density[N_levels-1], box_size, N_min, N, V_max);
+    if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
+    return;
+  }
+
+  /* Initialise arrays for density calculation. Except on the largest grid; there we already have them*/
   for (int i=0; i<N_levels-1; i++) {
     rho_levels[i] = swift_calloc("level_density", grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
-    u_levels[i] = swift_calloc("level_solution", grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     
     int N = grid_sizes[i];
     int cdim[3] = {N,N,N};
@@ -3953,7 +3969,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(u_levels[0], cdim, /*MG=*/1);
-  ticks tic = getticks();
+  tic = getticks();
   apply_NGS(tp, rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
   if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
             N_min, clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -3962,10 +3978,6 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
   /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
   for (int i = 1; i<N_levels; i++) {
     message("Going to the level with grid size %d \n", grid_sizes[i]);
-    double mean_density_copy[i+1]; //Copy of mean_density containing the densities of the grid at level i to level 0
-    for (int j=0; j<i+1; j++) {
-      mean_density_copy[j] = mean_density[i-j];
-    }
     prolongate_solution(u_levels[i-1], u_levels[i], grid_sizes[i-1], grid_sizes[i]); 
     
     int N = grid_sizes[i];
@@ -3973,7 +3985,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
     cdim[1] = N;
     cdim[2] = N;
     tic = getticks();
-    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], u_levels[i-1], MG, cdim, mean_density_copy, box_size, N_min, N, V_max);
+    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density[i], box_size, N_min, N, V_max);
     if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
             N, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
@@ -4213,7 +4225,6 @@ void residual_mapper(void* map_data, int num, void* extra) {
       for (int i=0; i<N; i++) {
         nbs[0] = (i+1) % N;
         nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
-
         /* Do we use the equation with density or with overdensity? */
         double density_term;
         if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
@@ -4320,7 +4331,7 @@ double get_Laplacian(struct MG_props *MG, const double *u, const int cdim[3], in
  * @param N_max 1D size of the finest grid.
  * @param V_max Maximum number of V-cycles that may be performed.
  */
-void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, const double *u_coarser, struct MG_props *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, struct MG_props *MG, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
   message("Applying the multigrid method for the grid with size %d...", N_max);
 
   /* Allocate the memory for the residual array on the finest level */
@@ -4332,7 +4343,9 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
   //memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
-  double residual_start = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+  int verbose = 0;
+  if (MG->guess_available) verbose = 1;
+  double residual_start = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, verbose);
   double residual = residual_start;
   message("The first residual is %E", residual_start);
   const double tolerance = 10e-9; //Choose reasonable value here
@@ -4342,18 +4355,22 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
   int V_cycles=0;
   int depth = 0;
 
+  /* Make a copy of the initial guess in case we diverge and need to restart */
+  double *u_copy = swift_malloc("fR_copy", N_max*N_max*N_max *sizeof(double));
+  memcpy(u_copy, u, N_max*N_max*N_max*sizeof(double));
+
   while (residual > tolerance && V_cycles < V_max) { 
     ticks tic = getticks();
     message("Performing V-cycle %d", V_cycles);
     /* Pre-smoothing */
     for (int i=0; i<fine_steps; i++) {
-      perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
-      residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+      perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
+      residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
       
       if (residual<tolerance) break;
     }
-    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
-    get_residual_array_fR(u, rho, MG, cdim, mean_density[0], residual_array, delta);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
+    get_residual_array_fR(u, rho, MG, cdim, mean_density, residual_array, delta);
     if (residual<tolerance) break;
     
     /* Transfer residual array to get coarse-grid correction */
@@ -4364,14 +4381,14 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
             clocks_from_ticks(getticks() - toc), clocks_getunit());
 
     /* Post-smoothing if needed */
-    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     message("Back on the finest grid the residual is %E", residual);
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
-        perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
+        perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
       }
     }
-    double residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+    double residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     residual = residual_end;
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
@@ -4379,10 +4396,9 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
       message("Restarting V-cycles!");
       fine_steps += 10;
       /* Reset the guess */
-      prolongate_solution(u_coarser, u, cdim[0]/2, cdim[0]);
-      V_cycles -= 1; //Pretend the previous V-cycle never happened...
-      residual_start = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
-      residual = residual_start;
+      for (int i=0; i<N_max*N_max*N_max; i++) {
+        u[i] = u_copy[i];
+      }
     }
     if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
             V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -4392,14 +4408,15 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, con
   
   /* Post-smoothing until convergence. Should not be necessary! */
   while (residual > tolerance) {
-    perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
-    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+    perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     counter +=1;
     message("The counter is %d and the residual %E", counter, residual);
   }
-  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
   message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
   swift_free("residual_array", residual_array);
+  swift_free("fR_copy", u_copy);
 }
 
 /**
