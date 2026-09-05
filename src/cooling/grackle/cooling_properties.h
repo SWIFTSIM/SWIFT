@@ -116,8 +116,9 @@ struct cooling_function_data {
       photodissociation) fields, instead of Grackle's spatially-uniform
       scalars. Forces use_isrf_field/dust_chemistry/photoelectric_heating
       on internally (cooling_init_grackle) and, at COOLING_GRACKLE_MODE >
-      1, use_radiative_transfer (cooling_io.h). See
-      cooling_gear_subgrid.h's cooling_get_LW_FUV_fields_subgrid. */
+      1, use_radiative_transfer (cooling_io.h). See cooling_gear_subgrid.h's
+      cooling_get_isrf_habing_subgrid/cooling_get_LW_dissociation_rate_
+      subgrid. */
   int with_LW_FUV;
 
   /*! Volumetric heating rates */

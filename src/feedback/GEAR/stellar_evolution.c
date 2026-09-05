@@ -1394,13 +1394,11 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
         radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
     /* Split off the non-ionizing FUV/Lyman-Werner bands via this star's own
-       Teff (theory/GEAR/Radiation/02_fuv_isrf.tex, "Decided (2026-07-20):
-       two explicit sub-bands" section): two more threshold-integrals of
-       the same blackbody curve already producing L_bol/Q_H above. Uses
-       the just-computed L_bol above, before feedback_common.c's later
-       radiation_pressure_efficiency scaling of that same field -- L_FUV/
-       L_LW are deliberately independent of that separate efficiency
-       knob. */
+       Teff: two more threshold-integrals of the same blackbody curve
+       already producing L_bol/Q_H above. Uses the just-computed L_bol
+       above, before feedback_common.c's later radiation_pressure_
+       efficiency scaling of that same field: L_FUV/L_LW are deliberately
+       independent of that separate efficiency knob. */
     if (sm->rad.with_LW_FUV) {
       const float Teff_K =
           radiation_get_star_teff(&sm->rad, log_m, log_z) *
@@ -1644,10 +1642,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
        no IMF-integrated table concept (#radiation.raw's own doxygen on
        the teff/teff_2d union), so a single representative Teff at m_sup
        (this step's upper mass bound, i.e. the hottest star still
-       contributing) stands in for a true IMF-integrated band fraction;
-       an accepted phase-1 approximation, not yet re-derived against a
-       proper pychem-tabulated integral (see the design doc's own "L_FUV/
-       L_LW source" section). */
+       contributing) stands in for a true IMF-integrated band fraction: an
+       approximation, not yet re-derived against a proper IMF-integrated
+       band fraction. */
     if (sm->rad.with_LW_FUV) {
       const float log_m_sup = log10f(m_sup);
       const float Teff_K =

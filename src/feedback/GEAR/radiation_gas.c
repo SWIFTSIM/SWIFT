@@ -526,15 +526,13 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
 }
 
 /**
- * Local ISRF strength in Habing units, from this #part's own propagated
- * FUV+LW specific-energy fields (Eq. fuv-g0-conversion,
- * theory/GEAR/Radiation/02_fuv_isrf.tex): G0 = c*rho*u / 1.6e-3 erg/s/cm^2,
- * with u = u_FUV + u_LW ("sum the two bands", Section fuv-two-bands,
- * applied post-injection/extinction here). Feeds Grackle's per-particle
- * isrf_habing array (GrackleCooling chemistry_data.use_isrf_field, forced
- * on by GEARFeedback:with_photoelectric_heating). Zero for a particle no
- * star has ever illuminated (u_FUV=u_LW=0, #cooling_expire_LW_FUV_dose_
- * subgrid's post-consumption value).
+ * Local ISRF strength in Habing units, from this #part's own FUV+LW
+ * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
+ * with u = u_FUV + u_LW (post-injection/extinction). Feeds Grackle's
+ * per-particle isrf_habing array (GrackleCooling chemistry_data.
+ * use_isrf_field, forced on by GEARFeedback:with_photoelectric_heating).
+ * Zero for a particle no star has ever illuminated (u_FUV=u_LW=0,
+ * #cooling_expire_LW_FUV_dose_subgrid's post-consumption value).
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -563,14 +561,11 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 }
 
 /**
- * H2 Lyman-Werner photodissociation rate from this #part's own propagated
- * LW-band specific-energy field: k_diss = sigma_H2 * F_LW (direct
- * cross-section conversion, decided over Draine & Bertoldi (1996)'s
- * shape-calibrated k_LW(chi) fit once L_LW is tracked explicitly --
- * .claude/dev/design-lw-fuv-injection.md's "Extinction" section,
- * cross-checked against Emerick, Bryan & Mac Low 2019 Section 2.5.7).
- * F_LW is a PHOTON flux (not the energy flux #radiation_get_part_isrf_
- * habing uses): dividing the LW-band energy flux by a representative
+ * H2 Lyman-Werner photodissociation rate from this #part's own LW-band
+ * specific-energy field: k_diss = sigma_H2 * F_LW, a direct
+ * cross-section-times-flux conversion. F_LW is a PHOTON flux (not the
+ * energy flux #radiation_get_part_isrf_habing uses): dividing the
+ * LW-band energy flux by a representative
  * photon energy (#RADIATION_LW_PHOTON_ENERGY_EV) converts it, mirroring
  * this codebase's own existing energy-vs-photon-count distinction for the
  * ionizing channel (Q_H tracked separately from L_bol/DotEExcess).

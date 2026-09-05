@@ -70,8 +70,7 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
-/*! Non-ionizing FUV band, eV (Habing band, 912-2000 Angstrom): see
-    theory/GEAR/Radiation/02_fuv_isrf.tex, "Same photon band for both?". */
+/*! Non-ionizing FUV band, eV (Habing band, 912-2000 Angstrom). */
 #define RADIATION_FUV_BAND_LOW_EV 6.0
 #define RADIATION_FUV_BAND_HIGH_EV 11.2
 
@@ -98,34 +97,25 @@
 #define RADIATION_HYDROGEN_MASS_CGS 1.6726219e-24
 
 /*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
-    al. 2023, Weingartner & Draine 2001 grain population, via Smith 2026
-    "Imladris" arXiv 2604.00100 Eq. 39): 6-11.2 eV (FUV) and
-    11.2-13.6 eV (Lyman-Werner) bands respectively. */
+    al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV
+    (FUV) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
 #define RADIATION_SIGMA_D_FUV_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
 /*! Grackle's own solar metal mass fraction, SolarMetalFractionByMass
-    (grackle_chemistry_data_fields.def, default 0.01295, Cloudy v13
-    abundances), NOT radiation_pressure.c's Z_sun=0.02 (Hopkins et al.
-    2020's own convention for the unrelated kappa_IR/kappa_NUV fit).
-    Used, not Remy-Ruyer et al. (2014)'s own broken power-law fit, so our
-    extinction's assumed dust abundance stays exactly consistent with what
-    Grackle's own dust_chemistry=1-coupled channels (PE heating, H2-
-    formation-on-dust, dust recombination cooling) assume for the SAME
-    gas: Grackle computes its internal dust-to-gas ratio as
-    local_dust_to_gas_ratio * (Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION)
-    when chemistry_data.use_dust_density_field=0 (the default, not
-    touched by this feature; cool1d_multi_g.F, dust2gas(i) = fgr *
-    metallicity(i), metallicity(i) = metal(i,j,k)/d(i,j,k)/z_solar) -- a
-    pure linear scaling with metallicity, not a broken power law.
-    local_dust_to_gas_ratio itself cancels out of our own relative
-    D(Z)/D(Zsun) = Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION scaling
-    regardless of its value, so it does not need reading here. */
+    (grackle_chemistry_data_fields.def, default 0.01295), not
+    radiation_pressure.c's unrelated Z_sun=0.02 (used only for the
+    kappa_IR/kappa_NUV fit). By default (chemistry_data.use_dust_density_
+    field=0), Grackle computes its own dust-to-gas ratio as
+    local_dust_to_gas_ratio * (Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION);
+    matching that convention keeps our own assumed dust abundance
+    consistent with Grackle's dust_chemistry=1-coupled channels for the
+    same gas. local_dust_to_gas_ratio itself cancels out of our relative
+    D(Z)/D(Zsun) scaling, so it is not read here. */
 #define RADIATION_GRACKLE_SOLAR_METAL_FRACTION 0.01295
 
-/*! Standard Habing-unit flux normalization, erg/s/cm^2 (Eq.
-    fuv-g0-conversion, theory/GEAR/Radiation/02_fuv_isrf.tex, cross-checked
-    against Hu et al. 2017 Eq. 6). */
+/*! Standard Habing-unit flux normalization, erg/s/cm^2: G0=1 corresponds
+    to this flux integrated over the FUV+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
 /*! Representative Lyman-Werner photon energy, eV (~12 eV, the band's own
@@ -135,14 +125,11 @@
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.0
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2:
-    a modeling approximation with an implicit assumed spectral shape (the
+    an approximation with an implicit assumed spectral shape (the
     band-integrated H2 cross section depends on the spectrum within
-    11.2-13.6 eV, not a single atomic-physics constant; see
-    .claude/dev/design-lw-fuv-injection.md's own correction on this
-    point), not independently re-derived from a primary source this pass
-    -- flag for verification before physics validation, the same
-    not-yet-reverified caveat already carried by this document's Cleary &
-    Monaghan (1999)/Rusanov (1961) citations. */
+    11.2-13.6 eV, not a single atomic-physics constant). Not independently
+    re-derived from a primary source; flag for verification before
+    physics validation. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below

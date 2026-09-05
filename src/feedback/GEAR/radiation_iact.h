@@ -197,11 +197,8 @@ radiation_iact_nonsym_feedback_apply(
 
   /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
    * cosmological runs -- mirror compute_time()'s branch (feedback_common.c)
-   * rather than use it directly. Needed by both radiation pressure and
-   * LW/FUV injection below: this is the star's own (possibly coarser SN/
-   * wind feedback) timestep, the injection cadence the design doc
-   * distinguishes from propagation's every-hydro-step cadence (not yet
-   * implemented; see GEARFeedback:LW_FUV_propagation). */
+   * rather than use it directly. Shared by radiation pressure and LW/FUV
+   * injection below: both use the star's own feedback timestep. */
   float Delta_t;
   if (with_cosmology) {
     const integertime_t ti_step = get_integer_timestep(si->time_bin);
@@ -241,19 +238,15 @@ radiation_iact_nonsym_feedback_apply(
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /* Local Lyman-Werner/FUV injection (Eq. fuv-inject,
-     .claude/dev/design-lw-fuv-injection.md): sum, don't overwrite
-     ("Sources must sum linearly, not overwrite" -- multiple
-     simultaneously-illuminating stars must superpose), and divide by
-     m_i=mj before adding ("u_inject,i as written is an energy... must be
-     divided by m_i"). Zero unless GEARFeedback:with_photoelectric_heating
-     is on (L_FUV/L_LW are then computed by stellar_evolution.c; 0
-     otherwise). Receiver-side dust extinction (Imladris Eq. 39, band-
-     specific) is applied here, at injection time, using the receiving
-     particle pj's own local column density -- there is no separate
-     source-side pre-extinction term (dropped in favour of Imladris's
-     newer, receiver-only treatment; see the design doc's own
-     "Extinction" section). */
+  /* Local Lyman-Werner/FUV injection: `+=`, not `=`, since multiple
+     simultaneously-illuminating stars must superpose on the same particle.
+     u_inject_FUV/LW is an energy, so dividing by mj converts it to the
+     specific energy u_FUV/u_LW actually stores. Zero unless
+     GEARFeedback:with_photoelectric_heating is on (L_FUV/L_LW are then
+     computed by stellar_evolution.c; 0 otherwise). Dust extinction is
+     applied receiver-side, using pj's own local column density, rather
+     than at the source (see radiation_get_part_LW_FUV_extinction_factors
+     for the extinction formula itself). */
   if (si->feedback_data.radiation.L_FUV != 0.0 ||
       si->feedback_data.radiation.L_LW != 0.0) {
 
@@ -281,8 +274,7 @@ radiation_iact_nonsym_feedback_apply(
     pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
     pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
 
-    /* First-touch-only sync (design doc "Timestep synchronization: no
-       lifetime window"), mirroring feedback_hii_claim_part vs.
+    /* First-touch-only sync, mirroring feedback_hii_claim_part vs.
        feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split
        (feedback_common.c): do not re-sync an already-illuminated particle
        every pass, or every held particle drags the whole region down to

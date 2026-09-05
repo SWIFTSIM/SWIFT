@@ -228,13 +228,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
 
   /* Lives under GEARFeedback, alongside its sibling with_photoionization/
-     HII_couple_ionization_rate parameters, rather than GrackleCooling --
+     HII_couple_ionization_rate parameters, rather than GrackleCooling:
      forces the Grackle flags this needs (use_isrf_field, dust_chemistry,
      photoelectric_heating=2 in cooling_init_grackle, and, at
      COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
      RT_H2_dissociation_rate channel) on internally so the user only sets
-     this one flag. See .claude/dev/design-lw-fuv-injection.md's "Grackle
-     auto-configuration on enable". */
+     this one flag. */
   cooling->with_LW_FUV = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
 
@@ -245,7 +244,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   /* Same double-counting concern as HII_couple_ionization_rate's own
      RT_*_cgs check above, for the one field with_LW_FUV also injects
-     per-particle every step (cooling_get_LW_FUV_fields_subgrid). */
+     per-particle every step (cooling_get_LW_dissociation_rate_subgrid). */
   if (cooling->with_LW_FUV && cooling->RT_H2_dissociation_rate != 0) {
     warning(
         "GEARFeedback:with_photoelectric_heating is on and "

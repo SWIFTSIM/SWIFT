@@ -42,9 +42,9 @@ enum radiation_policy {
   /*! Radiation pressure from the stars' bolometric luminosity */
   radiation_policy_radiation_pressure = (1 << 1),
   /* Local Lyman-Werner/FUV feedback: photoelectric (PE) heating by FUV
-     radiation on dust, and H2 photodissociation by the Lyman-Werner band
-     (see .claude/dev/design-lw-fuv-injection.md); one switch for both,
-     since they share the same two band luminosities and injected fields. */
+     radiation on dust, and H2 photodissociation by the Lyman-Werner band.
+     One switch for both, since they share the same two band luminosities
+     and injected fields. */
   radiation_policy_photoelectric_heating = (1 << 2),
 };
 
@@ -407,20 +407,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
 
-    /* Design A's Yukawa screened-diffusion propagation (phase 2 of
-     * .claude/dev/design-lw-fuv-injection.md) is not implemented yet:
-     * injection + receiver-side extinction only. Parsed now (rather than
-     * introduced only once phase 2 lands) so a params.yml already
-     * anticipating it fails loudly instead of silently running
+    /* Screened-diffusion propagation between gas particles is not
+     * implemented yet: injection + receiver-side extinction only. Parsed
+     * now (rather than added only once propagation lands) so a params.yml
+     * already anticipating it fails loudly instead of silently running
      * propagation-off when the user asked for propagation-on. */
     fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:LW_FUV_propagation", 0);
     if (fp->LW_FUV_propagation)
       error(
-          "GEARFeedback:LW_FUV_propagation=1 requested, but the Yukawa "
-          "screened-diffusion propagation update is not implemented yet "
-          "(phase 2 of .claude/dev/design-lw-fuv-injection.md). Set it to "
-          "0 (or omit it) to run injection + receiver-side extinction only.");
+          "GEARFeedback:LW_FUV_propagation=1 requested, but LW/FUV "
+          "propagation between gas particles is not implemented yet. Set "
+          "it to 0 (or omit it) to run injection + receiver-side "
+          "extinction only.");
   }
 
   if (with_photoionization) {

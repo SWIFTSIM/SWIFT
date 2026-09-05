@@ -160,23 +160,17 @@ radiation_get_star_physical_radiation_pressure(
 
 /**
  * Comoving gas column density AT a receiving gas particle's own location:
- * the RECEIVER-side generalization of
- * #radiation_get_comoving_gas_column_density_at_star, for Imladris (Smith
- * 2026, arXiv 2604.00100) Eq. 39's dust extinction of the LW/FUV bands.
+ * the receiver-side generalization of
+ * #radiation_get_comoving_gas_column_density_at_star, used for dust
+ * extinction of the LW/FUV bands.
  *
- * Phase-1 simplification, not yet the full generalization: uses the
- * kernel-radius cap unconditionally instead of a resolved density
- * gradient (`p->rho / |grad_rho|`, capped at `h_gas`, as the star-side
- * function does). #radiation_get_comoving_gas_column_density_at_star's
- * own norm_grad_rho == 0 branch already falls back to exactly this
- * (`length_gas = 2*h_gas`) when no gradient is resolved; this function
- * takes that fallback unconditionally rather than adding a new gas-gas
- * density-loop pass (a real, ~30-call-site touch of
- * src/runner_doiact_functions_hydro.h, per src/chemistry/GEAR/chemistry_
- * iact.h's own runner_iact_chemistry precedent) just to compute a
- * gradient that phase 2's Yukawa propagation will need to add anyway
- * (for its own harmonic-mean kappa_ij, .claude/dev/design-lw-fuv-
- * injection.md). Deferred there rather than duplicated here.
+ * Simplification: always uses the kernel-radius cap, rather than a
+ * resolved density gradient (`p->rho / |grad_rho|`, capped at `h_gas`, as
+ * the star-side function does). That gradient is not otherwise computed
+ * on the gas side, and #radiation_get_comoving_gas_column_density_at_star
+ * already falls back to exactly this (`length_gas = 2*h_gas`) when no
+ * gradient is resolved, so this takes that fallback unconditionally
+ * rather than adding a new gas-gas density-loop pass just to compute one.
  *
  * @param p The #part.
  * @return Comoving gas column density at the particle's own location.
@@ -188,20 +182,16 @@ radiation_get_comoving_gas_column_density_at_part(const struct part *p) {
 }
 
 /**
- * Dust-to-gas ratio relative to the Milky Way, exactly matching Grackle's
- * own internal convention (cool1d_multi_g.F: dust2gas(i) = fgr *
- * metallicity(i), metallicity(i) = metal(i,j,k)/d(i,j,k)/z_solar, when
- * chemistry_data.use_dust_density_field=0, the default) rather than an
- * independently-computed fit (e.g. Remy-Ruyer et al. 2014): our own
- * extinction's assumed dust abundance must track whatever Grackle's own
- * dust_chemistry=1-coupled channels (PE heating, H2-formation-on-dust,
- * dust recombination cooling) assume for the SAME gas, or the two would
- * disagree about how much dust is actually present. D(Z)/D(Z_sun) =
- * (fgr*Z/z_solar)/(fgr*1) = Z/z_solar: fgr (local_dust_to_gas_ratio)
- * cancels out of this ratio regardless of its configured value, so it is
- * not read here; only Grackle's own z_solar
- * (#RADIATION_GRACKLE_SOLAR_METAL_FRACTION) matters. Pure linear scaling
- * (Grackle applies no broken power law).
+ * Dust-to-gas ratio relative to the Milky Way, matching Grackle's own
+ * internal convention (dust2gas = fgr * metallicity, metallicity =
+ * metal_density/density/z_solar, when chemistry_data.use_dust_density_
+ * field=0, the default): our own extinction's assumed dust abundance
+ * must track whatever Grackle's dust_chemistry=1-coupled channels assume
+ * for the same gas, or the two would disagree about how much dust is
+ * present. D(Z)/D(Z_sun) = (fgr*Z/z_solar)/(fgr*1) = Z/z_solar: fgr
+ * (local_dust_to_gas_ratio) cancels out of this ratio regardless of its
+ * configured value, so only Grackle's own z_solar
+ * (#RADIATION_GRACKLE_SOLAR_METAL_FRACTION) is used here.
  *
  * @param Z Gas metal mass fraction.
  * @return Dust-to-gas ratio relative to the Milky Way.
@@ -213,16 +203,11 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z) {
 
 /**
  * Band-specific dust extinction factor for the receiver-side LW/FUV
- * attenuation (Imladris Eq. 39): exp(-kappa_eff * Sigma_gas_p), with
- * kappa_eff = sigma_d_band * D(Z) / (mu_H * m_H) (see
- * .claude/dev/design-lw-fuv-injection.md's "Reconciling Imladris's
- * extinction with our own Yukawa propagation" for the unit-fix
- * derivation: sigma_d_band is a per-hydrogen-nucleon cross-section,
- * cm^2, not a mass opacity, so dividing by mu_H*m_H is required, not
- * optional). mu_H = 1.4 (mean mass per H nucleon, He folded in): the
- * design doc's own sanity check (sigma_d/2.3e-24 ~ 390-650 cm^2/g)
- * implicitly commits to this value, since 1.4*RADIATION_HYDROGEN_MASS_CGS
- * = 2.34e-24 g.
+ * attenuation, following Smith (2026)'s Eq. 39: exp(-kappa_eff *
+ * Sigma_gas_p), with kappa_eff = sigma_d_band * D(Z) / (mu_H * m_H).
+ * sigma_d_band is a per-hydrogen-nucleon cross-section (cm^2), not a mass
+ * opacity, so dividing by mu_H*m_H (mean mass per H nucleon, He folded
+ * in) is required to get an opacity. mu_H = 1.4.
  *
  * @param us Unit system.
  * @param Z Gas metal mass fraction.
@@ -247,8 +232,8 @@ radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
 }
 
 /**
- * @brief Receiver-side LW/FUV dust extinction factors for a gas particle
- * (Imladris Eq. 39), one per band.
+ * @brief Receiver-side LW/FUV dust extinction factors for a gas particle,
+ * one per band (see #radiation_get_dust_extinction_factor).
  *
  * @param us Unit system.
  * @param cosmo The current cosmological model.

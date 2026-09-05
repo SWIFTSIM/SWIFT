@@ -766,10 +766,9 @@ static double radiation_planck_integrand(double x) {
  * (k_B*T)) between the two band edges with a fixed-order Simpson's rule,
  * and normalizes by the full closed-form integral over all x,
  * int_0^infty x^3/(e^x-1) dx = pi^4/15 (the same identity behind the
- * Stefan-Boltzmann law). See theory/GEAR/Radiation/02_fuv_isrf.tex,
- * "Decided (2026-07-20): two explicit sub-bands, read from feedback
- * tables" for why this Teff-based band split, rather than a fixed
- * ISM-averaged spectral shape, is used to derive L_FUV/L_LW from L_bol.
+ * Stefan-Boltzmann law). Used to split a star's L_bol into L_FUV/L_LW by
+ * its own Teff, rather than assuming a fixed spectral shape for every
+ * star.
  *
  * @param T_kelvin Effective temperature, Kelvin. Returns exactly 0 for a
  * non-positive value (a star with no valid Teff, e.g. #radiation.is_active

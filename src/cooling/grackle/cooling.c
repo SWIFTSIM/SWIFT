@@ -855,9 +855,8 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
   /* Local Lyman-Werner/FUV feedback's per-particle ISRF strength
      (GrackleCooling chemistry_data.use_isrf_field, forced on by
      GEARFeedback:with_photoelectric_heating): independent of
-     use_radiative_transfer above (isrf_habing is a separate,
-     older, non-RT dust-physics mechanism; see
-     theory/GEAR/Radiation/02_fuv_isrf.tex's fuv-pe-grackle section). */
+     use_radiative_transfer above, since isrf_habing is Grackle's own
+     separate, non-RT dust-physics field. */
   if (cooling->chemistry_data.use_isrf_field) {
     gr_float *isrf_habing = (gr_float *)malloc(sizeof(gr_float));
     *isrf_habing =
@@ -1412,18 +1411,14 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
     chemistry->radiative_transfer_hydrogen_only = 1;
 
   /* Local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
-     heating): dust_chemistry=1 is Grackle's single intended entry point
-     for "turn on dust physics with a given ISRF" (bundles photoelectric
-     heating, dust recombination cooling, and H2-formation-on-dust; see
-     .claude/dev/design-lw-fuv-injection.md's "Concrete Grackle
-     configuration" section). photoelectric_heating=2 (constant
-     epsilon=0.05) chosen over =3 (electron-density-dependent): Grackle's
-     own docs flag that electron density as unreliable in the dense, cold
-     gas this feature targets (same reasoning Imladris's own Appendix A
-     gives for rejecting Grackle's built-in electron-density option
-     outright). use_isrf_field=1 switches Grackle from the scalar
+     heating): dust_chemistry=1 bundles photoelectric heating, dust
+     recombination cooling, and H2 formation on dust under one Grackle
+     switch. photoelectric_heating=2 uses a constant efficiency
+     (epsilon=0.05) rather than =3's electron-density-dependent one, since
+     Grackle's own docs flag that electron density as unreliable in dense,
+     cold gas. use_isrf_field=1 switches Grackle from the scalar
      interstellar_radiation_field to the per-particle isrf_habing array
-     this module fills (cooling_get_LW_FUV_fields_subgrid). */
+     this module fills (cooling_get_isrf_habing_subgrid). */
   if (cooling->with_LW_FUV) {
     chemistry->dust_chemistry = 1;
     chemistry->photoelectric_heating = 2;
