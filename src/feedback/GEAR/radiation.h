@@ -31,6 +31,7 @@
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "radiation_isrf.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"
 
@@ -264,12 +265,6 @@ void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
-float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
-void radiation_get_part_LW_FUV_extinction_factors(const struct unit_system *us,
-                                                  const struct cosmology *cosmo,
-                                                  const struct part *p, float Z,
-                                                  float *extinction_FUV,
-                                                  float *extinction_LW);
 
 float radiation_get_star_physical_radiation_pressure(
     const struct spart *sp, const float Delta_t,

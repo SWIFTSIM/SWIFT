@@ -117,6 +117,20 @@ struct feedback_part_data {
       the "already illuminated" branch (no repeated sync calls), which is
       intentional and conservative, not a bug. */
   char is_illuminated_LW_FUV;
+
+  /*! Yukawa propagation's per-step mixing accumulators, one
+      denominator/numerator pair per band: sum_w_FUV = sum_j
+      W(r_ij,h_i)*exp(-tau_ij), sum_wu_FUV = sum_j
+      W(r_ij,h_i)*exp(-tau_ij)*u_j_FUV, accumulated pairwise over gas
+      neighbours in the density loop (radiation_propagation_iact.h) and
+      consumed once per particle by feedback_end_density(), which divides
+      them down to the normalized mixing weight sum and resets them for
+      the next step. No restart I/O: recomputed fresh every step, like
+      density itself. */
+  float isrf_prop_sum_w_FUV;
+  float isrf_prop_sum_wu_FUV;
+  float isrf_prop_sum_w_LW;
+  float isrf_prop_sum_wu_LW;
 };
 
 /**

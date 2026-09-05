@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
+#include "../GEAR/radiation_isrf.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
@@ -104,11 +105,13 @@ struct feedback_props {
 
   /*! Run the Yukawa screened-diffusion propagation update on top of
    * injection + receiver-side extinction? Only meaningful when
-   * radiation_policy_photoelectric_heating is set. Not implemented yet
-   * (feedback_props_init() errors if this is set to 1); parsed now so a
-   * params.yml already anticipating it fails loudly rather than silently
-   * running propagation-off. */
+   * radiation_policy_photoelectric_heating is set. */
   char LW_FUV_propagation;
+
+  /*! Stability bound for the propagation mixing fraction, measured once
+   * at start-up for this build's kernel and eta_neighbours; see
+   * #radiation_compute_yukawa_w_min. */
+  float LW_FUV_yukawa_w_min;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -407,19 +410,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
 
-    /* Screened-diffusion propagation between gas particles is not
-     * implemented yet: injection + receiver-side extinction only. Parsed
-     * now (rather than added only once propagation lands) so a params.yml
-     * already anticipating it fails loudly instead of silently running
-     * propagation-off when the user asked for propagation-on. */
     fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:LW_FUV_propagation", 0);
+
     if (fp->LW_FUV_propagation)
-      error(
-          "GEARFeedback:LW_FUV_propagation=1 requested, but LW/FUV "
-          "propagation between gas particles is not implemented yet. Set "
-          "it to 0 (or omit it) to run injection + receiver-side "
-          "extinction only.");
+      fp->LW_FUV_yukawa_w_min = radiation_compute_yukawa_w_min(hydro_props);
   }
 
   if (with_photoionization) {

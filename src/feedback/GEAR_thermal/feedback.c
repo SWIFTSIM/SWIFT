@@ -24,6 +24,7 @@
 #include "../GEAR/radiation.h"
 #include "../GEAR/radiation_iact.h"
 #include "../GEAR/stellar_evolution.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -31,10 +32,13 @@
 #include "feedback_properties.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
 
+#include <float.h>
+#include <math.h>
 #include <strings.h>
 
 /**
@@ -107,50 +111,39 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation.
- *
- * Nothing to do here.
+ * @brief Finishes the #part density calculation: LW/FUV propagation is
+ * shared GEAR physics, see #radiation_end_density_propagation.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
+ * @param e The #engine.
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part *p, struct xpart *xp) {}
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e) {
+  radiation_end_density_propagation(p, e);
+}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
- * start of a step.
- *
- * Nothing to do here: u_FUV/u_LW/LW_FUV_last_touch_ti are only ever
- * written by an illuminating star's own injection pass
- * (radiation_iact_nonsym_feedback_apply), which resets them itself the
- * first time any star touches a particle in a given step (matched against
- * LW_FUV_last_touch_ti) rather than on a drift/cooling schedule. Nothing
- * here needs to run before or after that. is_illuminated_LW_FUV is
- * likewise never cleared here: Phase 1 has no decay model to end an
- * illumination episode, so the first-touch flag is set once
- * (radiation_iact_nonsym_feedback_apply) and never reset.
+ * start of a step. u_FUV/u_LW/LW_FUV_last_touch_ti are written by
+ * injection or feedback_end_density instead; only the propagation
+ * accumulators (shared GEAR physics) are reset here.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp) {
+  radiation_reset_part_propagation(p);
+}
 
 /**
- * @brief First-init of a #part's feedback-model state.
- *
- * u_FUV/u_LW start at the legitimate "unilluminated" value, 0.0f.
- * LW_FUV_last_touch_ti starts at -1, never a valid #engine.ti_current, so
- * this particle's very first touch by any star resets rather than summing
- * onto uninitialized memory (see #feedback_part_data.LW_FUV_last_touch_ti
- * for the reset/sum logic this stamp drives).
+ * @brief First-init of a #part's feedback-model state: LW/FUV init is
+ * shared GEAR physics, see #radiation_first_init_part.
  *
  * @param p The #part to initialise.
  */
 void feedback_first_init_part(struct part *restrict p) {
-  p->feedback_data.u_FUV = 0.f;
-  p->feedback_data.u_LW = 0.f;
-  p->feedback_data.LW_FUV_last_touch_ti = -1;
+  radiation_first_init_part(p);
 }
 
 /**

@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
 #include "feedback.h"
 #include "hydro.h"
 #include "random.h"

@@ -27,6 +27,7 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "engine.h"
+#include "feedback_iact.h"
 #include "mhd.h"
 #include "pressure_floor_iact.h"
 #include "rt.h"

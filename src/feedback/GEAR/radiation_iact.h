@@ -266,7 +266,10 @@ radiation_iact_nonsym_feedback_apply(
        0 on the first touch this step (by any star), so a later read sees
        this step's illumination rather than a total across every step
        since the last cooling call. A later touch this same step (a
-       second illuminating star) sums into what the first just wrote. */
+       second illuminating star) sums into what the first just wrote. With
+       propagation on, feedback_end_density already stamped ti_current
+       this step, so this branch is skipped and injection adds on top of
+       the freshly-propagated background field instead of resetting it. */
     if (pj->feedback_data.LW_FUV_last_touch_ti != ti_current) {
       pj->feedback_data.u_FUV = 0.f;
       pj->feedback_data.u_LW = 0.f;
