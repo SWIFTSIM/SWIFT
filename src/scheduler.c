@@ -1187,14 +1187,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_tag) {
 
-          /* MPI plan S3.1 skeleton: never activated (t->skip stays 1), so
-           * this branch is compiled but not yet exercised. */
+          /* S3.2: activated by cell_unskip.c's boundary radiation-pair
+           * handling (scheduler_activate_recv_by_node on the foreign gas
+           * side's owner, gated on that side's own local pass being
+           * active this step); no longer a skeleton. */
           count = size = t->ci->hydro.count * sizeof(struct hii_tag_report);
           buff = t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_part_hii_state) {
 
-          /* MPI plan S3.1b skeleton, same status as part_hii_tag above. */
+          /* S3.2: activated unconditionally for any active boundary
+           * radiation pair (cell_unskip.c), same mechanism as
+           * part_hii_tag above; no longer a skeleton. */
           count = size = t->ci->hydro.count * sizeof(struct hii_state_update);
           buff = t->buff = malloc(size);
 
@@ -1322,8 +1326,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_tag) {
 
-          /* MPI plan S3.1 skeleton: never activated (t->skip stays 1), so
-           * this branch is compiled but not yet exercised. Inverted
+          /* S3.2: activated by cell_unskip.c's boundary radiation-pair
+           * handling, gated on the local (reporting) side's own pass
+           * being active this step; no longer a skeleton. Inverted
            * direction: t->ci is the (possibly foreign) cell being reported
            * on, per engine_addtasks_recv_hydro. */
           size = count = t->ci->hydro.count * sizeof(struct hii_tag_report);
@@ -1332,7 +1337,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_state) {
 
-          /* MPI plan S3.1b skeleton, same status as part_hii_tag above. */
+          /* S3.2: activated unconditionally for any active boundary
+           * radiation pair, same mechanism as part_hii_tag above; no
+           * longer a skeleton. */
           size = count = t->ci->hydro.count * sizeof(struct hii_state_update);
           buff = t->buff = malloc(size);
           cell_pack_part_hii_state(t->ci, (struct hii_state_update *)t->buff);
