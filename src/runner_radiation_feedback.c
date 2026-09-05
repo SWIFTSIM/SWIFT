@@ -556,8 +556,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     double star_age_beg_step = 0;
     double dt_enrichment = 0;
     integertime_t ti_begin_star = 0;
+    /* si->time_bin here, live: this task's ordering relative to the
+       timestep task's overwrite (runner_do_timestep()) is not established
+       by any dependency edge, so whether it is pre- or post-overwrite for
+       a given star is untraced; passing it through unchanged keeps this
+       call's behavior identical to before old_time_bin existed. */
     compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-                 &ti_begin_star, ti_current, time_base, time);
+                 &ti_begin_star, ti_current, time_base, time, si->time_bin);
     const double star_age_safe = max(star_age_beg_step, 0.0);
 
     /* Photon-budget interval anchor is HII_region_last_attempt, not

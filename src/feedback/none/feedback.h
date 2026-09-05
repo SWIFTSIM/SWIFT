@@ -247,12 +247,15 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param with_cosmology Are we running with cosmology on?
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (unused: this module does no feedback at all).
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     const struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {}
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {}
 
 /**
  * @brief Clean-up the memory allocated for the feedback routines
