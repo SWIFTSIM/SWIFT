@@ -188,6 +188,7 @@ void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         int n_HII_pixels);
 void radiation_zero_spart_output(struct spart *sp);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
+void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);

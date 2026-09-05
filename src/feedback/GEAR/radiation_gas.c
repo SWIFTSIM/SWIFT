@@ -363,11 +363,25 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
  * convert its emission rate into the photon count emitted over dt_back, the
  * time elapsed since the previous pass, plus any overdraft carried from it.
  *
+ * Integrates dot_N_ion_pix over dt_back with the trapezoid rule (average of
+ * the rate now and the cached rate from the previous pass), not a rectangle
+ * rule at the rate now alone: a monotonically-declining SSP emission rate
+ * makes the rectangle rule systematically under-issue photons.
+ *
  * @param sp The star.
  * @param dt_back Time elapsed since this star's last HII rebuild pass.
  */
 __attribute__((always_inline)) INLINE void
 radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  /* Every pixel gets the same rate (radiation_set_ionizing_photon_rate()
+     splits one total evenly), so one star-level message covers them all;
+     logged once here instead of once per pixel to match this file's other
+     per-star (not per-pixel) SWIFT_DEBUG_CHECKS_VERBOSE messages. */
+  double issued_total = 0.;
+  double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
+#endif
 
   for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
     /* A pass overdraws its pixel by up to one particle's cost, since the
@@ -378,8 +392,58 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
        reached no gas and escaped. */
     const double debt =
         min(sp->feedback_data.radiation.N_ion_budget_pix[p], 0.);
-    sp->feedback_data.radiation.N_ion_budget_pix[p] =
-        debt + sp->feedback_data.radiation.dot_N_ion_pix[p] * dt_back;
+
+    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
+    const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
+    /* rate_prev < 0 is the "first pass, no previous sample" sentinel: fall
+       back to the rate_now-only rectangle rule, since no better information
+       exists yet. */
+    const double rate_used =
+        rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
+    const double issued = rate_used * dt_back;
+
+    sp->feedback_data.radiation.N_ion_budget_pix[p] = debt + issued;
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = rate_now;
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    issued_total += issued;
+    rate_prev_dbg = rate_prev;
+    rate_now_dbg = rate_now;
+    rate_used_dbg = rate_used;
+#endif
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  message(
+      "HII budget open: star %lld dt_back=%e rate_prev=%e rate_now=%e "
+      "rate_used=%e issued_total=%e",
+      sp->id, dt_back, rate_prev_dbg, rate_now_dbg, rate_used_dbg,
+      issued_total);
+#endif
+}
+
+/**
+ * Resync the trapezoid quadrature's cached rate to the rate now, without
+ * opening a budget for this pass.
+ *
+ * A gas-free working-level cell skips radiation_open_ionizing_photon_budget()
+ * entirely (see runner_radiation_feedback.c) while still advancing
+ * HII_region_last_attempt, so dt_back on the next real pass never includes
+ * the skipped gap. Without this resync, dot_N_ion_pix_prev would instead
+ * stay stuck at its value from before the skip, so the next real pass's
+ * trapezoid would average against a stale, too-high rate over a dt_back that
+ * does not cover the period the stale rate applied to -- a small
+ * one-directional over-issue. Call this on that skip path to keep the cache
+ * anchored to the same instant dt_back is anchored to.
+ *
+ * @param sp The star.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
+
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] =
+        sp->feedback_data.radiation.dot_N_ion_pix[p];
   }
 }
 

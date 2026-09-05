@@ -1029,6 +1029,18 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
 }
 
 /**
+ * @brief Dispatch wrapper exposing
+ * radiation_resync_ionizing_photon_rate_cache() (radiation.c) to
+ * runner_radiation_feedback.c, same reasoning as
+ * #feedback_get_star_HII_pixel_count.
+ *
+ * @param sp The star.
+ */
+void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
+  radiation_resync_ionizing_photon_rate_cache(sp);
+}
+
+/**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
  * Thin dispatch wrapper so callers outside this feedback model (e.g.
@@ -1116,6 +1128,12 @@ void feedback_init_after_star_formation(
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }
 
+  /* No previous pass to average against yet; -1 is the sentinel
+     radiation_open_ionizing_photon_budget() checks for. */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
+  }
+
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
   sp->star_type = star_type;
@@ -1155,6 +1173,11 @@ void feedback_first_init_spart(struct spart *sp,
      identical seed in feedback_init_after_star_formation(). */
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
+  }
+
+  /* Same sentinel-seeding reasoning as feedback_init_after_star_formation(). */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
   }
 
   /* Activate the feedback loop for the first step */
