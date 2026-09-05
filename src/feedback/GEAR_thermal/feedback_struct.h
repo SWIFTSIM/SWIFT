@@ -175,6 +175,17 @@ struct feedback_spart_data {
         flux calculation (GEARFeedback:HII_couple_ionization_rate). */
     double dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS];
 
+    /*! dot_N_ion_pix as it stood at the previous HII rebuild pass, cached so
+        radiation_open_ionizing_photon_budget() can integrate the emission
+        rate over dt_back with a trapezoid rule (average of the rate at the
+        two ends of the interval) instead of a rectangle rule at the rate
+        "now" alone. A monotonically-declining SSP emission rate makes the
+        rectangle rule systematically under-issue photons (biased, not
+        noise -- it does not average out over passes). Negative is the
+        sentinel for "no previous pass yet" (set at star formation), which
+        falls back to the pre-fix rectangle rule for a star's first pass. */
+    double dot_N_ion_pix_prev[HII_MAX_ANGULAR_PIXELS];
+
     /*! Photon *count* spendable per pixel this HII rebuild pass:
         dot_N_ion_pix * dt_back (elapsed time since the last pass), debited
         by radiation_consume_ionizing_photons. Budgeting counts over the real

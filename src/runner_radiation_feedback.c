@@ -581,8 +581,15 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        still "attempted" just above, which is what keeps dt_elapsed correct
        for whenever a real pass next lands -- see runner_do_stars_hii_
        ionization_feedback's early-return comment for why this cell was
-       reached at all despite holding no gas. */
-    if (c->hydro.count == 0) continue;
+       reached at all despite holding no gas. Resync the trapezoid
+       quadrature's cached rate here too, since this skip advances
+       last_attempt without calling feedback_open_star_ionizing_photon_budget
+       -- otherwise the next real pass would average against a stale rate
+       from before this skip. */
+    if (c->hydro.count == 0) {
+      feedback_resync_star_ionizing_photon_rate_cache(si);
+      continue;
+    }
 
     /* Photons are budgeted as a count over the interval this pass actually
        covers, so that slicing a run into more (or fewer) rebuild passes
