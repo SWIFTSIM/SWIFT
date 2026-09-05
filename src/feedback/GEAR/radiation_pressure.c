@@ -50,16 +50,20 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
       sqrtf(grad_rho[0] * grad_rho[0] + grad_rho[1] * grad_rho[1] +
             grad_rho[2] * grad_rho[2]);
 
-  /* A locally uniform density field (zero or near-zero gradient, e.g.
-     unperturbed glass/grid ICs) makes the Sobolev length rho/|grad rho|
-     undefined, or dominated by SPH summation noise rather than a resolved
-     trend: fall back to just the kernel support radius in that case (see
-     RADIATION_MIN_RELATIVE_DENSITY_GRADIENT). */
+  /* Cap the Sobolev length rho/|grad rho| at the kernel support radius
+     rather than letting it blow up towards infinity for a locally uniform
+     density field (zero or near-zero gradient, e.g. an unperturbed
+     glass/grid IC, where the raw ratio is dominated by SPH summation
+     noise, not a resolved trend). Capping at h_gas, rather than switching
+     to a Jeans-length estimate, is the resolution-robust choice across
+     this model's wide production mass range. norm_grad_rho == 0 returns
+     h_gas directly rather than dividing by 0: the final return below
+     already zeroes the whole expression out for a star with no gas
+     neighbours (rho_gas == 0 there), so no separate rho_gas guard is
+     needed. */
   const float h_gas = sp->h * kernel_gamma;
-  const float grad_rho_floor =
-      RADIATION_MIN_RELATIVE_DENSITY_GRADIENT * rho_gas / h_gas;
   const float sobolev_length =
-      norm_grad_rho > grad_rho_floor ? rho_gas / norm_grad_rho : 0.0f;
+      norm_grad_rho > 0.0f ? fminf(rho_gas / norm_grad_rho, h_gas) : h_gas;
   const float length_gas = h_gas + sobolev_length;
   return length_gas * rho_gas;
 }

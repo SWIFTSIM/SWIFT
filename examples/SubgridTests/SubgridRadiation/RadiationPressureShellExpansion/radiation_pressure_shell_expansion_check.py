@@ -73,8 +73,6 @@ from radiation_table_reader import load_radiation_table
 
 # src/kernel_hydro.h, 3D Wendland C2 branch (this example's --with-kernel).
 KERNEL_GAMMA_WENDLAND_C2_3D = 1.936492
-# src/feedback/GEAR/radiation.h
-RADIATION_MIN_RELATIVE_DENSITY_GRADIENT = 0.01
 # src/feedback/GEAR/radiation_pressure.c
 KAPPA_IR_CGS = 10.0
 KAPPA_NUV_CGS = 1800.0
@@ -136,16 +134,17 @@ def load_snapshot(path):
 def compute_f_trap(f_trap_inputs, unit_length_cgs, unit_mass_cgs):
     """Mirror radiation_pressure.c's Sigma_gas/tau_NUV/tau_IR/f_trap, in cgs.
 
-    Same Sobolev-length guard as radiation_get_comoving_gas_column_density_
-    at_star: a near-zero density gradient is discarded, not divided by.
+    Same Sobolev-length cap as radiation_get_comoving_gas_column_density_
+    at_star: capped at h_gas rather than divided by a near-zero gradient.
     """
     rho_gas = f_trap_inputs["enrichment_weight"]
     h = f_trap_inputs["h"]
     norm_grad_rho = np.linalg.norm(f_trap_inputs["grad_rho"])
 
     h_gas = h * KERNEL_GAMMA_WENDLAND_C2_3D
-    grad_rho_floor = RADIATION_MIN_RELATIVE_DENSITY_GRADIENT * rho_gas / h_gas
-    sobolev_length = rho_gas / norm_grad_rho if norm_grad_rho > grad_rho_floor else 0.0
+    sobolev_length = (
+        min(rho_gas / norm_grad_rho, h_gas) if norm_grad_rho > 0.0 else h_gas
+    )
     Sigma_gas_internal = (h_gas + sobolev_length) * rho_gas
 
     unit_column_density_cgs = unit_mass_cgs / unit_length_cgs**2
