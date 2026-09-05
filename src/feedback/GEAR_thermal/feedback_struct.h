@@ -81,11 +81,11 @@ struct feedback_part_data {
       IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K debug path,
       which leaves them untouched), so it tracks the particle's current
       composition for as long as a tag is held instead of freezing at the
-      composition it had before that episode started. Before a particle's
-      first cooling call it still holds struct part's zero-init default,
-      0.0f, the OPPOSITE of the 1.0f "no data" sentinel above. A reader must
-      not treat 0.0f as "fully ionized" without checking the cache has
-      actually been written for that particle. */
+      composition it had before that episode started. feedback_first_init_
+      part sets this to -1.f (never a physical fraction) before a
+      particle's first cooling call, so "not yet primed" is unambiguous;
+      feedback_part_can_be_ionized excludes a still-negative value from
+      fresh pricing instead of reading it as real data. */
   float neutral_H_frac;
 
 #ifdef WITH_MPI
@@ -100,7 +100,15 @@ struct feedback_part_data {
       the S3.3 write actually having happened, not on the field's numeric
       value. MPI-only: it exists solely to let a foreign copy pass the
       eligibility gate without a struct xpart, so single-rank builds don't
-      pay for it. */
+      pay for it. Unlike neutral_H_frac/mu_eligibility below, this field
+      keeps struct part's zero-init default (0.0f) before a first cooling
+      call, deliberately not sentinel-guarded: 0 K reads as "cold enough
+      to be neutral", which is the same answer feedback_part_can_be_
+      ionized's gate wants for genuinely-unprimed gas, so the un-primed
+      default happens not to misprice through this field. It is still
+      wrong the other way (a not-yet-primed COPY of genuinely hot gas
+      reads as cold), a pre-existing, separately-flagged gap this fix
+      does not close. */
   float T_eligibility;
 
   /*! Mean molecular weight cache (S3.3/F3), written by the same cooling-time
@@ -110,9 +118,10 @@ struct feedback_part_data {
       T_eligibility against the internal energy the whole-part xv/rho channel
       delivered, which is a different, earlier snapshot; the two caches are
       therefore a matched pair satisfying the ideal-gas relation for one
-      single energy. Shares T_eligibility's lack of a first-init hook: before
-      its first cooling-time write it holds struct part's zero-init default,
-      0.0f. MPI-only, for the same reason as T_eligibility. */
+      single energy. feedback_first_init_part sets this to -1.f (never a
+      physical mean molecular weight) before a particle's first cooling
+      call; feedback_part_can_be_ionized excludes a still-negative value
+      from fresh pricing instead of reading it as real data. */
   float mu_eligibility;
 
   /*! Squared comoving distance to the star holding this particle's

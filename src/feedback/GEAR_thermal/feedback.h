@@ -63,6 +63,49 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
 };
 
 /**
+ * @brief First-init of a #part's HII eligibility caches (S3.3/F3).
+ *
+ * Sets @p mu_eligibility and @p neutral_H_frac to a negative sentinel
+ * instead of leaving them at struct part's zero-init default. 0.0f reads
+ * as a genuine physical value for both fields (fully ionized / massless
+ * mean molecular weight), so it cannot distinguish "not yet primed" from
+ * "really measured", which let an MPI foreign copy's very first HII pass
+ * price a genuinely-neutral particle at ~zero photons before its owner's
+ * first cooling call ever wrote a real value. Neither field is ever
+ * physically negative, so a negative value is unambiguous. Only
+ * mu_eligibility is WITH_MPI-only (feedback_part_data's own gating);
+ * neutral_H_frac is always initialised, matching its unconditional
+ * presence on that struct. feedback_part_can_be_ionized checks for the
+ * sentinel before pricing; a caller reading either cache directly through
+ * radiation_get_part_mean_molecular_weight /
+ * radiation_get_part_number_neutral_hydrogen_atoms without going through
+ * that gate first hits a SWIFT_DEBUG_CHECKS assert instead of silently
+ * pricing on the sentinel.
+ *
+ * feedback_part_can_be_ionized's check is xp == NULL only: the owning
+ * rank's own local claim never reads these caches (it uses real
+ * species/temperature data) and can legitimately stamp is_ionized on
+ * local gas whose caches are still -1.f. That state rides the ordinary
+ * whole-part exchange to every foreign mirror, but is never priced
+ * there either: runner_radiation_feedback.c's gather already excludes
+ * an already-tagged particle from fresh pricing, and its maintenance
+ * path only re-prices gas tagged by the LOCAL star (star_id match),
+ * never a mirror of some other rank's claim. The gate plus these two
+ * gather-side filters together are what keep a sentinel from ever
+ * reaching pricing; a future change to either filter must preserve
+ * this.
+ *
+ * @param p The #part to initialise.
+ */
+__attribute__((always_inline)) INLINE static void feedback_first_init_part(
+    struct part *restrict p) {
+#ifdef WITH_MPI
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+  p->feedback_data.neutral_H_frac = -1.f;
+}
+
+/**
  * @brief Pack a #part's HII tag report-back entry (MPI plan S3.1).
  *
  * excess_photon_energy_HI and photoionization_rate_HI have no per-part

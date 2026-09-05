@@ -644,17 +644,31 @@ feedback_get_eligibility_temperature(
 /**
  * Determines whether a gas #part can be ionized.
  *
- * @param phys_const Physical constants.
- * @param us Unit system.
- * @param hydro_properties The #hydro_props.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * Under WITH_MPI, a foreign copy (xp == NULL) whose mu_eligibility/
+ * neutral_H_frac caches still hold the -1.f "not yet primed" sentinel
+ * (feedback_first_init_part) is excluded here, before either cache is
+ * ever read as pricing data.
+ *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle, or NULL for a foreign
+ * copy with no local xpart.
+ * @param e The #engine.
  * @return Is the particle ionized?
  */
 __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
     const struct part *p, const struct xpart *xp, const struct engine *e) {
+
+#ifdef WITH_MPI
+  /* Foreign copy whose owner has not yet run a cooling call on it: its
+     mu_eligibility/neutral_H_frac caches still hold their -1.f "not yet
+     primed" sentinel (feedback_first_init_part), not a real measurement.
+     Exclude it from fresh pricing this pass rather than reading the
+     sentinel as data; the owner's next cooling call/state update replaces
+     it with a real value before the next pass. */
+  if (xp == NULL && (p->feedback_data.mu_eligibility < 0.f ||
+                     p->feedback_data.neutral_H_frac < 0.f))
+    return 0;
+#endif
 
   const struct phys_const *phys_const = e->physical_constants;
   const struct hydro_props *hydro_props = e->hydro_properties;

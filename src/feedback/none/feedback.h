@@ -77,6 +77,14 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
     struct part *p, struct xpart *xp) {}
 
 /**
+ * @brief First-init of a #part's feedback-model state. Nothing to do here.
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static void feedback_first_init_part(
+    struct part *restrict p) {}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon

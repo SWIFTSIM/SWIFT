@@ -132,6 +132,16 @@ radiation_get_part_number_neutral_hydrogen_atoms(
        folds in the H2/H- arms at mode >= 2 (see cooling_cache_neutral_H_
        fraction_subgrid), so this is the same quantity the branch below
        would read from a real xpart. */
+#ifdef SWIFT_DEBUG_CHECKS
+    /* feedback_part_can_be_ionized is the only caller allowed to reach a
+       still-sentinel (-1.f, "not yet primed") cache; anything else reading
+       it here is a bypass of that gate. */
+    if (p->feedback_data.neutral_H_frac < 0.f)
+      error(
+          "Reading un-primed neutral_H_frac (foreign copy id=%lld): caller "
+          "must gate on feedback_part_can_be_ionized before pricing.",
+          p->id);
+#endif
     X_HI = p->feedback_data.neutral_H_frac;
   } else
 #endif
@@ -240,7 +250,19 @@ radiation_get_part_mean_molecular_weight(
     const struct xpart *xp) {
 
 #ifdef WITH_MPI
-  if (xp == NULL) return p->feedback_data.mu_eligibility;
+  if (xp == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* feedback_part_can_be_ionized is the only caller allowed to reach a
+       still-sentinel (-1.f, "not yet primed") cache; anything else reading
+       it here is a bypass of that gate. */
+    if (p->feedback_data.mu_eligibility < 0.f)
+      error(
+          "Reading un-primed mu_eligibility (foreign copy id=%lld): caller "
+          "must gate on feedback_part_can_be_ionized before pricing.",
+          p->id);
+#endif
+    return p->feedback_data.mu_eligibility;
+  }
 #endif
 
   return cooling_get_mean_molecular_weight(phys_const, us, cosmo, hydro_props,
