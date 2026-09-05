@@ -70,6 +70,81 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
+/*! Non-ionizing FUV band, eV (Habing band, 912-2000 Angstrom): see
+    theory/GEAR/Radiation/02_fuv_isrf.tex, "Same photon band for both?". */
+#define RADIATION_FUV_BAND_LOW_EV 6.0
+#define RADIATION_FUV_BAND_HIGH_EV 11.2
+
+/*! Lyman-Werner band, eV (H2 photodissociation, 912-1108 Angstrom): see
+    RADIATION_FUV_BAND_LOW_EV's doxygen. */
+#define RADIATION_LW_BAND_LOW_EV 11.2
+#define RADIATION_LW_BAND_HIGH_EV 13.6
+
+/*! Boltzmann constant in eV/K, for #radiation_planck_band_fraction's
+    dimensionless photon energy x = h*nu / (k_B*T). */
+#define RADIATION_BOLTZMANN_K_EV_PER_K 8.617333262e-5
+
+/*! Number of Simpson's-rule sub-intervals #radiation_planck_band_fraction
+    integrates the Planck function over; see that function's own doxygen. */
+#define RADIATION_PLANCK_QUADRATURE_N 200
+
+/*! Mean mass per hydrogen nucleon (He folded in), for converting a
+    per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_FUV_CGS/
+    #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
+    radiation_get_dust_extinction_factor()'s own doxygen. */
+#define RADIATION_MU_H 1.4
+
+/*! Hydrogen atomic mass, g (cgs); see #RADIATION_MU_H. */
+#define RADIATION_HYDROGEN_MASS_CGS 1.6726219e-24
+
+/*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
+    al. 2023, Weingartner & Draine 2001 grain population, via Smith 2026
+    "Imladris" arXiv 2604.00100 Eq. 39): 6-11.2 eV (FUV) and
+    11.2-13.6 eV (Lyman-Werner) bands respectively. */
+#define RADIATION_SIGMA_D_FUV_CGS 9e-22
+#define RADIATION_SIGMA_D_LW_CGS 1.5e-21
+
+/*! Grackle's own solar metal mass fraction, SolarMetalFractionByMass
+    (grackle_chemistry_data_fields.def, default 0.01295, Cloudy v13
+    abundances), NOT radiation_pressure.c's Z_sun=0.02 (Hopkins et al.
+    2020's own convention for the unrelated kappa_IR/kappa_NUV fit).
+    Used, not Remy-Ruyer et al. (2014)'s own broken power-law fit, so our
+    extinction's assumed dust abundance stays exactly consistent with what
+    Grackle's own dust_chemistry=1-coupled channels (PE heating, H2-
+    formation-on-dust, dust recombination cooling) assume for the SAME
+    gas: Grackle computes its internal dust-to-gas ratio as
+    local_dust_to_gas_ratio * (Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION)
+    when chemistry_data.use_dust_density_field=0 (the default, not
+    touched by this feature; cool1d_multi_g.F, dust2gas(i) = fgr *
+    metallicity(i), metallicity(i) = metal(i,j,k)/d(i,j,k)/z_solar) -- a
+    pure linear scaling with metallicity, not a broken power law.
+    local_dust_to_gas_ratio itself cancels out of our own relative
+    D(Z)/D(Zsun) = Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION scaling
+    regardless of its value, so it does not need reading here. */
+#define RADIATION_GRACKLE_SOLAR_METAL_FRACTION 0.01295
+
+/*! Standard Habing-unit flux normalization, erg/s/cm^2 (Eq.
+    fuv-g0-conversion, theory/GEAR/Radiation/02_fuv_isrf.tex, cross-checked
+    against Hu et al. 2017 Eq. 6). */
+#define RADIATION_HABING_FLUX_CGS 1.6e-3
+
+/*! Representative Lyman-Werner photon energy, eV (~12 eV, the band's own
+    6-11.2/11.2-13.6 eV midpoint region), for converting an energy flux to
+    a photon flux; see radiation_get_part_LW_dissociation_rate_internal()'s
+    own doxygen. */
+#define RADIATION_LW_PHOTON_ENERGY_EV 12.0
+
+/*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2:
+    a modeling approximation with an implicit assumed spectral shape (the
+    band-integrated H2 cross section depends on the spectrum within
+    11.2-13.6 eV, not a single atomic-physics constant; see
+    .claude/dev/design-lw-fuv-injection.md's own correction on this
+    point), not independently re-derived from a primary source this pass
+    -- flag for verification before physics validation, the same
+    not-yet-reverified caveat already carried by this document's Cleary &
+    Monaghan (1999)/Rusanov (1961) citations. */
+#define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
+
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
     the integrated table's own top mass edge before calling interpolate_2d(),
     so an exact-mass_max query deterministically takes the blended (not
@@ -136,6 +211,10 @@ struct radiation_grid_metadata {
       MeanExcessPhotonEnergyHI/DotEExcess's own primary content, which
       need not match #edge_policy_q_h's variant. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
+
+  /*! Mass-axis boundary condition for the "Teff" dataset (2D tables only),
+      from the group's generic edge_policy_teff_below/above attributes. */
+  enum interpolate_boundary_condition edge_policy_teff;
 };
 
 double radiation_get_part_number_hydrogen_atoms(
@@ -183,6 +262,13 @@ float radiation_get_part_photoionization_rate_coefficient(
     const struct part *p, const struct xpart *xpj);
 double radiation_get_photoionization_rate_coefficient_from_flux_HI(
     const struct unit_system *us, const double ionizing_flux_HI);
+double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct cosmology *cosmo,
+                                      const struct part *p);
+double radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
@@ -191,6 +277,12 @@ void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
+float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
+void radiation_get_part_LW_FUV_extinction_factors(const struct unit_system *us,
+                                                  const struct cosmology *cosmo,
+                                                  const struct part *p, float Z,
+                                                  float *extinction_FUV,
+                                                  float *extinction_LW);
 
 float radiation_get_star_physical_radiation_pressure(
     const struct spart *sp, const float Delta_t,
@@ -257,6 +349,14 @@ double radiation_get_star_ionization_rate(const struct radiation *rad,
 double radiation_get_star_mean_excess_photon_energy_HI(
     const struct radiation *rad, float log_m, float log_z, float star_age_myr);
 
+float radiation_get_teff_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_teff(const struct radiation *rad, float log_m,
+                              float log_z);
+double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
+                                      double E_high_eV);
+
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
@@ -274,6 +374,10 @@ void radiation_read_mean_excess_photon_energy_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

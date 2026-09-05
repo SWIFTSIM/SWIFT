@@ -34,6 +34,8 @@
 #include "minmax.h"
 #include "radiation.h"
 
+#include <math.h>
+
 /**
  * @brief Abort with a clear message if #rad's table dimensionality does not
  * match what the calling getter expects.
@@ -685,4 +687,121 @@ double radiation_get_star_mean_excess_photon_energy_HI(
         rad, log_z, log_m, star_age_myr);
   }
   return radiation_get_mean_excess_photon_energy_HI_from_raw(rad, log_m);
+}
+
+/**
+ * @brief Get the effective temperature at a given mass, from a 1D
+ * (mass-only) table.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_teff_from_raw(const struct radiation *rad, float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  return (float)exp10(interpolate_1d(&rad->raw.teff, log_m));
+}
+
+/**
+ * @brief Get the effective temperature at a given mass and metallicity,
+ * from a 2D ("M,Z") table.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m The mass in log.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  return (float)exp10(interpolate_2d(&rad->raw.teff_2d, log_z, log_m));
+}
+
+/**
+ * @brief Get a single star's effective temperature at a given mass,
+ * dispatching on #rad->is_2d between the 1D (mass-only) and 2D (mass x
+ * metallicity) raw tables. Not capped by main_sequence_lifetime: like
+ * #radiation_get_star_luminosity, Teff describes the star's continued
+ * (post-main-sequence included) photospheric state, not just its
+ * main-sequence ionizing output.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if #rad holds a 2D table.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_star_teff(const struct radiation *rad, float log_m,
+                              float log_z) {
+  if (rad->is_2d) {
+    return radiation_get_teff_from_raw_2d(rad, log_z, log_m);
+  }
+  return radiation_get_teff_from_raw(rad, log_m);
+}
+
+/**
+ * @brief Planck spectral-radiance integrand, x^3/(e^x - 1), used by
+ * #radiation_planck_band_fraction's Simpson-rule quadrature.
+ *
+ * Switches to the Wien-tail asymptote (x^3 e^{-x}) above x=40: e^x
+ * overflows double at x ~ 709, but well before that, e^x - 1 == e^x to
+ * float64 precision (expm1(x) itself returns exactly e^x there), and the
+ * asymptote avoids computing e^x at all for the very large x this
+ * function's own band edges can reach at low Teff (the FUV/LW band edges,
+ * ~6-13.6 eV, correspond to x >~ 40 already below Teff ~ 2000 K).
+ *
+ * @param x Dimensionless photon energy, h*nu / (k_B * T).
+ * @return x^3 / (e^x - 1).
+ */
+static double radiation_planck_integrand(double x) {
+  if (x > 40.) return x * x * x * exp(-x);
+  return x * x * x / expm1(x);
+}
+
+/**
+ * @brief Fraction of a Planck (blackbody) spectrum's total power falling
+ * between two photon energies, at a given temperature.
+ *
+ * Integrates the dimensionless Planck function x^3/(e^x-1) (x = h*nu /
+ * (k_B*T)) between the two band edges with a fixed-order Simpson's rule,
+ * and normalizes by the full closed-form integral over all x,
+ * int_0^infty x^3/(e^x-1) dx = pi^4/15 (the same identity behind the
+ * Stefan-Boltzmann law). See theory/GEAR/Radiation/02_fuv_isrf.tex,
+ * "Decided (2026-07-20): two explicit sub-bands, read from feedback
+ * tables" for why this Teff-based band split, rather than a fixed
+ * ISM-averaged spectral shape, is used to derive L_FUV/L_LW from L_bol.
+ *
+ * @param T_kelvin Effective temperature, Kelvin. Returns exactly 0 for a
+ * non-positive value (a star with no valid Teff, e.g. #radiation.is_active
+ * == 0) rather than dividing by zero.
+ * @param E_low_eV Lower band edge, eV.
+ * @param E_high_eV Upper band edge, eV. Must exceed @p E_low_eV.
+ * @return Band fraction, in [0, 1].
+ */
+double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
+                                      double E_high_eV) {
+  if (!(T_kelvin > 0.)) return 0.;
+  if (!(E_high_eV > E_low_eV))
+    error(
+        "radiation_planck_band_fraction: E_high_eV (%g) must exceed "
+        "E_low_eV (%g).",
+        E_high_eV, E_low_eV);
+
+  const double kT_eV = RADIATION_BOLTZMANN_K_EV_PER_K * T_kelvin;
+  const double x_low = E_low_eV / kT_eV;
+  const double x_high = E_high_eV / kT_eV;
+
+  /* Fixed-order composite Simpson's rule: RADIATION_PLANCK_QUADRATURE_N
+     (even) sub-intervals, adequate for the smooth, single-humped
+     integrand here (no adaptive refinement needed). */
+  const int n = RADIATION_PLANCK_QUADRATURE_N;
+  const double dx = (x_high - x_low) / n;
+  double sum =
+      radiation_planck_integrand(x_low) + radiation_planck_integrand(x_high);
+  for (int i = 1; i < n; i++) {
+    sum += (i % 2 == 0 ? 2. : 4.) * radiation_planck_integrand(x_low + i * dx);
+  }
+  const double integral = sum * dx / 3.;
+  const double planck_total = M_PI * M_PI * M_PI * M_PI / 15.;
+  return integral / planck_total;
 }

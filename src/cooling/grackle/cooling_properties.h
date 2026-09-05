@@ -110,6 +110,16 @@ struct cooling_function_data {
   /*! Grackle RT_H2_dissociation_rate (in IU) */
   float RT_H2_dissociation_rate;
 
+  /*! Rate-couple GEAR's local Lyman-Werner/FUV feedback into Grackle's
+      per-particle isrf_habing (photoelectric heating/dust chemistry) and,
+      at COOLING_GRACKLE_MODE > 1, RT_H2_dissociation_rate (H2
+      photodissociation) fields, instead of Grackle's spatially-uniform
+      scalars. Forces use_isrf_field/dust_chemistry/photoelectric_heating
+      on internally (cooling_init_grackle) and, at COOLING_GRACKLE_MODE >
+      1, use_radiative_transfer (cooling_io.h). See
+      cooling_gear_subgrid.h's cooling_get_LW_FUV_fields_subgrid. */
+  int with_LW_FUV;
+
   /*! Volumetric heating rates */
   float volumetric_heating_rates;
 

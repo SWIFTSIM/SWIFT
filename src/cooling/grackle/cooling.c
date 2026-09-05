@@ -757,13 +757,16 @@ void cooling_copy_from_grackle3(grackle_field_data *data, const struct part *p,
  * @param p The #part.
  * @param xp The #xpart.
  * @param rho The particle density.
+ * @param cosmo The current #cosmology (for the local Lyman-Werner/FUV
+ * feedback's own isrf_habing/RT_H2_dissociation_rate getters).
  */
 void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
                              struct xpart *xp, gr_float rho,
                              gr_float species_densities[12],
                              const struct cooling_function_data *cooling,
                              const struct phys_const *phys_const,
-                             const struct unit_system *us) {
+                             const struct unit_system *us,
+                             const struct cosmology *cosmo) {
 
   const float time_units = cooling->units.time_units;
 
@@ -821,11 +824,22 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     *RT_HeII_ionization_rate /= (1. / time_units);
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
-    /* H2 ionization rate */
+    /* H2 dissociation rate: local Lyman-Werner/FUV feedback's own
+       per-particle rate (cooling_get_LW_dissociation_rate_subgrid,
+       already internal 1/time) takes priority over the single global
+       YAML scalar, mirroring RT_HI_ionization_rate's own local-vs-global
+       fallback above. */
     gr_float *RT_H2_dissociation_rate = (gr_float *)malloc(sizeof(gr_float));
-    *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
-    /* Grackle wants it in 1/internal_time_units */
-    *RT_H2_dissociation_rate /= (1. / time_units);
+    const double LW_dissociation_rate =
+        cooling_get_LW_dissociation_rate_subgrid(phys_const, us, cosmo, cooling,
+                                                 p);
+    if (LW_dissociation_rate != 0.) {
+      *RT_H2_dissociation_rate = LW_dissociation_rate;
+    } else {
+      *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
+      /* Grackle wants it in 1/internal_time_units */
+      *RT_H2_dissociation_rate /= (1. / time_units);
+    }
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
 
   } else {
@@ -836,6 +850,21 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     data->RT_HeI_ionization_rate = NULL;
     data->RT_HeII_ionization_rate = NULL;
     data->RT_H2_dissociation_rate = NULL;
+  }
+
+  /* Local Lyman-Werner/FUV feedback's per-particle ISRF strength
+     (GrackleCooling chemistry_data.use_isrf_field, forced on by
+     GEARFeedback:with_photoelectric_heating): independent of
+     use_radiative_transfer above (isrf_habing is a separate,
+     older, non-RT dust-physics mechanism; see
+     theory/GEAR/Radiation/02_fuv_isrf.tex's fuv-pe-grackle section). */
+  if (cooling->chemistry_data.use_isrf_field) {
+    gr_float *isrf_habing = (gr_float *)malloc(sizeof(gr_float));
+    *isrf_habing =
+        cooling_get_isrf_habing_subgrid(phys_const, us, cosmo, cooling, p);
+    data->isrf_habing = isrf_habing;
+  } else {
+    data->isrf_habing = NULL;
   }
 
   gr_float *metal_density = (gr_float *)malloc(sizeof(gr_float));
@@ -873,6 +902,8 @@ void cooling_copy_from_grackle(grackle_field_data *data, const struct part *p,
     free(data->RT_HeII_ionization_rate);
     free(data->RT_H2_dissociation_rate);
   }
+
+  if (cooling->chemistry_data.use_isrf_field) free(data->isrf_habing);
 
   free(data->metal_density);
 }
@@ -999,10 +1030,15 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
 
   /* copy to grackle structure */
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
-                          phys_const, us);
+                          phys_const, us, cosmo);
 
   /* Expire the tag only after cooling_copy_to_grackle has consumed it above. */
   cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
+
+  /* Same hazard, same fix, for the LW/FUV dose: cooling_copy_to_grackle
+     just read u_FUV/u_LW above, so it is now safe to zero them for the
+     next injection pass. */
+  cooling_expire_LW_FUV_dose_subgrid(cooling, p);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
@@ -1082,7 +1118,7 @@ gr_float cooling_time(const struct phys_const *phys_const,
   gr_float species_densities[12];
   /* copy data from particle to grackle data */
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
-                          phys_const, us);
+                          phys_const, us, cosmo);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
@@ -1374,6 +1410,25 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
      the global-YAML He rates below as an unrelated external He RT source. */
   if (cooling->HII_couple_ionization_rate)
     chemistry->radiative_transfer_hydrogen_only = 1;
+
+  /* Local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
+     heating): dust_chemistry=1 is Grackle's single intended entry point
+     for "turn on dust physics with a given ISRF" (bundles photoelectric
+     heating, dust recombination cooling, and H2-formation-on-dust; see
+     .claude/dev/design-lw-fuv-injection.md's "Concrete Grackle
+     configuration" section). photoelectric_heating=2 (constant
+     epsilon=0.05) chosen over =3 (electron-density-dependent): Grackle's
+     own docs flag that electron density as unreliable in the dense, cold
+     gas this feature targets (same reasoning Imladris's own Appendix A
+     gives for rejecting Grackle's built-in electron-density option
+     outright). use_isrf_field=1 switches Grackle from the scalar
+     interstellar_radiation_field to the per-particle isrf_habing array
+     this module fills (cooling_get_LW_FUV_fields_subgrid). */
+  if (cooling->with_LW_FUV) {
+    chemistry->dust_chemistry = 1;
+    chemistry->photoelectric_heating = 2;
+    chemistry->use_isrf_field = 1;
+  }
 
   if (cooling->volumetric_heating_rates > 0)
     chemistry->use_volumetric_heating_rate = 1;

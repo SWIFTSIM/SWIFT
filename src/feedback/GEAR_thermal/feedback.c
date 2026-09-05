@@ -121,12 +121,42 @@ __attribute__((always_inline)) INLINE void feedback_end_density(
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *
- * Nothing to do here in the GEAR model.
+ * Nothing to do here: u_FUV/u_LW are consumed and zeroed on the cooling
+ * side instead (#cooling_expire_LW_FUV_dose_subgrid, called right after
+ * cooling_copy_to_grackle has read them for this step's solve). Drift
+ * (hence this function) always runs before this step's own cooling call,
+ * so a reset placed here would fire before the value it is supposed to
+ * follow has ever been read, wiping out an injection landed since the
+ * last cooling call before Grackle ever saw it. is_illuminated_LW_FUV is
+ * likewise never cleared here: Phase 1 has no decay model to end an
+ * illumination episode, so the first-touch flag is set once
+ * (radiation_iact_nonsym_feedback_apply) and never reset.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
 void feedback_reset_part(struct part *p, struct xpart *xp) {}
+
+/**
+ * @brief First-init of a #part's feedback-model state (S3.3/F3-style
+ * negative sentinel, mirroring #feedback_part_data.neutral_H_frac's own
+ * treatment).
+ *
+ * u_FUV/u_LW are set to -1.f (never a physical specific energy) rather
+ * than left at struct part's zero-init default, 0.0f: 0.0f is itself a
+ * legitimate "genuinely unilluminated" value, so it cannot distinguish that
+ * from "not yet consumed by this particle's own first cooling call".
+ * cooling_expire_LW_FUV_dose_subgrid clears the sentinel to a legitimate
+ * value the first time cooling_new_energy() runs for this particle; every
+ * reader in between (#radiation_get_part_isrf_habing and friends) clamps
+ * a negative value to 0 rather than assume that has already happened.
+ *
+ * @param p The #part to initialise.
+ */
+void feedback_first_init_part(struct part *restrict p) {
+  p->feedback_data.u_FUV = -1.f;
+  p->feedback_data.u_LW = -1.f;
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?

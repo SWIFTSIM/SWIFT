@@ -28,12 +28,14 @@
  * duplication.
  */
 
+#include "chemistry.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "feedback_properties.h"
 #include "radiation.h"
 #include "random.h"
+#include "timestep_sync_part.h"
 #include "tracers.h"
 
 /**
@@ -193,21 +195,26 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
+  /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
+   * cosmological runs -- mirror compute_time()'s branch (feedback_common.c)
+   * rather than use it directly. Needed by both radiation pressure and
+   * LW/FUV injection below: this is the star's own (possibly coarser SN/
+   * wind feedback) timestep, the injection cadence the design doc
+   * distinguishes from propagation's every-hydro-step cadence (not yet
+   * implemented; see GEARFeedback:LW_FUV_propagation). */
+  float Delta_t;
+  if (with_cosmology) {
+    const integertime_t ti_step = get_integer_timestep(si->time_bin);
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, si->time_bin);
+    Delta_t =
+        (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+  } else {
+    Delta_t = get_timestep(si->time_bin, time_base);
+  }
+
   /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {
-    /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
-     * cosmological runs -- mirror compute_time()'s branch
-     * (feedback_common.c) rather than use it directly. */
-    float Delta_t;
-    if (with_cosmology) {
-      const integertime_t ti_step = get_integer_timestep(si->time_bin);
-      const integertime_t ti_begin =
-          get_integer_time_begin(ti_current, si->time_bin);
-      Delta_t =
-          (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-    } else {
-      Delta_t = get_timestep(si->time_bin, time_base);
-    }
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
@@ -234,11 +241,57 @@ radiation_iact_nonsym_feedback_apply(
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /*
-     5. Transport the emergent FUV radiation. And then compute the
-     photohelectric heating. We assume that the effect is only local and so we
-     do not transport radiation.
-  */
+  /* Local Lyman-Werner/FUV injection (Eq. fuv-inject,
+     .claude/dev/design-lw-fuv-injection.md): sum, don't overwrite
+     ("Sources must sum linearly, not overwrite" -- multiple
+     simultaneously-illuminating stars must superpose), and divide by
+     m_i=mj before adding ("u_inject,i as written is an energy... must be
+     divided by m_i"). Zero unless GEARFeedback:with_photoelectric_heating
+     is on (L_FUV/L_LW are then computed by stellar_evolution.c; 0
+     otherwise). Receiver-side dust extinction (Imladris Eq. 39, band-
+     specific) is applied here, at injection time, using the receiving
+     particle pj's own local column density -- there is no separate
+     source-side pre-extinction term (dropped in favour of Imladris's
+     newer, receiver-only treatment; see the design doc's own
+     "Extinction" section). */
+  if (si->feedback_data.radiation.L_FUV != 0.0 ||
+      si->feedback_data.radiation.L_LW != 0.0) {
+
+    const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
+    float extinction_FUV, extinction_LW;
+    radiation_get_part_LW_FUV_extinction_factors(
+        us, cosmo, pj, Z_j, &extinction_FUV, &extinction_LW);
+
+    const double u_inject_FUV = (double)Delta_t * weight *
+                                si->feedback_data.radiation.L_FUV *
+                                (double)extinction_FUV;
+    const double u_inject_LW = (double)Delta_t * weight *
+                               si->feedback_data.radiation.L_LW *
+                               (double)extinction_LW;
+
+    /* Clear the -1.f "never consumed by cooling" sentinel before summing
+       into it: this pair's injection can land before this particle's own
+       first cooling call, and `+=` onto -1.f would silently undercount by
+       exactly that offset, not just leave a boundary artifact for a reader
+       to clamp away (unlike a plain read, see radiation_get_part_isrf_
+       habing). */
+    if (pj->feedback_data.u_FUV < 0.f) pj->feedback_data.u_FUV = 0.f;
+    if (pj->feedback_data.u_LW < 0.f) pj->feedback_data.u_LW = 0.f;
+
+    pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
+    pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
+
+    /* First-touch-only sync (design doc "Timestep synchronization: no
+       lifetime window"), mirroring feedback_hii_claim_part vs.
+       feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split
+       (feedback_common.c): do not re-sync an already-illuminated particle
+       every pass, or every held particle drags the whole region down to
+       the shortest time bin. */
+    if (!pj->feedback_data.is_illuminated_LW_FUV) {
+      pj->feedback_data.is_illuminated_LW_FUV = 1;
+      timestep_sync_part(pj);
+    }
+  }
 }
 
 /**

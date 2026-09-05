@@ -71,6 +71,44 @@ struct feedback_part_data {
       0.0f as "fully ionized" without checking the cache has actually been
       written for that particle. */
   float neutral_H_frac;
+
+  /*! Local specific FUV-band (6-11.2 eV) radiation field, internal
+      specific-energy units (see theory/GEAR/Radiation/02_fuv_isrf.tex's
+      #fuv-units convention: specific, per-unit-mass, like this codebase's
+      own hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above).
+      feedback_first_init_part sets this to -1.f (never a physical specific
+      energy); this sentinel is only cleared once cooling_new_energy() has
+      consumed it (#cooling_expire_LW_FUV_dose_subgrid), so callers must
+      clamp negative values to 0 rather than assume a prior reset already
+      ran (#radiation_get_part_isrf_habing does this). Accumulates via
+      radiation_iact_nonsym_feedback_apply's `+=` between consecutive
+      cooling calls on this particle (phase-1: no propagation/decay yet, so
+      this IS the field, not an accumulator folded into a separately-
+      decaying state; see the design doc's "Runtime toggle: injection
+      without propagation"). */
+  float u_FUV;
+
+  /*! Local specific Lyman-Werner-band (11.2-13.6 eV) radiation field,
+      internal specific-energy units. See #u_FUV; feeds Grackle's
+     RT_H2_dissociation_rate (COOLING_GRACKLE_MODE > 1 only) separately from
+     #u_FUV, since the two bands carry different dust opacities (see the design
+     doc's "Resolved: propagate two separate fields"). */
+  float u_LW;
+
+  /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
+      star's injection pass, ever? Dedicated flag, not inferred from
+      u_FUV/u_LW themselves (design doc's "Trigger condition, decided": a
+      decaying field never returns to exactly 0, so a zero-crossing cannot
+      signal "newly illuminated" once propagation/decay exists). Mirrors
+      #is_ionized's claimed/not-claimed role: gates a first-touch-only
+      timestep_sync_part call in radiation_iact_nonsym_feedback_apply,
+      mirroring feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_
+      part's own claim-vs-maintain split. Unlike that HII pair, phase-1 has
+      no decay/expiry model to end an illumination episode, so this flag is
+      set once and never reset: after the first touch, every later
+      injection pass takes the "already illuminated" branch (no repeated
+      sync calls), which is intentional and conservative, not a bug. */
+  char is_illuminated_LW_FUV;
 };
 
 /**
@@ -209,6 +247,17 @@ struct feedback_spart_data {
         value underflows float precision in this project's internal unit
         system. */
     float mean_excess_photon_energy_HI;
+
+    /*! Non-ionizing FUV band luminosity, 6-11.2 eV (physical units), split
+        off L_bol via this star's own Teff (theory/GEAR/Radiation/
+        02_fuv_isrf.tex, "two explicit sub-bands"). Feeds the injection
+        term (Eq. fuv-inject) together with #L_LW; only computed when
+        GEARFeedback:with_photoelectric_heating is on, 0 otherwise. */
+    double L_FUV;
+
+    /*! Lyman-Werner band luminosity, 11.2-13.6 eV (physical units): H2
+        photodissociating photons. See #L_FUV. */
+    double L_LW;
 
   } radiation;
 };

@@ -41,7 +41,10 @@ enum radiation_policy {
   radiation_policy_photoionization = (1 << 0),
   /*! Radiation pressure from the stars' bolometric luminosity */
   radiation_policy_radiation_pressure = (1 << 1),
-  /* Photoelectric (PE) heating by FUV radiation on dust */
+  /* Local Lyman-Werner/FUV feedback: photoelectric (PE) heating by FUV
+     radiation on dust, and H2 photodissociation by the Lyman-Werner band
+     (see .claude/dev/design-lw-fuv-injection.md); one switch for both,
+     since they share the same two band luminosities and injected fields. */
   radiation_policy_photoelectric_heating = (1 << 2),
 };
 
@@ -98,6 +101,14 @@ struct feedback_props {
 
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
+
+  /*! Run the Yukawa screened-diffusion propagation update on top of
+   * injection + receiver-side extinction? Only meaningful when
+   * radiation_policy_photoelectric_heating is set. Not implemented yet
+   * (feedback_props_init() errors if this is set to 1); parsed now so a
+   * params.yml already anticipating it fails loudly rather than silently
+   * running propagation-off. */
+  char LW_FUV_propagation;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -191,9 +202,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
       feedback_props->radiation_policy & radiation_policy_radiation_pressure);
   message("Radiation pressure efficiency                              = %.2g",
           feedback_props->radiation_pressure_efficiency);
-  message("Photo-electric heating                                     = %i",
-          feedback_props->radiation_policy &
-              radiation_policy_photoelectric_heating);
+  const char do_photoelectric_heating =
+      feedback_props->radiation_policy & radiation_policy_photoelectric_heating;
+  message("Photo-electric heating / H2 photodissociation (LW/FUV)     = %i",
+          do_photoelectric_heating);
+  if (do_photoelectric_heating) {
+    message("LW/FUV propagation                                         = %s",
+            feedback_props->LW_FUV_propagation ? "ON" : "OFF (injection only)");
+  }
 
   message("Yields table                                               = %s",
           feedback_props->stellar_model.yields_table);
@@ -253,13 +269,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const float radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
-  /* The radiation table backs both the HII photoionization band and the
-   * bolometric radiation-pressure band (see
-   * stellar_evolution_compute_preSN_feedback_individual_star()/_spart());
-   * photoelectric heating has no downstream consumer yet, so it does not
-   * gate this. */
-  const char with_radiation =
-      with_photoionization || (radiation_pressure_efficiency > 0.0f);
+  /* Are we running with the local Lyman-Werner/FUV feedback (photoelectric
+   * heating + H2 photodissociation)? Read early, for the same reason as
+   * with_photoionization: it needs both the radiation table (for L_bol,
+   * from which L_FUV/L_LW are split via Teff) and the Teff table itself. */
+  const char with_photoelectric_heating = (char)parser_get_opt_param_int(
+      params, "GEARFeedback:with_photoelectric_heating", 0);
+
+  /* The radiation table backs the HII photoionization band, the bolometric
+   * radiation-pressure band, and (since Teff is stored on the same table)
+   * the Lyman-Werner/FUV band split (see
+   * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
+   * Previously omitted radiation_policy_photoelectric_heating here because
+   * "photoelectric heating has no downstream consumer yet" -- now that it
+   * does, leaving it out would silently skip opening the radiation table
+   * (and its Teff dataset) for a with_photoelectric_heating-only run,
+   * and desync from feedback_struct_restore()'s own copy of this same
+   * condition on restart (see that function's matching comment). */
+  const char with_radiation = with_photoionization ||
+                              (radiation_pressure_efficiency > 0.0f) ||
+                              with_photoelectric_heating;
 
   /* Pre-Supernovae energy efficiency */
   double w_efficiency = 0.0;
@@ -375,11 +404,23 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
-  const int with_photoelectric_heating = parser_get_opt_param_int(
-      params, "GEARFeedback:with_photoelectric_heating", 0);
-
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
+
+    /* Design A's Yukawa screened-diffusion propagation (phase 2 of
+     * .claude/dev/design-lw-fuv-injection.md) is not implemented yet:
+     * injection + receiver-side extinction only. Parsed now (rather than
+     * introduced only once phase 2 lands) so a params.yml already
+     * anticipating it fails loudly instead of silently running
+     * propagation-off when the user asked for propagation-on. */
+    fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
+        params, "GEARFeedback:LW_FUV_propagation", 0);
+    if (fp->LW_FUV_propagation)
+      error(
+          "GEARFeedback:LW_FUV_propagation=1 requested, but the Yukawa "
+          "screened-diffusion propagation update is not implemented yet "
+          "(phase 2 of .claude/dev/design-lw-fuv-injection.md). Set it to "
+          "0 (or omit it) to run injection + receiver-side extinction only.");
   }
 
   if (with_photoionization) {

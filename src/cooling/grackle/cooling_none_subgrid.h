@@ -72,6 +72,54 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
 }
 
 /**
+ * @brief Compute Grackle's per-particle isrf_habing for the local
+ * Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_isrf_habing_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
+}
+
+/**
+ * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
+ * local Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_LW_dissociation_rate_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
+}
+
+/**
+ * @brief Consume this step's accumulated LW/FUV dose. No-op here: this
+ * subgrid model never injects one.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ */
+INLINE static void cooling_expire_LW_FUV_dose_subgrid(
+    const struct cooling_function_data *cooling, struct part *p) {}
+
+/**
  * @brief Debug-only: hold every non-ionized particle fixed at a fixed
  * temperature. No-op here: this subgrid model never forces a particle's
  * energy.

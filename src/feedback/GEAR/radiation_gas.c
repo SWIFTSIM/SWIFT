@@ -355,6 +355,8 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   sp->feedback_data.radiation.L_bol = 0.f;
   sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+  sp->feedback_data.radiation.L_FUV = 0.;
+  sp->feedback_data.radiation.L_LW = 0.;
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
 
@@ -521,4 +523,92 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
       sigma_HI_cgs / units_general_cgs_conversion_factor(us, dimension_area);
 
   return sigma_HI * ionizing_flux_HI;
+}
+
+/**
+ * Local ISRF strength in Habing units, from this #part's own propagated
+ * FUV+LW specific-energy fields (Eq. fuv-g0-conversion,
+ * theory/GEAR/Radiation/02_fuv_isrf.tex): G0 = c*rho*u / 1.6e-3 erg/s/cm^2,
+ * with u = u_FUV + u_LW ("sum the two bands", Section fuv-two-bands,
+ * applied post-injection/extinction here). Feeds Grackle's per-particle
+ * isrf_habing array (GrackleCooling chemistry_data.use_isrf_field, forced
+ * on by GEARFeedback:with_photoelectric_heating). Zero for a particle no
+ * star has ever illuminated (u_FUV=u_LW=0, #cooling_expire_LW_FUV_dose_
+ * subgrid's post-consumption value).
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @return G0, dimensionless (Habing units).
+ */
+double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct cosmology *cosmo,
+                                      const struct part *p) {
+
+  const double rho = hydro_get_physical_density(p, cosmo);
+  /* max()s guard the -1.f "never yet consumed by cooling" sentinel
+     (#feedback_first_init_part): a particle's first-ever cooling call can
+     still see it, since the dose is now cleared at consumption time
+     (#cooling_expire_LW_FUV_dose_subgrid), not on every drift. */
+  const double u_sum = max(0.0, (double)p->feedback_data.u_FUV) +
+                       max(0.0, (double)p->feedback_data.u_LW);
+  const double flux = phys_const->const_speed_light_c * rho * u_sum;
+  const double flux_cgs =
+      flux *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
+
+  return flux_cgs / RADIATION_HABING_FLUX_CGS;
+}
+
+/**
+ * H2 Lyman-Werner photodissociation rate from this #part's own propagated
+ * LW-band specific-energy field: k_diss = sigma_H2 * F_LW (direct
+ * cross-section conversion, decided over Draine & Bertoldi (1996)'s
+ * shape-calibrated k_LW(chi) fit once L_LW is tracked explicitly --
+ * .claude/dev/design-lw-fuv-injection.md's "Extinction" section,
+ * cross-checked against Emerick, Bryan & Mac Low 2019 Section 2.5.7).
+ * F_LW is a PHOTON flux (not the energy flux #radiation_get_part_isrf_
+ * habing uses): dividing the LW-band energy flux by a representative
+ * photon energy (#RADIATION_LW_PHOTON_ENERGY_EV) converts it, mirroring
+ * this codebase's own existing energy-vs-photon-count distinction for the
+ * ionizing channel (Q_H tracked separately from L_bol/DotEExcess).
+ * Feeds Grackle's per-particle RT_H2_dissociation_rate (COOLING_GRACKLE_
+ * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
+ * only forced on for this feature at that mode, see cooling_io.h).
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @return H2 photodissociation rate, internal 1/time (Grackle's own
+ * expected unit for a per-particle rate-coupled RT field, matching
+ * radiation_get_part_photoionization_rate_coefficient's convention).
+ */
+double radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+
+  const double rho = hydro_get_physical_density(p, cosmo);
+  /* max() guards the -1.f sentinel; see radiation_get_part_isrf_habing. */
+  const double u_LW = max(0.0, (double)p->feedback_data.u_LW);
+  const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
+  const double flux_LW_cgs =
+      flux_LW *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
+
+  /* phys_const->const_electron_volt is already in this run's internal
+     units; convert the internal-unit photon energy to cgs to match
+     flux_LW_cgs above, rather than hand-rolling a separate eV-to-erg cgs
+     constant (physical_constants_cgs.h already defines one, and every
+     other radiation getter in this codebase reads constants off
+     phys_const rather than duplicating them). */
+  const double E_LW_photon_cgs =
+      RADIATION_LW_PHOTON_ENERGY_EV * phys_const->const_electron_volt *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  const double photon_flux_LW_cgs = flux_LW_cgs / E_LW_photon_cgs;
+  const double k_diss_cgs = RADIATION_SIGMA_H2_LW_CGS * photon_flux_LW_cgs;
+
+  return k_diss_cgs / units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
 }

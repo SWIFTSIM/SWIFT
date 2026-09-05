@@ -291,6 +291,7 @@ void radiation_read_grid_metadata(hid_t group_id,
     char luminosity_below[16], luminosity_above[16];
     char q_h_below[16], q_h_above[16];
     char mean_excess_energy_below[16], mean_excess_energy_above[16];
+    char teff_below[16], teff_above[16];
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_below",
                                     luminosity_below, sizeof(luminosity_below));
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_above",
@@ -305,6 +306,10 @@ void radiation_read_grid_metadata(hid_t group_id,
     radiation_read_string_attribute(
         group_id, "edge_policy_mean_excess_energy_above",
         mean_excess_energy_above, sizeof(mean_excess_energy_above));
+    radiation_read_string_attribute(group_id, "edge_policy_teff_below",
+                                    teff_below, sizeof(teff_below));
+    radiation_read_string_attribute(group_id, "edge_policy_teff_above",
+                                    teff_above, sizeof(teff_above));
 
     grid->edge_policy_luminosity = radiation_parse_edge_policy(
         luminosity_below, luminosity_above, "luminosity");
@@ -313,11 +318,14 @@ void radiation_read_grid_metadata(hid_t group_id,
     grid->edge_policy_dot_e_excess = radiation_parse_edge_policy(
         mean_excess_energy_below, mean_excess_energy_above,
         "mean_excess_energy");
+    grid->edge_policy_teff =
+        radiation_parse_edge_policy(teff_below, teff_above, "teff");
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
     grid->edge_policy_luminosity = boundary_condition_error;
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
+    grid->edge_policy_teff = boundary_condition_error;
   } else {
     error(
         "Data/Radiation has an unrecognised 'dimensionality' attribute "
@@ -630,9 +638,11 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * @param expected_units See radiation_read_cgs_array().
  * @param raw_1d (output) Raw 1D interpolation table (1D tables only),
  * holding log10(value in internal units), pychem-floored.
- * @param integrated_1d (output) IMF-integrated 1D interpolation table (1D
- * tables only), holding the linear (un-logged) cumulative value; see
- * this function's own doxygen for why.
+ * @param integrated_1d (output, optional) IMF-integrated 1D interpolation
+ * table (1D tables only), holding the linear (un-logged) cumulative value;
+ * see this function's own doxygen for why. Pass NULL for a dataset with no
+ * IMF-integrated concept (Teff); left untouched then, mirroring @p
+ * integrated_2d.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
@@ -779,6 +789,12 @@ static void radiation_build_tables(
   free(data);
   free(log_data);
 
+  /* NULL for a dataset with no IMF-integrated concept (Teff: the band
+     fraction built from it is a nonlinear function of Teff, so no single
+     IMF-integrated Teff would give the right integrated band luminosity).
+     Mirrors the 2D branch's own integrated_2d == NULL early return above. */
+  if (integrated_1d == NULL) return;
+
   /* integrated_1d is built from pychem's own precomputed, number-weighted,
      cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
      integrating the raw values above. See this function's own doxygen. */
@@ -916,6 +932,46 @@ void radiation_read_mean_excess_photon_energy_array(
       RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
       &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
       &rad->integrated.dot_E_excess_2d, grid->edge_policy_dot_e_excess);
+}
+
+/**
+ * @brief Read the Teff (spectral-hardness effective temperature) array from
+ * the table.
+ *
+ * Raw-only, both dimensionalities: unlike Luminosity/Q_H/DotEExcess, Teff
+ * has no "Integrated_Teff" dataset in either a 1D ("M") or 2D ("M,Z") table
+ * (see #radiation.raw's own doxygen on the #teff/#teff_2d union for why an
+ * IMF-integrated Teff would not give the right integrated band luminosity
+ * anyway), so @p integrated_1d/@p integrated_2d are passed NULL to
+ * #radiation_build_tables, which skips requiring or building them.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  const htri_t exists = H5Lexists(group_id, "Teff", H5P_DEFAULT);
+  if (exists <= 0) {
+    error(
+        "This Data/Radiation group has no 'Teff' dataset. This table was "
+        "generated before pychem added it and needs regenerating: run "
+        "pychem's pychem_generate_hdf5_parameters on this table's own "
+        "chimieparam file, then point GEARFeedback:yields_table (or "
+        "yields_table_first_stars, for the PopIII model) at the "
+        "regenerated file.");
+  }
+
+  radiation_build_tables(group_id, "Teff", grid, sm, rad->interpolation_size,
+                         rad->interpolation_size_metallicity,
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE),
+                         1., "K", &rad->raw.teff, NULL, &rad->raw.teff_2d, NULL,
+                         grid->edge_policy_teff);
 }
 
 /**
@@ -1276,6 +1332,14 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int interpolation_size_metallicity_before =
       rad->interpolation_size_metallicity;
   const int n_HII_pixels_before = rad->n_HII_pixels;
+  /* with_LW_FUV round-trips for the same reason: radiation_zero_pointers()
+     below clears it (see its own doxygen), but it was already set moments
+     ago -- by radiation_init() (fresh start) or by the flat restore in
+     radiation_restore() (restart), which both run before this function is
+     called and before radiation_read_teff_array() below needs to read it.
+     Without this round-trip the Teff dataset (and hence L_FUV/L_LW) is
+     silently never read, on both the fresh-start and restart paths. */
+  const char with_LW_FUV_before = rad->with_LW_FUV;
 
   /* Zero every table up front: radiation_build_tables() only populates the
      _1d or _2d variant matching this table's dimensionality, and only the
@@ -1287,6 +1351,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   rad->interpolation_size = interpolation_size_before;
   rad->interpolation_size_metallicity = interpolation_size_metallicity_before;
   rad->n_HII_pixels = n_HII_pixels_before;
+  rad->with_LW_FUV = with_LW_FUV_before;
 
   hid_t file_id, group_id;
   radiation_open_data_group(sm->yields_table, &file_id, &group_id);
@@ -1355,6 +1420,13 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
+
+  /* Read the spectral-hardness effective temperature, used to split
+     Luminosity into sub-Lyman-continuum bands (L_FUV/L_LW). Gated on
+     with_LW_FUV (see its own doxygen): a table generated before this
+     feature existed has no "Teff" dataset, and a photoionization-/
+     radiation-pressure-only run has no use for it either. */
+  if (rad->with_LW_FUV) radiation_read_teff_array(rad, group_id, &grid, sm, us);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets

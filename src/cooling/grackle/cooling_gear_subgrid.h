@@ -252,6 +252,69 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
 }
 
 /**
+ * @brief Compute Grackle's per-particle isrf_habing for the local
+ * Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_heating).
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return G0 in Habing units, 0 if with_LW_FUV is off.
+ */
+INLINE static double cooling_get_isrf_habing_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  if (!cooling->with_LW_FUV) return 0.;
+  return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
+}
+
+/**
+ * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
+ * local Lyman-Werner/FUV feedback. COOLING_GRACKLE_MODE > 1 only: H2 is
+ * untracked otherwise.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return H2 photodissociation rate, internal 1/time; 0 if with_LW_FUV is
+ * off or COOLING_GRACKLE_MODE <= 1.
+ */
+INLINE static double cooling_get_LW_dissociation_rate_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+#if COOLING_GRACKLE_MODE > 1
+  if (!cooling->with_LW_FUV) return 0.;
+  return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
+                                                          p);
+#else
+  return 0.;
+#endif
+}
+
+/**
+ * @brief Consume this step's accumulated LW/FUV dose once
+ * cooling_copy_to_grackle has read it (via
+ * #cooling_get_isrf_habing_subgrid / #cooling_get_LW_dissociation_rate_subgrid
+ * above) -- resetting before that call would erase the dose before Grackle
+ * ever sees it, the same hazard #cooling_expire_rate_coupled_tag_subgrid
+ * guards against for the HII tag.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ */
+INLINE static void cooling_expire_LW_FUV_dose_subgrid(
+    const struct cooling_function_data *cooling, struct part *p) {
+  if (!cooling->with_LW_FUV) return;
+  p->feedback_data.u_FUV = 0.f;
+  p->feedback_data.u_LW = 0.f;
+}
+
+/**
  * @brief Expire a GEAR rate-coupled HII tag once Grackle has consumed it for
  * this step's solve (see #cooling_get_rate_coupled_RT_fields_subgrid,
  * called earlier via cooling_copy_to_grackle -- resetting the tag before

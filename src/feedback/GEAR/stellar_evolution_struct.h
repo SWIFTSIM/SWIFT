@@ -235,6 +235,24 @@ struct radiation {
       struct interpolation_2d dot_E_excess_2d;
     };
 
+    union {
+      /*! Spectral-hardness effective temperature (pychem's "Teff"
+          dataset), used to split #luminosities into sub-Lyman-continuum
+          bands (L_FUV/L_LW; see radiation_planck_band_fraction()). Has no
+          IMF-integrated counterpart in #integrated below (unlike
+          #luminosities): the band fraction is a nonlinear function of
+          Teff, so an IMF-integrated band luminosity cannot be built from
+          an IMF-integrated Teff the way #integrated.luminosities is built
+          directly from pychem's own precomputed integral. Every star's
+          L_FUV/L_LW is therefore always evaluated from the raw (per-mass)
+          Teff, even along the population/SSP feedback path that otherwise
+          reads #integrated for L_bol/dot_N_ion/dot_E_excess. */
+      struct interpolation_1d teff;
+
+      /*! #teff, mass x metallicity ("M,Z" dimensionality) variant. */
+      struct interpolation_2d teff_2d;
+    };
+
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
         metallicity, 2D-only ("MainSequenceLifetime" has no 1D/"M"-table
         analogue). Stored log10(Myr), in the same log-log scheme
@@ -359,6 +377,21 @@ struct radiation {
       would read a zeroed interpolation table otherwise). Set to 1 at the
       end of radiation_read_data(), 0 by #radiation_zero_pointers. */
   int is_active;
+
+  /*! Is the local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
+      heating) on? Set from that parameter in radiation_init(), before
+      radiation_read_data() is called (radiation_init() calls it), so
+      radiation_read_data() can gate radiation_read_teff_array() on it: the
+      "Teff" dataset is a phase-1 LW/FUV-specific addition to the table
+      (see radiation_planck_band_fraction()), and requiring every
+      photoionization-/radiation-pressure-only run's table to already carry
+      it (rather than gating the read) would be a needless, disruptive
+      compatibility break for every table generated before this feature.
+      Persists across restart as a plain scalar in the raw block read/write
+      (#radiation_dump/#radiation_restore), like #is_2d, so
+      radiation_read_data()'s restart call can read it before params is
+      available again (params is NULL on restart). */
+  char with_LW_FUV;
 };
 
 /**
