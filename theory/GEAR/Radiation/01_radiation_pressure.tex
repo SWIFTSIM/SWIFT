@@ -192,7 +192,8 @@ codes:
 \begin{equation}
   \Sigma_{\rm gas} = \rho_\star \times
   \left(h_\star\,\gamma_k + \ell_{\rm Sobolev}\right), \qquad
-  \ell_{\rm Sobolev} = \frac{\rho_\star}{|\nabla\rho_\star|},
+  \ell_{\rm Sobolev} = \min\!\left(\frac{\rho_\star}{|\nabla\rho_\star|},\,
+  h_\star\,\gamma_k\right),
   \label{eq:rp-sobolev}
 \end{equation}
 (\code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}), i.e.\
@@ -200,7 +201,9 @@ the local gas density times an effective path length: the kernel
 support radius $h_\star\gamma_k$ (a floor: always included, not just
 a fallback) plus the Sobolev length $\rho/|\nabla\rho|$, the
 characteristic distance over which the density itself changes by a
-factor of $e$. $\rho_\star$ is \code{enrichment\_weight} (the star's
+factor of $e$, itself capped at $h_\star\gamma_k$ (\textbf{implemented
+2026-09-05, commit \code{9fa74a666}}, see below). $\rho_\star$ is
+\code{enrichment\_weight} (the star's
 own SPH-averaged local gas density, already computed by the regular
 enrichment density loop, reused here rather than a separate
 accumulator); $\nabla\rho_\star$ is
@@ -210,14 +213,14 @@ above. \textbf{Degenerate case handled:} a locally uniform density
 field (zero gradient, e.g.\ unperturbed glass/grid initial
 conditions, or a star with too few neighbours to resolve a gradient)
 makes $\ell_{\rm Sobolev}$ formally undefined (0/0); the code checks
-$|\nabla\rho_\star|>0$ explicitly and falls back to the kernel-radius
-term alone in that case, rather than propagating a NaN.
+$|\nabla\rho_\star|>0$ explicitly and returns $h_\star\gamma_k$ directly
+in that case, rather than propagating a NaN.
 
 \textbf{Confirmed against the primary source (2026-07-23).}
 \citet{Hopkins2020} \S4.4 gives their own local column-density
 estimate as $\langle\Sigma\rangle \approx \rho\,[h + \rho/|\nabla\rho|]$,
 with $h=(m_i/\rho)^{1/3}$ the local resolution-element size,
-structurally identical to Eq.~\ref{eq:rp-sobolev}'s
+structurally identical to Eq.~\ref{eq:rp-sobolev}'s pre-cap form
 $\rho_\star(h_\star\gamma_k + \ell_{\rm Sobolev})$: same
 floor-plus-Sobolev-length sum, just a slightly different (arguably
 more physically motivated, since it is the actual SPH kernel support
@@ -228,13 +231,21 @@ smoothing length; the formula as quoted in \citet{Hopkins2020} \S4.4
 is a plain sum, no $\min(\cdot)$: i.e.\ no cap is visible in this
 specific paper. This may be in \citet{Hopkins2018} (their ``Paper~I'',
 not yet checked) or a later code update, or simply a misremembering;
-not resolved this pass. Practically: this codebase's formula already
-matches \citet{Hopkins2020}'s own documented approach as-is, so the
-resolution-robustness concern raised below (production runs at
-10--$10^4\,M_\odot$ per particle) is about noise in $|\nabla\rho|$
-at coarse resolution, not about deviating from the primary source:
-a cap would be a robustness \emph{improvement over} what
-\citet{Hopkins2020} documents, not a correction to match it.
+not resolved. So the cap in Eq.~\ref{eq:rp-sobolev} is a robustness
+\emph{improvement over} what \citet{Hopkins2020} documents, not a
+correction to match it -- adopted anyway
+(\textbf{implemented 2026-09-05, commit \code{9fa74a666}}) once the
+uncapped Sobolev length was found to produce a hard discontinuity: an
+earlier interim version of the code (since removed) used a hard
+ternary that dropped $\ell_{\rm Sobolev}$ to exactly 0 below a
+noise-floor threshold on $|\nabla\rho_\star|$ instead of capping it,
+growing arbitrarily large approaching that floor from above and then
+jumping discontinuously to 0 the instant $|\nabla\rho_\star|$ crossed
+below it -- consequential once the absorption factor
+(Section~\ref{sec:rp-momentum}) made $\tau_{\rm IR}/\tau_{\rm NUV}$ feed
+an exponential. The $\min(\cdot)$ form in Eq.~\ref{eq:rp-sobolev} removes
+that discontinuity (the minimum of two continuous functions is itself
+continuous) and needs no separate noise-floor constant.
 
 \subsection{Distributing the kick to gas particles}
 \label{sec:rp-distribute}
