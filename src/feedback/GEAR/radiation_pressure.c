@@ -138,8 +138,15 @@ radiation_get_star_physical_radiation_pressure(
       radiation_get_physical_optical_depth(sp, us, cosmo, 10.0f);
   const float tau_NUV =
       radiation_get_physical_optical_depth(sp, us, cosmo, 1800.0f);
-  const float L_bol = sp->feedback_data.radiation.L_bol;
-  const float c = phys_const->const_speed_light_c;
+  const double L_bol = sp->feedback_data.radiation.L_bol;
+  const double c = phys_const->const_speed_light_c;
 
-  return Delta_t * L_bol / c * (1.0f - expf(-tau_NUV)) * (1.0f + tau_IR);
+  /* Double, not float: under -ffast-math the compiler may reassociate this
+     product (e.g. L_bol*(1+tau_IR) before dividing by c), which overflows
+     float32 at reachable extreme inputs (L_bol~1e38, tau_IR~19) even
+     though the true result does not; negligible cost at one call per
+     star feedback event. */
+  const double p_rad = (double)Delta_t * L_bol / c *
+                       (1.0 - exp(-(double)tau_NUV)) * (1.0 + (double)tau_IR);
+  return (float)p_rad;
 }

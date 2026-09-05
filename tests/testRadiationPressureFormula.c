@@ -154,5 +154,13 @@ int main(int argc, char *argv[]) {
                Delta_t, c_cgs);
   }
 
+  /* Case 6: L_bol and tau_IR both large enough that L_bol*(1+tau_IR), an
+   * intermediate -ffast-math is free to form before the /c division, would
+   * overflow float32 (~3.4e38) even though the true result (~6.8e28) does
+   * not; regression test for that reassociation-overflow class of bug. */
+  check_case("large L_bol and tau_IR: no spurious float32 overflow",
+             /*rho_gas=*/1.0f, /*h_star=*/1.0f, 0.0f, /*Z_star=*/0.02f,
+             /*L_bol=*/1.0e38, Delta_t, c_cgs);
+
   return 0;
 }
