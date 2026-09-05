@@ -38,13 +38,15 @@ void feedback_compute_spart_timestep(
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base,
-    float *dt_event_side, float *dt_evolution_ssp);
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp);
 
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base);
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin);
 
 void feedback_will_do_HII_ionization(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -54,7 +56,7 @@ void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
-                  const double time);
+                  const double time, const timebin_t old_time_bin);
 
 double compute_star_age_end_of_step(const struct spart *sp,
                                     const int with_cosmology,
