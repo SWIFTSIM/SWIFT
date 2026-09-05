@@ -262,14 +262,16 @@ radiation_iact_nonsym_feedback_apply(
                                si->feedback_data.radiation.L_LW *
                                (double)extinction_LW;
 
-    /* Clear the -1.f "never consumed by cooling" sentinel before summing
-       into it: this pair's injection can land before this particle's own
-       first cooling call, and `+=` onto -1.f would silently undercount by
-       exactly that offset, not just leave a boundary artifact for a reader
-       to clamp away (unlike a plain read, see radiation_get_part_isrf_
-       habing). */
-    if (pj->feedback_data.u_FUV < 0.f) pj->feedback_data.u_FUV = 0.f;
-    if (pj->feedback_data.u_LW < 0.f) pj->feedback_data.u_LW = 0.f;
+    /* An instantaneous field strength, not an accumulated dose: reset to
+       0 on the first touch this step (by any star), so a later read sees
+       this step's illumination rather than a total across every step
+       since the last cooling call. A later touch this same step (a
+       second illuminating star) sums into what the first just wrote. */
+    if (pj->feedback_data.LW_FUV_last_touch_ti != ti_current) {
+      pj->feedback_data.u_FUV = 0.f;
+      pj->feedback_data.u_LW = 0.f;
+      pj->feedback_data.LW_FUV_last_touch_ti = ti_current;
+    }
 
     pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
     pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);

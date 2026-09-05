@@ -531,8 +531,8 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
  * with u = u_FUV + u_LW (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
  * use_isrf_field, forced on by GEARFeedback:with_photoelectric_heating).
- * Zero for a particle no star has ever illuminated (u_FUV=u_LW=0,
- * #cooling_expire_LW_FUV_dose_subgrid's post-consumption value).
+ * Zero for a particle no star has ever illuminated
+ * (#feedback_first_init_part's u_FUV=u_LW=0 default).
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -546,12 +546,8 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  /* max()s guard the -1.f "never yet consumed by cooling" sentinel
-     (#feedback_first_init_part): a particle's first-ever cooling call can
-     still see it, since the dose is now cleared at consumption time
-     (#cooling_expire_LW_FUV_dose_subgrid), not on every drift. */
-  const double u_sum = max(0.0, (double)p->feedback_data.u_FUV) +
-                       max(0.0, (double)p->feedback_data.u_LW);
+  const double u_sum =
+      (double)p->feedback_data.u_FUV + (double)p->feedback_data.u_LW;
   const double flux = phys_const->const_speed_light_c * rho * u_sum;
   const double flux_cgs =
       flux *
@@ -586,8 +582,7 @@ double radiation_get_part_LW_dissociation_rate_internal(
     const struct cosmology *cosmo, const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  /* max() guards the -1.f sentinel; see radiation_get_part_isrf_habing. */
-  const double u_LW = max(0.0, (double)p->feedback_data.u_LW);
+  const double u_LW = (double)p->feedback_data.u_LW;
   const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
   const double flux_LW_cgs =
       flux_LW *

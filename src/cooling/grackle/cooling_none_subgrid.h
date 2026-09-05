@@ -110,16 +110,6 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
 }
 
 /**
- * @brief Consume this step's accumulated LW/FUV dose. No-op here: this
- * subgrid model never injects one.
- *
- * @param cooling The #cooling_function_data used in the run.
- * @param p Pointer to the particle data.
- */
-INLINE static void cooling_expire_LW_FUV_dose_subgrid(
-    const struct cooling_function_data *cooling, struct part *p) {}
-
-/**
  * @brief Debug-only: hold every non-ionized particle fixed at a fixed
  * temperature. No-op here: this subgrid model never forces a particle's
  * energy.

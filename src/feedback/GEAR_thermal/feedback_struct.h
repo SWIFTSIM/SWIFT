@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
 #include "chemistry_struct.h"
+#include "timeline.h"
 
 /*! Maximum number of HEALPix angular pixels the HII ionization budget can
     be split across (12*nside_max^2). Every star carries a fixed-size
@@ -74,16 +75,13 @@ struct feedback_part_data {
 
   /*! Local specific FUV-band (6-11.2 eV) radiation field, internal
       specific-energy units (per-unit-mass, like this codebase's own
-      hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above).
-      feedback_first_init_part sets this to -1.f (never a physical specific
-      energy); this sentinel is only cleared once cooling_new_energy() has
-      consumed it (#cooling_expire_LW_FUV_dose_subgrid), so callers must
-      clamp negative values to 0 rather than assume a prior reset already
-      ran (#radiation_get_part_isrf_habing does this). Accumulates via
-      radiation_iact_nonsym_feedback_apply's `+=` between consecutive
-      cooling calls on this particle; propagation between particles is
-      not yet implemented, so this is the field itself, not an
-      accumulator feeding a separately-decaying state. */
+      hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above). An
+      instantaneous field strength, not an accumulated dose: holds the
+      illuminating star(s)' most recently computed contribution, summed
+      across every star that touched this particle in the same step
+      (#LW_FUV_last_touch_ti), then held unchanged until the next step any
+      star touches it again. Never cleared by cooling: a reader gets
+      whatever was last written, however long ago that was. */
   float u_FUV;
 
   /*! Local specific Lyman-Werner-band (11.2-13.6 eV) radiation field,
@@ -92,13 +90,25 @@ struct feedback_part_data {
      #u_FUV, since the two bands carry different dust opacities. */
   float u_LW;
 
+  /*! Simulation step (#engine.ti_current) #u_FUV/#u_LW were last written
+      at. radiation_iact_nonsym_feedback_apply compares this against the
+      current step: a match means some star already wrote this step, so a
+      further touch (a second illuminating star) sums into the existing
+      value; a mismatch means this is the first touch this step, so
+      #u_FUV/#u_LW are zeroed before summing. This is what makes the field
+      an instantaneous strength rather than an ever-growing total, while
+      still summing multiple simultaneously-illuminating stars correctly
+      within one step. feedback_first_init_part sets this to -1 (never a
+      valid step) so the very first touch of a particle's life also
+      resets rather than summing onto uninitialized memory. */
+  integertime_t LW_FUV_last_touch_ti;
+
   /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
       star's injection pass, ever? Dedicated flag, not inferred from
-      u_FUV/u_LW themselves: with no decay yet implemented, a nonzero
-      value only ever grows, so it cannot distinguish "already
-      illuminated" from "newly illuminated" the way a zero-crossing
-      could. Mirrors #is_ionized's claimed/not-claimed role: gates a
-      first-touch-only timestep_sync_part call in
+      u_FUV/u_LW themselves, since those now reset every step a star
+      touches this particle and so cannot signal "newly illuminated" via
+      a zero-crossing. Mirrors #is_ionized's claimed/not-claimed role:
+      gates a first-touch-only timestep_sync_part call in
       radiation_iact_nonsym_feedback_apply, mirroring
       feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's
       own claim-vs-maintain split. Unlike that HII pair, there is no

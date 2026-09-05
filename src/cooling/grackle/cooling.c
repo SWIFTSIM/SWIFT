@@ -1034,11 +1034,6 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   /* Expire the tag only after cooling_copy_to_grackle has consumed it above. */
   cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
 
-  /* Same hazard, same fix, for the LW/FUV dose: cooling_copy_to_grackle
-     just read u_FUV/u_LW above, so it is now safe to zero them for the
-     next injection pass. */
-  cooling_expire_LW_FUV_dose_subgrid(cooling, p);
-
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
 
