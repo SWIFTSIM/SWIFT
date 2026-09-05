@@ -23,7 +23,9 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length --n_sink $n_sinks --sink_pos 0 0 0 --sinks_vel 10 10 0
+    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length \
+	   --rho $gas_density --mass $gas_particle_mass \
+	   --n_sink $n_sinks --sink_pos 0 0 0 --sinks_vel 10 10 0
 fi
 
 

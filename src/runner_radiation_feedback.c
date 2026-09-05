@@ -573,8 +573,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     double star_age_beg_step = 0;
     double dt_enrichment = 0;
     integertime_t ti_begin_star = 0;
+    /* si->time_bin here, live: this task's ordering relative to the
+       timestep task's overwrite (runner_do_timestep()) is not established
+       by any dependency edge, so whether it is pre- or post-overwrite for
+       a given star is untraced; passing it through unchanged keeps this
+       call's behavior identical to before old_time_bin existed. */
     compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-                 &ti_begin_star, ti_current, time_base, time);
+                 &ti_begin_star, ti_current, time_base, time, si->time_bin);
     const double star_age_safe = max(star_age_beg_step, 0.0);
 
     /* Photon-budget interval anchor is HII_region_last_attempt, not
@@ -593,8 +598,15 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        still "attempted" just above, which is what keeps dt_elapsed correct
        for whenever a real pass next lands -- see runner_do_stars_hii_
        ionization_feedback's early-return comment for why this cell was
-       reached at all despite holding no gas. */
-    if (c->hydro.count == 0) continue;
+       reached at all despite holding no gas. Resync the trapezoid
+       quadrature's cached rate here too, since this skip advances
+       last_attempt without calling feedback_open_star_ionizing_photon_budget
+       -- otherwise the next real pass would average against a stale rate
+       from before this skip. */
+    if (c->hydro.count == 0) {
+      feedback_resync_star_ionizing_photon_rate_cache(si);
+      continue;
+    }
 
     /* Photons are budgeted as a count over the interval this pass actually
        covers, so that slicing a run into more (or fewer) rebuild passes

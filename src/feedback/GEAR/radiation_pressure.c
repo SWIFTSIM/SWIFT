@@ -50,16 +50,20 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
       sqrtf(grad_rho[0] * grad_rho[0] + grad_rho[1] * grad_rho[1] +
             grad_rho[2] * grad_rho[2]);
 
-  /* A locally uniform density field (zero or near-zero gradient, e.g.
-     unperturbed glass/grid ICs) makes the Sobolev length rho/|grad rho|
-     undefined, or dominated by SPH summation noise rather than a resolved
-     trend: fall back to just the kernel support radius in that case (see
-     RADIATION_MIN_RELATIVE_DENSITY_GRADIENT). */
+  /* Cap the Sobolev length rho/|grad rho| at the kernel support radius
+     rather than letting it blow up towards infinity for a locally uniform
+     density field (zero or near-zero gradient, e.g. an unperturbed
+     glass/grid IC, where the raw ratio is dominated by SPH summation
+     noise, not a resolved trend). Capping at h_gas, rather than switching
+     to a Jeans-length estimate, is the resolution-robust choice across
+     this model's wide production mass range. norm_grad_rho == 0 returns
+     h_gas directly rather than dividing by 0: the final return below
+     already zeroes the whole expression out for a star with no gas
+     neighbours (rho_gas == 0 there), so no separate rho_gas guard is
+     needed. */
   const float h_gas = sp->h * kernel_gamma;
-  const float grad_rho_floor =
-      RADIATION_MIN_RELATIVE_DENSITY_GRADIENT * rho_gas / h_gas;
   const float sobolev_length =
-      norm_grad_rho > grad_rho_floor ? rho_gas / norm_grad_rho : 0.0f;
+      norm_grad_rho > 0.0f ? fminf(rho_gas / norm_grad_rho, h_gas) : h_gas;
   const float length_gas = h_gas + sobolev_length;
   return length_gas * rho_gas;
 }
@@ -138,8 +142,15 @@ radiation_get_star_physical_radiation_pressure(
       radiation_get_physical_optical_depth(sp, us, cosmo, 10.0f);
   const float tau_NUV =
       radiation_get_physical_optical_depth(sp, us, cosmo, 1800.0f);
-  const float L_bol = sp->feedback_data.radiation.L_bol;
-  const float c = phys_const->const_speed_light_c;
+  const double L_bol = sp->feedback_data.radiation.L_bol;
+  const double c = phys_const->const_speed_light_c;
 
-  return Delta_t * L_bol / c * (1.0f - expf(-tau_NUV)) * (1.0f + tau_IR);
+  /* Double, not float: under -ffast-math the compiler may reassociate this
+     product (e.g. L_bol*(1+tau_IR) before dividing by c), which overflows
+     float32 at reachable extreme inputs (L_bol~1e38, tau_IR~19) even
+     though the true result does not; negligible cost at one call per
+     star feedback event. */
+  const double p_rad = (double)Delta_t * L_bol / c *
+                       (1.0 - exp(-(double)tau_NUV)) * (1.0 + (double)tau_IR);
+  return (float)p_rad;
 }

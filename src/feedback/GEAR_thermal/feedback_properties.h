@@ -50,6 +50,9 @@ enum radiation_policy {
  */
 struct feedback_props {
 
+  /*! Whether sinks are configured; set by sink_props_init(), 0 otherwise. */
+  int with_sinks;
+
   /*! Supernovae energy effectively deposited */
   float supernovae_efficiency;
 
@@ -224,6 +227,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     struct feedback_props *fp, const struct phys_const *phys_const,
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
+
+  /* Default absent any sink info; sink_props_init() sets 1 when configured. */
+  fp->with_sinks = 0;
 
   /* Supernovae energy efficiency */
   double e_efficiency =

@@ -7,6 +7,7 @@ n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
 level=${level:=5}  # Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
+gas_particle_mass=${gas_mass:=50} # Mass of the gas particles in Msun
 debug=${debug:=0}
 run_name=${run_name:=""}
 with_star_formation=${with_star_formation=0}
@@ -29,7 +30,8 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length
+    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length \
+	   --mass $gas_particle_mass
 fi
 
 # Get the Grackle cooling table

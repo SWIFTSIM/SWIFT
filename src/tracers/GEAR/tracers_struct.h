@@ -55,10 +55,7 @@ struct tracers_xpart_data {
   struct {
 
     /*! Cumulative momentum magnitude received from SN, stellar winds and
-        radiation pressure. momentum_SN is comoving-frame (the SN branch in
-        feedback_iact.h doesn't convert to physical velocities the way the
-        winds branch does); exact for non-cosmological runs, revisit before
-        trusting in a cosmological one. */
+        radiation pressure, all physical-frame. */
     float momentum_SN;
     float momentum_winds;
     float momentum_radiation;

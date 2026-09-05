@@ -322,14 +322,26 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
     }
 
-    /* Lifetime-cumulative tracer. Comoving-frame momentum (this branch,
-       unlike the winds one above, never converts to physical velocities),
-       exact for the non-cosmological runs this is used for so far; revisit
-       the comoving/physical distinction here before trusting it in a
-       cosmological run. */
-    const float delta_p_mag_SN =
-        sqrtf(delta_p_SN[0] * delta_p_SN[0] + delta_p_SN[1] * delta_p_SN[1] +
-              delta_p_SN[2] * delta_p_SN[2]);
+    /* Physical-frame momentum, for the tracer below only: delta_p_SN itself
+       and the kick applied to the gas particle above stay in this branch's
+       existing comoving convention (changing those is a separate, bigger
+       physics change, out of scope here); the two differ by exactly the
+       differential Hubble-flow term dm_SN * a_dot * dx. Uses dx (the
+       periodicity-corrected separation this function is already handed),
+       not si->x - pj->x directly: those are unwrapped absolute positions,
+       off by a box length for a pair straddling a periodic boundary. */
+    const float a = cosmo->a;
+    const float a_inv = cosmo->a_inv;
+    const float a_dot = a * cosmo->H;
+    const float delta_p_SN_phys[3] = {
+        (float)dm_SN * (a_dot * dx[0] + (si->v[0] - xpj->v_full[0]) * a_inv),
+        (float)dm_SN * (a_dot * dx[1] + (si->v[1] - xpj->v_full[1]) * a_inv),
+        (float)dm_SN * (a_dot * dx[2] + (si->v[2] - xpj->v_full[2]) * a_inv)};
+
+    /* Lifetime-cumulative tracer. */
+    const float delta_p_mag_SN = sqrtf(delta_p_SN_phys[0] * delta_p_SN_phys[0] +
+                                       delta_p_SN_phys[1] * delta_p_SN_phys[1] +
+                                       delta_p_SN_phys[2] * delta_p_SN_phys[2]);
     tracers_gear_accumulate_feedback(
         &xpj->tracers_data.feedback_cumulative.momentum_SN,
         &xpj->tracers_data.feedback_cumulative.energy_SN,

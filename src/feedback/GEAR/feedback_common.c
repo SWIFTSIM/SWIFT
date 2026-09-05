@@ -27,6 +27,7 @@
 #include "part.h"
 #include "radiation.h"
 #include "stellar_evolution.h"
+#include "timeline.h"
 #include "timestep_sync_part.h"
 #include "units.h"
 
@@ -61,6 +62,9 @@
  * @param ti_current The current time (in integer).
  * @param time  The current time (in double, used if running without cosmology).
  * @param time_base The time base.
+ * @param old_time_bin The star's time bin for the step that just finished;
+ * at this call site (before runner_do_timestep() overwrites it) that is
+ * simply sp->time_bin, passed live by the caller.
  * @param dt_event_side (out) single_star's exact death-anchored timestep
  * combined with dt_HII_safe and floored at event_dt_floor_Myr; FLT_MAX if
  * the star is dead.
@@ -72,7 +76,8 @@ void feedback_compute_spart_timestep(
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base,
-    float *dt_event_side, float *dt_evolution_ssp) {
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp) {
 
   /* If the star is dead, do not limit its timestep with either term. */
   if (sp->feedback_data.is_dead) {
@@ -98,7 +103,7 @@ void feedback_compute_spart_timestep(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time, old_time_bin);
 
   /*----------------------------------------*/
   /* dt_event (single_star only): the star's own fixed death/SN moment,
@@ -128,8 +133,20 @@ void feedback_compute_spart_timestep(
     const double star_age_beg_step_safe =
         star_age_beg_step < 0 ? 0 : star_age_beg_step;
     const double conversion_to_myr = phys_const->const_year * 1e6;
-    const float lifetime_myr =
-        (float)(star_age_beg_step_safe / conversion_to_myr);
+    float lifetime_myr = (float)(star_age_beg_step_safe / conversion_to_myr);
+
+    /* Floor age-as-lifetime at the IMF tail's shortest-lived star;
+     * with_sinks-gated since minimal_discrete_mass_Msun is only populated when
+     * sinks are configured. */
+    if (sp->star_type == star_population_continuous_IMF &&
+        feedback_props->with_sinks) {
+      const float min_discrete_mass_Msun = sm->imf.minimal_discrete_mass_Msun;
+      const float lifetime_myr_floor = pow(
+          10, lifetime_get_log_lifetime_from_mass(
+                  &sm->lifetime, log10f(min_discrete_mass_Msun), metallicity));
+      lifetime_myr = max(lifetime_myr, lifetime_myr_floor);
+    }
+
     const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
     /* Adapt the factor depending on the population's current age to
@@ -196,6 +213,17 @@ void feedback_compute_spart_timestep(
     dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
   }
 
+  /* Floor to make_integer_timestep()'s power-of-two grid so the bin can ramp
+     up; a no-op below dti=4 (get_time_bin()'s smallest nonzero bin), rescued
+     by event_dt_floor_Myr below regardless. */
+  if (dt_HII_safe > 0.f && dt_HII_safe < FLT_MAX) {
+    const integertime_t dti = (integertime_t)(dt_HII_safe / time_base);
+    if (dti > 0) {
+      const timebin_t bin = get_time_bin(dti);
+      if (bin > 0) dt_HII_safe = (float)get_timestep(bin, time_base);
+    }
+  }
+
   /* Event-anchored side: dt_event is FLT_MAX for SSP particles, so this
      degenerates to max(dt_HII_safe, floor) there. Floored at the
      unconditionally-parsed event_dt_floor_Myr, not at min_star_timestep
@@ -204,6 +232,17 @@ void feedback_compute_spart_timestep(
   const float dt_event_side_unfloored = min(dt_event, dt_HII_safe);
   *dt_event_side =
       max(dt_event_side_unfloored, feedback_props->event_dt_floor_Myr);
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  {
+    const double to_myr = 1.0 / (1e6 * phys_const->const_year);
+    message(
+        "Star %lld (star_type=%d): dt_event=%e dt_HII_safe=%e "
+        "dt_event_side=%e dt_evolution_ssp=%e [Myr]",
+        sp->id, (int)sp->star_type, dt_event * to_myr, dt_HII_safe * to_myr,
+        *dt_event_side * to_myr, *dt_evolution_ssp * to_myr);
+  }
+#endif
 }
 
 /**
@@ -221,12 +260,16 @@ void feedback_compute_spart_timestep(
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
+ * @param old_time_bin The star's time bin for the step that just finished,
+ * captured by the caller before it overwrites sp->time_bin with the next
+ * step's bin.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -263,7 +306,7 @@ void feedback_will_do_feedback(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time, old_time_bin);
 
   /* There is no feedback to do for newborn stars */
   const double star_age_end_step = star_age_beg_step + dt_enrichment;
@@ -332,7 +375,25 @@ void feedback_will_do_feedback(
       sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
 
-  /* TODO: Move all these into a dedicated function...? */
+  feedback_will_do_HII_ionization(sp, feedback_props, star_age_beg_step,
+                                  star_age_end_step);
+}
+
+/**
+ * @brief Determines whether this star does HII ionization feedback during
+ * the next time-step, and retires its HII region once it stops doing so.
+ *
+ * @param sp The particle to act upon.
+ * @param feedback_props The #feedback_props structure.
+ * @param star_age_beg_step The star's age at the start of the step (internal
+ * units).
+ * @param star_age_end_step The star's age at the end of the step (internal
+ * units).
+ */
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step) {
+
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
@@ -450,14 +511,17 @@ double compute_star_age_end_of_step(const struct spart *sp,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The current time (in double)
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (not its possibly-already-overwritten current bin; see the caller's
+ * comment at its own call site for which value that is).
  */
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
-                  const double time) {
-  const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-  *ti_begin_star = get_integer_time_begin(ti_current, sp->time_bin);
+                  const double time, const timebin_t old_time_bin) {
+  const integertime_t ti_step = get_integer_timestep(old_time_bin);
+  *ti_begin_star = get_integer_time_begin(ti_current, old_time_bin);
 
   /* Get particle time-step */
   double dt_star;
@@ -465,7 +529,7 @@ void compute_time(const struct spart *sp, const int with_cosmology,
     dt_star = cosmology_get_delta_time(cosmo, *ti_begin_star,
                                        *ti_begin_star + ti_step);
   } else {
-    dt_star = get_timestep(sp->time_bin, time_base);
+    dt_star = get_timestep(old_time_bin, time_base);
   }
 
   /* Calculate age of the star at current time */
@@ -1096,6 +1160,18 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
 }
 
 /**
+ * @brief Dispatch wrapper exposing
+ * radiation_resync_ionizing_photon_rate_cache() (radiation.c) to
+ * runner_radiation_feedback.c, same reasoning as
+ * #feedback_get_star_HII_pixel_count.
+ *
+ * @param sp The star.
+ */
+void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
+  radiation_resync_ionizing_photon_rate_cache(sp);
+}
+
+/**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
  * Thin dispatch wrapper so callers outside this feedback model (e.g.
@@ -1183,6 +1259,12 @@ void feedback_init_after_star_formation(
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }
 
+  /* No previous pass to average against yet; -1 is the sentinel
+     radiation_open_ionizing_photon_budget() checks for. */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
+  }
+
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
   sp->star_type = star_type;
@@ -1222,6 +1304,11 @@ void feedback_first_init_spart(struct spart *sp,
      identical seed in feedback_init_after_star_formation(). */
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
+  }
+
+  /* Same sentinel-seeding reasoning as feedback_init_after_star_formation(). */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
   }
 
   /* Activate the feedback loop for the first step */
