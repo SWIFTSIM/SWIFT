@@ -175,12 +175,16 @@ void compute_time(struct spart *sp, const int with_cosmology,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (unused: AGORA has the same stale-bin exposure as GEAR, tracked for a
+ * separate follow-up fix, not this commit).
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
