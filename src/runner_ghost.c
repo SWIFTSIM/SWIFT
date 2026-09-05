@@ -1419,6 +1419,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
             adaptive_softening_init_part(p);
             mhd_init_part(p);
             chemistry_init_part(p, chemistry);
+            feedback_init_part(p, e);
             star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,

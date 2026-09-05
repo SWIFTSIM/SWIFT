@@ -50,23 +50,52 @@
 void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.u_FUV = 0.f;
   p->feedback_data.u_LW = 0.f;
+  p->feedback_data.u_FUV_prev = 0.f;
+  p->feedback_data.u_LW_prev = 0.f;
   p->feedback_data.LW_FUV_last_touch_ti = -1;
-  radiation_reset_part_propagation(p);
+  radiation_init_part_propagation(p, NULL);
 }
 
 /**
- * @brief Zero the Yukawa propagation's per-step mixing accumulators.
- *
- * Pure scratch space (no restart I/O), zeroed before the density loop
- * that fills them (radiation_propagation_iact.h) runs each step.
+ * @brief Snapshot #u_FUV/#u_LW once per step, before the density loop's
+ * h-iterations begin (see #feedback_part_data.u_FUV_prev).
  *
  * @param p The #part to reset.
  */
-void radiation_reset_part_propagation(struct part *p) {
+void radiation_snapshot_part_propagation(struct part *p) {
+  p->feedback_data.u_FUV_prev = p->feedback_data.u_FUV;
+  p->feedback_data.u_LW_prev = p->feedback_data.u_LW;
+}
+
+/**
+ * @brief Zero the Yukawa propagation's per-h-iteration mixing
+ * accumulators and cache this iteration's per-band absorption rate.
+ * Mirrors chemistry_init_part's own per-iteration reset (called from the
+ * same sites: part_init.h and the ghost h-iteration redo path), so it is
+ * safe to call once or several times per step. Pure scratch space (no
+ * restart I/O). A NULL #engine (first-init only) leaves kappa at 0.
+ *
+ * @param p The #part to reset.
+ * @param e The #engine, or NULL.
+ */
+void radiation_init_part_propagation(struct part *p, const struct engine *e) {
   p->feedback_data.isrf_prop_sum_w_FUV = 0.f;
   p->feedback_data.isrf_prop_sum_wu_FUV = 0.f;
   p->feedback_data.isrf_prop_sum_w_LW = 0.f;
   p->feedback_data.isrf_prop_sum_wu_LW = 0.f;
+
+  if (e == NULL || !e->feedback_props->LW_FUV_propagation) {
+    p->feedback_data.kappa_FUV = 0.f;
+    p->feedback_data.kappa_LW = 0.f;
+    return;
+  }
+
+  const float rho_phys = hydro_get_physical_density(p, e->cosmology);
+  const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
+  p->feedback_data.kappa_FUV = radiation_get_part_linear_absorption_rate(
+      e->internal_units, Z, rho_phys, RADIATION_SIGMA_D_FUV_CGS);
+  p->feedback_data.kappa_LW = radiation_get_part_linear_absorption_rate(
+      e->internal_units, Z, rho_phys, RADIATION_SIGMA_D_LW_CGS);
 }
 
 /**
@@ -74,52 +103,44 @@ void radiation_reset_part_propagation(struct part *p) {
  * accumulators radiation_propagation_iact.h filled during the density
  * loop, which runs before star feedback: this always stamps
  * LW_FUV_last_touch_ti, so injection adds on top instead of resetting.
- * No mixing term (just decay) with no gas neighbours; no-op when
+ * Idempotent: always recomputed from the stable #u_FUV_prev snapshot and
+ * this h-iteration's accumulators, so repeated calls across h-iterations
+ * converge to the same answer regardless of how many there are. No
+ * mixing term (just decay) with no gas neighbours; no-op when
  * propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
  */
-void radiation_end_density_propagation(struct part *p,
-                                       const struct engine *e) {
+void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->LW_FUV_propagation) return;
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct unit_system *us = e->internal_units;
   const float w_min = e->feedback_props->LW_FUV_yukawa_w_min;
-
-  const float rho_phys = hydro_get_physical_density(p, cosmo);
-  const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
   const float h = p->h;
+  const struct feedback_part_data *fd = &p->feedback_data;
 
-  const float kappa_FUV = radiation_get_part_linear_absorption_rate(
-      us, Z, rho_phys, RADIATION_SIGMA_D_FUV_CGS);
-  const float kappa_LW = radiation_get_part_linear_absorption_rate(
-      us, Z, rho_phys, RADIATION_SIGMA_D_LW_CGS);
   const float alpha_FUV =
-      radiation_get_isrf_propagation_alpha(h, kappa_FUV, w_min);
+      radiation_get_isrf_propagation_alpha(h, fd->kappa_FUV, w_min);
   const float alpha_LW =
-      radiation_get_isrf_propagation_alpha(h, kappa_LW, w_min);
-  const float lambda2_FUV = 1.0f / max(kappa_FUV * kappa_FUV, FLT_MIN);
-  const float lambda2_LW = 1.0f / max(kappa_LW * kappa_LW, FLT_MIN);
+      radiation_get_isrf_propagation_alpha(h, fd->kappa_LW, w_min);
+  const float lambda2_FUV = 1.0f / max(fd->kappa_FUV * fd->kappa_FUV, FLT_MIN);
+  const float lambda2_LW = 1.0f / max(fd->kappa_LW * fd->kappa_LW, FLT_MIN);
   const float decay_FUV = expf(-alpha_FUV * h * h / lambda2_FUV);
   const float decay_LW = expf(-alpha_LW * h * h / lambda2_LW);
 
-  const struct feedback_part_data *fd = &p->feedback_data;
   const float mixed_FUV =
       fd->isrf_prop_sum_w_FUV > 0.0f
           ? fd->isrf_prop_sum_wu_FUV / fd->isrf_prop_sum_w_FUV
-          : fd->u_FUV;
-  const float mixed_LW =
-      fd->isrf_prop_sum_w_LW > 0.0f
-          ? fd->isrf_prop_sum_wu_LW / fd->isrf_prop_sum_w_LW
-          : fd->u_LW;
+          : fd->u_FUV_prev;
+  const float mixed_LW = fd->isrf_prop_sum_w_LW > 0.0f
+                             ? fd->isrf_prop_sum_wu_LW / fd->isrf_prop_sum_w_LW
+                             : fd->u_LW_prev;
 
   p->feedback_data.u_FUV =
-      (1.0f - alpha_FUV) * fd->u_FUV * decay_FUV + alpha_FUV * mixed_FUV;
+      (1.0f - alpha_FUV) * fd->u_FUV_prev * decay_FUV + alpha_FUV * mixed_FUV;
   p->feedback_data.u_LW =
-      (1.0f - alpha_LW) * fd->u_LW * decay_LW + alpha_LW * mixed_LW;
+      (1.0f - alpha_LW) * fd->u_LW_prev * decay_LW + alpha_LW * mixed_LW;
   p->feedback_data.LW_FUV_last_touch_ti = e->ti_current;
 }
 
@@ -169,7 +190,7 @@ radiation_get_dust_mass_opacity(const struct unit_system *us, float Z,
   const float kappa_eff_cgs = sigma_d_band_cgs * D_relative /
                               (RADIATION_MU_H * RADIATION_HYDROGEN_MASS_CGS);
   return kappa_eff_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
-        units_cgs_conversion_factor(us, UNIT_CONV_AREA);
+         units_cgs_conversion_factor(us, UNIT_CONV_AREA);
 }
 
 /**
@@ -204,9 +225,8 @@ radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
  * @return Local linear dust absorption rate, internal units (1/length).
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_part_linear_absorption_rate(const struct unit_system *us,
-                                          float Z, float rho_p,
-                                          float sigma_d_band_cgs) {
+radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
+                                          float rho_p, float sigma_d_band_cgs) {
   return radiation_get_dust_mass_opacity(us, Z, sigma_d_band_cgs) * rho_p;
 }
 
@@ -267,12 +287,12 @@ radiation_get_part_LW_FUV_extinction_factors(const struct unit_system *us,
  * offsets/weights (see #radiation_compute_yukawa_w_min).
  */
 static float radiation_yukawa_what(const float offsets[][3],
-                                   const float weights[], int n,
-                                   float kx, float ky, float kz) {
+                                   const float weights[], int n, float kx,
+                                   float ky, float kz) {
   float s = 0.f;
   for (int i = 0; i < n; i++)
-    s += weights[i] * cosf(kx * offsets[i][0] + ky * offsets[i][1] +
-                          kz * offsets[i][2]);
+    s += weights[i] *
+         cosf(kx * offsets[i][0] + ky * offsets[i][1] + kz * offsets[i][2]);
   return s;
 }
 
@@ -304,12 +324,12 @@ float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props) {
     for (int iy = -nmax; iy <= nmax; iy++) {
       for (int iz = -nmax; iz <= nmax; iz++) {
         if (ix == 0 && iy == 0 && iz == 0) continue;
-        const float r =
-            sqrtf((float)(ix * ix + iy * iy + iz * iz));
+        const float r = sqrtf((float)(ix * ix + iy * iy + iz * iz));
         if (r >= H) continue;
         if (n >= RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS)
-          error("Yukawa W_min lattice sum exceeded its fixed neighbour "
-                "budget; raise RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS.");
+          error(
+              "Yukawa W_min lattice sum exceeded its fixed neighbour "
+              "budget; raise RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS.");
         float w;
         kernel_eval(r / h, &w);
         offsets[n][0] = (float)ix;

@@ -90,6 +90,24 @@ struct feedback_part_data {
      #u_FUV, since the two bands carry different dust opacities. */
   float u_LW;
 
+  /*! Snapshot of #u_FUV/#u_LW taken once per step (feedback_reset_part,
+      cell_drift.c), before the density loop's h-iterations begin. The
+      propagation update reads and mixes these (not #u_FUV/#u_LW
+      directly) so it stays correct no matter how many h-iterations a
+      particle or its neighbours need: #u_FUV/#u_LW are its per-iteration
+      output, safe to overwrite repeatedly since it is never read back as
+      an input mid-step. */
+  float u_FUV_prev;
+  float u_LW_prev;
+
+  /*! Band-specific local linear dust absorption rate (see
+      #radiation_get_part_linear_absorption_rate), cached once per
+      h-iteration (radiation_init_part_propagation) from this iteration's
+      Z/rho so the propagation density loop does not recompute it, and
+      the same unit conversion, per neighbour pair. */
+  float kappa_FUV;
+  float kappa_LW;
+
   /*! Simulation step (#engine.ti_current) #u_FUV/#u_LW were last written
       at. radiation_iact_nonsym_feedback_apply compares this against the
       current step: a match means some star already wrote this step, so a

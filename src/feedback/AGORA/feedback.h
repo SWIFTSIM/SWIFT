@@ -71,6 +71,16 @@ __attribute__((always_inline)) INLINE static void feedback_end_density(
     struct part *p, struct xpart *xp, const struct engine *e) {}
 
 /**
+ * @brief Re-initialise the gas particle-carried fields related to
+ * feedback at the start of each density h-iteration. Nothing to do here.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_init_part(
+    struct part *p, const struct engine *e) {}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *

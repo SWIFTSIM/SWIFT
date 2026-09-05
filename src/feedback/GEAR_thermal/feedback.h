@@ -35,6 +35,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 void feedback_end_density(struct part *p, struct xpart *xp,
                           const struct engine *e);
 void feedback_reset_part(struct part *p, struct xpart *xp);
+void feedback_init_part(struct part *p, const struct engine *e);
 void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 void feedback_init_spart(struct spart *sp);
