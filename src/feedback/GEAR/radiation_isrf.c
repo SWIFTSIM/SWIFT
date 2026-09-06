@@ -86,6 +86,10 @@ void radiation_first_init_part(struct part *restrict p) {
  * which is a plain column-density attenuation with no kernel-averaging
  * discretization artifact and is therefore computed uncorrected.
  *
+ * #feedback_props.LW_FUV_disable_screening_for_debugging, if set,
+ * overrides the cached values to 0.f after the scaling above: debug/
+ * test-only, see its own doxygen.
+ *
  * @param p The #part to reset.
  * @param e The #engine.
  */
@@ -118,6 +122,18 @@ void radiation_snapshot_part_propagation(struct part *p,
                                                 RADIATION_SIGMA_D_LW_CGS,
                                                 local_dust_to_gas_ratio) *
       lambda_correction;
+
+  /* Debug/test-only override, applied last: see
+   * feedback_props.LW_FUV_disable_screening_for_debugging's own doxygen.
+   * Forces radiation_end_density_propagation's decay term to vanish
+   * (alpha saturates to 1, decay = exp(0) = 1) while its diffusive
+   * mixing term stays active, and zeroes the harmonic-mean kappa_ij
+   * interface weight in radiation_propagation_iact.h. Never set in a
+   * production run. */
+  if (e->feedback_props->LW_FUV_disable_screening_for_debugging) {
+    p->feedback_data.kappa_FUV = 0.f;
+    p->feedback_data.kappa_LW = 0.f;
+  }
 }
 
 /**
@@ -155,6 +171,12 @@ void radiation_init_part_propagation(struct part *p) {
  * (`02_fuv_isrf.tex` lines 572-583) -- so the update then degrades
  * gracefully to pure local decay, `decay*u_prev`. No-op when
  * propagation is off.
+ *
+ * With #feedback_props.LW_FUV_disable_screening_for_debugging set,
+ * `fd->kappa_FUV/kappa_LW` are cached as 0.f, so `alpha` still saturates
+ * to 1 and `decay = exp(0) = 1`: the update collapses to pure
+ * kernel-weighted diffusive averaging, `u_new = mean_j(w_ij*u_prev_j)`,
+ * with no absorption. Debug/test-only.
  *
  * @param p The particle to act upon.
  * @param e The #engine.

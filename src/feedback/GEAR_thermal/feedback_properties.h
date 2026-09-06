@@ -119,6 +119,20 @@ struct feedback_props {
    * #radiation_compute_yukawa_kernel_second_moment. */
   float LW_FUV_yukawa_lambda_correction;
 
+  /*! Debug/test-only: force the cached propagation absorption rates
+   * (#feedback_part_data.kappa_FUV/kappa_LW) to zero after they are
+   * computed in #radiation_snapshot_part_propagation, so
+   * #radiation_end_density_propagation's decay term vanishes
+   * (`alpha` saturates to 1 and `decay = exp(0) = 1`) while the
+   * kernel-weighted diffusive neighbour-mixing term stays fully active:
+   * `u_new = mean_j(w_ij*u_prev_j)`. Lets the LW/FUV field spread across
+   * many more particles than direct stellar injection alone reaches,
+   * without exercising the (separately, not yet validated) dust-screening
+   * physics -- for a validation test that needs the injected-vs-diffused
+   * relationship to stay analytically simple. Only meaningful when
+   * LW_FUV_propagation is also on. Never set in a production run. */
+  char LW_FUV_disable_screening_for_debugging;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -242,6 +256,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
       message("LW/FUV Yukawa lambda correction (measured/analytic)        = %g",
               feedback_props->LW_FUV_yukawa_lambda_correction);
     }
+    if (feedback_props->LW_FUV_disable_screening_for_debugging)
+      message("LW/FUV screening (decay) forced OFF for debugging          = 1");
   }
 
   message("Yields table                                               = %s",
@@ -442,6 +458,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:LW_FUV_propagation", 0);
+
+    /* Debug/test-only: see LW_FUV_disable_screening_for_debugging's own
+     * doxygen. Never set in a production run. */
+    fp->LW_FUV_disable_screening_for_debugging = (char)parser_get_opt_param_int(
+        params, "GEARFeedback:LW_FUV_disable_screening_for_debugging", 0);
+    if (fp->LW_FUV_disable_screening_for_debugging)
+      warning(
+          "GEARFeedback:LW_FUV_disable_screening_for_debugging is set: the "
+          "Yukawa propagation's dust-screening (decay) term is forced off "
+          "everywhere, leaving diffusive neighbour-mixing active. Never use "
+          "this in a production run.");
 
     if (fp->LW_FUV_propagation) {
       fp->LW_FUV_yukawa_w_min = radiation_compute_yukawa_w_min(hydro_props);
