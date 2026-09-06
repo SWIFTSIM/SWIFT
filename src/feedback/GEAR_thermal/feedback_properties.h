@@ -474,6 +474,23 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       fp->LW_FUV_yukawa_w_min = radiation_compute_yukawa_w_min(hydro_props);
       fp->LW_FUV_yukawa_lambda_correction =
           radiation_compute_yukawa_kernel_second_moment(hydro_props);
+
+      /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
+       * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
+       * visible here, so this warns unconditionally rather than gating on
+       * a metallicity value that cannot bound the risk (kappa -> 0
+       * continuously as Z -> 0, with no floor on the opacity itself). */
+      warning(
+          "GEARFeedback:LW_FUV_propagation is on together with "
+          "GEARFeedback:with_photoelectric_heating. The Yukawa "
+          "propagation's only loss channel is dust absorption, whose rate "
+          "is proportional to the gas metallicity. Gas at or near zero "
+          "metallicity has no loss channel. The injected LW/FUV field then "
+          "grows without bound in a closed or periodic domain. That "
+          "unbounded field couples into Grackle's photoelectric heating "
+          "rate and produces runaway gas heating. Check "
+          "GEARChemistry:initial_metallicity and any MetalMassFraction "
+          "field in the initial conditions before a long run.");
     }
   }
 
