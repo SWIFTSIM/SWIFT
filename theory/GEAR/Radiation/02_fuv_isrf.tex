@@ -133,11 +133,56 @@ implemented):
     heating (auto-sets \code{photoelectric\_heating=2} if unset), dust
     recombination cooling (Wolfire et al.\ 1995 Eq.~9), and
     H$_2$-formation-on-dust (since \code{primordial\_chemistry}$>1$ in
-    our modes 2/3). \textbf{Open decision, not yet made}: whether to
-    take the bundle as-is, or set \code{photoelectric\_heating} and
-    \code{dust\_recombination\_cooling} separately instead if
-    H$_2$-formation-on-dust risks double-counting against an existing
-    channel: not checked.
+    our modes 2/3). \textbf{Resolved (2026-09-06)}: checked against the
+    actual Grackle source (the \code{grackle-swift} checkout at
+    \code{18badae7}, the one SWIFT actually links against per
+    \code{config.log}'s \code{--with-grackle} path). No double-counting
+    exists: every additive physics term (the H$_2$-on-dust rate in
+    \code{solve\_rate\_cool\_g.F}, the Wolfire et al.\ 1995 Eq.~9
+    dust-recombination cooling in \code{cool1d\_multi\_g.F}) is gated by
+    a single \code{if} on an OR of the contributing flags
+    (\code{idust}/\code{idustall} for H$_2$-on-dust,
+    \code{idustall}/\code{idustrec} for recombination cooling):
+    enabling more than one gating flag never adds a term twice, it is
+    the same single code path either way. The originally-proposed
+    alternative -- splitting \code{photoelectric\_heating} and
+    \code{dust\_recombination\_cooling} out separately instead of using
+    the \code{dust\_chemistry=1} bundle -- is actually \emph{worse} for
+    this purpose: \code{cool1d\_multi\_g.F}'s \code{anydust} condition
+    gating the gas/grain heat-transfer cooling (a distinct physical
+    channel, lines~$\sim$726--753) is wider than
+    \code{solve\_rate\_cool\_g.F}'s H$_2$-on-dust condition, so setting
+    \code{dust\_recombination\_cooling=1} alone would silently pull in
+    an extra, unintended cooling channel while still needing a second
+    flag for H$_2$-on-dust. \textbf{Decision}: use the
+    \code{dust\_chemistry=1} bundle as originally proposed above --
+    confirmed safe, not merely convenient.\footnote{Grackle's own
+    \code{Parameters.rst} claims \code{dust\_recombination\_cooling} is
+    "automatically set by \code{h2\_on\_dust}$>0$ or
+    \code{dust\_chemistry}$>0$"; the actual code
+    (\code{initialize\_chemistry\_data.c}) only auto-sets it inside the
+    \code{dust\_chemistry}$>0$ block. A documentation/code drift on this
+    one point: check the code, not Grackle's own docs, before relying on
+    this behaviour again.}
+
+    \textbf{Note}: \code{chemistry\_data.h2\_on\_dust} defaults to $0$
+    (not a $-1$ sentinel like the other two flags), and Grackle's own
+    \code{initialize\_chemistry\_data.c} silently overrides
+    \code{GrackleCooling:H2\_on\_dust=0} to $1$ whenever
+    \code{dust\_chemistry=1} and H$_2$ is tracked
+    (\code{primordial\_chemistry}$>1$): there is no way to keep
+    H$_2$-on-dust off while using the bundle with H$_2$ tracking on.
+    Expected and desired for this feature (Sternberg et al.\ 2014's PDR
+    structure needs H$_2$-on-dust active), not a bug, but worth knowing
+    if anyone later tries to isolate it off.
+
+    \textbf{Note}: the H$_2$-on-dust rate scales linearly with
+    \code{GrackleCooling:local\_dust\_to\_gas\_ratio} -- the rate
+    formula's hardcoded reference dust-to-gas constant ($0.009387$)
+    exactly matches this parameter's own default, so they cancel
+    correctly for solar-normalized runs. Keep this parameter at its
+    default for the PDR test unless intentionally testing dust-abundance
+    sensitivity.
   \item \code{photoelectric\_heating=2} \textbf{or} \code{=3}: open
     decision. \code{=2} is the simpler constant-$\epsilon=0.05$
     version; \code{=3} computes $\epsilon$ from the local electron
