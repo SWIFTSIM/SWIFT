@@ -255,6 +255,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
 #endif
 
+  /* Debug/test-only: see cooling_function_data.disable_cooling_for_
+     debugging's own doxygen. Never set in a production run. */
+  cooling->disable_cooling_for_debugging = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:disable_cooling_for_debugging", 0);
+
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:volumetric_heating_rates_cgs", 0);
 

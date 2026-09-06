@@ -113,6 +113,12 @@ struct feedback_props {
    * #radiation_compute_yukawa_w_min. */
   float LW_FUV_yukawa_w_min;
 
+  /*! Ratio of the propagation's realized Yukawa e-folding length to the
+   * naive decay-timescale target, measured once at start-up for this
+   * build's kernel, eta_neighbours, and hydrodynamic dimensionality; see
+   * #radiation_compute_yukawa_kernel_second_moment. */
+  float LW_FUV_yukawa_lambda_correction;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -140,6 +146,23 @@ struct feedback_props {
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
 };
+
+/**
+ * @brief Does this run need Grackle's chemistry_data actually resolved
+ * (cooling_init() having run, via --cooling or --temperature), for
+ * GEAR's own local Lyman-Werner/FUV photoelectric-heating channel to
+ * read a real (not silently zero) local_dust_to_gas_ratio? See
+ * radiation_isrf.c's dust-opacity helpers.
+ *
+ * @param feedback_props The #feedback_props.
+ * @return True if with_photoelectric_heating is enabled.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_needs_cooling_initialized(
+    const struct feedback_props *feedback_props) {
+  return (feedback_props->radiation_policy &
+          radiation_policy_photoelectric_heating) != 0;
+}
 
 /**
  * @brief Print the feedback model.
@@ -212,6 +235,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   if (do_photoelectric_heating) {
     message("LW/FUV propagation                                         = %s",
             feedback_props->LW_FUV_propagation ? "ON" : "OFF (injection only)");
+    if (feedback_props->LW_FUV_propagation) {
+      message(
+          "LW/FUV Yukawa w_min                                         = %g",
+          feedback_props->LW_FUV_yukawa_w_min);
+      message("LW/FUV Yukawa lambda correction (measured/analytic)        = %g",
+              feedback_props->LW_FUV_yukawa_lambda_correction);
+    }
   }
 
   message("Yields table                                               = %s",
@@ -413,8 +443,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:LW_FUV_propagation", 0);
 
-    if (fp->LW_FUV_propagation)
+    if (fp->LW_FUV_propagation) {
       fp->LW_FUV_yukawa_w_min = radiation_compute_yukawa_w_min(hydro_props);
+      fp->LW_FUV_yukawa_lambda_correction =
+          radiation_compute_yukawa_kernel_second_moment(hydro_props);
+    }
   }
 
   if (with_photoionization) {

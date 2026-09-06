@@ -1063,6 +1063,28 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 }
 
 /**
+ * @brief Local specific FUV-band radiation field, see
+ * #feedback_part_data.u_FUV. Thin dispatch wrapper, same reasoning as
+ * #feedback_is_part_tagged_as_ionized: every feedback model provides
+ * this function, returning 0 everywhere except here for GEAR.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_u_FUV(const struct part *p) {
+  return p->feedback_data.u_FUV;
+}
+
+/**
+ * @brief Local specific Lyman-Werner-band radiation field, see
+ * #feedback_get_part_u_FUV.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_u_LW(const struct part *p) {
+  return p->feedback_data.u_LW;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR

@@ -111,9 +111,19 @@
     local_dust_to_gas_ratio * (Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION);
     matching that convention keeps our own assumed dust abundance
     consistent with Grackle's dust_chemistry=1-coupled channels for the
-    same gas. local_dust_to_gas_ratio itself cancels out of our relative
-    D(Z)/D(Zsun) scaling, so it is not read here. */
+    same gas. local_dust_to_gas_ratio only cancels out of our relative
+    D(Z)/D(Zsun) scaling when a run leaves it at Grackle's own compiled
+    default (#RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO); a run that
+    overrides GrackleCooling:local_dust_to_gas_ratio must scale D(Z) by
+    the resolved value relative to that default, so it is read
+    explicitly at both extinction call sites instead of assumed away. */
 #define RADIATION_GRACKLE_SOLAR_METAL_FRACTION 0.01295
+
+/*! Grackle's own compiled default for chemistry_data.local_dust_to_gas_
+    ratio (Pollack et al. 1994), resolved from the `-1` sentinel in
+    cooling.c when GrackleCooling:local_dust_to_gas_ratio is left unset;
+    see #RADIATION_GRACKLE_SOLAR_METAL_FRACTION. */
+#define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
 
 /*! Standard Habing-unit flux normalization, erg/s/cm^2: G0=1 corresponds
     to this flux integrated over the FUV+LW bands. */

@@ -492,10 +492,11 @@ injection}
 The naive starting point for actually implementing
 Section~\ref{sec:fuv-propagation} is SPH smoothing, the same
 neighbour-loop machinery already used for metal mixing. A concrete
-per-particle update rule (proposed 2026-07-20, not yet built):
+per-particle update rule (proposed 2026-07-20; revised 2026-09-06 to the
+outer-decay form actually shipped, see below):
 \begin{equation}
-  u_i^{n+1} = (1-\alpha)\,u_i^n\,e^{-\Delta t/\Delta t_{\rm decay}}
-    + \alpha\sum_j \tilde w_{ij}\,u_j^n
+  u_i^{n+1} = e^{-\Delta t/\Delta t_{\rm decay}}
+    \left[(1-\alpha)\,u_i^n + \alpha\sum_j \tilde w_{ij}\,u_j^n\right]
     + \frac{u_{{\rm inject},i}}{m_i} ,
   \label{eq:fuv-discrete-update}
 \end{equation}
@@ -503,7 +504,19 @@ where $u_i$ is particle $i$'s local specific FUV/LW field value
 (Section~\ref{sec:fuv-units}), $\tilde w_{ij}$ a normalized SPH kernel
 weight, $\alpha$ a mixing fraction, and $u_{{\rm inject},i}$ the budget
 gathered this step from any star whose kernel reaches particle $i$
-(Section~\ref{sec:fuv-propagation}).
+(Section~\ref{sec:fuv-propagation}). \textbf{Decay applies to the whole
+bracket, not just the local-persistence term}: an earlier form
+multiplied only $(1-\alpha)u_i^n$ by the decay factor, which is
+identically zero for any real kernel ($\alpha$ saturates to $1$,
+Section~\ref{sec:fuv-adaptive-alpha}'s bound structurally satisfies
+$w_{\min}<1$), silently switching decay off regardless of $\lambda$.
+With no real neighbour contribution to the mixing sum (true isolation,
+or the optical-depth underflow noted below in the two open concerns
+following Eq.~\ref{eq:fuv-weight-formula}, $\tau_{ij}\sim60$ collapsing
+every $e^{-\tau_{ij}}$ weight to exactly $0$), the bracket falls back to
+$u_i^n$ alone, so the update degrades gracefully to pure local decay,
+$u_i^{n+1}=e^{-\Delta t/\Delta t_{\rm decay}}u_i^n + u_{{\rm
+inject},i}/m_i$.
 
 \textbf{Injection formula.} Reusing exactly the same normalized,
 mass-weighted kernel deposit
@@ -615,7 +628,14 @@ the correspondence
 Once $\lambda$ is fixed by the physical dust opacity
 (Eq.~\ref{eq:fuv-lambda-def}) and $D$ by whatever $\alpha$/$h$/$\Delta t$
 the smoothing pass uses, $\Delta t_{\rm decay}=\lambda^2/D$ is
-determined, not chosen by feel. Substituting
+determined, not chosen by feel. This correspondence is only the naive,
+leading-order one: the scheme's realized screening length comes out a
+fixed O(1) kernel-second-moment factor
+(\code{radiation\_compute\_yukawa\_kernel\_second\_moment}) short of the
+naive target built from $D\sim\alpha h^2/\Delta t$, so the implementation
+scales $\kappa_{\rm FUV}(Z)\rho$ itself by that same factor before using
+it as $1/\lambda$ here, rather than treating Eq.~\ref{eq:fuv-lambda-def}'s
+raw physical value as directly usable in this discrete update. Substituting
 $D\sim\alpha h^2/\Delta t$ gives the explicit formula actually used
 each step,
 \begin{equation}
@@ -681,10 +701,12 @@ neighbour's \emph{old} (level-$n$) value: an explicit (Jacobi) update
 of the spatial coupling, not an implicit or exact one. A von Neumann
 analysis (Fourier mode $u_j^n=\hat u^n e^{ik\cdot x_j}$, kernel
 response $\hat W(k)\in[-W_{\min},1]$, worst case at the
-shortest-wavelength mode the particle spacing resolves) gives the
-growth factor
+shortest-wavelength mode the particle spacing resolves), with $d\equiv
+e^{-\Delta t/\tau}$ the (frozen-coefficient, homogeneous) decay factor
+now multiplying the whole bracket in Eq.~\ref{eq:fuv-discrete-update},
+gives the growth factor
 \begin{equation}
-  g(k) = (1-\alpha)e^{-\Delta t/\tau} + \alpha\,\hat W(k),
+  g(k) = d\left[(1-\alpha) + \alpha\,\hat W(k)\right],
   \label{eq:fuv-growth-factor}
 \end{equation}
 and requiring $|g|\le1$ at the worst-case mode ($\hat W\to-W_{\min}$)
@@ -693,6 +715,12 @@ gives
   \alpha \;\lesssim\; \frac{1+e^{-\Delta t/\tau}}{W_{\min}+e^{-\Delta t/\tau}} .
   \label{eq:fuv-alpha-bound}
 \end{equation}
+\textbf{Revised 2026-09-06}: this is the same bound as before the
+outer-decay revision above, but it is now a \emph{corollary} of
+$d\le1$ rather than a literal unchanged derivation: at the worst mode,
+$|g|=d\,|(1-\alpha)-\alpha W_{\min}|\le|(1-\alpha)-\alpha W_{\min}|$, so
+any $\alpha$ satisfying Eq.~\ref{eq:fuv-alpha-bound} (equivalently
+bounding the $d=1$ case) remains safe once $d\le1$ is folded back in.
 \textbf{This bound is tightest as $\Delta t\to0$} ($\approx2/(W_{\min}+1)$)
 and only loosens for larger $\Delta t$: the decay term actively
 \emph{helps} by damping the same short-wavelength modes the mixing

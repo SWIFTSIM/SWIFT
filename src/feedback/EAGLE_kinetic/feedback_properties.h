@@ -25,6 +25,7 @@
 /* Local includes. */
 #include "chemistry.h"
 #include "hydro_properties.h"
+#include "inline.h"
 
 /**
  * @brief Stores AGB and SNII yield tables
@@ -286,6 +287,19 @@ struct feedback_props {
   /*! Number of time-steps in-between two enrichment events */
   int stellar_evolution_sampling_rate;
 };
+
+/**
+ * @brief Does this run need Grackle's chemistry_data resolved for a
+ * local Lyman-Werner/FUV channel? Nothing to do here (no such channel
+ * in this feedback model).
+ *
+ * @param feedback_props The #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_needs_cooling_initialized(
+    const struct feedback_props *feedback_props) {
+  return 0;
+}
 
 void feedback_props_init(struct feedback_props *fp,
                          const struct phys_const *phys_const,

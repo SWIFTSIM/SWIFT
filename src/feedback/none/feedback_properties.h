@@ -29,6 +29,19 @@
 struct feedback_props {};
 
 /**
+ * @brief Does this run need Grackle's chemistry_data resolved for a
+ * local Lyman-Werner/FUV channel? Nothing to do here (no feedback at
+ * all in this model).
+ *
+ * @param feedback_props The #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_needs_cooling_initialized(
+    const struct feedback_props *feedback_props) {
+  return 0;
+}
+
+/**
  * @brief Initialize the global properties of the feedback scheme.
  *
  * Nothing to do here for the no feedback model.

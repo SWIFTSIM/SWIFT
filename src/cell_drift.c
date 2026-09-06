@@ -354,7 +354,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       sink_mark_part_as_not_swallowed(&p->sink_data);
 
       /* Reset the gas particle-carried feedback fields */
-      feedback_reset_part(p, xp);
+      feedback_reset_part(p, xp, e);
 
       /* Get ready for a density calculation */
       if (init_particles && part_is_active(p, e)) {

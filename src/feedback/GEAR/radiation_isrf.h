@@ -32,21 +32,25 @@ struct cosmology;
 struct unit_system;
 struct hydro_props;
 struct engine;
+struct cooling_function_data;
 
 void radiation_first_init_part(struct part *restrict p);
-void radiation_snapshot_part_propagation(struct part *p);
-void radiation_init_part_propagation(struct part *p, const struct engine *e);
+void radiation_snapshot_part_propagation(struct part *p,
+                                         const struct engine *e);
+void radiation_init_part_propagation(struct part *p);
 void radiation_end_density_propagation(struct part *p, const struct engine *e);
 float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
-void radiation_get_part_LW_FUV_extinction_factors(const struct unit_system *us,
-                                                  const struct cosmology *cosmo,
-                                                  const struct part *p, float Z,
-                                                  float *extinction_FUV,
-                                                  float *extinction_LW);
+void radiation_get_part_LW_FUV_extinction_factors(
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct part *p, float Z, const struct cooling_function_data *cooling,
+    float *extinction_FUV, float *extinction_LW);
 float radiation_get_part_linear_absorption_rate(const struct unit_system *us,
                                                 float Z, float rho_p,
-                                                float sigma_d_band_cgs);
+                                                float sigma_d_band_cgs,
+                                                float local_dust_to_gas_ratio);
 float radiation_get_isrf_propagation_alpha(float h, float kappa_i, float w_min);
 float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props);
+float radiation_compute_yukawa_kernel_second_moment(
+    const struct hydro_props *hydro_props);
 
 #endif /* SWIFT_RADIATION_ISRF_GEAR_H */

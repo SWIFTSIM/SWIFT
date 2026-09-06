@@ -126,14 +126,16 @@ void feedback_end_density(struct part *p, struct xpart *xp,
 /**
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
- * u_FUV/u_LW for the propagation update to read (shared GEAR physics),
- * see #radiation_snapshot_part_propagation.
+ * u_FUV/u_LW and caches this step's absorption rate (shared GEAR
+ * physics), see #radiation_snapshot_part_propagation.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {
-  radiation_snapshot_part_propagation(p);
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e) {
+  radiation_snapshot_part_propagation(p, e);
 }
 
 /**
@@ -146,7 +148,7 @@ void feedback_reset_part(struct part *p, struct xpart *xp) {
  * @param e The #engine.
  */
 void feedback_init_part(struct part *p, const struct engine *e) {
-  radiation_init_part_propagation(p, e);
+  radiation_init_part_propagation(p);
 }
 
 /**

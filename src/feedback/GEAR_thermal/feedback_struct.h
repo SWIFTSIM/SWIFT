@@ -101,10 +101,16 @@ struct feedback_part_data {
   float u_LW_prev;
 
   /*! Band-specific local linear dust absorption rate (see
-      #radiation_get_part_linear_absorption_rate), cached once per
-      h-iteration (radiation_init_part_propagation) from this iteration's
-      Z/rho so the propagation density loop does not recompute it, and
-      the same unit conversion, per neighbour pair. */
+      #radiation_get_part_linear_absorption_rate), cached once per step
+      (radiation_snapshot_part_propagation) so the propagation density loop
+      does not recompute it, and the same unit conversion, per neighbour
+      pair. Propagation-corrected (scaled by
+      #feedback_props.LW_FUV_yukawa_lambda_correction): the value used by
+      the Yukawa propagation (#radiation_end_density_propagation and
+      radiation_propagation_iact.h) exclusively, distinct from and NOT
+      interchangeable with the injection-side extinction's own,
+      independently-computed, uncorrected kappa
+      (#radiation_get_part_LW_FUV_extinction_factors). */
   float kappa_FUV;
   float kappa_LW;
 

@@ -181,6 +181,16 @@ struct cooling_function_data {
 
   /*! Maximal allowed density for cooling (in internal units). */
   double cooling_density_max;
+
+  /*! Debug/test-only: skip cooling_cool_part()'s per-particle energy
+      update entirely (leaving hydro's own internal-energy derivative
+      untouched), while cooling_init() and everything it resolves (table
+      loading, chemistry_data, including local_dust_to_gas_ratio) still
+      run completely normally. For isolating a Grackle-consuming subgrid
+      channel (e.g. LW/FUV propagation) from Grackle's actual
+      thermal/dynamical response without losing chemistry_data
+      resolution -- never set in a production run. */
+  int disable_cooling_for_debugging;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GRACKLE_H */

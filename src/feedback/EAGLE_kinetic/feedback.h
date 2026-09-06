@@ -75,9 +75,10 @@ __attribute__((always_inline)) INLINE static void feedback_init_part(
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part *p, struct xpart *xp) {
+    struct part *p, struct xpart *xp, const struct engine *e) {
 
   p->feedback_data.SNII_star_largest_id = -1;
 }
@@ -129,6 +130,26 @@ __attribute__((always_inline)) INLINE static long long
 feedback_get_part_ionized_star_id(const struct part *p,
                                   const struct xpart *xp) {
   return 0;
+}
+/**
+ * @brief Local specific FUV-band radiation field. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_part_u_FUV(
+    const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief Local specific Lyman-Werner-band radiation field. Nothing to do
+ * here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
+    const struct part *p) {
+  return 0.f;
 }
 
 /**
