@@ -639,15 +639,19 @@ own numbers, neither resolved yet}:
     \emph{should} only exchange with its immediate surroundings), but
     worth checking empirically rather than assuming the usual SPH
     neighbour-count noise suppression still holds there;
-  \item the von Neumann stability analysis above
-    (Eqs.~\ref{eq:fuv-growth-factor}--\ref{eq:fuv-alpha-bound}) was
-    derived for $\hat W(k)$, the Fourier symbol of a \emph{pure
-    kernel-shape} weight operator. Folding $e^{-\tau_{ij}}$ into
-    $\tilde w_{ij}$ changes the operator itself, hence its Fourier
-    symbol and possibly $W_{\min}$: the existing bound should be
-    re-checked against this specific weighted form once it is
-    implemented, not assumed to carry over unchanged from the
-    pure-kernel case it was derived for.
+  \item \textbf{Resolved (2026-09-07)}: the von Neumann stability
+    analysis above (Eqs.~\ref{eq:fuv-growth-factor}--\ref{eq:fuv-alpha-bound})
+    was derived for $\hat W(k)$, the Fourier symbol of a \emph{pure
+    kernel-shape} weight operator, and folding $e^{-\tau_{ij}}$ into
+    $\tilde w_{ij}$ does change that operator's Fourier symbol, so it was
+    initially unclear whether $W_{\min}$ needed re-deriving for this
+    specific weighted form. It does not: the structural argument below
+    (Section~\ref{sec:fuv-yukawa}'s ceiling discussion) only needs the
+    weights to be non-negative and sum to one per particle, and
+    $\tilde w_{ij}$ (Eq.~\ref{eq:fuv-weight-formula}) satisfies both by
+    construction ($e^{-\tau_{ij}}>0$ and the sum is explicitly
+    normalised), independent of which specific $\tau_{ij}$ values occur.
+    The ceiling never binds for this weighted form either.
 \end{itemize}
 
 \textbf{This is not an ad hoc smoothing: it is an explicit
@@ -766,6 +770,21 @@ $d\le1$ rather than a literal unchanged derivation: at the worst mode,
 $|g|=d\,|(1-\alpha)-\alpha W_{\min}|\le|(1-\alpha)-\alpha W_{\min}|$, so
 any $\alpha$ satisfying Eq.~\ref{eq:fuv-alpha-bound} (equivalently
 bounding the $d=1$ case) remains safe once $d\le1$ is folded back in.
+\textbf{Further revised (2026-09-07): the ceiling never actually binds,
+so no $\alpha$ short of 1 is ever required.} At its tightest
+($\Delta t\to0$), Eq.~\ref{eq:fuv-alpha-bound} evaluates to
+$2/(1+W_{\min})$, and $W_{\min}\in(0,1]$ for any non-negative,
+unit-normalised weight operator (Section~\ref{sec:fuv-yukawa} below
+proves this structurally, not just for this project's compiled-in
+kernel), so $2/(1+W_{\min})\ge1$ always: the $\min(1,\cdot)$ ceiling this
+bound feeds is saturated at 1 for every particle, every step,
+regardless of $h$, $\kappa_i$, or kernel/eta\_neighbours choice.
+SWIFT commit \texttt{2928562b3} removed the runtime $W_{\min}$
+computation on this basis and hardcoded $\alpha=1$;
+\texttt{radiation\_get\_isrf\_propagation\_alpha()} now takes no
+arguments and simply returns \texttt{1.0f}. The derivation above is
+kept because it is what justifies that simplification, not because the
+code still evaluates it.
 \textbf{This bound is tightest as $\Delta t\to0$} ($\approx2/(W_{\min}+1)$)
 and only loosens for larger $\Delta t$: the decay term actively
 \emph{helps} by damping the same short-wavelength modes the mixing
@@ -787,26 +806,34 @@ magnitude of that worst-case (most negative) response: the same
 zeroth-order kernel-sum inconsistency SPH kernel design already has to
 contend with (part of why Wendland kernels, this project's own choice,
 are preferred over cubic splines: better behaved at exactly this kind
-of adversarial short-wavelength mode). \textbf{Not yet computed for
-this project's actual kernel and particle configuration}: two
-concrete ways to get it, neither done yet:
-\begin{enumerate}
-  \item \emph{Analytically}, for an idealized 1D lattice/checkerboard
-    arrangement at the target smoothing length: evaluate
-    $\hat W(k)=\sum_j\tilde w_{ij}\,e^{ik\cdot(x_j-x_i)}$ directly for
-    the Wendland~C2 kernel at $k$ up to the Nyquist wavenumber the
-    lattice spacing resolves, and take the most negative value found,
-    the standard technique for characterising a kernel's own
-    short-wavelength response.
-  \item \emph{Numerically}, from an actual glass-like particle
-    distribution at this project's own production resolution: build the
-    weight operator explicitly for a representative particle set and
-    measure its worst-case eigenvalue/response directly, rather than
-    relying on the idealized lattice case: more representative of
-    real (disordered) particle configurations, and cheap to check
-    alongside the steady-state Yukawa-profile validation test (open,
-    Section~\ref{sec:fuv-design-a-open}).
-\end{enumerate}
+of adversarial short-wavelength mode). \textbf{Never needs computing
+(2026-09-07): a structural bound makes both routes below moot.} For any
+non-negative weights summing to one ($\tilde w_{ij}\ge0$,
+$\sum_j\tilde w_{ij}=1$, both true of Eq.~\ref{eq:fuv-weight-formula} by
+construction, whatever kernel or $\tau_{ij}$ values are in play),
+\begin{equation}
+  \big|\hat W(k)\big| = \Big|\sum_j\tilde w_{ij}\cos\big(k\cdot(x_j-x_i)\big)\Big|
+    \;\le\; \sum_j\tilde w_{ij}\,\big|\cos(\cdots)\big|
+    \;\le\; \sum_j\tilde w_{ij} = 1
+\end{equation}
+at every $k$, so $W_{\min}\in(0,1]$ (the closed upper end covers the
+degenerate case of a checkerboard-aligned weight distribution; it is
+never exceeded). Substituting the loosest possible value, $W_{\min}=1$,
+into Eq.~\ref{eq:fuv-alpha-bound}'s tightest case still gives
+$2/(1+1)=1$: the ceiling is at least 1 for \emph{every} admissible
+$W_{\min}$, not just typical ones, so $\alpha=1$ is safe independent of
+the kernel, $\eta_{\rm neighbours}$, or particle configuration. Neither
+an idealized-lattice Fourier sweep nor a numerical measurement on a
+glass-like particle distribution (the two routes an earlier pass of
+this section proposed for measuring $W_{\min}$) can ever return a value
+that makes the $\min(1,\cdot)$ ceiling bind below 1, so neither is
+needed. SWIFT commit \texttt{2928562b3} used exactly this argument to
+delete the
+runtime Fourier-sweep machinery
+(\code{radiation\_compute\_yukawa\_w\_min},
+\code{radiation\_yukawa\_what}) that used to evaluate $W_{\min}$ at
+start-up; \code{radiation\_get\_isrf\_propagation\_alpha()} now returns
+\code{1.0f} unconditionally.
 
 \textit{Converting to a physical decision.} Via
 Eq.~\ref{eq:fuv-discrete-correspondence}'s $D\sim\alpha h^2/\Delta t$,
@@ -918,6 +945,17 @@ supersedes the "fix $\alpha$ once" choice above: not because that
 choice was wrong (it remains a correct conservative bound), but because
 the same bound admits a strictly better per-particle evaluation once
 actually written out.
+
+\textbf{Superseded in turn (2026-09-07): $\alpha_i$ evaluates to 1 for
+every particle, so this per-particle evaluation is itself unnecessary.}
+Since $W_{\min}\le1$ structurally (Section~\ref{sec:fuv-yukawa}'s
+ceiling argument), the fraction in Eq.~\ref{eq:fuv-alpha-bound-i} is
+$\ge1$ for \emph{every} $\Delta t_i$, $\tau_i$, and $W_{\min}$, so the
+$\min(1,\cdot)$ always selects 1 regardless of the per-particle
+$\Delta t_i/\tau_i$ ratio the right-hand side would otherwise depend
+on. The shipped implementation does not evaluate the fraction at all:
+\code{radiation\_get\_isrf\_propagation\_alpha()} takes no arguments
+and returns \code{1.0f} directly (SWIFT commit \texttt{2928562b3}).
 
 \textbf{Interface treatment.} Applying the general symmetrization
 principle of Section~\ref{sec:fuv-harmonic-mean} concretely here: for
@@ -1671,9 +1709,15 @@ still open for the FUV/ISRF work as a whole.
     applies equally to Design~A, which needs only one of the three,
     carrying a single field); which specific loop is a placement detail
     for implementation, not an open design question;
-  \item per-particle $\alpha_i$ (Eq.~\ref{eq:fuv-alpha-bound-i}) and the
-    harmonic-mean pairwise coupling (Eq.~\ref{eq:fuv-harmonic-mean}) are
-    decided but not yet implemented or tested;
+  \item \textbf{Superseded (2026-09-07)}: per-particle $\alpha_i$
+    (Eq.~\ref{eq:fuv-alpha-bound-i}) was implemented, then proven to
+    always evaluate to 1 and simplified away (SWIFT commit
+    \texttt{2928562b3}: see Section~\ref{sec:fuv-adaptive-alpha}'s
+    2026-09-07 note) -- there is no remaining per-particle $\alpha_i$
+    to implement or test, since the code returns \code{1.0f}
+    unconditionally. The harmonic-mean pairwise coupling
+    (Eq.~\ref{eq:fuv-harmonic-mean}) remains decided but not yet
+    implemented or tested;
   \item diagnostically confirming, once built, that the emergent
     relaxation speed ($h_i/\Delta t_i$, Section~\ref{sec:fuv-gemini-review})
     stays fast against stellar-lifetime and cooling timescales, rather
@@ -1681,15 +1725,22 @@ still open for the FUV/ISRF work as a whole.
   \item the mixing weights $\tilde w_{ij}$ now have a concrete proposed
     form (Eq.~\ref{eq:fuv-weight-formula}), improving on Gemini's own
     $e^{-\tau_{ij}}/r_{ij}^2$ idea by using the existing compact-support
-    kernel and an explicit normalisation: not yet implemented, and its
-    two open concerns (effective-neighbour-count shrinkage in
-    optically-thick gas; $W_{\min}$ needing re-derivation for this
-    specific weighted form) are not yet checked;
-  \item $W_{\min}$ (Eq.~\ref{eq:fuv-alpha-bound}) has not been computed
-    for this project's actual kernel (Wendland~C2) and particle
-    configuration, by either of the two concrete routes above: without
-    it, $\alpha$'s own numerical value cannot actually be set, only its
-    functional form is known;
+    kernel and an explicit normalisation: not yet implemented. Of its
+    two open concerns, effective-neighbour-count shrinkage in
+    optically-thick gas is still open; $W_{\min}$ needing re-derivation
+    for this specific weighted form is resolved (2026-09-07, see
+    Section~\ref{sec:fuv-yukawa}'s weighted-form bullet): the structural
+    bound holds for any non-negative, normalised weights, this form
+    included;
+  \item \textbf{Resolved (2026-09-07)}: $W_{\min}$ (Eq.~\ref{eq:fuv-alpha-bound})
+    never needs computing for this or any project's kernel/particle
+    configuration -- $W_{\min}\le1$ structurally for any non-negative,
+    unit-normalised weight operator, which makes
+    Eq.~\ref{eq:fuv-alpha-bound}'s ceiling $\ge1$ unconditionally
+    (Section~\ref{sec:fuv-yukawa}). $\alpha$'s numerical value is 1,
+    fixed, not merely known in functional form pending a missing
+    constant. SWIFT commit \texttt{2928562b3} removed the runtime
+    computation on this basis;
   \item \textbf{No dedicated validation-plan item for this design yet,
     added 2026-07-24}: Design~B's own open items (below) refer back to
     "the Yukawa-profile ... test already proposed for Design~A," but no
