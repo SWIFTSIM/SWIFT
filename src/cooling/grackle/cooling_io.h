@@ -337,6 +337,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
 
+  cooling->H2_self_shielding = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_self_shielding", 0);
+
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:max_steps", 10000);

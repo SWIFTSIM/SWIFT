@@ -537,6 +537,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.use_specific_heating_rate);
   message("grackle_chemistry_data.self_shielding_method = %d",
           cooling->chemistry_data.self_shielding_method);
+  message("grackle_chemistry_data.H2_self_shielding = %d",
+          cooling->chemistry_data.H2_self_shielding);
   message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("grackle_chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
@@ -1563,6 +1565,8 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
     chemistry->self_shielding_method = 0;
   else
     chemistry->self_shielding_method = cooling->self_shielding_method;
+
+  chemistry->H2_self_shielding = cooling->H2_self_shielding;
 
   if (local_initialize_chemistry_data(&cooling->chemistry_data,
                                       &cooling->chemistry_rates,

@@ -623,6 +623,8 @@ GrackleCooling:
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+  H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 1 = Sobolev-like (Wolcott-Green & Haiman 2019, Cartesian-3D-grid geometry), 2 = caller-supplied
+                                                # shielding length (NOT wired: SWIFT does not populate Grackle's H2_self_shielding_length field), 3 = local Jeans length (Grackle-internal). (Default: 0)
   maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0
                                                # deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
