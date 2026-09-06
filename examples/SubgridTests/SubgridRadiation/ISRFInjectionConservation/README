@@ -49,8 +49,9 @@ this example does not need real thermal evolution.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-`--with-tracers=GEAR` is required: `FUVSpecificEnergies`/
-`LWSpecificEnergies` live in `tracers_xpart_data`.
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+themselves live on `struct part`'s `feedback_data`).
 
 # Run
 ```

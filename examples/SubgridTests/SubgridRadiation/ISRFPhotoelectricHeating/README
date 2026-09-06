@@ -29,10 +29,11 @@ extinction this example also exercises needs a nonzero, known metallicity.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-`--with-tracers=GEAR` is required: `FUVSpecificEnergies`/`LWSpecificEnergies` live in
-`tracers_xpart_data`. Photoelectric heating itself only needs
-`GrackleCooling:with_metal_cooling: 1` (set in `params.yml`); any Grackle
-cooling mode works, `grackle_0` included.
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+themselves live on `struct part`'s `feedback_data`). Photoelectric heating
+itself only needs `GrackleCooling:with_metal_cooling: 1` (set in
+`params.yml`); any Grackle cooling mode works, `grackle_0` included.
 
 # Run
 Two runs are needed, identical except for `with_photoelectric_heating`:
