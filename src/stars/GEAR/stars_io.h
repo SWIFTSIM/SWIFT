@@ -148,7 +148,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 10;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -212,6 +212,19 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "never lapse and the maintenance pass that re-adds already-held mass "
       "is compiled out, so this field counts only each pass's newly-tagged "
       "mass rather than the region's true total.");
+
+  list[10] = io_make_output_field(
+      "FUVLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      feedback_data.radiation.L_FUV,
+      "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
+      "physical units. Feeds the LW/FUV injection term; 0 unless "
+      "GEARFeedback:with_photoelectric_heating is on.");
+
+  list[11] = io_make_output_field(
+      "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      feedback_data.radiation.L_LW,
+      "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
+      "physical units. See #FUVLuminosities.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

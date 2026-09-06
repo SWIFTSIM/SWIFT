@@ -1,0 +1,76 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with photoelectric heating on but LW/FUV Yukawa propagation off
+(photoionization and radiation pressure also off). Checks the LW/FUV
+injection kernel-weight normalization directly: at `Z=0` the receiver-side
+dust extinction factor is `exp(0)=1` exactly, so summing the injected
+energy over every gas particle the star's kernel reaches must reproduce
+`Delta_t * L_band` exactly, up to floating-point precision:
+
+```
+sum_j(FUVSpecificEnergies_j * mass_j) == Delta_t * FUVLuminosities_star
+sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
+```
+
+This is an exact conservation identity (the injection formula's own
+kernel-weight normalization, `sum_j weight_j = 1`), not an approximate
+physics comparison like `ISRFYukawaProfile`'s Yukawa-profile fit -- the
+check tolerance is correspondingly tight.
+
+## Metallicity
+`initial_metallicity: 0` in `params.yml` is required, not incidental: it is
+what makes the receiver-side dust extinction factor exactly 1, isolating
+the injection term from the (separately validated) extinction physics.
+
+## Propagation
+`LW_FUV_propagation: 0` isolates the injection step itself: with
+propagation on, the neighbour-mixing/decay update would redistribute
+energy between particles and confound this check. With it off, each star
+feedback pass resets and fully re-injects `FUVSpecificEnergies`/
+`LWSpecificEnergies` from scratch, so the last snapshot is a clean,
+self-contained record of one injection pass regardless of how many passes
+ran before it.
+
+## Star luminosity and timestep
+The star's own `FUVLuminosities`/`LWLuminosities` are read directly from
+the snapshot (star-particle output fields). `Delta_t` -- the star's own
+feedback timestep at the checked snapshot -- is read from swift's own
+step-table log rather than assumed to equal `TimeIntegration:dt_max`:
+individual time-stepping can settle the star on a smaller step.
+
+## Cooling
+`run.sh` passes `--cooling` so `cooling_init()` resolves Grackle's
+`chemistry_data`; `GrackleCooling:disable_cooling_for_debugging: 1` in
+`params.yml` then skips the per-particle cooling/heating update itself, so
+this example does not need real thermal evolution.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: `FUVSpecificEnergies`/
+`LWSpecificEnergies` live in `tracers_xpart_data`.
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var -- gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+and type (`star_mass`, `star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`, `delta_time`), and thread count (`n_threads`); see `run.sh` for
+the full list and defaults. `run_name=<dir> ./run.sh` moves the run's
+outputs into `<dir>` once done, to keep more than one run's outputs side by
+side.
+
+# Checking
+```
+python3 isrf_injection_conservation_check.py
+```
+`run.sh` runs this automatically against its own `output.log` and final
+snapshot. It sums `FUVSpecificEnergies * mass` (and the LW equivalent)
+over all illuminated gas particles and compares against `Delta_t *
+FUVLuminosities` (`--tol`, default relative error 1e-5 -- the measured
+discrepancy is float32 snapshot-storage rounding, ~1e-7).
