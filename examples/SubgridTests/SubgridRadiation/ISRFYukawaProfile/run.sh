@@ -43,6 +43,12 @@ then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
+if [ ! -e POPIIsw.h5 ]
+then
+    echo "Fetching the chemistry tables..."
+    "$scripts_location"/getChemistryTable.sh
+fi
+
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \
 	--mass $gas_particle_mass --star_mass $star_mass \
