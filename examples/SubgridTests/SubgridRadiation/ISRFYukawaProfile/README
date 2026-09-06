@@ -1,0 +1,56 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with photoelectric heating and LW/FUV Yukawa screened-diffusion
+propagation on (photoionization and radiation pressure off). Checks the
+converged radial profile of the propagated FUV/LW interstellar-radiation-
+field energy density (`ISRF_uFUV`/`ISRF_uLW`) against the analytic Yukawa
+Green's function screened-exponential fall-off, with the screening length
+computed independently from the run's own metallicity and density, via
+`isrf_yukawa_profile_check.py`.
+
+## Metallicity
+The Yukawa screening length comes from a dust opacity that this code scales
+with metallicity relative to Grackle's solar value; at `Z=0` there is no
+dust and nothing to screen, so `initial_metallicity` (env var, `run.sh`)
+must stay above 0. It defaults to solar (`Z/Zsun=1`).
+
+## Cooling
+`run.sh` passes `--cooling` so `cooling_init()` resolves Grackle's
+`chemistry_data` (including `local_dust_to_gas_ratio`, which the dust
+opacity above depends on) even though gas thermodynamics play no role in
+what this example measures. `GrackleCooling:disable_cooling_for_debugging:
+1` in `params.yml` then skips the per-particle cooling/heating update
+itself, so the gas's thermal and dynamical state stays fixed and the
+propagated field is isolated from any gas response.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: `ISRF_uFUV`/`ISRF_uLW` live in
+`tracers_xpart_data`. The Grackle cooling mode is not critical here (only
+`chemistry_data` needs resolving, not any mode-gated species network).
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var -- gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+and type (`star_mass`, `star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`, `delta_time`), metallicity (`initial_metallicity`), and thread
+count (`n_threads`); see `run.sh` for the full list and defaults.
+`run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done, to
+keep more than one run's outputs side by side.
+
+# Checking
+```
+python3 isrf_yukawa_profile_check.py
+```
+`run.sh` runs this automatically against its own `output.log` and final
+snapshot. It bins gas particles by radius from the star, fits the semi-log
+slope of `u(r)*r` for both bands, and compares the fitted screening length
+against the analytic one (`--tol`, default relative error 0.3). Produces a
+comparison plot (`--output`, default `isrf_yukawa_profile_check.png`).

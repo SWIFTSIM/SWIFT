@@ -91,6 +91,24 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #ISRF_uFUV, see #tracers_write_particles.
+ */
+INLINE static void convert_part_u_FUV(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_u_FUV(p);
+}
+
+/**
+ * @brief Snapshot converter for #ISRF_uLW, see #tracers_write_particles.
+ */
+INLINE static void convert_part_u_LW(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_u_LW(p);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -103,7 +121,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 10;
+  int num = 12;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -175,6 +193,20 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       xparts, tracers_data.feedback_cumulative.max_kick_velocity_radiation,
       "Largest single-event kick velocity this particle received from "
       "radiation pressure. Same convention as MaxKickVelocityFromSN.");
+
+  /* Same feedback-model dispatch reasoning as IsIonizedFlags above: must
+     compile under any --with-feedback choice paired with
+     --with-tracers=GEAR. */
+  list[10] = io_make_output_field_convert_part(
+      "ISRF_uFUV", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_u_FUV,
+      "Local specific FUV-band (6-11.2 eV) interstellar radiation field.");
+
+  list[11] = io_make_output_field_convert_part(
+      "ISRF_uLW", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_u_LW,
+      "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
+      "radiation field.");
 
   return num;
 }
