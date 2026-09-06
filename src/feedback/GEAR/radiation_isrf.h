@@ -48,8 +48,7 @@ float radiation_get_part_linear_absorption_rate(const struct unit_system *us,
                                                 float Z, float rho_p,
                                                 float sigma_d_band_cgs,
                                                 float local_dust_to_gas_ratio);
-float radiation_get_isrf_propagation_alpha(float h, float kappa_i, float w_min);
-float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props);
+float radiation_get_isrf_propagation_alpha(void);
 float radiation_compute_yukawa_kernel_second_moment(
     const struct hydro_props *hydro_props);
 

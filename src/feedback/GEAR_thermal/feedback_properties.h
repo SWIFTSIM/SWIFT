@@ -108,11 +108,6 @@ struct feedback_props {
    * radiation_policy_photoelectric_heating is set. */
   char LW_FUV_propagation;
 
-  /*! Stability bound for the propagation mixing fraction, measured once
-   * at start-up for this build's kernel and eta_neighbours; see
-   * #radiation_compute_yukawa_w_min. */
-  float LW_FUV_yukawa_w_min;
-
   /*! Ratio of the propagation's realized Yukawa e-folding length to the
    * naive decay-timescale target, measured once at start-up for this
    * build's kernel, eta_neighbours, and hydrodynamic dimensionality; see
@@ -250,9 +245,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("LW/FUV propagation                                         = %s",
             feedback_props->LW_FUV_propagation ? "ON" : "OFF (injection only)");
     if (feedback_props->LW_FUV_propagation) {
-      message(
-          "LW/FUV Yukawa w_min                                         = %g",
-          feedback_props->LW_FUV_yukawa_w_min);
       message("LW/FUV Yukawa lambda correction (measured/analytic)        = %g",
               feedback_props->LW_FUV_yukawa_lambda_correction);
     }
@@ -471,7 +463,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "this in a production run.");
 
     if (fp->LW_FUV_propagation) {
-      fp->LW_FUV_yukawa_w_min = radiation_compute_yukawa_w_min(hydro_props);
       fp->LW_FUV_yukawa_lambda_correction =
           radiation_compute_yukawa_kernel_second_moment(hydro_props);
 

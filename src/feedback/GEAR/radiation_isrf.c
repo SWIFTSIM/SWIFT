@@ -216,14 +216,11 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->LW_FUV_propagation) return;
 
-  const float w_min = e->feedback_props->LW_FUV_yukawa_w_min;
   const float h_phys = (float)e->cosmology->a * p->h;
   const struct feedback_part_data *fd = &p->feedback_data;
 
-  const float alpha_FUV =
-      radiation_get_isrf_propagation_alpha(h_phys, fd->kappa_FUV, w_min);
-  const float alpha_LW =
-      radiation_get_isrf_propagation_alpha(h_phys, fd->kappa_LW, w_min);
+  const float alpha_FUV = radiation_get_isrf_propagation_alpha();
+  const float alpha_LW = radiation_get_isrf_propagation_alpha();
   const float lambda2_FUV = 1.0f / max(fd->kappa_FUV * fd->kappa_FUV, FLT_MIN);
   const float lambda2_LW = 1.0f / max(fd->kappa_LW * fd->kappa_LW, FLT_MIN);
   const float decay_FUV = expf(-alpha_FUV * h_phys * h_phys / lambda2_FUV);
@@ -353,25 +350,29 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
 }
 
 /**
- * Per-particle mixing fraction ceiling for the Yukawa propagation update.
- * Evaluated non-circularly: x = exp(-h^2/lambda^2) uses the natural
- * unit-alpha diffusive scale, not the alpha being solved for; alpha =
- * min(1, (1+x)/(w_min+x)) then bounds the worst-case response of the
- * normalized mixing operator to a checkerboard perturbation. The decay
- * factor actually applied uses this alpha: exp(-alpha*h^2/lambda^2).
+ * @brief Mixing fraction for the Yukawa propagation update's outer-decay
+ * form (#radiation_end_density_propagation).
  *
- * @param h Physical smoothing length (caller converts from SWIFT's
- * comoving p->h via the current scale factor; kappa_i below is already
- * physical, so this must match).
- * @param kappa_i Local linear absorption rate, 1/length.
- * @param w_min See #radiation_compute_yukawa_w_min.
- * @return Mixing fraction alpha, in (0, 1].
+ * Structurally always 1.0f, not just for this build's compiled-in kernel:
+ * the ceiling this used to evaluate, `min(1, (1+x)/(W_min+x))` for
+ * `x = exp(-h^2/lambda^2) in (0, 1]`, is monotonically decreasing in `x`
+ * (derivative sign set by `W_min-1`), so its minimum over that range is at
+ * `x=1`: `2/(1+W_min)`. `W_min` is the magnitude of the kernel-normalized
+ * mixing operator's worst (checkerboard) Fourier response; for any
+ * non-negative kernel with unit-normalized weights (`sum_i w_i = 1`,
+ * `w_i >= 0`), that response is strictly less than 1 in magnitude, so
+ * `0 < W_min < 1` and `2/(1+W_min) > 1` always. The `min(1, ...)` ceiling
+ * therefore always binds at 1, for every particle, every step,
+ * independent of `h`, `kappa_i`, and the kernel/eta_neighbours choice
+ * behind `W_min`. Kept as its own function (rather than inlined as a
+ * literal at its two call sites) to document this invariant at the one
+ * place #radiation_end_density_propagation's decay term relies on it.
+ *
+ * @return 1.0f, always.
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_isrf_propagation_alpha(float h, float kappa_i, float w_min) {
-  const float lambda2 = 1.0f / max(kappa_i * kappa_i, FLT_MIN);
-  const float x = expf(-h * h / lambda2);
-  return min(1.0f, (1.0f + x) / (w_min + x));
+radiation_get_isrf_propagation_alpha(void) {
+  return 1.0f;
 }
 
 /**
@@ -406,17 +407,15 @@ radiation_get_part_LW_FUV_extinction_factors(
 }
 
 /* Maximum simple-cubic lattice neighbours considered by
-   #radiation_compute_yukawa_w_min/#radiation_compute_yukawa_kernel_second_moment:
-   generous for any kernel this codebase ships (largest support radius in
-   use, Wendland C6, needs ~250). */
+   #radiation_compute_yukawa_kernel_second_moment: generous for any kernel
+   this codebase ships (largest support radius in use, Wendland C6, needs
+   ~250). */
 #define RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS 2000
 
 /**
- * @brief Build the normalized simple-cubic lattice kernel weights shared
- * by #radiation_compute_yukawa_w_min and
- * #radiation_compute_yukawa_kernel_second_moment: both need the exact
- * same idealized-lattice neighbour set for this build's compiled-in
- * kernel and eta_neighbours, differing only in what they sum over it.
+ * @brief Build the normalized simple-cubic lattice kernel weights used by
+ * #radiation_compute_yukawa_kernel_second_moment, for this build's
+ * compiled-in kernel and eta_neighbours.
  *
  * @param hydro_props The runtime hydrodynamics scheme properties.
  * @param offsets (return) Lattice offsets, in units of the lattice
@@ -471,62 +470,6 @@ static float radiation_build_yukawa_lattice(
 }
 
 /**
- * Fourier symbol of the normalized kernel mixing operator w_ij =
- * W(r_ij,h)/sum_k W(r_ik,h) at wavevector k, on the lattice given by
- * offsets/weights (see #radiation_compute_yukawa_w_min).
- */
-static float radiation_yukawa_what(const float offsets[][3],
-                                   const float weights[], int n, float kx,
-                                   float ky, float kz) {
-  float s = 0.f;
-  for (int i = 0; i < n; i++)
-    s += weights[i] *
-         cosf(kx * offsets[i][0] + ky * offsets[i][1] + kz * offsets[i][2]);
-  return s;
-}
-
-/**
- * @brief Magnitude of the most negative Fourier response of the
- * kernel-normalized mixing operator, for this build's compiled-in kernel
- * and eta_neighbours: bounds how aggressively
- * #radiation_get_isrf_propagation_alpha can relax without the explicit
- * update oscillating. Measured once at start-up, on an idealized
- * simple-cubic lattice, by a coarse sweep of the operator's Fourier
- * symbol over the first Brillouin zone.
- *
- * @param hydro_props The runtime hydrodynamics scheme properties.
- * @return W_min > 0 (the operator's response ranges within [-W_min, 1]).
- */
-float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props) {
-
-  static float offsets[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS][3];
-  static float weights[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS];
-  int n = 0;
-  radiation_build_yukawa_lattice(hydro_props, offsets, weights, &n);
-
-  /* Coarse sweep of the Brillouin zone [-pi,pi]^3 (lattice spacing 1):
-     the worst response of an isotropic, positive, decreasing kernel's
-     mixing operator is a checkerboard-type high-frequency mode, so a
-     modest grid already resolves it without needing gradient search. */
-  const int n_grid = 12;
-  float worst = 1.f;
-  for (int a = 0; a < n_grid; a++) {
-    const float kx = -(float)M_PI + 2.f * (float)M_PI * a / (n_grid - 1);
-    for (int b = 0; b < n_grid; b++) {
-      const float ky = -(float)M_PI + 2.f * (float)M_PI * b / (n_grid - 1);
-      for (int c = 0; c < n_grid; c++) {
-        const float kz = -(float)M_PI + 2.f * (float)M_PI * c / (n_grid - 1);
-        const float what =
-            radiation_yukawa_what(offsets, weights, n, kx, ky, kz);
-        if (what < worst) worst = what;
-      }
-    }
-  }
-
-  return -worst;
-}
-
-/**
  * @brief Correction factor between the Yukawa propagation's naive
  * decay-timescale correspondence (`D_implicit = h^2/Delta t`,
  * `02_fuv_isrf.tex`'s `fuv-discrete-correspondence`) and the scheme's
@@ -534,9 +477,9 @@ float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props) {
  * #radiation_get_isrf_propagation_alpha), Taylor-expanding the
  * kernel-weighted mixing sum `mean_j[w_ij*u_prev_j]` around each
  * particle gives a leading correction term `(M2/(2*D_hydro))*Laplacian(u)`,
- * with `M2 = sum_j w_ij*r_ij^2` the kernel weights' second moment (the
- * same lattice #radiation_compute_yukawa_w_min already builds, a
- * different moment of it) and `D_hydro` the hydrodynamic dimensionality
+ * with `M2 = sum_j w_ij*r_ij^2` the kernel weights' second moment (built
+ * from the same lattice as #radiation_build_yukawa_lattice, a different
+ * moment of it) and `D_hydro` the hydrodynamic dimensionality
  * (#hydro_dimension). The true emergent diffusion coefficient is
  * therefore `D_true = M2/(2*D_hydro*Delta t)`, not `D_implicit`, so the
  * realized Yukawa e-folding length is off from the naive target by
@@ -545,8 +488,7 @@ float radiation_compute_yukawa_w_min(const struct hydro_props *hydro_props) {
  * kernel, eta_neighbours, and hydrodynamic dimensionality. Printed
  * unconditionally at start-up so any Tier-1-style steady-state check can
  * read it from the run's own log rather than hardcoding a kernel/eta-
- * specific number (mirrors why #radiation_compute_yukawa_w_min itself is
- * computed at runtime, not hardcoded).
+ * specific number.
  *
  * @param hydro_props The runtime hydrodynamics scheme properties.
  * @return The lambda_measured/lambda_analytic correction factor.
