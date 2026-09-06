@@ -35,6 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPressureFormula \
+        testRadiationLWFUVFormula \
         testRadiationGridMetadata testStellarEvolutionSNOnce \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -52,6 +53,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPressureFormula \
+		 testRadiationLWFUVFormula \
 		 testRadiationGridMetadata testStellarEvolutionSNOnce \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -68,6 +70,7 @@ testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
+testRadiationLWFUVFormula_SOURCES = testRadiationLWFUVFormula.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
 testStellarEvolutionSNOnce_SOURCES = testStellarEvolutionSNOnce.c
 
