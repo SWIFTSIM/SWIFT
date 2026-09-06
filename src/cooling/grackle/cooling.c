@@ -1137,6 +1137,116 @@ gr_float cooling_time(const struct phys_const *phys_const,
 }
 
 /**
+ * @brief Compute a particle's dust temperature via Grackle's own
+ * dust-temperature calculation.
+ *
+ * Purely diagnostic: nothing else in the run reads this value back, and it
+ * does not feed into any physics. Returns 0 if dust physics is inactive
+ * (Grackle's chemistry_data.dust_chemistry and h2_on_dust both off), since
+ * local_calculate_dust_temperature() silently leaves its output buffer
+ * untouched in that case rather than returning an error -- 0 is this
+ * cooling model's existing convention for a quantity it does not compute
+ * (see cooling_get_electron_pressure). Also returns 0 below
+ * COOLING_GRACKLE_MODE 1 (primordial_chemistry < 1): Grackle's own
+ * calc_tdust_3d_g Fortran routine dereferences the HI/HII density arrays
+ * unconditionally (no ispecies guard on that particular term, unlike the
+ * H2 term further down), so calling it with the NULL species pointers
+ * cooling_copy_to_grackle() sets at that mode segfaults.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param hydro_properties The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data.
+ *
+ * @return Dust temperature in Kelvin, or 0 if dust physics is inactive or
+ * COOLING_GRACKLE_MODE is below 1.
+ */
+gr_float cooling_get_dust_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct hydro_props *hydro_properties,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, const struct xpart *restrict xp) {
+
+  if (cooling->chemistry_data.primordial_chemistry < 1) {
+    return 0.;
+  }
+
+  if (cooling->chemistry_data.dust_chemistry < 1 &&
+      cooling->chemistry_data.h2_on_dust < 1) {
+    return 0.;
+  }
+
+  /* set current time */
+  code_units units = cooling->units;
+
+  /* initialize data */
+  grackle_field_data data;
+  chemistry_data chemistry_grackle = cooling->chemistry_data;
+  chemistry_data_storage rates_grackle = cooling->chemistry_rates;
+
+  /* set values */
+  /* grid */
+  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
+  int grid_start[GRACKLE_RANK] = {0, 0, 0};
+  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
+
+  data.grid_rank = GRACKLE_RANK;
+  data.grid_dimension = grid_dimension;
+  data.grid_start = grid_start;
+  data.grid_end = grid_end;
+
+  /* general particle data */
+  gr_float density = cooling_get_physical_density(p, cosmo, cooling);
+  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  energy = max(energy, hydro_properties->minimal_internal_energy);
+
+  /* initialize density */
+  data.density = &density;
+
+  /* initialize energy */
+  data.internal_energy = &energy;
+
+  /* grackle 3.0 doc: "Currently not used" */
+  data.x_velocity = NULL;
+  data.y_velocity = NULL;
+  data.z_velocity = NULL;
+
+  /* cooling_copy_to_grackle()/cooling_copy_from_grackle() take a
+     non-const xpart pointer for the general (mutating) cooling path; this
+     diagnostic-only call reads xp through them (species fractions, ISRF
+     strength) and, unlike cooling_time(), never needs to write anything
+     back. */
+  struct xpart *xp_rw = (struct xpart *)xp;
+
+  gr_float species_densities[12];
+  /* copy data from particle to grackle data */
+  cooling_copy_to_grackle(&data, p, xp_rw, density, species_densities, cooling,
+                          phys_const, us, cosmo);
+
+  /* Apply the self shielding if requested */
+  cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
+
+  /* Compute dust temperature */
+  gr_float dust_temperature = 0.;
+  if (local_calculate_dust_temperature(&chemistry_grackle, &rates_grackle,
+                                       &units, &data, &dust_temperature) == 0) {
+    error("Error in local_calculate_dust_temperature.");
+  }
+
+  /* copy from grackle data to particle (frees the mallocs made above; xp
+     itself is left unchanged since dust temperature does not alter any
+     species density) */
+  cooling_copy_from_grackle(&data, p, xp_rw, density, cooling);
+
+  return dust_temperature;
+}
+
+/**
  * @brief Apply the cooling function to a particle.
  *
  * @param phys_const The physical constants in internal units.

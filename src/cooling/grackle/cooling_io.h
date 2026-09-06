@@ -21,8 +21,10 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "cooling.h"
 #include "cooling_properties.h"
 #include "cooling_struct.h"
+#include "engine.h"
 #include "io_properties.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -53,6 +55,19 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 #endif
 }
 #endif
+
+/**
+ * @brief Snapshot converter for #DustTemperature, see
+ * #cooling_write_particles.
+ */
+INLINE static void convert_part_dust_temperature(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  ret[0] = cooling_get_dust_temperature(e->physical_constants,
+                                        e->internal_units, e->hydro_properties,
+                                        e->cosmology, e->cooling_func, p, xp);
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -128,6 +143,20 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
                            cooling_data.HDI_frac, "HDI mass fraction");
   num += 3;
 #endif
+
+  /* Diagnostic only: computed on the fly from Grackle's own dust-
+     temperature calculation, not a stored/evolved field. Reads 0 below
+     COOLING_GRACKLE_MODE 1 (Grackle's own routine needs species density
+     arrays this mode does not track) or when dust chemistry
+     (GEARFeedback:with_photoelectric_heating or GrackleCooling:
+     H2_on_dust) is off; see cooling_get_dust_temperature. */
+  list[num] = io_make_output_field_convert_part(
+      "DustTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+      convert_part_dust_temperature,
+      "Dust temperature from Grackle's own dust-temperature calculation. "
+      "Diagnostic only, not fed back into any physics; 0 if dust "
+      "chemistry is not active or COOLING_GRACKLE_MODE is below 1.");
+  num += 1;
 
   return num;
 }
