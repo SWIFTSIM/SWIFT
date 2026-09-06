@@ -1,0 +1,64 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with photoelectric heating on (LW/FUV injection, no Yukawa propagation)
+and real Grackle cooling. Checks the basic sign and rough magnitude of
+Grackle's photoelectric-heating response to the injected LW/FUV field: gas
+near the star should reach a HIGHER equilibrium temperature with
+`GEARFeedback:with_photoelectric_heating: 1` than with it set to `0`,
+otherwise identical configuration. This is a coarse direction/magnitude
+sanity check, not a quantitative PDR-physics comparison (see
+`isrf_photoelectric_heating_check.py`).
+
+## Propagation
+`LW_FUV_propagation: 0`: this example is about the thermal response to
+whatever field a particle receives directly from the star, not about
+propagation numerics (see the sibling `ISRFYukawaProfile` for that). Only
+gas within the star's own SPH kernel is illuminated.
+
+## Cooling
+Unlike `ISRFYukawaProfile`, `GrackleCooling:disable_cooling_for_debugging`
+is `0`: this example's whole point is to measure the gas's actual thermal
+response, so cooling and heating are both fully active.
+
+## Metallicity
+Solar (`Z/Zsun=1`, `run.sh`'s `initial_metallicity`): the receiver-side dust
+extinction this example also exercises needs a nonzero, known metallicity.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: `FUVSpecificEnergies`/`LWSpecificEnergies` live in
+`tracers_xpart_data`. Photoelectric heating itself only needs
+`GrackleCooling:with_metal_cooling: 1` (set in `params.yml`); any Grackle
+cooling mode works, `grackle_0` included.
+
+# Run
+Two runs are needed, identical except for `with_photoelectric_heating`:
+```
+with_pe_heating=1 run_name=heating_on  ./run.sh
+with_pe_heating=0 run_name=heating_off ./run.sh
+```
+Override any other parameter via the matching env var -- gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+and type (`star_mass`, `star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`, `delta_time`), metallicity (`initial_metallicity`), and thread
+count (`n_threads`); see `run.sh` for the full list and defaults.
+`run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done, to
+keep the two runs' outputs side by side.
+
+# Checking
+```
+python3 isrf_photoelectric_heating_check.py \
+    --on-snapshot  "heating_on/snap/snapshot_*.hdf5" \
+    --off-snapshot "heating_off/snap/snapshot_*.hdf5"
+```
+Bins gas by radius from the star at each run's final snapshot, restricts
+the comparison to bins where the on-run's own LW/FUV field is
+non-negligible, and checks there that (1) the heating-on temperature is
+higher than the heating-off temperature and (2) it stays below a
+physically-motivated ceiling (1e6 K) rather than showing signs of a
+numerical blow-up. Produces a comparison plot (`--output`, default
+`isrf_photoelectric_heating_check.png`).
