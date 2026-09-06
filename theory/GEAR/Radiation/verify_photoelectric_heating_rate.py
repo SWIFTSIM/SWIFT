@@ -1,9 +1,7 @@
 """Verify the G0-to-Grackle photoelectric-heating-rate pipeline by an
 actual call into Grackle's compiled solver, not just a source read.
 
-Design doc: .claude/dev/design-lw-fuv-injection.md, "Additional validation
-legs discussed 2026-09-06" -> "Grackle-coupling validation (a)". This
-codebase computes a per-particle Habing-unit ISRF strength G0 via
+This codebase computes a per-particle Habing-unit ISRF strength G0 via
 radiation_get_part_isrf_habing() (src/feedback/GEAR/radiation_gas.c) and
 hands it to Grackle through chemistry_data.use_isrf_field /
 grackle_field_data.isrf_habing, with GrackleCooling:photoelectric_heating
@@ -60,11 +58,11 @@ hydrogen (HI+HII, +H2 when tracked), not neutral-only H0 -- so "n_H" in
 both forms above is the same total-hydrogen quantity this codebase's own
 n_H means, not a species-restricted one.
 
-At solar metallicity (Z'=1, this script's and the design doc's own test
-point) the two forms coincide, which is exactly why a metallicity-blind
-citation of the naive form was never caught before. This script's
-Grackle call-through sweeps Z' explicitly to make the discrepancy visible
-rather than staying hidden at the one test point where it cancels.
+At solar metallicity (Z'=1) the two forms coincide, which is exactly why
+a metallicity-blind citation of the naive form was never caught before.
+This script's Grackle call-through sweeps Z' explicitly to make the
+discrepancy visible rather than staying hidden at the one test point
+where it cancels.
 
 Part 2/3 (call Grackle's own solver): no pygrackle install exists on this
 machine (checked: `import pygrackle` fails), so this script instead
@@ -120,8 +118,8 @@ HARNESS_SRC = SCRIPT_DIR / "verify_photoelectric_heating_rate_grackle_harness.c"
 GRACKLE_GAMMA_HA_CGS = 1.0e-24  # erg/s
 GRACKLE_EPSILON = 0.05
 
-# This script's test point (design doc's stated style, matching
-# verify_sigma_h2_lw_sternberg2014.py's single-point-plus-sweep approach).
+# This script's test point, matching
+# verify_sigma_h2_lw_sternberg2014.py's single-point-plus-sweep approach.
 N_H_CGS = 100.0  # cm^-3, total hydrogen
 T_K = 100.0
 G0 = 1.0
@@ -208,7 +206,7 @@ def actual_formula_gamma_pe_cgs(g0: float, n_h_cgs: float, z_prime: float) -> fl
     return naive_formula_gamma_pe_cgs(g0, n_h_cgs) * z_prime
 
 
-def run_grackle_harness() -> list[tuple[float, float, float]]:
+def run_grackle_harness() -> list[tuple[float, float, float, float, float]]:
     """Compile and run the C harness against the compiled libgrackle.
 
     Returns

@@ -149,8 +149,7 @@
     between this codebase's Habing-band convention and Sternberg's
     Draine-normalized I_UV). See
     theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the full
-    calculation and .claude/dev/design-lw-fuv-injection.md's "Tier 2 Stage
-    1" section for the complete derivation. */
+    calculation. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below

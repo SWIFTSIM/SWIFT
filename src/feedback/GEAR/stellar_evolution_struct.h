@@ -267,9 +267,8 @@ struct radiation {
           #luminosities above; every raw getter exponentiates back. 1D
           variant included for structural consistency with every other
           quantity's union layout, even though no live table is currently
-          1D with #has_raw_LW_FUV=1 (see the 2026-09-06 design note in
-          .claude/dev/design-lw-fuv-injection.md; revisit if pychem
-          confirms no 1D table will ever carry this dataset). */
+          1D with #has_raw_LW_FUV=1; revisit if pychem confirms no 1D
+          table will ever carry this dataset. */
       struct interpolation_1d l_fuv;
 
       /*! #l_fuv, mass x metallicity ("M,Z" dimensionality) variant. */

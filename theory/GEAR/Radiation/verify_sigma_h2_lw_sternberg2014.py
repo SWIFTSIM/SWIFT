@@ -1,7 +1,6 @@
 """Verify RADIATION_SIGMA_H2_LW_CGS against Sternberg et al. (2014)'s D0.
 
-Tier 2 Stage 1, Part 1 (design-lw-fuv-injection.md, "Tier 2 Stage 1
-implementation plan"). Standalone numeric comparison, no simulation: compare
+Standalone numeric comparison, no simulation: compare
 this codebase's own H2 Lyman-Werner photodissociation-rate formula
 (radiation_get_part_LW_dissociation_rate_internal(),
 src/feedback/GEAR/radiation_gas.c) against Sternberg, Le Petit, Roueff &
@@ -138,7 +137,7 @@ def main() -> None:
     E_LW_photon_ev = _read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
     habing_flux_cgs = _read_radiation_h_constant("RADIATION_HABING_FLUX_CGS")
 
-    # RADIATION_HABING_FLUX_CGS is combined-band; rescale to LW-only (see design doc, verified 2026-09-06).
+    # RADIATION_HABING_FLUX_CGS is combined-band; rescale to LW-only.
     LW_FRACTION_OF_HABING = 0.149
     habing_flux_LW_only_cgs = habing_flux_cgs * LW_FRACTION_OF_HABING
 
