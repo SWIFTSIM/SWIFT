@@ -198,14 +198,15 @@ struct radiation {
       doxygen; every radiation_get_*_from_raw() getter exponentiates back.
       Exception: #main_sequence_lifetime_2d stores log10(Myr), not
       log10(internal units); see its own doxygen below for why.
-      #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess
-      counterparts are each an anonymous union (mirroring src/hydro/SPHENIX/
-      hydro_part.h's density/force union idiom): #is_2d is fixed for a given
-      #radiation instance's whole lifetime, so only one dimensionality's
-      interpolation table is ever live, and storing both simultaneously as
-      separate members would waste memory. Every read site already gates on
-      #is_2d before touching either name (radiation_check_dimensionality()/
-      the is_2d dispatch in radiation_get_star_*()); #radiation_zero_pointers
+      #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess/teff/
+      l_fuv/l_lw counterparts are each an anonymous union (mirroring
+     src/hydro/SPHENIX/ hydro_part.h's density/force union idiom): #is_2d is
+     fixed for a given #radiation instance's whole lifetime, so only one
+     dimensionality's interpolation table is ever live, and storing both
+     simultaneously as separate members would waste memory. Every read site
+     already gates on #is_2d before touching either name
+     (radiation_check_dimensionality()/ the is_2d dispatch in
+     radiation_get_star_*()); #radiation_zero_pointers
       /#radiation_clean must do the same. See their own doxygen. */
   struct {
     union {
@@ -237,20 +238,52 @@ struct radiation {
 
     union {
       /*! Spectral-hardness effective temperature (pychem's "Teff"
-          dataset), used to split #luminosities into sub-Lyman-continuum
-          bands (L_FUV/L_LW; see radiation_planck_band_fraction()). Has no
-          IMF-integrated counterpart in #integrated below (unlike
+          dataset), used as a FALLBACK to split #luminosities into
+          sub-Lyman-continuum bands (L_FUV/L_LW; see
+          radiation_planck_band_fraction()) when the loaded table has no
+          direct #l_fuv/#l_lw ("L_FUV"/"L_LW") dataset of its own (see
+          #radiation.has_raw_LW_FUV/#has_integrated_LW_FUV below: a table
+          with those present is read directly instead, at both the
+          individual-star and population/SSP call sites, and Teff need not
+          even be built then; see radiation_read_data()'s own doxygen).
+          Has no IMF-integrated counterpart in #integrated below (unlike
           #luminosities): the band fraction is a nonlinear function of
           Teff, so an IMF-integrated band luminosity cannot be built from
           an IMF-integrated Teff the way #integrated.luminosities is built
-          directly from pychem's own precomputed integral. Every star's
-          L_FUV/L_LW is therefore always evaluated from the raw (per-mass)
-          Teff, even along the population/SSP feedback path that otherwise
-          reads #integrated for L_bol/dot_N_ion/dot_E_excess. */
+          directly from pychem's own precomputed integral. This Teff
+          fallback is therefore always evaluated from the raw (per-mass)
+          value, even along the population/SSP feedback path that
+          otherwise reads #integrated for L_bol/dot_N_ion/dot_E_excess. */
       struct interpolation_1d teff;
 
       /*! #teff, mass x metallicity ("M,Z" dimensionality) variant. */
       struct interpolation_2d teff_2d;
+    };
+
+    union {
+      /*! Non-ionizing FUV band (6-11.2 eV) energy emission rate, read
+          directly from pychem's own "L_FUV" dataset when present (see
+          #radiation.has_raw_LW_FUV). Same log-log storage convention as
+          #luminosities above; every raw getter exponentiates back. 1D
+          variant included for structural consistency with every other
+          quantity's union layout, even though no live table is currently
+          1D with #has_raw_LW_FUV=1 (see the 2026-09-06 design note in
+          .claude/dev/design-lw-fuv-injection.md; revisit if pychem
+          confirms no 1D table will ever carry this dataset). */
+      struct interpolation_1d l_fuv;
+
+      /*! #l_fuv, mass x metallicity ("M,Z" dimensionality) variant. */
+      struct interpolation_2d l_fuv_2d;
+    };
+
+    union {
+      /*! Lyman-Werner band (11.2-13.6 eV) energy emission rate, read
+          directly from pychem's own "L_LW" dataset when present. See
+          #l_fuv's own doxygen. */
+      struct interpolation_1d l_lw;
+
+      /*! #l_lw, mass x metallicity variant. */
+      struct interpolation_2d l_lw_2d;
     };
 
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
@@ -317,6 +350,27 @@ struct radiation {
       /*! Excess-energy emission rate, mass x metallicity variant. */
       struct interpolation_2d dot_E_excess_2d;
     };
+
+    union {
+      /*! IMF-integrated non-ionizing FUV band emission rate per Msun of
+          stars formed, read directly from pychem's "Integrated_L_FUV"
+          dataset when present (see #radiation.has_integrated_LW_FUV).
+          Linear (un-logged) value space, like #luminosities above. */
+      struct interpolation_1d l_fuv;
+
+      /*! #l_fuv, mass x metallicity variant. */
+      struct interpolation_2d l_fuv_2d;
+    };
+
+    union {
+      /*! IMF-integrated Lyman-Werner band emission rate per Msun of stars
+          formed, read directly from pychem's "Integrated_L_LW" dataset.
+          See #l_fuv's own doxygen. */
+      struct interpolation_1d l_lw;
+
+      /*! #l_lw, mass x metallicity variant. */
+      struct interpolation_2d l_lw_2d;
+    };
   } integrated;
 
   /*! Is this a mass x metallicity ("M,Z") table rather than a mass-only
@@ -381,17 +435,37 @@ struct radiation {
   /*! Is the local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
       heating) on? Set from that parameter in radiation_init(), before
       radiation_read_data() is called (radiation_init() calls it), so
-      radiation_read_data() can gate radiation_read_teff_array() on it: the
-      "Teff" dataset is a phase-1 LW/FUV-specific addition to the table
-      (see radiation_planck_band_fraction()), and requiring every
-      photoionization-/radiation-pressure-only run's table to already carry
-      it (rather than gating the read) would be a needless, disruptive
+      radiation_read_data() can gate radiation_read_teff_array() on it (see
+      #has_raw_LW_FUV/#has_integrated_LW_FUV below for the full gating
+      condition): the "Teff" dataset is a phase-1 LW/FUV-specific addition
+      to the table (see radiation_planck_band_fraction()), and requiring
+      every photoionization-/radiation-pressure-only run's table to already
+      carry it (rather than gating the read) would be a needless, disruptive
       compatibility break for every table generated before this feature.
       Persists across restart as a plain scalar in the raw block read/write
       (#radiation_dump/#radiation_restore), like #is_2d, so
       radiation_read_data()'s restart call can read it before params is
       available again (params is NULL on restart). */
   char with_LW_FUV;
+
+  /*! Does the loaded table carry raw "L_FUV" AND "L_LW" datasets, AND is
+      #with_LW_FUV itself on? File-derived (like #is_2d), set fresh in
+      radiation_read_data() on every read including restart (the restart
+      path re-opens and re-probes the same file), never round-tripped like
+      #with_LW_FUV. ANDed with #with_LW_FUV at the point it is set so it
+      can never be true with the feature disabled: stellar_evolution.c's
+      `if (has_raw_LW_FUV) {...} else if (with_LW_FUV) {...}` checks this
+      flag alone, first, so an ungated has_raw_LW_FUV would populate
+      L_FUV/L_LW even with with_photoelectric_heating off. Gates the
+      individual-star call site's table-direct L_FUV/L_LW read
+      (stellar_evolution.c); independent of #has_integrated_LW_FUV, since a
+      table can carry either dataset pair without the other. */
+  char has_raw_LW_FUV;
+
+  /*! Does the loaded table carry "Integrated_L_FUV" AND "Integrated_L_LW"
+      datasets? See #has_raw_LW_FUV's own doxygen; gates the population/SSP
+      call site's table-direct read instead of the individual-star one. */
+  char has_integrated_LW_FUV;
 };
 
 /**

@@ -1393,13 +1393,19 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     sp->feedback_data.radiation.L_bol =
         radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands via this star's own
-       Teff: two more threshold-integrals of the same blackbody curve
-       already producing L_bol/Q_H above. Uses the just-computed L_bol
-       above, before feedback_common.c's later radiation_pressure_
-       efficiency scaling of that same field: L_FUV/L_LW are deliberately
-       independent of that separate efficiency knob. */
-    if (sm->rad.with_LW_FUV) {
+    /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
+       L_FUV/L_LW when the loaded table has them (has_raw_LW_FUV), else this
+       star's own Teff via two more threshold-integrals of the same
+       blackbody curve already producing L_bol/Q_H above. The Teff fallback
+       uses the just-computed L_bol above, before feedback_common.c's later
+       radiation_pressure_efficiency scaling of that same field: L_FUV/L_LW
+       are deliberately independent of that separate efficiency knob. */
+    if (sm->rad.has_raw_LW_FUV) {
+      sp->feedback_data.radiation.L_FUV =
+          radiation_get_star_l_fuv(&sm->rad, log_m, log_z);
+      sp->feedback_data.radiation.L_LW =
+          radiation_get_star_l_lw(&sm->rad, log_m, log_z);
+    } else if (sm->rad.with_LW_FUV) {
       const float Teff_K =
           radiation_get_star_teff(&sm->rad, log_m, log_z) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -1592,6 +1598,14 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float L_bol;
     double dot_N_ion;
     float mean_excess_photon_energy_HI;
+    /* Upper mass bound for the has_integrated_LW_FUV table-direct read
+       below: the same MS-lifetime-capped value dot_N_ion uses for a 2D
+       table (operator ruling, 2026-09-06 -- a star past its own main-
+       sequence lifetime emits nothing, ionizing or not, so L_FUV/L_LW stop
+       the same way Q_H already does), or the uncapped m_sup for a 1D table,
+       which has no MS-lifetime concept at all (matching dot_N_ion's own
+       uncapped 1D read below). */
+    float m_sup_capped = m_sup;
 
     if (sm->rad.is_2d) {
       const float log_z = radiation_get_log_metallicity(metallicity);
@@ -1616,7 +1630,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
       const float m_ms_end_step = radiation_get_ms_lifetime_inverse_mass_2d(
           &sm->rad, log_z, star_age_end_step_myr, m_min);
       const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
-      const float m_sup_capped = max(m_min, m_sup_or_ms_end_step);
+      m_sup_capped = max(m_min, m_sup_or_ms_end_step);
 
       dot_N_ion = radiation_get_ionization_rate_from_integral_2d(
           &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
@@ -1637,15 +1651,42 @@ void stellar_evolution_compute_preSN_feedback_spart(
     /* Convert to total luminosities */
     sp->feedback_data.radiation.L_bol = L_bol * m_init;
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands (see the
-       individual-star path's identical block for the physics). Teff has
-       no IMF-integrated table concept (#radiation.raw's own doxygen on
-       the teff/teff_2d union), so a single representative Teff at m_sup
-       (this step's upper mass bound, i.e. the hottest star still
-       contributing) stands in for a true IMF-integrated band fraction: an
-       approximation, not yet re-derived against a proper IMF-integrated
-       band fraction. */
-    if (sm->rad.with_LW_FUV) {
+    /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
+       Integrated_L_FUV/Integrated_L_LW when the loaded table has them
+       (has_integrated_LW_FUV), bounded by the same m_sup_capped dot_N_ion
+       uses above (a real, deliberate behaviour change from the Teff
+       fallback below for a population with stars past m_sup_capped, per
+       the operator's 2026-09-06 ruling -- not merely a plumbing swap: a
+       star that has left the main sequence emits nothing, ionizing or
+       not). Else, the existing Teff fallback (see the individual-star
+       path's identical block for the physics): Teff has no IMF-integrated
+       table concept (#radiation.raw's own doxygen on the teff/teff_2d
+       union), so a single representative Teff at m_sup (this step's upper
+       mass bound, i.e. the hottest star still contributing) stands in for
+       a true IMF-integrated band fraction: an approximation, not yet
+       re-derived against a proper IMF-integrated band fraction. */
+    if (sm->rad.has_integrated_LW_FUV) {
+      float L_FUV_per_msun, L_LW_per_msun;
+      if (sm->rad.is_2d) {
+        const float log_z = radiation_get_log_metallicity(metallicity);
+        L_FUV_per_msun = radiation_get_l_fuv_from_integral_2d(
+            &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+        L_LW_per_msun = radiation_get_l_lw_from_integral_2d(
+            &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+      } else {
+        L_FUV_per_msun = radiation_get_l_fuv_from_integral(
+            &sm->rad, log10f(m_min), log10f(m_sup_capped));
+        L_LW_per_msun = radiation_get_l_lw_from_integral(
+            &sm->rad, log10f(m_min), log10f(m_sup_capped));
+      }
+      /* Convert per-Msun-of-stars-formed to total, exactly like L_bol/
+         dot_N_ion above: FATAL if omitted (a missing *m_init factor is
+         1e2-1e4x too large across GEAR's stated production mass range and
+         would still run to completion with finite, positive,
+         plausible-looking numbers). */
+      sp->feedback_data.radiation.L_FUV = L_FUV_per_msun * m_init;
+      sp->feedback_data.radiation.L_LW = L_LW_per_msun * m_init;
+    } else if (sm->rad.with_LW_FUV) {
       const float log_m_sup = log10f(m_sup);
       const float Teff_K =
           (sm->rad.is_2d

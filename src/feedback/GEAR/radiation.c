@@ -181,8 +181,9 @@ void radiation_restore(struct radiation *rad, FILE *stream,
 /**
  * @brief Clean the allocated memory.
  *
- * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess fields are each an
- * anonymous union of a #interpolation_1d and a #interpolation_2d variant
+ * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess/teff/l_fuv/l_lw
+ * fields are each an anonymous union of a #interpolation_1d and a
+ * #interpolation_2d variant
  * (see #radiation's own doxygen); #is_2d selects which one is actually live
  * and must be freed via the matching interpolate_*d_free(). Freeing
  * through the other union member's helper on aliased memory would be wrong
@@ -204,17 +205,25 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->raw.dot_N_ion_2d);
     interpolate_2d_free(&rad->raw.dot_E_excess_2d);
     interpolate_2d_free(&rad->raw.teff_2d);
+    interpolate_2d_free(&rad->raw.l_fuv_2d);
+    interpolate_2d_free(&rad->raw.l_lw_2d);
     interpolate_2d_free(&rad->integrated.luminosities_2d);
     interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
     interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
+    interpolate_2d_free(&rad->integrated.l_fuv_2d);
+    interpolate_2d_free(&rad->integrated.l_lw_2d);
   } else {
     interpolate_1d_free(&rad->raw.luminosities);
     interpolate_1d_free(&rad->raw.dot_N_ion);
     interpolate_1d_free(&rad->raw.dot_E_excess);
     interpolate_1d_free(&rad->raw.teff);
+    interpolate_1d_free(&rad->raw.l_fuv);
+    interpolate_1d_free(&rad->raw.l_lw);
     interpolate_1d_free(&rad->integrated.luminosities);
     interpolate_1d_free(&rad->integrated.dot_N_ion);
     interpolate_1d_free(&rad->integrated.dot_E_excess);
+    interpolate_1d_free(&rad->integrated.l_fuv);
+    interpolate_1d_free(&rad->integrated.l_lw);
   }
 
   interpolate_2d_free(&rad->raw.main_sequence_lifetime_2d);
@@ -272,23 +281,33 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->ms_lifetime_inverse_log_z_step = 0.f;
   rad->ms_lifetime_inverse_n_metallicity = 0;
   rad->with_LW_FUV = 0;
+  rad->has_raw_LW_FUV = 0;
+  rad->has_integrated_LW_FUV = 0;
 
   if (was_2d) {
     interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
     interpolate_2d_zero_pointers(&rad->raw.teff_2d);
+    interpolate_2d_zero_pointers(&rad->raw.l_fuv_2d);
+    interpolate_2d_zero_pointers(&rad->raw.l_lw_2d);
     interpolate_2d_zero_pointers(&rad->integrated.luminosities_2d);
     interpolate_2d_zero_pointers(&rad->integrated.dot_N_ion_2d);
     interpolate_2d_zero_pointers(&rad->integrated.dot_E_excess_2d);
+    interpolate_2d_zero_pointers(&rad->integrated.l_fuv_2d);
+    interpolate_2d_zero_pointers(&rad->integrated.l_lw_2d);
   } else {
     interpolate_1d_zero_pointers(&rad->raw.luminosities);
     interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
     interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
     interpolate_1d_zero_pointers(&rad->raw.teff);
+    interpolate_1d_zero_pointers(&rad->raw.l_fuv);
+    interpolate_1d_zero_pointers(&rad->raw.l_lw);
     interpolate_1d_zero_pointers(&rad->integrated.luminosities);
     interpolate_1d_zero_pointers(&rad->integrated.dot_N_ion);
     interpolate_1d_zero_pointers(&rad->integrated.dot_E_excess);
+    interpolate_1d_zero_pointers(&rad->integrated.l_fuv);
+    interpolate_1d_zero_pointers(&rad->integrated.l_lw);
   }
 
   interpolate_2d_zero_pointers(&rad->raw.main_sequence_lifetime_2d);

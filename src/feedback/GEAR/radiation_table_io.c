@@ -230,7 +230,11 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * radiation_parse_edge_policy()). This function never inspects the
  * group's "source" attribute: it only requires the specific attributes
  * it needs to be present, so a new pychem source mode works without a
- * companion SWIFT change.
+ * companion SWIFT change. edge_policy_l_fuv/edge_policy_l_lw are the one
+ * exception to "requires the specific attributes to be present": they are
+ * only read (and only required) when the group's own "L_FUV"/"L_LW"
+ * datasets exist, since those datasets (and their edge-policy attributes)
+ * are optional (see #radiation.has_raw_LW_FUV's own doxygen).
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
@@ -320,12 +324,43 @@ void radiation_read_grid_metadata(hid_t group_id,
         "mean_excess_energy");
     grid->edge_policy_teff =
         radiation_parse_edge_policy(teff_below, teff_above, "teff");
+
+    /* L_FUV/L_LW are optional (see radiation.h's own doxygen on
+       #has_raw_LW_FUV): a table generated before pychem added them has
+       neither dataset, and hence no matching edge_policy_l_fuv_ or
+       edge_policy_l_lw_ attributes either. Guard on dataset presence
+       first, unlike every field above (which pychem has always required),
+       so an old-format 2D table still loads instead of erroring on a
+       missing attribute it never had a reason to write. */
+    grid->edge_policy_l_fuv = boundary_condition_error;
+    if (H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0) {
+      char l_fuv_below[16], l_fuv_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_below",
+                                      l_fuv_below, sizeof(l_fuv_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_above",
+                                      l_fuv_above, sizeof(l_fuv_above));
+      grid->edge_policy_l_fuv =
+          radiation_parse_edge_policy(l_fuv_below, l_fuv_above, "l_fuv");
+    }
+
+    grid->edge_policy_l_lw = boundary_condition_error;
+    if (H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0) {
+      char l_lw_below[16], l_lw_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_below",
+                                      l_lw_below, sizeof(l_lw_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_above",
+                                      l_lw_above, sizeof(l_lw_above));
+      grid->edge_policy_l_lw =
+          radiation_parse_edge_policy(l_lw_below, l_lw_above, "l_lw");
+    }
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
     grid->edge_policy_luminosity = boundary_condition_error;
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
     grid->edge_policy_teff = boundary_condition_error;
+    grid->edge_policy_l_fuv = boundary_condition_error;
+    grid->edge_policy_l_lw = boundary_condition_error;
   } else {
     error(
         "Data/Radiation has an unrecognised 'dimensionality' attribute "
@@ -975,6 +1010,70 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
 }
 
 /**
+ * @brief Read the L_FUV (non-ionizing FUV band emission rate) array from the
+ * table, if present.
+ *
+ * Only called when #radiation.has_raw_LW_FUV or #has_integrated_LW_FUV is
+ * set (radiation_read_data()). The raw "L_FUV" dataset this function
+ * unconditionally reads first is guaranteed to exist for the
+ * #has_raw_LW_FUV case; an #has_integrated_LW_FUV=1/#has_raw_LW_FUV=0
+ * table (integrated present, raw missing) would still hit this unconditional
+ * read and error -- accepted as an unsupported edge case per the design
+ * doc, since pychem always derives Integrated_L_FUV/L_LW from the raw
+ * arrays and so never produces one without the other in practice. @p
+ * integrated_1d/@p integrated_2d are only requested (non-NULL) when
+ * #has_integrated_LW_FUV is also set, so a raw-only table does not hit
+ * #radiation_build_tables's fatal "Integrated_L_FUV missing" branch.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_fuv_array(struct radiation *rad, hid_t group_id,
+                                const struct radiation_grid_metadata *grid,
+                                const struct stellar_model *sm,
+                                const struct unit_system *us) {
+
+  radiation_build_tables(
+      group_id, "L_FUV", grid, sm, rad->interpolation_size,
+      rad->interpolation_size_metallicity,
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
+      &rad->raw.l_fuv,
+      rad->has_integrated_LW_FUV ? &rad->integrated.l_fuv : NULL,
+      &rad->raw.l_fuv_2d,
+      rad->has_integrated_LW_FUV ? &rad->integrated.l_fuv_2d : NULL,
+      grid->edge_policy_l_fuv);
+}
+
+/**
+ * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
+ * table, if present. See #radiation_read_l_fuv_array's own doxygen
+ * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(
+      group_id, "L_LW", grid, sm, rad->interpolation_size,
+      rad->interpolation_size_metallicity,
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
+      &rad->raw.l_lw, rad->has_integrated_LW_FUV ? &rad->integrated.l_lw : NULL,
+      &rad->raw.l_lw_2d,
+      rad->has_integrated_LW_FUV ? &rad->integrated.l_lw_2d : NULL,
+      grid->edge_policy_l_lw);
+}
+
+/**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
  *
  * MainSequenceLifetime has no 1D/"M"-table analogue: pychem only writes
@@ -1360,6 +1459,34 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
 
+  /* File-derived, like #is_2d above: probed fresh on every read (including
+     restart, which re-opens and re-probes the same file). Independent per
+     field, per the schema-divergence risk a table's raw and IMF-integrated
+     L_FUV/L_LW datasets can diverge on: each call site below only checks
+     the flag it actually needs.
+
+     ANDed with #with_LW_FUV so these flags can only be true when the
+     feature itself is enabled: stellar_evolution.c's two call sites read
+     `if (has_raw_LW_FUV) {...} else if (with_LW_FUV) {...}` (and the
+     population-level equivalent with has_integrated_LW_FUV), never ANDing
+     with_LW_FUV into the first branch themselves. Without this gate here,
+     a run with GEARFeedback:with_photoelectric_heating off but a table
+     that happens to carry L_FUV/L_LW (increasingly the common case now
+     that pychem writes them by default) would still populate
+     sp->feedback_data.radiation.L_FUV/L_LW with real, nonzero values,
+     contradicting radiation_iact.h's documented invariant that they are
+     "Zero unless GEARFeedback:with_photoelectric_heating is on." Gating
+     here, at the single point both flags are produced, means every
+     downstream consumer's existing branch structure is already correct
+     with no further change. */
+  rad->has_raw_LW_FUV = rad->with_LW_FUV &&
+                        H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0 &&
+                        H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0;
+  rad->has_integrated_LW_FUV =
+      rad->with_LW_FUV &&
+      H5Lexists(group_id, "Integrated_L_FUV", H5P_DEFAULT) > 0 &&
+      H5Lexists(group_id, "Integrated_L_LW", H5P_DEFAULT) > 0;
+
   /* A no-op on a table without pychem's precomputed IMF-integrated
      datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
      for both 1D and 2D tables. */
@@ -1421,12 +1548,28 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
 
-  /* Read the spectral-hardness effective temperature, used to split
-     Luminosity into sub-Lyman-continuum bands (L_FUV/L_LW). Gated on
+  /* Read L_FUV/L_LW directly from the table whenever the table carries them
+     AND GEARFeedback:with_photoelectric_heating is on (has_raw_LW_FUV/
+     has_integrated_LW_FUV are already ANDed with with_LW_FUV above, so
+     this condition is a no-op build-avoidance skip when the feature is
+     off, not a redundant check). Each call site (stellar_evolution.c)
+     checks only the flag it actually needs. */
+  if (rad->has_raw_LW_FUV || rad->has_integrated_LW_FUV) {
+    radiation_read_l_fuv_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
+  }
+
+  /* Read the spectral-hardness effective temperature, used as a FALLBACK
+     to split Luminosity into sub-Lyman-continuum bands (L_FUV/L_LW) when
+     the table has no direct L_FUV/L_LW dataset of its own. Gated on
      with_LW_FUV (see its own doxygen): a table generated before this
      feature existed has no "Teff" dataset, and a photoionization-/
-     radiation-pressure-only run has no use for it either. */
-  if (rad->with_LW_FUV) radiation_read_teff_array(rad, group_id, &grid, sm, us);
+     radiation-pressure-only run has no use for it either. Additionally
+     skipped when both LW/FUV flags above are already set: neither call
+     site's Teff-fallback branch can then ever run, so building this table
+     (and its interpolate_2d_init() cost) would be pure waste. */
+  if (rad->with_LW_FUV && !(rad->has_raw_LW_FUV && rad->has_integrated_LW_FUV))
+    radiation_read_teff_array(rad, group_id, &grid, sm, us);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets

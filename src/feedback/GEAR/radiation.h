@@ -213,6 +213,21 @@ struct radiation_grid_metadata {
   /*! Mass-axis boundary condition for the "Teff" dataset (2D tables only),
       from the group's generic edge_policy_teff_below/above attributes. */
   enum interpolate_boundary_condition edge_policy_teff;
+
+  /*! Mass-axis boundary condition for the "L_FUV" dataset (2D tables with
+      an "L_FUV" dataset only; boundary_condition_error otherwise, matching
+      every other edge_policy_* field's convention for a table where the
+      corresponding dataset does not apply), from the group's own
+      edge_policy_l_fuv_below/above attributes -- a dedicated pair, NOT
+      shared with #edge_policy_luminosity, since pychem's L_FUV/L_LW default
+      policy ("zero" below the native mass floor, "constant" above) differs
+      from Luminosity's own. */
+  enum interpolate_boundary_condition edge_policy_l_fuv;
+
+  /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
+      "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
+      attributes. See #edge_policy_l_fuv's own doxygen. */
+  enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
 double radiation_get_part_number_hydrogen_atoms(
@@ -349,6 +364,28 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
 double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
                                       double E_high_eV);
 
+float radiation_get_l_fuv_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_l_fuv_from_raw_2d(const struct radiation *rad, float log_z,
+                                      float log_m);
+float radiation_get_star_l_fuv(const struct radiation *rad, float log_m,
+                               float log_z);
+float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
+                              float log_z);
+
+float radiation_get_l_fuv_from_integral(const struct radiation *rad,
+                                        float log_m1, float log_m2);
+float radiation_get_l_fuv_from_integral_2d(const struct radiation *rad,
+                                           float log_z, float log_m1,
+                                           float log_m2);
+float radiation_get_l_lw_from_integral(const struct radiation *rad,
+                                       float log_m1, float log_m2);
+float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
+                                          float log_z, float log_m1,
+                                          float log_m2);
+
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
@@ -367,6 +404,14 @@ void radiation_read_mean_excess_photon_energy_array(
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
 void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
+void radiation_read_l_fuv_array(struct radiation *rad, hid_t group_id,
+                                const struct radiation_grid_metadata *grid,
+                                const struct stellar_model *sm,
+                                const struct unit_system *us);
+void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,
                                const struct unit_system *us);
