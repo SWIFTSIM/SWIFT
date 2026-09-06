@@ -202,6 +202,13 @@ void radiation_init_part_propagation(struct part *p) {
  * kernel-weighted diffusive averaging, `u_new = mean_j(w_ij*u_prev_j)`,
  * with no absorption. Debug/test-only.
  *
+ * `kappa_FUV`/`kappa_LW` are already physical (cached from
+ * #hydro_get_physical_density), so the smoothing length entering the
+ * decay exponent and the alpha ceiling must be physical too: `p->h` is
+ * SWIFT's comoving smoothing length, converted here via `cosmo->a`
+ * (physical_length = a * comoving_length). At a=1 (every non-cosmological
+ * run) this is a no-op.
+ *
  * @param p The particle to act upon.
  * @param e The #engine.
  */
@@ -210,17 +217,17 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->LW_FUV_propagation) return;
 
   const float w_min = e->feedback_props->LW_FUV_yukawa_w_min;
-  const float h = p->h;
+  const float h_phys = (float)e->cosmology->a * p->h;
   const struct feedback_part_data *fd = &p->feedback_data;
 
   const float alpha_FUV =
-      radiation_get_isrf_propagation_alpha(h, fd->kappa_FUV, w_min);
+      radiation_get_isrf_propagation_alpha(h_phys, fd->kappa_FUV, w_min);
   const float alpha_LW =
-      radiation_get_isrf_propagation_alpha(h, fd->kappa_LW, w_min);
+      radiation_get_isrf_propagation_alpha(h_phys, fd->kappa_LW, w_min);
   const float lambda2_FUV = 1.0f / max(fd->kappa_FUV * fd->kappa_FUV, FLT_MIN);
   const float lambda2_LW = 1.0f / max(fd->kappa_LW * fd->kappa_LW, FLT_MIN);
-  const float decay_FUV = expf(-alpha_FUV * h * h / lambda2_FUV);
-  const float decay_LW = expf(-alpha_LW * h * h / lambda2_LW);
+  const float decay_FUV = expf(-alpha_FUV * h_phys * h_phys / lambda2_FUV);
+  const float decay_LW = expf(-alpha_LW * h_phys * h_phys / lambda2_LW);
 
   const float mixed_FUV =
       fd->isrf_prop_sum_w_FUV > 0.0f
@@ -353,7 +360,9 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * normalized mixing operator to a checkerboard perturbation. The decay
  * factor actually applied uses this alpha: exp(-alpha*h^2/lambda^2).
  *
- * @param h Comoving smoothing length.
+ * @param h Physical smoothing length (caller converts from SWIFT's
+ * comoving p->h via the current scale factor; kappa_i below is already
+ * physical, so this must match).
  * @param kappa_i Local linear absorption rate, 1/length.
  * @param w_min See #radiation_compute_yukawa_w_min.
  * @return Mixing fraction alpha, in (0, 1].

@@ -38,7 +38,10 @@
  * @brief Band-specific pairwise contribution to particle i's propagation
  * accumulators from particle j's stable field snapshot.
  *
- * @param r Comoving particle separation.
+ * @param r Physical particle separation (kappa_i/kappa_j are already
+ * physical, cached by radiation_snapshot_part_propagation from
+ * hydro_get_physical_density; callers convert from SWIFT's comoving
+ * separation via the scale factor before calling this).
  * @param wi Kernel weight evaluated at particle i's own smoothing length.
  * @param kappa_i Particle i's cached absorption rate for this band.
  * @param kappa_j Particle j's cached absorption rate for this band.
@@ -80,25 +83,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
     const float H, const struct unit_system *us) {
 
   const float r = sqrtf(r2);
+  /* Physical separation for accumulate_band's exp(-kappa_ij*r): kappa_ij
+   * is physical, kernel_eval's comoving r/h ratio below is untouched. */
+  const float r_phys = a * r;
   float wi, wj;
   kernel_eval(r / hi, &wi);
   kernel_eval(r / hj, &wj);
 
   radiation_propagation_accumulate_band(
-      r, wi, pi->feedback_data.kappa_FUV, pj->feedback_data.kappa_FUV,
+      r_phys, wi, pi->feedback_data.kappa_FUV, pj->feedback_data.kappa_FUV,
       pj->feedback_data.u_FUV_prev, &pi->feedback_data.isrf_prop_sum_w_FUV,
       &pi->feedback_data.isrf_prop_sum_wu_FUV);
   radiation_propagation_accumulate_band(
-      r, wi, pi->feedback_data.kappa_LW, pj->feedback_data.kappa_LW,
+      r_phys, wi, pi->feedback_data.kappa_LW, pj->feedback_data.kappa_LW,
       pj->feedback_data.u_LW_prev, &pi->feedback_data.isrf_prop_sum_w_LW,
       &pi->feedback_data.isrf_prop_sum_wu_LW);
 
   radiation_propagation_accumulate_band(
-      r, wj, pj->feedback_data.kappa_FUV, pi->feedback_data.kappa_FUV,
+      r_phys, wj, pj->feedback_data.kappa_FUV, pi->feedback_data.kappa_FUV,
       pi->feedback_data.u_FUV_prev, &pj->feedback_data.isrf_prop_sum_w_FUV,
       &pj->feedback_data.isrf_prop_sum_wu_FUV);
   radiation_propagation_accumulate_band(
-      r, wj, pj->feedback_data.kappa_LW, pi->feedback_data.kappa_LW,
+      r_phys, wj, pj->feedback_data.kappa_LW, pi->feedback_data.kappa_LW,
       pi->feedback_data.u_LW_prev, &pj->feedback_data.isrf_prop_sum_w_LW,
       &pj->feedback_data.isrf_prop_sum_wu_LW);
 }
@@ -126,15 +132,16 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
                                     const struct unit_system *us) {
 
   const float r = sqrtf(r2);
+  const float r_phys = a * r;
   float wi;
   kernel_eval(r / hi, &wi);
 
   radiation_propagation_accumulate_band(
-      r, wi, pi->feedback_data.kappa_FUV, pj->feedback_data.kappa_FUV,
+      r_phys, wi, pi->feedback_data.kappa_FUV, pj->feedback_data.kappa_FUV,
       pj->feedback_data.u_FUV_prev, &pi->feedback_data.isrf_prop_sum_w_FUV,
       &pi->feedback_data.isrf_prop_sum_wu_FUV);
   radiation_propagation_accumulate_band(
-      r, wi, pi->feedback_data.kappa_LW, pj->feedback_data.kappa_LW,
+      r_phys, wi, pi->feedback_data.kappa_LW, pj->feedback_data.kappa_LW,
       pj->feedback_data.u_LW_prev, &pi->feedback_data.isrf_prop_sum_w_LW,
       &pi->feedback_data.isrf_prop_sum_wu_LW);
 }
