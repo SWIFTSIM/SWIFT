@@ -49,6 +49,18 @@
     ever gets the chance to renew it. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
 
+/*! Lifetime granted to an LW/FUV illumination episode, in units of the
+    illuminating star's own integer timestep. Integer, not a double factor
+    on a physical time like RADIATION_TAG_LIFETIME_INTERVALS: the
+    injection/expiry comparison this feeds (radiation_iact.h,
+    radiation_gas.c:radiation_reset_part_LW_FUV_illumination_tag) works
+    entirely in integertime_t, so there is no float boundary to round
+    against. Must exceed 1 for the same reason as RADIATION_TAG_LIFETIME_
+    INTERVALS: a touch has to outlive the gap to the star's next visit, or
+    the gas particle's own once-per-step expiry check (feedback_reset_part)
+    can clear it first. */
+#define RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS 2
+
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
     over, in units of the rebuild cadence actually in force. A scheduled pass
     is skipped whenever the star's working-level cell holds no gas, which
@@ -276,6 +288,8 @@ char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
 double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
+void radiation_reset_part_LW_FUV_illumination_tag(struct part *p,
+                                                  const struct engine *e);
 long long radiation_get_part_ionized_star_id(const struct part *p,
                                              const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,

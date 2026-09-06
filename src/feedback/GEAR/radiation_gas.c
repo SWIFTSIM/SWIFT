@@ -29,6 +29,7 @@
 /* Include header */
 #include "chemistry.h"
 #include "cooling.h"
+#include "engine.h"
 #include "error.h"
 #include "inline.h"
 #include "minmax.h"
@@ -456,6 +457,38 @@ __attribute__((always_inline)) INLINE double
 radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xp) {
   return p->feedback_data.end_time;
+}
+
+/**
+ * Clear #part::feedback_data.is_illuminated_LW_FUV once its illumination
+ * window has lapsed. Mirrors cooling_ionize_part_subgrid's own
+ * `time >= end_time` expiry of #is_ionized: called once per step, per
+ * particle (feedback_reset_part), regardless of whether a star touches
+ * this particle this step, so a gap in illumination is detected even
+ * though nothing in the injection pass itself runs for an un-illuminated
+ * particle.
+ *
+ * With LW/FUV propagation off, an expiring particle also has u_FUV/u_LW
+ * zeroed here: nothing else decays that stale value once the particle
+ * stops being illuminated (propagation ON already handles this via its own
+ * per-step decay/mixing update, so it is deliberately left untouched
+ * here).
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_reset_part_LW_FUV_illumination_tag(struct part *p,
+                                             const struct engine *e) {
+  if (!p->feedback_data.is_illuminated_LW_FUV) return;
+  if (e->ti_current < p->feedback_data.LW_FUV_illumination_end_ti) return;
+
+  p->feedback_data.is_illuminated_LW_FUV = 0;
+
+  if (!e->feedback_props->LW_FUV_propagation) {
+    p->feedback_data.u_FUV = 0.f;
+    p->feedback_data.u_LW = 0.f;
+  }
 }
 
 /**

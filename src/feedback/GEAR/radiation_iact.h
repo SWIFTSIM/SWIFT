@@ -195,13 +195,16 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
+  /* Cosmology-independent: also reused below to renew the LW/FUV
+   * illumination window (radiation_reset_part_LW_FUV_illumination_tag). */
+  const integertime_t ti_step = get_integer_timestep(si->time_bin);
+
   /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
    * cosmological runs -- mirror compute_time()'s branch (feedback_common.c)
    * rather than use it directly. Shared by radiation pressure and LW/FUV
    * injection below: both use the star's own feedback timestep. */
   float Delta_t;
   if (with_cosmology) {
-    const integertime_t ti_step = get_integer_timestep(si->time_bin);
     const integertime_t ti_begin =
         get_integer_time_begin(ti_current, si->time_bin);
     Delta_t =
@@ -278,6 +281,15 @@ radiation_iact_nonsym_feedback_apply(
 
     pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
     pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
+
+    /* Renew the illumination window on every touch, first or not -- mirrors
+       feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII
+       tag's own end_time, so a continuously-illuminated particle's window
+       never lapses between touches. The expiry check itself
+       (radiation_reset_part_LW_FUV_illumination_tag) runs once per step in
+       feedback_reset_part, not here. */
+    pj->feedback_data.LW_FUV_illumination_end_ti =
+        ti_current + RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS * ti_step;
 
     /* First-touch-only sync, mirroring feedback_hii_claim_part vs.
        feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split

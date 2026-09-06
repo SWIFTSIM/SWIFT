@@ -76,6 +76,10 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.kappa_FUV = 0.f;
   p->feedback_data.kappa_LW = 0.f;
   p->feedback_data.LW_FUV_last_touch_ti = -1;
+  /* -1 so an MPI foreign particle's uninitialized memory (not covered by
+     the IC-read bzero above) can never read as "still illuminated". */
+  p->feedback_data.is_illuminated_LW_FUV = 0;
+  p->feedback_data.LW_FUV_illumination_end_ti = -1;
   radiation_init_part_propagation(p);
 }
 

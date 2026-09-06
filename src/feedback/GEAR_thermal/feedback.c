@@ -127,7 +127,9 @@ void feedback_end_density(struct part *p, struct xpart *xp,
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
  * u_FUV/u_LW and caches this step's absorption rate (shared GEAR
- * physics), see #radiation_snapshot_part_propagation.
+ * physics), see #radiation_snapshot_part_propagation, and expires a
+ * lapsed LW/FUV illumination tag, see
+ * #radiation_reset_part_LW_FUV_illumination_tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -136,6 +138,7 @@ void feedback_end_density(struct part *p, struct xpart *xp,
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
   radiation_snapshot_part_propagation(p, e);
+  radiation_reset_part_LW_FUV_illumination_tag(p, e);
 }
 
 /**

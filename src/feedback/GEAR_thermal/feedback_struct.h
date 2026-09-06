@@ -128,19 +128,38 @@ struct feedback_part_data {
   integertime_t LW_FUV_last_touch_ti;
 
   /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
-      star's injection pass, ever? Dedicated flag, not inferred from
-      u_FUV/u_LW themselves, since those now reset every step a star
-      touches this particle and so cannot signal "newly illuminated" via
-      a zero-crossing. Mirrors #is_ionized's claimed/not-claimed role:
-      gates a first-touch-only timestep_sync_part call in
+      star's injection pass, and is that illumination episode still live?
+      Dedicated flag, not inferred from u_FUV/u_LW themselves, since those
+      now reset every step a star touches this particle and so cannot
+      signal "newly illuminated" via a zero-crossing. Mirrors #is_ionized's
+      claimed/not-claimed cycle, including the reset half: gates a
+      first-touch-only timestep_sync_part call in
       radiation_iact_nonsym_feedback_apply, mirroring
-      feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's
-      own claim-vs-maintain split. Unlike that HII pair, there is no
-      decay/expiry model here to end an illumination episode, so this
-      flag is set once and never reset: every later injection pass takes
-      the "already illuminated" branch (no repeated sync calls), which is
-      intentional and conservative, not a bug. */
+      feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's own
+      claim-vs-maintain split, and is cleared once #LW_FUV_illumination_end_ti
+      lapses (radiation_gas.c:radiation_reset_part_LW_FUV_illumination_tag,
+      called from feedback_reset_part), exactly as cooling clears #is_ionized
+      once its own end_time lapses (cooling_gear_subgrid.h). A particle that
+      leaves every illuminating star's kernel, then re-enters one later (a
+      star re-approaches, a new star's kernel reaches it, or its own h
+      changes), therefore gets a fresh sync on re-illumination instead of
+      being silently skipped forever. */
   char is_illuminated_LW_FUV;
+
+  /*! Absolute integer time (#engine.ti_current units) until which
+      #is_illuminated_LW_FUV stays set. Renewed to
+      `ti_current + RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS * ti_step` on
+      every injection touch (ti_step = the illuminating star's own
+      integer timestep), whether or not this is the particle's first touch
+      this episode -- mirrors #feedback_iact_HII_maintain_ionized_part's
+      per-pass renewal of the HII tag's own end_time. The
+      RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS buffer (radiation.h) keeps
+      the window from lapsing between two touches by a star on a coarser
+      time bin than this particle's own once-per-step expiry check
+      (feedback_reset_part). feedback_first_init_part sets this to -1 so a
+      never-illuminated particle's garbage/zero-initialized state can never
+      read as "still illuminated". */
+  integertime_t LW_FUV_illumination_end_ti;
 
   /*! Yukawa propagation's per-step mixing accumulators, one
       denominator/numerator pair per band: sum_w_FUV = sum_j
