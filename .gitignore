@@ -122,6 +122,8 @@ tests/test27cells
 tests/test27cells_subset
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
+tests/testRadiationPressureFormula
+tests/testRadiationLWFUVFormula
 tests/testRadiationGridMetadata
 tests/testStellarEvolutionSNOnce
 tests/testCoolingIonizedTemperatureFloor
