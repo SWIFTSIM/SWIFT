@@ -34,15 +34,15 @@
  * swept Z' for the Python driver to parse; erg/s/cm^3 and K.
  */
 
+#include <grackle.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <grackle.h>
 
 #define MH_CGS 1.67262171e-24 /* g, matches Grackle's own internal mh */
 
 static int run_case(int photoelectric_heating, double G0, double n_H_cgs,
-                     double T_K, double Zprime, double *edot_cgs_out,
-                     double *T_achieved_K_out) {
+                    double T_K, double Zprime, double *edot_cgs_out,
+                    double *T_achieved_K_out) {
   code_units my_units;
   my_units.comoving_coordinates = 0;
   my_units.density_units = MH_CGS;
@@ -60,14 +60,15 @@ static int run_case(int photoelectric_heating, double G0, double n_H_cgs,
 
   grackle_data->use_grackle = 1;
   grackle_data->with_radiative_cooling = 1;
-  grackle_data->primordial_chemistry = 1; /* H, He only, no data-file dependence */
-  grackle_data->metal_cooling = 0;        /* no Cloudy metal-line cooling */
-  grackle_data->UVbackground = 0;         /* no photoionization heating */
+  grackle_data->primordial_chemistry =
+      1;                           /* H, He only, no data-file dependence */
+  grackle_data->metal_cooling = 0; /* no Cloudy metal-line cooling */
+  grackle_data->UVbackground = 0;  /* no photoionization heating */
   grackle_data->dust_chemistry = 0;
   grackle_data->h2_on_dust = 0;
   grackle_data->photoelectric_heating = photoelectric_heating;
   grackle_data->use_isrf_field = 1; /* match SWIFT: per-cell isrf_habing */
-  grackle_data->use_dust_density_field = 0; /* dust2gas = fgr * metallicity */
+  grackle_data->use_dust_density_field = 0;   /* dust2gas = fgr * metallicity */
   grackle_data->HydrogenFractionByMass = 1.0; /* pure H: skip He bookkeeping */
   grackle_data->Gamma = 5.0 / 3.0;
 
@@ -183,14 +184,14 @@ static int run_case(int photoelectric_heating, double G0, double n_H_cgs,
 
   /* Fortran's own "energy" is p2d/(gamma-1) = density*internal_energy
    * (ideal gas, code units); edot = energy/cooling_time. */
-  const double energy_code = my_fields.density[0] * my_fields.internal_energy[0];
+  const double energy_code =
+      my_fields.density[0] * my_fields.internal_energy[0];
   const double edot_code = energy_code / cooling_time[0];
 
   /* coolunit = length_units^2*m_H/time_units^3 = m_H here (see header). */
-  const double coolunit = my_units.length_units * my_units.length_units *
-                           MH_CGS /
-                           (my_units.time_units * my_units.time_units *
-                            my_units.time_units);
+  const double coolunit =
+      my_units.length_units * my_units.length_units * MH_CGS /
+      (my_units.time_units * my_units.time_units * my_units.time_units);
   *edot_cgs_out = edot_code * coolunit;
 
   free(my_fields.grid_dimension);
