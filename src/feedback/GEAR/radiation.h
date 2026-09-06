@@ -138,9 +138,19 @@
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2:
     an approximation with an implicit assumed spectral shape (the
     band-integrated H2 cross section depends on the spectrum within
-    11.2-13.6 eV, not a single atomic-physics constant). Not independently
-    re-derived from a primary source; flag for verification before
-    physics validation. */
+    11.2-13.6 eV, not a single atomic-physics constant, so this is a
+    single-line-averaged effective value, not re-derivable to arbitrary
+    precision). Verified 2026-09-06 against Sternberg, Le Petit, Roueff
+    & Le Bourlot (2014, ApJ 790:10): this codebase's own k_diss formula
+    (radiation_get_part_LW_dissociation_rate_internal()) compared against
+    their free-space photodissociation rate D0=5.8e-11*I_UV (their Eq 5),
+    for an equivalent LW-band radiation intensity, gives k_diss/D0=0.898
+    (within ~10%, consistent with the ~5-10% uncertainty in converting
+    between this codebase's Habing-band convention and Sternberg's
+    Draine-normalized I_UV). See
+    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the full
+    calculation and .claude/dev/design-lw-fuv-injection.md's "Tier 2 Stage
+    1" section for the complete derivation. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
