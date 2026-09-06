@@ -62,9 +62,7 @@ def parse_options():
         default="snap/snapshot_*.hdf5",
         help="Glob pattern for snapshots to consider (default: %(default)s)",
     )
-    parser.add_argument(
-        "--n-bins", type=int, default=25, help="Number of radial bins."
-    )
+    parser.add_argument("--n-bins", type=int, default=25, help="Number of radial bins.")
     parser.add_argument(
         "--tol",
         type=float,
@@ -126,15 +124,13 @@ def load_snapshot(path):
         unit_length_cgs = float(
             np.asarray(units.attrs["Unit length in cgs (U_L)"]).flat[0]
         )
-        unit_mass_cgs = float(
-            np.asarray(units.attrs["Unit mass in cgs (U_M)"]).flat[0]
-        )
+        unit_mass_cgs = float(np.asarray(units.attrs["Unit mass in cgs (U_M)"]).flat[0])
 
         gas = f["/PartType0"]
         pos = gas["Coordinates"][:, :]
         rho = gas["Densities"][:]
-        u_fuv = gas["ISRF_uFUV"][:]
-        u_lw = gas["ISRF_uLW"][:]
+        u_fuv = gas["FUVSpecificEnergies"][:]
+        u_lw = gas["LWSpecificEnergies"][:]
         Z = gas["MetalMassFractions"][:, -1]
 
         star = f["/PartType4"]
@@ -161,8 +157,7 @@ def radial_distance(pos, star_pos, boxsize):
     return np.sqrt(np.sum(dx**2, axis=1))
 
 
-def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs,
-                        sigma_d_cgs):
+def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs):
     """kappa_eff = sigma_d * (Z/Z_grackle_sun) / (mu_H * m_H); lambda =
     1/(kappa_eff*rho), independent of radiation_isrf.c's own formula."""
     rho_cgs = rho_internal * unit_mass_cgs / unit_length_cgs**3
@@ -198,11 +193,17 @@ def main():
     rho_mean = float(np.mean(snap["rho"]))
 
     lambda_fuv_cgs = analytic_lambda_cgs(
-        Z_mean, rho_mean, snap["unit_length_cgs"], snap["unit_mass_cgs"],
+        Z_mean,
+        rho_mean,
+        snap["unit_length_cgs"],
+        snap["unit_mass_cgs"],
         SIGMA_D_FUV_CGS,
     )
     lambda_lw_cgs = analytic_lambda_cgs(
-        Z_mean, rho_mean, snap["unit_length_cgs"], snap["unit_mass_cgs"],
+        Z_mean,
+        rho_mean,
+        snap["unit_length_cgs"],
+        snap["unit_mass_cgs"],
         SIGMA_D_LW_CGS,
     )
     lambda_fuv = lambda_fuv_cgs / snap["unit_length_cgs"]

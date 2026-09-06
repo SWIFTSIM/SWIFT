@@ -46,13 +46,33 @@
  * @brief First-init of a #part's LW/FUV radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
  *
+ * Deliberately does NOT zero #feedback_part_data.u_FUV/u_LW: this runs
+ * (space_first_init.c) after the IC file has been read into #part
+ * (single_io.c/parallel_io.c/serial_io.c), and an IC may supply them via
+ * the optional "FUVSpecificEnergy"/"LWSpecificEnergy" fields (see
+ * src/feedback/GEAR_thermal/feedback_io.h) for a validation setup that
+ * bypasses star injection entirely; zeroing here would silently stomp
+ * that value back to 0.f. An IC that does not supply them is unaffected:
+ * every #part is bzero'd before the IC read runs, so u_FUV/u_LW are
+ * already 0.f by the time this function is reached, identical to the
+ * previous unconditional assignment.
+ *
+ * #u_FUV_prev/#u_LW_prev are seeded from #u_FUV/#u_LW rather than left at
+ * 0.f, for the same reason: with `LW_FUV_propagation` on, the engine's
+ * initial density computation (before the first real step's
+ * #radiation_snapshot_part_propagation call has ever run) calls
+ * #radiation_end_density_propagation directly off this first-init state.
+ * A 0.f seed there would make that very first propagation update read
+ * `u_FUV_prev=0` while `u_FUV` holds the IC value, wiping an IC-supplied
+ * field to (near) 0 before it is ever seen. Seeding from #u_FUV/#u_LW
+ * reduces to today's behaviour when the IC does not supply them (both
+ * already 0.f from the bzero above).
+ *
  * @param p The #part to initialise.
  */
 void radiation_first_init_part(struct part *restrict p) {
-  p->feedback_data.u_FUV = 0.f;
-  p->feedback_data.u_LW = 0.f;
-  p->feedback_data.u_FUV_prev = 0.f;
-  p->feedback_data.u_LW_prev = 0.f;
+  p->feedback_data.u_FUV_prev = p->feedback_data.u_FUV;
+  p->feedback_data.u_LW_prev = p->feedback_data.u_LW;
   p->feedback_data.kappa_FUV = 0.f;
   p->feedback_data.kappa_LW = 0.f;
   p->feedback_data.LW_FUV_last_touch_ti = -1;

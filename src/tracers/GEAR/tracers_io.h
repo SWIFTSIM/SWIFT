@@ -91,7 +91,8 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #ISRF_uFUV, see #tracers_write_particles.
+ * @brief Snapshot converter for #FUVSpecificEnergy, see
+ * #tracers_write_particles.
  */
 INLINE static void convert_part_u_FUV(const struct engine *e,
                                       const struct part *p,
@@ -100,7 +101,8 @@ INLINE static void convert_part_u_FUV(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #ISRF_uLW, see #tracers_write_particles.
+ * @brief Snapshot converter for #LWSpecificEnergy, see
+ * #tracers_write_particles.
  */
 INLINE static void convert_part_u_LW(const struct engine *e,
                                      const struct part *p,
@@ -198,13 +200,13 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
      compile under any --with-feedback choice paired with
      --with-tracers=GEAR. */
   list[10] = io_make_output_field_convert_part(
-      "ISRF_uFUV", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_u_FUV,
+      "FUVSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      parts, xparts, convert_part_u_FUV,
       "Local specific FUV-band (6-11.2 eV) interstellar radiation field.");
 
   list[11] = io_make_output_field_convert_part(
-      "ISRF_uLW", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_u_LW,
+      "LWSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      parts, xparts, convert_part_u_LW,
       "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
       "radiation field.");
 

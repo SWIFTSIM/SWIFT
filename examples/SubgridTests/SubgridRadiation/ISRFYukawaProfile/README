@@ -3,10 +3,10 @@ A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
 box, with photoelectric heating and LW/FUV Yukawa screened-diffusion
 propagation on (photoionization and radiation pressure off). Checks the
 converged radial profile of the propagated FUV/LW interstellar-radiation-
-field energy density (`ISRF_uFUV`/`ISRF_uLW`) against the analytic Yukawa
-Green's function screened-exponential fall-off, with the screening length
-computed independently from the run's own metallicity and density, via
-`isrf_yukawa_profile_check.py`.
+field energy density (`FUVSpecificEnergies`/`LWSpecificEnergies`) against
+the analytic Yukawa Green's function screened-exponential fall-off, with
+the screening length computed independently from the run's own
+metallicity and density, via `isrf_yukawa_profile_check.py`.
 
 ## Metallicity
 The Yukawa screening length comes from a dust opacity that this code scales
@@ -28,9 +28,10 @@ propagated field is isolated from any gas response.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-`--with-tracers=GEAR` is required: `ISRF_uFUV`/`ISRF_uLW` live in
-`tracers_xpart_data`. The Grackle cooling mode is not critical here (only
-`chemistry_data` needs resolving, not any mode-gated species network).
+`--with-tracers=GEAR` is required: `FUVSpecificEnergies`/
+`LWSpecificEnergies` live in `tracers_xpart_data`. The Grackle cooling
+mode is not critical here (only `chemistry_data` needs resolving, not any
+mode-gated species network).
 
 # Run
 ```

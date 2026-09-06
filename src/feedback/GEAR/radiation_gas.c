@@ -531,8 +531,10 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
  * with u = u_FUV + u_LW (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
  * use_isrf_field, forced on by GEARFeedback:with_photoelectric_heating).
- * Zero for a particle no star has ever illuminated
- * (#feedback_first_init_part's u_FUV=u_LW=0 default).
+ * Zero for a particle no star has ever illuminated and whose IC did not
+ * supply "FUVSpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
+ * before the IC read; #radiation_first_init_part leaves u_FUV/u_LW
+ * untouched either way).
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
