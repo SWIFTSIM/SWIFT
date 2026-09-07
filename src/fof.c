@@ -3368,13 +3368,13 @@ void fof_link_foreign_fragments(struct fof_props *props,
     error("Error while allocating memory for the global list of group links");
 
   if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the number of group links on each "
         "MPI rank");
 
   if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
@@ -3390,8 +3390,6 @@ void fof_link_foreign_fragments(struct fof_props *props,
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
     /* if (displ[i] < 0) error("Number of group links overflowing!"); */
   }
-
-  // MATTHIEU: THIS CALL IS WRONG
 
   /* Gather the global link list on all ranks. */
   MPI_Allgatherv_sizet(props->group_links, group_link_count, fof_mpi_type,
