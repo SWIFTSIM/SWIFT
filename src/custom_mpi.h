@@ -45,96 +45,87 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
   MPI_Aint lb, extent;
   MPI_Type_get_extent(recvtype, &lb, &extent);
 
-  // Standard MPI-3 limits local element counts in type creation to 'int'.
+  // Standard MPI-3 point-to-point element counts are limited to 'int'.
   if (sendcount > INT_MAX) {
     return MPI_ERR_COUNT;
   }
 
-  // Allocate arrays for MPI_Alltoallw.
-  // Under MPI-3, displacements in MPI_Alltoallw are 'int' arrays containing
-  // byte offsets.
-  int *sendcounts_mpi = (int *)malloc(size * sizeof(int));
-  int *senddispls_mpi = (int *)malloc(size * sizeof(int));
-  MPI_Datatype *sendtypes_mpi =
-      (MPI_Datatype *)malloc(size * sizeof(MPI_Datatype));
-
-  int *recvcounts_mpi = (int *)malloc(size * sizeof(int));
-  int *recvdispls_mpi = (int *)malloc(size * sizeof(int));
+  // Allocate tracking arrays for active transactions
+  // Each rank can have at most 1 send and 1 receive request
+  MPI_Request *requests = (MPI_Request *)malloc(2 * size * sizeof(MPI_Request));
   MPI_Datatype *recvtypes_mpi =
       (MPI_Datatype *)malloc(size * sizeof(MPI_Datatype));
 
-  // Handle allocation failures gracefully
-  if (!sendcounts_mpi || !senddispls_mpi || !sendtypes_mpi || !recvcounts_mpi ||
-      !recvdispls_mpi || !recvtypes_mpi) {
-    free(sendcounts_mpi);
-    free(senddispls_mpi);
-    free(sendtypes_mpi);
-    free(recvcounts_mpi);
-    free(recvdispls_mpi);
+  if (!requests || !recvtypes_mpi) {
+    free(requests);
     free(recvtypes_mpi);
     return MPI_ERR_INTERN;
   }
 
-  // Initialize tracking arrays
+  // Initialize all custom datatype slots to null
   for (int i = 0; i < size; ++i) {
-    sendcounts_mpi[i] = 0;
-    senddispls_mpi[i] = 0;
-    sendtypes_mpi[i] = sendtype;
-
-    recvcounts_mpi[i] =
-        1;  // We receive exactly 1 custom composite datatype from each rank
-    recvdispls_mpi[i] = 0;  // The actual memory offset is already hardcoded
-                            // inside recvtypes_mpi
+    recvtypes_mpi[i] = MPI_DATATYPE_NULL;
   }
 
-  // Every process pushes its localized data slot to all other nodes
-  sendcounts_mpi[rank] = (int)sendcount;
-
-  // Create customized datatypes for every incoming slot to safely use 64-bit
-  // displacements
+  int req_count = 0;
   int status = MPI_SUCCESS;
+
+  // 1. Post non-blocking receives ONLY for ranks sending > 0 elements
   for (int i = 0; i < size; ++i) {
+    if (recvcounts[i] == 0) {
+      continue;  // Skip completely to avoid passing 0 blocklength to MPI_Type
+    }
+
     if (recvcounts[i] > INT_MAX) {
       status = MPI_ERR_COUNT;
-      // Clean up previously successfully created types before escaping
-      for (int j = 0; j < i; ++j) {
-        MPI_Type_free(&recvtypes_mpi[j]);
-      }
       break;
     }
 
-    // Safely project the size_t element displacement onto a byte offset
-    // (MPI_Aint)
+    // Calculate 64-bit byte displacement
     MPI_Aint byte_disp = (MPI_Aint)displs[i] * extent;
 
-    // MPI_Type_create_hindexed_block takes an integer blocklength,
-    // but crucially uses an MPI_Aint (64-bit) for byte displacements.
+    // CRASH FIX: blocklength (recvcounts[i]) is guaranteed to be > 0 here
     MPI_Type_create_hindexed_block(1, (int)recvcounts[i], &byte_disp, recvtype,
                                    &recvtypes_mpi[i]);
     MPI_Type_commit(&recvtypes_mpi[i]);
+
+    // Receive directly into the base of 'recvbuf'
+    MPI_Irecv(recvbuf, 1, recvtypes_mpi[i], i, 0, comm, &requests[req_count++]);
   }
 
-  if (status == MPI_SUCCESS) {
-    // MPI_Alltoallw accepts 'int[]' for displacements in MPI-3.
-    // It reads 'recvdispls_mpi' as a zero-offset baseline because our
-    // custom datatypes already have the true 64-bit offset embedded inside
-    // them.
-    status = MPI_Alltoallw(sendbuf, sendcounts_mpi, senddispls_mpi,
-                           sendtypes_mpi, recvbuf, recvcounts_mpi,
-                           recvdispls_mpi, recvtypes_mpi, comm);
-
-    // Standard cleanup of the temporary MPI committed objects
+  // If an error occurred during the receive setup, clean up and exit
+  if (status != MPI_SUCCESS) {
     for (int i = 0; i < size; ++i) {
+      if (recvtypes_mpi[i] != MPI_DATATYPE_NULL) {
+        MPI_Type_free(&recvtypes_mpi[i]);
+      }
+    }
+    free(requests);
+    free(recvtypes_mpi);
+    return status;
+  }
+
+  // 2. Post non-blocking sends ONLY if this process actually has data to share
+  if (sendcount > 0) {
+    for (int i = 0; i < size; ++i) {
+      MPI_Isend(sendbuf, (int)sendcount, sendtype, i, 0, comm,
+                &requests[req_count++]);
+    }
+  }
+
+  // 3. Wait for all active communications to finish
+  if (req_count > 0) {
+    status = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+  }
+
+  // 4. Free up memory allocations and clean up custom types
+  for (int i = 0; i < size; ++i) {
+    if (recvtypes_mpi[i] != MPI_DATATYPE_NULL) {
       MPI_Type_free(&recvtypes_mpi[i]);
     }
   }
 
-  // Release allocated heap buffers
-  free(sendcounts_mpi);
-  free(senddispls_mpi);
-  free(sendtypes_mpi);
-  free(recvcounts_mpi);
-  free(recvdispls_mpi);
+  free(requests);
   free(recvtypes_mpi);
 
   return status;
