@@ -784,7 +784,21 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
      * half-life = 1 Gyr): star_mass_loss_rate = ln(2) / t_half * available_mass.
      * The BH gains less due to radiation: bh_accretion_rate = (1 - epsilon_r)
      * * star_mass_loss_rate. */
-    const double star_mass_loss_rate = ln2_over_t_half * available_mass;
+    /* const double star_mass_loss_rate = ln2_over_t_half * available_mass; */
+
+    /* Stellar accretion rate for an (assumed) singular isothermal density distribution,
+     * in number of TDEs per year (solar mass stars):
+     * Ndot = 7.1e-4 yr-1 * (M_bh / 10^6 M_sol)^-0.28 */
+    const double yr_in_cgs = 365.25 * 24. * 60. * 60.;
+    const double yr_internal = yr_in_cgs / us->UnitTime_in_cgs;
+    const double M_sun_internal = 1.988e33 / us->UnitMass_in_cgs;
+
+    /* TDE rate of solar mass stars per year */
+    const double M_bh_6 = bp->mass / (1e6 * M_sun_internal);
+    const double tde_rate_per_yr = 7.1e-4 * pow(M_bh_6, -0.28);
+
+    /* Convert to mass lost per timestep in internal units */
+    const double star_mass_loss_rate = tde_rate_per_yr / yr_internal * M_sun_internal;
 
     /* Mass changes this timestep. */
     const double star_mass_loss = star_mass_loss_rate * dt;
