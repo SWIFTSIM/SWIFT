@@ -98,6 +98,12 @@ struct bpart {
   /*! Cumulative mass gained via TDE stellar nibbling */
   float mass_gained_from_tde;
 
+  /*! Subgrid mass of the nuclear star cluster */
+  float nsc_mass;
+
+  /*! Gas mass to be gained by NSC this timestep */
+  float nsc_mass_to_gain;
+
   /*! Energy reservoir for feedback */
   float energy_reservoir;
 

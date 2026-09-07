@@ -112,6 +112,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
         "to 0.",
         bp->id, bp->subgrid_mass);
   }
+  bp->nsc_mass = props->nsc_seed_mass;
   bp->total_accreted_mass = 0.f;
   bp->mass_gained_from_tde = 0.f;
   bp->accretion_rate = 0.f;
@@ -875,6 +876,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double mass_rate = (1. - epsilon_r) * accr_rate;
   const double luminosity = epsilon_r * accr_rate * c * c;
 
+  /* Compute NSC growth rate based on Bondi rate */
+  bp->nsc_mass_to_gain = props->nsc_growth_efficiency_k * accr_rate * dt;
+
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
   bp->total_accreted_mass += mass_rate * dt;
@@ -1320,6 +1324,9 @@ INLINE static void black_holes_create_from_gas(
 
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;
+
+  /* Initial NSC seed mass */
+  bp->nsc_mass = props->nsc_seed_mass;
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;

@@ -440,13 +440,22 @@ runner_iact_nonsym_bh_gas_swallow(
      * more from the gas than the BH gained */
     const float excess_fraction = 1.f / (1.f - bh_props->epsilon_r);
 
+    /* Extra gas mass nibbled to be accreted onto the Nuclear Star Cluster.
+     * Since no mass is radiated, excess fraction does not apply here. */
+    float nsc_nibble_mass = bi->nsc_mass_to_gain * particle_weight;
+
+    /* Total mass nibbled: mdot_bondi * (1 + k) * dt */
+    float total_nibble_mass = nibble_mass * excess_fraction + nsc_nibble_mass;
+    const float nsc_nibble_fraction = nsc_nibble_mass / total_nibble_mass;
+
     /* Need to check whether nibbling would push gas mass below minimum
      * allowed mass */
-    float new_gas_mass = pj_mass_orig - nibble_mass * excess_fraction;
+    float new_gas_mass = pj_mass_orig - total_nibble_mass;
     if (new_gas_mass < bh_props->min_gas_mass_for_nibbling) {
       new_gas_mass = bh_props->min_gas_mass_for_nibbling;
-      nibble_mass = (pj_mass_orig - bh_props->min_gas_mass_for_nibbling) /
-                    excess_fraction;
+      total_nibble_mass = (pj_mass_orig - bh_props->min_gas_mass_for_nibbling);
+      nsc_nibble_mass = total_nibble_mass * nsc_nibble_fraction;
+      nibble_mass = (total_nibble_mass - nsc_nibble_mass) / excess_fraction;
     }
 
     /* Correct for nibbling the particle mass that is stored in rays */
@@ -454,8 +463,9 @@ runner_iact_nonsym_bh_gas_swallow(
       if (bi->rays[i].id_min_length == pj->id) bi->rays[i].mass = new_gas_mass;
     }
 
-    /* Transfer (dynamical) mass from the gas particle to the BH */
-    bi->mass += nibble_mass;
+    /* Transfer (dynamical) mass from the gas particle to the BH and NSC*/
+    bi->mass += total_nibble_mass;
+    bi->nsc_mass += nsc_nibble_mass;
     hydro_set_mass(pj, new_gas_mass);
 
     /* Add the angular momentum of the accreted gas to the BH total.

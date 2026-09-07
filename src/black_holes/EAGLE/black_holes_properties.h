@@ -197,6 +197,14 @@ struct black_holes_props {
   /*! Switch to make nheat use the constant dT as basis, not actual dT */
   int AGN_use_nheat_with_fixed_dT;
 
+  /* ---- Properties of the NSC/TDE (Stellar accretion) model ---- */
+
+  /*! Mass of a NSC seed at creation time */
+  float nsc_seed_mass;
+
+  /*! NSC growth efficiency parameter */
+  float nsc_growth_efficiency_k;
+
   /* ---- Properties of the repositioning model --- */
 
   /*! Maximal mass of BH to reposition */
@@ -492,6 +500,21 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   /* We must always read a default value to initialize BHs to */
   bp->num_ngbs_to_heat =
       parser_get_param_float(params, "EAGLEAGN:AGN_num_ngb_to_heat");
+
+  /* NSC/TDE (Stellar accretion) parameters ----------------- */
+
+  bp->nsc_seed_mass =
+      parser_get_param_float(params, "EAGLEAGN:nsc_seed_mass_Msun");
+
+  /* Convert to internal units */
+  bp->nsc_seed_mass *= phys_const->const_solar_mass;
+
+  bp->nsc_growth_efficiency_k =
+      parser_get_param_float(params, "EAGLEAGN:nsc_growth_efficiency_k");
+  if ((bp->nsc_growth_efficiency_k > 1.f) || 
+      (bp->nsc_growth_efficiency_k < 0.f)) {
+        error("EAGLEAGN:nsc_growth_efficiency_k must be between 0 and 1, not %f.", bp->nsc_growth_efficiency_k);
+      }
 
   /* Reposition parameters --------------------------------- */
 
