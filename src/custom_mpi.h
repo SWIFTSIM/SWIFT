@@ -40,18 +40,18 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  // Get the byte size of the receive datatype to calculate 64-bit byte
-  // displacements
+  /* Get the byte size of the receive datatype to calculate 64-bit byte
+   * displacements */
   MPI_Aint lb, extent;
   MPI_Type_get_extent(recvtype, &lb, &extent);
 
-  // Standard MPI-3 point-to-point element counts are limited to 'int'.
+  /* Standard MPI-3 point-to-point element counts are limited to 'int'. */
   if (sendcount > INT_MAX) {
     return MPI_ERR_COUNT;
   }
 
-  // Allocate tracking arrays for active transactions
-  // Each rank can have at most 1 send and 1 receive request
+  /* Allocate tracking arrays for active transactions
+   * Each rank can have at most 1 send and 1 receive request */
   MPI_Request *requests = (MPI_Request *)malloc(2 * size * sizeof(MPI_Request));
   MPI_Datatype *recvtypes_mpi =
       (MPI_Datatype *)malloc(size * sizeof(MPI_Datatype));
@@ -62,7 +62,7 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
     return MPI_ERR_INTERN;
   }
 
-  // Initialize all custom datatype slots to null
+  /* Initialize all custom datatype slots to null */
   for (int i = 0; i < size; ++i) {
     recvtypes_mpi[i] = MPI_DATATYPE_NULL;
   }
@@ -70,10 +70,10 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
   int req_count = 0;
   int status = MPI_SUCCESS;
 
-  // 1. Post non-blocking receives ONLY for ranks sending > 0 elements
+  /* Post non-blocking receives ONLY for ranks sending > 0 elements */
   for (int i = 0; i < size; ++i) {
     if (recvcounts[i] == 0) {
-      continue;  // Skip completely to avoid passing 0 blocklength to MPI_Type
+      continue; /* Skip completely to avoid passing 0 blocklength to MPI_Type */
     }
 
     if (recvcounts[i] > INT_MAX) {
@@ -81,19 +81,17 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
       break;
     }
 
-    // Calculate 64-bit byte displacement
+    /* Calculate 64-bit byte displacement */
     MPI_Aint byte_disp = (MPI_Aint)displs[i] * extent;
-
-    // CRASH FIX: blocklength (recvcounts[i]) is guaranteed to be > 0 here
     MPI_Type_create_hindexed_block(1, (int)recvcounts[i], &byte_disp, recvtype,
                                    &recvtypes_mpi[i]);
     MPI_Type_commit(&recvtypes_mpi[i]);
 
-    // Receive directly into the base of 'recvbuf'
+    /* Receive directly into the base of 'recvbuf' */
     MPI_Irecv(recvbuf, 1, recvtypes_mpi[i], i, 0, comm, &requests[req_count++]);
   }
 
-  // If an error occurred during the receive setup, clean up and exit
+  /* If an error occurred during the receive setup, clean up and exit */
   if (status != MPI_SUCCESS) {
     for (int i = 0; i < size; ++i) {
       if (recvtypes_mpi[i] != MPI_DATATYPE_NULL) {
@@ -105,7 +103,7 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
     return status;
   }
 
-  // 2. Post non-blocking sends ONLY if this process actually has data to share
+  /* Post non-blocking sends ONLY if this process actually has data to share */
   if (sendcount > 0) {
     for (int i = 0; i < size; ++i) {
       MPI_Isend(sendbuf, (int)sendcount, sendtype, i, 0, comm,
@@ -113,12 +111,12 @@ int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
     }
   }
 
-  // 3. Wait for all active communications to finish
+  /* Wait for all active communications to finish */
   if (req_count > 0) {
     status = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
   }
 
-  // 4. Free up memory allocations and clean up custom types
+  /* Free up memory allocations and clean up custom types */
   for (int i = 0; i < size; ++i) {
     if (recvtypes_mpi[i] != MPI_DATATYPE_NULL) {
       MPI_Type_free(&recvtypes_mpi[i]);
