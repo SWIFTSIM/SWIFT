@@ -18,8 +18,8 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_isrf.c
- * @brief Receiver-side LW/FUV dust extinction and Yukawa propagation
- * physics for GEAR.
+ * @brief Receiver-side LW/FUV dust extinction and hyperbolic
+ * P1-relaxation propagation physics for GEAR.
  */
 
 /* Config parameters. */
@@ -36,8 +36,10 @@
 #include "inline.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "physical_constants.h"
 #include "radiation.h"
 #include "radiation_isrf.h"
+#include "timeline.h"
 
 #include <float.h>
 #include <math.h>
@@ -68,6 +70,10 @@
  * reduces to today's behaviour when the IC does not supply them (both
  * already 0.f from the bzero above).
  *
+ * #specific_flux_FUV/#specific_flux_LW are zeroed unconditionally: no IC field
+ * is proposed for them, so the "don't stomp an IC value" concern above does not
+ * apply.
+ *
  * @param p The #part to initialise.
  */
 void radiation_first_init_part(struct part *restrict p) {
@@ -80,39 +86,43 @@ void radiation_first_init_part(struct part *restrict p) {
      the IC-read bzero above) can never read as "still illuminated". */
   p->feedback_data.is_illuminated_LW_FUV = 0;
   p->feedback_data.LW_FUV_illumination_end_ti = -1;
+  p->feedback_data.specific_flux_FUV[0] = 0.f;
+  p->feedback_data.specific_flux_FUV[1] = 0.f;
+  p->feedback_data.specific_flux_FUV[2] = 0.f;
+  p->feedback_data.specific_flux_LW[0] = 0.f;
+  p->feedback_data.specific_flux_LW[1] = 0.f;
+  p->feedback_data.specific_flux_LW[2] = 0.f;
+  /* Placeholder, not a real density: #part.rho is not yet computed at this
+   * point (the "Densities" IC field, if supplied, is output-only; SPH
+   * density is always computed from scratch by the first density loop),
+   * and the engine's initial density/gradient pass calls the propagation
+   * ghosts directly off this first-init state, before
+   * #radiation_snapshot_part_propagation has ever run. A 0.f seed here
+   * would turn `grad(u)`'s `1/rho_i` into +inf, poisoning every particle
+   * with NaN before the run's first real step even begins (see this
+   * field's own doxygen, feedback_struct.h). 1.0f is safe regardless of
+   * this particle's real density, since `u`/`F` are also still 0 at this
+   * point. */
+  p->feedback_data.rho_prev = 1.0f;
+  p->feedback_data.c_hyp = 0.f;
+  p->feedback_data.dt_prev = 0.f;
   radiation_init_part_propagation(p);
 }
 
 /**
  * @brief Snapshot #u_FUV/#u_LW once per step, before the density loop's
- * h-iterations begin (see #feedback_part_data.u_FUV_prev), and cache this
- * step's per-band absorption rate for propagation use.
+ * h-iterations begin (see #feedback_part_data.u_FUV_prev), cache this
+ * step's per-band absorption rate, cache a stable comoving-density
+ * snapshot the propagation loops need (see
+ * #feedback_part_data.rho_prev's own doxygen for why), cache
+ * this step's hyperbolic propagation speed and physical timestep, and zero
+ * the per-step `grad(u)` accumulators.
  *
  * Must run here, not in #radiation_init_part_propagation: this call site
  * (cell_drift.c) precedes chemistry_init_part's per-step reset of
- * smoothed_metal_mass_fraction, so it is the last point where that field
- * still holds the previous step's converged value. Caching kappa from
- * the per-h-iteration hook instead reads it right after the reset,
- * giving kappa=0 always.
- *
- * #feedback_part_data.kappa_FUV/kappa_LW are scaled here by
- * #feedback_props.LW_FUV_yukawa_lambda_correction, so they are the
- * *propagation-corrected* absorption rate, not the raw physical one: the
- * Yukawa scheme's true emergent screening length is a fixed ratio
- * (#radiation_compute_yukawa_kernel_second_moment) below the naive
- * kappa/rho target for this build's kernel/eta, and pre-scaling kappa here
- * is the single point that correction needs to be applied to make
- * #radiation_end_density_propagation's realized screening length (and
- * radiation_propagation_iact.h's harmonic-mean interface weight, the
- * other consumer of these two fields) match the physically-intended one.
- * This is unrelated to, and must not be confused with, the injection-side
- * extinction's own kappa (#radiation_get_part_LW_FUV_extinction_factors),
- * which is a plain column-density attenuation with no kernel-averaging
- * discretization artifact and is therefore computed uncorrected.
- *
- * #feedback_props.LW_FUV_disable_screening_for_debugging, if set,
- * overrides the cached values to 0.f after the scaling above: debug/
- * test-only, see its own doxygen.
+ * smoothed_metal_mass_fraction and hydro_init_part's per-step reset of
+ * #part.rho, so it is the last point where those fields still hold the
+ * previous step's converged value.
  *
  * @param p The #part to reset.
  * @param e The #engine.
@@ -121,6 +131,22 @@ void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e) {
   p->feedback_data.u_FUV_prev = p->feedback_data.u_FUV;
   p->feedback_data.u_LW_prev = p->feedback_data.u_LW;
+  p->feedback_data.grad_u_FUV[0] = 0.f;
+  p->feedback_data.grad_u_FUV[1] = 0.f;
+  p->feedback_data.grad_u_FUV[2] = 0.f;
+  p->feedback_data.grad_u_LW[0] = 0.f;
+  p->feedback_data.grad_u_LW[1] = 0.f;
+  p->feedback_data.grad_u_LW[2] = 0.f;
+
+  /* Stable comoving density snapshot, cached unconditionally (not gated on
+   * LW_FUV_propagation below): the gradient loop's `grad(u)` accumulation
+   * (radiation_propagation_iact.h) always runs, even in injection-only
+   * mode (mirroring Design A's own always-accumulate pattern), and reads
+   * this snapshot. See this field's own doxygen (feedback_struct.h) for
+   * why the density loop cannot use a live `p->rho` instead, and why it
+   * must never be left at 0.f. */
+  const float rho_comoving = hydro_get_comoving_density(p);
+  p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
 
   if (!e->feedback_props->LW_FUV_propagation) {
     p->feedback_data.kappa_FUV = 0.f;
@@ -134,80 +160,95 @@ void radiation_snapshot_part_propagation(struct part *p,
    * cooling->local_dust_to_gas_ratio. */
   const float local_dust_to_gas_ratio =
       (float)e->cooling_func->chemistry_data.local_dust_to_gas_ratio;
-  const float lambda_correction =
-      e->feedback_props->LW_FUV_yukawa_lambda_correction;
-  p->feedback_data.kappa_FUV =
-      radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
-                                                RADIATION_SIGMA_D_FUV_CGS,
-                                                local_dust_to_gas_ratio) *
-      lambda_correction;
-  p->feedback_data.kappa_LW =
-      radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
-                                                RADIATION_SIGMA_D_LW_CGS,
-                                                local_dust_to_gas_ratio) *
-      lambda_correction;
+  p->feedback_data.kappa_FUV = radiation_get_part_linear_absorption_rate(
+      e->internal_units, Z, rho_phys, RADIATION_SIGMA_D_FUV_CGS,
+      local_dust_to_gas_ratio);
+  p->feedback_data.kappa_LW = radiation_get_part_linear_absorption_rate(
+      e->internal_units, Z, rho_phys, RADIATION_SIGMA_D_LW_CGS,
+      local_dust_to_gas_ratio);
 
-  /* Debug/test-only override, applied last: see
-   * feedback_props.LW_FUV_disable_screening_for_debugging's own doxygen.
-   * Forces radiation_end_density_propagation's decay term to vanish
-   * (alpha saturates to 1, decay = exp(0) = 1) while its diffusive
-   * mixing term stays active, and zeroes the harmonic-mean kappa_ij
-   * interface weight in radiation_propagation_iact.h. Never set in a
-   * production run. */
-  if (e->feedback_props->LW_FUV_disable_screening_for_debugging) {
-    p->feedback_data.kappa_FUV = 0.f;
-    p->feedback_data.kappa_LW = 0.f;
+  /* Hyperbolic propagation speed closure: c_hyp_i = min(C_hyp*h_i/dt_i, c),
+   * using this particle's own already-decided integer timestep -- not a
+   * new timestep-computation hook. dt_i is floored at FLT_MIN so a
+   * not-yet-assigned time_bin (only possible before this particle's very
+   * first real step) cannot divide by an exact zero. */
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  float dt_phys;
+  if (with_cosmology) {
+    const integertime_t ti_step = get_integer_timestep(p->time_bin);
+    const integertime_t ti_begin =
+        get_integer_time_begin(e->ti_current, p->time_bin);
+    dt_phys = (float)cosmology_get_delta_time(e->cosmology, ti_begin,
+                                              ti_begin + ti_step);
+  } else {
+    dt_phys = (float)get_timestep(p->time_bin, e->time_base);
   }
+  dt_phys = max(dt_phys, FLT_MIN);
+
+  const float h_phys = (float)e->cosmology->a * p->h;
+  float c_hyp = e->feedback_props->LW_FUV_c_hyp_margin * h_phys / dt_phys;
+  c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
+  /* The debug pin is applied after the light-speed clamp above and is not
+   * itself clamped: a pin value above c gives a superluminal propagation
+   * speed on purpose, for isolating dispersion behaviour at chosen values
+   * of the Courant number. Never set it above c outside of that use. */
+  if (e->feedback_props->LW_FUV_c_hyp_pin_for_debugging > 0.f)
+    c_hyp = e->feedback_props->LW_FUV_c_hyp_pin_for_debugging;
+
+  p->feedback_data.c_hyp = c_hyp;
+  p->feedback_data.dt_prev = dt_phys;
 }
 
 /**
- * @brief Zero the Yukawa propagation's per-h-iteration mixing
- * accumulators. Mirrors chemistry_init_part's own per-iteration reset
- * (called from the same sites: part_init.h and the ghost h-iteration redo
- * path), so it is safe to call once or several times per step. Pure
- * scratch space (no restart I/O); kappa is cached separately, once per
+ * @brief Zero the `div(F)` per-h-iteration accumulators. Mirrors
+ * chemistry_init_part's own per-iteration reset (called from the same
+ * sites: part_init.h and the ghost h-iteration redo path), so it is safe
+ * to call once or several times per step. Pure scratch space (no restart
+ * I/O); the density snapshot and c_hyp/dt are cached separately, once per
  * step, by #radiation_snapshot_part_propagation.
  *
  * @param p The #part to reset.
  */
 void radiation_init_part_propagation(struct part *p) {
-  p->feedback_data.isrf_prop_sum_w_FUV = 0.f;
-  p->feedback_data.isrf_prop_sum_wu_FUV = 0.f;
-  p->feedback_data.isrf_prop_sum_w_LW = 0.f;
-  p->feedback_data.isrf_prop_sum_wu_LW = 0.f;
+  p->feedback_data.div_specific_flux_FUV = 0.f;
+  p->feedback_data.div_specific_flux_LW = 0.f;
 }
 
 /**
- * @brief Apply one step of the Yukawa propagation update from the
- * accumulators radiation_propagation_iact.h filled during the density
- * loop, which runs before star feedback: this always stamps
- * LW_FUV_last_touch_ti, so injection adds on top instead of resetting.
- * Idempotent: always recomputed from the stable #u_FUV_prev snapshot and
- * this h-iteration's accumulators, so repeated calls across h-iterations
- * converge to the same answer regardless of how many there are.
+ * @brief The exact-relaxation integrating factor `phi(a) = (1 -
+ * exp(-a))/a`, shared by both the `u`- and `F`-updates below:
+ * `phi -> 1` as `a -> 0` (no absorption within the step: the update
+ * reduces to plain forward transport) and `phi -> 1/a` as `a -> inf` (the
+ * stiff limit: the update relaxes exactly to its local target every
+ * step). Implemented via `-expm1(-a)/a`, which is well-conditioned at
+ * both ends except very close to `a=0`, where a short Taylor series is
+ * used instead to avoid a `0/0` cancellation.
  *
- * Outer-decay form: `u_new = decay * [(1-alpha)*u_prev + alpha*mixed]`
- * (decay applied to the whole bracket, not just the local-persistence
- * term, which would zero it since alpha saturates to 1 for any real
- * kernel). `mixed` falls back to `u_prev` with no real neighbour
- * contribution -- true isolation, or optical-depth underflow at
- * `kappa_ij*r_ij` large enough to zero every neighbour weight
- * (`02_fuv_isrf.tex` lines 572-583) -- so the update then degrades
- * gracefully to pure local decay, `decay*u_prev`. No-op when
+ * @param a Dimensionless absorption depth for this step, `c_hyp*kappa*dt`
+ * (or the injection-site equivalent, `c_hyp*kappa*Delta_t_star`). Always
+ * `>= 0`.
+ * @return phi(a).
+ */
+float radiation_relaxation_phi_factor(float a) {
+  if (a < 1e-6f) return 1.0f - 0.5f * a + (1.0f / 6.0f) * a * a;
+  return -expm1f(-a) / a;
+}
+
+/**
+ * @brief Exact-relaxation update of #u_FUV/#u_LW, from the `div(F)`
+ * accumulators
+ * radiation_propagation_iact.h filled during the density loop, which runs
+ * before star feedback: this always stamps LW_FUV_last_touch_ti, so
+ * injection adds on top instead of resetting. Idempotent: always
+ * recomputed from the stable #u_FUV_prev snapshot and this h-iteration's
+ * `div(F)` accumulator, so repeated calls across h-iterations converge to
+ * the same answer regardless of how many there are.
+ *
+ * `u_new = e*u_prev - dt*phi*div_F`, with `e = exp(-a)`,
+ * `phi = (1-e)/a`, `a = c_hyp*kappa*dt` (#radiation_relaxation_phi_factor): the
+ * exact solution of `du/dt = -u/tau - div(F)` over one step with `div(F)`
+ * frozen at this h-iteration's value, `tau = 1/(c_hyp*kappa)`. No-op when
  * propagation is off.
- *
- * With #feedback_props.LW_FUV_disable_screening_for_debugging set,
- * `fd->kappa_FUV/kappa_LW` are cached as 0.f, so `alpha` still saturates
- * to 1 and `decay = exp(0) = 1`: the update collapses to pure
- * kernel-weighted diffusive averaging, `u_new = mean_j(w_ij*u_prev_j)`,
- * with no absorption. Debug/test-only.
- *
- * `kappa_FUV`/`kappa_LW` are already physical (cached from
- * #hydro_get_physical_density), so the smoothing length entering the
- * decay exponent and the alpha ceiling must be physical too: `p->h` is
- * SWIFT's comoving smoothing length, converted here via `cosmo->a`
- * (physical_length = a * comoving_length). At a=1 (every non-cosmological
- * run) this is a no-op.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -216,29 +257,62 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->LW_FUV_propagation) return;
 
-  const float h_phys = (float)e->cosmology->a * p->h;
-  const struct feedback_part_data *fd = &p->feedback_data;
+  struct feedback_part_data *fd = &p->feedback_data;
+  const float dt = fd->dt_prev;
+  const float c_hyp = fd->c_hyp;
 
-  const float alpha_FUV = radiation_get_isrf_propagation_alpha();
-  const float alpha_LW = radiation_get_isrf_propagation_alpha();
-  const float lambda2_FUV = 1.0f / max(fd->kappa_FUV * fd->kappa_FUV, FLT_MIN);
-  const float lambda2_LW = 1.0f / max(fd->kappa_LW * fd->kappa_LW, FLT_MIN);
-  const float decay_FUV = expf(-alpha_FUV * h_phys * h_phys / lambda2_FUV);
-  const float decay_LW = expf(-alpha_LW * h_phys * h_phys / lambda2_LW);
+  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
+  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  const float decay_FUV = expf(-a_FUV);
+  const float decay_LW = expf(-a_LW);
+  const float phi_FUV = radiation_relaxation_phi_factor(a_FUV);
+  const float phi_LW = radiation_relaxation_phi_factor(a_LW);
 
-  const float mixed_FUV =
-      fd->isrf_prop_sum_w_FUV > 0.0f
-          ? fd->isrf_prop_sum_wu_FUV / fd->isrf_prop_sum_w_FUV
-          : fd->u_FUV_prev;
-  const float mixed_LW = fd->isrf_prop_sum_w_LW > 0.0f
-                             ? fd->isrf_prop_sum_wu_LW / fd->isrf_prop_sum_w_LW
-                             : fd->u_LW_prev;
+  fd->u_FUV =
+      decay_FUV * fd->u_FUV_prev - dt * phi_FUV * fd->div_specific_flux_FUV;
+  fd->u_LW = decay_LW * fd->u_LW_prev - dt * phi_LW * fd->div_specific_flux_LW;
+  fd->LW_FUV_last_touch_ti = e->ti_current;
+}
 
-  p->feedback_data.u_FUV =
-      decay_FUV * ((1.0f - alpha_FUV) * fd->u_FUV_prev + alpha_FUV * mixed_FUV);
-  p->feedback_data.u_LW =
-      decay_LW * ((1.0f - alpha_LW) * fd->u_LW_prev + alpha_LW * mixed_LW);
-  p->feedback_data.LW_FUV_last_touch_ti = e->ti_current;
+/**
+ * @brief Exact-relaxation update of #specific_flux_FUV/#specific_flux_LW, from
+ * the `grad(u)` accumulators radiation_propagation_iact.h filled during the
+ * gradient loop, which reads this step's already-relaxed `u`
+ * (#radiation_end_density_propagation having already run in the density ghost).
+ * Runs once per step in the extra ghost, never re-run: the gradient loop itself
+ * only runs once per step.
+ *
+ * `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact solution of
+ * `dF/dt = -F/tau - (D/tau)*grad(u)` over one step with `grad(u)` frozen
+ * at this step's value, `D/tau = c_hyp^2`. No-op when propagation is off.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void radiation_end_gradient_propagation(struct part *p,
+                                        const struct engine *e) {
+
+  if (!e->feedback_props->LW_FUV_propagation) return;
+
+  struct feedback_part_data *fd = &p->feedback_data;
+  const float dt = fd->dt_prev;
+  const float c_hyp = fd->c_hyp;
+
+  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
+  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  const float decay_FUV = expf(-a_FUV);
+  const float decay_LW = expf(-a_LW);
+  const float coeff_FUV =
+      c_hyp * c_hyp * dt * radiation_relaxation_phi_factor(a_FUV);
+  const float coeff_LW =
+      c_hyp * c_hyp * dt * radiation_relaxation_phi_factor(a_LW);
+
+  for (int k = 0; k < 3; k++) {
+    fd->specific_flux_FUV[k] =
+        decay_FUV * fd->specific_flux_FUV[k] - coeff_FUV * fd->grad_u_FUV[k];
+    fd->specific_flux_LW[k] =
+        decay_LW * fd->specific_flux_LW[k] - coeff_LW * fd->grad_u_LW[k];
+  }
 }
 
 /**
@@ -325,12 +399,11 @@ radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
 }
 
 /**
- * Local linear dust absorption rate (1/length): kappa_eff(Z) * rho, the
- * quantity the Yukawa screening length and the propagation interface
- * coupling's harmonic mean are built from. Purely local: no column
- * density involved, unlike the injection extinction above. Returns the
- * raw physical rate; the caller (radiation_snapshot_part_propagation)
- * applies the propagation lambda correction on top before caching it.
+ * Local linear dust absorption rate (1/length): kappa_eff(Z) * rho. The
+ * The `lambda = 1/kappa` screening length and hyperbolic relaxation
+ * time are both built from this. Purely local: no column density
+ * involved, unlike the injection extinction above. Returns the raw
+ * physical rate.
  *
  * @param us Unit system.
  * @param Z Gas metal mass fraction.
@@ -347,32 +420,6 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
   return radiation_get_dust_mass_opacity(us, Z, sigma_d_band_cgs,
                                          local_dust_to_gas_ratio) *
          rho_p;
-}
-
-/**
- * @brief Mixing fraction for the Yukawa propagation update's outer-decay
- * form (#radiation_end_density_propagation).
- *
- * Structurally always 1.0f, not just for this build's compiled-in kernel:
- * the ceiling this used to evaluate, `min(1, (1+x)/(W_min+x))` for
- * `x = exp(-h^2/lambda^2) in (0, 1]`, is monotonically decreasing in `x`
- * (derivative sign set by `W_min-1`), so its minimum over that range is at
- * `x=1`: `2/(1+W_min)`. `W_min` is the magnitude of the kernel-normalized
- * mixing operator's worst (checkerboard) Fourier response; for any
- * non-negative kernel with unit-normalized weights (`sum_i w_i = 1`,
- * `w_i >= 0`), that response is strictly less than 1 in magnitude, so
- * `0 < W_min < 1` and `2/(1+W_min) > 1` always. The `min(1, ...)` ceiling
- * therefore always binds at 1, for every particle, every step,
- * independent of `h`, `kappa_i`, and the kernel/eta_neighbours choice
- * behind `W_min`. Kept as its own function (rather than inlined as a
- * literal at its two call sites) to document this invariant at the one
- * place #radiation_end_density_propagation's decay term relies on it.
- *
- * @return 1.0f, always.
- */
-__attribute__((always_inline)) INLINE float
-radiation_get_isrf_propagation_alpha(void) {
-  return 1.0f;
 }
 
 /**
@@ -404,111 +451,4 @@ radiation_get_part_LW_FUV_extinction_factors(
       us, Z, RADIATION_SIGMA_D_FUV_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
   *extinction_LW = radiation_get_dust_extinction_factor(
       us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
-}
-
-/* Maximum simple-cubic lattice neighbours considered by
-   #radiation_compute_yukawa_kernel_second_moment: generous for any kernel
-   this codebase ships (largest support radius in use, Wendland C6, needs
-   ~250). */
-#define RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS 2000
-
-/**
- * @brief Build the normalized simple-cubic lattice kernel weights used by
- * #radiation_compute_yukawa_kernel_second_moment, for this build's
- * compiled-in kernel and eta_neighbours.
- *
- * @param hydro_props The runtime hydrodynamics scheme properties.
- * @param offsets (return) Lattice offsets, in units of the lattice
- * spacing (== eta_neighbours == the returned h).
- * @param weights (return) Normalized kernel weights at each offset
- * (sum to 1).
- * @param n_out (return) Number of lattice points filled.
- * @return h == eta_neighbours, the smoothing length the offsets/weights
- * are defined at, in the same lattice-spacing units as offsets.
- */
-static float radiation_build_yukawa_lattice(
-    const struct hydro_props *hydro_props,
-    float offsets[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS][3],
-    float weights[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS], int *n_out) {
-
-  const float eta = hydro_props->eta_neighbours;
-  const float h = eta;
-  const float H = kernel_gamma * h;
-
-  int n = 0;
-  float w_sum = 0.f;
-
-  const int nmax = (int)ceilf(H) + 1;
-  for (int ix = -nmax; ix <= nmax; ix++) {
-    for (int iy = -nmax; iy <= nmax; iy++) {
-      for (int iz = -nmax; iz <= nmax; iz++) {
-        if (ix == 0 && iy == 0 && iz == 0) continue;
-        const float r = sqrtf((float)(ix * ix + iy * iy + iz * iz));
-        if (r >= H) continue;
-        if (n >= RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS)
-          error(
-              "Yukawa lattice sum exceeded its fixed neighbour budget; "
-              "raise RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS.");
-        float w;
-        kernel_eval(r / h, &w);
-        offsets[n][0] = (float)ix;
-        offsets[n][1] = (float)iy;
-        offsets[n][2] = (float)iz;
-        weights[n] = w;
-        w_sum += w;
-        n++;
-      }
-    }
-  }
-
-  if (w_sum <= 0.f)
-    error("Yukawa lattice: empty kernel support for eta_neighbours=%g", eta);
-  for (int i = 0; i < n; i++) weights[i] /= w_sum;
-
-  *n_out = n;
-  return h;
-}
-
-/**
- * @brief Correction factor between the Yukawa propagation's naive
- * decay-timescale correspondence (`D_implicit = h^2/Delta t`,
- * `02_fuv_isrf.tex`'s `fuv-discrete-correspondence`) and the scheme's
- * true emergent diffusion coefficient. At `alpha=1` (always true, see
- * #radiation_get_isrf_propagation_alpha), Taylor-expanding the
- * kernel-weighted mixing sum `mean_j[w_ij*u_prev_j]` around each
- * particle gives a leading correction term `(M2/(2*D_hydro))*Laplacian(u)`,
- * with `M2 = sum_j w_ij*r_ij^2` the kernel weights' second moment (built
- * from the same lattice as #radiation_build_yukawa_lattice, a different
- * moment of it) and `D_hydro` the hydrodynamic dimensionality
- * (#hydro_dimension). The true emergent diffusion coefficient is
- * therefore `D_true = M2/(2*D_hydro*Delta t)`, not `D_implicit`, so the
- * realized Yukawa e-folding length is off from the naive target by
- * `lambda_measured/lambda_analytic = sqrt(M2/(2*D_hydro*h^2))` -- this
- * function returns exactly that ratio, for this build's compiled-in
- * kernel, eta_neighbours, and hydrodynamic dimensionality. Printed
- * unconditionally at start-up so any Tier-1-style steady-state check can
- * read it from the run's own log rather than hardcoding a kernel/eta-
- * specific number.
- *
- * @param hydro_props The runtime hydrodynamics scheme properties.
- * @return The lambda_measured/lambda_analytic correction factor.
- */
-float radiation_compute_yukawa_kernel_second_moment(
-    const struct hydro_props *hydro_props) {
-
-  static float offsets[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS][3];
-  static float weights[RADIATION_YUKAWA_LATTICE_MAX_NEIGHBOURS];
-  int n = 0;
-  const float h =
-      radiation_build_yukawa_lattice(hydro_props, offsets, weights, &n);
-
-  float M2 = 0.f;
-  for (int i = 0; i < n; i++) {
-    const float r2 = offsets[i][0] * offsets[i][0] +
-                     offsets[i][1] * offsets[i][1] +
-                     offsets[i][2] * offsets[i][2];
-    M2 += weights[i] * r2;
-  }
-
-  return sqrtf(M2 / (2.0f * hydro_dimension * h * h));
 }

@@ -528,7 +528,7 @@ runner_iact_nonsym_feedback_apply(
 }
 
 /**
- * @brief Yukawa ISRF propagation (symmetric): no-op, this feedback model
+ * @brief ISRF propagation (symmetric): no-op, this feedback model
  * does not track u_FUV/u_LW.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -547,7 +547,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
     const float H, const struct unit_system *us) {}
 
 /**
- * @brief Yukawa ISRF propagation (non-symmetric): no-op, this feedback
+ * @brief ISRF propagation (non-symmetric): no-op, this feedback
  * model does not track u_FUV/u_LW.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -567,5 +567,43 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
                                     const struct part *restrict pj,
                                     const float a, const float H,
                                     const struct unit_system *us) {}
+
+/**
+ * @brief `grad(u)` interaction (symmetric): no-op, this
+ * feedback model does not track u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief `grad(u)` interaction (non-symmetric): no-op, this
+ * feedback model does not track u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct part *restrict pi,
+                                 struct part *restrict pj, const float a,
+                                 const float H) {}
 
 #endif /* SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H */

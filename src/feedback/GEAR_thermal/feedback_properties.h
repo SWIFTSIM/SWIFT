@@ -103,30 +103,27 @@ struct feedback_props {
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /*! Run the Yukawa screened-diffusion propagation update on top of
+  /*! Run the hyperbolic P1-relaxation propagation update on top of
    * injection + receiver-side extinction? Only meaningful when
    * radiation_policy_photoelectric_heating is set. */
   char LW_FUV_propagation;
 
-  /*! Ratio of the propagation's realized Yukawa e-folding length to the
-   * naive decay-timescale target, measured once at start-up for this
-   * build's kernel, eta_neighbours, and hydrodynamic dimensionality; see
-   * #radiation_compute_yukawa_kernel_second_moment. */
-  float LW_FUV_yukawa_lambda_correction;
+  /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_i`
+   * closure: an independently-tunable multiple of the hydro CFL margin,
+   * rather than silently inheriting whatever SPH:CFL_condition happens to
+   * be. Documented valid range (0, 1.7]; the staggered exact-relaxation
+   * scheme is stable for every lambda/h only below that bound (see
+   * radiation_isrf.c). */
+  float LW_FUV_c_hyp_margin;
 
-  /*! Debug/test-only: force the cached propagation absorption rates
-   * (#feedback_part_data.kappa_FUV/kappa_LW) to zero after they are
-   * computed in #radiation_snapshot_part_propagation, so
-   * #radiation_end_density_propagation's decay term vanishes
-   * (`alpha` saturates to 1 and `decay = exp(0) = 1`) while the
-   * kernel-weighted diffusive neighbour-mixing term stays fully active:
-   * `u_new = mean_j(w_ij*u_prev_j)`. Lets the LW/FUV field spread across
-   * many more particles than direct stellar injection alone reaches,
-   * without exercising the (separately, not yet validated) dust-screening
-   * physics -- for a validation test that needs the injected-vs-diffused
-   * relationship to stay analytically simple. Only meaningful when
-   * LW_FUV_propagation is also on. Never set in a production run. */
-  char LW_FUV_disable_screening_for_debugging;
+  /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
+   * to this fixed physical value instead of computing it from `C_hyp*h_i/
+   * dt_i`, whenever positive. Needed by the causal-reach validation leg
+   * (a single, unambiguous wavefront speed to check the field against) and
+   * by the steady-state amplitude leg's two-`c_hyp` cross-check (confirming
+   * the source-rescaling cancellation empirically). 0 (default): disabled,
+   * use the formula. Never set in a production run. */
+  float LW_FUV_c_hyp_pin_for_debugging;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -245,11 +242,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("LW/FUV propagation                                         = %s",
             feedback_props->LW_FUV_propagation ? "ON" : "OFF (injection only)");
     if (feedback_props->LW_FUV_propagation) {
-      message("LW/FUV Yukawa lambda correction (measured/analytic)        = %g",
-              feedback_props->LW_FUV_yukawa_lambda_correction);
+      message("LW/FUV propagation speed margin (C_hyp)                    = %g",
+              feedback_props->LW_FUV_c_hyp_margin);
+      if (feedback_props->LW_FUV_c_hyp_pin_for_debugging > 0.f)
+        message(
+            "LW/FUV c_hyp pinned for debugging (physical units)        = %g",
+            feedback_props->LW_FUV_c_hyp_pin_for_debugging);
     }
-    if (feedback_props->LW_FUV_disable_screening_for_debugging)
-      message("LW/FUV screening (decay) forced OFF for debugging          = 1");
   }
 
   message("Yields table                                               = %s",
@@ -451,20 +450,32 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:LW_FUV_propagation", 0);
 
-    /* Debug/test-only: see LW_FUV_disable_screening_for_debugging's own
-     * doxygen. Never set in a production run. */
-    fp->LW_FUV_disable_screening_for_debugging = (char)parser_get_opt_param_int(
-        params, "GEARFeedback:LW_FUV_disable_screening_for_debugging", 0);
-    if (fp->LW_FUV_disable_screening_for_debugging)
-      warning(
-          "GEARFeedback:LW_FUV_disable_screening_for_debugging is set: the "
-          "Yukawa propagation's dust-screening (decay) term is forced off "
-          "everywhere, leaving diffusive neighbour-mixing active. Never use "
-          "this in a production run.");
+    /* Debug/test-only: see LW_FUV_c_hyp_pin_for_debugging's own doxygen.
+     * Parsed unconditionally (like the stability margin below) so a
+     * validation run can set it even with LW_FUV_propagation off in the
+     * base config and toggled on separately; only meaningful when it is. */
+    fp->LW_FUV_c_hyp_pin_for_debugging = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging", 0.0f);
 
     if (fp->LW_FUV_propagation) {
-      fp->LW_FUV_yukawa_lambda_correction =
-          radiation_compute_yukawa_kernel_second_moment(hydro_props);
+      fp->LW_FUV_c_hyp_margin = parser_get_opt_param_float(
+          params, "GEARFeedback:LW_FUV_c_hyp_margin", 0.5f);
+
+      if (fp->LW_FUV_c_hyp_margin <= 0.f || fp->LW_FUV_c_hyp_margin > 1.7f)
+        error(
+            "GEARFeedback:LW_FUV_c_hyp_margin must lie in "
+            "(0, 1.7] (got %g): above 1.7 the staggered exact-relaxation "
+            "scheme is no longer stable for every lambda/h at this "
+            "project's kernel/eta_neighbours choice.",
+            fp->LW_FUV_c_hyp_margin);
+
+      if (fp->LW_FUV_c_hyp_pin_for_debugging > 0.f)
+        warning(
+            "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging is set: every "
+            "particle's own hyperbolic propagation speed is pinned to %g "
+            "(physical units) instead of C_hyp*h/dt. Never use this in a "
+            "production run.",
+            fp->LW_FUV_c_hyp_pin_for_debugging);
 
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
        * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
@@ -473,15 +484,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
        * continuously as Z -> 0, with no floor on the opacity itself). */
       warning(
           "GEARFeedback:LW_FUV_propagation is on together with "
-          "GEARFeedback:with_photoelectric_heating. The Yukawa "
-          "propagation's only loss channel is dust absorption, whose rate "
-          "is proportional to the gas metallicity. Gas at or near zero "
-          "metallicity has no loss channel. The injected LW/FUV field then "
-          "grows without bound in a closed or periodic domain. That "
-          "unbounded field couples into Grackle's photoelectric heating "
-          "rate and produces runaway gas heating. Check "
-          "GEARChemistry:initial_metallicity and any MetalMassFraction "
-          "field in the initial conditions before a long run.");
+          "GEARFeedback:with_photoelectric_heating. The propagation's only "
+          "loss channel is dust absorption, whose rate is proportional to "
+          "the gas metallicity. Gas at or near zero metallicity has no "
+          "loss channel. Check GEARChemistry:initial_metallicity and any "
+          "MetalMassFraction field in the initial conditions before a long "
+          "run.");
     }
   }
 

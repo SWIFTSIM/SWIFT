@@ -793,10 +793,12 @@ GEARFeedback:
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   with_photoelectric_heating:    0                         # Master switch for the local Lyman-Werner/FUV feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
-  LW_FUV_propagation:            0                         # Run the Yukawa screened-diffusion propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
+  LW_FUV_propagation:            0                         # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
                                                            # (Default: 0)
-  LW_FUV_disable_screening_for_debugging: 0                # (optional, debug/test only) Force the Yukawa propagation's cached kappa_FUV/kappa_LW to 0, disabling the dust-screening (decay) term while leaving diffusive neighbour-mixing active. Only
-                                                           # meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0)
+  LW_FUV_c_hyp_margin: 0.5                    # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, 1.7]: the staggered exact-relaxation scheme is only stable for every lambda/h below
+                                                           # that bound at this project's kernel/eta_neighbours choice. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
+  LW_FUV_c_hyp_pin_for_debugging: 0                        # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
+                                                           # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)

@@ -258,12 +258,34 @@ radiation_iact_nonsym_feedback_apply(
     radiation_get_part_LW_FUV_extinction_factors(
         us, cosmo, pj, Z_j, cooling, &extinction_FUV, &extinction_LW);
 
-    const double u_inject_FUV = (double)Delta_t * weight *
-                                si->feedback_data.radiation.L_FUV *
-                                (double)extinction_FUV;
-    const double u_inject_LW = (double)Delta_t * weight *
-                               si->feedback_data.radiation.L_LW *
-                               (double)extinction_LW;
+    double u_inject_FUV = (double)Delta_t * weight *
+                          si->feedback_data.radiation.L_FUV *
+                          (double)extinction_FUV;
+    double u_inject_LW = (double)Delta_t * weight *
+                         si->feedback_data.radiation.L_LW *
+                         (double)extinction_LW;
+
+    /* Source rescaling, folded into the exact relaxation integrator:
+       S_used = S_true*(3*c_hyp/c),
+       and Delta_t*(this factor) becomes tau*(1-exp(-Delta_t/tau)) =
+       Delta_t*phi(Delta_t/tau) once the exponential fold-in is applied,
+       using the RECEIVING particle's own c_hyp/kappa (cached this step by
+       radiation_snapshot_part_propagation) and the STAR's own step
+       Delta_t. Skipped when propagation is off: c_hyp/kappa are not
+       populated in that mode, and injection-only deposits the raw,
+       unrescaled dose exactly as Design A always did. */
+    if (fb_props->LW_FUV_propagation) {
+      const float c_hyp_j = pj->feedback_data.c_hyp;
+      const double rescale =
+          3.0 * (double)c_hyp_j / (double)phys_const->const_speed_light_c;
+      const float a_inject_FUV =
+          Delta_t * pj->feedback_data.kappa_FUV * c_hyp_j;
+      const float a_inject_LW = Delta_t * pj->feedback_data.kappa_LW * c_hyp_j;
+      u_inject_FUV *=
+          rescale * (double)radiation_relaxation_phi_factor(a_inject_FUV);
+      u_inject_LW *=
+          rescale * (double)radiation_relaxation_phi_factor(a_inject_LW);
+    }
 
     /* An instantaneous field strength, not an accumulated dose: reset to
        0 on the first touch this step (by any star), so a later read sees

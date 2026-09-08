@@ -36,7 +36,7 @@
  * not meant to make that round-trip easy. It lets a test set an arbitrary,
  * analytically-known initial LW/FUV field shape (a value range across
  * particles, a pulse, a step) and watch only Grackle's chemistry, or only
- * the Yukawa propagation PDE, evolve it, decoupled from the star and
+ * the LW/FUV propagation PDE, evolve it, decoupled from the star and
  * injection machinery. It only makes physical sense in a run with no star,
  * though this reader does not itself enforce that.
  *

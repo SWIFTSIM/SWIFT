@@ -124,6 +124,18 @@ void feedback_end_density(struct part *p, struct xpart *xp,
 }
 
 /**
+ * @brief Finishes the #part gradient calculation: LW/FUV propagation's
+ * `F` relaxation is shared GEAR physics, see
+ * #radiation_end_gradient_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_gradient(struct part *p, const struct engine *e) {
+  radiation_end_gradient_propagation(p, e);
+}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
  * u_FUV/u_LW and caches this step's absorption rate (shared GEAR

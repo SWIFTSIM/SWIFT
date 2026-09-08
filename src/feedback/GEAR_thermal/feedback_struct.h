@@ -102,17 +102,81 @@ struct feedback_part_data {
 
   /*! Band-specific local linear dust absorption rate (see
       #radiation_get_part_linear_absorption_rate), cached once per step
-      (radiation_snapshot_part_propagation) so the propagation density loop
-      does not recompute it, and the same unit conversion, per neighbour
-      pair. Propagation-corrected (scaled by
-      #feedback_props.LW_FUV_yukawa_lambda_correction): the value used by
-      the Yukawa propagation (#radiation_end_density_propagation and
-      radiation_propagation_iact.h) exclusively, distinct from and NOT
-      interchangeable with the injection-side extinction's own,
-      independently-computed, uncorrected kappa
+      (radiation_snapshot_part_propagation) so the propagation loops do not
+      recompute it, and the same unit conversion, per neighbour pair.
+      The raw physical rate: distinct from and NOT interchangeable with the
+      injection-side extinction's own, independently-computed kappa
       (#radiation_get_part_LW_FUV_extinction_factors). */
   float kappa_FUV;
   float kappa_LW;
+
+  /*! Hyperbolic propagation state: the tracked specific flux moment,
+      mass-specific like #u_FUV/#u_LW. Zeroed unconditionally at
+      first init (no IC field proposed for it); relaxed every step in the
+      extra ghost (radiation_isrf.c's exact-relaxation update). Read
+      directly by neighbours in the density loop (radiation_propagation_
+      iact.h): no `_prev` snapshot needed, since it can only change in this
+      cell's own extra ghost, which runs after every cell it pairs with has
+      finished its own density loop (see radiation_isrf.c's own doxygen for
+      the full dependency argument). Not yet a snapshot output field (no
+      tracers_io.h entry exists); if/when one is added, it should follow
+      #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention:
+      "FUVSpecificFlux"/"LWSpecificFlux" (IC input, singular),
+      "FUVSpecificFluxes"/"LWSpecificFluxes" (snapshot output, plural). */
+  float specific_flux_FUV[3];
+  float specific_flux_LW[3];
+
+  /*! `(1/rho) div(rho F)` accumulator, density loop
+      (radiation_propagation_iact.h). Scratch: zeroed every h-iteration by
+      radiation_init_part_propagation, like the propagation accumulators
+      Design A used to keep here. */
+  float div_specific_flux_FUV;
+  float div_specific_flux_LW;
+
+  /*! `(1/rho) grad(rho u)` accumulator, gradient loop
+      (radiation_propagation_iact.h). Scratch: zeroed once per step by
+      radiation_snapshot_part_propagation, since the gradient loop runs
+      exactly once per step (never re-run across h-iterations). */
+  float grad_u_FUV[3];
+  float grad_u_LW[3];
+
+  /*! Comoving density snapshot, cached once per step by
+      radiation_snapshot_part_propagation at the same call site as
+      #u_FUV_prev (before this step's density accumulators are reset), so it
+      holds the previous step's fully-converged comoving density. Needed
+      because the density loop's `div(F)` accumulation
+      (radiation_propagation_iact.h) runs interleaved with SPH's own density
+      sum: `p->rho` is a partial accumulator there, not a density, until the
+      density ghost finalizes it. The gradient loop's `grad(u)` accumulation
+      uses this SAME snapshot rather than the by-then-available, more
+      current ghost-finalized density, because the staggered time
+      integrator's stability on a disordered particle distribution depends
+      on `grad` being minus the adjoint of `div` in the `m*rho` inner
+      product: that identity only holds when both operators are built from
+      the same `rho_i`/`rho_j`. Never legitimately 0 or negative: seeded to
+      1.0f at first init (before any real density has ever been computed,
+      see radiation_isrf.c) rather than 0.0f, since `grad(u)`'s own formula
+      needs `rho_i` itself (not just `1/rho_i`), and a 0.0f seed would turn
+      into +inf under any reciprocal taken from it -- a placeholder value
+      is safe there regardless, since `u`/`F` are also still 0 at that
+      point, so every term the placeholder feeds into is itself 0. */
+  float rho_prev;
+
+  /*! This particle's own hyperbolic propagation speed
+      (`c_hyp_i = min(C_hyp*h_i/dt_i, c)`, physical units), cached once per
+      step by radiation_snapshot_part_propagation from this step's own
+      already-decided integer timestep, alongside the physical timestep
+      #dt_prev it was derived from. Shared by both bands (unlike
+      #kappa_FUV/#kappa_LW): the propagation speed is a property of the
+      particle's resolution and timestep, not of its dust opacity. */
+  float c_hyp;
+
+  /*! This particle's own physical timestep, cached alongside
+      #c_hyp (same call site), so the exact-relaxation finalizes
+      (radiation_isrf.c) do not need to recompute it from #time_bin/the
+      #engine a second and third time in the density ghost and extra
+      ghost. */
+  float dt_prev;
 
   /*! Simulation step (#engine.ti_current) #u_FUV/#u_LW were last written
       at. radiation_iact_nonsym_feedback_apply compares this against the
@@ -160,20 +224,6 @@ struct feedback_part_data {
       never-illuminated particle's garbage/zero-initialized state can never
       read as "still illuminated". */
   integertime_t LW_FUV_illumination_end_ti;
-
-  /*! Yukawa propagation's per-step mixing accumulators, one
-      denominator/numerator pair per band: sum_w_FUV = sum_j
-      W(r_ij,h_i)*exp(-tau_ij), sum_wu_FUV = sum_j
-      W(r_ij,h_i)*exp(-tau_ij)*u_j_FUV, accumulated pairwise over gas
-      neighbours in the density loop (radiation_propagation_iact.h) and
-      consumed once per particle by feedback_end_density(), which divides
-      them down to the normalized mixing weight sum and resets them for
-      the next step. No restart I/O: recomputed fresh every step, like
-      density itself. */
-  float isrf_prop_sum_w_FUV;
-  float isrf_prop_sum_wu_FUV;
-  float isrf_prop_sum_w_LW;
-  float isrf_prop_sum_wu_LW;
 };
 
 /**
