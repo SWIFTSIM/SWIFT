@@ -1,0 +1,72 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation on
+(photoionization and radiation pressure off), field initialised to zero
+everywhere. Checks that the propagated FUV/LW interstellar-radiation-field
+energy density (`FUVSpecificEnergies`/`LWSpecificEnergies`) never travels
+farther than its causal reach `r <= c_hyp*(t - t0)` (`t0` = the star's
+`BirthTime`, 0 here), the defining, checkable feature that distinguishes
+this hyperbolic scheme from a screened-diffusion equation (infinite signal
+speed by construction). Run duration is short on purpose: the point is to
+see the field's leading edge, not let it reach the steady state the sibling
+`ISRFHyperbolicPropagation` example measures.
+
+`c_hyp` is not itself a snapshot field; `isrf_causal_reach_check.py`
+reconstructs it from the run's own `timesteps.txt` (the bulk gas's own
+time-step) and each snapshot's own median smoothing length, using the exact
+formula `src/feedback/GEAR/radiation_isrf.c` uses.
+
+## Pinned-neighbour variant
+`hot_particle_temperature_K` (env var, `run.sh`) sets the single gas
+particle closest to the star to a different initial temperature than the
+rest of the box, giving that one particle a much shorter hydro time-step
+and hence, via `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, a much larger `c_hyp`
+than its neighbours -- mimicking a particle pinned short by a recent
+cooling/feedback/`timestep_sync` event. Requires `SPH:initial_temperature:
+0` (`run.sh` sets this automatically whenever `hot_particle_temperature_K`
+is nonzero) so the per-particle `InternalEnergy` `makeIC.py` writes is not
+overwritten uniformly at start-up. The heated particle's own real pressure
+also perturbs its local SPH density (a genuine hydrodynamic effect, not a
+radiation artifact); `isrf_causal_reach_check.py --hot-particle-id`
+excludes that one particle from the bulk `h`/`dt` estimate and reports it
+separately.
+
+## Metallicity, cooling
+Same as `ISRFHyperbolicPropagation`: `initial_metallicity` must stay above
+0 (the dust screening length is undefined at `Z=0`), and
+`GrackleCooling:disable_cooling_for_debugging: 1` isolates the propagated
+field from any gas thermal response while still resolving `chemistry_data`.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Standard causal-reach test: `./run.sh`. Pinned-neighbour variant:
+`hot_particle_temperature_K=3e4 ./run.sh`. Override gas density
+(`gas_density`), gas particle mass (`gas_mass`), star mass/type
+(`star_mass`, `star_type`), resolution level (`level`), run duration and
+stepping (`time_end`, `dt_max`, `delta_time`), bulk temperature
+(`bulk_temperature_K`), metallicity (`initial_metallicity`), and thread
+count (`n_threads`); see `run.sh` for defaults. `run_name=<dir> ./run.sh`
+moves a run's outputs into `<dir>`.
+
+# Checking
+```
+python3 isrf_causal_reach_check.py
+python3 isrf_causal_reach_check.py --hot-particle-id $(cat hot_particle_id.txt)
+```
+`run.sh` runs this automatically. Prints, per snapshot and band, the
+measured extent of the field against `c_hyp*(t-t0)` at three amplitude
+levels (10%/1%/0.1% of that snapshot's own peak, the most permissive
+"plateau" definition available for a 3-D point source -- there is no flat
+plateau to compare against as there would be in a 1-D slab test), and gates
+on both that extent and on negativity anywhere in the box (unlike the
+Tier-1 steady-state check, negativity here is a hard failure: the
+wavefront is exactly where the estimator's known weaknesses are worst).
+Produces a comparison plot (`--output`).
