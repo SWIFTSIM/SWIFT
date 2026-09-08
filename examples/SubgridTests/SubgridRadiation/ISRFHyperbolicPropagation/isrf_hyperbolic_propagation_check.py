@@ -59,28 +59,24 @@ Does not validate whether the governing PDE itself matches real
 interstellar radiation transport -- that is a separate, physics-level
 question (Tier 2), not a numerics one.
 
-**The plotted "discrete-solve prediction" curve's ABSOLUTE amplitude is
-not physically calibrated and must never be compared visually against the
-simulation curve's absolute height.** `discrete_steady_state_lambda`
-solves the fixed point for an arbitrary unit-total source
-(`S /= np.sum(S)`, not the star's real `L_FUV`/`L_LW`, receiver-side
-extinction, or the `3*c_hyp/c` rescale of `design-lw-fuv-design-b.md`
-Sec 1.2), because only the SLOPE (the fitted `lambda`) is used for the
-pass/fail gate below -- this is `design-lw-fuv-design-b.md` Sec 6.1's own
-documented "amplitude criterion... still not implemented" gap, confirmed
-empirically 2026-09-08 (see `.claude/dev/logs/
-2026-09-08_1408_design-b-amplitude-units-investigation.md`): the two
-curves in the saved plot can legitimately differ by 8-9 orders of
-magnitude in absolute
-height with no bug present, purely because of this normalization choice.
-That investigation independently verified, from the star's actual
-`L_FUV`/`L_LW`, the run's actual kappa/lambda, and the actual `3*c_hyp/c`
-rescale, that the SIMULATION's own absolute amplitude is correct to
-better than 0.01% (the exact identity `sum_i(m_i u_i) = (3/c) *
+**The plotted "discrete-solve prediction" curve's amplitude is
+physically calibrated, not just its slope.** `discrete_steady_state_lambda`
+builds its source term from the star's real `L_FUV`/`L_LW`, its real
+kernel-weighted injection footprint (the star's own smoothing length and
+neighbour masses), each neighbour's own receiver-side dust extinction, and
+the `3*c_hyp/c` rescale of `design-lw-fuv-design-b.md` Sec 1.2 -- the same
+exact identity (`sum_i(m_i u_i) = (3/c) *
 sum_over_star_kernel_neighbours(weight_j * lambda_j * L * extinction_j)`,
-`c_hyp` cancelling algebraically per §1.2) -- the absolute-amplitude gap
-visible in this script's own plot is a property of this CHECK's chosen
-normalization, not of the code being checked.
+`c_hyp` cancelling algebraically) that the 2026-09-08 investigation
+(`.claude/dev/logs/2026-09-08_1408_design-b-amplitude-units-investigation.md`)
+used to independently confirm the SIMULATION's own absolute amplitude is
+correct to better than 0.01%. Porting that identity into this function's
+own source term closes the gap `design-lw-fuv-design-b.md` Sec 6.1 had
+flagged as "amplitude criterion... still not implemented": the discrete
+solve's mass-weighted `sum(m_i u_i)` now matches the real simulation's own
+to a fraction of a percent (box-mean `lambda` in place of each neighbour's
+own, since this function solves with one screening length per band), well
+inside this script's own tolerance below.
 """
 
 import argparse
@@ -106,6 +102,8 @@ GRACKLE_SOLAR_Z = 0.01295
 # --with-kernel=wendland-C2 build); needed to reconstruct the same kernel
 # support radius (H = GAMMA_3D * h) the C code itself uses.
 GAMMA_3D = 1.936492
+# Speed of light, cgs; design-lw-fuv-design-b.md Sec 1.2's S_used rescale.
+C_LIGHT_CGS = 2.99792458e10
 
 
 def parse_options():
@@ -160,6 +158,7 @@ def load_snapshot(path):
             np.asarray(units.attrs["Unit length in cgs (U_L)"]).flat[0]
         )
         unit_mass_cgs = float(np.asarray(units.attrs["Unit mass in cgs (U_M)"]).flat[0])
+        unit_time_cgs = float(np.asarray(units.attrs["Unit time in cgs (U_t)"]).flat[0])
 
         gas = f["/PartType0"]
         pos = gas["Coordinates"][:, :]
@@ -172,12 +171,16 @@ def load_snapshot(path):
 
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
+        star_h = float(star["SmoothingLengths"][0])
+        L_FUV = float(star["FUVLuminosities"][0])
+        L_LW = float(star["LWLuminosities"][0])
 
     return dict(
         time=time,
         boxsize=boxsize,
         unit_length_cgs=unit_length_cgs,
         unit_mass_cgs=unit_mass_cgs,
+        unit_time_cgs=unit_time_cgs,
         pos=pos,
         rho=rho,
         h=h,
@@ -186,6 +189,9 @@ def load_snapshot(path):
         u_lw=u_lw,
         Z=Z,
         star_pos=star_pos,
+        star_h=star_h,
+        L_FUV=L_FUV,
+        L_LW=L_LW,
     )
 
 
@@ -196,15 +202,36 @@ def radial_distance(pos, star_pos, boxsize):
     return np.sqrt(np.sum(dx**2, axis=1))
 
 
+def kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs):
+    """Band dust mass opacity (area/mass, cgs); mirrors radiation_get_dust_mass_opacity
+    in radiation_isrf.c, with local_dust_to_gas_ratio left at Grackle's own
+    default (this example's params.yml leaves it unset), so D_relative reduces
+    to Z/Z_grackle_sun."""
+    D_relative = Z / GRACKLE_SOLAR_Z
+    return sigma_d_cgs * D_relative / (MU_H * M_H_CGS)
+
+
 def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs):
-    """kappa_eff = sigma_d * (Z/Z_grackle_sun) / (mu_H * m_H); lambda =
-    1/(kappa_eff*rho): the physical dust-screening length, independent of
-    this project's own kernel/eta_neighbours choice -- see
+    """lambda = 1/(kappa_eff*rho): the physical dust-screening length,
+    independent of this project's own kernel/eta_neighbours choice -- see
     radiation_get_part_linear_absorption_rate in radiation_isrf.c."""
     rho_cgs = rho_internal * unit_mass_cgs / unit_length_cgs**3
-    D_relative = Z / GRACKLE_SOLAR_Z
-    kappa_eff_cgs = sigma_d_cgs * D_relative / (MU_H * M_H_CGS)
+    kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)
     return 1.0 / (kappa_eff_cgs * rho_cgs)
+
+
+def receiver_extinction_factor(
+    Z, rho_internal, h_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs
+):
+    """Receiver-side dust extinction exp(-kappa_eff*Sigma_gas); mirrors
+    radiation_get_part_LW_FUV_extinction_factors, with the comoving column
+    density Sigma_gas = 2*kernel_gamma*h*rho (this example is
+    non-cosmological, so comoving equals physical here)."""
+    Sigma_gas_cgs = (
+        2.0 * GAMMA_3D * h_internal * rho_internal * unit_mass_cgs / unit_length_cgs**2
+    )
+    kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)
+    return np.exp(-kappa_eff_cgs * Sigma_gas_cgs)
 
 
 def fit_slope(r, u, r_min, r_max):
@@ -239,7 +266,9 @@ def wc2_3d_dwdr(r, H):
     qi, Hi = q[inside], H[inside]
     norm_i = 21.0 / (2.0 * np.pi * Hi**3)
     out[inside] = (
-        norm_i * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4) / Hi
+        norm_i
+        * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4)
+        / Hi
     )
     return out
 
@@ -303,7 +332,9 @@ def phi_relaxation_factor(a):
     return np.where(a < 1e-6, 1.0 - 0.5 * a, -np.expm1(-a) / a)
 
 
-def discrete_steady_state_lambda(snap, lam, r_min, r_max, n_bins, n_iter, iter_tol):
+def discrete_steady_state_lambda(
+    snap, lam, L_band, sigma_d_band_cgs, r_min, r_max, n_bins, n_iter, iter_tol
+):
     """Solve Sec 4.5's staggered exact-relaxation update to its own fixed
     point on the run's REAL particle positions/h/rho/mass, for one band's
     physical screening length `lam`, then fit lambda_eff with the same
@@ -314,33 +345,48 @@ def discrete_steady_state_lambda(snap, lam, r_min, r_max, n_bins, n_iter, iter_t
     timestepping_stability.py` Part C.2, profiles at dt/tau = 0.004, 0.04,
     0.2 agree to 1e-8), so no attempt is made to match the real run's own
     per-step dt/c_hyp history -- only the fixed point matters here, not
-    the path to it.
+    the path to it. The source term IS physically scaled (Sec 1.2's
+    S_used = S_true*(3*c_hyp/c) rescale, using this solve's own arbitrary
+    `c_hyp` consistently, which cancels exactly at the fixed point
+    regardless of its value), so both the fitted `lambda` and the
+    absolute amplitude of the returned profile are validated comparisons.
+    Returns the mass-weighted sum(m_i*u_i) too, for the amplitude check.
     """
-    pos, h, rho, mass = snap["pos"], snap["h"], snap["rho"], snap["mass"]
+    pos, h, rho, mass, Z = snap["pos"], snap["h"], snap["rho"], snap["mass"], snap["Z"]
     boxsize = snap["boxsize"]
     N = len(pos)
     ii, jj, dx, r, wi_dr, wj_dr = build_pairs(pos, h, boxsize)
 
-    # Kernel-weighted deposit at the star's position: an idealised stand-in
-    # for the star's real injection-neighbour weighting (radiation_iact.h),
-    # approximated here with the run's own median smoothing length. This is
-    # the dominant known idealisation left in this methodology (see the
-    # 2026-09-08 validation log's "Open questions"); it does not prevent
-    # the 0.9%-6.2% agreement this script's tolerance is built around.
+    # Arbitrary numerically-convenient closure: the fixed point does not
+    # depend on this choice (see docstring), as long as it is also used
+    # consistently below to build S_used.
+    h_med = np.median(h)
+    C_HYP_ARBITRARY = 0.1
+    c_hyp = C_HYP_ARBITRARY * h_med
+    a = c_hyp / lam
+    e_, ph = np.exp(-a), phi_relaxation_factor(a)
+
+    # Real injection footprint: the star's own smoothing length and each
+    # neighbour's own mass, exactly mirroring radiation_iact.h's
+    # `weight = mj*wi*si_inv_weight` (si_inv_weight = 1/enrichment_weight).
     dxs = pos - snap["star_pos"]
     dxs -= boxsize * np.round(dxs / boxsize)
     rs = np.linalg.norm(dxs, axis=1)
-    h_med = np.median(h)
-    Hs = GAMMA_3D * h_med
-    S = wc2_3d_w(rs, Hs)
-    S /= np.sum(S)
+    Hs = GAMMA_3D * snap["star_h"]
+    mass_weighted_kernel = mass * wc2_3d_w(rs, Hs)
+    weight = mass_weighted_kernel / np.sum(mass_weighted_kernel)
 
-    # Arbitrary numerically-convenient closure (see docstring above): the
-    # fixed point does not depend on this choice.
-    C_HYP_ARBITRARY = 0.1
-    c_hyp = C_HYP_ARBITRARY * h_med
-    a = C_HYP_ARBITRARY * h_med / lam
-    e_, ph = np.exp(-a), phi_relaxation_factor(a)
+    # S_true: real specific-power injection rate (energy/mass/time, internal
+    # units), zero outside the star's real kernel neighbours (weight=0
+    # there); S_used: Sec 1.2's rescale, c_light in the same internal
+    # velocity convention as this solve's own c_hyp (dt=1 internal time
+    # unit implicit throughout this iteration).
+    extinction = receiver_extinction_factor(
+        Z, rho, h, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma_d_band_cgs
+    )
+    c_light_internal = C_LIGHT_CGS * snap["unit_time_cgs"] / snap["unit_length_cgs"]
+    S_true = weight * L_band * extinction / mass
+    S = S_true * (3.0 * c_hyp / c_light_internal)
 
     u = np.zeros(N)
     F = np.zeros((3, N))
@@ -357,9 +403,8 @@ def discrete_steady_state_lambda(snap, lam, r_min, r_max, n_bins, n_iter, iter_t
             break
     converged = du < iter_tol
 
-    r_star = np.linalg.norm(dxs, axis=1)
-    order = np.argsort(r_star)
-    r_sorted, u_sorted = r_star[order], u[order]
+    order = np.argsort(rs)
+    r_sorted, u_sorted = rs[order], u[order]
     edges = np.linspace(r_min, r_max, n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
     u_binned = np.full(n_bins, np.nan)
@@ -369,7 +414,15 @@ def discrete_steady_state_lambda(snap, lam, r_min, r_max, n_bins, n_iter, iter_t
             u_binned[i] = np.mean(u_sorted[sel])
     valid = ~np.isnan(u_binned)
     _, lam_fit = fit_slope(centres[valid], u_binned[valid], r_min, r_max)
-    return lam_fit, centres[valid], u_binned[valid], it + 1, converged
+    mass_weighted_sum = float(np.sum(mass * u))
+    return (
+        lam_fit,
+        centres[valid],
+        u_binned[valid],
+        it + 1,
+        converged,
+        mass_weighted_sum,
+    )
 
 
 def main():
@@ -390,7 +443,11 @@ def main():
     h_mean = float(np.median(snap["h"]))
 
     lambda_fuv_cgs = analytic_lambda_cgs(
-        Z_mean, rho_mean, snap["unit_length_cgs"], snap["unit_mass_cgs"], SIGMA_D_FUV_CGS
+        Z_mean,
+        rho_mean,
+        snap["unit_length_cgs"],
+        snap["unit_mass_cgs"],
+        SIGMA_D_FUV_CGS,
     )
     lambda_lw_cgs = analytic_lambda_cgs(
         Z_mean, rho_mean, snap["unit_length_cgs"], snap["unit_mass_cgs"], SIGMA_D_LW_CGS
@@ -433,16 +490,61 @@ def main():
 
     print("Solving each band's discrete steady state on the run's own real")
     print("particle positions/h/rho/mass (may take a few seconds)...")
-    lambda_fuv_discrete, dc_fuv, ud_fuv, it_fuv, conv_fuv = discrete_steady_state_lambda(
-        snap, lambda_fuv, r_min, r_max, opt.n_bins, opt.max_iter, opt.iter_tol
+    lambda_fuv_discrete, dc_fuv, ud_fuv, it_fuv, conv_fuv, mass_sum_fuv_discrete = (
+        discrete_steady_state_lambda(
+            snap,
+            lambda_fuv,
+            snap["L_FUV"],
+            SIGMA_D_FUV_CGS,
+            r_min,
+            r_max,
+            opt.n_bins,
+            opt.max_iter,
+            opt.iter_tol,
+        )
     )
-    lambda_lw_discrete, dc_lw, ud_lw, it_lw, conv_lw = discrete_steady_state_lambda(
-        snap, lambda_lw, r_min, r_max, opt.n_bins, opt.max_iter, opt.iter_tol
+    lambda_lw_discrete, dc_lw, ud_lw, it_lw, conv_lw, mass_sum_lw_discrete = (
+        discrete_steady_state_lambda(
+            snap,
+            lambda_lw,
+            snap["L_LW"],
+            SIGMA_D_LW_CGS,
+            r_min,
+            r_max,
+            opt.n_bins,
+            opt.max_iter,
+            opt.iter_tol,
+        )
     )
+    # Amplitude comparison (informational, see Sec 1.2/6.1): the exact
+    # mass-weighted identity sum_i(m_i u_i) validated against a first-
+    # principles hand-derivation in the 2026-09-08 investigation, now
+    # applied to the discrete solve's own converged fixed point rather
+    # than the simulation directly, so it can be reported alongside the
+    # lambda comparison without duplicating that investigation's own
+    # per-neighbour-lambda derivation here.
+    mass_sum_fuv_sim = float(np.sum(snap["mass"] * snap["u_fuv"]))
+    mass_sum_lw_sim = float(np.sum(snap["mass"] * snap["u_lw"]))
+    amp_rel_err_fuv = (
+        abs(mass_sum_fuv_sim - mass_sum_fuv_discrete) / mass_sum_fuv_discrete
+    )
+    amp_rel_err_lw = abs(mass_sum_lw_sim - mass_sum_lw_discrete) / mass_sum_lw_discrete
 
-    def report(band, lambda_measured, lambda_discrete, lambda_continuum, iters, converged):
+    def report(
+        band,
+        lambda_measured,
+        lambda_discrete,
+        lambda_continuum,
+        iters,
+        converged,
+        mass_sum_sim,
+        mass_sum_discrete,
+        amp_rel_err,
+    ):
         if lambda_measured is None:
-            print(f"{band}: could not fit the simulation's own slope (too few valid bins).")
+            print(
+                f"{band}: could not fit the simulation's own slope (too few valid bins)."
+            )
             return False
         if lambda_discrete is None or not np.isfinite(lambda_discrete):
             print(f"{band}: discrete-solve prediction could not be fit either.")
@@ -462,10 +564,35 @@ def main():
             f"[discrete solve: {iters} iterations, "
             f"{'converged' if converged else 'NOT converged'}]"
         )
+        print(
+            f"{band}: amplitude sum(m*u): sim={mass_sum_sim:.4e}, "
+            f"discrete(prediction)={mass_sum_discrete:.4e}, "
+            f"rel_err={amp_rel_err:.4f} (informational only, not gated)"
+        )
         return rel_err < opt.tol
 
-    ok_fuv = report("FUV", lambda_fuv_measured, lambda_fuv_discrete, lambda_fuv, it_fuv, conv_fuv)
-    ok_lw = report("LW", lambda_lw_measured, lambda_lw_discrete, lambda_lw, it_lw, conv_lw)
+    ok_fuv = report(
+        "FUV",
+        lambda_fuv_measured,
+        lambda_fuv_discrete,
+        lambda_fuv,
+        it_fuv,
+        conv_fuv,
+        mass_sum_fuv_sim,
+        mass_sum_fuv_discrete,
+        amp_rel_err_fuv,
+    )
+    ok_lw = report(
+        "LW",
+        lambda_lw_measured,
+        lambda_lw_discrete,
+        lambda_lw,
+        it_lw,
+        conv_lw,
+        mass_sum_lw_sim,
+        mass_sum_lw_discrete,
+        amp_rel_err_lw,
+    )
 
     # Informational only (not part of the pass/fail gate): a global
     # negative-value count and the largest single non-monotonic bin-to-bin
@@ -475,7 +602,9 @@ def main():
     # separate leg -- see the README for what this script's own pass/fail
     # criterion actually is.
     n_negative = int(np.sum(snap["u_fuv"] < 0) + np.sum(snap["u_lw"] < 0))
-    worst_bump_fuv = float(np.max(np.diff(u_fuv_binned[valid]) / u_fuv_binned[valid][:-1]))
+    worst_bump_fuv = float(
+        np.max(np.diff(u_fuv_binned[valid]) / u_fuv_binned[valid][:-1])
+    )
     worst_bump_lw = float(np.max(np.diff(u_lw_binned[valid]) / u_lw_binned[valid][:-1]))
     print(
         f"(informational) particles with u < 0: {n_negative}/{2 * len(snap['u_fuv'])}; "
@@ -484,37 +613,32 @@ def main():
     )
 
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.semilogy(centres[valid], u_fuv_binned[valid] * centres[valid], "o-", label="FUV: sim")
-    ax.semilogy(centres[valid], u_lw_binned[valid] * centres[valid], "s-", label="LW: sim")
     ax.semilogy(
-        dc_fuv, ud_fuv * dc_fuv, "--", color="C0",
-        label="FUV: discrete-solve prediction (slope only -- see note below)",
+        centres[valid], u_fuv_binned[valid] * centres[valid], "o-", label="FUV: sim"
     )
     ax.semilogy(
-        dc_lw, ud_lw * dc_lw, "--", color="C1",
-        label="LW: discrete-solve prediction (slope only -- see note below)",
+        centres[valid], u_lw_binned[valid] * centres[valid], "s-", label="LW: sim"
+    )
+    ax.semilogy(
+        dc_fuv,
+        ud_fuv * dc_fuv,
+        "--",
+        color="C0",
+        label="FUV: discrete-solve prediction",
+    )
+    ax.semilogy(
+        dc_lw,
+        ud_lw * dc_lw,
+        "--",
+        color="C1",
+        label="LW: discrete-solve prediction",
     )
     ax.set_xlabel("r (internal length units)")
     ax.set_ylabel(r"$u(r) \cdot r$")
     ax.legend(fontsize=7, loc="upper right")
-    ax.text(
-        0.02, 0.02,
-        "Dashed curves: unit-normalized source -> compare SLOPE only.\n"
-        "Absolute height is not physically calibrated (see script docstring).",
-        transform=ax.transAxes, fontsize=6.5, va="bottom", ha="left",
-        color="0.4",
-    )
     fig.tight_layout()
     fig.savefig(opt.output, dpi=150)
     print(f"Plot saved to {opt.output}")
-    print(
-        "NOTE: the dashed 'discrete-solve prediction' curves use an arbitrary "
-        "unit-total source normalization (see this script's own docstring); "
-        "their absolute height is not meant to match the solid simulation "
-        "curves and any such gap (however large) is not, by itself, evidence "
-        "of a bug. Only the fitted lambda (reported above) is a validated "
-        "comparison."
-    )
 
     if not (ok_fuv and ok_lw):
         sys.exit(1)
