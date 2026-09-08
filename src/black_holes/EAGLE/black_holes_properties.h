@@ -205,6 +205,9 @@ struct black_holes_props {
   /*! NSC growth efficiency parameter */
   float nsc_growth_efficiency_k;
 
+  /*! Fraction of tde stellar matter that is accreted onto the black hole*/
+  float tde_accretion_efficiency_f;
+
   /* ---- Properties of the repositioning model --- */
 
   /*! Maximal mass of BH to reposition */
@@ -514,7 +517,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   if ((bp->nsc_growth_efficiency_k > 1.f) || 
       (bp->nsc_growth_efficiency_k < 0.f)) {
         error("EAGLEAGN:nsc_growth_efficiency_k must be between 0 and 1, not %f.", bp->nsc_growth_efficiency_k);
-      }
+  }
+
+  bp->tde_accretion_efficiency_f = 
+      parser_get_param_float(params, "EAGLEAGN:tde_accretion_efficiency_f");
+  if ((bp->tde_accretion_efficiency_f > 1.f) || 
+      (bp->tde_accretion_efficiency_f < 0.f)) {
+        error("EAGLEAGN:tde_accretion_efficiency_f must be between 0 and 1, not %f.", bp->tde_accretion_efficiency_f);
+  }    
 
   /* Reposition parameters --------------------------------- */
 

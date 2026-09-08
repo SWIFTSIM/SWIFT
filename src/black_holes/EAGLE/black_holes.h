@@ -505,6 +505,9 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   bpi->gpart->mass += bpj->mass;
   bpi->subgrid_mass += bpj->subgrid_mass;
 
+  /* Don't forget the Nuclear Star Cluster */
+  bpi->nsc_mass += bpj->nsc_mass;
+
   /* Collect the swallowed angular momentum */
   bpi->swallowed_angular_momentum[0] += bpj->swallowed_angular_momentum[0];
   bpi->swallowed_angular_momentum[1] += bpj->swallowed_angular_momentum[1];
