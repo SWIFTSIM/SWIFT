@@ -43,6 +43,7 @@ struct space;
 struct cell;
 struct engine;
 struct partition;
+struct scheduler;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -86,6 +87,10 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
 /* Update the void cell gravity timesteps. */
 void zoom_void_timestep_collect(struct engine *e);
+
+/* Scheduler reporting machinery */
+void zoom_scheduler_report_task_times(const struct scheduler *s,
+                                      const int nr_threads);
 
 /* Zoom proxy creation functions. */
 void zoom_engine_makeproxies(struct engine *e);
