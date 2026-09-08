@@ -13,8 +13,8 @@ and `GEARSink:density_threshold_Hpcm3` are coupled (the smoothing-length
 formation criterion needs kernel_gamma*h < cut_off_radius, and h shrinks with
 resolution). Rescale both together, not just one.
 
-Sink particles are expected to start forming around 1.3-1.6 free-fall times
-(t_ff ~= 3689 internal units for the default sphere).
+Sink particles are expected to start forming around t_ff ~= 6900 internal units
+for the default sphere.
 
 # Configure
 To run this example with the GEAR model,
