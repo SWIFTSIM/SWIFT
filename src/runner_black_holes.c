@@ -771,20 +771,26 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
             bp->id, v_mean_x, v_mean_y, v_mean_z);
     
     /* --------------------------------- */
+    /* nibbling from star particles      */
+
 
     /* Nothing to nibble if no star found. */
-    if (nearest_sp == NULL) continue;
+    // if (nearest_sp == NULL) continue;
 
-    /* Available mass on the nearest star above the nibbling floor. */
-    const double available_mass =
-        (double)nearest_sp->mass - min_star_mass_for_nibbling;
-    if (available_mass <= 0.0) continue;
+    // /* Available mass on the nearest star above the nibbling floor. */
+    // const double available_mass =
+    //     (double)nearest_sp->mass - min_star_mass_for_nibbling;
+    // if (available_mass <= 0.0) continue;
 
     /* Star loses 50% of available mass per Gyr (exponential decay,
      * half-life = 1 Gyr): star_mass_loss_rate = ln(2) / t_half * available_mass.
      * The BH gains less due to radiation: bh_accretion_rate = (1 - epsilon_r)
      * * star_mass_loss_rate. */
-    /* const double star_mass_loss_rate = ln2_over_t_half * available_mass; */
+    // const double star_mass_loss_rate = ln2_over_t_half * available_mass; 
+
+
+    /* -------------------------------------------- */
+    /* nibbling from nsc (subgrid) mass (new model) */
 
     /* Stellar accretion rate for an (assumed) singular isothermal density distribution,
      * in number of TDEs per year (solar mass stars):
@@ -796,50 +802,64 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* TDE rate of solar mass stars per year */
     const double M_bh_6 = bp->mass / (1e6 * M_sun_internal);
     const double tde_rate_per_yr = 7.1e-4 * pow(M_bh_6, -0.28);
+    const double tde_rate_internal = tde_rate_per_yr / yr_internal;
 
     /* Convert to mass lost per timestep in internal units */
-    const double star_mass_loss_rate = tde_rate_per_yr / yr_internal * M_sun_internal;
+    const double nsc_mass_loss_rate = tde_rate_internal * M_sun_internal * props->tde_accretion_efficiency_f;
 
     /* Mass changes this timestep. */
-    const double star_mass_loss = star_mass_loss_rate * dt;
-    const double new_star_mass = (double)nearest_sp->mass - star_mass_loss;
+    const double nsc_mass_loss = nsc_mass_loss_rate * dt;
+    const double new_nsc_mass = (double)bp->nsc_mass - nsc_mass_loss;
 
-    /* Check minimum mass before modifying any particles. */
-    if (new_star_mass < min_star_mass_for_nibbling) {
+    // /* Check minimum mass before modifying any particles. */
+    // if (new_star_mass < min_star_mass_for_nibbling) {
+    //   warning(
+    //       "TDE nibbling would reduce star particle %lld (mass=%g) below "
+    //       "minimum mass threshold. BH ID=%lld (mass=%g). Skipping.",
+    //       nearest_sp->id, (double)nearest_sp->mass, bp->id, (double)bp->mass);
+    //   continue;
+    // }
+
+    /* Check minimum nsc mass before modifying */
+    if (new_nsc_mass < (0.1 * (double)bp->nsc_mass)) {
       warning(
-          "TDE nibbling would reduce star particle %lld (mass=%g) below "
-          "minimum mass threshold. BH ID=%lld (mass=%g). Skipping.",
-          nearest_sp->id, (double)nearest_sp->mass, bp->id, (double)bp->mass);
+        "TDE nibbling would reduce nuclear star cluster (mass=%g) below "
+        "minimum mass threshold. BH ID=%lld (mass=%g). Skipping.",
+        (double)bp->nsc_mass, bp->id, (double)bp->mass);
       continue;
-    }
+      }
 
     /* Update BH subgrid mass and energy reservoir. */
     const double bh_mass_gain =
-        black_holes_do_tde_accretion(bp, props, constants, star_mass_loss_rate, dt);
+        black_holes_do_tde_accretion(bp, props, constants, nsc_mass_loss_rate, dt);
 
     message(
-        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
+        "BH (ID %lld) z=%.4f  tde_rate_yr=%g (yr^-1)  tde_rate=%g (internal)"
         "bh_mass_gain=%g (internal)",
-        bp->id, cosmo->z, (double)bp->rho_stellar, bh_mass_gain);
+        bp->id, cosmo->z, tde_rate_per_yr, tde_rate_internal, bh_mass_gain);
 
     /* Lock the space to prevent concurrent writes from other BH cells
      * being processed simultaneously on different threads. */
-    lock_lock(&s->lock);
-    nearest_sp->mass = (float)new_star_mass;
-    nearest_sp->gpart->mass = (float)new_star_mass;
-    nearest_sp->mass_lost_to_tde += (float)star_mass_loss;
-    if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
+    // lock_lock(&s->lock);
+    // nearest_sp->mass = (float)new_star_mass;
+    // nearest_sp->gpart->mass = (float)new_star_mass;
+    // nearest_sp->mass_lost_to_tde += (float)star_mass_loss;
+    // if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
+
+    /* Update NSC mass */
+    const double nsc_mass_orig = (double)bp->nsc_mass;
+    bp->nsc_mass = new_nsc_mass;
 
     /* Update BH velocity to conserve momentum of the accreted mass,
      * mirroring the gas nibbling momentum update. */
     const double bp_mass_orig = (double)bp->mass;
     const double new_bp_mass = bp_mass_orig + bh_mass_gain;
-    bp->v[0] = (float)((bp_mass_orig * bp->v[0] +
-                        bh_mass_gain * nearest_sp->v[0]) / new_bp_mass);
-    bp->v[1] = (float)((bp_mass_orig * bp->v[1] +
-                        bh_mass_gain * nearest_sp->v[1]) / new_bp_mass);
-    bp->v[2] = (float)((bp_mass_orig * bp->v[2] +
-                        bh_mass_gain * nearest_sp->v[2]) / new_bp_mass);
+    // bp->v[0] = (float)((bp_mass_orig * bp->v[0] +
+    //                     bh_mass_gain * nearest_sp->v[0]) / new_bp_mass);
+    // bp->v[1] = (float)((bp_mass_orig * bp->v[1] +
+    //                     bh_mass_gain * nearest_sp->v[1]) / new_bp_mass);
+    // bp->v[2] = (float)((bp_mass_orig * bp->v[2] +
+    //                     bh_mass_gain * nearest_sp->v[2]) / new_bp_mass);
 
     /* Add the net accreted mass (excluding radiation) to the BH dynamical
      * mass, consistent with how gas nibbling updates bp->mass. */
