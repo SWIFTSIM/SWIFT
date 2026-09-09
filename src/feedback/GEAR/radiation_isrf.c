@@ -130,12 +130,6 @@ void radiation_first_init_part(struct part *restrict p) {
     p->feedback_data.dissipation_F_LW[k] = 0.f;
   }
 #endif
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-  p->feedback_data.ngb_sum_div_specific_flux_FUV = 0.f;
-  p->feedback_data.ngb_sum_div_specific_flux_LW = 0.f;
-  p->feedback_data.ngb_sum_abs_div_specific_flux_FUV = 0.f;
-  p->feedback_data.ngb_sum_abs_div_specific_flux_LW = 0.f;
-#endif
   radiation_init_part_propagation(p);
 }
 
@@ -189,13 +183,6 @@ void radiation_snapshot_part_propagation(struct part *p,
     p->feedback_data.dissipation_F_LW[k] = 0.f;
   }
 #endif
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-  p->feedback_data.ngb_sum_div_specific_flux_FUV = 0.f;
-  p->feedback_data.ngb_sum_div_specific_flux_LW = 0.f;
-  p->feedback_data.ngb_sum_abs_div_specific_flux_FUV = 0.f;
-  p->feedback_data.ngb_sum_abs_div_specific_flux_LW = 0.f;
-#endif
-
   /* Stable comoving density snapshot, cached unconditionally (not gated on
    * LW_FUV_propagation below): the gradient loop's `grad(u)` accumulation
    * (radiation_propagation_iact.h) always runs, even in injection-only
@@ -411,48 +398,6 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief One band's Stage-4 anticipatory noise contribution to the Stage-1
- * dissipation coefficient's target (design-lw-fuv-design-b-dissipation.md
- * Section 5.2), Rosswog 2015a Eq. 83/87-89 transcribed from `div v` to
- * `div F`.
- *
- * Stage 1's own trigger is reactive: it can only respond once the field has
- * already gone negative, so the cooling module can read a negative value in
- * between. This indicator instead measures whether the particle's own
- * `div(F)` disagrees with its neighbours', which is the estimator
- * inconsistency that precedes the sign change.
- *
- * `N = (1 - sgn(div_F_i) * S1/S2) / 2` is 0 when the neighbourhood carries a
- * single sign and the particle agrees with it (any static profile, so the
- * term is silent exactly where Section 2 requires), 0.5 when the
- * neighbours' contributions cancel completely, and 1 when they all oppose
- * the particle. The design sketch's own `N = |S1|/S2` is the reciprocal of
- * what is needed: it equals 1 on a coherent neighbourhood, so it would put
- * the coefficient at its ceiling on precisely the configuration that must
- * carry none, and it falls back to 0 under complete cancellation, i.e. at
- * maximum noise.
- *
- * @param div_F This band's own finalized `div(F)`.
- * @param ngb_sum This band's `sum_j W_ij div_F_j` accumulator.
- * @param ngb_sum_abs This band's `sum_j W_ij |div_F_j|` accumulator.
- * @param alpha_max #feedback_props.LW_FUV_dissipation_alpha_max.
- * @return This band's noise-triggered coefficient target.
- */
-__attribute__((always_inline)) INLINE static float
-radiation_dissipation_noise_alpha_band(float div_F, float ngb_sum,
-                                       float ngb_sum_abs, float alpha_max) {
-
-  if (ngb_sum_abs <= 0.f) return 0.f;
-
-  const float sign = (div_F < 0.f) ? -1.f : 1.f;
-  const float N_raw = 0.5f * (1.f - sign * ngb_sum / ngb_sum_abs);
-  const float N_capped = min(N_raw, 1.f);
-  const float N = max(N_capped, 0.f);
-
-  return alpha_max * N / (N + RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE);
-}
-
-/**
  * @brief One band's Stage-3 anisotropic flux-dissipation coefficient update
  * (design-lw-fuv-design-b-dissipation.md Section 5.2): Chan et al. 2021
  * Eq. 36-37, raised instantly on a steepening `div(F)` in compression and
@@ -516,16 +461,9 @@ radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
  * complete, fully-relaxed value, recovering a one-step trigger lag instead
  * of two.
  *
- * With Stage 4 enabled the target is the larger of the negativity trigger's
- * and the anticipatory noise trigger's
- * (#radiation_dissipation_noise_alpha_band), Rosswog 2015a's
- * `max(K_shock, K_noise)` pattern.
- *
  * @param u_V This band's live volumetric field, rho_prev*u.
  * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
  * accumulator (radiation_propagation_iact.h).
- * @param alpha_noise This band's Stage-4 noise-triggered target, or 0 when
- * Stage 4 is not built.
  * @param alpha_prev This band's #dissipation_alpha_FUV/LW from the
  * previous step.
  * @param alpha_max #feedback_props.LW_FUV_dissipation_alpha_max.
@@ -538,16 +476,15 @@ radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
  */
 __attribute__((always_inline)) INLINE static float
 radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
-                                        float alpha_noise, float alpha_prev,
-                                        float alpha_max, float eps_1,
-                                        float c_hyp, float kappa, float dt,
-                                        float h_phys) {
+                                        float alpha_prev, float alpha_max,
+                                        float eps_1, float c_hyp, float kappa,
+                                        float dt, float h_phys) {
 
   /* max(ngb_mean_abs_u_V, -u_V) >= -u_V > 0 in this branch, so the
    * division below is always well-defined. */
   const float eps = (u_V < 0.f) ? -u_V / max(ngb_mean_abs_u_V, -u_V) : 0.f;
   const float x = min(eps / eps_1, 1.f);
-  const float alpha_aim = max(alpha_max * x * x * (3.f - 2.f * x), alpha_noise);
+  const float alpha_aim = alpha_max * x * x * (3.f - 2.f * x);
 
   if (alpha_aim >= alpha_prev) return alpha_aim;
 
@@ -668,34 +605,12 @@ void radiation_end_gradient_propagation(struct part *p,
     const float eps_1 =
         e->feedback_props->LW_FUV_dissipation_negativity_threshold;
 
-    /* Stage 4's accumulators only exist when the stage is built. Feeding the
-     * indicator zeroed sums instead makes it return exactly 0 through its
-     * own empty-neighbourhood guard, so the call stays compiled either
-     * way. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-    const float ngb_sum_FUV = fd->ngb_sum_div_specific_flux_FUV;
-    const float ngb_sum_LW = fd->ngb_sum_div_specific_flux_LW;
-    const float ngb_sum_abs_FUV = fd->ngb_sum_abs_div_specific_flux_FUV;
-    const float ngb_sum_abs_LW = fd->ngb_sum_abs_div_specific_flux_LW;
-#else
-    const float ngb_sum_FUV = 0.f;
-    const float ngb_sum_LW = 0.f;
-    const float ngb_sum_abs_FUV = 0.f;
-    const float ngb_sum_abs_LW = 0.f;
-#endif
-    const float alpha_noise_FUV = radiation_dissipation_noise_alpha_band(
-        fd->div_specific_flux_FUV, ngb_sum_FUV, ngb_sum_abs_FUV, alpha_max);
-    const float alpha_noise_LW = radiation_dissipation_noise_alpha_band(
-        fd->div_specific_flux_LW, ngb_sum_LW, ngb_sum_abs_LW, alpha_max);
-
     fd->dissipation_alpha_FUV = radiation_update_dissipation_alpha_band(
-        u_V_FUV, fd->ngb_mean_abs_u_V_FUV, alpha_noise_FUV,
-        fd->dissipation_alpha_FUV, alpha_max, eps_1, c_hyp, fd->kappa_FUV, dt,
-        h_phys);
+        u_V_FUV, fd->ngb_mean_abs_u_V_FUV, fd->dissipation_alpha_FUV, alpha_max,
+        eps_1, c_hyp, fd->kappa_FUV, dt, h_phys);
     fd->dissipation_alpha_LW = radiation_update_dissipation_alpha_band(
-        u_V_LW, fd->ngb_mean_abs_u_V_LW, alpha_noise_LW,
-        fd->dissipation_alpha_LW, alpha_max, eps_1, c_hyp, fd->kappa_LW, dt,
-        h_phys);
+        u_V_LW, fd->ngb_mean_abs_u_V_LW, fd->dissipation_alpha_LW, alpha_max,
+        eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
   }
 
   /* Stage 2 reads this pair's #grad_u_FUV_prev/LW_prev in the DENSITY loop,

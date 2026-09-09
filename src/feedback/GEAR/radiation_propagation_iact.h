@@ -346,41 +346,6 @@ radiation_flux_dissipation_accumulate_band(
 }
 
 /**
- * @brief Band-specific pairwise contribution to the Stage-4 anticipatory
- * noise indicator's two kernel-weighted sums over the neighbours' `div(F)`
- * (design-lw-fuv-design-b-dissipation.md Section 5.2), Rosswog 2015a
- * Eq. 87-89 transcribed from `div v` to `div F`.
- *
- * Accumulated in the gradient loop, where `div(F)` is already final. The
- * common `sum_j W_ij` normalisation cancels out of the indicator's own
- * ratio (radiation_isrf.c's #radiation_dissipation_noise_alpha_band), so it
- * is not accumulated.
- *
- * @param wi Particle i's own kernel value, W(r/h_i)*h_i^-dim.
- * @param wj Particle j's own kernel value, W(r/h_j)*h_j^-dim.
- * @param psi_i Particle i's finalized `div(F)` (this band).
- * @param psi_j Particle j's finalized `div(F)` (this band).
- * @param ngb_sum_i (return, accumulated) Particle i's `sum_j W_ij div_F_j`.
- * @param ngb_sum_j (return, accumulated) Particle j's `sum_i W_ji div_F_i`.
- * @param ngb_sum_abs_i (return, accumulated) Particle i's
- * `sum_j W_ij |div_F_j|`.
- * @param ngb_sum_abs_j (return, accumulated) Particle j's
- * `sum_i W_ji |div_F_i|`.
- */
-__attribute__((always_inline)) INLINE static void
-radiation_noise_indicator_accumulate_band(float wi, float wj, float psi_i,
-                                          float psi_j, float *ngb_sum_i,
-                                          float *ngb_sum_j,
-                                          float *ngb_sum_abs_i,
-                                          float *ngb_sum_abs_j) {
-
-  *ngb_sum_i += wi * psi_j;
-  *ngb_sum_j += wj * psi_i;
-  *ngb_sum_abs_i += wi * fabsf(psi_j);
-  *ngb_sum_abs_j += wj * fabsf(psi_i);
-}
-
-/**
  * @brief `div(F)` propagation interaction between two particles
  * (symmetric): both particles' accumulators are updated.
  *
@@ -583,8 +548,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   kernel_deval(r * hj_inv, &wj, &wj_dx);
   const float wi_dr = wi_dx * pow_dimension_plus_one(hi_inv);
   const float wj_dr = wj_dx * pow_dimension_plus_one(hj_inv);
-  wi *= pow_dimension(hi_inv);
-  wj *= pow_dimension(hj_inv);
+  (void)wi;
+  (void)wj;
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   struct feedback_part_data *fdj = &pj->feedback_data;
@@ -600,9 +565,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
                                      rho_j, fdi->u_LW, fdj->u_LW,
                                      fdi->grad_u_LW, fdj->grad_u_LW);
 
-  /* Stages 3 and 4 own per-particle fields that only exist when the stage
-     is built, so their call sites are guarded rather than gated on a
-     runtime flag; the formulas above stay compiled in either state. */
+  /* Stage 3 owns per-particle fields that only exist when the stage is
+     built, so its call sites are guarded rather than gated on a runtime
+     flag; the formulas above stay compiled in either state. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
   radiation_flux_dissipation_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, hi, hj, fdi->c_hyp,
@@ -617,22 +582,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
       fdj->dissipation_alpha_flux_LW, fdi->specific_flux_LW,
       fdj->specific_flux_LW, fdi->div_specific_flux_LW,
       fdj->div_specific_flux_LW, fdi->dissipation_F_LW, fdj->dissipation_F_LW);
-#endif
-
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-  radiation_noise_indicator_accumulate_band(
-      wi, wj, fdi->div_specific_flux_FUV, fdj->div_specific_flux_FUV,
-      &fdi->ngb_sum_div_specific_flux_FUV, &fdj->ngb_sum_div_specific_flux_FUV,
-      &fdi->ngb_sum_abs_div_specific_flux_FUV,
-      &fdj->ngb_sum_abs_div_specific_flux_FUV);
-  radiation_noise_indicator_accumulate_band(
-      wi, wj, fdi->div_specific_flux_LW, fdj->div_specific_flux_LW,
-      &fdi->ngb_sum_div_specific_flux_LW, &fdj->ngb_sum_div_specific_flux_LW,
-      &fdi->ngb_sum_abs_div_specific_flux_LW,
-      &fdj->ngb_sum_abs_div_specific_flux_LW);
-#else
-  (void)wi;
-  (void)wj;
 #endif
 }
 
@@ -666,8 +615,8 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   kernel_deval(r * hj_inv, &wj, &wj_dx);
   const float wi_dr = wi_dx * pow_dimension_plus_one(hi_inv);
   const float wj_dr = wj_dx * pow_dimension_plus_one(hj_inv);
-  wi *= pow_dimension(hi_inv);
-  wj *= pow_dimension(hj_inv);
+  (void)wi;
+  (void)wj;
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   const struct feedback_part_data *fdj = &pj->feedback_data;
@@ -689,8 +638,8 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
                                      rho_j, fdi->u_LW, fdj->u_LW,
                                      fdi->grad_u_LW, unused_grad_u_LW);
 
-  /* See the symmetric variant above for why these two are guarded rather
-     than gated on a runtime flag. */
+  /* See the symmetric variant above for why this is guarded rather than
+     gated on a runtime flag. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
   float unused_dissipation_F_FUV[3] = {0.f, 0.f, 0.f};
   float unused_dissipation_F_LW[3] = {0.f, 0.f, 0.f};
@@ -709,25 +658,6 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
       fdj->specific_flux_LW, fdi->div_specific_flux_LW,
       fdj->div_specific_flux_LW, fdi->dissipation_F_LW,
       unused_dissipation_F_LW);
-#endif
-
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-  float unused_ngb_sum_FUV = 0.f;
-  float unused_ngb_sum_LW = 0.f;
-  float unused_ngb_sum_abs_FUV = 0.f;
-  float unused_ngb_sum_abs_LW = 0.f;
-
-  radiation_noise_indicator_accumulate_band(
-      wi, wj, fdi->div_specific_flux_FUV, fdj->div_specific_flux_FUV,
-      &fdi->ngb_sum_div_specific_flux_FUV, &unused_ngb_sum_FUV,
-      &fdi->ngb_sum_abs_div_specific_flux_FUV, &unused_ngb_sum_abs_FUV);
-  radiation_noise_indicator_accumulate_band(
-      wi, wj, fdi->div_specific_flux_LW, fdj->div_specific_flux_LW,
-      &fdi->ngb_sum_div_specific_flux_LW, &unused_ngb_sum_LW,
-      &fdi->ngb_sum_abs_div_specific_flux_LW, &unused_ngb_sum_abs_LW);
-#else
-  (void)wi;
-  (void)wj;
 #endif
 }
 

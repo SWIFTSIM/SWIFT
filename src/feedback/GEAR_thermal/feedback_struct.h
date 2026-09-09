@@ -217,21 +217,6 @@ struct feedback_part_data {
   float div_specific_flux_LW_prev;
 #endif
 
-  /*! Kernel-weighted sums of the neighbours' `div(F)` and of its magnitude,
-      gradient loop (radiation_propagation_iact.h), which is where `div(F)`
-      is already final. Their ratio is the Stage-4 anticipatory noise
-      indicator (design-lw-fuv-design-b-dissipation.md Section 5.2); the
-      kernel normalisation cancels out of that ratio, so it is not
-      accumulated separately. Scratch: zeroed once per step by
-      radiation_snapshot_part_propagation. Guarded: a build without Stage 4
-      pays no memory for them. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
-  float ngb_sum_div_specific_flux_FUV;
-  float ngb_sum_div_specific_flux_LW;
-  float ngb_sum_abs_div_specific_flux_FUV;
-  float ngb_sum_abs_div_specific_flux_LW;
-#endif
-
   /*! Comoving density snapshot, cached once per step by
       radiation_snapshot_part_propagation at the same call site as
       #u_FUV_prev (before this step's density accumulators are reset), so it

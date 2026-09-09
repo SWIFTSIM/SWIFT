@@ -27,8 +27,10 @@
  *
  * Stage 1 (the triggered scalar conductivity) is unconditional and is
  * configured by the GEARFeedback:LW_FUV_dissipation_* runtime parameters.
- * Stages 2-4 are compile-time options, off by default: uncomment one or
- * more of the three #defines below to build with them.
+ * Stages 2-3 are compile-time options, off by default: uncomment one or
+ * both of the two #defines below to build with them. A Stage 4
+ * (anticipatory noise trigger) was implemented and removed 2026-09-09: see
+ * design-lw-fuv-design-b-dissipation.md Section 5.2 for why.
  *
  * Each stage's formulas are compiled in both states, following the MAGMA2
  * precedent (Section 5.1 item 2): the macro selects a `const int` that a
@@ -44,9 +46,9 @@
 /*! Stage 2: slope-limited linear reconstruction of the Stage-1 jump to the
     pair midpoint, in MAGMA2's compiled van Leer form (Rosswog 2026
     Eq. 149-150, Rosswog 2020b Eq. 21-23, Chan et al. 2021 Eq. 31). Keeps the
-    dissipation small on a resolved gradient, so it earns its place together
-    with a trigger that fires on fronts (Stage 4) rather than on its own.
-    Adds 24 bytes per gas particle. */
+    dissipation small on a resolved gradient, so it complements Stage 1's own
+    negativity trigger rather than replacing it. Adds 24 bytes per gas
+    particle. */
 /* #define RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION */
 
 /*! Stage 3: anisotropic artificial dissipation of the flux moment along
@@ -57,16 +59,6 @@
     particle. */
 /* #define RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX */
 
-/*! Stage 4: anticipatory noise trigger blended into the Stage-1 coefficient,
-    `alpha_aim = max(alpha_negativity, alpha_noise)` (Rosswog 2015a Eq. 83,
-    Eq. 87-89 transcribed from `div v` to `div F`). Stage 1's own trigger is
-    reactive: it can only raise the coefficient once the field has already
-    gone negative, which leaves a window in which the cooling module reads a
-    negative value. This one fires on the estimator inconsistency between a
-    particle and its neighbours, before the sign change happens. Adds 16
-    bytes per gas particle. */
-/* #define RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER */
-
 /*! Stage 2: separation, in units of the pair's larger smoothing length,
     above which the van Leer limiter is no longer suppressed by its Gaussian
     factor. MAGMA2's own `const_viscosity_eta_crit` value; the Gaussian's
@@ -76,20 +68,5 @@
 /*! Stage 3: amplitude `A` of the `d(div F)/dt` flux switch, Chan et al. 2021
     Eq. 36, as shipped in src/rt/SPHM1RT/rt.h. */
 #define RADIATION_LW_FUV_DISSIPATION_FLUX_SWITCH_AMPLITUDE 200.f
-
-/*! Stage 4: reference value the noise indicator `N` is compared against in
-    `alpha_noise = alpha_max*N/(N + this)`. NO VALUE OF THIS CONSTANT MAKES
-    Stage 4 SAFE TO ENABLE, at any resolution: `div F` crosses zero once
-    inside every star's own injection kernel in the exact steady state
-    (`div F = S - u/tau`), where `N` reaches 0.6-0.8 deterministically, not
-    from estimator noise, at every Tier-1 corner tested. Since `N in [0, 1]`
-    always, this constant's entire achievable range is `alpha_noise(N=1) /
-    alpha_noise(N=0.5) < 2`, far short of separating that value from the
-    steady-state tolerance the always-on disqualification (Section 2)
-    requires (a factor of order 70). Do not enable this stage in any run;
-    the compile-time switch exists so its formulas stay compiled and
-    reviewable, not because tuning this constant is expected to make it
-    usable. */
-#define RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE 1.0f
 
 #endif /* SWIFT_RADIATION_DISSIPATION_STAGES_GEAR_H */
