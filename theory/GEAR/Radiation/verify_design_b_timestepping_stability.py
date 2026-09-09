@@ -405,33 +405,46 @@ print("=" * 78)
 # Continuum prediction (either the P1 system or its diffusion limit): with a
 # source moving at v through static gas, integrating the first moment of the
 # u equation in the source frame gives M1 = -v tau M0 exactly, and M0 = S tau.
+# The staggered scheme's own steady balance, with the deposit made at the
+# source position of step n and applied to u_{n+1}, is
+#   M1 = -v tau M0 * a/(1-exp(-a)) - tau sum(x div F),   a = dt/tau,
+# and sum(x div F) vanishes on the uniform lattice, so the discrete lag is
+# v tau a/(1-exp(-a)) exactly, at any v/c_hyp; the factor is 1 + a/2 + O(a^2).
 n, dx, h, dt = 1024, 1.0, 2.0, 1.0
 A = chain_operator(n, h, dx)
-lam = 8.0 * dx
-c_ = C_CFL * h / dt
-tau_ = lam / c_
-a_ = dt / tau_
-for v in (0.05, 0.1):
-    u, F = np.zeros(n), np.zeros(n)
-    xs = 0.0
-    lags = []
-    for it in range(int(60 * tau_)):
-        S = np.zeros(n)
-        # kernel-free linear deposit between the two bracketing particles
-        i0 = int(np.floor(xs / dx))
-        f = xs / dx - i0
-        S[i0 % n] += (1 - f) / dx
-        S[(i0 + 1) % n] += f / dx
-        u, F = step_S2(u, F, A, dt, c_, a_, S)
-        xs += v * dt
-        if it > 40 * tau_:
-            # centroid relative to the source, on the periodic chain
-            rel = ((np.arange(n) * dx - xs + n * dx / 2) % (n * dx)) - n * dx / 2
-            lags.append(np.sum(rel * u) / np.sum(u))
-    lag = np.mean(lags)
-    print(f"  v = {v} dx/dt (v/c_hyp = {v / c_:.2f}): centroid - x_source = {lag:+.3f} dx,"
-          f" predicted -v tau = {-v * tau_:+.3f} dx; M0/(S tau) = {np.sum(u) * dx / tau_:.4f}")
-    assert abs(lag + v * tau_) < 0.1 * v * tau_ + 0.3 * dx
+for lam_dx in (8.0, 2.0):
+    lam = lam_dx * dx
+    c_ = C_CFL * h / dt
+    tau_ = lam / c_
+    a_ = dt / tau_
+    disc = a_ / (1.0 - np.exp(-a_))
+    for v_c in (0.1, 0.5, 1.0):
+        v = v_c * c_
+        u, F = np.zeros(n), np.zeros(n)
+        xs = 0.0
+        lags = []
+        for it in range(int(60 * tau_)):
+            S = np.zeros(n)
+            # kernel-free linear deposit between the two bracketing particles
+            i0 = int(np.floor(xs / dx))
+            f = xs / dx - i0
+            S[i0 % n] += (1 - f) / dx
+            S[(i0 + 1) % n] += f / dx
+            u, F = step_S2(u, F, A, dt, c_, a_, S)
+            xs += v * dt
+            if it > 40 * tau_:
+                # centroid relative to the source, on the periodic chain
+                rel = ((np.arange(n) * dx - xs + n * dx / 2) % (n * dx)) - n * dx / 2
+                lags.append(np.sum(rel * u) / np.sum(u))
+        lag = np.mean(lags)
+        print(
+            f"  lambda = {lam_dx:.0f} dx, a = {a_:.3f}, v/c_hyp = {v_c:.1f}:"
+            f" centroid - x_source = {lag:+.4f} dx, continuum -v tau = {-v * tau_:+.4f} dx,"
+            f" discrete -v tau a/(1-e^-a) = {-v * tau_ * disc:+.4f} dx;"
+            f" M0/(S tau) = {np.sum(u) * dx / tau_:.4f}"
+        )
+        assert abs(lag + v * tau_ * disc) < 1e-3 * v * tau_
+print("  (the discrete factor a/(1-e^-a) is exact, not an error bar)")
 print()
 
 # ---------------------------------------------------------------------------
