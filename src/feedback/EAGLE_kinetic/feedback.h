@@ -60,6 +60,18 @@ __attribute__((always_inline)) INLINE static void feedback_end_density(
     struct part *p, struct xpart *xp, const struct engine *e) {}
 
 /**
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours. Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                const struct engine *e) {}
+
+/**
  * @brief Finishes the #part gradient calculation. Nothing to do here:
  * this feedback model does not track a propagated radiation flux.
  *

@@ -34,6 +34,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
 void feedback_end_density(struct part *p, struct xpart *xp,
                           const struct engine *e);
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e);
 void feedback_end_gradient(struct part *p, const struct engine *e);
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e);

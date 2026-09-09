@@ -33,6 +33,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "feedback_properties.h"
+#include "minmax.h"
 #include "radiation.h"
 #include "random.h"
 #include "timestep_sync_part.h"
@@ -241,13 +242,14 @@ radiation_iact_nonsym_feedback_apply(
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /* Local Lyman-Werner/FUV injection: `+=`, not `=`, since multiple
-     simultaneously-illuminating stars must superpose on the same particle.
-     u_inject_FUV/LW is an energy, so dividing by mj converts it to the
-     specific energy u_FUV/u_LW actually stores. Zero unless
-     GEARFeedback:with_photoelectric_heating is on (L_FUV/L_LW are then
-     computed by stellar_evolution.c; 0 otherwise). Dust extinction is
-     applied receiver-side, using pj's own local column density, rather
+  /* Local Lyman-Werner/FUV injection: always additive, since multiple
+     simultaneously-illuminating stars must superpose on the same particle
+     (a dose reservoir with propagation on, an instantaneous field with it
+     off). u_inject_FUV/LW is an energy, so dividing by mj converts it to
+     the specific energy u_FUV/u_LW (or the dose reservoir) actually stores.
+     Zero unless GEARFeedback:with_photoelectric_heating is on (L_FUV/L_LW
+     are then computed by stellar_evolution.c; 0 otherwise). Dust extinction
+     is applied receiver-side, using pj's own local column density, rather
      than at the source (see radiation_get_part_LW_FUV_extinction_factors
      for the extinction formula itself). */
   if (si->feedback_data.radiation.L_FUV != 0.0 ||
@@ -258,51 +260,43 @@ radiation_iact_nonsym_feedback_apply(
     radiation_get_part_LW_FUV_extinction_factors(
         us, cosmo, pj, Z_j, cooling, &extinction_FUV, &extinction_LW);
 
-    double u_inject_FUV = (double)Delta_t * weight *
-                          si->feedback_data.radiation.L_FUV *
-                          (double)extinction_FUV;
-    double u_inject_LW = (double)Delta_t * weight *
-                         si->feedback_data.radiation.L_LW *
-                         (double)extinction_LW;
+    const double u_inject_FUV = (double)Delta_t * weight *
+                                si->feedback_data.radiation.L_FUV *
+                                (double)extinction_FUV;
+    const double u_inject_LW = (double)Delta_t * weight *
+                               si->feedback_data.radiation.L_LW *
+                               (double)extinction_LW;
 
-    /* Source rescaling, folded into the exact relaxation integrator:
-       S_used = S_true*(3*c_hyp/c),
-       and Delta_t*(this factor) becomes tau*(1-exp(-Delta_t/tau)) =
-       Delta_t*phi(Delta_t/tau) once the exponential fold-in is applied,
-       using the RECEIVING particle's own c_hyp/kappa (cached this step by
-       radiation_snapshot_part_propagation) and the STAR's own step
-       Delta_t. Skipped when propagation is off: c_hyp/kappa are not
-       populated in that mode, and injection-only deposits the raw,
-       unrescaled dose exactly as Design A always did. */
     if (fb_props->LW_FUV_propagation) {
-      const float c_hyp_j = pj->feedback_data.c_hyp;
-      const double rescale =
-          3.0 * (double)c_hyp_j / (double)phys_const->const_speed_light_c;
-      const float a_inject_FUV =
-          Delta_t * pj->feedback_data.kappa_FUV * c_hyp_j;
-      const float a_inject_LW = Delta_t * pj->feedback_data.kappa_LW * c_hyp_j;
-      u_inject_FUV *=
-          rescale * (double)radiation_relaxation_phi_factor(a_inject_FUV);
-      u_inject_LW *=
-          rescale * (double)radiation_relaxation_phi_factor(a_inject_LW);
-    }
-
-    /* An instantaneous field strength, not an accumulated dose: reset to
-       0 on the first touch this step (by any star), so a later read sees
-       this step's illumination rather than a total across every step
-       since the last cooling call. A later touch this same step (a
-       second illuminating star) sums into what the first just wrote. With
-       propagation on, feedback_end_density already stamped ti_current
-       this step, so this branch is skipped and injection adds on top of
-       the freshly-propagated background field instead of resetting it. */
-    if (pj->feedback_data.LW_FUV_last_touch_ti != ti_current) {
-      pj->feedback_data.u_FUV = 0.f;
-      pj->feedback_data.u_LW = 0.f;
+      /* Dose-reservoir form (design-lw-fuv-design-b-dissipation.md Section
+         4.6.5): pure accumulation of the elapsed star step's own
+         (unrescaled) deposit, no reset, no first-touch logic, so any number
+         of stars on any time bins just add without losing or
+         double-counting emission. The rescale/phi fold-in that used to
+         happen here now happens once, at the receiving particle's own
+         cadence, in radiation_end_density_propagation. */
+      pj->feedback_data.u_FUV_dose_reservoir +=
+          (float)(u_inject_FUV / (double)mj);
+      pj->feedback_data.u_LW_dose_reservoir +=
+          (float)(u_inject_LW / (double)mj);
+      pj->feedback_data.LW_FUV_reservoir_end_ti =
+          max(pj->feedback_data.LW_FUV_reservoir_end_ti, ti_current + ti_step);
       pj->feedback_data.LW_FUV_last_touch_ti = ti_current;
-    }
+    } else {
+      /* An instantaneous field strength, not an accumulated dose: reset to
+         0 on the first touch this step (by any star), so a later read sees
+         this step's illumination rather than a total across every step
+         since the last cooling call. A later touch this same step (a
+         second illuminating star) sums into what the first just wrote. */
+      if (pj->feedback_data.LW_FUV_last_touch_ti != ti_current) {
+        pj->feedback_data.u_FUV = 0.f;
+        pj->feedback_data.u_LW = 0.f;
+        pj->feedback_data.LW_FUV_last_touch_ti = ti_current;
+      }
 
-    pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
-    pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
+      pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
+      pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
+    }
 
     /* Renew the illumination window on every touch, first or not -- mirrors
        feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII

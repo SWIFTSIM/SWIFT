@@ -178,17 +178,22 @@ struct feedback_part_data {
       ghost. */
   float dt_prev;
 
-  /*! Simulation step (#engine.ti_current) #u_FUV/#u_LW were last written
-      at. radiation_iact_nonsym_feedback_apply compares this against the
-      current step: a match means some star already wrote this step, so a
-      further touch (a second illuminating star) sums into the existing
-      value; a mismatch means this is the first touch this step, so
-      #u_FUV/#u_LW are zeroed before summing. This is what makes the field
-      an instantaneous strength rather than an ever-growing total, while
-      still summing multiple simultaneously-illuminating stars correctly
-      within one step. feedback_first_init_part sets this to -1 (never a
-      valid step) so the very first touch of a particle's life also
-      resets rather than summing onto uninitialized memory. */
+  /*! With LW_FUV_propagation off: simulation step (#engine.ti_current)
+      #u_FUV/#u_LW were last written at. radiation_iact_nonsym_feedback_apply
+      compares this against the current step: a match means some star
+      already wrote this step, so a further touch (a second illuminating
+      star) sums into the existing value; a mismatch means this is the first
+      touch this step, so #u_FUV/#u_LW are zeroed before summing. This is
+      what makes the field an instantaneous strength rather than an
+      ever-growing total, while still summing multiple
+      simultaneously-illuminating stars correctly within one step. With
+      LW_FUV_propagation on, this is only bookkeeping (the last step any star
+      touched this particle): the dose-reservoir form
+      (design-lw-fuv-design-b-dissipation.md Section 4.6.5) never resets
+      #u_FUV/#u_LW, so no consumer relies on it there. feedback_first_init_part
+      sets this to -1 (never a valid step) so the very first touch of a
+      particle's life also resets rather than summing onto uninitialized
+      memory. */
   integertime_t LW_FUV_last_touch_ti;
 
   /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
@@ -224,6 +229,39 @@ struct feedback_part_data {
       never-illuminated particle's garbage/zero-initialized state can never
       read as "still illuminated". */
   integertime_t LW_FUV_illumination_end_ti;
+
+  /*! Mass-specific FUV/LW emission dose still owed to this particle by
+      every star that has touched it (#radiation_iact_nonsym_feedback_apply),
+      not yet injected into #u_FUV/#u_LW. Persistent, dumped with #part like
+      #specific_flux_FUV; zero at first init, no IC field (an IC has no
+      notion of "dose in flight"). Drained once per step, for active
+      particles only, by #radiation_snapshot_part_propagation into
+      #u_FUV_source_rate/#u_LW_source_rate; every star's touch only ever
+      adds to it, so any number of stars on any time bins superpose without
+      losing or double-counting emission (design-lw-fuv-design-b-dissipation.md
+      Section 4.6.5). */
+  float u_FUV_dose_reservoir;
+  float u_LW_dose_reservoir;
+
+  /*! This step's mass-specific FUV/LW source rate, drawn down from
+      #u_FUV_dose_reservoir/#u_LW_dose_reservoir by
+      #radiation_snapshot_part_propagation and consumed by
+      #radiation_end_density_propagation's exact-relaxation update. Scratch:
+      recomputed every step for active particles, not restart-critical (an
+      inactive particle recomputes it correctly the moment it next becomes
+      active), but dumped anyway since it lives in #part alongside the
+      persistent fields above. */
+  float u_FUV_source_rate;
+  float u_LW_source_rate;
+
+  /*! Absolute integer time (#engine.ti_current units) by which every dose
+      currently held in #u_FUV_dose_reservoir/#u_LW_dose_reservoir must have
+      been fully drained. Extended to `ti_current + ti_step_star` on every
+      star touch (never reset), so it always covers the latest-finishing
+      contributing star's own step. feedback_first_init_part sets this to -1,
+      like #LW_FUV_illumination_end_ti, so a never-touched particle's
+      reservoir is never mistaken for one with a live horizon. */
+  integertime_t LW_FUV_reservoir_end_ti;
 };
 
 /**

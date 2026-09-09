@@ -26,6 +26,7 @@
 #include <config.h>
 
 /* Include header */
+#include "active.h"
 #include "chemistry.h"
 #include "cosmology.h"
 #include "dimension.h"
@@ -106,6 +107,11 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.rho_prev = 1.0f;
   p->feedback_data.c_hyp = 0.f;
   p->feedback_data.dt_prev = 0.f;
+  p->feedback_data.u_FUV_dose_reservoir = 0.f;
+  p->feedback_data.u_LW_dose_reservoir = 0.f;
+  p->feedback_data.u_FUV_source_rate = 0.f;
+  p->feedback_data.u_LW_source_rate = 0.f;
+  p->feedback_data.LW_FUV_reservoir_end_ti = -1;
   radiation_init_part_propagation(p);
 }
 
@@ -115,8 +121,10 @@ void radiation_first_init_part(struct part *restrict p) {
  * step's per-band absorption rate, cache a stable comoving-density
  * snapshot the propagation loops need (see
  * #feedback_part_data.rho_prev's own doxygen for why), cache
- * this step's hyperbolic propagation speed and physical timestep, and zero
- * the per-step `grad(u)` accumulators.
+ * this step's hyperbolic propagation speed and physical timestep, zero
+ * the per-step `grad(u)` accumulators, and, for active particles only, draw
+ * down this step's #u_FUV_source_rate/#u_LW_source_rate from
+ * #u_FUV_dose_reservoir/#u_LW_dose_reservoir.
  *
  * Must run here, not in #radiation_init_part_propagation: this call site
  * (cell_drift.c) precedes chemistry_init_part's per-step reset of
@@ -173,11 +181,15 @@ void radiation_snapshot_part_propagation(struct part *p,
    * not-yet-assigned time_bin (only possible before this particle's very
    * first real step) cannot divide by an exact zero. */
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_step = get_integer_timestep(p->time_bin);
+  /* One-step lookback (`ti_current - ti_step`, not `ti_current` itself) is
+   * load-bearing for the dose-reservoir drawdown below: it keeps the drain
+   * rate constant across a star step's sub-steps. Using `ti_current` would
+   * over-drain and empty the reservoir one sub-step early. */
+  const integertime_t ti_begin =
+      get_integer_time_begin(e->ti_current, p->time_bin);
   float dt_phys;
   if (with_cosmology) {
-    const integertime_t ti_step = get_integer_timestep(p->time_bin);
-    const integertime_t ti_begin =
-        get_integer_time_begin(e->ti_current, p->time_bin);
     dt_phys = (float)cosmology_get_delta_time(e->cosmology, ti_begin,
                                               ti_begin + ti_step);
   } else {
@@ -197,6 +209,35 @@ void radiation_snapshot_part_propagation(struct part *p,
 
   p->feedback_data.c_hyp = c_hyp;
   p->feedback_data.dt_prev = dt_phys;
+
+  /* Dose-reservoir drawdown (design-lw-fuv-design-b-dissipation.md
+   * Section 4.6.5), for active particles only: a cell drifted for an
+   * inactive particle must not draw down a dose it will not integrate this
+   * step. An inactive particle's u_*_source_rate is simply left at last
+   * step's value; it is never read again before this function next runs
+   * for it (as active) and overwrites it. */
+  struct feedback_part_data *fd = &p->feedback_data;
+  if (part_is_active(p, e) &&
+      (fd->u_FUV_dose_reservoir > 0.f || fd->u_LW_dose_reservoir > 0.f)) {
+    double t_rem;
+    if (fd->LW_FUV_reservoir_end_ti <= ti_begin) {
+      t_rem = 0.0;
+    } else if (with_cosmology) {
+      t_rem = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                       fd->LW_FUV_reservoir_end_ti);
+    } else {
+      t_rem = (double)(fd->LW_FUV_reservoir_end_ti - ti_begin) * e->time_base;
+    }
+    const float f =
+        (t_rem <= (double)dt_phys) ? 1.f : (float)((double)dt_phys / t_rem);
+    fd->u_FUV_source_rate = f * fd->u_FUV_dose_reservoir / dt_phys;
+    fd->u_LW_source_rate = f * fd->u_LW_dose_reservoir / dt_phys;
+    fd->u_FUV_dose_reservoir -= f * fd->u_FUV_dose_reservoir;
+    fd->u_LW_dose_reservoir -= f * fd->u_LW_dose_reservoir;
+  } else if (part_is_active(p, e)) {
+    fd->u_FUV_source_rate = 0.f;
+    fd->u_LW_source_rate = 0.f;
+  }
 }
 
 /**
@@ -236,19 +277,22 @@ float radiation_relaxation_phi_factor(float a) {
 
 /**
  * @brief Exact-relaxation update of #u_FUV/#u_LW, from the `div(F)`
- * accumulators
- * radiation_propagation_iact.h filled during the density loop, which runs
- * before star feedback: this always stamps LW_FUV_last_touch_ti, so
- * injection adds on top instead of resetting. Idempotent: always
+ * accumulators radiation_propagation_iact.h filled during the density loop
+ * and this step's own #u_FUV_source_rate/#u_LW_source_rate (drawn down from
+ * the dose reservoir by #radiation_snapshot_part_propagation,
+ * design-lw-fuv-design-b-dissipation.md Section 4.6.5). Idempotent: always
  * recomputed from the stable #u_FUV_prev snapshot and this h-iteration's
  * `div(F)` accumulator, so repeated calls across h-iterations converge to
  * the same answer regardless of how many there are.
  *
- * `u_new = e*u_prev - dt*phi*div_F`, with `e = exp(-a)`,
- * `phi = (1-e)/a`, `a = c_hyp*kappa*dt` (#radiation_relaxation_phi_factor): the
- * exact solution of `du/dt = -u/tau - div(F)` over one step with `div(F)`
- * frozen at this h-iteration's value, `tau = 1/(c_hyp*kappa)`. No-op when
- * propagation is off.
+ * `u_new = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F)`, with
+ * `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*kappa*dt`
+ * (#radiation_relaxation_phi_factor): the exact solution of
+ * `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F)` over one step with
+ * `source_rate` and `div(F)` frozen at this h-iteration's value,
+ * `tau = 1/(c_hyp*kappa)`. The `3*c_hyp/c` rescale is applied exclusively
+ * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ * No-op when propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -260,6 +304,8 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
+  const float rescale =
+      3.0f * c_hyp / (float)e->physical_constants->const_speed_light_c;
 
   const float a_FUV = c_hyp * fd->kappa_FUV * dt;
   const float a_LW = c_hyp * fd->kappa_LW * dt;
@@ -268,10 +314,37 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   const float phi_FUV = radiation_relaxation_phi_factor(a_FUV);
   const float phi_LW = radiation_relaxation_phi_factor(a_LW);
 
-  fd->u_FUV =
-      decay_FUV * fd->u_FUV_prev - dt * phi_FUV * fd->div_specific_flux_FUV;
-  fd->u_LW = decay_LW * fd->u_LW_prev - dt * phi_LW * fd->div_specific_flux_LW;
-  fd->LW_FUV_last_touch_ti = e->ti_current;
+  fd->u_FUV = decay_FUV * fd->u_FUV_prev +
+              dt * phi_FUV *
+                  (rescale * fd->u_FUV_source_rate - fd->div_specific_flux_FUV);
+  fd->u_LW =
+      decay_LW * fd->u_LW_prev +
+      dt * phi_LW * (rescale * fd->u_LW_source_rate - fd->div_specific_flux_LW);
+}
+
+/**
+ * @brief Undo this step's dose-reservoir drawdown for a #part whose density
+ * h-iteration gives up with no neighbours found:
+ * #radiation_end_density_propagation, the only consumer of
+ * #u_FUV_source_rate/#u_LW_source_rate, is never reached in that case
+ * (`runner_ghost.c`'s `has_no_neighbours` give-up path), so the rate drawn down
+ * by #radiation_snapshot_part_propagation would otherwise be discarded rather
+ * than applied. Restores it into #u_FUV_dose_reservoir/#u_LW_dose_reservoir
+ * exactly (the drawn amount is `source_rate*dt_prev`) and zeroes the rates.
+ * No-op when propagation is off.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
+
+  if (!e->feedback_props->LW_FUV_propagation) return;
+
+  struct feedback_part_data *fd = &p->feedback_data;
+  fd->u_FUV_dose_reservoir += fd->u_FUV_source_rate * fd->dt_prev;
+  fd->u_LW_dose_reservoir += fd->u_LW_source_rate * fd->dt_prev;
+  fd->u_FUV_source_rate = 0.f;
+  fd->u_LW_source_rate = 0.f;
 }
 
 /**

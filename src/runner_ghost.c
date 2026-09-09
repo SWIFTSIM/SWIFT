@@ -1449,6 +1449,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
               rt_part_has_no_neighbours(p);
+              feedback_part_has_no_neighbours(p, xp, e);
             }
 
           } else {

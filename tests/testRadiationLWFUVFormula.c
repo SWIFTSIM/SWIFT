@@ -195,6 +195,13 @@ static void check_injection(const struct unit_system *us) {
   struct xpart xpj;
   bzero(&xpj, sizeof(struct xpart));
 
+  /* LW_FUV_propagation off: this test exercises the instantaneous-field
+   * injection path (the formulas below have no rescale/phi factor). A
+   * zero-initialized struct, not NULL: radiation_iact_nonsym_feedback_apply
+   * reads fb_props->LW_FUV_propagation unconditionally. */
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+
   struct spart si;
   bzero(&si, sizeof(struct spart));
   si.time_bin = time_bin;
@@ -202,10 +209,11 @@ static void check_injection(const struct unit_system *us) {
   si.feedback_data.radiation.L_FUV = 1.0e5;
   si.feedback_data.radiation.L_LW = 5.0e4;
 
-  radiation_iact_nonsym_feedback_apply(
-      r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
-      /*fb_props=*/NULL, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
-      /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj,
+                                       &cosmo, /*hydro_props=*/NULL,
+                                       /*fb_props=*/&fb_props, &phys_const, us,
+                                       &cooling, /*ti_current=*/0, time_base,
+                                       /*with_cosmology=*/0);
 
   const double expected_u_FUV_1 = Delta_t * weight *
                                   si.feedback_data.radiation.L_FUV *
@@ -238,10 +246,11 @@ static void check_injection(const struct unit_system *us) {
   si2.feedback_data.radiation.L_FUV = 2.0e5;
   si2.feedback_data.radiation.L_LW = 1.0e5;
 
-  radiation_iact_nonsym_feedback_apply(
-      r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
-      /*fb_props=*/NULL, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
-      /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj,
+                                       &cosmo, /*hydro_props=*/NULL,
+                                       /*fb_props=*/&fb_props, &phys_const, us,
+                                       &cooling, /*ti_current=*/0, time_base,
+                                       /*with_cosmology=*/0);
 
   const double expected_u_FUV_2 = Delta_t * weight *
                                   si2.feedback_data.radiation.L_FUV *
@@ -271,10 +280,11 @@ static void check_injection(const struct unit_system *us) {
   si3.feedback_data.radiation.L_FUV = 4.0e5;
   si3.feedback_data.radiation.L_LW = 3.0e4;
 
-  radiation_iact_nonsym_feedback_apply(
-      r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
-      /*fb_props=*/NULL, &phys_const, us, &cooling, /*ti_current=*/1, time_base,
-      /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj,
+                                       &cosmo, /*hydro_props=*/NULL,
+                                       /*fb_props=*/&fb_props, &phys_const, us,
+                                       &cooling, /*ti_current=*/1, time_base,
+                                       /*with_cosmology=*/0);
 
   const double expected_u_FUV_3 = Delta_t * weight *
                                   si3.feedback_data.radiation.L_FUV *
@@ -293,6 +303,177 @@ static void check_injection(const struct unit_system *us) {
       "u_FUV=%.6e u_LW=%.6e (after new-step reset, third star only)",
       (double)extinction_FUV, (double)extinction_LW,
       (double)pj.feedback_data.u_FUV, (double)pj.feedback_data.u_LW);
+}
+
+/* ---------------------------------------------------------------------
+ * Dose reservoir (design-lw-fuv-design-b-dissipation.md Section 4.6.5):
+ * exact accumulation across several stars on different time bins, and the
+ * `f = delta/(Delta - k*delta)` drawdown schedule that turns the deposited
+ * dose into a constant source rate over the receiving particle's own
+ * sub-steps. Mirrors Part D of verify_design_b_injection_cadence.py. Zero
+ * metallicity throughout: extinction is then exactly 1.0 (check_extinction
+ * above), isolating the reservoir bookkeeping from the extinction formula.
+ * ------------------------------------------------------------------- */
+
+static void check_dose_reservoir(const struct unit_system *us) {
+  struct cosmology cosmo;
+  bzero(&cosmo, sizeof(struct cosmology));
+  cosmo.a = 1.0;
+  cosmo.a2_inv = 1.0;
+  cosmo.a3_inv = 1.0;
+
+  struct phys_const phys_const;
+  bzero(&phys_const, sizeof(struct phys_const));
+
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.LW_FUV_propagation = 1;
+
+  const float hi = 1.0f;
+  const float r = 0.3f;
+  const float dx[3] = {0.3f, 0.0f, 0.0f};
+  const float r2 = r * r;
+  const float rho_star = 3.0f;
+  const float mj = 2.0f;
+  const float rho_gas = 5.0f;
+  const double time_base = 1.0;
+  const timebin_t bin_A = 3; /* get_integer_timestep(3) == 16 */
+  const timebin_t bin_B = 1; /* get_integer_timestep(1) == 4 */
+
+  float hi_inv = 1.0f / hi;
+  float hi_inv_dim = pow_dimension(hi_inv);
+  float xi = r * hi_inv;
+  float wi, wi_dx;
+  kernel_deval(xi, &wi, &wi_dx);
+  wi *= hi_inv_dim;
+  const double weight = (double)mj * (double)wi * (1.0 / (double)rho_star);
+
+  struct cooling_function_data cooling;
+  make_default_cooling(&cooling);
+
+  struct xpart xpj;
+  bzero(&xpj, sizeof(struct xpart));
+
+  /* Two stars, different time bins, same touch step: must both add their
+   * own dose, neither resetting nor overwriting the other's. */
+  struct part pj;
+  bzero(&pj, sizeof(struct part));
+  pj.h = hi;
+  pj.mass = mj;
+  pj.rho = rho_gas;
+  pj.feedback_data.LW_FUV_reservoir_end_ti = -1;
+
+  struct spart siA;
+  bzero(&siA, sizeof(struct spart));
+  siA.time_bin = bin_A;
+  siA.feedback_data.enrichment_weight = rho_star;
+  siA.feedback_data.radiation.L_FUV = 1.0e5;
+  siA.feedback_data.radiation.L_LW = 5.0e4;
+
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &siA, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
+      /*with_cosmology=*/0);
+
+  struct spart siB;
+  bzero(&siB, sizeof(struct spart));
+  siB.time_bin = bin_B;
+  siB.feedback_data.enrichment_weight = rho_star;
+  siB.feedback_data.radiation.L_FUV = 2.0e5;
+  siB.feedback_data.radiation.L_LW = 1.0e5;
+
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &siB, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
+      /*with_cosmology=*/0);
+
+  const double Delta_A = get_timestep(bin_A, time_base);
+  const double Delta_B = get_timestep(bin_B, time_base);
+  const double dose_A_FUV =
+      Delta_A * weight * siA.feedback_data.radiation.L_FUV / (double)mj;
+  const double dose_A_LW =
+      Delta_A * weight * siA.feedback_data.radiation.L_LW / (double)mj;
+  const double dose_B_FUV =
+      Delta_B * weight * siB.feedback_data.radiation.L_FUV / (double)mj;
+  const double dose_B_LW =
+      Delta_B * weight * siB.feedback_data.radiation.L_LW / (double)mj;
+
+  assert_close("dose reservoir: two stars, different bins, FUV",
+               (double)pj.feedback_data.u_FUV_dose_reservoir,
+               dose_A_FUV + dose_B_FUV, 1e-4);
+  assert_close("dose reservoir: two stars, different bins, LW",
+               (double)pj.feedback_data.u_LW_dose_reservoir,
+               dose_A_LW + dose_B_LW, 1e-4);
+
+  const integertime_t ti_step_A = get_integer_timestep(bin_A);
+  const integertime_t ti_step_B = get_integer_timestep(bin_B);
+  const integertime_t expected_horizon =
+      ti_step_A > ti_step_B ? ti_step_A : ti_step_B;
+  if (pj.feedback_data.LW_FUV_reservoir_end_ti != expected_horizon)
+    error(
+        "dose reservoir: horizon=%lld, expected max(ti_step_A, ti_step_B)"
+        "=%lld.",
+        (long long)pj.feedback_data.LW_FUV_reservoir_end_ti,
+        (long long)expected_horizon);
+
+  /* Drawdown schedule: one coarse star's dose, drained by the gas's own
+   * finer time bin over N = Delta_A/Delta_B sub-steps, must give a constant
+   * rate S = D/Delta_A at every sub-step and drain the reservoir to exactly
+   * 0 at the last one. */
+  struct part pk;
+  bzero(&pk, sizeof(struct part));
+  pk.h = hi;
+  pk.mass = mj;
+  pk.rho = rho_gas;
+  pk.feedback_data.LW_FUV_reservoir_end_ti = -1;
+  pk.time_bin = bin_B;
+
+  const integertime_t T = 16; /* a boundary of the coarse star's own bin */
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &siA, &pk, &xpj, &cosmo, /*hydro_props=*/NULL,
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/T, time_base,
+      /*with_cosmology=*/0);
+
+  const double D0_FUV = (double)pk.feedback_data.u_FUV_dose_reservoir;
+  const double D0_LW = (double)pk.feedback_data.u_LW_dose_reservoir;
+  const double dt_gas = get_timestep(bin_B, time_base);
+  const double S_FUV = D0_FUV / Delta_A;
+  const double S_LW = D0_LW / Delta_A;
+  const int N = (int)lround(Delta_A / dt_gas);
+
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
+  e.policy = 0; /* no cosmology: the plain get_timestep branch */
+  e.time_base = time_base;
+  e.max_active_bin = num_time_bins; /* every bin active */
+  e.internal_units = us;
+  e.physical_constants = &phys_const;
+  e.cosmology = &cosmo;
+  e.cooling_func = &cooling;
+  e.feedback_props = &fb_props;
+
+  for (int k = 1; k <= N; k++) {
+    e.ti_current = T + (integertime_t)k * get_integer_timestep(bin_B);
+    radiation_snapshot_part_propagation(&pk, &e);
+
+    assert_close("dose reservoir: constant drain rate, FUV",
+                 (double)pk.feedback_data.u_FUV_source_rate, S_FUV, 1e-5);
+    assert_close("dose reservoir: constant drain rate, LW",
+                 (double)pk.feedback_data.u_LW_source_rate, S_LW, 1e-5);
+  }
+
+  if (fabs((double)pk.feedback_data.u_FUV_dose_reservoir) > 1e-6 * D0_FUV ||
+      fabs((double)pk.feedback_data.u_LW_dose_reservoir) > 1e-6 * D0_LW)
+    error(
+        "dose reservoir: not fully drained at the horizon (FUV=%.6e, "
+        "LW=%.6e).",
+        (double)pk.feedback_data.u_FUV_dose_reservoir,
+        (double)pk.feedback_data.u_LW_dose_reservoir);
+
+  message(
+      "dose reservoir OK: two-star accumulation exact, horizon="
+      "max(bins), constant drain rate over N=%d sub-steps, drained to 0.",
+      N);
 }
 
 /* ---------------------------------------------------------------------
@@ -561,6 +742,8 @@ int main(int argc, char *argv[]) {
                    /*rho=*/5.0f, /*Z=*/0.0f);
 
   check_injection(&us);
+
+  check_dose_reservoir(&us);
 
   check_grackle_coupling(&us);
 

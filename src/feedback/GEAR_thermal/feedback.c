@@ -124,6 +124,20 @@ void feedback_end_density(struct part *p, struct xpart *xp,
 }
 
 /**
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours: LW/FUV dose-reservoir recovery is shared GEAR physics, see
+ * #radiation_part_has_no_neighbours.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e) {
+  radiation_part_has_no_neighbours(p, e);
+}
+
+/**
  * @brief Finishes the #part gradient calculation: LW/FUV propagation's
  * `F` relaxation is shared GEAR physics, see
  * #radiation_end_gradient_propagation.
