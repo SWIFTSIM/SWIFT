@@ -78,13 +78,19 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
-  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  /* Get the cell count that we will be adding extra particles to. When running
+   * a zoom this is only the zoom cells. */
+  const int nr_candidate_cells =
+      s->with_zoom_region ? s->zoom_props->nr_zoom_cells : s->nr_cells;
+
+  /* Allocate a list of the local top-level cells. */
+  int *local_cells = (int *)malloc(sizeof(int) * nr_candidate_cells);
   if (local_cells == NULL)
     error("Failed to allocate list of local top-level cells");
 
   /* List the local cells */
   size_t nr_local_cells = 0;
-  for (int i = 0; i < s->nr_cells; ++i) {
+  for (int i = 0; i < nr_candidate_cells; ++i) {
     if (s->cells_top[i].nodeID == local_nodeID &&
         s->cells_top[i].subtype != cell_subtype_void) {
       local_cells[nr_local_cells] = i;
