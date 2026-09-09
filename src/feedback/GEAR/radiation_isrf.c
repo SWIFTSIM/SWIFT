@@ -114,6 +114,8 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.LW_FUV_reservoir_end_ti = -1;
   p->feedback_data.dissipation_alpha_FUV = 0.f;
   p->feedback_data.dissipation_alpha_LW = 0.f;
+  p->feedback_data.dissipation_u_FUV = 0.f;
+  p->feedback_data.dissipation_u_LW = 0.f;
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   for (int k = 0; k < 3; k++) {
     p->feedback_data.grad_u_FUV_prev[k] = 0.f;
@@ -174,6 +176,12 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.grad_u_LW[0] = 0.f;
   p->feedback_data.grad_u_LW[1] = 0.f;
   p->feedback_data.grad_u_LW[2] = 0.f;
+
+  /* Force-loop accumulator, zeroed here for the same reason as grad_u
+   * above: that loop, like the gradient loop, runs exactly once per step,
+   * with no h-iteration redo. */
+  p->feedback_data.dissipation_u_FUV = 0.f;
+  p->feedback_data.dissipation_u_LW = 0.f;
 
   /* The other gradient-loop accumulators, zeroed here for the same reason as
    * grad_u above: that loop runs exactly once per step. */
@@ -278,14 +286,14 @@ void radiation_snapshot_part_propagation(struct part *p,
 }
 
 /**
- * @brief Zero the `div(F)`, Stage-1 dissipation, and kernel-mean
- * per-h-iteration accumulators. Mirrors chemistry_init_part's own
- * per-iteration reset (called from the same sites: part_init.h and the
- * ghost h-iteration redo path), so it is safe to call once or several
- * times per step. Pure scratch space (no restart I/O); the density
- * snapshot and c_hyp/dt are cached separately, once per step, by
- * #radiation_snapshot_part_propagation, and #dissipation_alpha_FUV/LW are
- * persistent and updated once per step by
+ * @brief Zero the `div(F)` and kernel-mean per-h-iteration accumulators.
+ * Mirrors chemistry_init_part's own per-iteration reset (called from the
+ * same sites: part_init.h and the ghost h-iteration redo path), so it is
+ * safe to call once or several times per step. Pure scratch space (no
+ * restart I/O); the density snapshot and c_hyp/dt are cached separately,
+ * once per step, by #radiation_snapshot_part_propagation,
+ * #dissipation_u_FUV/LW is a force-loop accumulator zeroed there too, and
+ * #dissipation_alpha_FUV/LW are persistent and updated once per step by
  * #radiation_end_gradient_propagation, not here.
  *
  * @param p The #part to reset.
@@ -293,8 +301,6 @@ void radiation_snapshot_part_propagation(struct part *p,
 void radiation_init_part_propagation(struct part *p) {
   p->feedback_data.div_specific_flux_FUV = 0.f;
   p->feedback_data.div_specific_flux_LW = 0.f;
-  p->feedback_data.dissipation_u_FUV = 0.f;
-  p->feedback_data.dissipation_u_LW = 0.f;
   p->feedback_data.ngb_mean_abs_u_V_FUV = 0.f;
   p->feedback_data.ngb_mean_abs_u_V_LW = 0.f;
 }
@@ -329,18 +335,21 @@ float radiation_relaxation_phi_factor(float a) {
  * `div(F)` accumulator, so repeated calls across h-iterations converge to
  * the same answer regardless of how many there are.
  *
- * `u_new = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F +
- * dissipation_u)`, with `e = exp(-a)`, `phi = (1-e)/a`,
- * `a = c_hyp*kappa*dt` (#radiation_relaxation_phi_factor): the exact
- * solution of `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F) +
- * dissipation_u` over one step with `source_rate`, `div(F)` and
- * `dissipation_u` frozen at this h-iteration's value, `tau =
- * 1/(c_hyp*kappa)`. `dissipation_u` (design-lw-fuv-design-b-dissipation.md
- * Section 3.1) is the Stage-1 artificial-dissipation term
- * radiation_propagation_iact.h accumulates alongside `div_F`; it enters
- * with the OPPOSITE sign. The `3*c_hyp/c` rescale is applied exclusively
- * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
- * No-op when propagation is off.
+ * `u_star = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F)`, with
+ * `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*kappa*dt`
+ * (#radiation_relaxation_phi_factor): the exact solution of
+ * `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F)` over one step with
+ * `source_rate` and `div(F)` frozen at this h-iteration's value, `tau =
+ * 1/(c_hyp*kappa)`. The `3*c_hyp/c` rescale is applied exclusively here;
+ * injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ *
+ * The result is the INTERMEDIATE state `u*`, not this step's final `u`:
+ * the Stage-1 artificial-dissipation correction is added on top of it by
+ * #radiation_end_force_propagation, after the force loop has accumulated
+ * the mirrored pairwise term. The gradient loop and the negativity trigger
+ * therefore both see `u*`, which is what closes the trigger's one-step lag
+ * (design-lw-fuv-design-b-dissipation.md Section 4.3). No-op when
+ * propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -364,12 +373,58 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   fd->u_FUV = decay_FUV * fd->u_FUV_prev +
               dt * phi_FUV *
-                  (rescale * fd->u_FUV_source_rate - fd->div_specific_flux_FUV +
-                   fd->dissipation_u_FUV);
-  fd->u_LW = decay_LW * fd->u_LW_prev +
-             dt * phi_LW *
-                 (rescale * fd->u_LW_source_rate - fd->div_specific_flux_LW +
-                  fd->dissipation_u_LW);
+                  (rescale * fd->u_FUV_source_rate - fd->div_specific_flux_FUV);
+  fd->u_LW =
+      decay_LW * fd->u_LW_prev +
+      dt * phi_LW * (rescale * fd->u_LW_source_rate - fd->div_specific_flux_LW);
+}
+
+/**
+ * @brief Stage-1 artificial-dissipation correction of #u_FUV/#u_LW, from
+ * the accumulators radiation_propagation_iact.h filled during the force
+ * loop: `u = u_star + dt*phi*dissipation_u`, closing the exact-relaxation
+ * update #radiation_end_density_propagation left at its intermediate state
+ * `u_star`.
+ *
+ * Runs in the `end_force` task, which SWIFT places after the force loop
+ * and before cooling (engine_maketasks.c), so a coefficient raised by this
+ * step's negativity trigger (the extra ghost, which precedes the force
+ * loop) acts on this step's own `u` rather than the next step's.
+ *
+ * HARD INVARIANT: `end_force` runs exactly once per active particle per
+ * step, with no h-iteration redo of the kind the density ghost has. The
+ * `+=` below is NOT idempotent; a second call would double-correct.
+ *
+ * Reads #dt_prev/#c_hyp/#kappa_FUV/LW, all cached earlier in this same step
+ * by #radiation_snapshot_part_propagation, and deliberately takes no `dt`
+ * of its own: the call site computes its local `dt` from a different
+ * timestep-begin convention (`ti_current - 1`), and using it here would
+ * make this correction's `dt*phi` inconsistent with the rest of the step's
+ * radiation update. The thin `(p, e)` signature exists to make that
+ * mistake structurally impossible.
+ *
+ * `phi` is recomputed rather than cached: this is an additive correction,
+ * not a decay-weighted blend, so no `exp(-a)` memory term is needed.
+ * No-op when propagation is off.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void radiation_end_force_propagation(struct part *p, const struct engine *e) {
+
+  if (!e->feedback_props->LW_FUV_propagation) return;
+
+  struct feedback_part_data *fd = &p->feedback_data;
+  const float dt = fd->dt_prev;
+  const float c_hyp = fd->c_hyp;
+
+  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
+  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  const float phi_FUV = radiation_relaxation_phi_factor(a_FUV);
+  const float phi_LW = radiation_relaxation_phi_factor(a_LW);
+
+  fd->u_FUV += dt * phi_FUV * fd->dissipation_u_FUV;
+  fd->u_LW += dt * phi_LW * fd->dissipation_u_LW;
 }
 
 /**
@@ -452,16 +507,17 @@ radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
  * @brief One band's Stage-1 artificial-dissipation coefficient update
  * (design-lw-fuv-design-b-dissipation.md Section 4.3): raised instantly to
  * a negativity-triggered target, or decayed toward it otherwise. Reads the
- * particle's LIVE, this-step `u_V = rho_prev*u` rather than the `u_*_prev`
- * snapshot the design document's own text specifies: with the dose-
- * reservoir injection form (Section 4.6.5) already landed, injection no
- * longer writes `u` at all, so the live `u` seen here (after
- * #radiation_end_density_propagation has already run in the density
- * ghost, before any star touches this step's `u` again) is this step's
- * complete, fully-relaxed value, recovering a one-step trigger lag instead
- * of two.
+ * particle's LIVE, this-step `u_V = rho_prev*u_star` rather than the
+ * `u_*_prev` snapshot the design document's own text specifies: with the
+ * dose-reservoir injection form (Section 4.6.5) already landed, injection
+ * no longer writes `u` at all, so the value seen here (after
+ * #radiation_end_density_propagation has already run in the density ghost,
+ * before any star touches this step's `u` again) is this step's own
+ * transported state. The coefficient this returns is consumed by THIS
+ * step's force loop, so the trigger has no lag left: an undershoot is
+ * corrected in the step it appears, before cooling reads `u`.
  *
- * @param u_V This band's live volumetric field, rho_prev*u.
+ * @param u_V This band's live volumetric field, rho_prev*u_star.
  * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
  * accumulator (radiation_propagation_iact.h).
  * @param alpha_prev This band's #dissipation_alpha_FUV/LW from the
@@ -502,8 +558,8 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * (#radiation_end_density_propagation having already run in the density ghost).
  * Runs once per step in the extra ghost, never re-run: the gradient loop itself
  * only runs once per step. Also updates #dissipation_alpha_FUV/LW once per
- * step (see #radiation_update_dissipation_alpha_band), for the NEXT step's
- * density loop to consume.
+ * step (see #radiation_update_dissipation_alpha_band), for THIS step's
+ * force loop to consume: the extra ghost precedes the force loop.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u) + dt*phi*dissipation_F`: the exact
  * solution of `dF/dt = -F/tau - (D/tau)*grad(u) + dissipation_F` over one
@@ -613,13 +669,14 @@ void radiation_end_gradient_propagation(struct part *p,
         eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
   }
 
-  /* Stage 2 reads this pair's #grad_u_FUV_prev/LW_prev in the DENSITY loop,
-   * which runs before this step's own gradient loop has produced anything.
-   * Written here, at the end of this active-gated ghost, from the gradient
+  /* Written here, at the end of this active-gated ghost, from the gradient
    * this same active step just finalised above (#grad_u_FUV/LW), so the
    * value read by a neighbour is always this particle's own last real
    * gradient regardless of how many inactive steps it takes in between --
-   * never a value zeroed by an unrelated drift. */
+   * never a value zeroed by an unrelated drift. Stage 2 reads it in the
+   * FORCE loop, which this ghost precedes, so an active particle's
+   * reconstruction now uses this step's own finalised gradient rather than
+   * the previous step's. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   for (int k = 0; k < 3; k++) {
     fd->grad_u_FUV_prev[k] = fd->grad_u_FUV[k];

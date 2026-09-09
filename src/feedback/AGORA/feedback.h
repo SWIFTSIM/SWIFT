@@ -93,6 +93,15 @@ __attribute__((always_inline)) INLINE static void feedback_end_gradient(
     struct part *p, const struct engine *e) {}
 
 /**
+ * @brief Finishes the #part force calculation. Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_force(
+    struct part *p, const struct engine *e) {}
+
+/**
  * @brief Re-initialise the gas particle-carried fields related to
  * feedback at the start of each density h-iteration. Nothing to do here.
  *

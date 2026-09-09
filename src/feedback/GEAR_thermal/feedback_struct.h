@@ -135,12 +135,15 @@ struct feedback_part_data {
   float div_specific_flux_LW;
 
   /*! Stage-1 artificial-dissipation source term (design-lw-fuv-design-b-
-      dissipation.md Section 3.1), density loop
+      dissipation.md Section 3.1), FORCE loop
       (radiation_propagation_iact.h): pairwise signal-velocity conductivity
-      on the u_FUV_prev/u_LW_prev jump, applied as a second frozen source
-      term in #radiation_end_density_propagation's exact relaxation, with
-      the opposite sign of #div_specific_flux_FUV/LW. Scratch: zeroed every
-      h-iteration alongside #div_specific_flux_FUV/LW. */
+      on the live u_FUV/u_LW jump, applied as an additive correction to the
+      intermediate state #radiation_end_density_propagation leaves behind,
+      by #radiation_end_force_propagation. The force loop's dispatch fires
+      both sides of a pair whenever either kernel reaches, which is what
+      keeps the mirrored credit/debit pair whole at h_i != h_j. Scratch:
+      zeroed once per step by radiation_snapshot_part_propagation, like
+      #grad_u_FUV/LW, since the force loop runs exactly once per step. */
   float dissipation_u_FUV;
   float dissipation_u_LW;
 
@@ -157,9 +160,10 @@ struct feedback_part_data {
       decayed otherwise, updated once per step in
       #radiation_end_gradient_propagation (not the density ghost, which
       re-runs across h-iterations). Persistent, dumped with #part like
-      #specific_flux_FUV; zero at first init, no IC field. Read by the
-      NEXT step's density loop as this band's #dissipation_u_FUV/LW pair
-      coefficient. */
+      #specific_flux_FUV; zero at first init, no IC field. Read by THIS
+      step's force loop as this band's #dissipation_u_FUV/LW pair
+      coefficient: the extra ghost precedes the force loop, so the trigger
+      carries no lag. */
   float dissipation_alpha_FUV;
   float dissipation_alpha_LW;
 
@@ -170,15 +174,17 @@ struct feedback_part_data {
   float grad_u_FUV[3];
   float grad_u_LW[3];
 
-  /*! Copy of #grad_u_FUV/#grad_u_LW as the previous step left them, taken by
-      radiation_snapshot_part_propagation immediately before this step's
-      accumulators are zeroed. Feeds the Stage-2 slope-limited midpoint
-      reconstruction of the Stage-1 jump (design-lw-fuv-design-b-
-      dissipation.md Section 5.2), which needs a gradient both particles of a
-      pair already carry when the density loop runs; this step's own
-      `grad(u)` is not available there, since the gradient loop runs after
-      the density loop. Guarded: a build without Stage 2 pays no memory
-      for it. */
+  /*! Copy of #grad_u_FUV/#grad_u_LW, written at the END of
+      radiation_end_gradient_propagation from the gradient that same active
+      step just finalised, so an inactive particle keeps its own last real
+      gradient rather than a value an unrelated drift zeroed. Feeds the
+      Stage-2 slope-limited midpoint reconstruction of the Stage-1 jump
+      (design-lw-fuv-design-b-dissipation.md Section 5.2), which needs a
+      gradient both particles of a pair already carry. Since the Stage-1
+      term moved to the force loop, an ACTIVE particle's copy is this
+      step's own finalised gradient (the extra ghost precedes the force
+      loop), not the previous step's. Guarded: a build without Stage 2 pays
+      no memory for it. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   float grad_u_FUV_prev[3];
   float grad_u_LW_prev[3];

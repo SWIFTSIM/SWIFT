@@ -41,6 +41,7 @@ void radiation_init_part_propagation(struct part *p);
 void radiation_end_density_propagation(struct part *p, const struct engine *e);
 void radiation_part_has_no_neighbours(struct part *p, const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
+void radiation_end_force_propagation(struct part *p, const struct engine *e);
 float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
 void radiation_get_part_LW_FUV_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,

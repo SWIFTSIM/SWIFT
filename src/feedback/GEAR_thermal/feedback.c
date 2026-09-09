@@ -150,6 +150,18 @@ void feedback_end_gradient(struct part *p, const struct engine *e) {
 }
 
 /**
+ * @brief Finishes the #part force calculation: LW/FUV propagation's
+ * Stage-1 dissipation correction is shared GEAR physics, see
+ * #radiation_end_force_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_force(struct part *p, const struct engine *e) {
+  radiation_end_force_propagation(p, e);
+}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
  * u_FUV/u_LW and caches this step's absorption rate (shared GEAR
