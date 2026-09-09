@@ -1192,17 +1192,33 @@ Solving these two equations for the two unknowns,
 \textbf{$D$ is therefore not an independent free choice}: once
 $\lambda$ is fixed by dust opacity (mandatory) and $c_{\rm hyp}$ is
 picked for affordability (a genuine choice), $D$ and $\tau$ follow
-algebraically. Concretely, choose
+algebraically.
+
+\textbf{As implemented (revised 2026-09-09): $c_{\rm hyp}$ is not a
+chosen target speed at all, but an emergent one.} An earlier version of
+this design picked $c_{\rm hyp}$ as a fixed multiple of the local sound
+speed and derived a matching new timestep bound from it (the
+CFL-condition framing kept below in
+Section~\ref{sec:fuv-b-cfl} for the record). The scheme actually
+shipped instead follows Design~A's own decided strategy
+(Section~\ref{sec:fuv-discretization}: fix a single dimensionless
+parameter once, and run at whatever $\Delta t$ the particle's existing
+hydro/cooling timestep hierarchy already gives it, adding no new
+\code{\_timestep()} criterion) applied in the opposite direction: rather
+than deriving $\Delta t$ from a chosen $c_{\rm hyp}$, $c_{\rm hyp}$ is
+derived, per particle and per step, from the particle's own
+already-decided $\Delta t_i$ and smoothing length $h_i$,
 \begin{equation}
-  c_{\rm hyp} = \kappa_{\rm margin}\,c_s ,
+  c_{{\rm hyp},i} = \min\!\left(C_{\rm hyp}\,\frac{h_i}{\Delta t_i},\; c\right) ,
   \label{eq:fuv-chyp-choice}
 \end{equation}
-$c_s$ the local sound speed and $\kappa_{\rm margin}\sim5$--$10$ a
-safety multiple (same margin-factor reasoning as the STARBENCH/Courant
-discussion, Section~\ref{sec:fuv-b-cfl} below): large enough that the
-field is quasi-instantaneous relative to hydro motions to a few
-percent, without buying an unnecessarily tight (and unaffordable) CFL
-by targeting anything close to $c_{\rm hyp,phys}=c/\sqrt3$.
+clamped at the true speed of light. $C_{\rm hyp}$
+(\code{GEARFeedback:LW\_FUV\_c\_hyp\_margin}, default $0.5$, valid range
+$(0,1.7]$) is the single free, dimensionless affordability/stability
+dial this design actually exposes: the upper end of its range is set by
+this project's own explicit-stability requirement for the staggered
+exact-relaxation scheme (Section~\ref{sec:fuv-b-as-implemented}), not by
+a target physical speed.
 
 \textbf{Why not use $D_{\rm phys}$/$\tau_{\rm phys}$ directly}: checked
 against the ClumpSmith2021 regression-check snapshot (2026-07-23 run),
@@ -1220,30 +1236,66 @@ but concretely not trustworthy in this project's own validated
 configurations: Eq.~\ref{eq:fuv-lambda-chyp-solve}'s decoupled choice
 is the robust one, not a shortcut.
 
-\subsubsection{Hyperbolic CFL}
+\subsubsection{Hyperbolic CFL: originally a new bound, now automatic}
 \label{sec:fuv-b-cfl}
 
+The hyperbolic CFL condition for this system reads
 \begin{equation}
   \Delta t \le C_{\rm CFL}\,\frac{h}{c_{\rm hyp}} ,
   \label{eq:fuv-hyperbolic-cfl}
 \end{equation}
 \textbf{linear in $h$}, unlike Design~A's $h^2/D$ bound
-(Section~\ref{sec:fuv-design-a-limit}). With $c_{\rm hyp}=\kappa_{\rm
-margin}\,c_s$ (Eq.~\ref{eq:fuv-chyp-choice}) and the existing hydro
-Courant condition $\Delta t_{\rm hydro}=C_{\rm CFL}\,h/c_s$, the ratio
-\begin{equation}
-  \frac{\Delta t_{\rm hyp}}{\Delta t_{\rm hydro}} = \frac{1}{\kappa_{\rm margin}}
-  \label{eq:fuv-cfl-ratio}
-\end{equation}
-is independent of $h$ and $c_s$ entirely: it only depends on the
-chosen margin. With $\kappa_{\rm margin}\sim5$--$10$, this sits at or
-below parity with the existing hydro step: essentially free, not the
-prohibitive scaling Design~A's own $h^2$ bound would impose at the same
-target speed (Section~\ref{sec:fuv-design-a-limit}).
+(Section~\ref{sec:fuv-design-a-limit}). If $c_{\rm hyp}$ were a chosen
+target speed (a fixed multiple $\kappa_{\rm margin}$ of the local sound
+speed, as originally proposed), this would be a genuinely new
+constraint to check each step, with ratio
+$\Delta t_{\rm hyp}/\Delta t_{\rm hydro}=1/\kappa_{\rm margin}$ against
+the existing hydro Courant condition $\Delta t_{\rm
+hydro}=C_{\rm CFL}\,h/c_s$: with $\kappa_{\rm margin}\sim5$--$10$, at or
+below parity with the existing hydro step, essentially free rather than
+the prohibitive scaling Design~A's own $h^2$ bound would impose at the
+same target speed (Section~\ref{sec:fuv-design-a-limit}).
 
-\subsubsection{The concrete solve algorithm: reconstruction and a
+\textbf{Revised (2026-09-09): as implemented, this is not a bound to
+check, it is the defining relation for $c_{\rm hyp}$.}
+Section~\ref{sec:fuv-b-lambda-chyp}'s Eq.~\ref{eq:fuv-chyp-choice}
+sets $C_{\rm hyp}\equiv C_{\rm CFL}$ and $c_{{\rm hyp},i}=C_{\rm
+hyp}\,h_i/\Delta t_i$ directly from the particle's own already-decided
+$\Delta t_i$: Eq.~\ref{eq:fuv-hyperbolic-cfl} then holds as an equality
+by construction, before the speed-of-light clamp, for every particle,
+every step, with no separate criterion ever evaluated and nothing that
+can be violated. The genuinely free choice is $C_{\rm hyp}$ itself (a
+single global dial, not a per-particle physical target), and the only
+place a real bound remains is the joint
+$(\alpha_{\max},C_{\rm hyp})$ stability condition the artificial
+dissipation term needs (Eq.~\ref{eq:fuv-b-diss-stability}).
+
+\textbf{The speed-of-light clamp.} When a particle's own timestep is
+short enough relative to its smoothing length that
+$C_{\rm hyp}\,h_i/\Delta t_i$ would exceed $c$ (an unusually fine hydro
+step, e.g.\ near a supernova or an actively accreting sink), $c_{{\rm
+hyp},i}$ is capped at $c$ instead. This can only make the update more
+conservative, never less: the clamped speed gives an effective Courant
+number $c_{{\rm hyp},i}\Delta t_i/h_i<C_{\rm hyp}$, strictly below the
+nominal target for that step, so the clamp cannot destabilize the
+update.
+
+\subsubsection{Considered but not built this way: reconstruction and a
 Riemann-type flux on real FVPM geometry}
 \label{sec:fuv-b-algorithm}
+
+\textbf{This section, and the two after it
+(Sections~\ref{sec:fuv-b-gradients}--\ref{sec:fuv-b-rusanov}), describe a
+fuller alternative that was designed but not built.} The scheme actually
+shipped is simpler and is described in full in
+Section~\ref{sec:fuv-b-as-implemented} below: plain pairwise SPH
+kernel-gradient estimators, no FVPM geometry, no interface
+reconstruction, no Riemann flux. This design record is kept, not
+deleted, for the same reason Design~A's own derivation is kept
+(Section~\ref{sec:fuv-design-a}'s introduction): it remains a
+well-scoped upgrade path if the simpler scheme's accuracy ever proves
+insufficient. A reader who only wants to know what runs today can skip
+ahead to Section~\ref{sec:fuv-b-as-implemented}.
 
 Putting Sections~\ref{sec:fuv-b-p1}--\ref{sec:fuv-b-cfl} together into
 an actual per-timestep recipe, since "solve the hyperbolic system"
@@ -1318,8 +1370,11 @@ already uses it, not building anything from scratch.
     \end{equation}
     applied as one shared sub-step, unconditionally stable regardless
     of how $\Delta t$ compares to $\tau_{\rm phys}$.
-  \item \textbf{Injection}: add the star's budget to $u$, as in
-    Design~A.
+  \item \textbf{Injection}: add the star's budget to $u$. \textbf{Superseded}:
+    a star no longer deposits its budget as a single lump directly into
+    $u$ this way; it is instead accumulated into a per-particle dose
+    reservoir that drains into the same exact-relaxation update above,
+    Section~\ref{sec:fuv-b-dose-reservoir}.
 \end{enumerate}
 
 \textbf{This split is not optional, it is required by stiffness.}
@@ -1335,18 +1390,179 @@ hyperbolic CFL; the exact exponential integrator needs none, at zero
 extra cost, for the identical reason Design~A's own decay term already
 established (Section~\ref{sec:fuv-discretization}).
 
-\textbf{Refinement available, not yet adopted}: the injection term
-above is added \emph{after} the exact decay, as a separate additive
-term: accurate to $O(\Delta t)$ for the injection itself, exact only
-for the pure decay. The fully exact solution of the inhomogeneous ODE
-$du/dt=-u/\tau+S/m$ is $u(\Delta t)=u_0\,e^{-\Delta t/\tau}+(S\tau/m)
-(1-e^{-\Delta t/\tau})$: folding injection into the same exact
-integrator, rather than adding it afterwards, is a small, available
-refinement to both designs, not yet applied to either.
+\textbf{Refinement, adopted for Design~B (Section~\ref{sec:fuv-b-dose-reservoir})}:
+the naive reading above adds injection \emph{after} the exact decay, as
+a separate additive term, accurate to $O(\Delta t)$ for the injection
+itself and exact only for the pure decay. The fully exact solution of
+the inhomogeneous ODE $du/dt=-u/\tau+S/m$ is $u(\Delta t)=u_0\,
+e^{-\Delta t/\tau}+(S\tau/m)(1-e^{-\Delta t/\tau})$: folding injection
+into the same exact integrator, rather than adding it afterwards, is
+exactly what the dose-reservoir mechanism does, by construction
+(Section~\ref{sec:fuv-b-dose-reservoir}). Design~A's own injection
+remains the simpler, additive form.
 
-\subsubsection{Gradients: Tier~2 is available here, via the same FVPM
-geometry bolt-on}
+\subsubsection{As implemented: plain pairwise operators, not FVPM
+reconstruction}
+\label{sec:fuv-b-as-implemented}
+
+\textbf{The algorithm actually built is simpler than
+Section~\ref{sec:fuv-b-algorithm}'s reconstruction-and-Riemann-flux
+sketch above.} Per an explicit start-simple implementation decision,
+$\nabla\cdot\mathbf F$ and $\nabla u$ are each built directly from a
+plain pairwise SPH kernel-gradient operator: no $\mathbf B_i$ FVPM
+geometry matrix is computed for this field, no left/right interface
+states are reconstructed, and no Riemann flux
+(Section~\ref{sec:fuv-b-rusanov}) is evaluated for the base transport.
+Section~\ref{sec:fuv-b-algorithm}'s own reconstruct/flux/accumulate
+enumerate and Section~\ref{sec:fuv-b-rusanov}'s Rusanov machinery are
+kept as this design's honest record of the fuller alternative
+considered, per this project's usual practice of preserving a
+considered-but-simplified path rather than deleting it (Design~A's own
+framing, Section~\ref{sec:fuv-design-a}'s introduction), but they do
+not describe what runs.
+
+\textbf{Divergence (density loop).} A shared-coefficient, double-sum
+estimator, exactly the discipline already stated for it in
+Section~\ref{sec:fuv-b-tasks}:
+\begin{equation}
+  \Phi_{ij} = \frac{\mathbf F_i\cdot\mathbf{dx}}{\rho_i}\,w_{i,dr}\,r_{ij}^{-1}
+            + \frac{\mathbf F_j\cdot\mathbf{dx}}{\rho_j}\,w_{j,dr}\,r_{ij}^{-1},
+  \qquad
+  (\nabla\cdot\mathbf F)_i \mathrel{+}= m_j\,\Phi_{ij}, \qquad
+  (\nabla\cdot\mathbf F)_j \mathrel{+}= -m_i\,\Phi_{ij},
+  \label{eq:fuv-b-impl-div}
+\end{equation}
+with $\mathbf{dx}=\mathbf x_i-\mathbf x_j$ and $w_{i,dr}\,r_{ij}^{-1}\,
+\mathbf{dx}=\nabla_i W_{ij}$ (particle $i$'s own kernel gradient at its
+own smoothing length). A single shared scalar $\Phi_{ij}$, built from
+\emph{both} particles' own kernel-gradient terms, credited to one side
+and debited from the other with mirrored mass and sign: exactly
+conserving under transport alone for any $h_i\ne h_j$, $\rho_i\ne
+\rho_j$, provided both particles are active this step (an
+active/inactive pair leaves one side undebited until its own next
+active step: the pre-existing, non-sign-correlated cross-bin asymmetry
+already accepted for this class of pairwise operator), the same
+guarantee Section~\ref{sec:fuv-b-tasks} already states for it.
+
+\textbf{Gradient (gradient loop).} A Brookshaw/Cleary--Monaghan-type
+difference estimator on the volumetric field $U\equiv\rho u$
+(Section~\ref{sec:fuv-units}), the same family Design~A's own
+screening/mixing term uses (Section~\ref{sec:fuv-discretization}) but
+applied here to a first derivative rather than a Laplacian:
+\begin{equation}
+  d_{ij}=U_i-U_j, \qquad
+  (\nabla u)_i \mathrel{+}= -\frac{m_j\,d_{ij}}{\rho_i^2}\,\nabla_i W_{ij},
+  \qquad
+  (\nabla u)_j \mathrel{+}= -\frac{m_i\,d_{ij}}{\rho_j^2}\,\nabla_j W_{ij} .
+  \label{eq:fuv-b-impl-grad}
+\end{equation}
+The $1/\rho^2$ (rather than $1/\rho$) normalization is not an
+arbitrary choice: it makes this operator the negative adjoint of
+Eq.~\ref{eq:fuv-b-impl-div}'s divergence in the mass/density inner
+product, the property the staggered time integration below needs for
+stability on a disordered particle distribution. Both operators are the
+plain, Tier~1 kernel gradient already named as the cheaper starting
+option in Section~\ref{sec:fuv-b-gradients} ($\nabla W_{ij}$, no
+$\mathbf B_i$ correction): that section's own "Tier~1 remains the
+cheaper starting point" is the as-built state, not a placeholder;
+Tier~2 remains unimplemented.
+
+\textbf{Staggered time integration.} Consistent with the adjoint
+property above, the two fields are not relaxed at the same point in the
+step. Each step, $u$ is relaxed first, from the \emph{previous} step's
+$\nabla\cdot\mathbf F$ (Eq.~\ref{eq:fuv-b-impl-div}, frozen at that
+value for the relaxation); $\mathbf F$ is relaxed second, from the
+gradient (Eq.~\ref{eq:fuv-b-impl-grad}) of the \emph{newly}-relaxed
+$u$: a leapfrog-like, staggered scheme, not the single explicit
+sub-step advancing both fields from the same accumulated fluxes at once
+that Section~\ref{sec:fuv-b-algorithm}'s sketch describes. The Stage-1
+artificial dissipation of Section~\ref{sec:fuv-b-dissipation} is applied
+as a correction on top of this same staggered sequence, after both
+relaxations, not as a third field of its own.
+
+\subsubsection{Injection cadence: a per-particle dose reservoir}
+\label{sec:fuv-b-dose-reservoir}
+
+\textbf{The problem: injection cadence versus relaxation cadence.} A
+star's own feedback task touches an illuminated gas particle once per
+\emph{star} step. If that particle sits on a finer time bin than its
+star (an ordinary situation: the gas particle's own hydro/cooling
+timescale, not the star's, sets its bin), the naive lump-injection form
+of step~6 above deposits the whole star-step budget on the one substep
+that coincides with the star's touch and leaves every other substep
+between touches with no source term at all. On this scheme's own exact
+relaxation update the result is a sawtooth in $u$: a spike at the
+touched substep, decaying purely by $e^{-\Delta t/\tau}$
+(Eq.~\ref{eq:fuv-b-joint-relax}) until the next touch. Cooling reads
+this sawtooth's \emph{trough}, not its time-average, because cooling
+runs before the star's own feedback task within the same step in the
+task-graph ordering both designs share: a particle can therefore be
+significantly under-ionized/under-heated during a cooling substep even
+though the snapshot-visible, star-step-averaged budget it received is
+correct.
+
+\textbf{Fix: accumulate a dose, drain it at a constant rate.} Each
+illuminating star still deposits exactly the same specific-energy
+amount computed by Eq.~\ref{eq:fuv-inject} (superposing additively over
+any number of simultaneously-illuminating stars, as before), but into a
+per-particle, per-band \textbf{dose reservoir} $R_i$ (same specific-energy
+units as $u_i$) rather than directly into $u_i$. Alongside the deposit,
+the star's touch extends the reservoir's \textbf{drain horizon} to (at
+least) one star step past the last touch. At the start of every one of
+\emph{its own} steps, the receiving particle converts a fraction of
+whatever remains in the reservoir into a locally constant source rate
+for that step,
+\begin{equation}
+  f_i = \min\!\left(1,\;\frac{\Delta t_i}{t_{{\rm rem},i}}\right), \qquad
+  \dot u_{{\rm inject},i} = \frac{f_i\,R_i}{\Delta t_i}, \qquad
+  R_i \to (1-f_i)\,R_i ,
+  \label{eq:fuv-dose-drain}
+\end{equation}
+with $t_{{\rm rem},i}$ the physical time remaining until the drain
+horizon and $\Delta t_i$ the particle's own physical timestep. $f_i=1$
+whenever the horizon falls within this step (draining the reservoir to
+exactly zero by the horizon); otherwise $\Delta t_i/t_{{\rm rem},i}$
+drains it at a rate that stays constant across the particle's own
+substeps between star touches. This removes the mismatch between the
+star's cadence and the receiving particle's own relaxation cadence
+entirely: exact for any number of stars on any combination of time
+bins, not merely an improved approximation to the lump form.
+
+\textbf{Folded into the same exact integrator, not added afterwards.}
+$\dot u_{{\rm inject},i}$ enters as a genuine additional frozen source
+in the same exact-relaxation ODE that already advances $u$ each step
+(the decay/transport update of
+Eq.~\ref{eq:fuv-b-joint-relax}--Section~\ref{sec:fuv-b-algorithm}'s step
+5), rescaled by the same reduced-speed-of-light factor
+$3\,c_{\rm hyp}/c$ that the transport equations themselves carry
+(Eq.~\ref{eq:fuv-chyp-choice}'s $c_{\rm hyp}$ in place of the true $c$):
+the reservoir itself always holds the raw, physical dose, and the
+rescale is applied exactly once, where the drained rate enters the
+relaxation, not at deposit time. This realizes, for Design~B, the exact
+refinement flagged as available but unapplied earlier in
+Section~\ref{sec:fuv-b-algorithm}.
+
+\textbf{Edge case: a particle whose smoothing-length search finds no
+neighbours.} The amount drawn down from the reservoir for a given step
+is only actually consumed once the exact-relaxation update that uses it
+runs; if a particle's density-loop $h$-iteration gives up with no
+neighbours found, that update never runs for it this step. The drawn
+amount is restored to the reservoir in that case, rather than silently
+discarded.
+
+\textbf{Known limitation, not yet fixed}: the reservoir's value is
+specific to the particle's mass at deposit time and is not rescaled if
+that mass changes (a mass-changing feedback event, e.g.\ a supernova
+kick or mass return) between the deposit and the drain.
+
+\subsubsection{Considered: Tier~2 gradients via the same FVPM geometry
+bolt-on}
 \label{sec:fuv-b-gradients}
+
+\textbf{Also part of the not-built sketch above}: the scheme as shipped
+uses only the plain Tier~1 kernel gradient
+(Section~\ref{sec:fuv-b-as-implemented}), not the matrix-corrected
+Tier~2 discussed below.
 
 The Brookshaw/Cleary-Monaghan pairwise operator (the tool used by
 Design~A, Section~\ref{sec:fuv-discretization}) builds a \emph{second}
@@ -1386,9 +1602,15 @@ discipline as Section~\ref{sec:fuv-harmonic-mean}, here an arithmetic
 average of matrices rather than a harmonic mean of scalars, since it is
 the shared gradient operator itself being built) fixes this.
 
-\subsubsection{Flux: Rusanov, and the artificial-diffusivity limiter
-that actually matters}
+\subsubsection{Considered: a Rusanov flux, and the artificial-diffusivity
+limiter that would matter most if it were built}
 \label{sec:fuv-b-rusanov}
+
+\textbf{Also part of the not-built sketch above}: the shipped scheme has
+no Riemann flux at all (Section~\ref{sec:fuv-b-as-implemented}); its own
+stabilization is the artificial-dissipation term of
+Section~\ref{sec:fuv-b-dissipation} instead, an unrelated mechanism from
+the diffusivity limiter discussed below.
 
 Section~\ref{sec:fuv-b-algorithm}'s Rusanov flux (Eq.~\ref{eq:fuv-rusanov-flux})
 is the cheapest member of the Riemann-solver family: one
@@ -1474,27 +1696,40 @@ project). Adding a new physics channel this way means adding new
 \code{runner\_iact\_*} functions called from these same branches, not
 standing up new tasks in the scheduler.
 
-\textbf{Concrete mapping for this design}: it needs all three loop
-hooks, matching \code{GEAR\_FVPM\_DIFFUSION}'s own real structure.
-\textbf{density loop}: the existing \code{fvpm\_accumulate\_geometry\_and\_matrix}
-call already builds $\mathbf B_i$ (Section~\ref{sec:fuv-b-algorithm}),
-nothing new needed here beyond making sure this module's compile-time
-flag is added to \code{src/fvpm\_geometry.h}'s dispatch condition;
-\textbf{gradient loop}: a new \code{runner\_iact\_gradient\_isrf}
-computing $\nabla u$, $\nabla\cdot\mathbf F$ (Section~\ref{sec:fuv-b-gradients}),
-mirroring \code{chemistry\_gradients\_collect}; \textbf{force loop}: a
-new \code{runner\_iact\_isrf}/\code{runner\_iact\_nonsym\_isrf} forming
-the reconstructed-state Rusanov flux (Section~\ref{sec:fuv-b-rusanov})
-and accumulating the explicit sub-step. Still no new task \emph{type}
-in the scheduler: three existing loop hooks, not one, but the same
-"add an iact function" pattern throughout. Being embedded directly in
+\textbf{As implemented, the concrete mapping is}: three loop hooks, all
+in \code{src/feedback/GEAR/radiation\_propagation\_iact.h}.
+\textbf{Density loop} (\code{runner\_iact\_[nonsym\_]isrf\_propagation}):
+accumulates $\nabla\cdot\mathbf F$ (Eq.~\ref{eq:fuv-b-impl-div}) and the
+dissipation trigger's kernel-mean reference accumulator
+(Section~\ref{sec:fuv-b-dissipation}); this loop does \emph{not} touch
+the FVPM $\mathbf B_i$ geometry at all, unlike
+Section~\ref{sec:fuv-b-algorithm}'s sketch -- \code{src/fvpm\_geometry.h}'s
+dispatch condition was never extended for this module.
+\textbf{Gradient loop} (\code{runner\_iact\_[nonsym\_]isrf\_gradient}):
+accumulates $\nabla u$ (Eq.~\ref{eq:fuv-b-impl-grad}). \textbf{Force
+loop} (\code{runner\_iact\_[nonsym\_]isrf\_dissipation}): accumulates
+the Stage-1 artificial-conductivity exchange
+(Eq.~\ref{eq:fuv-b-diss-formula}) -- \emph{not} a Rusanov flux; this
+design has no Riemann solver anywhere in the code that ships. Still no
+new task \emph{type} in the scheduler: three existing loop hooks, the
+same "add an iact function" pattern throughout, plus one new
+per-particle finalizer (\code{feedback\_end\_force}, applying the
+dissipation correction, Section~\ref{sec:fuv-b-dissipation}) alongside
+the existing density/gradient ghosts. Being embedded directly in
 existing hydro pairwise loops, it runs every active particle's own
 hydro timestep, same as Design~A
 (Section~\ref{sec:fuv-discretization}'s update-cadence discussion),
 not gated behind any separate, rarer cadence. This does not exempt the
 new field ($\mathbf F_i$) from the usual
 cell-link/\code{cell\_clean\_links} bookkeeping this project's own
-task-registration checklist requires for any new per-particle state.
+task-registration checklist requires for any new per-particle state --
+though in this case there is nothing to reset, since no new
+\code{struct link*} cell field was added, only plain per-particle POD
+fields in \code{struct feedback\_part\_data}: covered automatically by
+the existing whole-struct restart dump/restore path, with no special
+handling required (checked directly, not merely assumed: this has been
+tested with a kill-mid-run/resume comparison against an uninterrupted
+control run).
 
 \textbf{Design~A, for comparison}: needs only the single
 density-loop-style hook (\code{runner\_iact\_chemistry}'s own pattern),
@@ -1503,6 +1738,228 @@ Both designs need no new task \emph{type} in the scheduler; they differ
 in how many of the three existing loop hooks they use (one for
 Design~A, three for Design~B) and in whether they depend on the FVPM
 geometry bolt-on at all (Design~A does not).
+
+\subsubsection{Numerical stabilization: artificial dissipation}
+\label{sec:fuv-b-dissipation}
+
+\textbf{This term is a numerical/artificial stabilization device, not a
+physical source or sink.} It does not belong in, and must not be folded
+into, the governing equations' own source term $S$ or their physical
+absorption term $-c\,\kappa_{\rm FUV}\rho\,u$
+(Eq.~\ref{eq:fuv-p1-zeroth}): those represent real photon emission and
+dust absorption; the term below represents nothing physical at all,
+only a correction to the discrete scheme's own behaviour.
+
+\textbf{Why it is needed.} The transport update implemented for this
+field (Section~\ref{sec:fuv-b-algorithm}) is built from a pairwise SPH
+kernel-gradient operator, not from a Riemann-solver flux the way a
+fuller Godunov/finite-volume hyperbolic code would use: an exact/HLL/
+Rusanov Riemann solver carries its own built-in numerical dissipation
+(Section~\ref{sec:fuv-b-rusanov}) that damps exactly the
+short-wavelength oscillations a discretized hyperbolic system can
+otherwise develop near a steep gradient. The pairwise kernel-gradient
+scheme actually used here has no such mechanism: nothing intrinsic to
+it damps an overshoot/undershoot near a strong, localized source sitting
+next to optically thick gas, and $u$ can be driven negative there, an
+unphysical state cooling cannot consume safely. This is the identical
+role artificial viscosity plays in ordinary SPH hydrodynamics, which
+also has no Riemann-solver dissipation of its own: a genuine physical
+fluid never needs the fix, but the discrete SPH gradient estimate does.
+
+\textbf{Formula (Stage~1: a triggered scalar conductivity).} Write
+$U_i\equiv\rho_i u_i$ for the volumetric form of the specific field
+(Section~\ref{sec:fuv-units}) and $\bar W_{ij}=\tfrac12\big(\nabla
+W_{ij}^{(i)}+\nabla W_{ij}^{(j)}\big)$ for the symmetrized kernel
+gradient already used consistently throughout this project's own
+pairwise operators (the same discipline as
+Section~\ref{sec:fuv-harmonic-mean}: never mix kernel-gradient
+prescriptions between a dissipative and a non-dissipative term acting on
+the same field, since doing so has produced serious SPH instabilities in
+the literature). Per pair $(i,j)$, per band,
+\begin{equation}
+  v_{{\rm sig},ij} = \alpha_{ij}\,\min\!\big(c_{{\rm hyp},i},\,c_{{\rm hyp},j}\big),
+  \qquad \alpha_{ij}=\max(\alpha_i,\alpha_j),
+  \label{eq:fuv-b-diss-vsig}
+\end{equation}
+\begin{equation}
+  \Psi_{ij} = v_{{\rm sig},ij}\,\frac{U_i-U_j}{\rho_i\rho_j}\,\bar W_{ij},
+  \qquad
+  \dot u_i\big|_{\rm diss} = \sum_j m_j\,\Psi_{ij}, \qquad
+  \dot u_j\big|_{\rm diss} = -\sum_i m_i\,\Psi_{ij},
+  \label{eq:fuv-b-diss-formula}
+\end{equation}
+manifestly antisymmetric in the exchanged mass-weighted contribution: for
+any pair where both $i$ and $j$ are active and dispatched together this
+step, $\sum_i m_i\,\dot u_i|_{\rm diss}=0$ pairwise and $\sum_i m_i u_i$
+is conserved to machine precision. This is not unconditional: the
+force-loop dispatch writes only the active particle's own accumulator,
+so an active/inactive pair contributes on the active side alone, with no
+matching debit until (if ever) the inactive particle is itself
+dispatched on its own step. Because $\alpha_{ij}=\max(\alpha_i,\alpha_j)$
+(Eq.~\ref{eq:fuv-b-diss-vsig}), the term can fire from either side of the
+pair, not only from the active particle's own $U_i<0$; the leak's sign
+follows $\operatorname{sign}(U_i-U_j)$ for the triggered pair, so it can
+add to or subtract from the active particle's energy depending on which
+side triggered and the relative sign of $U_i$ and $U_j$, though it
+remains correlated with the trigger rather than averaging out over many
+substeps. This is a known, documented limitation
+of Stage~1 (Section~\ref{sec:fuv-design-b-open}), not a corner case.
+In the continuum limit this reduces to
+an ordinary diffusion of the volumetric field,
+$\dot u_i|_{\rm diss}\to(D_{\rm eff}/\rho_i)\,\nabla^2 U_i$ with
+$D_{\rm eff}$ an $O(1)$-kernel-dependent multiple of $\alpha\,v_{\rm
+sig}\,h$: a genuine numerical conductivity, of exactly the same
+character as artificial viscosity's own diffusive continuum limit, with
+no claim to represent any physical transport process.
+
+The signal velocity uses $\min$, not the $\max$ hydro convention
+(Rosswog 2015a, SPHENIX's own $v_{\rm sig}$) or a harmonic/arithmetic
+mean: under this scheme's closure $c_{{\rm hyp},i}\propto h_i/\Delta
+t_i$, a particle pinned to an especially short timestep can have a
+$c_{{\rm hyp},i}$ many orders above its neighbours', a purely numerical
+artefact of its own step rather than a real wave speed; $\min$ is the
+only pairwise combination that keeps the resulting dissipation number
+bounded independent of the timestep-bin ratio between $i$ and $j$
+(the same reasoning already applied to $\kappa_{ij}$'s harmonic mean,
+Section~\ref{sec:fuv-harmonic-mean}, adapted to a different combination
+rule because the failure mode here is bin-ratio-driven rather than
+opacity-contrast-driven). $\alpha_{ij}=\max(\alpha_i,\alpha_j)$ follows
+the same SPH philosophy as $v_{\rm sig}$'s own hydro convention:
+whichever particle in the pair actually needs dissipation gets it at
+full strength with every neighbour.
+
+\textbf{The trigger: a reactive negativity switch, not an anticipatory
+one.} $\alpha_i\in[0,\alpha_{\max}]$ is not a fixed global constant; it
+ramps up only when particle $i$'s own field has actually gone negative,
+relative to its neighbours' local field scale,
+\begin{equation}
+  \varepsilon_i = \frac{\max(-U_i,0)}{\max\!\big(\langle|U|\rangle_i,\,-U_i\big)}
+  \in[0,1], \qquad
+  x_i=\min\!\Big(\frac{\varepsilon_i}{\varepsilon_1},1\Big), \qquad
+  \alpha_{{\rm aim},i}=\alpha_{\max}\,x_i^2(3-2x_i),
+  \label{eq:fuv-b-diss-trigger}
+\end{equation}
+with $\langle|U|\rangle_i$ the kernel-mean $|U_j|$ over $i$'s own
+neighbours and $\varepsilon_1$ a threshold (a small undershoot fraction)
+below which no dissipation acts at all. $\alpha_i$ jumps to
+$\alpha_{{\rm aim},i}$ immediately when it rises, and otherwise relaxes
+back down as
+\begin{equation}
+  \alpha_i \to \alpha_{{\rm aim},i} + (\alpha_i-\alpha_{{\rm aim},i})\,
+  \exp\!\left(-\frac{c_{{\rm hyp},i}\,\Delta t_i}{L_{\rm decay}\,h_i}
+  - c_{{\rm hyp},i}\,\kappa_i\,\rho_i\,\Delta t_i\right),
+\end{equation}
+with $L_{\rm decay}$ a dimensionless decay-length parameter
+(\code{RADIATION\_LW\_FUV\_DISSIPATION\_DECAY\_LENGTH}, default~5) and
+$\kappa_i\rho_i$ this band's own linear absorption rate
+(Eq.~\ref{eq:fuv-p1-zeroth}) at particle $i$: not a fixed memory time,
+but a per-particle rate that speeds up in optically thick gas, so a
+particle that is no longer negative does not keep the term engaged
+indefinitely. No
+velocity-divergence-based switch (Balsara, Cullen \& Dehnen) applies
+here: this field carries no bulk velocity to build one from, so the
+switch is built directly from the field's own sign instead. Both bands
+carry independent coefficients, since the more strongly absorbed band
+can fail independently of the other. Explicit stability with the term
+included bounds the admissible ceiling jointly with the propagation-speed
+closure coefficient $C_{\rm hyp}$ (Eq.~\ref{eq:fuv-chyp-choice}),
+\begin{equation}
+  6.2\,\alpha_{\max}\,C_{\rm hyp} + 0.70\,C_{\rm hyp}^2 \le 2 .
+  \label{eq:fuv-b-diss-stability}
+\end{equation}
+
+\textbf{Placement in the update sequence.} The transport update itself
+is the staggered relax-$u$-then-$\mathbf F$ sequence of
+Section~\ref{sec:fuv-b-as-implemented}. Eq.~\ref{eq:fuv-b-diss-formula}
+is accumulated over the existing force-loop hook
+(Section~\ref{sec:fuv-b-tasks}, alongside that loop's own transport
+work), which runs after both of those relaxations and after the trigger
+of Eq.~\ref{eq:fuv-b-diss-trigger} has already been evaluated from this
+step's own relaxed $u$; the accumulated correction is then applied once
+per active particle in a force-loop finalization step that the
+task-graph ordering places immediately before cooling. A coefficient
+raised by an undershoot this step therefore corrects this same step's
+$u$ before cooling ever reads it, rather than only the following step's.
+
+\textbf{Stage~2 (compiled optionally, off by default): a slope-limited
+reconstruction of the Stage-1 jump.} Rather than using the raw
+difference $d_{ij}=U_i-U_j$ in Eq.~\ref{eq:fuv-b-diss-formula}, Stage~2
+reconstructs it to the pair midpoint using each particle's own gradient
+(a van~Leer-type limiter, following \citet{Chan2021}):
+\begin{equation}
+  A_{ij} = \frac{\mathbf g_i\cdot\mathbf{dx}}{\mathbf g_j\cdot\mathbf{dx}} ,
+  \qquad
+  \Phi_{ij} = \mathrm{clamp}\!\left(\frac{4A_{ij}}{(1+A_{ij})^2},\,0,\,1\right)
+    \times\begin{cases}
+      \exp\!\big(-25(\eta_{ij}-\eta_{\rm crit})^2\big) & \eta_{ij}<\eta_{\rm crit} \\
+      1 & \eta_{ij}\ge\eta_{\rm crit}
+    \end{cases} ,
+  \label{eq:fuv-b-diss-vanleer}
+\end{equation}
+\begin{equation}
+  d_{ij}^{\rm rec} = d_{ij} - \Phi_{ij}\,\tfrac12(\mathbf g_i+\mathbf g_j)\cdot\mathbf{dx} ,
+  \label{eq:fuv-b-diss-reconstructed}
+\end{equation}
+with $\mathbf g_i=\nabla U_i$ (the previous step's finalized gradient,
+Eq.~\ref{eq:fuv-b-impl-grad}, applied to $U=\rho u$) and $\eta_{ij}=
+r_{ij}/\max(h_i,h_j)$, $\eta_{\rm crit}=1$. $\Phi_{ij}=0$ for
+opposite-sign gradients (the exact single-particle-dip configuration
+Stage~1 exists for), so $d_{ij}^{\rm rec}$ reduces to the raw jump there
+and Stage~2 changes nothing at the case that matters most; it only
+softens the jump between two smoothly-varying, same-sign-gradient
+neighbours. $d_{ij}^{\rm rec}$ replaces $d_{ij}$ in
+Eq.~\ref{eq:fuv-b-diss-formula}, unchanged otherwise.
+
+\textbf{Stage~3 (compiled optionally, off by default): an anisotropic
+flux-dissipation term for $\mathbf F$ itself.} Stage~1 only damps $u$;
+a flux-driven oscillation in $\mathbf F$ that never actually drives $u$
+negative can still pass Stage~1's trigger by. Following the analogous
+switch already used by this fork's own \code{rt/SPHM1RT} module
+\citep{Chan2021}, define per particle a unit flux direction
+$\hat{\mathbf n}_i=\mathbf F_i/|\mathbf F_i|$ and an anisotropic
+diffusivity $D_{f,i}=\alpha_{f,i}\,v_{\rm sig}\,h_i$ ($v_{\rm sig}=
+\min(c_{{\rm hyp},i},c_{{\rm hyp},j})$, the same pairing as Stage~1),
+then
+\begin{equation}
+  \mathbf t_i = \rho_i\,D_{f,i}\,\psi_i\,(\hat{\mathbf n}_i\cdot\mathbf{dx})\,
+    \hat{\mathbf n}_i , \qquad \psi_i\equiv(\nabla\cdot\mathbf F)_i ,
+  \label{eq:fuv-b-diss-flux-t}
+\end{equation}
+\begin{equation}
+  \dot{\mathbf F}_i\big|_{\rm diss} =
+    -\sum_j m_j\,\frac{(\mathbf t_i-\mathbf t_j)\,\bar W_{ij}}{\rho_i^2\,r_{ij}} ,
+  \label{eq:fuv-b-diss-flux-formula}
+\end{equation}
+accumulated in the gradient loop (where $\psi_i$ is already final) and
+applied as a third frozen term of the $\mathbf F$ relaxation
+(Section~\ref{sec:fuv-b-as-implemented}). Not antisymmetric in the same
+way as Eq.~\ref{eq:fuv-b-diss-formula}: $\mathbf F$ is a genuinely
+transported quantity, not a globally conserved sum, so nothing requires
+it to be. Its own trigger fires only in compression
+($(\nabla\cdot\mathbf F)_i<0$) and estimates a local shock/oscillation
+strength from the time-rate of change of $\nabla\cdot\mathbf F$ itself,
+\begin{equation}
+  \alpha_{f,{\rm aim},i} = \mathrm{clamp}\!\left(
+    -A\,\frac{h_i^2}{u_{V,i}\,c_{{\rm hyp},i}^2}\,
+    \frac{(\nabla\cdot\mathbf F)_i-(\nabla\cdot\mathbf F)_i^{\rm prev}}{\Delta t_i} ,\,
+    0,\,1\right) ,
+  \label{eq:fuv-b-diss-flux-trigger}
+\end{equation}
+with $A=200$ as shipped and the same reactive-decay memory as
+Eq.~\ref{eq:fuv-b-diss-trigger} otherwise. Neither Stage changes the
+physical content of Eqs.~\ref{eq:fuv-p1-zeroth}--\ref{eq:fuv-p1-first};
+both remain refinements of the same artificial-stabilization idea as
+Stage~1.
+
+\textbf{Current status (2026-09-09), confined to this paragraph so it
+can be amended on its own}: Stage~1 is implemented, applied in the force
+loop as described above, and validated at the formula level and by unit
+test. It ships \textbf{disabled by default}
+(\code{GEARFeedback:LW\_FUV\_dissipation\_alpha\_max}$=0$) pending an
+operator ruling on whether, and at what ceiling, it should be enabled by
+default; that ruling has not yet been made. Stages~2 and~3 above are
+implemented and unit-tested but have not yet been validated for real
+physical benefit in a production-like run.
 
 \subsubsection{From P1 to a cheap M1: a local closure upgrade}
 \label{sec:fuv-b-m1}
@@ -1799,15 +2256,40 @@ still open for the FUV/ISRF work as a whole.
     $c_{\rm hyp}$, not true $c$ (Section~\ref{sec:fuv-b-m1}), is not yet
     implemented or checked against \code{rt/GEAR}'s own handling of the
     same issue;
-  \item the margin factor $\kappa_{\rm margin}$
-    (Eq.~\ref{eq:fuv-chyp-choice}) is proposed at $\sim5$--$10$ by
-    analogy with a general "quasi-instantaneous relative to hydro"
-    argument, not yet empirically tuned or validated against an actual
-    run;
-  \item folding the injection term into the same exact exponential
-    integrator as the joint $u$/$\mathbf F$ relaxation
-    (Section~\ref{sec:fuv-b-algorithm}'s closing remark) is an available
-    refinement, not yet applied;
+  \item \textbf{Superseded (2026-09-09)}: the margin factor was
+    originally proposed as a sound-speed multiple
+    $\kappa_{\rm margin}\sim5$--$10$; the shipped closure coefficient
+    $C_{\rm hyp}$ (Eq.~\ref{eq:fuv-chyp-choice}) is a different quantity
+    with a different role (Section~\ref{sec:fuv-b-cfl}), default $0.5$.
+    Its stability upper bound is checked, not merely asserted
+    (Section~\ref{sec:fuv-b-as-implemented}'s Tier-1 validation); whether
+    $0.5$ is also the best accuracy/cost trade-off, as opposed to merely
+    a safely stable choice, is not yet separately tuned;
+  \item \textbf{Resolved}: folding the injection term into the same
+    exact exponential integrator as the joint $u$/$\mathbf F$ relaxation
+    (Section~\ref{sec:fuv-b-algorithm}'s closing remark) is exactly what
+    the per-particle dose-reservoir mechanism does
+    (Section~\ref{sec:fuv-b-dose-reservoir});
+  \item the dose reservoir's specific-energy value is not rescaled if
+    the particle's mass changes between a star's deposit and the
+    particle's own drain (Section~\ref{sec:fuv-b-dose-reservoir}): a
+    known, unfixed bound on the mechanism, not yet quantified;
+  \item the Stage~1 dissipation term's exact conservation of
+    $\sum_i m_i u_i$ only holds for a pair whose particles are both
+    active and dispatched together this step; an active/inactive pair
+    leaves the debit unmatched, and because $\alpha_{ij}=\max(\alpha_i,\alpha_j)$
+    (Eq.~\ref{eq:fuv-b-diss-vsig}) the term can fire from either side of
+    the pair, not only from the active particle's own $U_i<0$; the
+    leak's sign follows $\operatorname{sign}(U_i-U_j)$ for the triggered
+    pair, so it can add to or subtract from the active particle's energy
+    depending on which side triggered and the relative sign of $U_i$ and
+    $U_j$, though it remains correlated with the trigger rather than
+    averaging out over many substeps (Section~\ref{sec:fuv-b-dissipation}):
+    a known, documented limitation of the mechanism, not yet quantified;
+  \item Stage~1 artificial dissipation (Section~\ref{sec:fuv-b-dissipation})
+    ships disabled by default pending an operator ruling on its default
+    ceiling; Stages~2/3 are implemented and unit-tested but not yet
+    validated for real physical benefit;
   \item a validation plan specific to this design is not yet built:
     the Yukawa-profile test above (Design~A's own open items) and a new
     telegrapher-wavefront test (checking the propagation speed $c_{\rm
