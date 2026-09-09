@@ -51,23 +51,48 @@
  */
 struct task_dependency {
   /* Main task */
+  /*! ID of the task */
   int type_in;
+
+  /*! ID of the subtask */
   int subtype_in;
+
+  /*! Is the task implicit */
   int implicit_in;
+
+  /*! Is the taks_in at the top level? */
   int task_in_is_top;
+
+  /*! Is the taks_in at the grav.super level? */
   int task_in_is_grav_super;
+
+  /*! Is the taks_in at the hydro.super level? */
   int task_in_is_hydro_super;
 
   /* Dependent task */
+  /*! ID of the dependent task */
   int type_out[MAX_NUMBER_DEP];
+
+  /*! ID of the dependent subtask */
   int subtype_out[MAX_NUMBER_DEP];
+
+  /*! Is the dependent task implicit */
   int implicit_out[MAX_NUMBER_DEP];
+
+  /*! Is the taks_out at the top level? */
   int task_out_is_top[MAX_NUMBER_DEP];
+
+  /*! Is the taks_out at the grav.super level? */
   int task_out_is_grav_super[MAX_NUMBER_DEP];
+
+  /*! Is the taks_out at the hydro.super level? */
   int task_out_is_hydro_super[MAX_NUMBER_DEP];
 
   /* Statistics */
+  /*! number of link between the two task type */
   int number_link[MAX_NUMBER_DEP];
+
+  /* number of ranks having this relation */
   int number_rank[MAX_NUMBER_DEP];
 };
 
@@ -79,15 +104,18 @@ struct task_dependency {
  * @param tstype The MPI_Datatype to initialize.
  */
 static void task_dependency_define(MPI_Datatype *tstype) {
+  /* Define the variables */
   const int count = 14;
   int blocklens[count];
   MPI_Datatype types[count];
   MPI_Aint disps[count];
 
+  /* all the type are int */
   for (int i = 0; i < count; i++) {
     types[i] = MPI_INT;
   }
 
+  /* Task in */
   disps[0] = offsetof(struct task_dependency, type_in);
   blocklens[0] = 1;
   disps[1] = offsetof(struct task_dependency, subtype_in);
@@ -101,6 +129,7 @@ static void task_dependency_define(MPI_Datatype *tstype) {
   disps[5] = offsetof(struct task_dependency, task_in_is_grav_super);
   blocklens[5] = 1;
 
+  /* Task out */
   disps[6] = offsetof(struct task_dependency, type_out);
   blocklens[6] = MAX_NUMBER_DEP;
   disps[7] = offsetof(struct task_dependency, subtype_out);
@@ -114,11 +143,13 @@ static void task_dependency_define(MPI_Datatype *tstype) {
   disps[11] = offsetof(struct task_dependency, task_out_is_grav_super);
   blocklens[11] = MAX_NUMBER_DEP;
 
+  /* statistics */
   disps[12] = offsetof(struct task_dependency, number_link);
   blocklens[12] = MAX_NUMBER_DEP;
   disps[13] = offsetof(struct task_dependency, number_rank);
   blocklens[13] = MAX_NUMBER_DEP;
 
+  /* define it for MPI */
   MPI_Type_create_struct(count, blocklens, disps, types, tstype);
   MPI_Type_commit(tstype);
 }
@@ -129,23 +160,29 @@ static void task_dependency_define(MPI_Datatype *tstype) {
  * @param in_p The #task_dependency to add.
  * @param out_p The #task_dependency where in_p is added.
  * @param len The length of the arrays.
- * @param type The MPI datatype.
+ * @param type The MPI datatype. We don't use it here, but creating an MPI
+ * operation (which is what we do with this function) requires it.
  */
 static void task_dependency_sum(void *in_p, void *out_p, int *len,
                                 MPI_Datatype *type) {
+  /* change pointer type */
   struct task_dependency *in = (struct task_dependency *)in_p;
   struct task_dependency *out = (struct task_dependency *)out_p;
 
+  /* Loop over all the current objects */
   for (int i = 0; i < *len; i++) {
+    /* loop over all the object set in invals */
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       if (in[i].number_link[j] == -1) {
         break;
       }
 
+      /* get a few variables */
       const int tb_type = in[i].type_out[j];
       const int tb_subtype = in[i].subtype_out[j];
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* Check tasks */
       if (tb_type >= task_type_count) {
         error("Unknown task type %i", tb_type);
       }
@@ -155,12 +192,16 @@ static void task_dependency_sum(void *in_p, void *out_p, int *len,
       }
 #endif
 
+      /* find the corresponding id */
       int k = 0;
       while (k < MAX_NUMBER_DEP) {
+        /* have we reached the end of the links? */
         if (out[i].number_link[k] == -1) {
+          /* reset the counter in order to be safe */
           out[i].number_link[k] = 0;
           out[i].number_rank[k] = 0;
 
+          /* set the relation */
           out[i].type_in = in[i].type_in;
           out[i].subtype_in = in[i].subtype_in;
           out[i].implicit_in = in[i].implicit_in;
@@ -171,6 +212,7 @@ static void task_dependency_sum(void *in_p, void *out_p, int *len,
           break;
         }
 
+        /* do we have the same relation? */
         if (out[i].type_out[k] == tb_type &&
             out[i].subtype_out[k] == tb_subtype) {
           break;
@@ -179,11 +221,13 @@ static void task_dependency_sum(void *in_p, void *out_p, int *len,
         k++;
       }
 
+      /* Check if we are still in the memory */
       if (k == MAX_NUMBER_DEP) {
         error("Not enough memory, please increase MAX_NUMBER_DEP");
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* Check if correct relation */
       if (out[i].type_in != in[i].type_in ||
           out[i].subtype_in != in[i].subtype_in ||
           out[i].implicit_in != in[i].implicit_in ||
@@ -193,16 +237,18 @@ static void task_dependency_sum(void *in_p, void *out_p, int *len,
         error("Tasks do not correspond");
       }
 #endif
-
+      /* sum the contributions */
       out[i].number_link[k] += in[i].number_link[j];
       out[i].number_rank[k] += in[i].number_rank[j];
 
+      /* Get the task in level */
       out[i].task_in_is_top = min(out[i].task_in_is_top, in[i].task_in_is_top);
       out[i].task_in_is_hydro_super =
           min(out[i].task_in_is_hydro_super, in[i].task_in_is_hydro_super);
       out[i].task_in_is_grav_super =
           min(out[i].task_in_is_grav_super, in[i].task_in_is_grav_super);
 
+      /* Get the task out level */
       out[i].task_out_is_top[j] =
           min(out[i].task_out_is_top[j], in[i].task_out_is_top[j]);
       out[i].task_out_is_hydro_super[j] = min(out[i].task_out_is_hydro_super[j],
@@ -212,10 +258,10 @@ static void task_dependency_sum(void *in_p, void *out_p, int *len,
     }
   }
 
-  (void)type;
+  return;
 }
 
-#endif
+#endif  // WITH_MPI
 
 /**
  * @brief Write a csv file with the task dependencies.

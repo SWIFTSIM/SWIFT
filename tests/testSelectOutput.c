@@ -28,7 +28,8 @@ void select_output_engine_init(struct engine *e, struct space *s,
                                struct swift_params *params,
                                struct output_options *output,
                                struct cooling_function_data *cooling,
-                               struct hydro_props *hydro_properties) {
+                               struct hydro_props *hydro_properties,
+                               struct ic_info *ics_metadata) {
   /* set structures */
   e->s = s;
   e->cooling_func = cooling;
@@ -37,6 +38,7 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->cosmology = cosmo;
   e->policy = engine_policy_hydro;
   e->hydro_properties = hydro_properties;
+  e->ics_metadata = ics_metadata;
 
   /* initialization of threadpool */
   threadpool_init(&e->threadpool, 1);
@@ -161,7 +163,7 @@ int main(int argc, char *argv[]) {
   sprintf(e.snapshot_base_name, "testSelectOutput");
   sprintf(e.run_name, "Select Output Test");
   select_output_engine_init(&e, &s, &cosmo, &param_file, &output_options,
-                            &cooling, &hydro_properties);
+                            &cooling, &hydro_properties, &ics_metadata);
 
   /* check output selection */
   message("Checking output parameters.");
