@@ -2056,7 +2056,7 @@ This value behaves differently in different scenarios:
 - For intermediate zoom regions: This value is ignored entirely and the number of background cells is the number of zoom regions which tesselate the parent volume along each axis.
 - For small zoom regions: This value is respected and never modified.
 
-You can set this to ``-1`` to enable automatic optimization, which will search for the optimal value that minimizes both padding waste and total cell count. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
+You can set this to ``-1`` to enable automatic optimization, which will pick the value that minimizes the padding around the zoom region, i.e. the number of background cells which maximises the fraction of the zoom cells filled by the high-resolution region, while accounting for the user specified padding. Note that this deliberately ignores the resulting number of background cells, thus it can lead to large numbers of background cells when the fraction of parent volume occupied by the zoom region is small. Set this parameter explicitly if you need to cap the number of background cells. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
 
 
 ``region_buffer_cell_ratio``
