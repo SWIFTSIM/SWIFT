@@ -606,8 +606,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (s->with_zoom_region) {
     for (size_t i = 0; i < s->nr_parts; ++i) {
       if (s->parts[i].time_bin == time_bin_not_created) {
-        const int cid = cell_getid_from_pos(
-            s, s->parts[i].x[0], s->parts[i].x[1], s->parts[i].x[2]);
+        const int cid = cell_getid_from_pos(s, s->parts[i].x[0],
+                                            s->parts[i].x[1], s->parts[i].x[2]);
         if (s->cells_top[cid].type != cell_type_zoom)
           error("Extra part allocated to non-zoom cell %d", cid);
       }
@@ -642,8 +642,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
     for (size_t i = 0; i < s->nr_sinks; ++i) {
       if (s->sinks[i].time_bin == time_bin_not_created) {
-        const int cid = cell_getid_from_pos(
-            s, s->sinks[i].x[0], s->sinks[i].x[1], s->sinks[i].x[2]);
+        const int cid = cell_getid_from_pos(s, s->sinks[i].x[0],
+                                            s->sinks[i].x[1], s->sinks[i].x[2]);
         if (s->cells_top[cid].type != cell_type_zoom)
           error("Extra sink allocated to non-zoom cell %d", cid);
       }
