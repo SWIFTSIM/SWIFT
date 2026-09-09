@@ -1,25 +1,40 @@
 \section{FUV / ISRF: photoelectric heating and H$_2$ photodissociation}
 \label{sec:fuv-isrf}
 
-Not implemented yet: this section records what was found while scoping
-items~T5 and~T6 (both tracked in the GEAR radiation logbook's
-open-items section): what Grackle (the frozen,
-SWIFT-compatible checkout at \texttt{\textasciitilde/programs/grackle-swift/},
-confirmed against its own source, not just its online docs, which are
-thin on this) actually expects for these two channels
-(Sections~\ref{sec:fuv-lw-grackle}--\ref{sec:fuv-two-bands}), what both
-propagation designs below need in common
-(Section~\ref{sec:fuv-common}), and two competing designs for turning a
-per-star injected budget into a smooth ISRF: a \textbf{parabolic}
-(Jacobi-relaxation) scheme (Section~\ref{sec:fuv-design-a}) and a
-\textbf{hyperbolic} (Cattaneo/P1, upgradeable to a cheap M1) scheme
-(Section~\ref{sec:fuv-design-b}, preferred going forward because its
-CFL condition scales like ordinary hydro's rather than like an
-explicit-diffusion $h^2$ bound). Both are kept here, not just the
-preferred one: Design~A is simpler and may still be
-the right choice if Design~B's extra machinery is not worth its cost in
-practice once built, so its derivation and honest caveats are preserved
-rather than deleted.
+This section documents two feedback channels beyond ionizing (HII)
+radiation: \textbf{photoelectric heating} and \textbf{H$_2$
+photodissociation} (Lyman-Werner), both driven by a star's non-ionizing
+far-UV output, an interstellar radiation field (ISRF) estimated locally
+rather than assumed as a fixed background value. It covers what Grackle
+(the frozen, SWIFT-compatible checkout at
+\texttt{\textasciitilde/programs/grackle-swift/}, confirmed against its
+own source, not just its online docs, which are thin on this) expects
+for these two channels (Sections~\ref{sec:fuv-lw-grackle}--\ref{sec:fuv-two-bands}),
+what turning a per-star injected budget into a smooth ISRF requires in
+general (Section~\ref{sec:fuv-common}), and two designs for doing that
+propagation: a \textbf{parabolic} (Jacobi-relaxation) scheme
+(Section~\ref{sec:fuv-design-a}) and a \textbf{hyperbolic}
+(Cattaneo/P1, upgradeable to a cheap M1) scheme
+(Section~\ref{sec:fuv-design-b}).
+
+\textbf{Current status.} The hyperbolic scheme (Design~B) is
+implemented (\code{src/feedback/GEAR/radiation\_isrf.c} and related
+files) and is the one that ships in this project's own build: its
+governing equations, discretization, and numerical stabilization are
+described in full in Section~\ref{sec:fuv-design-b}, which also states
+plainly, section by section, which parts describe what actually runs
+versus a fuller alternative considered but not built. The Grackle
+coupling (Section~\ref{sec:fuv-pe-concrete}) is wired in and
+cross-checked quantitatively against Grackle's own solver. The
+parabolic scheme (Design~A) is kept here as a design record, not as
+live code: it was the first propagation scheme built, was superseded by
+Design~B for the reasons summarized at the start of
+Section~\ref{sec:fuv-design-b}, and its implementation has since been
+removed from this branch. Its derivation and honest caveats
+(Section~\ref{sec:fuv-design-a}) are preserved rather than deleted,
+both as the record of a real design decision and because it remains a
+legitimate simpler alternative if Design~B's extra machinery ever
+proves not worth its cost in practice.
 
 \subsection{H$_2$ photodissociation (Lyman-Werner) in Grackle}
 \label{sec:fuv-lw-grackle}
@@ -121,8 +136,8 @@ per-particle ISRF}
 \label{sec:fuv-pe-concrete}
 
 The discussion above was in terms of what Grackle \emph{can} do;
-concretely, what we would actually set (2026-07-20, not yet
-implemented):
+concretely, what is actually set (implemented; the configuration below
+is what ships, gated on \code{GEARFeedback:with\_photoelectric\_heating}):
 
 \begin{enumerate}
   \item \code{metal\_cooling=1}: prerequisite for the next flag,
@@ -227,6 +242,15 @@ implemented):
     if both channels are wanted, and whether they can be enabled
     together without conflict is itself unverified
     (Section~\ref{sec:fuv-propagation}'s open-questions list).
+  \item \textbf{As implemented}: \code{isrf\_habing} is filled every
+    cooling step from Eq.~\ref{eq:fuv-g0-conversion}, in the cooling
+    module itself, immediately before Grackle is called. \textbf{Caveat}:
+    this coupling exists only where a real per-particle cooling solve
+    happens. Under the \code{cooling=none} subgrid configuration, the
+    equivalent lookup is a hardcoded no-op that always returns zero: the
+    coupling is structurally present but inert there, not silently
+    wrong, but worth knowing before assuming photoelectric heating is
+    active in every cooling configuration.
 \end{enumerate}
 
 \subsection{Same photon band for both?}
@@ -291,16 +315,18 @@ pairs on the same curve. Advantages over the fixed-shape escape hatch:
     integrated over that range): direct, no shape assumption needed
     once the band integral itself is correct.
 \end{itemize}
-\textbf{Like $Q_H$ and $L_{\rm bol}$, both $L_{\rm FUV}$ and $L_{\rm
-LW}$ will eventually be read from tables, not computed from the
-current empirical piecewise power-law fits.} Item~T7 (the HII
-photoionization logbook's open-items section) already plans to extend
-\texttt{pychem}
-(\texttt{\textasciitilde/programs/pychem/}) to emit proper
-$(M,Z)$-dependent stellar tables replacing today's single-metallicity
-mass--luminosity/temperature fits; $L_{\rm FUV}$ and $L_{\rm LW}$ are
-two more band integrals of the same underlying stellar atmosphere
-model that project would need to tabulate, not a separate table-generation effort: widening T7's scope rather than adding a new item.
+\textbf{Implemented: like $Q_H$ and $L_{\rm bol}$, both $L_{\rm FUV}$
+and $L_{\rm LW}$ are read directly from \texttt{pychem}
+(\texttt{\textasciitilde/programs/pychem/}) $(M,Z)$-dependent stellar
+tables when the table provides them.} A table lacking either band
+integral falls back to a Teff-driven Planck-function band-fraction
+integral computed from the star's own effective temperature and
+bolometric luminosity, not the single-metallicity empirical
+piecewise-power-law fits this paragraph originally proposed working
+around (no such fit is used on this path). Both routes ultimately feed
+the same injection formula (Eq.~\ref{eq:fuv-inject}); which one a given
+star uses depends only on what its table provides, transparently to
+everything downstream.
 
 Both propagation designs below (Sections~\ref{sec:fuv-design-a}
 and~\ref{sec:fuv-design-b}) consume $L_{\rm FUV}+L_{\rm LW}$ as their
@@ -569,20 +595,46 @@ already implemented for radiation-pressure momentum injection
 (\code{radiation\_iact.h}, \code{weight = mj * wi * si\_inv\_weight}
 with \code{si\_inv\_weight} the star's own accumulated
 $1/\sum_k m_k W_{\star k}$ normalisation, so weights sum to 1 over the
-star's kernel), the energy deposited in particle $i$ over this step is
+star's kernel), the energy deposited in particle $i$ over this step is,
+per band,
 \begin{equation}
-  u_{{\rm inject},i} = \Delta t \sum_\star w_{i\star}\,
-    \big(L_{\rm FUV,\star}+L_{\rm LW,\star}\big) ,
+  u_{{\rm inject},i}^{\rm (FUV)} = \Delta t\,\chi_{{\rm FUV},i}
+    \sum_\star w_{i\star}\,L_{\rm FUV,\star} , \qquad
+  u_{{\rm inject},i}^{\rm (LW)} = \Delta t\,\chi_{{\rm LW},i}
+    \sum_\star w_{i\star}\,L_{\rm LW,\star} ,
   \qquad
   w_{i\star} = \frac{m_i\,W_{i\star}}{\sum_k m_k\,W_{\star k}} ,
   \label{eq:fuv-inject}
 \end{equation}
 summing over any star $\star$ whose kernel reaches particle $i$
-(Section~\ref{sec:fuv-two-bands}'s two band luminosities, summed since
-both feed the same photoelectric-heating channel,
-Section~\ref{sec:fuv-pe-concrete}). Dividing by $m_i$ in
-Eq.~\ref{eq:fuv-discrete-update} then gives a specific-energy
+(Section~\ref{sec:fuv-two-bands}'s two band luminosities). Dividing by
+$m_i$ in Eq.~\ref{eq:fuv-discrete-update} then gives a specific-energy
 increment, consistent with Section~\ref{sec:fuv-units}.
+
+\textbf{Receiver-side extinction.} $\chi_{{\rm FUV},i},\chi_{{\rm
+LW},i}\in(0,1]$ is a \emph{local}, per-particle, band-specific dust
+attenuation applied at the receiving end, not at the source or along
+the path from star to particle:
+\begin{equation}
+  \chi_i = \exp\!\big(-\kappa_{\rm eff}\,\Sigma_{{\rm gas},i}\big) ,
+  \label{eq:fuv-extinction}
+\end{equation}
+with $\Sigma_{{\rm gas},i}$ particle $i$'s own local gas column density
+estimate and $\kappa_{\rm eff}$ built from the same per-band dust mass
+opacity fit as $\kappa_{\rm FUV}(Z)$/$\kappa_{\rm LW}(Z)$
+(Section~\ref{sec:fuv-b-lambda-chyp}), evaluated at $i$'s own local
+metallicity. This represents a different physical effect from the
+propagation-decay
+opacity $\kappa_{\rm FUV}/\kappa_{\rm LW}$ used elsewhere in this
+document (Eq.~\ref{eq:fuv-lambda-def} onward): that opacity governs how
+the field is removed \emph{as it propagates} through the diffuse
+medium between sources and receivers; $\chi_i$ instead represents dust
+immediately local to the receiving particle itself (e.g.\ a receiver
+sitting inside its own dense clump), attenuating what that particle
+picks up regardless of how the field got there. Both designs apply it
+identically, at injection, before any propagation step runs; \emph{it
+also applies unchanged when propagation is off}
+(Section~\ref{sec:fuv-b-injection-off}).
 
 \textbf{The mixing weights $\tilde w_{ij}$.} Gemini's own design
 conversation proposed a form for these (its pristine-gas discussion,
@@ -1076,10 +1128,12 @@ M1 (2026-07-24)}
 \label{sec:fuv-design-b}
 
 Motivated directly by Section~\ref{sec:fuv-design-a-limit}'s $h^2$
-ceiling: Darwin's own \texttt{swiftsim\_0} checkout already implements
-a working template for exactly this kind of upgrade: a hyperbolic
-(Cattaneo/Maxwell-type) reformulation of parabolic metal diffusion,
-\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}, documented in
+ceiling: a separate SWIFT checkout maintained within this same research
+group, referred to throughout this document as \texttt{swiftsim\_0},
+already implements a working template for exactly this kind of upgrade:
+a hyperbolic (Cattaneo/Maxwell-type) reformulation of parabolic metal
+diffusion, \code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/},
+documented in
 \texttt{theory/ParabolicDiffusion/GEAR\_FVPM\_Diffusion\_Theory.tex}.
 That module's own timestep section states the identical trade-off in
 its own words: the parabolic mode's CFL is
@@ -1221,8 +1275,13 @@ exact-relaxation scheme (Section~\ref{sec:fuv-b-as-implemented}), not by
 a target physical speed.
 
 \textbf{Why not use $D_{\rm phys}$/$\tau_{\rm phys}$ directly}: checked
-against the ClumpSmith2021 regression-check snapshot (2026-07-23 run),
-$\lambda=1/(\kappa_{\rm FUV}\rho)$ at solar metallicity comes out to
+against a snapshot of the \texttt{ClumpSmith2021} example
+(\texttt{examples/SubgridTests/SubgridRadiation/ClumpSmith2021}, a
+reproduction of \citet{Smith2021}'s Figure~2: four co-located ionizing
+sources in a uniform ambient background next to a dense, resolved
+clump, used throughout this document as a two-phase, ambient/clump
+density-contrast regression check), $\lambda=1/(\kappa_{\rm FUV}\rho)$
+at solar metallicity comes out to
 $\approx0.75\,$pc in the ambient gas ($n_H\approx130\,{\rm cm^{-3}}$,
 $h\approx2.3\,$pc) and $\approx0.008\,$pc in the clump
 ($n_H\approx1.25\times10^4\,{\rm cm^{-3}}$, $h\approx0.5\,$pc): in
@@ -1555,6 +1614,38 @@ specific to the particle's mass at deposit time and is not rescaled if
 that mass changes (a mass-changing feedback event, e.g.\ a supernova
 kick or mass return) between the deposit and the drain.
 
+\subsubsection{Propagation off: the instantaneous-field mode}
+\label{sec:fuv-b-injection-off}
+
+Everything from Section~\ref{sec:fuv-b-p1} onward describes the field
+with \code{GEARFeedback:LW\_FUV\_propagation} on. With it off (the
+\textbf{default}), none of the transport or dissipation machinery runs
+at all: $u_{\rm FUV}$/$u_{\rm LW}$ are written directly by injection,
+with no dose reservoir, no hyperbolic relaxation, and no
+Stage-1/2/3 dissipation.
+
+In this mode, a star's touch resets $u_{\rm FUV}$/$u_{\rm LW}$ to zero
+on the \emph{first} touch of the step (by any star), then every touch
+that step, including the first, adds
+Eq.~\ref{eq:fuv-inject}'s deposit divided by $m_i$: a second
+simultaneously-illuminating star superposes onto what the first just
+wrote, but the value carried over from a previous step is discarded
+rather than decayed or propagated. The field a particle carries is
+therefore an \emph{instantaneous} snapshot of this step's own
+illumination alone, not an accumulated or smoothed quantity: reached
+only within each illuminating star's own kernel radius, with the sharp
+kernel-edge cutoff and patchiness Section~\ref{sec:fuv-propagation}
+already describes as injection's own limitation. Receiver-side
+extinction (Eq.~\ref{eq:fuv-extinction}) still applies in this mode,
+unchanged; only the propagation step and the dose reservoir are absent.
+
+This is the simpler of the two runtime modes, useful as a baseline or
+for isolating whether an effect is due to injection/extinction/Grackle
+coupling at all, independent of anything propagation adds; it is not
+a fallback approximation to the propagation-on field, since it has no
+mechanism to reach any particle a star's kernel does not directly
+touch.
+
 \subsubsection{Considered: Tier~2 gradients via the same FVPM geometry
 bolt-on}
 \label{sec:fuv-b-gradients}
@@ -1885,7 +1976,7 @@ $u$ before cooling ever reads it, rather than only the following step's.
 reconstruction of the Stage-1 jump.} Rather than using the raw
 difference $d_{ij}=U_i-U_j$ in Eq.~\ref{eq:fuv-b-diss-formula}, Stage~2
 reconstructs it to the pair midpoint using each particle's own gradient
-(a van~Leer-type limiter, following \citet{Chan2021}):
+(a van~Leer-type limiter, following Chan et al.\ 2021):
 \begin{equation}
   A_{ij} = \frac{\mathbf g_i\cdot\mathbf{dx}}{\mathbf g_j\cdot\mathbf{dx}} ,
   \qquad
@@ -1915,7 +2006,7 @@ flux-dissipation term for $\mathbf F$ itself.} Stage~1 only damps $u$;
 a flux-driven oscillation in $\mathbf F$ that never actually drives $u$
 negative can still pass Stage~1's trigger by. Following the analogous
 switch already used by this fork's own \code{rt/SPHM1RT} module
-\citep{Chan2021}, define per particle a unit flux direction
+(Chan et al.\ 2021), define per particle a unit flux direction
 $\hat{\mathbf n}_i=\mathbf F_i/|\mathbf F_i|$ and an anisotropic
 diffusivity $D_{f,i}=\alpha_{f,i}\,v_{\rm sig}\,h_i$ ($v_{\rm sig}=
 \min(c_{{\rm hyp},i},c_{{\rm hyp},j})$, the same pairing as Stage~1),
@@ -1960,6 +2051,62 @@ operator ruling on whether, and at what ceiling, it should be enabled by
 default; that ruling has not yet been made. Stages~2 and~3 above are
 implemented and unit-tested but have not yet been validated for real
 physical benefit in a production-like run.
+
+\subsubsection{Design~B's runtime parameters, summarized}
+\label{sec:fuv-b-parameters}
+
+Every parameter this design exposes lives under the
+\code{GEARFeedback:LW\_FUV\_*} family in \code{parameter\_example.yml};
+collected here in one place rather than only where each is first
+introduced.
+
+\begin{center}
+\begin{tabular}{|l|l|l|p{6.2cm}|}
+\hline
+\textbf{Parameter} & \textbf{Default} & \textbf{Range} & \textbf{Meaning} \\
+\hline
+\code{LW\_FUV\_propagation} & 0 (off) & 0 or 1 &
+  Master switch. Off: injection writes $u_{\rm FUV}$/$u_{\rm LW}$
+  directly as an instantaneous field (Section~\ref{sec:fuv-b-injection-off}).
+  On: injection fills the dose reservoir
+  (Section~\ref{sec:fuv-b-dose-reservoir}) and the hyperbolic transport
+  and dissipation machinery of this whole section runs. \\
+\hline
+\code{LW\_FUV\_c\_hyp\_margin} & 0.5 & $(0,1.7]$ &
+  $C_{\rm hyp}$, the closure coefficient in
+  $c_{{\rm hyp},i}=\min(C_{\rm hyp}h_i/\Delta t_i,\,c)$
+  (Eq.~\ref{eq:fuv-chyp-choice}). Upper bound set by this scheme's own
+  explicit-stability requirement. \\
+\hline
+\code{LW\_FUV\_c\_hyp\_pin\_for\_debugging} & 0 (off) & $\ge0$ &
+  Debug/test only: pins every particle's $c_{\rm hyp}$ to this fixed
+  value instead, bypassing the speed-of-light clamp on purpose. Never
+  set in a production run. \\
+\hline
+\code{LW\_FUV\_dissipation\_alpha\_max} & 0 (off) & jointly bounded with
+  $C_{\rm hyp}$, Eq.~\ref{eq:fuv-b-diss-stability} &
+  Ceiling of the Stage-1 triggered artificial-conductivity coefficient
+  $\alpha_i$ (Section~\ref{sec:fuv-b-dissipation}). Zero disables the
+  term entirely. \\
+\hline
+\code{LW\_FUV\_dissipation\_negativity\_threshold} & 0.01 & $(0,1]$ &
+  $\varepsilon_1$ in Eq.~\ref{eq:fuv-b-diss-trigger}: the relative
+  undershoot at which the trigger reaches full strength. \\
+\hline
+\code{LW\_FUV\_dissipation\_alpha\_pin\_for\_debugging} & 0 (off) &
+  $\ge0$, not itself bounded &
+  Debug/test only: bypasses the negativity trigger and holds every
+  particle's $\alpha$ at this fixed value. Never set in a production
+  run. \\
+\hline
+\end{tabular}
+\end{center}
+
+Stages~2/3 add no runtime parameters of their own: they are compiled in
+or out entirely (\code{RADIATION\_LW\_FUV\_DISSIPATION\_RECONSTRUCTION},
+\code{RADIATION\_LW\_FUV\_DISSIPATION\_ANISOTROPIC\_FLUX}), with their
+own internal constants ($\eta_{\rm crit}$, the decay length, the flux
+switch amplitude $A$) fixed at compile time rather than exposed.
 
 \subsubsection{From P1 to a cheap M1: a local closure upgrade}
 \label{sec:fuv-b-m1}
@@ -2158,6 +2305,12 @@ still open for the FUV/ISRF work as a whole.
 \subsubsection{Design A}
 \label{sec:fuv-design-a-open}
 
+\textbf{Historical}: Design~A's implementation has been removed from
+this branch (superseded by Design~B, Section~\ref{sec:fuv-design-b}'s
+introduction). The items below record what was open when it was live
+and are kept for that reason; none of them can be acted on without
+first reviving the implementation on some other branch.
+
 \begin{itemize}
   \item \textbf{Resolved}: not limited to the density loop the way
     plain \code{GEAR/chemistry.h}'s own kernel-smoothing happens to be
@@ -2226,10 +2379,13 @@ still open for the FUV/ISRF work as a whole.
 \label{sec:fuv-design-b-open}
 
 \begin{itemize}
-  \item extending \code{src/fvpm\_geometry.h}'s dispatch condition to
-    trigger for this module (Section~\ref{sec:fuv-b-algorithm}) and
-    writing the three new \code{runner\_iact\_*} hooks
-    (Section~\ref{sec:fuv-b-tasks}): not yet done;
+  \item \textbf{Superseded (2026-09-09)}: extending
+    \code{src/fvpm\_geometry.h}'s dispatch condition was the plan for
+    Section~\ref{sec:fuv-b-algorithm}'s FVPM-based sketch, which was not
+    built; the three \code{runner\_iact\_*} hooks that \emph{did} get
+    built (Section~\ref{sec:fuv-b-tasks}) use plain pairwise SPH
+    operators instead and need no FVPM geometry at all
+    (Section~\ref{sec:fuv-b-as-implemented}). Not a remaining task;
   \item porting \citet{Hopkins2017diffusion}'s artificial-diffusivity
     limiter (Eqs.~\ref{eq:fuv-alpha-limiter-r}--\ref{eq:fuv-alpha-limiter})
     to this design's own flux, adapting $r$'s physical-rate denominator
@@ -2290,11 +2446,12 @@ still open for the FUV/ISRF work as a whole.
     ships disabled by default pending an operator ruling on its default
     ceiling; Stages~2/3 are implemented and unit-tested but not yet
     validated for real physical benefit;
-  \item a validation plan specific to this design is not yet built:
-    the Yukawa-profile test above (Design~A's own open items) and a new
-    telegrapher-wavefront test (checking the propagation speed $c_{\rm
-    hyp}$ is actually respected, i.e.\ $u\equiv0$ ahead of
-    $x=c_{\rm hyp}t$) apply here, plus a new
+  \item \textbf{Mostly resolved (2026-09-09)}: a discrete-steady-state
+    check against this scheme's own predicted profile (the
+    \code{ISRFHyperbolicPropagation} example) and a wavefront-causality
+    check (the \code{ISRFCausalReach} example, confirming $u\equiv0$
+    ahead of the propagation front) both exist and are run as part of
+    this project's own validation battery. Still open: an
     intermediate-optical-depth/off-axis-clump ("partial shadow") test
     to quantify the known P1/M1 shadowing limitation
     (Section~\ref{sec:fuv-b-limits}) for this project's own realistic
@@ -2303,18 +2460,22 @@ still open for the FUV/ISRF work as a whole.
     target for Design~B's own quasi-steady ($\tau\to0$-like) limit, once
     both exist, is not yet decided (implementation order itself:
     Section~\ref{sec:fuv-sequencing});
-  \item restart I/O for the new per-particle field $\mathbf F_i$, and
-    confirming this project's own cell-link/\code{cell\_clean\_links}
-    task-registration checklist has nothing further to add for it beyond
-    the ordinary per-particle-state case (Section~\ref{sec:fuv-b-tasks}
-    notes the requirement generically; not yet checked item by item
-    against the checklist itself);
-  \item an end-to-end sanity check that Eq.~\ref{eq:fuv-g0-conversion}'s
-    $G_{0,i}$ actually produces sensible \code{isrf\_habing} values when
-    run through a real Grackle photoelectric-heating solve: distinct
-    from the item below (which only asks whether two Grackle flags can
-    coexist), this asks whether the number itself is physically
-    reasonable once it reaches Grackle;
+  \item \textbf{Resolved}: restart I/O for the new per-particle field
+    $\mathbf F_i$ (and every other new field this design adds) is
+    covered automatically by the existing whole-struct restart
+    dump/restore path, with nothing further needed from the
+    cell-link/\code{cell\_clean\_links} checklist since no new
+    \code{struct link*} cell field was added -- empirically tested with a
+    kill-mid-run/resume comparison against an uninterrupted control run
+    (Section~\ref{sec:fuv-b-tasks});
+  \item \textbf{Partially addressed}: an end-to-end sanity check that
+    Eq.~\ref{eq:fuv-g0-conversion}'s $G_{0,i}$ produces sensible
+    \code{isrf\_habing} values through a real Grackle
+    photoelectric-heating solve exists (the
+    \code{ISRFPhotoelectricHeating} example, a heating-on-vs-off
+    comparison through real Grackle cooling with a sign/magnitude
+    check); a dedicated quantitative accuracy target beyond
+    sign/magnitude sanity is not yet defined;
   \item item~T6 as a whole remains unscoped as an implementation, for
     either design.
 \end{itemize}
