@@ -226,7 +226,14 @@ void engine_repartition(struct engine *e) {
   if (e->s->cells_top != NULL) space_free_cells(e->s);
 
   /* Report the time spent in the different task categories */
-  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
+  if (e->verbose) {
+    scheduler_report_task_times(&e->sched, e->nr_threads);
+
+    /* In zoom land we also call the zoom specific report function. */
+    if (e->s->with_zoom_region) {
+      zoom_scheduler_report_task_times(&e->sched, e->nr_threads);
+    }
+  }
 
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
@@ -1642,8 +1649,14 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->restarting = 0;
 
   /* Report the time spent in the different task categories */
-  if (e->verbose && !repartitioned)
+  if (e->verbose && !repartitioned) {
     scheduler_report_task_times(&e->sched, e->nr_threads);
+
+    /* In zoom land we also call the zoom specific report function. */
+    if (e->s->with_zoom_region) {
+      zoom_scheduler_report_task_times(&e->sched, e->nr_threads);
+    }
+  }
 
   /* Give some breathing space */
   scheduler_free_tasks(&e->sched);
