@@ -145,11 +145,20 @@ void radiation_first_init_part(struct part *restrict p) {
  * step's per-band absorption rate, cache a stable comoving-density
  * snapshot the propagation loops need (see
  * #feedback_part_data.rho_prev's own doxygen for why), cache
- * this step's hyperbolic propagation speed and physical timestep, copy the
- * previous step's `grad(u)` into #grad_u_FUV_prev/#grad_u_LW_prev and zero
+ * this step's hyperbolic propagation speed and physical timestep, zero
  * every per-step gradient-loop accumulator, and, for active particles only,
  * draw down this step's #u_FUV_source_rate/#u_LW_source_rate from
  * #u_FUV_dose_reservoir/#u_LW_dose_reservoir.
+ *
+ * #grad_u_FUV_prev/#grad_u_LW_prev are NOT written here: this function runs
+ * at drift time for every particle regardless of activity, so copying
+ * #grad_u_FUV/LW here would overwrite an inactive particle's last real
+ * gradient with whatever this same unconditional zeroing already left there
+ * on a previous drift. They are instead written at the end of
+ * #radiation_end_gradient_propagation, which runs only for active
+ * particles, from that step's own just-finalised gradient -- the same
+ * pattern #div_specific_flux_FUV_prev/LW_prev already uses, and the one
+ * MAGMA2's `hydro_prepare_force` uses for the analogous hydro gradient.
  *
  * Must run here, not in #radiation_init_part_propagation: this call site
  * (cell_drift.c) precedes chemistry_init_part's per-step reset of
@@ -164,15 +173,6 @@ void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e) {
   p->feedback_data.u_FUV_prev = p->feedback_data.u_FUV;
   p->feedback_data.u_LW_prev = p->feedback_data.u_LW;
-
-  /* Stage 2 reads the previous step's gradient in the density loop, which
-   * runs before this step's gradient loop has produced a new one. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  for (int k = 0; k < 3; k++) {
-    p->feedback_data.grad_u_FUV_prev[k] = p->feedback_data.grad_u_FUV[k];
-    p->feedback_data.grad_u_LW_prev[k] = p->feedback_data.grad_u_LW[k];
-  }
-#endif
 
   p->feedback_data.grad_u_FUV[0] = 0.f;
   p->feedback_data.grad_u_FUV[1] = 0.f;
@@ -697,6 +697,20 @@ void radiation_end_gradient_propagation(struct part *p,
         fd->dissipation_alpha_LW, alpha_max, eps_1, c_hyp, fd->kappa_LW, dt,
         h_phys);
   }
+
+  /* Stage 2 reads this pair's #grad_u_FUV_prev/LW_prev in the DENSITY loop,
+   * which runs before this step's own gradient loop has produced anything.
+   * Written here, at the end of this active-gated ghost, from the gradient
+   * this same active step just finalised above (#grad_u_FUV/LW), so the
+   * value read by a neighbour is always this particle's own last real
+   * gradient regardless of how many inactive steps it takes in between --
+   * never a value zeroed by an unrelated drift. */
+#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
+  for (int k = 0; k < 3; k++) {
+    fd->grad_u_FUV_prev[k] = fd->grad_u_FUV[k];
+    fd->grad_u_LW_prev[k] = fd->grad_u_LW[k];
+  }
+#endif
 }
 
 /**
