@@ -1056,11 +1056,32 @@ assert np.all(N_zero == 0.0)
 assert np.all(alpha_zero == 0.0)
 print("  PASS: guarded, no NaN.")
 print()
-print("  NOTE: RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE is PROVISIONAL. Nothing")
-print("  above gauges it; the checks are all scale-free properties of the blend.")
-print("  Gauging it needs the distribution of N over a converged glass steady state")
-print("  at the Tier-1 five corners, with N_ref set well above that distribution's")
-print("  upper tail so the far-field noise floor cannot raise the coefficient.")
+
+# I.6: a RESOLVED, monotonic zero-crossing in div(F), one smoothing length
+# wide -- the mechanism at every star's own injection-kernel edge in the
+# exact steady state (div F = S - u/tau, positive inside the source,
+# negative outside). This is the case I.1's single-sign field cannot see,
+# and the one that actually breaks Section 2's always-on disqualification:
+# a fully resolved feature, not noise, drives N well above the tolerance a
+# steady-state trigger must respect there. Recorded as a confirmed defect,
+# not asserted small.
+psi_crossing = np.tanh((0.5 * box_H - pos_H[:, 0]) / h_H)
+S1_x, S2_x = noise_accumulate(pos_H, box_H, psi_crossing, h_H)
+_, N_x = noise_alpha(psi_crossing, S1_x, S2_x, ALPHA_MAX_I)
+near_crossing = np.abs(pos_H[:, 0] - 0.5 * box_H) < 2.0 * h_H
+print(
+    f"  I.6 resolved zero-crossing (width 1h): max N within 2h of the crossing = "
+    f"{N_x[near_crossing].max():.3f}"
+)
+assert N_x[near_crossing].max() > 0.15
+print("  CONFIRMED DEFECT, not a pass: a generic, non-adversarial monotonic")
+print("  crossing already drives N well above the quiet floor; the actual,")
+print("  sharper steady-state profile at a star's own injection kernel reaches")
+print("  0.6-0.8 at every Tier-1 corner. No value of N_ref separates this")
+print("  from a genuine anomaly, since alpha_noise(N=1)/alpha_noise(N=0.5) < 2 for")
+print("  every N_ref, against the >= 70x range Section 2's tolerance needs. Stage 4")
+print("  must not be enabled in this form; see radiation_dissipation_stages.h.")
 print()
 
-print("ALL CHECKS PASSED")
+print("ALL CHECKS PASSED (Stage 4's own indicator is confirmed unfit, by design: I.6")
+print("documents why, it is not expected to pass in the usual sense)")

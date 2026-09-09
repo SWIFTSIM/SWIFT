@@ -78,14 +78,18 @@
 #define RADIATION_LW_FUV_DISSIPATION_FLUX_SWITCH_AMPLITUDE 200.f
 
 /*! Stage 4: reference value the noise indicator `N` is compared against in
-    `alpha_noise = alpha_max*N/(N + this)`. PROVISIONAL AND UNGAUGED: the
-    design (Section 5.2) takes it from where a glass steady state's own
-    `div F` sign noise sits, which the Tier-1 five-corner runs measure once
-    the accumulators exist. The value here is a conservative placeholder
-    only: with `N` in [0, 1] it caps `alpha_noise` at `alpha_max/2` and gives
-    a few percent of `alpha_max` at the few-percent sign noise a glass fixed
-    point is expected to carry. Do not enable Stage 4 in a production run
-    before this constant has been measured. */
+    `alpha_noise = alpha_max*N/(N + this)`. NO VALUE OF THIS CONSTANT MAKES
+    Stage 4 SAFE TO ENABLE, at any resolution: `div F` crosses zero once
+    inside every star's own injection kernel in the exact steady state
+    (`div F = S - u/tau`), where `N` reaches 0.6-0.8 deterministically, not
+    from estimator noise, at every Tier-1 corner tested. Since `N in [0, 1]`
+    always, this constant's entire achievable range is `alpha_noise(N=1) /
+    alpha_noise(N=0.5) < 2`, far short of separating that value from the
+    steady-state tolerance the always-on disqualification (Section 2)
+    requires (a factor of order 70). Do not enable this stage in any run;
+    the compile-time switch exists so its formulas stay compiled and
+    reviewable, not because tuning this constant is expected to make it
+    usable. */
 #define RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE 1.0f
 
 #endif /* SWIFT_RADIATION_DISSIPATION_STAGES_GEAR_H */
