@@ -111,6 +111,50 @@ INLINE static void convert_part_u_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #FUVArtificialDissipationCoefficients, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_dissipation_alpha_FUV(const struct engine *e,
+                                                      const struct part *p,
+                                                      const struct xpart *xp,
+                                                      float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_FUV(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWArtificialDissipationCoefficients, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #FUVSpecificFluxDivergences, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_div_specific_flux_FUV(const struct engine *e,
+                                                      const struct part *p,
+                                                      const struct xpart *xp,
+                                                      float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_FUV(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWSpecificFluxDivergences, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_LW(p);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -123,7 +167,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 12;
+  int num = 16;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -209,6 +253,33 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       parts, xparts, convert_part_u_LW,
       "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
       "radiation field.");
+
+  list[12] = io_make_output_field_convert_part(
+      "FUVArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, xparts, convert_part_dissipation_alpha_FUV,
+      "Stage-1 artificial-dissipation coefficient of the FUV-band "
+      "hyperbolic propagation (design-lw-fuv-design-b-dissipation.md), in "
+      "[0, LW_FUV_dissipation_alpha_max]. Only meaningful when "
+      "LW_FUV_propagation is on.");
+
+  list[13] = io_make_output_field_convert_part(
+      "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, xparts, convert_part_dissipation_alpha_LW,
+      "Same as FUVArtificialDissipationCoefficients, Lyman-Werner band.");
+
+  list[14] = io_make_output_field_convert_part(
+      "FUVSpecificFluxDivergences", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      convert_part_div_specific_flux_FUV,
+      "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
+      "propagation, finalized in the density ghost. Only meaningful when "
+      "LW_FUV_propagation is on.");
+
+  list[15] = io_make_output_field_convert_part(
+      "LWSpecificFluxDivergences", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      convert_part_div_specific_flux_LW,
+      "Same as FUVSpecificFluxDivergences, Lyman-Werner band.");
 
   return num;
 }

@@ -125,6 +125,27 @@ struct feedback_props {
    * use the formula. Never set in a production run. */
   float LW_FUV_c_hyp_pin_for_debugging;
 
+  /*! Ceiling of the Stage-1 triggered artificial-conductivity coefficient
+   * (design-lw-fuv-design-b-dissipation.md Section 3-4). 0 disables the
+   * term (the parent scheme's current behaviour, for A/B runs); the
+   * enforced range depends on #LW_FUV_c_hyp_margin (see
+   * feedback_properties_init()'s own range check). */
+  float LW_FUV_dissipation_alpha_max;
+
+  /*! Undershoot of a particle's own `rho_prev*u` below the neighbours'
+   * kernel-mean `|rho_prev*u_prev|`, relative, at which the Stage-1
+   * dissipation coefficient reaches #LW_FUV_dissipation_alpha_max (design-
+   * lw-fuv-design-b-dissipation.md Section 4.3). */
+  float LW_FUV_dissipation_negativity_threshold;
+
+  /*! Debug/test-only: bypass the Stage-1 negativity trigger and hold every
+   * particle's dissipation coefficient (both bands) at this fixed value,
+   * whenever positive. Not itself subject to the joint
+   * (LW_FUV_dissipation_alpha_max, LW_FUV_c_hyp_margin) bound; only a
+   * warning fires if it exceeds that bound. 0 (default): disabled, use the
+   * trigger. Never set in a production run. */
+  float LW_FUV_dissipation_alpha_pin_for_debugging;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -248,6 +269,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
         message(
             "LW/FUV c_hyp pinned for debugging (physical units)        = %g",
             feedback_props->LW_FUV_c_hyp_pin_for_debugging);
+      message("LW/FUV dissipation alpha_max                               = %g",
+              feedback_props->LW_FUV_dissipation_alpha_max);
+      message("LW/FUV dissipation negativity threshold                    = %g",
+              feedback_props->LW_FUV_dissipation_negativity_threshold);
+      if (feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f)
+        message(
+            "LW/FUV dissipation alpha pinned for debugging              = %g",
+            feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging);
     }
   }
 
@@ -476,6 +505,60 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
             "(physical units) instead of C_hyp*h/dt. Never use this in a "
             "production run.",
             fp->LW_FUV_c_hyp_pin_for_debugging);
+
+      /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
+       * dissipation.md Section 5.3). Shipped default 0: the term's own
+       * validation legs are still running, so it stays off until the
+       * operator rules on "on by default" (Section 5.2). */
+      fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
+          params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.0f);
+      fp->LW_FUV_dissipation_negativity_threshold = parser_get_opt_param_float(
+          params, "GEARFeedback:LW_FUV_dissipation_negativity_threshold",
+          0.01f);
+      fp->LW_FUV_dissipation_alpha_pin_for_debugging =
+          parser_get_opt_param_float(
+              params, "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
+              0.0f);
+
+      if (fp->LW_FUV_dissipation_alpha_max < 0.f)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_alpha_max must be >= 0 (got %g).",
+            fp->LW_FUV_dissipation_alpha_max);
+
+      if (fp->LW_FUV_dissipation_negativity_threshold <= 0.f ||
+          fp->LW_FUV_dissipation_negativity_threshold > 1.f)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_negativity_threshold must lie "
+            "in (0, 1] (got %g).",
+            fp->LW_FUV_dissipation_negativity_threshold);
+
+      /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
+       * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
+       * the kernel's own Wendland-C2 lattice constants (I_W = 3.10,
+       * nu_max_coeff = 1.18), reproduced by
+       * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. */
+      const float C_hyp = fp->LW_FUV_c_hyp_margin;
+      const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
+      if (fp->LW_FUV_dissipation_alpha_max > 0.f &&
+          fp->LW_FUV_dissipation_alpha_max > alpha_bound)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_alpha_max (%g) exceeds the "
+            "stability bound %g at GEARFeedback:LW_FUV_c_hyp_margin = %g "
+            "(6.2*alpha_max*C_hyp + 0.70*C_hyp^2 <= 2).",
+            fp->LW_FUV_dissipation_alpha_max, alpha_bound, C_hyp);
+
+      if (fp->LW_FUV_dissipation_alpha_pin_for_debugging < 0.f)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging must be "
+            ">= 0 (got %g).",
+            fp->LW_FUV_dissipation_alpha_pin_for_debugging);
+
+      if (fp->LW_FUV_dissipation_alpha_pin_for_debugging > alpha_bound)
+        warning(
+            "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging (%g) "
+            "exceeds the stability bound %g at the run's C_hyp: not itself "
+            "clamped (debug/test only). Never use this in a production run.",
+            fp->LW_FUV_dissipation_alpha_pin_for_debugging, alpha_bound);
 
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
        * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not

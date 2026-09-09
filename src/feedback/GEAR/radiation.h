@@ -61,6 +61,17 @@
     can clear it first. */
 #define RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS 2
 
+/*! Memory length, in units of a particle's own smoothing length, of the
+    Stage-1 artificial-dissipation coefficient's decay (design-lw-fuv-
+    design-b-dissipation.md Section 4.3): the coefficient relaxes toward
+    its trigger-driven target at rate c_hyp*(1/(this*h) + kappa) per unit
+    time, i.e. an e-folding of `this` particle-own-steps at the default
+    LW_FUV_c_hyp_margin. A compile-time constant, not a runtime parameter,
+    per the MAGMA2 precedent (Section 5.1): it sets the term's transient
+    behaviour, not its steady-state strength (LW_FUV_dissipation_alpha_max
+    does that). */
+#define RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH 5.0f
+
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
     over, in units of the rebuild cadence actually in force. A scheduled pass
     is skipped whenever the star's working-level cell holds no gas, which

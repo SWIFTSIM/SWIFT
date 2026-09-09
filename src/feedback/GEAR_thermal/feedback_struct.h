@@ -133,6 +133,35 @@ struct feedback_part_data {
   float div_specific_flux_FUV;
   float div_specific_flux_LW;
 
+  /*! Stage-1 artificial-dissipation source term (design-lw-fuv-design-b-
+      dissipation.md Section 3.1), density loop
+      (radiation_propagation_iact.h): pairwise signal-velocity conductivity
+      on the u_FUV_prev/u_LW_prev jump, applied as a second frozen source
+      term in #radiation_end_density_propagation's exact relaxation, with
+      the opposite sign of #div_specific_flux_FUV/LW. Scratch: zeroed every
+      h-iteration alongside #div_specific_flux_FUV/LW. */
+  float dissipation_u_FUV;
+  float dissipation_u_LW;
+
+  /*! Kernel-mean of the neighbours' |rho_prev*u_*_prev|, density loop
+      (radiation_propagation_iact.h): the local field-scale reference the
+      Stage-1 negativity trigger (#radiation_end_gradient_propagation)
+      divides an undershoot by. Scratch: zeroed every h-iteration alongside
+      #div_specific_flux_FUV/LW. */
+  float ngb_mean_abs_u_V_FUV;
+  float ngb_mean_abs_u_V_LW;
+
+  /*! Stage-1 artificial-dissipation coefficient (design-lw-fuv-design-b-
+      dissipation.md Section 4.3), raised by the negativity trigger and
+      decayed otherwise, updated once per step in
+      #radiation_end_gradient_propagation (not the density ghost, which
+      re-runs across h-iterations). Persistent, dumped with #part like
+      #specific_flux_FUV; zero at first init, no IC field. Read by the
+      NEXT step's density loop as this band's #dissipation_u_FUV/LW pair
+      coefficient. */
+  float dissipation_alpha_FUV;
+  float dissipation_alpha_LW;
+
   /*! `(1/rho) grad(rho u)` accumulator, gradient loop
       (radiation_propagation_iact.h). Scratch: zeroed once per step by
       radiation_snapshot_part_propagation, since the gradient loop runs

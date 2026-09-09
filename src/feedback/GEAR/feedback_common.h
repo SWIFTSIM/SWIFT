@@ -111,6 +111,10 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 float feedback_get_star_HII_mass(const struct spart *sp);
 float feedback_get_part_u_FUV(const struct part *p);
 float feedback_get_part_u_LW(const struct part *p);
+float feedback_get_part_dissipation_alpha_FUV(const struct part *p);
+float feedback_get_part_dissipation_alpha_LW(const struct part *p);
+float feedback_get_part_div_specific_flux_FUV(const struct part *p);
+float feedback_get_part_div_specific_flux_LW(const struct part *p);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

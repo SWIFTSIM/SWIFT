@@ -1085,6 +1085,46 @@ float feedback_get_part_u_LW(const struct part *p) {
 }
 
 /**
+ * @brief Stage-1 artificial-dissipation coefficient, see
+ * #feedback_part_data.dissipation_alpha_FUV. Thin dispatch wrapper, same
+ * reasoning as #feedback_get_part_u_FUV.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
+  return p->feedback_data.dissipation_alpha_FUV;
+}
+
+/**
+ * @brief See #feedback_get_part_dissipation_alpha_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
+  return p->feedback_data.dissipation_alpha_LW;
+}
+
+/**
+ * @brief `(1/rho) div(rho F)` accumulator, see
+ * #feedback_part_data.div_specific_flux_FUV. Thin dispatch wrapper, same
+ * reasoning as #feedback_get_part_u_FUV.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_div_specific_flux_FUV(const struct part *p) {
+  return p->feedback_data.div_specific_flux_FUV;
+}
+
+/**
+ * @brief See #feedback_get_part_div_specific_flux_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_div_specific_flux_LW(const struct part *p) {
+  return p->feedback_data.div_specific_flux_LW;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR

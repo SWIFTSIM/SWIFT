@@ -799,6 +799,12 @@ GEARFeedback:
                                                            # that bound at this project's kernel/eta_neighbours choice. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
   LW_FUV_c_hyp_pin_for_debugging: 0                        # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
                                                            # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
+  LW_FUV_dissipation_alpha_max: 0                          # (optional) Ceiling of the Stage-1 triggered artificial-conductivity coefficient. 0 disables the term. Must satisfy 6.2*alpha_max*LW_FUV_c_hyp_margin + 0.70*LW_FUV_c_hyp_margin^2 <= 2.
+                                                           # Only meaningful when LW_FUV_propagation is on. (Default: 0; the eventual production default is 0.5, pending validation)
+  LW_FUV_dissipation_negativity_threshold: 0.01            # (optional) Undershoot of a particle's own field below its neighbours' kernel-mean field, relative, at which the Stage-1 dissipation coefficient reaches LW_FUV_dissipation_alpha_max.
+                                                           # Only meaningful when LW_FUV_propagation is on. (Default: 0.01)
+  LW_FUV_dissipation_alpha_pin_for_debugging: 0            # (optional, debug/test only) Bypass the Stage-1 negativity trigger and hold every particle's dissipation coefficient (both bands) at this fixed value, whenever positive. Not itself
+                                                           # subject to the (alpha_max, C_hyp) stability bound. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)

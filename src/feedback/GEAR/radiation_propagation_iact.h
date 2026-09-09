@@ -56,6 +56,8 @@
 #include "kernel_hydro.h"
 #include "radiation.h"
 
+#include <math.h>
+
 /**
  * @brief Band-specific pairwise contribution to particle i's `div(F)`
  * accumulator, and mirrored (mass-weighted, opposite sign) contribution to
@@ -92,6 +94,65 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
 
   *div_F_i += mj * Phi_ij;
   *div_F_j += -mi * Phi_ij;
+}
+
+/**
+ * @brief Band-specific pairwise contribution to particle i's Stage-1
+ * artificial-dissipation source term (design-lw-fuv-design-b-
+ * dissipation.md Section 3.1), and mirrored (mass-weighted, opposite
+ * sign) contribution to particle j's, plus each particle's own kernel-mean
+ * `|rho_prev*u_prev|` reference accumulator the negativity trigger divides
+ * by (radiation_isrf.c's #radiation_update_dissipation_alpha_band).
+ *
+ * `v_sig,ij = max(alpha_i, alpha_j) * min(c_hyp_i, c_hyp_j)` is a signal
+ * VELOCITY, with no `h` factor: the length scale enters only through
+ * `Wbar_ij`'s own `h^-(dim+1)` normalisation, exactly as for an ordinary
+ * SPH Laplacian. `u_i_prev`/`u_j_prev` (not the live, in-progress `u`) and
+ * `rho_i`/`rho_j` (#feedback_part_data.rho_prev) keep this term stable
+ * across a particle's h-iterations, as #radiation_gradient_accumulate_band
+ * below already requires for `d_ij`.
+ *
+ * @param wi Particle i's own kernel value, W(r/h_i)*h_i^-dim.
+ * @param wj Particle j's own kernel value, W(r/h_j)*h_j^-dim.
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param rho_i Particle i's cached comoving density snapshot.
+ * @param rho_j Particle j's cached comoving density snapshot.
+ * @param c_hyp_i Particle i's own hyperbolic propagation speed.
+ * @param c_hyp_j Particle j's own hyperbolic propagation speed.
+ * @param alpha_i Particle i's own dissipation coefficient (this band).
+ * @param alpha_j Particle j's own dissipation coefficient (this band).
+ * @param u_i_prev Particle i's snapshotted specific field (this band).
+ * @param u_j_prev Particle j's snapshotted specific field (this band).
+ * @param dissipation_u_i (return, accumulated) Particle i's dissipation
+ * source-term accumulator.
+ * @param dissipation_u_j (return, accumulated) Particle j's dissipation
+ * source-term accumulator.
+ * @param ngb_mean_abs_u_V_i (return, accumulated) Particle i's kernel-mean
+ * `|rho_prev*u_prev|` accumulator.
+ * @param ngb_mean_abs_u_V_j (return, accumulated) Particle j's kernel-mean
+ * `|rho_prev*u_prev|` accumulator.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_dissipation_accumulate_band(
+    float wi, float wj, float wi_dr, float wj_dr, float mi, float mj,
+    float rho_i, float rho_j, float c_hyp_i, float c_hyp_j, float alpha_i,
+    float alpha_j, float u_i_prev, float u_j_prev, float *dissipation_u_i,
+    float *dissipation_u_j, float *ngb_mean_abs_u_V_i,
+    float *ngb_mean_abs_u_V_j) {
+
+  const float d_ij = rho_i * u_i_prev - rho_j * u_j_prev;
+  const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
+  const float v_sig_ij = max(alpha_i, alpha_j) * min(c_hyp_i, c_hyp_j);
+  const float Psi_ij = v_sig_ij * d_ij * Wbar_ij / (rho_i * rho_j);
+
+  *dissipation_u_i += mj * Psi_ij;
+  *dissipation_u_j += -mi * Psi_ij;
+
+  *ngb_mean_abs_u_V_i += (mj / rho_j) * wi * fabsf(rho_j * u_j_prev);
+  *ngb_mean_abs_u_V_j += (mi / rho_i) * wj * fabsf(rho_i * u_i_prev);
 }
 
 /**
@@ -158,10 +219,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   float wi, wi_dx, wj, wj_dx;
   kernel_deval(r * hi_inv, &wi, &wi_dx);
   kernel_deval(r * hj_inv, &wj, &wj_dx);
-  (void)wi;
-  (void)wj;
   const float wi_dr = wi_dx * pow_dimension_plus_one(hi_inv);
   const float wj_dr = wj_dx * pow_dimension_plus_one(hj_inv);
+  wi *= pow_dimension(hi_inv);
+  wj *= pow_dimension(hj_inv);
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   struct feedback_part_data *fdj = &pj->feedback_data;
@@ -178,6 +239,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
       fdj->specific_flux_LW, &fdi->div_specific_flux_LW,
       &fdj->div_specific_flux_LW);
+
+  radiation_dissipation_accumulate_band(
+      wi, wj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+      fdi->dissipation_alpha_FUV, fdj->dissipation_alpha_FUV, fdi->u_FUV_prev,
+      fdj->u_FUV_prev, &fdi->dissipation_u_FUV, &fdj->dissipation_u_FUV,
+      &fdi->ngb_mean_abs_u_V_FUV, &fdj->ngb_mean_abs_u_V_FUV);
+  radiation_dissipation_accumulate_band(
+      wi, wj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+      fdi->dissipation_alpha_LW, fdj->dissipation_alpha_LW, fdi->u_LW_prev,
+      fdj->u_LW_prev, &fdi->dissipation_u_LW, &fdj->dissipation_u_LW,
+      &fdi->ngb_mean_abs_u_V_LW, &fdj->ngb_mean_abs_u_V_LW);
 }
 
 /**
@@ -210,10 +282,10 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
   float wi, wi_dx, wj, wj_dx;
   kernel_deval(r * hi_inv, &wi, &wi_dx);
   kernel_deval(r * hj_inv, &wj, &wj_dx);
-  (void)wi;
-  (void)wj;
   const float wi_dr = wi_dx * pow_dimension_plus_one(hi_inv);
   const float wj_dr = wj_dx * pow_dimension_plus_one(hj_inv);
+  wi *= pow_dimension(hi_inv);
+  wj *= pow_dimension(hj_inv);
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   const struct feedback_part_data *fdj = &pj->feedback_data;
@@ -227,6 +299,10 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
    * required (return, accumulated) output. */
   float unused_div_specific_flux_FUV = 0.f;
   float unused_div_specific_flux_LW = 0.f;
+  float unused_dissipation_u_FUV = 0.f;
+  float unused_dissipation_u_LW = 0.f;
+  float unused_ngb_mean_abs_u_V_FUV = 0.f;
+  float unused_ngb_mean_abs_u_V_LW = 0.f;
 
   radiation_divergence_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
@@ -236,6 +312,17 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
       fdj->specific_flux_LW, &fdi->div_specific_flux_LW,
       &unused_div_specific_flux_LW);
+
+  radiation_dissipation_accumulate_band(
+      wi, wj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+      fdi->dissipation_alpha_FUV, fdj->dissipation_alpha_FUV, fdi->u_FUV_prev,
+      fdj->u_FUV_prev, &fdi->dissipation_u_FUV, &unused_dissipation_u_FUV,
+      &fdi->ngb_mean_abs_u_V_FUV, &unused_ngb_mean_abs_u_V_FUV);
+  radiation_dissipation_accumulate_band(
+      wi, wj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+      fdi->dissipation_alpha_LW, fdj->dissipation_alpha_LW, fdi->u_LW_prev,
+      fdj->u_LW_prev, &fdi->dissipation_u_LW, &unused_dissipation_u_LW,
+      &fdi->ngb_mean_abs_u_V_LW, &unused_ngb_mean_abs_u_V_LW);
 }
 
 /**

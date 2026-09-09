@@ -112,6 +112,8 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.u_FUV_source_rate = 0.f;
   p->feedback_data.u_LW_source_rate = 0.f;
   p->feedback_data.LW_FUV_reservoir_end_ti = -1;
+  p->feedback_data.dissipation_alpha_FUV = 0.f;
+  p->feedback_data.dissipation_alpha_LW = 0.f;
   radiation_init_part_propagation(p);
 }
 
@@ -241,18 +243,25 @@ void radiation_snapshot_part_propagation(struct part *p,
 }
 
 /**
- * @brief Zero the `div(F)` per-h-iteration accumulators. Mirrors
- * chemistry_init_part's own per-iteration reset (called from the same
- * sites: part_init.h and the ghost h-iteration redo path), so it is safe
- * to call once or several times per step. Pure scratch space (no restart
- * I/O); the density snapshot and c_hyp/dt are cached separately, once per
- * step, by #radiation_snapshot_part_propagation.
+ * @brief Zero the `div(F)`, Stage-1 dissipation, and kernel-mean
+ * per-h-iteration accumulators. Mirrors chemistry_init_part's own
+ * per-iteration reset (called from the same sites: part_init.h and the
+ * ghost h-iteration redo path), so it is safe to call once or several
+ * times per step. Pure scratch space (no restart I/O); the density
+ * snapshot and c_hyp/dt are cached separately, once per step, by
+ * #radiation_snapshot_part_propagation, and #dissipation_alpha_FUV/LW are
+ * persistent and updated once per step by
+ * #radiation_end_gradient_propagation, not here.
  *
  * @param p The #part to reset.
  */
 void radiation_init_part_propagation(struct part *p) {
   p->feedback_data.div_specific_flux_FUV = 0.f;
   p->feedback_data.div_specific_flux_LW = 0.f;
+  p->feedback_data.dissipation_u_FUV = 0.f;
+  p->feedback_data.dissipation_u_LW = 0.f;
+  p->feedback_data.ngb_mean_abs_u_V_FUV = 0.f;
+  p->feedback_data.ngb_mean_abs_u_V_LW = 0.f;
 }
 
 /**
@@ -285,12 +294,16 @@ float radiation_relaxation_phi_factor(float a) {
  * `div(F)` accumulator, so repeated calls across h-iterations converge to
  * the same answer regardless of how many there are.
  *
- * `u_new = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F)`, with
- * `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*kappa*dt`
- * (#radiation_relaxation_phi_factor): the exact solution of
- * `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F)` over one step with
- * `source_rate` and `div(F)` frozen at this h-iteration's value,
- * `tau = 1/(c_hyp*kappa)`. The `3*c_hyp/c` rescale is applied exclusively
+ * `u_new = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F +
+ * dissipation_u)`, with `e = exp(-a)`, `phi = (1-e)/a`,
+ * `a = c_hyp*kappa*dt` (#radiation_relaxation_phi_factor): the exact
+ * solution of `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F) +
+ * dissipation_u` over one step with `source_rate`, `div(F)` and
+ * `dissipation_u` frozen at this h-iteration's value, `tau =
+ * 1/(c_hyp*kappa)`. `dissipation_u` (design-lw-fuv-design-b-dissipation.md
+ * Section 3.1) is the Stage-1 artificial-dissipation term
+ * radiation_propagation_iact.h accumulates alongside `div_F`; it enters
+ * with the OPPOSITE sign. The `3*c_hyp/c` rescale is applied exclusively
  * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
  * No-op when propagation is off.
  *
@@ -316,10 +329,12 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   fd->u_FUV = decay_FUV * fd->u_FUV_prev +
               dt * phi_FUV *
-                  (rescale * fd->u_FUV_source_rate - fd->div_specific_flux_FUV);
-  fd->u_LW =
-      decay_LW * fd->u_LW_prev +
-      dt * phi_LW * (rescale * fd->u_LW_source_rate - fd->div_specific_flux_LW);
+                  (rescale * fd->u_FUV_source_rate - fd->div_specific_flux_FUV +
+                   fd->dissipation_u_FUV);
+  fd->u_LW = decay_LW * fd->u_LW_prev +
+             dt * phi_LW *
+                 (rescale * fd->u_LW_source_rate - fd->div_specific_flux_LW +
+                  fd->dissipation_u_LW);
 }
 
 /**
@@ -348,12 +363,61 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 }
 
 /**
+ * @brief One band's Stage-1 artificial-dissipation coefficient update
+ * (design-lw-fuv-design-b-dissipation.md Section 4.3): raised instantly to
+ * a negativity-triggered target, or decayed toward it otherwise. Reads the
+ * particle's LIVE, this-step `u_V = rho_prev*u` rather than the `u_*_prev`
+ * snapshot the design document's own text specifies: with the dose-
+ * reservoir injection form (Section 4.6.5) already landed, injection no
+ * longer writes `u` at all, so the live `u` seen here (after
+ * #radiation_end_density_propagation has already run in the density
+ * ghost, before any star touches this step's `u` again) is this step's
+ * complete, fully-relaxed value, recovering a one-step trigger lag instead
+ * of two.
+ *
+ * @param u_V This band's live volumetric field, rho_prev*u.
+ * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
+ * accumulator (radiation_propagation_iact.h).
+ * @param alpha_prev This band's #dissipation_alpha_FUV/LW from the
+ * previous step.
+ * @param alpha_max #feedback_props.LW_FUV_dissipation_alpha_max.
+ * @param eps_1 #feedback_props.LW_FUV_dissipation_negativity_threshold.
+ * @param c_hyp The particle's own #c_hyp.
+ * @param kappa This band's #kappa_FUV/LW.
+ * @param dt The particle's own #dt_prev.
+ * @param h_phys The particle's own physical smoothing length.
+ * @return This step's updated dissipation coefficient for this band.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
+                                        float alpha_prev, float alpha_max,
+                                        float eps_1, float c_hyp, float kappa,
+                                        float dt, float h_phys) {
+
+  /* max(ngb_mean_abs_u_V, -u_V) >= -u_V > 0 in this branch, so the
+   * division below is always well-defined. */
+  const float eps = (u_V < 0.f) ? -u_V / max(ngb_mean_abs_u_V, -u_V) : 0.f;
+  const float x = min(eps / eps_1, 1.f);
+  const float alpha_aim = alpha_max * x * x * (3.f - 2.f * x);
+
+  if (alpha_aim >= alpha_prev) return alpha_aim;
+
+  const float a_kappa = c_hyp * kappa * dt;
+  const float decay =
+      expf(-c_hyp * dt / (RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH * h_phys) -
+           a_kappa);
+  return alpha_aim + (alpha_prev - alpha_aim) * decay;
+}
+
+/**
  * @brief Exact-relaxation update of #specific_flux_FUV/#specific_flux_LW, from
  * the `grad(u)` accumulators radiation_propagation_iact.h filled during the
  * gradient loop, which reads this step's already-relaxed `u`
  * (#radiation_end_density_propagation having already run in the density ghost).
  * Runs once per step in the extra ghost, never re-run: the gradient loop itself
- * only runs once per step.
+ * only runs once per step. Also updates #dissipation_alpha_FUV/LW once per
+ * step (see #radiation_update_dissipation_alpha_band), for the NEXT step's
+ * density loop to consume.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact solution of
  * `dF/dt = -F/tau - (D/tau)*grad(u)` over one step with `grad(u)` frozen
@@ -385,6 +449,30 @@ void radiation_end_gradient_propagation(struct part *p,
         decay_FUV * fd->specific_flux_FUV[k] - coeff_FUV * fd->grad_u_FUV[k];
     fd->specific_flux_LW[k] =
         decay_LW * fd->specific_flux_LW[k] - coeff_LW * fd->grad_u_LW[k];
+  }
+
+  const float alpha_pin =
+      e->feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging;
+  if (alpha_pin > 0.f) {
+    /* Bypass the trigger entirely: every particle's coefficient is held at
+     * the pinned value (see this parameter's own doxygen,
+     * feedback_properties.h). */
+    fd->dissipation_alpha_FUV = alpha_pin;
+    fd->dissipation_alpha_LW = alpha_pin;
+  } else {
+    const float alpha_max = e->feedback_props->LW_FUV_dissipation_alpha_max;
+    const float eps_1 =
+        e->feedback_props->LW_FUV_dissipation_negativity_threshold;
+    const float h_phys = (float)e->cosmology->a * p->h;
+
+    fd->dissipation_alpha_FUV = radiation_update_dissipation_alpha_band(
+        fd->rho_prev * fd->u_FUV, fd->ngb_mean_abs_u_V_FUV,
+        fd->dissipation_alpha_FUV, alpha_max, eps_1, c_hyp, fd->kappa_FUV, dt,
+        h_phys);
+    fd->dissipation_alpha_LW = radiation_update_dissipation_alpha_band(
+        fd->rho_prev * fd->u_LW, fd->ngb_mean_abs_u_V_LW,
+        fd->dissipation_alpha_LW, alpha_max, eps_1, c_hyp, fd->kappa_LW, dt,
+        h_phys);
   }
 }
 
