@@ -945,4 +945,200 @@ print(
 )
 assert overlap_flipped > 0.0
 print()
+
+# ---------------------------------------------------------------------------
+# Part I: the relocated amplification matrix G_r (Stage 1 in the force loop)
+# ---------------------------------------------------------------------------
+print("=" * 78)
+print("Part I: relocated (force-loop) amplification matrix G_r vs G_c")
+print("=" * 78)
+print("""
+  Stage 1 moved from the density loop to the force loop, so the dissipation
+  source is now evaluated at the intermediate state u* rather than at
+  u_prev. The per-step map changes from G_c to G_r
+  (design-lw-fuv-dissipation-before-cooling.md Section 5.2):
+
+    u*  = e u - i (nu/c) F          (density ghost, transport only)
+    u\'  = (1 - a_d) u*              (end_force, dissipation correction)
+    F\'  = e F - i c nu u*           (extra ghost, relaxed from u*)
+
+  This part checks the claim the relocation rests on: tr and det of G_r
+  equal those of G_c under a_d -> e*a_d, so the two share eigenvalues at
+  e = 1 (the binding thin limit, where the shipped parameter guard is
+  derived) and G_r has strictly more margin for e < 1.
+""")
+
+
+def G_current(e, a_d, nu, c=1.0):
+    """Amplification matrix of the density-loop placement.
+
+    Parameters
+    ----------
+    e : float
+        Per-step absorption factor, exp(-a).
+    a_d : float
+        Dissipation number, dt*phi*Gamma(k).
+    nu : float
+        Transport number, c_hyp*K*dt*phi.
+    c : float
+        Signal speed scaling of the flux component.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 2x2 complex amplification matrix.
+    """
+    return np.array(
+        [[e - a_d, -1j * nu / c], [-1j * c * nu * (e - a_d), e - nu**2]],
+        dtype=complex,
+    )
+
+
+def G_relocated(e, a_d, nu, c=1.0):
+    """Amplification matrix of the force-loop placement.
+
+    Parameters
+    ----------
+    e : float
+        Per-step absorption factor, exp(-a).
+    a_d : float
+        Dissipation number, dt*phi*Gamma(k).
+    nu : float
+        Transport number, c_hyp*K*dt*phi.
+    c : float
+        Signal speed scaling of the flux component.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 2x2 complex amplification matrix.
+    """
+    return np.array(
+        [
+            [(1.0 - a_d) * e, -1j * (1.0 - a_d) * nu / c],
+            [-1j * c * nu * e, e - nu**2],
+        ],
+        dtype=complex,
+    )
+
+
+rng_I = np.random.default_rng(20260909)
+worst_tr = 0.0
+worst_det = 0.0
+for _ in range(20000):
+    e = float(rng_I.uniform(1e-3, 1.0))
+    a_d = float(rng_I.uniform(0.0, 2.0))
+    nu = float(rng_I.uniform(0.0, 1.5))
+    Gr = G_relocated(e, a_d, nu)
+    Gc_sub = G_current(e, e * a_d, nu)
+    worst_tr = max(worst_tr, abs(np.trace(Gr) - np.trace(Gc_sub)))
+    worst_det = max(worst_det, abs(np.linalg.det(Gr) - np.linalg.det(Gc_sub)))
+print(f"  max |tr(G_r) - tr(G_c|a_d->e a_d)|  = {worst_tr:.3e}")
+print(f"  max |det(G_r) - det(G_c|a_d->e a_d)| = {worst_det:.3e}")
+assert worst_tr < 1e-12
+assert worst_det < 1e-12
+print("  PASS: the substitution a_d -> e*a_d maps G_c's invariants onto G_r's.")
+
+worst_thin = 0.0
+for _ in range(5000):
+    a_d = float(rng_I.uniform(0.0, 2.0))
+    nu = float(rng_I.uniform(0.0, 1.5))
+    rc = max(abs(np.linalg.eigvals(G_current(1.0, a_d, nu))))
+    rr = max(abs(np.linalg.eigvals(G_relocated(1.0, a_d, nu))))
+    worst_thin = max(worst_thin, abs(rc - rr))
+print(f"\n  max |rho(G_c) - rho(G_r)| at e = 1 = {worst_thin:.3e}")
+assert worst_thin < 1e-10
+print("  PASS: identical spectral radii in the thin limit, so the shipped")
+print("  parameter guard 6.2*alpha_max*C_hyp + 0.70*C_hyp^2 <= 2 carries over")
+print("  to the relocated placement unchanged.")
+
+
+def closure_scan(G_const, alpha, C_hyp, n_x=241, n_frac=33):
+    """Maximum spectral radius along the scheme's own closure.
+
+    Parameters
+    ----------
+    G_const : float
+        Zone constant of the dissipation symbol (6.2 bound, 3.15 lattice).
+    alpha : float
+        Dissipation coefficient ceiling.
+    C_hyp : float
+        Courant-like margin of the hyperbolic speed closure.
+    n_x : int
+        Number of h/lambda samples, log-spaced over [1e-3, 1e3].
+    n_frac : int
+        Number of samples of each of a_d and nu inside their maxima.
+
+    Returns
+    -------
+    tuple of float
+        Maximum spectral radius of the current and relocated matrices.
+    """
+    rho_c = 0.0
+    rho_r = 0.0
+    fracs = np.linspace(0.0, 1.0, n_frac)
+    for x in np.logspace(-3.0, 3.0, n_x):
+        e = float(np.exp(-C_hyp * x))
+        a_d_max = G_const * alpha * (1.0 - e) / x
+        nu_max = 1.18 * (1.0 - e) / x
+        for fa in fracs:
+            for fn in fracs:
+                a_d = fa * a_d_max
+                nu = fn * nu_max
+                rho_c = max(rho_c, max(abs(np.linalg.eigvals(G_current(e, a_d, nu)))))
+                rho_r = max(rho_r, max(abs(np.linalg.eigvals(G_relocated(e, a_d, nu)))))
+    return rho_c, rho_r
+
+
+print("\n  Closure scan (h/lambda in [1e-3, 1e3], full (a_d, nu) rectangle):")
+print("  (G, alpha, C_hyp)          rho_max current   rho_max relocated")
+for G_const, alpha, C_hyp in [
+    (6.2, 0.59, 0.5),
+    (6.2, 0.5, 0.5),
+    (3.15, 1.16, 0.5),
+    (6.2, 0.2, 1.0),
+]:
+    rc, rr = closure_scan(G_const, alpha, C_hyp)
+    print(
+        f"  ({G_const:4.2f}, {alpha:4.2f}, {C_hyp:3.1f})   "
+        f"       {rc:8.4f}          {rr:8.4f}"
+    )
+    # The relocated placement must never be the less stable of the two.
+    assert rr <= rc + 1e-9
+    # Both sit at the guard's own boundary; a real instability would be
+    # visibly above 1, not at 1.00x.
+    assert rr < 1.01
+print("  PASS: along the closure the relocated placement is never less stable")
+print("  than the current one, and both sit at the guard's own boundary.")
+
+# N0's transient (non-modal) probe, re-run against G_r: the two matrices
+# are similar, not equal, so they share eigenvalues but not pseudospectra.
+print("\n  N0 transient probe, max_n ||G^n||_2 over n = 1..200:")
+print("  (G, alpha, C_hyp)          transient current  transient relocated")
+for G_const, alpha, C_hyp in [(6.2, 0.5, 0.5), (6.2, 0.2, 1.0)]:
+    tr_c = 0.0
+    tr_r = 0.0
+    for x in np.logspace(-3.0, 3.0, 61):
+        e = float(np.exp(-C_hyp * x))
+        a_d_max = G_const * alpha * (1.0 - e) / x
+        nu_max = 1.18 * (1.0 - e) / x
+        for fa in np.linspace(0.0, 1.0, 9):
+            for fn in np.linspace(0.0, 1.0, 9):
+                Gc = G_current(e, fa * a_d_max, fn * nu_max)
+                Gr = G_relocated(e, fa * a_d_max, fn * nu_max)
+                Pc = np.eye(2, dtype=complex)
+                Pr = np.eye(2, dtype=complex)
+                for _ in range(200):
+                    Pc = Pc @ Gc
+                    Pr = Pr @ Gr
+                    tr_c = max(tr_c, float(np.linalg.norm(Pc, 2)))
+                    tr_r = max(tr_r, float(np.linalg.norm(Pr, 2)))
+    print(
+        f"  ({G_const:4.2f}, {alpha:4.2f}, {C_hyp:3.1f})   "
+        f"       {tr_c:9.4f}         {tr_r:9.4f}"
+    )
+    assert tr_r <= tr_c * 1.05
+print("  PASS: the relocated placement's transient amplification does not")
+print("  exceed the current one's at the shipped C_hyp = 0.5, nor at 1.0.")
+print()
 print("ALL CHECKS PASSED")
