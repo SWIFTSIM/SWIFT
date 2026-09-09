@@ -27,6 +27,7 @@
 #include <config.h>
 
 /* Include header */
+#include "atomic.h"
 #include "chemistry.h"
 #include "cooling.h"
 #include "engine.h"
@@ -558,6 +559,59 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
   return sigma_HI * ionizing_flux_HI;
 }
 
+/* Throttling for #radiation_clamp_nonnegative_for_grackle's warning below:
+   report the first this-many clamp events individually, then only a
+   running summary every this-many further events, so a run with a
+   persistent undershoot does not go silent about it without flooding the
+   log under a threaded per-particle loop. */
+#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
+#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
+
+/**
+ * @brief Clamp a radiation quantity about to reach Grackle to be
+ * non-negative, warning (throttled) whenever a negative value is caught.
+ *
+ * The propagated FUV/LW specific energy can undershoot below zero at an
+ * unresolved jump in the propagation scheme's non-dissipative central
+ * difference. A negative flux is unphysical on its face: unclamped, it
+ * turns into spurious cooling (or dissociation) inside Grackle instead of
+ * simply reading as zero illumination. This is the last line of defence
+ * at the Grackle interface, not a fix for the underlying undershoot.
+ *
+ * @param name Human-readable name of the quantity, for the warning message.
+ * @param value The value about to be sent to Grackle.
+ * @param count Running clamp-event count for this quantity (updated).
+ * @param worst Most negative value seen for this quantity so far (updated).
+ * @return value, or 0 if value was negative.
+ */
+static double radiation_clamp_nonnegative_for_grackle(const char *name,
+                                                      double value,
+                                                      volatile long long *count,
+                                                      volatile double *worst) {
+
+  if (value >= 0.) return value;
+
+  atomic_min_d(worst, value);
+  const long long n = atomic_add(count, 1LL) + 1LL;
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  message("Clamped negative %s = %g to 0 before passing it to Grackle.", name,
+          value);
+#endif
+
+  if (n <= RADIATION_NEGATIVE_CLAMP_WARN_LIMIT ||
+      n % RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL == 0) {
+    warning(
+        "Clamped %lld negative %s value(s) reaching Grackle to zero so far "
+        "this run (this occurrence: %g, worst seen: %g). A negative flux is "
+        "unphysical; it indicates an undershoot in the LW/FUV propagation "
+        "scheme that this clamp only masks at the Grackle interface.",
+        n, name, value, *worst);
+  }
+
+  return 0.;
+}
+
 /**
  * Local ISRF strength in Habing units, from this #part's own FUV+LW
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
@@ -569,11 +623,14 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
  * before the IC read; #radiation_first_init_part leaves u_FUV/u_LW
  * untouched either way).
  *
+ * Clamped to be non-negative before being returned: see
+ * #radiation_clamp_nonnegative_for_grackle.
+ *
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param p The particle.
- * @return G0, dimensionless (Habing units).
+ * @return G0, dimensionless (Habing units), never negative.
  */
 double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct unit_system *us,
@@ -588,7 +645,12 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
       flux *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
 
-  return flux_cgs / RADIATION_HABING_FLUX_CGS;
+  static volatile long long isrf_habing_clamp_count = 0;
+  static volatile double isrf_habing_clamp_worst = 0.;
+
+  return radiation_clamp_nonnegative_for_grackle(
+      "ISRF Habing flux", flux_cgs / RADIATION_HABING_FLUX_CGS,
+      &isrf_habing_clamp_count, &isrf_habing_clamp_worst);
 }
 
 /**
@@ -604,13 +666,17 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
  * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
  * only forced on for this feature at that mode, see cooling_io.h).
  *
+ * Clamped to be non-negative before being returned: see
+ * #radiation_clamp_nonnegative_for_grackle.
+ *
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param p The particle.
  * @return H2 photodissociation rate, internal 1/time (Grackle's own
  * expected unit for a per-particle rate-coupled RT field, matching
- * radiation_get_part_photoionization_rate_coefficient's convention).
+ * radiation_get_part_photoionization_rate_coefficient's convention),
+ * never negative.
  */
 double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
@@ -634,6 +700,13 @@ double radiation_get_part_LW_dissociation_rate_internal(
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   const double photon_flux_LW_cgs = flux_LW_cgs / E_LW_photon_cgs;
   const double k_diss_cgs = RADIATION_SIGMA_H2_LW_CGS * photon_flux_LW_cgs;
+  const double k_diss =
+      k_diss_cgs / units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
 
-  return k_diss_cgs / units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
+  static volatile long long lw_dissociation_clamp_count = 0;
+  static volatile double lw_dissociation_clamp_worst = 0.;
+
+  return radiation_clamp_nonnegative_for_grackle(
+      "LW photodissociation rate", k_diss, &lw_dissociation_clamp_count,
+      &lw_dissociation_clamp_worst);
 }
