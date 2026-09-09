@@ -1318,7 +1318,15 @@ same target speed (Section~\ref{sec:fuv-design-a-limit}).
 \textbf{Revised (2026-09-09): as implemented, this is not a bound to
 check, it is the defining relation for $c_{\rm hyp}$.}
 Section~\ref{sec:fuv-b-lambda-chyp}'s Eq.~\ref{eq:fuv-chyp-choice}
-sets $C_{\rm hyp}\equiv C_{\rm CFL}$ and $c_{{\rm hyp},i}=C_{\rm
+sets $C_{\rm hyp}\equiv C_{\rm CFL}$, the generic radiation-system
+coefficient of Eq.~\ref{eq:fuv-hyperbolic-cfl} above -- \emph{not} the
+SPH hydro Courant number $C_{\rm CFL}$ just invoked two paragraphs
+earlier for the $\Delta t_{\rm hydro}$ comparison. $C_{\rm hyp}$ is
+\code{GEARFeedback:LW\_FUV\_c\_hyp\_margin}: an independently-tunable
+multiple of the hydro CFL margin, related to \code{SPH:CFL\_condition}
+only in spirit (both are Courant-type stability dials, and $c_{\rm
+hyp}$ is built from $\Delta t_i$, which the hydro step already set),
+never inherited from it. And $c_{{\rm hyp},i}=C_{\rm
 hyp}\,h_i/\Delta t_i$ directly from the particle's own already-decided
 $\Delta t_i$: Eq.~\ref{eq:fuv-hyperbolic-cfl} then holds as an equality
 by construction, before the speed-of-light clamp, for every particle,
