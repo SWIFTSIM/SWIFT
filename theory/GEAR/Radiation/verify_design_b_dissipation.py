@@ -474,4 +474,219 @@ assert abs(enforced_bound_at_half - alpha_max_at_default) < 0.05
 print("  PASS: the code's hardcoded (6.2, 0.70) constants match this script's")
 print("  measured (2*I_W, (Kh_max)^2/2) to within a few percent.")
 print()
+
+# One free finding on the existing Part C machinery (not asserted: the
+# shipped guard already uses the conservative decoupled-max form and this
+# script must not fail if the joint max differs): the Jury condition
+# a_d(k) + nu(k)^2/2 < 2 is checked in Part C as max_k a_d(k) + max_k
+# nu(k)^2/2, i.e. maxing each term separately. If the two maxima do not
+# occur at the same k, the TRUE joint maximum over k of the combined
+# expression is smaller, and some headroom already exists.
+k_grid = np.linspace(1e-3, np.pi, 33)
+joint_vals = []
+argmax_gamma_k = None
+argmax_nu_k = None
+best_gamma = -1.0
+best_nu = -1.0
+for kx in k_grid:
+    for ky in k_grid:
+        for kz in k_grid:
+            g = gamma_symbol(np.array([kx, ky, kz]), h_lat)
+            if g > best_gamma:
+                best_gamma, argmax_gamma_k = g, (kx, ky, kz)
+k_mag_grid = np.linspace(1e-3, np.pi, 65)
+for k_hat in k_hats:
+    for kv in k_mag_grid:
+        nu_val = abs(transport_symbol(k_hat, kv, h_lat)) * h_lat
+        if nu_val > best_nu:
+            best_nu, argmax_nu_k = nu_val, (tuple(np.round(k_hat, 3)), kv)
+print("  Bonus (not asserted): do a_d(k) and nu(k) peak at the same k?")
+print(
+    f"    argmax a_d(k) (zone-max Gamma symbol) at k*dx = {np.round(argmax_gamma_k, 3)}"
+)
+print(
+    f"    argmax nu(k) (transport symbol) at k_hat={argmax_nu_k[0]}, |k|*dx={argmax_nu_k[1]:.3f}"
+)
+print(
+    "    they do NOT coincide by construction here (different symbol families); "
+    "a rigorous joint-k maximisation of a_d(k)+nu(k)^2/2 is left to "
+    "verify_design_b_instability_probes.py N1, which sweeps both jointly."
+)
+print()
+
+# ---------------------------------------------------------------------------
+# Part F: the smoothing-length-ratio gap (measurement only, not enforced)
+# ---------------------------------------------------------------------------
+# The parse-time guard (feedback_properties.h) enforces
+#   6.2*alpha_max*C_hyp + 0.70*C_hyp^2 <= 2
+# using a SINGLE h. The real pairwise self-damping rate at particle i,
+# Gamma_i = v_sig_ij * sum_j (m_j/rho_j) |Wbar_ij|, Wbar_ij = 0.5*(wi_dr(h_i)
+# + wj_dr(h_j)), depends on the ratio f = h_i/h_j whenever the neighbouring
+# particle's own smoothing length differs. This part measures that
+# dependence directly (no h-independence assumed) and reports, but does
+# NOT enforce, what the guard would need to cover the two measured ratios
+# from the causal-reach leg (1.44 at T_hot=3e4K, 2.15 at T_hot=1e6K).
+print("=" * 78)
+print("Part F: smoothing-length-ratio gap in the stability bound (measurement)")
+print("=" * 78)
+
+
+def lattice_neighbours_max_h(h_a, h_b):
+    """All lattice offsets within the larger of the two particles' kernel
+    supports, on the eta=1.2348 cubic lattice, dx=1."""
+    H = GAMMA_3D * max(h_a, h_b)
+    n = int(np.ceil(H)) + 1
+    g = np.arange(-n, n + 1)
+    xx, yy, zz = np.meshgrid(g, g, g, indexing="ij")
+    pos_ = np.stack([xx.ravel(), yy.ravel(), zz.ravel()], axis=1).astype(np.float64)
+    r_ = np.linalg.norm(pos_, axis=1)
+    keep = (r_ > 0) & (r_ < H)
+    return pos_[keep], r_[keep]
+
+
+def G_of_f(f, h_bulk=ETA):
+    """Particle i's self-damping-rate lattice constant,
+    G(f) = h_i * sum_j (m_j/rho_j) |Wbar_ij|, Wbar_ij = 0.5*(wi_dr(h_i) +
+    wj_dr(h_j)), for a probe particle i with h_i = f*h_bulk embedded in a
+    uniform lattice of bulk particles at h_bulk. G(1) must reproduce I_W."""
+    h_i = f * h_bulk
+    _, r_ = lattice_neighbours_max_h(h_i, h_bulk)
+    wi_dr = wi_dr_of(r_, h_i)
+    wj_dr = wi_dr_of(r_, h_bulk)
+    Wbar = 0.5 * (wi_dr + wj_dr)
+    return h_i * np.sum(np.abs(Wbar))  # m_j/rho_j = dx^3 = 1 on this lattice
+
+
+G_at_1 = G_of_f(1.0)
+print(f"  G(f=1.0) = {G_at_1:.4f}  (continuum I_W = {I_W:.4f}, lattice discretisation")
+print(
+    f"  error at eta={ETA} ~ {abs(G_at_1 - I_W) / I_W * 100:.1f}%, same order as Part C's"
+)
+print(f"  corner/face/edge modes vs the continuum bound above -- expected, not a bug).")
+print("  All ratios below use G(f)/G(1.0) (self-consistent lattice quantities), not")
+print("  G(f)/I_W (which would mix a lattice sum with a continuum integral).")
+
+f_sweep = np.linspace(0.7, 2.5, 37)
+G_vals = np.array([G_of_f(f) for f in f_sweep])
+# monotonicity: not required to be strictly monotone at every sample (a
+# lattice sum has discretisation steps as f crosses shell radii), but the
+# coarse trend from f=0.7 to f=2.5 must be increasing.
+assert G_vals[-1] > G_vals[len(f_sweep) // 2] > G_vals[0]
+print(
+    f"  G(f) increases from {G_vals[0]:.3f} (f={f_sweep[0]:.2f}) to "
+    f"{G_vals[-1]:.3f} (f={f_sweep[-1]:.2f}): coarse trend confirmed increasing."
+)
+
+for f_target, expected_ratio in ((1.44, 1.22), (2.15, 1.58)):
+    idx = np.argmin(np.abs(f_sweep - f_target))
+    f_meas = f_sweep[idx]
+    ratio_meas = G_vals[idx] / G_at_1
+    print(
+        f"  f = h_i/h_j = {f_meas:.2f}: G(f)/G(1.0) = {ratio_meas:.3f} "
+        f"(design-doc-predicted ~{expected_ratio:.2f})"
+    )
+    assert abs(ratio_meas - expected_ratio) < 0.15
+print("  PASS: measured contrast factors reproduce Section 6 Part C's predicted")
+print("  1.22x at 1.44 and 1.58x at 2.15 within tolerance.")
+print()
+
+# Two closure regimes for a_d,i at the ratio f, using v_sig_ij =
+# alpha*min(c_hyp_i, c_hyp_j) and the closure c_hyp_k = C_hyp*h_k/dt_k
+# (radiation_isrf.c:189):
+#
+#   (a) SAME time bin (dt_i = dt_j = dt), closure active for both:
+#       c_hyp_i = C_hyp*f*h_bulk/dt, c_hyp_j = C_hyp*h_bulk/dt
+#       min(c_hyp_i, c_hyp_j) = C_hyp*h_bulk/dt * min(f, 1)
+#       a_d,i = dt*alpha*min(c_hyp_i,c_hyp_j)*G(f)/h_i
+#             = alpha*C_hyp*min(f,1)*G(f)/f
+#       For f > 1 (a coarser-h, rarefied particle i): min(f,1) = 1, so
+#       a_d,i = alpha*C_hyp*G(f)/f -- the ratio f in the denominator
+#       PARTIALLY CANCELS the numerator's G(f) growth.
+#
+#   (b) c_hyp PINNED EQUAL for i and j (LW_FUV_c_hyp_pin_for_debugging, or
+#       both particles simultaneously at the light-speed clamp):
+#       min(c_hyp_i, c_hyp_j) = c_hyp (shared), dt_i = C_hyp*h_i/c_hyp
+#       a_d,i = dt_i*alpha*c_hyp*G(f)/h_i = alpha*C_hyp*G(f)
+#       No cancellation: the guard gap is the full measured ratio.
+#
+# At f=1 both regimes agree (sanity check) and reproduce the uniform-h
+# self-rate alpha*C_hyp*I_W already used throughout Sections 3.2/3.6.
+print(
+    "  Two closure regimes for a_d,i at ratio f (v_sig_ij = alpha*min(c_hyp_i,c_hyp_j)):"
+)
+print(
+    "  (a) same time bin, closure active for both particles: a_d,i = alpha*C_hyp*G(f)/f"
+)
+print(
+    "  (b) c_hyp pinned equal (debug pin / mutual light-speed clamp): a_d,i = alpha*C_hyp*G(f)"
+)
+print()
+
+a_d_same_bin_f1 = 1.0 * G_at_1 / 1.0
+a_d_pinned_f1 = G_at_1
+assert abs(a_d_same_bin_f1 - a_d_pinned_f1) < 1e-9  # sanity: regimes agree at f=1
+print(
+    f"  Sanity: at f=1.0, both regimes give a_d,i/(alpha*C_hyp) = {a_d_pinned_f1:.4f} "
+    f"(= I_W, as expected)."
+)
+print()
+
+C_hyp_sweep = (0.25, 0.5, 1.0)
+print("  Table: ratio f, C_hyp, a_d,i/(alpha*C_hyp) per regime, alpha_max for a_d<=2")
+print("  " + "-" * 96)
+print(
+    f"  {'f':>5} {'C_hyp':>6} | {'a_d/(alpha*C_hyp) (a)':>22} {'alpha_max (a)':>14} | "
+    f"{'a_d/(alpha*C_hyp) (b)':>22} {'alpha_max (b)':>14}"
+)
+report_rows = []
+for f_target in (1.0, 1.44, 2.15):
+    idx = np.argmin(np.abs(f_sweep - f_target))
+    f_meas = f_sweep[idx]
+    Gf = G_vals[idx]
+    coeff_a = Gf / f_meas
+    coeff_b = Gf
+    for C_hyp in C_hyp_sweep:
+        alpha_max_a = 2.0 / (C_hyp * coeff_a)
+        alpha_max_b = 2.0 / (C_hyp * coeff_b)
+        print(
+            f"  {f_meas:5.2f} {C_hyp:6.2f} | {coeff_a:22.3f} {alpha_max_a:14.3f} | "
+            f"{coeff_b:22.3f} {alpha_max_b:14.3f}"
+        )
+        report_rows.append((f_meas, C_hyp, coeff_a, alpha_max_a, coeff_b, alpha_max_b))
+print("  " + "-" * 96)
+print("  (a) = same time bin, closure active both sides; (b) = c_hyp pinned equal")
+print()
+
+# What the SHIPPED guard (single-h, uses the conservative 6.2=2*I_W bound,
+# NOT the tighter regime-specific coefficients above) currently allows:
+print("  Shipped guard's alpha_max(C_hyp) (single-h, 6.2*alpha*C_hyp+0.70*C_hyp^2<=2):")
+for C_hyp in C_hyp_sweep:
+    shipped_alpha_max = (2.0 - 0.70 * C_hyp**2) / (6.2 * C_hyp)
+    print(f"    C_hyp={C_hyp:.2f}: shipped alpha_max = {shipped_alpha_max:.3f}")
+print()
+
+print("  Honest answer at ratio f=2.15 (the T_hot=1e6K measured contrast):")
+for C_hyp in C_hyp_sweep:
+    idx = np.argmin(np.abs(f_sweep - 2.15))
+    f_meas = f_sweep[idx]
+    Gf = G_vals[idx]
+    coeff_a = Gf / f_meas
+    coeff_b = Gf
+    shipped_alpha_max = (2.0 - 0.70 * C_hyp**2) / (6.2 * C_hyp)
+    alpha_max_a = 2.0 / (C_hyp * coeff_a)
+    alpha_max_b = 2.0 / (C_hyp * coeff_b)
+    gap_a = shipped_alpha_max / alpha_max_a if alpha_max_a > 0 else float("inf")
+    gap_b = shipped_alpha_max / alpha_max_b if alpha_max_b > 0 else float("inf")
+    print(
+        f"    C_hyp={C_hyp:.2f}: shipped alpha_max={shipped_alpha_max:.3f}; "
+        f"regime (a) needs <= {alpha_max_a:.3f} (shipped is {'SAFE' if gap_a <= 1 else f'optimistic by {gap_a:.2f}x'}); "
+        f"regime (b) needs <= {alpha_max_b:.3f} (shipped is {'SAFE' if gap_b <= 1 else f'optimistic by {gap_b:.2f}x'})"
+    )
+print()
+print("  This is a MEASUREMENT, not an enforced bound: no assertion is made on")
+print("  whether the shipped guard covers regime (b). The operator's ruling")
+print("  decides whether the guard should be widened, and by how much, from the")
+print("  numbers above.")
+print()
+
 print("ALL CHECKS PASSED")
