@@ -689,4 +689,378 @@ print("  decides whether the guard should be widened, and by how much, from the"
 print("  numbers above.")
 print()
 
+# ---------------------------------------------------------------------------
+# Part G: Stage 2, the van Leer midpoint reconstruction (Section 5.2)
+# ---------------------------------------------------------------------------
+print("=" * 78)
+print("Part G: Stage 2 slope-limited midpoint reconstruction")
+print("=" * 78)
+
+ETA_CRIT = 1.0  # RADIATION_LW_FUV_DISSIPATION_ETA_CRIT
+
+
+def van_leer_limiter(dx, r, hi, hj, g_i, g_j):
+    """Stage-2 limiter `Phi_ij`, the formula under test
+    (radiation_dissipation_van_leer_limiter, radiation_propagation_iact.h)."""
+    A_num = np.einsum("ij,ij->i", np.atleast_2d(g_i), np.atleast_2d(dx))
+    A_den = np.einsum("ij,ij->i", np.atleast_2d(g_j), np.atleast_2d(dx))
+    A_ij = np.where(A_den != 0.0, A_num / np.where(A_den != 0.0, A_den, 1.0), 0.0)
+    denominator = (1.0 + A_ij) ** 2
+    fraction = np.where(
+        denominator > 0.0,
+        4.0 * A_ij / np.where(denominator > 0.0, denominator, 1.0),
+        0.0,
+    )
+    limiter = np.clip(fraction, 0.0, 1.0)
+    eta = np.atleast_1d(r) / np.maximum(hi, hj)
+    d_eta = eta - ETA_CRIT
+    exp_term = np.where(eta < ETA_CRIT, np.exp(-25.0 * d_eta**2), 1.0)
+    return limiter * exp_term
+
+
+def reconstructed_jump(dx, r, hi, hj, rho_i, rho_j, u_i, u_j, grad_i, grad_j):
+    """`d_ij^rec`, Section 5.2: the raw jump minus the limited midpoint slope."""
+    g_i = np.atleast_1d(rho_i)[:, None] * np.atleast_2d(grad_i)
+    g_j = np.atleast_1d(rho_j)[:, None] * np.atleast_2d(grad_j)
+    d_raw = np.atleast_1d(rho_i * u_i) - np.atleast_1d(rho_j * u_j)
+    Phi = van_leer_limiter(dx, r, hi, hj, g_i, g_j)
+    g_sum_dot = np.einsum("ij,ij->i", g_i + g_j, np.atleast_2d(dx))
+    return d_raw - Phi * 0.5 * g_sum_dot, Phi
+
+
+# G.1: opposite-sign gradients give Phi = 0, so the jump stays the raw one.
+# This is the single-particle-dip configuration Stage 1 exists for
+# (Section 5.2: "at a single-particle dip the limiter returns Phi_ij = 0
+# (opposite-sign gradients), so the jump is the raw one anyway").
+dx_g = np.array([[0.8, 0.0, 0.0]])
+r_g = np.array([0.8])
+h_g = 1.0
+rho_i_g, rho_j_g = np.array([2.0]), np.array([1.5])
+u_i_g, u_j_g = np.array([3.0]), np.array([1.0])
+grad_up = np.array([[1.3, 0.0, 0.0]])
+grad_dn = np.array([[-0.7, 0.0, 0.0]])
+d_rec_opp, Phi_opp = reconstructed_jump(
+    dx_g, r_g, h_g, h_g, rho_i_g, rho_j_g, u_i_g, u_j_g, grad_up, grad_dn
+)
+d_raw_opp = rho_i_g * u_i_g - rho_j_g * u_j_g
+print(f"  G.1 opposite-sign gradients: Phi_ij = {Phi_opp[0]:.3e} (must be exactly 0)")
+print(
+    f"      d_ij^rec = {d_rec_opp[0]:.6f}, raw d_ij = {d_raw_opp[0]:.6f} "
+    "(must be identical)"
+)
+assert Phi_opp[0] == 0.0
+assert d_rec_opp[0] == d_raw_opp[0]
+print("  PASS: a sign flip between the two gradients disables the reconstruction")
+print("  entirely, and Stage 2 then reproduces Stage 1's unreconstructed jump.")
+
+# G.2: the A_ij = -1 pole. MAGMA's own line returns 1 there; this design
+# returns 0, because an optimized build carries -ffast-math and the clamp
+# cannot be relied on to turn the resulting infinity back into [0, 1].
+grad_pole_i = np.array([[1.0, 0.0, 0.0]])
+grad_pole_j = np.array([[-1.0 * rho_i_g[0] / rho_j_g[0], 0.0, 0.0]])
+d_rec_pole, Phi_pole = reconstructed_jump(
+    dx_g, r_g, h_g, h_g, rho_i_g, rho_j_g, u_i_g, u_j_g, grad_pole_i, grad_pole_j
+)
+print(f"  G.2 exact A_ij = -1 pole: Phi_ij = {Phi_pole[0]:.3e} (must be exactly 0)")
+assert Phi_pole[0] == 0.0
+assert d_rec_pole[0] == d_raw_opp[0]
+print("  PASS: the pole is returned as 0, not as an unclamped infinity.")
+
+# G.3: consistent gradients on an exactly linear u_V field. There the two
+# gradients are equal, the limiter fraction is exactly 1, and the
+# reconstruction removes the whole resolved slope: the jump the dissipation
+# term sees goes to 0 up to the eta-Gaussian factor.
+slope_vec = np.array([[0.6, -0.2, 0.35]])
+dx_lin = np.array([[0.9, 0.3, -0.4]])
+r_lin = np.linalg.norm(dx_lin, axis=1)
+h_lin = r_lin[0] / ETA_CRIT  # eta_ij = eta_crit exactly: no Gaussian suppression
+u_V_i = 5.0
+u_V_j = u_V_i - float(np.einsum("ij,ij->i", slope_vec, dx_lin)[0])
+rho_lin_i, rho_lin_j = np.array([2.0]), np.array([3.0])
+grad_lin_i = slope_vec / rho_lin_i[0]
+grad_lin_j = slope_vec / rho_lin_j[0]
+d_rec_lin, Phi_lin = reconstructed_jump(
+    dx_lin,
+    r_lin,
+    h_lin,
+    h_lin,
+    rho_lin_i,
+    rho_lin_j,
+    np.array([u_V_i / rho_lin_i[0]]),
+    np.array([u_V_j / rho_lin_j[0]]),
+    grad_lin_i,
+    grad_lin_j,
+)
+d_raw_lin = u_V_i - u_V_j
+print(f"  G.3 consistent gradients, linear u_V: Phi_ij = {Phi_lin[0]:.6f} (expect 1)")
+print(f"      raw d_ij = {d_raw_lin:+.6f} -> reconstructed d_ij = {d_rec_lin[0]:+.3e}")
+assert abs(Phi_lin[0] - 1.0) < 1e-12
+assert abs(d_rec_lin[0]) < 1e-12 * max(1.0, abs(d_raw_lin))
+print("  PASS: on a resolved linear profile the reconstruction cancels the jump")
+print("  exactly, so Stage 2 adds no dissipation where the field is resolved.")
+
+# G.4: the eta Gaussian only ever reduces the limiter, never raises it.
+eta_probe = np.linspace(0.05, 1.5, 30)
+Phi_eta = np.array(
+    [
+        van_leer_limiter(
+            dx_lin, r_lin, r_lin[0] / e, r_lin[0] / e, slope_vec, slope_vec
+        )[0]
+        for e in eta_probe
+    ]
+)
+assert np.all(Phi_eta <= 1.0 + 1e-12)
+assert np.all(Phi_eta >= 0.0)
+assert abs(Phi_eta[-1] - 1.0) < 1e-12  # eta > eta_crit: factor is exactly 1
+assert Phi_eta[0] < 1e-6  # eta << eta_crit: strongly suppressed
+print(
+    f"  G.4 eta sweep: Phi in [{Phi_eta.min():.3e}, {Phi_eta.max():.6f}], "
+    f"Phi(eta=0.05) = {Phi_eta[0]:.3e}, Phi(eta=1.5) = {Phi_eta[-1]:.6f}"
+)
+print("  PASS: the limiter stays in [0, 1] and close pairs are suppressed.")
+print()
+
+# ---------------------------------------------------------------------------
+# Part H: Stage 3, the anisotropic flux term's SIGN, by measurement
+# ---------------------------------------------------------------------------
+print("=" * 78)
+print("Part H: Stage 3 anisotropic flux dissipation, sign by measurement")
+print("=" * 78)
+
+
+def periodic_pairs(pos, box_l, h):
+    """Pair list and minimum-image separations on a periodic lattice."""
+    tree = cKDTree(pos, boxsize=box_l)
+    pairs = tree.query_pairs(r=GAMMA_3D * h, output_type="ndarray")
+    i_idx, j_idx = pairs[:, 0], pairs[:, 1]
+    dxv = pos[i_idx] - pos[j_idx]
+    dxv -= box_l * np.round(dxv / box_l)
+    rr = np.linalg.norm(dxv, axis=1)
+    keep = rr > 0.0
+    return i_idx[keep], j_idx[keep], dxv[keep], rr[keep]
+
+
+def divergence_accumulate(pos, box_l, rho, mass, F, h):
+    """`div_specific_flux` accumulator, the shipped shared-coefficient form
+    (radiation_divergence_accumulate_band, radiation_propagation_iact.h)."""
+    i_idx, j_idx, dxv, rr = periodic_pairs(pos, box_l, h)
+    r_inv = 1.0 / rr
+    wdr = wi_dr_of(rr, h)
+    Fi_dot = np.einsum("ij,ij->i", F[i_idx], dxv)
+    Fj_dot = np.einsum("ij,ij->i", F[j_idx], dxv)
+    Phi_ij = Fi_dot / rho[i_idx] * wdr * r_inv + Fj_dot / rho[j_idx] * wdr * r_inv
+    out = np.zeros(pos.shape[0])
+    np.add.at(out, i_idx, mass[j_idx] * Phi_ij)
+    np.add.at(out, j_idx, -mass[i_idx] * Phi_ij)
+    return out
+
+
+def flux_dissipation_accumulate(pos, box_l, rho, mass, F, psi, h, alpha_f, c_hyp):
+    """`dissipation_F` accumulator, the form under test
+    (radiation_flux_dissipation_accumulate_band). Both sides carry the SAME
+    sign and each divides by its own density: this term is not
+    antisymmetric, because F is not a conserved sum."""
+    i_idx, j_idx, dxv, rr = periodic_pairs(pos, box_l, h)
+    r_inv = 1.0 / rr
+    wdr = wi_dr_of(rr, h)
+    Wbar = 0.5 * (wdr + wdr)
+
+    F_norm = np.linalg.norm(F, axis=1)
+    unit = np.zeros_like(F)
+    nonzero = F_norm > 0.0
+    unit[nonzero] = F[nonzero] / F_norm[nonzero, None]
+
+    v_sig = np.minimum(c_hyp[i_idx], c_hyp[j_idx])
+    ni_dot_dx = np.einsum("ij,ij->i", unit[i_idx], dxv)
+    nj_dot_dx = np.einsum("ij,ij->i", unit[j_idx], dxv)
+    t_i = (rho[i_idx] * alpha_f[i_idx] * v_sig * h * psi[i_idx] * ni_dot_dx)[
+        :, None
+    ] * unit[i_idx]
+    t_j = (rho[j_idx] * alpha_f[j_idx] * v_sig * h * psi[j_idx] * nj_dot_dx)[
+        :, None
+    ] * unit[j_idx]
+
+    shared = (t_i - t_j) * (Wbar * r_inv)[:, None]
+    out = np.zeros_like(F)
+    np.add.at(out, i_idx, -(mass[j_idx] / rho[i_idx] ** 2)[:, None] * shared)
+    np.add.at(out, j_idx, -(mass[i_idx] / rho[j_idx] ** 2)[:, None] * shared)
+    return out
+
+
+box_H, n_H = 1.0, 24
+pos_H, dx_H = build_lattice(n_H, box_H)
+rho_H = np.full(n_H**3, 2.0)
+mass_H = np.full(n_H**3, 2.0 * dx_H**3)
+h_H = 1.8 * dx_H
+alpha_f_H = np.ones(n_H**3)
+c_hyp_H = np.full(n_H**3, 1.3)
+F_H = np.zeros((n_H**3, 3))
+F_H[:, 0] = 1.0  # uniform direction: n = x_hat everywhere, no |F| = 0 guard hit
+
+print("  Setup: periodic 24^3 lattice, F along x_hat, an imposed div(F) oscillation")
+print("  along x. The measurement is whether the term's own d(div F)/dt opposes")
+print("  the oscillation it is given (damping) or reinforces it (growth).")
+print()
+print(f"  {'wavelength':>12} {'sum psi*dpsi/dt':>18} {'verdict':>10}")
+print("  " + "-" * 44)
+
+overlaps = []
+for n_wave in (8, 6, 4, 3):
+    wavelength_in_dx = n_H / n_wave
+    psi_H = np.sin(2.0 * np.pi * n_wave * pos_H[:, 0] / box_H)
+    diss_F = flux_dissipation_accumulate(
+        pos_H, box_H, rho_H, mass_H, F_H, psi_H, h_H, alpha_f_H, c_hyp_H
+    )
+    # The divergence operator is linear in F, so applying it to dF/dt gives
+    # d(div F)/dt directly.
+    psi_dot = divergence_accumulate(pos_H, box_H, rho_H, mass_H, diss_F, h_H)
+    overlap = float(np.sum(psi_H * psi_dot))
+    overlaps.append(overlap)
+    print(
+        f"  {wavelength_in_dx:10.2f}dx {overlap:18.6e} "
+        f"{'DAMPS' if overlap < 0 else 'GROWS':>10}"
+    )
+print("  " + "-" * 44)
+for overlap in overlaps:
+    assert overlap < 0.0
+# The 2dx Nyquist mode is deliberately excluded above: the shared-coefficient
+# divergence operator has a null there on a cubic lattice, so its overlap is
+# float round-off (~1e-26) whose sign carries no information.
+print("  PASS: `sum_i psi_i * d(psi_i)/dt` is negative at every wavelength, so the")
+print("  shipped sign DAMPS a div(F) oscillation. Section 5.2 requires this to be")
+print("  established by measurement: the mirrored sign would give a positive")
+print("  overlap at every wavelength, i.e. an exponential growth term, and it")
+print("  would pass every dimensional and antisymmetry check unnoticed.")
+
+# The mirrored sign, measured explicitly, so the discrimination is on record.
+psi_H = np.sin(2.0 * np.pi * 6 * pos_H[:, 0] / box_H)
+diss_F = flux_dissipation_accumulate(
+    pos_H, box_H, rho_H, mass_H, F_H, psi_H, h_H, alpha_f_H, c_hyp_H
+)
+psi_dot_flipped = divergence_accumulate(pos_H, box_H, rho_H, mass_H, -diss_F, h_H)
+overlap_flipped = float(np.sum(psi_H * psi_dot_flipped))
+print(
+    f"  Control: with the sign flipped, the same mode gives "
+    f"{overlap_flipped:+.6e} (> 0, a growth term)."
+)
+assert overlap_flipped > 0.0
+print()
+
+# ---------------------------------------------------------------------------
+# Part I: Stage 4, the anticipatory noise indicator (Section 5.2)
+# ---------------------------------------------------------------------------
+print("=" * 78)
+print("Part I: Stage 4 anticipatory noise indicator")
+print("=" * 78)
+
+NOISE_REFERENCE = 1.0  # RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE, provisional
+
+
+def noise_alpha(div_F, S1, S2, alpha_max):
+    """Stage-4 `alpha_noise`, the closed form under test
+    (radiation_dissipation_noise_alpha_band, radiation_isrf.c)."""
+    div_F = np.atleast_1d(np.asarray(div_F, dtype=np.float64))
+    S1 = np.atleast_1d(np.asarray(S1, dtype=np.float64))
+    S2 = np.atleast_1d(np.asarray(S2, dtype=np.float64))
+    sign = np.where(div_F < 0.0, -1.0, 1.0)
+    safe = S2 > 0.0
+    N = np.zeros_like(S2)
+    N[safe] = np.clip(0.5 * (1.0 - sign[safe] * S1[safe] / S2[safe]), 0.0, 1.0)
+    return alpha_max * N / (N + NOISE_REFERENCE), N
+
+
+def noise_accumulate(pos, box_l, psi, h):
+    """`ngb_sum_div_specific_flux` / `ngb_sum_abs_div_specific_flux`
+    (radiation_noise_indicator_accumulate_band)."""
+    i_idx, j_idx, dxv, rr = periodic_pairs(pos, box_l, h)
+    H = GAMMA_3D * h
+    w, _ = wc2_3d_w_dwdr(rr, H)
+    S1 = np.zeros(pos.shape[0])
+    S2 = np.zeros(pos.shape[0])
+    np.add.at(S1, i_idx, w * psi[j_idx])
+    np.add.at(S1, j_idx, w * psi[i_idx])
+    np.add.at(S2, i_idx, w * np.abs(psi[j_idx]))
+    np.add.at(S2, j_idx, w * np.abs(psi[i_idx]))
+    return S1, S2
+
+
+ALPHA_MAX_I = 0.5
+
+# I.1 (property P1): silence on a coherent, single-sign neighbourhood the
+# particle agrees with. This is the requirement of Section 2 that
+# disqualifies any always-on coefficient, so it has to hold exactly.
+psi_coherent = 1.0 + 0.3 * np.sin(2.0 * np.pi * 2.0 * pos_H[:, 0] / box_H)
+S1_c, S2_c = noise_accumulate(pos_H, box_H, psi_coherent, h_H)
+alpha_c, N_c = noise_alpha(psi_coherent, S1_c, S2_c, ALPHA_MAX_I)
+print(
+    f"  I.1 coherent single-sign div(F): max N = {N_c.max():.3e}, "
+    f"max alpha_noise = {alpha_c.max():.3e}"
+)
+assert N_c.max() < 1e-12
+assert alpha_c.max() < 1e-12
+print("  PASS: the indicator is exactly 0 on a static, single-sign profile, so the")
+print("  Stage-1 coefficient it feeds keeps its zero floor there.")
+
+# I.2: the design sketch's own N = |S1|/S2 fails that same test. Recorded as
+# a measurement, since Stage 4 is specified as "named and sketched, not fully
+# specified" and this is the gap that had to be closed.
+N_sketch = np.abs(S1_c) / S2_c
+alpha_sketch = ALPHA_MAX_I * N_sketch / (N_sketch + NOISE_REFERENCE)
+print(
+    f"  I.2 the sketch's N = |S1|/S2 on the SAME field: min N = {N_sketch.min():.6f}, "
+    f"min alpha_noise = {alpha_sketch.min():.4f}"
+)
+assert N_sketch.min() > 0.999
+print("  The sketch's form equals 1 on a coherent neighbourhood, i.e. it puts the")
+print("  coefficient at its ceiling on precisely the configuration Section 2 proves")
+print("  must carry none. It is the reciprocal of what the blend needs.")
+
+# I.3 (property P2): monotonic in disagreement, over the full range from
+# complete agreement to complete opposition.
+ratio_sweep = np.linspace(1.0, -1.0, 41)
+alpha_sweep, N_sweep = noise_alpha(
+    np.ones_like(ratio_sweep), ratio_sweep, np.ones_like(ratio_sweep), ALPHA_MAX_I
+)
+assert np.all(np.diff(N_sweep) > 0.0)
+assert np.all(np.diff(alpha_sweep) > 0.0)
+assert abs(N_sweep[0] - 0.0) < 1e-12  # S1/S2 = +1: full agreement
+assert abs(N_sweep[-1] - 1.0) < 1e-12  # S1/S2 = -1: full opposition
+mid = np.argmin(np.abs(ratio_sweep))
+assert abs(N_sweep[mid] - 0.5) < 1e-12  # S1 = 0: complete cancellation
+print(
+    f"  I.3 S1/S2 from +1 to -1: N goes {N_sweep[0]:.3f} -> {N_sweep[mid]:.3f} "
+    f"-> {N_sweep[-1]:.3f}, alpha_noise {alpha_sweep[0]:.4f} -> "
+    f"{alpha_sweep[mid]:.4f} -> {alpha_sweep[-1]:.4f}, both strictly increasing"
+)
+print("  PASS: N is 0 at full agreement, 0.5 at complete cancellation and 1 at full")
+print("  opposition, and is strictly monotone between them. The sketch's own form")
+print("  falls back to 0 under complete cancellation, i.e. it goes silent at")
+print("  maximum noise.")
+
+# I.4: the sign flip of Rosswog 2015a Eq. 89 actually flips the verdict.
+alpha_pos, N_pos = noise_alpha([+1.0], [-0.8], [1.0], ALPHA_MAX_I)
+alpha_neg, N_neg = noise_alpha([-1.0], [-0.8], [1.0], ALPHA_MAX_I)
+print(
+    f"  I.4 same neighbourhood (S1/S2 = -0.8), particle div(F) > 0: N = {N_pos[0]:.3f}; "
+    f"particle div(F) < 0: N = {N_neg[0]:.3f}"
+)
+assert N_pos[0] > 0.8
+assert N_neg[0] < 0.2
+print("  PASS: the indicator measures disagreement with the neighbourhood, not the")
+print("  neighbourhood's own coherence.")
+
+# I.5: an empty or all-zero neighbourhood is not a division by zero.
+alpha_zero, N_zero = noise_alpha([1.0, -1.0], [0.0, 0.0], [0.0, 0.0], ALPHA_MAX_I)
+print(f"  I.5 S2 = 0 (no neighbours, or an all-zero div(F) field): N = {N_zero}")
+assert np.all(N_zero == 0.0)
+assert np.all(alpha_zero == 0.0)
+print("  PASS: guarded, no NaN.")
+print()
+print("  NOTE: RADIATION_LW_FUV_DISSIPATION_NOISE_REFERENCE is PROVISIONAL. Nothing")
+print("  above gauges it; the checks are all scale-free properties of the blend.")
+print("  Gauging it needs the distribution of N over a converged glass steady state")
+print("  at the Tier-1 five corners, with N_ref set well above that distribution's")
+print("  upper tail so the far-field noise floor cannot raise the coefficient.")
+print()
+
 print("ALL CHECKS PASSED")

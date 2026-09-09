@@ -19,6 +19,7 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
+#include "../GEAR/radiation_dissipation_stages.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
 
@@ -168,6 +169,68 @@ struct feedback_part_data {
       exactly once per step (never re-run across h-iterations). */
   float grad_u_FUV[3];
   float grad_u_LW[3];
+
+  /*! Copy of #grad_u_FUV/#grad_u_LW as the previous step left them, taken by
+      radiation_snapshot_part_propagation immediately before this step's
+      accumulators are zeroed. Feeds the Stage-2 slope-limited midpoint
+      reconstruction of the Stage-1 jump (design-lw-fuv-design-b-
+      dissipation.md Section 5.2), which needs a gradient both particles of a
+      pair already carry when the density loop runs; this step's own
+      `grad(u)` is not available there, since the gradient loop runs after
+      the density loop. Guarded: a build without Stage 2 pays no memory
+      for it. */
+#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
+  float grad_u_FUV_prev[3];
+  float grad_u_LW_prev[3];
+#endif
+
+  /*! Stage-3 anisotropic flux-dissipation source term (design-lw-fuv-design-
+      b-dissipation.md Section 5.2), gradient loop
+      (radiation_propagation_iact.h): applied as a third frozen term of
+      #radiation_end_gradient_propagation's exact relaxation of
+      #specific_flux_FUV/LW. NOT antisymmetric between the two particles of a
+      pair, unlike #dissipation_u_FUV/LW: the flux is not a conserved sum, so
+      both sides carry the same sign and each divides by its own density.
+      Scratch: zeroed once per step by radiation_snapshot_part_propagation,
+      like #grad_u_FUV/LW, since the gradient loop runs exactly once per
+      step. Guarded, with the two fields below: a build without Stage 3
+      pays no memory for any of them. */
+#ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
+  float dissipation_F_FUV[3];
+  float dissipation_F_LW[3];
+
+  /*! Stage-3 anisotropic flux-dissipation coefficient, raised by the
+      `d(div F)/dt` switch of Chan et al. 2021 Eq. 36-37 and decayed
+      otherwise, updated once per step in
+      #radiation_end_gradient_propagation. Persistent, dumped with #part like
+      #dissipation_alpha_FUV; zero at first init, no IC field. Read by the
+      NEXT step's gradient loop as this band's #dissipation_F_FUV/LW pair
+      coefficient. */
+  float dissipation_alpha_flux_FUV;
+  float dissipation_alpha_flux_LW;
+
+  /*! Previous step's #div_specific_flux_FUV/LW, kept so the Stage-3 switch
+      above can form `d(div F)/dt`. Written at the end of
+      #radiation_end_gradient_propagation, after the switch has consumed it.
+      Persistent across steps (not scratch), and zero at first init. */
+  float div_specific_flux_FUV_prev;
+  float div_specific_flux_LW_prev;
+#endif
+
+  /*! Kernel-weighted sums of the neighbours' `div(F)` and of its magnitude,
+      gradient loop (radiation_propagation_iact.h), which is where `div(F)`
+      is already final. Their ratio is the Stage-4 anticipatory noise
+      indicator (design-lw-fuv-design-b-dissipation.md Section 5.2); the
+      kernel normalisation cancels out of that ratio, so it is not
+      accumulated separately. Scratch: zeroed once per step by
+      radiation_snapshot_part_propagation. Guarded: a build without Stage 4
+      pays no memory for them. */
+#ifdef RADIATION_LW_FUV_DISSIPATION_ANTICIPATORY_TRIGGER
+  float ngb_sum_div_specific_flux_FUV;
+  float ngb_sum_div_specific_flux_LW;
+  float ngb_sum_abs_div_specific_flux_FUV;
+  float ngb_sum_abs_div_specific_flux_LW;
+#endif
 
   /*! Comoving density snapshot, cached once per step by
       radiation_snapshot_part_propagation at the same call site as

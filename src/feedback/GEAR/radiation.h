@@ -31,6 +31,7 @@
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "radiation_dissipation_stages.h"
 #include "radiation_isrf.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"
@@ -71,6 +72,11 @@
     behaviour, not its steady-state strength (LW_FUV_dissipation_alpha_max
     does that). */
 #define RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH 5.0f
+
+/* The LW/FUV artificial-dissipation stage switches and their compile-time
+   constants live in radiation_dissipation_stages.h, included above: a leaf
+   header, so struct feedback_part_data can guard its per-stage fields on the
+   same macros without an include cycle. */
 
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
     over, in units of the rebuild cadence actually in force. A scheduled pass
