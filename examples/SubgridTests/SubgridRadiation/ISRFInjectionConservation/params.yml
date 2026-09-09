@@ -10,8 +10,8 @@ Restarts:
   enable: 0
 
 # No Potential: block -- --external-gravity (run.sh) is a no-op force,
-# matching the sibling ISRFYukawaProfile/StromgrenSphere* examples' idiom
-# for "no gravity".
+# matching the sibling ISRFHyperbolicPropagation/StromgrenSphere* examples'
+# idiom for "no gravity".
 Gravity:
   MAC:                           adaptive
   epsilon_fmm:                   0.001

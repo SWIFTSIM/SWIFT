@@ -14,7 +14,7 @@ sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
 
 This is an exact conservation identity (the injection formula's own
 kernel-weight normalization, `sum_j weight_j = 1`), not an approximate
-physics comparison like `ISRFYukawaProfile`'s Yukawa-profile fit -- the
+physics comparison like `ISRFHyperbolicPropagation`'s profile fit -- the
 check tolerance is correspondingly tight.
 
 ## Metallicity

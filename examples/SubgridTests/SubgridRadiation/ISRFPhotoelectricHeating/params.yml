@@ -10,8 +10,8 @@ Restarts:
   enable: 0
 
 # No Potential: block -- --external-gravity (run.sh) is a no-op force,
-# matching the sibling ISRFYukawaProfile/StromgrenSphere* examples' idiom
-# for "no gravity".
+# matching the sibling ISRFHyperbolicPropagation/StromgrenSphere* examples'
+# idiom for "no gravity".
 Gravity:
   MAC:                           adaptive
   epsilon_fmm:                   0.001
@@ -92,7 +92,7 @@ GrackleCooling:
   # local_dust_to_gas_ratio left unset: resolves to Grackle's own compiled
   # default.
   #
-  # Real cooling/heating IS active here (unlike ISRFYukawaProfile):
+  # Real cooling/heating IS active here (unlike ISRFHyperbolicPropagation):
   # this example's whole point is to measure the gas thermal response to
   # photoelectric heating, so disable_cooling_for_debugging stays 0.
   disable_cooling_for_debugging: 0

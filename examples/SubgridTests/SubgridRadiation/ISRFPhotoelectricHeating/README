@@ -12,13 +12,14 @@ sanity check, not a quantitative PDR-physics comparison (see
 ## Propagation
 `LW_FUV_propagation: 0`: this example is about the thermal response to
 whatever field a particle receives directly from the star, not about
-propagation numerics (see the sibling `ISRFYukawaProfile` for that). Only
-gas within the star's own SPH kernel is illuminated.
+propagation numerics (see the sibling `ISRFHyperbolicPropagation` for
+that). Only gas within the star's own SPH kernel is illuminated.
 
 ## Cooling
-Unlike `ISRFYukawaProfile`, `GrackleCooling:disable_cooling_for_debugging`
-is `0`: this example's whole point is to measure the gas's actual thermal
-response, so cooling and heating are both fully active.
+Unlike `ISRFHyperbolicPropagation`,
+`GrackleCooling:disable_cooling_for_debugging` is `0`: this example's whole
+point is to measure the gas's actual thermal response, so cooling and
+heating are both fully active.
 
 ## Metallicity
 Solar (`Z/Zsun=1`, `run.sh`'s `initial_metallicity`): the receiver-side dust

@@ -73,7 +73,7 @@ printf "Running simulation..."
 # --external-gravity with no Potential: block gives zero gravitational
 # force. --cooling with GrackleCooling:disable_cooling_for_debugging left
 # at 0 (params.yml) means gas actually cools and is heated by Grackle
-# every step, unlike ISRFYukawaProfile -- see README.
+# every step, unlike ISRFHyperbolicPropagation -- see README.
 ../../../../swift --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \

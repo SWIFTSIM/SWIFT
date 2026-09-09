@@ -28,7 +28,7 @@ up to floating-point precision:
 
 This is an exact conservation identity (the injection formula's own
 `sum_j weight_j = 1` normalization), not an approximate physics comparison
--- unlike Tier 1's Yukawa-profile decay-length fit, no loose tolerance is
+-- unlike Tier 1's propagation-profile fit, no loose tolerance is
 expected here.
 
 Delta_t (the star's own feedback-timestep at the checked snapshot) is read
