@@ -4285,6 +4285,13 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* When running with self gravity we need to compute the P2P search delta.
+   * This will be used to determine the search radius for the P2P until the next
+   * rebuild. */
+  if (e->policy & engine_policy_self_gravity) {
+    engine_gravity_get_P2P_search_delta(e);
+  }
+
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
