@@ -761,8 +761,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   h_index[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (h_index[k] < h_index[k + 1]) {
-      cells_top[h_index[k]].hydro.count =
-          k - last_index + 1 - space_extra_parts;
+      struct cell *c = &cells_top[h_index[k]];
+      c->hydro.count = k - last_index + 1;
+
+      /* When running with a zoom extra gas particles only exist on
+       * non-background cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->hydro.count -= space_extra_parts;
+      }
       last_index = k + 1;
     }
   }
@@ -773,8 +779,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s_index[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (s_index[k] < s_index[k + 1]) {
-      cells_top[s_index[k]].stars.count =
-          k - last_sindex + 1 - space_extra_sparts;
+      struct cell *c = &cells_top[s_index[k]];
+      c->stars.count = k - last_sindex + 1;
+
+      /* When running with a zoom extra stars only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->stars.count -= space_extra_sparts;
+      }
       last_sindex = k + 1;
     }
   }
@@ -785,8 +797,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   b_index[nr_bparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_bparts; k++) {
     if (b_index[k] < b_index[k + 1]) {
-      cells_top[b_index[k]].black_holes.count =
-          k - last_bindex + 1 - space_extra_bparts;
+      struct cell *c = &cells_top[b_index[k]];
+      c->black_holes.count = k - last_bindex + 1;
+
+      /* When running with a zoom extra black holes only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->black_holes.count -= space_extra_bparts;
+      }
       last_bindex = k + 1;
     }
   }
@@ -797,8 +815,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   sink_index[nr_sinks] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sinks; k++) {
     if (sink_index[k] < sink_index[k + 1]) {
-      cells_top[sink_index[k]].sinks.count =
-          k - last_sink_index + 1 - space_extra_sinks;
+      struct cell *c = &cells_top[sink_index[k]];
+      c->sinks.count = k - last_sink_index + 1;
+
+      /* When running with a zoom extra sinks only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->sinks.count -= space_extra_sinks;
+      }
       last_sink_index = k + 1;
     }
   }
@@ -895,8 +919,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] < g_index[k + 1]) {
-      cells_top[g_index[k]].grav.count =
-          k - last_gindex + 1 - space_extra_gparts;
+      struct cell *c = &cells_top[g_index[k]];
+      c->grav.count = k - last_gindex + 1;
+
+      /* When running with a zoom extra gravity particles only exist on
+       * non-background cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->grav.count -= space_extra_gparts;
+      }
       last_gindex = k + 1;
     }
   }
@@ -968,11 +998,21 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.parts_rebuild = c->sinks.parts;
       c->grav.parts_rebuild = c->grav.parts;
 
-      c->hydro.count_total = c->hydro.count + space_extra_parts;
-      c->grav.count_total = c->grav.count + space_extra_gparts;
-      c->stars.count_total = c->stars.count + space_extra_sparts;
-      c->sinks.count_total = c->sinks.count + space_extra_sinks;
-      c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
+      c->hydro.count_total = c->hydro.count;
+      c->grav.count_total = c->grav.count;
+      c->stars.count_total = c->stars.count;
+      c->sinks.count_total = c->sinks.count;
+      c->black_holes.count_total = c->black_holes.count;
+
+      /* When running with a zoom extras only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->hydro.count_total += space_extra_parts;
+        c->grav.count_total += space_extra_gparts;
+        c->stars.count_total += space_extra_sparts;
+        c->sinks.count_total += space_extra_sinks;
+        c->black_holes.count_total += space_extra_bparts;
+      }
 
       /* Add the number of particles to the correct cell counter for
        * reporting to the user. */

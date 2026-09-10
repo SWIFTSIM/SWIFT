@@ -815,17 +815,26 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
       }
 
-      /* For stars, we just use the numbers in the top-level cells */
-      count_sparts_in +=
-          e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
+      /* For stars, we just use the numbers in the top-level cells. */
+      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+
+      /* When running with a zoom stars only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+        count_sparts_in += space_extra_sparts;
+      }
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
-      /* For sinks, we just use the numbers in the top-level cells + some
-         extra space */
-      count_sinks_in +=
-          e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
+      /* For sinks, we just use the numbers in the top-level cells. */
+      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count;
+
+      /* When running with a zoom sinks only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+        count_sinks_in += space_extra_sinks;
+      }
     }
   }
 
@@ -1006,10 +1015,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (!fof && with_stars) {
 
-        /* For stars, we just use the numbers in the top-level cells */
+        /* For stars, we just use the numbers in the top-level cells. */
         cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-        sparts = &sparts[e->proxies[k].cells_in[j]->stars.count +
-                         space_extra_sparts];
+        sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+
+        /* When running with a zoom stars only exist on non-background cells
+         * (true for all cells when not running a zoom). */
+        if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+          sparts = &sparts[space_extra_sparts];
+        }
       }
 
       if (!fof && with_black_holes) {
@@ -1021,10 +1035,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (!fof && with_sinks) {
 
-        /* For sinks, we just use the numbers in the top-level cells */
+        /* For sinks, we just use the numbers in the top-level cells. */
         cell_link_sinks(e->proxies[k].cells_in[j], sinks);
-        sinks =
-            &sinks[e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks];
+        sinks = &sinks[e->proxies[k].cells_in[j]->sinks.count];
+
+        /* When running with a zoom sinks only exist on non-background cells
+         * (true for all cells when not running a zoom). */
+        if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+          sinks = &sinks[space_extra_sinks];
+        }
       }
     }
   }
