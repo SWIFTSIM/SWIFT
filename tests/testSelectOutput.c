@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  // const char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0,
          Nsink = 0, Nnupart = 0;
   int flag_entropy_ICs = -1;
@@ -106,8 +105,7 @@ int main(int argc, char *argv[]) {
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  const char *input_file = "selectOutputParameters.yml";
-  parser_read_file(input_file, &param_file);
+  parser_read_file(argv[1], &param_file);
 
   struct output_options output_options;
   output_options_init(&param_file, 0, &output_options);
