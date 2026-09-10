@@ -1367,6 +1367,10 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
+ * When running a zoom simulation this function will also set the
+ * tasks_below_diff_grav_depth flag for any neighbour cells that have gravity
+ * tasks below space_subdepth_diff_grav due to pair tasks with zoom cells.
+ *
  * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
@@ -1375,11 +1379,10 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
 
-  /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && has_gravity_tasks) {
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure in zoom land we don't get any confusing empty top level cells
-     * with tasks (this breaks hierarchical task creation) */
+  /* Make sure in zoom land we don't get any confusing empty top level cells
+   * with tasks (this breaks hierarchical task creation) */
+  if (super_gravity == NULL && has_gravity_tasks) {
     if (cell_is_empty_mpole(c))
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
@@ -1387,8 +1390,11 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
           "c->grav.grav=%p c->grav.mm=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+  }
 #endif
 
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_gravity == NULL && has_gravity_tasks) {
     super_gravity = c;
   }
 
@@ -1401,17 +1407,24 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
     error("Zoom cell has a void cell super-gravity pointer!");
 #endif
 
-  /* Recurse and record whether there are final gravity tasks below this cell. */
+  /* Recurse and find whether there are final gravity tasks below this cell. */
   int children_have_gravity_tasks = 0;
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
         children_have_gravity_tasks |=
             cell_set_super_gravity(c->progeny[k], super_gravity);
+      }
+    }
+  }
 
-  c->grav.tasks_below_diff_grav_depth =
-      c->subtype == cell_subtype_neighbour &&
-      !cell_is_above_default_grav_depth(c) && children_have_gravity_tasks;
+  /* When running a zoom we can get neighbour cells with task forced below
+   * space_subdepth_diff_grav because they have pair tasks with zoom cells. If
+   * this is the case we flag this cell so that we can force the gravity tasks
+   * to be executed below space_subdepth_diff_grav. */
+  c->grav.tasks_below_diff_grav_depth = c->subtype == cell_subtype_neighbour &&
+                                        !cell_is_above_diff_grav_depth(c) &&
+                                        children_have_gravity_tasks;
 
   return has_gravity_tasks || children_have_gravity_tasks;
 }
