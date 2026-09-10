@@ -1,0 +1,80 @@
+# Intro
+A `c_hyp` sweep of the LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation
+scheme, from `c_hyp ~ c` down to `c_hyp << c`, at both a star-sourced field
+and a star-free seeded Gaussian pulse (`FUVSpecificEnergy`/`LWSpecificEnergy`
+in the IC). Measures the scheme's `c_hyp`-independent steady state and
+`c_hyp`-dependent transient (self-similarity and retardation), and locates
+the triggered-dissipation term's own Courant/stability bound empirically.
+
+## Why the propagation speed cannot be swept with LW_FUV_c_hyp_margin alone
+The closure `c_hyp = C_hyp*h/dt` ties the propagation speed to the local
+resolution and time-step so that the hyperbolic CFL condition holds as an
+equality, not an inequality that could be violated. `C_hyp`
+(`GEARFeedback:LW_FUV_c_hyp_margin`) has a legal range of `(0, 1.7]`, which
+at this example's resolution spans `c_hyp` from about 0.98 to 33 km/s: a
+factor of 34, nowhere near either end of the physically interesting range.
+Reaching `c_hyp -> c` or `c_hyp << c` needs
+`LW_FUV_c_hyp_pin_for_debugging`, which overwrites `c_hyp` after the closure
+and after the light-speed clamp, making the effective Courant number
+`nu_eff = c_hyp*dt/h` a free quantity that this example's check script
+measures and reports rather than assumes. **This parameter must never be
+used in a production run.** `LW_FUV_dissipation_alpha_pin_for_debugging`
+plays the analogous role for the dissipation trigger: it fixes the
+coefficient a smooth pulse's trigger might otherwise leave at zero, so Leg N
+tests the coefficient the stability bound is actually stated in terms of.
+
+## Metallicity
+The FUV/LW screening length scales with metallicity; at solar `Z` a seeded
+pulse is absorbed within a handful of steps, leaving nothing to measure.
+`initial_metallicity` defaults to 0.05 here (Legs P, N) so absorption stays
+negligible over the run; Legs R and I use their own values (see `run.sh`).
+
+## Cooling
+`GrackleCooling:disable_cooling_for_debugging: 1` keeps the gas's thermal and
+dynamical state fixed (`chemistry_data` still resolves, since `--cooling` is
+passed), isolating the propagated field from gas response. Leg P's slowest
+runs still drift the gas somewhat via other channels; the check script
+reports this drift and voids the affected gates rather than silently
+ignoring it.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var: gas density (`gas_density`,
+atom/cm^3), gas particle mass (`gas_mass`, Msun), resolution level (`level`),
+`seed_pulse` (>0: star-free seeded pulse; 0: star source), `c_hyp_pin`
+(`LW_FUV_c_hyp_pin_for_debugging`, km/s), `c_hyp_margin`
+(`LW_FUV_c_hyp_margin`), `alpha_max`/`alpha_pin`
+(`LW_FUV_dissipation_alpha_max`/`..._pin_for_debugging`), `propagation`
+(`LW_FUV_propagation`), `initial_metallicity`, `time_end`, `dt_max`,
+`dt_min`, `delta_time`, and thread count (`n_threads`); see `run.sh` for the
+full list and defaults. `run_name=<dir> ./run.sh` moves the run's outputs
+into `<dir>` once done, to keep more than one run's outputs side by side.
+The full run table (Legs P, N, R, I) and their env-var settings are recorded
+separately in this project's own validation records, not in this file.
+
+# Checking
+```
+python3 isrf_propagation_speed_sweep_check.py --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
+python3 sweep_compare.py --mode {P,N,RI} --runs dir1 dir2 ...
+```
+`run.sh` runs the per-run check automatically. It measures the run's own
+`nu_eff` and the dissipation-term stability bound at the run's own alpha,
+the pulse front position, a gas-drift control, and (for N-type runs invoked
+with `--expect-unstable`) whether the run destabilized as predicted.
+
+`sweep_compare.py` performs the cross-run comparisons: self-similarity and
+retardation collapse across a fixed-Courant sweep (gated, `--mode P`), the
+stability bound's bracketing location across a Courant-number sweep (gated,
+`--mode N`), and reachability reporting for the star-sourced and
+propagation-on/off legs (report only, `--mode RI`). A dt-quantization
+mismatch across a `--mode P` sweep is detected and reported as the run set
+being INVALID rather than a physics failure; re-run with `time_end` adjusted
+if this happens.

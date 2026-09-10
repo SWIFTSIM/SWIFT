@@ -1,0 +1,147 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
+
+Restarts:
+  enable: 0
+
+# No Potential: block -- --external-gravity (run.sh) is a no-op force,
+# matching the sibling StromgrenSphere*/RadiationPressureShellExpansion
+# examples' idiom for "no gravity".
+Gravity:
+  MAC:                           adaptive
+  epsilon_fmm:                   0.001
+  theta_cr:                      0.7
+  eta:          0.025
+  max_physical_baryon_softening: 0.005
+  mesh_side_length:        32
+
+# Parameters governing the time integration -- see README for how the
+# run duration was chosen (empirical convergence, not a fixed a priori
+# value).
+TimeIntegration:
+  time_begin:        0.
+  time_end:          2.4e-4     # overridden per leg by run.sh
+  dt_min:            1e-14      # low enough for Leg P's fastest c_hyp
+  dt_max:            1e-5       # overridden per leg by run.sh
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir: snap
+  basename:   snapshot
+  time_first: 0.0
+  delta_time: 4e-5     # overridden per leg by run.sh
+  recording_triggers_sink:   [-1, -1, -1]
+  compression: 9
+
+Scheduler:
+  cell_extra_gparts: 10
+  cell_extra_sinks:  10
+  cell_extra_sparts: 10
+  max_top_level_cells: 3
+  tasks_per_cell: 150
+
+Statistics:
+  delta_time:           1e-5
+  time_first:             0.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          ICs_isrf_propagation_speed_sweep.hdf5
+  periodic:                 1
+  shift:              [0.0, 0.0, 0.0]
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1
+  initial_temperature:   1000
+
+GEARChemistry:
+  # Z/Zsun=0.05, not solar: at Z/Zsun=1 a seeded pulse is absorbed within
+  # a few steps, leaving nothing to measure (see README). Overridden per leg.
+  initial_metallicity: 0.05
+  scale_initial_metallicity: 1
+  diffusion_coefficient: 1e-3
+
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5        # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0                         # Enable or not the UV background
+  redshift: -1                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                         # Enable or not the metal cooling
+  self_shielding_method: -1                     # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+  maximal_density_Hpcm3: 1e4                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value. A value < 0 deactivates this parameter.
+  HydrogenFractionByMass: 0.76                  # Hydrogen fraction by mass. (Default: 0.76)
+  use_radiative_transfer: 0                     # Arrays of ionization/heating rates are provided. (Default: 0)
+  cmb_temperature_floor: 1                      # Enable/disable an effective CMB temperature floor. (Default: 1)
+  RT_heating_rate_cgs: 0
+  RT_HI_ionization_rate_cgs: 0
+  RT_HeI_ionization_rate_cgs: 0
+  RT_HeII_ionization_rate_cgs: 0
+  volumetric_heating_rates_cgs: 0
+  specific_heating_rates_cgs: 0
+  # local_dust_to_gas_ratio left unset: resolves to Grackle's own
+  # compiled default, which is what this example's screening length
+  # is derived against (see README).
+  #
+  # --cooling is on (run.sh) so cooling_init() actually resolves
+  # chemistry_data, but this example's own point is to isolate the LW/FUV
+  # propagation field from gas thermal/dynamical response: this flag
+  # skips the per-particle cooling/heating update itself while leaving
+  # chemistry_data (including local_dust_to_gas_ratio) fully resolved.
+  disable_cooling_for_debugging: 1
+
+GEARFeedback:
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0
+  with_stellar_wind_feedback: 0
+  stellar_winds_efficiency: 1.0
+  discrete_star_minimal_gravity_mass_Msun: 0.1
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+
+  # Radiation -- photoionization and radiation pressure both off: isolates
+  # the LW/FUV propagation channel this example measures.
+  with_photoelectric_heating:    1
+  LW_FUV_propagation:            1
+  LW_FUV_c_hyp_margin:           0.5
+  # Debug-only overrides, all inert at 0. run.sh sets them per leg; see
+  # the README for why the propagation speed cannot be swept through
+  # LW_FUV_c_hyp_margin alone.
+  LW_FUV_c_hyp_pin_for_debugging:             0
+  LW_FUV_dissipation_alpha_max:               0.25
+  LW_FUV_dissipation_alpha_pin_for_debugging: 0
+  with_photoionization:          0
+  radiation_pressure_efficiency: 0
+  HII_rebuild_time_Myr:   0.5
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.
+  timestep_age_threshold_Myr:           7.
+  max_timestep_young_Myr:               0.1
+  max_timestep_old_Myr:                 1
+  min_star_timestep_Myr: 1e-4
+  # Photoionization is off in this example, so this search radius is
+  # otherwise inert -- but it must still stay under the box half-width.
+  HII_max_search_radius: 0.001
+  HII_max_retry_full_buffer: 30
+  HII_max_radius_expansion_tries: 5
+  HII_radius_expansion_factor: 1.1
+  overwrite_birth_time: 0
+  birth_time: -1
+  overwrite_birth_density: 0
+  birth_density: -1
+  overwrite_birth_temperature: 0
+  birth_temperature: -1

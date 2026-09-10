@@ -1,0 +1,97 @@
+# Intro
+A stabilized shear layer (two counter-streaming gas streams, no seed
+perturbation) carrying two seeded Gaussian FUV/LW blobs, one per stream.
+Measures whether the LW/FUV hyperbolic propagation and dissipation scheme
+introduces a directional artifact under a persistent relative velocity
+across a contact discontinuity, using an exact reflection symmetry the
+continuum initial condition possesses but the discrete scheme need not
+preserve.
+
+## The shear layer
+The velocity profile is the `KelvinHelmholtzGrowthRate_3D` two-interface
+profile with the seed perturbation removed and a `tanh` transition in place
+of the usual piecewise ramp; the layer is wide enough that the box-scale
+Kelvin-Helmholtz mode sits at the layer's own stability cutoff, so the flow
+stays laminar over the run instead of rolling up. `isrf_shear_asymmetry_check.py`
+reports a KH-contamination control (`kh`, `drho`) every run; a run whose
+layer destabilizes has its asymmetry metrics declared void rather than
+silently trusted.
+
+## The seeded field, and why there is no star
+Two Gaussian `FUVSpecificEnergy`/`LWSpecificEnergy` blobs are written
+directly into the IC (`--pulse-amplitude`/`--pulse-sigma-h`), one centred in
+each stream. This isolates the propagation and dissipation operators from
+injection, the star's own timestep, and any star-gas relative velocity
+entirely -- there is no star particle in this example at all. The specific
+flux field is not an IC-readable quantity, so every run starts from `F = 0`;
+this is a well-posed initial condition, not a limitation. The two blob
+positions are chosen so the `variant=shear` initial condition has an exact
+discrete symmetry (a reflection plus a half-box shift) that the true
+solution must respect for all time, since the radiation subsystem itself
+contains no gas velocity; every gated metric measures how much the discrete
+scheme violates that symmetry.
+
+## Metallicity
+As in `ISRFPropagationSpeedSweep`: `initial_metallicity` defaults to 0.05 so
+the seeded blobs are not absorbed away before there is anything left to
+measure.
+
+## Cooling
+`GrackleCooling:disable_cooling_for_debugging: 1`, as in the sibling
+examples: gas thermodynamics play no role in what this example measures.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var: `variant` (`shear` or
+`contrast`), `source_geometry` (`blobs` or `slab`), `v_shear` (km/s, full
+relative velocity between the two streams), `layer_width_h`,
+`density_ratio` (contrast variant only), `bulk_temperature_K`,
+`pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_pin`
+(`LW_FUV_c_hyp_pin_for_debugging`), `alpha_max`/`alpha_pin`
+(`LW_FUV_dissipation_alpha_max`/`..._pin_for_debugging`, debug/test only,
+never use in a production run), `initial_metallicity`, `time_end`,
+`dt_max`, `dt_min`, `delta_time`, and thread count (`n_threads`); see
+`run.sh` for the full list and defaults. `run_name=<dir> ./run.sh` moves a
+run's outputs into `<dir>`.
+
+Before running the full sweep, generate the IC alone and check the
+population imbalance between the two blobs
+(`python3 makeIC.py --variant shear --source-geometry blobs -o ic.hdf5`,
+see its own printed `Population imbalance` line): if the `(m*u)`-weighted
+imbalance exceeds 1%, the reflection-symmetry metrics below have
+insufficient resolving power at that resolution and `--pulse-sigma-h` or
+`--level` must be raised before trusting any run.
+
+# Checking
+```
+python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
+python3 shear_compare.py --mode gate --runs dir1 dir2 ... --zero zero_shear_dir
+python3 shear_compare.py --mode pair --plus plus_dir --minus minus_dir
+```
+`run.sh` runs the per-run check automatically, computing `A_centroid`,
+`A_spread`, and `A_energy` (the reflection-symmetry violation, `shear`
+variant only) plus the KH-contamination and configuration-echo metrics.
+
+The gate is self-calibrating, not an absolute threshold: a sheared run
+passes a given metric if `|A_k| <= max(3*|A_k(0)|, floor)`, where `A_k(0)`
+is the same metric measured in the matching zero-shear control run in the
+same sweep. The factor of 3 and the floors (0.01 for all three metrics) are
+declared conventions, not derived bounds -- wide enough that ordinary
+glass-noise scatter between two runs does not trip the gate, narrow enough
+to catch an effect at the percent level. `shear_compare.py --mode gate`
+performs this comparison; a run flagged void by the KH-contamination control
+is excluded from the gate rather than trusted.
+
+The `contrast` variant (no exact symmetry) and the `slab` source geometry
+are report-only: `--mode pair` compares a `+v_shear`/`-v_shear` pair via a
+grid-interpolated field, with no threshold; the slab geometry's
+`A_xstructure` (x-direction structure in a field that should stay
+x-independent) is likewise reported without a gate.
