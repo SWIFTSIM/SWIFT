@@ -889,6 +889,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
+    /* Void tasks may already have been split by the zoom pre-pass. */
+    if (t->type == task_type_none || t->type == task_type_grav_mm) continue;
+
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
@@ -939,9 +942,28 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s);
 
   } else {
+    const int nr_tasks = s->nr_tasks;
+
+    /* Void splitting marks neighbouring cells that need gravity tasks below
+     * their usual depth. Do this before the parallel pass so every task sees
+     * the same flags, and the mesh-count replay matches the task graph. */
+    if (s->space->with_zoom_region) {
+      for (int ind = 0; ind < nr_tasks; ind++) {
+        struct task *t = &s->tasks[ind];
+        if (t->type == task_type_self &&
+            t->ci->subtype == cell_subtype_void) {
+          zoom_scheduler_splittask_gravity_void_self(t, s);
+        } else if (t->type == task_type_pair &&
+                   (t->ci->subtype == cell_subtype_void ||
+                    t->cj->subtype == cell_subtype_void)) {
+          zoom_scheduler_splittask_gravity_void_pair(t, s);
+        }
+      }
+    }
+
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
 }
