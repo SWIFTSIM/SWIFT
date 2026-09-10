@@ -1109,14 +1109,14 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* Apply the CMB floor first, then the hydro limit */
   /* TODO: Convert to Kelvin to internal units */
+  double u_CMB_agora = 0.0;
   if (cooling->agora_cmb_temperature_floor) {
     const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
     const double T_0_CMB = CMB_TEMPARATURE_AT_REDSHIFT_0_IN_KELVIN * 1.0;
     const double T_CMB_agora = T_0_CMB * (z+1.0);
     const double mu = cooling_get_mean_molecular_weight(
 							phys_const, us, cosmo, hydro_props, cooling, p, xp);
-    const double u_CMB_agora =
-      cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
+    u_CMB_agora = cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
 
     /* Shall we apply the CMB floor? */
     if (u_ad_before < u_CMB_agora) {
@@ -1149,7 +1149,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* We now need to check that we are not going to go below any of the limits */
-  u_new = max(u_new, u_minimal);
+  u_new = max3(u_new, u_minimal, u_CMB_agora);
 
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_ad_before) / dt_therm;
