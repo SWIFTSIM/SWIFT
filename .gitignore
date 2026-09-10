@@ -5,6 +5,7 @@
 Makefile
 Makefile.in
 INSTALL
+config.cache
 config.guess
 config.h
 config.status
