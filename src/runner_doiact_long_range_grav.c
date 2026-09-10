@@ -31,6 +31,25 @@
 #include "timers.h"
 
 /**
+ * @brief Get unique periodic search bounds for long-range gravity.
+ */
+static void runner_get_grav_long_range_delta(const struct space *s,
+                                             const double max_distance,
+                                             int delta_m[3], int delta_p[3]) {
+
+  const int delta =
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
+  for (int k = 0; k < 3; k++) {
+    delta_m[k] = min(delta, s->cdim[k] / 2);
+    delta_p[k] = delta_m[k];
+
+    /* The two half-box offsets wrap to the same cell for even dimensions. */
+    if (s->cdim[k] % 2 == 0 && delta_m[k] == s->cdim[k] / 2) delta_p[k]--;
+  }
+}
+
+/**
  * @brief Performs M-M interactions between a given top-level cell and
  *        all other top level cells not interacted with via pair tasks.
  *
@@ -214,20 +233,13 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   int top_j = top->loc[1] * s->iwidth[1];
   int top_k = top->loc[2] * s->iwidth[2];
 
-  /* Maximal distance any interaction can take place before the mesh kicks in,
-   * rounded up to the next integer */
-  int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
-
-  /* Ensure we don't go out of bounds */
-  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
-  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
-  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
+  int delta_m[3], delta_p[3];
+  runner_get_grav_long_range_delta(s, max_distance, delta_m, delta_p);
 
   /* Loop over plausibly useful cells */
-  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
-    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
-      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+  for (int ii = top_i - delta_m[0]; ii <= top_i + delta_p[0]; ++ii) {
+    for (int jj = top_j - delta_m[1]; jj <= top_j + delta_p[1]; ++jj) {
+      for (int kk = top_k - delta_m[2]; kk <= top_k + delta_p[2]; ++kk) {
 
         /* Box wrap */
         const int iii = (ii + s->cdim[0]) % s->cdim[0];
@@ -312,20 +324,13 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
   int top_j = top->loc[1] * s->iwidth[1];
   int top_k = top->loc[2] * s->iwidth[2];
 
-  /* Maximal distance any interaction can take place before the mesh kicks in,
-   * rounded up to the next integer */
-  int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
-
-  /* Ensure we don't go out of bounds */
-  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
-  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
-  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
+  int delta_m[3], delta_p[3];
+  runner_get_grav_long_range_delta(s, max_distance, delta_m, delta_p);
 
   /* Loop over plausibly useful cells */
-  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
-    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
-      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+  for (int ii = top_i - delta_m[0]; ii <= top_i + delta_p[0]; ++ii) {
+    for (int jj = top_j - delta_m[1]; jj <= top_j + delta_p[1]; ++jj) {
+      for (int kk = top_k - delta_m[2]; kk <= top_k + delta_p[2]; ++kk) {
 
         /* Box wrap */
         const int iii = (ii + s->cdim[0]) % s->cdim[0];
