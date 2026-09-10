@@ -26,12 +26,19 @@ adds the sign-closure metric that is this example's own point.
 
 Two independent checks, both per snapshot and per band (`FUV`, `LW`):
 
-1. Sign closure: `n_neg` (count of `FUVSpecificEnergies`/
-   `LWSpecificEnergies` < 0, the artificially-heated particle included)
-   and `u_min` are computed and reported every snapshot; the ratio
-   `|u_min|/u_plateau` is gated at `--ratio-threshold` (2% by default) on
-   snapshots in the run's last third only, matching the term's own design
-   bar. This is the failure mode the dissipation term exists to remove.
+1. Sign closure, gated on the energy-weighted `|E_neg|/E_bulk` (bulk =
+   all gas except the pinned hot particle; `E_neg` is the summed
+   `mass*u` of bulk particles with `u < 0`, `E_bulk` the summed `mass*u`
+   of the whole bulk): the run's `--ratio-threshold`-gated statistic used
+   to be `|u_min|/u_plateau`, normalized to this same run's own peak
+   field. That normalization is unsound whenever the field itself rings
+   (the peak is then the crest of an oscillation, not a field amplitude),
+   which is exactly the regime this term exists to damp; an
+   energy-weighted, un-normalized fraction does not have that failure
+   mode. The gate reports the 90th percentile of the per-snapshot value
+   over the run's last third against `--energy-neg-threshold` (default
+   `1e-3`). `|u_min|/u_plateau` is still computed and printed for
+   continuity but no longer gates.
 2. Causal reach: the propagated field must not exceed its causal reach
    `r <= c_hyp*(t - t0)` (`t0` = the star's BirthTime, 0 here) by more than
    ordinary SPH kernel smearing. `c_hyp` is reconstructed from the run's own
@@ -41,12 +48,23 @@ Two independent checks, both per snapshot and per band (`FUV`, `LW`):
    epsilon in {0.1, 0.01, 0.001}, is how far past the causal front (in units
    of the local smoothing length) the field still exceeds
    `eps * u_plateau` -- an over-smoothing dissipation coefficient would
-   inflate it.
+   inflate it. This is an absolute light-cone bound, not a cross-run
+   comparison, so the per-run `u_plateau` normalization it uses is fine
+   here; it is only unsound when used to compare transport fidelity
+   *between* runs at different `alpha_max` (not done by this script).
+
+`R50`/`R90` (the radii enclosing 50%/90% of the bulk's positive-part
+energy, `mass*max(u,0)`) are reported per snapshot alongside the plot, for
+visual cross-checking against other runs; this script does not itself
+gate on them, since that needs a comparison against an `alpha_max = 0`
+control run from the same IC, which belongs to a dedicated alpha-ladder
+harness rather than a single-run regression check.
 
 `--hot-particle-id` (see `hot_particle_id.txt`, written by `makeIC.py`)
 excludes the artificially-heated particle from the bulk h/dt estimate and
-from `u_plateau` (its own field value is naturally far above the rest of
-the box and would otherwise swamp both), and reports it separately.
+from `u_plateau`/`E_bulk` (its own field value is naturally far above the
+rest of the box and would otherwise swamp all three), and reports it
+separately.
 """
 
 import argparse
@@ -112,8 +130,18 @@ def parse_options():
         "--ratio-threshold",
         type=float,
         default=0.02,
-        help="Sign-closure pass bar: |u_min|/u_plateau, gated only on "
-        "snapshots in the run's last third (default: %(default)s, i.e. 2%%).",
+        help="Sign-closure informational bar: |u_min|/u_plateau (reported "
+        "only, not gated; see --energy-neg-threshold for the gate). "
+        "(default: %(default)s, i.e. 2%%).",
+    )
+    parser.add_argument(
+        "--energy-neg-threshold",
+        type=float,
+        default=1e-3,
+        help="Sign-closure pass bar: the 90th percentile, over snapshots "
+        "in the run's last third, of |E_neg|/E_bulk (bulk mass*u summed "
+        "over u<0, divided by the bulk's total mass*u) (default: "
+        "%(default)s).",
     )
     parser.add_argument(
         "--output",
@@ -159,6 +187,7 @@ def load_snapshot(path):
         pos = gas["Coordinates"][:, :]
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
+        mass = gas["Masses"][:].astype(np.float64)
         u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         star = f["/PartType4"]
@@ -169,6 +198,7 @@ def load_snapshot(path):
         pos=pos,
         h=h,
         ids=ids,
+        mass=mass,
         u_fuv=u_fuv,
         u_lw=u_lw,
         star_pos=star_pos,
@@ -197,31 +227,53 @@ def outer_edge_above_threshold(r, u, threshold, n_bins, r_max):
     return float(centres[above].max()) if above.any() else 0.0, centres, means
 
 
+def energy_radius(r, w, fraction):
+    """Radius enclosing `fraction` of `sum(w)`, `w` a non-negative,
+    per-particle energy weight; 0 if `w` sums to 0."""
+    total = w.sum()
+    if total <= 0:
+        return 0.0
+    order = np.argsort(r)
+    cum = np.cumsum(w[order])
+    idx = np.searchsorted(cum, fraction * total)
+    idx = min(idx, len(r) - 1)
+    return float(r[order][idx])
+
+
 def check_band(
-    band, r, u, u_all_incl_hot, h_med, c_hyp, t, t0, opt, r_max_plot, in_last_third
+    band, r, u, mass, u_all_incl_hot, h_med, c_hyp, t, t0, opt, r_max_plot, in_last_third
 ):
-    """`u`/`r` are the masked (bulk) arrays used for u_plateau and the
-    causal-reach metric; `u_all_incl_hot` is the full, unmasked array used
-    for sign closure -- a negative value at the heated particle itself is
-    still a failure. `n_neg` is always reported; only the ratio is gated,
-    and only on the run's last third (the pass bar this dissipation term is
-    designed against: ratio <= --ratio-threshold there, in both bands)."""
+    """`u`/`r`/`mass` are the masked (bulk) arrays used for u_plateau, the
+    energy-weighted sign-closure metric, `R50`/`R90`, and the causal-reach
+    metric; `u_all_incl_hot` is the full, unmasked array used for `n_neg`/
+    `u_min` -- a negative value at the heated particle itself is still a
+    failure of the mechanism, even though it is excluded from the bulk
+    energy budget. `n_neg`/`u_min`/the informational ratio are always
+    reported; the gated statistic is `|E_neg|/E_bulk`, returned here
+    per-snapshot and reduced to a run-level p90-over-the-last-third gate by
+    the caller (a single-snapshot ratio is too noisy near a ringing
+    front)."""
     u_plateau = float(u.max())
-    ok = True
     findings = []
 
     n_neg = int(np.sum(u_all_incl_hot < 0))
     u_min = float(u_all_incl_hot.min())
     ratio = abs(u_min) / u_plateau if u_plateau > 0 and u_min < 0 else 0.0
-    if in_last_third and ratio > opt.ratio_threshold:
-        ok = False
-        findings.append(
-            f"{band}: FAIL sign closure -- ratio |u_min|/u_plateau = "
-            f"{ratio*100:.3f}% exceeds {opt.ratio_threshold*100:.1f}% "
-            f"({n_neg} particles negative, u_min = {u_min:.3e})"
-        )
+
+    E_bulk = float(np.sum(mass * u))
+    neg = u < 0
+    E_neg = float(np.sum(mass[neg] * u[neg])) if neg.any() else 0.0
+    if E_bulk > 0:
+        neg_energy_frac = abs(E_neg) / E_bulk
+    else:
+        neg_energy_frac = 1.0 if E_neg < 0 else 0.0
+
+    w_pos = mass * np.maximum(u, 0.0)
+    r50 = energy_radius(r, w_pos, 0.5)
+    r90 = energy_radius(r, w_pos, 0.9)
 
     r_front = c_hyp * max(t - t0, 0.0)
+    ok = True
     results = {}
     for eps in (0.1, 0.01, 0.001):
         r_edge, centres, means = outer_edge_above_threshold(
@@ -268,6 +320,11 @@ def check_band(
         n_neg=n_neg,
         u_min=u_min,
         ratio=ratio,
+        E_bulk=E_bulk,
+        E_neg=E_neg,
+        neg_energy_frac=neg_energy_frac,
+        r50=r50,
+        r90=r90,
         results=results,
         worst_bump=worst_bump,
         worst_bump_r=worst_bump_r,
@@ -294,15 +351,16 @@ def main():
 
     t0 = 0.0  # star BirthTime = 0 in this example's ICs (see README).
 
-    # Last-third window for the gated sign-closure ratio: found from the
+    # Last-third window for the gated sign-closure statistic: found from the
     # snapshots' own times, not assumed from TimeIntegration:time_end.
     times_all = [load_snapshot(fn)["time"] for fn in files]
     t_max = max(times_all)
     last_third_start = t0 + (2.0 / 3.0) * (t_max - t0)
     print(
-        f"Last-third window (gated sign-closure ratio): "
+        f"Last-third window (gated sign-closure statistic |E_neg|/E_bulk): "
         f"t >= {last_third_start:.4e} (t_max = {t_max:.4e})"
     )
+    late_neg_energy_frac = {"FUV": [], "LW": []}
 
     for i, fn in enumerate(files):
         snap = load_snapshot(fn)
@@ -310,7 +368,7 @@ def main():
         if t <= t0:
             continue
         in_last_third = t >= last_third_start
-        pos, h, ids = snap["pos"], snap["h"], snap["ids"]
+        pos, h, ids, mass_all = snap["pos"], snap["h"], snap["ids"], snap["mass"]
         gas_mask = np.ones(len(ids), dtype=bool)
         if opt.hot_particle_id >= 0:
             gas_mask = ids != opt.hot_particle_id
@@ -328,11 +386,14 @@ def main():
 
         for band, u_field in (("FUV", "u_fuv"), ("LW", "u_lw")):
             u_all = snap[u_field]
-            r, u = r_all[gas_mask], u_all[gas_mask]
+            r, u, mass = r_all[gas_mask], u_all[gas_mask], mass_all[gas_mask]
             res = check_band(
-                band, r, u, u_all, h_med, c_hyp, t, t0, opt, r_max_plot, in_last_third
+                band, r, u, mass, u_all, h_med, c_hyp, t, t0, opt, r_max_plot,
+                in_last_third,
             )
             all_ok &= res["ok"]
+            if in_last_third:
+                late_neg_energy_frac[band].append(res["neg_energy_frac"])
             status = "PASS" if res["ok"] else "FAIL"
             eps_str = ", ".join(
                 f"eps={e}: edge={res['results'][e][0]/h_med:.2f}h "
@@ -341,7 +402,10 @@ def main():
             )
             print(
                 f"{band}: n_neg={res['n_neg']}  u_min={res['u_min']:.4e}  "
-                f"ratio={res['ratio']*100:.3f}%  u_plateau={res['u_plateau']:.4e}  "
+                f"|E_neg|/E_bulk={res['neg_energy_frac']*100:.4f}%  "
+                f"ratio(informational)={res['ratio']*100:.3f}%  "
+                f"u_plateau={res['u_plateau']:.4e}  "
+                f"R50={res['r50']/h_med:.2f}h  R90={res['r90']/h_med:.2f}h  "
                 f"{eps_str}  worst_bump={res['worst_bump']:.3f} at "
                 f"r={res['worst_bump_r']}  -> {status}"
             )
@@ -367,6 +431,25 @@ def main():
     fig.tight_layout()
     fig.savefig(opt.output, dpi=150)
     print(f"\nPlot saved to {opt.output}")
+
+    print("\n--- Sign closure, run-level gate ---")
+    for band in ("FUV", "LW"):
+        vals = late_neg_energy_frac[band]
+        if not vals:
+            continue
+        p90 = float(np.percentile(vals, 90))
+        gate_ok = p90 <= opt.energy_neg_threshold
+        all_ok &= gate_ok
+        status = "PASS" if gate_ok else "FAIL"
+        print(
+            f"{band}: p90(|E_neg|/E_bulk) over last third = {p90*100:.4f}% "
+            f"(bar {opt.energy_neg_threshold*100:.4f}%) -> {status}"
+        )
+        if not gate_ok:
+            print(
+                f"  FAIL sign closure -- p90(|E_neg|/E_bulk) exceeds "
+                f"--energy-neg-threshold"
+            )
 
     if not all_ok:
         sys.exit(1)

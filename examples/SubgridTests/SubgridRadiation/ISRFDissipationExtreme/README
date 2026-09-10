@@ -57,10 +57,10 @@ moves a run's outputs into `<dir>`.
 python3 isrf_dissipation_check.py --hot-particle-id $(cat hot_particle_id.txt)
 ```
 `run.sh` runs this automatically. Prints, per snapshot and band, the
-sign-closure metrics (`n_neg`, `u_min`, and the ratio `|u_min|/u_plateau`
-to that snapshot's peak field away from the hot particle) and the
-causal-reach metrics (measured field extent against `c_hyp*(t-t0)` at
-three amplitude levels). Gates on the same two criteria as
-`ISRFDissipation` (see that README); whether they pass at this contrast
-is exactly the open question this example exists to let you check,
-un-asserted here. Produces a comparison plot (`--output`).
+sign-closure metrics (`n_neg`, `u_min`, the energy-weighted
+`|E_neg|/E_bulk`, and `|u_min|/u_plateau` reported for continuity but not
+gated), `R50`/`R90`, and the causal-reach metrics (measured field extent
+against `c_hyp*(t-t0)` at three amplitude levels). Gates on the same two
+criteria as `ISRFDissipation` (see that README); whether they pass at
+this contrast is exactly the open question this example exists to let you
+check, un-asserted here. Produces a comparison plot (`--output`).

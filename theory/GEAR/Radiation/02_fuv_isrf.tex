@@ -857,19 +857,21 @@ coefficient one-sided there. The propagated field's centroid then trails
 the source by a small additional displacement beyond the underlying
 transport scheme's own prediction. This displacement is bounded, not
 growing, with the relative velocity once the latter reaches the
-propagation speed, and in the worst case measured (the resolution
-comparable to the absorption length, $h\sim\lambda$) is of order a few
-percent of $\lambda$ at the shipped $\alpha_{\max}$; the fraction of the
-field's own support inside one smoothing kernel, and with it this
-displacement in units of $h$, falls off in the $\lambda\gg h$ regime. It
-does not accumulate across multiple sources or over the duration of a
-run: it is a property of the field's steady state rather than a term
-that integrates in time. It is a
-quantified, resolution-scale numerical characteristic of this
-stabilization, not a transport error: the underlying P1 transport
-scheme's own relative-velocity moment identity, exact at
-$\alpha_{\max}=0$, holds only up to this bounded term once the
-stabilization is active.
+propagation speed, and its natural unit is $\lambda$, not $h$: measured at
+0.2-1.8\% of $\lambda$ (2-7\% of $v_{\rm rel}\tau$) at the shipped
+$\alpha_{\max}$ across every relative velocity and resolution tested so
+far ($h/\lambda$ from 1.0 down to 0.30). The triggered region scales with
+the field's own physical size rather than with one smoothing kernel, so in
+units of $h$ the displacement grows as $h/\lambda$ shrinks (measured a
+factor 6-7 in $h$ when $h$ is halved at fixed physics); whether the
+$\lambda$-relative fraction itself saturates or keeps growing below
+$h/\lambda\sim0.30$ is not yet established. It does not accumulate across
+multiple sources or over the duration of a run: it is a property of the
+field's steady state rather than a term that integrates in time. It is a
+quantified numerical characteristic of this stabilization, not a
+transport error: the underlying P1 transport scheme's own
+relative-velocity moment identity, exact at $\alpha_{\max}=0$, holds only
+up to this bounded term once the stabilization is active.
 
 The signal velocity uses $\min$, not the $\max$ hydro convention
 (Rosswog 2015a, SPHENIX's own $v_{\rm sig}$) or a harmonic/arithmetic
@@ -934,29 +936,42 @@ closure coefficient $C_{\rm hyp}$ (Eq.~\ref{eq:fuv-chyp-choice}),
 (\code{parameter\_example.yml}), calibrated on a uniform-density test
 ($Z/Z_\odot=1$, $n_H=10^3\,{\rm cm}^{-3}$) across a coarse/baseline/fine
 ladder of gas-particle masses (0.8, 0.1, 0.0125~$M_\odot$, a factor of 4
-in $h$). The minimum coefficient that jointly closes the sign error and
-preserves the propagated field's shape rises as $h$ falls: 0.15 at the
-coarse rung, 0.20 at the baseline rung. At the fine rung no coefficient in
-$\{0,0.02,0.05,0.10,0.15,0.25,0.50\}$ satisfies both requirements at once:
-sign closure needs $\alpha_{\max}\ge0.5$, while transport fidelity already
-fails from $\alpha_{\max}\ge0.10$. This is not acausal propagation: the
-signed margin between the propagated front and the analytic causal front
-stays within a fraction of a smoothing length of the un-dissipated control
-at every tested coefficient and rung. It reflects instead that the
-fidelity comparison's own un-dissipated reference is itself ringing at
-that resolution, its sign-closure statistic exceeding 100\%, so the
-comparison cannot discriminate there; whether a coefficient at or above
-0.25 over-suppresses the genuine peak field at that resolution is not
-established either way. This project's production particle masses (10 to
-a few $\times10^4\,M_\odot$) sit an order of magnitude or more coarser in
-$h$ than every tested rung, on the side of the ladder where the required
-coefficient is smaller and the fidelity margin is larger, so 0.25 is a
-conservative default across the production range even though production
-resolution itself was not directly tested. The low-metallicity and
-low-density regimes, which lower the same $h/\lambda$ ratio that drives
-the fine-rung conflict and can do so at any particle mass, remain
-untested and are a more plausible route into this regime than particle
-mass refinement alone.
+in $h$, $h/\lambda_{\rm FUV}=1.22/0.61/0.30$). The minimum coefficient
+that closes the sign error rises as $h$ falls: 0.15 at the coarse rung,
+0.20-0.25 at the baseline rung, 0.25 at the fine rung, evaluated against
+an energy-weighted, normalization-free comparison (sign closure on
+$|E_{\rm neg}|/E_{\rm bulk}$; transport fidelity on the shift of the radii
+enclosing 50\% and 90\% of the bulk energy against the
+$\alpha_{\max}=0$ run). At $h/\lambda\lesssim0.3$ the undissipated
+transport itself rings: its innermost shell is negative (14.5\% of the
+bulk energy negative for a static source at that rung), and behind a
+moving source the pre-dissipation field undershoots by 20-60\% of the
+peak. The exact $P_1$ solution for a point source switched on at $t=0$ is
+non-negative and time-constant everywhere behind the front, so this
+ringing, and the resulting apparent plateau in the raw field maximum, is
+numerical, not physical; a comparison normalized against that plateau is
+not a measure of transport fidelity. Under the energy-weighted
+comparison, $\alpha_{\max}=0.25$ closes the sign error at the fine rung
+and leaves the field's cumulative energy distribution unchanged from the
+un-dissipated run to under 1\% at every radius checked: the term damps
+the ringing without moving bulk energy either outward or inward. Its
+side effect is a centroid shift of the field of 0.2-1.8\% of $\lambda$
+(2-7\% of $v_{\rm rel}\tau$), measured up to $h/\lambda\simeq0.30$; the
+shift grows in units of $h$ as $h/\lambda$ shrinks, and whether the
+$\lambda$-relative fraction itself keeps growing below this rung is not
+yet established. This is not acausal propagation: the signed margin
+between the propagated front and the analytic causal front stays within a
+fraction of a smoothing length of the un-dissipated control at every
+tested coefficient and rung. This project's production particle masses
+(10 to a few $\times10^4\,M_\odot$) sit an order of magnitude or more
+coarser in $h$ than every tested rung, on the side of the ladder where the
+required coefficient is smaller and the measured side effect is smaller,
+so 0.25 is a conservative default across the production range even though
+production resolution itself was not directly tested. The low-metallicity
+and low-density regimes, which lower the same $h/\lambda$ ratio tested at
+the fine rung and can do so at any particle mass, remain untested below
+that rung and are a more plausible route into a smaller-$h/\lambda$
+regime than particle mass refinement alone.
 
 \textbf{Placement in the update sequence.} The transport update itself
 is the staggered relax-$u$-then-$\mathbf F$ sequence of

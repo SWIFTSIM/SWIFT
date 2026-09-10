@@ -54,11 +54,16 @@ moves a run's outputs into `<dir>`.
 python3 isrf_dissipation_check.py --hot-particle-id $(cat hot_particle_id.txt)
 ```
 `run.sh` runs this automatically. Prints, per snapshot and band, the
-sign-closure metrics (`n_neg`, `u_min`, and the ratio `|u_min|/u_plateau`
-to that snapshot's peak field away from the hot particle) and the
-causal-reach metrics (measured field extent against `c_hyp*(t-t0)` at
-three amplitude levels). Gates on two things: the sign-closure ratio
-exceeding `--ratio-threshold` (2% by default) on any snapshot in the
-run's last third, in either band; and the field exceeding its causal
-reach by more than ordinary kernel smearing (`--fail-margin-h`). Produces
-a comparison plot (`--output`).
+sign-closure metrics (`n_neg`, `u_min`, the energy-weighted
+`|E_neg|/E_bulk`, and `|u_min|/u_plateau` reported for continuity but not
+gated), `R50`/`R90` (radii enclosing 50%/90% of the bulk's positive-part
+energy), and the causal-reach metrics (measured field extent against
+`c_hyp*(t-t0)` at three amplitude levels). Gates on two things: the 90th
+percentile of `|E_neg|/E_bulk` over the run's last third exceeding
+`--energy-neg-threshold` (`1e-3` by default), in either band; and the
+field exceeding its causal reach by more than ordinary kernel smearing
+(`--fail-margin-h`). `|u_min|/u_plateau` is no longer gated, since
+normalizing to this run's own peak field breaks down whenever the field
+itself rings (the peak is then a ringing crest, not a field amplitude),
+which is exactly the regime this term exists to damp. Produces a
+comparison plot (`--output`).
