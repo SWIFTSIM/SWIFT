@@ -2048,26 +2048,13 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
     return;
   }
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, /*periodic=*/1);
-
-  /* Convert the maximal search distance to a number of cells */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
-    }
-  }
+  /* Check the same range used to create the gravity pair tasks. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (s->grav_P2P_search_delta_m == 0)
+    error("Gravity pair search range has not been set");
+#endif
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
   /* Get the cell index and integer indices in the top-level grid */
   const int cid = c - cells;
