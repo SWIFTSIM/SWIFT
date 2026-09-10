@@ -1589,26 +1589,10 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
  * the background cells while the zoom cells will use the regular threshold.
  *
- * When running a zoom we split all tasks involving a void cell, this can lead
- * some cells interacting below space_subdepth_diff_grav to ensure we reach
- * the zoom cells on the void side of the interaction. Cells requiring these
- * tasks carry a flag (tasks_below_diff_grav_depth) to signify this
- * special condition. This flag ensures any task related recursion will continue
- * right down to the lowest point tasks are defined on the cell in question.
- *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
-    const struct cell *c) {
-
-  /* When running a zoom we can have cells with tasks below
-   * space_subdepth_diff_grav due to interactions with the void cells (i.e.
-   * zoom region). These cells carry a special flag and must return true here
-   * to ensure task recursions work properly. */
-  if (c->grav.tasks_below_diff_grav_depth) {
-    return 1;
-  }
-
+__attribute__((always_inline)) INLINE static int
+cell_is_above_default_grav_depth(const struct cell *c) {
   /* Regular and zoom cells use the usual condition. */
   if (c->type == cell_type_regular || c->type == cell_type_zoom) {
     return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
@@ -1616,6 +1600,19 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
 
   /* Otherwise all other cells use the background diff_grav constant. */
   return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
+}
+
+/**
+ * @brief Is a cell above the depth at which gravity task recursion stops?
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
+    const struct cell *c) {
+
+  /* Zoom-neighbour interactions can require hierarchy below the usual depth. */
+  return c->grav.tasks_below_diff_grav_depth ||
+         cell_is_above_default_grav_depth(c);
 }
 
 /**
@@ -1628,9 +1625,15 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* Otherwise, are the cells split and still far from the leaves ? */
-  return (ci->split && cj->split) && cell_is_above_diff_grav_depth(ci) &&
-         cell_is_above_diff_grav_depth(cj);
+  const int ci_above_depth =
+      (ci->subtype == cell_subtype_neighbour && cj->type == cell_type_zoom) ||
+      cell_is_above_default_grav_depth(ci);
+  const int cj_above_depth =
+      (cj->subtype == cell_subtype_neighbour && ci->type == cell_type_zoom) ||
+      cell_is_above_default_grav_depth(cj);
+
+  /* Let the zoom side set the depth of zoom-neighbour pair tasks. */
+  return ci->split && cj->split && ci_above_depth && cj_above_depth;
 }
 
 /**
@@ -1643,7 +1646,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split and still far from the leaves ? */
-  return c->split && cell_is_above_diff_grav_depth(c);
+  return c->split && cell_is_above_default_grav_depth(c);
 }
 
 /**
@@ -1656,7 +1659,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
+  return c->split && c->grav.count > 5000 &&
+         cell_is_above_default_grav_depth(c);
 }
 
 /**

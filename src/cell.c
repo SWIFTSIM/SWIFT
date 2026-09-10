@@ -1370,10 +1370,13 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
+ * @return Whether this cell or any progeny has a gravity task.
  */
-void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+  const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
+
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL)) {
+  if (super_gravity == NULL && has_gravity_tasks) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure in zoom land we don't get any confusing empty top level cells
      * with tasks (this breaks hierarchical task creation) */
@@ -1398,11 +1401,19 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
     error("Zoom cell has a void cell super-gravity pointer!");
 #endif
 
-  /* Recurse */
+  /* Recurse and record whether there are final gravity tasks below this cell. */
+  int children_have_gravity_tasks = 0;
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super_gravity(c->progeny[k], super_gravity);
+        children_have_gravity_tasks |=
+            cell_set_super_gravity(c->progeny[k], super_gravity);
+
+  c->grav.tasks_below_diff_grav_depth =
+      c->subtype == cell_subtype_neighbour &&
+      !cell_is_above_default_grav_depth(c) && children_have_gravity_tasks;
+
+  return has_gravity_tasks || children_have_gravity_tasks;
 }
 
 /**
