@@ -78,13 +78,19 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
-  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  /* Get the cell count that we will be adding extra particles to. When running
+   * a zoom this is only the zoom cells. */
+  const int nr_candidate_cells =
+      s->with_zoom_region ? s->zoom_props->nr_zoom_cells : s->nr_cells;
+
+  /* Allocate a list of the local top-level cells. */
+  int *local_cells = (int *)malloc(sizeof(int) * nr_candidate_cells);
   if (local_cells == NULL)
     error("Failed to allocate list of local top-level cells");
 
   /* List the local cells */
   size_t nr_local_cells = 0;
-  for (int i = 0; i < s->nr_cells; ++i) {
+  for (int i = 0; i < nr_candidate_cells; ++i) {
     if (s->cells_top[i].nodeID == local_nodeID &&
         s->cells_top[i].subtype != cell_subtype_void) {
       local_cells[nr_local_cells] = i;
@@ -597,6 +603,53 @@ void space_allocate_extras(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (s->with_zoom_region) {
+    for (size_t i = 0; i < s->nr_parts; ++i) {
+      if (s->parts[i].time_bin == time_bin_not_created) {
+        const int cid = cell_getid_from_pos(s, s->parts[i].x[0],
+                                            s->parts[i].x[1], s->parts[i].x[2]);
+        if (s->cells_top[cid].type != cell_type_zoom)
+          error("Extra part allocated to non-zoom cell %d", cid);
+      }
+    }
+
+    for (size_t i = 0; i < s->nr_gparts; ++i) {
+      if (s->gparts[i].time_bin == time_bin_not_created) {
+        const int cid = cell_getid_from_pos(
+            s, s->gparts[i].x[0], s->gparts[i].x[1], s->gparts[i].x[2]);
+        if (s->cells_top[cid].type != cell_type_zoom)
+          error("Extra gpart allocated to non-zoom cell %d", cid);
+      }
+    }
+
+    for (size_t i = 0; i < s->nr_sparts; ++i) {
+      if (s->sparts[i].time_bin == time_bin_not_created) {
+        const int cid = cell_getid_from_pos(
+            s, s->sparts[i].x[0], s->sparts[i].x[1], s->sparts[i].x[2]);
+        if (s->cells_top[cid].type != cell_type_zoom)
+          error("Extra spart allocated to non-zoom cell %d", cid);
+      }
+    }
+
+    for (size_t i = 0; i < s->nr_bparts; ++i) {
+      if (s->bparts[i].time_bin == time_bin_not_created) {
+        const int cid = cell_getid_from_pos(
+            s, s->bparts[i].x[0], s->bparts[i].x[1], s->bparts[i].x[2]);
+        if (s->cells_top[cid].type != cell_type_zoom)
+          error("Extra bpart allocated to non-zoom cell %d", cid);
+      }
+    }
+
+    for (size_t i = 0; i < s->nr_sinks; ++i) {
+      if (s->sinks[i].time_bin == time_bin_not_created) {
+        const int cid = cell_getid_from_pos(s, s->sinks[i].x[0],
+                                            s->sinks[i].x[1], s->sinks[i].x[2]);
+        if (s->cells_top[cid].type != cell_type_zoom)
+          error("Extra sink allocated to non-zoom cell %d", cid);
+      }
+    }
+  }
+
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
