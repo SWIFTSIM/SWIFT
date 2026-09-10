@@ -1,0 +1,119 @@
+# Intro
+Two hydrostatic gas phases, split by a plane, whose sound-speed ratio puts
+them two SWIFT timestep bins apart. Three point sources move parallel to the
+phase plane: one sits adjacent to the plane (its injection kernel and
+near-source wake straddle the bin boundary), one sits deep inside the cold
+phase (a same-phase, no-boundary control), and one sits deep inside the hot
+phase (report-only, confounded on several axes at once). Measures whether the
+LW/FUV Stage-1 artificial-dissipation term's spurious transverse transport
+behind a moving source depends on whether gas particles near that source sit
+on different timestep bins simultaneously.
+
+## The two phases
+`T`/density are chosen so the two phases are in pressure balance
+(`P = n*k*T` equal on both sides): the interface geometry stays frozen for
+the whole run instead of moving under its own pressure gradient. The two
+phases differ in particle mass (density and mass both scale as `1/T`), which
+is what makes the timestep-bin split possible at equal particle spacing --
+and which degrades the SPH density estimate within about one kernel radius
+of the phase plane, since particles on either side of that layer have very
+different masses. `isrf_multibin_dissipation_check.py` reports `rho_match`
+(the kernel-mean density at each moving-source position) as a control on how
+well the two same-phase sources are actually matched.
+
+## Sources and geometry
+`--variant twophase` (default) places three stars at `x = L/4` (star B, deep
+in the cold phase), `x = L/2 - interface_offset_h*h` (star A, just inside the
+cold phase, its wake straddling the phase boundary at `x = L/2`), and
+`x = 3L/4` (star C, deep in the hot phase). All three move at the same
+velocity in `+y`, parallel to the phase plane. `--variant uniform` places the
+same three stars in a single-phase box (no boundary anywhere): the single-bin
+control. `--n-stars 1` restricts the IC to star A alone, for debugging only;
+the shipped default is 3.
+
+## Timestep-bin split
+`--bin-delta` (default 2) sets `T_hot = T_cold * 4**bin_delta`,
+`n_hot = n_cold / 4**bin_delta`, `m_hot = m_cold / 4**bin_delta`. 2 is the
+maximum meaningful value: `--limiter`'s own
+`time_bin_neighbour_max_delta_bin = 2` clamps any neighbour pair's realized
+bin difference at 2, so a larger split is never exercised on a neighbour
+pair. `TimeBin` is not a snapshot field, so phase (and hence bin) membership
+is recovered from each particle's own `Masses` value instead.
+
+## Star velocity
+Derived by default (`--star-velocity-km-s -1`) as
+`v_over_c_hyp * c_hyp_cold`, where `c_hyp_cold` is computed from the cold
+phase's own analytic CFL step; `--v-over-c-hyp` sets the ratio directly
+(default 0.25). `--star-velocity-km-s` overrides the derivation with an
+explicit value in km/s.
+
+## Debug pins
+`LW_FUV_c_hyp_pin_for_debugging` and
+`LW_FUV_dissipation_alpha_pin_for_debugging` are debug-only parameters
+(`c_hyp_pin`/`alpha_pin` env vars). Both are inert at their shipped default
+(0) and must never be set in a production run.
+
+## Cooling and metallicity
+`GrackleCooling:disable_cooling_for_debugging: 1`: without it the
+temperature contrast that sets the timestep-bin split would cool away.
+`GEARChemistry:initial_metallicity: 1` (solar), as in the family's other
+star-sourced examples.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var: `gas_density`
+(`--rho`, atom/cm^3), `gas_mass` (`--mass`, Msun), `level`, `variant`
+(`uniform`/`twophase`), `bin_delta`, `bulk_temperature_K` (cold phase),
+`interface_offset_h`, `v_over_c_hyp`, `star_velocity_km_s`, `star_mass`,
+`star_type`, `n_stars`, `c_hyp_margin`
+(`GEARFeedback:LW_FUV_c_hyp_margin`), `c_hyp_pin`
+(`LW_FUV_c_hyp_pin_for_debugging`, debug only), `alpha_max`/`alpha_pin`
+(`LW_FUV_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
+only), `propagation`, `initial_metallicity`, `time_end`, `dt_max`, `dt_min`,
+`delta_time`, and thread count (`n_threads`); see `run.sh` for the full list
+and defaults. `run_name=<dir> ./run.sh` moves a run's outputs into `<dir>`.
+
+`gas_mass` sets resolution at fixed density (`h ~ (m/rho)^(1/3)`); it also
+halves the box, so `time_end`/`dt_max`/`delta_time` must be rescaled with it
+to keep the same number of steps and the same source travel distance in
+units of `h` -- see `run.sh`'s defaults for the baseline resolution and scale
+accordingly for a finer one.
+
+# Checking
+```
+python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-pin $c_hyp_pin
+python3 multibin_compare.py --mode gate --s0 s0_dir --m0 m0_dir --m1 m1_dir --m2 m2_dir --m4 m4_dir --m5 m5_dir [--m3 m3_dir]
+python3 multibin_compare.py --mode report --runs dir1 dir2 ...
+```
+`run.sh` runs the per-run check automatically (report-only, never exits
+nonzero) and writes `multibin_metrics.json`. It reconstructs the force
+loop's dissipation accumulator from snapshot fields (not itself a snapshot
+field): the transverse dipole `d_x` (bin-boundary normal) and total
+displacement `|d|`, both in units of `h`, per star, per band, per snapshot;
+the negative-weight share and `void` flag on the underlying `sum(m*u)`
+moment (the same discipline as `ISRFShearAsymmetry`'s shear metric); the
+`E_cross`/`E_same` and `Dbar_cross`/`Dbar_same` mechanism diagnostic at the
+star adjacent to the phase boundary; the global `sum(m*u)` conservation
+trace per band; and the `drho`/`dx_gas`/`rho_match`/bin-span contamination
+controls.
+
+`multibin_compare.py --mode gate` combines a full six-run set (S0 smoke, M0
+uniform control, M1 test, M2 alpha_max=0 attribution twin, M4/M5 the
+2x-finer-`h` control/test pair; M3, the `c_hyp`-pin mechanism control, is
+optional and read only as an interpretation aid). It checks the
+resolving-power precondition first (can the metric resolve the dipole size
+under discussion against the M0 control's own noise floor, and did S0 show a
+real bin split), then gates: the within-run matched-pair criterion at the
+star adjacent to the boundary against its same-phase, no-boundary sibling;
+the total-displacement bound across every star and run; no growth of the
+displacement with resolution; and no excess `sum(m*u)` non-conservation
+relative to the single-bin control. A run flagged void or invalid by its own
+check script is excluded from the gate rather than trusted.
