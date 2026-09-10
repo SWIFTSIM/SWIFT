@@ -875,8 +875,10 @@ relative to its neighbours' local field scale,
   \label{eq:fuv-diss-trigger}
 \end{equation}
 with $\langle|U|\rangle_i$ the kernel-mean $|U_j|$ over $i$'s own
-neighbours and $\varepsilon_1$ a threshold (a small undershoot fraction)
-below which no dissipation acts at all. $\alpha_i$ jumps to
+neighbours and $\varepsilon_1$ the saturation scale of the smooth cubic
+ramp $x_i^2(3-2x_i)$: any negative $U_i$ produces some dissipation, and
+$\alpha_i$ reaches its ceiling $\alpha_{\max}$ once $\varepsilon_i$ reaches
+$\varepsilon_1$, not before. $\alpha_i$ jumps to
 $\alpha_{{\rm aim},i}$ immediately when it rises, and otherwise relaxes
 back down as
 \begin{equation}
@@ -902,6 +904,34 @@ closure coefficient $C_{\rm hyp}$ (Eq.~\ref{eq:fuv-chyp-choice}),
   6.2\,\alpha_{\max}\,C_{\rm hyp} + 0.70\,C_{\rm hyp}^2 \le 2 .
   \label{eq:fuv-diss-stability}
 \end{equation}
+
+\textbf{Choosing $\alpha_{\max}$.} The shipped default is 0.25
+(\code{parameter\_example.yml}), calibrated on a uniform-density test
+($Z/Z_\odot=1$, $n_H=10^3\,{\rm cm}^{-3}$) across a coarse/baseline/fine
+ladder of gas-particle masses (0.8, 0.1, 0.0125~$M_\odot$, a factor of 4
+in $h$). The minimum coefficient that jointly closes the sign error and
+preserves the propagated field's shape rises as $h$ falls: 0.15 at the
+coarse rung, 0.20 at the baseline rung. At the fine rung no coefficient in
+$\{0,0.02,0.05,0.10,0.15,0.25,0.50\}$ satisfies both requirements at once:
+sign closure needs $\alpha_{\max}\ge0.5$, while transport fidelity already
+fails from $\alpha_{\max}\ge0.10$. This is not acausal propagation: the
+signed margin between the propagated front and the analytic causal front
+stays within a fraction of a smoothing length of the un-dissipated control
+at every tested coefficient and rung. It reflects instead that the
+fidelity comparison's own un-dissipated reference is itself ringing at
+that resolution, its sign-closure statistic exceeding 100\%, so the
+comparison cannot discriminate there; whether a coefficient at or above
+0.25 over-suppresses the genuine peak field at that resolution is not
+established either way. This project's production particle masses (10 to
+a few $\times10^4\,M_\odot$) sit an order of magnitude or more coarser in
+$h$ than every tested rung, on the side of the ladder where the required
+coefficient is smaller and the fidelity margin is larger, so 0.25 is a
+conservative default across the production range even though production
+resolution itself was not directly tested. The low-metallicity and
+low-density regimes, which lower the same $h/\lambda$ ratio that drives
+the fine-rung conflict and can do so at any particle mass, remain
+untested and are a more plausible route into this regime than particle
+mass refinement alone.
 
 \textbf{Placement in the update sequence.} The transport update itself
 is the staggered relax-$u$-then-$\mathbf F$ sequence of
@@ -1061,7 +1091,7 @@ introduced.
   value instead, bypassing the speed-of-light clamp on purpose. Never
   set in a production run. \\
 \hline
-\code{LW\_FUV\_dissipation\_alpha\_max} & 0 (off) & jointly bounded
+\code{LW\_FUV\_dissipation\_alpha\_max} & 0.25 & jointly bounded
   with $C_{\rm hyp}$, Eq.~\ref{eq:fuv-diss-stability} &
   Ceiling of the Stage-1 triggered artificial-conductivity coefficient
   $\alpha_i$ (Section~\ref{sec:fuv-dissipation}). Zero disables the

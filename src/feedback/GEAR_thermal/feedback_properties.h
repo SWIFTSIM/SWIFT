@@ -126,10 +126,11 @@ struct feedback_props {
   float LW_FUV_c_hyp_pin_for_debugging;
 
   /*! Ceiling of the Stage-1 triggered artificial-conductivity coefficient
-   * (design-lw-fuv-design-b-dissipation.md Section 3-4). 0 disables the
-   * term (the parent scheme's current behaviour, for A/B runs); the
+   * (design-lw-fuv-design-b-dissipation.md Section 3-4). On by default at
+   * the calibrated ceiling; 0 disables the term (for A/B runs). The
    * enforced range depends on #LW_FUV_c_hyp_margin (see
-   * feedback_properties_init()'s own range check). */
+   * feedback_properties_init()'s own range check), so raising
+   * #LW_FUV_c_hyp_margin can require lowering this. */
   float LW_FUV_dissipation_alpha_max;
 
   /*! Undershoot of a particle's own `rho_prev*u` below the neighbours'
@@ -507,11 +508,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
             fp->LW_FUV_c_hyp_pin_for_debugging);
 
       /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
-       * dissipation.md Section 5.3). Shipped default 0: the term's own
-       * validation legs are still running, so it stays off until the
-       * operator rules on "on by default" (Section 5.2). */
+       * dissipation.md Section 5.3). Shipped default 0.25: Stage 1 on by
+       * default at its calibrated ceiling, jointly bounded with C_hyp. */
       fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.0f);
+          params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.25f);
       fp->LW_FUV_dissipation_negativity_threshold = parser_get_opt_param_float(
           params, "GEARFeedback:LW_FUV_dissipation_negativity_threshold",
           0.01f);
