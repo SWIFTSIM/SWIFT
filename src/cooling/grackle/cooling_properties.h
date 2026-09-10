@@ -60,6 +60,13 @@ struct cooling_function_data {
   /*! Enable/disable CMB temperature floor */
   int cmb_temperature_floor;
 
+  /*! Flag to enable the AGORA redshift dependent CMB floor:
+                    T_CMB = T_CMB,0 * (1+z)\
+      This floor is different from the `cmb_temperature_floor`, which is
+      internal to Grackle.
+  */
+  char agora_cmb_temperature_floor;
+
   /*! Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
 
