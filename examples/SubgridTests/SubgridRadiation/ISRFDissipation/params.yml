@@ -117,9 +117,9 @@ GEARFeedback:
   LW_FUV_propagation:            1
   LW_FUV_c_hyp_margin:           0.5
   # Stage-1 triggered artificial-conductivity term (see parameter_example.yml
-  # for the full description): on, at its currently shipped ceiling. This is
+  # for the full description): on, at its shipped default. This is
   # the term this example demonstrates.
-  LW_FUV_dissipation_alpha_max:  0.5
+  LW_FUV_dissipation_alpha_max:  0.25
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

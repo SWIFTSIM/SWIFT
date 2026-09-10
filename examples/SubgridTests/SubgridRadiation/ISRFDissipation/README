@@ -3,7 +3,7 @@ A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
 box, with LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation on
 (photoionization and radiation pressure off) and the Stage-1 triggered
 artificial-dissipation term on (`GEARFeedback:LW_FUV_dissipation_alpha_max:
-0.5`). Same pinned-neighbour IC family as the sibling `ISRFCausalReach`
+0.25`). Same pinned-neighbour IC family as the sibling `ISRFCausalReach`
 example (one gas particle nearest the star set to a different initial
 temperature, `T_hot = 3e4 K` by default here), which produces a sharp
 local density/temperature contrast. Demonstrates that the dissipation
