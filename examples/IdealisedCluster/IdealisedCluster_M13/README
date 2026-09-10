@@ -1,0 +1,39 @@
+# Intro
+
+Idealised cluster made of gas and stars. A black hole lies at the center of the cluster.
+
+# Configure
+
+To run this example with the EAGLE model, SWIFT must be configured with the following options:
+
+./configure --with-subgrid=EAGLE
+
+To run this example with the GEAR model, configure SWIFT with:
+
+./configure --with-subgrid=GEAR-BH --with-grackle=$GRACKLE_ROOT
+
+# Run
+
+To run with EAGLE, type:
+
+with_subgrid=EAGLE run.sh
+
+To run with GEAR, your first must change the parameter file:
+
+```
+  particle_splitting:            0    # Particle splitting is ON
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
+```
+
+to
+
+```
+  particle_splitting:                1    # Particle splitting is OFF. GEAR does not have splitting.
+  recording_triggers_part: [-1, -1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1, -1]  # Not recording as we have many snapshots
+  recording_triggers_sink: [-1, -1, -1]   # Not recording as we have many snapshots
+```
+  
+with_subgrid=GEAR run.sh
+
