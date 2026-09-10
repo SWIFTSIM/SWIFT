@@ -13,3 +13,7 @@ We will use SWIFT to cancel the h- and a-factors from the ICs.
 
 MD5 check-sum of the ICS: 
 9aafe154438478ed435e88664c1c5dba zoom_in.hdf5
+
+To run this example, SWIFT must be configured with the following options:
+
+./configure --with-subgrid=GEAR --with-grackle=/path/to/grackle
