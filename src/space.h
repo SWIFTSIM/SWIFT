@@ -323,6 +323,12 @@ struct space {
   /*! Max multipole power accross all top-level cells */
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 
+  /*! Gravity pair search range in the negative direction. */
+  int grav_P2P_search_delta_m;
+
+  /*! Gravity pair search range in the positive direction. */
+  int grav_P2P_search_delta_p;
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 
