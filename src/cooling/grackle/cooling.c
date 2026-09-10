@@ -1096,10 +1096,6 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Nothing to do here? */
   if (dt == 0.) return;
 
-  /* Physical constants */
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
@@ -1108,15 +1104,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
       u_old + dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* Apply the CMB floor first, then the hydro limit */
-  /* TODO: Convert to Kelvin to internal units */
   double u_CMB_agora = 0.0;
   if (cooling->agora_cmb_temperature_floor) {
-    const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
-    const double T_0_CMB = CMB_TEMPARATURE_AT_REDSHIFT_0_IN_KELVIN * 1.0;
-    const double T_CMB_agora = T_0_CMB * (z+1.0);
-    const double mu = cooling_get_mean_molecular_weight(
-							phys_const, us, cosmo, hydro_props, cooling, p, xp);
-    u_CMB_agora = cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
+    u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
     /* Shall we apply the CMB floor? */
     if (u_ad_before < u_CMB_agora) {
@@ -1143,6 +1134,13 @@ void cooling_cool_part(const struct phys_const *phys_const,
   } else {
     u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props, cooling, p,
                                xp, dt, dt_therm);
+
+    /* Grackle's solve evolves the ion/molecule fractions that set mu;
+       recompute the floor from the post-solve composition. */
+    if (cooling->agora_cmb_temperature_floor) {
+      u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp);
+    }
   }
 
   /* Get the change in internal energy due to hydro forces */

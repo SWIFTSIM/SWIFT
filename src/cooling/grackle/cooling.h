@@ -24,6 +24,9 @@
  * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
+/*! CMB temperature at redshift 0, in Kelvin (used by cooling_utils.h). */
+#define CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN 2.725
+
 /* Local includes */
 #include "cooling_properties.h"
 #include "cooling_utils.h"
@@ -44,7 +47,6 @@ struct swift_params;
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
-#define CMB_TEMPARATURE_AT_REDSHIFT_0_IN_KELVIN 2.725
 
 void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,

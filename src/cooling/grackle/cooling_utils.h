@@ -191,4 +191,40 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
                                          const double kB, const double mp) {
   return u * hydro_gamma_minus_one * mu * mp / kB;
 }
+
+/**
+ * @brief compute the AGORA redshift-dependent CMB-floor specific internal
+ * energy for a particle, from its current composition.
+ *
+ * Call again after the composition changes (e.g. a Grackle chemistry solve)
+ * to keep it consistent with cooling_get_temperature()'s later mu.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Specific internal energy corresponding to T_CMB,0 * (1+z).
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_agora_cmb_floor_internal_energy(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
+  const double T_CMB_agora =
+      CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN * (z + 1.0);
+
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+
+  return cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
+}
 #endif /* SWIFT_COOLING_GRACKLE_COOLING_UTILS_H */
