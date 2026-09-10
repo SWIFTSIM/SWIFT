@@ -73,6 +73,96 @@ cooling_get_equilibrium_mean_molecular_weight(
 }
 
 /**
+ * Compute gas mean molecular weight.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Mean molecular weight.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
+                                  const struct unit_system *us,
+                                  const struct cosmology *cosmo,
+                                  const struct hydro_props *hydro_props,
+                                  const struct cooling_function_data *cooling,
+                                  const struct part *p,
+                                  const struct xpart *xp) {
+
+  /* Grackle mode 0: Use temperature-based molecular weight calculation */
+#if COOLING_GRACKLE_MODE == 0
+  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const double mu = cooling_get_equilibrium_mean_molecular_weight(
+      u, phys_const, hydro_props, cooling);
+  return mu;
+
+#elif COOLING_GRACKLE_MODE >= 1
+  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1 -- shared by
+     modes 1-3 instead of re-declared (and, for modes 2-3, previously
+     forgotten) in each one. */
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double m_H = phys_const->const_proton_mass;
+
+  const double XHI = cool_data->HI_frac;
+  const double XHII = cool_data->HII_frac;
+  const double XHeI = cool_data->HeI_frac;
+  const double XHeII = cool_data->HeII_frac;
+  const double XHeIII = cool_data->HeIII_frac;
+
+  const double nHI = XHI * rho / m_H;
+  const double nHII = XHII * rho / m_H;
+  const double nHeI = XHeI * rho / (4 * m_H);  // He is ~4 times heavier than H
+  const double nHeII = XHeII * rho / (4 * m_H);
+  const double nHeIII = XHeIII * rho / (4 * m_H);
+
+#if COOLING_GRACKLE_MODE == 1
+  const double nel = nHII + nHeII + 2 * nHeIII;
+  const double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nel;
+  const double mu =
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) / total_density;
+  return mu;
+
+#else /* COOLING_GRACKLE_MODE >= 2: also track H2I, H2II */
+  const double XH2I = cool_data->H2I_frac;
+  const double XH2II = cool_data->H2II_frac;
+  const double nH2I = XH2I * rho / (2 * m_H);  // H2 is 2 times the mass of H
+  const double nH2II = XH2II * rho / (2 * m_H);
+
+#if COOLING_GRACKLE_MODE == 2
+  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
+  const double total_density =
+      nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nel;
+  const double mu =
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2) /
+      total_density;
+  return mu;
+
+#else  /* COOLING_GRACKLE_MODE == 3: also track HDI */
+  const double XHDI = cool_data->HDI_frac;
+  const double nHDI = XHDI * rho / (3 * m_H);  // HD is 3 times the mass of H
+
+  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
+  const double total_density =
+      nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHDI + nel;
+  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                     (nH2I + nH2II) * 2 + nHDI * 3) /
+                    total_density;
+  return mu;
+#endif /* COOLING_GRACKLE_MODE == 3 */
+#endif /* COOLING_GRACKLE_MODE >= 2 */
+#endif /* COOLING_GRACKLE_MODE >= 1 */
+
+#if COOLING_GRACKLE_MODE < 0 || COOLING_GRACKLE_MODE > 3
+#error "Invalid COOLING_GRACKLE_MODE"
+#endif
+}
+
+/**
  * @brief compute the (physical) specific internal energy of an ideal gas for
  * given temperature and mean molecular weight.
  *
