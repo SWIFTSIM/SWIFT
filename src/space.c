@@ -246,22 +246,33 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
  */
 void space_reorder_extras(struct space *s, int verbose) {
 
+  /* Unpack the local cells and how many local cells there are. */
+  int *local_cells = s->local_cells_top;
+  int nr_local_cells = s->nr_local_cells;
+
+  /* In a zoom simulation, we only want to reorder the zoom cells as no extra
+   * particles are allocated in the non-zoom cells. */
+  if (s->with_zoom_region) {
+    local_cells = s->zoom_props->local_zoom_cells_top;
+    nr_local_cells = s->zoom_props->nr_local_zoom_cells;
+  }
+
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the star particles */
   if (space_extra_sparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the black hole particles */
@@ -271,7 +282,7 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the sink particles */
   if (space_extra_sinks)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 }
 
