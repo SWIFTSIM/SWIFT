@@ -1591,8 +1591,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_is_above_default_grav_depth(const struct cell *c) {
+__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
+    const struct cell *c) {
   /* Regular and zoom cells use the usual condition. */
   if (c->type == cell_type_regular || c->type == cell_type_zoom) {
     return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
@@ -1603,21 +1603,15 @@ cell_is_above_default_grav_depth(const struct cell *c) {
 }
 
 /**
- * @brief Is a cell above the depth at which gravity task recursion stops?
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
-    const struct cell *c) {
-
-  /* Zoom-neighbour interactions can require hierarchy below the usual depth. */
-  return c->grav.tasks_below_diff_grav_depth ||
-         cell_is_above_default_grav_depth(c);
-}
-
-/**
  * @brief Can a pair gravity task associated with a pair of cells be split
  * into smaller sub-tasks?
+ *
+ * This is normally true when both cells are split and above
+ * space_subdepth_diff_grav (as given by cell_is_above_diff_grav_depth).
+ * However, for zoom-neighbour pairs we need the neighbour side split based on
+ * the zoom side depth, not its own depth. This is because the neighbour cell is
+ * a background cell at the top level and the zoom is nested inside a background
+ * cell.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1627,10 +1621,10 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
   const int ci_above_depth =
       (ci->subtype == cell_subtype_neighbour && cj->type == cell_type_zoom) ||
-      cell_is_above_default_grav_depth(ci);
+      cell_is_above_diff_grav_depth(ci);
   const int cj_above_depth =
       (cj->subtype == cell_subtype_neighbour && ci->type == cell_type_zoom) ||
-      cell_is_above_default_grav_depth(cj);
+      cell_is_above_diff_grav_depth(cj);
 
   /* Let the zoom side set the depth of zoom-neighbour pair tasks. */
   return ci->split && cj->split && ci_above_depth && cj_above_depth;
@@ -1646,7 +1640,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split and still far from the leaves ? */
-  return c->split && cell_is_above_default_grav_depth(c);
+  return c->split && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1659,8 +1653,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 5000 &&
-         cell_is_above_default_grav_depth(c);
+  return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
 }
 
 /**
