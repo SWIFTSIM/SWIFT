@@ -11,6 +11,13 @@ debug=${debug:=0}
 run_name=${run_name:=""}
 with_star_formation=${with_star_formation=0}
 
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
+
+echo "========================================"
+echo "Preparing the simulation..."
+echo "========================================"
+
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
 then
@@ -25,16 +32,31 @@ then
 fi
 
 # Get the Grackle cooling table
-if [ ! -e CloudyData_UVB=HM2012.h5 ]
+if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPIIsw.h5 ]
+if [ ! -e POPII.hdf5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh --with-winds
+fi
+
+# Get the debugging ICs
+if [[ -z "$debug" || "$debug" -eq 1 ]]; then
+    echo "Preparing simulation for debug mode..."
+
+    if [ ! -e snapshot_0003restart.hdf5 ]
+    then
+	echo "Fetching the debugging ICs..."
+	./getDebuggingICs.sh
+    fi
+
+    parameter_file="params_debug.yml"
+else
+    parameter_file="params.yml"
 fi
 
 # Create output directory
@@ -60,39 +82,45 @@ else
     runtime_params="--star-formation"
 fi
 
-if [[ -z "$debug" || "$debug" -eq 0 ]]; then
-    
-    printf "Running simulation..."
-    $swift --hydro $runtime_params --stars --self-gravity --feedback \
-		   --cooling --sync --limiter --threads=$n_threads \
-		   params.yml 2>&1 | tee output.log
+echo "========================================"
+echo "Running simulation..."
+echo "========================================"
+$swift --hydro $runtime_params --stars --self-gravity --feedback \
+       --cooling --sync --limiter --threads=$n_threads \
+       $parameter_file 2>&1 | tee output.log
 
-    #Do some data analysis to show what's in this box
-    python3 plot_gas_density.py -i 282 -s 'snap/snapshot'
-    python3 rhoTPlot.py -i 282 -s 'snap/snapshot'
-    python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
-    python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
+echo "========================================"
+echo "Detecting last snapshot..."
+echo "========================================"
+
+# Look for files matching 'snap/snapshot_XXXX.hdf5', strip strings, sort numerically, pick the last one
+last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1)
+
+if [ -z "$last_snap_file" ]; then
+    echo "Error: No snapshots found in snap/ directory! Defaulting analysis to 0."
+    last_snap=0
 else
-    # Get the debugging ICs
-    if [ ! -e snapshot_0003restart.hdf5 ]
-    then
-	echo "Fetching the debugging ICs..."
-	./getDebuggingICs.sh
-    fi
-
-    # Get the Grackle cooling table
-    if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
-    then
-	echo "Fetching the Cloudy tables required by Grackle..."
-	./getGrackleCoolingTable.sh
-    fi
-
-    echo "Running simulation in debug mode..."
-    $swift --hydro --sinks --stars --self-gravity --feedback \
-		   --cooling --sync --limiter --threads=$n_threads \
-		   params_debug.yml 2>&1 | tee output.log
+    # Extracts the 4-digit number from "snap/snapshot_0282.hdf5" -> "0282"
+    # Then strips leading zeros using 10# conversion to prevent Bash octal parsing issues
+    snap_num=$(echo "$last_snap_file" | grep -oE '[0-9]{4}')
+    last_snap=$((10#$snap_num))
+    echo "Found last snapshot: ${snap_num} (Integer: ${last_snap})"
 fi
 
+echo "========================================"
+echo "Performing data analysis..."
+echo "========================================"
+
+# Do some data analysis using the dynamically detected snapshot index
+python3 $scripts_location/plot_gas_density.py -i $last_snap -s 'snap/snapshot'
+python3 $scripts_location/rhoTPlot.py -i $last_snap -s 'snap/snapshot'
+python3 $scripts_location/rhoTPlot.py -i 0 -f $last_snap -s 'snap/snapshot'
+python3 $scripts_location/plot_gas_density.py -i 0 -f $last_snap -s 'snap/snapshot'
+
+echo "========================================"
+echo "Saving the results..."
+echo "========================================"
+# Now save the results if you wanted to
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else
