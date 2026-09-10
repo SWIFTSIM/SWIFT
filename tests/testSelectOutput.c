@@ -99,6 +99,8 @@ int main(int argc, char *argv[]) {
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
   struct ic_info ics_metadata;
+  ics_metadata.file_image_length = 0;
+  ics_metadata.file_image_data = NULL;
   strcpy(ics_metadata.group_name, "NoSUCH");
 
   /* parse parameters */
