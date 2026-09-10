@@ -58,12 +58,23 @@ def load_metrics(run_dir):
 def mode_gate(opt):
     zero = load_metrics(opt.zero)
     print(f"=== Gate: zero-shear control = {opt.zero} ===")
+    if zero.get("void"):
+        raise RuntimeError(f"{opt.zero} (the zero-shear control) is itself VOID; "
+                            "it cannot be used as the gate's calibration baseline.")
     overall_ok = True
     for run in opt.runs:
         m = load_metrics(run)
         print(f"\n-- {run} --")
+        if m.get("moment_weighting") != zero.get("moment_weighting"):
+            raise RuntimeError(
+                f"moment_weighting mismatch: {run}={m.get('moment_weighting')!r} vs "
+                f"{opt.zero}={zero.get('moment_weighting')!r} -- one of these "
+                "shear_metrics.json files predates the negative-weight-clipping fix; "
+                "rerun isrf_shear_asymmetry_check.py on both before gating."
+            )
         if m.get("void"):
-            print("  VOID (KH contamination) -- gate not meaningful for this run.")
+            print("  VOID (KH contamination or negative-weight share) -- "
+                  "gate not meaningful for this run.")
             continue
         for band in ("FUV", "LW"):
             b = m["bands"][band]

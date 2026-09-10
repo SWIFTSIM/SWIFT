@@ -846,6 +846,31 @@ sig}\,h$: a genuine numerical conductivity, of exactly the same
 character as artificial viscosity's own diffusive continuum limit, with
 no claim to represent any physical transport process.
 
+Because $\alpha_i$ is triggered locally rather than fixed, $D_{\rm eff}$
+is in general spatially non-uniform, and the term's conservation of
+$\sum_i m_i u_i$ (Eq.~\ref{eq:fuv-diss-formula}) does not extend to its
+first spatial moment: under a persistent relative velocity between a
+radiation source and the surrounding gas, the negativity trigger fires
+preferentially at the trailing edge of the source's injection kernel,
+the region where the field is being depleted, leaving the triggered
+coefficient one-sided there. The propagated field's centroid then trails
+the source by a small additional displacement beyond the underlying
+transport scheme's own prediction. This displacement is bounded, not
+growing, with the relative velocity once the latter reaches the
+propagation speed, and in the worst case measured (the resolution
+comparable to the absorption length, $h\sim\lambda$) is of order a few
+percent of $\lambda$ at the shipped $\alpha_{\max}$; the fraction of the
+field's own support inside one smoothing kernel, and with it this
+displacement in units of $h$, falls off in the $\lambda\gg h$ regime. It
+does not accumulate across multiple sources or over the duration of a
+run: it is a property of the field's steady state rather than a term
+that integrates in time. It is a
+quantified, resolution-scale numerical characteristic of this
+stabilization, not a transport error: the underlying P1 transport
+scheme's own relative-velocity moment identity, exact at
+$\alpha_{\max}=0$, holds only up to this bounded term once the
+stabilization is active.
+
 The signal velocity uses $\min$, not the $\max$ hydro convention
 (Rosswog 2015a, SPHENIX's own $v_{\rm sig}$) or a harmonic/arithmetic
 mean: under this scheme's closure $c_{{\rm hyp},i}\propto h_i/\Delta

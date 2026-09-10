@@ -22,6 +22,18 @@ Per-run metrics for ISRFShearAsymmetry: the reflection-symmetry asymmetry
 and the KH-contamination validity control. Pass/fail against the zero-shear
 control is done separately by shear_compare.py, since the gate is
 self-calibrating (2.8) and needs the sibling v_rel=0 run's own metrics.
+
+A_centroid and A_spread are evaluated on the positive part of the field,
+`w = m*max(u, 0)`, not the raw `w = m*u`: a large negative-weight share
+makes the raw second moment an ill-conditioned difference of two similar
+numbers (observed directly: a 31%-negative-weight run collapsed A_spread
+to an outlier). The raw weighting is still computed and reported
+alongside (`*_raw` fields, and printed) for comparison. A run whose
+negative weight share exceeds NEG_WEIGHT_VOID_THRESHOLD in either blob
+is marked void, folded into the same top-level `void` flag the
+KH-contamination check uses, so `shear_compare.py`'s existing gate skips
+it without further changes. A_energy keeps the raw weight: it is what
+conservation acts on.
 """
 
 import argparse
@@ -34,6 +46,7 @@ import numpy as np
 import yaml
 
 SPEED_OF_LIGHT_KM_S = 2.99792458e5
+NEG_WEIGHT_VOID_THRESHOLD = 0.10  # negative-weight share above which A_centroid/A_spread are voided
 
 
 def parse_options():
@@ -199,6 +212,10 @@ def main():
         alpha_max=alpha_max, alpha_pin=alpha_pin,
         kh_last=kh_last, drho_last=drho_last, void=bool(void),
         time_last=snap_last["time"], v_shear=opt.v_shear,
+        # "positive-part": A_centroid/A_spread use w=m*max(u,0); a JSON file
+        # without this field predates the fix and used raw w=m*u instead --
+        # regenerate it before gating against a run using this version.
+        moment_weighting="positive-part",
     )
 
     if opt.source_geometry == "blobs":
@@ -217,7 +234,16 @@ def main():
         pos_last = snap_last["pos"][orderL]
         t = snap_last["time"]
 
+        def moments(w, dx):
+            w_sum = w.sum()
+            if w_sum == 0:
+                return 0.0, 0.0
+            Dx = float(np.sum(w * dx[:, 0]) / w_sum)
+            Sxx = float(np.sum(w * dx[:, 0] ** 2) / w_sum)
+            return Dx, Sxx
+
         results = {}
+        void_neg_weight_any = False
         for band, u_last in (("FUV", u_last_fuv), ("LW", u_last_lw)):
             band_res = {}
             for label, in_blob, s_b, centre in (
@@ -225,32 +251,58 @@ def main():
             ):
                 x_ref = centre + np.array([s_b * (opt.v_shear / 2.0) * t, 0.0, 0.0])
                 dx = min_image(pos_last[in_blob] - x_ref, L_code)
-                w = mass0[in_blob] * u_last[in_blob]
-                w_sum = w.sum()
-                if w_sum == 0:
-                    band_res[label] = dict(Dx=0.0, Sxx=0.0, E=0.0)
-                    continue
-                Dx = float(np.sum(w * dx[:, 0]) / w_sum)
-                Sxx = float(np.sum(w * dx[:, 0] ** 2) / w_sum)
-                E = float(w_sum)
-                band_res[label] = dict(Dx=Dx, Sxx=Sxx, E=E)
+                w_raw = mass0[in_blob] * u_last[in_blob]
+                w_clip = mass0[in_blob] * np.maximum(u_last[in_blob], 0.0)
+                w_abs_sum = float(np.sum(np.abs(w_raw)))
+                neg_share = float(-np.sum(w_raw[w_raw < 0]) / w_abs_sum) if w_abs_sum > 0 else 0.0
+                Dx, Sxx = moments(w_clip, dx)
+                Dx_raw, Sxx_raw = moments(w_raw, dx)
+                E = float(w_raw.sum())
+                band_res[label] = dict(
+                    Dx=Dx, Sxx=Sxx, E=E,
+                    Dx_raw=Dx_raw, Sxx_raw=Sxx_raw,
+                    neg_weight_share=neg_share,
+                )
             Dx_A, Dx_B = band_res["A"]["Dx"], band_res["B"]["Dx"]
             Sxx_A, Sxx_B = band_res["A"]["Sxx"], band_res["B"]["Sxx"]
             E_A, E_B = band_res["A"]["E"], band_res["B"]["E"]
+            Dx_A_raw, Dx_B_raw = band_res["A"]["Dx_raw"], band_res["B"]["Dx_raw"]
+            Sxx_A_raw, Sxx_B_raw = band_res["A"]["Sxx_raw"], band_res["B"]["Sxx_raw"]
+            neg_A = band_res["A"]["neg_weight_share"]
+            neg_B = band_res["B"]["neg_weight_share"]
+            void_neg_weight = max(neg_A, neg_B) > NEG_WEIGHT_VOID_THRESHOLD
+            void_neg_weight_any |= void_neg_weight
+
             A_centroid = (Dx_A + Dx_B) / h_med_last if h_med_last > 0 else float("nan")
             A_spread = 2 * (Sxx_A - Sxx_B) / (Sxx_A + Sxx_B) if (Sxx_A + Sxx_B) else float("nan")
             A_energy = 2 * (E_A - E_B) / (E_A + E_B) if (E_A + E_B) else float("nan")
-            print(f"{band}: Dx_A={Dx_A:.4e} Dx_B={Dx_B:.4e} -> A_centroid={A_centroid:.4e}")
-            print(f"{band}: Sxx_A={Sxx_A:.4e} Sxx_B={Sxx_B:.4e} -> A_spread={A_spread:.4e}")
+            A_centroid_raw = (Dx_A_raw + Dx_B_raw) / h_med_last if h_med_last > 0 else float("nan")
+            A_spread_raw = (
+                2 * (Sxx_A_raw - Sxx_B_raw) / (Sxx_A_raw + Sxx_B_raw)
+                if (Sxx_A_raw + Sxx_B_raw) else float("nan")
+            )
+            print(f"{band}: neg-weight share A={neg_A:.1%} B={neg_B:.1%}"
+                  f"  ({'VOID, >' if void_neg_weight else 'OK, <='}"
+                  f"{NEG_WEIGHT_VOID_THRESHOLD:.0%})")
+            print(f"{band}: Dx_A={Dx_A:.4e} Dx_B={Dx_B:.4e} -> A_centroid={A_centroid:.4e}"
+                  f"  (raw weighting: {A_centroid_raw:.4e})")
+            print(f"{band}: Sxx_A={Sxx_A:.4e} Sxx_B={Sxx_B:.4e} -> A_spread={A_spread:.4e}"
+                  f"  (raw weighting: {A_spread_raw:.4e})")
             print(f"{band}: E_A={E_A:.4e} E_B={E_B:.4e} -> A_energy={A_energy:.4e}")
             results[band] = dict(
                 Dx_A=Dx_A, Dx_B=Dx_B, A_centroid=A_centroid,
                 Sxx_A=Sxx_A, Sxx_B=Sxx_B, A_spread=A_spread,
                 E_A=E_A, E_B=E_B, A_energy=A_energy,
+                A_centroid_raw=A_centroid_raw, A_spread_raw=A_spread_raw,
+                neg_weight_share_A=neg_A, neg_weight_share_B=neg_B,
+                void_neg_weight=bool(void_neg_weight),
             )
         metrics["N_A"] = N_A
         metrics["N_B"] = N_B
         metrics["bands"] = results
+        metrics["void_neg_weight"] = bool(void_neg_weight_any)
+        void = void or void_neg_weight_any
+        metrics["void"] = bool(void)
 
         # Total conservation control (report only).
         for band, u_field in (("FUV", "u_fuv"), ("LW", "u_lw")):
@@ -293,7 +345,14 @@ def main():
     print(f"\nMetrics written to {opt.json_out}")
 
     if void:
-        print("\nVALIDITY WARNING: this run is VOID (KH contamination) -- "
+        reasons = []
+        if kh_last is not None and (
+            (opt.v_shear > 0 and kh_last > 0.05) or (drho_last is not None and drho_last > 0.10)
+        ):
+            reasons.append("KH contamination")
+        if opt.source_geometry == "blobs" and void_neg_weight_any:
+            reasons.append(f"negative-weight share > {NEG_WEIGHT_VOID_THRESHOLD:.0%}")
+        print(f"\nVALIDITY WARNING: this run is VOID ({', '.join(reasons)}) -- "
               "M-S1/S2/S3 results above should not be trusted.")
 
 

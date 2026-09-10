@@ -79,6 +79,21 @@ python3 shear_compare.py --mode pair --plus plus_dir --minus minus_dir
 `run.sh` runs the per-run check automatically, computing `A_centroid`,
 `A_spread`, and `A_energy` (the reflection-symmetry violation, `shear`
 variant only) plus the KH-contamination and configuration-echo metrics.
+`A_centroid` and `A_spread` are evaluated on the positive part of the
+field (`w = m*max(u, 0)`), not the raw `m*u`: late in a run a sizeable
+fraction of the blob's mass-weighted field can be negative from the P1
+system's own ringing, which makes the raw second moment an
+ill-conditioned difference; the raw weighting is still reported alongside
+for comparison. A run whose negative-weight share exceeds 10% in either
+blob is declared void (the same `void` flag the KH-contamination control
+uses), since a moment computed on a `(m*u)` denominator that small is not
+trustworthy either way. `A_energy` always uses the raw weight, since it
+is what conservation acts on. `shear_metrics.json` carries a
+`moment_weighting` field for this reason; `shear_compare.py --mode gate`
+refuses to compare two runs whose `shear_metrics.json` files disagree on
+it, so an existing run directory from before this weighting change must
+have its `isrf_shear_asymmetry_check.py` rerun before it can be gated
+against a freshly-generated one.
 
 The gate is self-calibrating, not an absolute threshold: a sheared run
 passes a given metric if `|A_k| <= max(3*|A_k(0)|, floor)`, where `A_k(0)`
@@ -87,8 +102,9 @@ same sweep. The factor of 3 and the floors (0.01 for all three metrics) are
 declared conventions, not derived bounds -- wide enough that ordinary
 glass-noise scatter between two runs does not trip the gate, narrow enough
 to catch an effect at the percent level. `shear_compare.py --mode gate`
-performs this comparison; a run flagged void by the KH-contamination control
-is excluded from the gate rather than trusted.
+performs this comparison; a run flagged void, by the KH-contamination
+control or by the negative-weight-share check above, is excluded from the
+gate rather than trusted.
 
 The `contrast` variant (no exact symmetry) and the `slab` source geometry
 are report-only: `--mode pair` compares a `+v_shear`/`-v_shear` pair via a
