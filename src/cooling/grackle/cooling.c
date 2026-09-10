@@ -453,6 +453,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
   message("Maximal density = %e", cooling->cooling_density_max);
+  message("AGORA CMB temperature floor = %d",
+          cooling->agora_cmb_temperature_floor);
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
@@ -1094,12 +1096,35 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Nothing to do here? */
   if (dt == 0.) return;
 
+  /* Physical constants */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
   /* Energy after the adiabatic cooling */
   float u_ad_before =
       u_old + dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
+
+  /* Apply the CMB floor first, then the hydro limit */
+  /* TODO: Convert to Kelvin to internal units */
+  if (cooling->agora_cmb_temperature_floor) {
+    const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
+    const double T_0_CMB = CMB_TEMPARATURE_AT_REDSHIFT_0_IN_KELVIN * 1.0;
+    const double T_CMB_agora = T_0_CMB * (z+1.0);
+    const double mu = cooling_get_mean_molecular_weight(
+							phys_const, us, cosmo, hydro_props, cooling, p, xp);
+    const double u_CMB_agora =
+      cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
+
+    /* Shall we apply the CMB floor? */
+    if (u_ad_before < u_CMB_agora) {
+      u_ad_before = u_CMB_agora;
+      const float du_dt = (u_ad_before - u_old) / dt_therm;
+      hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
+    }
+  }
 
   /* We now need to check that we are not going to go below any of the limits */
   const double u_minimal = hydro_props->minimal_internal_energy;

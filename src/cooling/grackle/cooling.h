@@ -44,6 +44,7 @@ struct swift_params;
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+#define CMB_TEMPARATURE_AT_REDSHIFT_0_IN_KELVIN 2.725
 
 void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
