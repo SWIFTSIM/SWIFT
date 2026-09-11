@@ -930,11 +930,9 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s);
 
   } else {
-    const int nr_tasks = s->nr_tasks;
-
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
 }
