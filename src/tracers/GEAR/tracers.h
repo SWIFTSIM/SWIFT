@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes.h"
 #include "cooling.h"
 #include "engine.h"
 #include "part.h"
@@ -33,7 +34,7 @@
  * @brief Update the particle tracers just after it has been initialised at the
  * start of a step.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
@@ -53,7 +54,7 @@ static INLINE void tracers_after_init(
 /**
  * @brief Update the particle tracers just after it has been drifted.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
@@ -127,7 +128,7 @@ static INLINE void tracers_after_timestep_spart(
  * @brief Update the black hole particle tracers just after its time-step has
  * been computed.
  *
- * Nothing to do here.
+ * In GEAR, we record the average accretion rate.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -144,10 +145,34 @@ static INLINE void tracers_after_timestep_bpart(
     struct bpart *bp, const struct unit_system *us,
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
-    const int *const tracers_triggers_started) {}
+    const int *const tracers_triggers_started) {
+
+  const float accr_rate = black_holes_get_accretion_rate(bp);
+
+  /* Accumulate average accretion rate. If averaged_accretion_rate[i] < 0
+   * this is the first step after the trigger fired: the stored value is
+   * -time_to_remove, so (time_step_length + averaged_accretion_rate[i])
+   * gives only the in-window fraction, using a single consistent rate value
+   * and never going negative. */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (tracers_triggers_started[i]) {
+      if (bp->tracers_data.averaged_accretion_rate[i] < 0.f) {
+        const double in_window =
+            time_step_length + bp->tracers_data.averaged_accretion_rate[i];
+        bp->tracers_data.averaged_accretion_rate[i] = accr_rate * in_window;
+      } else {
+        bp->tracers_data.averaged_accretion_rate[i] +=
+            accr_rate * time_step_length;
+      }
+    }
+  }
+}
 
 static INLINE void tracers_after_recording_trigger_bpart(
-    struct bpart *bp, const int trigger_index, const double time_to_remove) {}
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {
+  bp->tracers_data.averaged_accretion_rate[trigger_index] =
+      -(float)time_to_remove;
+}
 
 /**
  * @brief Update the sink particle tracers just after its time-step has
@@ -246,8 +271,6 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 /**
  * @brief Initialise the black hole tracer data at the start of a calculation.
  *
- * Nothing to do here.
- *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
@@ -258,7 +281,10 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 static INLINE void tracers_first_init_bpart(struct bpart *bp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+                                            const struct cosmology *cosmo) {
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Initialise the sink tracer data at the start of a calculation.
@@ -345,11 +371,13 @@ static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
 /**
  * @brief Tracer event called after a snapshot was written.
  *
- * Nothing to do here.
- *
  * @param sp the #spart.
  */
-static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
+static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Tracer event called after a snapshot was written.

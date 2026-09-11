@@ -200,7 +200,7 @@ Snapshots:
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
   recording_triggers_part:   [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
   recording_triggers_spart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
-  recording_triggers_bpart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_bpart:  [1e-2, 1e-3, 1e-4]  # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
   recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # (Optional) Time before the snapshots where the trigger for sink particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
 
 
@@ -930,7 +930,65 @@ SPINJETAGN:
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
   use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
   slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
-  
+
+# GEAR AGN model
+# The numerical values below are carried over from the EAGLEAGN example above
+# for illustration only. They have not been tuned or validated for any GEAR
+# simulation and should not be used as recommended defaults.
+GEARAGN:
+  subgrid_seed_mass_Msun:              1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  use_subgrid_mass_from_ics:           1          # (Optional) Use subgrid masses specified in ICs [1, default], or initialise them to particle masses [0]?
+  with_subgrid_mass_check:             1          # (Optional) Verify that initial black hole subgrid masses are positive [1, default]. Only used if use_subgrid_mass_from_ics is 1.
+  use_multi_phase_bondi:               0          # Compute Bondi rates per neighbour particle?
+  with_angmom_limiter:                 1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  viscous_alpha:                       1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term. Only used if with_angmom_limiter is 1.
+  with_boost_factor:                   0          # Are we using the model from Booth & Schaye (2009)?
+  boost_alpha_only:                    0          # If using the boost factor, are we using a constant boost only? Only used if with_boost_factor is 1.
+  boost_alpha:                         1.         # Lowest value for the accretion efficiency for the Booth & Schaye 2009 accretion model. Only used if with_boost_factor is 1.
+  boost_beta:                          2.         # Slope of the power law for the Booth & Schaye 2009 model, set beta to zero for constant alpha models. Only used if with_boost_factor is 1 and boost_alpha_only is 0.
+  boost_n_h_star_H_p_cm3:              0.1        # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3). Only used if with_boost_factor is 1 and boost_alpha_only is 0.
+  radiative_efficiency:                0.1        # Fraction of the accreted mass that gets radiated.
+  max_eddington_fraction:              1.         # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording:    0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
+  use_nibbling:                        1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
+  min_gas_mass_for_nibbling_Msun:      10         # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
+  coupling_efficiency:                 0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_feedback_model:                  Isotropic  # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
+  AGN_use_deterministic_feedback:      1          # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
+  AGN_delta_T_K:                       3.16228e8  # (Constant, or initial) change in temperature to apply to the gas particle in an AGN feedback event, in Kelvin.
+  use_variable_delta_T:                0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:   0          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_norm:               3e8        # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_reference:          1e8        # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:           0.666667   # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_crit_factor:             1.0        # Multiple of critical dT for numerical efficiency to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_background_factor:       0.0        # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_min:                     1e7        # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_max:                     3e9        # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_use_nheat_with_fixed_dT:         0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold (only used if use_variable_delta_T is 1).
+  AGN_use_adaptive_energy_reservoir_threshold: 0  # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_nheat_alpha:                     1.0        # Normalisation of the energy reservoir threshold (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
+  AGN_nheat_maccr_normalisation:       1.0        # Reference accretion rate for energy reservoir threshold [M_sun / yr] (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
+  AGN_nheat_limit:                     100.0      # Hard limit for the energy reservoir threshold (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
+  AGN_num_ngb_to_heat:                 1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  max_reposition_mass:                 2e8        # Maximal BH mass considered for BH repositioning in solar masses. Set to 0 to disable repositioning entirely.
+  max_reposition_distance_ratio:       3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
+  with_reposition_velocity_threshold:  0          # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:       0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only used if with_reposition_velocity_threshold is 1.
+  min_reposition_velocity_threshold:  -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only used if with_reposition_velocity_threshold is 1.
+  set_reposition_speed:                0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
+  reposition_coefficient_upsilon:      50.0       # Repositioning speed normalisation [km/s/M_sun]. Only used if set_reposition_speed is 1.
+  reposition_reference_mass:           1e5        # Reference mass for scaling of reposition speed [M_sun]. Only used if set_reposition_speed is 1.
+  reposition_exponent_mass:            2.0        # (Optional) Exponent for scaling of repositioning velocity with BH mass; default = 2.0. Only used if set_reposition_speed is 1.
+  reposition_reference_n_H:            1.0        # Reference gas density around the black holes for scaling of repositioning speed [N_H cm^-3]. Only used if set_reposition_speed is 1.
+  reposition_exponent_n_H:             1.0        # (Optional) Exponent for scaling of repositioning velocity with gas density; default = 1.0. Only used if set_reposition_speed is 1.
+  with_potential_correction:           1          # Should the BH's own contribution to the potential be removed from the neighbour's potentials when looking for repositioning targets.
+  threshold_major_merger:              0.333      # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:              0.1        # Mass ratio threshold to consider a BH merger as 'minor'
+  merger_threshold_type:               DynamicalEscapeVelocity  # Type of velocity threshold for BH mergers ('CircularVelocity', 'EscapeVelocity', 'DynamicalEscapeVelocity').
+  merger_max_distance_ratio:           3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
+  minimum_timestep_Myr:                1.0        # (Optional) Minimum time-step size for BHs in Mega-years. Defaults to FLT_MAX.
+
 # Parameters related to the neutrinos --------------------------------------------
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
