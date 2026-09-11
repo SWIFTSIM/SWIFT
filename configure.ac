@@ -1997,7 +1997,7 @@ AC_SUBST([SUNDIALS_INCS])
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
 		[Master switch for subgrid methods. Inexperienced user should
-		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
+		start here. Options are: @<:@none, GEAR, GEAR-G3, GEAR-BH, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -2046,6 +2046,19 @@ case "$with_subgrid" in
 	with_subgrid_sink=GEAR
 	with_subgrid_extra_io=none
 	enable_fof=no
+   ;;
+   GEAR-BH)
+	with_subgrid_cooling=grackle_0
+	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=GEAR
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=yes
    ;;
    AGORA)
 	with_subgrid_cooling=grackle_0
@@ -2909,6 +2922,9 @@ case "$with_black_holes" in
    SPIN_JET)
       AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
       with_black_holes="SPIN_JETS (Husko+22)"
+   ;;
+   GEAR)
+      AC_DEFINE([BLACK_HOLES_GEAR], [1], [GEAR black hole model])
    ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
