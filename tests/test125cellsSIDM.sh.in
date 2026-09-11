@@ -8,7 +8,7 @@ do
 	rm -f sidm_brute_force_125_standard.dat swift_sidm_dopair_125_standard.dat SIDM_NONE.dat
 
 	echo "Running ./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard"
-	./test125cellsSIDM -n 6 -r 1 -d 1 -v v -p p -f standard testSIDM.yml
+	./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard testSIDM.yml
 
 	# Skip tests if compiled without SIDM and exit early
     if [ -e ./SIDM_NONE.dat ]
