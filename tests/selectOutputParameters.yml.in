@@ -5,4 +5,4 @@ SPH:
 
 Snapshots:
   select_output_on:      1
-  select_output:         selectOutput.yml
+  select_output:         @srcdir@/selectOutput.yml
