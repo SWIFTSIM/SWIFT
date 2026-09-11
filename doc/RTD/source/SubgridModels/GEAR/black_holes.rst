@@ -52,10 +52,11 @@ conditions, in which case seeding is skipped for those particles.
 
 .. note::
    
-   At the time of writing, only ``examples/IsolatedGalaxy/IsolatedGalaxy_multi_component/GEAR``
+   At the time of writing, only few examples allow to run with GEAR AGN.
+   Such examples are in ``examples/IsolatedGalaxy/IsolatedGalaxy_multi_component/GEAR``
+   and ``examples/IdealisedCluster/`` (idealised galaxy and idealised-cluster context)
    configures a ``GEARAGN`` section. You can also find the EAGLE examples
-   under ``examples/EAGLE_ICs/`` and ``examples/IdealisedCluster/``
-   (FOF-based seeding in a cosmological or idealised-cluster context) and
+   under ``examples/EAGLE_ICs/`` (FOF-based seeding in a cosmological ) and
    ``examples/SubgridTests/BlackHoleSwallowing/`` (black holes placed directly
    in the initial conditions, no FOF seeding). All of which use ``EAGLEAGN``
    parameters that map directly onto the ``GEARAGN`` names documented below.
