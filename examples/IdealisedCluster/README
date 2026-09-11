@@ -46,3 +46,34 @@ Nobels et al. (2022) and SPIN_JET_EAGLE for the model used in Husko et al.
 The remaining arguments set the external potential to an NFW profile and pin
 the supermassive BH of the simulation to the centre of the halo.
 
+To compile with GEAR black holes, configure swift with:
+
+./configure --with-subgrid=GEAR-BH --with-ext-potential=nfw --with-forcing=boundary-particles --with-grackle=$GRACKLE_ROOT
+
+Notice that you need to have installed Grackle on your machine. You also need to update
+the parameter files from:
+
+```
+  particle_splitting:            0    # Particle splitting is ON
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
+```
+
+to
+
+```
+  particle_splitting:                1    # Particle splitting is OFF. GEAR does not have splitting.
+  recording_triggers_part: [-1, -1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1, -1]  # Not recording as we have many snapshots
+  recording_triggers_sink: [-1, -1, -1]   # Not recording as we have many snapshots
+```
+
+To run with EAGLE, type:
+
+with_subgrid=EAGLE ./run.sh
+
+and to run wiht GEAR, type:
+
+with_subgrid=GEAR ./run.sh
+
+This commands downloads the required tables for the desired subgrid model.

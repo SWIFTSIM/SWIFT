@@ -3154,6 +3154,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                               t_bh_density);
 
+        /* BH smoothing-length convergence and swallow marking must see the
+         * gas field after sinks have removed their share, not before. Sink
+         * gas removal is committed by sink_ghost2 (no need to wait for the
+         * later sink-sink merger step too). */
+        if (with_sink)
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                              t_bh_density);
+
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
@@ -3515,6 +3523,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                                 t_bh_density);
 
+          /* BH smoothing-length convergence and swallow marking must see
+           * the gas field after sinks have removed their share, not before.
+           * Sink gas removal is committed by sink_ghost2 (no need to wait
+           * for the later sink-sink merger step too). */
+          if (with_sink)
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                                t_bh_density);
+
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
@@ -3676,6 +3692,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
+
+            /* BH smoothing-length convergence and swallow marking must see
+             * the gas field after sinks have removed their share, not
+             * before. Sink gas removal is committed by sink_ghost2 (no need
+             * to wait for the later sink-sink merger step too). */
+            if (with_sink)
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
                                   t_bh_density);
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,

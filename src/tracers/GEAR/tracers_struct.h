@@ -27,18 +27,19 @@
  */
 struct tracers_xpart_data {};
 
-/* /\** */
-/*  * @brief Properties of the tracers stored in the star particle data. */
-/*  * */
-/*  * Note: In this model, they are identical to the xpart data. */
-/*  *\/ */
-/* #define tracers_spart_data tracers_xpart_data */
+/**
+ * @brief Properties of the tracers stored in the star particle data.
+ */
 struct tracers_spart_data {};
 
 /**
  * @brief Properties of the tracers stored in the black hole particle data.
  */
-struct tracers_bpart_data {};
+struct tracers_bpart_data {
+
+  /*! Averaged accretion rate over two different time slices */
+  float averaged_accretion_rate[num_snapshot_triggers_bpart];
+};
 
 /**
  * @brief Properties of the tracers stored in the sink particle data.
