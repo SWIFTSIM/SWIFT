@@ -1,0 +1,112 @@
+# Intro
+A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
+box, with LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation on
+(photoionization and radiation pressure off), in the OPTICALLY-THIN corner:
+the metallicity is low enough that the dust screening length is much larger
+than both the smoothing length and the box (`h/lambda ~ 6e-3`, against
+`h/lambda ~ 1` in the sibling `ISRFHyperbolicPropagation`).
+
+In that corner the scheme's own analytic solution is exact and simple. The
+P1 system's point-source solution is time-constant everywhere behind the
+causal front and equal to
+
+    u(r) = 3 * L * kappa_eff * exp(-r/lambda) / (4 * pi * c * r)
+
+with `kappa_eff` the dust mass opacity, `lambda = 1/(kappa_eff*rho)`, and
+`c` the true speed of light (the reduced propagation speed `c_hyp` cancels).
+Where `r << lambda` this is a geometric `1/r` dilution. It is NOT the
+`1/r^2` inverse-square law of free-streaming transport, which the same
+configuration would give as `L*exp(-r/lambda)/(4*pi*c*rho*r^2)`; the two
+differ by a factor `3*r/lambda`. The `1/r` behaviour is the P1 closure's
+streaming limit (the Eddington factor 1/3 is exact only for a
+near-isotropic field), not an artifact of this discretization.
+`isrf_optically_thin_check.py` measures which of the two the code produces,
+in both bands, against an absolute prediction with no fitted parameter.
+
+## Why this corner and not the sibling example's
+`ISRFHyperbolicPropagation` measures the SCREENED steady state, where
+`lambda` is comparable to `h` and the discrete SPH estimator's fixed point
+departs from the continuum profile; that example therefore compares against
+a discrete solve rather than a continuum formula. Here `lambda >> h`, the
+continuum formula is valid, and the comparison can be absolute.
+
+## Measurement window
+The field is measured strictly inside the causal front, over
+`[3*h_star, min(R_f - 2*H, L_box - R_f)]`, where `R_f = N_steps*C_hyp*h` is
+the front radius and `H` the kernel support. The first term excludes the
+star's injection footprint, the second the front itself (which the
+estimator smears over a couple of supports), and the third every periodic
+image, which cannot have reached radius `r` before `c_hyp*t = L_box - r`.
+`time_end` is chosen so that this window is as wide as the box allows,
+about 0.9 decades in radius; running longer narrows it again as the front
+approaches the box edge.
+
+## Dissipation coefficient
+`params.yml` holds the Stage-1 artificial-conductivity coefficient at a
+fixed 0.5 via `LW_FUV_dissipation_alpha_pin_for_debugging`, instead of
+letting the negativity trigger set it, so that what is measured is the
+transport operator alone. At this example's screening length the shipped
+`LW_FUV_dissipation_alpha_max` default of 0.25 is not enough: the field
+rings in sign and has no radial profile to measure. 0.5 still satisfies the
+joint stability bound `6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2` at the default
+`C_hyp = 0.5`. Set `alpha_pin=0 ./run.sh` to see the trigger-gated
+behaviour instead.
+
+## Metallicity, cooling
+`initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
+0: the dust opacity, and hence `lambda`, is undefined at `Z=0`. It defaults
+to `Z/Zsun=1e-2`, giving `lambda_FUV = 32.2 pc` in a 10.2 pc box.
+`GrackleCooling:disable_cooling_for_debugging: 1` skips the per-particle
+cooling/heating update so the gas's thermal and dynamical state stays
+fixed, while `--cooling` (`run.sh`) still lets `cooling_init()` resolve
+`chemistry_data`, including the `local_dust_to_gas_ratio` the dust opacity
+depends on.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+themselves live on `struct part`'s `feedback_data`). The Grackle cooling
+mode is not critical here (only `chemistry_data` needs resolving, not any
+mode-gated species network).
+
+# Run
+```
+./run.sh
+```
+The default resolution is `level=6` (262144 gas particles), needed for the
+radial range the slope fit wants; it takes a few minutes on 8 threads.
+Override any parameter via the matching env var -- gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+and type (`star_mass`, `star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`, `delta_time`), metallicity (`initial_metallicity`), dissipation
+coefficient (`alpha_pin`) and thread count (`n_threads`); see `run.sh` for
+the full list and defaults. `run_name=<dir> ./run.sh` moves the run's
+outputs into `<dir>` once done, to keep more than one run's outputs side by
+side.
+
+Lowering `level` shortens the run but narrows the measurement window:
+`L_box/h` scales as `N^(1/3)` at fixed particle mass and density, so the
+radial range available for the slope fit shrinks with it.
+
+# Checking
+```
+python3 isrf_optically_thin_check.py
+```
+`run.sh` runs this automatically against its own `output.log` and
+snapshots. For each band it bins the field radially inside the causal
+front, fits the log-log slope, and compares both the slope and the absolute
+amplitude against the analytic profile above, averaging over the last few
+snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
+from the prediction, if the amplitude is more than `--amplitude-tol` from
+unity, or if the amplitude ratio's radial spread exceeds `--flatness-tol`;
+the defaults are set from the measured values with margin and should not be
+loosened to make a run pass. If the field is ringing in sign the script
+says so explicitly rather than reporting an unfittable profile as an error.
+Produces a comparison plot (`--output`, default
+`isrf_optically_thin_check.png`) showing the measured profile against both
+the P1 and the inverse-square predictions.
