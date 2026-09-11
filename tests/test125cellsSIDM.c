@@ -500,9 +500,9 @@ int main(int argc, char *argv[]) {
   /* Rescale time_base to smallest time-step actually required. */
   float min_dt = FLT_MAX;
   for (int j = 0; j < 27; ++j) {
-    struct cell *c = inner_cells[j];
-    for (int i = 0; i < c->sidm.count; ++i) {
-      const struct sipart *sip = &c->sidm.parts[i];
+    struct cell *cj = inner_cells[j];
+    for (int i = 0; i < cj->sidm.count; ++i) {
+      const struct sipart *sip = &cj->sidm.parts[i];
       if (sip->density.wcount > 0 && sip->SIDM_rate > 0)
         min_dt = fminf(min_dt, sidm_p.kappa_timestep / sip->SIDM_rate);
     }
@@ -514,9 +514,9 @@ int main(int argc, char *argv[]) {
 
   /* Pick each particle's time_bin */
   for (int j = 0; j < 27; ++j) {
-    struct cell *c = inner_cells[j];
-    for (int i = 0; i < c->sidm.count; ++i) {
-      struct sipart *sip = &c->sidm.parts[i];
+    struct cell *cj = inner_cells[j];
+    for (int i = 0; i < cj->sidm.count; ++i) {
+      struct sipart *sip = &cj->sidm.parts[i];
       const integertime_t ti_new_step = get_sipart_timestep(sip, &engine);
       sip->time_bin = get_time_bin(ti_new_step);
     }
