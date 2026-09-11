@@ -539,6 +539,9 @@ Installing the ``python`` AGAMA interface is done with ``pip``.
 After having cloned AGAMA, in the root directory, type::
   pip install --no-build-isolation .
 
+Note that during the installation process, the UNSIO and NEMO
+libraries have to be selected.
+  
 Configuring SWIFT in order to link it with AGAMA is done with::
 
   ./configure --with-agama=/path/to/the/agama/root/directory --with-ext-potential=agama 
