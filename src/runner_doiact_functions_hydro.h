@@ -1070,10 +1070,6 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-  /* Now we can unlock */
-  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
-
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
@@ -1081,7 +1077,13 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #endif
 
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
+
   } else {
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
     if (sort_is_face(sid))
@@ -1092,6 +1094,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #else
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
+
+    /* Unlock now that we are done reading the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
   }
 }
 
