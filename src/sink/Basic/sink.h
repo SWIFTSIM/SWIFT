@@ -613,33 +613,37 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * kinetic energy, potential energy, etc. This function works on the
  * neighbouring gas particles.
  *
+ * Nothing to do here.
+ *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param xp The #xpart data of the particle #p.
- * @param pi A neighbouring #part of #p.
+ * @param pi The #part for which we compute the quantities.
  * @param xpi The #xpart data of the particle #pi.
+ * @param pj A neighbouring #part of #pi.
+ * @param xpj The #xpart data of the particle #pj.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct part *restrict pi, struct xpart *restrict xpi,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    struct part *restrict pj, struct xpart *restrict xpj,
     const struct cosmology *cosmo, const struct sink_props *sink_props) {}
 
 /**
  * @brief Compute all quantities required for the formation of a sink. This
  * function works on the neighbouring sink particles.
  *
+ * Nothing to do here.
+ *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param xp The #xpart data of the particle #p.
- * @param si A neighbouring #sink of #p.
+ * @param pi The #part for which we compute the quantities.
+ * @param xpi The #xpart data of the particle #pi.
+ * @param sj A neighbouring #sink of #pi.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct sink *restrict si, const int with_cosmology,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time) {}
 
