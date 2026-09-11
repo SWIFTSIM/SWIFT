@@ -269,8 +269,8 @@ static void check_ratio(float h_ratio, float bulk_velocity,
     const double sum = credit + debit;
     const double scale = fmax(fabs(credit), fabs(debit));
 
-    const double Psi = expected_Psi((double)pi->h, (double)pj->h, r, u_i[b],
-                                    u_j[b]);
+    const double Psi =
+        expected_Psi((double)pi->h, (double)pj->h, r, u_i[b], u_j[b]);
     const double expected_credit = mi * mj * Psi;
 
     message(

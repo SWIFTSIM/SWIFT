@@ -57,9 +57,10 @@
 
 #define SAFETY_FACTOR 0.05
 #define MAX_DT_GROWTH 1.2
-#define DT_CEILING_S 1.0e16 /* ~300 Myr; far beyond any physical timescale
-                               this problem can produce, just a guard
-                               against a pathological single-step jump */
+#define DT_CEILING_S                                    \
+  1.0e16 /* ~300 Myr; far beyond any physical timescale \
+            this problem can produce, just a guard      \
+            against a pathological single-step jump */
 /* An adaptive dt sized off the instantaneous cooling time overshoots near
  * equilibrium (the cooling time itself diverges there) and settles into a
  * persistent few-percent limit-cycle oscillation rather than damping to a
@@ -132,13 +133,18 @@ int main(int argc, char **argv) {
   grackle_data->photoelectric_heating = 2;
   grackle_data->use_isrf_field = 1;
   grackle_data->use_dust_density_field = 0; /* dust2gas = fgr * metallicity */
-  grackle_data->h2_on_dust = 0;             /* GrackleCooling:H2_on_dust default */
-  grackle_data->three_body_rate = 0;        /* GrackleCooling:H2_three_body_rate default */
-  grackle_data->cie_cooling = 0;            /* GrackleCooling:H2_cie_cooling default */
-  grackle_data->H2_self_shielding = 0;      /* GrackleCooling:H2_self_shielding default */
-  grackle_data->self_shielding_method = 0;  /* GrackleCooling:self_shielding_method<=0 */
-  grackle_data->cmb_temperature_floor = 1;  /* matches this example's params.yml */
-  grackle_data->CaseBRecombination = 1;     /* cooling_init_grackle always sets this */
+  grackle_data->h2_on_dust = 0; /* GrackleCooling:H2_on_dust default */
+  grackle_data->three_body_rate =
+      0;                         /* GrackleCooling:H2_three_body_rate default */
+  grackle_data->cie_cooling = 0; /* GrackleCooling:H2_cie_cooling default */
+  grackle_data->H2_self_shielding =
+      0; /* GrackleCooling:H2_self_shielding default */
+  grackle_data->self_shielding_method =
+      0; /* GrackleCooling:self_shielding_method<=0 */
+  grackle_data->cmb_temperature_floor =
+      1; /* matches this example's params.yml */
+  grackle_data->CaseBRecombination =
+      1; /* cooling_init_grackle always sets this */
   grackle_data->HydrogenFractionByMass = hydrogen_fraction_by_mass;
   grackle_data->Gamma = 5.0 / 3.0;
 
@@ -283,7 +289,8 @@ int main(int argc, char **argv) {
     }
 
     const double dt_target = SAFETY_FACTOR * fabs((double)cooling_time[0]);
-    double dt_next = (iter == 0) ? dt_target : fmin(dt_target, dt * MAX_DT_GROWTH);
+    double dt_next =
+        (iter == 0) ? dt_target : fmin(dt_target, dt * MAX_DT_GROWTH);
     if (dt_next > DT_CEILING_S) dt_next = DT_CEILING_S;
     if (!(dt_next > 0.0)) {
       /* cooling_time is exactly 0 (should not happen away from a
@@ -336,8 +343,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  printf("DATA,%.10e,%.10e,%d,%.10e,%d\n", T_initial_K, T_equilibrium,
-        iter + 1, t_elapsed, converged);
+  printf("DATA,%.10e,%.10e,%d,%.10e,%d\n", T_initial_K, T_equilibrium, iter + 1,
+         t_elapsed, converged);
 
   if (!converged) {
     fprintf(stderr,
