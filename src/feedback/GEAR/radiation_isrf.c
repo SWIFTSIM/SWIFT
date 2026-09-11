@@ -335,13 +335,15 @@ float radiation_relaxation_phi_factor(float a) {
  * `div(F)` accumulator, so repeated calls across h-iterations converge to
  * the same answer regardless of how many there are.
  *
- * `u_star = e*u_prev + dt*phi*((3*c_hyp/c)*source_rate - div_F)`, with
+ * `u_star = e*u_prev + dt*phi*((c_hyp/c)*source_rate - div_F)`, with
  * `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*kappa*dt`
  * (#radiation_relaxation_phi_factor): the exact solution of
- * `du/dt = -u/tau + (3*c_hyp/c)*source_rate - div(F)` over one step with
+ * `du/dt = -u/tau + (c_hyp/c)*source_rate - div(F)` over one step with
  * `source_rate` and `div(F)` frozen at this h-iteration's value, `tau =
- * 1/(c_hyp*kappa)`. The `3*c_hyp/c` rescale is applied exclusively here;
- * injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ * 1/(c_hyp*kappa)`. `c_hyp` here plays the role of the M1 reduced light
+ * speed `c_M` (design-lw-fuv-m1-upgrade.md D2/D3): the `c_M/c` rescale
+ * (replacing the old, P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively
+ * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
  *
  * The result is the INTERMEDIATE state `u*`, not this step's final `u`:
  * the Stage-1 artificial-dissipation correction is added on top of it by
@@ -362,7 +364,7 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
   const float rescale =
-      3.0f * c_hyp / (float)e->physical_constants->const_speed_light_c;
+      c_hyp / (float)e->physical_constants->const_speed_light_c;
 
   const float a_FUV = c_hyp * fd->kappa_FUV * dt;
   const float a_LW = c_hyp * fd->kappa_LW * dt;
@@ -380,11 +382,52 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 }
 
 /**
+ * @brief M1 flux limiter for one particle, one band (design-lw-fuv-m1-
+ * upgrade.md "New pieces"): `F <- F*min(1, c_M*u/|F|)` for `u > 0`,
+ * `F <- 0` for `u <= 0`. Enforces D1's guarantee (the interior field is
+ * `|F|/c_M`, not more) against whatever `u` this call is given.
+ *
+ * Guarded rather than relying on algebraic cancellation: `F = 0` under
+ * `u > 0` needs no division at all (scaling the zero vector is still
+ * zero), so that case is skipped outright instead of computing
+ * `c_M*u/|F|` unguarded.
+ *
+ * @param u This band's final, post-dissipation-correction specific field.
+ * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param F (in/out) This particle's tracked flux (this band).
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
+
+  if (u <= 0.f) {
+    F[0] = 0.f;
+    F[1] = 0.f;
+    F[2] = 0.f;
+    return;
+  }
+
+  const float F2 = F[0] * F[0] + F[1] * F[1] + F[2] * F[2];
+  if (F2 <= 0.f) return;
+
+  const float limiter = min(1.f, c_M * u / sqrtf(F2));
+  F[0] *= limiter;
+  F[1] *= limiter;
+  F[2] *= limiter;
+}
+
+/**
  * @brief Stage-1 artificial-dissipation correction of #u_FUV/#u_LW, from
  * the accumulators radiation_propagation_iact.h filled during the force
  * loop: `u = u_star + dt*phi*dissipation_u`, closing the exact-relaxation
  * update #radiation_end_density_propagation left at its intermediate state
- * `u_star`.
+ * `u_star`. Then applies the M1 flux limiter
+ * (#radiation_apply_flux_limiter_band) to #specific_flux_FUV/#specific_flux_LW
+ * against this step's final, post-correction `u` -- the insertion site and
+ * ordering are load-bearing (design-lw-fuv-m1-upgrade.md "Insertion site,
+ * pinned explicitly"): the extra ghost that precedes the force loop only
+ * ever sees the PRE-correction `u`, so clamping there could leave
+ * `|F| > c_M*u` at exactly the near-front, low-`u` particles the trigger's
+ * own correction moves the most.
  *
  * Runs in the `end_force` task, which SWIFT places after the force loop
  * and before cooling (engine_maketasks.c), so a coefficient raised by this
@@ -425,6 +468,9 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 
   fd->u_FUV += dt * phi_FUV * fd->dissipation_u_FUV;
   fd->u_LW += dt * phi_LW * fd->dissipation_u_LW;
+
+  radiation_apply_flux_limiter_band(fd->u_FUV, c_hyp, fd->specific_flux_FUV);
+  radiation_apply_flux_limiter_band(fd->u_LW, c_hyp, fd->specific_flux_LW);
 }
 
 /**

@@ -22,7 +22,7 @@
 /**
  * @file src/feedback/GEAR/radiation_propagation_iact.h
  * @brief Gas-gas density-loop, gradient-loop and force-loop hooks for the
- * hyperbolic P1-relaxation propagation of the u_FUV/specific_flux_FUV (and
+ * hyperbolic M1-relaxation propagation of the u_FUV/specific_flux_FUV (and
  * u_LW/specific_flux_LW) fields.
  *
  * Three pairwise SPH operators are accumulated here, in three different
@@ -34,14 +34,23 @@
  *   `diffmode==1` branch. Exactly mass-conserving under transport alone for
  *   any h_i != h_j, rho_i != rho_j (a single shared scalar built from both
  *   particles' own kernel-gradient terms, applied with mirrored mass/sign to
- *   each side).
+ *   each side). Closure-independent: unchanged by the P1-to-M1 upgrade.
  * - `grad(u)` (gradient loop, `runner_iact_[nonsym_]isrf_gradient`): the
- *   difference-on-(rho*u) construction mirroring the same file's
- *   `radiation_gradient_SPH` `diffmode==0` branch. This is the operator that
- *   is minus the adjoint of the diffmode==1 divergence above in the m*rho
- *   inner product, which the staggered exact-relaxation time integrator
- *   (radiation_isrf.c) needs for stability on a disordered particle
- *   distribution.
+ *   anisotropic M1 pressure-tensor divergence, `diffmode==2` form
+ *   (`radiation_gradient_aniso_SPH`'s `diffmode==2` branch,
+ *   `src/rt/SPHM1RT/rt_gradients.h`/`rt_iact.h:582-627`): `tempi - tempj` on
+ *   a shared, averaged kernel derivative `(wi_dr + wj_dr)*0.5`, per particle
+ *   D(f) tensor (#radiation_get_m1_closure_tensor_band). Under P1
+ *   (design-lw-fuv-m1-upgrade.md's predecessor), this operator instead used
+ *   each particle's own separate `wi_dr`/`wj_dr` (the `diffmode==0` shape)
+ *   and was the exact skew-adjoint of the `diffmode==1` divergence above in
+ *   the m*rho inner product; the M1 anisotropic form gives up that exact
+ *   adjointness (the divergence loop still uses per-particle kernel terms,
+ *   this loop no longer does) in exchange for the correct M1 pressure
+ *   tensor. Whether the staggered exact-relaxation time integrator's
+ *   stability argument still needs that adjointness, or tolerates its loss,
+ *   is an open question for Phase 1's stability re-verification, not
+ *   resolved here.
  * - The Stage-1 artificial dissipation (force loop,
  *   `runner_iact_[nonsym_]isrf_dissipation`): a triggered pairwise
  *   conductivity on the `rho*u` jump, credited to one particle and debited
@@ -52,16 +61,14 @@
  *   h_i != h_j); and the loop runs after the extra ghost has set this
  *   step's coefficient and before cooling reads `u`, so the trigger acts
  *   within the step it fires. SPHENIX's own artificial viscosity lives in
- *   the force loop for the identical reason.
+ *   the force loop for the identical reason. Closure-independent.
  *
  * All three operators need a stable per-particle density: the density loop
  * here runs interleaved with SPH's own density accumulation, so `p->rho` is
  * a partial sum, not a density, at the point those pairwise calls run. All
  * therefore read `p->feedback_data.rho_prev`, a comoving density snapshot
  * cached once per step by `radiation_snapshot_part_propagation` (before the
- * per-step density-accumulator reset), the same snapshot for every loop so
- * `div` and `grad` are built from the identical `rho_i`, `rho_j` values
- * their skew-adjoint pairing requires.
+ * per-step density-accumulator reset), the same snapshot for every loop.
  */
 
 #include "dimension.h"
@@ -285,9 +292,70 @@ radiation_dissipation_force_accumulate_band(
 }
 
 /**
+ * @brief M1 closure tensor `D(f)` for one particle, one band, built from its
+ * own `(u, F, c_M)` (design-lw-fuv-m1-upgrade.md "New pieces"). `c_M` is the
+ * same speed already carried as #feedback_part_data.c_hyp (D3: reinterpreted
+ * as the fastest M1 characteristic, `f=1`, not a new field).
+ *
+ * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` for `u <= 0`;
+ * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`;
+ * `D(f) = (1-chi)/2 I + (3chi-1)/2 (n dyadic n)`, `n = F/|F|`.
+ *
+ * Zero-flux guard, mandatory: `F = 0` is every particle's initial condition
+ * and permanent far-field state, not a corner case. `F2 = F.F`,
+ * `F_inv = (F2 > 0) ? 1/sqrt(F2) : 0`, `n = F*F_inv` -- the same convention
+ * #radiation_flux_dissipation_accumulate_band already uses for `F_inv_i`.
+ * `f`'s own division is guarded the same way: `c_M*u` is computed once and
+ * only divided into when it is strictly positive, which also folds in the
+ * `u <= 0` case (`f = 0`) without a separate branch. At `F = 0`, `f = 0`,
+ * `chi = 1/3`, the `(3*chi-1)/2 = 0` coefficient multiplies the guarded,
+ * well-defined zero `n` rather than a NaN.
+ *
+ * @param u This band's ghost-finalized specific field for this particle.
+ * @param F This particle's tracked flux (this band).
+ * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param D (return) The 3x3 closure tensor.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
+                                     float D[3][3]) {
+
+  const float F2 = F[0] * F[0] + F[1] * F[1] + F[2] * F[2];
+  const float F_inv = (F2 > 0.f) ? 1.f / sqrtf(F2) : 0.f;
+  const float Fmag = F2 * F_inv; /* sqrt(F2), no second sqrtf call */
+  const float n[3] = {F[0] * F_inv, F[1] * F_inv, F[2] * F_inv};
+
+  const float denom = c_M * u;
+  const float f = (denom > 0.f) ? min(Fmag / denom, 1.f) : 0.f;
+
+  const float sq = 4.f - 3.f * f * f;
+  const float chi = (3.f + 4.f * f * f) / (5.f + 2.f * sqrtf(sq));
+
+  const float iso_coeff = 0.5f * (1.f - chi);
+  const float aniso_coeff = 0.5f * (3.f * chi - 1.f);
+
+  for (int a = 0; a < 3; a++) {
+    D[a][0] = aniso_coeff * n[a] * n[0];
+    D[a][1] = aniso_coeff * n[a] * n[1];
+    D[a][2] = aniso_coeff * n[a] * n[2];
+    D[a][a] += iso_coeff;
+  }
+}
+
+/**
  * @brief Band-specific pairwise contribution to particle i's `grad(u)`
- * accumulator (and mirrored contribution to particle j's), the
- * difference-on-(rho*u) form.
+ * accumulator (and mirrored contribution to particle j's), the anisotropic
+ * M1 pressure-tensor divergence `1/rho * div(D(f)*rho*u)`.
+ *
+ * `diffmode == 2` form specifically (design-lw-fuv-m1-upgrade.md, pinned by
+ * plan review): `tempi - tempj` on a shared, averaged kernel derivative
+ * `(wi_dr + wj_dr)*0.5`, matching `src/rt/SPHM1RT/rt_gradients.h`'s
+ * `radiation_gradient_aniso_SPH` `diffmode==2` branch
+ * (`src/rt/SPHM1RT/rt_iact.h:582-627` calls it with `diffmodeaniso = 2`) and
+ * this project's own existing `d_ij = rho_i*u_i - rho_j*u_j` jump
+ * construction. `D_i`, `D_j` reduce to `(1/3) I` at `f=0` (both particles'
+ * fluxes zero, the isotropic P1 limit), so this reduces to the old scalar
+ * form's structure with the `1/3` now explicit rather than folded away.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -299,6 +367,9 @@ radiation_dissipation_force_accumulate_band(
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param u_i Particle i's ghost-finalized specific field (this band).
  * @param u_j Particle j's ghost-finalized specific field (this band).
+ * @param D_i Particle i's own M1 closure tensor (this band), from
+ * #radiation_get_m1_closure_tensor_band.
+ * @param D_j Particle j's own M1 closure tensor (this band).
  * @param grad_u_i (return, accumulated) Particle i's grad(u) accumulator.
  * @param grad_u_j (return, accumulated) Particle j's grad(u) accumulator.
  */
@@ -306,18 +377,30 @@ __attribute__((always_inline)) INLINE static void
 radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
                                    float wj_dr, float mi, float mj, float rho_i,
                                    float rho_j, float u_i, float u_j,
+                                   const float D_i[3][3], const float D_j[3][3],
                                    float grad_u_i[3], float grad_u_j[3]) {
 
-  const float d_ij = rho_i * u_i - rho_j * u_j;
-  const float fac_i = -mj * d_ij * wi_dr * r_inv / (rho_i * rho_i);
-  const float fac_j = -mi * d_ij * wj_dr * r_inv / (rho_j * rho_j);
+  const float rho_i_inv = 1.f / rho_i;
+  const float rho_j_inv = 1.f / rho_j;
+  const float wbar_dr = 0.5f * (wi_dr + wj_dr);
 
-  grad_u_i[0] += fac_i * dx[0];
-  grad_u_i[1] += fac_i * dx[1];
-  grad_u_i[2] += fac_i * dx[2];
-  grad_u_j[0] += fac_j * dx[0];
-  grad_u_j[1] += fac_j * dx[1];
-  grad_u_j[2] += fac_j * dx[2];
+  float temp_i[3], temp_j[3];
+  for (int k = 0; k < 3; k++) {
+    const float Di_dot_dx =
+        D_i[k][0] * dx[0] + D_i[k][1] * dx[1] + D_i[k][2] * dx[2];
+    const float Dj_dot_dx =
+        D_j[k][0] * dx[0] + D_j[k][1] * dx[1] + D_j[k][2] * dx[2];
+    temp_i[k] = Di_dot_dx * rho_i * u_i * r_inv;
+    temp_j[k] = Dj_dot_dx * rho_j * u_j * r_inv;
+  }
+
+  const float fac_i = mj * rho_i_inv * rho_i_inv * wbar_dr;
+  const float fac_j = mi * rho_j_inv * rho_j_inv * wbar_dr;
+
+  for (int k = 0; k < 3; k++) {
+    grad_u_i[k] += -(temp_i[k] - temp_j[k]) * fac_i;
+    grad_u_j[k] += -(temp_i[k] - temp_j[k]) * fac_j;
+  }
 }
 
 /**
@@ -528,8 +611,11 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
  *
  * Runs in the gradient loop, after the density ghost has finalized `u_FUV`/
  * `u_LW` for this step (the exact-relaxation `u` update, radiation_isrf.c):
- * reads them directly, not a `_prev` snapshot, since neither field is
- * written again until star feedback injection, which runs after this loop.
+ * reads them directly, not a `_prev` snapshot. `u_FUV`/`u_LW` are written
+ * again later in this same step, by the end-force ghost's Stage-1
+ * dissipation correction (radiation_isrf.c's
+ * #radiation_end_force_propagation), before star feedback injection ever
+ * runs.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -565,12 +651,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
+  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
+                                       fdi->c_hyp, D_FUV_i);
+  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
+                                       fdj->c_hyp, D_FUV_j);
+  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
+                                       fdi->c_hyp, D_LW_i);
+  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
+                                       fdj->c_hyp, D_LW_j);
+
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV,
-                                     fdi->grad_u_FUV, fdj->grad_u_FUV);
+                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
+                                     D_FUV_j, fdi->grad_u_FUV, fdj->grad_u_FUV);
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW,
-                                     fdi->grad_u_LW, fdj->grad_u_LW);
+                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
+                                     D_LW_j, fdi->grad_u_LW, fdj->grad_u_LW);
 
   /* Stage 3 owns per-particle fields that only exist when the stage is
      built, so its call sites are guarded rather than gated on a runtime
@@ -638,12 +734,22 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   float unused_grad_u_FUV[3] = {0.f, 0.f, 0.f};
   float unused_grad_u_LW[3] = {0.f, 0.f, 0.f};
 
+  float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
+  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
+                                       fdi->c_hyp, D_FUV_i);
+  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
+                                       fdj->c_hyp, D_FUV_j);
+  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
+                                       fdi->c_hyp, D_LW_i);
+  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
+                                       fdj->c_hyp, D_LW_j);
+
+  radiation_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u_FUV, fdj->u_FUV,
+      D_FUV_i, D_FUV_j, fdi->grad_u_FUV, unused_grad_u_FUV);
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV,
-                                     fdi->grad_u_FUV, unused_grad_u_FUV);
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW,
-                                     fdi->grad_u_LW, unused_grad_u_LW);
+                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
+                                     D_LW_j, fdi->grad_u_LW, unused_grad_u_LW);
 
   /* See the symmetric variant above for why this is guarded rather than
      gated on a runtime flag. */
