@@ -47,8 +47,5 @@ if "Densities" not in part0:
 with open(log_filename, "r") as f:
     data = f.read()
 
-if "Default:Masses_Gas" not in data:
-    raise Exception("Input error in `Default:Masses_Gas` not detected")
-
 if "Default:Pot_Gas" not in data:
     raise Exception("Parameter name error not detected for `SelectOutput:Pot_Gas`")

@@ -1202,10 +1202,6 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-  /* Unlock if it wasn't sorted as we will not use the sort array */
-  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
-
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
@@ -1214,9 +1210,20 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
 
   /* Can we use the sorted interactions or do we default to naive? */
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+
   } else {
+
     DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
   }
 }
 

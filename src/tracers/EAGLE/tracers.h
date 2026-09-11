@@ -119,12 +119,37 @@ static INLINE void tracers_after_timestep_part(
     }
   }
 
-  /* Accumulate average SFR */
+  /* Accumulate average SFR. If averaged_SFR[i] < 0 this is the first step
+   * after the trigger fired: the stored value is -time_to_remove, so
+   * (time_step_length + averaged_SFR[i]) gives only the in-window fraction,
+   * using a single consistent SFR value and never going negative. */
+  const float sfr = star_formation_get_SFR(p, xp);
   for (int i = 0; i < num_snapshot_triggers_part; ++i) {
-    if (tracers_triggers_started[i])
-      xp->tracers_data.averaged_SFR[i] +=
-          star_formation_get_SFR(p, xp) * time_step_length;
+    if (tracers_triggers_started[i]) {
+      if (xp->tracers_data.averaged_SFR[i] < 0.f)
+        xp->tracers_data.averaged_SFR[i] =
+            sfr * (time_step_length + xp->tracers_data.averaged_SFR[i]);
+      else
+        xp->tracers_data.averaged_SFR[i] += sfr * time_step_length;
+    }
   }
+}
+
+/**
+ * @brief Store the out-of-window time for a gas particle at trigger activation.
+ *
+ * Called from engine_io_check_snapshot_triggers. Stores -time_to_remove in
+ * averaged_SFR[trigger_index] so that tracers_after_timestep_part can apply
+ * the deferred correction on the particle's next step.
+ *
+ * @param xp The extended particle data.
+ * @param trigger_index Index of the snapshot trigger.
+ * @param time_to_remove The out-of-window portion of the particle's current
+ * step.
+ */
+static INLINE void tracers_after_recording_trigger_part(
+    struct xpart *xp, const int trigger_index, const double time_to_remove) {
+  xp->tracers_data.averaged_SFR[trigger_index] = -(float)time_to_remove;
 }
 
 /**
@@ -175,12 +200,39 @@ static INLINE void tracers_after_timestep_bpart(
 
   const float accr_rate = black_holes_get_accretion_rate(bp);
 
-  /* Accumulate average accretion rate */
-  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
-    if (tracers_triggers_started[i])
-      bp->tracers_data.averaged_accretion_rate[i] +=
-          accr_rate * time_step_length;
+  /* Accumulate average accretion rate. If averaged_accretion_rate[i] < 0 this
+   * is the first step after the trigger fired: the stored value is
+   * -time_to_remove, so (time_step_length + averaged_accretion_rate[i]) gives
+   * only the in-window fraction, using a single consistent value. */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (tracers_triggers_started[i]) {
+      if (bp->tracers_data.averaged_accretion_rate[i] < 0.f)
+        bp->tracers_data.averaged_accretion_rate[i] =
+            accr_rate *
+            (time_step_length + bp->tracers_data.averaged_accretion_rate[i]);
+      else
+        bp->tracers_data.averaged_accretion_rate[i] +=
+            accr_rate * time_step_length;
+    }
   }
+}
+
+/**
+ * @brief Store the out-of-window time for a black hole at trigger activation.
+ *
+ * Called from engine_io_check_snapshot_triggers. Stores -time_to_remove in
+ * averaged_accretion_rate[trigger_index] so that tracers_after_timestep_bpart
+ * can apply the deferred correction on the black hole's next step.
+ *
+ * @param bp The black hole particle data.
+ * @param trigger_index Index of the snapshot trigger.
+ * @param time_to_remove The out-of-window portion of the black hole's current
+ * step.
+ */
+static INLINE void tracers_after_recording_trigger_bpart(
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {
+  bp->tracers_data.averaged_accretion_rate[trigger_index] =
+      -(float)time_to_remove;
 }
 
 /**
@@ -203,6 +255,9 @@ static INLINE void tracers_after_timestep_sink(
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
     const int *const tracers_triggers_started) {}
+
+static INLINE void tracers_after_recording_trigger_sink(
+    struct sink *sink, const int trigger_index, const double time_to_remove) {}
 
 /**
  * @brief Initialise the tracer data at the start of a calculation.
@@ -243,6 +298,11 @@ static INLINE void tracers_first_init_xpart(
   xp->tracers_data.last_jet_kick_velocity = 0.f;
   xp->tracers_data.last_jet_kick_accretion_mode = BH_thick_disc;
   xp->tracers_data.last_jet_kick_BH_id = 0;
+
+  /* averaged_SFR[i] < 0 is used as a sentinel by the snapshot trigger
+   * recording mechanism, so these must be explicitly zeroed. */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i)
+    xp->tracers_data.averaged_SFR[i] = 0.f;
 }
 
 /**

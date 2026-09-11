@@ -154,7 +154,7 @@ The physical specific angular momenta and the total energy are given by:
 * :math:`E_{\text{tot}} = \frac{1}{2}  (\mathbf{v}_{s, p} - \mathbf{x}_{i, p})^2 - G_N \Phi(|\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|) + m_i u_{i, p}`.
 
 .. note::
-   Here the potential is the softened potential of Swift.
+   Here the potential is the softened potential of Swift. The softening is set to :math:`f_\text{acc} r_\text{acc}`.
 
 Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Grudic et al. (2021) <https://academic.oup.com/mnras/article/506/2/2199/6276745>`_, with the addition of the internal energy. This term ensures that the gas is cold enough to be accreted. Its main purpose is to avoid gas accretion and star spawning in hot regions far from sink/star-forming regions, which can happen, e.g., if a sink leaves a galaxy.
 
