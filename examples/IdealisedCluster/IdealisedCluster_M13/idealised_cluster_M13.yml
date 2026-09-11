@@ -294,7 +294,6 @@ SPINJETAGN:
   slim_disc_wind_factor:              0               # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
   minimum_timestep_yr:                1e5
 
-
 ########################################
 # GEAR subgrid physics
 ########################################

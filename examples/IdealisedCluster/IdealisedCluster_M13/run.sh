@@ -1,6 +1,6 @@
 #!/bin/bash
 
-with_subgrid={$with_subgrid=EAGLE}
+with_subgrid={$with_subgrid="EAGLE"} # EAGLE or GEAR
 
 if [ ! -e H13_fid.hdf5 ] 
 then     
@@ -8,8 +8,7 @@ then
     ./getIC.sh
 fi
 
-
-if [with_subgrid -eq "EAGLE" ]
+if [ "$with_subgrid" = "EAGLE" ]
 then
    if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
    then
