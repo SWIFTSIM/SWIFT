@@ -36,21 +36,38 @@
  *   particles' own kernel-gradient terms, applied with mirrored mass/sign to
  *   each side). Closure-independent: unchanged by the P1-to-M1 upgrade.
  * - `grad(u)` (gradient loop, `runner_iact_[nonsym_]isrf_gradient`): the
- *   anisotropic M1 pressure-tensor divergence, `diffmode==2` form
- *   (`radiation_gradient_aniso_SPH`'s `diffmode==2` branch,
- *   `src/rt/SPHM1RT/rt_gradients.h`/`rt_iact.h:582-627`): `tempi - tempj` on
- *   a shared, averaged kernel derivative `(wi_dr + wj_dr)*0.5`, per particle
- *   D(f) tensor (#radiation_get_m1_closure_tensor_band). Under P1
- *   (design-lw-fuv-m1-upgrade.md's predecessor), this operator instead used
- *   each particle's own separate `wi_dr`/`wj_dr` (the `diffmode==0` shape)
- *   and was the exact skew-adjoint of the `diffmode==1` divergence above in
- *   the m*rho inner product; the M1 anisotropic form gives up that exact
- *   adjointness (the divergence loop still uses per-particle kernel terms,
- *   this loop no longer does) in exchange for the correct M1 pressure
- *   tensor. Whether the staggered exact-relaxation time integrator's
- *   stability argument still needs that adjointness, or tolerates its loss,
- *   is an open question for Phase 1's stability re-verification, not
- *   resolved here.
+ *   anisotropic M1 pressure-tensor divergence, `diffmode==0` form (each
+ *   particle's own separate `wi_dr`/`wj_dr`, no shared average, and no
+ *   grad-h `forcef` factor -- the divergence loop above carries none
+ *   either, which the pairing below requires -- unlike
+ *   `radiation_gradient_aniso_SPH`'s `diffmode==2` branch in
+ *   `src/rt/SPHM1RT/rt_gradients.h`/`rt_iact.h:582-627`, which SPHM1RT uses
+ *   instead). This own-derivative form is the COMPLEMENT of the
+ *   divergence loop's shared-coefficient (`diffmode==1`) construction
+ *   above, not a copy of it: `diffmode==1` divergence paired with
+ *   `diffmode==0` gradient is what makes the two exactly skew-adjoint
+ *   (see below) -- matching both loops to the same `diffmode` would NOT
+ *   achieve this. Per particle D(f) tensor
+ *   (#radiation_get_m1_closure_tensor_band). This is the exact skew-adjoint
+ *   of the `diffmode==1` divergence above, in the `D^-1`-weighted inner
+ *   product (not the plain `m*rho` one the P1 pairing used), for any
+ *   `h_i != h_j`, `rho_i != rho_j`, whenever `D` is locally constant
+ *   between neighbours (`D_i = D_j`) -- which includes `F=0`, every
+ *   particle's initial condition and permanent far-field state; a residual
+ *   `O(h*grad(D))` remains when `D` varies between neighbours. This removes
+ *   only that kernel-derivative-mismatch residual `R_h`. In the plain
+ *   isotropic metric, a separate, irremovable anisotropy residual `R_D`
+ *   remains regardless of `h` or of whether `D_i = D_j`: nonzero whenever
+ *   the closure is anisotropic at all, including at uniform `h` with the
+ *   same constant anisotropic `D` on both particles. `R_D` is a PDE-level
+ *   property of M1 itself (the isotropic-metric functional this fix
+ *   generalizes is not a conserved quantity of M1 for anisotropic `D`),
+ *   not a discretization defect, and this fix does not address it -- see
+ *   `.claude/dev/M1_gradient_adjointness_investigation_2026-09-11.md` for
+ *   the full derivation. Whether the staggered exact-relaxation time
+ *   integrator's stability argument needs more than this weaker
+ *   adjointness is an open question for Phase 1's stability
+ *   re-verification, not resolved here.
  * - The Stage-1 artificial dissipation (force loop,
  *   `runner_iact_[nonsym_]isrf_dissipation`): a triggered pairwise
  *   conductivity on the `rho*u` jump, credited to one particle and debited
@@ -347,15 +364,26 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
  * accumulator (and mirrored contribution to particle j's), the anisotropic
  * M1 pressure-tensor divergence `1/rho * div(D(f)*rho*u)`.
  *
- * `diffmode == 2` form specifically (design-lw-fuv-m1-upgrade.md, pinned by
- * plan review): `tempi - tempj` on a shared, averaged kernel derivative
- * `(wi_dr + wj_dr)*0.5`, matching `src/rt/SPHM1RT/rt_gradients.h`'s
+ * `diffmode == 0` form (each particle's own separate `wi_dr`/`wj_dr`, no
+ * shared average, no grad-h `forcef` factor): `tempi - tempj` on
+ * `D_i`/`D_j` applied with each particle's own kernel derivative, matching
+ * this project's existing `d_ij = rho_i*u_i - rho_j*u_j` jump construction
+ * in spirit (own-derivative, no averaging) but NOT matching
+ * `radiation_divergence_accumulate_band` above, which uses `diffmode==1`
+ * (a single shared coefficient, not each particle's own derivative) --
+ * the two loops are deliberately COMPLEMENTARY, not identical: pairing
+ * `diffmode==1` divergence with `diffmode==0` gradient is what makes them
+ * exactly skew-adjoint (see below); using the same `diffmode` for both
+ * would not. Also not `src/rt/SPHM1RT/rt_gradients.h`'s
  * `radiation_gradient_aniso_SPH` `diffmode==2` branch
- * (`src/rt/SPHM1RT/rt_iact.h:582-627` calls it with `diffmodeaniso = 2`) and
- * this project's own existing `d_ij = rho_i*u_i - rho_j*u_j` jump
- * construction. `D_i`, `D_j` reduce to `(1/3) I` at `f=0` (both particles'
- * fluxes zero, the isotropic P1 limit), so this reduces to the old scalar
- * form's structure with the `1/3` now explicit rather than folded away.
+ * (`src/rt/SPHM1RT/rt_iact.h:582-627`), which uses a shared averaged
+ * derivative and (in its own `diffmode==0` branch) a grad-h correction
+ * this operator deliberately omits: see the file header comment for why
+ * (exact skew-adjointness with the divergence loop, in the `D^-1` metric,
+ * whenever `D` is locally constant). `D_i`, `D_j` reduce to
+ * `(1/3) I` at `f=0` (both particles' fluxes zero, the isotropic P1
+ * limit), so this reduces to the old scalar form's structure with the
+ * `1/3` now explicit rather than folded away.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -382,7 +410,6 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
 
   const float rho_i_inv = 1.f / rho_i;
   const float rho_j_inv = 1.f / rho_j;
-  const float wbar_dr = 0.5f * (wi_dr + wj_dr);
 
   float temp_i[3], temp_j[3];
   for (int k = 0; k < 3; k++) {
@@ -394,8 +421,11 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
     temp_j[k] = Dj_dot_dx * rho_j * u_j * r_inv;
   }
 
-  const float fac_i = mj * rho_i_inv * rho_i_inv * wbar_dr;
-  const float fac_j = mi * rho_j_inv * rho_j_inv * wbar_dr;
+  /* Own kernel derivative per particle, no shared average and no grad-h
+   * `forcef` factor: restores exact adjointness with the divergence loop
+   * above (D^-1 metric, D locally constant) -- see the header comment. */
+  const float fac_i = mj * rho_i_inv * rho_i_inv * wi_dr;
+  const float fac_j = mi * rho_j_inv * rho_j_inv * wj_dr;
 
   for (int k = 0; k < 3; k++) {
     grad_u_i[k] += -(temp_i[k] - temp_j[k]) * fac_i;
