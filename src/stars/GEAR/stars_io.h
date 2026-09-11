@@ -49,8 +49,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_NO_UNITS, sparts, id);
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
-  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
-                                sparts, birth_time);
+  list[5] = io_make_input_field("BirthTime", DOUBLE, 1, OPTIONAL,
+                                UNIT_CONV_NO_UNITS, sparts, birth_time);
 
   /* By default, stars are set to star_population */
   const int default_star_type = 0;
@@ -161,11 +161,11 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 
   if (with_cosmology) {
     list[5] = io_make_physical_output_field(
-        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        "BirthScaleFactors", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         birth_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the stars were born");
   } else {
-    list[5] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
+    list[5] = io_make_output_field("BirthTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
                                    "Times at which the stars were born");
   }

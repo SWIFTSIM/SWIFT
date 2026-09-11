@@ -186,13 +186,13 @@ double compute_star_age_end_of_step(const struct spart *sp,
                                     const double time) {
   double star_age_end_of_step;
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
+    if (cosmo->a > sp->birth_scale_factor)
       star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+          cosmo, sp->birth_scale_factor, cosmo->a);
     else
       star_age_end_of_step = 0.;
   } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+    star_age_end_of_step = max(time - sp->birth_time, 0.);
   }
   return star_age_end_of_step;
 }
