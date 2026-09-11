@@ -259,8 +259,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       parts, xparts, convert_part_dissipation_alpha_FUV,
       "Stage-1 artificial-dissipation coefficient of the FUV-band "
       "hyperbolic propagation (design-lw-fuv-design-b-dissipation.md), in "
-      "[0, LW_FUV_dissipation_alpha_max]. Only meaningful when "
-      "LW_FUV_propagation is on.");
+      "[0, max(LW_FUV_dissipation_alpha_max, LW_FUV_dissipation_alpha_floor)]. "
+      "Only meaningful when LW_FUV_propagation is on.");
 
   list[13] = io_make_output_field_convert_part(
       "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,

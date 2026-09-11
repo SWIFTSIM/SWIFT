@@ -567,6 +567,31 @@ $\approx0.008\,$pc in the clump
 Eq.~\ref{eq:fuv-lambda-chyp-solve}'s decoupled choice is therefore the
 robust one, not a shortcut.
 
+\textbf{$\tau$ in the diffuse ISM is comparable to an OB star's
+lifetime.} Eq.~\ref{eq:fuv-lambda-chyp-solve} gives $\tau=\lambda/c_{\rm
+hyp}$; at $C_{\rm hyp}=0.5$ and the diffuse-phase gas properties this
+project targets ($h\sim9\,$pc, $\lambda_{\rm FUV}\sim3.2\,$kpc at
+$Z=10^{-2}Z_\odot$), $\tau$ depends on the gas timestep alone, since
+$c_{{\rm hyp},i}=C_{\rm hyp}h_i/\Delta t_i$:
+\begin{center}
+\begin{tabular}{lll}
+$\Delta t$ & $c_{\rm hyp}$ & $\tau=\lambda/c_{\rm hyp}$ \\
+\hline
+$10^4\,$yr & $4.4\times10^3\,{\rm km\,s^{-1}}$ & $0.7\,$Myr \\
+$10^5\,$yr (typical WNM CFL step) & $440\,{\rm km\,s^{-1}}$ & $7\,$Myr \\
+$10^6\,$yr & $44\,{\rm km\,s^{-1}}$ & $70\,$Myr \\
+\end{tabular}
+\end{center}
+An OB star's lifetime is 3-30~Myr, so across this range $\tau$ is
+comparable to, or longer than, the star's entire active life: a young
+star's field in diffuse gas may spend most of its life inside the
+transient shell of Section~\ref{sec:fuv-p1}, never reaching the steady
+plateau at all. This is a direct, unavoidable consequence of
+the reduced-speed-of-light closure (Eq.~\ref{eq:fuv-chyp-choice}), not a
+numerical defect: at the true speed of light $\tau=\lambda/c\sim10\,$kyr
+and the shell would be gone long before any cooling step could notice
+it.
+
 \subsubsection{The hyperbolic CFL condition}
 \label{sec:fuv-cfl}
 
@@ -947,10 +972,20 @@ transport itself rings: its innermost shell is negative (14.5\% of the
 bulk energy negative for a static source at that rung), and behind a
 moving source the pre-dissipation field undershoots by 20-60\% of the
 peak. The exact $P_1$ solution for a point source switched on at $t=0$ is
-non-negative and time-constant everywhere behind the front, so this
-ringing, and the resulting apparent plateau in the raw field maximum, is
-numerical, not physical; a comparison normalized against that plateau is
-not a measure of transport fidelity. Under the energy-weighted
+non-negative and time-constant everywhere behind a delta-function shell at
+the causal front, so this ringing, and the resulting apparent plateau in
+the raw field maximum, is numerical, not physical; a comparison normalized
+against that plateau is not a measure of transport fidelity. The shell
+itself carries a fraction $\exp(-t/\tau)\approx1-t/\tau$ of all injected
+energy at small $t/\tau$; $t/(2\tau)$ sits in the plateau behind it and a
+further $t/(2\tau)$ has already been absorbed, the three summing to 1
+exactly. The shell's amplitude is $\lambda/w_{\rm eff}$ above the plateau
+at the same radius, $w_{\rm eff}$ the shell's resolved width; at the
+diffuse, low-metallicity, low-density corner this project also targets
+this ratio is 80-800. A purely
+negativity-triggered dissipation coefficient cannot see this shell at
+all, since it is positive everywhere, which is the reactive trigger's
+structural blind spot addressed there. Under the energy-weighted
 comparison, $\alpha_{\max}=0.25$ closes the sign error at the fine rung
 and leaves the field's cumulative energy distribution unchanged from the
 un-dissipated run to under 1\% at every radius checked: the term damps
@@ -985,6 +1020,97 @@ per active particle in a force-loop finalization step that the
 task-graph ordering places immediately before cooling. A coefficient
 raised by an undershoot this step therefore corrects this same step's
 $u$ before cooling ever reads it, rather than only the following step's.
+
+\paragraph{A floor under the trigger, for the diffuse-phase optically-thin
+corner}
+\label{sec:fuv-diss-floor}
+
+\textbf{The trigger's structural blind spot.} Eq.~\ref{eq:fuv-diss-trigger}
+raises $\alpha_i$ only when particle $i$'s own field has gone negative.
+The delta-function shell at the causal front (Section~\ref{sec:fuv-p1})
+is positive everywhere by construction, so the trigger is exactly zero on
+every particle inside it, in every trigger-gated run measured, regardless
+of $\alpha_{\max}$: raising the ceiling damps the dispersive wake the
+shell sheds behind it more strongly once it forms, but never touches the
+shell itself, which is the wake's source. At the diffuse, low-metallicity,
+low-density corner this project also targets ($h/\lambda\ll1$, well below
+the fine rung of the calibration above), this blind spot lets the wake
+regenerate every step, so the field a particle reads stays a bimodal mix
+of exact zero and a positive overshoot of a few times the plateau value,
+not decaying with more steps.
+
+\textbf{Formula.} A second, unconditional contribution is combined with
+the trigger's own output by a per-band, per-particle maximum,
+\begin{equation}
+  \alpha_i = \max\!\left(\alpha_{{\rm trig},i},\;
+  \frac{\alpha_{\rm floor}}{1+\big(h_i\kappa_i\rho_i/\varepsilon_\lambda\big)^2}
+  \right) ,
+  \label{eq:fuv-diss-floor}
+\end{equation}
+with $\alpha_{{\rm trig},i}$ the trigger's own value
+(Eq.~\ref{eq:fuv-diss-trigger} and its decay), $h_i\kappa_i\rho_i$ this
+band's own $h/\lambda$ at particle $i$ (the code's own \code{kappa}
+variable already holds the linear rate $\kappa\rho$; this document's
+$\kappa$ is the mass opacity defined in
+Section~\ref{sec:fuv-lambda-chyp}, so the density factor is written
+explicitly here), and two new parameters:
+$\alpha_{\rm floor}$ (\code{GEARFeedback:LW\_FUV\_dissipation\_alpha\_floor},
+shipped default 0.5) and $\varepsilon_\lambda$
+(\code{GEARFeedback:LW\_FUV\_dissipation\_floor\_h\_over\_lambda}, shipped
+default 0.05), the screening-length error budget the roll-off is gated
+on. Unlike the trigger, the floor is not conditioned on negativity: it
+is present on every particle, positive or not, wherever $h/\lambda$ is
+not much larger than $\varepsilon_\lambda$. $\alpha_{\rm floor}=0$
+disables it and recovers the trigger-only behaviour of
+Eq.~\ref{eq:fuv-diss-trigger} exactly. The joint stability bound of
+Eq.~\ref{eq:fuv-diss-stability} is extended to
+$\max(\alpha_{\max},\alpha_{\rm floor})$, since the floor can dissipate
+even where the trigger never fires.
+
+\textbf{Bounded steady-state cost.} The always-on constant-dissipation
+term this document earlier rejected (the argument leading to
+Eq.~\ref{eq:fuv-diss-trigger} itself, not repeated here) distorts the
+screening length by a fraction growing with $\alpha h/\lambda$
+unboundedly as $h/\lambda$ grows. The roll-off in
+Eq.~\ref{eq:fuv-diss-floor} bounds this by construction: the product
+$\alpha_{{\rm floor},i}\,(h_i\kappa_i\rho_i)$ is maximized at
+$h_i\kappa_i\rho_i=\varepsilon_\lambda$, where it equals
+$\alpha_{\rm floor}\varepsilon_\lambda/2$, giving
+\begin{equation}
+  \frac{\lambda_{\rm eff}}{\lambda} \le
+  \sqrt{1+0.27\,\alpha_{\rm floor}\,\varepsilon_\lambda} ,
+\end{equation}
+$1.0034$ (0.34\%) at the shipped defaults: the floor's cost is negligible
+everywhere the calibration above was performed ($h/\lambda\gtrsim0.3$,
+where $\varepsilon_\lambda=0.05$ has already rolled it off to a small
+fraction of $\alpha_{\rm floor}$), and only becomes significant in the
+diffuse corner it targets.
+
+\textbf{What the floor does and does not fix.} It supplies dissipation
+exactly where the trigger structurally cannot, closing the sign error in
+the wake once the front has passed: measured against the pre-floor
+baseline's 20-54\% zero-clamped mass everywhere behind the front, the wake
+clears fully at the shipped-corner rung and clears beyond a residual band
+a few $h$ behind the pulse peak, shrinking with more steps, at the two
+diffuse rungs tested. It does not, and cannot, remove the sign error in a
+thin band close to the source ($r\lesssim\lambda/300$), where the exact
+$P_1$ plateau itself is smaller than the scheme's own sub-resolution
+launch ripple: that band is a property of the $P_1$ closure (there is no
+positive field there for any dissipation coefficient to protect), not a
+numerical defect, and no value of $\alpha_{\rm floor}$ removes it. A full
+moment-closure upgrade to M1 (Section~\ref{sec:fuv-m1}), which enforces
+the causality bound $|\mathbf F|\le cu$ that $P_1$ does not, would instead
+bound the shell to an ordinary Gibbs-type over/undershoot at the front and
+remove the underlying shell/wake disproportion at its source, including in
+the near-source band; the floor is a bounded numerical safeguard for the
+closure this scheme currently has, not a substitute for that. One further
+caveat: because $\alpha_{{\rm trig},i}$ is combined with the floor by a
+running max (Eq.~\ref{eq:fuv-diss-floor}) and the trigger's own decay
+memory stores this combined value, a particle leaving the diffuse regime
+relaxes back toward the trigger-only coefficient over the trigger's
+$L_{\rm decay}=5$-step memory rather than instantly; this is benign in a
+static glass, where $h/\lambda$ changes only on the density/metallicity
+timescale, far slower than 5 steps.
 
 \textbf{Stage~2 (compiled optionally, off by default): a slope-limited
 reconstruction of the Stage-1 jump.} Rather than using the raw

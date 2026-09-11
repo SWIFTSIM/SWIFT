@@ -24,6 +24,7 @@
 #include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 
 #define default_HII_min_density_Hpcm3 1.0
 #define default_HII_max_age_Myr 50.0
@@ -113,7 +114,12 @@ struct feedback_props {
    * rather than silently inheriting whatever SPH:CFL_condition happens to
    * be. Documented valid range (0, 1.7]; the staggered exact-relaxation
    * scheme is stable for every lambda/h only below that bound (see
-   * radiation_isrf.c). */
+   * radiation_isrf.c). That 1.7 ceiling only applies at
+   * max(#LW_FUV_dissipation_alpha_max, #LW_FUV_dissipation_alpha_floor) =
+   * 0: the joint stability bound checked in feedback_props_init() is
+   * tighter whenever either dissipation coefficient is nonzero (e.g. the
+   * shipped alpha_floor=0.5 caps this margin at 0.571), so the effective
+   * range depends on both dissipation parameters, not just this one. */
   float LW_FUV_c_hyp_margin;
 
   /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
@@ -138,6 +144,28 @@ struct feedback_props {
    * dissipation coefficient reaches #LW_FUV_dissipation_alpha_max (design-
    * lw-fuv-design-b-dissipation.md Section 4.3). */
   float LW_FUV_dissipation_negativity_threshold;
+
+  /*! Floor under the Stage-1 trigger, `h/lambda`-gated: the trigger fires
+   * only on negativity and is exactly zero on the positive delta-shell
+   * front of an optically-thin P1 pulse, so a purely reactive coefficient
+   * cannot damp the resulting dispersive wake there. This floor supplies
+   * dissipation the trigger structurally cannot
+   * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4). Combined
+   * with #LW_FUV_dissipation_floor_h_over_lambda as
+   * `alpha_floor/(1+(h*kappa/eps_lambda)^2)`, taken as a per-band, per-
+   * particle max against the trigger's own output. 0 disables the floor
+   * and recovers the trigger-only behaviour exactly. */
+  float LW_FUV_dissipation_alpha_floor;
+
+  /*! Screening-length error budget (`eps_lambda`) gating where the floor
+   * (#LW_FUV_dissipation_alpha_floor) applies: the floor rolls off as
+   * `(eps_lambda/(h*kappa))^2` once `h/lambda` exceeds this value, since
+   * the joint stability bound's own steady-state distortion,
+   * `lambda_eff/lambda <= sqrt(1+0.27*alpha_floor*eps_lambda)`, is bounded
+   * only near `h/lambda ~ eps_lambda`; away from it the roll-off keeps the
+   * floor negligible where physical absorption or the trigger's own decay
+   * memory already dominates. */
+  float LW_FUV_dissipation_floor_h_over_lambda;
 
   /*! Debug/test-only: bypass the Stage-1 negativity trigger and hold every
    * particle's dissipation coefficient (both bands) at this fixed value,
@@ -274,6 +302,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               feedback_props->LW_FUV_dissipation_alpha_max);
       message("LW/FUV dissipation negativity threshold                    = %g",
               feedback_props->LW_FUV_dissipation_negativity_threshold);
+      message("LW/FUV dissipation alpha_floor                             = %g",
+              feedback_props->LW_FUV_dissipation_alpha_floor);
+      message("LW/FUV dissipation floor h/lambda budget (eps_lambda)      = %g",
+              feedback_props->LW_FUV_dissipation_floor_h_over_lambda);
       if (feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f)
         message(
             "LW/FUV dissipation alpha pinned for debugging              = %g",
@@ -532,20 +564,48 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
             "in (0, 1] (got %g).",
             fp->LW_FUV_dissipation_negativity_threshold);
 
+      /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
+       * review_2026-09-11.md Section 4): shipped defaults 0.5/0.05. */
+      fp->LW_FUV_dissipation_alpha_floor = parser_get_opt_param_float(
+          params, "GEARFeedback:LW_FUV_dissipation_alpha_floor", 0.5f);
+      fp->LW_FUV_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
+          params, "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda", 0.05f);
+
+      if (fp->LW_FUV_dissipation_alpha_floor < 0.f)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_alpha_floor must be >= 0 (got "
+            "%g).",
+            fp->LW_FUV_dissipation_alpha_floor);
+
+      if (fp->LW_FUV_dissipation_floor_h_over_lambda <= 0.f)
+        error(
+            "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
+            "(got %g).",
+            fp->LW_FUV_dissipation_floor_h_over_lambda);
+
       /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
        * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
        * the kernel's own Wendland-C2 lattice constants (I_W = 3.10,
        * nu_max_coeff = 1.18), reproduced by
-       * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. */
+       * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. The
+       * floor can dissipate even where the trigger never fires (it is not
+       * gated on negativity), so it must satisfy the same bound as the
+       * trigger's own ceiling: check max(alpha_max, alpha_floor). */
       const float C_hyp = fp->LW_FUV_c_hyp_margin;
       const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
-      if (fp->LW_FUV_dissipation_alpha_max > 0.f &&
-          fp->LW_FUV_dissipation_alpha_max > alpha_bound)
+      const float alpha_joint_ceiling = max(fp->LW_FUV_dissipation_alpha_max,
+                                            fp->LW_FUV_dissipation_alpha_floor);
+      if (alpha_joint_ceiling > 0.f && alpha_joint_ceiling > alpha_bound)
         error(
-            "GEARFeedback:LW_FUV_dissipation_alpha_max (%g) exceeds the "
+            "max(GEARFeedback:LW_FUV_dissipation_alpha_max, "
+            "GEARFeedback:LW_FUV_dissipation_alpha_floor) = %g exceeds the "
             "stability bound %g at GEARFeedback:LW_FUV_c_hyp_margin = %g "
-            "(6.2*alpha_max*C_hyp + 0.70*C_hyp^2 <= 2).",
-            fp->LW_FUV_dissipation_alpha_max, alpha_bound, C_hyp);
+            "(6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2). alpha_max = %g, "
+            "alpha_floor = %g. Lower GEARFeedback:LW_FUV_c_hyp_margin to "
+            "raise the bound, or lower alpha_max/alpha_floor to fit it.",
+            alpha_joint_ceiling, alpha_bound, C_hyp,
+            fp->LW_FUV_dissipation_alpha_max,
+            fp->LW_FUV_dissipation_alpha_floor);
 
       if (fp->LW_FUV_dissipation_alpha_pin_for_debugging < 0.f)
         error(

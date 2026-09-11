@@ -123,6 +123,10 @@ GEARFeedback:
   # for the full description). 0 disables it, the shipped default: this
   # example measures the undissipated propagation scheme.
   LW_FUV_dissipation_alpha_max:  0
+  # Explicit 0: at this example's h/lambda~0.3 the shipped alpha_floor
+  # default (0.5) would become the ONLY dissipation active, silently
+  # defeating this example's whole point (measuring the undissipated front).
+  LW_FUV_dissipation_alpha_floor: 0
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

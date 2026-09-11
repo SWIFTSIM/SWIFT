@@ -122,6 +122,10 @@ GEARFeedback:
   # LW_FUV_c_hyp_margin alone.
   LW_FUV_c_hyp_pin_for_debugging:             0
   LW_FUV_dissipation_alpha_max:               0.25
+  # Explicit 0: the shipped default (0.5) would silently cap C_hyp at
+  # 0.571 via the joint stability bound and break Leg N's own sweep,
+  # which needs C_hyp up to 1.7.
+  LW_FUV_dissipation_alpha_floor:             0
   LW_FUV_dissipation_alpha_pin_for_debugging: 0
   with_photoionization:          0
   radiation_pressure_efficiency: 0

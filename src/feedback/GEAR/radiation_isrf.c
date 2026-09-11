@@ -552,6 +552,32 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
 }
 
 /**
+ * @brief The `h/lambda`-gated floor under
+ * #radiation_update_dissipation_alpha_band's trigger
+ * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4): the trigger
+ * fires only on negativity and is exactly zero on the positive delta-shell
+ * front of an optically-thin P1 pulse, so a purely reactive coefficient
+ * cannot damp the resulting dispersive wake there. This floor supplies
+ * dissipation the trigger structurally cannot, rolling off as
+ * `(eps_lambda/(h*kappa))^2` once `h/lambda` exceeds #LW_FUV_dissipation_
+ * floor_h_over_lambda, which bounds its steady-state cost by construction.
+ *
+ * @param kappa This band's #kappa_FUV/LW.
+ * @param h_phys The particle's own physical smoothing length.
+ * @param alpha_floor #feedback_props.LW_FUV_dissipation_alpha_floor.
+ * @param eps_lambda #feedback_props.LW_FUV_dissipation_floor_h_over_lambda.
+ * @return This band's floor value for this step, to be combined with the
+ * trigger's own output via max().
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
+                                       float alpha_floor, float eps_lambda) {
+
+  const float x = h_phys * kappa / eps_lambda;
+  return alpha_floor / (1.f + x * x);
+}
+
+/**
  * @brief Exact-relaxation update of #specific_flux_FUV/#specific_flux_LW, from
  * the `grad(u)` accumulators radiation_propagation_iact.h filled during the
  * gradient loop, which reads this step's already-relaxed `u`
@@ -660,13 +686,26 @@ void radiation_end_gradient_propagation(struct part *p,
     const float alpha_max = e->feedback_props->LW_FUV_dissipation_alpha_max;
     const float eps_1 =
         e->feedback_props->LW_FUV_dissipation_negativity_threshold;
+    const float alpha_floor = e->feedback_props->LW_FUV_dissipation_alpha_floor;
+    const float eps_lambda =
+        e->feedback_props->LW_FUV_dissipation_floor_h_over_lambda;
 
-    fd->dissipation_alpha_FUV = radiation_update_dissipation_alpha_band(
+    const float alpha_trigger_FUV = radiation_update_dissipation_alpha_band(
         u_V_FUV, fd->ngb_mean_abs_u_V_FUV, fd->dissipation_alpha_FUV, alpha_max,
         eps_1, c_hyp, fd->kappa_FUV, dt, h_phys);
-    fd->dissipation_alpha_LW = radiation_update_dissipation_alpha_band(
+    const float alpha_trigger_LW = radiation_update_dissipation_alpha_band(
         u_V_LW, fd->ngb_mean_abs_u_V_LW, fd->dissipation_alpha_LW, alpha_max,
         eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
+
+    /* Floor the trigger cannot suppress: applies unconditionally, not only
+     * on negativity (see radiation_dissipation_alpha_floor_band's doxygen). */
+    const float alpha_floor_FUV = radiation_dissipation_alpha_floor_band(
+        fd->kappa_FUV, h_phys, alpha_floor, eps_lambda);
+    const float alpha_floor_LW = radiation_dissipation_alpha_floor_band(
+        fd->kappa_LW, h_phys, alpha_floor, eps_lambda);
+
+    fd->dissipation_alpha_FUV = max(alpha_trigger_FUV, alpha_floor_FUV);
+    fd->dissipation_alpha_LW = max(alpha_trigger_LW, alpha_floor_LW);
   }
 
   /* Written here, at the end of this active-gated ghost, from the gradient

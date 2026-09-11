@@ -120,6 +120,9 @@ GEARFeedback:
   # for the full description). 0 disables it, the shipped default: this
   # example measures the undissipated propagation scheme.
   LW_FUV_dissipation_alpha_max:  0
+  # Explicit 0 for clarity/defense-in-depth: provably inert here
+  # (floor<=1.6e-4 at this example's h/lambda), unlike ISRFCausalReach.
+  LW_FUV_dissipation_alpha_floor: 0
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

@@ -10,9 +10,13 @@ the triggered-dissipation term's own Courant/stability bound empirically.
 The closure `c_hyp = C_hyp*h/dt` ties the propagation speed to the local
 resolution and time-step so that the hyperbolic CFL condition holds as an
 equality, not an inequality that could be violated. `C_hyp`
-(`GEARFeedback:LW_FUV_c_hyp_margin`) has a legal range of `(0, 1.7]`, which
-at this example's resolution spans `c_hyp` from about 0.98 to 33 km/s: a
-factor of 34, nowhere near either end of the physically interesting range.
+(`GEARFeedback:LW_FUV_c_hyp_margin`) has a legal range of `(0, 1.7]` at
+`max(alpha_max, alpha_floor) = 0` (this example sets `alpha_floor: 0`
+explicitly, since the shipped default of 0.5 would otherwise cap `C_hyp`
+at 0.571 and break this sweep); this range narrows whenever either
+dissipation coefficient is nonzero. At this example's resolution the full
+range spans `c_hyp` from about 0.98 to 33 km/s: a factor of 34, nowhere
+near either end of the physically interesting range.
 Reaching `c_hyp -> c` or `c_hyp << c` needs
 `LW_FUV_c_hyp_pin_for_debugging`, which overwrites `c_hyp` after the closure
 and after the light-speed clamp, making the effective Courant number
