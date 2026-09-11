@@ -9,7 +9,8 @@ Black holes and AGN feedback
 GEAR's black hole model is adapted from the EAGLE black hole model
 (`Booth & Schaye 2009 <https://ui.adsabs.harvard.edu/abs/2009MNRAS.398...53B/abstract>`_,
 `Rosas-Guevara et al. 2015 <https://ui.adsabs.harvard.edu/abs/2015MNRAS.454.1038R/abstract>`_,
-`Schaye et al. 2015 <https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S/abstract>`_)
+`Schaye et al. 2015 <https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S/abstract>`_,
+`Bahé et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022MNRAS.516..167B/abstract>`_)
 to use GEAR's own chemistry, tracers, and pressure floor. It handles Bondi-Hoyle
 accretion of gas, thermal AGN feedback, black hole repositioning, and black
 hole mergers. The model can be selected with the configuration option
