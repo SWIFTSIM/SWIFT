@@ -119,8 +119,9 @@ struct feedback_part_data {
       iact.h): no `_prev` snapshot needed, since it can only change in this
       cell's own extra ghost, which runs after every cell it pairs with has
       finished its own density loop (see radiation_isrf.c's own doxygen for
-      the full dependency argument). Not yet a snapshot output field (no
-      tracers_io.h entry exists); if/when one is added, it should follow
+      the full dependency argument). Neither an IC input nor a snapshot
+      output field exists yet for this quantity (no io.h entry either
+      direction); if/when one is added, it should follow
       #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention:
       "FUVSpecificFlux"/"LWSpecificFlux" (IC input, singular),
       "FUVSpecificFluxes"/"LWSpecificFluxes" (snapshot output, plural). */
