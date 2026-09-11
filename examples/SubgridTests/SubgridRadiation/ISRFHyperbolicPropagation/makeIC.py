@@ -110,9 +110,41 @@ def parse_options():
         help="output filename",
     )
 
+    parser.add_argument(
+        "--metallicity-slab",
+        action=store_as_array,
+        nargs=4,
+        default=None,
+        metavar=("Z_LOW", "Z_HIGH", "AXIS", "FRACTION"),
+        help="Write a per-particle metallicity step (PartType0/PartType4 "
+        "MetalMassFraction) instead of a uniform box: Z_LOW for "
+        "coordinate < FRACTION*L along AXIS (0=x, 1=y, 2=z), Z_HIGH "
+        "otherwise. Both Z values are Z/Zsun (same convention as "
+        "GEARChemistry:initial_metallicity), split into per-element mass "
+        "fractions using the yields table's own SolarMassAbundances (see "
+        "--yields_table_for_slab), matching chemistry_scale_initial_"
+        "metallicities' own scaling so the elements are self-consistent. "
+        "Requires GEARChemistry:initial_metallicity:-1 and "
+        "scale_initial_metallicity:0 in params.yml (per-particle override "
+        "is honoured only for a negative sentinel; see README).",
+    )
+
+    parser.add_argument(
+        "--yields_table_for_slab",
+        type=str,
+        default="POPIIsw.h5",
+        help="Yields table read for --metallicity-slab's SolarMassAbundances "
+        "(must match GEARFeedback:yields_table in params.yml).",
+    )
+
     # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
     options = parser.parse_args()
     return options
+
+
+def solar_abundances_split(Z_over_solar, solar_abundances):
+    """Per-element split mirroring chemistry_scale_initial_metallicities: scalar * each column's SolarMassAbundances entry."""
+    return Z_over_solar * solar_abundances
 
 
 ########################################
@@ -237,6 +269,8 @@ print("Mass of the star (internal units)     : {:e}".format(M_star[0]))
 # If no position was given, place the star at the center of the box
 if pos_star is None:
     pos_star = np.ones([N_star, 3]) * L / 2
+else:
+    pos_star = pos_star.reshape(N_star, 3)
 
 # Remaining required data
 # vel_star = np.zeros([N_star, 3])
@@ -255,6 +289,32 @@ else:
 star_particle_type = np.ones(N_star) * star_type
 star_id = [N + N_star]
 star_birth_time = np.zeros(N_star)
+
+#####################
+# Metallicity slab: a per-particle step in Z along one axis, overriding GEARChemistry:initial_metallicity.
+#####################
+metal_mass_fraction = None
+metal_mass_fraction_star = None
+if opt.metallicity_slab is not None:
+    Z_low, Z_high, axis_raw, fraction_raw = opt.metallicity_slab
+    Z_low, Z_high, fraction = float(Z_low), float(Z_high), float(fraction_raw)
+    axis = int(float(axis_raw))
+    with h5py.File(opt.yields_table_for_slab, "r") as yt:
+        solar_abundances = np.asarray(yt["Data"].attrs["SolarMassAbundances"])
+    n_elements = solar_abundances.shape[0]
+    low_side = pos[:, axis] < fraction * L
+    Z_of_particle = np.where(low_side, Z_low, Z_high)
+    metal_mass_fraction = np.outer(Z_of_particle, np.ones(n_elements))
+    metal_mass_fraction *= solar_abundances[np.newaxis, :]
+    star_low_side = pos_star[:, axis] < fraction * L
+    Z_of_star = np.where(star_low_side, Z_low, Z_high)
+    metal_mass_fraction_star = np.outer(Z_of_star, np.ones(n_elements))
+    metal_mass_fraction_star *= solar_abundances[np.newaxis, :]
+    print(
+        f"Metallicity slab: Z/Zsun={Z_low} for axis[{axis}]<{fraction * L:.4e}, "
+        f"else {Z_high}; {int(np.sum(low_side))}/{N} gas particles on the low side; "
+        f"star on the {'low' if star_low_side[0] else 'high'} side."
+    )
 
 #####################
 # Finally write the ICs in the file
@@ -295,6 +355,8 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho, dtype="f")
+if metal_mass_fraction is not None:
+    grp.create_dataset("MetalMassFraction", data=metal_mass_fraction, dtype="d")
 
 
 # Write star particle group
@@ -307,5 +369,29 @@ grp.create_dataset("SmoothingLength", data=h_star, dtype="f")
 grp.create_dataset("BirthMass", data=M_star, dtype="f")
 grp.create_dataset("BirthTime", data=star_birth_time, dtype="f")
 grp.create_dataset("StellarParticleType", data=star_particle_type, dtype="i")
+if metal_mass_fraction_star is not None:
+    # Written for inspection only: GEAR has no chemistry_read_sparticles, so SWIFT never reads this and the star's Z stays at its zero-init value.
+    grp.create_dataset(
+        "MetalMassFraction", data=metal_mass_fraction_star, dtype="d"
+    )
 
 fileOutput.close()
+
+# Read-back assertion: a wrong dataset name/shape fails silently (uniform Z=0 box), so confirm the step actually landed.
+if opt.metallicity_slab is not None:
+    with h5py.File(opt.outputfilename, "r") as check:
+        Z_written = check["/PartType0/MetalMassFraction"][:, -1]
+        Z_star_written = check["/PartType4/MetalMassFraction"][:, -1]
+    unique_Z = np.unique(Z_written)
+    if unique_Z.shape[0] != 2:
+        raise RuntimeError(
+            f"Metallicity slab read-back failed: expected 2 distinct total-Z "
+            f"values in PartType0/MetalMassFraction, found {unique_Z.shape[0]} "
+            f"({unique_Z})."
+        )
+    print(
+        f"Read-back OK: PartType0/MetalMassFraction[:, -1] has values "
+        f"{unique_Z}. PartType4/MetalMassFraction was written as "
+        f"{Z_star_written[0]:.4e} but SWIFT does not read it (no effect "
+        f"on the star's actual metallicity)."
+    )

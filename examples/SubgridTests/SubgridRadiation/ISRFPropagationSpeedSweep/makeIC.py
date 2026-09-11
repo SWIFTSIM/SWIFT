@@ -128,10 +128,29 @@ def parse_options():
     )
 
     parser.add_argument(
+        "--seed-delta-amplitude",
+        type=float,
+        default=0.0,
+        help="If > 0, write this FUVSpecificEnergy/LWSpecificEnergy value on "
+        "the single particle nearest the box centre only (Nyquist-scale "
+        "delta seed), zero elsewhere, and write no star particle.",
+    )
+
+    parser.add_argument(
+        "--seed-noise-amplitude",
+        type=float,
+        default=0.0,
+        help="If > 0, write a uniform FUVSpecificEnergy/LWSpecificEnergy "
+        "background of this value plus 1%% relative white noise (fixed "
+        "seed) on every particle, and write no star particle.",
+    )
+
+    parser.add_argument(
         "--no-star",
         action="store_true",
-        help="Write zero star particles. Implied by --seed-pulse-amplitude "
-        "> 0; also usable on its own.",
+        help="Write zero star particles. Implied by --seed-pulse-amplitude, "
+        "--seed-delta-amplitude or --seed-noise-amplitude > 0; also usable "
+        "on its own.",
     )
 
     # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
@@ -268,8 +287,37 @@ if opt.seed_pulse_amplitude > 0.0:
         f"Seeded pulse: amplitude={opt.seed_pulse_amplitude}, "
         f"sigma={sigma} code = {sigma / h_mean} h, no star particle."
     )
+elif opt.seed_delta_amplitude > 0.0:
+    # Nyquist-scale delta seed (S2 leg a): the single particle nearest the
+    # box centre carries the whole amplitude, every other particle is zero.
+    centre = 0.5 * L_code
+    dx = pos - centre
+    dx -= L_code * np.round(dx / L_code)
+    centre_idx = int(np.argmin(np.sum(dx**2, axis=1)))
+    u_fuv[centre_idx] = opt.seed_delta_amplitude
+    u_lw[centre_idx] = opt.seed_delta_amplitude
+    print(
+        f"Seeded delta: amplitude={opt.seed_delta_amplitude} at particle "
+        f"{centre_idx}, no star particle."
+    )
+elif opt.seed_noise_amplitude > 0.0:
+    # Uniform background + 1% relative white noise (S2 leg c), fixed seed
+    # (np.random.seed(1) above) for reproducibility.
+    noise_fuv = 1.0 + 0.01 * np.random.standard_normal(N)
+    noise_lw = 1.0 + 0.01 * np.random.standard_normal(N)
+    u_fuv = opt.seed_noise_amplitude * noise_fuv
+    u_lw = opt.seed_noise_amplitude * noise_lw
+    print(
+        f"Seeded noise: background={opt.seed_noise_amplitude}, 1% relative "
+        f"white noise, no star particle."
+    )
 
-write_star = not (opt.no_star or opt.seed_pulse_amplitude > 0.0)
+write_star = not (
+    opt.no_star
+    or opt.seed_pulse_amplitude > 0.0
+    or opt.seed_delta_amplitude > 0.0
+    or opt.seed_noise_amplitude > 0.0
+)
 
 #####################
 # Now, take care of the star

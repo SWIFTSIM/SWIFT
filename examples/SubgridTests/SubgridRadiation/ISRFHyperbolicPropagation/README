@@ -17,6 +17,14 @@ metallicity relative to Grackle's solar value; at `Z=0` there is no dust
 and nothing to screen, so `initial_metallicity` (env var, `run.sh`) must
 stay above 0. It defaults to solar (`Z/Zsun=1`).
 
+`makeIC.py --metallicity-slab Z_LOW Z_HIGH AXIS FRACTION` writes a
+per-particle gas metallicity step instead of a uniform box, for probing
+`h/lambda` on both sides of a metallicity contrast in one IC. Requires
+`GEARChemistry:initial_metallicity:-1`,
+`scale_initial_metallicity:0` in `params.yml`. Only the gas side takes
+effect (SWIFT's GEAR chemistry has no star-particle read path, so any
+star-side metallicity this flag writes is inspection-only).
+
 ## Cooling
 `run.sh` passes `--cooling` so `cooling_init()` resolves Grackle's
 `chemistry_data` (including `local_dust_to_gas_ratio`, which the dust
