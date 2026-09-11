@@ -45,7 +45,25 @@ prediction of Section 1.0.1: a source moving at v_rel through static gas
 leaves a steady profile whose centroid trails the source by exactly
 v_rel*tau.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: STILL VALID, READ AS THE ISOTROPIC LIMIT.
+#
+# The von Neumann analysis below linearizes the transport operator on a
+# uniform lattice, i.e. it is the f -> 0 (isotropic, D = I/3) limit of the
+# shipped M1 system. That is the right object for a linear stability
+# statement: M1's characteristic speeds are bounded by [-c_hyp, c_hyp] for
+# every f by construction, so c_hyp remains the speed the bound is written
+# against, now read as the fastest M1 characteristic rather than as the P1
+# signal speed (design-lw-fuv-m1-upgrade.md D3). The joint (alpha_max,
+# C_hyp) bound was re-verified under that reading in Phase 1
+# (`verify_design_b_dissipation.py` Part C, clean pass, no constant
+# changes). One relabelling for a future reader: the header's
+# `D = c_hyp*lambda` is the old two-knob parametrisation; the shipped
+# coefficient is `c_hyp^2` multiplying `div(D(f)*u)`, whose isotropic limit
+# is `c_hyp^2/3 * grad(u)`, i.e. `D = c_hyp*lambda/3`. That changes the
+# steady state's screening length, NOT the stability symbol's structure or
+# the Courant number the bound is expressed in.
+# =============================================================================
 import numpy as np
 import sympy as sp
 

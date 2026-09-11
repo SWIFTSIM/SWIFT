@@ -39,7 +39,14 @@ Part D: several stars on different time bins: a summed rate with
 
 Exit 0 iff every assertion holds.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# Both schemes compared here differ only in WHEN the source enters the
+# exact-relaxation `u` update, which the closure does not touch. The
+# constant multiplying the source did change (`3*c_hyp/c` -> `c_hyp/c`,
+# design-lw-fuv-m1-upgrade.md D2), but it multiplies both schemes
+# identically and cancels out of every comparison made below.
+# =============================================================================
 import numpy as np
 
 # ---------------------------------------------------------------------------

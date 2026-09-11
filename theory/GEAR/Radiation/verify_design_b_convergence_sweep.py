@@ -68,7 +68,26 @@ extensions above. Part 3 reproduces the corners script's own eight-point
 table as a consistency check (objective of this task's Verification
 section). Part 4 runs the dense sweep. Part 5 makes the plots.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: P1-ERA STUDY, NUMBERS SUPERSEDED.
+#
+# The lambda_eff-vs-h/lambda curve this script produces was measured with
+# the ISOTROPIC (P1) scalar `grad_u` operator, which is no longer the
+# shipped one: the scheme now carries the M1 closure tensor and a flux
+# limiter (theory doc Sec. `fuv-p1`), under which the steady state has two
+# branches with different powers of r and different exponents, and a single
+# `lambda_eff` is not a complete description of the profile any more.
+#
+# What remains valid and reusable: the METHODOLOGY (solve the discrete fixed
+# point on real glass, compare the simulation against that rather than
+# against a continuum profile) and the qualitative conclusion that a
+# continuum-target comparison fails badly once h is not small compared with
+# lambda. What is NOT valid to cite going forward: the specific lambda_eff
+# values, and the 0.9%-6.2% agreement figure, both of which are P1 numbers.
+# Not rewritten for M1: this was a one-off investigation, not a regression
+# gate, and its role as the target-setting tool has been taken over by
+# `isrf_hyperbolic_propagation_check.py`'s own in-script discrete solve.
+# =============================================================================
 import glob
 import os
 import time

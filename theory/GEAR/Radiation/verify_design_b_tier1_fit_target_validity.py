@@ -70,7 +70,31 @@ form. A distinct, NOT-YET-RULED-OUT discretization-bias question (fitted
 lambda vs. true lambda at Tier 1's own lambda~h corner) is flagged in Part
 6 and left open, per the assigned diagnosis-only scope.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: THIS SCRIPT'S CONCLUSION IS SUPERSEDED.
+#
+# Parts 1-5 below are correct for the P1 (isotropic-closure) system they
+# analyse, and are kept as the record of that analysis. Their conclusion --
+# "a pure-Yukawa functional form is the right thing to fit Tier 1's profile
+# with" -- is NO LONGER the right target for the shipped scheme, which uses
+# the M1 closure (theory/GEAR/Radiation/02_fuv_isrf.tex Sec. `fuv-p1`).
+#
+# Under M1 the steady state has two branches (doc Sec. `fuv-steady-limits`):
+# free streaming, `u ~ exp(-r/lambda)/r^2`, and the isotropic/diffusive
+# branch, `u ~ exp(-sqrt(3)*r/lambda)/r`. A single point source in a purely
+# absorbing medium sits on the FREE-STREAMING branch (the diffusive one is
+# not self-consistent there: it implies f -> 1/sqrt(3), not 0), so `u*r` is
+# not a straight line in a semi-log plot and its fitted slope absorbs a
+# geometric `-log(r)` term. Tier 1 therefore no longer gates on a fitted
+# lambda at all: it gates bin-by-bin on `u(r)` against the discrete solve,
+# plus on a closure-independent total-amplitude identity. See
+# `examples/SubgridTests/SubgridRadiation/ISRFHyperbolicPropagation/
+# isrf_hyperbolic_propagation_check.py`'s own docstring.
+#
+# Part 6's still-open question (discretization bias at lambda ~ h) is
+# answered the same way, and for the same reason: the gate compares against
+# the discrete fixed point, not against any continuum lambda.
+# =============================================================================
 import numpy as np
 import sympy as sp
 

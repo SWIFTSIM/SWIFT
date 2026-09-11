@@ -88,7 +88,17 @@ grid to confirm the continuum limit (`h/lambda -> 0` recovers
 prediction directly against the actual simulation numbers from the
 2026-09-08 comparison log.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: P1-ERA STUDY, NUMBERS SUPERSEDED.
+#
+# Same disposition as `verify_design_b_convergence_sweep.py`, which extends
+# this script: the discrete solve here uses the ISOTROPIC (P1) scalar
+# `grad_u`, with no closure tensor and no flux limiter, so its per-corner
+# lambda_eff targets are P1 values. The methodology carries over unchanged
+# (and is what `isrf_hyperbolic_propagation_check.py` now implements against
+# the M1 operators); the numbers do not. Not rewritten: a one-off
+# investigation, not a regression gate.
+# =============================================================================
 import numpy as np
 import sympy as sp
 

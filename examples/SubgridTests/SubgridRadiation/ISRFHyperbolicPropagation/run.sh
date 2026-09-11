@@ -85,7 +85,7 @@ printf "Running simulation..."
 		   params.yml 2>&1 | tee output.log
 
 # Check the propagated field against its own discrete steady-state
-# prediction (not the continuum Yukawa profile -- see README).
+# prediction, not against a continuum profile (see README).
 python3 isrf_hyperbolic_propagation_check.py
 
 if [ -z "$run_name" ]; then

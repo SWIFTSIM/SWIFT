@@ -20,7 +20,14 @@ established by measurement, not by inspection, because a flipped sign here
 is a growth term with the mirrored amplification spectrum of Part C and
 would pass Part A's conservation check unnoticed.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED IN PHASE 1, NO CHANGE NEEDED.
+# Part C's joint (alpha_max, C_hyp) stability bound was re-run under the M1
+# reading of C_hyp (bounding c_hyp as the fastest M1 characteristic, f = 1,
+# rather than the P1 signal speed): clean pass, the enforced constants
+# (6.2, 0.70, 0.54) all reproduce their measured counterparts, no constant
+# changed. The script's own language was already closure-agnostic.
+# =============================================================================
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.integrate import quad

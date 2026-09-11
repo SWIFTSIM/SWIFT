@@ -15,7 +15,7 @@ points, and how this codebase configures it
 star's two band luminosities are deposited onto its gas neighbours, and
 what that injected field is and is not
 (Sections~\ref{sec:fuv-units}--\ref{sec:fuv-propagation}); and the
-hyperbolic (Cattaneo/P1-relaxation) scheme that turns that per-star
+hyperbolic (Cattaneo-type flux-relaxation, M1-closure) scheme that turns that per-star
 deposit into a smooth, causally-bounded radiation field
 (Section~\ref{sec:fuv-propagation-scheme}), including its
 discretization, its numerical stabilization, and the runtime parameters
@@ -341,9 +341,9 @@ star's kernel). The energy deposited in particle $i$ over a step is,
 per band,
 \begin{equation}
 \begin{aligned}
-  u_{{\rm inject},i}^{\rm (FUV)} &= \Delta t\,\chi_{{\rm FUV},i}
+  u_{{\rm inject},i}^{\rm (FUV)} &= \Delta t\,\zeta_{{\rm FUV},i}
     \sum_\star w_{i\star}\,L_{\rm FUV,\star} , \qquad
-  u_{{\rm inject},i}^{\rm (LW)} = \Delta t\,\chi_{{\rm LW},i}
+  u_{{\rm inject},i}^{\rm (LW)} = \Delta t\,\zeta_{{\rm LW},i}
     \sum_\star w_{i\star}\,L_{\rm LW,\star} , \\
   w_{i\star} &= \frac{m_i\,W_{i\star}}{\sum_k m_k\,W_{\star k}} ,
 \end{aligned}
@@ -354,12 +354,12 @@ summing over any star $\star$ whose kernel reaches particle $i$
 $m_i$ gives a specific-energy increment, consistent with
 Section~\ref{sec:fuv-units}.
 
-\textbf{Receiver-side extinction.} $\chi_{{\rm FUV},i},\chi_{{\rm
+\textbf{Receiver-side extinction.} $\zeta_{{\rm FUV},i},\zeta_{{\rm
 LW},i}\in(0,1]$ is a \emph{local}, per-particle, band-specific dust
 attenuation applied at the receiving end, not at the source and not
 along the path from star to particle:
 \begin{equation}
-  \chi_i = \exp\!\big(-\kappa_{\rm eff}\,\Sigma_{{\rm gas},i}\big) ,
+  \zeta_i = \exp\!\big(-\kappa_{\rm eff}\,\Sigma_{{\rm gas},i}\big) ,
   \label{eq:fuv-extinction}
 \end{equation}
 with $\Sigma_{{\rm gas},i}$ particle $i$'s own local gas column density
@@ -372,7 +372,7 @@ This is a different physical effect from the propagation-decay opacity
 $\kappa_{\rm FUV}/\kappa_{\rm LW}$ used in
 Section~\ref{sec:fuv-propagation-scheme}: that opacity governs how the
 field is removed \emph{as it propagates} through the diffuse medium
-between sources and receivers, whereas $\chi_i$ represents dust
+between sources and receivers, whereas $\zeta_i$ represents dust
 immediately local to the receiving particle itself (e.g.\ a receiver
 sitting inside its own dense clump), attenuating what that particle
 picks up regardless of how the field got there. Extinction is applied
@@ -403,7 +403,7 @@ time-dependent, hyperbolic system while deliberately reducing its
 propagation speed: a reduced-speed-of-light approximation, honestly
 named as one, whose CFL condition is affordable by construction.
 
-\subsection{Hyperbolic (P1-relaxation) propagation}
+\subsection{Hyperbolic (M1-relaxation) propagation}
 \label{sec:fuv-propagation-scheme}
 
 Everything in this subsection describes the field with
@@ -412,8 +412,8 @@ the default, none of this machinery runs and the field reduces to the
 instantaneous injected snapshot of
 Section~\ref{sec:fuv-injection-off}.
 
-\subsubsection{Deriving a hyperbolic system from the RTE: the P1
-closure}
+\subsubsection{Deriving a hyperbolic system from the RTE: the M1
+closure and its flux limiter}
 \label{sec:fuv-p1}
 
 Take the first two angular moments of the radiative transfer equation
@@ -429,26 +429,105 @@ Take the first two angular moments of the radiative transfer equation
 \end{align}
 $\mathbf P$ (the radiation pressure tensor) is unclosed: it depends on
 the second angular moment of the specific intensity, which these two
-equations alone do not determine. The \textbf{Eddington closure},
+equations alone do not determine.
+
+\textbf{The isotropic (P1) closure, for reference.} The \textbf{Eddington
+closure},
 \begin{equation}
   \mathbf P = \frac{u}{3}\,\mathbf I ,
   \label{eq:fuv-eddington-closure}
 \end{equation}
 is exact only when the local radiation field is close to isotropic
 (frequent scattering/absorption randomising photon direction locally).
-This closure, combined with
+That closure, combined with
 Eqs.~\ref{eq:fuv-p1-zeroth}--\ref{eq:fuv-p1-first}, is the \textbf{P1
-approximation}: a standard, well-studied closure of the RTE, and the
-ancestor of the M1 closure already implemented in this fork's own
+approximation}. It is not what is implemented here; it is quoted because
+the implemented closure reduces to it exactly in the isotropic limit, and
+because most of the discussion below (the relaxation structure, the CFL,
+the discretization) is identical either way.
+
+\textbf{The implemented closure is M1.} The M1 closure
+\citep{Levermore1984}, also implemented in this exact SWIFT fork's own
 \code{rt/GEAR} and \code{rt/SPHM1RT} modules
-(Section~\ref{sec:fuv-precedent}). Substituting
-Eq.~\ref{eq:fuv-eddington-closure} into Eq.~\ref{eq:fuv-p1-first}:
+(Section~\ref{sec:fuv-precedent}), makes the Eddington tensor a function
+of the local \textbf{reduced flux} $f$:
+\begin{align}
+  \mathbf P &= \mathbf D(f)\,u , \qquad
+  \mathbf D(f) = \frac{1-\chi}{2}\,\mathbf I + \frac{3\chi-1}{2}\,
+    \hat{\mathbf n}\otimes\hat{\mathbf n} , \qquad
+  \hat{\mathbf n}=\frac{\mathbf F}{|\mathbf F|} ,
+  \label{eq:fuv-m1-closure} \\
+  \chi(f) &= \frac{3+4f^2}{5+2\sqrt{4-3f^2}} , \qquad
+  f = \min\!\left(\frac{|\mathbf F|}{c_{\rm hyp}\,u},\,1\right)
+    \ \ (u>0) , \qquad f = 0 \ \ (u\le0) .
+  \label{eq:fuv-m1-chi}
+\end{align}
+$\chi(0)=1/3$ recovers Eq.~\ref{eq:fuv-eddington-closure} exactly
+($\mathbf D=\mathbf I/3$: correct isotropic/diffusive behaviour), and
+$\chi(1)=1$ gives $\mathbf D=\hat{\mathbf n}\otimes\hat{\mathbf n}$
+(correct free-streaming behaviour: pure advection along
+$\hat{\mathbf n}$, no unphysical sideways spreading). The reduced flux is
+built with the \emph{reduced} light speed $c_{\rm hyp}$ of
+Section~\ref{sec:fuv-lambda-chyp}, not the true $c$ --- see
+Section~\ref{sec:fuv-m1} for why that is load-bearing rather than
+cosmetic. $\mathbf D$, $\chi$ and $f$ are transient per-particle formula
+evaluations, recomputed wherever they are needed and never stored: the
+closure upgrade adds no particle state and no communicated field.
+
+The two clamps in Eq.~\ref{eq:fuv-m1-chi} are not defensive decoration.
+$f>1$ is genuinely reachable in the implemented staggered update, because
+the closure is evaluated on an $\mathbf F$ that was limited against the
+\emph{previous} step's $u$ while $u$ has since been updated
+(Section~\ref{sec:fuv-operators}); without the $\min(\cdot,1)$, $4-3f^2$
+goes negative and $\chi$ is NaN. The $u\le0$ branch covers the bounded
+undershoots the discretization leaves behind
+(Section~\ref{sec:fuv-dissipation}), where no direction can be defined.
+$\hat{\mathbf n}$ itself is computed as $\mathbf F/|\mathbf F|$ only when
+$|\mathbf F|>0$ and set to $\mathbf 0$ otherwise; $\mathbf F=\mathbf 0$ is
+every particle's initial condition and its permanent far-field state, so
+this is the common case, not a corner case.
+
+\textbf{The flux limiter.} The closure alone is not sufficient. Once per
+step, per particle, per band, the tracked flux is rescaled onto the M1
+admissible set:
 \begin{equation}
-  \frac{\partial \mathbf F}{\partial t} + \frac{c^2}{3}\,\nabla u
+  \mathbf F \;\leftarrow\; \mathbf F\,
+    \min\!\left(1,\ \frac{c_{\rm hyp}\,u}{|\mathbf F|}\right)
+    \quad (u>0) , \qquad
+  \mathbf F \;\leftarrow\; \mathbf 0 \quad (u\le0) .
+  \label{eq:fuv-flux-limiter}
+\end{equation}
+This enforces $|\mathbf F|\le c_{\rm hyp}u$, the statement that radiation
+energy cannot stream faster than the (reduced) speed of light, which the
+moment equations do not enforce on their own: they are two coupled linear
+transport equations, and nothing in them forbids a state with a large
+$\mathbf F$ and a vanishing $u$. That state is exactly the P1 failure
+this scheme was upgraded to remove --- a front that carries flux with
+almost nothing behind it, so that any numerical ripple exceeds the field
+itself and its sign fails. With Eq.~\ref{eq:fuv-flux-limiter} in force,
+the field behind a front is bounded below by $|\mathbf F|/c_{\rm hyp}$ by
+construction, at every $h/\lambda$, rather than by a ratio that vanishes
+with the opacity. It is the limiter, not the Eddington tensor, that
+removes the failure mode; the tensor is what makes the resulting
+directional transport physically correct rather than merely bounded.
+Eq.~\ref{eq:fuv-flux-limiter} conserves $\sum_i m_i u_i$ exactly (it
+touches only $\mathbf F$); the flux moment is deliberately not a conserved
+budget here. The identical limiter, in the identical place, is what
+\code{rt/SPHM1RT} applies to its own $(E,\mathbf F)$ pair
+(\code{rt\_unphysical.h}: rescale by $c_{\rm red}E/|\mathbf F|$ when
+$|\mathbf F|>c_{\rm red}E$, zero the flux when $E\le0$).
+
+\textbf{Substituting the closure.} Putting
+Eq.~\ref{eq:fuv-m1-closure} into Eq.~\ref{eq:fuv-p1-first},
+\begin{equation}
+  \frac{\partial \mathbf F}{\partial t}
+    + c^2\,\nabla\cdot\big(\mathbf D(f)\,u\big)
     = -\frac{\mathbf F}{\tau_{\rm phys}} , \qquad
-  \tau_{\rm phys} = \frac{1}{c\,\kappa_{\rm FUV}\rho} .
+  \tau_{\rm phys} = \frac{1}{c\,\kappa_{\rm FUV}\rho} ,
   \label{eq:fuv-tau-phys}
 \end{equation}
+which at $f\to0$ reduces to the P1 form
+$\partial_t\mathbf F + (c^2/3)\nabla u = -\mathbf F/\tau_{\rm phys}$.
 This is \textbf{exactly} a Cattaneo-type flux-relaxation equation. A
 sibling SWIFT checkout maintained in the same research group already
 integrates the identical structure for hyperbolic metal diffusion
@@ -456,7 +535,8 @@ integrates the identical structure for hyperbolic metal diffusion
 \code{theory/ParabolicDiffusion/GEAR\_FVPM\_Diffusion\_Theory.tex}):
 \code{dflux/dt + K/tau*grad Z = -flux/tau}, integrated with the exact
 analytic decay $\exp(-\Delta t/\tau)$ for the relaxation source term.
-Matching Eq.~\ref{eq:fuv-tau-phys} to that form identifies
+Matching Eq.~\ref{eq:fuv-tau-phys}, in its isotropic ($f\to0$) limit, to
+that form identifies
 \begin{equation}
   D_{\rm phys} = c^2\,\tau_{\rm phys}/3 = \frac{c}{3\,\kappa_{\rm FUV}\rho}
    = \frac{c\,\lambda}{3} ,
@@ -472,13 +552,14 @@ independently. The hyperbolic signal speed of this exact system is
   \label{eq:fuv-chyp-phys}
 \end{equation}
 a \textbf{universal constant close to the speed of light}, independent
-of opacity. \textbf{This is the catch}: taken at face value, the
-rigorously RT-derived P1 system has exactly the same expensive
+of opacity, and the free-streaming ($f\to1$) characteristic speed is $c$
+itself. \textbf{This is the catch}: taken at face value, the rigorously
+RT-derived moment system has exactly the same expensive
 $\Delta t\sim h/c$ CFL that motivates reduced-speed-of-light
 approximations in full M1 codes (\code{rt/GEAR}'s own
 \code{reduced\_speed\_of\_light} parameter,
-Section~\ref{sec:fuv-precedent}). P1 gives a real derivation, not by
-itself a cheap one.
+Section~\ref{sec:fuv-precedent}). The moment closure gives a real
+derivation, not by itself a cheap one.
 
 \subsubsection{Tying $\lambda$ to physics, $c_{\rm hyp}$ to
 affordability: deriving $D$ and $\tau$}
@@ -497,40 +578,82 @@ physical input, but an ingredient already computed elsewhere in this
 codebase, with $\kappa_{\rm FUV}=2000\,(Z/Z_\odot)\,{\rm cm^2\,g^{-1}}$
 from the same \citet{Hopkins2020} fit as $\kappa_{\rm IR}$
 (Section~\ref{sec:radiation-pressure}). It is called a \emph{screening}
-length because the diffusion limit of
-Eqs.~\ref{eq:fuv-p1-zeroth}--\ref{eq:fuv-p1-first} has a screened
-Poisson (modified Helmholtz) steady state, whose point-source Green's
-function is the Yukawa form $e^{-r/\lambda}/r$: geometric $1/r$
-dilution multiplied by an exponential cutoff over the scale $\lambda$,
-which is the shape a real photon field has (geometric dilution
-\emph{and} dust extinction). In terms of the transport coefficients,
-that steady state fixes $\lambda=\sqrt{D\tau}$.
+length because it is the scale over which the field's own steady state
+is cut off exponentially, in both closure limits: as $e^{-r/\lambda}/r^2$
+when the field streams (Eq.~\ref{eq:fuv-steady-freestream}) and as
+$e^{-\sqrt3 r/\lambda}/r$ when it diffuses
+(Eq.~\ref{eq:fuv-steady-diffusion}, a screened Poisson / modified
+Helmholtz steady state whose point-source Green's function is the Yukawa
+form). Geometric dilution multiplied by an exponential cutoff on the
+scale $\lambda$ is the shape a real photon field has; which power of $r$
+and which factor in the exponent apply is what the closure decides.
 
-\textbf{Two targets, two free knobs.} Rather than using the true,
-expensive $(D_{\rm phys},\tau_{\rm phys},c_{\rm hyp,phys})$ of
-Eqs.~\ref{eq:fuv-D-phys}--\ref{eq:fuv-chyp-phys}, the two
-physically-meaningful target quantities are decoupled from the two free
-numerical parameters. There are exactly two things that must be right,
-and two free knobs ($D,\tau$) to set them with:
-\begin{enumerate}
-  \item the \textbf{screening length} $\lambda$
-    (Eq.~\ref{eq:fuv-lambda-def}) must match real dust opacity, via the
-    steady-state relation $\lambda=\sqrt{D\tau}$;
-  \item the \textbf{propagation speed} $c_{\rm hyp}=\sqrt{D/\tau}$ is a
-    cost/accuracy dial, chosen to be affordable rather than physically
-    exact: an honestly-named reduced-speed-of-light choice, the same
-    kind of parameter \code{rt/GEAR} already exposes.
-\end{enumerate}
-Solving these two equations for the two unknowns,
-\begin{equation}
-  \tau = \frac{\lambda}{c_{\rm hyp}} , \qquad
-  D = c_{\rm hyp}\,\lambda .
+\textbf{The reduced-speed-of-light substitution.} Rather than using the
+true, expensive $(D_{\rm phys},\tau_{\rm phys},c_{\rm hyp,phys})$ of
+Eqs.~\ref{eq:fuv-D-phys}--\ref{eq:fuv-chyp-phys}, the moment system is
+solved with the true light speed replaced by a reduced one,
+$c\to c_{\rm hyp}$, \emph{everywhere it appears} --- in the absorption
+rate, in the pressure-term coefficient, and in the reduced flux $f$ of
+Eq.~\ref{eq:fuv-m1-chi} --- with the source term rescaled by
+$c_{\rm hyp}/c$ to keep the field's amplitude right. $c_{\rm hyp}$ is
+this scheme's reduced light speed $c_{\rm M}$ in the usual M1 sense; it
+is written $c_{\rm hyp}$ throughout this document and carried in the code
+as \code{feedback\_part\_data.c\_hyp}. The implemented system is
+therefore
+\begin{align}
+  \frac{\partial u}{\partial t} + \nabla\cdot\mathbf F
+    &= -\frac{u}{\tau} + \frac{c_{\rm hyp}}{c}\,S ,
+  \label{eq:fuv-rsol-zeroth} \\
+  \frac{\partial \mathbf F}{\partial t}
+    + c_{\rm hyp}^2\,\nabla\cdot\big(\mathbf D(f)\,u\big)
+    &= -\frac{\mathbf F}{\tau} , \qquad
+  \tau = \frac{1}{c_{\rm hyp}\,\kappa_{\rm FUV}\rho}
+       = \frac{\lambda}{c_{\rm hyp}} ,
   \label{eq:fuv-lambda-chyp-solve}
-\end{equation}
-\textbf{$D$ is therefore not an independent free choice}: once
-$\lambda$ is fixed by dust opacity (mandatory) and $c_{\rm hyp}$ is
-picked for affordability (a genuine choice), $D$ and $\tau$ follow
-algebraically.
+\end{align}
+together with the flux limiter (Eq.~\ref{eq:fuv-flux-limiter}), which is
+also written against $c_{\rm hyp}$. The corresponding effective
+diffusion coefficient, in the isotropic limit, is
+$D=c_{\rm hyp}^2\tau/3=c_{\rm hyp}\lambda/3$: not an independent free
+choice, but a consequence of $\lambda$ (fixed by dust opacity) and
+$c_{\rm hyp}$ (picked for affordability).
+
+\textbf{Why the substitution is applied uniformly, and not tuned.} An
+alternative, used by this scheme's earlier P1 form, is to treat $D$ and
+$\tau$ as two free knobs and pick them so that one chosen steady state
+comes out exactly right: taking $\tau=\lambda/c_{\rm hyp}$,
+$D=c_{\rm hyp}\lambda$ (i.e.\ a pressure coefficient $c_{\rm hyp}^2$ with
+\emph{no} $1/3$, the $1/3$ having been absorbed into the tuning) and a
+source rescale $3c_{\rm hyp}/c$ makes the P1 diffusive steady state a
+Yukawa profile with screening length exactly $\lambda$. That tuning is
+self-consistent only for P1, and only for that one limit. Under M1 the
+scheme has \emph{two} limits it must reproduce, free streaming and
+diffusion (Section~\ref{sec:fuv-steady-limits}), and the tuned constants
+make them mutually inconsistent by a factor $\sqrt3$: the tuning buys an
+exact screening length in one limit by putting the other one wrong. The
+uniform substitution above makes \emph{both} limits come out exact
+(Section~\ref{sec:fuv-steady-limits} works them through), at the price of
+a diffusive screening length $\lambda/\sqrt3$ rather than $\lambda$ ---
+which is not an error, but the correct P1/M1 diffusion result, the same
+$\sqrt3$ that appears in Eq.~\ref{eq:fuv-chyp-phys}. The only cost the
+substitution actually carries is the slower transient of a reduced light
+speed, which this scheme accepted the moment it chose a finite
+$c_{\rm hyp}$ at all.
+
+\textbf{Two changes, one decision, and no cancellation between them.}
+Relative to the tuned P1 constants, exactly two things moved: the
+pressure-term coefficient lost its factor $3$ (the $1/3$ now sits inside
+$\mathbf D$, where the closure puts it), and the source rescale went from
+$3c_{\rm hyp}/c$ to $c_{\rm hyp}/c$. These are \emph{not} a cancelling
+pair: the first sets the screening length (hence the $\lambda\to
+\lambda/\sqrt3$ above), the second sets the amplitude (which drops by a
+factor $3$, Section~\ref{sec:fuv-steady-limits}). They are matched only
+in both following from the single decision to substitute $c\to c_{\rm
+hyp}$ uniformly. Note also what did \emph{not} change: $\tau$ is
+$\lambda/c_{\rm hyp}$ under both parametrisations, which is why the
+exact-relaxation integrator and its $a=c_{\rm hyp}\kappa\rho\,\Delta t$
+argument (Section~\ref{sec:fuv-operators}) are untouched by the closure
+upgrade.
 
 \textbf{$c_{\rm hyp}$ is emergent, not a chosen target speed.} No new
 \code{\_timestep()} criterion is introduced for this field: instead of
@@ -564,8 +687,11 @@ comes out to $\approx0.75\,$pc in the ambient gas
 $\approx0.008\,$pc in the clump
 ($n_H\approx1.25\times10^4\,{\rm cm^{-3}}$, $h\approx0.5\,$pc): in
 \emph{both} regions $\lambda<h$, including in the diffuse gas.
-Eq.~\ref{eq:fuv-lambda-chyp-solve}'s decoupled choice is therefore the
-robust one, not a shortcut.
+The reduced-speed-of-light choice of
+Eq.~\ref{eq:fuv-lambda-chyp-solve} is therefore the robust one, not a
+shortcut: it keeps the system hyperbolic and lets the closure decide
+locally how diffusive to be, instead of assuming a diffusive regime that
+this project's resolutions do not deliver.
 
 \textbf{$\tau$ in the diffuse ISM is comparable to an OB star's
 lifetime.} Eq.~\ref{eq:fuv-lambda-chyp-solve} gives $\tau=\lambda/c_{\rm
@@ -591,6 +717,162 @@ the reduced-speed-of-light closure (Eq.~\ref{eq:fuv-chyp-choice}), not a
 numerical defect: at the true speed of light $\tau=\lambda/c\sim10\,$kyr
 and the shell would be gone long before any cooling step could notice
 it.
+
+\subsubsection{The two steady-state limits, recovered exactly}
+\label{sec:fuv-steady-limits}
+
+This subsection works through the two analytic limits the constants of
+Eq.~\ref{eq:fuv-lambda-chyp-solve} must reproduce, in full, because they
+are what the Tier~1 regression check
+(\code{ISRFHyperbolicPropagation}/\code{isrf\_hyperbolic\_propagation\_check.py})
+ultimately validates against, and because the previous, tuned P1
+constants got exactly one of them right. Setting: a static, uniform
+medium of constant $\lambda$, a point source of band luminosity $L$ at
+the origin ($S=L\,\delta^3(\mathbf r)$ in
+Eq.~\ref{eq:fuv-rsol-zeroth}), spherical symmetry, steady state
+($\partial_t=0$). Writing $1/\tau=c_{\rm hyp}/\lambda$, the two moment
+equations reduce to
+\begin{align}
+  \nabla\cdot\mathbf F &= -\frac{c_{\rm hyp}}{\lambda}\,u
+     + \frac{c_{\rm hyp}}{c}\,L\,\delta^3(\mathbf r) ,
+  \label{eq:fuv-steady-zeroth} \\
+  c_{\rm hyp}^2\,\nabla\cdot\big(\mathbf D\,u\big)
+    &= -\frac{c_{\rm hyp}}{\lambda}\,\mathbf F .
+  \label{eq:fuv-steady-first}
+\end{align}
+
+\textbf{Limit 1: free streaming ($f=1$, $\chi=1$,
+$\mathbf D=\hat{\mathbf n}\otimes\hat{\mathbf n}$).} Take
+$\hat{\mathbf n}=\hat{\mathbf r}$ and $\mathbf F=c_{\rm hyp}u\,
+\hat{\mathbf r}$, which is the flux limiter
+(Eq.~\ref{eq:fuv-flux-limiter}) active at its boundary. Then
+Eq.~\ref{eq:fuv-steady-zeroth} reads, away from the origin,
+\begin{equation}
+  \frac{c_{\rm hyp}}{r^2}\frac{{\rm d}}{{\rm d}r}\big(r^2 u\big)
+    = -\frac{c_{\rm hyp}}{\lambda}u
+  \quad\Longleftrightarrow\quad
+  \frac{{\rm d}}{{\rm d}r}\big(r^2u\big) = -\frac{r^2u}{\lambda}
+  \quad\Longrightarrow\quad
+  r^2 u = A\,e^{-r/\lambda} .
+  \label{eq:fuv-steady-fs-ode}
+\end{equation}
+The first-moment equation must give the \emph{same} answer, or the
+solution is not a solution of the system. For a purely radial pressure
+tensor $\mathbf P=u\,\hat{\mathbf r}\otimes\hat{\mathbf r}$ the spherical
+divergence is
+$(\nabla\cdot\mathbf P)_r={\rm d}u/{\rm d}r + 2u/r$ (the transverse
+components of $\mathbf P$ vanish at $\chi=1$, which is exactly why the
+$-(P_{\theta\theta}+P_{\phi\phi})/r$ term drops out), so
+Eq.~\ref{eq:fuv-steady-first} becomes
+\begin{equation}
+  c_{\rm hyp}^2\left(\frac{{\rm d}u}{{\rm d}r}+\frac{2u}{r}\right)
+    = -\frac{c_{\rm hyp}}{\lambda}\,c_{\rm hyp}u
+  \quad\Longleftrightarrow\quad
+  \frac{1}{r^2}\frac{{\rm d}}{{\rm d}r}\big(r^2u\big)
+    = -\frac{u}{\lambda} ,
+\end{equation}
+identical to Eq.~\ref{eq:fuv-steady-fs-ode}. The two moments are
+consistent, and $f=1$ is self-consistent throughout
+($|\mathbf F|/(c_{\rm hyp}u)=1$ by construction). The amplitude follows
+from integrating Eq.~\ref{eq:fuv-steady-zeroth} over a small sphere,
+where absorption is negligible:
+$4\pi r^2|\mathbf F| \to (c_{\rm hyp}/c)L$, and with
+$|\mathbf F|=c_{\rm hyp}u$ this gives $A=L/(4\pi c)$. Hence
+\begin{equation}
+  \boxed{\;u(r) = \frac{L}{4\pi c\,r^2}\,e^{-r/\lambda}\;}
+  \label{eq:fuv-steady-freestream}
+\end{equation}
+--- geometric $1/r^2$ dilution times pure dust extinction over the
+\emph{physical} mean free path $\lambda$, which is the exact answer for a
+point source in a purely absorbing (non-scattering) medium, and the
+correct $1/c$ amplitude of the true, unreduced light speed.
+$c_{\rm hyp}$ has cancelled out of both the profile and the amplitude:
+the reduced light speed changes how long the field takes to get there,
+not where it ends up. This is the single most important property the
+$c_{\rm hyp}/c$ source rescale buys; with the previous $3c_{\rm hyp}/c$
+rescale the amplitude came out three times too large here.
+
+\textbf{Limit 2: diffusion (the isotropic branch, $f\to0$,
+$\mathbf D=\mathbf I/3$).} Eq.~\ref{eq:fuv-steady-first} gives
+\begin{equation}
+  \frac{c_{\rm hyp}^2}{3}\nabla u = -\frac{c_{\rm hyp}}{\lambda}\mathbf F
+  \quad\Longrightarrow\quad
+  \mathbf F = -\frac{c_{\rm hyp}\lambda}{3}\,\nabla u ,
+\end{equation}
+Fick's law with the effective diffusion coefficient
+$D=c_{\rm hyp}\lambda/3$ already identified in
+Section~\ref{sec:fuv-lambda-chyp}. Substituting into
+Eq.~\ref{eq:fuv-steady-zeroth} and dividing through by $c_{\rm hyp}$:
+\begin{equation}
+  \frac{\lambda}{3}\,\nabla^2 u = \frac{u}{\lambda}
+    - \frac{L}{c}\,\delta^3(\mathbf r)
+  \quad\Longleftrightarrow\quad
+  \nabla^2 u - \frac{3}{\lambda^2}\,u
+    = -\frac{3L}{\lambda c}\,\delta^3(\mathbf r) ,
+  \label{eq:fuv-steady-helmholtz}
+\end{equation}
+a screened Poisson (modified Helmholtz) equation with inverse screening
+length $\sqrt3/\lambda$. Its Green's function
+($\nabla^2-k^2$ against $-A\delta^3$ gives $A\,e^{-kr}/4\pi r$) yields
+\begin{equation}
+  \boxed{\;u(r) = \frac{3L}{4\pi c\,\lambda\,r}\,e^{-\sqrt3\,r/\lambda}
+    = \frac{3\,\kappa_{\rm FUV}\rho\,L}{4\pi c\,r}
+      \,e^{-\sqrt3\,r/\lambda}\;}
+  \label{eq:fuv-steady-diffusion}
+\end{equation}
+again with $c_{\rm hyp}$ cancelling exactly. The screening length of the
+\emph{diffusive} field is $\lambda/\sqrt3$, not $\lambda$: the same
+$\sqrt3$ as in Eq.~\ref{eq:fuv-chyp-phys}, and the textbook P1 result.
+The earlier, tuned P1 constants produced $\lambda$ here instead, by
+construction --- correct-looking, but only because the tuning had been
+chosen to make it so, and at the price of Limit~1's amplitude.
+
+\textbf{Which branch a given configuration actually sits on, and why
+both matter.} These are not "the same field in two regimes of one
+parameter"; they are two different closures of the same constants, and
+$f$ decides between them. Substituting
+Eq.~\ref{eq:fuv-steady-diffusion} back into the definition of $f$ gives
+$f=1/\sqrt3+\lambda/(3r)$, i.e.\ $f\to0.577$, \emph{not} $f\to0$: the
+isotropic branch is not self-consistent for a single point source. That
+is not a defect of the algebra but the physical content of the closure
+upgrade --- a purely absorbing medium never isotropizes a point source's
+field (there is no scattering term to do it), so the field around one
+star streams, and M1 selects Limit~1 there while P1 was structurally
+unable to. The isotropic branch is the right one where the field really
+is near-isotropic: a diffuse background built from many sources in many
+directions, which is precisely this module's production use case. Both
+limits are therefore live, and both must come out exact --- which is why
+the uniform $c\to c_{\rm hyp}$ substitution was chosen over a tuning that
+can only serve one of them (Section~\ref{sec:fuv-lambda-chyp}).
+
+\textbf{A closure-independent amplitude identity.} Integrating
+Eq.~\ref{eq:fuv-steady-zeroth} over the whole (periodic) domain kills the
+divergence term exactly, leaving
+\begin{equation}
+  \int u\,{\rm d}V = \tau\,\frac{c_{\rm hyp}}{c}\,L
+    = \frac{\lambda\,L}{c} ,
+  \qquad\text{discretely}\qquad
+  \sum_i m_i u_i = \frac{\lambda}{c}\sum_j w_j\,L\,\zeta_j ,
+  \label{eq:fuv-steady-amplitude}
+\end{equation}
+with $w_j$, $\zeta_j$ the injection weights and receiver-side extinction
+of Eq.~\ref{eq:fuv-inject}. Eq.~\ref{eq:fuv-steady-amplitude} is written
+for a single shared $\lambda$; dividing each term by particle $i$'s own
+$\lambda_i$ instead generalizes it to the per-particle form
+$\sum_i m_i u_i/\lambda_i = (1/c)\sum_j w_j\,L\,\zeta_j$, which is what
+\code{isrf\_hyperbolic\_propagation\_check.py} actually computes (each
+particle carries its own metallicity- and density-dependent $\lambda_i$).
+This holds for \emph{any} closure --- it uses
+only that $\mathbf D$ never enters the zeroth moment --- and it holds
+exactly in the discrete scheme too, because the divergence operator
+(Eq.~\ref{eq:fuv-impl-div}) is built as a mirrored credit/debit pair and
+so satisfies $\sum_i m_i(\nabla\cdot\mathbf F)_i=0$ identically. It is a
+first-principles check on the total field amplitude with no fit and no
+profile shape involved, and Tier~1 gates on it directly. Under the
+previous, tuned constants the same identity read $3\lambda L/c$; the
+factor $3$ drop is the source rescale's whole effect, and is independent
+of the $\sqrt3$ that the pressure-term change produces in
+Eq.~\ref{eq:fuv-steady-diffusion}.
 
 \subsubsection{The hyperbolic CFL condition}
 \label{sec:fuv-cfl}
@@ -665,22 +947,115 @@ active/inactive pair leaves one side undebited until its own next
 active step, the pre-existing, non-sign-correlated cross-bin asymmetry
 already accepted for this class of pairwise operator.
 
-\textbf{Gradient (gradient loop).} A Brookshaw/Cleary--Monaghan-type
-difference estimator on the volumetric field $U\equiv\rho u$
-(Section~\ref{sec:fuv-units}), applied to a first derivative rather
-than to a Laplacian:
+\textbf{Pressure-tensor divergence (gradient loop).} The term the flux
+equation actually needs is $\nabla\cdot\mathbf P=\nabla\cdot(\mathbf D
+u)$, not $\nabla u$; under the isotropic closure the two differ only by
+the constant $1/3$, which is why this accumulator is still called
+\code{grad\_u} in the code. It is a difference estimator of the same
+Brookshaw/Cleary--Monaghan family, on the volumetric field
+$U\equiv\rho u$ (Section~\ref{sec:fuv-units}) contracted with each
+particle's own closure tensor:
 \begin{equation}
-  d_{ij}=U_i-U_j, \qquad
-  (\nabla u)_i \mathrel{+}= -\frac{m_j\,d_{ij}}{\rho_i^2}\,\nabla_i W_{ij},
+  \mathbf T_{ij} = U_i\,\mathbf D_i\!\cdot\!\mathbf{dx}
+                 - U_j\,\mathbf D_j\!\cdot\!\mathbf{dx} , \qquad
+  \left(\frac{\nabla\cdot\mathbf P}{\rho}\right)_i \mathrel{+}=
+    -\frac{m_j}{\rho_i^2}\,\mathbf T_{ij}\,w_{i,dr}\,r_{ij}^{-1} ,
   \qquad
-  (\nabla u)_j \mathrel{+}= -\frac{m_i\,d_{ij}}{\rho_j^2}\,\nabla_j W_{ij} .
+  \left(\frac{\nabla\cdot\mathbf P}{\rho}\right)_j \mathrel{+}=
+    -\frac{m_i}{\rho_j^2}\,\mathbf T_{ij}\,w_{j,dr}\,r_{ij}^{-1} ,
   \label{eq:fuv-impl-grad}
 \end{equation}
+each particle using \emph{its own} kernel derivative ($w_{i,dr}$ for
+$i$, $w_{j,dr}$ for $j$; no shared average) and no grad-$h$ correction
+factor. At $\mathbf D_i=\mathbf D_j=\mathbf I/3$ this is exactly the
+older scalar form with the $1/3$ made explicit. Each particle's
+$\mathbf D$ is built inside this loop from its own $(u,\mathbf F)$ via
+Eq.~\ref{eq:fuv-m1-closure}, the same place and the same way
+\code{rt/SPHM1RT} builds its own (\code{rt\_iact.h}); the cost is four
+tensor constructions per symmetric pair, not a separate loop.
+
 The $1/\rho^2$ (rather than $1/\rho$) normalization is not an arbitrary
-choice: it makes this operator the negative adjoint of
-Eq.~\ref{eq:fuv-impl-div}'s divergence in the mass/density inner
-product, the property the staggered time integration below needs for
-stability on a disordered particle distribution.
+choice: with it, Eq.~\ref{eq:fuv-impl-grad} is the exact negative
+adjoint of Eq.~\ref{eq:fuv-impl-div}'s divergence, which is the property
+the staggered time integration below wants on a disordered particle
+distribution. Under an anisotropic closure that statement needs to be
+made precisely, and it is worth doing so because the precise version is
+weaker than the P1 one and the difference is not a bug.
+
+\textbf{What adjointness survives under M1, exactly.} Write
+$\langle a,b\rangle=\sum_i m_i\rho_i\,a_i b_i$. Under P1 the pair
+$(\nabla\cdot\mathbf F,\nabla u)$ of
+Eqs.~\ref{eq:fuv-impl-div}--\ref{eq:fuv-impl-grad} satisfies
+$\langle u,\nabla\cdot\mathbf F\rangle=-\langle\mathbf F,\nabla
+u\rangle$ identically, pair by pair, for any $h_i\ne h_j$,
+$\rho_i\ne\rho_j$. Under M1 this survives, but only in a
+$\mathbf D^{-1}$-weighted metric:
+\begin{equation}
+  \big\langle \mathbf F,\ \mathbf D^{-1}\,\rho^{-1}\nabla\cdot\mathbf P
+    \big\rangle
+  \;=\; -\big\langle u,\ \nabla\cdot\mathbf F \big\rangle ,
+  \qquad\text{exactly, whenever } \mathbf D_i=\mathbf D_j ,
+  \label{eq:fuv-adjointness}
+\end{equation}
+for arbitrary $h_i\ne h_j$ and $\rho_i\ne\rho_j$ --- including the
+$\mathbf F=\mathbf 0$ background, every particle's initial condition and
+permanent far-field state. This is what selects the own-derivative form
+in Eq.~\ref{eq:fuv-impl-grad}: a shared averaged kernel derivative (the
+form \code{rt/SPHM1RT} itself uses) breaks Eq.~\ref{eq:fuv-adjointness}
+at variable $h$, carrying a measured $0.1\%$--$0.8\%$ residual in the
+near-isotropic background regime that converges only at first order and
+is worst where $h$ contrasts sharply, where the own-derivative form is
+exact to machine precision. Where $\mathbf D_i\ne\mathbf D_j$ a residual
+$O(h\,|\nabla\mathbf D|)$ remains, the discrete image of the same
+$\nabla\mathbf D$ term that breaks the continuum estimate for variable
+coefficients; nothing removes it, and it is an ordinary consistency-order
+error.
+
+\textbf{What does \emph{not} survive, and why that is correct.} In the
+plain isotropic metric a second residual remains, proportional to the
+anisotropy $\mathbf A=\mathbf D-\mathbf I/3$. It is nonzero whenever the
+closure is anisotropic at all --- including at perfectly uniform $h$
+with the same constant anisotropic $\mathbf D$ on both particles, where
+it has been measured at order unity. This is \textbf{not} a
+discretization defect and must not be chased as one: the continuum M1
+equations themselves do not conserve the isotropic quadratic functional
+$\int(u^2+3|\mathbf F|^2/c_{\rm hyp}^2)$. For $\mathbf D=\mathbf I/3$
+the two transport terms combine into a pure divergence and the
+functional is conserved --- that is the P1 property, which is why an
+exact discrete analogue existed --- and for any $\mathbf D\ne\mathbf I/3$
+the cancellation fails. A discretization that conserved it exactly would
+be consistent with P1, not with M1. What M1's transport part does admit
+is symmetrization by $\mathbf D^{-1}$, giving the conserved quadratic
+$\int(u^2+\mathbf F\cdot\mathbf D^{-1}\mathbf F/c_{\rm hyp}^2)$ for
+frozen $\mathbf D$, which is exactly the metric of
+Eq.~\ref{eq:fuv-adjointness}.
+
+\textbf{Bound on that claim.} Eq.~\ref{eq:fuv-adjointness} is
+frozen-coefficient skewness in a time-varying, per-particle metric. It
+is not an unconditional stability proof, and M1 has none. The metric
+itself degenerates in the free-streaming limit: $\mathbf D$'s transverse
+eigenvalue $(1-\chi)/2\to0$ as $f\to1$, so $\mathbf D^{-1}$ diverges and
+transverse flux perturbations are not controlled by it --- and the flux
+limiter explicitly permits $f=1$. \textbf{In the free-streaming limit,
+stability rests on the CFL bound on $c_{\rm hyp}$
+(Eq.~\ref{eq:fuv-hyperbolic-cfl}) and on the artificial dissipation of
+Section~\ref{sec:fuv-dissipation}, not on any adjointness argument.}
+The full derivation of this subsection, with the numerical evidence, is
+in \code{.claude/dev/M1\_gradient\_adjointness\_investigation\_2026-09-11.md}.
+
+\textbf{Where the flux limiter runs.} Eq.~\ref{eq:fuv-flux-limiter} is
+applied once per particle per step, in the \code{end\_force} task, after
+the Stage-1 dissipation correction has produced this step's \emph{final}
+$u$ and after the extra ghost has already written this step's
+$\mathbf F$. The ordering is load-bearing rather than incidental:
+clamping against the earlier, pre-correction $u$ (the only $u$ the extra
+ghost can see) would leave $|\mathbf F|>c_{\rm hyp}u$ at exactly the
+near-front, low-$u$ particles the correction moves the most, which are
+the ones the limiter exists to protect. One consequence, already noted
+under Eq.~\ref{eq:fuv-m1-chi}: the next step's gradient loop evaluates
+the closure on an $\mathbf F$ limited against the previous step's $u$
+and a $u$ that has since been updated, so $f>1$ is reachable there and
+the clamp in Eq.~\ref{eq:fuv-m1-chi} is required, not decorative.
 
 \textbf{Exact relaxation, and where the screening term lands.}
 Eq.~\ref{eq:fuv-p1-zeroth}'s own local sink, $-c\,\kappa_{\rm
@@ -689,7 +1064,7 @@ linear decay, $du/dt=-u/\tau_{\rm phys}$, with \textbf{exactly the
 same} $\tau_{\rm phys}=1/(c\,\kappa_{\rm FUV}\rho)$
 (Eq.~\ref{eq:fuv-tau-phys}) that already governs $\mathbf F$'s own
 Cattaneo relaxation. That is not a coincidence but a structural feature
-of the P1 system: both moments are removed from the field by the
+of the moment system: both moments are removed from the field by the
 \emph{same} physical absorption events, so they share the same rate.
 Both therefore admit the same exact exponential integrator,
 \begin{equation}
@@ -782,9 +1157,10 @@ e^{-\Delta t/\tau}+(S\tau/m)(1-e^{-\Delta t/\tau})$, and that is what
 the reservoir realizes: $\dot u_{{\rm inject},i}$ enters as a genuine
 additional frozen source in the same exact-relaxation ODE that already
 advances $u$ each step (Eq.~\ref{eq:fuv-joint-relax}), rescaled by the
-same reduced-speed-of-light factor $3\,c_{\rm hyp}/c$ that the
-transport equations themselves carry ($c_{\rm hyp}$ in place of the
-true $c$, Eq.~\ref{eq:fuv-chyp-choice}). The reservoir itself always
+same reduced-speed-of-light factor $c_{\rm hyp}/c$ that
+Eq.~\ref{eq:fuv-rsol-zeroth} carries ($c_{\rm hyp}$ in place of the true
+$c$ throughout, Section~\ref{sec:fuv-lambda-chyp}). The reservoir itself
+always
 holds the raw, physical dose; the rescale is applied exactly once,
 where the drained rate enters the relaxation, not at deposit time.
 
@@ -894,7 +1270,7 @@ $h/\lambda\sim0.30$ is not yet established. It does not accumulate across
 multiple sources or over the duration of a run: it is a property of the
 field's steady state rather than a term that integrates in time. It is a
 quantified numerical characteristic of this stabilization, not a
-transport error: the underlying P1 transport scheme's own
+transport error: the underlying transport scheme's own
 relative-velocity moment identity, exact at $\alpha_{\max}=0$, holds only
 up to this bounded term once the stabilization is active.
 
@@ -1097,13 +1473,22 @@ thin band close to the source ($r\lesssim\lambda/300$), where the exact
 $P_1$ plateau itself is smaller than the scheme's own sub-resolution
 launch ripple: that band is a property of the $P_1$ closure (there is no
 positive field there for any dissipation coefficient to protect), not a
-numerical defect, and no value of $\alpha_{\rm floor}$ removes it. A full
-moment-closure upgrade to M1 (Section~\ref{sec:fuv-m1}), which enforces
-the causality bound $|\mathbf F|\le cu$ that $P_1$ does not, would instead
-bound the shell to an ordinary Gibbs-type over/undershoot at the front and
-remove the underlying shell/wake disproportion at its source, including in
-the near-source band; the floor is a bounded numerical safeguard for the
-closure this scheme currently has, not a substitute for that. One further
+numerical defect, and no value of $\alpha_{\rm floor}$ removes it.
+
+\textbf{This calibration predates the M1 closure, and is on that account
+conservative.} The whole characterization above was measured under the
+isotropic ($P_1$) closure, where nothing bounds $|\mathbf F|$ against
+$u$. The flux limiter (Eq.~\ref{eq:fuv-flux-limiter}) removes the
+shell/wake disproportion at its source, including in the near-source
+band, leaving an ordinary bounded Gibbs-type over/undershoot at the front
+instead of a sign failure. Nothing in the trigger or the floor is
+closure-specific --- both are built on the $\rho u$ jump and on
+$c_{\rm hyp}$, neither of which changes meaning under M1 --- so both
+carry over mechanically and the stability bound is unchanged. Whether
+their shipped \emph{values}, and indeed their functional shapes, are
+still the right ones for a bounded M1 front is an open question at the
+time of writing, not something this calibration answers; the defaults
+below are the $P_1$-era ones. One further
 caveat: because $\alpha_{{\rm trig},i}$ is combined with the floor by a
 running max (Eq.~\ref{eq:fuv-diss-floor}) and the trigger's own decay
 memory stores this combined value, a particle leaving the diffuse regime
@@ -1335,15 +1720,18 @@ equations themselves.
 \subsection{Known, accepted limitations: shadows and crossing beams}
 \label{sec:fuv-limits}
 
-\textbf{P1's shadow-smearing} is a direct consequence of the isotropy
-assumption in Eq.~\ref{eq:fuv-eddington-closure}
-(Section~\ref{sec:fuv-p1}): a real photon field shows almost zero flux
-directly behind a dense clump and full flux to the side; a
-diffusion-type (P1) field leaks some flux around the clump via
+\textbf{Residual shadow-smearing.} A real photon field shows almost zero
+flux directly behind a dense clump and full flux to the side; an
+isotropic, diffusion-type field leaks some flux around the clump via
 neighbouring particles, smearing that shadow into something softer than
-reality. The cheap-M1 upgrade of Section~\ref{sec:fuv-m1} improves this
-(Eq.~\ref{eq:fuv-m1-chi} lets $f\to1$ near a strong, little-scattered
-source) but does not fully fix it.
+reality. This is a direct consequence of the isotropy assumption in
+Eq.~\ref{eq:fuv-eddington-closure}, and is the sharpest reason the
+implemented closure is M1 rather than $P_1$: $f\to1$ near a strong,
+little-scattered source (Eq.~\ref{eq:fuv-m1-chi}) lets the field stream
+directionally instead of leaking sideways. It improves the shadow
+substantially; it does not fully fix it, and no moment closure does ---
+the residual is bounded by how well two angular moments can represent a
+sharply directional field, not by the numerics.
 
 \textbf{M1's own, distinct limitation: crossing beams.} M1 is a
 single-direction closure: at any point it assumes all local flux
@@ -1375,44 +1763,40 @@ here, ray-based/multi-group) description, not a better moment closure;
 this is a structural property of the moment-truncation approach, not a
 correctable numerical shortcoming.
 
-\subsection{Possible extension: from P1 to a cheap M1}
+\subsection{Why M1 and not P1, and what the closure costs}
 \label{sec:fuv-m1}
 
-\textbf{The difference between P1 and M1.} P1's closure
-(Eq.~\ref{eq:fuv-eddington-closure}) is \emph{always} $\mathbf P=u/3\,
-\mathbf I$, regardless of how directional the true local field actually
-is: exact only near isotropy. The \textbf{M1 closure}
-\citep{Levermore1984}, already implemented in this exact SWIFT fork
-(\code{rt/GEAR} and \code{rt/SPHM1RT}, transcribed verbatim from
-\code{theory/RadiativeTransfer/GEARRT/2-rt-equations.tex}), instead
-makes the Eddington tensor a function of the local \textbf{reduced
-flux} $f=|\mathbf F|/(cu)$:
-\begin{align}
-  \mathbf P &= \mathbf D\,u , \qquad
-  \mathbf D = \frac{1-\chi}{2}\,\mathbf I + \frac{3\chi-1}{2}\,
-    \hat{\mathbf n}\otimes\hat{\mathbf n} , \qquad
-  \hat{\mathbf n}=\frac{\mathbf F}{|\mathbf F|} ,
-  \label{eq:fuv-m1-closure} \\
-  \chi(f) &= \frac{3+4f^2}{5+2\sqrt{4-3f^2}} .
-  \label{eq:fuv-m1-chi}
-\end{align}
-Check the limits: $\chi(0)=1/3$ (recovers P1 exactly: correct
-isotropic/diffusive behaviour) and $\chi(1)=1$ (correct free-streaming
-behaviour: pure advection along $\hat{\mathbf n}$, no unphysical
-sideways spreading). \textbf{This is why M1 is better}: it is not
-locked into the isotropic assumption everywhere, so near a strong,
-little-scattered point source ($f\to1$) it lets the field stream
-directionally instead of leaking sideways the way P1 unconditionally
-forces it to: the mechanism that gets shadows mostly right where P1
-cannot.
+The closure itself is stated once, where it is derived
+(Eqs.~\ref{eq:fuv-m1-closure}--\ref{eq:fuv-m1-chi},
+Section~\ref{sec:fuv-p1}). This subsection records why it is the closure
+this scheme uses, and what that choice does and does not cost.
+
+\textbf{What P1 could not do.} $P_1$'s closure
+(Eq.~\ref{eq:fuv-eddington-closure}) is \emph{always}
+$\mathbf P=u/3\,\mathbf I$, regardless of how directional the true local
+field is. Two consequences follow, and the second is the one that forced
+the upgrade. First, shadows are smeared (Section~\ref{sec:fuv-limits}).
+Second, and more seriously, $P_1$ places nothing between the flux and
+the energy: around a point source in optically thin gas its interior
+field is smaller than the streaming value by a factor
+$\sim3r/\lambda$, which vanishes as $\kappa\to0$, so the field behind
+the front becomes arbitrarily small compared with the front itself and
+any numerical ripple at any amplitude eventually exceeds it and the
+field's sign fails. No amount of artificial dissipation fixes that: the
+dissipation can damp a ripple, but it cannot manufacture a positive
+field where the closure puts none. M1 removes the failure by
+construction --- the flux limiter (Eq.~\ref{eq:fuv-flux-limiter}) makes
+the interior field $|\mathbf F|/c_{\rm hyp}$ at every $h/\lambda$ --- and
+the Eddington tensor then makes the resulting directional transport
+physically right rather than merely bounded.
 
 \textbf{The closure swap is cheap, and needs no new numerical
 machinery.} It requires no new state: $(u,\mathbf F)$ is already
 tracked by the hyperbolic system of Section~\ref{sec:fuv-p1}, and $f$,
 $\chi(f)$, $\mathbf D$ are local, per-particle formula evaluations,
-essentially free next to the cost of a neighbour loop. Nor does it
-require the machinery of a full M1 solver: the proper M1 solver in
-\code{rt/GEAR} (\code{rt\_riemann\_HLL.h}) needs a precomputed
+recomputed inside the gradient loop and never stored or communicated.
+Nor does it require the machinery of a full M1 solver: the proper M1
+solver in \code{rt/GEAR} (\code{rt\_riemann\_HLL.h}) needs a precomputed
 $100\times100$ lookup table of eigenvalues \citep{Gonzalez2007},
 because M1's true characteristic speeds are a nontrivial function of
 both $f$ and the angle between the flux and the face normal. None of
@@ -1420,16 +1804,39 @@ that is needed here: those characteristic speeds are bounded within
 $[-c_{\rm hyp},c_{\rm hyp}]$ by construction (M1's defining design
 property is that the reduced flux never exceeds 1), so the existing
 transport operators (Eqs.~\ref{eq:fuv-impl-div}--\ref{eq:fuv-impl-grad})
-carry the upgraded closure unchanged, with $\mathbf D(f)\,u$ in place
-of $u/3\,\mathbf I$ in the pressure term.
+carry the closure with $\mathbf D(f)\,u$ in place of $u/3\,\mathbf I$ in
+the pressure term, and the CFL bound of
+Eq.~\ref{eq:fuv-hyperbolic-cfl} is unchanged in form: $c_{\rm hyp}$ is
+defined as the fastest M1 characteristic ($f=1$), the same interval the
+$P_1$ signal speed already bounded, so the joint
+$(\alpha_{\max},C_{\rm hyp})$ stability condition
+(Eq.~\ref{eq:fuv-diss-stability}) needs re-verification against that
+reading, not re-derivation.
 
 \textbf{Implementation subtlety to get right}: under a
 reduced-speed-of-light scheme, $f$ must be built with the \emph{same}
 reduced $c_{\rm hyp}$, not the true $c$. If $f=|\mathbf F|/(c\,u)$ used
 true $c$ while $\mathbf F$ is dynamically bounded by $c_{\rm hyp}\,u$
 (with $c_{\rm hyp}\ll c$), $f$ would always come out tiny regardless of
-how beamed the field really is, silently collapsing the upgraded
-closure back to P1-like behaviour and defeating the point of upgrading.
+how beamed the field really is, silently collapsing the closure back to
+$P_1$-like behaviour and defeating the point of using M1 at all. The
+same applies to the limiter, which is written against $c_{\rm hyp}$ for
+the same reason.
+
+\textbf{What the closure costs.} Three things, all accepted
+deliberately. (i) Crossing beams are merged rather than superposed
+(Section~\ref{sec:fuv-limits}) --- structural to any moment closure, and
+benign for this module's actual product, a many-source diffuse
+background where overlap regions have $f\to0$ and the closure correctly
+reverts to isotropy. (ii) The transport operator's exact
+skew-adjointness now holds in a $\mathbf D^{-1}$-weighted metric rather
+than the isotropic one, and degenerates as $f\to1$
+(Section~\ref{sec:fuv-operators}); stability in the streaming limit
+rests on the CFL and the dissipation stages instead. (iii) The system is
+now nonlinear in $(u,\mathbf F)$ through $\mathbf D(f)$ and the limiter,
+so the closure is time-frozen once per step, evaluated from the
+post-density-ghost state, exactly as $\nabla u$ already was; no
+implicit or iterative solve is introduced.
 
 \subsection{Relation to existing SWIFT modules}
 \label{sec:fuv-precedent}

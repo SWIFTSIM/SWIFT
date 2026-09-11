@@ -57,7 +57,11 @@ features" caveat is about accuracy on a DISORDERED distribution, a
 separate question from "which operator does the formula converge to,"
 which is what this script isolates.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# The divergence loop is untouched by the P1-to-M1 upgrade; which operator
+# it converges to is a property of that loop alone.
+# =============================================================================
 import numpy as np
 from scipy.spatial import cKDTree
 

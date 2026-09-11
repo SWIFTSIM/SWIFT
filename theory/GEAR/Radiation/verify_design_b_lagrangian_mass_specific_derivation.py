@@ -68,7 +68,14 @@ gas (`verify_design_b_timestepping_stability.py`, Part D). GEAR-RT
 precisely this term at every drift because it chose the box frame, which
 is right there since its c_red >> v_box.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# This derivation converts the volumetric RTE moments into the
+# mass-specific form the implementation tracks; the closure sits inside the
+# pressure term (`P = D(f)u` in place of `u/3 I`) and is carried through
+# that conversion unchanged, since dividing by rho does not touch the
+# angular structure of P.
+# =============================================================================
 import sympy as sp
 
 # ---------------------------------------------------------------------

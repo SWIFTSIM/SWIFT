@@ -20,7 +20,13 @@ pure transport: for a single pairwise interaction, this requires
 -(div F)_i`). This is checked directly, not the divergence's physical
 accuracy (which is a separate, well-understood SPH question, §2.3).
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# The divergence loop is untouched by the P1-to-M1 upgrade (the closure
+# enters only the pressure-tensor term of the flux equation). The exact
+# `sum_i m_i u_i` conservation verified here still holds, and is what makes
+# the total-amplitude identity Tier 1 now gates on exact.
+# =============================================================================
 import numpy as np
 
 rng = np.random.default_rng(20260907)

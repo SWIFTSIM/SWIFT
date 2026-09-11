@@ -30,7 +30,18 @@ branch (the scalar twin of the `div(F)` construction Section 2.2 already
 adopted, same shared-value / mirrored-mass-and-sign pattern), whose own
 doxygen states it computes `(1/rho)*grad(rho*uin)`.
 """
-
+# =============================================================================
+# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+#
+# The question this script settles -- which differential operator the
+# gradient estimator converges to, `(1/rho)grad(rho u)` rather than
+# `grad(u)` -- is unchanged by the closure. The shipped M1 operator
+# contracts exactly the same volumetric field `rho*u` with a per-particle
+# tensor before differencing it (`(1/rho)div(D*rho*u)`), and reduces to the
+# form tested here, times 1/3, at D = I/3. The spurious-flux failure mode
+# demonstrated below (uniform u_V on a density gradient) is likewise
+# closure-independent: at F = 0 the closure is exactly isotropic.
+# =============================================================================
 import numpy as np
 import sympy as sp
 from scipy.spatial import cKDTree

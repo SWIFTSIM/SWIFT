@@ -1,17 +1,15 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with photoelectric heating and LW/FUV hyperbolic (Cattaneo/P1-
-relaxation) propagation on (photoionization and radiation pressure off).
-This propagation scheme is NOT a screened-diffusion (Yukawa) equation: it
-is a hyperbolic relaxation system with a finite signal speed `c_hyp`, whose
-STEADY-STATE solution happens to take the same Yukawa-shaped functional
-form (`u(r) ~ exp(-r/lambda)/r`) as a screened-diffusion equation's Green's
-function. Checks the converged radial profile of the propagated FUV/LW
-interstellar-radiation-field energy density (`FUVSpecificEnergies`/
+box, with photoelectric heating and LW/FUV hyperbolic propagation on
+(photoionization and radiation pressure off). The propagation scheme is a
+Cattaneo-type flux-relaxation system with a finite signal speed `c_hyp`, an
+M1 closure and a flux limiter; it is not a screened-diffusion (Yukawa)
+equation, and its steady state is not a single closed-form profile. Checks
+the converged radial profile of the propagated FUV/LW
+interstellar-radiation-field energy (`FUVSpecificEnergies`/
 `LWSpecificEnergies`) against this scheme's own DISCRETE steady-state
-prediction (computed on the run's own real particle positions and
-smoothing lengths, not the continuum profile), via
-`isrf_hyperbolic_propagation_check.py`.
+prediction, computed on the run's own real particle positions and smoothing
+lengths, via `isrf_hyperbolic_propagation_check.py`.
 
 ## Metallicity
 The screening length comes from a dust opacity that this code scales with
@@ -56,16 +54,28 @@ keep more than one run's outputs side by side.
 ```
 python3 isrf_hyperbolic_propagation_check.py
 ```
-`run.sh` runs this automatically against its own `output.log` and final
-snapshot. It bins gas particles by radius from the star, fits the semi-log
-slope of `u(r)*r` for both bands (the run's own realized screening length),
-solves this scheme's discrete steady-state fixed point on the run's own
-particle positions/smoothing lengths/densities/masses, and compares the
-two directly (`--tol`, default relative error 0.15). This is deliberately
-NOT a comparison against the continuum Yukawa profile: once the smoothing
-length is not small compared to the screening length (true well within
-this project's own production resolution range), the discrete scheme's own
-steady state departs from the continuum profile in a predictable way, and
-comparing against the continuum target reports a spurious failure. Produces
-a comparison plot (`--output`, default
+`run.sh` runs this automatically against its own final snapshot. It solves
+this scheme's own discrete steady-state fixed point on the run's real
+particle positions/smoothing lengths/densities/masses, using the same
+pairwise operators, closure tensor and flux limiter the C code uses, and
+then applies two pass/fail criteria:
+
+- the radially-binned `u(r)` profile, simulation against that discrete
+  prediction, bin by bin (`--tol`, default 0.15 on the median relative
+  error);
+- a total-amplitude identity that needs no fit and no assumed profile,
+  `sum(m*u/lambda) = (1/c)*sum(weight*L*extinction)` (`--amp-tol`, default
+  0.10).
+
+It deliberately does NOT compare against a continuum profile: once the
+smoothing length is not small compared to the screening length (true well
+within this project's own production resolution range), the discrete
+scheme's own steady state departs from any continuum profile in a
+predictable way, and comparing against a continuum target reports a
+spurious failure. It also no longer gates on a fitted screening length,
+which is not a meaningful single number under this closure; the fit is
+still printed, for continuity, as information only. The reduced flux `f`
+realized in the compared range is printed too, so a reader can see whether
+the run sits on the free-streaming or the diffusive branch. Produces a
+comparison plot (`--output`, default
 `isrf_hyperbolic_propagation_check.png`).
