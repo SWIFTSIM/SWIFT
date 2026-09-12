@@ -20,6 +20,7 @@ established by measurement, not by inspection, because a flipped sign here
 is a growth term with the mirrored amplification spectrum of Part C and
 would pass Part A's conservation check unnoticed.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED IN PHASE 1, NO CHANGE NEEDED.
 # Part C's joint (alpha_max, C_hyp) stability bound was re-run under the M1
@@ -517,7 +518,7 @@ print(
 print(
     "    they do NOT coincide by construction here (different symbol families); "
     "a rigorous joint-k maximisation of a_d(k)+nu(k)^2/2 is left to "
-    "verify_design_b_instability_probes.py N1, which sweeps both jointly."
+    "verify_isrf_propagation_instability_probes.py N1, which sweeps both jointly."
 )
 print()
 
