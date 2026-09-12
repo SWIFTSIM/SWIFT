@@ -41,7 +41,8 @@ void read_ic_single(
     const int with_stars, const int with_black_holes, const int with_cosmology,
     const int cleanup_h, const int cleanup_sqrt_a, const double h,
     const double a, const int nr_threads, const int dry_run,
-    const int remap_ids, struct ic_info *ics_metadata);
+    const int remap_ids, const int accept_snapshot,
+    struct ic_info *ics_metadata);
 
 void write_output_single(struct engine *e,
                          const struct unit_system *internal_units,
