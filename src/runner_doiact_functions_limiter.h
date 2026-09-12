@@ -316,15 +316,22 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       local_i ? ci->hydro.dx_max_part : ci->width[0];
   const float cj_dx_max_part_safe =
       local_j ? cj->hydro.dx_max_part : cj->width[0];
-  const float shift_threshold_x =
-      2.02 * ci->width[0] +
-      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
-  const float shift_threshold_y =
-      2.02 * ci->width[1] +
-      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
-  const float shift_threshold_z =
-      2.02 * ci->width[2] +
-      2.02 * max(ci_dx_max_part_safe, cj_dx_max_part_safe);
+  /* Independent per-particle thresholds: pi's bound must come from ci
+   * alone and pj's from cj alone, or a foreign side's generous
+   * substitute (whichever side that is) swamps the max() and silently
+   * loosens the check for the other, genuinely local particle too. */
+  const float shift_threshold_x_i =
+      2.02 * ci->width[0] + 2.02 * ci_dx_max_part_safe;
+  const float shift_threshold_y_i =
+      2.02 * ci->width[1] + 2.02 * ci_dx_max_part_safe;
+  const float shift_threshold_z_i =
+      2.02 * ci->width[2] + 2.02 * ci_dx_max_part_safe;
+  const float shift_threshold_x_j =
+      2.02 * cj->width[0] + 2.02 * cj_dx_max_part_safe;
+  const float shift_threshold_y_j =
+      2.02 * cj->width[1] + 2.02 * cj_dx_max_part_safe;
+  const float shift_threshold_z_j =
+      2.02 * cj->width[2] + 2.02 * cj_dx_max_part_safe;
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the depth limits (if any) */
@@ -407,12 +414,12 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
-        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
-            piy > shift_threshold_y || piy < -shift_threshold_y ||
-            piz > shift_threshold_z || piz < -shift_threshold_z ||
-            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
-            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
-            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+        if (pix > shift_threshold_x_i || pix < -shift_threshold_x_i ||
+            piy > shift_threshold_y_i || piy < -shift_threshold_y_i ||
+            piz > shift_threshold_z_i || piz < -shift_threshold_z_i ||
+            pjx > shift_threshold_x_j || pjx < -shift_threshold_x_j ||
+            pjy > shift_threshold_y_j || pjy < -shift_threshold_y_j ||
+            pjz > shift_threshold_z_j || pjz < -shift_threshold_z_j) {
           /* hydro.xparts is only ever populated for LOCAL cells, never for
            * a foreign cj/ci, so guard on local_i/local_j before
            * dereferencing it. Sentinel clearly distinct from a real
@@ -499,27 +506,27 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
         }
 
-        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+        if (pix > shift_threshold_x_i || pix < -shift_threshold_x_i)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
               pix, ci->width[0]);
-        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+        if (piy > shift_threshold_y_i || piy < -shift_threshold_y_i)
           error(
               "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
               piy, ci->width[1]);
-        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+        if (piz > shift_threshold_z_i || piz < -shift_threshold_z_i)
           error(
               "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
               piz, ci->width[2]);
-        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+        if (pjx > shift_threshold_x_j || pjx < -shift_threshold_x_j)
           error(
               "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
               pjx, ci->width[0]);
-        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+        if (pjy > shift_threshold_y_j || pjy < -shift_threshold_y_j)
           error(
               "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
               pjy, ci->width[1]);
-        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+        if (pjz > shift_threshold_z_j || pjz < -shift_threshold_z_j)
           error(
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
@@ -598,12 +605,12 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
-        if (pix > shift_threshold_x || pix < -shift_threshold_x ||
-            piy > shift_threshold_y || piy < -shift_threshold_y ||
-            piz > shift_threshold_z || piz < -shift_threshold_z ||
-            pjx > shift_threshold_x || pjx < -shift_threshold_x ||
-            pjy > shift_threshold_y || pjy < -shift_threshold_y ||
-            pjz > shift_threshold_z || pjz < -shift_threshold_z) {
+        if (pix > shift_threshold_x_i || pix < -shift_threshold_x_i ||
+            piy > shift_threshold_y_i || piy < -shift_threshold_y_i ||
+            piz > shift_threshold_z_i || piz < -shift_threshold_z_i ||
+            pjx > shift_threshold_x_j || pjx < -shift_threshold_x_j ||
+            pjy > shift_threshold_y_j || pjy < -shift_threshold_y_j ||
+            pjz > shift_threshold_z_j || pjz < -shift_threshold_z_j) {
           /* hydro.xparts is only ever populated for LOCAL cells, never for
            * a foreign cj/ci, so guard on local_i/local_j before
            * dereferencing it. Sentinel clearly distinct from a real
@@ -690,27 +697,27 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
               (long long)pj->ti_drift, xj_diff[0], xj_diff[1], xj_diff[2]);
         }
 
-        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+        if (pix > shift_threshold_x_i || pix < -shift_threshold_x_i)
           error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
               pix, ci->width[0]);
-        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+        if (piy > shift_threshold_y_i || piy < -shift_threshold_y_i)
           error(
               "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
               piy, ci->width[1]);
-        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+        if (piz > shift_threshold_z_i || piz < -shift_threshold_z_i)
           error(
               "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
               piz, ci->width[2]);
-        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+        if (pjx > shift_threshold_x_j || pjx < -shift_threshold_x_j)
           error(
               "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
               pjx, ci->width[0]);
-        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+        if (pjy > shift_threshold_y_j || pjy < -shift_threshold_y_j)
           error(
               "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
               pjy, ci->width[1]);
-        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+        if (pjz > shift_threshold_z_j || pjz < -shift_threshold_z_j)
           error(
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
