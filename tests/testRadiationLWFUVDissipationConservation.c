@@ -52,12 +52,27 @@ static const float test_mass_i = 1.0f;
 static const float test_mass_j = 2.5f;
 static const float test_rho_prev_i = 0.7f;
 static const float test_rho_prev_j = 1.3f;
+/* Same-sign within a band, and unequal across it: the pair-gate ratio
+ * q_ij = |rho_i*u_i - rho_j*u_j| / (|rho_i*u_i| + |rho_j*u_j| + tiny) is 1
+ * for any opposite-sign pair, which would park the gate deep in its
+ * quartic tail (G_ij ~ 1e-2) and leave the knee itself untested. These
+ * values put both bands near the knee instead: q_ij = 0.284 (G_ij = 0.553)
+ * for FUV and q_ij = 0.352 (G_ij = 0.344) for LW. */
 static const float test_u_FUV_i = 3.0f;
-static const float test_u_FUV_j = -1.0f;
+static const float test_u_FUV_j = 0.9f;
 static const float test_u_LW_i = -0.4f;
-static const float test_u_LW_j = 2.2f;
+static const float test_u_LW_j = -0.45f;
+/* Kernel-mean |rho_prev*u_prev| references feeding the gate's underflow
+ * guard. Distinct per band and per particle, so a band mix-up or a
+ * floor/ngb argument-order slip at the call sites changes alpha_ij and
+ * trips the magnitude check rather than compiling silently. */
+static const float test_ngb_mean_abs_u_V_FUV_i = 1.9f;
+static const float test_ngb_mean_abs_u_V_FUV_j = 1.1f;
+static const float test_ngb_mean_abs_u_V_LW_i = 0.35f;
+static const float test_ngb_mean_abs_u_V_LW_j = 0.6f;
 static const float test_c_hyp = 2.0f;
 static const float test_alpha_pin = 0.3f;
+static const float test_pair_gate_q0 = 0.3f;
 
 /**
  * @brief Build a one-cell, two-particle setup with the requested h ratio.
@@ -139,9 +154,11 @@ static struct cell *make_pair_cell(
     mhd_init_part(p);
   }
 
-  /* Radiation state. `dissipation_alpha_*` is pinned directly on the
-   * particles rather than through the runtime parameter: the force-loop
-   * interaction reads the field, never the parameter. */
+  /* Radiation state. The coefficients are pinned directly on the particles
+   * rather than through the runtime parameter: the force-loop interaction
+   * reads the fields, never the parameter. The whole pin goes into the
+   * floor and the trigger is held at zero, so the pair contrast gate is on
+   * the exchanged path; the trigger is ungated and would bypass it. */
   struct feedback_part_data *fdi = &pi->feedback_data;
   struct feedback_part_data *fdj = &pj->feedback_data;
   fdi->rho_prev = test_rho_prev_i;
@@ -152,10 +169,18 @@ static struct cell *make_pair_cell(
   fdj->u_LW = test_u_LW_j;
   fdi->c_hyp = test_c_hyp;
   fdj->c_hyp = test_c_hyp;
-  fdi->dissipation_alpha_FUV = test_alpha_pin;
-  fdj->dissipation_alpha_FUV = test_alpha_pin;
-  fdi->dissipation_alpha_LW = test_alpha_pin;
-  fdj->dissipation_alpha_LW = test_alpha_pin;
+  fdi->dissipation_alpha_trigger_FUV = 0.f;
+  fdj->dissipation_alpha_trigger_FUV = 0.f;
+  fdi->dissipation_alpha_trigger_LW = 0.f;
+  fdj->dissipation_alpha_trigger_LW = 0.f;
+  fdi->dissipation_alpha_floor_FUV = test_alpha_pin;
+  fdj->dissipation_alpha_floor_FUV = test_alpha_pin;
+  fdi->dissipation_alpha_floor_LW = test_alpha_pin;
+  fdj->dissipation_alpha_floor_LW = test_alpha_pin;
+  fdi->ngb_mean_abs_u_V_FUV = test_ngb_mean_abs_u_V_FUV_i;
+  fdj->ngb_mean_abs_u_V_FUV = test_ngb_mean_abs_u_V_FUV_j;
+  fdi->ngb_mean_abs_u_V_LW = test_ngb_mean_abs_u_V_LW_i;
+  fdj->ngb_mean_abs_u_V_LW = test_ngb_mean_abs_u_V_LW_j;
   fdi->dissipation_u_FUV = 0.f;
   fdj->dissipation_u_FUV = 0.f;
   fdi->dissipation_u_LW = 0.f;
@@ -191,10 +216,12 @@ static struct cell *make_pair_cell(
  * @param r Particle separation.
  * @param u_i Particle i's specific field (this band).
  * @param u_j Particle j's specific field (this band).
+ * @param ngb_i Particle i's kernel-mean `|rho*u|` reference (this band).
+ * @param ngb_j Particle j's kernel-mean `|rho*u|` reference (this band).
  * @return `Psi_ij`.
  */
 static double expected_Psi(double hi, double hj, double r, double u_i,
-                           double u_j) {
+                           double u_j, double ngb_i, double ngb_j) {
 
   float wi, wi_dx, wj, wj_dx;
   kernel_deval((float)(r / hi), &wi, &wi_dx);
@@ -202,10 +229,17 @@ static double expected_Psi(double hi, double hj, double r, double u_i,
   const double wi_dr = (double)wi_dx * pow_dimension_plus_one(1. / hi);
   const double wj_dr = (double)wj_dx * pow_dimension_plus_one(1. / hj);
 
-  const double d_ij =
-      (double)test_rho_prev_i * u_i - (double)test_rho_prev_j * u_j;
+  const double u_V_i = (double)test_rho_prev_i * u_i;
+  const double u_V_j = (double)test_rho_prev_j * u_j;
+  const double d_ij = u_V_i - u_V_j;
   const double Wbar = 0.5 * (wi_dr + wj_dr);
-  const double v_sig = (double)test_alpha_pin * (double)test_c_hyp;
+
+  /* Floor-only pin: alpha_ij is the gated floor, the triggers being 0. */
+  const double u_V_tiny = 1e-3 * 0.5 * (ngb_i + ngb_j);
+  const double q_ij = fabs(d_ij) / (fabs(u_V_i) + fabs(u_V_j) + u_V_tiny);
+  const double t = q_ij / (double)test_pair_gate_q0;
+  const double G_ij = 1. / (1. + t * t * t * t);
+  const double v_sig = G_ij * (double)test_alpha_pin * (double)test_c_hyp;
   return v_sig * d_ij * Wbar /
          ((double)test_rho_prev_i * (double)test_rho_prev_j);
 }
@@ -261,6 +295,10 @@ static void check_ratio(float h_ratio, float bulk_velocity,
                             (double)pj->feedback_data.dissipation_u_LW};
   const double u_i[2] = {(double)test_u_FUV_i, (double)test_u_LW_i};
   const double u_j[2] = {(double)test_u_FUV_j, (double)test_u_LW_j};
+  const double ngb_i[2] = {(double)test_ngb_mean_abs_u_V_FUV_i,
+                           (double)test_ngb_mean_abs_u_V_LW_i};
+  const double ngb_j[2] = {(double)test_ngb_mean_abs_u_V_FUV_j,
+                           (double)test_ngb_mean_abs_u_V_LW_j};
 
   for (int b = 0; b < 2; b++) {
 
@@ -269,8 +307,8 @@ static void check_ratio(float h_ratio, float bulk_velocity,
     const double sum = credit + debit;
     const double scale = fmax(fabs(credit), fabs(debit));
 
-    const double Psi =
-        expected_Psi((double)pi->h, (double)pj->h, r, u_i[b], u_j[b]);
+    const double Psi = expected_Psi((double)pi->h, (double)pj->h, r, u_i[b],
+                                    u_j[b], ngb_i[b], ngb_j[b]);
     const double expected_credit = mi * mj * Psi;
 
     message(
@@ -374,6 +412,11 @@ int main(int argc, char *argv[]) {
     error("Couldn't allocate the runner");
   bzero(runner, sizeof(struct runner));
   runner->e = &engine;
+
+  /* The pair gate reads a module-scope mirror that feedback_props_init()
+   * normally writes; no parameter file is read here, so without this the
+   * gate would stay at its 0 initialiser and never engage. */
+  radiation_lw_fuv_dissipation_pair_gate_q0 = test_pair_gate_q0;
 
   float at_rest[2][4];
   for (int k = 0; k < 2; k++)

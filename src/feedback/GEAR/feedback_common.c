@@ -24,6 +24,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 #include "part.h"
 #include "radiation.h"
 #include "stellar_evolution.h"
@@ -1086,13 +1087,21 @@ float feedback_get_part_u_LW(const struct part *p) {
 
 /**
  * @brief Stage-1 artificial-dissipation coefficient, see
- * #feedback_part_data.dissipation_alpha_FUV. Thin dispatch wrapper, same
- * reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.dissipation_alpha_trigger_FUV and
+ * #feedback_part_data.dissipation_alpha_floor_FUV. Thin dispatch wrapper,
+ * same reasoning as #feedback_get_part_u_FUV.
+ *
+ * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
+ * the per-pair alpha_ij, which applies a contrast gate to the floor and so
+ * has no single-particle representation. This returns the value the
+ * particle would contribute against an identical partner, i.e. with the
+ * gate fully open.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
-  return p->feedback_data.dissipation_alpha_FUV;
+  return max(p->feedback_data.dissipation_alpha_trigger_FUV,
+             p->feedback_data.dissipation_alpha_floor_FUV);
 }
 
 /**
@@ -1101,7 +1110,8 @@ float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
-  return p->feedback_data.dissipation_alpha_LW;
+  return max(p->feedback_data.dissipation_alpha_trigger_LW,
+             p->feedback_data.dissipation_alpha_floor_LW);
 }
 
 /**
@@ -1268,6 +1278,13 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
+
+  /* The pair-gate knee's module-scope mirror lives outside feedback_props,
+   * so the flat block read above does not restore it; left at its 0
+   * initialiser the force loop would read the gate as disabled and the
+   * restarted run would dissipate differently from the original. */
+  radiation_lw_fuv_dissipation_pair_gate_q0 =
+      feedback->LW_FUV_dissipation_pair_gate_q0;
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation

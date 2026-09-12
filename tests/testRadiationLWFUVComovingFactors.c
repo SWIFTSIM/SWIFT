@@ -33,8 +33,10 @@
 
 /* Some standard headers. */
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Local headers. */
 #include "swift.h"
@@ -60,6 +62,9 @@ static const float F_j[3] = {-0.3f, 0.25f, 0.05f};
 static const float phys_grad_prev_i[3] = {0.2f, -0.1f, 0.05f};
 static const float phys_grad_prev_j[3] = {-0.15f, 0.3f, 0.1f};
 static const float c_hyp = 2.0f;
+/* Passed as the ungated trigger coefficients, with the floor held at 0:
+ * this test measures the operators' scale-factor scaling, which the pair
+ * contrast gate must not enter. */
 static const float alpha_i = 0.3f;
 static const float alpha_j = 0.45f;
 static const float dt = 0.05f;
@@ -129,8 +134,10 @@ static void evaluate_operators(float a, float a_factor,
   out->dissipation_u_j = 0.f;
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp,
-      alpha_i, alpha_j, u_i, u_j, phys_grad_prev_i, phys_grad_prev_j, a_factor,
-      a, &out->dissipation_u_i, &out->dissipation_u_j);
+      alpha_i, alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f,
+      /*ngb_mean_abs_u_V_i=*/0.f, /*ngb_mean_abs_u_V_j=*/0.f, u_i, u_j,
+      phys_grad_prev_i, phys_grad_prev_j, a_factor, a, &out->dissipation_u_i,
+      &out->dissipation_u_j);
 
   /* One flux relaxation step at zero opacity (decay = phi = 1), then the M1
    * reduced flux the closure branches on. This is the quantity the bug
@@ -139,8 +146,8 @@ static void evaluate_operators(float a, float a_factor,
   float F_new[3];
   for (int k = 0; k < 3; k++)
     F_new[k] = F_i[k] - c_hyp * c_hyp * dt * out->grad_u_i[k];
-  const float F_new_norm = sqrtf(F_new[0] * F_new[0] + F_new[1] * F_new[1] +
-                                 F_new[2] * F_new[2]);
+  const float F_new_norm =
+      sqrtf(F_new[0] * F_new[0] + F_new[1] * F_new[1] + F_new[2] * F_new[2]);
   out->reduced_flux_i = F_new_norm / (c_hyp * u_i);
 }
 
@@ -160,6 +167,86 @@ static void check_same(const char *name, float a, float reference,
   if (rel > 1e-5f)
     error("%s is not scale-factor independent: %.9e at a = 1 vs %.9e at a = %g",
           name, reference, value, a);
+}
+
+/**
+ * @brief Read a float's raw bits.
+ *
+ * `isnan()`/`isfinite()` are useless here: the tests build with the same
+ * `-ffast-math` as the library, under which the compiler may fold them to a
+ * constant. The bit pattern is the only reliable check.
+ *
+ * @param x The value to inspect.
+ * @return Its IEEE-754 binary32 representation.
+ */
+static uint32_t float_bits(float x) {
+  uint32_t u;
+  memcpy(&u, &x, sizeof(u));
+  return u;
+}
+
+/**
+ * @brief Fail unless a pair carrying no field at all contributes exactly
+ * nothing, for every gate knee across the calibrated range and beyond it.
+ *
+ * This is the whole box's state on step 0, and it is the one input for
+ * which the contrast ratio's denominator reduces to
+ * #RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR alone. Under
+ * `-ffast-math` the gate's own division by `q0` is reassociated into that
+ * denominator, and flush-to-zero then turns a denormal product into an
+ * exact zero, so a guard chosen too close to the underflow threshold makes
+ * the ratio `0/0` and poisons every particle's field with NaN from the
+ * first step. The check is on the exact bit pattern, both because a NaN
+ * must be detected without `isnan()` and because the physically correct
+ * answer here is a bitwise zero, not a small number.
+ */
+static void check_degenerate_zero_field_pair(void) {
+
+  const float knees[] = {1e-4f, 0.01f, 0.2f, 0.3f, 0.5f, 1.f};
+  const float no_gradient[3] = {0.f, 0.f, 0.f};
+  const float saved_q0 = radiation_lw_fuv_dissipation_pair_gate_q0;
+
+  for (int i = 0; i < (int)(sizeof(knees) / sizeof(knees[0])); i++) {
+    radiation_lw_fuv_dissipation_pair_gate_q0 = knees[i];
+
+    float acc_i = 0.f, acc_j = 0.f;
+    radiation_dissipation_force_accumulate_band(
+        phys_dx, 1.f, phys_h_i, phys_h_j, /*wi_dr=*/-1.f, /*wj_dr=*/-1.f,
+        mass_i, mass_j, phys_rho_i, phys_rho_j, c_hyp, c_hyp,
+        /*alpha_trigger_i=*/0.f, /*alpha_trigger_j=*/0.f,
+        /*alpha_floor_i=*/0.5f, /*alpha_floor_j=*/0.5f,
+        /*ngb_mean_abs_u_V_i=*/0.f, /*ngb_mean_abs_u_V_j=*/0.f, /*u_i=*/0.f,
+        /*u_j=*/0.f, no_gradient, no_gradient, /*a_factor=*/1.f, /*a=*/1.f,
+        &acc_i, &acc_j);
+
+    if (float_bits(acc_i) != 0u || float_bits(acc_j) != 0u)
+      error(
+          "A pair with no field contributed at gate knee q0 = %g: "
+          "dissipation_u_i bits 0x%08x, dissipation_u_j bits 0x%08x",
+          knees[i], float_bits(acc_i), float_bits(acc_j));
+  }
+
+  radiation_lw_fuv_dissipation_pair_gate_q0 = saved_q0;
+
+  /* Checked separately from the call above, because the `min(q_ij_raw, 1)`
+     bound in the gate can hide a guard with no headroom by forcing the
+     ratio to be materialised before the division by `q0`. This asserts the
+     constant's own margin, whatever the surrounding expression folds to.
+     This static assertion, not the dynamic loop above, is the confirmed
+     regression guard against the FLT_MIN underflow bug: do not delete it
+     as "redundant" with the loop. */
+  const float smallest_supported_knee = knees[0];
+  const float guarded_denominator =
+      RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR * smallest_supported_knee;
+  if ((float_bits(guarded_denominator) & 0x7f800000u) == 0u)
+    error(
+        "RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR (%g) leaves no "
+        "underflow headroom: times a gate knee of %g it is denormal (bits "
+        "0x%08x) and flush-to-zero makes the contrast ratio 0/0",
+        (double)RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR,
+        (double)smallest_supported_knee, float_bits(guarded_denominator));
+
+  message("Degenerate zero-field pair contributes exactly zero at every knee");
 }
 
 int main(int argc, char *argv[]) {
@@ -205,6 +292,8 @@ int main(int argc, char *argv[]) {
 
   message("Discrimination check passed: unconverted div(F)_i = %.8e vs %.8e",
           unfixed.div_F_i, out[0].div_F_i);
+
+  check_degenerate_zero_field_pair();
 
   return 0;
 }

@@ -45,6 +45,12 @@
 #include <float.h>
 #include <math.h>
 
+/* Definition of the pair-gate knee mirror declared in radiation.h; see
+ * that declaration for why the pair function cannot reach
+ * #feedback_props directly. 0 until a parameter file or a restart file
+ * has been read, which the point of use reads as "gate disabled". */
+float radiation_lw_fuv_dissipation_pair_gate_q0 = 0.f;
+
 /**
  * @brief First-init of a #part's LW/FUV radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
@@ -112,8 +118,10 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.u_FUV_source_rate = 0.f;
   p->feedback_data.u_LW_source_rate = 0.f;
   p->feedback_data.LW_FUV_reservoir_end_ti = -1;
-  p->feedback_data.dissipation_alpha_FUV = 0.f;
-  p->feedback_data.dissipation_alpha_LW = 0.f;
+  p->feedback_data.dissipation_alpha_trigger_FUV = 0.f;
+  p->feedback_data.dissipation_alpha_trigger_LW = 0.f;
+  p->feedback_data.dissipation_alpha_floor_FUV = 0.f;
+  p->feedback_data.dissipation_alpha_floor_LW = 0.f;
   p->feedback_data.dissipation_u_FUV = 0.f;
   p->feedback_data.dissipation_u_LW = 0.f;
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
@@ -293,7 +301,8 @@ void radiation_snapshot_part_propagation(struct part *p,
  * restart I/O); the density snapshot and c_hyp/dt are cached separately,
  * once per step, by #radiation_snapshot_part_propagation,
  * #dissipation_u_FUV/LW is a force-loop accumulator zeroed there too, and
- * #dissipation_alpha_FUV/LW are persistent and updated once per step by
+ * #dissipation_alpha_trigger_FUV/LW and #dissipation_alpha_floor_FUV/LW
+ * are persistent and updated once per step by
  * #radiation_end_gradient_propagation, not here.
  *
  * @param p The #part to reset.
@@ -595,8 +604,9 @@ radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
  * @param u_V This band's live volumetric field, rho_prev*u_star.
  * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
  * accumulator (radiation_propagation_iact.h).
- * @param alpha_prev This band's #dissipation_alpha_FUV/LW from the
- * previous step.
+ * @param alpha_prev This band's #dissipation_alpha_trigger_FUV/LW from the
+ * previous step, i.e. the trigger's own previous output, never the
+ * floor-combined coefficient.
  * @param alpha_max #feedback_props.LW_FUV_dissipation_alpha_max.
  * @param eps_1 #feedback_props.LW_FUV_dissipation_negativity_threshold.
  * @param c_hyp The particle's own #c_hyp.
@@ -634,22 +644,36 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * front of an optically-thin P1 pulse, so a purely reactive coefficient
  * cannot damp the resulting dispersive wake there. This floor supplies
  * dissipation the trigger structurally cannot, rolling off as
- * `(eps_lambda/(h*kappa))^2` once `h/lambda` exceeds #LW_FUV_dissipation_
+ * `(eps_lambda/(h*kappa))^4` once `h/lambda` exceeds #LW_FUV_dissipation_
  * floor_h_over_lambda, which bounds its steady-state cost by construction.
+ *
+ * The quartic roll-off separates two regimes the quadratic one could not:
+ * a moderately-resolved front (`h/lambda ~ 0.25`) still needs most of the
+ * floor, while an optically-thick region (`h/lambda ~ 6-10`) needs it
+ * essentially absent, since there the floor buys no negativity protection
+ * and costs pure accuracy. A quadratic tail leaves a percent-level
+ * coefficient in the thick regime; the quartic one leaves ~1e-5.
+ *
+ * The value returned here is the floor's per-particle magnitude only. Its
+ * per-pair applicability is decided separately, by the contrast gate in
+ * #radiation_dissipation_force_accumulate_band: a pair straddling a
+ * RESOLVED contrast suppresses this floor, while the trigger's own
+ * contribution stays ungated.
  *
  * @param kappa This band's #kappa_FUV/LW.
  * @param h_phys The particle's own physical smoothing length.
  * @param alpha_floor #feedback_props.LW_FUV_dissipation_alpha_floor.
  * @param eps_lambda #feedback_props.LW_FUV_dissipation_floor_h_over_lambda.
- * @return This band's floor value for this step, to be combined with the
- * trigger's own output via max().
+ * @return This band's floor value for this step, stored on its own
+ * #feedback_part_data field for the force loop to gate and combine.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
                                        float alpha_floor, float eps_lambda) {
 
   const float x = h_phys * kappa / eps_lambda;
-  return alpha_floor / (1.f + x * x);
+  const float x2 = x * x;
+  return alpha_floor / (1.f + x2 * x2);
 }
 
 /**
@@ -658,9 +682,13 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * gradient loop, which reads this step's already-relaxed `u`
  * (#radiation_end_density_propagation having already run in the density ghost).
  * Runs once per step in the extra ghost, never re-run: the gradient loop itself
- * only runs once per step. Also updates #dissipation_alpha_FUV/LW once per
- * step (see #radiation_update_dissipation_alpha_band), for THIS step's
- * force loop to consume: the extra ghost precedes the force loop.
+ * only runs once per step. Also updates the two Stage-1 dissipation
+ * components, #dissipation_alpha_trigger_FUV/LW (see
+ * #radiation_update_dissipation_alpha_band) and
+ * #dissipation_alpha_floor_FUV/LW (see
+ * #radiation_dissipation_alpha_floor_band), once per step and separately,
+ * for THIS step's force loop to gate and combine: the extra ghost precedes
+ * the force loop.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u) + dt*phi*dissipation_F`: the exact
  * solution of `dF/dt = -F/tau - H*F - (D/tau)*grad(u) + dissipation_F` over
@@ -758,9 +786,15 @@ void radiation_end_gradient_propagation(struct part *p,
   if (alpha_pin > 0.f) {
     /* Bypass the trigger entirely: every particle's coefficient is held at
      * the pinned value (see this parameter's own doxygen,
-     * feedback_properties.h). */
-    fd->dissipation_alpha_FUV = alpha_pin;
-    fd->dissipation_alpha_LW = alpha_pin;
+     * feedback_properties.h). The pinned value goes into the trigger
+     * component and the floor component is zeroed, so that the pin stays a
+     * spatially uniform, UNGATED coefficient: routing it through the floor
+     * would subject it to the pair contrast gate and make it a different
+     * quantity from the one the A/B reference arms measure. */
+    fd->dissipation_alpha_trigger_FUV = alpha_pin;
+    fd->dissipation_alpha_trigger_LW = alpha_pin;
+    fd->dissipation_alpha_floor_FUV = 0.f;
+    fd->dissipation_alpha_floor_LW = 0.f;
   } else {
     const float alpha_max = e->feedback_props->LW_FUV_dissipation_alpha_max;
     const float eps_1 =
@@ -769,22 +803,24 @@ void radiation_end_gradient_propagation(struct part *p,
     const float eps_lambda =
         e->feedback_props->LW_FUV_dissipation_floor_h_over_lambda;
 
-    const float alpha_trigger_FUV = radiation_update_dissipation_alpha_band(
-        u_V_FUV, fd->ngb_mean_abs_u_V_FUV, fd->dissipation_alpha_FUV, alpha_max,
-        eps_1, c_hyp, fd->kappa_FUV, dt, h_phys);
-    const float alpha_trigger_LW = radiation_update_dissipation_alpha_band(
-        u_V_LW, fd->ngb_mean_abs_u_V_LW, fd->dissipation_alpha_LW, alpha_max,
-        eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
+    /* The trigger's decay memory is its OWN previous value, not the
+     * previous combined coefficient: a high floor must not hold up the
+     * trigger's decay tail, which is exactly the blanket behaviour the
+     * pair gate exists to remove. */
+    fd->dissipation_alpha_trigger_FUV = radiation_update_dissipation_alpha_band(
+        u_V_FUV, fd->ngb_mean_abs_u_V_FUV, fd->dissipation_alpha_trigger_FUV,
+        alpha_max, eps_1, c_hyp, fd->kappa_FUV, dt, h_phys);
+    fd->dissipation_alpha_trigger_LW = radiation_update_dissipation_alpha_band(
+        u_V_LW, fd->ngb_mean_abs_u_V_LW, fd->dissipation_alpha_trigger_LW,
+        alpha_max, eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
 
-    /* Floor the trigger cannot suppress: applies unconditionally, not only
-     * on negativity (see radiation_dissipation_alpha_floor_band's doxygen). */
-    const float alpha_floor_FUV = radiation_dissipation_alpha_floor_band(
+    /* Stored separately from the trigger rather than combined here: the
+     * force loop gates this component per pair on the pair's own field
+     * contrast, and combines the two there. */
+    fd->dissipation_alpha_floor_FUV = radiation_dissipation_alpha_floor_band(
         fd->kappa_FUV, h_phys, alpha_floor, eps_lambda);
-    const float alpha_floor_LW = radiation_dissipation_alpha_floor_band(
+    fd->dissipation_alpha_floor_LW = radiation_dissipation_alpha_floor_band(
         fd->kappa_LW, h_phys, alpha_floor, eps_lambda);
-
-    fd->dissipation_alpha_FUV = max(alpha_trigger_FUV, alpha_floor_FUV);
-    fd->dissipation_alpha_LW = max(alpha_trigger_LW, alpha_floor_LW);
   }
 
   /* Written here, at the end of this active-gated ghost, from the gradient

@@ -177,16 +177,40 @@ struct feedback_part_data {
   float ngb_mean_abs_u_V_LW;
 
   /*! Stage-1 artificial-dissipation coefficient (design-lw-fuv-design-b-
-      dissipation.md Section 4.3), raised by the negativity trigger and
-      decayed otherwise, updated once per step in
+      dissipation.md Section 4.3), REACTIVE component: raised by the
+      negativity trigger and decayed otherwise, updated once per step in
       #radiation_end_gradient_propagation (not the density ghost, which
       re-runs across h-iterations). Persistent, dumped with #part like
       #specific_flux_FUV; zero at first init, no IC field. Read by THIS
-      step's force loop as this band's #dissipation_u_FUV/LW pair
-      coefficient: the extra ghost precedes the force loop, so the trigger
-      carries no lag. */
-  float dissipation_alpha_FUV;
-  float dissipation_alpha_LW;
+      step's force loop: the extra ghost precedes the force loop, so the
+      trigger carries no lag. Applied to a pair UNGATED, as
+      `max(trigger_i, trigger_j)`: the trigger only ever fires on a
+      particle that is already locally wrong, so it is local by
+      construction.
+
+      `a`-SCALING: dimensionless, exponent 0. */
+  float dissipation_alpha_trigger_FUV;
+  float dissipation_alpha_trigger_LW;
+
+  /*! Stage-1 artificial-dissipation coefficient, ANTICIPATORY component:
+      the `h/lambda`-gated floor (#radiation_dissipation_alpha_floor_band),
+      which supplies dissipation on a positive front the negativity trigger
+      is structurally blind to. Written alongside the trigger component
+      above, in the same once-per-step ghost, and persistent for the same
+      reason.
+
+      Kept SEPARATE from the trigger rather than pre-combined with max(),
+      because the two components are applied to a pair differently: the
+      floor is contrast-gated per pair by `G_ij`
+      (#radiation_dissipation_force_accumulate_band), so that it damps
+      sub-resolution oscillations without also damping a RESOLVED contrast
+      the pair straddles. Pre-combining here would make the gate
+      inseparable from the trigger's own, deliberately ungated,
+      contribution.
+
+      `a`-SCALING: dimensionless, exponent 0. */
+  float dissipation_alpha_floor_FUV;
+  float dissipation_alpha_floor_LW;
 
   /*! `(1/rho) grad(rho u)` accumulator, gradient loop
       (radiation_propagation_iact.h). Scratch: zeroed once per step by
@@ -232,7 +256,8 @@ struct feedback_part_data {
       `d(div F)/dt` switch of Chan et al. 2021 Eq. 36-37 and decayed
       otherwise, updated once per step in
       #radiation_end_gradient_propagation. Persistent, dumped with #part like
-      #dissipation_alpha_FUV; zero at first init, no IC field. Read by the
+      #dissipation_alpha_trigger_FUV; zero at first init, no IC field. Read by
+      the
       NEXT step's gradient loop as this band's #dissipation_F_FUV/LW pair
       coefficient. */
   float dissipation_alpha_flux_FUV;
