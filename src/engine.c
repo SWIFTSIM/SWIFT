@@ -3523,15 +3523,15 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
                                   num_snapshot_triggers_part,
                                   e->snapshot_recording_triggers_desired_part);
-  if (num_snapshot_triggers_spart)
+  if (num_snapshot_triggers_spart && (e->policy & engine_policy_stars))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
                                   num_snapshot_triggers_spart,
                                   e->snapshot_recording_triggers_desired_spart);
-  if (num_snapshot_triggers_bpart)
+  if (num_snapshot_triggers_bpart && (e->policy & engine_policy_black_holes))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
-  if (num_snapshot_triggers_sink)
+  if (num_snapshot_triggers_sink && (e->policy & engine_policy_sinks))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
                                   num_snapshot_triggers_sink,
                                   e->snapshot_recording_triggers_desired_sink);
