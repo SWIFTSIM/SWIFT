@@ -315,9 +315,11 @@ void radiation_init_part_propagation(struct part *p) {
  * both ends except very close to `a=0`, where a short Taylor series is
  * used instead to avoid a `0/0` cancellation.
  *
- * @param a Dimensionless absorption depth for this step, `c_hyp*kappa*dt`
- * (or the injection-site equivalent, `c_hyp*kappa*Delta_t_star`). Always
- * `>= 0`.
+ * @param a Dimensionless relaxation depth for this step: `(c_hyp*kappa +
+ * H)*dt` at the three ghost sites, which relax an absorption rate and the
+ * cosmological redshift rate together (see
+ * #radiation_end_density_propagation), or the injection-site equivalent,
+ * `c_hyp*kappa*Delta_t_star`. Always `>= 0`.
  * @return phi(a).
  */
 float radiation_relaxation_phi_factor(float a) {
@@ -336,12 +338,36 @@ float radiation_relaxation_phi_factor(float a) {
  * the same answer regardless of how many there are.
  *
  * `u_star = e*u_prev + dt*phi*((c_hyp/c)*source_rate - div_F)`, with
- * `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*kappa*dt`
+ * `e = exp(-a)`, `phi = (1-e)/a`, `a = (c_hyp*kappa + H)*dt`
  * (#radiation_relaxation_phi_factor): the exact solution of
- * `du/dt = -u/tau + (c_hyp/c)*source_rate - div(F)` over one step with
+ * `du/dt = -u/tau - H*u + (c_hyp/c)*source_rate - div(F)` over one step with
  * `source_rate` and `div(F)` frozen at this h-iteration's value, `tau =
- * 1/(c_hyp*kappa)`. `c_hyp` here plays the role of the M1 reduced light
- * speed `c_M` (design-lw-fuv-m1-upgrade.md D2/D3): the `c_M/c` rescale
+ * 1/(c_hyp*kappa)`.
+ *
+ * `-H*u` is the cosmological expansion term, ONE power of the Hubble rate,
+ * not three: `u` is MASS-SPECIFIC (energy per unit gas mass), so the volume
+ * dilution is already carried by the physical gas density it is measured
+ * against. Writing `E` for the physical volumetric band energy density,
+ * `E ~ a^-4` under pure expansion (`a^-3` volume, `a^-1` redshift) while
+ * `rho ~ a^-3`, so `u = E/rho` loses exactly the redshift residual:
+ * `du/dt = (dE/dt)/rho - u*(drho/dt)/rho = -4H*u + 3H*u = -H*u`. The same
+ * single power applies to the specific flux
+ * (#radiation_end_gradient_propagation), whose volumetric counterpart
+ * free-streams and therefore dilutes like `E`.
+ *
+ * It is folded into the relaxation depth rather than added as a separate
+ * explicit decrement because it is a linear decay of the SAME state variable
+ * the absorption term relaxes: `exp(-(1/tau + H)*dt)` is then exact for the
+ * homogeneous problem at any `H*dt`, and cannot drive `u` negative the way
+ * an explicit `-H*dt*u` can at high redshift with a long step. Ungated: SWIFT
+ * sets `cosmo->H = 0` for a non-cosmological run (`cosmology_init_no_cosmo`),
+ * so the term vanishes there by construction, exactly as for
+ * `hydro.h`'s own `div_v + hydro_dimension*cosmo->H`. No gate on the spectrum
+ * shape, unlike `src/rt/GEAR/rt.h`'s own redshift term: photons also
+ * redshift ACROSS these two narrow band edges, a loss `-H*u` does not model,
+ * so `-H*u` is a lower bound on the true band loss rather than an
+ * overestimate to be suppressed. `c_hyp` here plays the role of the M1 reduced
+ * light speed `c_M` (design-lw-fuv-m1-upgrade.md D2/D3): the `c_M/c` rescale
  * (replacing the old, P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively
  * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
  *
@@ -365,9 +391,10 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   const float c_hyp = fd->c_hyp;
   const float rescale =
       c_hyp / (float)e->physical_constants->const_speed_light_c;
+  const float H = (float)e->cosmology->H;
 
-  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
-  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  const float a_FUV = (c_hyp * fd->kappa_FUV + H) * dt;
+  const float a_LW = (c_hyp * fd->kappa_LW + H) * dt;
   const float decay_FUV = expf(-a_FUV);
   const float decay_LW = expf(-a_LW);
   const float phi_FUV = radiation_relaxation_phi_factor(a_FUV);
@@ -460,9 +487,11 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
+  const float H = (float)e->cosmology->H;
 
-  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
-  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  /* Same relaxation depth as the `u*` this corrects, so the same `phi`. */
+  const float a_FUV = (c_hyp * fd->kappa_FUV + H) * dt;
+  const float a_LW = (c_hyp * fd->kappa_LW + H) * dt;
   const float phi_FUV = radiation_relaxation_phi_factor(a_FUV);
   const float phi_LW = radiation_relaxation_phi_factor(a_LW);
 
@@ -634,12 +663,15 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * force loop to consume: the extra ghost precedes the force loop.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u) + dt*phi*dissipation_F`: the exact
- * solution of `dF/dt = -F/tau - (D/tau)*grad(u) + dissipation_F` over one
- * step with both source terms frozen at this step's value, `D/tau =
- * c_hyp^2`. `dissipation_F` is the Stage-3 anisotropic term
- * radiation_propagation_iact.h accumulates alongside `grad(u)` and is zero
- * unless #RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX is defined. No-op
- * when propagation is off.
+ * solution of `dF/dt = -F/tau - H*F - (D/tau)*grad(u) + dissipation_F` over
+ * one step with both source terms frozen at this step's value, `D/tau =
+ * c_hyp^2`. `-H*F` is the flux counterpart of the `-H*u` derived at
+ * #radiation_end_density_propagation, one power of the Hubble rate for the
+ * same mass-specific reason, and is carried the same way, inside the
+ * relaxation depth `a = (c_hyp*kappa + H)*dt`. `dissipation_F` is the Stage-3
+ * anisotropic term radiation_propagation_iact.h accumulates alongside `grad(u)`
+ * and is zero unless #RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX is defined.
+ * No-op when propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -652,9 +684,10 @@ void radiation_end_gradient_propagation(struct part *p,
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
+  const float H = (float)e->cosmology->H;
 
-  const float a_FUV = c_hyp * fd->kappa_FUV * dt;
-  const float a_LW = c_hyp * fd->kappa_LW * dt;
+  const float a_FUV = (c_hyp * fd->kappa_FUV + H) * dt;
+  const float a_LW = (c_hyp * fd->kappa_LW + H) * dt;
   const float decay_FUV = expf(-a_FUV);
   const float decay_LW = expf(-a_LW);
 

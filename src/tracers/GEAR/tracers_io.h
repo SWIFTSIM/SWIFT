@@ -246,7 +246,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   list[10] = io_make_output_field_convert_part(
       "FUVSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_FUV,
-      "Local specific FUV-band (6-11.2 eV) interstellar radiation field.");
+      "Local specific FUV-band (6-11.2 eV) interstellar radiation field. "
+      "Physical, mass-specific: no scale-factor exponent of its own.");
 
   list[11] = io_make_output_field_convert_part(
       "LWSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
@@ -272,7 +273,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_FUV,
       "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
-      "propagation, finalized in the density ghost. Only meaningful when "
+      "propagation, finalized in the density ghost. Physical, like the "
+      "specific energy it is a rate of change of. Only meaningful when "
       "LW_FUV_propagation is on.");
 
   list[15] = io_make_output_field_convert_part(

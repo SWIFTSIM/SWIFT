@@ -80,6 +80,25 @@
  *   within the step it fires. SPHENIX's own artificial viscosity lives in
  *   the force loop for the identical reason. Closure-independent.
  *
+ * Comoving-to-physical convention. Every quantity SWIFT hands these loops is
+ * comoving (`dx`, `r`, `h`, and the `rho_prev` snapshot), while every field
+ * they accumulate into is PHYSICAL, like `u`, the tracked flux, `c_hyp` and
+ * `kappa`. The three spatial operators above each carry exactly one net
+ * inverse length: with comoving length `= physical/a`, comoving density
+ * `= physical*a^dim` and a kernel derivative scaling as `h^-(dim+1)`,
+ * evaluating any of them on comoving inputs returns `a` times the physical
+ * value, in any dimension (divergence: `dx` gives `a^-1`, `1/rho` gives
+ * `a^-dim`, `wi_dr` gives `a^(dim+1)` and `r_inv` gives `a^1`, summing to
+ * `a^1`; the gradient and the Stage-1 dissipation give the same total term
+ * by term). Each is therefore closed with a single named conversion factor,
+ * `a_factor_comoving_to_physical = 1/a`, computed once per pair dispatch in
+ * the hooks below and applied where the comoving estimate becomes the
+ * physical accumulator value, in the manner of `cosmology.c`'s `a_factor_*`
+ * scalars. Two operators here need no conversion at all, for reasons given at
+ * their own definitions: #radiation_dissipation_reference_accumulate_band
+ * (read only as a ratio) and #radiation_flux_dissipation_accumulate_band
+ * (net length exponent exactly zero).
+ *
  * All three operators need a stable per-particle density: the density loop
  * here runs interleaved with SPH's own density accumulation, so `p->rho` is
  * a partial sum, not a density, at the point those pairwise calls run. All
@@ -112,6 +131,9 @@
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param F_i Particle i's tracked flux (this band).
  * @param F_j Particle j's tracked flux (this band).
+ * @param a_factor_comoving_to_physical `1/a`, the file header's single
+ * conversion factor: the comoving inputs make the shared coefficient `a`
+ * times the physical divergence, and both accumulators are physical.
  * @param div_F_i (return, accumulated) Particle i's div(F) accumulator.
  * @param div_F_j (return, accumulated) Particle j's div(F) accumulator.
  */
@@ -120,13 +142,15 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
                                      float wi_dr, float wj_dr, float mi,
                                      float mj, float rho_i, float rho_j,
                                      const float F_i[3], const float F_j[3],
+                                     float a_factor_comoving_to_physical,
                                      float *div_F_i, float *div_F_j) {
 
   const float Fi_dot_dx = F_i[0] * dx[0] + F_i[1] * dx[1] + F_i[2] * dx[2];
   const float Fj_dot_dx = F_j[0] * dx[0] + F_j[1] * dx[1] + F_j[2] * dx[2];
 
   const float Phi_ij =
-      Fi_dot_dx / rho_i * wi_dr * r_inv + Fj_dot_dx / rho_j * wj_dr * r_inv;
+      (Fi_dot_dx / rho_i * wi_dr * r_inv + Fj_dot_dx / rho_j * wj_dr * r_inv) *
+      a_factor_comoving_to_physical;
 
   *div_F_i += mj * Phi_ij;
   *div_F_j += -mi * Phi_ij;
@@ -188,6 +212,11 @@ radiation_dissipation_van_leer_limiter(const float dx[3], float r, float hi,
  * particle's h-iterations. The dissipation term the trigger drives is
  * accumulated separately, in the force loop
  * (#radiation_dissipation_force_accumulate_band).
+ *
+ * Takes no comoving-to-physical conversion, unlike the three spatial
+ * operators in this file: its only consumer divides it into `rho_prev*u`,
+ * which carries the same `a^3` comoving-density weight, so the two cancel.
+ * Converting here would introduce a bias rather than remove one.
  *
  * @param wi Particle i's own kernel value, W(r/h_i)*h_i^-dim.
  * @param wj Particle j's own kernel value, W(r/h_j)*h_j^-dim.
@@ -266,6 +295,12 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param u_j Particle j's live specific field `u*` (this band).
  * @param grad_u_i_prev Particle i's #grad_u_FUV_prev/LW_prev (this band).
  * @param grad_u_j_prev Particle j's #grad_u_FUV_prev/LW_prev (this band).
+ * @param a_factor_comoving_to_physical `1/a`, the file header's single
+ * conversion factor, applied to the shared coefficient `Psi_ij`.
+ * @param a Current scale factor. Needed separately from the factor above by
+ * the Stage-2 midpoint reconstruction only: #grad_u_FUV_prev/LW_prev is
+ * physical, so the Taylor step must be taken along the PHYSICAL pair offset
+ * `a*dx`, not the comoving `dx` the loop is given.
  * @param dissipation_u_i (return, accumulated) Particle i's dissipation
  * source-term accumulator.
  * @param dissipation_u_j (return, accumulated) Particle j's dissipation
@@ -277,7 +312,8 @@ radiation_dissipation_force_accumulate_band(
     float mi, float mj, float rho_i, float rho_j, float c_hyp_i, float c_hyp_j,
     float alpha_i, float alpha_j, float u_i, float u_j,
     const float grad_u_i_prev[3], const float grad_u_j_prev[3],
-    float *dissipation_u_i, float *dissipation_u_j) {
+    float a_factor_comoving_to_physical, float a, float *dissipation_u_i,
+    float *dissipation_u_j) {
 
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   const int use_reconstruction = 1;
@@ -297,12 +333,13 @@ radiation_dissipation_force_accumulate_band(
     const float g_sum_dot_dx = (g_i[0] + g_j[0]) * dx[0] +
                                (g_i[1] + g_j[1]) * dx[1] +
                                (g_i[2] + g_j[2]) * dx[2];
-    d_ij -= Phi_ij * 0.5f * g_sum_dot_dx;
+    d_ij -= Phi_ij * 0.5f * g_sum_dot_dx * a;
   }
 
   const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
   const float v_sig_ij = max(alpha_i, alpha_j) * min(c_hyp_i, c_hyp_j);
-  const float Psi_ij = v_sig_ij * d_ij * Wbar_ij / (rho_i * rho_j);
+  const float Psi_ij = v_sig_ij * d_ij * Wbar_ij / (rho_i * rho_j) *
+                       a_factor_comoving_to_physical;
 
   *dissipation_u_i += mj * Psi_ij;
   *dissipation_u_j += -mi * Psi_ij;
@@ -398,6 +435,9 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
  * @param D_i Particle i's own M1 closure tensor (this band), from
  * #radiation_get_m1_closure_tensor_band.
  * @param D_j Particle j's own M1 closure tensor (this band).
+ * @param a_factor_comoving_to_physical `1/a`, the file header's single
+ * conversion factor: folded into `fac_i`/`fac_j` so both accumulators come
+ * out physical.
  * @param grad_u_i (return, accumulated) Particle i's grad(u) accumulator.
  * @param grad_u_j (return, accumulated) Particle j's grad(u) accumulator.
  */
@@ -406,6 +446,7 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
                                    float wj_dr, float mi, float mj, float rho_i,
                                    float rho_j, float u_i, float u_j,
                                    const float D_i[3][3], const float D_j[3][3],
+                                   float a_factor_comoving_to_physical,
                                    float grad_u_i[3], float grad_u_j[3]) {
 
   const float rho_i_inv = 1.f / rho_i;
@@ -424,8 +465,10 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
   /* Own kernel derivative per particle, no shared average and no grad-h
    * `forcef` factor: restores exact adjointness with the divergence loop
    * above (D^-1 metric, D locally constant) -- see the header comment. */
-  const float fac_i = mj * rho_i_inv * rho_i_inv * wi_dr;
-  const float fac_j = mi * rho_j_inv * rho_j_inv * wj_dr;
+  const float fac_i =
+      mj * rho_i_inv * rho_i_inv * wi_dr * a_factor_comoving_to_physical;
+  const float fac_j =
+      mi * rho_j_inv * rho_j_inv * wj_dr * a_factor_comoving_to_physical;
 
   for (int k = 0; k < 3; k++) {
     grad_u_i[k] += -(temp_i[k] - temp_j[k]) * fac_i;
@@ -450,6 +493,12 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
  *
  * The pair's signal velocity is `min(c_hyp_i, c_hyp_j)` as for the Stage-1
  * term (Section 3.2), while `alpha_f` and `h` stay per particle.
+ *
+ * Takes no comoving-to-physical conversion either, for a different reason
+ * than #radiation_dissipation_reference_accumulate_band: with a PHYSICAL
+ * `psi` (which is what the density loop now stores), `t_fac` contributes
+ * `a^3 * a^-1 * a^-1 = a` and `weight` contributes `a^(dim+1) * a^1 * a^-6 =
+ * a^-1`, for a net length exponent of exactly zero.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -551,14 +600,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   radiation_divergence_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, &fdi->div_specific_flux_FUV,
-      &fdj->div_specific_flux_FUV);
+      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
+      &fdi->div_specific_flux_FUV, &fdj->div_specific_flux_FUV);
   radiation_divergence_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, &fdi->div_specific_flux_LW,
-      &fdj->div_specific_flux_LW);
+      fdj->specific_flux_LW, a_factor_comoving_to_physical,
+      &fdi->div_specific_flux_LW, &fdj->div_specific_flux_LW);
 
   radiation_dissipation_reference_accumulate_band(
       wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
@@ -610,6 +663,10 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   /* Particle j's own accumulator is not touched (non-symmetric): pass a
    * discarded local, seeded to 0 rather than read from fdj, as the
    * required (return, accumulated) output. */
@@ -620,12 +677,12 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
 
   radiation_divergence_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, &fdi->div_specific_flux_FUV,
-      &unused_div_specific_flux_FUV);
+      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
+      &fdi->div_specific_flux_FUV, &unused_div_specific_flux_FUV);
   radiation_divergence_accumulate_band(
       dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, &fdi->div_specific_flux_LW,
-      &unused_div_specific_flux_LW);
+      fdj->specific_flux_LW, a_factor_comoving_to_physical,
+      &fdi->div_specific_flux_LW, &unused_div_specific_flux_LW);
 
   radiation_dissipation_reference_accumulate_band(
       wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
@@ -681,6 +738,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
   radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
                                        fdi->c_hyp, D_FUV_i);
@@ -693,10 +754,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
 
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
                                      rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
-                                     D_FUV_j, fdi->grad_u_FUV, fdj->grad_u_FUV);
+                                     D_FUV_j, a_factor_comoving_to_physical,
+                                     fdi->grad_u_FUV, fdj->grad_u_FUV);
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
                                      rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, fdi->grad_u_LW, fdj->grad_u_LW);
+                                     D_LW_j, a_factor_comoving_to_physical,
+                                     fdi->grad_u_LW, fdj->grad_u_LW);
 
   /* Stage 3 owns per-particle fields that only exist when the stage is
      built, so its call sites are guarded rather than gated on a runtime
@@ -758,6 +821,10 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   /* Particle j is `const` here (non-symmetric): its own accumulator is not
    * touched, so pass a discarded, zero-seeded local as the writable
    * destination the shared accumulator function requires for j. */
@@ -774,12 +841,14 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
                                        fdj->c_hyp, D_LW_j);
 
-  radiation_gradient_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u_FUV, fdj->u_FUV,
-      D_FUV_i, D_FUV_j, fdi->grad_u_FUV, unused_grad_u_FUV);
+  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
+                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
+                                     D_FUV_j, a_factor_comoving_to_physical,
+                                     fdi->grad_u_FUV, unused_grad_u_FUV);
   radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
                                      rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, fdi->grad_u_LW, unused_grad_u_LW);
+                                     D_LW_j, a_factor_comoving_to_physical,
+                                     fdi->grad_u_LW, unused_grad_u_LW);
 
   /* See the symmetric variant above for why this is guarded rather than
      gated on a runtime flag. */
@@ -848,6 +917,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   /* The Stage-2 gradients only exist when the stage is built, so the two
      pointers are selected here; the formula they feed stays compiled in
      both states. */
@@ -867,13 +940,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
       fdi->dissipation_alpha_FUV, fdj->dissipation_alpha_FUV, fdi->u_FUV,
-      fdj->u_FUV, g_FUV_i, g_FUV_j, &fdi->dissipation_u_FUV,
-      &fdj->dissipation_u_FUV);
+      fdj->u_FUV, g_FUV_i, g_FUV_j, a_factor_comoving_to_physical, a,
+      &fdi->dissipation_u_FUV, &fdj->dissipation_u_FUV);
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
       fdi->dissipation_alpha_LW, fdj->dissipation_alpha_LW, fdi->u_LW,
-      fdj->u_LW, g_LW_i, g_LW_j, &fdi->dissipation_u_LW,
-      &fdj->dissipation_u_LW);
+      fdj->u_LW, g_LW_i, g_LW_j, a_factor_comoving_to_physical, a,
+      &fdi->dissipation_u_LW, &fdj->dissipation_u_LW);
 }
 
 /**
@@ -919,6 +992,10 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Single named conversion factor for every spatial operator below, built
+   * once per pair dispatch: see this file's header. */
+  const float a_factor_comoving_to_physical = 1.f / a;
+
   /* Particle j's own accumulator is not touched (non-symmetric): pass a
    * discarded local, seeded to 0 rather than read from fdj, as the
    * required (return, accumulated) output. */
@@ -943,13 +1020,13 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
       fdi->dissipation_alpha_FUV, fdj->dissipation_alpha_FUV, fdi->u_FUV,
-      fdj->u_FUV, g_FUV_i, g_FUV_j, &fdi->dissipation_u_FUV,
-      &unused_dissipation_u_FUV);
+      fdj->u_FUV, g_FUV_i, g_FUV_j, a_factor_comoving_to_physical, a,
+      &fdi->dissipation_u_FUV, &unused_dissipation_u_FUV);
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
       fdi->dissipation_alpha_LW, fdj->dissipation_alpha_LW, fdi->u_LW,
-      fdj->u_LW, g_LW_i, g_LW_j, &fdi->dissipation_u_LW,
-      &unused_dissipation_u_LW);
+      fdj->u_LW, g_LW_i, g_LW_j, a_factor_comoving_to_physical, a,
+      &fdi->dissipation_u_LW, &unused_dissipation_u_LW);
 }
 
 #endif /* SWIFT_RADIATION_PROPAGATION_IACT_GEAR_H */

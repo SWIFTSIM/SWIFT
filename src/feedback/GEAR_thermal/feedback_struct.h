@@ -82,13 +82,25 @@ struct feedback_part_data {
       across every star that touched this particle in the same step
       (#LW_FUV_last_touch_ti), then held unchanged until the next step any
       star touches it again. Never cleared by cooling: a reader gets
-      whatever was last written, however long ago that was. */
+      whatever was last written, however long ago that was.
+
+      `a`-SCALING: PHYSICAL and mass-specific, with no scale-factor exponent
+      of its own beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS already implies
+      (snapshot output declares `0.f`, tracers_io.h, and is correct). Being
+      per-unit-mass, it carries the volume part of cosmological dilution
+      automatically through the physical gas density it is measured against;
+      only the redshift residual `-H*u` is an explicit term, applied in
+      radiation_isrf.c's #radiation_end_density_propagation. Every field
+      feeding it is physical too: the pairwise operators in
+      radiation_propagation_iact.h convert their comoving-coordinate
+      estimates before accumulating. */
   float u_FUV;
 
   /*! Local specific Lyman-Werner-band (11.2-13.6 eV) radiation field,
       internal specific-energy units. See #u_FUV; feeds Grackle's
      RT_H2_dissociation_rate (COOLING_GRACKLE_MODE > 1 only) separately from
-     #u_FUV, since the two bands carry different dust opacities. */
+     #u_FUV, since the two bands carry different dust opacities. Same
+     `a`-scaling as #u_FUV: PHYSICAL, mass-specific, no extra exponent. */
   float u_LW;
 
   /*! Snapshot of #u_FUV/#u_LW taken once per step (feedback_reset_part,
@@ -124,14 +136,21 @@ struct feedback_part_data {
       direction); if/when one is added, it should follow
       #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention:
       "FUVSpecificFlux"/"LWSpecificFlux" (IC input, singular),
-      "FUVSpecificFluxes"/"LWSpecificFluxes" (snapshot output, plural). */
+      "FUVSpecificFluxes"/"LWSpecificFluxes" (snapshot output, plural).
+
+      `a`-SCALING: PHYSICAL and mass-specific, like #u_FUV/#u_LW, with no
+      scale-factor exponent of its own; an output field added later must
+      declare `0.f`. Its own redshift residual `-H*F` is applied in
+      radiation_isrf.c's #radiation_end_gradient_propagation. */
   float specific_flux_FUV[3];
   float specific_flux_LW[3];
 
   /*! `(1/rho) div(rho F)` accumulator, density loop
       (radiation_propagation_iact.h). Scratch: zeroed every h-iteration by
       radiation_init_part_propagation, like the propagation accumulators
-      Design A used to keep here. */
+      Design A used to keep here. PHYSICAL: the density loop converts its
+      comoving-coordinate estimate before accumulating, so the snapshot
+      output's declared `0.f` exponent (tracers_io.h) is correct. */
   float div_specific_flux_FUV;
   float div_specific_flux_LW;
 
@@ -144,7 +163,8 @@ struct feedback_part_data {
       both sides of a pair whenever either kernel reaches, which is what
       keeps the mirrored credit/debit pair whole at h_i != h_j. Scratch:
       zeroed once per step by radiation_snapshot_part_propagation, like
-      #grad_u_FUV/LW, since the force loop runs exactly once per step. */
+      #grad_u_FUV/LW, since the force loop runs exactly once per step.
+      PHYSICAL, like every accumulator the pairwise operators fill. */
   float dissipation_u_FUV;
   float dissipation_u_LW;
 
@@ -171,7 +191,9 @@ struct feedback_part_data {
   /*! `(1/rho) grad(rho u)` accumulator, gradient loop
       (radiation_propagation_iact.h). Scratch: zeroed once per step by
       radiation_snapshot_part_propagation, since the gradient loop runs
-      exactly once per step (never re-run across h-iterations). */
+      exactly once per step (never re-run across h-iterations). PHYSICAL:
+      per physical length, not per comoving one, so the Stage-2
+      reconstruction must step along `a*dx`. */
   float grad_u_FUV[3];
   float grad_u_LW[3];
 

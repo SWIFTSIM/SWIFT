@@ -125,6 +125,8 @@ tests/testRadiationRebuildCheck
 tests/testRadiationPressureFormula
 tests/testRadiationLWFUVFormula
 tests/testRadiationLWFUVDissipationConservation
+tests/testRadiationLWFUVComovingFactors
+tests/testRadiationLWFUVExpansionTerm
 tests/testRadiationGridMetadata
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset

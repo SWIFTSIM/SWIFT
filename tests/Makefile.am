@@ -37,6 +37,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testRadiationRebuildCheck testRadiationPressureFormula \
         testRadiationLWFUVFormula \
         testRadiationLWFUVDissipationConservation \
+        testRadiationLWFUVComovingFactors \
+        testRadiationLWFUVExpansionTerm \
         testRadiationGridMetadata \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -56,6 +58,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationRebuildCheck testRadiationPressureFormula \
 		 testRadiationLWFUVFormula \
 		 testRadiationLWFUVDissipationConservation \
+		 testRadiationLWFUVComovingFactors \
+		 testRadiationLWFUVExpansionTerm \
 		 testRadiationGridMetadata \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -74,6 +78,8 @@ testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
 testRadiationLWFUVFormula_SOURCES = testRadiationLWFUVFormula.c
 testRadiationLWFUVDissipationConservation_SOURCES = testRadiationLWFUVDissipationConservation.c
+testRadiationLWFUVComovingFactors_SOURCES = testRadiationLWFUVComovingFactors.c
+testRadiationLWFUVExpansionTerm_SOURCES = testRadiationLWFUVExpansionTerm.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
 
 testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c

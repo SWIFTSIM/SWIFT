@@ -57,6 +57,10 @@
 INLINE static int feedback_read_particles(struct part *parts,
                                           struct io_props *list) {
 
+  /* Both are PHYSICAL, mass-specific quantities: no scale-factor exponent
+     beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS implies, and an input field
+     carries no a-exponent slot at all, so an IC value is taken verbatim. */
+
   list[0] = io_make_input_field("FUVSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.u_FUV);
