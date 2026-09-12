@@ -667,9 +667,10 @@ length $h_i$,
 \end{equation}
 clamped at the true speed of light. $C_{\rm hyp}$
 (\code{GEARFeedback:LW\_FUV\_c\_hyp\_margin}, default $0.5$, valid range
-$(0,1.7]$) is the single free, dimensionless affordability/stability
-dial this scheme exposes; the upper end of its range is set by the
-explicit-stability requirement of the staggered exact-relaxation scheme
+$(0,\sqrt{2/0.70}]\approx(0,1.6903]$) is the single free, dimensionless
+affordability/stability dial this scheme exposes; the upper end of its
+range is set by the explicit-stability requirement of the staggered
+exact-relaxation scheme
 (Section~\ref{sec:fuv-operators}), not by a target physical speed.
 
 \textbf{Why not use $D_{\rm phys}$/$\tau_{\rm phys}$ directly.} The
@@ -1631,7 +1632,7 @@ introduced.
   reservoir (Section~\ref{sec:fuv-dose-reservoir}) and the hyperbolic
   transport and dissipation machinery runs. \\
 \hline
-\code{LW\_FUV\_c\_hyp\_margin} & 0.5 & $(0,1.7]$ &
+\code{LW\_FUV\_c\_hyp\_margin} & 0.5 & $(0,\sqrt{2/0.70}]\approx(0,1.6903]$ &
   $C_{\rm hyp}$, the closure coefficient in
   $c_{{\rm hyp},i}=\min(C_{\rm hyp}h_i/\Delta t_i,\,c)$
   (Eq.~\ref{eq:fuv-chyp-choice}). Upper bound set by this scheme's own

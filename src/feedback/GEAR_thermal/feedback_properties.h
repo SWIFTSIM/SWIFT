@@ -26,6 +26,8 @@
 #include "hydro_properties.h"
 #include "minmax.h"
 
+#include <math.h>
+
 #define default_HII_min_density_Hpcm3 1.0
 #define default_HII_max_age_Myr 50.0
 #define default_HII_rebuild_time_Myr 0.5
@@ -112,9 +114,9 @@ struct feedback_props {
   /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_i`
    * closure: an independently-tunable multiple of the hydro CFL margin,
    * rather than silently inheriting whatever SPH:CFL_condition happens to
-   * be. Documented valid range (0, 1.7]; the staggered exact-relaxation
-   * scheme is stable for every lambda/h only below that bound (see
-   * radiation_isrf.c). That 1.7 ceiling only applies at
+   * be. Documented valid range (0, sqrt(2/0.70)] (~1.6903); the staggered
+   * exact-relaxation scheme is stable for every lambda/h only below that
+   * bound (see radiation_isrf.c). That ~1.6903 ceiling only applies at
    * max(#LW_FUV_dissipation_alpha_max, #LW_FUV_dissipation_alpha_floor) =
    * 0: the joint stability bound checked in feedback_props_init() is
    * tighter whenever either dissipation coefficient is nonzero (e.g. the
@@ -513,24 +515,125 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:LW_FUV_propagation", 0);
 
     /* Debug/test-only: see LW_FUV_c_hyp_pin_for_debugging's own doxygen.
-     * Parsed unconditionally (like the stability margin below) so a
-     * validation run can set it even with LW_FUV_propagation off in the
-     * base config and toggled on separately; only meaningful when it is. */
+     * Parsed unconditionally (like the stability margin and dissipation
+     * parameters below) so a validation run can set it even with
+     * LW_FUV_propagation off in the base config and toggled on
+     * separately; only meaningful when it is. */
     fp->LW_FUV_c_hyp_pin_for_debugging = parser_get_opt_param_float(
         params, "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging", 0.0f);
 
+    /* Parsed and validated unconditionally, like the pin above: a
+     * validation run can set and check the stability margin (and the
+     * dissipation coefficients below) even with LW_FUV_propagation off. */
+    fp->LW_FUV_c_hyp_margin = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_c_hyp_margin", 0.5f);
+
+    /* Absolute static bound: even with dissipation fully disabled
+     * (alpha_max = alpha_floor = 0), the joint stability bound below
+     * (6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2) still applies at alpha = 0,
+     * giving C_hyp <= sqrt(2/0.70) ~ 1.6903. Increasing alpha only
+     * tightens the bound further (enforced separately below, once
+     * alpha_max/alpha_floor are known), so alpha = 0 is the loosest case
+     * and no configuration can ever exceed this value. The previous 1.7
+     * ceiling admitted C_hyp values in (1.6903, 1.7] that are unstable
+     * even with dissipation off, since the joint check below only fires
+     * when alpha_max or alpha_floor is nonzero. */
+    const float LW_FUV_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
+
+    if (fp->LW_FUV_c_hyp_margin <= 0.f ||
+        fp->LW_FUV_c_hyp_margin > LW_FUV_c_hyp_absolute_bound)
+      error(
+          "GEARFeedback:LW_FUV_c_hyp_margin must lie in "
+          "(0, %g] (got %g): above this bound the staggered "
+          "exact-relaxation scheme is no longer stable for every "
+          "lambda/h at this project's kernel/eta_neighbours choice, even "
+          "with dissipation (LW_FUV_dissipation_alpha_max/alpha_floor) "
+          "fully disabled (6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2 at "
+          "alpha = 0).",
+          LW_FUV_c_hyp_absolute_bound, fp->LW_FUV_c_hyp_margin);
+
+    /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
+     * dissipation.md Section 5.3). Shipped default 0.25: Stage 1 on by
+     * default at its calibrated ceiling, jointly bounded with C_hyp.
+     * Parsed and validated unconditionally, like the pin and the
+     * stability margin above, so a validation run can exercise these
+     * even with LW_FUV_propagation off. */
+    fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.25f);
+    fp->LW_FUV_dissipation_negativity_threshold = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_dissipation_negativity_threshold", 0.01f);
+    fp->LW_FUV_dissipation_alpha_pin_for_debugging = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
+        0.0f);
+
+    if (fp->LW_FUV_dissipation_alpha_max < 0.f)
+      error("GEARFeedback:LW_FUV_dissipation_alpha_max must be >= 0 (got %g).",
+            fp->LW_FUV_dissipation_alpha_max);
+
+    if (fp->LW_FUV_dissipation_negativity_threshold <= 0.f ||
+        fp->LW_FUV_dissipation_negativity_threshold > 1.f)
+      error(
+          "GEARFeedback:LW_FUV_dissipation_negativity_threshold must lie "
+          "in (0, 1] (got %g).",
+          fp->LW_FUV_dissipation_negativity_threshold);
+
+    /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
+     * review_2026-09-11.md Section 4): shipped defaults 0.5/0.05. */
+    fp->LW_FUV_dissipation_alpha_floor = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_dissipation_alpha_floor", 0.5f);
+    fp->LW_FUV_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
+        params, "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda", 0.05f);
+
+    if (fp->LW_FUV_dissipation_alpha_floor < 0.f)
+      error(
+          "GEARFeedback:LW_FUV_dissipation_alpha_floor must be >= 0 (got "
+          "%g).",
+          fp->LW_FUV_dissipation_alpha_floor);
+
+    if (fp->LW_FUV_dissipation_floor_h_over_lambda <= 0.f)
+      error(
+          "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
+          "(got %g).",
+          fp->LW_FUV_dissipation_floor_h_over_lambda);
+
+    /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
+     * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
+     * the kernel's own Wendland-C2 lattice constants (I_W = 3.10,
+     * nu_max_coeff = 1.18), reproduced by
+     * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. The
+     * floor can dissipate even where the trigger never fires (it is not
+     * gated on negativity), so it must satisfy the same bound as the
+     * trigger's own ceiling: check max(alpha_max, alpha_floor). */
+    const float C_hyp = fp->LW_FUV_c_hyp_margin;
+    const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
+    const float alpha_joint_ceiling = max(fp->LW_FUV_dissipation_alpha_max,
+                                          fp->LW_FUV_dissipation_alpha_floor);
+    if (alpha_joint_ceiling > 0.f && alpha_joint_ceiling > alpha_bound)
+      error(
+          "max(GEARFeedback:LW_FUV_dissipation_alpha_max, "
+          "GEARFeedback:LW_FUV_dissipation_alpha_floor) = %g exceeds the "
+          "stability bound %g at GEARFeedback:LW_FUV_c_hyp_margin = %g "
+          "(6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2). alpha_max = %g, "
+          "alpha_floor = %g. Lower GEARFeedback:LW_FUV_c_hyp_margin to "
+          "raise the bound, or lower alpha_max/alpha_floor to fit it.",
+          alpha_joint_ceiling, alpha_bound, C_hyp,
+          fp->LW_FUV_dissipation_alpha_max, fp->LW_FUV_dissipation_alpha_floor);
+
+    if (fp->LW_FUV_dissipation_alpha_pin_for_debugging < 0.f)
+      error(
+          "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging must be "
+          ">= 0 (got %g).",
+          fp->LW_FUV_dissipation_alpha_pin_for_debugging);
+
+    if (fp->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f &&
+        fp->LW_FUV_dissipation_alpha_pin_for_debugging > alpha_bound)
+      warning(
+          "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging (%g) "
+          "exceeds the stability bound %g at the run's C_hyp: not itself "
+          "clamped (debug/test only). Never use this in a production run.",
+          fp->LW_FUV_dissipation_alpha_pin_for_debugging, alpha_bound);
+
     if (fp->LW_FUV_propagation) {
-      fp->LW_FUV_c_hyp_margin = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_c_hyp_margin", 0.5f);
-
-      if (fp->LW_FUV_c_hyp_margin <= 0.f || fp->LW_FUV_c_hyp_margin > 1.7f)
-        error(
-            "GEARFeedback:LW_FUV_c_hyp_margin must lie in "
-            "(0, 1.7] (got %g): above 1.7 the staggered exact-relaxation "
-            "scheme is no longer stable for every lambda/h at this "
-            "project's kernel/eta_neighbours choice.",
-            fp->LW_FUV_c_hyp_margin);
-
       if (fp->LW_FUV_c_hyp_pin_for_debugging > 0.f)
         warning(
             "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging is set: every "
@@ -538,87 +641,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
             "(physical units) instead of C_hyp*h/dt. Never use this in a "
             "production run.",
             fp->LW_FUV_c_hyp_pin_for_debugging);
-
-      /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
-       * dissipation.md Section 5.3). Shipped default 0.25: Stage 1 on by
-       * default at its calibrated ceiling, jointly bounded with C_hyp. */
-      fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.25f);
-      fp->LW_FUV_dissipation_negativity_threshold = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_dissipation_negativity_threshold",
-          0.01f);
-      fp->LW_FUV_dissipation_alpha_pin_for_debugging =
-          parser_get_opt_param_float(
-              params, "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
-              0.0f);
-
-      if (fp->LW_FUV_dissipation_alpha_max < 0.f)
-        error(
-            "GEARFeedback:LW_FUV_dissipation_alpha_max must be >= 0 (got %g).",
-            fp->LW_FUV_dissipation_alpha_max);
-
-      if (fp->LW_FUV_dissipation_negativity_threshold <= 0.f ||
-          fp->LW_FUV_dissipation_negativity_threshold > 1.f)
-        error(
-            "GEARFeedback:LW_FUV_dissipation_negativity_threshold must lie "
-            "in (0, 1] (got %g).",
-            fp->LW_FUV_dissipation_negativity_threshold);
-
-      /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
-       * review_2026-09-11.md Section 4): shipped defaults 0.5/0.05. */
-      fp->LW_FUV_dissipation_alpha_floor = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_dissipation_alpha_floor", 0.5f);
-      fp->LW_FUV_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
-          params, "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda", 0.05f);
-
-      if (fp->LW_FUV_dissipation_alpha_floor < 0.f)
-        error(
-            "GEARFeedback:LW_FUV_dissipation_alpha_floor must be >= 0 (got "
-            "%g).",
-            fp->LW_FUV_dissipation_alpha_floor);
-
-      if (fp->LW_FUV_dissipation_floor_h_over_lambda <= 0.f)
-        error(
-            "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
-            "(got %g).",
-            fp->LW_FUV_dissipation_floor_h_over_lambda);
-
-      /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
-       * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
-       * the kernel's own Wendland-C2 lattice constants (I_W = 3.10,
-       * nu_max_coeff = 1.18), reproduced by
-       * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. The
-       * floor can dissipate even where the trigger never fires (it is not
-       * gated on negativity), so it must satisfy the same bound as the
-       * trigger's own ceiling: check max(alpha_max, alpha_floor). */
-      const float C_hyp = fp->LW_FUV_c_hyp_margin;
-      const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
-      const float alpha_joint_ceiling = max(fp->LW_FUV_dissipation_alpha_max,
-                                            fp->LW_FUV_dissipation_alpha_floor);
-      if (alpha_joint_ceiling > 0.f && alpha_joint_ceiling > alpha_bound)
-        error(
-            "max(GEARFeedback:LW_FUV_dissipation_alpha_max, "
-            "GEARFeedback:LW_FUV_dissipation_alpha_floor) = %g exceeds the "
-            "stability bound %g at GEARFeedback:LW_FUV_c_hyp_margin = %g "
-            "(6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2). alpha_max = %g, "
-            "alpha_floor = %g. Lower GEARFeedback:LW_FUV_c_hyp_margin to "
-            "raise the bound, or lower alpha_max/alpha_floor to fit it.",
-            alpha_joint_ceiling, alpha_bound, C_hyp,
-            fp->LW_FUV_dissipation_alpha_max,
-            fp->LW_FUV_dissipation_alpha_floor);
-
-      if (fp->LW_FUV_dissipation_alpha_pin_for_debugging < 0.f)
-        error(
-            "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging must be "
-            ">= 0 (got %g).",
-            fp->LW_FUV_dissipation_alpha_pin_for_debugging);
-
-      if (fp->LW_FUV_dissipation_alpha_pin_for_debugging > alpha_bound)
-        warning(
-            "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging (%g) "
-            "exceeds the stability bound %g at the run's C_hyp: not itself "
-            "clamped (debug/test only). Never use this in a production run.",
-            fp->LW_FUV_dissipation_alpha_pin_for_debugging, alpha_bound);
 
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
        * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
