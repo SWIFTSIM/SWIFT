@@ -18,9 +18,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "active.h"
-#include "timeline.h"
-
 #include <config.h>
 
 /* MPI headers. */
@@ -32,8 +29,10 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "cell.h"
 #include "engine.h"
+#include "timeline.h"
 #include "timers.h"
 
 /**
