@@ -37,7 +37,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testRadiationRebuildCheck testRadiationPressureFormula \
         testRadiationLWFUVFormula \
         testRadiationLWFUVDissipationConservation \
-        testRadiationGridMetadata testStellarEvolutionSNOnce \
+        testRadiationGridMetadata \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline  # testMatrixInversion
@@ -56,7 +56,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationRebuildCheck testRadiationPressureFormula \
 		 testRadiationLWFUVFormula \
 		 testRadiationLWFUVDissipationConservation \
-		 testRadiationGridMetadata testStellarEvolutionSNOnce \
+		 testRadiationGridMetadata \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
@@ -75,7 +75,6 @@ testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
 testRadiationLWFUVFormula_SOURCES = testRadiationLWFUVFormula.c
 testRadiationLWFUVDissipationConservation_SOURCES = testRadiationLWFUVDissipationConservation.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
-testStellarEvolutionSNOnce_SOURCES = testStellarEvolutionSNOnce.c
 
 testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c
 

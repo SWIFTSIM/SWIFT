@@ -124,8 +124,8 @@ tests/test27cellsStars
 tests/testRadiationRebuildCheck
 tests/testRadiationPressureFormula
 tests/testRadiationLWFUVFormula
+tests/testRadiationLWFUVDissipationConservation
 tests/testRadiationGridMetadata
-tests/testStellarEvolutionSNOnce
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset
 tests/testPeriodicBC
