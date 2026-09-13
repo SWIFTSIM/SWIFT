@@ -200,13 +200,11 @@ struct feedback_part_data {
       reason.
 
       Kept SEPARATE from the trigger rather than pre-combined with max(),
-      because the two components are applied to a pair differently: the
-      floor is contrast-gated per pair by `G_ij`
-      (#radiation_dissipation_force_accumulate_band), so that it damps
-      sub-resolution oscillations without also damping a RESOLVED contrast
-      the pair straddles. Pre-combining here would make the gate
-      inseparable from the trigger's own, deliberately ungated,
-      contribution.
+      even though the force loop combines them unconditionally: the two are
+      produced by different mechanisms on different conditions (reactive
+      undershoot response versus anticipatory resolution gating), so a run
+      that dissipates too much or too little is only diagnosable when the
+      two contributions can be read apart.
 
       `a`-SCALING: dimensionless, exponent 0. */
   float dissipation_alpha_floor_FUV;
@@ -221,20 +219,25 @@ struct feedback_part_data {
   float grad_u_FUV[3];
   float grad_u_LW[3];
 
-  /*! Copy of #grad_u_FUV/#grad_u_LW, written at the END of
-      radiation_end_gradient_propagation from the gradient that same active
-      step just finalised, so an inactive particle keeps its own last real
-      gradient rather than a value an unrelated drift zeroed. Feeds the
-      Stage-2 slope-limited midpoint reconstruction of the Stage-1 jump
-      (design-lw-fuv-design-b-dissipation.md Section 5.2), which needs a
-      gradient both particles of a pair already carry. Since the Stage-1
-      term moved to the force loop, an ACTIVE particle's copy is this
-      step's own finalised gradient (the extra ghost precedes the force
-      loop), not the previous step's. Guarded: a build without Stage 2 pays
-      no memory for it. */
+  /*! PLAIN kernel gradient of `rho*u`
+      (#radiation_plain_gradient_accumulate_band), gradient loop, and the
+      copy of it the Stage-2 slope-limited midpoint reconstruction actually
+      reads. Separate from #grad_u_FUV/LW above, which carries the M1
+      closure tensor and so is NOT `grad(rho*u)`: it reduces to
+      `(1/3)*grad(u)` in the isotropic limit and is anisotropic away from
+      it, which would leave the reconstruction removing about a third of a
+      resolved jump. `rho` is the comoving #rho_prev, matching the jump the
+      reconstruction corrects, while the derivative is per physical length.
+      The scratch pair is zeroed once per step alongside #grad_u_FUV/LW; the
+      `_prev` pair is written at the end of
+      #radiation_end_gradient_propagation, for the same reason
+      #div_specific_flux_FUV_prev is. Guarded: a build without Stage 2 pays
+      no memory for any of the four. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  float grad_u_FUV_prev[3];
-  float grad_u_LW_prev[3];
+  float grad_rho_u_FUV[3];
+  float grad_rho_u_LW[3];
+  float grad_rho_u_FUV_prev[3];
+  float grad_rho_u_LW_prev[3];
 #endif
 
   /*! Stage-3 anisotropic flux-dissipation source term (design-lw-fuv-design-

@@ -45,12 +45,6 @@
 #include <float.h>
 #include <math.h>
 
-/* Definition of the pair-gate knee mirror declared in radiation.h; see
- * that declaration for why the pair function cannot reach
- * #feedback_props directly. 0 until a parameter file or a restart file
- * has been read, which the point of use reads as "gate disabled". */
-float radiation_lw_fuv_dissipation_pair_gate_q0 = 0.f;
-
 /**
  * @brief First-init of a #part's LW/FUV radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
@@ -126,8 +120,10 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.dissipation_u_LW = 0.f;
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   for (int k = 0; k < 3; k++) {
-    p->feedback_data.grad_u_FUV_prev[k] = 0.f;
-    p->feedback_data.grad_u_LW_prev[k] = 0.f;
+    p->feedback_data.grad_rho_u_FUV[k] = 0.f;
+    p->feedback_data.grad_rho_u_LW[k] = 0.f;
+    p->feedback_data.grad_rho_u_FUV_prev[k] = 0.f;
+    p->feedback_data.grad_rho_u_LW_prev[k] = 0.f;
   }
 #endif
 #ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
@@ -154,11 +150,11 @@ void radiation_first_init_part(struct part *restrict p) {
  * draw down this step's #u_FUV_source_rate/#u_LW_source_rate from
  * #u_FUV_dose_reservoir/#u_LW_dose_reservoir.
  *
- * #grad_u_FUV_prev/#grad_u_LW_prev are NOT written here: this function runs
- * at drift time for every particle regardless of activity, so copying
- * #grad_u_FUV/LW here would overwrite an inactive particle's last real
- * gradient with whatever this same unconditional zeroing already left there
- * on a previous drift. They are instead written at the end of
+ * #grad_rho_u_FUV_prev/#grad_rho_u_LW_prev are NOT written here: this
+ * function runs at drift time for every particle regardless of activity, so
+ * copying #grad_rho_u_FUV/LW here would overwrite an inactive particle's
+ * last real gradient with whatever this same unconditional zeroing already
+ * left there on a previous drift. They are instead written at the end of
  * #radiation_end_gradient_propagation, which runs only for active
  * particles, from that step's own just-finalised gradient -- the same
  * pattern #div_specific_flux_FUV_prev/LW_prev already uses, and the one
@@ -184,6 +180,13 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.grad_u_LW[0] = 0.f;
   p->feedback_data.grad_u_LW[1] = 0.f;
   p->feedback_data.grad_u_LW[2] = 0.f;
+
+#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
+  for (int k = 0; k < 3; k++) {
+    p->feedback_data.grad_rho_u_FUV[k] = 0.f;
+    p->feedback_data.grad_rho_u_LW[k] = 0.f;
+  }
+#endif
 
   /* Force-loop accumulator, zeroed here for the same reason as grad_u
    * above: that loop, like the gradient loop, runs exactly once per step,
@@ -654,18 +657,15 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * and costs pure accuracy. A quadratic tail leaves a percent-level
  * coefficient in the thick regime; the quartic one leaves ~1e-5.
  *
- * The value returned here is the floor's per-particle magnitude only. Its
- * per-pair applicability is decided separately, by the contrast gate in
- * #radiation_dissipation_force_accumulate_band: a pair straddling a
- * RESOLVED contrast suppresses this floor, while the trigger's own
- * contribution stays ungated.
+ * This is the floor's only gating: the force loop applies it to a pair
+ * unconditionally, as `max(trigger_i, trigger_j, floor_i, floor_j)`.
  *
  * @param kappa This band's #kappa_FUV/LW.
  * @param h_phys The particle's own physical smoothing length.
  * @param alpha_floor #feedback_props.LW_FUV_dissipation_alpha_floor.
  * @param eps_lambda #feedback_props.LW_FUV_dissipation_floor_h_over_lambda.
  * @return This band's floor value for this step, stored on its own
- * #feedback_part_data field for the force loop to gate and combine.
+ * #feedback_part_data field for the force loop to combine.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
@@ -687,8 +687,8 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * #radiation_update_dissipation_alpha_band) and
  * #dissipation_alpha_floor_FUV/LW (see
  * #radiation_dissipation_alpha_floor_band), once per step and separately,
- * for THIS step's force loop to gate and combine: the extra ghost precedes
- * the force loop.
+ * for THIS step's force loop to combine: the extra ghost precedes the force
+ * loop.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u) + dt*phi*dissipation_F`: the exact
  * solution of `dF/dt = -F/tau - H*F - (D/tau)*grad(u) + dissipation_F` over
@@ -788,9 +788,9 @@ void radiation_end_gradient_propagation(struct part *p,
      * the pinned value (see this parameter's own doxygen,
      * feedback_properties.h). The pinned value goes into the trigger
      * component and the floor component is zeroed, so that the pin stays a
-     * spatially uniform, UNGATED coefficient: routing it through the floor
-     * would subject it to the pair contrast gate and make it a different
-     * quantity from the one the A/B reference arms measure. */
+     * spatially uniform coefficient: routing it through the floor would
+     * subject it to the floor's own `h/lambda` roll-off and make it a
+     * different quantity from the one the A/B reference arms measure. */
     fd->dissipation_alpha_trigger_FUV = alpha_pin;
     fd->dissipation_alpha_trigger_LW = alpha_pin;
     fd->dissipation_alpha_floor_FUV = 0.f;
@@ -805,8 +805,7 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* The trigger's decay memory is its OWN previous value, not the
      * previous combined coefficient: a high floor must not hold up the
-     * trigger's decay tail, which is exactly the blanket behaviour the
-     * pair gate exists to remove. */
+     * trigger's decay tail. */
     fd->dissipation_alpha_trigger_FUV = radiation_update_dissipation_alpha_band(
         u_V_FUV, fd->ngb_mean_abs_u_V_FUV, fd->dissipation_alpha_trigger_FUV,
         alpha_max, eps_1, c_hyp, fd->kappa_FUV, dt, h_phys);
@@ -814,9 +813,9 @@ void radiation_end_gradient_propagation(struct part *p,
         u_V_LW, fd->ngb_mean_abs_u_V_LW, fd->dissipation_alpha_trigger_LW,
         alpha_max, eps_1, c_hyp, fd->kappa_LW, dt, h_phys);
 
-    /* Stored separately from the trigger rather than combined here: the
-     * force loop gates this component per pair on the pair's own field
-     * contrast, and combines the two there. */
+    /* Stored separately from the trigger rather than combined here, so the
+     * two mechanisms stay separately readable; the force loop combines
+     * them. */
     fd->dissipation_alpha_floor_FUV = radiation_dissipation_alpha_floor_band(
         fd->kappa_FUV, h_phys, alpha_floor, eps_lambda);
     fd->dissipation_alpha_floor_LW = radiation_dissipation_alpha_floor_band(
@@ -824,7 +823,7 @@ void radiation_end_gradient_propagation(struct part *p,
   }
 
   /* Written here, at the end of this active-gated ghost, from the gradient
-   * this same active step just finalised above (#grad_u_FUV/LW), so the
+   * this same active step just finalised above (#grad_rho_u_FUV/LW), so the
    * value read by a neighbour is always this particle's own last real
    * gradient regardless of how many inactive steps it takes in between --
    * never a value zeroed by an unrelated drift. Stage 2 reads it in the
@@ -833,8 +832,8 @@ void radiation_end_gradient_propagation(struct part *p,
    * the previous step's. */
 #ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
   for (int k = 0; k < 3; k++) {
-    fd->grad_u_FUV_prev[k] = fd->grad_u_FUV[k];
-    fd->grad_u_LW_prev[k] = fd->grad_u_LW[k];
+    fd->grad_rho_u_FUV_prev[k] = fd->grad_rho_u_FUV[k];
+    fd->grad_rho_u_LW_prev[k] = fd->grad_rho_u_LW[k];
   }
 #endif
 }

@@ -154,10 +154,9 @@ struct feedback_props {
    * dissipation the trigger structurally cannot
    * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4). Combined
    * with #LW_FUV_dissipation_floor_h_over_lambda as
-   * `alpha_floor/(1+(h*kappa/eps_lambda)^4)`, then gated per pair on the
-   * pair's own field contrast (#LW_FUV_dissipation_pair_gate_q0) before
-   * being taken as a max against the trigger's own, ungated output. 0
-   * disables the floor and recovers the trigger-only behaviour exactly. */
+   * `alpha_floor/(1+(h*kappa/eps_lambda)^4)`, then taken as a max against
+   * the trigger's own output. 0 disables the floor and recovers the
+   * trigger-only behaviour exactly. */
   float LW_FUV_dissipation_alpha_floor;
 
   /*! Screening-length error budget (`eps_lambda`) gating where the floor
@@ -169,20 +168,6 @@ struct feedback_props {
    * floor negligible where physical absorption or the trigger's own decay
    * memory already dominates. */
   float LW_FUV_dissipation_floor_h_over_lambda;
-
-  /*! Knee `q_0` of the pair contrast gate that decides where the floor
-   * (#LW_FUV_dissipation_alpha_floor) is allowed to act. The normalised
-   * pair jump `q_ij = |rho_i*u_i - rho_j*u_j| / (|rho_i*u_i| +
-   * |rho_j*u_j|)` lies in [0, 1] and measures whether this specific pair
-   * straddles a RESOLVED field contrast; the gate `G_ij = 1/(1 +
-   * (q_ij/q_0)^4)` keeps the floor near its full value on a smooth pair
-   * and suppresses it across a contrast, where blanket dissipation
-   * degrades the solution instead of protecting it. `h/lambda`, the
-   * floor's own gating variable, cannot see contrast at all: two pairs at
-   * the same `h/lambda` can need opposite treatment. Dimensionless,
-   * calibrated in [0.2, 0.5]. Only meaningful when LW_FUV_propagation is
-   * on. */
-  float LW_FUV_dissipation_pair_gate_q0;
 
   /*! Debug/test-only: bypass the Stage-1 negativity trigger and hold every
    * particle's dissipation coefficient (both bands) at this fixed value,
@@ -568,11 +553,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           LW_FUV_c_hyp_absolute_bound, fp->LW_FUV_c_hyp_margin);
 
     /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
-     * dissipation.md Section 5.3). Shipped default 0.5: the trigger is the
-     * only mechanism allowed to act across a resolved contrast, so its
-     * ceiling carries the cases the pair-gated floor now steps back from.
-     * Same value as the floor's own ceiling, so the joint stability bound
-     * checked below is unchanged. Parsed and validated unconditionally,
+     * dissipation.md Section 5.3). Shipped default 0.5, the same value as
+     * the floor's own ceiling, so the joint stability bound checked below
+     * is unchanged. Parsed and validated unconditionally,
      * like the pin and the stability margin above, so a validation run can
      * exercise these even with LW_FUV_propagation off. */
     fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
@@ -595,7 +578,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->LW_FUV_dissipation_negativity_threshold);
 
     /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
-     * review_2026-09-11.md Section 4): shipped defaults 0.5/0.5/0.3. The
+     * review_2026-09-11.md Section 4): shipped defaults 0.5/0.5. The
      * eps_lambda default moved 0.05 -> 0.5 together with the roll-off
      * exponent 2 -> 4: the quartic tail is what keeps the thick regime
      * negligible, so the knee itself no longer has to sit an order of
@@ -604,8 +587,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:LW_FUV_dissipation_alpha_floor", 0.5f);
     fp->LW_FUV_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
         params, "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda", 0.5f);
-    fp->LW_FUV_dissipation_pair_gate_q0 = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_pair_gate_q0", 0.3f);
 
     if (fp->LW_FUV_dissipation_alpha_floor < 0.f)
       error(
@@ -618,24 +599,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
           "(got %g).",
           fp->LW_FUV_dissipation_floor_h_over_lambda);
-
-    /* Only > 0 is enforced here; the gate's underflow safety (see
-     * RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR's doxygen,
-     * radiation_isrf.h) assumes q0 >= 1e-4, far above the actual break
-     * point (q0 ~ 1.2e-18), so no stricter check is warranted. */
-    if (fp->LW_FUV_dissipation_pair_gate_q0 <= 0.f)
-      error(
-          "GEARFeedback:LW_FUV_dissipation_pair_gate_q0 must be > 0 (got "
-          "%g). Calibrated in [0.2, 0.5]; the pair jump it is compared "
-          "against lies in [0, 1], so a value of order 1 or above leaves "
-          "the floor effectively ungated.",
-          fp->LW_FUV_dissipation_pair_gate_q0);
-
-    /* Mirrored into the module-scope scalar the force loop reads: the
-     * pairwise hook's signature carries no #feedback_props (see that
-     * declaration, radiation.h). */
-    radiation_lw_fuv_dissipation_pair_gate_q0 =
-        fp->LW_FUV_dissipation_pair_gate_q0;
 
     /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
      * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,

@@ -33,10 +33,8 @@
 
 /* Some standard headers. */
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* Local headers. */
 #include "swift.h"
@@ -62,9 +60,8 @@ static const float F_j[3] = {-0.3f, 0.25f, 0.05f};
 static const float phys_grad_prev_i[3] = {0.2f, -0.1f, 0.05f};
 static const float phys_grad_prev_j[3] = {-0.15f, 0.3f, 0.1f};
 static const float c_hyp = 2.0f;
-/* Passed as the ungated trigger coefficients, with the floor held at 0:
- * this test measures the operators' scale-factor scaling, which the pair
- * contrast gate must not enter. */
+/* Passed as the trigger coefficients, with the floor held at 0: one
+ * component is enough, this test measuring scale-factor scaling only. */
 static const float alpha_i = 0.3f;
 static const float alpha_j = 0.45f;
 static const float dt = 0.05f;
@@ -77,6 +74,7 @@ static const float scale_factors[4] = {1.f, 0.5f, 0.25f, 0.1f};
 struct operator_outputs {
   float div_F_i, div_F_j;
   float grad_u_i[3], grad_u_j[3];
+  float grad_rho_u_i[3], grad_rho_u_j[3];
   float dissipation_u_i, dissipation_u_j;
   float reduced_flux_i;
 };
@@ -130,13 +128,37 @@ static void evaluate_operators(float a, float a_factor,
                                      rho_i, rho_j, u_i, u_j, D_i, D_j, a_factor,
                                      out->grad_u_i, out->grad_u_j);
 
+  /* The plain `grad(rho*u)` the Stage-2 reconstruction reads is weighted by
+   * the COMOVING density, so it is not itself scale-factor independent: it
+   * carries one factor of `a^dim`, divided out here so the checks downstream
+   * compare like with like. */
+  for (int k = 0; k < 3; k++) {
+    out->grad_rho_u_i[k] = 0.f;
+    out->grad_rho_u_j[k] = 0.f;
+  }
+  radiation_plain_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, u_i, u_j, a_factor,
+      out->grad_rho_u_i, out->grad_rho_u_j);
+  for (int k = 0; k < 3; k++) {
+    out->grad_rho_u_i[k] /= pow_dimension(a);
+    out->grad_rho_u_j[k] /= pow_dimension(a);
+  }
+
+  /* Same weighting for the reconstruction's own input: the fixed physical
+   * gradient above, expressed in the comoving-density convention the force
+   * loop's reconstruction expects. */
+  float grad_prev_i[3], grad_prev_j[3];
+  for (int k = 0; k < 3; k++) {
+    grad_prev_i[k] = rho_i * phys_grad_prev_i[k];
+    grad_prev_j[k] = rho_j * phys_grad_prev_j[k];
+  }
+
   out->dissipation_u_i = 0.f;
   out->dissipation_u_j = 0.f;
   radiation_dissipation_force_accumulate_band(
       dx, r, hi, hj, wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp,
-      alpha_i, alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f,
-      /*ngb_mean_abs_u_V_i=*/0.f, /*ngb_mean_abs_u_V_j=*/0.f, u_i, u_j,
-      phys_grad_prev_i, phys_grad_prev_j, a_factor, a, &out->dissipation_u_i,
+      alpha_i, alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j,
+      grad_prev_i, grad_prev_j, a_factor, a, &out->dissipation_u_i,
       &out->dissipation_u_j);
 
   /* One flux relaxation step at zero opacity (decay = phi = 1), then the M1
@@ -170,83 +192,70 @@ static void check_same(const char *name, float a, float reference,
 }
 
 /**
- * @brief Read a float's raw bits.
+ * @brief Fail unless the plain `grad(rho*u)` operator really is the
+ * closure-tensor one with the tensor taken out.
  *
- * `isnan()`/`isfinite()` are useless here: the tests build with the same
- * `-ffast-math` as the library, under which the compiler may fold them to a
- * constant. The bit pattern is the only reliable check.
+ * At zero flux the M1 closure tensor is exactly `I/3`, and the two
+ * accumulators are then related in closed form:
  *
- * @param x The value to inspect.
- * @return Its IEEE-754 binary32 representation.
+ *   `grad_rho_u_i = 3*(rho_i/rho_j)*rho_i*grad_u_i`,
+ *   `grad_rho_u_j = 3*(rho_j/rho_i)*rho_j*grad_u_j`.
+ *
+ * This is the whole reason the second accumulator exists: the Stage-2
+ * reconstruction needs `grad(rho*u)`, and feeding it the closure-tensor
+ * gradient instead removes only about a third of a resolved jump. The
+ * factor of 3 here is that error, measured rather than asserted. A sign
+ * slip, a `m_j/rho_i` for `m_j/rho_j` mass weighting, or a dropped `1/a`
+ * all break this identity while surviving the scale-factor checks above.
  */
-static uint32_t float_bits(float x) {
-  uint32_t u;
-  memcpy(&u, &x, sizeof(u));
-  return u;
-}
+static void check_plain_gradient_against_isotropic_limit(void) {
 
-/**
- * @brief Fail unless a pair carrying no field at all contributes exactly
- * nothing, for every gate knee across the calibrated range and beyond it.
- *
- * This is the whole box's state on step 0, and it is the one input for
- * which the contrast ratio's denominator reduces to
- * #RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR alone. Under
- * `-ffast-math` the gate's own division by `q0` is reassociated into that
- * denominator, and flush-to-zero then turns a denormal product into an
- * exact zero, so a guard chosen too close to the underflow threshold makes
- * the ratio `0/0` and poisons every particle's field with NaN from the
- * first step. The check is on the exact bit pattern, both because a NaN
- * must be detected without `isnan()` and because the physically correct
- * answer here is a bitwise zero, not a small number.
- */
-static void check_degenerate_zero_field_pair(void) {
+  const float zero_flux[3] = {0.f, 0.f, 0.f};
+  const float r = sqrtf(phys_dx[0] * phys_dx[0] + phys_dx[1] * phys_dx[1] +
+                        phys_dx[2] * phys_dx[2]);
+  const float r_inv = 1.f / r;
 
-  const float knees[] = {1e-4f, 0.01f, 0.2f, 0.3f, 0.5f, 1.f};
-  const float no_gradient[3] = {0.f, 0.f, 0.f};
-  const float saved_q0 = radiation_lw_fuv_dissipation_pair_gate_q0;
+  float wi, wi_dx, wj, wj_dx;
+  kernel_deval(r / phys_h_i, &wi, &wi_dx);
+  kernel_deval(r / phys_h_j, &wj, &wj_dx);
+  const float wi_dr = wi_dx * pow_dimension_plus_one(1.f / phys_h_i);
+  const float wj_dr = wj_dx * pow_dimension_plus_one(1.f / phys_h_j);
 
-  for (int i = 0; i < (int)(sizeof(knees) / sizeof(knees[0])); i++) {
-    radiation_lw_fuv_dissipation_pair_gate_q0 = knees[i];
+  float D_i[3][3], D_j[3][3];
+  radiation_get_m1_closure_tensor_band(u_i, zero_flux, c_hyp, D_i);
+  radiation_get_m1_closure_tensor_band(u_j, zero_flux, c_hyp, D_j);
 
-    float acc_i = 0.f, acc_j = 0.f;
-    radiation_dissipation_force_accumulate_band(
-        phys_dx, 1.f, phys_h_i, phys_h_j, /*wi_dr=*/-1.f, /*wj_dr=*/-1.f,
-        mass_i, mass_j, phys_rho_i, phys_rho_j, c_hyp, c_hyp,
-        /*alpha_trigger_i=*/0.f, /*alpha_trigger_j=*/0.f,
-        /*alpha_floor_i=*/0.5f, /*alpha_floor_j=*/0.5f,
-        /*ngb_mean_abs_u_V_i=*/0.f, /*ngb_mean_abs_u_V_j=*/0.f, /*u_i=*/0.f,
-        /*u_j=*/0.f, no_gradient, no_gradient, /*a_factor=*/1.f, /*a=*/1.f,
-        &acc_i, &acc_j);
+  float grad_u_i[3] = {0.f, 0.f, 0.f}, grad_u_j[3] = {0.f, 0.f, 0.f};
+  radiation_gradient_accumulate_band(
+      phys_dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, phys_rho_i, phys_rho_j, u_i,
+      u_j, D_i, D_j, /*a_factor=*/1.f, grad_u_i, grad_u_j);
 
-    if (float_bits(acc_i) != 0u || float_bits(acc_j) != 0u)
+  float grad_rho_u_i[3] = {0.f, 0.f, 0.f}, grad_rho_u_j[3] = {0.f, 0.f, 0.f};
+  radiation_plain_gradient_accumulate_band(
+      phys_dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, phys_rho_i, phys_rho_j, u_i,
+      u_j, /*a_factor=*/1.f, grad_rho_u_i, grad_rho_u_j);
+
+  const float ratio_i = 3.f * phys_rho_i * phys_rho_i / phys_rho_j;
+  const float ratio_j = 3.f * phys_rho_j * phys_rho_j / phys_rho_i;
+
+  for (int k = 0; k < 3; k++) {
+    const float expected_i = ratio_i * grad_u_i[k];
+    const float expected_j = ratio_j * grad_u_j[k];
+    if (fabsf(grad_rho_u_i[k] - expected_i) > 1e-5f * fabsf(expected_i))
       error(
-          "A pair with no field contributed at gate knee q0 = %g: "
-          "dissipation_u_i bits 0x%08x, dissipation_u_j bits 0x%08x",
-          knees[i], float_bits(acc_i), float_bits(acc_j));
+          "grad(rho u)_i[%d] = %.9e is not the isotropic-limit closure "
+          "gradient with the tensor removed, %.9e",
+          k, (double)grad_rho_u_i[k], (double)expected_i);
+    if (fabsf(grad_rho_u_j[k] - expected_j) > 1e-5f * fabsf(expected_j))
+      error(
+          "grad(rho u)_j[%d] = %.9e is not the isotropic-limit closure "
+          "gradient with the tensor removed, %.9e",
+          k, (double)grad_rho_u_j[k], (double)expected_j);
+    if (fabsf(grad_rho_u_i[k]) < 1e-20f)
+      error("grad(rho u)_i[%d] is zero: the check is vacuous", k);
   }
 
-  radiation_lw_fuv_dissipation_pair_gate_q0 = saved_q0;
-
-  /* Checked separately from the call above, because the `min(q_ij_raw, 1)`
-     bound in the gate can hide a guard with no headroom by forcing the
-     ratio to be materialised before the division by `q0`. This asserts the
-     constant's own margin, whatever the surrounding expression folds to.
-     This static assertion, not the dynamic loop above, is the confirmed
-     regression guard against the FLT_MIN underflow bug: do not delete it
-     as "redundant" with the loop. */
-  const float smallest_supported_knee = knees[0];
-  const float guarded_denominator =
-      RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR * smallest_supported_knee;
-  if ((float_bits(guarded_denominator) & 0x7f800000u) == 0u)
-    error(
-        "RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR (%g) leaves no "
-        "underflow headroom: times a gate knee of %g it is denormal (bits "
-        "0x%08x) and flush-to-zero makes the contrast ratio 0/0",
-        (double)RADIATION_LW_FUV_DISSIPATION_U_V_ABSOLUTE_FLOOR,
-        (double)smallest_supported_knee, float_bits(guarded_denominator));
-
-  message("Degenerate zero-field pair contributes exactly zero at every knee");
+  message("Plain grad(rho u) matches the isotropic-limit closure gradient");
 }
 
 int main(int argc, char *argv[]) {
@@ -264,6 +273,10 @@ int main(int argc, char *argv[]) {
     for (int k = 0; k < 3; k++) {
       check_same("grad(u)_i", a, out[0].grad_u_i[k], out[i].grad_u_i[k]);
       check_same("grad(u)_j", a, out[0].grad_u_j[k], out[i].grad_u_j[k]);
+      check_same("grad(rho u)_i", a, out[0].grad_rho_u_i[k],
+                 out[i].grad_rho_u_i[k]);
+      check_same("grad(rho u)_j", a, out[0].grad_rho_u_j[k],
+                 out[i].grad_rho_u_j[k]);
     }
     check_same("dissipation_u_i", a, out[0].dissipation_u_i,
                out[i].dissipation_u_i);
@@ -293,7 +306,7 @@ int main(int argc, char *argv[]) {
   message("Discrimination check passed: unconverted div(F)_i = %.8e vs %.8e",
           unfixed.div_F_i, out[0].div_F_i);
 
-  check_degenerate_zero_field_pair();
+  check_plain_gradient_against_isotropic_limit();
 
   return 0;
 }
