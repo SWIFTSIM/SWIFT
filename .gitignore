@@ -5,6 +5,7 @@
 Makefile
 Makefile.in
 INSTALL
+config.cache
 config.guess
 config.h
 config.status
@@ -170,6 +171,7 @@ tests/testSelectOutput.sh
 tests/unused_parser_output.yml
 tests/used_parser_output.yml
 tests/output_list_params.yml
+tests/selectOutputParameters.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -200,6 +202,7 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt
 

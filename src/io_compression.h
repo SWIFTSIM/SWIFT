@@ -61,7 +61,13 @@ enum lossy_compression_schemes compression_scheme_from_name(const char *name);
 
 #ifdef HAVE_HDF5
 
+#include "common_io.h"
+
 #include <hdf5.h>
+
+void io_check_field_compression(enum IO_DATA_TYPE type,
+                                enum lossy_compression_schemes comp,
+                                const char *field_name);
 
 void set_hdf5_lossy_compression(hid_t *h_prop, hid_t *h_type,
                                 const enum lossy_compression_schemes comp,

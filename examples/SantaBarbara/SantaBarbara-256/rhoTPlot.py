@@ -28,7 +28,7 @@ def get_data(filename):
 
     data = SWIFTDataset(filename)
 
-    data.gas.densities.convert_to_units(mh / (cm ** 3))
+    data.gas.densities.convert_to_units(mh / (cm**3))
     data.gas.temperatures.convert_to_cgs()
 
     return data.gas.densities, data.gas.temperatures
@@ -73,7 +73,7 @@ def setup_axes():
 def make_single_image(filename, density_bounds, temperature_bounds, bins):
     """
     Makes a single image and saves it to rhoTPlot_{filename}.png.
-    
+
     Filename should be given _without_ hdf5 extension.
     """
 
@@ -196,14 +196,12 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
              Plotting script for making a rho-T plot.
              Takes the filename handle, start, and (optionally) stop
              snapshots. If stop is not given, png plot is produced for
              that snapshot. If given, a movie is made.
-             """
-    )
+             """)
 
     parser.add_argument(
         "-i",

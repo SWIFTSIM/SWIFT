@@ -95,15 +95,16 @@ static INLINE void tracers_after_timestep_part(
     const struct cooling_function_data *cooling, const double time,
     const double time_step_length, const int *const tracers_triggers_started) {}
 
+static INLINE void tracers_after_recording_trigger_part(
+    struct xpart *xp, const int trigger_index, const double time_to_remove) {}
+
 /**
  * @brief Update the star particle tracers just after its time-step has been
  * computed.
  *
  * Nothing to do here.
  *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data (containing the tracers
- * struct).
+ * @param spart Pointer to the star particle data.
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param with_cosmology Are we running a cosmological simulation?
@@ -124,9 +125,7 @@ static INLINE void tracers_after_timestep_spart(
  *
  * Nothing to do here.
  *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data (containing the tracers
- * struct).
+ * @param bp Pointer to the black hole particle data.
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param with_cosmology Are we running a cosmological simulation?
@@ -140,6 +139,33 @@ static INLINE void tracers_after_timestep_bpart(
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
     const int *const tracers_triggers_started) {}
+
+static INLINE void tracers_after_recording_trigger_bpart(
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {}
+
+/**
+ * @brief Update the sink particle tracers just after its time-step has
+ * been computed.
+ *
+ * Nothing to do here.
+ *
+ * @param sink Pointer to the sink particle data.
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_sink)
+ */
+static INLINE void tracers_after_timestep_sink(
+    struct sink *sink, const struct unit_system *us,
+    const struct phys_const *phys_const, const int with_cosmology,
+    const struct cosmology *cosmo, const double time_step_length,
+    const int *const tracers_triggers_started) {}
+
+static INLINE void tracers_after_recording_trigger_sink(
+    struct sink *sink, const int trigger_index, const double time_to_remove) {}
 
 /**
  * @brief Initialise the tracer data at the start of a calculation.
@@ -164,9 +190,7 @@ static INLINE void tracers_first_init_xpart(
  *
  * Nothing to do here.
  *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data (containing the tracers
- * struct).
+ * @param spart Pointer to the star particle data.
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -181,9 +205,7 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  *
  * Nothing to do here.
  *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data (containing the tracers
- * struct).
+ * @param bp Pointer to the black hole particle data.
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -192,6 +214,21 @@ static INLINE void tracers_first_init_bpart(struct bpart *bp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
                                             const struct cosmology *cosmo) {}
+
+/**
+ * @brief Initialise the sink tracer data at the start of a calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param sink Pointer to the sink particle data.
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ */
+static INLINE void tracers_first_init_sink(struct sink *sink,
+                                           const struct unit_system *us,
+                                           const struct phys_const *phys_const,
+                                           const struct cosmology *cosmo) {}
 
 /**
  * @brief Update the particles' tracer data after a stellar feedback
@@ -260,9 +297,18 @@ static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
  *
  * Nothing to do here.
  *
- * @param sp the #spart.
+ * @param bp the #bpart.
  */
 static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * Nothing to do here.
+ *
+ * @param sink the #sink.
+ */
+static INLINE void tracers_after_snapshot_sink(struct sink *sink) {}
 
 /**
  * @brief Split the tracer content of a particle into n pieces

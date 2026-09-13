@@ -27,7 +27,7 @@ except:
 # Snapshot for grabbing the units.
 snapshot = load("feedback_0000.hdf5")
 units = snapshot.metadata.units
-energy_units = units.mass * units.length ** 2 / (units.time ** 2)
+energy_units = units.mass * units.length**2 / (units.time**2)
 
 data = np.loadtxt("statistics.txt").T
 

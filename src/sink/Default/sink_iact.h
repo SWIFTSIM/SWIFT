@@ -69,7 +69,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
@@ -77,7 +78,7 @@ runner_iact_nonsym_sinks_gas_density(
     struct sink *si, const struct part *pj, const int with_cosmology,
     const struct cosmology *cosmo, const struct gravity_props *grav_props,
     const struct sink_props *sink_props, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   float wi, wi_dx;
 
@@ -114,7 +115,8 @@ runner_iact_nonsym_sinks_gas_density(
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -123,7 +125,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {}
+    const double time, const double time_base) {}
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
@@ -139,7 +141,8 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
@@ -148,6 +151,6 @@ runner_iact_nonsym_sinks_gas_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {}
+    const double time, const double time_base) {}
 
 #endif

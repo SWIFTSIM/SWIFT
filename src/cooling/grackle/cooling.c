@@ -380,10 +380,15 @@ void cooling_first_init_part(const struct phys_const *phys_const,
    */
   xp->cooling_data.e_frac = ne;
 
+#endif  // MODE >= 3
+
+#if COOLING_GRACKLE_MODE >= 1
+  /* Consistency check: the species mass fractions accumulated above
+     (whichever tiers are compiled in for this COOLING_GRACKLE_MODE) must
+     sum to the total gas mass fraction. */
   if (fabs(Xtot - 1.0) > 1e-3)
     error("Got total mass fraction of gas = %.6g", Xtot);
-
-#endif  // MODE >= 3
+#endif  // MODE >= 1
 }
 
 /**

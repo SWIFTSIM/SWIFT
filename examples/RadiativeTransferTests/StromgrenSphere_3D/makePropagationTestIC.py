@@ -28,7 +28,7 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
+import swiftsimio as sw
 
 glass = h5py.File("glassCube_64.hdf5", "r")
 parts = glass["PartType0"]
@@ -55,7 +55,6 @@ unitL = unyt.cm
 t_end = 1e-3 * unyt.s
 edgelen = unyt.c.to("cm/s") * t_end * 2.0
 edgelen = edgelen.to(unitL)
-boxsize = unyt.unyt_array([edgelen.v, edgelen.v, edgelen.v], unitL)
 
 xs = unyt.unyt_array(
     [np.array([xs[0] * edgelen, xs[1] * edgelen, xs[2] * edgelen])], unitL
@@ -63,20 +62,64 @@ xs = unyt.unyt_array(
 xp *= edgelen
 h *= edgelen
 
-
-w = Writer(unit_system=unyt.unit_systems.cgs_unit_system, box_size=boxsize, dimension=3)
-
-w.gas.coordinates = xp
-w.stars.coordinates = xs
-w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.stars.velocities = np.zeros(xs.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(xp.shape[0], dtype=float) * 100 * unyt.g
-w.stars.masses = np.ones(xs.shape[0], dtype=float) * 100 * unyt.g
-w.gas.internal_energy = (
-    np.ones(xp.shape[0], dtype=float) * (300.0 * unyt.kb * unyt.K) / unyt.g
+boxsize_cosmo = sw.cosmo_array(
+    [edgelen.v, edgelen.v, edgelen.v],
+    unitL,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system, boxsize=boxsize_cosmo, dimension=3
 )
 
-w.gas.smoothing_length = h
-w.stars.smoothing_length = w.gas.smoothing_length[:1]
+w.gas.coordinates = sw.cosmo_array(
+    xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.stars.coordinates = sw.cosmo_array(
+    xs.value, xs.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.gas.velocities = sw.cosmo_array(
+    np.zeros(xp.shape),
+    unyt.cm / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.stars.velocities = sw.cosmo_array(
+    np.zeros(xs.shape),
+    unyt.cm / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.gas.masses = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=float) * 100,
+    unyt.g,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.stars.masses = sw.cosmo_array(
+    np.ones(xs.shape[0], dtype=float) * 100,
+    unyt.g,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+u = (300.0 * unyt.kb * unyt.K) / unyt.g
+w.gas.internal_energy = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=float) * u.value,
+    u.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=-2,
+)
+w.gas.smoothing_lengths = sw.cosmo_array(
+    h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.stars.smoothing_lengths = sw.cosmo_array(
+    h.value[:1], h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
 
 w.write("propagationTest-3D.hdf5")

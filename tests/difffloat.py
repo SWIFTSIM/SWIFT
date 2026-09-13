@@ -83,7 +83,7 @@ else:
 
 n_lines_to_check = 0
 if number_to_check > 0:
-    n_lines_to_check = number_to_check ** 3
+    n_lines_to_check = number_to_check**3
     n_lines_to_check = min(n_lines_to_check, n_lines)
     print("Checking the first %d particles." % n_lines_to_check)
 else:

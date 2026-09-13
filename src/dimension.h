@@ -185,6 +185,27 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
+  /* Calculate root mean square of elements. */
+  float rms = 0.0f;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      rms += A[i][j] * A[i][j];
+    }
+  }
+  rms = sqrtf(rms / 9.0f);
+
+  /* Early abort if the matrix is all zeros. */
+  if (rms == 0.0f) {
+    return 1;
+  }
+
+  /* Scale to avoid any issues if values are tiny. */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      A[i][j] /= rms;
+    }
+  }
+
   int pivot[3];
   for (int i = 0; i < 3; i++) {
     int imax = i;
@@ -270,35 +291,77 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
     }
   }
 
+  /* Scale the inverted matrix back. */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      A[i][j] /= rms;
+    }
+  }
+
   return 0;
 
 #elif defined(HYDRO_DIMENSION_2D)
+
+  /* Calculate root mean square of elements. */
+  float rms = 0.0f;
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      rms += A[i][j] * A[i][j];
+    }
+  }
+  rms = sqrtf(rms / 4.0f);
+
+  /* Early abort if the matrix is all zeros. */
+  if (rms == 0.0f) {
+    return 1;
+  }
+
+  /* Scale to avoid any issues if values are tiny. */
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      A[i][j] /= rms;
+    }
+  }
 
   float Ainv[2][2];
 
   const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  const float detAinv = (detA != 0.0f) ? 1.0f / detA : 0.0f;
+  if (fabsf(detA) < 1e-8f) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 2; k++) {
+        A[j][k] = 0.0f;
+      }
+    }
+    return 1;
+  }
 
-  Ainv[0][0] = A[1][1] * detAinv;
-  Ainv[0][1] = -A[0][1] * detAinv;
-  Ainv[1][0] = -A[1][0] * detAinv;
-  Ainv[1][1] = A[0][0] * detAinv;
+  Ainv[0][0] = A[1][1] / detA;
+  Ainv[0][1] = -A[0][1] / detA;
+  Ainv[1][0] = -A[1][0] / detA;
+  Ainv[1][1] = A[0][0] / detA;
 
   A[0][0] = Ainv[0][0];
   A[0][1] = Ainv[0][1];
   A[1][0] = Ainv[1][0];
   A[1][1] = Ainv[1][1];
 
+  /* Scale the inverted matrix back. */
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      A[i][j] /= rms;
+    }
+  }
+
   return 0;
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  if (A[0][0] && !isnan(A[0][0])) {
-    A[0][0] = 1.0f / A[0][0];
-  } else {
+  if (A[0][0] == 0.0f || isnan(A[0][0]) || isinf(A[0][0])) {
     A[0][0] = 0.0f;
+    return 1;
   }
+  A[0][0] = 1.0f / A[0][0];
 
   return 0;
 

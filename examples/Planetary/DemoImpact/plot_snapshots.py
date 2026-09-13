@@ -26,7 +26,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 5
+N = 10**5
 N_label = "n%d" % (10 * np.log10(N))
 
 # Plotting options
@@ -45,7 +45,7 @@ Di_mat_colour = {"ANEOS_Fe85Si15": "darkgray", "ANEOS_forsterite": "orangered"}
 Di_id_colour = {woma.Di_mat_id[mat]: colour for mat, colour in Di_mat_colour.items()}
 
 # Scale point size with resolution
-size = (0.5 * np.cbrt(10 ** 6 / N)) ** 2
+size = (0.5 * np.cbrt(10**6 / N)) ** 2
 
 
 def load_snapshot(filename):

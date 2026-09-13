@@ -129,7 +129,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       b_updated += c->black_holes.updated;
 
       /* Check if the cell was inactive and in that case reorder the SFH */
-      if (!cell_is_starting_hydro(c, e)) {
+      if (!cell_is_starting_hydro(c, e) || !cell_is_starting_sinks(c, e)) {
         star_formation_logger_log_inactive_cell(&c->stars.sfh);
       }
 

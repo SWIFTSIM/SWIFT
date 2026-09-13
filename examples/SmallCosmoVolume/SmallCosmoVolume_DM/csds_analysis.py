@@ -18,7 +18,8 @@ sys.path.append("../../../csds/src/.libs/")
 # Now we can load the csds
 import libcsds as csds
 
-#%%
+
+# %%
 def get_redshift(a):
     return 1 / a - 1
 
@@ -27,7 +28,7 @@ def get_scale_factor(z):
     return 1 / (z + 1)
 
 
-#%% Argparse options
+# %% Argparse options
 def parse_option():
     description = """"Plots the evolution of the DM particles with the CSDS. """
     epilog = """
@@ -73,7 +74,7 @@ python3 csds_analysis.py csds_index_0000.dump --halo 2 -n 250
     return args
 
 
-#%% Parse the arguments
+# %% Parse the arguments
 args = parse_option()
 
 stf_file = args.stf_file
@@ -90,7 +91,7 @@ n_low_z = int(9 / 10 * n)
 print("\n-------------------------------------")
 print("Welcome to csds_anlysis.py !\n")
 
-#%% Extract particles from halo
+# %% Extract particles from halo
 # Load Velociraptor data
 print("Extracting halo data...")
 
@@ -104,7 +105,7 @@ particles, unbound_particles = groups.extract_halo(halo_index=halo_index)
 IDs = particles.particle_ids
 N_particles = len(IDs)
 
-#%% Now, we can open the CSDS, get the evolution of the particles though time with their IDs
+# %% Now, we can open the CSDS, get the evolution of the particles though time with their IDs
 cm_positions = np.zeros((n_files, n, 3))
 positions = np.empty((n, N_particles, 3))
 velocities = np.empty((n, N_particles, 3))
@@ -118,7 +119,7 @@ if filename.endswith(".dump"):
 
 print("Openening the CSDS...")
 
-#%%
+# %%
 with csds.Reader(
     filename, verbose=0, number_index=10, restart_init=False, use_cache=True
 ) as reader:
@@ -176,7 +177,7 @@ with csds.Reader(
         cm_positions[file_index, i, :] = pos_cm
 
 print("The CSDS is now closed.")
-#%% Do a movie showing the evolution of the halo (positions)
+# %% Do a movie showing the evolution of the halo (positions)
 from matplotlib.animation import FuncAnimation
 
 fig, ax = plt.subplots(num=1, figsize=(5, 5), dpi=300)

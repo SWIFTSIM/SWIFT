@@ -2,6 +2,8 @@
    Matthieu Schaller, 20th December 2018
 
 
+.. _EAGLE:
+
 EAGLE model
 ===========
 

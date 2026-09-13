@@ -123,14 +123,12 @@ def make_plot(
 if __name__ == "__main__":
     import argparse as ap
 
-    PARSER = ap.ArgumentParser(
-        description="""
+    PARSER = ap.ArgumentParser(description="""
             Makes a plot of the smoothing lengths in the box, compared
             to the gravitational softening. Also splits out the particles
             that are contained in the largest halo according to the
             velociraptor outputs.
-            """
-    )
+            """)
 
     PARSER.add_argument(
         "-s",

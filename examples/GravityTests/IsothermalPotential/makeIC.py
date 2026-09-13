@@ -115,7 +115,7 @@ grp1 = file.create_group("/PartType1")
 # generate particle positions
 radius = Radius * (numpy.random.rand(N)) ** (1.0 / 3.0)
 ctheta = -1.0 + 2 * numpy.random.rand(N)
-stheta = numpy.sqrt(1.0 - ctheta ** 2)
+stheta = numpy.sqrt(1.0 - ctheta**2)
 phi = 2 * math.pi * numpy.random.rand(N)
 r = numpy.zeros((numPart, 3))
 r[:, 0] = radius

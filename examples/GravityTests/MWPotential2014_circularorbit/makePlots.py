@@ -20,8 +20,7 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 
-
-#%%Functions
+# %%Functions
 
 
 def get_positions_and_time(N_snapshots, N_part, output_dir, boxsize):
@@ -164,7 +163,7 @@ def plot_deviation_from_original_data(r_1, r_2, r_3, time, color, save_fig_name_
     plt.close()
 
 
-#%%Plots the orbits, the deviation from the circular orbit and the deviation from the original precomputed data
+# %%Plots the orbits, the deviation from the circular orbit and the deviation from the original precomputed data
 # Notice that in this examples, the ouputs are set in suitable units in the parameters files.
 
 # General parameters
@@ -197,7 +196,7 @@ r_12, r_22, r_32 = plot_deviation_from_circular_orbits(
 )
 # plot_deviation_from_original_data(r_12, r_22, r_32, time_2, col, save_fig_name_suffix) #does not make sense since the original data are in kpc, not in Mpc
 
-#%%Saves our data to be the reference ones (precomputed)
+# %%Saves our data to be the reference ones (precomputed)
 # Uncomment only if corrections of the precomputed data must occur !
 # Original data :  If some corrections occur in the potential default parameters, allows to correct
 # the data

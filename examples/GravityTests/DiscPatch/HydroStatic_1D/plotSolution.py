@@ -49,6 +49,7 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
     stop = int(sys.argv[2])
 
+
 # Get the analytic solution for the density
 def get_analytic_density(x):
     return (

@@ -26,7 +26,6 @@ from scipy.optimize import fsolve
 from matplotlib.font_manager import FontProperties
 import numpy as np
 
-
 params = {
     "axes.labelsize": 9,
     "axes.titlesize": 10,
@@ -91,12 +90,12 @@ H_WendlandC4 = 2.207940 * h
 H_WendlandC6 = 2.449490 * h
 
 # Get the number of neighbours within kernel support:
-N_H_cubic = 4.0 / 3.0 * PI * H_cubic ** 3 / (dx) ** 3
-N_H_quartic = 4.0 / 3.0 * PI * H_quartic ** 3 / (dx) ** 3
-N_H_quintic = 4.0 / 3.0 * PI * H_quintic ** 3 / (dx) ** 3
-N_H_WendlandC2 = 4.0 / 3.0 * PI * H_WendlandC2 ** 3 / (dx) ** 3
-N_H_WendlandC4 = 4.0 / 3.0 * PI * H_WendlandC4 ** 3 / (dx) ** 3
-N_H_WendlandC6 = 4.0 / 3.0 * PI * H_WendlandC6 ** 3 / (dx) ** 3
+N_H_cubic = 4.0 / 3.0 * PI * H_cubic**3 / (dx) ** 3
+N_H_quartic = 4.0 / 3.0 * PI * H_quartic**3 / (dx) ** 3
+N_H_quintic = 4.0 / 3.0 * PI * H_quintic**3 / (dx) ** 3
+N_H_WendlandC2 = 4.0 / 3.0 * PI * H_WendlandC2**3 / (dx) ** 3
+N_H_WendlandC4 = 4.0 / 3.0 * PI * H_WendlandC4**3 / (dx) ** 3
+N_H_WendlandC6 = 4.0 / 3.0 * PI * H_WendlandC6**3 / (dx) ** 3
 
 
 print(
@@ -150,11 +149,12 @@ print(
 
 # Get kernel constants (Dehen & Aly 2012, table 1) for 3D kernel
 C_cubic = 16.0 / PI
-C_quartic = 5 ** 6 / (512 * PI)
-C_quintic = 3 ** 7 / (40 * PI)
+C_quartic = 5**6 / (512 * PI)
+C_quintic = 3**7 / (40 * PI)
 C_WendlandC2 = 21.0 / (2 * PI)
 C_WendlandC4 = 495.0 / (32 * PI)
 C_WendlandC6 = 1365.0 / (64 * PI)
+
 
 # Get the reduced kernel definitions (Dehen & Aly 2012, table 1) for 3D kernel
 # def plus(u) : return maximum(0., u)
@@ -164,8 +164,8 @@ def cubic_spline(r):
         0.0,
         np.where(
             r < 0.5,
-            3.0 * r ** 3 - 3.0 * r ** 2 + 0.5,
-            -r ** 3 + 3.0 * r ** 2 - 3.0 * r + 1.0,
+            3.0 * r**3 - 3.0 * r**2 + 0.5,
+            -(r**3) + 3.0 * r**2 - 3.0 * r + 1.0,
         ),
     )
 
@@ -177,15 +177,15 @@ def quartic_spline(r):
         0.0,
         np.where(
             r < 0.2,
-            6.0 * r ** 4 - 2.4 * r ** 2 + 46.0 / 125.0,
+            6.0 * r**4 - 2.4 * r**2 + 46.0 / 125.0,
             np.where(
                 r < 0.6,
-                -4.0 * r ** 4
-                + 8.0 * r ** 3
-                - (24.0 / 5.0) * r ** 2
+                -4.0 * r**4
+                + 8.0 * r**3
+                - (24.0 / 5.0) * r**2
                 + (8.0 / 25.0) * r
                 + 44.0 / 125.0,
-                1.0 * r ** 4 - 4.0 * r ** 3 + 6.0 * r ** 2 - 4.0 * r + 1.0,
+                1.0 * r**4 - 4.0 * r**3 + 6.0 * r**2 - 4.0 * r + 1.0,
             ),
         ),
     )
@@ -198,21 +198,16 @@ def quintic_spline(r):
         0.0,
         np.where(
             r < 1.0 / 3.0,
-            -10.0 * r ** 5 + 10.0 * r ** 4 - (20.0 / 9.0) * r ** 2 + (22.0 / 81.0),
+            -10.0 * r**5 + 10.0 * r**4 - (20.0 / 9.0) * r**2 + (22.0 / 81.0),
             np.where(
                 r < 2.0 / 3.0,
-                5.0 * r ** 5
-                - 15.0 * r ** 4
-                + (50.0 / 3.0) * r ** 3
-                - (70.0 / 9.0) * r ** 2
+                5.0 * r**5
+                - 15.0 * r**4
+                + (50.0 / 3.0) * r**3
+                - (70.0 / 9.0) * r**2
                 + (25.0 / 27.0) * r
                 + (17.0 / 81.0),
-                -1.0 * r ** 5
-                + 5.0 * r ** 4
-                - 10.0 * r ** 3
-                + 10.0 * r ** 2
-                - 5.0 * r
-                + 1.0,
+                -1.0 * r**5 + 5.0 * r**4 - 10.0 * r**3 + 10.0 * r**2 - 5.0 * r + 1.0,
             ),
         ),
     )
@@ -221,7 +216,7 @@ def quintic_spline(r):
 # return plus(1. - r)**5 - 6.*plus(2./3. - r)**5 + 15.*plus(1./3. - r)**5
 def wendlandC2(r):
     return np.where(
-        r > 1.0, 0.0, 4.0 * r ** 5 - 15.0 * r ** 4 + 20.0 * r ** 3 - 10 * r ** 2 + 1.0
+        r > 1.0, 0.0, 4.0 * r**5 - 15.0 * r**4 + 20.0 * r**3 - 10 * r**2 + 1.0
     )
 
 
@@ -229,12 +224,12 @@ def wendlandC4(r):
     return np.where(
         r > 1.0,
         0.0,
-        (35.0 / 3.0) * r ** 8
-        - 64.0 * r ** 7
-        + 140.0 * r ** 6
-        - (448.0 / 3.0) * r ** 5
-        + 70.0 * r ** 4
-        - (28.0 / 3.0) * r ** 2
+        (35.0 / 3.0) * r**8
+        - 64.0 * r**7
+        + 140.0 * r**6
+        - (448.0 / 3.0) * r**5
+        + 70.0 * r**4
+        - (28.0 / 3.0) * r**2
         + 1.0,
     )
 
@@ -243,45 +238,45 @@ def wendlandC6(r):
     return np.where(
         r > 1.0,
         0.0,
-        32.0 * r ** 11
-        - 231.0 * r ** 10
-        + 704.0 * r ** 9
-        - 1155.0 * r ** 8
-        + 1056.0 * r ** 7
-        - 462.0 * r ** 6
-        + 66.0 * r ** 4
-        - 11.0 * r ** 2
+        32.0 * r**11
+        - 231.0 * r**10
+        + 704.0 * r**9
+        - 1155.0 * r**8
+        + 1056.0 * r**7
+        - 462.0 * r**6
+        + 66.0 * r**4
+        - 11.0 * r**2
         + 1.0,
     )
 
 
 def Gaussian(r, h):
-    return (1.0 / (0.5 * PI * h ** 2) ** (3.0 / 2.0)) * np.exp(-2.0 * r ** 2 / (h ** 2))
+    return (1.0 / (0.5 * PI * h**2) ** (3.0 / 2.0)) * np.exp(-2.0 * r**2 / (h**2))
 
 
 # Kernel definitions (3D)
 def W_cubic_spline(r):
-    return C_cubic * cubic_spline(r / H_cubic) / H_cubic ** 3
+    return C_cubic * cubic_spline(r / H_cubic) / H_cubic**3
 
 
 def W_quartic_spline(r):
-    return C_quartic * quartic_spline(r / H_quartic) / H_quartic ** 3
+    return C_quartic * quartic_spline(r / H_quartic) / H_quartic**3
 
 
 def W_quintic_spline(r):
-    return C_quintic * quintic_spline(r / H_quintic) / H_quintic ** 3
+    return C_quintic * quintic_spline(r / H_quintic) / H_quintic**3
 
 
 def W_WendlandC2(r):
-    return C_WendlandC2 * wendlandC2(r / H_WendlandC2) / H_WendlandC2 ** 3
+    return C_WendlandC2 * wendlandC2(r / H_WendlandC2) / H_WendlandC2**3
 
 
 def W_WendlandC4(r):
-    return C_WendlandC4 * wendlandC4(r / H_WendlandC4) / H_WendlandC4 ** 3
+    return C_WendlandC4 * wendlandC4(r / H_WendlandC4) / H_WendlandC4**3
 
 
 def W_WendlandC6(r):
-    return C_WendlandC6 * wendlandC6(r / H_WendlandC6) / H_WendlandC6 ** 3
+    return C_WendlandC6 * wendlandC6(r / H_WendlandC6) / H_WendlandC6**3
 
 
 # PLOT STUFF
@@ -501,45 +496,45 @@ plt.text(
 )
 
 # Show number of neighbours
-plt.text(1.75 * h, 2e-1 / 2.9 ** 0, "$N_{\\rm ngb}=\\infty$", fontsize=10)
+plt.text(1.75 * h, 2e-1 / 2.9**0, "$N_{\\rm ngb}=\\infty$", fontsize=10)
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 1,
+    2e-1 / 2.9**1,
     "$N_{\\rm ngb}=%3.1f$" % (N_H_cubic),
     color="b",
     fontsize=9,
 )
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 2,
+    2e-1 / 2.9**2,
     "$N_{\\rm ngb}=%3.1f$" % (N_H_quartic),
     color="c",
     fontsize=9,
 )
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 3,
+    2e-1 / 2.9**3,
     "$N_{\\rm ngb}=%3.1f$" % (N_H_quintic),
     color="g",
     fontsize=9,
 )
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 4,
+    2e-1 / 2.9**4,
     "$N_{\\rm ngb}=%3.1f$" % (N_H_WendlandC2),
     color="r",
     fontsize=9,
 )
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 5,
+    2e-1 / 2.9**5,
     "$N_{\\rm ngb}=%3.1f$" % (N_H_WendlandC4),
     color="m",
     fontsize=9,
 )
 plt.text(
     1.75 * h,
-    2e-1 / 2.9 ** 6,
+    2e-1 / 2.9**6,
     "$N_{\\rm ngb}=%3.0f$" % (N_H_WendlandC6),
     color="y",
     fontsize=9,
@@ -558,12 +553,13 @@ plt.savefig("kernels.pdf")
 # Now, let's work on derivatives
 ################################
 
+
 # Get the derivative of the reduced kernel definitions for 3D kernels
 def d_cubic_spline(r):
     return np.where(
         r > 1.0,
         0.0,
-        np.where(r < 0.5, 9.0 * r ** 2 - 6.0 * r, -3.0 * r ** 2 + 6.0 * r - 3.0),
+        np.where(r < 0.5, 9.0 * r**2 - 6.0 * r, -3.0 * r**2 + 6.0 * r - 3.0),
     )
 
 
@@ -573,11 +569,11 @@ def d_quartic_spline(r):
         0.0,
         np.where(
             r < 0.2,
-            24.0 * r ** 3 - 4.8 * r,
+            24.0 * r**3 - 4.8 * r,
             np.where(
                 r < 0.6,
-                -16.0 * r ** 3 + 24.0 * r ** 2 - (48.0 / 5.0) * r + (8.0 / 25.0),
-                4.0 * r ** 3 - 12.0 * r ** 2 + 12.0 * r - 4.0,
+                -16.0 * r**3 + 24.0 * r**2 - (48.0 / 5.0) * r + (8.0 / 25.0),
+                4.0 * r**3 - 12.0 * r**2 + 12.0 * r - 4.0,
             ),
         ),
     )
@@ -589,35 +585,33 @@ def d_quintic_spline(r):
         0.0,
         np.where(
             r < 1.0 / 3.0,
-            -50.0 * r ** 4 + 40.0 * r ** 3 - (40.0 / 9.0) * r,
+            -50.0 * r**4 + 40.0 * r**3 - (40.0 / 9.0) * r,
             np.where(
                 r < 2.0 / 3.0,
-                25.0 * r ** 4
-                - 60.0 * r ** 3
-                + 50.0 * r ** 2
+                25.0 * r**4
+                - 60.0 * r**3
+                + 50.0 * r**2
                 - (140.0 / 9.0) * r
                 + (25.0 / 27.0),
-                -5.0 * r ** 4 + 20.0 * r ** 3 - 30.0 * r ** 2 + 20.0 * r - 5.0,
+                -5.0 * r**4 + 20.0 * r**3 - 30.0 * r**2 + 20.0 * r - 5.0,
             ),
         ),
     )
 
 
 def d_wendlandC2(r):
-    return np.where(
-        r > 1.0, 0.0, 20.0 * r ** 4 - 60.0 * r ** 3 + 60.0 * r ** 2 - 20.0 * r
-    )
+    return np.where(r > 1.0, 0.0, 20.0 * r**4 - 60.0 * r**3 + 60.0 * r**2 - 20.0 * r)
 
 
 def d_wendlandC4(r):
     return np.where(
         r > 1.0,
         0.0,
-        93.3333 * r ** 7
-        - 448.0 * r ** 6
-        + 840.0 * r ** 5
-        - 746.667 * r ** 4
-        + 280.0 * r ** 3
+        93.3333 * r**7
+        - 448.0 * r**6
+        + 840.0 * r**5
+        - 746.667 * r**4
+        + 280.0 * r**3
         - 18.6667 * r,
     )
 
@@ -626,22 +620,22 @@ def d_wendlandC6(r):
     return np.where(
         r > 1.0,
         0.0,
-        352.0 * r ** 10
-        - 2310.0 * r ** 9
-        + 6336.0 * r ** 8
-        - 9240.0 * r ** 7
-        + 7392.0 * r ** 6
-        - 2772.0 * r ** 5
-        + 264.0 * r ** 3
+        352.0 * r**10
+        - 2310.0 * r**9
+        + 6336.0 * r**8
+        - 9240.0 * r**7
+        + 7392.0 * r**6
+        - 2772.0 * r**5
+        + 264.0 * r**3
         - 22.0 * r,
     )
 
 
 def d_Gaussian(r, h):
     return (
-        (-8.0 * np.sqrt(2.0) / (PI ** (3.0 / 2.0) * h ** 5))
+        (-8.0 * np.sqrt(2.0) / (PI ** (3.0 / 2.0) * h**5))
         * r
-        * np.exp(-2.0 * r ** 2 / (h ** 2))
+        * np.exp(-2.0 * r**2 / (h**2))
     )
 
 
@@ -673,69 +667,69 @@ def dh_Gaussian(r, h):
 
 # Derivative of kernel definitions (3D)
 def dWdx_cubic_spline(r):
-    return C_cubic * d_cubic_spline(r / H_cubic) / H_cubic ** 4
+    return C_cubic * d_cubic_spline(r / H_cubic) / H_cubic**4
 
 
 def dWdx_quartic_spline(r):
-    return C_quartic * d_quartic_spline(r / H_quartic) / H_quartic ** 4
+    return C_quartic * d_quartic_spline(r / H_quartic) / H_quartic**4
 
 
 def dWdx_quintic_spline(r):
-    return C_quintic * d_quintic_spline(r / H_quintic) / H_quintic ** 4
+    return C_quintic * d_quintic_spline(r / H_quintic) / H_quintic**4
 
 
 def dWdx_WendlandC2(r):
-    return C_WendlandC2 * d_wendlandC2(r / H_WendlandC2) / H_WendlandC2 ** 4
+    return C_WendlandC2 * d_wendlandC2(r / H_WendlandC2) / H_WendlandC2**4
 
 
 def dWdx_WendlandC4(r):
-    return C_WendlandC4 * d_wendlandC4(r / H_WendlandC4) / H_WendlandC4 ** 4
+    return C_WendlandC4 * d_wendlandC4(r / H_WendlandC4) / H_WendlandC4**4
 
 
 def dWdx_WendlandC6(r):
-    return C_WendlandC6 * d_wendlandC6(r / H_WendlandC6) / H_WendlandC6 ** 4
+    return C_WendlandC6 * d_wendlandC6(r / H_WendlandC6) / H_WendlandC6**4
 
 
 # Derivative of kernel definitions (3D)
 def dWdh_cubic_spline(r):
     return (
         3.0 * cubic_spline(r / H_cubic) + (r / H_cubic) * d_cubic_spline(r / H_cubic)
-    ) * (-C_cubic / H_cubic ** 4)
+    ) * (-C_cubic / H_cubic**4)
 
 
 def dWdh_quartic_spline(r):
     return (
         3.0 * quartic_spline(r / H_quartic)
         + (r / H_quartic) * d_quartic_spline(r / H_quartic)
-    ) * (-C_quartic / H_quartic ** 4)
+    ) * (-C_quartic / H_quartic**4)
 
 
 def dWdh_quintic_spline(r):
     return (
         3.0 * quintic_spline(r / H_quintic)
         + (r / H_quintic) * d_quintic_spline(r / H_quintic)
-    ) * (-C_quintic / H_quintic ** 4)
+    ) * (-C_quintic / H_quintic**4)
 
 
 def dWdh_WendlandC2(r):
     return (
         3.0 * wendlandC2(r / H_WendlandC2)
         + (r / H_WendlandC2) * d_wendlandC2(r / H_WendlandC2)
-    ) * (-C_WendlandC2 / H_WendlandC2 ** 4)
+    ) * (-C_WendlandC2 / H_WendlandC2**4)
 
 
 def dWdh_WendlandC4(r):
     return (
         3.0 * wendlandC4(r / H_WendlandC4)
         + (r / H_WendlandC4) * d_wendlandC4(r / H_WendlandC4)
-    ) * (-C_WendlandC4 / H_WendlandC4 ** 4)
+    ) * (-C_WendlandC4 / H_WendlandC4**4)
 
 
 def dWdh_WendlandC6(r):
     return (
         3.0 * wendlandC6(r / H_WendlandC6)
         + (r / H_WendlandC6) * d_wendlandC6(r / H_WendlandC6)
-    ) * (-C_WendlandC6 / H_WendlandC6 ** 4)
+    ) * (-C_WendlandC6 / H_WendlandC6**4)
 
 
 # Second derivative of kernel definitions (3D)

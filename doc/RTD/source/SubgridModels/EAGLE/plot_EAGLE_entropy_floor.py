@@ -42,7 +42,7 @@ rcParams.update(params)
 
 # Equations of state
 eos_cool_rho = np.logspace(-5, 5, 1000)
-eos_cool_T = eos_cool_rho ** 0.0 * 8000.0
+eos_cool_T = eos_cool_rho**0.0 * 8000.0
 eos_Jeans_rho = np.logspace(-1, 5, 1000)
 eos_Jeans_T = (eos_Jeans_rho / 10 ** (-1)) ** (1.0 / 3.0) * 4000.0
 

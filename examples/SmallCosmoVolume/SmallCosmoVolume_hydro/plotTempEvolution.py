@@ -68,6 +68,7 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
+
 # Primoridal mean molecular weight as a function of temperature
 def mu(T, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     if T > T_trans:
@@ -114,7 +115,7 @@ for i in range(n_snapshots):
     u = sim["/PartType0/InternalEnergies"][:]
 
     # Compute the temperature
-    u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+    u *= unit_length_in_si**2 / unit_time_in_si**2
     u /= a[i] ** (3 * (gas_gamma - 1.0))
     Temp = T(u)
 
@@ -146,7 +147,7 @@ plt.fill_between(
     color="C1",
     alpha=0.1,
 )
-plt.plot(a, 10 ** T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
+plt.plot(a, 10**T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
 plt.plot(a, T_median, color="C2", label="${\\rm median}~T$", lw=1.5)
 
 plt.legend(loc="upper left", frameon=False, handlelength=1.5)

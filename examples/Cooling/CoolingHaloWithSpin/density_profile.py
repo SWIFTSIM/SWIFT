@@ -3,6 +3,17 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
+# =============================================================
+# Plot density profiles of gas in halo.
+# Usage: python3 density_profile.py maxr n_bins n_snaps
+#   maxr:   Maximal radius to take into account, in units of
+#           virial radius
+#   n_bins: how many radial bins to use to histogram particles
+#           to compute profiles
+#   n_snaps: how many snapshots to plot, starting at snapshot 0
+# =============================================================
+
+
 # for the plotting
 max_r = float(sys.argv[1])  # in units of the virial radius
 n_radial_bins = int(sys.argv[2])
@@ -38,7 +49,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
@@ -48,7 +59,7 @@ for i in range(n_snaps):
     coords = np.array(coords_dset)
     # translate coords by centre of box
     header = f["Header"]
-    snap_time = header.attrs["Time"]
+    snap_time = header.attrs["Time"][0]
     snap_time_cgs = snap_time * unit_time_cgs
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
@@ -68,15 +79,17 @@ for i in range(n_snaps):
     mass_dset = f["PartType0/Masses"]
     # mass of each particles should be equal
     part_mass = np.array(mass_dset)[0]
-    part_mass_cgs = part_mass * unit_mass_cgs
-    part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs
+
+    # NOTE: put division by unit_mass_cgs in divisor to avoid overflows
+    # when computing part_mass_cgs instead
+    part_mass_over_virial_mass = part_mass / (M_vir_cgs / unit_mass_cgs)
 
     mass_hist = hist * part_mass_over_virial_mass
     radial_bin_mids = np.linspace(
         bin_width / 2.0, max_r - bin_width / 2.0, n_radial_bins
     )
     # volume in each radial bin
-    volume = 4.0 * np.pi * radial_bin_mids ** 2 * bin_width
+    volume = 4.0 * np.pi * radial_bin_mids**2 * bin_width
 
     # now divide hist by the volume so we have a density in each bin
 
@@ -95,8 +108,8 @@ for i in range(n_snaps):
     # calculate cooling radius
 
     r_cool_over_r_vir = np.sqrt(
-        (2.0 * (gamma - 1.0) * lambda_cgs * M_vir_cgs * X_H ** 2)
-        / (4.0 * np.pi * CONST_m_H_CGS ** 2 * v_c_cgs ** 2 * r_vir_cgs ** 3)
+        (2.0 * (gamma - 1.0) * lambda_cgs * M_vir_cgs * X_H**2)
+        / (4.0 * np.pi * CONST_m_H_CGS**2 * v_c_cgs**2 * r_vir_cgs**3)
     ) * np.sqrt(snap_time_cgs)
 
     # initial analytic density profile
@@ -106,6 +119,7 @@ for i in range(n_snaps):
         rho_0 = density[0]
 
         rho_analytic_init = rho_0 * (radial_bin_mids / r_0) ** (-2)
+
     plt.plot(radial_bin_mids, density, "ko", label="Average density of shell")
     plt.plot(
         radial_bin_mids, rho_analytic_init, label="Initial analytic density profile"
@@ -117,6 +131,7 @@ for i in range(n_snaps):
         % (snap_time_cgs, N, v_c)
     )
     # plt.ylim((1.e-2,1.e1))
+
     plt.plot(
         (r_cool_over_r_vir, r_cool_over_r_vir),
         (1.0e-4, 1.0e4),

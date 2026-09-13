@@ -230,12 +230,23 @@ __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms *terms,
+    double time, const struct forcing_terms *terms, const struct space *s,
     const struct phys_const *phys_const, const struct part *p,
     const struct xpart *xp) {
 
   return FLT_MAX;
 }
+
+/**
+ * @brief updates the forcing terms
+ *
+ * Nothing to do here
+ *
+ * @param terms The #forcing_terms properties of the run
+ * @param time_old The previous system time
+ */
+INLINE static void forcing_update(struct forcing_terms *terms,
+                                  const double time_old) {}
 
 /**
  * @brief Prints the properties of the forcing terms to stdout.
@@ -278,7 +289,8 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->enable_grav_acceleration = parser_get_opt_param_int(
       parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if (terms->enable_fixed_position != 0 && terms->enable_fixed_position != 1) {
+  if ((terms->enable_fixed_position != 0) &&
+      (terms->enable_fixed_position != 1)) {
     error(
         "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
         "(true).");
@@ -287,12 +299,12 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   if (terms->enable_fixed_position) {
     /* If using fixed boundary particles, both hydro and grav accelerations must
      * be reset to 0. */
-    if (terms->enable_hydro_acceleration != 0) {
+    if (terms->enable_hydro_acceleration) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
     }
-    if (terms->enable_grav_acceleration != 0) {
+    if (terms->enable_grav_acceleration) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
@@ -301,19 +313,28 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   } else {
     /* If not using fixed boundary particles, hydro and grav accelerations can
      * be enabled independently. */
-    if (terms->enable_hydro_acceleration != 0 &&
-        terms->enable_hydro_acceleration != 1) {
+    if ((terms->enable_hydro_acceleration != 0) &&
+        (terms->enable_hydro_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be either 0 "
           "(false) or 1 (true).");
     }
-    if (terms->enable_grav_acceleration != 0 &&
-        terms->enable_grav_acceleration != 1) {
+    if ((terms->enable_grav_acceleration != 0) &&
+        (terms->enable_grav_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be either 0 (false) "
           "or 1 (true).");
     }
   }
 }
+
+/**
+ * @brief Clean-up the memory allocated for the forcing routine
+ *
+ * Nothing to do here
+ *
+ * @param terms The forcing term properties
+ */
+static INLINE void forcing_terms_clean(struct forcing_terms *terms) {}
 
 #endif /* SWIFT_FORCING_BOUNDARY_PARTICLES_H */

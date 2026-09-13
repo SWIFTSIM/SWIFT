@@ -21,7 +21,7 @@ import scipy.special as sci
 from scipy.optimize import minimize
 import time
 import argparse
-from swiftsimio import Writer
+import swiftsimio as sw
 import unyt
 
 parser = argparse.ArgumentParser(
@@ -107,6 +107,7 @@ print(
     + " kpc"
 )
 
+
 ### Generate Positions
 # Inverse transform sampling from analytical inverse of M(<r)
 def r_of_m(m, a, M):
@@ -132,7 +133,7 @@ units = G ** (q - 5.0) * M ** (q - 4.0) * a ** (2.0 - q)
 
 
 def H(E, L):
-    x = L ** 2 / (2.0 * E * a ** 2)
+    x = L**2 / (2.0 * E * a**2)
     if x <= 1.0:
         return 1.0 / (sci.gamma(4.5 - q)) * sci.hyp2f1(0.5 * q, q - 3.5, 1.0, x)
     else:
@@ -153,14 +154,15 @@ def Fq(E, L):
 # Helper Functions
 # Total energy: E = phi - 1/2v^2. relative potential: psi = -phi. Relative energy: -E = psi - 1/2v^2
 def relative_potential(r):  # = - phi
-    return G * M / np.sqrt(r ** 2 + a ** 2)
+    return G * M / np.sqrt(r**2 + a**2)
 
 
 def relative_energy(r, vr, vt):
-    return relative_potential(r) - 0.5 * (vr ** 2 + vt ** 2)
+    return relative_potential(r) - 0.5 * (vr**2 + vt**2)
 
 
 # N.B: Angular momentum: L = r * vt
+
 
 # Convenience Function for scipy.minimize negative of Fq*vt, indep. vars passed as array
 def Fq_tomin(v, r):
@@ -171,7 +173,7 @@ def Fq_tomin(v, r):
 def fmax(r, vmax):
     # Constraint function (defined locally, dep on r)
     def vel_constr2(v):
-        return vmax ** 2 - v[0] ** 2 - v[1] ** 2
+        return vmax**2 - v[0] ** 2 - v[1] ** 2
 
     # Initial Guess
     v0 = [0.1 * vmax, 0.2 * vmax]
@@ -208,7 +210,7 @@ def sample_vel(r):
         while True:
             vr = np.random.uniform(0.0, vmax)
             vt = np.random.uniform(0.0, vmax)
-            if vr ** 2 + vt ** 2 <= vmax ** 2:
+            if vr**2 + vt**2 <= vmax**2:
                 break
         # Rejection Sampling on Fq
         f = np.random.uniform(0.0, fm)
@@ -275,11 +277,42 @@ galactic_units = unyt.UnitSystem(
     unyt.unyt_quantity(1e10, units=unyt.Solar_Mass),
     unyt.unyt_quantity(1.0, units=unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
 )
-wrt = Writer(galactic_units, args.boxsize * unyt.kpc)
-wrt.dark_matter.coordinates = X * unyt.kpc
-wrt.dark_matter.velocities = V * (unyt.km / unyt.s)
-wrt.dark_matter.masses = m * 1e10 * unyt.msun
-wrt.dark_matter.particle_ids = np.arange(new_N)
+boxsize = sw.cosmo_array(
+    [args.boxsize, args.boxsize, args.boxsize],
+    unyt.kpc,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=1,
+)
+wrt = sw.Writer(unit_system=galactic_units, boxsize=boxsize)
+wrt.dark_matter.coordinates = sw.cosmo_array(
+    X,
+    unyt.kpc,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=1,
+)
+wrt.dark_matter.velocities = sw.cosmo_array(
+    V,
+    unyt.km / unyt.s,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
+wrt.dark_matter.masses = sw.cosmo_array(
+    m * 1e10,
+    unyt.msun,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
+wrt.dark_matter.particle_ids = sw.cosmo_array(
+    1 + np.arange(new_N),
+    unyt.dimensionless,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
 wrt.write(fname)
 print("Writing IC file...")
 

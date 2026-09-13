@@ -1,0 +1,24 @@
+This example is an adaptation of the example in examples/HydroTests/BalsaraKim where we use stars and
+stellar feedback to inject energy, instead of relying on a forcing scheme. To recap, this example is based 
+on the supernova-driven turbulence test from Balsara & Kim (2004) and Price (2018), only without MHD.
+
+It consists of a series of energetic supernova events in a patch of ISM. These injections will form 
+interacting shock shells driving turbulence (and magnetic field amplification), and in turn result in a 
+filamentary structure.
+
+Running the test
+________________
+
+configure swift as:
+./configure --with-chemistry=EAGLE --with-cooling=EAGLE --with-stars=EAGLE --with-feedback=EAGLE --with-ext-potential=constant --with-kernel=quintic-spline --disable-hand-vec
+
+You can set up the example with the run script:
+./run.sh
+
+
+Analysing the Snapshots
+_______________________
+
+To analyse the snapshots you can run the following
+
+python3 PlotResult.py

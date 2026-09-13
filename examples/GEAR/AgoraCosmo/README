@@ -10,4 +10,4 @@ The target halo contains the highest-resolution dark matter particles particles 
 
 To run this example, SWIFT must be configured with the following options:
 
-./configure --with-chemistry=GEAR_10  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR
+./configure --with-subgrid=GEAR --with-grackle=/path/to/grackle

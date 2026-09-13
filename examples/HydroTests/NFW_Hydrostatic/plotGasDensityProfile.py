@@ -24,7 +24,6 @@ import numpy as np
 from glob import glob
 import h5py
 
-
 plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 MyrInSec = 31557600000000.0
@@ -41,7 +40,7 @@ def ComputeDensity(snap):
     unit_mass = units.attrs["Unit mass in cgs (U_M)"]
     unit_length = units.attrs["Unit length in cgs (U_L)"]
     unit_time = units.attrs["Unit time in cgs (U_t)"]
-    unit_density = unit_mass / unit_length ** 3
+    unit_density = unit_mass / unit_length**3
 
     # Header
     header = f["Header"]
@@ -91,7 +90,7 @@ def ComputeDensity(snap):
         i = i + nparts_per_bin
 
     # compute density
-    vol = 4 / 3 * np.pi * (rs_end ** 3 - rs_beg ** 3)
+    vol = 4 / 3 * np.pi * (rs_end**3 - rs_beg**3)
     rho = ms / vol
 
     # compute radius, we use the mean

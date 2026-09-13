@@ -51,8 +51,8 @@ except IndexError:
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
-    and return their names as list """
+    Find the snapshot(s) that are to be plotted
+    and return their names as list"""
 
     snaplist = []
 
@@ -119,7 +119,7 @@ def get_photon_energies(snaplist):
     returns:
 
         snap_nrs : list of integers of snapshot numbers
-        energy_sums: np.array(shape=(len snaplist, ngroups)) of 
+        energy_sums: np.array(shape=(len snaplist, ngroups)) of
             total photon energies per group per snapshot
     """
 

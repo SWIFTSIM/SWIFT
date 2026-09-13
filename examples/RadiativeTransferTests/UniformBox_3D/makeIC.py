@@ -28,7 +28,7 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
+import swiftsimio as sw
 
 # Box is 1 Mpc
 boxsize = 100 * unyt.m
@@ -68,21 +68,63 @@ xp = unyt.unyt_array(xp, boxsize.units)
 xs = unyt.unyt_array(xs, boxsize.units)
 
 
-w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, compress=False)
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system, boxsize=boxsize_cosmo, compress=False
+)
 
-w.gas.coordinates = xp
-w.stars.coordinates = xs
-w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.stars.velocities = np.zeros(xs.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
-w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * 1000 * unyt.g
-w.gas.internal_energy = (
-    np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+w.gas.coordinates = sw.cosmo_array(
+    xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.stars.coordinates = sw.cosmo_array(
+    xs.value, xs.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
+w.gas.velocities = sw.cosmo_array(
+    np.zeros(xp.shape),
+    unyt.cm / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.stars.velocities = sw.cosmo_array(
+    np.zeros(xs.shape),
+    unyt.cm / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.gas.masses = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=np.float64) * 1000,
+    unyt.g,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+w.stars.masses = sw.cosmo_array(
+    np.ones(xs.shape[0], dtype=np.float64) * 1000,
+    unyt.g,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
+u = (300.0 * unyt.kb * unyt.K) / unyt.g
+w.gas.internal_energy = sw.cosmo_array(
+    np.ones(xp.shape[0], dtype=np.float64) * u.value,
+    u.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=-2,
 )
 
 # Generate initial guess for smoothing lengths based on MIPS
-w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
-w.stars.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+w.gas.generate_smoothing_lengths()
+w.stars.generate_smoothing_lengths()
 
 # If IDs are not present, this automatically generates
 w.write("uniformBox-rt.hdf5")

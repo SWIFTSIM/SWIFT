@@ -30,7 +30,7 @@ struct cooling_part_data {};
 struct cooling_xpart_data {
 
   /*! Cumulative energy radiated by the particle */
-  float radiated_energy;
+  double radiated_energy;
 };
 
 #endif /* SWIFT_COOLING_STRUCT_EAGLE_H */

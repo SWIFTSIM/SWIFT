@@ -29,7 +29,7 @@ plotkwargs = {"alpha": 0.5}
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -56,7 +56,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -90,7 +90,16 @@ Tmin = T.v.min()
 Tmax = T.v.max()
 
 
-u_theory, mu_theory, T_theory, XHI_theory, XHII_theory, XHeI_theory, XHeII_theory, XHeIII_theory = np.loadtxt(
+(
+    u_theory,
+    mu_theory,
+    T_theory,
+    XHI_theory,
+    XHII_theory,
+    XHeI_theory,
+    XHeII_theory,
+    XHeIII_theory,
+) = np.loadtxt(
     "IonizationEquilibriumICSetupTestReference.txt", dtype=np.float64, unpack=True
 )
 

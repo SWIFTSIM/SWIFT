@@ -185,6 +185,7 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
+
 # @jit(nopython=True, parallel=True, fastmath=True)
 def check_stand_alone_star(i):
     pos = my_pos_star[i, :]
@@ -199,7 +200,7 @@ def check_stand_alone_star(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     select = np.argmin(r2)
 
     # If the nearest DM particle is in a group --> mistake
@@ -252,7 +253,7 @@ def test_stars_in_group(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     select = np.argmin(r2)
 
     # If the nearest DM particle is not in the same group --> mistake
@@ -302,7 +303,7 @@ def test_stand_alone_gas(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     select = np.argmin(r2)
 
     # If the nearest DM particle is in a group --> mistake
@@ -355,7 +356,7 @@ def test_gas_in_groups(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     select = np.argmin(r2)
 
     # If the nearest DM particle is not in the same group --> mistake
@@ -402,7 +403,7 @@ def test_stand_alone_DM(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     mask = np.logical_and(r2 < l * l, r2 > 0.0)
 
     # If the nearest DM particle is in a group --> mistake
@@ -453,7 +454,7 @@ def test_DM_in_groups(i):
     dz = nearest(dz)
 
     # Identify the nearest DM particle
-    r2 = dx ** 2 + dy ** 2 + dz ** 2
+    r2 = dx**2 + dy**2 + dz**2
     mask = r2 < l * l
 
     # If the nearest DM particle is not in the same group --> mistake

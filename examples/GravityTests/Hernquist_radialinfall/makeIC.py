@@ -59,7 +59,7 @@ print("G=", const_G)
 
 
 def hernquistcircvel(r, M, a):
-    """ Function that calculates the circular velocity in a 
+    """Function that calculates the circular velocity in a
     Hernquist potential.
     @param r: radius from centre of potential
     @param M: mass of the Hernquist potential

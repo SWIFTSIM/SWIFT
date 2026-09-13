@@ -19,7 +19,6 @@ from swiftsimio import load
 from swiftsimio.visualisation.projection import project_pixel_grid
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 
-
 # Grab snapshot
 
 snapshot_basename = "snap"

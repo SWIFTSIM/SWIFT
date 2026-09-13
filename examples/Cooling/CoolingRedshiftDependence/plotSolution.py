@@ -97,8 +97,8 @@ def get_data(handle: float, n_snaps: int):
             times.append(data.metadata.t.to(Myr).value - t0)
             temps.append(np.mean(data.gas.temperatures.to(K).value))
             densities.append(
-                np.mean(data.gas.densities.to(mh / cm ** 3).value)
-                / (data.metadata.scale_factor ** 3)
+                np.mean(data.gas.densities.to(mh / cm**3).value)
+                / (data.metadata.scale_factor**3)
             )
 
             try:

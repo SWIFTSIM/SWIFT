@@ -91,7 +91,7 @@ dm_mass = project_pixel_grid(
 
 # Project the gas mass
 mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
-mass_map.convert_to_units(msun / kpc ** 2)
+mass_map.convert_to_units(msun / kpc**2)
 
 
 # Make figure an plot

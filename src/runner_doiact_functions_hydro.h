@@ -1070,6 +1070,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
+  /* Now we can unlock */
+  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock cell!");
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
@@ -1089,10 +1093,6 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
   }
-
-  /* Now we can unlock */
-  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
 }
 
 /**
@@ -1256,7 +1256,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);

@@ -1071,9 +1071,9 @@ be processed by the ``SpecWizard`` tool
      allowed_los_range_x: [0, 100.]   # Range along the x-axis where LoS along Y or Z are allowed
      allowed_los_range_y: [0, 100.]   # Range along the y-axis where LoS along X or Z are allowed
      allowed_los_range_z: [0, 100.]   # Range along the z-axis where LoS along X or Y are allowed
-     range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
-     range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
-     range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
+     range_when_shooting_down_x: [0., 100.] # Range along the x-axis of LoS along x
+     range_when_shooting_down_y: [0., 100.] # Range along the y-axis of LoS along y
+     range_when_shooting_down_z: [0., 100.] # Range along the z-axis of LoS along z
 
 
 .. _Parameters_light_cone:
@@ -1728,6 +1728,19 @@ If ParMETIS and METIS are not available then only an initial partition will be
 performed. So the balance will be compromised by the quality of the initial
 partition.
 
+When using METIS or ParMETIS, the optional::
+
+  DomainDecomposition:
+    metis_seed:
+
+parameter can be used to fix the partition seed for reproducibility. Any
+non-negative value forces that seed to be used. Negative values keep the
+automatic behaviour and generate a fresh seed for each partitioning event.
+Serial METIS uses that seed directly. ParMETIS repartitioning also uses that
+seed directly, but ParMETIS initial partitioning tries 10 candidate seeds using
+``metis_seed + i`` and keeps the best partition. When running with verbose
+output, SWIFT prints the seed that was used for the partition it kept.
+
 Repartitioning:
 ^^^^^^^^^^^^^^^
 
@@ -1992,8 +2005,3 @@ A complete specification of the model looks like
 	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
 
 .. [#f4] https://wiki.lustre.org/Main_Page
-
-.. [#f5] We add a per-output random integer to the OST value such that we don't
-	 generate a bias towards low OSTs. This averages the load over all OSTs
-	 over the course of a run even if the number of OSTs does not divide the
-	 number of files and vice-versa.

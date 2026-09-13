@@ -94,6 +94,7 @@ args = argparser.parse_args()
 nproc = args.nproc
 trange = args.time_range
 
+
 # function used to extract the step counter from a thread_info_MPI-step*.dat file
 def getcount(filename):
     return int(re.findall("\d+", filename)[0])

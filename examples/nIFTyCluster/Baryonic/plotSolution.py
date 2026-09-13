@@ -33,13 +33,13 @@ extra_data_directory = "data"
 extra_data_schemes = ["G2-anarchy", "AREPO", "G3-music"]
 h = 0.7
 
-gas_density_units = unyt.Solar_Mass / unyt.Mpc ** 3
+gas_density_units = unyt.Solar_Mass / unyt.Mpc**3
 
 dm_density_units = gas_density_units
 
 temperature_units = unyt.keV
 
-entropy_units = unyt.keV * unyt.cm ** 2
+entropy_units = unyt.keV * unyt.cm**2
 
 info_fontsize = 5
 
@@ -95,7 +95,7 @@ def bin_volumes(radial_bins: np.array) -> np.array:
     Returns the volumes of the bins.
     """
 
-    single_vol = lambda x: (4.0 / 3.0) * np.pi * x ** 3
+    single_vol = lambda x: (4.0 / 3.0) * np.pi * x**3
     outer = single_vol(radial_bins[1:])
     inner = single_vol(radial_bins[:-1])
 

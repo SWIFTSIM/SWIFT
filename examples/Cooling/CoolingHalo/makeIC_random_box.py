@@ -55,7 +55,7 @@ r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 
 # Now get the virial mass
 
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 # Now set the unit length and mass
 
@@ -151,14 +151,14 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-l = (boxSize ** 3 / N) ** (1.0 / 3.0)  # local mean inter-particle separation
+l = (boxSize**3 / N) ** (1.0 / 3.0)  # local mean inter-particle separation
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = v_c ** 2 / (2.0 * (gamma - 1.0))
+u = v_c**2 / (2.0 * (gamma - 1.0))
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u

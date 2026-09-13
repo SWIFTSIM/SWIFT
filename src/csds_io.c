@@ -121,7 +121,7 @@ void csds_write_description(struct csds_writer *log, struct engine *e) {
 
   /* Write the policy section */
   fprintf(f, "Policy:\n");
-  for (int i = 1; i < engine_maxpolicy; i++) {
+  for (int i = 0; i < engine_maxpolicy; i++) {
     const int value = e->policy & (1 << i) ? 1 : 0;
     fprintf(f, "  %s: %i\n", engine_policy_names[i + 1], value);
   }

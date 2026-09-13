@@ -35,7 +35,7 @@ else:
 
 # Extract the box dimensions and volume
 L = f["Header"].attrs["BoxSize"] / Length_Unit  # Mpc
-V = L ** 3 if np.isscalar(L) else np.product(L)  # Mpc^3
+V = L**3 if np.isscalar(L) else np.product(L)  # Mpc^3
 if not np.isscalar(L) and len(L) != 3:
     raise ValueError("Box dimensions are not cubic")
 
@@ -48,7 +48,7 @@ if nparts[6] != 0 or "PartType6" in f.keys():
 
 # Compute the default number of neutrinos (round to nearest cubic number)
 Default_N_nu = round((Default_nr_neutrinos_per_Mpc3 * V) ** (1.0 / 3.0))
-Default_Nr_neutrinos = int(Default_N_nu ** 3)
+Default_Nr_neutrinos = int(Default_N_nu**3)
 
 print("The box dimensions are " + str(L) + " Mpc.")
 print(

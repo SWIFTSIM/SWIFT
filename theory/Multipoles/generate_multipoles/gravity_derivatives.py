@@ -13,6 +13,7 @@ def ordinal(num):
 n = int(sys.argv[1])
 verbose = int(sys.argv[2])
 
+
 # Get the sorting indexes
 def argsort(seq):
     return sorted(list(range(len(seq))), key=seq.__getitem__)
