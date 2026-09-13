@@ -1258,7 +1258,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   /* Some constants used to checks that the parts are in the right frame.
    * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
    * from the end-of-step tend exchange; substitute a full cell width on
-   * the foreign side (see afcc4326c). */
+   * the foreign side. */
   const int local_i = ci->nodeID == e->nodeID;
   const int local_j = cj->nodeID == e->nodeID;
   const float ci_dx_max_part_safe =
@@ -1639,10 +1639,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   /* Some constants used to checks that the parts are in the right frame */
   /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
-   * from the end-of-step tend exchange; right after a rebuild the true
-   * value is still tiny, so that lag is a large relative error. Substitute
-   * a full cell width on the foreign side. The owning rank runs this
-   * same pair task with fresh bookkeeping, so real bugs are still caught. */
+   * from the end-of-step tend exchange; substitute a full cell width on
+   * the foreign side. */
   const float ci_dx_max_part_safe =
       local_i ? ci->hydro.dx_max_part : ci->width[0];
   const float cj_dx_max_part_safe =

@@ -417,7 +417,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
     /* Some constants used to checks that the parts are in the right frame.
      * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
      * from the end-of-step tend exchange; substitute a full cell width on
-     * the foreign side (see afcc4326c). */
+     * the foreign side. */
     const int local_i = ci->nodeID == e->nodeID;
     const int local_j = cj->nodeID == e->nodeID;
     const float ci_dx_max_part_safe =
@@ -591,7 +591,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
     /* Some constants used to checks that the parts are in the right frame.
      * A foreign cell's dx_max_part is a permanent one-step-stale snapshot
      * from the end-of-step tend exchange; substitute a full cell width on
-     * the foreign side (see afcc4326c). */
+     * the foreign side. */
     const int local_i = ci->nodeID == e->nodeID;
     const int local_j = cj->nodeID == e->nodeID;
     const float ci_dx_max_part_safe =

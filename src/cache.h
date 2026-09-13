@@ -697,7 +697,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 #ifdef SWIFT_DEBUG_CHECKS
   /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
    * from the end-of-step tend exchange; substitute a full cell width on
-   * the foreign side (see afcc4326c). */
+   * the foreign side. */
   const int local_i = ci->nodeID == engine_rank;
   const int local_j = cj->nodeID == engine_rank;
   const float ci_dx_max_part_safe =
