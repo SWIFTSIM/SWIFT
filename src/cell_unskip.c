@@ -2611,11 +2611,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
-      /* TODO(sink_mpi_physics): same per-side-active gating bug fixed for
-       * sinks in a722fbb14 and for stars alongside this comment -- gate on
-       * (ci_active || cj_active) instead, mirroring bh_in/bh_out above.
-       * Left as-is: black holes aren't compiled in this checkout
-       * (BLACK_HOLES_NONE), so the fix can't be tested here. */
+      /* TODO: black holes need the same (ci_active || cj_active) gate as
+       * the stars/sinks ghost chains above; untested since not compiled. */
       if (ci->hydro.super->black_holes.count > 0 && ci_active)
         scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost_1);
       if (cj->hydro.super->black_holes.count > 0 && cj_active)

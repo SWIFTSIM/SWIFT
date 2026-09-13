@@ -144,27 +144,12 @@
 #ifdef SWIFT_DEBUG_CHECKS
 
 /**
- * @brief Verify that one side of a stars feedback task had its stars ghost
- * chain (`ghost_in`/`ghost_out`) actually run this step, if that side's own
- * stars are active.
+ * @brief Check that a stars feedback task's ghost chain ran this step for
+ *        an active-stars cell.
  *
- * `cell_unskip.c`'s pair-task activation for the stars density/feedback
- * loops uses the "either side active" pattern (activates on
- * `ci_active || cj_active`), but the `stars.ghost_in`/`stars.ghost_out`
- * chain that sequences density before feedback is only *activated* via the
- * catch-all gated on `cell_need_activating_stars(c, ...)` for the cell
- * itself -- never from a neighbour's activity. That is the same structural
- * gap that caused the sink-sink swallow bug fixed by a722fbb14.
- *
- * `engine_maketasks.c` unconditionally wires `scheduler_addunlock(sched,
- * side->hydro.super->stars.ghost_out, t_star_feedback)` for every feedback
- * task, so if the edge is intact, `ghost_out` (and transitively `ghost_in`)
- * must have already run by the time the feedback task using it starts.
- * `task->skip` cannot detect a stale ghost here: it is reset to 1 both when
- * a task is never activated and when it completes normally (see
- * `scheduler_enqueue()`/`scheduler_done()`). `task->ti_run` is the reliable
- * signal: implicit tasks such as the ghosts are stamped with `e->ti_current`
- * in `scheduler_enqueue()` only when they actually run this step.
+ * `task->skip` cannot be used here, since it is reset to 1 both when a task
+ * is never activated and when it completes normally; `task->ti_run` is the
+ * reliable signal that the ghost chain actually executed this step.
  *
  * @param e The #engine.
  * @param t The running stars feedback #task.
