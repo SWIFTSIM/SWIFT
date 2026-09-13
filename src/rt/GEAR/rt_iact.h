@@ -256,6 +256,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+  /* A's two additive terms (A1: pi's own data, A2: pj's data), recomputed
+   * here for the closure diagnostic accumulated below; A itself is built
+   * the same way as without this flag, untouched. */
+  float A1[3];
+  float A2[3];
+#endif
   if (fvpm_part_geometry_well_behaved(pi) &&
       fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
@@ -279,6 +286,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
                  wj * hj_inv_dim;
       Anorm2 += A[k] * A[k];
     }
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+    for (int k = 0; k < 3; k++) {
+      A1[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+                  wi * hi_inv_dim;
+      A2[k] = -Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+                  wj * hj_inv_dim;
+    }
+#endif
   } else {
     /* ill condition gradient matrix: revert to SPH face area */
     const float hidp1 = pow_dimension_plus_one(hi_inv);
@@ -289,6 +304,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     A[1] = -Anorm * dx[1];
     A[2] = -Anorm * dx[2];
     Anorm2 = Anorm * Anorm * r2;
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+    /* Diagnostic split only: grouped differently than Anorm above, so
+     * A1 + A2 != A to rounding in this fallback branch. */
+    const float Anorm_i = -hidp1 * Vi * Vi * wi_dx * r_inv;
+    const float Anorm_j = -hjdp1 * Vj * Vj * wj_dx * r_inv;
+    for (int k = 0; k < 3; k++) {
+      A1[k] = -Anorm_i * dx[k];
+      A2[k] = -Anorm_j * dx[k];
+    }
+#endif
   }
 
   /* if the interface has no area, nothing happens and we return */
@@ -300,6 +325,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   /* Compute the area */
   const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
+
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+  /* Closure diagnostic: accumulate over this loop (rt_transport), which is
+   * already type-2/union by construction, instead of rt_gradient (type-1,
+   * gather), so it sees every face the fluxes actually use. pi is always
+   * updated because pi's flux update below is unconditional; pj is updated
+   * under the same condition its flux update uses, so the diagnostic tracks
+   * exactly the faces that exchanged flux. Behind a flag, off by default:
+   * the check this feeds is an unrated warning() per particle, which would
+   * flood production runs at every h-discontinuity otherwise. */
+  pi->geometry.rt_area += Anorm;
+  pi->geometry.rt_area_sum[0] += A[0];
+  pi->geometry.rt_area_sum[1] += A[1];
+  pi->geometry.rt_area_sum[2] += A[2];
+  pi->geometry.rt_area_sum1[0] += A1[0];
+  pi->geometry.rt_area_sum1[1] += A1[1];
+  pi->geometry.rt_area_sum1[2] += A1[2];
+  pi->geometry.rt_area_sum2[0] += A2[0];
+  pi->geometry.rt_area_sum2[1] += A2[1];
+  pi->geometry.rt_area_sum2[2] += A2[2];
+  if (mode == 1 || (pj->rt_data.flux_dt < 0.f)) {
+    /* Sign flip: A_ji = -A_ij, and A1/A2 swap roles (A2_ij is pj's own
+     * term, i.e. the row-sum term of A_ji). */
+    pj->geometry.rt_area += Anorm;
+    pj->geometry.rt_area_sum[0] -= A[0];
+    pj->geometry.rt_area_sum[1] -= A[1];
+    pj->geometry.rt_area_sum[2] -= A[2];
+    pj->geometry.rt_area_sum1[0] -= A2[0];
+    pj->geometry.rt_area_sum1[1] -= A2[1];
+    pj->geometry.rt_area_sum1[2] -= A2[2];
+    pj->geometry.rt_area_sum2[0] -= A1[0];
+    pj->geometry.rt_area_sum2[1] -= A1[1];
+    pj->geometry.rt_area_sum2[2] -= A1[2];
+  }
+#endif /* FVPM_RT_FACE_CLOSURE_DIAGNOSTIC */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* For stability reasons, we do require A and dx to have opposite
@@ -472,5 +532,58 @@ runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
 
   rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
+
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+/**
+ * @brief Reset the RT closure diagnostic accumulators (rt_area*). Called
+ * once per RT sub-cycle, before that sub-cycle's transport loop runs.
+ *
+ * @param p Particle to work on.
+ */
+__attribute__((always_inline)) INLINE static void
+rt_geometry_reset_area_diagnostics(struct part *restrict p) {
+
+  p->geometry.rt_area = 0.0f;
+  p->geometry.rt_area_sum[0] = 0.0f;
+  p->geometry.rt_area_sum[1] = 0.0f;
+  p->geometry.rt_area_sum[2] = 0.0f;
+  p->geometry.rt_area_sum1[0] = 0.0f;
+  p->geometry.rt_area_sum1[1] = 0.0f;
+  p->geometry.rt_area_sum1[2] = 0.0f;
+  p->geometry.rt_area_sum2[0] = 0.0f;
+  p->geometry.rt_area_sum2[1] = 0.0f;
+  p->geometry.rt_area_sum2[2] = 0.0f;
+}
+
+/**
+ * @brief Check that the RT closure diagnostic (Sum_j A_ij over the RT
+ * transport loop) is close to 0.0, and warn otherwise. Unlike the Gizmo
+ * hydro-gradient-loop equivalent (fvpm_check_total_face_area_vector_sum),
+ * this is a plain warning: RT has no is_problematic-style corrective state
+ * machine to feed.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void
+rt_check_total_face_area_vector_sum(const struct part *restrict p) {
+
+  const float threshold = 1e-2f;
+  const float area_threshold = p->geometry.rt_area * threshold;
+
+  if (fabsf(p->geometry.rt_area_sum[0]) > area_threshold ||
+      fabsf(p->geometry.rt_area_sum[1]) > area_threshold ||
+      fabsf(p->geometry.rt_area_sum[2]) > area_threshold) {
+    warning(
+        "[%lld] RT: Sum A_ij strongly deviating from 0! A_tot = %e, "
+        "Sum_j A_ij = ( %e %e %e ), Sum_j T1_ij = ( %e %e %e ), "
+        "Sum_j T2_ij = ( %e %e %e ).",
+        p->id, p->geometry.rt_area, p->geometry.rt_area_sum[0],
+        p->geometry.rt_area_sum[1], p->geometry.rt_area_sum[2],
+        p->geometry.rt_area_sum1[0], p->geometry.rt_area_sum1[1],
+        p->geometry.rt_area_sum1[2], p->geometry.rt_area_sum2[0],
+        p->geometry.rt_area_sum2[1], p->geometry.rt_area_sum2[2]);
+  }
+}
+#endif /* FVPM_RT_FACE_CLOSURE_DIAGNOSTIC */
 
 #endif /* SWIFT_RT_IACT_GEAR_H */

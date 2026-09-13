@@ -22,6 +22,7 @@
 #include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
+#include "rt_iact.h"
 #include "rt_properties.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_stellar_emission_model.h"
@@ -146,6 +147,12 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
   /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* rt_slope_limit_cell_init(p); */
+
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+  /* Reset the closure diagnostic accumulated in the transport loop of the
+   * previous sub-cycle (rt_finalise_transport already checked it). */
+  rt_geometry_reset_area_diagnostics(p);
+#endif
 
   p->rt_data.flux_dt = dt;
 }
@@ -513,6 +520,11 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
+
+#ifdef FVPM_RT_FACE_CLOSURE_DIAGNOSTIC
+  /* Check the RT Sum_j A_ij ~= 0 before the next sub-cycle's reset. */
+  rt_check_total_face_area_vector_sum(p);
+#endif
 
   /* Reset the fluxes now that they have been applied. */
   rt_part_reset_fluxes(p);
