@@ -72,6 +72,7 @@ struct threadpool;
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#define EXTRA_HYDRO_LOOP_TYPE2
 #define MPI_SYMMETRIC_FORCE_INTERACTION
 #elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro_part.h"

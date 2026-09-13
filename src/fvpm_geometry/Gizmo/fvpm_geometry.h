@@ -90,6 +90,14 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
     p->geometry.area_sum_minus[0] = 0.0;
     p->geometry.area_sum_minus[1] = 0.0;
     p->geometry.area_sum_minus[2] = 0.0;
+
+    p->geometry.area_sum1[0] = 0.0;
+    p->geometry.area_sum1[1] = 0.0;
+    p->geometry.area_sum1[2] = 0.0;
+
+    p->geometry.area_sum2[0] = 0.0;
+    p->geometry.area_sum2[1] = 0.0;
+    p->geometry.area_sum2[2] = 0.0;
   }
 }
 
@@ -128,7 +136,15 @@ fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
   p->geometry.area_sum_plus[2] = 0.0;
   p->geometry.area_sum_minus[0] = 0.0;
   p->geometry.area_sum_minus[1] = 0.0;
-  p->geometry.area_sum_minus[2] = 0.0;  
+  p->geometry.area_sum_minus[2] = 0.0;
+
+  p->geometry.area_sum1[0] = 0.0;
+  p->geometry.area_sum1[1] = 0.0;
+  p->geometry.area_sum1[2] = 0.0;
+
+  p->geometry.area_sum2[0] = 0.0;
+  p->geometry.area_sum2[1] = 0.0;
+  p->geometry.area_sum2[2] = 0.0;
 }
 
 /**
@@ -222,12 +238,15 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param (return) A The face area between i and j.
+ * @param (return) A1 The particle-i-only term of A (row-sum term).
+ * @param (return) A2 The particle-j-only term of A (column-sum term).
  */
 __attribute__((always_inline)) INLINE static void
 fvpm_compute_face_area_vector(const struct part *restrict pi, const struct part *restrict pj,
 				 float Bi[3][3], float Bj[3][3], const float r2,
 				 const float dx[3], const float hi,
-				 const float hj, float A[3]) {
+				 const float hj, float A[3], float A1[3],
+				 float A2[3]) {
 
   /* Get some useful quantities */
   const float r = sqrtf(r2);
@@ -268,20 +287,23 @@ fvpm_compute_face_area_vector(const struct part *restrict pi, const struct part 
 #endif
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-		 wi * hi_inv_dim -
-	     Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+      A1[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+		 wi * hi_inv_dim;
+      A2[k] = -Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
 		 wj * hj_inv_dim;
+      A[k] = A1[k] + A2[k];
     }
   } else {
     /* ill condition gradient matrix: revert to SPH face area */
     const float hidp1 = pow_dimension_plus_one(hi_inv);
     const float hjdp1 = pow_dimension_plus_one(hj_inv);
-    const float Anorm =
-	-(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * r_inv;
-    A[0] = -Anorm * dx[0];
-    A[1] = -Anorm * dx[1];
-    A[2] = -Anorm * dx[2];
+    const float Anorm_i = -hidp1 * Vi * Vi * wi_dx * r_inv;
+    const float Anorm_j = -hjdp1 * Vj * Vj * wj_dx * r_inv;
+    for (int k = 0; k < 3; k++) {
+      A1[k] = -Anorm_i * dx[k];
+      A2[k] = -Anorm_j * dx[k];
+      A[k] = A1[k] + A2[k];
+    }
   }
 }
 
@@ -316,7 +338,9 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
 
   /* Compute (square of) area */
   float A[3] = {0.0, 0.0, 0.0};
-  fvpm_compute_face_area_vector(pi, pj, Bi, Bj, r2, dx, hi, hj, A);
+  float A1[3] = {0.0, 0.0, 0.0};
+  float A2[3] = {0.0, 0.0, 0.0};
+  fvpm_compute_face_area_vector(pi, pj, Bi, Bj, r2, dx, hi, hj, A, A1, A2);
   const float Anorm2 = A[0] * A[0] + A[1] * A[1] + A[2] * A[2];
   const float Anorm = sqrtf(Anorm2);
 
@@ -339,6 +363,23 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
       pj->geometry.area_sum[0] -= A[0];
       pj->geometry.area_sum[1] -= A[1];
       pj->geometry.area_sum[2] -= A[2];
+    }
+
+    /* Split of area_sum: A1 uses only particle i's own data, A2 depends on neighbour j. */
+    pi->geometry.area_sum1[0] += A1[0];
+    pi->geometry.area_sum1[1] += A1[1];
+    pi->geometry.area_sum1[2] += A1[2];
+    pi->geometry.area_sum2[0] += A2[0];
+    pi->geometry.area_sum2[1] += A2[1];
+    pi->geometry.area_sum2[2] += A2[2];
+    if (interaction_mode == 1) {
+      /* For A_ji the two terms swap roles and flip sign (verified against A_ji = -A_ij). */
+      pj->geometry.area_sum1[0] -= A2[0];
+      pj->geometry.area_sum1[1] -= A2[1];
+      pj->geometry.area_sum1[2] -= A2[2];
+      pj->geometry.area_sum2[0] -= A1[0];
+      pj->geometry.area_sum2[1] -= A1[1];
+      pj->geometry.area_sum2[2] -= A1[2];
     }
   } else {
     if (pi->geometry.is_problematic == 2) {
@@ -408,9 +449,12 @@ fvpm_check_total_face_area_vector_sum(struct part *p) {
        fabsf(p->geometry.area_sum[2]) > area_threshold)) {
     warning(
         "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( "
-        "%e %e %e ).",
+        "%e %e %e ), Sum_j T1_ij = ( %e %e %e ), Sum_j T2_ij = ( %e %e %e ).",
         p->id, p->geometry.area, p->geometry.area_sum[0],
-        p->geometry.area_sum[1], p->geometry.area_sum[2]);
+        p->geometry.area_sum[1], p->geometry.area_sum[2],
+        p->geometry.area_sum1[0], p->geometry.area_sum1[1],
+        p->geometry.area_sum1[2], p->geometry.area_sum2[0],
+        p->geometry.area_sum2[1], p->geometry.area_sum2[2]);
 
     /* 0 = no problem, 2 = has just been detected skip this timestep's force, 1
        = it's safe to correct */

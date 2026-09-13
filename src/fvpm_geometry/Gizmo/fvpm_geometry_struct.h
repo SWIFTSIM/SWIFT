@@ -38,6 +38,12 @@ struct fvpm_geometry_struct {
   float area_sum_plus[3];
   float area_sum_minus[3];
 
+  /*! Row-sum term of area_sum: -V_i (B_i . dx) w_i h_i^-dim, uses only particle i's own data */
+  float area_sum1[3];
+
+  /*! Column-sum term of area_sum: -V_j (B_j . dx) w_j h_j^-dim, depends on neighbour j's data */
+  float area_sum2[3];
+
   char is_problematic;
 };
 

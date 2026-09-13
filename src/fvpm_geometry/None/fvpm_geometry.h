@@ -101,11 +101,13 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {}
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param (return) A The face area between i and j.
+ * @param (return) A1 The particle-i-only term of A (row-sum term).
+ * @param (return) A2 The particle-j-only term of A (column-sum term).
  */
 __attribute__((always_inline)) INLINE static void fvpm_compute_face_area_vector(
     const struct part *pi, const struct part *pj, float Bi[3][3],
     float Bj[3][3], const float r2, const float dx[3], const float hi,
-    const float hj, float A[3]) {}
+    const float hj, float A[3], float A1[3], float A2[3]) {}
 
 /**
  * @brief Accumulate the face area vector and norm.
