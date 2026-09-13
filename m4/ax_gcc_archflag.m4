@@ -110,14 +110,36 @@ case $host_cpu in
 	    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*) ax_gcc_arch="haswell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) ax_gcc_arch="broadwell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *4?6[[de]]?:*:*:*|*5?6[[de]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
+	    *5?65[[ab]]:*:*:*) ax_gcc_arch="cooperlake cascadelake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *5?65[[567]]:*:*:*) ax_gcc_arch="cascadelake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *5?6[[56]]?:*:*:*) ax_gcc_arch="skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
-            *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) ax_gcc_arch="kabylake skylake broadwell haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *8?6e?:*:*:*|*9?6e?:*:*:*) ax_gcc_arch="kabylake skylake broadwell haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *6?66?:*:*:*) ax_gcc_arch="cannonlake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Cannon Lake
+	    *6?6[[ac]]?:*:*:*) ax_gcc_arch="icelake-server icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Ice Lake-SP
+	    *7?6[[de]]?:*:*:*) ax_gcc_arch="icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Ice Lake
+	    *8?6[[cd]]?:*:*:*) ax_gcc_arch="tigerlake icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Tiger Lake
+	    *8?6f?:*:*:*) ax_gcc_arch="sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Sapphire Rapids
+	    *9?6[[7a]]?:*:*:*) ax_gcc_arch="alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Alder Lake
+	    *a?6[[56]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Comet Lake
+	    *a?67?:*:*:*) ax_gcc_arch="rocketlake icelake-client skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Rocket Lake
+	    *a?6[[ac]]?:*:*:*) ax_gcc_arch="meteorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Meteor Lake
+	    *a?6[[de]]?:*:*:*) ax_gcc_arch="graniterapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Granite Rapids
+	    *a?6f?:*:*:*) ax_gcc_arch="sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Sierra Forest
+	    *b?6[[7af]]?:*:*:*) ax_gcc_arch="raptorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Raptor Lake
+	    *b?6d?:*:*:*) ax_gcc_arch="lunarlake arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Lunar Lake
+	    *c?6[[56]]?:*:*:*) ax_gcc_arch="arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake
+	    *c?6f?:*:*:*) ax_gcc_arch="emeraldrapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Emerald Rapids
+	    *d?6d?:*:*:*) ax_gcc_arch="clearwaterforest sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Clearwater Forest
 	    *1?6c?:*:*:*|*2?6[[67]]?:*:*:*|*3?6[[56]]?:*:*:*) ax_gcc_arch="bonnell atom core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?67?:*:*:*|*[[45]]?6[[ad]]?:*:*:*) ax_gcc_arch="silvermont atom core2 pentium-m pentium3 pentiumpro" ;;
+	    *5?6[[cf]]?:*:*:*) ax_gcc_arch="goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Goldmont
+	    *7?6a?:*:*:*) ax_gcc_arch="goldmont-plus goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Goldmont Plus
+	    *8?6[[6a]]?:*:*:*|*9?6[[6c]]?:*:*:*) ax_gcc_arch="tremont goldmont-plus goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Tremont
 	    *000?f[[012]]?:*:*:*|?f[[012]]?:*:*:*|f[[012]]?:*:*:*) ax_gcc_arch="pentium4 pentiumpro" ;;
 	    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) ax_gcc_arch="nocona prescott pentium4 pentiumpro" ;;
 	    # fallback
 	    *5??:*:*:*) ax_gcc_arch=pentium ;;
+	    *[[9a-f]]?6??:*:*:*) ax_gcc_arch="x86-64-v3 x86-64-v2 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *??6??:*:*:*) ax_gcc_arch="core2 pentiumpro" ;;
 	    *6??:*:*:*) ax_gcc_arch=pentiumpro ;;
 	    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) ax_gcc_arch="pentium4 pentiumpro" ;;
@@ -146,9 +168,12 @@ case $host_cpu in
 	    *061?f??:*:*:*|61?f??:*:*:*) ax_gcc_arch="bdver2 bdver1 amdfam10 k8" ;;
 	    *06??f??:*:*:*|6??f??:*:*:*) ax_gcc_arch="bdver3 bdver2 bdver1 amdfam10 k8" ;;
 	    *070?f??:*:*:*|70?f??:*:*:*) ax_gcc_arch="btver2 btver1 amdfam10 k8" ;;
-                           83?f??:*:*:*) ax_gcc_arch="znver2 znver1 btver2 btver1 amdfam10 k8" ;;
-                           a0?f??:*:*:*) ax_gcc_arch="znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;;
-                           a1?f??:*:*:*) ax_gcc_arch="znver4 znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;;
+	    *8[[012]]?f??:*:*:*) ax_gcc_arch="znver1 btver2 btver1 amdfam10 k8" ;; # Zen / Zen+
+	    *8[[3-9]]?f??:*:*:*) ax_gcc_arch="znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 2
+	    *a[[02345]]?f??:*:*:*) ax_gcc_arch="znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 3
+	    *a[[167a]]?f??:*:*:*) ax_gcc_arch="znver4 znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 4
+	    *b??f??:*:*:*) ax_gcc_arch="znver5 znver4 znver3 znver2 znver1 btver2 amdfam10 k8" ;; # Zen 5
+	    *[[89a-f]]??f??:*:*:*) ax_gcc_arch="znver1 x86-64-v3 x86-64-v2 btver2 amdfam10 k8" ;;
 	    *???f??:*:*:*) ax_gcc_arch="amdfam10 k8" ;;
           esac ;;
 	*:746e6543:736c7561:48727561) # IDT / VIA (Centaur)
