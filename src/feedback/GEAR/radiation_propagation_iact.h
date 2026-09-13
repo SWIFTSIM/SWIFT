@@ -185,10 +185,14 @@ radiation_dissipation_van_leer_limiter(const float dx[3], float r, float hi,
   const float A_den = g_j[0] * dx[0] + g_j[1] * dx[1] + g_j[2] * dx[2];
   const float A_ij = (A_den != 0.f) ? A_num / A_den : 0.f;
 
-  const float one_plus_A = 1.f + A_ij;
+  /* Phi(A) = Phi(1/A): pick whichever magnitude is smaller to keep 4*A and
+   * (1+A)^2 finite. */
+  const float A_use = (fabsf(A_ij) > 1.f) ? 1.f / A_ij : A_ij;
+
+  const float one_plus_A = 1.f + A_use;
   const float A_denominator = one_plus_A * one_plus_A;
   const float fraction =
-      (A_denominator > 0.f) ? 4.f * A_ij / A_denominator : 0.f;
+      (A_denominator > 0.f) ? 4.f * A_use / A_denominator : 0.f;
   const float fraction_capped = min(fraction, 1.f);
   const float limiter = max(fraction_capped, 0.f);
 

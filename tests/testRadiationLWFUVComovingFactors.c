@@ -258,6 +258,101 @@ static void check_plain_gradient_against_isotropic_limit(void) {
   message("Plain grad(rho u) matches the isotropic-limit closure gradient");
 }
 
+/**
+ * @brief Exercise #radiation_dissipation_van_leer_limiter directly: the
+ * Stage-2 fix that evaluates `4*A/(1+A)^2` at `A_use = (|A_ij| > 1) ?
+ * 1/A_ij : A_ij` rather than at `A_ij` itself, using the identity
+ * `Phi(A) = Phi(1/A)` to keep both `4*A` and `(1+A)^2` finite. Pre-fix, an
+ * extreme gradient ratio (`|A_ij| >= ~8.5e37`) overflows both to `inf`,
+ * and `inf/inf` is a NaN that this file's `min()`/`max()` macros (plain
+ * `<`/`>` ternaries) turn into a silent, wrong `Phi = 1.0`: `NaN < 1.f` is
+ * false, so `min(NaN, 1.f)` returns `1.f`.
+ *
+ * Geometry (`dx`, `r`, `hi`, `hj`) is fixed at `r >= max(hi, hj)` throughout,
+ * so `exp_term == 1` everywhere and only the `A`-dependent limiter itself is
+ * under test.
+ */
+static void check_van_leer_limiter(void) {
+
+  const float dx[3] = {1.f, 0.f, 0.f};
+  const float r = 1.5f;
+  const float hi = 1.f;
+  const float hj = 1.f;
+
+  /* Phi(1) = 1: the unlimited, central value. */
+  {
+    const float g[3] = {1.f, 0.f, 0.f};
+    const float Phi =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g, g);
+    if (fabsf(Phi - 1.f) > 1e-6f)
+      error("Phi(A=1) = %.9e, expected 1.0", (double)Phi);
+  }
+
+  /* Phi(-1) = 0: the documented pole, returned as the finite value 0
+   * rather than relying on a clamp to fix up an actual infinity (a
+   * -ffast-math build cannot be trusted to do that). */
+  {
+    const float g_i[3] = {-1.f, 0.f, 0.f};
+    const float g_j[3] = {1.f, 0.f, 0.f};
+    const float Phi =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
+    if (fabsf(Phi) > 1e-6f)
+      error("Phi(A=-1) = %.9e, expected 0.0", (double)Phi);
+  }
+
+  /* Phi(0) = 0: zero numerator gradient. */
+  {
+    const float g_i[3] = {0.f, 0.f, 0.f};
+    const float g_j[3] = {1.f, 0.f, 0.f};
+    const float Phi =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
+    if (fabsf(Phi) > 1e-6f) error("Phi(A=0) = %.9e, expected 0.0", (double)Phi);
+  }
+
+  /* Phi(A) = Phi(1/A), moderate case: A = 2 vs A = 1/2, built by swapping
+   * g_i and g_j while holding the geometry fixed, which exactly inverts
+   * A_ij without constructing two independent gradient pairs. */
+  {
+    const float g_i[3] = {2.f, 0.f, 0.f};
+    const float g_j[3] = {1.f, 0.f, 0.f};
+    const float Phi_A =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
+    const float Phi_invA =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_j, g_i);
+    if (fabsf(Phi_A - Phi_invA) > 1e-6f * fabsf(Phi_A))
+      error("Phi(A=2) = %.9e != Phi(A=0.5) = %.9e", (double)Phi_A,
+            (double)Phi_invA);
+    if (fabsf(Phi_A) < 1e-20f)
+      error("Phi(A=2) is zero: the moderate-case check is vacuous");
+  }
+
+  /* Phi(A) = Phi(1/A) at the extreme magnitude the fix exists for, and
+   * Phi -> 0 there: A_ij ~ 2e38 is inside the ~8.5e37-3.4e38 window where
+   * 4*A_ij and (1+A_ij)^2 individually overflow a float pre-fix. Swapping
+   * g_i/g_j gives A_ij ~ 1/2e38; after the fix both collapse onto the SAME
+   * A_use (~5e-39), so this one pair of calls proves both properties at
+   * once. This is the case that was actually broken pre-fix. */
+  {
+    const float g_i[3] = {2e18f, 0.f, 0.f};
+    const float g_j[3] = {1e-20f, 0.f, 0.f};
+    const float Phi_A =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
+    const float Phi_invA =
+        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_j, g_i);
+    message("extreme A: Phi(A~2e38) = %.9e, Phi(A~5e-39) = %.9e", (double)Phi_A,
+            (double)Phi_invA);
+    if (fabsf(Phi_A - Phi_invA) > 1e-6f)
+      error("Phi(A~2e38) = %.9e != Phi(A~5e-39) = %.9e", (double)Phi_A,
+            (double)Phi_invA);
+    if (Phi_A > 1e-6f)
+      error("Phi at extreme A = %.9e, expected -> 0", (double)Phi_A);
+  }
+
+  message(
+      "Van Leer limiter: pole, zero, and Phi(A)=Phi(1/A) all check out "
+      "(moderate and extreme A).");
+}
+
 int main(int argc, char *argv[]) {
 
   struct operator_outputs out[NUM_SCALE_FACTORS];
@@ -307,6 +402,7 @@ int main(int argc, char *argv[]) {
           unfixed.div_F_i, out[0].div_F_i);
 
   check_plain_gradient_against_isotropic_limit();
+  check_van_leer_limiter();
 
   return 0;
 }
