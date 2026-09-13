@@ -42,6 +42,9 @@
  * @brief Atomic min operation on ints.
  *
  * This is a text-book implementation based on an atomic CAS.
+ * The seed read of *address is a plain volatile dereference; on
+ * SWIFT's 64-bit targets (x86-64, AArch64) naturally-aligned int
+ * reads are atomic at the hardware level, so no torn read is possible.
  *
  * @param address The address to update.
  * @param y The value to update the address with.
@@ -69,6 +72,13 @@ __attribute__((always_inline)) INLINE static void atomic_min(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point min that we want.
  *
+ * The seed read is performed via an atomic zero-add rather than a plain
+ * dereference.  A plain read of a volatile float through a union-aliased
+ * int pointer is not guaranteed to be atomic, and a torn initial value
+ * would cause the CAS loop to spin with a garbage bit-pattern until the
+ * next successful CAS corrects it.  The zero-add (expanding to
+ * __sync_fetch_and_add(..., 0)) provides a formally atomic load.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -83,7 +93,7 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_int = atomic_add(int_ptr, 0);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -100,6 +110,10 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point min that we want.
  *
+ * The seed read is performed via an atomic zero-add for the same reason
+ * as atomic_min_f: a plain volatile double read is not guaranteed atomic
+ * and could yield a torn 64-bit value on some architectures.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -114,7 +128,7 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  old_val.as_long_long = atomic_add(long_long_ptr, 0);
 
   do {
     test_val.as_long_long = old_val.as_long_long;
@@ -128,6 +142,8 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
  * @brief Atomic max operation on int8_t.
  *
  * This is a text-book implementation based on an atomic CAS.
+ * The seed read is a plain volatile dereference; single-byte reads
+ * are inherently atomic (no torn read possible).
  *
  * @param address The address to update.
  * @param y The value to update the address with.
@@ -149,6 +165,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_c(
  * @brief Atomic max operation on ints.
  *
  * This is a text-book implementation based on an atomic CAS.
+ * The seed read of *address is a plain volatile dereference; on
+ * SWIFT's 64-bit targets (x86-64, AArch64) naturally-aligned int
+ * reads are atomic at the hardware level, so no torn read is possible.
  *
  * @param address The address to update.
  * @param y The value to update the address with.
@@ -172,6 +191,9 @@ __attribute__((always_inline)) INLINE static void atomic_max(
  * @brief Atomic max operation on long long.
  *
  * This is a text-book implementation based on an atomic CAS.
+ * The seed read of *address is a plain volatile dereference; on
+ * SWIFT's 64-bit targets (x86-64, AArch64) naturally-aligned long long
+ * reads are atomic at the hardware level, so no torn read is possible.
  *
  * @param address The address to update.
  * @param y The value to update the address with.
@@ -197,6 +219,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_ll(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point max that we want.
  *
+ * The seed read is performed via an atomic zero-add for the same reason
+ * as atomic_min_f: a plain volatile float read is not guaranteed atomic.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -211,7 +236,7 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_int = atomic_add(int_ptr, 0);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -228,6 +253,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point max that we want.
  *
+ * The seed read is performed via an atomic zero-add for the same reason
+ * as atomic_min_f: a plain volatile double read is not guaranteed atomic.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -242,7 +270,7 @@ __attribute__((always_inline)) INLINE static void atomic_max_d(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  old_val.as_long_long = atomic_add(long_long_ptr, 0);
 
   do {
     test_val.as_long_long = old_val.as_long_long;
@@ -260,6 +288,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_d(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point add that we want.
  *
+ * The seed read is performed via an atomic zero-add for the same reason
+ * as atomic_min_f: a plain volatile float read is not guaranteed atomic.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -274,7 +305,7 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_int = atomic_add(int_ptr, 0);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -291,6 +322,9 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
  * We create a temporary union to cope with the int-only atomic CAS
  * and the floating-point add that we want.
  *
+ * The seed read is performed via an atomic zero-add for the same reason
+ * as atomic_min_f: a plain volatile double read is not guaranteed atomic.
+ *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
@@ -305,7 +339,7 @@ __attribute__((always_inline)) INLINE static void atomic_add_d(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  old_val.as_long_long = atomic_add(long_long_ptr, 0);
 
   do {
     test_val.as_long_long = old_val.as_long_long;
