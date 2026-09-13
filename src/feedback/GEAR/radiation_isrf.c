@@ -545,14 +545,20 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
  * Eq. 36-37, raised instantly on a steepening `div(F)` in compression and
  * decayed at the same rate as the Stage-1 coefficient otherwise.
  *
- * A particle whose `u_V` has already gone non-positive gets the ceiling,
+ * A particle whose `u` has already gone non-positive gets the ceiling,
  * mirroring the `urad == 0` branch of `src/rt/SPHM1RT/rt.h`: the switch's
  * denominator is the local radiation energy the term is meant to protect,
  * so where there is none left, no smallness argument applies.
  *
+ * The denominator is the mass-SPECIFIC field, not `rho*u`: `div_F` is the
+ * divergence of the specific flux (it enters the energy equation directly
+ * as `du/dt`), so `h^2 d(div F)/dt / c_hyp^2` has the units of `u` and only
+ * the specific `u` makes the estimate dimensionless. SPHM1RT's `urad`
+ * (`rt_struct.h`) is likewise radiation energy per mass.
+ *
  * @param div_F This band's own finalized `div(F)`.
  * @param div_F_prev This band's #div_specific_flux_FUV_prev/LW_prev.
- * @param u_V This band's live volumetric field, rho_prev*u.
+ * @param u This band's live specific field, #u_FUV/LW.
  * @param alpha_prev This band's #dissipation_alpha_flux_FUV/LW from the
  * previous step.
  * @param c_hyp The particle's own #c_hyp.
@@ -563,7 +569,7 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
  */
 __attribute__((always_inline)) INLINE static float
 radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
-                                             float u_V, float alpha_prev,
+                                             float u, float alpha_prev,
                                              float c_hyp, float kappa, float dt,
                                              float h_phys) {
 
@@ -572,10 +578,10 @@ radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
   /* The flux term only acts in compression, as Chan et al. Eq. 36 does. */
   if (div_F < 0.f) {
     float shock_estimate = 1.f;
-    if (u_V > 0.f && c_hyp > 0.f) {
+    if (u > 0.f && c_hyp > 0.f) {
       const float div_F_rate = (div_F - div_F_prev) / dt;
       shock_estimate = -RADIATION_LW_FUV_DISSIPATION_FLUX_SWITCH_AMPLITUDE *
-                       h_phys * h_phys * div_F_rate / (u_V * c_hyp * c_hyp);
+                       h_phys * h_phys * div_F_rate / (u * c_hyp * c_hyp);
     }
     const float shock_capped = min(shock_estimate, 1.f);
     alpha_aim = max(shock_capped, 0.f);
@@ -772,10 +778,10 @@ void radiation_end_gradient_propagation(struct part *p,
     }
 
     *alpha_f_FUV = radiation_update_dissipation_alpha_flux_band(
-        fd->div_specific_flux_FUV, *div_F_FUV_prev, u_V_FUV, *alpha_f_FUV,
+        fd->div_specific_flux_FUV, *div_F_FUV_prev, fd->u_FUV, *alpha_f_FUV,
         c_hyp, fd->kappa_FUV, dt, h_phys);
     *alpha_f_LW = radiation_update_dissipation_alpha_flux_band(
-        fd->div_specific_flux_LW, *div_F_LW_prev, u_V_LW, *alpha_f_LW, c_hyp,
+        fd->div_specific_flux_LW, *div_F_LW_prev, fd->u_LW, *alpha_f_LW, c_hyp,
         fd->kappa_LW, dt, h_phys);
     *div_F_FUV_prev = fd->div_specific_flux_FUV;
     *div_F_LW_prev = fd->div_specific_flux_LW;
