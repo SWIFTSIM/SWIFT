@@ -115,6 +115,8 @@ float feedback_get_part_dissipation_alpha_FUV(const struct part *p);
 float feedback_get_part_dissipation_alpha_LW(const struct part *p);
 float feedback_get_part_div_specific_flux_FUV(const struct part *p);
 float feedback_get_part_div_specific_flux_LW(const struct part *p);
+void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret);
+void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

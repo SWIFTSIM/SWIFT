@@ -131,16 +131,15 @@ struct feedback_part_data {
       iact.h): no `_prev` snapshot needed, since it can only change in this
       cell's own extra ghost, which runs after every cell it pairs with has
       finished its own density loop (see radiation_isrf.c's own doxygen for
-      the full dependency argument). Neither an IC input nor a snapshot
-      output field exists yet for this quantity (no io.h entry either
-      direction); if/when one is added, it should follow
-      #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention:
-      "FUVSpecificFlux"/"LWSpecificFlux" (IC input, singular),
-      "FUVSpecificFluxes"/"LWSpecificFluxes" (snapshot output, plural).
+      the full dependency argument). Written to snapshots as
+      "FUVSpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
+      #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention; no IC input
+      field exists, and one added later would be the singular
+      "FUVSpecificFlux"/"LWSpecificFlux".
 
       `a`-SCALING: PHYSICAL and mass-specific, like #u_FUV/#u_LW, with no
-      scale-factor exponent of its own; an output field added later must
-      declare `0.f`. Its own redshift residual `-H*F` is applied in
+      scale-factor exponent of its own, which is what the output field
+      declares. Its own redshift residual `-H*F` is applied in
       radiation_isrf.c's #radiation_end_gradient_propagation. */
   float specific_flux_FUV[3];
   float specific_flux_LW[3];

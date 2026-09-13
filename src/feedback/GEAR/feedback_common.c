@@ -1134,6 +1134,32 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
 }
 
 /**
+ * @brief Tracked specific flux moment, see
+ * #feedback_part_data.specific_flux_FUV. Thin dispatch wrapper, same
+ * reasoning as #feedback_get_part_u_FUV.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components.
+ */
+void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
+  ret[0] = p->feedback_data.specific_flux_FUV[0];
+  ret[1] = p->feedback_data.specific_flux_FUV[1];
+  ret[2] = p->feedback_data.specific_flux_FUV[2];
+}
+
+/**
+ * @brief See #feedback_get_part_specific_flux_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components.
+ */
+void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
+  ret[0] = p->feedback_data.specific_flux_LW[0];
+  ret[1] = p->feedback_data.specific_flux_LW[1];
+  ret[2] = p->feedback_data.specific_flux_LW[2];
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR

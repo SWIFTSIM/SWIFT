@@ -155,6 +155,28 @@ INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #FUVSpecificFluxes, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_specific_flux_FUV(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  float *ret) {
+  feedback_get_part_specific_flux_FUV(p, ret);
+}
+
+/**
+ * @brief Snapshot converter for #LWSpecificFluxes, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_specific_flux_LW(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  feedback_get_part_specific_flux_LW(p, ret);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -167,7 +189,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 16;
+  int num = 18;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -282,6 +304,18 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_LW,
       "Same as FUVSpecificFluxDivergences, Lyman-Werner band.");
+
+  list[16] = io_make_output_field_convert_part(
+      "FUVSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
+      0.f, parts, xparts, convert_part_specific_flux_FUV,
+      "Tracked specific flux moment of the FUV-band hyperbolic propagation, "
+      "mass-specific like FUVSpecificEnergies. Physical: no scale-factor "
+      "exponent of its own. Only meaningful when LW_FUV_propagation is on.");
+
+  list[17] = io_make_output_field_convert_part(
+      "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
+      0.f, parts, xparts, convert_part_specific_flux_LW,
+      "Same as FUVSpecificFluxes, Lyman-Werner band.");
 
   return num;
 }

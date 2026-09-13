@@ -223,6 +223,32 @@ feedback_get_part_div_specific_flux_LW(const struct part *p) {
 }
 
 /**
+ * @brief Tracked specific flux moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components, zeroed.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_specific_flux_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components, zeroed.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * This model does not implement HII photoionization feedback.
