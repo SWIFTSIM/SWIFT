@@ -19,10 +19,12 @@ the full parameter description and
 both off here). It activates per-particle where a particle's own field
 undershoots its neighbours' kernel-mean field
 (`GEARFeedback:LW_FUV_dissipation_negativity_threshold`, code default),
-and is bounded by the runtime stability check in `feedback_properties.h`:
-`6.2*alpha_max*LW_FUV_c_hyp_margin + 0.70*LW_FUV_c_hyp_margin^2 <= 2`, so
-`alpha_max` and `LW_FUV_c_hyp_margin` cannot both be changed independently
-of that bound.
+and is bounded by the runtime stability check in `feedback_properties.h`,
+checked jointly on `max(alpha_max, alpha_floor)`, not `alpha_max` alone:
+`6.2*max(alpha_max, alpha_floor)*LW_FUV_c_hyp_margin + 0.70*LW_FUV_c_hyp_margin^2 <= 2`.
+At this example's shipped values (both 0.5), raising `LW_FUV_c_hyp_margin`
+above 0.571 requires lowering them; `alpha_max`, `alpha_floor`, and
+`LW_FUV_c_hyp_margin` cannot all be changed independently of that bound.
 
 ## Pinned-neighbour variant, metallicity, cooling
 Same as `ISRFCausalReach`: see that example's README for the full
