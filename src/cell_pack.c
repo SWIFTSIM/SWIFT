@@ -757,9 +757,8 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #endif
 
   /* Unpack this cell's data. Reconstructing against our own top->stars.parts
-   * is only valid because cell_link_sparts() links the whole tree, so the two
-   * ranks share one layout. Compacting it here would need the gpart treatment
-   * (cell_relink_foreign_gparts) instead. */
+   * is valid because cell_link_sparts() links the whole tree, so both ranks
+   * share one layout. */
   c->stars.count = pcells[0].count;
   c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
@@ -872,12 +871,9 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. delta_from_rebuild is the sender's absolute,
-   * always-fresh offset from its own top (see cell_pack_grav_counts) --
-   * reconstruct against our own top->grav.parts_foreign the same way,
-   * never against a per-cell cached baseline. For c == top this is a
-   * self-referential no-op (delta is always 0 at depth 0), relying on
-   * top->grav.parts_foreign already being valid from the last relink. */
+  /* Unpack this cell's data. The sender's delta_from_rebuild is an offset
+   * into its own layout, so reconstruct against our own
+   * top->grav.parts_foreign rather than a per-cell cached baseline. */
   c->grav.count = pcells[0].count;
   c->grav.parts_foreign =
       c->top->grav.parts_foreign + pcells[0].delta_from_rebuild;
@@ -917,7 +913,7 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Debug-only: stamp when a grav_counts delivery touched this cell
- * and its sub-cells, for the foreign gpart staleness investigation.
+ * and its sub-cells.
  *
  * @param c The #cell.
  * @param ti_current The current integer time.

@@ -952,12 +952,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
 
-  /* GRAV_FOREIGN_INHIBITED_PROBE: entry-time snapshot to catch a concurrent
-   * recv/unpack of gparts_foreign_j during this function's interaction loop.
-   * pre_call_recv_{at_tic,count} were captured by the caller right after
-   * gravity_cache_populate_foreign(), so the comparison below also covers
-   * the gap between cache population and this function being entered, not
-   * just this function's own interaction loop. */
+  /* Entry-time snapshot, to catch a concurrent recv/unpack of
+   * gparts_foreign_j during this function's interaction loop. */
   const integertime_t entry_data_recv_at_tic =
       foreign_j ? cj->grav.data_recv_at_tic : 0;
   const int entry_data_recv_count = foreign_j ? cj->grav.data_recv_count : 0;
@@ -1088,15 +1084,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
         const long pjd_abs_offset = -1;
 #endif
 
-        /* populated_time_bin_at_pjd is entailed by the crash condition
-         * (mass_j != 0 implies populate saw != inhibited), not
-         * decisive on its own. The decisive check is cache_x/y/z vs
-         * raw_x/y/z: shift_j is exactly {0,0,0} here, so they must be
-         * bit-identical unless the whole struct was overwritten between
-         * populate and this read, independent of the mass/time_bin
-         * question entirely.
-         * The gpart_exec/grav_counts_exec fields diff pre_call vs now to
-         * catch a second recv/relink firing on cj (or cj->top) mid-call. */
+        /* shift_j is {0,0,0} here, so cache_x/y/z and raw_x/y/z must be
+         * bit-identical unless the struct was overwritten after populate. */
         message(
             "GRAV_FOREIGN_INHIBITED_PROBE step=%d nodeID=%d cj_nodeID=%d "
             "cj_cellID=%lld cj_depth=%d pjd=%d gcount_j=%d type=%d id=%lld "
@@ -1582,8 +1571,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         gcount_padded_i, shift_i, ci, e->gravity_properties);
   }
 #ifdef SWIFT_DEBUG_CHECKS
-  /* GRAV_FOREIGN_INHIBITED_PROBE: snapshot right after population, to catch
-   * a recv/unpack racing the gap between here and the interaction loop. */
+  /* Snapshot right after population, to catch a recv/unpack racing the
+   * gap between here and the interaction loop. */
   const integertime_t ci_post_populate_recv_at_tic =
       (ci->nodeID != e->nodeID) ? ci->grav.data_recv_at_tic : 0;
   const int ci_post_populate_recv_count =

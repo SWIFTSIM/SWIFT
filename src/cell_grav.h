@@ -110,39 +110,29 @@ struct cell_grav {
   integertime_t ti_old_part;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! ti_old_part on entry to the last cell_drift_gpart() call on this cell,
-   * captured before any drift happens. Diagnostic for the undrifted-gpart
-   * pack check: if this already equalled ti_current, the drift's own guard
-   * skipped the cell entirely. */
+  /*! ti_old_part on entry to the last cell_drift_gpart() call on this cell. */
   integertime_t ti_old_part_on_entry;
 
-  /*! Number of gparts actually visited by the last direct (non-recursive)
-   * drift of this cell, or -1 if the direct drift branch wasn't taken
-   * (cell was split, or the drift guard skipped it). */
+  /*! Number of gparts visited by the last direct drift of this cell, or -1
+   * if the direct drift branch wasn't taken. */
   int count_drifted;
 
-  /*! Whether force was already true when the last cell_drift_gpart() call
-   * reached this cell (i.e. cell_flag_do_grav_drift was set directly on
-   * it, not just inherited/cell_flag_do_grav_sub_drift on an ancestor). If
-   * 0 for a split cell, only the sub-path with its own flags got drifted;
-   * siblings outside that path were skipped despite ti_old_part being
-   * stamped as current. */
+  /*! Whether the force flag was already set on this cell (not just
+   * inherited) on the last cell_drift_gpart() call. */
   int drift_force_on_entry;
 
   /*! ti_current the last time a grav_counts delivery touched this cell. */
   integertime_t counts_recv_at_tic;
 
-  /*! ti_current the last time the gpart DATA channel actually delivered
-   * fresh foreign particles to this cell. */
+  /*! ti_current the last time the gpart data channel delivered fresh
+   * foreign particles to this cell. */
   integertime_t data_recv_at_tic;
 
-  /*! #count at that last DATA delivery. */
+  /*! #count at that last data delivery. */
   int data_recv_count;
 
-  /*! Monotonic count of how many times runner_do_recv_gpart actually
-   * visited THIS cell (top-level call or internal recursion into a
-   * progeny). Unlike subtasks_executed, which only counts on a task's
-   * own ci/cj and never on cells reached via a task's own recursion. */
+  /*! Number of times runner_do_recv_gpart visited this cell, including via
+   * recursion (unlike subtasks_executed, which only counts direct hits). */
   int data_recv_exec_count;
 #endif
 
