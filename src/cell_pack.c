@@ -779,7 +779,7 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Debug-only: stamp when an sf_counts delivery touched this cell
- * and its sub-cells, for the stars h_max_active staleness investigation.
+ * and its sub-cells.
  *
  * @param c The #cell.
  * @param ti_current The current integer time.
