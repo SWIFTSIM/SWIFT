@@ -1,6 +1,6 @@
 # Intro
 A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
-box, with LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation on
+box, with LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
 (photoionization and radiation pressure off), in the OPTICALLY-THIN corner:
 the metallicity is low enough that the dust screening length is much larger
 than both the smoothing length and the box (`h/lambda ~ 6e-3`, against

@@ -1,5 +1,5 @@
 # Intro
-A `c_hyp` sweep of the LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation
+A `c_hyp` sweep of the LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation
 scheme, from `c_hyp ~ c` down to `c_hyp << c`, at both a star-sourced field
 and a star-free seeded Gaussian pulse (`FUVSpecificEnergy`/`LWSpecificEnergy`
 in the IC). Measures the scheme's `c_hyp`-independent steady state and

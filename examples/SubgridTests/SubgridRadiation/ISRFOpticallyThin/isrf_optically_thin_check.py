@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Check the LW/FUV hyperbolic (Cattaneo/P1-relaxation) propagation scheme in
+Check the LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation scheme in
 the optically-thin corner, where the screening length is much larger than
 both the smoothing length and the box.
 

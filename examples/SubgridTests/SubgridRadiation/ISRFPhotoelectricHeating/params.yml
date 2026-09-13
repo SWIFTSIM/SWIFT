@@ -111,7 +111,7 @@ GEARFeedback:
 
   # Radiation -- photoionization and radiation pressure both off: isolates
   # the photoelectric-heating channel this example measures. LW/FUV
-  # Yukawa propagation is also off (see README): this test is about the
+  # LW/FUV propagation is also off (see README): this test is about the
   # thermal response to whatever field reaches a particle directly, not
   # about propagation numerics. with_photoelectric_heating itself is set
   # from the command line by run.sh (on vs. off is the whole comparison).

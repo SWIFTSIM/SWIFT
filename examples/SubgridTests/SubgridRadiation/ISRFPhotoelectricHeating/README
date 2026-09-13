@@ -1,6 +1,6 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with photoelectric heating on (LW/FUV injection, no Yukawa propagation)
+box, with photoelectric heating on (LW/FUV injection, no propagation)
 and real Grackle cooling. Checks the basic sign and rough magnitude of
 Grackle's photoelectric-heating response to the injected LW/FUV field: gas
 near the star should reach a HIGHER equilibrium temperature with
