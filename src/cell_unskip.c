@@ -2275,11 +2275,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
                                   ci_nodeID);
 #endif
-          /* Drift the cell which will be sent at the level at which it is
-             sent, i.e. drift the cell specified in the send task (l->t)
-             itself. cj can be a deeper cell than the send task's own ci
-             when the two share the same MPI send/pack task (created once,
-             linked onto every descendant that also targets this node). */
+          /* Drift the cell actually named by the send task, not cj: they
+             can differ when the send task is shared across depths. */
           cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
@@ -2316,11 +2313,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-          /* Drift the cell which will be sent at the level at which it is
-             sent, i.e. drift the cell specified in the send task (l->t)
-             itself. ci can be a deeper cell than the send task's own ci
-             when the two share the same MPI send/pack task (created once,
-             linked onto every descendant that also targets this node). */
+          /* Drift the cell actually named by the send task, not ci: they
+             can differ when the send task is shared across depths. */
           cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 

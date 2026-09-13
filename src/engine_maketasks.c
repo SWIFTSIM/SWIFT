@@ -480,8 +480,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
-      /* t_sf_counts, once created, covers this whole subtree, not just cells
-       * with a local count, so gate on its existence, not this cell's count. */
+      /* t_sf_counts covers the whole subtree, so gate on its existence. */
       if (t_sf_counts != NULL) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
@@ -1052,8 +1051,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    /* t_sf_counts, once created, covers this whole subtree, not just cells
-     * with a local count, so gate on its existence, not this cell's count. */
+    /* t_sf_counts covers the whole subtree, so gate on its existence. */
     if (t_sf_counts != NULL) {
 
       /* Receive the stars only once the counts have been received */
