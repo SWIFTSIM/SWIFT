@@ -33,9 +33,7 @@
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
 /*! Rate-limiter for the foreign gpart layout divergence report. */
 static int cell_grav_layout_divergence_reported = 0;
-/*! Rate-limiter for the debug check below. It should never fire; if it
- * does, cell_link_sparts() started skipping sub-cells like
- * cell_link_foreign_gparts() does. */
+/*! Rate-limiter for the star formation layout divergence report. */
 static int cell_sf_layout_divergence_reported = 0;
 #endif
 
@@ -905,9 +903,9 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   c->grav.count = pcells[0].count;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* The sender holds more gparts here than this rank reserved, so its offsets
-   * are in the uncompacted layout and the old reconstruction would have walked
-   * out of the slice. Top level only: the counter is shared by all runners. */
+  /* The sender holds more gparts here than this rank reserved, so its
+   * offsets are in the uncompacted layout and cannot be used to reconstruct
+   * pointers here. Top level only: the counter is shared by all runners. */
   if (c->depth == 0 && c->grav.count > c->grav.count_total &&
       atomic_inc(&cell_grav_layout_divergence_reported) < 20)
     message(
@@ -936,7 +934,7 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Debug-only: stamp when a grav_counts delivery touched this cell
- * and its sub-cells, for the foreign gpart staleness investigation.
+ * and its sub-cells.
  *
  * @param c The #cell.
  * @param ti_current The current integer time.

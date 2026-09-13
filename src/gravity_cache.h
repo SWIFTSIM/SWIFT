@@ -80,20 +80,16 @@ struct gravity_cache {
   /*! gcount this cache was last populated with (foreign path only). */
   int populated_gcount;
 
-  /*! Per-index time_bin exactly as read by the last foreign populate call,
-   * to prove (or disprove) that a specific index's raw time_bin genuinely
-   * differed between populate time and a later read of the same memory. */
+  /*! Per-index time_bin as read by the last foreign populate call. */
   int *restrict populated_time_bin SWIFT_CACHE_ALIGN;
 
-  /*! Per-index id_or_neg_offset as read by the last foreign populate call.
-   * Pre-removal identity, since cell_remove_* overwrites the raw field
-   * to the particle's own id on removal (was a fixed placeholder before
-   * this was captured here). */
+  /*! Per-index id_or_neg_offset as read by the last foreign populate call:
+   * the pre-removal identity, since cell_remove_* overwrites the raw field
+   * to the particle's own id on removal. */
   long long *restrict populated_id SWIFT_CACHE_ALIGN;
 
-  /*! Per-index type as read by the last foreign populate call. The raw
-   * field is always overwritten to swift_type_dark_matter on removal, so
-   * this is the only way to know what the particle actually was. */
+  /*! Per-index type as read by the last foreign populate call: the raw
+   * field is overwritten to swift_type_dark_matter on removal. */
   int *restrict populated_type SWIFT_CACHE_ALIGN;
 #endif
 };
@@ -366,9 +362,7 @@ INLINE static void gravity_cache_populate_foreign(
   if (cell->nodeID == engine_rank) error("Populating from a local cell!");
 #endif
 
-  /* Do we need to grow the cache? Unlike the other populate_* variants,
-   * this one only asserted instead of growing, so a foreign cell that
-   * outgrew the cache silently overflowed c->x/y/z/m in release builds. */
+  /* Do we need to grow the cache? */
   if (c->count < gcount_padded) gravity_cache_init(c, gcount_padded + VEC_SIZE);
 
   /* Make the compiler understand we are in happy vectorization land */

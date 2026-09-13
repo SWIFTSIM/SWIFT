@@ -744,9 +744,8 @@ int task_lock(struct task *t) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* A completed gpart recv must have delivered exactly grav.count
-       * entries: Stage 2's counts-before-data ordering guarantees the
-       * two always describe the same pre-SF snapshot. A mismatch here
-       * means that guarantee broke somewhere. */
+       * entries: the counts-before-data task ordering guarantees the two
+       * always describe the same pre-SF snapshot. */
       if (res && type == task_type_recv && subtype == task_subtype_gpart) {
         int received = 0;
         MPI_Get_count(&stat, gpart_foreign_mpi_type, &received);
