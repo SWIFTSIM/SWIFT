@@ -34,6 +34,11 @@ struct fvpm_geometry_struct {
 
   /*! Sum of the face area vectors */
   float area_sum[3];
+
+  float area_sum_plus[3];
+  float area_sum_minus[3];
+
+  char is_problematic;
 };
 
 #endif /* SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H */

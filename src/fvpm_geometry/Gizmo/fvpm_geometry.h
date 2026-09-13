@@ -72,10 +72,25 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
   /* reset the centroid variables used for the velocity correction in MFV */
   fvpm_reset_centroids(p);
 
-  p->geometry.area = 0.0;
-  p->geometry.area_sum[0] = 0.0;
-  p->geometry.area_sum[1] = 0.0;
-  p->geometry.area_sum[2] = 0.0;
+  if (p->time_bin == 0) {
+    p->geometry.is_problematic = 0;
+  }
+
+  if (p->time_bin == 0) {
+    /* This only works for the idealised examples... */
+    p->geometry.area = 0.0;
+    p->geometry.area_sum[0] = 0.0;
+    p->geometry.area_sum[1] = 0.0;
+    p->geometry.area_sum[2] = 0.0;
+
+    p->geometry.area_sum_plus[0] = 0.0;
+    p->geometry.area_sum_plus[1] = 0.0;
+    p->geometry.area_sum_plus[2] = 0.0;
+
+    p->geometry.area_sum_minus[0] = 0.0;
+    p->geometry.area_sum_minus[1] = 0.0;
+    p->geometry.area_sum_minus[2] = 0.0;
+  }
 }
 
 /**
@@ -103,10 +118,17 @@ fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
   fvpm_reset_centroids(p);
 
   /* TODO: To be defined */
+  p->geometry.is_problematic = 0;  
   p->geometry.area = 0.0;
   p->geometry.area_sum[0] = 0.0;
   p->geometry.area_sum[1] = 0.0;
   p->geometry.area_sum[2] = 0.0;
+  p->geometry.area_sum_plus[0] = 0.0;
+  p->geometry.area_sum_plus[1] = 0.0;
+  p->geometry.area_sum_plus[2] = 0.0;
+  p->geometry.area_sum_minus[0] = 0.0;
+  p->geometry.area_sum_minus[1] = 0.0;
+  p->geometry.area_sum_minus[2] = 0.0;  
 }
 
 /**
@@ -281,7 +303,7 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
 						const float dx[3],
 						const float hi, const float hj,
 						const int interaction_mode) {
-
+  
   /* Initialize local variables */
   float Bi[3][3];
   float Bj[3][3];
@@ -298,22 +320,76 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
   const float Anorm2 = A[0] * A[0] + A[1] * A[1] + A[2] * A[2];
   const float Anorm = sqrtf(Anorm2);
 
-  /* Update the total face area */
-  pi->geometry.area += Anorm;
-  if (interaction_mode == 1) {
-    pj->geometry.area += Anorm;
-  }
+  if (pi->time_bin == 0 && pj->time_bin == 0) {
+    /* All particles are logged */    
+    /* message("[%lld %lld]", pi->id, pj->id); */
 
-  /* Update the face area vectorial sum */
-  pi->geometry.area_sum[0] += A[0];
-  pi->geometry.area_sum[1] += A[1];
-  pi->geometry.area_sum[2] += A[2];
-  if (interaction_mode == 1) {
-    /* We add a minus sign since the faces are antisymmetric */
-    pj->geometry.area_sum[0] -= A[0];
-    pj->geometry.area_sum[1] -= A[1];
-    pj->geometry.area_sum[2] -= A[2];
-  }
+    /* Update the total face area */
+    pi->geometry.area += Anorm;
+    if (interaction_mode == 1) {
+      pj->geometry.area += Anorm;
+    }
+
+    /* Update the face area vectorial sum */
+    pi->geometry.area_sum[0] += A[0];
+    pi->geometry.area_sum[1] += A[1];
+    pi->geometry.area_sum[2] += A[2];
+    if (interaction_mode == 1) {
+      /* We add a minus sign since the faces are antisymmetric */
+      pj->geometry.area_sum[0] -= A[0];
+      pj->geometry.area_sum[1] -= A[1];
+      pj->geometry.area_sum[2] -= A[2];
+    }
+  } else {
+    if (pi->geometry.is_problematic == 2) {
+      const float Si[3] = {pi->geometry.area_sum[0], pi->geometry.area_sum[1],
+                           pi->geometry.area_sum[2]};
+      float Si_times_Aij = Si[0] * A[0] + Si[1] * A[1] + Si[2] * A[2];
+
+      if (Si_times_Aij > 0.0) {
+	pi->geometry.area_sum_plus[0] += Si_times_Aij*A[0];
+	pi->geometry.area_sum_plus[1] += Si_times_Aij*A[1];
+	pi->geometry.area_sum_plus[2] += Si_times_Aij*A[2];
+      } else {
+	pi->geometry.area_sum_minus[0] += Si_times_Aij*A[0];
+	pi->geometry.area_sum_minus[1] += Si_times_Aij*A[1];
+        pi->geometry.area_sum_minus[2] += Si_times_Aij*A[2];
+      }
+
+      message(
+	      "[%lld %lld, i] Debug: Si_times_ai = %e, Sum_+ = (%e %e %e), Sum_- = (%e %e %e)",
+	      pi->id, pj->id, Si_times_Aij, pi->geometry.area_sum_plus[0], pi->geometry.area_sum_plus[1],
+	      pi->geometry.area_sum_plus[2], pi->geometry.area_sum_minus[0],
+	      pi->geometry.area_sum_minus[1], pi->geometry.area_sum_minus[2]);
+    }
+
+    if (pj->geometry.is_problematic == 2) {
+      const float Sj[3] = {pj->geometry.area_sum[0], pj->geometry.area_sum[1],
+                           pj->geometry.area_sum[2]};
+
+      /* The minus is because A = Aij and we need Aji = - Aij */      
+      float Sj_times_Aij = - Sj[0] * A[0] - Sj[1] * A[1] - Sj[2] * A[2];
+
+      if (Sj_times_Aij > 0.0) {
+	/* The minus is because A = Aij and we need Aji = - Aij */        
+	pj->geometry.area_sum_plus[0] -= Sj_times_Aij*A[0];
+	pj->geometry.area_sum_plus[1] -= Sj_times_Aij*A[1];
+	pj->geometry.area_sum_plus[2] -= Sj_times_Aij*A[2];
+      } else {
+	/* The minus is because A = Aij and we need Aji = - Aij */        
+	pj->geometry.area_sum_minus[0] -= Sj_times_Aij*A[0];
+	pj->geometry.area_sum_minus[1] -= Sj_times_Aij*A[1];
+	pj->geometry.area_sum_minus[2] -= Sj_times_Aij*A[2];
+      }
+      
+      message(
+	      "[%lld %lld, j] Debug: Sj_times_ai = %e, Sum_+ = (%e %e %e), Sum_- = (%e %e %e)",
+	      pi->id, pj->id, Sj_times_Aij, pj->geometry.area_sum_plus[0], pj->geometry.area_sum_plus[1],
+	      pj->geometry.area_sum_plus[2], pj->geometry.area_sum_minus[0],
+	      pj->geometry.area_sum_minus[1], pj->geometry.area_sum_minus[2]);
+    }
+    
+  }    
 }
 
 /**
@@ -322,19 +398,50 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_check_total_face_area_vector_sum(const struct part *p) {
+fvpm_check_total_face_area_vector_sum(struct part *p) {
 
   const float threshold = 1e-2;
   const float area_threshold = p->geometry.area*threshold;
 
-  if (p->geometry.area_sum[0] > area_threshold ||
-      p->geometry.area_sum[1] > area_threshold ||
-      p->geometry.area_sum[2] > area_threshold) {
+  if ((fabsf(p->geometry.area_sum[0]) > area_threshold ||
+       fabsf(p->geometry.area_sum[1]) > area_threshold ||
+       fabsf(p->geometry.area_sum[2]) > area_threshold)) {
     warning(
         "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( "
         "%e %e %e ).",
         p->id, p->geometry.area, p->geometry.area_sum[0],
         p->geometry.area_sum[1], p->geometry.area_sum[2]);
+
+    /* 0 = no problem, 2 = has just been detected skip this timestep's force, 1
+       = it's safe to correct */
+    if (p->geometry.is_problematic == 0) {
+      p->geometry.is_problematic = 2;
+    } else if (p->geometry.is_problematic == 2) {
+      p->geometry.is_problematic = 1;
+    } else {
+      p->geometry.is_problematic = 1;      
+    }
+
+    /* If the particle is not problematic, flag it for the next-timestep. If is
+       problematic, unflag it to avoid redoing the computations in the next time
+       step. */
+    if (p->geometry.is_problematic == 1) {
+
+      const float beta_i[3] = {
+        -p->geometry.area_sum_minus[0] / p->geometry.area_sum_plus[0],
+        -p->geometry.area_sum_minus[1] / p->geometry.area_sum_plus[1],
+        -p->geometry.area_sum_minus[2] / p->geometry.area_sum_plus[2],        
+      };
+
+      message(
+          "[%lld] Debug: Sum_+ = (%e %e %e), Sum_- = (%e %e %e), alpha = (%e "
+          "%e %e)",
+          p->id, p->geometry.area_sum_plus[0], p->geometry.area_sum_plus[1],
+          p->geometry.area_sum_plus[2], p->geometry.area_sum_minus[0],
+          p->geometry.area_sum_minus[1], p->geometry.area_sum_minus[2],
+          beta_i[0], beta_i[1], beta_i[2]);
+      
+    }
   }
 }
 
