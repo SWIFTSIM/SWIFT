@@ -195,6 +195,10 @@ INLINE static void hydro_write_particles(const struct part *parts,
 
   *num_fields = 11;
 
+#ifdef FVPM_FACE_DIAGNOSTIC_OUTPUT
+  *num_fields += 6;
+#endif
+
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
@@ -242,6 +246,36 @@ INLINE static void hydro_write_particles(const struct part *parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+
+#ifdef FVPM_FACE_DIAGNOSTIC_OUTPUT
+  list[11] = io_make_output_field(
+      "FaceAreaSum", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, parts,
+      geometry.area_sum, "Sum of the FVPM face area vectors (diagnostic)");
+
+  list[12] = io_make_output_field(
+      "FaceAreaTotal", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, geometry.area,
+      "Total FVPM particle face area (diagnostic)");
+
+  list[13] = io_make_output_field(
+      "CentroidOffset", FLOAT, 3, UNIT_CONV_LENGTH, 1.f, parts,
+      geometry.centroid_offset,
+      "Candidate A kernel centroid offset c_i (diagnostic)");
+
+  list[14] = io_make_output_field(
+      "FVPMFirstMoment", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, parts,
+      geometry.first_moment,
+      "Raw first moment m_i = Sum_j d_ij W_ij (diagnostic)");
+
+  list[15] = io_make_output_field(
+      "FVPMCentringMargin", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      geometry.centring_margin,
+      "Candidate A SPD margin q = ihdim.omega'.c^T B c (diagnostic)");
+
+  list[16] = io_make_output_field(
+      "FVPMCentringDisabled", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      geometry.centring_disabled,
+      "1 if candidate A centring was not applied this step (diagnostic)");
+#endif
 }
 
 /**

@@ -26,10 +26,14 @@ __attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
 __attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
     struct part *restrict p, const float wcount) {
 
+  /* centroid is now an output field of first_moment (candidate A's raw
+     kernel first moment), not accumulated in place any more. Bit-neutral:
+     first_moment accumulates in the identical position and order that
+     centroid did before. */
   const float norm = kernel_norm / wcount;
-  p->geometry.centroid[0] *= norm;
-  p->geometry.centroid[1] *= norm;
-  p->geometry.centroid[2] *= norm;
+  p->geometry.centroid[0] = p->geometry.first_moment[0] * norm;
+  p->geometry.centroid[1] = p->geometry.first_moment[1] * norm;
+  p->geometry.centroid[2] = p->geometry.first_moment[2] * norm;
 }
 
 /**

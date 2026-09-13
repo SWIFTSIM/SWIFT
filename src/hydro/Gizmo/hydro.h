@@ -378,6 +378,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Check the FVPM Sum_j A_ij ~= 0 */
   fvpm_check_total_face_area_vector_sum(p);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Item 9b: Sum_j psitilde^c_j(x_i) must vanish algebraically under
+     candidate A. Exempt particles for which item 4 disabled centring
+     (matching 11.1 criterion 4): for those, matrix_E_centred = matrix_E and
+     centroid_offset = 0, so the identity is not expected to hold. */
+  if (!p->geometry.centring_disabled) {
+    for (int k = 0; k < 3; k++) {
+      const float sum = fabsf(p->geometry.psi_c_sum[k]);
+      const float abs_sum = p->geometry.psi_c_abs_sum[k];
+      if (sum > 1e-5f * abs_sum)
+        error(
+            "Sum_j psitilde^c_j(x_i)[%d] strongly deviating from 0! "
+            "Sum = %.9e, Sum|.| = %.9e (p->id: %lld)",
+            k, p->geometry.psi_c_sum[k], abs_sum, p->id);
+    }
+  }
+#endif
 }
 
 /**

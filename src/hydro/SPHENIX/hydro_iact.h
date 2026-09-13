@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Collect data for FVPM matrix construction */
   fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
-  fvpm_update_centroid_left(pi, dx, wi);
+  fvpm_accumulate_first_moment_left(pi, dx, wi);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Collect data for FVPM matrix construction */
   fvpm_accumulate_geometry_and_matrix(pj, wj, dx);
-  fvpm_update_centroid_right(pj, dx, wj);
+  fvpm_accumulate_first_moment_right(pj, dx, wj);
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Collect data for FVPM matrix construction */
   fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
-  fvpm_update_centroid_left(pi, dx, wi);
+  fvpm_accumulate_first_moment_left(pi, dx, wi);
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;

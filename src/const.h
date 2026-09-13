@@ -81,6 +81,13 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
+/* Relative floor on the raw kernel sum omega' below which candidate A's
+   centring is not attempted (a denormal omega' gives an enormous |c|). */
+#define const_fvpm_min_omega_prime 1e-3f
+/* Safety margin on the Loewner condition q < 1 for the candidate-A rank-one
+   downdate. Centring is skipped when q >= 1 - this. */
+#define const_fvpm_centring_spd_margin 0.05f
+
 /* Options controlling ShadowSWIFT */
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */

@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Collect data for matrix construction */
   fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
-  fvpm_update_centroid_left(pi, dx, wi);
+  fvpm_accumulate_first_moment_left(pi, dx, wi);
 
   /* Compute density of pj. */
   const float hj_inv = 1.0f / hj;
@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Collect data for matrix construction */
   fvpm_accumulate_geometry_and_matrix(pj, wj, dx);
-  fvpm_update_centroid_right(pj, dx, wj);
+  fvpm_accumulate_first_moment_right(pj, dx, wj);
 }
 
 /**
@@ -124,7 +124,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
   fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
-  fvpm_update_centroid_left(pi, dx, wi);
+  fvpm_accumulate_first_moment_left(pi, dx, wi);
 }
 
 /**
@@ -317,70 +317,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
                  wj * hj_inv_dim;
       Anorm2 += A[k] * A[k];
     }
-
-    /* The first-attempt rescaling below has no closure guarantee and on the
-       NonUniformCarthesian_1D test it scales the interface face by 0.02. It
-       stays disabled until a corrected scheme is agreed. */
-#ifdef FVPM_ATTEMPT1_FACE_RESCALING
-    float beta_i[3] = {0.0};
-    float beta_j[3] = {0.0};
-
-    if (pi->geometry.is_problematic == 1) {
-      const float beta_i_prime[3] = {
-          -pi->geometry.area_sum_minus[0] / pi->geometry.area_sum_plus[0],
-          -pi->geometry.area_sum_minus[1] / pi->geometry.area_sum_plus[1],
-          -pi->geometry.area_sum_minus[2] / pi->geometry.area_sum_plus[2],
-      };
-      const float Si[3] = {pi->geometry.area_sum[0], pi->geometry.area_sum[1],
-			   pi->geometry.area_sum[2]};      
-      const float Si_times_Aij = Si[0] * A[0] + Si[1] * A[1] + Si[2] * A[2];	
-
-      if (Si_times_Aij > 0.0) {
-	beta_i[0] = beta_i_prime[0];
-	beta_i[1] = beta_i_prime[1];
-	beta_i[2] = beta_i_prime[2];
-      } else {
-	beta_i[0] = 1.0;
-	beta_i[1] = 1.0;
-	beta_i[2] = 1.0;
-      }
-    }
-
-    if (pj->geometry.is_problematic == 1) {
-      const float beta_j_prime[3] = {
-	-pj->geometry.area_sum_minus[0] / pj->geometry.area_sum_plus[0],
-	-pj->geometry.area_sum_minus[1] / pj->geometry.area_sum_plus[1],
-	-pj->geometry.area_sum_minus[2] / pj->geometry.area_sum_plus[2],
-      };
-      const float Sj[3] = {pj->geometry.area_sum[0], pj->geometry.area_sum[1],
-                           pj->geometry.area_sum[2]};
-      const float Sj_times_Aij = -Sj[0] * A[0] - Sj[1] * A[1] - Sj[2] * A[2];
-
-      if (Sj_times_Aij > 0.0) {
-	beta_j[0] = beta_j_prime[0];
-	beta_j[1] = beta_j_prime[1];
-	beta_j[2] = beta_j_prime[2];
-      } else {
-	beta_j[0] = 1.0;
-	beta_j[1] = 1.0;
-	beta_j[2] = 1.0;
-      };
-    }
-
-    if (pi->geometry.is_problematic == 1 || pj->geometry.is_problematic == 1) {
-      const float alpha = 0.5 * (beta_i[0] + beta_j[0]);      
-      message(
-          "[%lld ,%lld] Correcting faces alpha = %e, beta_i = %e, beta_j = "
-          "%e, mi = %e, mj = %e",
-          pi->id, pj->id, alpha, beta_i[0], beta_j[0], hydro_get_mass(pi),
-          hydro_get_mass(pj));      
-      if (alpha != 0.0) {
-	A[0] *= alpha;
-	A[1] *= alpha;
-	A[2] *= alpha;
-      }
-    }
-#endif /* FVPM_ATTEMPT1_FACE_RESCALING */
 
   }  else {
     /* ill condition gradient matrix: revert to SPH face area */

@@ -55,6 +55,25 @@ fvpm_accumulate_geometry_and_matrix(struct part *restrict pi, const float wi,
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 }
 
+/* Role-aware: the shared accumulator carries no left/right information, so
+   the caller supplies the sign, exactly as fvpm_update_centroid_left/_right
+   do. dx = x_i - x_j, and m_i accumulates d_ij = -dx. */
+__attribute__((always_inline)) INLINE static void
+fvpm_accumulate_first_moment_left(struct part *restrict p, const float dx[3],
+                                  const float w) {
+  p->geometry.first_moment[0] -= dx[0] * w;
+  p->geometry.first_moment[1] -= dx[1] * w;
+  p->geometry.first_moment[2] -= dx[2] * w;
+}
+
+__attribute__((always_inline)) INLINE static void
+fvpm_accumulate_first_moment_right(struct part *restrict p, const float dx[3],
+                                   const float w) {
+  p->geometry.first_moment[0] += dx[0] * w;
+  p->geometry.first_moment[1] += dx[1] * w;
+  p->geometry.first_moment[2] += dx[2] * w;
+}
+
 __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
     struct part *restrict p) {
 
@@ -68,6 +87,10 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+
+  p->geometry.first_moment[0] = 0.0f;
+  p->geometry.first_moment[1] = 0.0f;
+  p->geometry.first_moment[2] = 0.0f;
 
   /* reset the centroid variables used for the velocity correction in MFV */
   fvpm_reset_centroids(p);
@@ -122,6 +145,27 @@ fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
   p->geometry.matrix_E[2][2] = 1.0f;
   p->geometry.condition_number = 1.f;
 
+  /* No neighbours means no centroid to centre on: fall back to the same
+     identity matrix_E gets, so any consumer reading matrix_E_centred still
+     gets a sane, finite matrix. */
+  p->geometry.first_moment[0] = 0.0f;
+  p->geometry.first_moment[1] = 0.0f;
+  p->geometry.first_moment[2] = 0.0f;
+  p->geometry.centroid_offset[0] = 0.0f;
+  p->geometry.centroid_offset[1] = 0.0f;
+  p->geometry.centroid_offset[2] = 0.0f;
+  p->geometry.matrix_E_centred[0][0] = 1.0f;
+  p->geometry.matrix_E_centred[0][1] = 0.0f;
+  p->geometry.matrix_E_centred[0][2] = 0.0f;
+  p->geometry.matrix_E_centred[1][0] = 0.0f;
+  p->geometry.matrix_E_centred[1][1] = 1.0f;
+  p->geometry.matrix_E_centred[1][2] = 0.0f;
+  p->geometry.matrix_E_centred[2][0] = 0.0f;
+  p->geometry.matrix_E_centred[2][1] = 0.0f;
+  p->geometry.matrix_E_centred[2][2] = 1.0f;
+  p->geometry.centring_margin = 0.0f;
+  p->geometry.centring_disabled = 1;
+
   /* reset the centroid variables used for the velocity correction in MFV */
   fvpm_reset_centroids(p);
 
@@ -156,14 +200,38 @@ fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
 
-  /* Final operation on the geometry. */
-  /* we multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
+  /* Step 1: capture omega' = Sum_{j!=i} w_ij, raw, before geometry.volume is
+     overwritten below. This is candidate A's kernel-sum denominator. */
+  const float omega_prime = p->geometry.volume;
+
+  /* Step 2 (unchanged): Final operation on the geometry. We multiply with the
+   * smoothing kernel normalization ih3 and calculate the volume. */
   const float volume_inv = ihdim * (p->geometry.volume + kernel_root);
   const float volume = 1.0f / volume_inv;
   p->geometry.volume = volume;
 
-  /* we multiply with the smoothing kernel normalization */
+  /* Step 3: compute the kernel-centred offset c and the centred matrix E^c
+     from the raw matrix_E and first_moment, before the ihdim scaling below.
+     centred is left 0 (no centring) if omega' is too small relative to
+     kernel_root: a denormal omega' gives an enormous |c| and a downdate that
+     annihilates E in float. */
+  int centred = 0;
+  float c[3] = {0.f, 0.f, 0.f};
+  float Ec[3][3] = {{0.f}};
+
+  /* -1 marks "SPD margin never evaluated" (omega' floor or step 8 tripped first); any other value is the computed q, disabled or not. */
+  p->geometry.centring_margin = -1.0f;
+
+  if (omega_prime > const_fvpm_min_omega_prime * kernel_root) {
+    const float omega_inv = 1.0f / omega_prime;
+    for (int k = 0; k < 3; k++) c[k] = p->geometry.first_moment[k] * omega_inv;
+    for (int k = 0; k < 3; k++)
+      for (int l = 0; l < 3; l++)
+        Ec[k][l] = (p->geometry.matrix_E[k][l] - omega_prime * c[k] * c[l]) * ihdim;
+    centred = 1;
+  }
+
+  /* Step 4 (unchanged): we multiply with the smoothing kernel normalization */
   p->geometry.matrix_E[0][0] *= ihdim;
   p->geometry.matrix_E[0][1] *= ihdim;
   p->geometry.matrix_E[0][2] *= ihdim;
@@ -174,10 +242,11 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
   p->geometry.matrix_E[2][1] *= ihdim;
   p->geometry.matrix_E[2][2] *= ihdim;
 
-  /* normalise the centroids for MFV */
+  /* Step 5 (unchanged position): normalise the centroids for MFV. */
   fvpm_normalise_centroid(p, p->density.wcount);
 
-  /* Check the condition number to see if we have a stable geometry. */
+  /* Step 6 (unchanged): Check the condition number to see if we have a stable
+     geometry. */
   const float condition_number_E =
       p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
       p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
@@ -190,7 +259,8 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
       p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
 
   p->geometry.condition_number = 0.0f;
-  if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
+  const int inv_status = invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
+  if (inv_status != 0) {
     /* something went wrong in the inversion; force bad condition number */
     p->geometry.condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {
@@ -209,6 +279,58 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
         hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
   }
 
+  /* Step 8: a failed production inversion leaves matrix_E holding partially
+     eliminated garbage, which q (step 9) would otherwise read as B. */
+  if (inv_status != 0) centred = 0;
+
+  /* Step 9: the SPD margin. Candidate A's guarantee that E^c is SPD whenever
+     E is holds in exact arithmetic; in float, near-coincident neighbours can
+     flip a face's orientation, so the Loewner condition is checked
+     explicitly rather than trusted. */
+  if (centred) {
+    /* B = matrix_E after step 7 = E_hat^{-1}, with E_hat = ihdim.E_raw.
+       E_hat^c = ihdim.(E_raw - omega' c(x)c) = E_hat - (ihdim.omega') c(x)c, so
+       the Loewner condition for E_hat^c > 0 is exactly
+       (ihdim.omega').c^T E_hat^{-1} c < 1. */
+    const float (*B)[3] = (const float (*)[3])p->geometry.matrix_E;
+    float Bc[3];
+    for (int k = 0; k < 3; k++)
+      Bc[k] = B[k][0] * c[0] + B[k][1] * c[1] + B[k][2] * c[2];
+    const float q = ihdim * omega_prime * (c[0] * Bc[0] + c[1] * Bc[1] + c[2] * Bc[2]);
+    p->geometry.centring_margin = q;
+
+    /* Negated form, so NaN and inf fail closed. */
+    if (!(q < 1.0f - const_fvpm_centring_spd_margin)) centred = 0;
+  }
+
+  /* Step 10: under separate storage there are two inversions; a failed
+     centred inversion leaves Ec holding the same kind of garbage. */
+  if (centred) {
+    if (invert_dimension_by_dimension_matrix(Ec) != 0) centred = 0;
+  }
+
+  /* Step 11: store, with a defined fallback so consumers need only one code
+     path. With centroid_offset = 0 and matrix_E_centred = matrix_E, a
+     centring-disabled particle's centred face is bit-identical to its
+     uncentred face. */
+  if (centred) {
+    for (int k = 0; k < 3; k++) {
+      p->geometry.centroid_offset[k] = c[k];
+      for (int l = 0; l < 3; l++) p->geometry.matrix_E_centred[k][l] = Ec[k][l];
+    }
+    p->geometry.centring_disabled = 0;
+  } else {
+    for (int k = 0; k < 3; k++) {
+      p->geometry.centroid_offset[k] = 0.0f;
+      for (int l = 0; l < 3; l++)
+        p->geometry.matrix_E_centred[k][l] = p->geometry.matrix_E[k][l];
+    }
+    p->geometry.centring_disabled = 1;
+  }
+
+  /* Step 12 (unchanged): reads only condition_number, computed above from the
+     untouched matrix_E, so wcorr and the fallback decision are unaffected by
+     centring. */
   if (p->geometry.condition_number > const_gizmo_max_condition_number &&
       p->geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
@@ -232,6 +354,8 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
  * @param pj Particle j.
  * @param Bi Matrix B for particle i.
  * @param Bj Matrix B for particle j.
+ * @param ci Kernel centroid offset for particle i (0 for no centring).
+ * @param cj Kernel centroid offset for particle j (0 for no centring).
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -243,7 +367,8 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
  */
 __attribute__((always_inline)) INLINE static void
 fvpm_compute_face_area_vector(const struct part *restrict pi, const struct part *restrict pj,
-				 float Bi[3][3], float Bj[3][3], const float r2,
+				 float Bi[3][3], float Bj[3][3],
+				 const float ci[3], const float cj[3], const float r2,
 				 const float dx[3], const float hi,
 				 const float hj, float A[3], float A1[3],
 				 float A2[3]) {
@@ -285,11 +410,13 @@ fvpm_compute_face_area_vector(const struct part *restrict pi, const struct part 
       Xj = Xi;
     }
 #endif
+    const float dxi[3] = {dx[0] + ci[0], dx[1] + ci[1], dx[2] + ci[2]};
+    const float dxj[3] = {dx[0] - cj[0], dx[1] - cj[1], dx[2] - cj[2]};
     for (int k = 0; k < 3; k++) {
-      /* we add a minus sign since dx is pi->x - pj->x */
-      A1[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+      /* minus sign: dx = pi->x - pj->x = -d_ij */
+      A1[k] = -Xi * (Bi[k][0] * dxi[0] + Bi[k][1] * dxi[1] + Bi[k][2] * dxi[2]) *
 		 wi * hi_inv_dim;
-      A2[k] = -Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+      A2[k] = -Xj * (Bj[k][0] * dxj[0] + Bj[k][1] * dxj[1] + Bj[k][2] * dxj[2]) *
 		 wj * hj_inv_dim;
       A[k] = A1[k] + A2[k];
     }
@@ -326,23 +453,50 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
 						const float hi, const float hj,
 						const int interaction_mode) {
   
-  /* Initialize local variables */
+  /* Initialize local variables. This is the diagnostic face: it reads
+     matrix_E_centred/centroid_offset, so it is centred as of candidate A.
+     Production faces (runner_iact_fluxes_common, rt_iact.h) are untouched
+     by Stage 1a and stay on matrix_E with zero offsets. */
   float Bi[3][3];
   float Bj[3][3];
   for (int k = 0; k < 3; k++) {
     for (int l = 0; l < 3; l++) {
-      Bi[k][l] = pi->geometry.matrix_E[k][l];
-      Bj[k][l] = pj->geometry.matrix_E[k][l];
+      Bi[k][l] = pi->geometry.matrix_E_centred[k][l];
+      Bj[k][l] = pj->geometry.matrix_E_centred[k][l];
     }
   }
+  const float ci[3] = {pi->geometry.centroid_offset[0],
+                       pi->geometry.centroid_offset[1],
+                       pi->geometry.centroid_offset[2]};
+  const float cj[3] = {pj->geometry.centroid_offset[0],
+                       pj->geometry.centroid_offset[1],
+                       pj->geometry.centroid_offset[2]};
 
   /* Compute (square of) area */
   float A[3] = {0.0, 0.0, 0.0};
   float A1[3] = {0.0, 0.0, 0.0};
   float A2[3] = {0.0, 0.0, 0.0};
-  fvpm_compute_face_area_vector(pi, pj, Bi, Bj, r2, dx, hi, hj, A, A1, A2);
+  fvpm_compute_face_area_vector(pi, pj, Bi, Bj, ci, cj, r2, dx, hi, hj, A, A1, A2);
   const float Anorm2 = A[0] * A[0] + A[1] * A[1] + A[2] * A[2];
   const float Anorm = sqrtf(Anorm2);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  {
+    /* Swap EVERY role: pi<->pj, Bi<->Bj, ci<->cj, hi<->hj, and NEGATE dx.
+       r2 is unchanged. Outputs go to separate locals so the accumulation
+       below is untouched. Bit-exact equality is achievable (see the plan's
+       item 9a derivation), so a tolerance would hide a real sign error. */
+    const float dx_swapped[3] = {-dx[0], -dx[1], -dx[2]};
+    float As[3], A1s[3], A2s[3];
+    fvpm_compute_face_area_vector(pj, pi, Bj, Bi, cj, ci, r2, dx_swapped,
+                                  hj, hi, As, A1s, A2s);
+    for (int k = 0; k < 3; k++) {
+      if (As[k] != -A[k])
+        error("Face antisymmetry violated: A_ji[%d] = %.9e, -A_ij[%d] = %.9e "
+              "(pi=%lld, pj=%lld)", k, As[k], k, -A[k], pi->id, pj->id);
+    }
+  }
+#endif
 
   if (pi->time_bin == 0 && pj->time_bin == 0) {
     /* All particles are logged */    
