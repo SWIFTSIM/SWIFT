@@ -118,24 +118,6 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.dissipation_alpha_floor_LW = 0.f;
   p->feedback_data.dissipation_u_FUV = 0.f;
   p->feedback_data.dissipation_u_LW = 0.f;
-#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  for (int k = 0; k < 3; k++) {
-    p->feedback_data.grad_rho_u_FUV[k] = 0.f;
-    p->feedback_data.grad_rho_u_LW[k] = 0.f;
-    p->feedback_data.grad_rho_u_FUV_prev[k] = 0.f;
-    p->feedback_data.grad_rho_u_LW_prev[k] = 0.f;
-  }
-#endif
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
-  p->feedback_data.dissipation_alpha_flux_FUV = 0.f;
-  p->feedback_data.dissipation_alpha_flux_LW = 0.f;
-  p->feedback_data.div_specific_flux_FUV_prev = 0.f;
-  p->feedback_data.div_specific_flux_LW_prev = 0.f;
-  for (int k = 0; k < 3; k++) {
-    p->feedback_data.dissipation_F_FUV[k] = 0.f;
-    p->feedback_data.dissipation_F_LW[k] = 0.f;
-  }
-#endif
   radiation_init_part_propagation(p);
 }
 
@@ -149,16 +131,6 @@ void radiation_first_init_part(struct part *restrict p) {
  * every per-step gradient-loop accumulator, and, for active particles only,
  * draw down this step's #u_FUV_source_rate/#u_LW_source_rate from
  * #u_FUV_dose_reservoir/#u_LW_dose_reservoir.
- *
- * #grad_rho_u_FUV_prev/#grad_rho_u_LW_prev are NOT written here: this
- * function runs at drift time for every particle regardless of activity, so
- * copying #grad_rho_u_FUV/LW here would overwrite an inactive particle's
- * last real gradient with whatever this same unconditional zeroing already
- * left there on a previous drift. They are instead written at the end of
- * #radiation_end_gradient_propagation, which runs only for active
- * particles, from that step's own just-finalised gradient -- the same
- * pattern #div_specific_flux_FUV_prev/LW_prev already uses, and the one
- * MAGMA2's `hydro_prepare_force` uses for the analogous hydro gradient.
  *
  * Must run here, not in #radiation_init_part_propagation: this call site
  * (cell_drift.c) precedes chemistry_init_part's per-step reset of
@@ -181,27 +153,12 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.grad_u_LW[1] = 0.f;
   p->feedback_data.grad_u_LW[2] = 0.f;
 
-#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  for (int k = 0; k < 3; k++) {
-    p->feedback_data.grad_rho_u_FUV[k] = 0.f;
-    p->feedback_data.grad_rho_u_LW[k] = 0.f;
-  }
-#endif
-
   /* Force-loop accumulator, zeroed here for the same reason as grad_u
    * above: that loop, like the gradient loop, runs exactly once per step,
    * with no h-iteration redo. */
   p->feedback_data.dissipation_u_FUV = 0.f;
   p->feedback_data.dissipation_u_LW = 0.f;
 
-  /* The other gradient-loop accumulators, zeroed here for the same reason as
-   * grad_u above: that loop runs exactly once per step. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
-  for (int k = 0; k < 3; k++) {
-    p->feedback_data.dissipation_F_FUV[k] = 0.f;
-    p->feedback_data.dissipation_F_LW[k] = 0.f;
-  }
-#endif
   /* Stable comoving density snapshot, cached unconditionally (not gated on
    * LW_FUV_propagation below): the gradient loop's `grad(u)` accumulation
    * (radiation_propagation_iact.h) always runs, even in injection-only
@@ -540,63 +497,6 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief One band's Stage-3 anisotropic flux-dissipation coefficient update
- * (design-lw-fuv-design-b-dissipation.md Section 5.2): Chan et al. 2021
- * Eq. 36-37, raised instantly on a steepening `div(F)` in compression and
- * decayed at the same rate as the Stage-1 coefficient otherwise.
- *
- * A particle whose `u` has already gone non-positive gets the ceiling,
- * mirroring the `urad == 0` branch of `src/rt/SPHM1RT/rt.h`: the switch's
- * denominator is the local radiation energy the term is meant to protect,
- * so where there is none left, no smallness argument applies.
- *
- * The denominator is the mass-SPECIFIC field, not `rho*u`: `div_F` is the
- * divergence of the specific flux (it enters the energy equation directly
- * as `du/dt`), so `h^2 d(div F)/dt / c_hyp^2` has the units of `u` and only
- * the specific `u` makes the estimate dimensionless. SPHM1RT's `urad`
- * (`rt_struct.h`) is likewise radiation energy per mass.
- *
- * @param div_F This band's own finalized `div(F)`.
- * @param div_F_prev This band's #div_specific_flux_FUV_prev/LW_prev.
- * @param u This band's live specific field, #u_FUV/LW.
- * @param alpha_prev This band's #dissipation_alpha_flux_FUV/LW from the
- * previous step.
- * @param c_hyp The particle's own #c_hyp.
- * @param kappa This band's #kappa_FUV/LW.
- * @param dt The particle's own #dt_prev.
- * @param h_phys The particle's own physical smoothing length.
- * @return This step's updated flux-dissipation coefficient for this band.
- */
-__attribute__((always_inline)) INLINE static float
-radiation_update_dissipation_alpha_flux_band(float div_F, float div_F_prev,
-                                             float u, float alpha_prev,
-                                             float c_hyp, float kappa, float dt,
-                                             float h_phys) {
-
-  float alpha_aim = 0.f;
-
-  /* The flux term only acts in compression, as Chan et al. Eq. 36 does. */
-  if (div_F < 0.f) {
-    float shock_estimate = 1.f;
-    if (u > 0.f && c_hyp > 0.f) {
-      const float div_F_rate = (div_F - div_F_prev) / dt;
-      shock_estimate = -RADIATION_LW_FUV_DISSIPATION_FLUX_SWITCH_AMPLITUDE *
-                       h_phys * h_phys * div_F_rate / (u * c_hyp * c_hyp);
-    }
-    const float shock_capped = min(shock_estimate, 1.f);
-    alpha_aim = max(shock_capped, 0.f);
-  }
-
-  if (alpha_aim >= alpha_prev) return alpha_aim;
-
-  const float a_kappa = c_hyp * kappa * dt;
-  const float decay =
-      expf(-c_hyp * dt / (RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH * h_phys) -
-           a_kappa);
-  return alpha_aim + (alpha_prev - alpha_aim) * decay;
-}
-
-/**
  * @brief One band's Stage-1 artificial-dissipation coefficient update
  * (design-lw-fuv-design-b-dissipation.md Section 4.3): raised instantly to
  * a negativity-triggered target, or decayed toward it otherwise. Reads the
@@ -781,16 +681,13 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * for THIS step's force loop to combine: the extra ghost precedes the force
  * loop.
  *
- * `F_new = e*F - c_hyp^2*dt*phi*grad(u) + dt*phi*dissipation_F`: the exact
- * solution of `dF/dt = -F/tau - H*F - (D/tau)*grad(u) + dissipation_F` over
- * one step with both source terms frozen at this step's value, `D/tau =
- * c_hyp^2`. `-H*F` is the flux counterpart of the `-H*u` derived at
- * #radiation_end_density_propagation, one power of the Hubble rate for the
- * same mass-specific reason, and is carried the same way, inside the
- * relaxation depth `a = (c_hyp*kappa + H)*dt`. `dissipation_F` is the Stage-3
- * anisotropic term radiation_propagation_iact.h accumulates alongside `grad(u)`
- * and is zero unless #RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX is defined.
- * No-op when propagation is off.
+ * `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact solution of
+ * `dF/dt = -F/tau - H*F - (D/tau)*grad(u)` over one step with the source
+ * term frozen at this step's value, `D/tau = c_hyp^2`. `-H*F` is the flux
+ * counterpart of the `-H*u` derived at #radiation_end_density_propagation,
+ * one power of the Hubble rate for the same mass-specific reason, and is
+ * carried the same way, inside the relaxation depth
+ * `a = (c_hyp*kappa + H)*dt`. No-op when propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -833,52 +730,6 @@ void radiation_end_gradient_propagation(struct part *p,
   const float h_phys = (float)e->cosmology->a * p->h;
   const float u_V_FUV = fd->rho_prev * fd->u_FUV;
   const float u_V_LW = fd->rho_prev * fd->u_LW;
-
-  /* Stage 3's own fields only exist when the stage is built, so they are
-   * reached through pointers selected here; the block below stays compiled
-   * in either state and is removed by the optimizer when the flag is 0. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
-  const int use_anisotropic_flux = 1;
-  float *const diss_F_FUV = fd->dissipation_F_FUV;
-  float *const diss_F_LW = fd->dissipation_F_LW;
-  float *const alpha_f_FUV = &fd->dissipation_alpha_flux_FUV;
-  float *const alpha_f_LW = &fd->dissipation_alpha_flux_LW;
-  float *const div_F_FUV_prev = &fd->div_specific_flux_FUV_prev;
-  float *const div_F_LW_prev = &fd->div_specific_flux_LW_prev;
-#else
-  const int use_anisotropic_flux = 0;
-  float absent_diss_F_FUV[3] = {0.f, 0.f, 0.f};
-  float absent_diss_F_LW[3] = {0.f, 0.f, 0.f};
-  float absent_alpha_f_FUV = 0.f;
-  float absent_alpha_f_LW = 0.f;
-  float absent_div_F_FUV_prev = 0.f;
-  float absent_div_F_LW_prev = 0.f;
-  float *const diss_F_FUV = absent_diss_F_FUV;
-  float *const diss_F_LW = absent_diss_F_LW;
-  float *const alpha_f_FUV = &absent_alpha_f_FUV;
-  float *const alpha_f_LW = &absent_alpha_f_LW;
-  float *const div_F_FUV_prev = &absent_div_F_FUV_prev;
-  float *const div_F_LW_prev = &absent_div_F_LW_prev;
-#endif
-
-  if (use_anisotropic_flux) {
-    /* Added separately rather than as a third term of the relaxation above,
-     * so a build without Stage 3 evaluates the same expression it did
-     * before the stage existed. */
-    for (int k = 0; k < 3; k++) {
-      fd->specific_flux_FUV[k] += dt * phi_FUV * diss_F_FUV[k];
-      fd->specific_flux_LW[k] += dt * phi_LW * diss_F_LW[k];
-    }
-
-    *alpha_f_FUV = radiation_update_dissipation_alpha_flux_band(
-        fd->div_specific_flux_FUV, *div_F_FUV_prev, fd->u_FUV, *alpha_f_FUV,
-        c_hyp, fd->kappa_FUV, dt, h_phys);
-    *alpha_f_LW = radiation_update_dissipation_alpha_flux_band(
-        fd->div_specific_flux_LW, *div_F_LW_prev, fd->u_LW, *alpha_f_LW, c_hyp,
-        fd->kappa_LW, dt, h_phys);
-    *div_F_FUV_prev = fd->div_specific_flux_FUV;
-    *div_F_LW_prev = fd->div_specific_flux_LW;
-  }
 
   const float alpha_pin =
       e->feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging;
@@ -929,21 +780,6 @@ void radiation_end_gradient_propagation(struct part *p,
         s_LW * radiation_dissipation_alpha_floor_band(fd->kappa_LW, h_phys,
                                                       alpha_floor, eps_lambda);
   }
-
-  /* Written here, at the end of this active-gated ghost, from the gradient
-   * this same active step just finalised above (#grad_rho_u_FUV/LW), so the
-   * value read by a neighbour is always this particle's own last real
-   * gradient regardless of how many inactive steps it takes in between --
-   * never a value zeroed by an unrelated drift. Stage 2 reads it in the
-   * FORCE loop, which this ghost precedes, so an active particle's
-   * reconstruction now uses this step's own finalised gradient rather than
-   * the previous step's. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  for (int k = 0; k < 3; k++) {
-    fd->grad_rho_u_FUV_prev[k] = fd->grad_rho_u_FUV[k];
-    fd->grad_rho_u_LW_prev[k] = fd->grad_rho_u_LW[k];
-  }
-#endif
 }
 
 /**

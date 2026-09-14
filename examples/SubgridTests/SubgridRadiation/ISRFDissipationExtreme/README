@@ -1,7 +1,7 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
 box, with LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
-(photoionization and radiation pressure off) and the Stage-1 triggered
+(photoionization and radiation pressure off) and the negativity-triggered
 artificial-dissipation term on (`GEARFeedback:LW_FUV_dissipation_alpha_max:
 0.5`). Same pinned-neighbour IC family as the sibling `ISRFDissipation`
 and `ISRFCausalReach` examples, but at a more extreme local
@@ -16,10 +16,8 @@ validated pass criterion.
 
 ## Dissipation term
 `LW_FUV_dissipation_alpha_max` bounds a triggered artificial-conductivity
-coefficient (Stage 1 of a staged scheme; see `parameter_example.yml` for
-the full parameter description and
-`src/feedback/GEAR/radiation_dissipation_stages.h` for the later stages,
-both off here). It activates per-particle where a particle's own field
+coefficient (see `parameter_example.yml` for the full parameter
+description). It activates per-particle where a particle's own field
 undershoots its neighbours' kernel-mean field
 (`GEARFeedback:LW_FUV_dissipation_negativity_threshold`, code default),
 and is bounded by the runtime stability check in `feedback_properties.h`,

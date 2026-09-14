@@ -18,19 +18,6 @@
  ******************************************************************************/
 #include <config.h>
 
-/* Stage 2 is off in a default build, and its midpoint reconstruction carries
- * the only `a`-factor of this file that is not the shared
- * `a_factor_comoving_to_physical`. Turned on here so that factor is covered
- * too. Safe in THIS translation unit only because every function it drives is
- * a header-side inline taking plain scalars and arrays: no `struct part` is
- * ever handed to the library, so the guarded field the macro adds to
- * `struct feedback_part_data` cannot cause a layout mismatch. Keep it that
- * way; the expansion-term test next door is the one that exercises real
- * particles. */
-#ifndef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-#define RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-#endif
-
 /* Some standard headers. */
 #include <math.h>
 #include <stdio.h>
@@ -57,8 +44,6 @@ static const float u_i = 3.0f;
 static const float u_j = 1.4f;
 static const float F_i[3] = {0.4f, 0.1f, -0.2f};
 static const float F_j[3] = {-0.3f, 0.25f, 0.05f};
-static const float phys_grad_prev_i[3] = {0.2f, -0.1f, 0.05f};
-static const float phys_grad_prev_j[3] = {-0.15f, 0.3f, 0.1f};
 static const float c_hyp = 2.0f;
 /* Passed as the trigger coefficients, with the floor held at 0: one
  * component is enough, this test measuring scale-factor scaling only. */
@@ -74,7 +59,6 @@ static const float scale_factors[4] = {1.f, 0.5f, 0.25f, 0.1f};
 struct operator_outputs {
   float div_F_i, div_F_j;
   float grad_u_i[3], grad_u_j[3];
-  float grad_rho_u_i[3], grad_rho_u_j[3];
   float dissipation_u_i, dissipation_u_j;
   float reduced_flux_i;
 };
@@ -128,38 +112,12 @@ static void evaluate_operators(float a, float a_factor,
                                      rho_i, rho_j, u_i, u_j, D_i, D_j, a_factor,
                                      out->grad_u_i, out->grad_u_j);
 
-  /* The plain `grad(rho*u)` the Stage-2 reconstruction reads is weighted by
-   * the COMOVING density, so it is not itself scale-factor independent: it
-   * carries one factor of `a^dim`, divided out here so the checks downstream
-   * compare like with like. */
-  for (int k = 0; k < 3; k++) {
-    out->grad_rho_u_i[k] = 0.f;
-    out->grad_rho_u_j[k] = 0.f;
-  }
-  radiation_plain_gradient_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, u_i, u_j, a_factor,
-      out->grad_rho_u_i, out->grad_rho_u_j);
-  for (int k = 0; k < 3; k++) {
-    out->grad_rho_u_i[k] /= pow_dimension(a);
-    out->grad_rho_u_j[k] /= pow_dimension(a);
-  }
-
-  /* Same weighting for the reconstruction's own input: the fixed physical
-   * gradient above, expressed in the comoving-density convention the force
-   * loop's reconstruction expects. */
-  float grad_prev_i[3], grad_prev_j[3];
-  for (int k = 0; k < 3; k++) {
-    grad_prev_i[k] = rho_i * phys_grad_prev_i[k];
-    grad_prev_j[k] = rho_j * phys_grad_prev_j[k];
-  }
-
   out->dissipation_u_i = 0.f;
   out->dissipation_u_j = 0.f;
   radiation_dissipation_force_accumulate_band(
-      dx, r, hi, hj, wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp,
-      alpha_i, alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j,
-      grad_prev_i, grad_prev_j, a_factor, a, &out->dissipation_u_i,
-      &out->dissipation_u_j);
+      wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp, alpha_i,
+      alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j, a_factor,
+      &out->dissipation_u_i, &out->dissipation_u_j);
 
   /* One flux relaxation step at zero opacity (decay = phi = 1), then the M1
    * reduced flux the closure branches on. This is the quantity the bug
@@ -191,168 +149,6 @@ static void check_same(const char *name, float a, float reference,
           name, reference, value, a);
 }
 
-/**
- * @brief Fail unless the plain `grad(rho*u)` operator really is the
- * closure-tensor one with the tensor taken out.
- *
- * At zero flux the M1 closure tensor is exactly `I/3`, and the two
- * accumulators are then related in closed form:
- *
- *   `grad_rho_u_i = 3*(rho_i/rho_j)*rho_i*grad_u_i`,
- *   `grad_rho_u_j = 3*(rho_j/rho_i)*rho_j*grad_u_j`.
- *
- * This is the whole reason the second accumulator exists: the Stage-2
- * reconstruction needs `grad(rho*u)`, and feeding it the closure-tensor
- * gradient instead removes only about a third of a resolved jump. The
- * factor of 3 here is that error, measured rather than asserted. A sign
- * slip, a `m_j/rho_i` for `m_j/rho_j` mass weighting, or a dropped `1/a`
- * all break this identity while surviving the scale-factor checks above.
- */
-static void check_plain_gradient_against_isotropic_limit(void) {
-
-  const float zero_flux[3] = {0.f, 0.f, 0.f};
-  const float r = sqrtf(phys_dx[0] * phys_dx[0] + phys_dx[1] * phys_dx[1] +
-                        phys_dx[2] * phys_dx[2]);
-  const float r_inv = 1.f / r;
-
-  float wi, wi_dx, wj, wj_dx;
-  kernel_deval(r / phys_h_i, &wi, &wi_dx);
-  kernel_deval(r / phys_h_j, &wj, &wj_dx);
-  const float wi_dr = wi_dx * pow_dimension_plus_one(1.f / phys_h_i);
-  const float wj_dr = wj_dx * pow_dimension_plus_one(1.f / phys_h_j);
-
-  float D_i[3][3], D_j[3][3];
-  radiation_get_m1_closure_tensor_band(u_i, zero_flux, c_hyp, D_i);
-  radiation_get_m1_closure_tensor_band(u_j, zero_flux, c_hyp, D_j);
-
-  float grad_u_i[3] = {0.f, 0.f, 0.f}, grad_u_j[3] = {0.f, 0.f, 0.f};
-  radiation_gradient_accumulate_band(
-      phys_dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, phys_rho_i, phys_rho_j, u_i,
-      u_j, D_i, D_j, /*a_factor=*/1.f, grad_u_i, grad_u_j);
-
-  float grad_rho_u_i[3] = {0.f, 0.f, 0.f}, grad_rho_u_j[3] = {0.f, 0.f, 0.f};
-  radiation_plain_gradient_accumulate_band(
-      phys_dx, r_inv, wi_dr, wj_dr, mass_i, mass_j, phys_rho_i, phys_rho_j, u_i,
-      u_j, /*a_factor=*/1.f, grad_rho_u_i, grad_rho_u_j);
-
-  const float ratio_i = 3.f * phys_rho_i * phys_rho_i / phys_rho_j;
-  const float ratio_j = 3.f * phys_rho_j * phys_rho_j / phys_rho_i;
-
-  for (int k = 0; k < 3; k++) {
-    const float expected_i = ratio_i * grad_u_i[k];
-    const float expected_j = ratio_j * grad_u_j[k];
-    if (fabsf(grad_rho_u_i[k] - expected_i) > 1e-5f * fabsf(expected_i))
-      error(
-          "grad(rho u)_i[%d] = %.9e is not the isotropic-limit closure "
-          "gradient with the tensor removed, %.9e",
-          k, (double)grad_rho_u_i[k], (double)expected_i);
-    if (fabsf(grad_rho_u_j[k] - expected_j) > 1e-5f * fabsf(expected_j))
-      error(
-          "grad(rho u)_j[%d] = %.9e is not the isotropic-limit closure "
-          "gradient with the tensor removed, %.9e",
-          k, (double)grad_rho_u_j[k], (double)expected_j);
-    if (fabsf(grad_rho_u_i[k]) < 1e-20f)
-      error("grad(rho u)_i[%d] is zero: the check is vacuous", k);
-  }
-
-  message("Plain grad(rho u) matches the isotropic-limit closure gradient");
-}
-
-/**
- * @brief Exercise #radiation_dissipation_van_leer_limiter directly: the
- * Stage-2 fix that evaluates `4*A/(1+A)^2` at `A_use = (|A_ij| > 1) ?
- * 1/A_ij : A_ij` rather than at `A_ij` itself, using the identity
- * `Phi(A) = Phi(1/A)` to keep both `4*A` and `(1+A)^2` finite. Pre-fix, an
- * extreme gradient ratio (`|A_ij| >= ~8.5e37`) overflows both to `inf`,
- * and `inf/inf` is a NaN that this file's `min()`/`max()` macros (plain
- * `<`/`>` ternaries) turn into a silent, wrong `Phi = 1.0`: `NaN < 1.f` is
- * false, so `min(NaN, 1.f)` returns `1.f`.
- *
- * Geometry (`dx`, `r`, `hi`, `hj`) is fixed at `r >= max(hi, hj)` throughout,
- * so `exp_term == 1` everywhere and only the `A`-dependent limiter itself is
- * under test.
- */
-static void check_van_leer_limiter(void) {
-
-  const float dx[3] = {1.f, 0.f, 0.f};
-  const float r = 1.5f;
-  const float hi = 1.f;
-  const float hj = 1.f;
-
-  /* Phi(1) = 1: the unlimited, central value. */
-  {
-    const float g[3] = {1.f, 0.f, 0.f};
-    const float Phi =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g, g);
-    if (fabsf(Phi - 1.f) > 1e-6f)
-      error("Phi(A=1) = %.9e, expected 1.0", (double)Phi);
-  }
-
-  /* Phi(-1) = 0: the documented pole, returned as the finite value 0
-   * rather than relying on a clamp to fix up an actual infinity (a
-   * -ffast-math build cannot be trusted to do that). */
-  {
-    const float g_i[3] = {-1.f, 0.f, 0.f};
-    const float g_j[3] = {1.f, 0.f, 0.f};
-    const float Phi =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
-    if (fabsf(Phi) > 1e-6f)
-      error("Phi(A=-1) = %.9e, expected 0.0", (double)Phi);
-  }
-
-  /* Phi(0) = 0: zero numerator gradient. */
-  {
-    const float g_i[3] = {0.f, 0.f, 0.f};
-    const float g_j[3] = {1.f, 0.f, 0.f};
-    const float Phi =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
-    if (fabsf(Phi) > 1e-6f) error("Phi(A=0) = %.9e, expected 0.0", (double)Phi);
-  }
-
-  /* Phi(A) = Phi(1/A), moderate case: A = 2 vs A = 1/2, built by swapping
-   * g_i and g_j while holding the geometry fixed, which exactly inverts
-   * A_ij without constructing two independent gradient pairs. */
-  {
-    const float g_i[3] = {2.f, 0.f, 0.f};
-    const float g_j[3] = {1.f, 0.f, 0.f};
-    const float Phi_A =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
-    const float Phi_invA =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_j, g_i);
-    if (fabsf(Phi_A - Phi_invA) > 1e-6f * fabsf(Phi_A))
-      error("Phi(A=2) = %.9e != Phi(A=0.5) = %.9e", (double)Phi_A,
-            (double)Phi_invA);
-    if (fabsf(Phi_A) < 1e-20f)
-      error("Phi(A=2) is zero: the moderate-case check is vacuous");
-  }
-
-  /* Phi(A) = Phi(1/A) at the extreme magnitude the fix exists for, and
-   * Phi -> 0 there: A_ij ~ 2e38 is inside the ~8.5e37-3.4e38 window where
-   * 4*A_ij and (1+A_ij)^2 individually overflow a float pre-fix. Swapping
-   * g_i/g_j gives A_ij ~ 1/2e38; after the fix both collapse onto the SAME
-   * A_use (~5e-39), so this one pair of calls proves both properties at
-   * once. This is the case that was actually broken pre-fix. */
-  {
-    const float g_i[3] = {2e18f, 0.f, 0.f};
-    const float g_j[3] = {1e-20f, 0.f, 0.f};
-    const float Phi_A =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_i, g_j);
-    const float Phi_invA =
-        radiation_dissipation_van_leer_limiter(dx, r, hi, hj, g_j, g_i);
-    message("extreme A: Phi(A~2e38) = %.9e, Phi(A~5e-39) = %.9e", (double)Phi_A,
-            (double)Phi_invA);
-    if (fabsf(Phi_A - Phi_invA) > 1e-6f)
-      error("Phi(A~2e38) = %.9e != Phi(A~5e-39) = %.9e", (double)Phi_A,
-            (double)Phi_invA);
-    if (Phi_A > 1e-6f)
-      error("Phi at extreme A = %.9e, expected -> 0", (double)Phi_A);
-  }
-
-  message(
-      "Van Leer limiter: pole, zero, and Phi(A)=Phi(1/A) all check out "
-      "(moderate and extreme A).");
-}
-
 int main(int argc, char *argv[]) {
 
   struct operator_outputs out[NUM_SCALE_FACTORS];
@@ -368,10 +164,6 @@ int main(int argc, char *argv[]) {
     for (int k = 0; k < 3; k++) {
       check_same("grad(u)_i", a, out[0].grad_u_i[k], out[i].grad_u_i[k]);
       check_same("grad(u)_j", a, out[0].grad_u_j[k], out[i].grad_u_j[k]);
-      check_same("grad(rho u)_i", a, out[0].grad_rho_u_i[k],
-                 out[i].grad_rho_u_i[k]);
-      check_same("grad(rho u)_j", a, out[0].grad_rho_u_j[k],
-                 out[i].grad_rho_u_j[k]);
     }
     check_same("dissipation_u_i", a, out[0].dissipation_u_i,
                out[i].dissipation_u_i);
@@ -400,9 +192,6 @@ int main(int argc, char *argv[]) {
 
   message("Discrimination check passed: unconverted div(F)_i = %.8e vs %.8e",
           unfixed.div_F_i, out[0].div_F_i);
-
-  check_plain_gradient_against_isotropic_limit();
-  check_van_leer_limiter();
 
   return 0;
 }

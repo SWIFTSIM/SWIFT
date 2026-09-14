@@ -127,7 +127,6 @@ tests/testRadiationLWFUVFormula
 tests/testRadiationLWFUVDissipationConservation
 tests/testRadiationLWFUVComovingFactors
 tests/testRadiationLWFUVExpansionTerm
-tests/testRadiationLWFUVDissipationAlphaFlux
 tests/testRadiationGridMetadata
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset

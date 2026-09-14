@@ -19,7 +19,6 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
-#include "../GEAR/radiation_dissipation_stages.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
 
@@ -213,65 +212,9 @@ struct feedback_part_data {
       (radiation_propagation_iact.h). Scratch: zeroed once per step by
       radiation_snapshot_part_propagation, since the gradient loop runs
       exactly once per step (never re-run across h-iterations). PHYSICAL:
-      per physical length, not per comoving one, so the Stage-2
-      reconstruction must step along `a*dx`. */
+      per physical length, not per comoving one. */
   float grad_u_FUV[3];
   float grad_u_LW[3];
-
-  /*! PLAIN kernel gradient of `rho*u`
-      (#radiation_plain_gradient_accumulate_band), gradient loop, and the
-      copy of it the Stage-2 slope-limited midpoint reconstruction actually
-      reads. Separate from #grad_u_FUV/LW above, which carries the M1
-      closure tensor and so is NOT `grad(rho*u)`: it reduces to
-      `(1/3)*grad(u)` in the isotropic limit and is anisotropic away from
-      it, which would leave the reconstruction removing about a third of a
-      resolved jump. `rho` is the comoving #rho_prev, matching the jump the
-      reconstruction corrects, while the derivative is per physical length.
-      The scratch pair is zeroed once per step alongside #grad_u_FUV/LW; the
-      `_prev` pair is written at the end of
-      #radiation_end_gradient_propagation, for the same reason
-      #div_specific_flux_FUV_prev is. Guarded: a build without Stage 2 pays
-      no memory for any of the four. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION
-  float grad_rho_u_FUV[3];
-  float grad_rho_u_LW[3];
-  float grad_rho_u_FUV_prev[3];
-  float grad_rho_u_LW_prev[3];
-#endif
-
-  /*! Stage-3 anisotropic flux-dissipation source term (design-lw-fuv-design-
-      b-dissipation.md Section 5.2), gradient loop
-      (radiation_propagation_iact.h): applied as a third frozen term of
-      #radiation_end_gradient_propagation's exact relaxation of
-      #specific_flux_FUV/LW. NOT antisymmetric between the two particles of a
-      pair, unlike #dissipation_u_FUV/LW: the flux is not a conserved sum, so
-      both sides carry the same sign and each divides by its own density.
-      Scratch: zeroed once per step by radiation_snapshot_part_propagation,
-      like #grad_u_FUV/LW, since the gradient loop runs exactly once per
-      step. Guarded, with the two fields below: a build without Stage 3
-      pays no memory for any of them. */
-#ifdef RADIATION_LW_FUV_DISSIPATION_ANISOTROPIC_FLUX
-  float dissipation_F_FUV[3];
-  float dissipation_F_LW[3];
-
-  /*! Stage-3 anisotropic flux-dissipation coefficient, raised by the
-      `d(div F)/dt` switch of Chan et al. 2021 Eq. 36-37 and decayed
-      otherwise, updated once per step in
-      #radiation_end_gradient_propagation. Persistent, dumped with #part like
-      #dissipation_alpha_trigger_FUV; zero at first init, no IC field. Read by
-      the
-      NEXT step's gradient loop as this band's #dissipation_F_FUV/LW pair
-      coefficient. */
-  float dissipation_alpha_flux_FUV;
-  float dissipation_alpha_flux_LW;
-
-  /*! Previous step's #div_specific_flux_FUV/LW, kept so the Stage-3 switch
-      above can form `d(div F)/dt`. Written at the end of
-      #radiation_end_gradient_propagation, after the switch has consumed it.
-      Persistent across steps (not scratch), and zero at first init. */
-  float div_specific_flux_FUV_prev;
-  float div_specific_flux_LW_prev;
-#endif
 
   /*! Comoving density snapshot, cached once per step by
       radiation_snapshot_part_propagation at the same call site as

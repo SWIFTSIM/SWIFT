@@ -246,9 +246,7 @@ def reconstruct_pairs(pos_w, h_w, boxsize):
 
 
 def dissipation_accumulator(i_idx, j_idx, r, h_w, mass_w, rho_w, c_hyp_w, alpha_w, u_w):
-    """`radiation_dissipation_force_accumulate_band`, Stage 1 (no
-    reconstruction branch: RADIATION_LW_FUV_DISSIPATION_RECONSTRUCTION is
-    compiled out by default)."""
+    """Accumulate the triggered artificial-conductivity term on the raw pairwise jump."""
     n = len(mass_w)
     diss_u = np.zeros(n)
     if len(i_idx) == 0:
