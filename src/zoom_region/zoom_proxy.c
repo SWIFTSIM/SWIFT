@@ -30,32 +30,22 @@
 #ifdef WITH_MPI
 
 /**
- * @brief Apply the gravity proxy decision at a recursion leaf with cells of
- *        equal-width proxy-decision cells.
- *
- * Mirrors @c engine_get_proxy_type's gravity branch (theta_crit MAC test and
- * periodic mesh-cutoff gate). The proxy-decision cells are the equal-width
- * cells that initiated the recursion; the actual leaf cells are used only for
- * hydro eligibility and proxy construction.
- *
- * Hydro: enabled only when both leaves are zoom cells AND they are direct
- * neighbours in the zoom grid (matches splittask hydro-pair eligibility and
- * @c engine_get_proxy_type's zoom-only-hydro rule).
+ * @brief Apply proxy criteria to a pair of equal-width cells.
  *
  * @param e The #engine.
- * @param ci First leaf cell.
- * @param cj Second leaf cell.
- * @param proxy_ci First equal-width proxy-decision cell.
- * @param proxy_cj Second equal-width proxy-decision cell.
- * @param is_direct_neighbour Whether the cells are direct neighbours.
+ * @param ci First cell whose proxy is being constructed.
+ * @param cj Second cell whose proxy is being constructed.
+ * @param proxy_ci First cell used for geometric proxy criteria.
+ * @param proxy_cj Second cell used for geometric proxy criteria.
+ * @param is_direct_neighbour Whether the cells are direct zoom neighbours.
  * @return Bit mask describing required proxy data.
  */
-static int zoom_proxy_get_leaf_proxy_type(const struct engine *e,
-                                          const struct cell *ci,
-                                          const struct cell *cj,
-                                          const struct cell *proxy_ci,
-                                          const struct cell *proxy_cj,
-                                          const int is_direct_neighbour) {
+static int zoom_get_proxy_type(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj,
+                               const struct cell *proxy_ci,
+                               const struct cell *proxy_cj,
+                               const int is_direct_neighbour) {
+
   const struct space *s = e->s;
   const int with_hydro_policy = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
@@ -63,7 +53,7 @@ static int zoom_proxy_get_leaf_proxy_type(const struct engine *e,
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
   int proxy_type = 0;
 
-  /* Hydro: only zoom<->zoom direct neighbours are eligible. */
+  /* Hydro is only possible between direct zoom neighbours. */
   const int both_zoom =
       (ci->type == cell_type_zoom && cj->type == cell_type_zoom);
   if (with_hydro_policy && both_zoom && is_direct_neighbour) {
@@ -97,189 +87,102 @@ static int zoom_proxy_get_leaf_proxy_type(const struct engine *e,
 }
 
 /**
- * @brief Geometric pair recursion mirror of zoom splittask void pair.
+ * @brief Get zoom cell corresponding to a geometric region centre.
  *
- * One side of the pair (the "void side(s)") is described purely geometrically
- * by (loc, width); we DO NOT walk real cell tree pointers because at proxy
- * creation time we have not yet exchanged neighbour cell trees. The other
- * side may be either a real top-level non-void cell (passed via @c top_other,
- * not subdivided), or another void side being recursed in lock-step.
- *
- * No proxy logic is performed in this function except at the leaf level,
- * where one or both geometric sides have reached the zoom depth. At the
- * leaf:
- *   - If both sides are void-recursing, they have both reached zoom depth
- *     and we resolve real zoom top cells from positions.
- *   - If only one side is void-recursing (the other is a fixed bkg top
- *     cell), the recursing side reaches zoom depth and we resolve its real
- *     zoom top cell.
- *
- * @param e          The #engine.
- * @param s          The #space.
- * @param loc_i      Lower-left corner of side i (geometric region).
- * @param width_i    Width of side i.
- * @param depth_i    Recursion depth on side i below the top-level void
- *                   (0 == top-level void). Only meaningful when side i is
- *                   void-recursing.
- * @param recurse_i  1 if side i is descending through a void; 0 if side i
- *                   is a fixed real top-level cell (held in @c top_i).
- * @param top_i      Top-level cell containing side i.
- * @param loc_j Lower corner of side j.
- * @param width_j Width of side j.
- * @param depth_j Recursion depth on side j below the top-level void.
- * @param recurse_j Whether side j is descending through a void.
- * @param top_j Top-level cell containing side j.
- * @param zoom_depth Depth at which a void's progeny are zoom top cells.
+ * @param s The #space.
+ * @param loc Lower corner of the region.
+ * @param width Width of the region.
+ * @return The zoom top-level cell in the region.
  */
-static void zoom_proxy_void_pair_recursive(
+static struct cell *zoom_cell_from_region(const struct space *s,
+                                          const double loc[3],
+                                          const double width[3]) {
+  const double x = loc[0] + 0.5 * width[0];
+  const double y = loc[1] + 0.5 * width[1];
+  const double z = loc[2] + 0.5 * width[2];
+  return &s->cells_top[cell_getid_from_pos(s, x, y, z)];
+}
+
+/**
+ * @brief Recursively create proxies for zoom-zoom pairs inside two void cells.
+ *
+ * Both regions are subdivided in lockstep until zoom top-level cells are
+ * reached. No particle or cell-tree information is available here, so every
+ * geometric pair is considered.
+ *
+ * @param e The #engine.
+ * @param s The #space.
+ * @param loc_i Lower corner of first region.
+ * @param loc_j Lower corner of second region.
+ * @param width Width of both regions.
+ * @param depth Current recursion depth below the void cells.
+ * @param zoom_depth Depth at which zoom top-level cells are reached.
+ */
+static void zoom_make_zoom_pair_proxies_recursive(
     struct engine *e, const struct space *s, const double loc_i[3],
-    const double width_i[3], const int depth_i, const int recurse_i,
-    struct cell *top_i, const double loc_j[3], const double width_j[3],
-    const int depth_j, const int recurse_j, struct cell *top_j,
+    const double loc_j[3], const double width[3], const int depth,
     const int zoom_depth) {
 
   const int nodeID = e->nodeID;
 
-  /* Have we reached the leaf level on every recursing side? A non-recursing
-   * side is always at its leaf (it is the top-level real cell). */
-  const int leaf_i = !recurse_i || depth_i == zoom_depth;
-  const int leaf_j = !recurse_j || depth_j == zoom_depth;
-
-  if (leaf_i && leaf_j) {
-
-    /* Resolve the real top cell on each recursing side from its geometric
-     * centre. The non-recursing side already has its real top cell. */
-    struct cell *ci = top_i;
-    struct cell *cj = top_j;
-
-    if (recurse_i) {
-      const double cx = loc_i[0] + 0.5 * width_i[0];
-      const double cy = loc_i[1] + 0.5 * width_i[1];
-      const double cz = loc_i[2] + 0.5 * width_i[2];
-      ci = &s->cells_top[cell_getid_from_pos(s, cx, cy, cz)];
-    }
-    if (recurse_j) {
-      const double cx = loc_j[0] + 0.5 * width_j[0];
-      const double cy = loc_j[1] + 0.5 * width_j[1];
-      const double cz = loc_j[2] + 0.5 * width_j[2];
-      cj = &s->cells_top[cell_getid_from_pos(s, cx, cy, cz)];
-    }
+  if (depth == zoom_depth) {
+    struct cell *ci = zoom_cell_from_region(s, loc_i, width);
+    struct cell *cj = zoom_cell_from_region(s, loc_j, width);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
-      error("Recursion bottomed out on a void cell (ci=%s, cj=%s)",
+      error("Zoom recursion reached a void cell (ci=%s, cj=%s)",
             subcellID_names[ci->subtype], subcellID_names[cj->subtype]);
 #endif
 
-    /* Skip self pairs in the symmetric case (e.g. a void self-pair recursion
-     * that happens to land on the same zoom cell from both sides). */
     if (ci == cj) return;
-
-    /* Skip entirely local and entirely foreign pairs. */
     if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
         (ci->nodeID != nodeID && cj->nodeID != nodeID))
       return;
 
-    /* Use the equal-width top-level pair for the proxy decision. */
-    const struct cell *proxy_ci = ci;
-    const struct cell *proxy_cj = cj;
-    if (ci->type == cell_type_zoom && cj->type != cell_type_zoom) {
-      proxy_ci = top_i;
-    } else if (ci->type != cell_type_zoom && cj->type == cell_type_zoom) {
-      proxy_cj = top_j;
-    }
-
-    /* Determine hydro eligibility from the actual leaf cells. */
     int is_direct_neighbour = 0;
-    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
-      const struct zoom_region_properties *zp = s->zoom_props;
-      const int ai = (int)((ci->loc[0] - zp->region_lower_bounds[0]) *
-                           zp->iwidth[0]);
-      const int aj = (int)((ci->loc[1] - zp->region_lower_bounds[1]) *
-                           zp->iwidth[1]);
-      const int ak = (int)((ci->loc[2] - zp->region_lower_bounds[2]) *
-                           zp->iwidth[2]);
-      const int bi = (int)((cj->loc[0] - zp->region_lower_bounds[0]) *
-                           zp->iwidth[0]);
-      const int bj = (int)((cj->loc[1] - zp->region_lower_bounds[1]) *
-                           zp->iwidth[1]);
-      const int bk = (int)((cj->loc[2] - zp->region_lower_bounds[2]) *
-                           zp->iwidth[2]);
-      if (abs(ai - bi) <= 1 && abs(aj - bj) <= 1 && abs(ak - bk) <= 1)
-        is_direct_neighbour = 1;
-    }
+    const struct zoom_region_properties *zp = s->zoom_props;
+    const int ai =
+        (int)((ci->loc[0] - zp->region_lower_bounds[0]) * zp->iwidth[0]);
+    const int aj =
+        (int)((ci->loc[1] - zp->region_lower_bounds[1]) * zp->iwidth[1]);
+    const int ak =
+        (int)((ci->loc[2] - zp->region_lower_bounds[2]) * zp->iwidth[2]);
+    const int bi =
+        (int)((cj->loc[0] - zp->region_lower_bounds[0]) * zp->iwidth[0]);
+    const int bj =
+        (int)((cj->loc[1] - zp->region_lower_bounds[1]) * zp->iwidth[1]);
+    const int bk =
+        (int)((cj->loc[2] - zp->region_lower_bounds[2]) * zp->iwidth[2]);
+    if (abs(ai - bi) <= 1 && abs(aj - bj) <= 1 && abs(ak - bk) <= 1)
+      is_direct_neighbour = 1;
+
     const int proxy_type =
-        zoom_proxy_get_leaf_proxy_type(e, ci, cj, proxy_ci, proxy_cj,
-                                       is_direct_neighbour);
+        zoom_get_proxy_type(e, ci, cj, ci, cj, is_direct_neighbour);
     if (proxy_type == proxy_cell_type_none) return;
 
     engine_add_proxy(e, ci, cj, proxy_type);
     return;
   }
 
-  /* Not at the leaf yet on at least one side: subdivide the recursing
-   * side(s) and recurse. */
-
-  /* Iterate progeny on side i (or treat side i as a single "child" if it is
-   * not recursing). */
-  const int ni = recurse_i ? 8 : 1;
-  const int nj = recurse_j ? 8 : 1;
-
-  for (int ki = 0; ki < ni; ki++) {
-
-    double sub_loc_i[3];
-    double sub_width_i[3];
-    int sub_depth_i;
-    if (recurse_i && !leaf_i) {
-      sub_width_i[0] = 0.5 * width_i[0];
-      sub_width_i[1] = 0.5 * width_i[1];
-      sub_width_i[2] = 0.5 * width_i[2];
-      sub_loc_i[0] = loc_i[0] + ((ki & 4) ? sub_width_i[0] : 0.0);
-      sub_loc_i[1] = loc_i[1] + ((ki & 2) ? sub_width_i[1] : 0.0);
-      sub_loc_i[2] = loc_i[2] + ((ki & 1) ? sub_width_i[2] : 0.0);
-      sub_depth_i = depth_i + 1;
-    } else {
-      sub_loc_i[0] = loc_i[0];
-      sub_loc_i[1] = loc_i[1];
-      sub_loc_i[2] = loc_i[2];
-      sub_width_i[0] = width_i[0];
-      sub_width_i[1] = width_i[1];
-      sub_width_i[2] = width_i[2];
-      sub_depth_i = depth_i;
-    }
-
-    for (int kj = 0; kj < nj; kj++) {
-
-      double sub_loc_j[3];
-      double sub_width_j[3];
-      int sub_depth_j;
-      if (recurse_j && !leaf_j) {
-        sub_width_j[0] = 0.5 * width_j[0];
-        sub_width_j[1] = 0.5 * width_j[1];
-        sub_width_j[2] = 0.5 * width_j[2];
-        sub_loc_j[0] = loc_j[0] + ((kj & 4) ? sub_width_j[0] : 0.0);
-        sub_loc_j[1] = loc_j[1] + ((kj & 2) ? sub_width_j[1] : 0.0);
-        sub_loc_j[2] = loc_j[2] + ((kj & 1) ? sub_width_j[2] : 0.0);
-        sub_depth_j = depth_j + 1;
-      } else {
-        sub_loc_j[0] = loc_j[0];
-        sub_loc_j[1] = loc_j[1];
-        sub_loc_j[2] = loc_j[2];
-        sub_width_j[0] = width_j[0];
-        sub_width_j[1] = width_j[1];
-        sub_width_j[2] = width_j[2];
-        sub_depth_j = depth_j;
-      }
-
-      zoom_proxy_void_pair_recursive(e, s, sub_loc_i, sub_width_i, sub_depth_i,
-                                     recurse_i, top_i, sub_loc_j, sub_width_j,
-                                     sub_depth_j, recurse_j, top_j, zoom_depth);
+  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1],
+                               0.5 * width[2]};
+  for (int i = 0; i < 8; i++) {
+    double sub_loc_i[3] = {loc_i[0] + ((i & 4) ? sub_width[0] : 0.0),
+                           loc_i[1] + ((i & 2) ? sub_width[1] : 0.0),
+                           loc_i[2] + ((i & 1) ? sub_width[2] : 0.0)};
+    for (int j = 0; j < 8; j++) {
+      double sub_loc_j[3] = {loc_j[0] + ((j & 4) ? sub_width[0] : 0.0),
+                             loc_j[1] + ((j & 2) ? sub_width[1] : 0.0),
+                             loc_j[2] + ((j & 1) ? sub_width[2] : 0.0)};
+      zoom_make_zoom_pair_proxies_recursive(e, s, sub_loc_i, sub_loc_j,
+                                            sub_width, depth + 1, zoom_depth);
     }
   }
 }
 
 /**
- * @brief Geometric self recursion mirror of zoom splittask void self.
+ * @brief Recursively create proxies for zoom cells inside one void cell.
  *
  * Recurse through the 8 octants of a top-level void cell, generating pair
  * recursions between every pair of octants (and self recursions on each
@@ -291,16 +194,12 @@ static void zoom_proxy_void_pair_recursive(
  * @param loc       Lower-left corner of the current geometric region.
  * @param width     Width of the current geometric region.
  * @param depth     Recursion depth below the top-level void.
- * @param top       Top-level void cell containing the region.
  * @param zoom_depth Depth at which the leaves are zoom top cells.
  */
-static void zoom_proxy_void_self_recursive(struct engine *e,
-                                           const struct space *s,
-                                           const double loc[3],
-                                           const double width[3],
-                                           const int depth,
-                                           struct cell *top,
-                                           const int zoom_depth) {
+static void zoom_make_void_self_proxies(struct engine *e, const struct space *s,
+                                        const double loc[3],
+                                        const double width[3], const int depth,
+                                        const int zoom_depth) {
 
   /* At zoom depth the "self" of a single zoom cell carries no proxy work. */
   if (depth == zoom_depth) return;
@@ -316,17 +215,58 @@ static void zoom_proxy_void_self_recursive(struct engine *e,
 
   /* Self recursion on each octant. */
   for (int k = 0; k < 8; k++) {
-    zoom_proxy_void_self_recursive(e, s, sub_loc[k], sub_width, depth + 1, top,
-                                   zoom_depth);
+    zoom_make_void_self_proxies(e, s, sub_loc[k], sub_width, depth + 1,
+                                zoom_depth);
   }
 
   /* Pair recursion on every pair of octants. */
   for (int a = 0; a < 8; a++) {
     for (int b = a + 1; b < 8; b++) {
-      zoom_proxy_void_pair_recursive(
-          e, s, sub_loc[a], sub_width, depth + 1, /*recurse_i=*/1, top,
-          sub_loc[b], sub_width, depth + 1, /*recurse_j=*/1, top, zoom_depth);
+      zoom_make_zoom_pair_proxies_recursive(
+          e, s, sub_loc[a], sub_loc[b], sub_width, depth + 1, zoom_depth);
     }
+  }
+}
+
+/**
+ * @brief Recursively create proxies between zoom cells and one background cell.
+ *
+ * @param e The #engine.
+ * @param s The #space.
+ * @param loc Lower corner of the enclosing void region.
+ * @param width Width of the enclosing void region.
+ * @param depth Current recursion depth below the void cell.
+ * @param void_cell The top-level void cell used for geometric criteria.
+ * @param bkg_cell The top-level background cell receiving the proxy.
+ * @param zoom_depth Depth at which the zoom top-level cells are reached.
+ */
+static void zoom_make_zoom_bkg_proxies_recursive(
+    struct engine *e, const struct space *s, const double loc[3],
+    const double width[3], const int depth, const struct cell *void_cell,
+    struct cell *bkg_cell, const int zoom_depth) {
+
+  if (depth == zoom_depth) {
+    struct cell *zoom_cell = zoom_cell_from_region(s, loc, width);
+    if ((zoom_cell->nodeID == e->nodeID && bkg_cell->nodeID == e->nodeID) ||
+        (zoom_cell->nodeID != e->nodeID && bkg_cell->nodeID != e->nodeID))
+      return;
+
+    const int proxy_type = zoom_get_proxy_type(
+        e, zoom_cell, bkg_cell, void_cell, bkg_cell, 0);
+    if (proxy_type != proxy_cell_type_none)
+      engine_add_proxy(e, zoom_cell, bkg_cell, proxy_type);
+    return;
+  }
+
+  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1],
+                               0.5 * width[2]};
+  for (int i = 0; i < 8; i++) {
+    const double sub_loc[3] = {
+        loc[0] + ((i & 4) ? sub_width[0] : 0.0),
+        loc[1] + ((i & 2) ? sub_width[1] : 0.0),
+        loc[2] + ((i & 1) ? sub_width[2] : 0.0)};
+    zoom_make_zoom_bkg_proxies_recursive(e, s, sub_loc, sub_width, depth + 1,
+                                         void_cell, bkg_cell, zoom_depth);
   }
 }
 
@@ -335,17 +275,10 @@ static void zoom_proxy_void_self_recursive(struct engine *e,
 /**
  * @brief Create and fill the proxies (zoom variant).
  *
- * Top-level loop iterates background top cells with the gravity-opening-angle
- * stencil and:
- *   - bkg<->bkg pairs: standard top-level proxy decision (with index-stride
- *     is_direct_neighbour test and bkg-scale r_max).
- *   - any pair involving a void cell (one or both sides): hand off to the
- *     geometric pair recursion (zoom_proxy_void_pair_recursive) which mirrors
- *     the splittask void pair recursion. Proxy decisions for these are made
- *     only at the leaves (zoom top cells).
- *   - top-level void self pairs: hand off to the geometric self recursion
- *     (zoom_proxy_void_self_recursive) which generates zoom<->zoom proxies
- *     within the same top-level void.
+ * Top-level loop iterates background cells with the gravity-opening-angle
+ * stencil and handles background-background pairs directly. Void cells are
+ * expanded geometrically only as far as zoom top-level cells to construct
+ * zoom-zoom and zoom-background proxies.
  *
  * @param e The #engine.
  */
@@ -357,7 +290,6 @@ void zoom_engine_makeproxies(struct engine *e) {
   const struct space *s = e->s;
   const int nodeID = e->nodeID;
   struct cell *cells = s->cells_top;
-  struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
   const int bkg_cdim[3] = {s->zoom_props->bkg_cdim[0],
                            s->zoom_props->bkg_cdim[1],
                            s->zoom_props->bkg_cdim[2]};
@@ -399,9 +331,10 @@ void zoom_engine_makeproxies(struct engine *e) {
   }
 
   if (e->verbose)
-    message("Looking for proxies up to %d background cells away "
-            "(delta_m=%d delta_p=%d)",
-            bkg_delta_cells, bkg_delta_m, bkg_delta_p);
+    message(
+        "Looking for proxies up to %d background cells away "
+        "(delta_m=%d delta_p=%d)",
+        bkg_delta_cells, bkg_delta_m, bkg_delta_p);
 
   /* Loop over the background top-cell grid. */
   for (int i = 0; i < bkg_cdim[0]; i++) {
@@ -411,10 +344,10 @@ void zoom_engine_makeproxies(struct engine *e) {
         const int cid = cell_getid_offset(bkg_cdim, bkg_offset, i, j, k);
         struct cell *ci = &cells[cid];
 
-        /* Top-level void self: recurse to find zoom<->zoom pairs inside it. */
+        /* Construct zoom-zoom proxies within this void cell. */
         if (ci->subtype == cell_subtype_void) {
-          zoom_proxy_void_self_recursive(e, s, ci->loc, ci->width, /*depth=*/0,
-                                         ci, zoom_depth);
+          zoom_make_void_self_proxies(e, s, ci->loc, ci->width, /*depth=*/0,
+                                      zoom_depth);
         }
 
         /* Pair walk over the stencil. */
@@ -456,14 +389,26 @@ void zoom_engine_makeproxies(struct engine *e) {
                 if (proxy_type == proxy_cell_type_none) continue;
                 engine_add_proxy(e, ci, cj, proxy_type);
 
+              } else if (ci_void && cj_void) {
+
+                /* Construct zoom-zoom proxies between two void cells. */
+                zoom_make_zoom_pair_proxies_recursive(
+                    e, s, ci->loc, cj->loc, ci->width, /*depth=*/0,
+                    zoom_depth);
+
+              } else if (ci_void) {
+
+                /* Construct zoom-background proxies from the first void. */
+                zoom_make_zoom_bkg_proxies_recursive(
+                    e, s, ci->loc, ci->width, /*depth=*/0, ci, cj,
+                    zoom_depth);
+
               } else {
 
-                /* Anything involving a void cell: recurse geometrically. The
-                 * recursion makes the proxy decision only at the leaves. */
-                zoom_proxy_void_pair_recursive(
-                    e, s, ci->loc, ci->width, /*depth_i=*/0,
-                    /*recurse_i=*/ci_void, ci, cj->loc, cj->width,
-                    /*depth_j=*/0, /*recurse_j=*/cj_void, cj, zoom_depth);
+                /* Construct zoom-background proxies from the second void. */
+                zoom_make_zoom_bkg_proxies_recursive(
+                    e, s, cj->loc, cj->width, /*depth=*/0, cj, ci,
+                    zoom_depth);
               }
             }
           }
@@ -471,9 +416,6 @@ void zoom_engine_makeproxies(struct engine *e) {
       }
     }
   }
-
-  /* Silence unused warning if we never look up zoom_cells directly. */
-  (void)zoom_cells;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
