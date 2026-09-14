@@ -34,6 +34,9 @@
  * @brief Computes the time-step length of a given star particle from feedback
  * physics
  *
+ * AGORA feedback imposes no timestep limit of its own, so both outputs are
+ * always set to FLT_MAX.
+ *
  * @param sp Pointer to the s-particle data.
  * @param feedback_props Properties of the feedback model.
  * @param phys_const The #phys_const.
@@ -44,13 +47,21 @@
  * @param ti_current The current time (in integer)
  * @param time The current time (in double)
  * @param time_base The time base.
+ * @param old_time_bin Unused; kept for interface parity with the GEAR
+ * feedback module, which is required whenever --with-stars=GEAR (see
+ * src/stars/GEAR/stars.h) regardless of the feedback module chosen.
+ * @param dt_event_side (out) Unused, always FLT_MAX.
+ * @param dt_evolution_ssp (out) Unused, always FLT_MAX.
  */
-float feedback_compute_spart_timestep(
+void feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base) {
-  return FLT_MAX;
+    const integertime_t ti_current, const double time, const double time_base,
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp) {
+  *dt_event_side = FLT_MAX;
+  *dt_evolution_ssp = FLT_MAX;
 }
 
 /**
@@ -123,14 +134,17 @@ void feedback_update_part(struct part *p, struct xpart *xp,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The current time (in double)
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (not its possibly-already-overwritten current bin; see the caller's
+ * comment at its own call site for which value that is).
  */
 void compute_time(struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
-                  const double time) {
-  const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-  *ti_begin_star = get_integer_time_begin(ti_current, sp->time_bin);
+                  const double time, const timebin_t old_time_bin) {
+  const integertime_t ti_step = get_integer_timestep(old_time_bin);
+  *ti_begin_star = get_integer_time_begin(ti_current, old_time_bin);
 
   /* Get particle time-step */
   double dt_star;
@@ -138,7 +152,7 @@ void compute_time(struct spart *sp, const int with_cosmology,
     dt_star = cosmology_get_delta_time(cosmo, *ti_begin_star,
                                        *ti_begin_star + ti_step);
   } else {
-    dt_star = get_timestep(sp->time_bin, time_base);
+    dt_star = get_timestep(old_time_bin, time_base);
   }
 
   /* Calculate age of the star at current time */
@@ -175,9 +189,9 @@ void compute_time(struct spart *sp, const int with_cosmology,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
- * @param old_time_bin The star's time bin for the step that just finished
- * (unused: AGORA has the same stale-bin exposure as GEAR, tracked for a
- * separate follow-up fix, not this commit).
+ * @param old_time_bin The star's time bin for the step that just finished,
+ * captured by the caller before it overwrites sp->time_bin with the next
+ * step's bin.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -200,7 +214,7 @@ void feedback_will_do_feedback(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time, old_time_bin);
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
@@ -293,6 +307,10 @@ void feedback_init_after_star_formation(
   /* The particle is not idle */
   sp->feedback_data.idle = 0;
 
+  /* AGORA has no equivalent star-evolution-finished state; kept false so
+     src/stars/GEAR/stars.h's dt_cfl gate never skips this star. */
+  sp->feedback_data.is_dead = 0;
+
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
   sp->star_type = star_type;
@@ -320,6 +338,10 @@ void feedback_first_init_spart(struct spart *sp,
 
   /* The particle is not idle */
   sp->feedback_data.idle = 0;
+
+  /* Same reasoning as feedback_init_after_star_formation()'s identical
+     seed. */
+  sp->feedback_data.is_dead = 0;
 }
 
 /**

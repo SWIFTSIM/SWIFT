@@ -37,6 +37,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "memswap.h"
+#include "memuse.h"
 
 /**
  * @brief Push the task at the given index up the heap until it is either at the
@@ -126,11 +127,11 @@ void queue_get_incoming(struct queue *q) {
     if (q->count == q->size) {
       struct queue_entry *temp;
       q->size *= queue_sizegrow;
-      if ((temp = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
-                                               q->size)) == NULL)
+      if ((temp = (struct queue_entry *)swift_malloc(
+               "queue_entries", sizeof(struct queue_entry) * q->size)) == NULL)
         error("Failed to allocate new indices.");
       memcpy(temp, entries, sizeof(struct queue_entry) * q->count);
-      free(entries);
+      swift_free("queue_entries", entries);
       q->entries = entries = temp;
     }
 
@@ -193,8 +194,8 @@ void queue_init(struct queue *q, struct task *tasks) {
 
   /* Allocate the task list if needed. */
   q->size = queue_sizeinit;
-  if ((q->entries = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
-                                                 q->size)) == NULL)
+  if ((q->entries = (struct queue_entry *)swift_malloc(
+           "queue_entries", sizeof(struct queue_entry) * q->size)) == NULL)
     error("Failed to allocate queue entries.");
 
   /* Set the tasks pointer. */
@@ -207,8 +208,8 @@ void queue_init(struct queue *q, struct task *tasks) {
   if (lock_init(&q->lock) != 0) error("Failed to init queue lock.");
 
   /* Init the incoming DEQ. */
-  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) ==
-      NULL)
+  if ((q->tid_incoming = (int *)swift_malloc(
+           "queue_incoming", sizeof(int) * queue_incoming_size)) == NULL)
     error("Failed to allocate queue incoming buffer.");
   for (int k = 0; k < queue_incoming_size; k++) {
     q->tid_incoming[k] = -1;
@@ -310,8 +311,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 
 void queue_clean(struct queue *q) {
 
-  free(q->entries);
-  free(q->tid_incoming);
+  swift_free("queue_entries", q->entries);
+  swift_free("queue_incoming", q->tid_incoming);
 }
 
 /**
