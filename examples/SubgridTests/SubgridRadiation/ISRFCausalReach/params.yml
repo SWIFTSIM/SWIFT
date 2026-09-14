@@ -96,7 +96,7 @@ GrackleCooling:
   # against.
   #
   # --cooling is on (run.sh) so cooling_init() actually resolves
-  # chemistry_data, but this example's own point is to isolate the LW/FUV
+  # chemistry_data, but this example's own point is to isolate the ISRF
   # propagation field from gas thermal/dynamical response: this flag skips
   # the per-particle cooling/heating update itself while leaving
   # chemistry_data (including local_dust_to_gas_ratio) fully resolved.
@@ -115,21 +115,21 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
   # Radiation -- photoionization and radiation pressure both off: isolates
-  # the LW/FUV propagation channel this example measures.
+  # the ISRF propagation channel this example measures.
   with_photoelectric_heating:    1
-  LW_FUV_propagation:            1
-  LW_FUV_c_hyp_margin:           0.5
+  ISRF_propagation:            1
+  ISRF_c_hyp_margin:           0.5
   # Negativity-triggered artificial-conductivity term (see parameter_example.yml
   # for the full description). Held at 0 (below its shipped default, 0.5)
   # to disable it: this example measures the undissipated propagation
   # scheme.
-  LW_FUV_dissipation_alpha_max:  0
+  ISRF_dissipation_alpha_max:  0
   # Explicit 0: at this example's h/lambda~0.3 the shipped alpha_floor
   # default (0.5) would become the ONLY dissipation active, silently
   # defeating this example's whole point (measuring the undissipated front).
-  LW_FUV_dissipation_alpha_floor: 0
+  ISRF_dissipation_alpha_floor: 0
   # Also explicit for completeness; inert while alpha_floor is 0 above.
-  LW_FUV_dissipation_floor_relaxation_residual: 0.40
+  ISRF_dissipation_floor_relaxation_residual: 0.40
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

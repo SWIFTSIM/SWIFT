@@ -20,7 +20,7 @@ time_end=${time_end:=5.3e-4} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1e-2} #GEARChemistry:initial_metallicity override (Z/Zsun)
-alpha_pin=${alpha_pin:=0.5} #GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging override
+alpha_pin=${alpha_pin:=0.5} #GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging override
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -83,7 +83,7 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging:$alpha_pin \
+		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   params.yml 2>&1 | tee output.log
 
 # Check the propagated field against the analytic P1 profile, and against

@@ -109,7 +109,7 @@ struct feedback_props {
   /*! Run the hyperbolic P1-relaxation propagation update on top of
    * injection + receiver-side extinction? Only meaningful when
    * radiation_policy_photoelectric_heating is set. */
-  char LW_FUV_propagation;
+  char ISRF_propagation;
 
   /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_i`
    * closure: an independently-tunable multiple of the hydro CFL margin,
@@ -117,12 +117,12 @@ struct feedback_props {
    * be. Documented valid range (0, sqrt(2/0.70)] (~1.6903); the staggered
    * exact-relaxation scheme is stable for every lambda/h only below that
    * bound (see radiation_isrf.c). That ~1.6903 ceiling only applies at
-   * max(#LW_FUV_dissipation_alpha_max, #LW_FUV_dissipation_alpha_floor) =
+   * max(#ISRF_dissipation_alpha_max, #ISRF_dissipation_alpha_floor) =
    * 0: the joint stability bound checked in feedback_props_init() is
    * tighter whenever either dissipation coefficient is nonzero (e.g. the
    * shipped alpha_floor=0.5 caps this margin at 0.571), so the effective
    * range depends on both dissipation parameters, not just this one. */
-  float LW_FUV_c_hyp_margin;
+  float ISRF_c_hyp_margin;
 
   /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
    * to this fixed physical value instead of computing it from `C_hyp*h_i/
@@ -131,22 +131,22 @@ struct feedback_props {
    * by the steady-state amplitude leg's two-`c_hyp` cross-check (confirming
    * the source-rescaling cancellation empirically). 0 (default): disabled,
    * use the formula. Never set in a production run. */
-  float LW_FUV_c_hyp_pin_for_debugging;
+  float ISRF_c_hyp_pin_for_debugging;
 
   /*! Ceiling of the triggered artificial-conductivity coefficient
    * (design-lw-fuv-design-b-dissipation.md Section 3-4). On by default at
    * the calibrated ceiling; 0 disables the term (for A/B runs). The
-   * enforced range depends on #LW_FUV_c_hyp_margin (see
+   * enforced range depends on #ISRF_c_hyp_margin (see
    * feedback_properties_init()'s own range check), so raising
-   * #LW_FUV_c_hyp_margin can require lowering this. */
-  float LW_FUV_dissipation_alpha_max;
+   * #ISRF_c_hyp_margin can require lowering this. */
+  float ISRF_dissipation_alpha_max;
 
   /*! Undershoot of a particle's own `rho_prev*u` below the neighbours'
    * kernel-mean `|rho_prev*u_prev|`, relative, at which the
    * negativity-triggered dissipation coefficient reaches
-   * #LW_FUV_dissipation_alpha_max (design-
+   * #ISRF_dissipation_alpha_max (design-
    * lw-fuv-design-b-dissipation.md Section 4.3). */
-  float LW_FUV_dissipation_negativity_threshold;
+  float ISRF_dissipation_negativity_threshold;
 
   /*! Floor under the negativity trigger, `h/lambda`-gated: the trigger fires
    * only on negativity and is exactly zero on the positive delta-shell
@@ -154,21 +154,21 @@ struct feedback_props {
    * cannot damp the resulting dispersive wake there. This floor supplies
    * dissipation the trigger structurally cannot
    * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4). Combined
-   * with #LW_FUV_dissipation_floor_h_over_lambda as
+   * with #ISRF_dissipation_floor_h_over_lambda as
    * `alpha_floor/(1+(h*kappa/eps_lambda)^4)`, then taken as a max against
    * the trigger's own output. 0 disables the floor and recovers the
    * trigger-only behaviour exactly. */
-  float LW_FUV_dissipation_alpha_floor;
+  float ISRF_dissipation_alpha_floor;
 
   /*! Screening-length error budget (`eps_lambda`) gating where the floor
-   * (#LW_FUV_dissipation_alpha_floor) applies: the floor rolls off as
+   * (#ISRF_dissipation_alpha_floor) applies: the floor rolls off as
    * `(eps_lambda/(h*kappa))^4` once `h/lambda` exceeds this value, since
    * the joint stability bound's own steady-state distortion,
    * `lambda_eff/lambda <= sqrt(1+0.27*alpha_floor*eps_lambda)`, is bounded
    * only near `h/lambda ~ eps_lambda`; away from it the roll-off keeps the
    * floor negligible where physical absorption or the trigger's own decay
    * memory already dominates. */
-  float LW_FUV_dissipation_floor_h_over_lambda;
+  float ISRF_dissipation_floor_h_over_lambda;
 
   /*! Flux-relaxation residual threshold gating the floor's own aim:
    * `R = |F + C*grad_u| / (|F| + C*|grad_u|)`, `C =
@@ -187,7 +187,7 @@ struct feedback_props {
    * flux-relaxation fixed point (a resolved, settled profile) gets a
    * reduced floor, while a genuine front (R large) keeps the floor at
    * full strength. Can only lower the floor relative to
-   * #LW_FUV_dissipation_floor_h_over_lambda's own roll-off, never raise
+   * #ISRF_dissipation_floor_h_over_lambda's own roll-off, never raise
    * it: `s=1` whenever exactly one of `F`, `grad_u` is zero (`R=1`), so a
    * fresh front or a limiter-zeroed flux keeps the full floor, provided
    * the relaxation weight `w = kappa + H/c_hyp` is nonzero. The exception
@@ -197,15 +197,15 @@ struct feedback_props {
    * settle against), the gate returns `s=1` unconditionally instead. 0
    * disables this gate (R treated as always saturating, i.e. `s=1`
    * everywhere) and recovers the `h/lambda`-only floor exactly. */
-  float LW_FUV_dissipation_floor_relaxation_residual;
+  float ISRF_dissipation_floor_relaxation_residual;
 
   /*! Debug/test-only: bypass the negativity trigger and hold every
    * particle's dissipation coefficient (both bands) at this fixed value,
    * whenever positive. Not itself subject to the joint
-   * (LW_FUV_dissipation_alpha_max, LW_FUV_c_hyp_margin) bound; only a
+   * (ISRF_dissipation_alpha_max, ISRF_c_hyp_margin) bound; only a
    * warning fires if it exceeds that bound. 0 (default): disabled, use the
    * trigger. Never set in a production run. */
-  float LW_FUV_dissipation_alpha_pin_for_debugging;
+  float ISRF_dissipation_alpha_pin_for_debugging;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -318,32 +318,32 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->radiation_pressure_efficiency);
   const char do_photoelectric_heating =
       feedback_props->radiation_policy & radiation_policy_photoelectric_heating;
-  message("Photo-electric heating / H2 photodissociation (LW/FUV)     = %i",
+  message("Photo-electric heating / H2 photodissociation (ISRF)       = %i",
           do_photoelectric_heating);
   if (do_photoelectric_heating) {
-    message("LW/FUV propagation                                         = %s",
-            feedback_props->LW_FUV_propagation ? "ON" : "OFF (injection only)");
-    if (feedback_props->LW_FUV_propagation) {
-      message("LW/FUV propagation speed margin (C_hyp)                    = %g",
-              feedback_props->LW_FUV_c_hyp_margin);
-      if (feedback_props->LW_FUV_c_hyp_pin_for_debugging > 0.f)
+    message("ISRF propagation                                           = %s",
+            feedback_props->ISRF_propagation ? "ON" : "OFF (injection only)");
+    if (feedback_props->ISRF_propagation) {
+      message("ISRF propagation speed margin (C_hyp)                      = %g",
+              feedback_props->ISRF_c_hyp_margin);
+      if (feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
         message(
-            "LW/FUV c_hyp pinned for debugging (physical units)        = %g",
-            feedback_props->LW_FUV_c_hyp_pin_for_debugging);
-      message("LW/FUV dissipation alpha_max                               = %g",
-              feedback_props->LW_FUV_dissipation_alpha_max);
-      message("LW/FUV dissipation negativity threshold                    = %g",
-              feedback_props->LW_FUV_dissipation_negativity_threshold);
-      message("LW/FUV dissipation alpha_floor                             = %g",
-              feedback_props->LW_FUV_dissipation_alpha_floor);
-      message("LW/FUV dissipation floor h/lambda budget (eps_lambda)      = %g",
-              feedback_props->LW_FUV_dissipation_floor_h_over_lambda);
-      message("LW/FUV dissipation floor relaxation-residual gate (eps_R)  = %g",
-              feedback_props->LW_FUV_dissipation_floor_relaxation_residual);
-      if (feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f)
+            "ISRF c_hyp pinned for debugging (physical units)          = %g",
+            feedback_props->ISRF_c_hyp_pin_for_debugging);
+      message("ISRF dissipation alpha_max                                 = %g",
+              feedback_props->ISRF_dissipation_alpha_max);
+      message("ISRF dissipation negativity threshold                      = %g",
+              feedback_props->ISRF_dissipation_negativity_threshold);
+      message("ISRF dissipation alpha_floor                               = %g",
+              feedback_props->ISRF_dissipation_alpha_floor);
+      message("ISRF dissipation floor h/lambda budget (eps_lambda)        = %g",
+              feedback_props->ISRF_dissipation_floor_h_over_lambda);
+      message("ISRF dissipation floor relaxation-residual gate (eps_R)    = %g",
+              feedback_props->ISRF_dissipation_floor_relaxation_residual);
+      if (feedback_props->ISRF_dissipation_alpha_pin_for_debugging > 0.f)
         message(
-            "LW/FUV dissipation alpha pinned for debugging              = %g",
-            feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging);
+            "ISRF dissipation alpha pinned for debugging                = %g",
+            feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
     }
   }
 
@@ -531,6 +531,37 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
+  /* Reject the pre-rename GEARFeedback:LW_FUV_* keys: an unrecognised key
+   * is otherwise only reported as unused, so an old parameter file would
+   * silently lose these settings instead of failing loudly. A restart
+   * bypasses this check by design: feedback_struct_restore() re-reads the
+   * saved struct, not the parameter file. */
+  const char *const deprecated_ISRF_keys[9] = {
+      "GEARFeedback:LW_FUV_propagation",
+      "GEARFeedback:LW_FUV_c_hyp_margin",
+      "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
+      "GEARFeedback:LW_FUV_dissipation_alpha_max",
+      "GEARFeedback:LW_FUV_dissipation_negativity_threshold",
+      "GEARFeedback:LW_FUV_dissipation_alpha_floor",
+      "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
+      "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
+      "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging"};
+  const char *const renamed_ISRF_keys[9] = {
+      "GEARFeedback:ISRF_propagation",
+      "GEARFeedback:ISRF_c_hyp_margin",
+      "GEARFeedback:ISRF_c_hyp_pin_for_debugging",
+      "GEARFeedback:ISRF_dissipation_alpha_max",
+      "GEARFeedback:ISRF_dissipation_negativity_threshold",
+      "GEARFeedback:ISRF_dissipation_alpha_floor",
+      "GEARFeedback:ISRF_dissipation_floor_h_over_lambda",
+      "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
+      "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"};
+  for (int i = 0; i < 9; ++i) {
+    if (parser_does_param_exist(params, deprecated_ISRF_keys[i]))
+      error("%s has been renamed to %s. Update the parameter file.",
+            deprecated_ISRF_keys[i], renamed_ISRF_keys[i]);
+  }
+
   /* TODO: For the future, enforce these to have a non-zero value */
 
   /* Radiation pressure */
@@ -543,22 +574,22 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
 
-    fp->LW_FUV_propagation = (char)parser_get_opt_param_int(
-        params, "GEARFeedback:LW_FUV_propagation", 0);
+    fp->ISRF_propagation = (char)parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_propagation", 0);
 
-    /* Debug/test-only: see LW_FUV_c_hyp_pin_for_debugging's own doxygen.
+    /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's own doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
      * parameters below) so a validation run can set it even with
-     * LW_FUV_propagation off in the base config and toggled on
+     * ISRF_propagation off in the base config and toggled on
      * separately; only meaningful when it is. */
-    fp->LW_FUV_c_hyp_pin_for_debugging = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging", 0.0f);
+    fp->ISRF_c_hyp_pin_for_debugging = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_c_hyp_pin_for_debugging", 0.0f);
 
     /* Parsed and validated unconditionally, like the pin above: a
      * validation run can set and check the stability margin (and the
-     * dissipation coefficients below) even with LW_FUV_propagation off. */
-    fp->LW_FUV_c_hyp_margin = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_c_hyp_margin", 0.5f);
+     * dissipation coefficients below) even with ISRF_propagation off. */
+    fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_c_hyp_margin", 0.5f);
 
     /* Absolute static bound: even with dissipation fully disabled
      * (alpha_max = alpha_floor = 0), the joint stability bound below
@@ -570,44 +601,43 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * ceiling admitted C_hyp values in (1.6903, 1.7] that are unstable
      * even with dissipation off, since the joint check below only fires
      * when alpha_max or alpha_floor is nonzero. */
-    const float LW_FUV_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
+    const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
 
-    if (fp->LW_FUV_c_hyp_margin <= 0.f ||
-        fp->LW_FUV_c_hyp_margin > LW_FUV_c_hyp_absolute_bound)
+    if (fp->ISRF_c_hyp_margin <= 0.f ||
+        fp->ISRF_c_hyp_margin > ISRF_c_hyp_absolute_bound)
       error(
-          "GEARFeedback:LW_FUV_c_hyp_margin must lie in "
+          "GEARFeedback:ISRF_c_hyp_margin must lie in "
           "(0, %g] (got %g): above this bound the staggered "
           "exact-relaxation scheme is no longer stable for every "
           "lambda/h at this project's kernel/eta_neighbours choice, even "
-          "with dissipation (LW_FUV_dissipation_alpha_max/alpha_floor) "
+          "with dissipation (ISRF_dissipation_alpha_max/alpha_floor) "
           "fully disabled (6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2 at "
           "alpha = 0).",
-          LW_FUV_c_hyp_absolute_bound, fp->LW_FUV_c_hyp_margin);
+          ISRF_c_hyp_absolute_bound, fp->ISRF_c_hyp_margin);
 
     /* Negativity-triggered artificial dissipation (design-lw-fuv-design-b-
      * dissipation.md Section 5.3). Shipped default 0.5, the same value as
      * the floor's own ceiling, so the joint stability bound checked below
      * is unchanged. Parsed and validated unconditionally,
      * like the pin and the stability margin above, so a validation run can
-     * exercise these even with LW_FUV_propagation off. */
-    fp->LW_FUV_dissipation_alpha_max = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_alpha_max", 0.5f);
-    fp->LW_FUV_dissipation_negativity_threshold = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_negativity_threshold", 0.01f);
-    fp->LW_FUV_dissipation_alpha_pin_for_debugging = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
-        0.0f);
+     * exercise these even with ISRF_propagation off. */
+    fp->ISRF_dissipation_alpha_max = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_alpha_max", 0.5f);
+    fp->ISRF_dissipation_negativity_threshold = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_negativity_threshold", 0.01f);
+    fp->ISRF_dissipation_alpha_pin_for_debugging = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging", 0.0f);
 
-    if (fp->LW_FUV_dissipation_alpha_max < 0.f)
-      error("GEARFeedback:LW_FUV_dissipation_alpha_max must be >= 0 (got %g).",
-            fp->LW_FUV_dissipation_alpha_max);
+    if (fp->ISRF_dissipation_alpha_max < 0.f)
+      error("GEARFeedback:ISRF_dissipation_alpha_max must be >= 0 (got %g).",
+            fp->ISRF_dissipation_alpha_max);
 
-    if (fp->LW_FUV_dissipation_negativity_threshold <= 0.f ||
-        fp->LW_FUV_dissipation_negativity_threshold > 1.f)
+    if (fp->ISRF_dissipation_negativity_threshold <= 0.f ||
+        fp->ISRF_dissipation_negativity_threshold > 1.f)
       error(
-          "GEARFeedback:LW_FUV_dissipation_negativity_threshold must lie "
+          "GEARFeedback:ISRF_dissipation_negativity_threshold must lie "
           "in (0, 1] (got %g).",
-          fp->LW_FUV_dissipation_negativity_threshold);
+          fp->ISRF_dissipation_negativity_threshold);
 
     /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
      * review_2026-09-11.md Section 4): shipped defaults 0.5/0.5. The
@@ -615,39 +645,38 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * exponent 2 -> 4: the quartic tail is what keeps the thick regime
      * negligible, so the knee itself no longer has to sit an order of
      * magnitude below the regimes that need the floor. */
-    fp->LW_FUV_dissipation_alpha_floor = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_alpha_floor", 0.5f);
-    fp->LW_FUV_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
-        params, "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda", 0.5f);
+    fp->ISRF_dissipation_alpha_floor = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_alpha_floor", 0.5f);
+    fp->ISRF_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_floor_h_over_lambda", 0.5f);
 
-    if (fp->LW_FUV_dissipation_alpha_floor < 0.f)
+    if (fp->ISRF_dissipation_alpha_floor < 0.f)
       error(
-          "GEARFeedback:LW_FUV_dissipation_alpha_floor must be >= 0 (got "
+          "GEARFeedback:ISRF_dissipation_alpha_floor must be >= 0 (got "
           "%g).",
-          fp->LW_FUV_dissipation_alpha_floor);
+          fp->ISRF_dissipation_alpha_floor);
 
-    if (fp->LW_FUV_dissipation_floor_h_over_lambda <= 0.f)
+    if (fp->ISRF_dissipation_floor_h_over_lambda <= 0.f)
       error(
-          "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
+          "GEARFeedback:ISRF_dissipation_floor_h_over_lambda must be > 0 "
           "(got %g).",
-          fp->LW_FUV_dissipation_floor_h_over_lambda);
+          fp->ISRF_dissipation_floor_h_over_lambda);
 
     /* Flux-relaxation residual gate: 0 disables it (recovers the
      * h/lambda-only floor). */
-    fp->LW_FUV_dissipation_floor_relaxation_residual =
-        parser_get_opt_param_float(
-            params, "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
-            0.40f);
+    fp->ISRF_dissipation_floor_relaxation_residual = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
+        0.40f);
 
-    if (fp->LW_FUV_dissipation_floor_relaxation_residual < 0.f ||
-        fp->LW_FUV_dissipation_floor_relaxation_residual > 1.f)
+    if (fp->ISRF_dissipation_floor_relaxation_residual < 0.f ||
+        fp->ISRF_dissipation_floor_relaxation_residual > 1.f)
       error(
-          "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual must "
+          "GEARFeedback:ISRF_dissipation_floor_relaxation_residual must "
           "lie in [0, 1] (got %g): the residual R it gates is itself bounded "
           "to [0, 1] by the triangle inequality, so a value above 1 would "
           "scale the floor down on every particle, fronts included. 0 "
           "disables the gate.",
-          fp->LW_FUV_dissipation_floor_relaxation_residual);
+          fp->ISRF_dissipation_floor_relaxation_residual);
 
     /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
      * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
@@ -657,43 +686,43 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * floor can dissipate even where the trigger never fires (it is not
      * gated on negativity), so it must satisfy the same bound as the
      * trigger's own ceiling: check max(alpha_max, alpha_floor). */
-    const float C_hyp = fp->LW_FUV_c_hyp_margin;
+    const float C_hyp = fp->ISRF_c_hyp_margin;
     const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
-    const float alpha_joint_ceiling = max(fp->LW_FUV_dissipation_alpha_max,
-                                          fp->LW_FUV_dissipation_alpha_floor);
+    const float alpha_joint_ceiling =
+        max(fp->ISRF_dissipation_alpha_max, fp->ISRF_dissipation_alpha_floor);
     if (alpha_joint_ceiling > 0.f && alpha_joint_ceiling > alpha_bound)
       error(
-          "max(GEARFeedback:LW_FUV_dissipation_alpha_max, "
-          "GEARFeedback:LW_FUV_dissipation_alpha_floor) = %g exceeds the "
-          "stability bound %g at GEARFeedback:LW_FUV_c_hyp_margin = %g "
+          "max(GEARFeedback:ISRF_dissipation_alpha_max, "
+          "GEARFeedback:ISRF_dissipation_alpha_floor) = %g exceeds the "
+          "stability bound %g at GEARFeedback:ISRF_c_hyp_margin = %g "
           "(6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2). alpha_max = %g, "
-          "alpha_floor = %g. Lower GEARFeedback:LW_FUV_c_hyp_margin to "
+          "alpha_floor = %g. Lower GEARFeedback:ISRF_c_hyp_margin to "
           "raise the bound, or lower alpha_max/alpha_floor to fit it.",
           alpha_joint_ceiling, alpha_bound, C_hyp,
-          fp->LW_FUV_dissipation_alpha_max, fp->LW_FUV_dissipation_alpha_floor);
+          fp->ISRF_dissipation_alpha_max, fp->ISRF_dissipation_alpha_floor);
 
-    if (fp->LW_FUV_dissipation_alpha_pin_for_debugging < 0.f)
+    if (fp->ISRF_dissipation_alpha_pin_for_debugging < 0.f)
       error(
-          "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging must be "
+          "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging must be "
           ">= 0 (got %g).",
-          fp->LW_FUV_dissipation_alpha_pin_for_debugging);
+          fp->ISRF_dissipation_alpha_pin_for_debugging);
 
-    if (fp->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f &&
-        fp->LW_FUV_dissipation_alpha_pin_for_debugging > alpha_bound)
+    if (fp->ISRF_dissipation_alpha_pin_for_debugging > 0.f &&
+        fp->ISRF_dissipation_alpha_pin_for_debugging > alpha_bound)
       warning(
-          "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging (%g) "
+          "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging (%g) "
           "exceeds the stability bound %g at the run's C_hyp: not itself "
           "clamped (debug/test only). Never use this in a production run.",
-          fp->LW_FUV_dissipation_alpha_pin_for_debugging, alpha_bound);
+          fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
 
-    if (fp->LW_FUV_propagation) {
-      if (fp->LW_FUV_c_hyp_pin_for_debugging > 0.f)
+    if (fp->ISRF_propagation) {
+      if (fp->ISRF_c_hyp_pin_for_debugging > 0.f)
         warning(
-            "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging is set: every "
+            "GEARFeedback:ISRF_c_hyp_pin_for_debugging is set: every "
             "particle's own hyperbolic propagation speed is pinned to %g "
             "(physical units) instead of C_hyp*h/dt. Never use this in a "
             "production run.",
-            fp->LW_FUV_c_hyp_pin_for_debugging);
+            fp->ISRF_c_hyp_pin_for_debugging);
 
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
        * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
@@ -701,7 +730,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
        * a metallicity value that cannot bound the risk (kappa -> 0
        * continuously as Z -> 0, with no floor on the opacity itself). */
       warning(
-          "GEARFeedback:LW_FUV_propagation is on together with "
+          "GEARFeedback:ISRF_propagation is on together with "
           "GEARFeedback:with_photoelectric_heating. The propagation's only "
           "loss channel is dust absorption, whose rate is proportional to "
           "the gas metallicity. Gas at or near zero metallicity has no "

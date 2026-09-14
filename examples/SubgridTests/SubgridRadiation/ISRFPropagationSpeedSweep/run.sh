@@ -15,11 +15,11 @@ gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 seed_pulse=${seed_pulse:=1.0}          # >0: star-free seeded pulse (see README); 0: star source
-c_hyp_pin=${c_hyp_pin:=0}              # GEARFeedback:LW_FUV_c_hyp_pin_for_debugging (km/s); 0 = use the closure
-c_hyp_margin=${c_hyp_margin:=0.5}      # GEARFeedback:LW_FUV_c_hyp_margin
-alpha_max=${alpha_max:=0.25}           # GEARFeedback:LW_FUV_dissipation_alpha_max
-alpha_pin=${alpha_pin:=0}              # GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging; 0 = use the trigger
-propagation=${propagation:=1}          # GEARFeedback:LW_FUV_propagation
+c_hyp_pin=${c_hyp_pin:=0}              # GEARFeedback:ISRF_c_hyp_pin_for_debugging (km/s); 0 = use the closure
+c_hyp_margin=${c_hyp_margin:=0.5}      # GEARFeedback:ISRF_c_hyp_margin
+alpha_max=${alpha_max:=0.25}           # GEARFeedback:ISRF_dissipation_alpha_max
+alpha_pin=${alpha_pin:=0}              # GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging; 0 = use the trigger
+propagation=${propagation:=1}          # GEARFeedback:ISRF_propagation
 star_mass=${star_mass:=29.7} #Star mass (Msun); only used when seed_pulse=0
 star_type=${star_type:="single_star"}
 initial_metallicity=${initial_metallicity:=0.05}
@@ -91,11 +91,11 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_min:$dt_min \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:LW_FUV_propagation:$propagation \
-		   -P GEARFeedback:LW_FUV_c_hyp_margin:$c_hyp_margin \
-		   -P GEARFeedback:LW_FUV_c_hyp_pin_for_debugging:$c_hyp_pin \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_max:$alpha_max \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging:$alpha_pin \
+		   -P GEARFeedback:ISRF_propagation:$propagation \
+		   -P GEARFeedback:ISRF_c_hyp_margin:$c_hyp_margin \
+		   -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+		   -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
+		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   params.yml 2>&1 | tee output.log
 
 # Per-run metrics (nu_eff, stability, front position); see README.

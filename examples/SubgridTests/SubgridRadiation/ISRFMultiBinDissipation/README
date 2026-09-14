@@ -5,7 +5,7 @@ phase plane: one sits adjacent to the plane (its injection kernel and
 near-source wake straddle the bin boundary), one sits deep inside the cold
 phase (a same-phase, no-boundary control), and one sits deep inside the hot
 phase (report-only, confounded on several axes at once). Measures whether the
-LW/FUV negativity-triggered artificial-dissipation term's spurious transverse transport
+ISRF negativity-triggered artificial-dissipation term's spurious transverse transport
 behind a moving source depends on whether gas particles near that source sit
 on different timestep bins simultaneously.
 
@@ -48,8 +48,8 @@ phase's own analytic CFL step; `--v-over-c-hyp` sets the ratio directly
 explicit value in km/s.
 
 ## Debug pins
-`LW_FUV_c_hyp_pin_for_debugging` and
-`LW_FUV_dissipation_alpha_pin_for_debugging` are debug-only parameters
+`ISRF_c_hyp_pin_for_debugging` and
+`ISRF_dissipation_alpha_pin_for_debugging` are debug-only parameters
 (`c_hyp_pin`/`alpha_pin` env vars). Both are inert at their shipped default
 (0) and must never be set in a production run.
 
@@ -74,9 +74,9 @@ Override any parameter via the matching env var: `gas_density`
 (`uniform`/`twophase`), `bin_delta`, `bulk_temperature_K` (cold phase),
 `interface_offset_h`, `v_over_c_hyp`, `star_velocity_km_s`, `star_mass`,
 `star_type`, `n_stars`, `c_hyp_margin`
-(`GEARFeedback:LW_FUV_c_hyp_margin`), `c_hyp_pin`
-(`LW_FUV_c_hyp_pin_for_debugging`, debug only), `alpha_max`/`alpha_pin`
-(`LW_FUV_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
+(`GEARFeedback:ISRF_c_hyp_margin`), `c_hyp_pin`
+(`ISRF_c_hyp_pin_for_debugging`, debug only), `alpha_max`/`alpha_pin`
+(`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
 only), `propagation`, `initial_metallicity`, `time_end`, `dt_max`, `dt_min`,
 `delta_time`, and thread count (`n_threads`); see `run.sh` for the full list
 and defaults. `run_name=<dir> ./run.sh` moves a run's outputs into `<dir>`.

@@ -1,7 +1,7 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with photoelectric heating on but LW/FUV propagation off
-(photoionization and radiation pressure also off). Checks the LW/FUV
+box, with photoelectric heating on but ISRF propagation off
+(photoionization and radiation pressure also off). Checks the ISRF
 injection kernel-weight normalization directly: at `Z=0` the receiver-side
 dust extinction factor is `exp(0)=1` exactly, so summing the injected
 energy over every gas particle the star's kernel reaches must reproduce
@@ -23,7 +23,7 @@ what makes the receiver-side dust extinction factor exactly 1, isolating
 the injection term from the (separately validated) extinction physics.
 
 ## Propagation
-`LW_FUV_propagation: 0` isolates the injection step itself: with
+`ISRF_propagation: 0` isolates the injection step itself: with
 propagation on, the neighbour-mixing/decay update would redistribute
 energy between particles and confound this check. With it off, each star
 feedback pass resets and fully re-injects `FUVSpecificEnergies`/

@@ -1,7 +1,7 @@
 # Intro
 A stabilized shear layer (two counter-streaming gas streams, no seed
 perturbation) carrying two seeded Gaussian FUV/LW blobs, one per stream.
-Measures whether the LW/FUV hyperbolic propagation and dissipation scheme
+Measures whether the ISRF hyperbolic propagation and dissipation scheme
 introduces a directional artifact under a persistent relative velocity
 across a contact discontinuity, using an exact reflection symmetry the
 continuum initial condition possesses but the discrete scheme need not
@@ -55,8 +55,8 @@ Override any parameter via the matching env var: `variant` (`shear` or
 relative velocity between the two streams), `layer_width_h`,
 `density_ratio` (contrast variant only), `bulk_temperature_K`,
 `pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_pin`
-(`LW_FUV_c_hyp_pin_for_debugging`), `alpha_max`/`alpha_pin`
-(`LW_FUV_dissipation_alpha_max`/`..._pin_for_debugging`, debug/test only,
+(`ISRF_c_hyp_pin_for_debugging`), `alpha_max`/`alpha_pin`
+(`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, debug/test only,
 never use in a production run), `initial_metallicity`, `time_end`,
 `dt_max`, `dt_min`, `delta_time`, and thread count (`n_threads`); see
 `run.sh` for the full list and defaults. `run_name=<dir> ./run.sh` moves a

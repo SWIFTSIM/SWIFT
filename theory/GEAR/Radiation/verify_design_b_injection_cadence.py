@@ -30,7 +30,7 @@ Part B: 1-D periodic chain with transport (the machinery of
         class the 1627 log's pinned runs showed.
 Part C: 0-D declining source with a star death: dose error of L (dose for
         the elapsed star step, deposited at its end) and R (rate held
-        forward, expiring RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS star steps
+        forward, expiring RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps
         after the last touch) against the exact continuous solution.
 Part D: several stars on different time bins: a summed rate with
         reset-on-first-touch loses energy; the dose-reservoir form of
@@ -39,6 +39,7 @@ Part D: several stars on different time bins: a summed rate with
 
 Exit 0 iff every assertion holds.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 # Both schemes compared here differ only in WHEN the source enters the
@@ -53,8 +54,8 @@ import numpy as np
 # Shared pieces (same conventions as verify_design_b_timestepping_stability.py)
 # ---------------------------------------------------------------------------
 GAMMA_1D = 1.620185
-C_HYP = 0.5  # LW_FUV_c_hyp_margin default
-TAG_LIFETIME_INTERVALS = 2  # RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS
+C_HYP = 0.5  # ISRF_c_hyp_margin default
+TAG_LIFETIME_INTERVALS = 2  # RADIATION_ISRF_TAG_LIFETIME_INTERVALS
 
 
 def phi(a_):

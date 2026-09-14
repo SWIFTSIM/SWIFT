@@ -46,7 +46,9 @@ import numpy as np
 import yaml
 
 SPEED_OF_LIGHT_KM_S = 2.99792458e5
-NEG_WEIGHT_VOID_THRESHOLD = 0.10  # negative-weight share above which A_centroid/A_spread are voided
+NEG_WEIGHT_VOID_THRESHOLD = (
+    0.10  # negative-weight share above which A_centroid/A_spread are voided
+)
 
 
 def parse_options():
@@ -57,10 +59,14 @@ def parse_options():
     parser.add_argument("--timesteps-log", default="timesteps.txt")
     parser.add_argument("--used-parameters", default="used_parameters.yml")
     parser.add_argument(
-        "--variant", choices=["shear", "contrast"], default="shear",
+        "--variant",
+        choices=["shear", "contrast"],
+        default="shear",
     )
     parser.add_argument(
-        "--source-geometry", choices=["blobs", "slab"], default="blobs",
+        "--source-geometry",
+        choices=["blobs", "slab"],
+        default="blobs",
     )
     parser.add_argument("--v-shear", type=float, default=1.0, help="km/s")
     parser.add_argument("--c-hyp-pin", type=float, default=0.0)
@@ -112,8 +118,17 @@ def load_snapshot(path):
         u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
-        time=time, boxsize=boxsize, pos=pos, vel=vel, mass=mass, rho=rho, h=h,
-        ids=ids, u_int=u_int, u_fuv=u_fuv, u_lw=u_lw,
+        time=time,
+        boxsize=boxsize,
+        pos=pos,
+        vel=vel,
+        mass=mass,
+        rho=rho,
+        h=h,
+        ids=ids,
+        u_int=u_int,
+        u_fuv=u_fuv,
+        u_lw=u_lw,
     )
 
 
@@ -145,8 +160,8 @@ def main():
     fb = used.get("GEARFeedback", {})
     ti = used.get("TimeIntegration", {})
     dt_max_param = float(ti.get("dt_max", np.nan))
-    alpha_max = float(fb.get("LW_FUV_dissipation_alpha_max", 0.25))
-    alpha_pin = float(fb.get("LW_FUV_dissipation_alpha_pin_for_debugging", 0.0))
+    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.25))
+    alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
 
     snap0 = load_snapshot(files[0])
     snap_last = load_snapshot(files[-1])
@@ -159,18 +174,27 @@ def main():
     if opt.c_hyp_pin > 0.0:
         c_hyp = opt.c_hyp_pin
     else:
-        c_hyp = min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S) \
-            if dt_bulk > 0 else 0.0
+        c_hyp = (
+            min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S)
+            if dt_bulk > 0
+            else 0.0
+        )
     nu_eff = c_hyp * dt_bulk / h_med_last if h_med_last > 0 else 0.0
 
     # M-S7 configuration echo.
-    c_s = float(np.sqrt(5.0 / 3.0 * 2.0 / 3.0 * snap0["u_int"].mean()))  # gamma=5/3, u=kB*T/((g-1)*mu*mp) -> c_s^2=(g)(g-1)u
+    c_s = float(
+        np.sqrt(5.0 / 3.0 * 2.0 / 3.0 * snap0["u_int"].mean())
+    )  # gamma=5/3, u=kB*T/((g-1)*mu*mp) -> c_s^2=(g)(g-1)u
     mach = opt.v_shear / c_s if c_s > 0 else float("nan")
     print("--- M-S7: configuration echo ---")
-    print(f"h_med (last) = {h_med_last:.6e}   h_mean (analytic, makeIC.py's own) = {h_mean_analytic:.6e}")
+    print(
+        f"h_med (last) = {h_med_last:.6e}   h_mean (analytic, makeIC.py's own) = {h_mean_analytic:.6e}"
+    )
     print(f"dt_bulk = {dt_bulk:.6e}   dt_max (param) = {dt_max_param:.6e}")
     print(f"c_hyp = {c_hyp:.6e} km/s   nu_eff = {nu_eff:.6f}")
-    print(f"c_s (from mean InternalEnergy) = {c_s:.4f} km/s   Mach = v_shear/c_s = {mach:.4f}")
+    print(
+        f"c_s (from mean InternalEnergy) = {c_s:.4f} km/s   Mach = v_shear/c_s = {mach:.4f}"
+    )
 
     order0 = np.argsort(snap0["ids"])
     orderL = np.argsort(snap_last["ids"])
@@ -203,15 +227,27 @@ def main():
     void = (opt.v_shear > 0 and kh_last is not None and kh_last > 0.05) or (
         drho_last is not None and drho_last > 0.10
     )
-    print(f"Validity: {'VOID' if void else 'OK'} (kh>0.05 or drho>0.10 at last snapshot)")
+    print(
+        f"Validity: {'VOID' if void else 'OK'} (kh>0.05 or drho>0.10 at last snapshot)"
+    )
 
     # M-S0: population imbalance (report; gate applied once at the smoke-test stage).
     metrics = dict(
-        h_med=h_med_last, h_mean_analytic=h_mean_analytic, dt_bulk=dt_bulk,
-        dt_max=dt_max_param, c_hyp=c_hyp, nu_eff=nu_eff, c_s=c_s, mach=mach,
-        alpha_max=alpha_max, alpha_pin=alpha_pin,
-        kh_last=kh_last, drho_last=drho_last, void=bool(void),
-        time_last=snap_last["time"], v_shear=opt.v_shear,
+        h_med=h_med_last,
+        h_mean_analytic=h_mean_analytic,
+        dt_bulk=dt_bulk,
+        dt_max=dt_max_param,
+        c_hyp=c_hyp,
+        nu_eff=nu_eff,
+        c_s=c_s,
+        mach=mach,
+        alpha_max=alpha_max,
+        alpha_pin=alpha_pin,
+        kh_last=kh_last,
+        drho_last=drho_last,
+        void=bool(void),
+        time_last=snap_last["time"],
+        v_shear=opt.v_shear,
         # "positive-part": A_centroid/A_spread use w=m*max(u,0); a JSON file
         # without this field predates the fix and used raw w=m*u instead --
         # regenerate it before gating against a run using this version.
@@ -223,9 +259,13 @@ def main():
             pos0, L_code, L_code, h_mean_analytic, opt.pulse_sigma_h
         )
         N_A, N_B = int(in_A.sum()), int(in_B.sum())
-        print(f"\n--- M-S0: population imbalance (report; gated once at smoke-test) ---")
+        print(
+            f"\n--- M-S0: population imbalance (report; gated once at smoke-test) ---"
+        )
         print(f"sigma (script) = {sigma:.6e}, centre_A={centre_A}, centre_B={centre_B}")
-        print(f"N_A={N_A}  N_B={N_B}  (N_A-N_B)/(N_A+N_B)={(N_A - N_B) / (N_A + N_B):.4%}")
+        print(
+            f"N_A={N_A}  N_B={N_B}  (N_A-N_B)/(N_A+N_B)={(N_A - N_B) / (N_A + N_B):.4%}"
+        )
 
         # Comoving-frame centroid/spread/energy asymmetry (M-S1/S2/S3).
         s_A, s_B = +1.0, -1.0
@@ -247,20 +287,28 @@ def main():
         for band, u_last in (("FUV", u_last_fuv), ("LW", u_last_lw)):
             band_res = {}
             for label, in_blob, s_b, centre in (
-                ("A", in_A, s_A, centre_A), ("B", in_B, s_B, centre_B)
+                ("A", in_A, s_A, centre_A),
+                ("B", in_B, s_B, centre_B),
             ):
                 x_ref = centre + np.array([s_b * (opt.v_shear / 2.0) * t, 0.0, 0.0])
                 dx = min_image(pos_last[in_blob] - x_ref, L_code)
                 w_raw = mass0[in_blob] * u_last[in_blob]
                 w_clip = mass0[in_blob] * np.maximum(u_last[in_blob], 0.0)
                 w_abs_sum = float(np.sum(np.abs(w_raw)))
-                neg_share = float(-np.sum(w_raw[w_raw < 0]) / w_abs_sum) if w_abs_sum > 0 else 0.0
+                neg_share = (
+                    float(-np.sum(w_raw[w_raw < 0]) / w_abs_sum)
+                    if w_abs_sum > 0
+                    else 0.0
+                )
                 Dx, Sxx = moments(w_clip, dx)
                 Dx_raw, Sxx_raw = moments(w_raw, dx)
                 E = float(w_raw.sum())
                 band_res[label] = dict(
-                    Dx=Dx, Sxx=Sxx, E=E,
-                    Dx_raw=Dx_raw, Sxx_raw=Sxx_raw,
+                    Dx=Dx,
+                    Sxx=Sxx,
+                    E=E,
+                    Dx_raw=Dx_raw,
+                    Sxx_raw=Sxx_raw,
                     neg_weight_share=neg_share,
                 )
             Dx_A, Dx_B = band_res["A"]["Dx"], band_res["B"]["Dx"]
@@ -274,27 +322,48 @@ def main():
             void_neg_weight_any |= void_neg_weight
 
             A_centroid = (Dx_A + Dx_B) / h_med_last if h_med_last > 0 else float("nan")
-            A_spread = 2 * (Sxx_A - Sxx_B) / (Sxx_A + Sxx_B) if (Sxx_A + Sxx_B) else float("nan")
+            A_spread = (
+                2 * (Sxx_A - Sxx_B) / (Sxx_A + Sxx_B)
+                if (Sxx_A + Sxx_B)
+                else float("nan")
+            )
             A_energy = 2 * (E_A - E_B) / (E_A + E_B) if (E_A + E_B) else float("nan")
-            A_centroid_raw = (Dx_A_raw + Dx_B_raw) / h_med_last if h_med_last > 0 else float("nan")
+            A_centroid_raw = (
+                (Dx_A_raw + Dx_B_raw) / h_med_last if h_med_last > 0 else float("nan")
+            )
             A_spread_raw = (
                 2 * (Sxx_A_raw - Sxx_B_raw) / (Sxx_A_raw + Sxx_B_raw)
-                if (Sxx_A_raw + Sxx_B_raw) else float("nan")
+                if (Sxx_A_raw + Sxx_B_raw)
+                else float("nan")
             )
-            print(f"{band}: neg-weight share A={neg_A:.1%} B={neg_B:.1%}"
-                  f"  ({'VOID, >' if void_neg_weight else 'OK, <='}"
-                  f"{NEG_WEIGHT_VOID_THRESHOLD:.0%})")
-            print(f"{band}: Dx_A={Dx_A:.4e} Dx_B={Dx_B:.4e} -> A_centroid={A_centroid:.4e}"
-                  f"  (raw weighting: {A_centroid_raw:.4e})")
-            print(f"{band}: Sxx_A={Sxx_A:.4e} Sxx_B={Sxx_B:.4e} -> A_spread={A_spread:.4e}"
-                  f"  (raw weighting: {A_spread_raw:.4e})")
+            print(
+                f"{band}: neg-weight share A={neg_A:.1%} B={neg_B:.1%}"
+                f"  ({'VOID, >' if void_neg_weight else 'OK, <='}"
+                f"{NEG_WEIGHT_VOID_THRESHOLD:.0%})"
+            )
+            print(
+                f"{band}: Dx_A={Dx_A:.4e} Dx_B={Dx_B:.4e} -> A_centroid={A_centroid:.4e}"
+                f"  (raw weighting: {A_centroid_raw:.4e})"
+            )
+            print(
+                f"{band}: Sxx_A={Sxx_A:.4e} Sxx_B={Sxx_B:.4e} -> A_spread={A_spread:.4e}"
+                f"  (raw weighting: {A_spread_raw:.4e})"
+            )
             print(f"{band}: E_A={E_A:.4e} E_B={E_B:.4e} -> A_energy={A_energy:.4e}")
             results[band] = dict(
-                Dx_A=Dx_A, Dx_B=Dx_B, A_centroid=A_centroid,
-                Sxx_A=Sxx_A, Sxx_B=Sxx_B, A_spread=A_spread,
-                E_A=E_A, E_B=E_B, A_energy=A_energy,
-                A_centroid_raw=A_centroid_raw, A_spread_raw=A_spread_raw,
-                neg_weight_share_A=neg_A, neg_weight_share_B=neg_B,
+                Dx_A=Dx_A,
+                Dx_B=Dx_B,
+                A_centroid=A_centroid,
+                Sxx_A=Sxx_A,
+                Sxx_B=Sxx_B,
+                A_spread=A_spread,
+                E_A=E_A,
+                E_B=E_B,
+                A_energy=A_energy,
+                A_centroid_raw=A_centroid_raw,
+                A_spread_raw=A_spread_raw,
+                neg_weight_share_A=neg_A,
+                neg_weight_share_B=neg_B,
                 void_neg_weight=bool(void_neg_weight),
             )
         metrics["N_A"] = N_A
@@ -309,7 +378,9 @@ def main():
             tot0 = float(np.sum(mass0 * snap0[u_field][order0]))
             totL = float(np.sum(mass0 * snap_last[u_field][orderL]))
             drift = (totL - tot0) / tot0 if tot0 != 0 else float("nan")
-            print(f"{band}: total sum(m*u) t0={tot0:.6e} tN={totL:.6e} drift={drift:.4%}")
+            print(
+                f"{band}: total sum(m*u) t0={tot0:.6e} tN={totL:.6e} drift={drift:.4%}"
+            )
             metrics.setdefault("total_drift", {})[band] = drift
 
     else:
@@ -320,13 +391,17 @@ def main():
             u_last = snap_last[key][orderL]
             y_edges = np.linspace(0, L_code, opt.n_y_slabs + 1)
             x_edges = np.linspace(0, L_code, opt.n_x_bins + 1)
-            y_idx = np.clip(np.digitize(pos_last[:, 1], y_edges) - 1, 0, opt.n_y_slabs - 1)
+            y_idx = np.clip(
+                np.digitize(pos_last[:, 1], y_edges) - 1, 0, opt.n_y_slabs - 1
+            )
             worst = 0.0
             for iy in range(opt.n_y_slabs):
                 sel = y_idx == iy
                 if sel.sum() < opt.n_x_bins:
                     continue
-                x_idx = np.clip(np.digitize(pos_last[sel, 0], x_edges) - 1, 0, opt.n_x_bins - 1)
+                x_idx = np.clip(
+                    np.digitize(pos_last[sel, 0], x_edges) - 1, 0, opt.n_x_bins - 1
+                )
                 means = np.full(opt.n_x_bins, np.nan)
                 for ix in range(opt.n_x_bins):
                     m = x_idx == ix
@@ -347,13 +422,16 @@ def main():
     if void:
         reasons = []
         if kh_last is not None and (
-            (opt.v_shear > 0 and kh_last > 0.05) or (drho_last is not None and drho_last > 0.10)
+            (opt.v_shear > 0 and kh_last > 0.05)
+            or (drho_last is not None and drho_last > 0.10)
         ):
             reasons.append("KH contamination")
         if opt.source_geometry == "blobs" and void_neg_weight_any:
             reasons.append(f"negative-weight share > {NEG_WEIGHT_VOID_THRESHOLD:.0%}")
-        print(f"\nVALIDITY WARNING: this run is VOID ({', '.join(reasons)}) -- "
-              "M-S1/S2/S3 results above should not be trusted.")
+        print(
+            f"\nVALIDITY WARNING: this run is VOID ({', '.join(reasons)}) -- "
+            "M-S1/S2/S3 results above should not be trusted."
+        )
 
 
 if __name__ == "__main__":

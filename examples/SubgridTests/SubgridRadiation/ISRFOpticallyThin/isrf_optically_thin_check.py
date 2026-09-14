@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Check the LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation scheme in
+Check the ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation scheme in
 the optically-thin corner, where the screening length is much larger than
 both the smoothing length and the box.
 
@@ -132,7 +132,7 @@ def parse_options() -> argparse.Namespace:
         "--c-hyp-margin",
         type=float,
         default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin used by the run "
+        help="GEARFeedback:ISRF_c_hyp_margin used by the run "
         "(default: %(default)s).",
     )
     parser.add_argument(
@@ -320,7 +320,7 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
     record : list
         Output of :func:`read_step_times`.
     c_hyp_margin : float
-        GEARFeedback:LW_FUV_c_hyp_margin used by the run.
+        GEARFeedback:ISRF_c_hyp_margin used by the run.
     band : str
         Either "FUV" or "LW".
     n_bins : int
@@ -415,7 +415,7 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
             f"cannot fit: {n_dropped} of {n_bins} bins dropped for a "
             "non-positive median field. The propagated field is ringing in "
             "sign, so it has no radial profile to measure. This is what an "
-            "insufficient LW_FUV_dissipation_alpha_max looks like at this "
+            "insufficient ISRF_dissipation_alpha_max looks like at this "
             "screening length; see the README."
         )
         return out

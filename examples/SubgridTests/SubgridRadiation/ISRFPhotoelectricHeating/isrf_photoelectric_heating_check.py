@@ -18,7 +18,7 @@
 ################################################################################
 """
 Coarse direction/magnitude sanity check for Grackle's photoelectric heating
-response to the LW/FUV field this codebase injects: compares a
+response to the ISRF field this codebase injects: compares a
 `with_photoelectric_heating: 1` run against an otherwise-identical
 `with_photoelectric_heating: 0` run (same IC, same density/metallicity, same
 `time_end`). Bins gas by radius from the star and checks, in every radial
@@ -70,9 +70,7 @@ def parse_options():
         help="Glob pattern for the with_photoelectric_heating=0 run's "
         "snapshots (default: %(default)s)",
     )
-    parser.add_argument(
-        "--n-bins", type=int, default=12, help="Number of radial bins."
-    )
+    parser.add_argument("--n-bins", type=int, default=12, help="Number of radial bins.")
     parser.add_argument(
         "--field-threshold",
         type=float,
@@ -98,9 +96,7 @@ def load_snapshot(path):
         unit_length_cgs = float(
             np.asarray(units.attrs["Unit length in cgs (U_L)"]).flat[0]
         )
-        unit_time_cgs = float(
-            np.asarray(units.attrs["Unit time in cgs (U_t)"]).flat[0]
-        )
+        unit_time_cgs = float(np.asarray(units.attrs["Unit time in cgs (U_t)"]).flat[0])
         u_to_cgs = (unit_length_cgs / unit_time_cgs) ** 2
 
         gas = f["/PartType0"]
@@ -196,8 +192,10 @@ def main():
 
     print(f"On-run snapshot: {on_files[-1]} (t={on['time']:.4e})")
     print(f"Off-run snapshot: {off_files[-1]} (t={off['time']:.4e})")
-    print(f"{illuminated.sum()}/{opt.n_bins} radial bins are illuminated "
-          f"(field > {opt.field_threshold:.1e} x peak).")
+    print(
+        f"{illuminated.sum()}/{opt.n_bins} radial bins are illuminated "
+        f"(field > {opt.field_threshold:.1e} x peak)."
+    )
 
     ok_sign = True
     ok_magnitude = True
@@ -217,10 +215,14 @@ def main():
         print("No illuminated bins found -- cannot check anything.")
         ok_sign = ok_magnitude = False
 
-    print(f"Sign check (T_on > T_off in every illuminated bin): "
-          f"{'PASS' if ok_sign else 'FAIL'}")
-    print(f"Magnitude check (T_on < {IMPLAUSIBLE_TEMPERATURE_K:.1e} K in "
-          f"every illuminated bin): {'PASS' if ok_magnitude else 'FAIL'}")
+    print(
+        f"Sign check (T_on > T_off in every illuminated bin): "
+        f"{'PASS' if ok_sign else 'FAIL'}"
+    )
+    print(
+        f"Magnitude check (T_on < {IMPLAUSIBLE_TEMPERATURE_K:.1e} K in "
+        f"every illuminated bin): {'PASS' if ok_magnitude else 'FAIL'}"
+    )
 
     fig, ax = plt.subplots(figsize=(6, 5))
     ax.semilogy(centres[valid], T_on[valid], "o-", label="heating on")

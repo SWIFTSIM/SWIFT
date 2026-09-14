@@ -1,8 +1,8 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with photoelectric heating on (LW/FUV injection, no propagation)
+box, with photoelectric heating on (ISRF injection, no propagation)
 and real Grackle cooling. Checks the basic sign and rough magnitude of
-Grackle's photoelectric-heating response to the injected LW/FUV field: gas
+Grackle's photoelectric-heating response to the injected ISRF field: gas
 near the star should reach a HIGHER equilibrium temperature with
 `GEARFeedback:with_photoelectric_heating: 1` than with it set to `0`,
 otherwise identical configuration. This is a coarse direction/magnitude
@@ -10,7 +10,7 @@ sanity check, not a quantitative PDR-physics comparison (see
 `isrf_photoelectric_heating_check.py`).
 
 ## Propagation
-`LW_FUV_propagation: 0`: this example is about the thermal response to
+`ISRF_propagation: 0`: this example is about the thermal response to
 whatever field a particle receives directly from the star, not about
 propagation numerics (see the sibling `ISRFHyperbolicPropagation` for
 that). Only gas within the star's own SPH kernel is illuminated.
@@ -58,7 +58,7 @@ python3 isrf_photoelectric_heating_check.py \
     --off-snapshot "heating_off/snap/snapshot_*.hdf5"
 ```
 Bins gas by radius from the star at each run's final snapshot, restricts
-the comparison to bins where the on-run's own LW/FUV field is
+the comparison to bins where the on-run's own ISRF field is
 non-negligible, and checks there that (1) the heating-on temperature is
 higher than the heating-off temperature and (2) it stays below a
 physically-motivated ceiling (1e6 K) rather than showing signs of a

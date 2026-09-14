@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Tier 1: check that the hyperbolic (Cattaneo-type, M1-closure) LW/FUV
+Tier 1: check that the hyperbolic (Cattaneo-type, M1-closure) ISRF
 propagation scheme is a correct integrator of its OWN discretized
 equations.
 
@@ -273,7 +273,7 @@ def receiver_extinction_factor(
     Z, rho_internal, h_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs
 ):
     """Receiver-side dust extinction exp(-kappa_eff*Sigma_gas); mirrors
-    radiation_get_part_LW_FUV_extinction_factors, with the comoving column
+    radiation_get_part_ISRF_extinction_factors, with the comoving column
     density Sigma_gas = 2*kernel_gamma*h*rho (this example is
     non-cosmological, so comoving equals physical here)."""
     Sigma_gas_cgs = (

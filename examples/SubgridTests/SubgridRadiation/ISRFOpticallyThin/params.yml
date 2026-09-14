@@ -96,7 +96,7 @@ GrackleCooling:
   # is derived against (see README).
   #
   # --cooling is on (run.sh) so cooling_init() actually resolves
-  # chemistry_data, but this example's own point is to isolate the LW/FUV
+  # chemistry_data, but this example's own point is to isolate the ISRF
   # propagation field from gas thermal/dynamical response: this flag
   # skips the per-particle cooling/heating update itself while leaving
   # chemistry_data (including local_dust_to_gas_ratio) fully resolved.
@@ -115,9 +115,9 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
   # Radiation -- photoionization and radiation pressure both off: isolates
-  # the LW/FUV propagation channel this example measures (see README).
+  # the ISRF propagation channel this example measures (see README).
   with_photoelectric_heating:    1
-  LW_FUV_propagation:            1
+  ISRF_propagation:            1
   # Negativity-triggered artificial-conductivity term (see parameter_example.yml for
   # the full description). This example holds the coefficient at a fixed
   # 0.5 rather than letting the negativity trigger set it, so that what is
@@ -126,8 +126,8 @@ GEARFeedback:
   # 6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2 at the default C_hyp=0.5. See the
   # README for why an alpha_max of 0.25 (below the shipped default, 0.5)
   # is not enough at this example's screening length.
-  LW_FUV_dissipation_alpha_max:  0.25
-  LW_FUV_dissipation_alpha_pin_for_debugging: 0.5
+  ISRF_dissipation_alpha_max:  0.25
+  ISRF_dissipation_alpha_pin_for_debugging: 0.5
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

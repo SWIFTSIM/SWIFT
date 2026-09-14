@@ -772,7 +772,7 @@ float radiation_get_l_fuv_from_raw_2d(const struct radiation *rad, float log_z,
 /**
  * @brief Get a single star's FUV band emission rate at a given mass,
  * dispatching on #rad->is_2d, mirroring #radiation_get_star_luminosity.
- * Only valid when #radiation.has_raw_LW_FUV is set; callers must check
+ * Only valid when #radiation.has_raw_ISRF is set; callers must check
  * that first (this getter does not, matching every other raw getter here).
  *
  * @param rad The #radiation model.
@@ -822,7 +822,7 @@ float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
 /**
  * @brief Get a single star's Lyman-Werner band emission rate at a given
  * mass, dispatching on #rad->is_2d. See #radiation_get_star_l_fuv (identical
- * shape); only valid when #radiation.has_raw_LW_FUV is set.
+ * shape); only valid when #radiation.has_raw_ISRF is set.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -842,7 +842,7 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @brief Get the IMF-averaged non-ionizing FUV band emission rate per mass,
  * from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_integral exactly, on
- * #rad->integrated.l_fuv. Only valid when #radiation.has_integrated_LW_FUV
+ * #rad->integrated.l_fuv. Only valid when #radiation.has_integrated_ISRF
  * is set.
  *
  * @param rad The #radiation model.

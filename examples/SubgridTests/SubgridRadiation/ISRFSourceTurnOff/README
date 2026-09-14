@@ -1,9 +1,9 @@
 # Intro
 A single star at the center of a uniform, periodic glass-IC gas box, with
-photoelectric heating and LW/FUV hyperbolic propagation on (photoionization
+photoelectric heating and ISRF hyperbolic propagation on (photoionization
 and radiation pressure off), same as `../ISRFHyperbolicPropagation/`. The
 star's mass is chosen so it reaches the end of its main-sequence lifetime
-partway through the run: this example checks that the LW/FUV field it built
+partway through the run: this example checks that the ISRF field it built
 up decays away afterwards instead of persisting at its last injected level.
 `isrf_source_turn_off_check.py` tracks the box-total mass-weighted FUV/LW
 specific energy over time, marks the star's death time (computed from its
@@ -11,8 +11,8 @@ mass and metallicity, not read off any snapshot field), and checks the
 post-death decay against the absorption timescale `1/(c_hyp*kappa)`.
 
 Unlike `../ISRFHyperbolicPropagation/`, this example leaves
-`LW_FUV_dissipation_alpha_max`/`LW_FUV_dissipation_alpha_floor`/
-`LW_FUV_c_hyp_margin` unset in `params.yml`, so it runs at GEARFeedback's own
+`ISRF_dissipation_alpha_max`/`ISRF_dissipation_alpha_floor`/
+`ISRF_c_hyp_margin` unset in `params.yml`, so it runs at GEARFeedback's own
 shipped defaults (see `parameter_example.yml`) rather than isolating pure
 propagation.
 

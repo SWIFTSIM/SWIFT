@@ -35,10 +35,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPressureFormula \
-        testRadiationLWFUVFormula \
-        testRadiationLWFUVDissipationConservation \
-        testRadiationLWFUVComovingFactors \
-        testRadiationLWFUVExpansionTerm \
+        testRadiationISRFFormula \
+        testRadiationISRFDissipationConservation \
+        testRadiationISRFComovingFactors \
+        testRadiationISRFExpansionTerm \
         testRadiationGridMetadata \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -56,10 +56,10 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPressureFormula \
-		 testRadiationLWFUVFormula \
-		 testRadiationLWFUVDissipationConservation \
-		 testRadiationLWFUVComovingFactors \
-		 testRadiationLWFUVExpansionTerm \
+		 testRadiationISRFFormula \
+		 testRadiationISRFDissipationConservation \
+		 testRadiationISRFComovingFactors \
+		 testRadiationISRFExpansionTerm \
 		 testRadiationGridMetadata \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -76,10 +76,10 @@ testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
-testRadiationLWFUVFormula_SOURCES = testRadiationLWFUVFormula.c
-testRadiationLWFUVDissipationConservation_SOURCES = testRadiationLWFUVDissipationConservation.c
-testRadiationLWFUVComovingFactors_SOURCES = testRadiationLWFUVComovingFactors.c
-testRadiationLWFUVExpansionTerm_SOURCES = testRadiationLWFUVExpansionTerm.c
+testRadiationISRFFormula_SOURCES = testRadiationISRFFormula.c
+testRadiationISRFDissipationConservation_SOURCES = testRadiationISRFDissipationConservation.c
+testRadiationISRFComovingFactors_SOURCES = testRadiationISRFComovingFactors.c
+testRadiationISRFExpansionTerm_SOURCES = testRadiationISRFExpansionTerm.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
 
 testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c

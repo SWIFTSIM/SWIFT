@@ -263,18 +263,18 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
      COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
      RT_H2_dissociation_rate channel) on internally so the user only sets
      this one flag. */
-  cooling->with_LW_FUV = parser_get_opt_param_int(
+  cooling->with_ISRF = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
 
 #if COOLING_GRACKLE_MODE > 1
-  if (cooling->with_LW_FUV) {
+  if (cooling->with_ISRF) {
     cooling->use_radiative_transfer = 1;
   }
 
   /* Same double-counting concern as HII_couple_ionization_rate's own
-     RT_*_cgs check above, for the one field with_LW_FUV also injects
+     RT_*_cgs check above, for the one field with_ISRF also injects
      per-particle every step (cooling_get_LW_dissociation_rate_subgrid). */
-  if (cooling->with_LW_FUV && cooling->RT_H2_dissociation_rate != 0) {
+  if (cooling->with_ISRF && cooling->RT_H2_dissociation_rate != 0) {
     warning(
         "GEARFeedback:with_photoelectric_heating is on and "
         "GrackleCooling:RT_H2_dissociation_rate_cgs is nonzero. That "

@@ -61,7 +61,7 @@ static void make_default_cooling(struct cooling_function_data *cooling) {
 }
 
 /* ---------------------------------------------------------------------
- * Receiver-side dust extinction (radiation_get_part_LW_FUV_extinction_
+ * Receiver-side dust extinction (radiation_get_part_ISRF_extinction_
  * factors): band-specific exp(-kappa_eff*Sigma_gas) formula, exercised
  * directly against a hand-computation, not just "returns something in
  * (0, 1]".
@@ -109,8 +109,8 @@ static void check_extinction(const char *name, const struct unit_system *us,
                           RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
 
   float actual_FUV, actual_LW;
-  radiation_get_part_LW_FUV_extinction_factors(us, &cosmo, &p, Z, &cooling,
-                                               &actual_FUV, &actual_LW);
+  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
+                                             &actual_FUV, &actual_LW);
 
   char buf[128];
   snprintf(buf, sizeof(buf), "%s: FUV extinction", name);
@@ -138,7 +138,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
 /* ---------------------------------------------------------------------
  * Kernel-weighted injection (radiation_iact_nonsym_feedback_apply):
  * superposition of two simultaneously-illuminating stars in the same
- * step, and the LW_FUV_last_touch_ti stamp resetting the field to
+ * step, and the ISRF_last_touch_ti stamp resetting the field to
  * instantaneous strength (not an ever-growing dose) on the next step any
  * star touches it.
  * ------------------------------------------------------------------- */
@@ -183,22 +183,22 @@ static void check_injection(const struct unit_system *us) {
       .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = Z_gas;
   pj.feedback_data.u_FUV = 0.f;
   pj.feedback_data.u_LW = 0.f;
-  pj.feedback_data.LW_FUV_last_touch_ti = -1; /* never touched yet */
+  pj.feedback_data.ISRF_last_touch_ti = -1; /* never touched yet */
 
   struct cooling_function_data cooling;
   make_default_cooling(&cooling);
 
   float extinction_FUV, extinction_LW;
-  radiation_get_part_LW_FUV_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
-                                               &extinction_FUV, &extinction_LW);
+  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
+                                             &extinction_FUV, &extinction_LW);
 
   struct xpart xpj;
   bzero(&xpj, sizeof(struct xpart));
 
-  /* LW_FUV_propagation off: this test exercises the instantaneous-field
+  /* ISRF_propagation off: this test exercises the instantaneous-field
    * injection path (the formulas below have no rescale/phi factor). A
    * zero-initialized struct, not NULL: radiation_iact_nonsym_feedback_apply
-   * reads fb_props->LW_FUV_propagation unconditionally. */
+   * reads fb_props->ISRF_propagation unconditionally. */
   struct feedback_props fb_props;
   bzero(&fb_props, sizeof(struct feedback_props));
 
@@ -222,15 +222,15 @@ static void check_injection(const struct unit_system *us) {
                                  si.feedback_data.radiation.L_LW *
                                  extinction_LW / (double)mj;
 
-  /* First touch this step (LW_FUV_last_touch_ti went from -1 to 0): result
+  /* First touch this step (ISRF_last_touch_ti went from -1 to 0): result
    * must equal this star's own deposit exactly. */
   assert_close("injection: first star, u_FUV", (double)pj.feedback_data.u_FUV,
                expected_u_FUV_1, 1e-4);
   assert_close("injection: first star, u_LW", (double)pj.feedback_data.u_LW,
                expected_u_LW_1, 1e-4);
 
-  if (!pj.feedback_data.is_illuminated_LW_FUV)
-    error("injection: is_illuminated_LW_FUV not set after first touch.");
+  if (!pj.feedback_data.is_illuminated_ISRF)
+    error("injection: is_illuminated_ISRF not set after first touch.");
   if (!pj.limiter_data.to_be_synchronized)
     error("injection: timestep_sync_part not triggered on first touch.");
 
@@ -327,7 +327,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
 
   struct feedback_props fb_props;
   bzero(&fb_props, sizeof(struct feedback_props));
-  fb_props.LW_FUV_propagation = 1;
+  fb_props.ISRF_propagation = 1;
 
   const float hi = 1.0f;
   const float r = 0.3f;
@@ -361,7 +361,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   pj.h = hi;
   pj.mass = mj;
   pj.rho = rho_gas;
-  pj.feedback_data.LW_FUV_reservoir_end_ti = -1;
+  pj.feedback_data.ISRF_reservoir_end_ti = -1;
 
   struct spart siA;
   bzero(&siA, sizeof(struct spart));
@@ -409,11 +409,11 @@ static void check_dose_reservoir(const struct unit_system *us) {
   const integertime_t ti_step_B = get_integer_timestep(bin_B);
   const integertime_t expected_horizon =
       ti_step_A > ti_step_B ? ti_step_A : ti_step_B;
-  if (pj.feedback_data.LW_FUV_reservoir_end_ti != expected_horizon)
+  if (pj.feedback_data.ISRF_reservoir_end_ti != expected_horizon)
     error(
         "dose reservoir: horizon=%lld, expected max(ti_step_A, ti_step_B)"
         "=%lld.",
-        (long long)pj.feedback_data.LW_FUV_reservoir_end_ti,
+        (long long)pj.feedback_data.ISRF_reservoir_end_ti,
         (long long)expected_horizon);
 
   /* Drawdown schedule: one coarse star's dose, drained by the gas's own
@@ -425,7 +425,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   pk.h = hi;
   pk.mass = mj;
   pk.rho = rho_gas;
-  pk.feedback_data.LW_FUV_reservoir_end_ti = -1;
+  pk.feedback_data.ISRF_reservoir_end_ti = -1;
   pk.time_bin = bin_B;
 
   const integertime_t T = 16; /* a boundary of the coarse star's own bin */
@@ -557,18 +557,18 @@ static void check_grackle_coupling(const struct unit_system *us) {
   /* The gate wrapper must pass the same value through unchanged. */
   struct cooling_function_data cooling;
   bzero(&cooling, sizeof(struct cooling_function_data));
-  cooling.with_LW_FUV = 1;
+  cooling.with_ISRF = 1;
   const double gated_G0 =
       cooling_get_isrf_habing_subgrid(&phys_const, us, &cosmo, &cooling, &p);
   assert_close("Grackle coupling: cooling_get_isrf_habing_subgrid gate on",
                gated_G0, actual_G0, 1e-8);
-  cooling.with_LW_FUV = 0;
+  cooling.with_ISRF = 0;
   const double ungated_G0 =
       cooling_get_isrf_habing_subgrid(&phys_const, us, &cosmo, &cooling, &p);
   if (ungated_G0 != 0.0)
     error(
         "Grackle coupling: cooling_get_isrf_habing_subgrid did not gate "
-        "off at with_LW_FUV=0 (got %.6e).",
+        "off at with_ISRF=0 (got %.6e).",
         ungated_G0);
 
   /* --- LW dissociation rate: formula-identity check --- */
@@ -622,13 +622,13 @@ static void check_grackle_coupling(const struct unit_system *us) {
 
 #if COOLING_GRACKLE_MODE > 1
   const double gated_k_diss = cooling_get_LW_dissociation_rate_subgrid(
-      &phys_const, us, &cosmo, &cooling /* with_LW_FUV == 0 here */, &p);
+      &phys_const, us, &cosmo, &cooling /* with_ISRF == 0 here */, &p);
   if (gated_k_diss != 0.0)
     error(
         "Grackle coupling: cooling_get_LW_dissociation_rate_subgrid did "
-        "not gate off at with_LW_FUV=0 (got %.6e).",
+        "not gate off at with_ISRF=0 (got %.6e).",
         gated_k_diss);
-  cooling.with_LW_FUV = 1;
+  cooling.with_ISRF = 1;
   const double gated_k_diss_on = cooling_get_LW_dissociation_rate_subgrid(
       &phys_const, us, &cosmo, &cooling, &p);
   assert_close(
@@ -636,8 +636,8 @@ static void check_grackle_coupling(const struct unit_system *us) {
       gated_k_diss_on, actual_k_diss_internal, 1e-8);
 #else
   /* H2 untracked at this Grackle mode: the wrapper must return exactly 0
-   * regardless of with_LW_FUV. */
-  cooling.with_LW_FUV = 1;
+   * regardless of with_ISRF. */
+  cooling.with_ISRF = 1;
   const double gated_k_diss_no_h2 = cooling_get_LW_dissociation_rate_subgrid(
       &phys_const, us, &cosmo, &cooling, &p);
   if (gated_k_diss_no_h2 != 0.0)
@@ -695,8 +695,8 @@ static void check_local_dust_to_gas_ratio_scaling(
     const double expected_LW = expected_extinction(
         us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, ratios[i]);
     float actual_FUV, actual_LW;
-    radiation_get_part_LW_FUV_extinction_factors(us, &cosmo, &p, Z, &cooling,
-                                                 &actual_FUV, &actual_LW);
+    radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
+                                               &actual_FUV, &actual_LW);
     char buf[128];
     snprintf(buf, sizeof(buf), "ratio scaling: FUV extinction, ratio=%.6g",
              ratios[i]);

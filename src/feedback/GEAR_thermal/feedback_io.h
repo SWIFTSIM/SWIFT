@@ -43,7 +43,7 @@
  * An IC without these fields is unaffected: #radiation_first_init_part no
  * longer zeroes #feedback_part_data.u_FUV/u_LW (and seeds u_FUV_prev/
  * u_LW_prev from them, not from 0.f, so a supplied value also survives the
- * very first propagation update when `GEARFeedback:LW_FUV_propagation` is
+ * very first propagation update when `GEARFeedback:ISRF_propagation` is
  * on) so that a supplied value survives first-init, but every #part is
  * bzero'd before this read runs (single_io.c/parallel_io.c/serial_io.c),
  * so a missing field still leaves exactly 0.f, matching pre-existing

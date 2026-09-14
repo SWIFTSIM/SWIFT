@@ -69,7 +69,7 @@ def parse_options():
         "--c-hyp-pin",
         type=float,
         default=0.0,
-        help="LW_FUV_c_hyp_pin_for_debugging used by the run; > 0 makes "
+        help="ISRF_c_hyp_pin_for_debugging used by the run; > 0 makes "
         "c_hyp a global constant, matching radiation_isrf.c's own closure.",
     )
     parser.add_argument("--r-cut-h", type=float, default=6.0)
@@ -95,7 +95,9 @@ def modal_bulk_dt(path, n_total):
             if step == 0:
                 continue
             times.append(float(parts[1]))
-            updates.append(int(parts[7]))  # Updates (gas); col 5,6 are min/max Time-bins
+            updates.append(
+                int(parts[7])
+            )  # Updates (gas); col 5,6 are min/max Time-bins
     times, updates = np.array(times), np.array(updates)
     full = times[updates == n_total]
     if len(full) < 2:
@@ -232,9 +234,7 @@ def reconstruct_pairs(pos_w, h_w, boxsize):
     symmetric and non-symmetric dissipation interactions use."""
     tree = cKDTree(pos_w, boxsize=boxsize)
     h_max = float(np.max(h_w)) if len(h_w) else 0.0
-    pairs = np.array(
-        sorted(tree.query_pairs(r=GAMMA_3D * h_max)), dtype=np.int64
-    )
+    pairs = np.array(sorted(tree.query_pairs(r=GAMMA_3D * h_max)), dtype=np.int64)
     if pairs.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64), None, None
     i_idx, j_idx = pairs[:, 0], pairs[:, 1]
@@ -339,7 +339,9 @@ def main():
     # formula, which is corrected here).
     dt_cold_realized = modal_bulk_dt(opt.timesteps_log, n_gas)
     ratio_expected = 2.0**bin_delta
-    dt_hot_realized = dt_cold_realized / ratio_expected if variant == "twophase" else dt_cold_realized
+    dt_hot_realized = (
+        dt_cold_realized / ratio_expected if variant == "twophase" else dt_cold_realized
+    )
     ratio_realized = ratio_expected if variant == "twophase" else 1.0
     bin_span = float(np.log2(ratio_realized)) if ratio_realized > 0 else 0.0
 
@@ -374,15 +376,23 @@ def main():
     print(f"n_gas={n_gas}  variant={variant}  bin_delta={bin_delta}")
     print(f"dt_hot (derived: dt_cold/2**bin_delta) = {dt_hot_realized:.6e}")
     print(f"dt_cold (modal_bulk_dt, empirical)     = {dt_cold_realized:.6e}")
-    print(f"ratio (by construction)                = {ratio_realized:.4f}  (expected {ratio_expected:.1f})")
+    print(
+        f"ratio (by construction)                = {ratio_realized:.4f}  (expected {ratio_expected:.1f})"
+    )
     print(f"bin span (log2 ratio)                  = {bin_span:.3f}")
-    print(f"dt_cold vs analytic disagreement       = {dt_analytic_disagreement*100:.2f}%  "
-          f"(floor check: {dt_cold_realized:.4e} <= {dt_cold_analytic:.4e} < {2*dt_cold_realized:.4e} "
-          f"-> {'PASS' if dt_cold_is_floor_of_analytic else 'FAIL'})")
-    print(f"global finest-tick mode (diagnostic only, NOT dt_hot) = {_global_finest_mode:.6e}")
+    print(
+        f"dt_cold vs analytic disagreement       = {dt_analytic_disagreement*100:.2f}%  "
+        f"(floor check: {dt_cold_realized:.4e} <= {dt_cold_analytic:.4e} < {2*dt_cold_realized:.4e} "
+        f"-> {'PASS' if dt_cold_is_floor_of_analytic else 'FAIL'})"
+    )
+    print(
+        f"global finest-tick mode (diagnostic only, NOT dt_hot) = {_global_finest_mode:.6e}"
+    )
     print(f"realized v_star/c_hyp_cold              = {v_over_c_hyp_realized:.4f}")
     if invalid_bin_dt:
-        print("INVALID: dt_cold_realized is not the nearest power-of-two floor of dt_cold_analytic")
+        print(
+            "INVALID: dt_cold_realized is not the nearest power-of-two floor of dt_cold_analytic"
+        )
 
     # --- per-snapshot bookkeeping ---
     snaps = [load_snapshot(fn) for fn in files]
@@ -400,7 +410,11 @@ def main():
     align = last_slot_by_id[first["ids"]]
 
     # M5 drho, dx_gas
-    is_hot0 = classify_hot(first["mass"], m_cold, m_hot) if variant == "twophase" else np.zeros(n_gas, bool)
+    is_hot0 = (
+        classify_hot(first["mass"], m_cold, m_hot)
+        if variant == "twophase"
+        else np.zeros(n_gas, bool)
+    )
     drho_by_phase = {}
     last_rho_aligned = last["rho"][align]
     for label, sel in (("cold", ~is_hot0), ("hot", is_hot0)):
@@ -417,8 +431,12 @@ def main():
 
     void_drho = drho_max > DRHO_VOID_THRESHOLD
     void_dx_gas = dx_gas_h > DX_GAS_VOID_THRESHOLD_H
-    print(f"drho (max over phases)  = {drho_max*100:.3f}%  -> {'VOID' if void_drho else 'ok'}")
-    print(f"dx_gas (median, /h)     = {dx_gas_h:.4f}  -> {'VOID' if void_dx_gas else 'ok'}")
+    print(
+        f"drho (max over phases)  = {drho_max*100:.3f}%  -> {'VOID' if void_drho else 'ok'}"
+    )
+    print(
+        f"dx_gas (median, /h)     = {dx_gas_h:.4f}  -> {'VOID' if void_dx_gas else 'ok'}"
+    )
 
     # rho_match, A vs B (twophase only)
     rho_match = None
@@ -432,7 +450,9 @@ def main():
         )
         rho_match = abs(rho_A / rho_B - 1.0) if rho_B else np.nan
         ab_matched = rho_match <= RHO_MATCH_THRESHOLD
-        print(f"rho_match |rho_A/rho_B-1| = {rho_match*100:.3f}%  -> {'matched' if ab_matched else 'A/B not matched'}")
+        print(
+            f"rho_match |rho_A/rho_B-1| = {rho_match*100:.3f}%  -> {'matched' if ab_matched else 'A/B not matched'}"
+        )
 
     # --- M1/M2/M3 per star, per band, per snapshot ---
     R_cut = opt.r_cut_h
@@ -446,7 +466,11 @@ def main():
 
     for snap in snaps:
         pos, h, mass, rho = snap["pos"], snap["h"], snap["mass"], snap["rho"]
-        is_hot = classify_hot(mass, m_cold, m_hot) if variant == "twophase" else np.zeros(n_gas, bool)
+        is_hot = (
+            classify_hot(mass, m_cold, m_hot)
+            if variant == "twophase"
+            else np.zeros(n_gas, bool)
+        )
         dt_i = np.where(is_hot, dt_hot_realized, dt_cold_realized)
         if c_pin > 0.0:
             c_hyp = np.full(n_gas, c_pin)
@@ -510,7 +534,11 @@ def main():
                 M0_signed = np.sum(mt * ut)
                 c_hyp_S = float(np.median(c_hyp_t))
                 kappa_S = float(np.median(kappa_t))
-                tau = 1.0 / (c_hyp_S * kappa_S) if (c_hyp_S > 0 and kappa_S > 0) else np.nan
+                tau = (
+                    1.0 / (c_hyp_S * kappa_S)
+                    if (c_hyp_S > 0 and kappa_S > 0)
+                    else np.nan
+                )
 
                 d_vec = np.full(3, np.nan)
                 if M0_pos > 0 and np.isfinite(tau):
@@ -523,9 +551,21 @@ def main():
                         d_x=float(d_vec[0]) if np.isfinite(d_vec[0]) else None,
                         d_y=float(d_vec[1]) if np.isfinite(d_vec[1]) else None,
                         d_z=float(d_vec[2]) if np.isfinite(d_vec[2]) else None,
-                        d_x_h=float(d_vec[0] / h_median) if np.isfinite(d_vec[0]) else None,
-                        d_y_h=float(d_vec[1] / h_median) if np.isfinite(d_vec[1]) else None,
-                        d_z_h=float(d_vec[2] / h_median) if np.isfinite(d_vec[2]) else None,
+                        d_x_h=(
+                            float(d_vec[0] / h_median)
+                            if np.isfinite(d_vec[0])
+                            else None
+                        ),
+                        d_y_h=(
+                            float(d_vec[1] / h_median)
+                            if np.isfinite(d_vec[1])
+                            else None
+                        ),
+                        d_z_h=(
+                            float(d_vec[2] / h_median)
+                            if np.isfinite(d_vec[2])
+                            else None
+                        ),
                         d_total_h=(
                             float(np.linalg.norm(d_vec) / h_median)
                             if np.all(np.isfinite(d_vec))
@@ -547,7 +587,11 @@ def main():
     if "A" in star_positions:
         snap = last
         pos, h, mass, rho = snap["pos"], snap["h"], snap["mass"], snap["rho"]
-        is_hot = classify_hot(mass, m_cold, m_hot) if variant == "twophase" else np.zeros(n_gas, bool)
+        is_hot = (
+            classify_hot(mass, m_cold, m_hot)
+            if variant == "twophase"
+            else np.zeros(n_gas, bool)
+        )
         dt_i = np.where(is_hot, dt_hot_realized, dt_cold_realized)
         c_hyp = (
             np.full(n_gas, c_pin)
@@ -637,10 +681,16 @@ def main():
 
     print("\n--- M4 conservation ---")
     for band, res in m4.items():
-        print(f"{band}: first={res['first']:.6e}  last={res['last']:.6e}  "
-              f"frac_change={res['fractional_change']*100:.4f}%")
+        print(
+            f"{band}: first={res['first']:.6e}  last={res['last']:.6e}  "
+            f"frac_change={res['fractional_change']*100:.4f}%"
+        )
 
-    status = "INVALID" if invalid_bin_dt else ("VOID" if (void_drho or void_dx_gas) else "ok")
+    status = (
+        "INVALID"
+        if invalid_bin_dt
+        else ("VOID" if (void_drho or void_dx_gas) else "ok")
+    )
     print(f"\nRun status (report-only): {status}")
 
     out = dict(

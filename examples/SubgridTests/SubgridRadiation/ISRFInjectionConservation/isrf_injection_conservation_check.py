@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Checks the LW/FUV injection kernel-weight normalization directly: at Z=0
+Checks the ISRF injection kernel-weight normalization directly: at Z=0
 the receiver-side dust extinction factor is exp(0)=1 exactly (no dust), so
 for one star-feedback pass, summing the injected energy over every gas
 particle the star's kernel reaches must reproduce Delta_t * L_band exactly,
@@ -98,7 +98,7 @@ def main():
     if not files:
         raise RuntimeError(f"No snapshots match {opt.snapshot}")
 
-    # Use the last snapshot. LW_FUV_propagation is off, so the field is
+    # Use the last snapshot. ISRF_propagation is off, so the field is
     # reset and fully re-injected on every star-feedback pass (see README):
     # any snapshot after at least one pass is a clean, self-contained check
     # of that pass's own injection, independent of how many earlier passes

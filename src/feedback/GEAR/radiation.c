@@ -65,8 +65,8 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct phys_const *phys_const) {
 
   /* Set before radiation_read_data() below, which gates reading the
-     "Teff" dataset on it (see #radiation.with_LW_FUV's own doxygen). */
-  rad->with_LW_FUV = (char)parser_get_opt_param_int(
+     "Teff" dataset on it (see #radiation.with_ISRF's own doxygen). */
+  rad->with_ISRF = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_photoelectric_heating", 0);
 
   /* Read the data */
@@ -280,9 +280,9 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->ms_lifetime_inverse_log_z_min = 0.f;
   rad->ms_lifetime_inverse_log_z_step = 0.f;
   rad->ms_lifetime_inverse_n_metallicity = 0;
-  rad->with_LW_FUV = 0;
-  rad->has_raw_LW_FUV = 0;
-  rad->has_integrated_LW_FUV = 0;
+  rad->with_ISRF = 0;
+  rad->has_raw_ISRF = 0;
+  rad->has_integrated_ISRF = 0;
 
   if (was_2d) {
     interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);

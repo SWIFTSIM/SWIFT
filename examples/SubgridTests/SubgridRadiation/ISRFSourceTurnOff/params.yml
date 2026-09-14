@@ -96,7 +96,7 @@ GrackleCooling:
   # against.
   #
   # --cooling is on (run.sh) so cooling_init() actually resolves
-  # chemistry_data, but this example's own point is the LW/FUV field's
+  # chemistry_data, but this example's own point is the ISRF field's
   # behaviour, not the gas thermal/dynamical response: this flag skips the
   # per-particle cooling/heating update itself while leaving chemistry_data
   # (including local_dust_to_gas_ratio) fully resolved.
@@ -115,12 +115,12 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
   # Radiation -- photoionization and radiation pressure off: isolates the
-  # LW/FUV band this example measures (see README). LW_FUV_dissipation_* and
-  # LW_FUV_c_hyp_margin are deliberately left unset, so this example runs at
+  # ISRF band this example measures (see README). ISRF_dissipation_* and
+  # ISRF_c_hyp_margin are deliberately left unset, so this example runs at
   # whatever GEARFeedback's own shipped defaults are (see
   # parameter_example.yml) instead of pinning them.
   with_photoelectric_heating:    1
-  LW_FUV_propagation:            1
+  ISRF_propagation:            1
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

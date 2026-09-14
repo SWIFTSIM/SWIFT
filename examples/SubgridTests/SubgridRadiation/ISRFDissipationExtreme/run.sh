@@ -17,7 +17,7 @@ delta_time=${delta_time:=9.5e-6} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1} #GEARChemistry:initial_metallicity override (Z/Zsun)
 bulk_temperature_K=${bulk_temperature_K:=1000} #Bulk gas InternalEnergy, via makeIC.py
 hot_particle_temperature_K=${hot_particle_temperature_K:=1e6} #Pinned-neighbour variant (see README)
-alpha_max=${alpha_max:=0.5} #GEARFeedback:LW_FUV_dissipation_alpha_max override
+alpha_max=${alpha_max:=0.5} #GEARFeedback:ISRF_dissipation_alpha_max override
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -80,7 +80,7 @@ printf "Running simulation..."
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P SPH:initial_temperature:0 \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_max:$alpha_max \
+		   -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
 		   params.yml 2>&1 | tee output.log
 
 # Check sign closure and causal-reach transport fidelity (see README).

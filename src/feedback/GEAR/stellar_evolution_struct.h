@@ -242,7 +242,7 @@ struct radiation {
           sub-Lyman-continuum bands (L_FUV/L_LW; see
           radiation_planck_band_fraction()) when the loaded table has no
           direct #l_fuv/#l_lw ("L_FUV"/"L_LW") dataset of its own (see
-          #radiation.has_raw_LW_FUV/#has_integrated_LW_FUV below: a table
+          #radiation.has_raw_ISRF/#has_integrated_ISRF below: a table
           with those present is read directly instead, at both the
           individual-star and population/SSP call sites, and Teff need not
           even be built then; see radiation_read_data()'s own doxygen).
@@ -263,11 +263,11 @@ struct radiation {
     union {
       /*! Non-ionizing FUV band (6-11.2 eV) energy emission rate, read
           directly from pychem's own "L_FUV" dataset when present (see
-          #radiation.has_raw_LW_FUV). Same log-log storage convention as
+          #radiation.has_raw_ISRF). Same log-log storage convention as
           #luminosities above; every raw getter exponentiates back. 1D
           variant included for structural consistency with every other
           quantity's union layout, even though no live table is currently
-          1D with #has_raw_LW_FUV=1; revisit if pychem confirms no 1D
+          1D with #has_raw_ISRF=1; revisit if pychem confirms no 1D
           table will ever carry this dataset. */
       struct interpolation_1d l_fuv;
 
@@ -353,7 +353,7 @@ struct radiation {
     union {
       /*! IMF-integrated non-ionizing FUV band emission rate per Msun of
           stars formed, read directly from pychem's "Integrated_L_FUV"
-          dataset when present (see #radiation.has_integrated_LW_FUV).
+          dataset when present (see #radiation.has_integrated_ISRF).
           Linear (un-logged) value space, like #luminosities above. */
       struct interpolation_1d l_fuv;
 
@@ -435,7 +435,7 @@ struct radiation {
       heating) on? Set from that parameter in radiation_init(), before
       radiation_read_data() is called (radiation_init() calls it), so
       radiation_read_data() can gate radiation_read_teff_array() on it (see
-      #has_raw_LW_FUV/#has_integrated_LW_FUV below for the full gating
+      #has_raw_ISRF/#has_integrated_ISRF below for the full gating
       condition): the "Teff" dataset is a phase-1 LW/FUV-specific addition
       to the table (see radiation_planck_band_fraction()), and requiring
       every photoionization-/radiation-pressure-only run's table to already
@@ -445,26 +445,26 @@ struct radiation {
       (#radiation_dump/#radiation_restore), like #is_2d, so
       radiation_read_data()'s restart call can read it before params is
       available again (params is NULL on restart). */
-  char with_LW_FUV;
+  char with_ISRF;
 
   /*! Does the loaded table carry raw "L_FUV" AND "L_LW" datasets, AND is
-      #with_LW_FUV itself on? File-derived (like #is_2d), set fresh in
+      #with_ISRF itself on? File-derived (like #is_2d), set fresh in
       radiation_read_data() on every read including restart (the restart
       path re-opens and re-probes the same file), never round-tripped like
-      #with_LW_FUV. ANDed with #with_LW_FUV at the point it is set so it
+      #with_ISRF. ANDed with #with_ISRF at the point it is set so it
       can never be true with the feature disabled: stellar_evolution.c's
-      `if (has_raw_LW_FUV) {...} else if (with_LW_FUV) {...}` checks this
-      flag alone, first, so an ungated has_raw_LW_FUV would populate
+      `if (has_raw_ISRF) {...} else if (with_ISRF) {...}` checks this
+      flag alone, first, so an ungated has_raw_ISRF would populate
       L_FUV/L_LW even with with_photoelectric_heating off. Gates the
       individual-star call site's table-direct L_FUV/L_LW read
-      (stellar_evolution.c); independent of #has_integrated_LW_FUV, since a
+      (stellar_evolution.c); independent of #has_integrated_ISRF, since a
       table can carry either dataset pair without the other. */
-  char has_raw_LW_FUV;
+  char has_raw_ISRF;
 
   /*! Does the loaded table carry "Integrated_L_FUV" AND "Integrated_L_LW"
-      datasets? See #has_raw_LW_FUV's own doxygen; gates the population/SSP
+      datasets? See #has_raw_ISRF's own doxygen; gates the population/SSP
       call site's table-direct read instead of the individual-star one. */
-  char has_integrated_LW_FUV;
+  char has_integrated_ISRF;
 };
 
 /**

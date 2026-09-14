@@ -80,7 +80,7 @@ printf "Running simulation..."
 # force. --cooling is on so cooling_init() actually resolves chemistry_data
 # (including local_dust_to_gas_ratio); the per-particle energy update
 # itself is skipped via GrackleCooling:disable_cooling_for_debugging in
-# params.yml, which isolates the LW/FUV field from gas thermal/dynamical
+# params.yml, which isolates the ISRF field from gas thermal/dynamical
 # response without leaving chemistry_data unresolved (see README).
 ../../../../swift --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
@@ -108,7 +108,7 @@ else
     fi
 fi
 
-# Check that the LW/FUV field decays away after the star's death instead of
+# Check that the ISRF field decays away after the star's death instead of
 # persisting (see README). Run last, after any run_name move above, and
 # point --snapshot/--timesteps-log/--used-parameters at the moved paths;
 # running this check manually after a move needs the same repointing.

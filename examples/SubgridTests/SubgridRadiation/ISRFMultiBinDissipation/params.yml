@@ -109,19 +109,19 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
   # Radiation -- photoionization and radiation pressure both off: isolates
-  # the LW/FUV propagation and dissipation channel this example measures.
+  # the ISRF propagation and dissipation channel this example measures.
   with_photoelectric_heating:    1
-  LW_FUV_propagation:            1
-  LW_FUV_c_hyp_margin:           0.5
+  ISRF_propagation:            1
+  ISRF_c_hyp_margin:           0.5
   # Debug-only pins, inert at these values; must never be nonzero in a
-  # production run. run.sh overrides LW_FUV_c_hyp_pin_for_debugging for the
+  # production run. run.sh overrides ISRF_c_hyp_pin_for_debugging for the
   # mechanism-control leg only.
-  LW_FUV_c_hyp_pin_for_debugging: 0
-  LW_FUV_dissipation_alpha_pin_for_debugging: 0
+  ISRF_c_hyp_pin_for_debugging: 0
+  ISRF_dissipation_alpha_pin_for_debugging: 0
   # Negativity-triggered artificial-dissipation term, held below its shipped
   # default (0.5) for this test. run.sh overrides this per leg (0.25 for
   # the test, 0 for the attribution twin).
-  LW_FUV_dissipation_alpha_max:  0.25
+  ISRF_dissipation_alpha_max:  0.25
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

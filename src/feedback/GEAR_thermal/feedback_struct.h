@@ -79,7 +79,7 @@ struct feedback_part_data {
       instantaneous field strength, not an accumulated dose: holds the
       illuminating star(s)' most recently computed contribution, summed
       across every star that touched this particle in the same step
-      (#LW_FUV_last_touch_ti), then held unchanged until the next step any
+      (#ISRF_last_touch_ti), then held unchanged until the next step any
       star touches it again. Never cleared by cooling: a reader gets
       whatever was last written, however long ago that was.
 
@@ -118,7 +118,7 @@ struct feedback_part_data {
       recompute it, and the same unit conversion, per neighbour pair.
       The raw physical rate: distinct from and NOT interchangeable with the
       injection-side extinction's own, independently-computed kappa
-      (#radiation_get_part_LW_FUV_extinction_factors). */
+      (#radiation_get_part_ISRF_extinction_factors). */
   float kappa_FUV;
   float kappa_LW;
 
@@ -256,7 +256,7 @@ struct feedback_part_data {
       ghost. */
   float dt_prev;
 
-  /*! With LW_FUV_propagation off: simulation step (#engine.ti_current)
+  /*! With ISRF_propagation off: simulation step (#engine.ti_current)
       #u_FUV/#u_LW were last written at. radiation_iact_nonsym_feedback_apply
       compares this against the current step: a match means some star
       already wrote this step, so a further touch (a second illuminating
@@ -265,14 +265,14 @@ struct feedback_part_data {
       what makes the field an instantaneous strength rather than an
       ever-growing total, while still summing multiple
       simultaneously-illuminating stars correctly within one step. With
-      LW_FUV_propagation on, this is only bookkeeping (the last step any star
+      ISRF_propagation on, this is only bookkeeping (the last step any star
       touched this particle): the dose-reservoir form
       (design-lw-fuv-design-b-dissipation.md Section 4.6.5) never resets
       #u_FUV/#u_LW, so no consumer relies on it there. feedback_first_init_part
       sets this to -1 (never a valid step) so the very first touch of a
       particle's life also resets rather than summing onto uninitialized
       memory. */
-  integertime_t LW_FUV_last_touch_ti;
+  integertime_t ISRF_last_touch_ti;
 
   /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
       star's injection pass, and is that illumination episode still live?
@@ -283,30 +283,30 @@ struct feedback_part_data {
       first-touch-only timestep_sync_part call in
       radiation_iact_nonsym_feedback_apply, mirroring
       feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's own
-      claim-vs-maintain split, and is cleared once #LW_FUV_illumination_end_ti
-      lapses (radiation_gas.c:radiation_reset_part_LW_FUV_illumination_tag,
+      claim-vs-maintain split, and is cleared once #ISRF_illumination_end_ti
+      lapses (radiation_gas.c:radiation_reset_part_ISRF_illumination_tag,
       called from feedback_reset_part), exactly as cooling clears #is_ionized
       once its own end_time lapses (cooling_gear_subgrid.h). A particle that
       leaves every illuminating star's kernel, then re-enters one later (a
       star re-approaches, a new star's kernel reaches it, or its own h
       changes), therefore gets a fresh sync on re-illumination instead of
       being silently skipped forever. */
-  char is_illuminated_LW_FUV;
+  char is_illuminated_ISRF;
 
   /*! Absolute integer time (#engine.ti_current units) until which
-      #is_illuminated_LW_FUV stays set. Renewed to
-      `ti_current + RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS * ti_step` on
+      #is_illuminated_ISRF stays set. Renewed to
+      `ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step` on
       every injection touch (ti_step = the illuminating star's own
       integer timestep), whether or not this is the particle's first touch
       this episode -- mirrors #feedback_iact_HII_maintain_ionized_part's
       per-pass renewal of the HII tag's own end_time. The
-      RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS buffer (radiation.h) keeps
+      RADIATION_ISRF_TAG_LIFETIME_INTERVALS buffer (radiation.h) keeps
       the window from lapsing between two touches by a star on a coarser
       time bin than this particle's own once-per-step expiry check
       (feedback_reset_part). feedback_first_init_part sets this to -1 so a
       never-illuminated particle's garbage/zero-initialized state can never
       read as "still illuminated". */
-  integertime_t LW_FUV_illumination_end_ti;
+  integertime_t ISRF_illumination_end_ti;
 
   /*! Mass-specific FUV/LW emission dose still owed to this particle by
       every star that has touched it (#radiation_iact_nonsym_feedback_apply),
@@ -337,9 +337,9 @@ struct feedback_part_data {
       been fully drained. Extended to `ti_current + ti_step_star` on every
       star touch (never reset), so it always covers the latest-finishing
       contributing star's own step. feedback_first_init_part sets this to -1,
-      like #LW_FUV_illumination_end_ti, so a never-touched particle's
+      like #ISRF_illumination_end_ti, so a never-touched particle's
       reservoir is never mistaken for one with a live horizon. */
-  integertime_t LW_FUV_reservoir_end_ti;
+  integertime_t ISRF_reservoir_end_ti;
 };
 
 /**

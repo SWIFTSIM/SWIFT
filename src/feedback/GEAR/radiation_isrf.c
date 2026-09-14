@@ -61,7 +61,7 @@
  * previous unconditional assignment.
  *
  * #u_FUV_prev/#u_LW_prev are seeded from #u_FUV/#u_LW rather than left at
- * 0.f, for the same reason: with `LW_FUV_propagation` on, the engine's
+ * 0.f, for the same reason: with `ISRF_propagation` on, the engine's
  * initial density computation (before the first real step's
  * #radiation_snapshot_part_propagation call has ever run) calls
  * #radiation_end_density_propagation directly off this first-init state.
@@ -82,11 +82,11 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.u_LW_prev = p->feedback_data.u_LW;
   p->feedback_data.kappa_FUV = 0.f;
   p->feedback_data.kappa_LW = 0.f;
-  p->feedback_data.LW_FUV_last_touch_ti = -1;
+  p->feedback_data.ISRF_last_touch_ti = -1;
   /* -1 so an MPI foreign particle's uninitialized memory (not covered by
      the IC-read bzero above) can never read as "still illuminated". */
-  p->feedback_data.is_illuminated_LW_FUV = 0;
-  p->feedback_data.LW_FUV_illumination_end_ti = -1;
+  p->feedback_data.is_illuminated_ISRF = 0;
+  p->feedback_data.ISRF_illumination_end_ti = -1;
   p->feedback_data.specific_flux_FUV[0] = 0.f;
   p->feedback_data.specific_flux_FUV[1] = 0.f;
   p->feedback_data.specific_flux_FUV[2] = 0.f;
@@ -111,7 +111,7 @@ void radiation_first_init_part(struct part *restrict p) {
   p->feedback_data.u_LW_dose_reservoir = 0.f;
   p->feedback_data.u_FUV_source_rate = 0.f;
   p->feedback_data.u_LW_source_rate = 0.f;
-  p->feedback_data.LW_FUV_reservoir_end_ti = -1;
+  p->feedback_data.ISRF_reservoir_end_ti = -1;
   p->feedback_data.dissipation_alpha_trigger_FUV = 0.f;
   p->feedback_data.dissipation_alpha_trigger_LW = 0.f;
   p->feedback_data.dissipation_alpha_floor_FUV = 0.f;
@@ -160,7 +160,7 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.dissipation_u_LW = 0.f;
 
   /* Stable comoving density snapshot, cached unconditionally (not gated on
-   * LW_FUV_propagation below): the gradient loop's `grad(u)` accumulation
+   * ISRF_propagation below): the gradient loop's `grad(u)` accumulation
    * (radiation_propagation_iact.h) always runs, even in injection-only
    * mode (mirroring Design A's own always-accumulate pattern), and reads
    * this snapshot. See this field's own doxygen (feedback_struct.h) for
@@ -169,7 +169,7 @@ void radiation_snapshot_part_propagation(struct part *p,
   const float rho_comoving = hydro_get_comoving_density(p);
   p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
 
-  if (!e->feedback_props->LW_FUV_propagation) {
+  if (!e->feedback_props->ISRF_propagation) {
     p->feedback_data.kappa_FUV = 0.f;
     p->feedback_data.kappa_LW = 0.f;
     return;
@@ -211,14 +211,14 @@ void radiation_snapshot_part_propagation(struct part *p,
   dt_phys = max(dt_phys, FLT_MIN);
 
   const float h_phys = (float)e->cosmology->a * p->h;
-  float c_hyp = e->feedback_props->LW_FUV_c_hyp_margin * h_phys / dt_phys;
+  float c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
   c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
   /* The debug pin is applied after the light-speed clamp above and is not
    * itself clamped: a pin value above c gives a superluminal propagation
    * speed on purpose, for isolating dispersion behaviour at chosen values
    * of the Courant number. Never set it above c outside of that use. */
-  if (e->feedback_props->LW_FUV_c_hyp_pin_for_debugging > 0.f)
-    c_hyp = e->feedback_props->LW_FUV_c_hyp_pin_for_debugging;
+  if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
+    c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
   p->feedback_data.c_hyp = c_hyp;
   p->feedback_data.dt_prev = dt_phys;
@@ -233,13 +233,13 @@ void radiation_snapshot_part_propagation(struct part *p,
   if (part_is_active(p, e) &&
       (fd->u_FUV_dose_reservoir > 0.f || fd->u_LW_dose_reservoir > 0.f)) {
     double t_rem;
-    if (fd->LW_FUV_reservoir_end_ti <= ti_begin) {
+    if (fd->ISRF_reservoir_end_ti <= ti_begin) {
       t_rem = 0.0;
     } else if (with_cosmology) {
       t_rem = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                       fd->LW_FUV_reservoir_end_ti);
+                                       fd->ISRF_reservoir_end_ti);
     } else {
-      t_rem = (double)(fd->LW_FUV_reservoir_end_ti - ti_begin) * e->time_base;
+      t_rem = (double)(fd->ISRF_reservoir_end_ti - ti_begin) * e->time_base;
     }
     const float f =
         (t_rem <= (double)dt_phys) ? 1.f : (float)((double)dt_phys / t_rem);
@@ -354,7 +354,7 @@ float radiation_relaxation_phi_factor(float a) {
  */
 void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
-  if (!e->feedback_props->LW_FUV_propagation) return;
+  if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
@@ -453,7 +453,7 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  */
 void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 
-  if (!e->feedback_props->LW_FUV_propagation) return;
+  if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
@@ -489,7 +489,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
  */
 void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 
-  if (!e->feedback_props->LW_FUV_propagation) return;
+  if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
   fd->u_FUV_dose_reservoir += fd->u_FUV_source_rate * fd->dt_prev;
@@ -519,8 +519,8 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
  * @param alpha_prev This band's #dissipation_alpha_trigger_FUV/LW from the
  * previous step, i.e. the trigger's own previous output, never the
  * floor-combined coefficient.
- * @param alpha_max #feedback_props.LW_FUV_dissipation_alpha_max.
- * @param eps_1 #feedback_props.LW_FUV_dissipation_negativity_threshold.
+ * @param alpha_max #feedback_props.ISRF_dissipation_alpha_max.
+ * @param eps_1 #feedback_props.ISRF_dissipation_negativity_threshold.
  * @param c_hyp The particle's own #c_hyp.
  * @param kappa This band's #kappa_FUV/LW.
  * @param dt The particle's own #dt_prev.
@@ -543,7 +543,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
 
   const float a_kappa = c_hyp * kappa * dt;
   const float decay =
-      expf(-c_hyp * dt / (RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH * h_phys) -
+      expf(-c_hyp * dt / (RADIATION_ISRF_DISSIPATION_DECAY_LENGTH * h_phys) -
            a_kappa);
   return alpha_aim + (alpha_prev - alpha_aim) * decay;
 }
@@ -556,7 +556,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * front of an optically-thin P1 pulse, so a purely reactive coefficient
  * cannot damp the resulting dispersive wake there. This floor supplies
  * dissipation the trigger structurally cannot, rolling off as
- * `(eps_lambda/(h*kappa))^4` once `h/lambda` exceeds #LW_FUV_dissipation_
+ * `(eps_lambda/(h*kappa))^4` once `h/lambda` exceeds #ISRF_dissipation_
  * floor_h_over_lambda, which bounds its steady-state cost by construction.
  *
  * The quartic roll-off separates two regimes the quadratic one could not:
@@ -571,8 +571,8 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  *
  * @param kappa This band's #kappa_FUV/LW.
  * @param h_phys The particle's own physical smoothing length.
- * @param alpha_floor #feedback_props.LW_FUV_dissipation_alpha_floor.
- * @param eps_lambda #feedback_props.LW_FUV_dissipation_floor_h_over_lambda.
+ * @param alpha_floor #feedback_props.ISRF_dissipation_alpha_floor.
+ * @param eps_lambda #feedback_props.ISRF_dissipation_floor_h_over_lambda.
  * @return This band's floor value for this step, stored on its own
  * #feedback_part_data field for the force loop to combine.
  */
@@ -626,7 +626,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * @param c_hyp The particle's own #c_hyp.
  * @param kappa This band's #kappa_FUV/LW.
  * @param H The Hubble rate, #cosmology.H.
- * @param eps_R #feedback_props.LW_FUV_dissipation_floor_relaxation_residual.
+ * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
 __attribute__((always_inline)) INLINE static float
@@ -704,7 +704,7 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
 void radiation_end_gradient_propagation(struct part *p,
                                         const struct engine *e) {
 
-  if (!e->feedback_props->LW_FUV_propagation) return;
+  if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
@@ -741,7 +741,7 @@ void radiation_end_gradient_propagation(struct part *p,
   const float u_V_LW = fd->rho_prev * fd->u_LW;
 
   const float alpha_pin =
-      e->feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging;
+      e->feedback_props->ISRF_dissipation_alpha_pin_for_debugging;
   if (alpha_pin > 0.f) {
     /* Bypass the trigger entirely: every particle's coefficient is held at
      * the pinned value (see this parameter's own doxygen,
@@ -755,14 +755,14 @@ void radiation_end_gradient_propagation(struct part *p,
     fd->dissipation_alpha_floor_FUV = 0.f;
     fd->dissipation_alpha_floor_LW = 0.f;
   } else {
-    const float alpha_max = e->feedback_props->LW_FUV_dissipation_alpha_max;
+    const float alpha_max = e->feedback_props->ISRF_dissipation_alpha_max;
     const float eps_1 =
-        e->feedback_props->LW_FUV_dissipation_negativity_threshold;
-    const float alpha_floor = e->feedback_props->LW_FUV_dissipation_alpha_floor;
+        e->feedback_props->ISRF_dissipation_negativity_threshold;
+    const float alpha_floor = e->feedback_props->ISRF_dissipation_alpha_floor;
     const float eps_lambda =
-        e->feedback_props->LW_FUV_dissipation_floor_h_over_lambda;
+        e->feedback_props->ISRF_dissipation_floor_h_over_lambda;
     const float eps_R =
-        e->feedback_props->LW_FUV_dissipation_floor_relaxation_residual;
+        e->feedback_props->ISRF_dissipation_floor_relaxation_residual;
 
     /* The trigger's decay memory is its OWN previous value, not the
      * previous combined coefficient: a high floor must not hold up the
@@ -911,7 +911,7 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * @param extinction_LW (return) Lyman-Werner-band extinction factor.
  */
 __attribute__((always_inline)) INLINE void
-radiation_get_part_LW_FUV_extinction_factors(
+radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
     float *extinction_FUV, float *extinction_LW) {

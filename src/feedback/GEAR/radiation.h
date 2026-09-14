@@ -53,13 +53,13 @@
     illuminating star's own integer timestep. Integer, not a double factor
     on a physical time like RADIATION_TAG_LIFETIME_INTERVALS: the
     injection/expiry comparison this feeds (radiation_iact.h,
-    radiation_gas.c:radiation_reset_part_LW_FUV_illumination_tag) works
+    radiation_gas.c:radiation_reset_part_ISRF_illumination_tag) works
     entirely in integertime_t, so there is no float boundary to round
     against. Must exceed 1 for the same reason as RADIATION_TAG_LIFETIME_
     INTERVALS: a touch has to outlive the gap to the star's next visit, or
     the gas particle's own once-per-step expiry check (feedback_reset_part)
     can clear it first. */
-#define RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS 2
+#define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
 /*! Memory length, in units of a particle's own smoothing length, of the
     negativity-triggered artificial-dissipation coefficient's decay
@@ -67,11 +67,11 @@
     relaxes toward
     its trigger-driven target at rate c_hyp*(1/(this*h) + kappa) per unit
     time, i.e. an e-folding of `this` particle-own-steps at the default
-    LW_FUV_c_hyp_margin. A compile-time constant, not a runtime parameter,
+    ISRF_c_hyp_margin. A compile-time constant, not a runtime parameter,
     per the MAGMA2 precedent (Section 5.1): it sets the term's transient
-    behaviour, not its steady-state strength (LW_FUV_dissipation_alpha_max
+    behaviour, not its steady-state strength (ISRF_dissipation_alpha_max
     does that). */
-#define RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH 5.0f
+#define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
 
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
     over, in units of the rebuild cadence actually in force. A scheduled pass
@@ -300,8 +300,8 @@ char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
 double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
-void radiation_reset_part_LW_FUV_illumination_tag(struct part *p,
-                                                  const struct engine *e);
+void radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                                const struct engine *e);
 long long radiation_get_part_ionized_star_id(const struct part *p,
                                              const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,

@@ -47,42 +47,57 @@ def parse_options():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "-s", "--snapshot", default="snap/snapshot_*.hdf5",
+        "-s",
+        "--snapshot",
+        default="snap/snapshot_*.hdf5",
         help="Glob pattern for snapshots to consider (default: %(default)s)",
     )
     parser.add_argument(
-        "--timesteps-log", default="timesteps.txt",
+        "--timesteps-log",
+        default="timesteps.txt",
         help="Path to the run's own timesteps.txt (default: %(default)s).",
     )
     parser.add_argument(
-        "--log", default="output.log",
+        "--log",
+        default="output.log",
         help="Path to the run's own stdout/stderr log (default: %(default)s).",
     )
     parser.add_argument(
-        "--used-parameters", default="used_parameters.yml",
+        "--used-parameters",
+        default="used_parameters.yml",
         help="Path to the run's own used_parameters.yml (default: %(default)s).",
     )
     parser.add_argument(
-        "--c-hyp-pin", type=float, default=0.0,
-        help="GEARFeedback:LW_FUV_c_hyp_pin_for_debugging used by the run, "
+        "--c-hyp-pin",
+        type=float,
+        default=0.0,
+        help="GEARFeedback:ISRF_c_hyp_pin_for_debugging used by the run, "
         "km/s (default: %(default)s; 0 = closure).",
     )
     parser.add_argument(
-        "--c-hyp-margin", type=float, default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin used by the run (default: %(default)s).",
+        "--c-hyp-margin",
+        type=float,
+        default=0.5,
+        help="GEARFeedback:ISRF_c_hyp_margin used by the run (default: %(default)s).",
     )
     parser.add_argument("--n-bins", type=int, default=60, help="Radial bins.")
     parser.add_argument(
-        "--expect-stable", dest="expect_stable", action="store_true", default=True,
+        "--expect-stable",
+        dest="expect_stable",
+        action="store_true",
+        default=True,
         help="Gate M-P3: FAIL if the run destabilizes (default).",
     )
     parser.add_argument(
-        "--expect-unstable", dest="expect_stable", action="store_false",
+        "--expect-unstable",
+        dest="expect_stable",
+        action="store_false",
         help="Gate M-P3 the other way: destabilizing is CONFIRMED, not a failure "
         "(Leg N's N5/N6).",
     )
     parser.add_argument(
-        "--output", default="isrf_propagation_speed_sweep_check.png",
+        "--output",
+        default="isrf_propagation_speed_sweep_check.png",
         help="Output plot filename.",
     )
     parser.add_argument(
@@ -158,8 +173,14 @@ def load_snapshot(path):
         u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
-        time=time, boxsize=boxsize, pos=pos, h=h, ids=ids, rho=rho,
-        u_fuv=u_fuv, u_lw=u_lw,
+        time=time,
+        boxsize=boxsize,
+        pos=pos,
+        h=h,
+        ids=ids,
+        rho=rho,
+        u_fuv=u_fuv,
+        u_lw=u_lw,
     )
 
 
@@ -172,8 +193,8 @@ def main():
     used_params = load_used_parameters(opt.used_parameters)
     fb = used_params.get("GEARFeedback", {}) if used_params else {}
     ti = used_params.get("TimeIntegration", {}) if used_params else {}
-    alpha_max = float(fb.get("LW_FUV_dissipation_alpha_max", 0.25))
-    alpha_pin = float(fb.get("LW_FUV_dissipation_alpha_pin_for_debugging", 0.0))
+    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.25))
+    alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
     dt_max_param = float(ti.get("dt_max", np.nan))
     alpha_eff = alpha_pin if alpha_pin > 0.0 else alpha_max
 
@@ -186,8 +207,11 @@ def main():
     if opt.c_hyp_pin > 0.0:
         c_hyp = opt.c_hyp_pin
     else:
-        c_hyp = min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S) \
-            if dt_bulk > 0 else 0.0
+        c_hyp = (
+            min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S)
+            if dt_bulk > 0
+            else 0.0
+        )
 
     nu_eff = c_hyp * dt_bulk / h_med_last if h_med_last > 0 else 0.0
     nu_max = nu_max_of(alpha_eff)
@@ -205,7 +229,9 @@ def main():
     print(f"dt_bulk = {dt_bulk:.6e}")
     print(f"realized step count = {n_steps}")
     print(f"dt_max (used_parameters.yml) = {dt_max_param:.6e}")
-    print(f"dt_bulk / dt_max = {dt_bulk / dt_max_param if dt_max_param > 0 else float('nan'):.6f}")
+    print(
+        f"dt_bulk / dt_max = {dt_bulk / dt_max_param if dt_max_param > 0 else float('nan'):.6f}"
+    )
     print(f"nu_eff = {nu_eff:.6f}")
 
     # M-P5: pin assertion.
@@ -213,10 +239,12 @@ def main():
     if opt.c_hyp_pin > 0.0:
         with open(opt.log) as f:
             log_text = f.read()
-        if "LW_FUV_c_hyp_pin_for_debugging is set" not in log_text:
+        if "ISRF_c_hyp_pin_for_debugging is set" not in log_text:
             all_ok = False
-            print("\nFAIL M-P5: --c-hyp-pin > 0 but the pin warning is absent "
-                  "from the log -- the pin did not take effect.")
+            print(
+                "\nFAIL M-P5: --c-hyp-pin > 0 but the pin warning is absent "
+                "from the log -- the pin did not take effect."
+            )
         else:
             print("\nM-P5 PASS: pin warning present in the log.")
 
@@ -234,8 +262,10 @@ def main():
     max_drho = float(np.max(np.abs(tN_rho - t0_rho) / t0_rho))
     drift_void = max_disp_h > 0.1
     print(f"\n--- M-P2: gas-drift control ---")
-    print(f"max displacement / h_med = {max_disp_h:.6f}"
-          f"{'  -- VOID (>0.1h): invariance gates below do not apply' if drift_void else ''}")
+    print(
+        f"max displacement / h_med = {max_disp_h:.6f}"
+        f"{'  -- VOID (>0.1h): invariance gates below do not apply' if drift_void else ''}"
+    )
     print(f"max |drho|/rho0 = {max_drho:.6f}")
 
     # M-P3: stability (max|u|, growth factor, NaNs).
@@ -244,7 +274,9 @@ def main():
     for band, key in (("FUV", "u_fuv"), ("LW", "u_lw")):
         max_u_series = np.array([np.max(np.abs(s[key])) for s in snaps])
         n_nan = int(sum(np.sum(~np.isfinite(s[key])) for s in snaps))
-        g = max_u_series[1:] / np.where(max_u_series[:-1] != 0, max_u_series[:-1], 1e-300)
+        g = max_u_series[1:] / np.where(
+            max_u_series[:-1] != 0, max_u_series[:-1], 1e-300
+        )
         # 3 consecutive intervals (after the first) with g > 1.5.
         unstable = n_nan > 0
         if len(g) >= 4:
@@ -252,11 +284,17 @@ def main():
                 if g[i] > 1.5 and g[i + 1] > 1.5 and g[i + 2] > 1.5:
                     unstable = True
                     break
-        print(f"{band}: max|u| per snapshot = {np.array2string(max_u_series, precision=3)}")
-        print(f"{band}: growth factors = {np.array2string(g, precision=3)}, n_nan={n_nan}")
+        print(
+            f"{band}: max|u| per snapshot = {np.array2string(max_u_series, precision=3)}"
+        )
+        print(
+            f"{band}: growth factors = {np.array2string(g, precision=3)}, n_nan={n_nan}"
+        )
         if opt.expect_stable and unstable:
             stability_ok = False
-            print(f"{band}: FAIL M-P3 -- run destabilized (NaN or sustained growth > 1.5x)")
+            print(
+                f"{band}: FAIL M-P3 -- run destabilized (NaN or sustained growth > 1.5x)"
+            )
         elif not opt.expect_stable and unstable:
             print(f"{band}: M-P3 CONFIRMED unstable, as expected for this run.")
         elif not opt.expect_stable and not unstable:
@@ -285,9 +323,13 @@ def main():
             r_edge_h = r_edge / h_med_last if h_med_last > 0 else float("nan")
             denom = c_hyp * last["time"]
             r_edge_norm = r_edge / denom if denom > 0 else float("nan")
-            band_results[eps] = dict(r_edge=r_edge, r_edge_h=r_edge_h, r_edge_norm=r_edge_norm)
-            print(f"{band} eps={eps}: r_edge={r_edge:.4e} ({r_edge_h:.2f} h), "
-                  f"r_edge/(c_hyp*t)={r_edge_norm:.4f}")
+            band_results[eps] = dict(
+                r_edge=r_edge, r_edge_h=r_edge_h, r_edge_norm=r_edge_norm
+            )
+            print(
+                f"{band} eps={eps}: r_edge={r_edge:.4e} ({r_edge_h:.2f} h), "
+                f"r_edge/(c_hyp*t)={r_edge_norm:.4f}"
+            )
         front_results[band] = band_results
 
         ax = axes[0] if band == "FUV" else axes[1]
@@ -299,8 +341,13 @@ def main():
                 ri, s[key], 0.0, opt.n_bins, 0.45 * s["boxsize"]
             )
             valid = m_i > 0
-            ax.semilogy(c_i[valid] / h_med_last, m_i[valid], "-",
-                        color=colors[i], label=f"t={s['time']:.2e}")
+            ax.semilogy(
+                c_i[valid] / h_med_last,
+                m_i[valid],
+                "-",
+                color=colors[i],
+                label=f"t={s['time']:.2e}",
+            )
         ax.axvline(c_hyp * last["time"] / h_med_last, color="k", ls="--", lw=1)
         ax.set_xlabel("r / h_med")
         ax.set_title(f"{band}: solid = u(r); dashed = c_hyp*t")
@@ -311,15 +358,28 @@ def main():
     print(f"\nPlot saved to {opt.output}")
 
     metrics = dict(
-        h_med=h_med_last, dt_bulk=dt_bulk, n_steps=n_steps, dt_max=dt_max_param,
-        c_hyp=c_hyp, c_hyp_pin=opt.c_hyp_pin, c_hyp_margin=opt.c_hyp_margin,
-        alpha_max=alpha_max, alpha_pin=alpha_pin, alpha_eff=alpha_eff,
-        nu_eff=nu_eff, nu_max=nu_max,
-        max_disp_h=max_disp_h, max_drho=max_drho, drift_void=bool(drift_void),
-        stability_ok=bool(stability_ok), expect_stable=bool(opt.expect_stable),
-        front=front_results, time_last=last["time"],
+        h_med=h_med_last,
+        dt_bulk=dt_bulk,
+        n_steps=n_steps,
+        dt_max=dt_max_param,
+        c_hyp=c_hyp,
+        c_hyp_pin=opt.c_hyp_pin,
+        c_hyp_margin=opt.c_hyp_margin,
+        alpha_max=alpha_max,
+        alpha_pin=alpha_pin,
+        alpha_eff=alpha_eff,
+        nu_eff=nu_eff,
+        nu_max=nu_max,
+        max_disp_h=max_disp_h,
+        max_drho=max_drho,
+        drift_void=bool(drift_void),
+        stability_ok=bool(stability_ok),
+        expect_stable=bool(opt.expect_stable),
+        front=front_results,
+        time_last=last["time"],
     )
     import json
+
     with open(opt.json_out, "w") as f:
         json.dump(metrics, f, indent=2)
     print(f"Metrics written to {opt.json_out}")

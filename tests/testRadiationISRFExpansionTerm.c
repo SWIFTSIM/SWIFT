@@ -66,14 +66,14 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
   cosmo->a = a;
   cosmo->H = H;
 
-  fp->LW_FUV_propagation = 1;
+  fp->ISRF_propagation = 1;
   /* Only the dissipation-coefficient update reads these, and it cannot touch
    * `u` or `F`; they are set to sane non-zero values purely so that update's
    * own divisions stay defined. */
-  fp->LW_FUV_dissipation_alpha_max = 1.f;
-  fp->LW_FUV_dissipation_negativity_threshold = 0.1f;
-  fp->LW_FUV_dissipation_alpha_floor = 0.f;
-  fp->LW_FUV_dissipation_floor_h_over_lambda = 0.5f;
+  fp->ISRF_dissipation_alpha_max = 1.f;
+  fp->ISRF_dissipation_negativity_threshold = 0.1f;
+  fp->ISRF_dissipation_alpha_floor = 0.f;
+  fp->ISRF_dissipation_floor_h_over_lambda = 0.5f;
 
   pc->const_speed_light_c = 1.e4;
 

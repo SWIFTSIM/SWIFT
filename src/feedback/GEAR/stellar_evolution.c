@@ -1394,18 +1394,18 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
         radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
     /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
-       L_FUV/L_LW when the loaded table has them (has_raw_LW_FUV), else this
+       L_FUV/L_LW when the loaded table has them (has_raw_ISRF), else this
        star's own Teff via two more threshold-integrals of the same
        blackbody curve already producing L_bol/Q_H above. The Teff fallback
        uses the just-computed L_bol above, before feedback_common.c's later
        radiation_pressure_efficiency scaling of that same field: L_FUV/L_LW
        are deliberately independent of that separate efficiency knob. */
-    if (sm->rad.has_raw_LW_FUV) {
+    if (sm->rad.has_raw_ISRF) {
       sp->feedback_data.radiation.L_FUV =
           radiation_get_star_l_fuv(&sm->rad, log_m, log_z);
       sp->feedback_data.radiation.L_LW =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
-    } else if (sm->rad.with_LW_FUV) {
+    } else if (sm->rad.with_ISRF) {
       const float Teff_K =
           radiation_get_star_teff(&sm->rad, log_m, log_z) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -1598,7 +1598,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float L_bol;
     double dot_N_ion;
     float mean_excess_photon_energy_HI;
-    /* Upper mass bound for the has_integrated_LW_FUV table-direct read
+    /* Upper mass bound for the has_integrated_ISRF table-direct read
        below: the same MS-lifetime-capped value dot_N_ion uses for a 2D
        table (operator ruling, 2026-09-06 -- a star past its own main-
        sequence lifetime emits nothing, ionizing or not, so L_FUV/L_LW stop
@@ -1653,7 +1653,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
     /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
        Integrated_L_FUV/Integrated_L_LW when the loaded table has them
-       (has_integrated_LW_FUV), bounded by the same m_sup_capped dot_N_ion
+       (has_integrated_ISRF), bounded by the same m_sup_capped dot_N_ion
        uses above (a real, deliberate behaviour change from the Teff
        fallback below for a population with stars past m_sup_capped, per
        the operator's 2026-09-06 ruling -- not merely a plumbing swap: a
@@ -1665,7 +1665,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
        mass bound, i.e. the hottest star still contributing) stands in for
        a true IMF-integrated band fraction: an approximation, not yet
        re-derived against a proper IMF-integrated band fraction. */
-    if (sm->rad.has_integrated_LW_FUV) {
+    if (sm->rad.has_integrated_ISRF) {
       float L_FUV_per_msun, L_LW_per_msun;
       if (sm->rad.is_2d) {
         const float log_z = radiation_get_log_metallicity(metallicity);
@@ -1686,7 +1686,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
          plausible-looking numbers). */
       sp->feedback_data.radiation.L_FUV = L_FUV_per_msun * m_init;
       sp->feedback_data.radiation.L_LW = L_LW_per_msun * m_init;
-    } else if (sm->rad.with_LW_FUV) {
+    } else if (sm->rad.with_ISRF) {
       const float log_m_sup = log10f(m_sup);
       const float Teff_K =
           (sm->rad.is_2d

@@ -26,7 +26,7 @@ own expected numerical smearing.
 It is instead reconstructed from the run's own `timesteps.txt` (the modal
 gas time-step, excluding the transient step 0) and each snapshot's own
 median smoothing length, via the exact formula radiation_isrf.c uses:
-`c_hyp = min(LW_FUV_c_hyp_margin * h / dt, c)`. In the standard (uniform)
+`c_hyp = min(ISRF_c_hyp_margin * h / dt, c)`. In the standard (uniform)
 variant every gas particle shares (to float precision) the same h and dt, so
 one scalar `c_hyp` applies to the whole box; the pinned-neighbour variant
 uses `--hot-particle-id` to exclude that one particle from the "bulk" h/dt
@@ -73,37 +73,50 @@ def parse_options():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "-s", "--snapshot", default="snap/snapshot_*.hdf5",
+        "-s",
+        "--snapshot",
+        default="snap/snapshot_*.hdf5",
         help="Glob pattern for snapshots to consider (default: %(default)s)",
     )
     parser.add_argument(
-        "--timesteps-log", default="timesteps.txt",
+        "--timesteps-log",
+        default="timesteps.txt",
         help="Path to the run's own timesteps.txt (default: %(default)s).",
     )
     parser.add_argument(
-        "--c-hyp-margin", type=float, default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin used by the run (default: %(default)s).",
+        "--c-hyp-margin",
+        type=float,
+        default=0.5,
+        help="GEARFeedback:ISRF_c_hyp_margin used by the run (default: %(default)s).",
     )
     parser.add_argument(
-        "--hot-particle-id", type=int, default=-1,
+        "--hot-particle-id",
+        type=int,
+        default=-1,
         help="Pinned-neighbour variant: ID of the artificially-heated gas "
         "particle (see hot_particle_id.txt), excluded from the bulk h/dt "
         "estimate and reported on separately.",
     )
     parser.add_argument("--n-bins", type=int, default=120, help="Radial bins.")
     parser.add_argument(
-        "--near-source-h", type=float, default=4.5,
+        "--near-source-h",
+        type=float,
+        default=4.5,
         help="Exclusion radius (in units of h) around the star for the "
         "monotonicity check, to skip ordinary injection-kernel ripples "
         "(default: %(default)s).",
     )
     parser.add_argument(
-        "--fail-margin-h", type=float, default=20.0,
+        "--fail-margin-h",
+        type=float,
+        default=20.0,
         help="Hard-fail threshold (in units of h) beyond c_hyp*t: any level "
         "of u beyond this is a real finding, not smearing (Sec 6.2).",
     )
     parser.add_argument(
-        "--output", default="isrf_causal_reach_check.png", help="Output plot filename.",
+        "--output",
+        default="isrf_causal_reach_check.png",
+        help="Output plot filename.",
     )
     return parser.parse_args()
 
@@ -149,8 +162,14 @@ def load_snapshot(path):
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
     return dict(
-        time=time, boxsize=boxsize, pos=pos, h=h, ids=ids,
-        u_fuv=u_fuv, u_lw=u_lw, star_pos=star_pos,
+        time=time,
+        boxsize=boxsize,
+        pos=pos,
+        h=h,
+        ids=ids,
+        u_fuv=u_fuv,
+        u_lw=u_lw,
+        star_pos=star_pos,
     )
 
 
@@ -231,9 +250,15 @@ def check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot):
             worst_bump_r = float(rs[j])
 
     return dict(
-        ok=ok, findings=findings, u_plateau=u_plateau, r_front=r_front,
-        results=results, worst_bump=worst_bump, worst_bump_r=worst_bump_r,
-        centres=centres, means=means,
+        ok=ok,
+        findings=findings,
+        u_plateau=u_plateau,
+        r_front=r_front,
+        results=results,
+        worst_bump=worst_bump,
+        worst_bump_r=worst_bump_r,
+        centres=centres,
+        means=means,
     )
 
 
@@ -270,8 +295,10 @@ def main():
         r_all = radial_distance(pos, snap["star_pos"], snap["boxsize"])
         r_max_plot = 0.45 * snap["boxsize"]
 
-        print(f"\n--- t={t:.4e}  h_med={h_med:.4e}  c_hyp={c_hyp:.4f}  "
-              f"r_front={c_hyp * (t - t0):.4e} ({c_hyp * (t - t0) / h_med:.2f} h) ---")
+        print(
+            f"\n--- t={t:.4e}  h_med={h_med:.4e}  c_hyp={c_hyp:.4f}  "
+            f"r_front={c_hyp * (t - t0):.4e} ({c_hyp * (t - t0) / h_med:.2f} h) ---"
+        )
 
         for band, u_field in (("FUV", "u_fuv"), ("LW", "u_lw")):
             u_all = snap[u_field]
@@ -281,19 +308,25 @@ def main():
             status = "PASS" if res["ok"] else "FAIL"
             eps_str = ", ".join(
                 f"eps={e}: edge={res['results'][e][0]/h_med:.2f}h "
-                f"(C={res['results'][e][1]:.2f})" for e in (0.1, 0.01, 0.001)
+                f"(C={res['results'][e][1]:.2f})"
+                for e in (0.1, 0.01, 0.001)
             )
-            print(f"{band}: u_plateau={res['u_plateau']:.4e}  {eps_str}  "
-                  f"worst_bump={res['worst_bump']:.3f} at "
-                  f"r={res['worst_bump_r']}  -> {status}")
+            print(
+                f"{band}: u_plateau={res['u_plateau']:.4e}  {eps_str}  "
+                f"worst_bump={res['worst_bump']:.3f} at "
+                f"r={res['worst_bump_r']}  -> {status}"
+            )
             for finding in res["findings"]:
                 print("  " + finding)
 
             ax = axes[0] if band == "FUV" else axes[1]
             valid = res["means"] > 0
             ax.semilogy(
-                res["centres"][valid] / h_med, res["means"][valid],
-                "-", color=colors[i], label=f"t={t:.2e}",
+                res["centres"][valid] / h_med,
+                res["means"][valid],
+                "-",
+                color=colors[i],
+                label=f"t={t:.2e}",
             )
             ax.axvline(res["r_front"] / h_med, color=colors[i], ls="--", lw=1)
 

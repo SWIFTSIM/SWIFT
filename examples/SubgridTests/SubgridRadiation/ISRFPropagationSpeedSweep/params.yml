@@ -94,7 +94,7 @@ GrackleCooling:
   # is derived against (see README).
   #
   # --cooling is on (run.sh) so cooling_init() actually resolves
-  # chemistry_data, but this example's own point is to isolate the LW/FUV
+  # chemistry_data, but this example's own point is to isolate the ISRF
   # propagation field from gas thermal/dynamical response: this flag
   # skips the per-particle cooling/heating update itself while leaving
   # chemistry_data (including local_dust_to_gas_ratio) fully resolved.
@@ -113,22 +113,22 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
 
   # Radiation -- photoionization and radiation pressure both off: isolates
-  # the LW/FUV propagation channel this example measures.
+  # the ISRF propagation channel this example measures.
   with_photoelectric_heating:    1
-  LW_FUV_propagation:            1
-  LW_FUV_c_hyp_margin:           0.5
+  ISRF_propagation:            1
+  ISRF_c_hyp_margin:           0.5
   # Debug-only overrides, all inert at 0. run.sh sets them per leg; see
   # the README for why the propagation speed cannot be swept through
-  # LW_FUV_c_hyp_margin alone.
-  LW_FUV_c_hyp_pin_for_debugging:             0
-  LW_FUV_dissipation_alpha_max:               0.25
+  # ISRF_c_hyp_margin alone.
+  ISRF_c_hyp_pin_for_debugging:             0
+  ISRF_dissipation_alpha_max:               0.25
   # Explicit 0: the shipped default (0.5) would silently cap C_hyp at
   # 0.571 via the joint stability bound and break Leg N's own sweep,
   # which needs C_hyp up to 1.7.
-  LW_FUV_dissipation_alpha_floor:             0
+  ISRF_dissipation_alpha_floor:             0
   # Also explicit for completeness; inert while alpha_floor is 0 above.
-  LW_FUV_dissipation_floor_relaxation_residual: 0.40
-  LW_FUV_dissipation_alpha_pin_for_debugging: 0
+  ISRF_dissipation_floor_relaxation_residual: 0.40
+  ISRF_dissipation_alpha_pin_for_debugging: 0
   with_photoionization:          0
   radiation_pressure_efficiency: 0
   HII_rebuild_time_Myr:   0.5

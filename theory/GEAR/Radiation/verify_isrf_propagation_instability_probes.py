@@ -596,8 +596,8 @@ a_x = c_hyp_n2 * kappa_x
 e_x = np.exp(-a_x)
 phi_x = phi_relaxation_factor(a_x)
 
-EPS1 = 0.01  # GEARFeedback:LW_FUV_dissipation_negativity_threshold default
-L_DECAY = 5.0  # RADIATION_LW_FUV_DISSIPATION_DECAY_LENGTH
+EPS1 = 0.01  # GEARFeedback:ISRF_dissipation_negativity_threshold default
+L_DECAY = 5.0  # RADIATION_ISRF_DISSIPATION_DECAY_LENGTH
 
 
 def S_smooth_step(x):

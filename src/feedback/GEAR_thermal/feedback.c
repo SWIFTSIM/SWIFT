@@ -167,7 +167,7 @@ void feedback_end_force(struct part *p, const struct engine *e) {
  * u_FUV/u_LW and caches this step's absorption rate (shared GEAR
  * physics), see #radiation_snapshot_part_propagation, and expires a
  * lapsed LW/FUV illumination tag, see
- * #radiation_reset_part_LW_FUV_illumination_tag.
+ * #radiation_reset_part_ISRF_illumination_tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -176,7 +176,7 @@ void feedback_end_force(struct part *p, const struct engine *e) {
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
   radiation_snapshot_part_propagation(p, e);
-  radiation_reset_part_LW_FUV_illumination_tag(p, e);
+  radiation_reset_part_ISRF_illumination_tag(p, e);
 }
 
 /**

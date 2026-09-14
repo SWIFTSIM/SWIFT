@@ -1536,7 +1536,7 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
      cold gas. use_isrf_field=1 switches Grackle from the scalar
      interstellar_radiation_field to the per-particle isrf_habing array
      this module fills (cooling_get_isrf_habing_subgrid). */
-  if (cooling->with_LW_FUV) {
+  if (cooling->with_ISRF) {
     chemistry->dust_chemistry = 1;
     chemistry->photoelectric_heating = 2;
     chemistry->use_isrf_field = 1;

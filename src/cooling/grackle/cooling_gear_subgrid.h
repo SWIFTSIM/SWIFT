@@ -260,13 +260,13 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
  * @param cosmo The #cosmology.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
- * @return G0 in Habing units, 0 if with_LW_FUV is off.
+ * @return G0 in Habing units, 0 if with_ISRF is off.
  */
 INLINE static double cooling_get_isrf_habing_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p) {
-  if (!cooling->with_LW_FUV) return 0.;
+  if (!cooling->with_ISRF) return 0.;
   return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
 }
 
@@ -280,7 +280,7 @@ INLINE static double cooling_get_isrf_habing_subgrid(
  * @param cosmo The #cosmology.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
- * @return H2 photodissociation rate, internal 1/time; 0 if with_LW_FUV is
+ * @return H2 photodissociation rate, internal 1/time; 0 if with_ISRF is
  * off or COOLING_GRACKLE_MODE <= 1.
  */
 INLINE static double cooling_get_LW_dissociation_rate_subgrid(
@@ -288,7 +288,7 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p) {
 #if COOLING_GRACKLE_MODE > 1
-  if (!cooling->with_LW_FUV) return 0.;
+  if (!cooling->with_ISRF) return 0.;
   return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
                                                           p);
 #else

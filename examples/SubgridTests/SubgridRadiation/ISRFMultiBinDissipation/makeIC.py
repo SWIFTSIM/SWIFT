@@ -163,7 +163,7 @@ def parse_options():
         "--c-hyp-margin",
         type=float,
         default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin, used only to derive "
+        help="GEARFeedback:ISRF_c_hyp_margin, used only to derive "
         "--star-velocity-km-s (must match the run's own params.yml value).",
     )
 

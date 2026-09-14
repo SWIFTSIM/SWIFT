@@ -24,7 +24,7 @@ star_mass=${star_mass:=29.7}
 star_type=${star_type:="single_star"}
 n_stars=${n_stars:=3}
 c_hyp_margin=${c_hyp_margin:=0.5}
-c_hyp_pin=${c_hyp_pin:=0}                       # LW_FUV_c_hyp_pin_for_debugging, km/s
+c_hyp_pin=${c_hyp_pin:=0}                       # ISRF_c_hyp_pin_for_debugging, km/s
 alpha_max=${alpha_max:=0.25}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
@@ -98,11 +98,11 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_min:$dt_min \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:LW_FUV_propagation:$propagation \
-		   -P GEARFeedback:LW_FUV_c_hyp_margin:$c_hyp_margin \
-		   -P GEARFeedback:LW_FUV_c_hyp_pin_for_debugging:$c_hyp_pin \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_max:$alpha_max \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging:$alpha_pin \
+		   -P GEARFeedback:ISRF_propagation:$propagation \
+		   -P GEARFeedback:ISRF_c_hyp_margin:$c_hyp_margin \
+		   -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+		   -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
+		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   -P SPH:initial_temperature:0 \
 		   params.yml 2>&1 | tee output.log
 

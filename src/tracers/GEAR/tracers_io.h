@@ -283,8 +283,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Negativity-triggered artificial-dissipation coefficient of the "
       "FUV-band hyperbolic propagation "
       "(design-lw-fuv-design-b-dissipation.md), in "
-      "[0, max(LW_FUV_dissipation_alpha_max, LW_FUV_dissipation_alpha_floor)]. "
-      "Only meaningful when LW_FUV_propagation is on.");
+      "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
+      "Only meaningful when ISRF_propagation is on.");
 
   list[13] = io_make_output_field_convert_part(
       "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
@@ -298,7 +298,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
       "propagation, finalized in the density ghost. Physical, like the "
       "specific energy it is a rate of change of. Only meaningful when "
-      "LW_FUV_propagation is on.");
+      "ISRF_propagation is on.");
 
   list[15] = io_make_output_field_convert_part(
       "LWSpecificFluxDivergences", FLOAT, 1,
@@ -311,7 +311,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       0.f, parts, xparts, convert_part_specific_flux_FUV,
       "Tracked specific flux moment of the FUV-band hyperbolic propagation, "
       "mass-specific like FUVSpecificEnergies. Physical: no scale-factor "
-      "exponent of its own. Only meaningful when LW_FUV_propagation is on.");
+      "exponent of its own. Only meaningful when ISRF_propagation is on.");
 
   list[17] = io_make_output_field_convert_part(
       "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,

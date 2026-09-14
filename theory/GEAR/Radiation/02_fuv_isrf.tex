@@ -407,7 +407,7 @@ named as one, whose CFL condition is affordable by construction.
 \label{sec:fuv-propagation-scheme}
 
 Everything in this subsection describes the field with
-\code{GEARFeedback:LW\_FUV\_propagation} enabled. With it off, which is
+\code{GEARFeedback:ISRF\_propagation} enabled. With it off, which is
 the default, none of this machinery runs and the field reduces to the
 instantaneous injected snapshot of
 Section~\ref{sec:fuv-injection-off}.
@@ -666,7 +666,7 @@ length $h_i$,
   \label{eq:fuv-chyp-choice}
 \end{equation}
 clamped at the true speed of light. $C_{\rm hyp}$
-(\code{GEARFeedback:LW\_FUV\_c\_hyp\_margin}, default $0.5$, valid range
+(\code{GEARFeedback:ISRF\_c\_hyp\_margin}, default $0.5$, valid range
 $(0,\sqrt{2/0.70}]\approx(0,1.6903]$) is the single free, dimensionless
 affordability/stability dial this scheme exposes; the upper end of its
 range is set by the explicit-stability requirement of the staggered
@@ -897,7 +897,7 @@ construction, before the speed-of-light clamp, for every particle,
 every step: no separate criterion is ever evaluated and there is
 nothing that can be violated.
 
-$C_{\rm hyp}$ is \code{GEARFeedback:LW\_FUV\_c\_hyp\_margin}, an
+$C_{\rm hyp}$ is \code{GEARFeedback:ISRF\_c\_hyp\_margin}, an
 independently-tunable dial. It is related to \code{SPH:CFL\_condition}
 only in spirit (both are Courant-type stability dials, and $c_{\rm
 hyp}$ is built from $\Delta t_i$, which the hydro step already set),
@@ -1316,7 +1316,7 @@ back down as
   - c_{{\rm hyp},i}\,\kappa_i\,\rho_i\,\Delta t_i\right),
 \end{equation}
 with $L_{\rm decay}$ a dimensionless decay-length parameter
-(\code{RADIATION\_LW\_FUV\_DISSIPATION\_DECAY\_LENGTH}, default~5) and
+(\code{RADIATION\_ISRF\_DISSIPATION\_DECAY\_LENGTH}, default~5) and
 $\kappa_i\rho_i$ this band's own linear absorption rate
 (Eq.~\ref{eq:fuv-p1-zeroth}) at particle $i$: not a fixed memory time,
 but a per-particle rate that speeds up in optically thick gas, so a
@@ -1431,9 +1431,9 @@ variable already holds the linear rate $\kappa\rho$; this document's
 $\kappa$ is the mass opacity defined in
 Section~\ref{sec:fuv-lambda-chyp}, so the density factor is written
 explicitly here), and two new parameters:
-$\alpha_{\rm floor}$ (\code{GEARFeedback:LW\_FUV\_dissipation\_alpha\_floor},
+$\alpha_{\rm floor}$ (\code{GEARFeedback:ISRF\_dissipation\_alpha\_floor},
 shipped default 0.5) and $\varepsilon_\lambda$
-(\code{GEARFeedback:LW\_FUV\_dissipation\_floor\_h\_over\_lambda}, shipped
+(\code{GEARFeedback:ISRF\_dissipation\_floor\_h\_over\_lambda}, shipped
 default 0.05), the screening-length error budget the roll-off is gated
 on. Unlike the trigger, the floor is not conditioned on negativity: it
 is present on every particle, positive or not, wherever $h/\lambda$ is
@@ -1615,7 +1615,7 @@ against an uninterrupted control run.
 \label{sec:fuv-parameters}
 
 Every parameter this scheme exposes lives under the
-\code{GEARFeedback:LW\_FUV\_*} family in \code{parameter\_example.yml};
+\code{GEARFeedback:ISRF\_*} family in \code{parameter\_example.yml};
 collected here in one place rather than only where each is first
 introduced.
 
@@ -1625,35 +1625,35 @@ introduced.
 \hline
 \textbf{Parameter} & \textbf{Default} & \textbf{Range} & \textbf{Meaning} \\
 \hline
-\code{LW\_FUV\_propagation} & 0 (off) & 0 or 1 &
+\code{ISRF\_propagation} & 0 (off) & 0 or 1 &
   Master switch. Off: injection writes $u_{\rm FUV}$/$u_{\rm LW}$
   directly as an instantaneous field
   (Section~\ref{sec:fuv-injection-off}). On: injection fills the dose
   reservoir (Section~\ref{sec:fuv-dose-reservoir}) and the hyperbolic
   transport and dissipation machinery runs. \\
 \hline
-\code{LW\_FUV\_c\_hyp\_margin} & 0.5 & $(0,\sqrt{2/0.70}]\approx(0,1.6903]$ &
+\code{ISRF\_c\_hyp\_margin} & 0.5 & $(0,\sqrt{2/0.70}]\approx(0,1.6903]$ &
   $C_{\rm hyp}$, the closure coefficient in
   $c_{{\rm hyp},i}=\min(C_{\rm hyp}h_i/\Delta t_i,\,c)$
   (Eq.~\ref{eq:fuv-chyp-choice}). Upper bound set by this scheme's own
   explicit-stability requirement. \\
 \hline
-\code{LW\_FUV\_c\_hyp\_pin\_for\_debugging} & 0 (off) & $\ge0$ &
+\code{ISRF\_c\_hyp\_pin\_for\_debugging} & 0 (off) & $\ge0$ &
   Debug/test only: pins every particle's $c_{\rm hyp}$ to this fixed
   value instead, bypassing the speed-of-light clamp on purpose. Never
   set in a production run. \\
 \hline
-\code{LW\_FUV\_dissipation\_alpha\_max} & 0.25 & jointly bounded
+\code{ISRF\_dissipation\_alpha\_max} & 0.25 & jointly bounded
   with $C_{\rm hyp}$, Eq.~\ref{eq:fuv-diss-stability} &
   Ceiling of the Stage-1 triggered artificial-conductivity coefficient
   $\alpha_i$ (Section~\ref{sec:fuv-dissipation}). Zero disables the
   term entirely. \\
 \hline
-\code{LW\_FUV\_dissipation\_negativity\_threshold} & 0.01 & $(0,1]$ &
+\code{ISRF\_dissipation\_negativity\_threshold} & 0.01 & $(0,1]$ &
   $\varepsilon_1$ in Eq.~\ref{eq:fuv-diss-trigger}: the relative
   undershoot at which the trigger reaches full strength. \\
 \hline
-\code{LW\_FUV\_dissipation\_alpha\_pin\_for\_debugging} & 0 (off) &
+\code{ISRF\_dissipation\_alpha\_pin\_for\_debugging} & 0 (off) &
   $\ge0$, not itself bounded &
   Debug/test only: bypasses the negativity trigger and holds every
   particle's $\alpha$ at this fixed value. Never set in a production
@@ -1663,15 +1663,15 @@ introduced.
 \end{center}
 
 Stages~2/3 add no runtime parameters of their own: they are compiled in
-or out entirely (\code{RADIATION\_LW\_FUV\_DISSIPATION\_RECONSTRUCTION},
-\code{RADIATION\_LW\_FUV\_DISSIPATION\_ANISOTROPIC\_FLUX}), with their
+or out entirely (\code{RADIATION\_ISRF\_DISSIPATION\_RECONSTRUCTION},
+\code{RADIATION\_ISRF\_DISSIPATION\_ANISOTROPIC\_FLUX}), with their
 own internal constants ($\eta_{\rm crit}$, the decay length, the flux
 switch amplitude $A$) fixed at compile time rather than exposed.
 
 \subsection{Propagation off: the instantaneous-field mode}
 \label{sec:fuv-injection-off}
 
-With \code{GEARFeedback:LW\_FUV\_propagation} off, which is the
+With \code{GEARFeedback:ISRF\_propagation} off, which is the
 \textbf{default}, none of Section~\ref{sec:fuv-propagation-scheme}'s
 transport or dissipation machinery runs at all: $u_{\rm FUV}$/$u_{\rm
 LW}$ are written directly by injection, with no dose reservoir, no

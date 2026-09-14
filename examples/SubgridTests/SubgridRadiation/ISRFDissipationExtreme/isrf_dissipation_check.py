@@ -17,8 +17,8 @@
 #
 ################################################################################
 """
-Regression check for the LW/FUV negativity-triggered artificial-dissipation
-term (`GEARFeedback:LW_FUV_dissipation_alpha_max`).
+Regression check for the ISRF negativity-triggered artificial-dissipation
+term (`GEARFeedback:ISRF_dissipation_alpha_max`).
 
 Adapted from the sibling `ISRFCausalReach` example's own check script (same
 pinned-neighbour IC family and the same causal-reach metric); this version
@@ -44,7 +44,7 @@ Two independent checks, both per snapshot and per band (`FUV`, `LW`):
    ordinary SPH kernel smearing. `c_hyp` is reconstructed from the run's own
    `timesteps.txt` and each snapshot's own median smoothing length, via the
    same formula `src/feedback/GEAR/radiation_isrf.c` uses:
-   `c_hyp = min(LW_FUV_c_hyp_margin * h / dt, c)`. `C(eps)`, reported per
+   `c_hyp = min(ISRF_c_hyp_margin * h / dt, c)`. `C(eps)`, reported per
    epsilon in {0.1, 0.01, 0.001}, is how far past the causal front (in units
    of the local smoothing length) the field still exceeds
    `eps * u_plateau` -- an over-smoothing dissipation coefficient would
@@ -100,7 +100,7 @@ def parse_options():
         "--c-hyp-margin",
         type=float,
         default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin used by the run (default: %(default)s).",
+        help="GEARFeedback:ISRF_c_hyp_margin used by the run (default: %(default)s).",
     )
     parser.add_argument(
         "--hot-particle-id",
@@ -241,7 +241,18 @@ def energy_radius(r, w, fraction):
 
 
 def check_band(
-    band, r, u, mass, u_all_incl_hot, h_med, c_hyp, t, t0, opt, r_max_plot, in_last_third
+    band,
+    r,
+    u,
+    mass,
+    u_all_incl_hot,
+    h_med,
+    c_hyp,
+    t,
+    t0,
+    opt,
+    r_max_plot,
+    in_last_third,
 ):
     """`u`/`r`/`mass` are the masked (bulk) arrays used for u_plateau, the
     energy-weighted sign-closure metric, `R50`/`R90`, and the causal-reach
@@ -388,7 +399,17 @@ def main():
             u_all = snap[u_field]
             r, u, mass = r_all[gas_mask], u_all[gas_mask], mass_all[gas_mask]
             res = check_band(
-                band, r, u, mass, u_all, h_med, c_hyp, t, t0, opt, r_max_plot,
+                band,
+                r,
+                u,
+                mass,
+                u_all,
+                h_med,
+                c_hyp,
+                t,
+                t0,
+                opt,
+                r_max_plot,
                 in_last_third,
             )
             all_ok &= res["ok"]

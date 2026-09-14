@@ -99,11 +99,11 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_min:$dt_min \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:LW_FUV_propagation:$propagation \
-		   -P GEARFeedback:LW_FUV_c_hyp_margin:$c_hyp_margin \
-		   -P GEARFeedback:LW_FUV_c_hyp_pin_for_debugging:$c_hyp_pin \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_max:$alpha_max \
-		   -P GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging:$alpha_pin \
+		   -P GEARFeedback:ISRF_propagation:$propagation \
+		   -P GEARFeedback:ISRF_c_hyp_margin:$c_hyp_margin \
+		   -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+		   -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
+		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   -P SPH:initial_temperature:0 \
 		   params.yml 2>&1 | tee output.log
 

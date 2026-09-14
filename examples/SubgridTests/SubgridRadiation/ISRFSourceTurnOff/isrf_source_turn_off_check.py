@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
-"""Check that the total LW/FUV field decays away once the star dies.
+"""Check that the total ISRF field decays away once the star dies.
 
 Tracks the box-total mass-weighted FUV and LW specific energies,
 ``sum(mass*FUVSpecificEnergies)``/``sum(mass*LWSpecificEnergies)``, across
@@ -110,7 +110,7 @@ def parse_options() -> argparse.Namespace:
         "--c-hyp-margin",
         type=float,
         default=0.5,
-        help="GEARFeedback:LW_FUV_c_hyp_margin used by the run (default: "
+        help="GEARFeedback:ISRF_c_hyp_margin used by the run (default: "
         "%(default)s).",
     )
     parser.add_argument(

@@ -1,8 +1,8 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
+box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
 (photoionization and radiation pressure off) and the negativity-triggered
-artificial-dissipation term on (`GEARFeedback:LW_FUV_dissipation_alpha_max:
+artificial-dissipation term on (`GEARFeedback:ISRF_dissipation_alpha_max:
 0.25`). Same pinned-neighbour IC family as the sibling `ISRFCausalReach`
 example (one gas particle nearest the star set to a different initial
 temperature, `T_hot = 3e4 K` by default here), which produces a sharp
@@ -12,17 +12,17 @@ values that otherwise appear on that contrast, without degrading the
 propagated field's causal reach (`r <= c_hyp*(t - t0)`).
 
 ## Dissipation term
-`LW_FUV_dissipation_alpha_max` bounds a triggered artificial-conductivity
+`ISRF_dissipation_alpha_max` bounds a triggered artificial-conductivity
 coefficient (see `parameter_example.yml` for the full parameter
 description). It activates per-particle where a particle's own field
 undershoots its neighbours' kernel-mean field
-(`GEARFeedback:LW_FUV_dissipation_negativity_threshold`, code default),
+(`GEARFeedback:ISRF_dissipation_negativity_threshold`, code default),
 and is bounded by the runtime stability check in `feedback_properties.h`,
 checked jointly on `max(alpha_max, alpha_floor)`, not `alpha_max` alone:
-`6.2*max(alpha_max, alpha_floor)*LW_FUV_c_hyp_margin + 0.70*LW_FUV_c_hyp_margin^2 <= 2`.
-At this example's shipped values (both 0.5), raising `LW_FUV_c_hyp_margin`
+`6.2*max(alpha_max, alpha_floor)*ISRF_c_hyp_margin + 0.70*ISRF_c_hyp_margin^2 <= 2`.
+At this example's shipped values (both 0.5), raising `ISRF_c_hyp_margin`
 above 0.571 requires lowering them; `alpha_max`, `alpha_floor`, and
-`LW_FUV_c_hyp_margin` cannot all be changed independently of that bound.
+`ISRF_c_hyp_margin` cannot all be changed independently of that bound.
 
 ## Pinned-neighbour variant, metallicity, cooling
 Same as `ISRFCausalReach`: see that example's README for the full

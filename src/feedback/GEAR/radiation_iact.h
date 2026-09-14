@@ -197,7 +197,7 @@ radiation_iact_nonsym_feedback_apply(
   const double weight = mj * wi * si_inv_weight;
 
   /* Cosmology-independent: also reused below to renew the LW/FUV
-   * illumination window (radiation_reset_part_LW_FUV_illumination_tag). */
+   * illumination window (radiation_reset_part_ISRF_illumination_tag). */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
   /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
@@ -250,15 +250,15 @@ radiation_iact_nonsym_feedback_apply(
      Zero unless GEARFeedback:with_photoelectric_heating is on (L_FUV/L_LW
      are then computed by stellar_evolution.c; 0 otherwise). Dust extinction
      is applied receiver-side, using pj's own local column density, rather
-     than at the source (see radiation_get_part_LW_FUV_extinction_factors
+     than at the source (see radiation_get_part_ISRF_extinction_factors
      for the extinction formula itself). */
   if (si->feedback_data.radiation.L_FUV != 0.0 ||
       si->feedback_data.radiation.L_LW != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction_FUV, extinction_LW;
-    radiation_get_part_LW_FUV_extinction_factors(
-        us, cosmo, pj, Z_j, cooling, &extinction_FUV, &extinction_LW);
+    radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
+                                               &extinction_FUV, &extinction_LW);
 
     const double u_inject_FUV = (double)Delta_t * weight *
                                 si->feedback_data.radiation.L_FUV *
@@ -267,7 +267,7 @@ radiation_iact_nonsym_feedback_apply(
                                si->feedback_data.radiation.L_LW *
                                (double)extinction_LW;
 
-    if (fb_props->LW_FUV_propagation) {
+    if (fb_props->ISRF_propagation) {
       /* Dose-reservoir form (design-lw-fuv-design-b-dissipation.md Section
          4.6.5): pure accumulation of the elapsed star step's own
          (unrescaled) deposit, no reset, no first-touch logic, so any number
@@ -279,19 +279,19 @@ radiation_iact_nonsym_feedback_apply(
           (float)(u_inject_FUV / (double)mj);
       pj->feedback_data.u_LW_dose_reservoir +=
           (float)(u_inject_LW / (double)mj);
-      pj->feedback_data.LW_FUV_reservoir_end_ti =
-          max(pj->feedback_data.LW_FUV_reservoir_end_ti, ti_current + ti_step);
-      pj->feedback_data.LW_FUV_last_touch_ti = ti_current;
+      pj->feedback_data.ISRF_reservoir_end_ti =
+          max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
+      pj->feedback_data.ISRF_last_touch_ti = ti_current;
     } else {
       /* An instantaneous field strength, not an accumulated dose: reset to
          0 on the first touch this step (by any star), so a later read sees
          this step's illumination rather than a total across every step
          since the last cooling call. A later touch this same step (a
          second illuminating star) sums into what the first just wrote. */
-      if (pj->feedback_data.LW_FUV_last_touch_ti != ti_current) {
+      if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
         pj->feedback_data.u_FUV = 0.f;
         pj->feedback_data.u_LW = 0.f;
-        pj->feedback_data.LW_FUV_last_touch_ti = ti_current;
+        pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
       pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
@@ -302,18 +302,18 @@ radiation_iact_nonsym_feedback_apply(
        feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII
        tag's own end_time, so a continuously-illuminated particle's window
        never lapses between touches. The expiry check itself
-       (radiation_reset_part_LW_FUV_illumination_tag) runs once per step in
+       (radiation_reset_part_ISRF_illumination_tag) runs once per step in
        feedback_reset_part, not here. */
-    pj->feedback_data.LW_FUV_illumination_end_ti =
-        ti_current + RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS * ti_step;
+    pj->feedback_data.ISRF_illumination_end_ti =
+        ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step;
 
     /* First-touch-only sync, mirroring feedback_hii_claim_part vs.
        feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split
        (feedback_common.c): do not re-sync an already-illuminated particle
        every pass, or every held particle drags the whole region down to
        the shortest time bin. */
-    if (!pj->feedback_data.is_illuminated_LW_FUV) {
-      pj->feedback_data.is_illuminated_LW_FUV = 1;
+    if (!pj->feedback_data.is_illuminated_ISRF) {
+      pj->feedback_data.is_illuminated_ISRF = 1;
       timestep_sync_part(pj);
     }
   }

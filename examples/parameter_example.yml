@@ -791,36 +791,36 @@ GEARFeedback:
 
   # Radiation parameters
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
-  with_photoelectric_heating:    0                         # Master switch for the local Lyman-Werner/FUV feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
+  with_photoelectric_heating:    0                         # Master switch for the local ISRF feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
-  LW_FUV_propagation:            0                         # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
+  ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
                                                            # (Default: 0)
-  LW_FUV_c_hyp_margin: 0.5                    # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(LW_FUV_dissipation_alpha_max, LW_FUV_dissipation_alpha_floor) = 0; the joint
-                                                           # stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
-  LW_FUV_c_hyp_pin_for_debugging: 0                        # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
-                                                           # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
-  LW_FUV_dissipation_alpha_max: 0.5                        # (optional) Ceiling of the triggered artificial-conductivity coefficient. 0 disables the trigger, but LW_FUV_dissipation_alpha_floor still
+  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor) = 0; the joint
+                                                           # stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
+                                                           # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
+  ISRF_dissipation_alpha_max: 0.5                          # (optional) Ceiling of the triggered artificial-conductivity coefficient. 0 disables the trigger, but ISRF_dissipation_alpha_floor still
                                                            # applies unless it is also 0. The stability bound is checked jointly on max(alpha_max, alpha_floor):
-                                                           # 6.2*max(alpha_max,alpha_floor)*LW_FUV_c_hyp_margin + 0.70*LW_FUV_c_hyp_margin^2 <= 2, so at the shipped 0.5 for both, raising LW_FUV_c_hyp_margin
-                                                           # above 0.571 requires lowering them. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
-  LW_FUV_dissipation_negativity_threshold: 0.01            # (optional) Undershoot of a particle's own field below its neighbours' kernel-mean field, relative, at which the negativity-triggered dissipation coefficient reaches LW_FUV_dissipation_alpha_max.
-                                                           # Only meaningful when LW_FUV_propagation is on. (Default: 0.01)
-  LW_FUV_dissipation_alpha_floor: 0.5                      # (optional) Floor under the negativity trigger, alpha_floor_i = alpha_floor/(1+(h_i*kappa_i/eps_lambda)^4): the trigger fires only on negativity and
+                                                           # 6.2*max(alpha_max,alpha_floor)*ISRF_c_hyp_margin + 0.70*ISRF_c_hyp_margin^2 <= 2, so at the shipped 0.5 for both, raising ISRF_c_hyp_margin
+                                                           # above 0.571 requires lowering them. Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_dissipation_negativity_threshold: 0.01              # (optional) Undershoot of a particle's own field below its neighbours' kernel-mean field, relative, at which the negativity-triggered dissipation coefficient reaches ISRF_dissipation_alpha_max.
+                                                           # Only meaningful when ISRF_propagation is on. (Default: 0.01)
+  ISRF_dissipation_alpha_floor: 0.5                        # (optional) Floor under the negativity trigger, alpha_floor_i = alpha_floor/(1+(h_i*kappa_i/eps_lambda)^4): the trigger fires only on negativity and
                                                            # cannot see the positive delta-shell front of an optically-thin P1 pulse, so this floor supplies dissipation there that the trigger structurally
                                                            # cannot. The pair coefficient is then alpha_ij = max(alpha_trigger_i, alpha_trigger_j, alpha_floor_i, alpha_floor_j). Jointly bounded with
-                                                           # LW_FUV_dissipation_alpha_max against the same (alpha, C_hyp) stability
-                                                           # inequality. 0 disables the floor and recovers the trigger-only behaviour exactly. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
-  LW_FUV_dissipation_floor_h_over_lambda: 0.5              # (optional) eps_lambda in the floor formula above: the screening-length error budget the floor's roll-off is gated on, decaying as
+                                                           # ISRF_dissipation_alpha_max against the same (alpha, C_hyp) stability
+                                                           # inequality. 0 disables the floor and recovers the trigger-only behaviour exactly. Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_dissipation_floor_h_over_lambda: 0.5                # (optional) eps_lambda in the floor formula above: the screening-length error budget the floor's roll-off is gated on, decaying as
                                                            # (eps_lambda/(h*kappa))^4 once h/lambda exceeds it. The quartic tail is what keeps the optically-thick regime negligible, so this knee no longer has
-                                                           # to sit an order of magnitude below the regimes that need the floor. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
-  LW_FUV_dissipation_floor_relaxation_residual: 0.40       # (optional) eps_R gating the floor coefficient by how far the particle's flux is from the code's own discrete steady state (R=0 there, ~1 on
+                                                           # to sit an order of magnitude below the regimes that need the floor. Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) eps_R gating the floor coefficient by how far the particle's flux is from the code's own discrete steady state (R=0 there, ~1 on
                                                            # a genuine front). Valid range [0, 1] (R is bounded there by the triangle inequality). Multiplies the floor coefficient by
-                                                           # min(1,(R/eps_R)^2), so this can only lower it, never raise it above LW_FUV_dissipation_floor_h_over_lambda's own roll-off. Inert when
-                                                           # LW_FUV_dissipation_alpha_floor is 0, and does not enter the (alpha, C_hyp) stability bound since it only ever lowers the floor. 0 disables
+                                                           # min(1,(R/eps_R)^2), so this can only lower it, never raise it above ISRF_dissipation_floor_h_over_lambda's own roll-off. Inert when
+                                                           # ISRF_dissipation_alpha_floor is 0, and does not enter the (alpha, C_hyp) stability bound since it only ever lowers the floor. 0 disables
                                                            # the gate (recovers the h/lambda-only floor exactly). Raise toward 1 if a resolved static field still shows floor-driven smearing; lower
-                                                           # toward 0 if negative undershoots appear in optically thin gas. Only meaningful when LW_FUV_propagation is on. (Default: 0.40)
-  LW_FUV_dissipation_alpha_pin_for_debugging: 0            # (optional, debug/test only) Bypass the negativity trigger and hold every particle's dissipation coefficient (both bands) at this fixed value, whenever positive. Not itself
-                                                           # subject to the (alpha_max, C_hyp) stability bound. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
+                                                           # toward 0 if negative undershoots appear in optically thin gas. Only meaningful when ISRF_propagation is on. (Default: 0.40)
+  ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug/test only) Bypass the negativity trigger and hold every particle's dissipation coefficient (both bands) at this fixed value, whenever positive. Not itself
+                                                           # subject to the (alpha_max, C_hyp) stability bound. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)

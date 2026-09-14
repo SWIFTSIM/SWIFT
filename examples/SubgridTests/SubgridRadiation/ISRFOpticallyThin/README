@@ -1,6 +1,6 @@
 # Intro
 A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
-box, with LW/FUV hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
+box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
 (photoionization and radiation pressure off), in the OPTICALLY-THIN corner:
 the metallicity is low enough that the dust screening length is much larger
 than both the smoothing length and the box (`h/lambda ~ 6e-3`, against
@@ -43,10 +43,10 @@ approaches the box edge.
 
 ## Dissipation coefficient
 `params.yml` holds the negativity-triggered artificial-conductivity coefficient at a
-fixed 0.5 via `LW_FUV_dissipation_alpha_pin_for_debugging`, instead of
+fixed 0.5 via `ISRF_dissipation_alpha_pin_for_debugging`, instead of
 letting the negativity trigger set it, so that what is measured is the
 transport operator alone. At this example's screening length, a
-`LW_FUV_dissipation_alpha_max` of 0.25 (below the shipped default, 0.5) is
+`ISRF_dissipation_alpha_max` of 0.25 (below the shipped default, 0.5) is
 not enough: the field rings in sign and has no radial profile to measure.
 0.5, the pinned value above, still satisfies the
 joint stability bound `6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2` at the default
