@@ -813,6 +813,12 @@ GEARFeedback:
   LW_FUV_dissipation_floor_h_over_lambda: 0.5              # (optional) eps_lambda in the floor formula above: the screening-length error budget the floor's roll-off is gated on, decaying as
                                                            # (eps_lambda/(h*kappa))^4 once h/lambda exceeds it. The quartic tail is what keeps the optically-thick regime negligible, so this knee no longer has
                                                            # to sit an order of magnitude below the regimes that need the floor. Only meaningful when LW_FUV_propagation is on. (Default: 0.5)
+  LW_FUV_dissipation_floor_relaxation_residual: 0.40       # (optional) eps_R gating the floor coefficient by how far the particle's flux is from the code's own discrete steady state (R=0 there, ~1 on
+                                                           # a genuine front). Valid range [0, 1] (R is bounded there by the triangle inequality). Multiplies the floor coefficient by
+                                                           # min(1,(R/eps_R)^2), so this can only lower it, never raise it above LW_FUV_dissipation_floor_h_over_lambda's own roll-off. Inert when
+                                                           # LW_FUV_dissipation_alpha_floor is 0, and does not enter the (alpha, C_hyp) stability bound since it only ever lowers the floor. 0 disables
+                                                           # the gate (recovers the h/lambda-only floor exactly). Raise toward 1 if a resolved static field still shows floor-driven smearing; lower
+                                                           # toward 0 if negative undershoots appear in optically thin gas. Only meaningful when LW_FUV_propagation is on. (Default: 0.40)
   LW_FUV_dissipation_alpha_pin_for_debugging: 0            # (optional, debug/test only) Bypass the Stage-1 negativity trigger and hold every particle's dissipation coefficient (both bands) at this fixed value, whenever positive. Not itself
                                                            # subject to the (alpha_max, C_hyp) stability bound. Only meaningful when LW_FUV_propagation is on. Never set in a production run. (Default: 0, disabled)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)

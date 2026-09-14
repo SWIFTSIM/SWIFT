@@ -683,6 +683,91 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
 }
 
 /**
+ * @brief Flux-relaxation residual gate on the floor's aim: a particle whose
+ * flux is already in Fickian balance with this step's own gradient (`F ~=
+ * -C*grad_u`, `C = c_hyp^2/(c_hyp*kappa+H)` the fixed point of
+ * #radiation_end_gradient_propagation's own UNLIMITED flux-update
+ * recurrence, i.e. before #radiation_apply_flux_limiter_band clamps it) is
+ * at the discrete steady state the floor's cost formula assumes; a
+ * particle on a genuine front, or with `tau = 1/(c_hyp*kappa+H) >> dt` so
+ * the flux has not relaxed yet, is not. A particle whose flux is instead
+ * pinned by the M1 limiter (`|F| = c_M*u`, the free-streaming branch)
+ * generally never reaches that fixed point either, so `R` stays finite
+ * there too: a conservative false positive that keeps part of the floor
+ * where the limiter is active, never removes protection where a front is
+ * present. `R` measures the mismatch (0 at the fixed point, ~1 away from
+ * it); the floor's aim is multiplied by `min(1, (R/eps_R)^2)`, so it can
+ * only ever be lowered, never raised: `s=1` whenever exactly one of `F`,
+ * `grad_u` is zero (`R=1`), so a fresh front or a limiter-zeroed flux
+ * keeps the full floor, provided the relaxation weight `w = kappa +
+ * H/c_hyp` is nonzero (see below). The exception is a quiescent particle
+ * with both `F` and `grad_u` zero: that is trivially at the fixed point,
+ * so `R=0` and `s=0` there instead. `eps_R = 0` disables the gate
+ * (returns 1 identically); `c_hyp <= 0` likewise (the relaxation has no
+ * timescale to be settled against). `w <= 0` (`kappa=0` and `H=0`) also
+ * returns 1 unconditionally, rather than falling through to the `R`
+ * formula below: at `w=0`, `F` drops out of both that formula's numerator
+ * and denominator, which would otherwise break the `s=1` guarantee above
+ * whenever `F` alone is nonzero. Rescaled by `(kappa+H/c_hyp)` relative to
+ * the `|F+C*grad_u|` form (the two are algebraically identical; this one
+ * avoids computing `C` as its own value, which can overflow float32 at
+ * near-primordial `kappa`).
+ *
+ * @param F This band's #specific_flux_FUV/LW, from BEFORE this step's own
+ * update (the incoming flux this step's `u` was actually produced from,
+ * i.e. as left by the previous step's #radiation_apply_flux_limiter_band,
+ * already post-limiter).
+ * @param grad_u This band's #grad_u_FUV/LW accumulator.
+ * @param c_hyp The particle's own #c_hyp.
+ * @param kappa This band's #kappa_FUV/LW.
+ * @param H The Hubble rate, #cosmology.H.
+ * @param eps_R #feedback_props.LW_FUV_dissipation_floor_relaxation_residual.
+ * @return The floor-aim multiplier `s`, in `[0, 1]`.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_dissipation_floor_relaxation_gate(const float F[3],
+                                            const float grad_u[3], float c_hyp,
+                                            float kappa, float H, float eps_R) {
+
+  if (eps_R <= 0.f) return 1.f;
+  if (c_hyp <= 0.f) return 1.f;
+
+  /* Rescaled by (kappa + H/c_hyp) relative to the doxygen's |F + C*grad_u|
+   * form: algebraically identical (this factor cancels top and bottom),
+   * but every term here stays O(1)-to-O(1e10) on production fixtures,
+   * where computing C = c_hyp^2/(c_hyp*kappa+H) as its own value first
+   * can overflow float32 at near-primordial kappa. */
+  const float w = kappa + H / c_hyp;
+
+  /* No relaxation timescale to settle against (kappa = 0 and H = 0): keep
+   * the floor at full strength. Also avoids F dropping out of both the R
+   * numerator and denominator below, which would otherwise make R = 1
+   * regardless of grad_u and break the s=1 guarantee documented above. */
+  if (w <= 0.f) return 1.f;
+
+  const float wx = w * F[0] + c_hyp * grad_u[0];
+  const float wy = w * F[1] + c_hyp * grad_u[1];
+  const float wz = w * F[2] + c_hyp * grad_u[2];
+  const float num = sqrtf(wx * wx + wy * wy + wz * wz);
+  const float F_norm = sqrtf(F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
+  const float G_norm = sqrtf(grad_u[0] * grad_u[0] + grad_u[1] * grad_u[1] +
+                             grad_u[2] * grad_u[2]);
+  const float den = w * F_norm + c_hyp * G_norm;
+
+  /* Quiescent particle (`F` and `grad_u` both zero): trivially at the fixed
+   * point, so `R = 0`. Branched rather than kept finite by an epsilon added
+   * to the denominator: `R/eps_R` is squared below, and the optimizer folds
+   * that into `num^2/(den/eps_R)^2`, where a denominator epsilon small
+   * enough not to perturb a real `den` underflows float32 to zero once
+   * squared, turning this case into `0/0`. */
+  if (den <= 0.f) return 0.f;
+
+  const float R = num / den;
+  const float ratio = R / eps_R;
+  return min(1.f, ratio * ratio);
+}
+
+/**
  * @brief Exact-relaxation update of #specific_flux_FUV/#specific_flux_LW, from
  * the `grad(u)` accumulators radiation_propagation_iact.h filled during the
  * gradient loop, which reads this step's already-relaxed `u`
@@ -729,6 +814,14 @@ void radiation_end_gradient_propagation(struct part *p,
   const float phi_LW = radiation_relaxation_phi_factor(a_LW);
   const float coeff_FUV = c_hyp * c_hyp * dt * phi_FUV;
   const float coeff_LW = c_hyp * c_hyp * dt * phi_LW;
+
+  /* Snapshot for the floor's relaxation-residual gate below: this step's
+   * `u` was produced from THIS flux, not the one about to be computed. */
+  const float F_old_FUV[3] = {fd->specific_flux_FUV[0],
+                              fd->specific_flux_FUV[1],
+                              fd->specific_flux_FUV[2]};
+  const float F_old_LW[3] = {fd->specific_flux_LW[0], fd->specific_flux_LW[1],
+                             fd->specific_flux_LW[2]};
 
   for (int k = 0; k < 3; k++) {
     fd->specific_flux_FUV[k] =
@@ -808,6 +901,8 @@ void radiation_end_gradient_propagation(struct part *p,
     const float alpha_floor = e->feedback_props->LW_FUV_dissipation_alpha_floor;
     const float eps_lambda =
         e->feedback_props->LW_FUV_dissipation_floor_h_over_lambda;
+    const float eps_R =
+        e->feedback_props->LW_FUV_dissipation_floor_relaxation_residual;
 
     /* The trigger's decay memory is its OWN previous value, not the
      * previous combined coefficient: a high floor must not hold up the
@@ -821,11 +916,18 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Stored separately from the trigger rather than combined here, so the
      * two mechanisms stay separately readable; the force loop combines
-     * them. */
-    fd->dissipation_alpha_floor_FUV = radiation_dissipation_alpha_floor_band(
-        fd->kappa_FUV, h_phys, alpha_floor, eps_lambda);
-    fd->dissipation_alpha_floor_LW = radiation_dissipation_alpha_floor_band(
-        fd->kappa_LW, h_phys, alpha_floor, eps_lambda);
+     * them. The relaxation-residual gate only ever lowers this value
+     * (`s <= 1`), computed from the incoming flux snapshotted above. */
+    const float s_FUV = radiation_dissipation_floor_relaxation_gate(
+        F_old_FUV, fd->grad_u_FUV, c_hyp, fd->kappa_FUV, H, eps_R);
+    const float s_LW = radiation_dissipation_floor_relaxation_gate(
+        F_old_LW, fd->grad_u_LW, c_hyp, fd->kappa_LW, H, eps_R);
+    fd->dissipation_alpha_floor_FUV =
+        s_FUV * radiation_dissipation_alpha_floor_band(fd->kappa_FUV, h_phys,
+                                                       alpha_floor, eps_lambda);
+    fd->dissipation_alpha_floor_LW =
+        s_LW * radiation_dissipation_alpha_floor_band(fd->kappa_LW, h_phys,
+                                                      alpha_floor, eps_lambda);
   }
 
   /* Written here, at the end of this active-gated ghost, from the gradient

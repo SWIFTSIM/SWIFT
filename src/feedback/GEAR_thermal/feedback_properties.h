@@ -169,6 +169,35 @@ struct feedback_props {
    * memory already dominates. */
   float LW_FUV_dissipation_floor_h_over_lambda;
 
+  /*! Flux-relaxation residual threshold gating the floor's own aim:
+   * `R = |F + C*grad_u| / (|F| + C*|grad_u|)`, `C =
+   * c_hyp^2/(c_hyp*kappa+H)` the exact fixed point of the UNLIMITED
+   * flux-update recurrence, is identically 0 at the code's own discrete
+   * steady state and ~1 away from it; the triangle inequality bounds R to
+   * [0, 1], so this parameter's valid range is [0, 1] too (checked in
+   * feedback_props_init(): a value above 1 would scale the floor down on
+   * every particle, fronts included). A particle whose flux is instead
+   * pinned by the M1 limiter (#radiation_apply_flux_limiter_band, `|F| =
+   * c_M*u`, the free-streaming branch) generally never reaches that fixed
+   * point either, so R stays finite there too: a conservative false
+   * positive that keeps part of the floor where the limiter is active,
+   * never removes protection where a front is present. The floor's aim is
+   * multiplied by `min(1, (R/eps_R)^2)`, so a particle already at the
+   * flux-relaxation fixed point (a resolved, settled profile) gets a
+   * reduced floor, while a genuine front (R large) keeps the floor at
+   * full strength. Can only lower the floor relative to
+   * #LW_FUV_dissipation_floor_h_over_lambda's own roll-off, never raise
+   * it: `s=1` whenever exactly one of `F`, `grad_u` is zero (`R=1`), so a
+   * fresh front or a limiter-zeroed flux keeps the full floor, provided
+   * the relaxation weight `w = kappa + H/c_hyp` is nonzero. The exception
+   * is a quiescent particle with both `F` and `grad_u` zero and `w`
+   * nonzero: that is trivially at the fixed point, giving `R=0` and
+   * `s=0`. At `w=0` (`kappa=0` and `H=0`: no relaxation timescale to
+   * settle against), the gate returns `s=1` unconditionally instead. 0
+   * disables this gate (R treated as always saturating, i.e. `s=1`
+   * everywhere) and recovers the `h/lambda`-only floor exactly. */
+  float LW_FUV_dissipation_floor_relaxation_residual;
+
   /*! Debug/test-only: bypass the Stage-1 negativity trigger and hold every
    * particle's dissipation coefficient (both bands) at this fixed value,
    * whenever positive. Not itself subject to the joint
@@ -308,6 +337,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               feedback_props->LW_FUV_dissipation_alpha_floor);
       message("LW/FUV dissipation floor h/lambda budget (eps_lambda)      = %g",
               feedback_props->LW_FUV_dissipation_floor_h_over_lambda);
+      message("LW/FUV dissipation floor relaxation-residual gate (eps_R)  = %g",
+              feedback_props->LW_FUV_dissipation_floor_relaxation_residual);
       if (feedback_props->LW_FUV_dissipation_alpha_pin_for_debugging > 0.f)
         message(
             "LW/FUV dissipation alpha pinned for debugging              = %g",
@@ -599,6 +630,23 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda must be > 0 "
           "(got %g).",
           fp->LW_FUV_dissipation_floor_h_over_lambda);
+
+    /* Flux-relaxation residual gate: 0 disables it (recovers the
+     * h/lambda-only floor). */
+    fp->LW_FUV_dissipation_floor_relaxation_residual =
+        parser_get_opt_param_float(
+            params, "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
+            0.40f);
+
+    if (fp->LW_FUV_dissipation_floor_relaxation_residual < 0.f ||
+        fp->LW_FUV_dissipation_floor_relaxation_residual > 1.f)
+      error(
+          "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual must "
+          "lie in [0, 1] (got %g): the residual R it gates is itself bounded "
+          "to [0, 1] by the triangle inequality, so a value above 1 would "
+          "scale the floor down on every particle, fronts included. 0 "
+          "disables the gate.",
+          fp->LW_FUV_dissipation_floor_relaxation_residual);
 
     /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
      * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
