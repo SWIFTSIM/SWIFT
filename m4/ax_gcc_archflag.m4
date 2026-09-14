@@ -248,28 +248,19 @@ case $host_cpu in
      esac
      ax_gcc_arch="$ax_gcc_arch powerpc"
      ;;
-  aarch64)
-     cpuimpl=`grep 'CPU implementer' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
-     cpuarch=`grep 'CPU architecture' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
-     cpuvar=`grep 'CPU variant' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
-     case $cpuimpl in
-       0x42) case $cpuarch in
-               8) case $cpuvar in
-                    0x0) ax_gcc_arch="native" ;;
-                  esac
-                  ;;
-             esac
-             ;;
-       0x43) case $cpuarch in
-               8) case $cpuvar in
-                    0x0) ax_gcc_arch="native" ;;
-                    0x1) ax_gcc_arch="native" ;;
-                  esac
-                  ;;
-             esac
-             ;;
-      esac
-      ;;
+  aarch64*|arm64*)
+     # gcc and clang both implement -mcpu=native on aarch64 by reading MIDR_EL1,
+     # which is the same lookup a table here would be doing by hand, and they
+     # keep it current for cores that do not exist yet. It is also the only
+     # thing that can work on Darwin, where there is no /proc/cpuinfo to parse
+     # and so no table could ever match. Leave the identification to them.
+     #
+     # The two implementers previously listed here, Broadcom and Cavium, were
+     # already resolved this way; every other vendor, which is to say every
+     # Neoverse part including NVIDIA Grace, along with Ampere, Fujitsu A64FX
+     # and Apple silicon, matched nothing and got no architecture flag at all.
+     ax_gcc_arch="native"
+     ;;
 esac
 fi # not cross-compiling
 fi # guess arch
@@ -283,6 +274,11 @@ if test "x[]m4_default([$1],yes)" = xyes; then # if we require portable code
   case $host_cpu in i*86|x86_64*|amd64*) flag_prefixes="$flag_prefixes -mcpu= -m";; esac
 else
   flag_prefixes="-march= -mcpu= -m"
+  # On aarch64 the two are not interchangeable the way they nearly are on x86:
+  # -march= takes an architecture name such as armv8.2-a and sets no tuning,
+  # while -mcpu= takes a core name and sets architecture and tuning together.
+  # Ask for -mcpu= first so core names resolve and the tuning model is kept.
+  case $host_cpu in aarch64*|arm64*) flag_prefixes="-mcpu= -march= -m" ;; esac
 fi
 for flag_prefix in $flag_prefixes; do
   for arch in $ax_gcc_arch; do
