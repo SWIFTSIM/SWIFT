@@ -1,0 +1,73 @@
+# Intro
+Two frame tests of the ISRF hyperbolic propagation scheme (Cattaneo-type
+flux relaxation, M1 closure), on a single star at the centre of a uniform,
+periodic glass-IC gas box. The scheme evolves the mass-specific FUV/LW
+energy `u` and flux `F` along the gas trajectories and reads no particle
+velocity, so `F` is the flux in the gas frame.
+
+- `config=galilean`: the whole box, gas and star, moves at a uniform
+  velocity `V`. Every gas particle must carry the same `u` and `F` as in
+  the run at rest, to round-off. This tests the wiring (drift, periodic
+  wrap, cell crossing, tree rebuilds, time bins), not the algebra.
+- `config=lag`: the star moves at `v_rel` through static gas. Its field
+  trails it: the steady centroid lags the star by
+  `v_rel*tau*a/(1-exp(-a))`, with `tau = lambda/c_hyp` and `a = dt/tau`
+  (the factor is the discrete update's own, `1 + a/2` for small `a`).
+
+## Configurations
+`galilean` (level 5) runs the rest case three times (identical, and with
+every position shifted by a constant; both set the round-off floor),
+measures the median closure speed `c_hyp = C_hyp*h/dt` of the rest
+run, then runs each boost of `boost_factors` (units of that `c_hyp`,
+default `0.1 1 10`) and `boost_kms` (km/s, default `30`) along x. It uses
+the shipped closure and dissipation coefficients.
+
+`lag` (level 6, the level-5 spacing in twice the box, so that the box is
+more than 30 screening lengths in both bands) pins `c_hyp` to 10 km/s with
+`GEARFeedback:ISRF_c_hyp_pin_for_debugging` (a uniform `tau`; never set
+this parameter in a production run) and runs each star velocity of
+`v_rel_factors` (units of `c_hyp`, default `0.25 0.5 1`). By default the
+dissipation is off (`alpha_max=0 alpha_floor=0`), the case the prediction
+is exact for. With dissipation on, the negativity trigger adds a small
+dipole of its own and the check reports the displacement from the
+prediction in units of `h` instead of gating.
+
+## Metallicity, cooling
+Solar metallicity sets the screening length. `GrackleCooling:
+disable_cooling_for_debugging: 1` keeps the gas thermal state fixed; the
+gas still moves under `--hydro`.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+config=galilean ./run.sh
+config=lag ./run.sh
+config=lag alpha_max=0.5 alpha_floor=0.5 ./run.sh
+```
+Other env vars: `level`, `gas_density`, `gas_mass`, `star_mass`,
+`initial_metallicity`, `time_end`, `dt_max`, `delta_time`, `c_hyp_pin`,
+`alpha_max`, `alpha_floor`, `boost_factors`, `boost_kms`, `v_rel_factors`,
+`n_threads`. Each run is kept under `runs/<name>/`.
+
+# Checking
+`run.sh` runs the checks.
+
+`galilean_compare.py --rest runs/rest --repeat runs/rest_repeat --shifted runs/rest_shifted --boosted runs/boost_*`
+matches particles by `ParticleIDs` and computes, per band and over all
+snapshots, `D_u = max|u_boost - u_rest|/max|u_rest|` and the same for `F`
+(componentwise, untransformed, over particles with `|F|` above `1e-6` of
+the maximum). PASS: `D_u` and `D_F` at most `1e-5` for every boost.
+FAIL: a metric above both `1e-5` and three times the larger rest-control
+difference. INCONCLUSIVE: a metric above `1e-5` but within that floor.
+It also prints the position residual `|x_boost - x_rest - V*t|` in `h`.
+
+`lag_check.py --run runs/lag_<k>c --gate` measures the lag as the
+mass-weighted first moment of `u` over the whole box relative to the star
+(no radius window, negative `u` included) at the last three snapshots.
+PASS: `|lag/prediction - 1| <= 0.02` in both bands at the last snapshot.
+`--report-only` prints `(lag - prediction)/h`. Any non-finite value fails.
