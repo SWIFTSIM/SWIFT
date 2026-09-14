@@ -766,9 +766,8 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 #endif
 
   /* Unpack this cell's data. Reconstructing against our own top->stars.parts
-   * is only valid because cell_link_sparts() links the whole tree, so the two
-   * ranks share one layout. Compacting it here would need the gpart treatment
-   * (cell_relink_foreign_gparts) instead. */
+   * is valid because cell_link_sparts() links the whole tree, so both ranks
+   * share one layout. */
   c->stars.count = pcells[0].count;
   c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
