@@ -35,7 +35,7 @@ struct phys_const;
  *
  * Nothing here.
  */
-struct entropy_floor_properties {};
+struct entropy_floor_properties { int a; };
 
 /**
  * @brief Compute the pressure from the entropy floor at a given density

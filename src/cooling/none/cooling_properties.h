@@ -27,6 +27,6 @@
 /**
  * @brief Properties of the cooling function.
  */
-struct cooling_function_data {};
+struct cooling_function_data { int a; };
 
 #endif /* SWIFT_COOLING_PROPERTIES_NONE_H */
