@@ -2,32 +2,29 @@
 heating temperature match an independently-computed Grackle equilibrium
 temperature at the SAME local conditions?
 
-This is the follow-up the operator asked for after two same-day passes
-(`.claude/dev/logs/2026-09-08_1527_grackle-fix-postverify-design-b.md`,
-`.claude/dev/logs/2026-09-08_1622_grackle-fix-nonequilibrium-verify.md`)
-were judged insufficient: those checks only confirmed "T_on > T_off,
-T_on < 1e6 K" (sign/magnitude) for the `ISRFPhotoelectricHeating` example.
-Neither compared the achieved temperature to any independently-computed
-target.
+Earlier checks only confirmed "T_on > T_off, T_on < 1e6 K" (sign/magnitude)
+for the `ISRFPhotoelectricHeating` example, without comparing the achieved
+temperature to any independently-computed target; this script fills that
+gap.
 
 Method
 ------
 1. Load a real, already-converged `with_photoelectric_heating=1` SWIFT
    snapshot (this script reruns the example itself, in an isolated scratch
    copy, since the original scratch runs referenced by the two logs above
-   were deleted from disk between sessions -- confirmed missing, not
+   were deleted from disk between sessions, confirmed missing, not
    assumed).
 2. For one near-star illuminated particle and one far-field (unilluminated)
    control particle, extract its own local G0, density, and metallicity
    directly from the snapshot, using EXACTLY the same formula
    `radiation_get_part_isrf_habing()` uses (src/feedback/GEAR/
    radiation_gas.c) and EXACTLY the same metal_density mapping
-   `cooling.c`'s `cooling_init_grackle()` uses -- not an approximation of
+   `cooling.c`'s `cooling_init_grackle()` uses, not an approximation of
    either.
 3. Feed those extracted values into verify_isrf_pe_equilibrium_grackle_
    harness.c, which time-integrates Grackle's own solve_chemistry() (same
    compiled libgrackle, same dust_chemistry=1/photoelectric_heating=2
-   configuration a real with_photoelectric_heating=1 run uses -- this DOES
+   configuration a real with_photoelectric_heating=1 run uses, this DOES
    exercise the 2026-09-08 dust-recombination-cooling NaN fix's code path,
    unlike the sibling verify_photoelectric_heating_rate.py harness, which
    hardcodes dust_chemistry=0) until net heating equals net cooling.
@@ -136,13 +133,19 @@ def compile_harness() -> Path:
     return binary_path
 
 
-def extract_particle(gas, idx: int, unit_length_cgs: float, unit_time_cgs: float,
-                     unit_mass_cgs: float, habing_flux_cgs: float) -> dict:
+def extract_particle(
+    gas,
+    idx: int,
+    unit_length_cgs: float,
+    unit_time_cgs: float,
+    unit_mass_cgs: float,
+    habing_flux_cgs: float,
+) -> dict:
     """Extract one gas particle's local conditions and measured temperature.
 
     Reproduces radiation_get_part_isrf_habing() (src/feedback/GEAR/
     radiation_gas.c) and cooling.c's cooling_init_grackle() metal_density
-    mapping exactly, from raw (internal-unit) snapshot fields -- HDF5
+    mapping exactly, from raw (internal-unit) snapshot fields, HDF5
     snapshot fields are stored in internal units, the same units those C
     functions themselves operate in, so no extra conversion factor from
     "snapshot units" to "internal units" is needed.
@@ -178,8 +181,8 @@ def extract_particle(gas, idx: int, unit_length_cgs: float, unit_time_cgs: float
 
     # radiation_get_part_isrf_habing(): G0 = c*rho*(u_FUV+u_LW) / HABING_FLUX,
     # all in cgs (the internal-unit computation and the cgs one are
-    # equivalent since c*rho*u has pure mass/time^3 dimensions -- no length
-    # dependence -- so converting rho and u to cgs separately here and
+    # equivalent since c*rho*u has pure mass/time^3 dimensions, no length
+    # dependence, so converting rho and u to cgs separately here and
     # multiplying by C_LIGHT_CGS is exactly the internal-unit formula
     # evaluated in cgs, not an approximation of it).
     G0 = C_LIGHT_CGS * rho_cgs * (u_fuv_cgs + u_lw_cgs) / habing_flux_cgs
@@ -194,7 +197,7 @@ def extract_particle(gas, idx: int, unit_length_cgs: float, unit_time_cgs: float
     u_measured_cgs = u_internal * unit_specific_energy_cgs
 
     # At COOLING_GRACKLE_MODE 0 (no species output) there is no real
-    # per-particle ionization state to compute mu from -- mu_source flags
+    # per-particle ionization state to compute mu from, mu_source flags
     # this so the caller can, for that mode only, ask the harness for
     # Grackle's own tabulated-mode mu(T,Z) via its MEASURE feature instead
     # of trusting this fallback (see run_harness()'s measure_u_cgs and the
@@ -217,9 +220,15 @@ def extract_particle(gas, idx: int, unit_length_cgs: float, unit_time_cgs: float
 
     T_measured_K = u_measured_cgs * GAMMA_M1 * mu * M_P_CGS / K_B_CGS
 
-    return dict(G0_habing=G0, n_H_cgs=n_H_cgs, Zprime=Zprime,
-               T_measured_K=T_measured_K, rho_cgs=rho_cgs,
-               u_measured_cgs=u_measured_cgs, mu_source=mu_source)
+    return dict(
+        G0_habing=G0,
+        n_H_cgs=n_H_cgs,
+        Zprime=Zprime,
+        T_measured_K=T_measured_K,
+        rho_cgs=rho_cgs,
+        u_measured_cgs=u_measured_cgs,
+        mu_source=mu_source,
+    )
 
 
 def load_case_particles(example_dir: Path, habing_flux_cgs: float) -> dict:
@@ -245,7 +254,9 @@ def load_case_particles(example_dir: Path, habing_flux_cgs: float) -> dict:
 
     with h5py.File(snap_path, "r") as f:
         units = f["/Units"]
-        unit_length_cgs = float(np.asarray(units.attrs["Unit length in cgs (U_L)"]).flat[0])
+        unit_length_cgs = float(
+            np.asarray(units.attrs["Unit length in cgs (U_L)"]).flat[0]
+        )
         unit_time_cgs = float(np.asarray(units.attrs["Unit time in cgs (U_t)"]).flat[0])
         unit_mass_cgs = float(np.asarray(units.attrs["Unit mass in cgs (U_M)"]).flat[0])
 
@@ -261,19 +272,34 @@ def load_case_particles(example_dir: Path, habing_flux_cgs: float) -> dict:
         idx_near = int(np.argmax(field))
         idx_far = int(np.argmin(field))
 
-        near = extract_particle(gas, idx_near, unit_length_cgs, unit_time_cgs,
-                                unit_mass_cgs, habing_flux_cgs)
+        near = extract_particle(
+            gas,
+            idx_near,
+            unit_length_cgs,
+            unit_time_cgs,
+            unit_mass_cgs,
+            habing_flux_cgs,
+        )
         near["r"] = float(r[idx_near])
-        far = extract_particle(gas, idx_far, unit_length_cgs, unit_time_cgs,
-                               unit_mass_cgs, habing_flux_cgs)
+        far = extract_particle(
+            gas, idx_far, unit_length_cgs, unit_time_cgs, unit_mass_cgs, habing_flux_cgs
+        )
         far["r"] = float(r[idx_far])
 
     return dict(near_star=near, far_field=far, snapshot=str(snap_path))
 
 
-def run_harness(binary_path: Path, primordial_chemistry: int, metal_cooling: int,
-                cloudy_table: Path, G0: float, n_H_cgs: float, Zprime: float,
-                T_initial_K: float, measure_u_cgs: float | None = None) -> dict:
+def run_harness(
+    binary_path: Path,
+    primordial_chemistry: int,
+    metal_cooling: int,
+    cloudy_table: Path,
+    G0: float,
+    n_H_cgs: float,
+    Zprime: float,
+    T_initial_K: float,
+    measure_u_cgs: float | None = None,
+) -> dict:
     """Run the equilibrium-solver harness for one (G0, n_H, Z') tuple.
 
     Parameters
@@ -281,7 +307,7 @@ def run_harness(binary_path: Path, primordial_chemistry: int, metal_cooling: int
     measure_u_cgs : float, optional
         If given, also asks the harness for the temperature Grackle's own
         mu convention assigns to this specific internal energy at the same
-        (n_H, Z', mode) state -- only meaningful at primordial_chemistry=0
+        (n_H, Z', mode) state, only meaningful at primordial_chemistry=0
         (see the harness's own doxygen for why).
 
     Returns
@@ -331,9 +357,13 @@ def run_harness(binary_path: Path, primordial_chemistry: int, metal_cooling: int
 
 def main() -> None:
     habing_flux_cgs = _read_radiation_h_constant("RADIATION_HABING_FLUX_CGS")
-    print(f"RADIATION_HABING_FLUX_CGS = {habing_flux_cgs:.4e} erg/s/cm^2 "
-          f"(from {RADIATION_H})")
-    print(f"Relative-error tolerance: {RELATIVE_ERROR_TOLERANCE:.0%} (see module docstring)")
+    print(
+        f"RADIATION_HABING_FLUX_CGS = {habing_flux_cgs:.4e} erg/s/cm^2 "
+        f"(from {RADIATION_H})"
+    )
+    print(
+        f"Relative-error tolerance: {RELATIVE_ERROR_TOLERANCE:.0%} (see module docstring)"
+    )
     print()
 
     binary_path = compile_harness()
@@ -342,8 +372,13 @@ def main() -> None:
     all_near_star_within_tolerance = True
     try:
         for mode_name, example_subdir, primordial_chemistry in CASES:
-            example_dir = SCRIPT_DIR.parents[2] / "examples" / "SubgridTests" / \
-                "SubgridRadiation" / example_subdir
+            example_dir = (
+                SCRIPT_DIR.parents[2]
+                / "examples"
+                / "SubgridTests"
+                / "SubgridRadiation"
+                / example_subdir
+            )
             if not example_dir.exists():
                 print(f"SKIP {mode_name}: {example_dir} not found")
                 continue
@@ -355,61 +390,89 @@ def main() -> None:
 
             for label in ("near_star", "far_field"):
                 p = particles[label]
-                print(f"  [{label}] r={p['r']:.4e}, G0={p['G0_habing']:.4e}, "
-                      f"n_H={p['n_H_cgs']:.4e} cm^-3, Z'={p['Zprime']:.4f}, "
-                      f"T_measured={p['T_measured_K']:.4e} K (mu_source={p['mu_source']})")
+                print(
+                    f"  [{label}] r={p['r']:.4e}, G0={p['G0_habing']:.4e}, "
+                    f"n_H={p['n_H_cgs']:.4e} cm^-3, Z'={p['Zprime']:.4f}, "
+                    f"T_measured={p['T_measured_K']:.4e} K (mu_source={p['mu_source']})"
+                )
 
                 # At mode 0 there is no species output to compute a real
                 # per-particle mu from, so T_measured above used the crude
-                # mu=1/0.82 fallback -- ask the harness for the temperature
+                # mu=1/0.82 fallback, ask the harness for the temperature
                 # Grackle's own tabulated-mode mu(T,Z) assigns to this exact
                 # u instead (see run_harness()'s docstring and the harness's
                 # own doxygen), and use THAT as the comparison target.
-                measure_u_cgs = p["u_measured_cgs"] if p["mu_source"] == "fallback" else None
+                measure_u_cgs = (
+                    p["u_measured_cgs"] if p["mu_source"] == "fallback" else None
+                )
 
                 harness_result = run_harness(
-                    binary_path, primordial_chemistry, metal_cooling=1,
-                    cloudy_table=cloudy_table, G0=p["G0_habing"],
-                    n_H_cgs=p["n_H_cgs"], Zprime=p["Zprime"],
-                    T_initial_K=p["T_measured_K"], measure_u_cgs=measure_u_cgs,
+                    binary_path,
+                    primordial_chemistry,
+                    metal_cooling=1,
+                    cloudy_table=cloudy_table,
+                    G0=p["G0_habing"],
+                    n_H_cgs=p["n_H_cgs"],
+                    Zprime=p["Zprime"],
+                    T_initial_K=p["T_measured_K"],
+                    measure_u_cgs=measure_u_cgs,
                 )
                 T_eq = harness_result["T_equilibrium_K"]
                 if harness_result["T_measured_consistent_K"] is not None:
                     T_meas = harness_result["T_measured_consistent_K"]
-                    print(f"    mu-fallback T_measured was {p['T_measured_K']:.4e} K; "
-                          f"using Grackle's own mode-0 mu(T,Z) instead: "
-                          f"T_measured_consistent={T_meas:.4e} K")
+                    print(
+                        f"    mu-fallback T_measured was {p['T_measured_K']:.4e} K; "
+                        f"using Grackle's own mode-0 mu(T,Z) instead: "
+                        f"T_measured_consistent={T_meas:.4e} K"
+                    )
                 else:
                     T_meas = p["T_measured_K"]
                 rel_err = abs(T_eq - T_meas) / T_meas
-                within_tol = rel_err <= RELATIVE_ERROR_TOLERANCE and harness_result["converged"]
+                within_tol = (
+                    rel_err <= RELATIVE_ERROR_TOLERANCE and harness_result["converged"]
+                )
                 if label == "near_star":
                     all_near_star_within_tolerance &= within_tol
 
-                rows.append(dict(
-                    mode=mode_name, particle=label, T_measured_K=T_meas,
-                    T_equilibrium_K=T_eq, relative_error=rel_err,
-                    converged=harness_result["converged"],
-                    n_iterations=harness_result["n_iterations"],
-                    mu_corrected=harness_result["T_measured_consistent_K"] is not None,
-                ))
-                print(f"    -> T_equilibrium={T_eq:.4e} K, relative error="
-                      f"{rel_err:.2%}, converged={harness_result['converged']} "
-                      f"({harness_result['n_iterations']} iterations), "
-                      f"{'PASS' if within_tol else 'FAIL'}")
+                rows.append(
+                    dict(
+                        mode=mode_name,
+                        particle=label,
+                        T_measured_K=T_meas,
+                        T_equilibrium_K=T_eq,
+                        relative_error=rel_err,
+                        converged=harness_result["converged"],
+                        n_iterations=harness_result["n_iterations"],
+                        mu_corrected=harness_result["T_measured_consistent_K"]
+                        is not None,
+                    )
+                )
+                print(
+                    f"    -> T_equilibrium={T_eq:.4e} K, relative error="
+                    f"{rel_err:.2%}, converged={harness_result['converged']} "
+                    f"({harness_result['n_iterations']} iterations), "
+                    f"{'PASS' if within_tol else 'FAIL'}"
+                )
             print()
     finally:
         binary_path.unlink(missing_ok=True)
 
-    print(f"{'Mode':>10} {'Particle':>10} {'T_measured (K)':>16} "
-          f"{'T_equilibrium (K)':>18} {'Rel. error':>11} {'Converged':>10} {'Result':>7}")
+    print(
+        f"{'Mode':>10} {'Particle':>10} {'T_measured (K)':>16} "
+        f"{'T_equilibrium (K)':>18} {'Rel. error':>11} {'Converged':>10} {'Result':>7}"
+    )
     for row in rows:
-        result_str = "PASS" if (row["relative_error"] <= RELATIVE_ERROR_TOLERANCE
-                                and row["converged"]) else "FAIL"
+        result_str = (
+            "PASS"
+            if (row["relative_error"] <= RELATIVE_ERROR_TOLERANCE and row["converged"])
+            else "FAIL"
+        )
         note = " (mu-corrected)" if row.get("mu_corrected") else ""
-        print(f"{row['mode']:>10} {row['particle']:>10} {row['T_measured_K']:16.4e} "
-              f"{row['T_equilibrium_K']:18.4e} {row['relative_error']:10.2%} "
-              f"{str(row['converged']):>10} {result_str:>7}{note}")
+        print(
+            f"{row['mode']:>10} {row['particle']:>10} {row['T_measured_K']:16.4e} "
+            f"{row['T_equilibrium_K']:18.4e} {row['relative_error']:10.2%} "
+            f"{str(row['converged']):>10} {result_str:>7}{note}"
+        )
 
     print()
     print(
@@ -422,7 +485,7 @@ def main() -> None:
         "unilluminated gas this close to the CMB floor has a cooling time "
         "that diverges on approach to equilibrium, while this short example "
         "(time_end ~ 1.5e5 yr) does not always run long enough for that "
-        "specific control particle to fully relax -- confirmed directly for "
+        "specific control particle to fully relax, confirmed directly for "
         "the grackle_3 far_field row by its own snapshot time series (T "
         "still slowly drifting, 4.09->4.17 K, at the final snapshot), and "
         "separately confirmed to NOT be a deuterium-initial-condition "
@@ -440,7 +503,7 @@ def main() -> None:
             f"PASS: every tested near_star particle's independently-computed "
             f"Grackle equilibrium temperature agrees with SWIFT's own "
             f"converged temperature to within {RELATIVE_ERROR_TOLERANCE:.0%}, "
-            f"across {len(set(r['mode'] for r in rows))} cooling mode(s) -- "
+            f"across {len(set(r['mode'] for r in rows))} cooling mode(s), "
             f"this is a genuine, quantitative confirmation that the "
             f"photoelectric-heating coupling (G0 computation, Grackle field "
             f"population, dust_chemistry=1 path) reproduces the correct "
@@ -451,7 +514,7 @@ def main() -> None:
             "FAIL: at least one tested near_star particle's measured "
             "temperature disagrees with the independently-computed "
             "equilibrium temperature by more than the stated tolerance, or "
-            "the harness failed to converge -- see the per-row table above."
+            "the harness failed to converge, see the per-row table above."
         )
         sys.exit(1)
 

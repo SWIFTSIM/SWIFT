@@ -1,20 +1,19 @@
-"""Verify the Lagrangian/mass-specific re-derivation of Design B's zeroth-
-moment governing equation (design-lw-fuv-design-b.md Section 1, this
-session's addendum).
+"""Verify the Lagrangian/mass-specific re-derivation of the scheme's
+zeroth-moment governing equation.
 
 **Why this script exists.** Two prior `/plan-review` rounds established,
-empirically (`verify_design_b_div_f_consistency.py`), that the §2.2
+empirically (`verify_isrf_div_f_consistency.py`), that the §2.2
 `div(F)` SPH estimator computes `(1/rho)*div(rho*F)`, not the plain
-`div(F)` that Section 1's governing equation -- copied unmodified from the
+`div(F)` that Section 1's governing equation, copied unmodified from the
 theory doc's own **volumetric** RTE-moment convention
-(`02_fuv_isrf.tex` Eq. fuv-p1-zeroth/fuv-p1-first) -- literally calls for.
+(`02_fuv_isrf.tex` Eq. fuv-p1-zeroth/fuv-p1-first), literally calls for.
 The operator ruled: `u`/`F` are mass-specific throughout this
 implementation (matching injection's own `u_i += u_inject/m_i`, and the
 shipped `FUVSpecificEnergy`/`LWSpecificEnergy` I/O names), and Section 1
 must be re-derived into its correct Lagrangian/mass-specific form rather
 than have the discretization chase the doc.
 
-**What this script actually checks, precisely** -- not a tautological
+**What this script actually checks, precisely**, not a tautological
 rearrangement, but the one non-obvious, error-prone step: converting an
 EULERIAN volumetric PDE (Eq. fuv-p1-zeroth, `d(u_V)/dt` meaning
 `partial_t` at a FIXED point in space) into a LAGRANGIAN equation for the
@@ -26,7 +25,7 @@ because the Eulerian energy-density equation is written with an EXPLICIT
 mass-advection term, `d(rho*e)/dt + div(rho*e*v) = ...` (the flux already
 contains a `rho*e*v` piece by construction, since internal energy is
 carried by the gas itself). Eq. fuv-p1-zeroth has NO such term: `F_V` is a
-genuinely independent radiative flux, not `u_V*v` plus something else --
+genuinely independent radiative flux, not `u_V*v` plus something else;
 radiation is not advected with the gas at leading order. Converting
 `partial_t` to `D/Dt` for a field that is NOT advected by construction
 therefore genuinely introduces an extra term (a pure kinematic
@@ -37,7 +36,7 @@ sympy, rather than asserting it survives or cancels by analogy.
 
 **Result, stated up front**: the dilation piece of that extra term
 cancels EXACTLY against the mass-continuity term that appears when
-differentiating `u = u_V/rho` itself -- this is the genuinely non-obvious,
+differentiating `u = u_V/rho` itself, this is the genuinely non-obvious,
 previously un-verified step (flagged by round-1 `/plan-review`, sec 4.6,
 as "asserted by the standard SPH argument but not rigorously re-derived
 term by term"). What is LEFT OVER after that cancellation is a single
@@ -63,11 +62,12 @@ choice (drop the term) is therefore the better one, and Step 8's
 `v_gas/c_hyp` ratio below is the size of the box-frame price, not of an
 error in the gas-frame scheme. What the gas frame costs instead is a
 steady centroid lag of exactly `v_rel*tau` for a source moving through
-gas (`verify_design_b_timestepping_stability.py`, Part D). GEAR-RT
+gas (`verify_isrf_timestepping_stability.py`, Part D). GEAR-RT
 (`src/rt/GEAR/rt_gradients.h::rt_gradients_predict_drift`) applies
 precisely this term at every drift because it chose the box frame, which
 is right there since its c_red >> v_box.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 # This derivation converts the volumetric RTE moments into the
@@ -80,7 +80,7 @@ import sympy as sp
 
 # ---------------------------------------------------------------------
 # Independent variables and fields, all genuinely position/time-dependent
-# (sympy Function objects, not scalars) -- required to get partial
+# (sympy Function objects, not scalars), required to get partial
 # derivatives, chain rule, and product rule right without hand algebra.
 # ---------------------------------------------------------------------
 t, x, y, z = sp.symbols("t x y z")
@@ -88,7 +88,7 @@ coords = (x, y, z)
 c, kappa, tau, S = sp.symbols("c kappa tau S", positive=True)
 # S is treated as the (already mass-specific) source rate S_V/rho; kept as
 # a plain symbol (not a Function) since it never gets differentiated below
-# -- only its bookkeeping (S_V = rho*S) matters for this derivation.
+# , only its bookkeeping (S_V = rho*S) matters for this derivation.
 
 rho = sp.Function("rho")(x, y, z, t)
 u = sp.Function("u")(x, y, z, t)  # the MASS-SPECIFIC field, u := u_V/rho
@@ -133,7 +133,7 @@ dudt_V_rhs = -div(F_V) - u_V / tau + rho * S
 
 # ---------------------------------------------------------------------
 # Step 2: mass continuity (Eulerian form), solved for partial_t(rho).
-# This is the ONLY place fluid-dynamics input (continuity) enters --
+# This is the ONLY place fluid-dynamics input (continuity) enters;
 # nothing about radiation transport is assumed here.
 # ---------------------------------------------------------------------
 rho_v = tuple(rho * vi for vi in v)
@@ -141,7 +141,7 @@ drhodt_rhs = -div(rho_v)
 
 # ---------------------------------------------------------------------
 # Step 3: substitute BOTH into the definition u_V = rho*u, differentiated
-# in time, and solve for partial_t(u) -- the only unknown left once the
+# in time, and solve for partial_t(u), the only unknown left once the
 # two PDEs above have replaced partial_t(u_V) and partial_t(rho).
 # ---------------------------------------------------------------------
 ut_symbol = sp.diff(u, t)
@@ -160,7 +160,7 @@ ut_derived = sp.simplify(ut_solutions[0])
 
 # ---------------------------------------------------------------------
 # Step 4: assemble the material derivative Du/Dt = partial_t(u) + v.grad(u)
-# using the DERIVED partial_t(u) -- this is what an SPH particle's own
+# using the DERIVED partial_t(u), this is what an SPH particle's own
 # d(u_i)/dt update must equal to be physically correct.
 # ---------------------------------------------------------------------
 Du_Dt_derived = sp.simplify(ut_derived + dot(v, grad(u)))
@@ -174,13 +174,13 @@ sp.pprint(Du_Dt_derived)
 print()
 
 # ---------------------------------------------------------------------
-# Step 5: THE CLAIM -- this equals the "relative flux" form,
+# Step 5: THE CLAIM, this equals the "relative flux" form,
 #   Du/Dt = -(1/rho)*div(F_V - u_V*v) - u/tau + S
 # i.e. the flux appearing in the correctly Lagrangian-converted equation
 # is F_V MINUS the purely-kinematic advective piece u_V*v (a standard
 # Reynolds-transport-theorem correction, present for ANY scalar field
 # carried across a moving control-volume boundary, independent of the
-# field's own physics) -- not F_V unmodified.
+# field's own physics), not F_V unmodified.
 # ---------------------------------------------------------------------
 G = tuple(F_V[i] - u_V * v[i] for i in range(3))  # "relative-to-fluid" flux
 claim_relative_flux = -div(G) / rho - u / tau + S
@@ -191,20 +191,20 @@ print("Claim 1: Du/Dt == -(1/rho)*div(F_V - u_V*v) - u/tau + S")
 print("(residual, should be exactly 0):")
 print("=" * 78)
 print("  ", residual_claim1)
-assert residual_claim1 == 0, "Relative-flux identity failed -- re-derive by hand"
+assert residual_claim1 == 0, "Relative-flux identity failed, re-derive by hand"
 print("PASS")
 print()
 
 # ---------------------------------------------------------------------
 # Step 6: rewrite in terms of the DISCRETIZATION'S actual tracked
-# per-mass flux, F := F_V/rho (the plain, un-reinterpreted substitution --
+# per-mass flux, F := F_V/rho (the plain, un-reinterpreted substitution)
 # deliberately NOT the "comoving-frame flux" reinterpretation, which was
 # considered and rejected: the standard mixed-frame RT result is
 # F_lab = F_comoving + (4/3)*u_comoving*v at the Eddington closure, not
 # u_comoving*v with coefficient 1, so identifying this script's purely
 # KINEMATIC coefficient-1 term with the physically-distinct O(v/c)
 # comoving-frame correction would be an unverifiable overclaim this
-# script cannot check -- see the design doc for the full argument).
+# script cannot check, see the design doc for the full argument).
 # ---------------------------------------------------------------------
 F_over_rho = tuple(sp.Function(f"F_{c_}")(x, y, z, t) for c_ in "xyz")
 # Substitute F_V = rho*F_over_rho directly (plain definition, no frame claim)
@@ -230,14 +230,14 @@ residual_claim2 = sp.simplify(
 )
 print("  residual (should be exactly 0):", residual_claim2)
 assert residual_claim2 == 0, "Leftover-term decomposition failed"
-print("PASS -- the leftover term is exactly (1/rho)*div(u_V*v), isolated")
+print("PASS, the leftover term is exactly (1/rho)*div(u_V*v), isolated")
 print("cleanly, not absorbed into anything else.")
 print()
 
 # ---------------------------------------------------------------------
 # Step 7: confirm the leftover term is NOT identically zero in general
 # (i.e. this is a real physical omission, not a term that happens to
-# vanish under the equations' own structure) -- check with a concrete,
+# vanish under the equations' own structure), check with a concrete,
 # generic (non-uniform, non-static) choice of rho, v, u.
 # ---------------------------------------------------------------------
 concrete_rho = 1.0 + 0.3 * sp.sin(x) * sp.exp(-t)
@@ -254,8 +254,8 @@ print("=" * 78)
 print("  concrete leftover term:", leftover_concrete)
 val_at_point = leftover_concrete.subs({x: 0.7, y: 1.1, z: 0.4, t: 0.9})
 print("  numeric value at (x,y,z,t)=(0.7,1.1,0.4,0.9):", sp.N(val_at_point))
-assert sp.N(val_at_point) != 0, "leftover term vanished at a generic point -- suspicious"
-print("PASS: confirmed nonzero at a generic point -- a real term, not an")
+assert sp.N(val_at_point) != 0, "leftover term vanished at a generic point, suspicious"
+print("PASS: confirmed nonzero at a generic point, a real term, not an")
 print("algebraic artifact that happens to cancel.")
 print()
 
@@ -293,11 +293,13 @@ print()
 # DOES compute, using the design's own steady-state scaling
 # (F ~ -D*grad(u), D = c_hyp*lambda, so |F_V| ~ rho*c_hyp*u/L for some
 # length scale L ~ lambda, i.e. |F_V| ~ c_hyp*u_V to order of magnitude).
-# This is a scaling argument, not a symbolic identity -- reported as such.
+# This is a scaling argument, not a symbolic identity, reported as such.
 # ---------------------------------------------------------------------
 c_hyp_sym, v_gas_sym = sp.symbols("c_hyp v_gas", positive=True)
 u_V_scale, L_scale = sp.symbols("u_V_scale L", positive=True)
-F_V_scale_est = c_hyp_sym * u_V_scale  # |F_V| ~ c_hyp * u_V, from F ~ D*grad(u)/... ~ c_hyp*lambda*(u/lambda)
+F_V_scale_est = (
+    c_hyp_sym * u_V_scale
+)  # |F_V| ~ c_hyp * u_V, from F ~ D*grad(u)/... ~ c_hyp*lambda*(u/lambda)
 div_FV_scale_est = F_V_scale_est / L_scale
 div_uVv_scale_est = u_V_scale * v_gas_sym / L_scale
 ratio = sp.simplify(div_uVv_scale_est / div_FV_scale_est)
@@ -318,22 +320,26 @@ print("  1.0.1, validation legs 6.5/6.6).")
 print()
 
 # ---------------------------------------------------------------------
-# Step 9: the §1.1/§1.2 steady-state reduction -- confirm the amplitude/
+# Step 9: the §1.1/§1.2 steady-state reduction, confirm the amplitude/
 # screening-length results built on plain div(F) survive UNCHANGED under
 # a LOCALLY UNIFORM density assumption (the setup §6.1/§6.2's own
-# validation legs actually use -- a uniform box), and exhibit the extra
+# validation legs actually use, a uniform box), and exhibit the extra
 # drift term that appears once rho is allowed to vary.
 # ---------------------------------------------------------------------
 rho_const = sp.Symbol("rho0", positive=True)
 D_sym = sp.Symbol("D", positive=True)
 u_generic = sp.Function("u")(x, y, z)
-F_generic = tuple(-D_sym * sp.diff(u_generic, coord) for coord in coords)  # F = -D*grad(u)
+F_generic = tuple(
+    -D_sym * sp.diff(u_generic, coord) for coord in coords
+)  # F = -D*grad(u)
 
 # General (non-uniform rho) reduction: (1/rho)*div(rho*F) = div(F) + F.grad(ln(rho))
 rho_field_generic = sp.Function("rho")(x, y, z)
-lhs_general = sp.diff(rho_field_generic * F_generic[0], x) / rho_field_generic \
-    + sp.diff(rho_field_generic * F_generic[1], y) / rho_field_generic \
+lhs_general = (
+    sp.diff(rho_field_generic * F_generic[0], x) / rho_field_generic
+    + sp.diff(rho_field_generic * F_generic[1], y) / rho_field_generic
     + sp.diff(rho_field_generic * F_generic[2], z) / rho_field_generic
+)
 lhs_general = sp.simplify(lhs_general)
 div_F_generic = div(F_generic)
 grad_ln_rho = tuple(sp.diff(sp.log(rho_field_generic), coord) for coord in coords)
@@ -351,9 +357,11 @@ assert residual_general == 0
 # (derivative = 0, not a substitution into an already-differentiated
 # expression), confirm the drift term vanishes and the operator reduces
 # to plain div(F) exactly.
-lhs_uniform = sp.diff(rho_const * F_generic[0], x) / rho_const \
-    + sp.diff(rho_const * F_generic[1], y) / rho_const \
+lhs_uniform = (
+    sp.diff(rho_const * F_generic[0], x) / rho_const
+    + sp.diff(rho_const * F_generic[1], y) / rho_const
     + sp.diff(rho_const * F_generic[2], z) / rho_const
+)
 lhs_uniform = sp.simplify(lhs_uniform)
 residual_uniform = sp.simplify(lhs_uniform - div_F_generic)
 print()
@@ -362,12 +370,12 @@ print("  (1/rho0)*div(rho0*F) == div(F)  (residual, should be 0):")
 print("  ", residual_uniform)
 assert residual_uniform == 0
 print("PASS: the §1.1/§1.2 Yukawa/amplitude derivations (which assume a")
-print("locally uniform ambient density around the point source -- exactly")
+print("locally uniform ambient density around the point source, exactly")
 print("the setup §6.1/§6.2's own validation boxes use) are UNCHANGED by")
 print("the mass-specific reformulation: (1/rho)*div(rho*F) reduces")
 print("identically to plain div(F) there. Away from that assumption (a")
 print("real density gradient), an extra drift term F.grad(ln rho) appears")
-print("-- not a new problem introduced by this rework, since §1.2's own")
+print("(not a new problem introduced by this rework, since §1.2's own")
 print("derivation already implicitly assumed a locally uniform medium for")
 print("the point-source Green's function to apply at all.")
 print()

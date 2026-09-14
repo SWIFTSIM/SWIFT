@@ -1,6 +1,6 @@
-"""Verify WHICH differential operator the Design B `grad(u)` estimator
-(design-lw-fuv-design-b.md Section 2.2) must target, and which of two SPH
-constructions actually converges to it.
+"""Verify WHICH differential operator the scheme's pairwise `grad(u)`
+estimator must target, and which of two SPH constructions actually
+converges to it.
 
 Section 1's flux (first-moment) equation, written for the mass-specific
 variables `u = u_V/rho`, `F = F_V/rho` the implementation tracks, is
@@ -22,7 +22,7 @@ so the scheme would pump radiation energy into dense gas out of nothing.
 This script (a) states the algebra with sympy, (b) runs that exact
 exposing configuration (uniform `u_V`, linear `rho(x)`, `F = 0`) on a
 regular lattice for both constructions, and (c) repeats
-`verify_design_b_div_f_consistency.py`'s neighbour-count convergence
+`verify_isrf_div_f_consistency.py`'s neighbour-count convergence
 sweep with linear `u(x)`, `rho(x)` fields to identify each construction's
 continuum-limit operator. The symmetric construction is
 `src/rt/SPHM1RT/rt_gradients.h`'s `radiation_gradient_SPH` `diffmode==1`
@@ -30,12 +30,13 @@ branch (the scalar twin of the `div(F)` construction Section 2.2 already
 adopted, same shared-value / mirrored-mass-and-sign pattern), whose own
 doxygen states it computes `(1/rho)*grad(rho*uin)`.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 #
-# The question this script settles -- which differential operator the
+# The question this script settles, which differential operator the
 # gradient estimator converges to, `(1/rho)grad(rho u)` rather than
-# `grad(u)` -- is unchanged by the closure. The shipped M1 operator
+# `grad(u)`, is unchanged by the closure. The shipped M1 operator
 # contracts exactly the same volumetric field `rho*u` with a per-particle
 # tensor before differencing it (`(1/rho)div(D*rho*u)`), and reduces to the
 # form tested here, times 1/3, at D = I/3. The spurious-flux failure mode
@@ -83,7 +84,9 @@ def wendland_c2_3d(q):
     dwdq = np.zeros_like(q)
     qi = q[inside]
     w[inside] = norm * (1.0 - qi) ** 4 * (4.0 * qi + 1.0)
-    dwdq[inside] = norm * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4)
+    dwdq[inside] = norm * (
+        -4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4
+    )
     return w, dwdq
 
 
@@ -108,7 +111,7 @@ def grad_pair_symmetric(dx, r, wi_dr, wj_dr, rhoi, rhoj, mi, mj, ui, uj):
     (u_i/rho_i wi_dr + u_j/rho_j wj_dr)/r, applied as +m_j dx to i and
     -m_i dx to j. No finalize. Right operator, but NOT the adjoint of the
     diffmode==1 divergence: the staggered scheme built on it is unstable on
-    a disordered distribution (verify_design_b_timestepping_stability.py,
+    a disordered distribution (verify_isrf_timestepping_stability.py,
     Part F.3). Kept as the rejected candidate."""
     r_inv = 1.0 / r
     shared = (ui / rhoi * wi_dr + uj / rhoj * wj_dr) * r_inv
@@ -152,7 +155,18 @@ def accumulate(pos, rho, mass, u_field, h, fn):
     dx = pos[i_idx] - pos[j_idx]
     r = np.linalg.norm(dx, axis=1)
     w = kernel_dr(r, h)
-    gi, gj = fn(dx, r, w, w, rho[i_idx], rho[j_idx], mass[i_idx], mass[j_idx], u_field[i_idx], u_field[j_idx])
+    gi, gj = fn(
+        dx,
+        r,
+        w,
+        w,
+        rho[i_idx],
+        rho[j_idx],
+        mass[i_idx],
+        mass[j_idx],
+        u_field[i_idx],
+        u_field[j_idx],
+    )
     out = np.zeros_like(pos)
     np.add.at(out, i_idx, gi)
     np.add.at(out, j_idx, gj)
@@ -188,14 +202,18 @@ for hod in h_sweep:
     gs = accumulate(pos, rho, mass, u_spec, h, grad_pair_symmetric)[p_idx]
     gr = accumulate(pos, rho, mass, u_spec, h, grad_pair_difference_rho_u)[p_idx]
     nn = (4.0 / 3.0) * np.pi * hod**3
-    print(f"  ~{nn:5.0f} nbrs: difference grad_x = {gd[0]:+.5f} (grad(u)_x analytic {analytic_spurious:+.5f}),"
-          f"  symmetric grad_x = {gs[0]:+.2e},  diffmode==0 grad_x = {gr[0]:+.2e}")
+    print(
+        f"  ~{nn:5.0f} nbrs: difference grad_x = {gd[0]:+.5f} (grad(u)_x analytic {analytic_spurious:+.5f}),"
+        f"  symmetric grad_x = {gs[0]:+.2e},  diffmode==0 grad_x = {gr[0]:+.2e}"
+    )
     err_diff.append(abs(gd[0] - analytic_spurious))
     err_sym.append(abs(gs[0]))
     err_dru.append(abs(gr[0]))
 scale = abs(uV0 * rho0 * slope / rho0**2)
-print(f"  symmetric |grad_x| / |spurious scale| stays within {max(err_sym) / scale:.2e};"
-      f" diffmode==0 within {max(err_dru) / scale:.2e}; the difference form converges onto the spurious value.")
+print(
+    f"  symmetric |grad_x| / |spurious scale| stays within {max(err_sym) / scale:.2e};"
+    f" diffmode==0 within {max(err_dru) / scale:.2e}; the difference form converges onto the spurious value."
+)
 # u = u_V/rho is not linear here, so the symmetric form's residual is the
 # ordinary O(h^2) curvature truncation error (it grows with h, as expected).
 # diffmode==0 differences rho*u itself, so a uniform u_V gives exactly zero.
@@ -217,7 +235,8 @@ u0, s_u = 1.0, 0.8
 u_lin = u0 * (1.0 + s_u * pos[:, 0])
 TARGETS = {
     "grad(u)": lambda xp, rp: u0 * s_u,
-    "(1/rho) grad(rho u)": lambda xp, rp: u0 * s_u + u0 * (1 + s_u * xp) * rho0 * slope / rp,
+    "(1/rho) grad(rho u)": lambda xp, rp: u0 * s_u
+    + u0 * (1 + s_u * xp) * rho0 * slope / rp,
 }
 verdicts = {}
 for name, fn in CONSTRUCTIONS.items():
@@ -235,7 +254,10 @@ for name, fn in CONSTRUCTIONS.items():
     print(f"\n  {name}:")
     for hod, *row in zip(h_sweep, *[err[t] for t in TARGETS]):
         nn = (4.0 / 3.0) * np.pi * hod**3
-        print(f"    ~{nn:5.0f} nbrs: " + "   ".join(f"{t}={v:.3e}" for t, v in zip(TARGETS, row)))
+        print(
+            f"    ~{nn:5.0f} nbrs: "
+            + "   ".join(f"{t}={v:.3e}" for t, v in zip(TARGETS, row))
+        )
     last = {t: err[t][-1] for t in TARGETS}
     first = {t: err[t][0] for t in TARGETS}
     best = min(last, key=last.get)
@@ -254,7 +276,7 @@ print("CONFIRMED: the difference form on u targets plain grad(u) (wrong operator
 print("for the mass-specific flux equation); both radiation_gradient_SPH")
 print("diffmode==1 and diffmode==0 target (1/rho) grad(rho u), the correct one.")
 print("diffmode==0 is adopted: it is minus the adjoint of the diffmode==1")
-print("divergence in the m*rho inner product (verify_design_b_timestepping_")
+print("divergence in the m*rho inner product (verify_isrf_timestepping_")
 print("stability.py Part F.3), which the staggered scheme's stability on a")
 print("disordered distribution requires; diffmode==1 for grad is not, and the")
 print("scheme built on it diverges there. ALL CHECKS PASSED")

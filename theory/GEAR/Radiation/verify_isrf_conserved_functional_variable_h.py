@@ -1,12 +1,9 @@
-"""M1 upgrade Phase 1, item 4: conserved-functional diagnostic for the
-`diffmode==2` anisotropic gradient loop's lost skew-adjointness (Phase 0
-review finding, `.claude/HANDOFF.md` "PHASE 0 IMPLEMENTATION" entry,
-2026-09-11). Recommended (not a hard gate) by that review; run here per
-`.claude/dev/PLAN_m1_upgrade_2026-09-11.md` Phase 1, item 4.
+"""Conserved-functional diagnostic for the `diffmode==2` anisotropic
+gradient loop's skew-adjointness under the M1 pressure-tensor closure.
 
-Background: Phase 0 replaced the P1 scalar gradient term (which was the
-EXACT skew-adjoint of the density loop's `div(F)` in the `m*rho` inner
-product) with the M1 anisotropic pressure-tensor divergence
+Background: the M1 upgrade replaced the earlier isotropic scalar gradient
+term (which was the EXACT skew-adjoint of the density loop's `div(F)` in
+the `m*rho` inner product) with the anisotropic pressure-tensor divergence
 (`radiation_gradient_accumulate_band`, `diffmode==2`: a SHARED averaged
 kernel derivative `wbar_dr = 0.5*(wi_dr+wj_dr)`, vs. the density loop's own
 per-particle `wi_dr`/`wj_dr` in `radiation_divergence_accumulate_band`,
@@ -21,7 +18,7 @@ This script re-implements both pairwise operators plus the exact-relaxation
 plain forward-Euler forms) and the M1 flux limiter
 (`radiation_apply_flux_limiter_band`), directly from source (git commit
 `d181a1c27`), and evolves a smooth low-amplitude `(u, F)` seed perturbation
-on a FIXED background (pos/rho/mass/h frozen -- exactly what the real
+on a FIXED background (pos/rho/mass/h frozen, exactly what the real
 per-step density snapshot `rho_prev` does; only `(u, F)` evolve), with
 absorption (`kappa`), dissipation (`alpha_max`/`alpha_floor`) and the
 source term all off. This isolates the propagation-only linear/quasi-linear
@@ -34,7 +31,7 @@ spec, `dF/dt = -c_hyp^2*G` with the `1/3` already folded into `G`):
 
 Discriminator: at UNIFORM h, `wi_dr == wj_dr` for every pair (same kernel,
 same h), so `wbar_dr` reduces to the same per-particle value the old
-adjoint pairing used -- the residual is identically zero there BY
+adjoint pairing used, the residual is identically zero there BY
 CONSTRUCTION, and this script's own uniform-h control run below is the
 self-check that the re-implementation is faithful (E must be flat to
 round-off with A_rho=0). Only a VARIABLE-h configuration can discriminate
@@ -43,44 +40,41 @@ independent correctness control on the (unchanged, exactly antisymmetric)
 density loop.
 
 Verdict rule (plan's own): drift that SHRINKS WITH RESOLUTION (h -> 0) is
-an expected, bounded consistency error -- monitor only, no action needed.
+an expected, bounded consistency error, monitor only, no action needed.
 Drift that GROWS IN TIME AT FIXED h (accelerating, not just linear
-accumulation) is a real non-normal mode -- STOP, escalate to the operator,
+accumulation) is a real non-normal mode, STOP, escalate to the operator,
 do not proceed into Phase 2 on this script's own authority.
 
-STATUS (2026-09-11, mid-Phase-1): a parallel investigation
-(`.claude/dev/M1_gradient_adjointness_investigation_2026-09-11.md`) found
+STATUS: a parallel investigation found
 that the isotropic `(u, F)` functional above is NOT a conserved quantity of
 the M1 equations at all (even at uniform h, for a genuinely anisotropic
-`D`) -- the residual splits into `R_h` (the kernel-derivative mismatch this
+`D`), the residual splits into `R_h` (the kernel-derivative mismatch this
 script was built to isolate, removable by a `diffmode==0` gradient-loop
 fix) and `R_D` (an irreducible PDE-level anisotropy term, non-zero even at
 uniform h, NOT fixable). A low-amplitude run stays near-isotropic
 (`D ~ I/3`) throughout, so it under-exercises `R_D` and can read "clean"
-while missing the larger effect -- exactly what happened on this script's
+while missing the larger effect, exactly what happened on this script's
 first corrected run (see IC bug note below). One addition below, per that
 investigation's own recommendation (its Section 8): the `D`-weighted
 functional `Q_D = sum m*rho*(u^2/2 + F.D^-1.F/(2*c_hyp^2))` (the metric in
 which frozen-`D` adjointness genuinely holds) alongside the isotropic `E`.
 (A SECOND recommended addition, a uniform-h constant-anisotropic-`D`
-static control that isolates `R_D` directly, is NOT implemented here --
+static control that isolates `R_D` directly, is NOT implemented here;
 the only uniform-h section below is a dynamical run with the real
 closure, which stays near-isotropic; still open, not a blocker for the
 results below.)
 
-STATUS (2026-09-11): the `diffmode==0` fix has LANDED
-(`radiation_propagation_iact.h`, `.claude/dev/logs/2026-09-11_1829_m1-gradient-diffmode0-fix.md`,
-part of the M1 upgrade's Phase 0/1/2, all committed -- see the
-comprehensive review in `.claude/HANDOFF.md`). The numbers below are
-POST-fix and can be trusted as a verdict on their own terms.
+STATUS: the `diffmode==0` fix has LANDED (`radiation_propagation_iact.h`).
+The numbers below are post-fix and can be trusted as a verdict on their
+own terms.
 
 IC BUG FIXED (found independently while first running this script): the
 gradient/divergence pair operates on `u_V = rho*u`, not `u` itself (see
-`verify_design_b_dissipation.py`'s own Part B.1: "uniform u_V on a density
+`verify_isrf_dissipation.py`'s own Part B.1: "uniform u_V on a density
 gradient must give exactly 0"). An earlier version of this script perturbed
 `u` directly with `rho(x)` varying underneath it, which makes `u_V`
 strongly non-uniform (inheriting the full density-modulation amplitude,
-not the intended small perturbation) -- an O(1) jump was mistaken for a
+not the intended small perturbation), an O(1) jump was mistaken for a
 "low-amplitude seed", explaining an initial spurious resolution-independent
 blowup. Fixed: the background now holds `u_V` uniform (`u = U0/rho`), with
 the actual small perturbation applied to `u_V`.
@@ -95,7 +89,7 @@ ETA = 1.2348  # resolution_eta in every shipped SubgridRadiation example
 
 def wc2_3d_w_dwdr(r, H):
     """dW/dr(r) of the 3D Wendland C2 kernel, support radius H, exactly as
-    SWIFT computes it (same convention as verify_design_b_dissipation.py)."""
+    SWIFT computes it (same convention as verify_isrf_dissipation.py)."""
     r = np.atleast_1d(np.asarray(r, dtype=np.float64))
     H = np.broadcast_to(np.asarray(H, dtype=np.float64), r.shape)
     q = r / H
@@ -121,9 +115,7 @@ def m1_closure_f_chi(u, F, c_hyp):
     F_inv = np.where(F2 > 0.0, 1.0 / np.sqrt(np.maximum(F2, 1e-300)), 0.0)
     Fmag = F2 * F_inv
     denom = c_hyp * u
-    f = np.where(
-        denom > 0.0, np.minimum(Fmag / np.maximum(denom, 1e-300), 1.0), 0.0
-    )
+    f = np.where(denom > 0.0, np.minimum(Fmag / np.maximum(denom, 1e-300), 1.0), 0.0)
     sq = 4.0 - 3.0 * f * f
     chi = (3.0 + 4.0 * f * f) / (5.0 + 2.0 * np.sqrt(sq))
     return f, chi
@@ -145,7 +137,7 @@ def m1_closure_tensor(u, F, c_hyp):
 
 def build_variable_h_lattice(n_per_dim, box_l, rho0, A_rho, n_wave_rho):
     """Uniform-position lattice (fixed spacing), density field varying
-    smoothly along x -- an SPH particle's own mass is fixed, so this gives
+    smoothly along x, an SPH particle's own mass is fixed, so this gives
     a smoothly varying h(x) = ETA*(m/rho(x))^(1/3), matching how a real
     disordered/multi-phase distribution's h field looks, without needing
     actual multi-phase relaxation (pos/rho/mass/h are all FROZEN background
@@ -178,7 +170,12 @@ def precompute_pairs(pos, box_l, h):
     wj_dr = wi_dr_of(rr, h[j_idx])
     wbar_dr = 0.5 * (wi_dr + wj_dr)
     return dict(
-        i=i_idx, j=j_idx, dx=dxv, r_inv=r_inv, wi_dr=wi_dr, wj_dr=wj_dr,
+        i=i_idx,
+        j=j_idx,
+        dx=dxv,
+        r_inv=r_inv,
+        wi_dr=wi_dr,
+        wj_dr=wj_dr,
         wbar_dr=wbar_dr,
     )
 
@@ -203,8 +200,7 @@ def gradient_accumulate_varh(pairs, rho, mass, u, D, N):
     2026-09-11 to `diffmode==0` (each particle's own `wi_dr`/`wj_dr`
     separately, no shared average, no grad-h factor), matching the fix that
     landed in `radiation_propagation_iact.h` (working tree, uncommitted, not
-    edited by this script/session) per
-    `.claude/dev/M1_gradient_adjointness_investigation_2026-09-11.md`: exact
+    edited by this script/session): exact
     skew-adjoint of the `diffmode==1` divergence loop in the `D^-1`-weighted
     inner product (not the plain `m*rho` one), for any `h_i != h_j`, whenever
     `D` is locally constant between neighbours."""
@@ -248,16 +244,17 @@ def m1_closure_D_inverse(D_tensor, f_val, chi_val):
     # 0 there by construction (F=0), so guard explicitly rather than trust
     # the division.
     outer_nn = np.where((chi_val[:, None, None] > 1.0 / 3.0 + 1e-9), outer_nn, 0.0)
-    D_inv = inv_transverse[:, None, None] * eye + (
-        inv_along - inv_transverse
-    )[:, None, None] * outer_nn
+    D_inv = (
+        inv_transverse[:, None, None] * eye
+        + (inv_along - inv_transverse)[:, None, None] * outer_nn
+    )
     return D_inv
 
 
 def apply_flux_limiter(u, c_hyp, F):
     """Vectorized #radiation_apply_flux_limiter_band. Returns the limited F
     and the pre-clamp ratio |F|/(c_hyp*u) (for monitoring whether the
-    limiter ever actually engages -- it must not, for this diagnostic to
+    limiter ever actually engages, it must not, for this diagnostic to
     isolate the LINEAR/quasi-linear propagation operator alone)."""
     F2 = np.sum(F * F, axis=1)
     Fmag = np.sqrt(np.maximum(F2, 0.0))
@@ -267,15 +264,27 @@ def apply_flux_limiter(u, c_hyp, F):
     lim = np.minimum(1.0, np.where(active, 1.0 / np.maximum(ratio, 1e-300), 0.0))
     F_out = F.copy()
     nonzero_F = F2 > 0.0
-    scale = np.where(active & nonzero_F, np.minimum(1.0, c_hyp * u / np.maximum(Fmag, 1e-300)), 1.0)
+    scale = np.where(
+        active & nonzero_F, np.minimum(1.0, c_hyp * u / np.maximum(Fmag, 1e-300)), 1.0
+    )
     F_out[active & nonzero_F] *= scale[active & nonzero_F][:, None]
     F_out[~active] = 0.0
     return F_out, ratio
 
 
 def run_sim(
-    n_per_dim, box_l, T_end, C_courant, c_hyp0, rho0, A_rho, n_wave_rho, u0,
-    eps_u, n_wave_u, record_every=1,
+    n_per_dim,
+    box_l,
+    T_end,
+    C_courant,
+    c_hyp0,
+    rho0,
+    A_rho,
+    n_wave_rho,
+    u0,
+    eps_u,
+    n_wave_u,
+    record_every=1,
 ):
     pos, dxp, rho, mass, h = build_variable_h_lattice(
         n_per_dim, box_l, rho0, A_rho, n_wave_rho
@@ -298,14 +307,22 @@ def run_sim(
 
     def energy_iso(u_, F_):
         return float(
-            np.sum(mass * rho * (0.5 * u_**2 + 3.0 * np.sum(F_ * F_, axis=1) / (2.0 * c_hyp**2)))
+            np.sum(
+                mass
+                * rho
+                * (0.5 * u_**2 + 3.0 * np.sum(F_ * F_, axis=1) / (2.0 * c_hyp**2))
+            )
         )
 
     def energy_Dinv(u_, F_, D_):
         Dinv = m1_closure_D_inverse(D_, *m1_closure_f_chi(u_, F_, c_hyp))
         Dinv_F = np.einsum("nab,nb->na", Dinv, F_)
         return float(
-            np.sum(mass * rho * (0.5 * u_**2 + np.sum(F_ * Dinv_F, axis=1) / (2.0 * c_hyp**2)))
+            np.sum(
+                mass
+                * rho
+                * (0.5 * u_**2 + np.sum(F_ * Dinv_F, axis=1) / (2.0 * c_hyp**2))
+            )
         )
 
     sum_mu0 = float(np.sum(mass * u))
@@ -340,10 +357,19 @@ def run_sim(
             sum_mu_hist.append(float(np.sum(mass * u)))
 
     return dict(
-        t=np.array(t_hist), E=np.array(E_hist), QD=np.array(QD_hist),
+        t=np.array(t_hist),
+        E=np.array(E_hist),
+        QD=np.array(QD_hist),
         sum_mu=np.array(sum_mu_hist),
-        max_f_ratio=max_f_ratio, h_min=float(h.min()), h_max=float(h.max()),
-        dt=dt, n_steps=n_steps, N=N, sum_mu0=sum_mu0, E0=E_hist[0], QD0=QD_hist[0],
+        max_f_ratio=max_f_ratio,
+        h_min=float(h.min()),
+        h_max=float(h.max()),
+        dt=dt,
+        n_steps=n_steps,
+        N=N,
+        sum_mu0=sum_mu0,
+        E0=E_hist[0],
+        QD0=QD_hist[0],
     )
 
 
@@ -355,16 +381,22 @@ def _drift_stats(label_metric, t, Q, Q0):
     slope_first_half = np.polyfit(t[i1a:i1b], Q[i1a:i1b], 1)[0]
     slope_second_half = np.polyfit(t[i2a:i2b], Q[i2a:i2b], 1)[0]
     slope_full = np.polyfit(t[i2:], Q[i2:], 1)[0]
-    print(f"    [{label_metric}] Q0 = {Q0:.6e}, Q_final = {Q[-1]:.6e}, "
-          f"(Q_final-Q0)/Q0 = {(Q[-1]-Q0)/Q0:+.3e}")
-    print(f"      dQ/dt (second-half fit) = {slope_full:+.4e} "
-          f"(normalized {slope_full/Q0:+.4e}/time); first/last quarter of "
-          f"second half = {slope_first_half:+.4e} / {slope_second_half:+.4e} "
-          f"(ratio {slope_second_half/slope_first_half if slope_first_half != 0 else float('nan'):+.3f}; "
-          f"~1 = bounded accumulation, >>1 = accelerating/real instability)")
+    print(
+        f"    [{label_metric}] Q0 = {Q0:.6e}, Q_final = {Q[-1]:.6e}, "
+        f"(Q_final-Q0)/Q0 = {(Q[-1]-Q0)/Q0:+.3e}"
+    )
+    print(
+        f"      dQ/dt (second-half fit) = {slope_full:+.4e} "
+        f"(normalized {slope_full/Q0:+.4e}/time); first/last quarter of "
+        f"second half = {slope_first_half:+.4e} / {slope_second_half:+.4e} "
+        f"(ratio {slope_second_half/slope_first_half if slope_first_half != 0 else float('nan'):+.3f}; "
+        f"~1 = bounded accumulation, >>1 = accelerating/real instability)"
+    )
     return dict(
-        slope_full=slope_full, slope_full_norm=slope_full / Q0,
-        slope_first_half=slope_first_half, slope_second_half=slope_second_half,
+        slope_full=slope_full,
+        slope_full_norm=slope_full / Q0,
+        slope_first_half=slope_first_half,
+        slope_second_half=slope_second_half,
     )
 
 
@@ -373,15 +405,21 @@ def report(label, res):
     sum_mu_drift = np.max(np.abs(sum_mu - res["sum_mu0"])) / max(
         abs(res["sum_mu0"]), 1e-300
     )
-    print(f"  [{label}] N={res['N']}, dt={res['dt']:.4e}, n_steps={res['n_steps']}, "
-          f"h in [{res['h_min']:.4e}, {res['h_max']:.4e}]")
+    print(
+        f"  [{label}] N={res['N']}, dt={res['dt']:.4e}, n_steps={res['n_steps']}, "
+        f"h in [{res['h_min']:.4e}, {res['h_max']:.4e}]"
+    )
     print(f"    sum(m*u): max drift/|sum_mu0| = {sum_mu_drift:.3e} (must be ~roundoff)")
     stats_iso = _drift_stats("isotropic E", t, res["E"], res["E0"])
     stats_Dinv = _drift_stats("D^-1-weighted Q_D", t, res["QD"], res["QD0"])
-    print(f"    max |F|/(c_hyp*u) reached (limiter engagement check) = "
-          f"{res['max_f_ratio']:.3e} (must stay << 1: limiter must not engage)")
+    print(
+        f"    max |F|/(c_hyp*u) reached (limiter engagement check) = "
+        f"{res['max_f_ratio']:.3e} (must stay << 1: limiter must not engage)"
+    )
     return dict(
-        sum_mu_drift=sum_mu_drift, iso=stats_iso, Dinv=stats_Dinv,
+        sum_mu_drift=sum_mu_drift,
+        iso=stats_iso,
+        Dinv=stats_Dinv,
         max_f_ratio=res["max_f_ratio"],
     )
 
@@ -403,7 +441,7 @@ T_end = 20.0  # ~20 box light-crossing times (c_hyp0=1, box_l=1): long enough
 print("=" * 78)
 print("Control: UNIFORM h (A_rho=0), D^-1 metric must be identically zero")
 print("by construction (mode 0 is the exact skew-adjoint of the divergence")
-print("loop, in the D^-1 metric, whenever D is locally constant -- includes")
+print("loop, in the D^-1 metric, whenever D is locally constant, includes")
 print("F=0/uniform h trivially). This is the self-check that this script's")
 print("own re-implementation is faithful to the source, not just a")
 print("plausible-looking numpy program. NOTE: the isotropic E metric is NOT")
@@ -412,8 +450,16 @@ print("(D drifts from I/3): only Q_D (D^-1 metric) has the machine-precision")
 print("guarantee at fixed, locally-constant D.")
 print("=" * 78)
 res_uniform = run_sim(
-    n_per_dim=10, box_l=box_l, T_end=T_end, C_courant=C_courant, c_hyp0=c_hyp0,
-    rho0=rho0, A_rho=0.0, n_wave_rho=n_wave_rho, u0=u0, eps_u=eps_u,
+    n_per_dim=10,
+    box_l=box_l,
+    T_end=T_end,
+    C_courant=C_courant,
+    c_hyp0=c_hyp0,
+    rho0=rho0,
+    A_rho=0.0,
+    n_wave_rho=n_wave_rho,
+    u0=u0,
+    eps_u=eps_u,
     n_wave_u=n_wave_u,
 )
 r_uniform = report("uniform h, n=10", res_uniform)
@@ -431,15 +477,31 @@ print("Item 4: VARIABLE h, two resolutions (diffmode==0 gradient loop,")
 print("matching the working-tree fix in radiation_propagation_iact.h)")
 print("=" * 78)
 res_lo = run_sim(
-    n_per_dim=10, box_l=box_l, T_end=T_end, C_courant=C_courant, c_hyp0=c_hyp0,
-    rho0=rho0, A_rho=0.5, n_wave_rho=n_wave_rho, u0=u0, eps_u=eps_u,
+    n_per_dim=10,
+    box_l=box_l,
+    T_end=T_end,
+    C_courant=C_courant,
+    c_hyp0=c_hyp0,
+    rho0=rho0,
+    A_rho=0.5,
+    n_wave_rho=n_wave_rho,
+    u0=u0,
+    eps_u=eps_u,
     n_wave_u=n_wave_u,
 )
 r_lo = report("variable h, n=10 (coarse)", res_lo)
 print()
 res_hi = run_sim(
-    n_per_dim=16, box_l=box_l, T_end=T_end, C_courant=C_courant, c_hyp0=c_hyp0,
-    rho0=rho0, A_rho=0.5, n_wave_rho=n_wave_rho, u0=u0, eps_u=eps_u,
+    n_per_dim=16,
+    box_l=box_l,
+    T_end=T_end,
+    C_courant=C_courant,
+    c_hyp0=c_hyp0,
+    rho0=rho0,
+    A_rho=0.5,
+    n_wave_rho=n_wave_rho,
+    u0=u0,
+    eps_u=eps_u,
     n_wave_u=n_wave_u,
 )
 r_hi = report("variable h, n=16 (fine)", res_hi)
@@ -453,8 +515,10 @@ print()
 
 for metric in ("iso", "Dinv"):
     label = "isotropic E" if metric == "iso" else "D^-1-weighted Q_D"
-    print(f"  Resolution comparison, {label} (h_min: {res_lo['h_min']:.4e} -> "
-          f"{res_hi['h_min']:.4e}):")
+    print(
+        f"  Resolution comparison, {label} (h_min: {res_lo['h_min']:.4e} -> "
+        f"{res_hi['h_min']:.4e}):"
+    )
     lo_norm = abs(r_lo[metric]["slope_full_norm"])
     hi_norm = abs(r_hi[metric]["slope_full_norm"])
     print(f"    |dQ/dt|/Q0: coarse = {lo_norm:.4e}, fine = {hi_norm:.4e}")
@@ -466,14 +530,16 @@ for metric in ("iso", "Dinv"):
     accel_hi = abs(r_hi[metric]["slope_second_half"]) / max(
         abs(r_hi[metric]["slope_first_half"]), 1e-300
     )
-    print(f"    In-time acceleration ratio (fixed h): coarse = {accel_lo:.3f}, "
-          f"fine = {accel_hi:.3f} (>>1 at either resolution = STOP condition).")
+    print(
+        f"    In-time acceleration ratio (fixed h): coarse = {accel_lo:.3f}, "
+        f"fine = {accel_hi:.3f} (>>1 at either resolution = STOP condition)."
+    )
     if shrinks and accel_lo < 3.0 and accel_hi < 3.0:
         print(f"    VERDICT ({label}): drift SHRINKS WITH RESOLUTION and does not")
-        print("    accelerate in time at fixed h -- expected, bounded consistency")
+        print("    accelerate in time at fixed h, expected, bounded consistency")
         print("    error. Monitor only, no action needed.")
     else:
-        print(f"    VERDICT ({label}): STOP CONDITION -- drift does not shrink with")
+        print(f"    VERDICT ({label}): STOP CONDITION, drift does not shrink with")
         print("    resolution and/or accelerates in time at fixed h. Escalate to")
         print("    the operator; do not proceed into Phase 2 on this script's own")
         print("    authority.")

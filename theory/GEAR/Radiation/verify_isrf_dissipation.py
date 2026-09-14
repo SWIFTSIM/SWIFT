@@ -1,10 +1,9 @@
-"""Verify Design B's Stage-1 artificial-dissipation term (design-lw-fuv-
-design-b-dissipation.md Section 3-6): exact conservation of `sum_i m_i u_i`
-(Part A), the continuum-limit diffusion coefficient AND SIGN (Part B), and
-the explicit-stability bound with its admissible `alpha_max(C_hyp)` (Part
-C).
+"""Verify the scheme's artificial-dissipation term: exact conservation of
+`sum_i m_i u_i` (Part A), the continuum-limit diffusion coefficient AND
+SIGN (Part B), and the explicit-stability bound with its admissible
+`alpha_max(C_hyp)` (Part C).
 
-Fixed formula under test (Section 3.1), per band:
+Fixed formula under test, per band:
 
     d_ij   = rho_i*u_i_prev - rho_j*u_j_prev
     Wbar_ij = 0.5*(wi_dr + wj_dr)                         (< 0)
@@ -42,8 +41,8 @@ ETA = 1.2348  # resolution_eta in every shipped SubgridRadiation example
 def wc2_3d_w_dwdr(r, H):
     """W(r) and dW/dr(r) of the 3D Wendland C2 kernel, support radius H,
     exactly as SWIFT computes it: `dw/dq = -20 q (1-q)^3` on the
-    `(21/2pi)(1-q)^4(1+4q)` form (design-lw-fuv-design-b-dissipation.md
-    Section 3.5). H may be a scalar or an array broadcastable with r."""
+    `(21/2pi)(1-q)^4(1+4q)` form. H may be a scalar or an array
+    broadcastable with r."""
     r = np.atleast_1d(np.asarray(r, dtype=np.float64))
     H = np.broadcast_to(np.asarray(H, dtype=np.float64), r.shape)
     q = r / H
@@ -429,7 +428,7 @@ print(
 
 
 # nu_max = C_hyp * (Kh)_max, the odd transport symbol from the parent
-# stability script (verify_design_b_timestepping_stability.py Part B),
+# stability script (verify_isrf_timestepping_stability.py Part B),
 # recomputed here so this script is self-contained. k_hat is a UNIT
 # direction; k_mag is the wavenumber magnitude (dx = 1 throughout).
 def transport_symbol(k_hat, k_mag, h):
@@ -570,7 +569,7 @@ print(f"  G(f=1.0) = {G_at_1:.4f}  (continuum I_W = {I_W:.4f}, lattice discretis
 print(
     f"  error at eta={ETA} ~ {abs(G_at_1 - I_W) / I_W * 100:.1f}%, same order as Part C's"
 )
-print(f"  corner/face/edge modes vs the continuum bound above -- expected, not a bug).")
+print(f"  corner/face/edge modes vs the continuum bound above, expected, not a bug).")
 print("  All ratios below use G(f)/G(1.0) (self-consistent lattice quantities), not")
 print("  G(f)/I_W (which would mix a lattice sum with a continuum integral).")
 
@@ -591,7 +590,7 @@ for f_target, expected_ratio in ((1.44, 1.22), (2.15, 1.58)):
     ratio_meas = G_vals[idx] / G_at_1
     print(
         f"  f = h_i/h_j = {f_meas:.2f}: G(f)/G(1.0) = {ratio_meas:.3f} "
-        f"(design-doc-predicted ~{expected_ratio:.2f})"
+        f"(predicted ~{expected_ratio:.2f})"
     )
     assert abs(ratio_meas - expected_ratio) < 0.15
 print("  PASS: measured contrast factors reproduce Section 6 Part C's predicted")
@@ -608,7 +607,7 @@ print()
 #       a_d,i = dt*alpha*min(c_hyp_i,c_hyp_j)*G(f)/h_i
 #             = alpha*C_hyp*min(f,1)*G(f)/f
 #       For f > 1 (a coarser-h, rarefied particle i): min(f,1) = 1, so
-#       a_d,i = alpha*C_hyp*G(f)/f -- the ratio f in the denominator
+#       a_d,i = alpha*C_hyp*G(f)/f, the ratio f in the denominator
 #       PARTIALLY CANCELS the numerator's G(f) growth.
 #
 #   (b) c_hyp PINNED EQUAL for i and j (ISRF_c_hyp_pin_for_debugging, or
@@ -698,273 +697,16 @@ print("  numbers above.")
 print()
 
 # ---------------------------------------------------------------------------
-# Part G: Stage 2, the van Leer midpoint reconstruction (Section 5.2)
-# ---------------------------------------------------------------------------
-print("=" * 78)
-print("Part G: Stage 2 slope-limited midpoint reconstruction")
-print("=" * 78)
-
-ETA_CRIT = 1.0  # RADIATION_ISRF_DISSIPATION_ETA_CRIT
-
-
-def van_leer_limiter(dx, r, hi, hj, g_i, g_j):
-    """Stage-2 limiter `Phi_ij`, the formula under test
-    (radiation_dissipation_van_leer_limiter, radiation_propagation_iact.h)."""
-    A_num = np.einsum("ij,ij->i", np.atleast_2d(g_i), np.atleast_2d(dx))
-    A_den = np.einsum("ij,ij->i", np.atleast_2d(g_j), np.atleast_2d(dx))
-    A_ij = np.where(A_den != 0.0, A_num / np.where(A_den != 0.0, A_den, 1.0), 0.0)
-    denominator = (1.0 + A_ij) ** 2
-    fraction = np.where(
-        denominator > 0.0,
-        4.0 * A_ij / np.where(denominator > 0.0, denominator, 1.0),
-        0.0,
-    )
-    limiter = np.clip(fraction, 0.0, 1.0)
-    eta = np.atleast_1d(r) / np.maximum(hi, hj)
-    d_eta = eta - ETA_CRIT
-    exp_term = np.where(eta < ETA_CRIT, np.exp(-25.0 * d_eta**2), 1.0)
-    return limiter * exp_term
-
-
-def reconstructed_jump(dx, r, hi, hj, rho_i, rho_j, u_i, u_j, grad_i, grad_j):
-    """`d_ij^rec`, Section 5.2: the raw jump minus the limited midpoint slope."""
-    g_i = np.atleast_1d(rho_i)[:, None] * np.atleast_2d(grad_i)
-    g_j = np.atleast_1d(rho_j)[:, None] * np.atleast_2d(grad_j)
-    d_raw = np.atleast_1d(rho_i * u_i) - np.atleast_1d(rho_j * u_j)
-    Phi = van_leer_limiter(dx, r, hi, hj, g_i, g_j)
-    g_sum_dot = np.einsum("ij,ij->i", g_i + g_j, np.atleast_2d(dx))
-    return d_raw - Phi * 0.5 * g_sum_dot, Phi
-
-
-# G.1: opposite-sign gradients give Phi = 0, so the jump stays the raw one.
-# This is the single-particle-dip configuration Stage 1 exists for
-# (Section 5.2: "at a single-particle dip the limiter returns Phi_ij = 0
-# (opposite-sign gradients), so the jump is the raw one anyway").
-dx_g = np.array([[0.8, 0.0, 0.0]])
-r_g = np.array([0.8])
-h_g = 1.0
-rho_i_g, rho_j_g = np.array([2.0]), np.array([1.5])
-u_i_g, u_j_g = np.array([3.0]), np.array([1.0])
-grad_up = np.array([[1.3, 0.0, 0.0]])
-grad_dn = np.array([[-0.7, 0.0, 0.0]])
-d_rec_opp, Phi_opp = reconstructed_jump(
-    dx_g, r_g, h_g, h_g, rho_i_g, rho_j_g, u_i_g, u_j_g, grad_up, grad_dn
-)
-d_raw_opp = rho_i_g * u_i_g - rho_j_g * u_j_g
-print(f"  G.1 opposite-sign gradients: Phi_ij = {Phi_opp[0]:.3e} (must be exactly 0)")
-print(
-    f"      d_ij^rec = {d_rec_opp[0]:.6f}, raw d_ij = {d_raw_opp[0]:.6f} "
-    "(must be identical)"
-)
-assert Phi_opp[0] == 0.0
-assert d_rec_opp[0] == d_raw_opp[0]
-print("  PASS: a sign flip between the two gradients disables the reconstruction")
-print("  entirely, and Stage 2 then reproduces Stage 1's unreconstructed jump.")
-
-# G.2: the A_ij = -1 pole. MAGMA's own line returns 1 there; this design
-# returns 0, because an optimized build carries -ffast-math and the clamp
-# cannot be relied on to turn the resulting infinity back into [0, 1].
-grad_pole_i = np.array([[1.0, 0.0, 0.0]])
-grad_pole_j = np.array([[-1.0 * rho_i_g[0] / rho_j_g[0], 0.0, 0.0]])
-d_rec_pole, Phi_pole = reconstructed_jump(
-    dx_g, r_g, h_g, h_g, rho_i_g, rho_j_g, u_i_g, u_j_g, grad_pole_i, grad_pole_j
-)
-print(f"  G.2 exact A_ij = -1 pole: Phi_ij = {Phi_pole[0]:.3e} (must be exactly 0)")
-assert Phi_pole[0] == 0.0
-assert d_rec_pole[0] == d_raw_opp[0]
-print("  PASS: the pole is returned as 0, not as an unclamped infinity.")
-
-# G.3: consistent gradients on an exactly linear u_V field. There the two
-# gradients are equal, the limiter fraction is exactly 1, and the
-# reconstruction removes the whole resolved slope: the jump the dissipation
-# term sees goes to 0 up to the eta-Gaussian factor.
-slope_vec = np.array([[0.6, -0.2, 0.35]])
-dx_lin = np.array([[0.9, 0.3, -0.4]])
-r_lin = np.linalg.norm(dx_lin, axis=1)
-h_lin = r_lin[0] / ETA_CRIT  # eta_ij = eta_crit exactly: no Gaussian suppression
-u_V_i = 5.0
-u_V_j = u_V_i - float(np.einsum("ij,ij->i", slope_vec, dx_lin)[0])
-rho_lin_i, rho_lin_j = np.array([2.0]), np.array([3.0])
-grad_lin_i = slope_vec / rho_lin_i[0]
-grad_lin_j = slope_vec / rho_lin_j[0]
-d_rec_lin, Phi_lin = reconstructed_jump(
-    dx_lin,
-    r_lin,
-    h_lin,
-    h_lin,
-    rho_lin_i,
-    rho_lin_j,
-    np.array([u_V_i / rho_lin_i[0]]),
-    np.array([u_V_j / rho_lin_j[0]]),
-    grad_lin_i,
-    grad_lin_j,
-)
-d_raw_lin = u_V_i - u_V_j
-print(f"  G.3 consistent gradients, linear u_V: Phi_ij = {Phi_lin[0]:.6f} (expect 1)")
-print(f"      raw d_ij = {d_raw_lin:+.6f} -> reconstructed d_ij = {d_rec_lin[0]:+.3e}")
-assert abs(Phi_lin[0] - 1.0) < 1e-12
-assert abs(d_rec_lin[0]) < 1e-12 * max(1.0, abs(d_raw_lin))
-print("  PASS: on a resolved linear profile the reconstruction cancels the jump")
-print("  exactly, so Stage 2 adds no dissipation where the field is resolved.")
-
-# G.4: the eta Gaussian only ever reduces the limiter, never raises it.
-eta_probe = np.linspace(0.05, 1.5, 30)
-Phi_eta = np.array(
-    [
-        van_leer_limiter(
-            dx_lin, r_lin, r_lin[0] / e, r_lin[0] / e, slope_vec, slope_vec
-        )[0]
-        for e in eta_probe
-    ]
-)
-assert np.all(Phi_eta <= 1.0 + 1e-12)
-assert np.all(Phi_eta >= 0.0)
-assert abs(Phi_eta[-1] - 1.0) < 1e-12  # eta > eta_crit: factor is exactly 1
-assert Phi_eta[0] < 1e-6  # eta << eta_crit: strongly suppressed
-print(
-    f"  G.4 eta sweep: Phi in [{Phi_eta.min():.3e}, {Phi_eta.max():.6f}], "
-    f"Phi(eta=0.05) = {Phi_eta[0]:.3e}, Phi(eta=1.5) = {Phi_eta[-1]:.6f}"
-)
-print("  PASS: the limiter stays in [0, 1] and close pairs are suppressed.")
-print()
-
-# ---------------------------------------------------------------------------
-# Part H: Stage 3, the anisotropic flux term's SIGN, by measurement
-# ---------------------------------------------------------------------------
-print("=" * 78)
-print("Part H: Stage 3 anisotropic flux dissipation, sign by measurement")
-print("=" * 78)
-
-
-def periodic_pairs(pos, box_l, h):
-    """Pair list and minimum-image separations on a periodic lattice."""
-    tree = cKDTree(pos, boxsize=box_l)
-    pairs = tree.query_pairs(r=GAMMA_3D * h, output_type="ndarray")
-    i_idx, j_idx = pairs[:, 0], pairs[:, 1]
-    dxv = pos[i_idx] - pos[j_idx]
-    dxv -= box_l * np.round(dxv / box_l)
-    rr = np.linalg.norm(dxv, axis=1)
-    keep = rr > 0.0
-    return i_idx[keep], j_idx[keep], dxv[keep], rr[keep]
-
-
-def divergence_accumulate(pos, box_l, rho, mass, F, h):
-    """`div_specific_flux` accumulator, the shipped shared-coefficient form
-    (radiation_divergence_accumulate_band, radiation_propagation_iact.h)."""
-    i_idx, j_idx, dxv, rr = periodic_pairs(pos, box_l, h)
-    r_inv = 1.0 / rr
-    wdr = wi_dr_of(rr, h)
-    Fi_dot = np.einsum("ij,ij->i", F[i_idx], dxv)
-    Fj_dot = np.einsum("ij,ij->i", F[j_idx], dxv)
-    Phi_ij = Fi_dot / rho[i_idx] * wdr * r_inv + Fj_dot / rho[j_idx] * wdr * r_inv
-    out = np.zeros(pos.shape[0])
-    np.add.at(out, i_idx, mass[j_idx] * Phi_ij)
-    np.add.at(out, j_idx, -mass[i_idx] * Phi_ij)
-    return out
-
-
-def flux_dissipation_accumulate(pos, box_l, rho, mass, F, psi, h, alpha_f, c_hyp):
-    """`dissipation_F` accumulator, the form under test
-    (radiation_flux_dissipation_accumulate_band). Both sides carry the SAME
-    sign and each divides by its own density: this term is not
-    antisymmetric, because F is not a conserved sum."""
-    i_idx, j_idx, dxv, rr = periodic_pairs(pos, box_l, h)
-    r_inv = 1.0 / rr
-    wdr = wi_dr_of(rr, h)
-    Wbar = 0.5 * (wdr + wdr)
-
-    F_norm = np.linalg.norm(F, axis=1)
-    unit = np.zeros_like(F)
-    nonzero = F_norm > 0.0
-    unit[nonzero] = F[nonzero] / F_norm[nonzero, None]
-
-    v_sig = np.minimum(c_hyp[i_idx], c_hyp[j_idx])
-    ni_dot_dx = np.einsum("ij,ij->i", unit[i_idx], dxv)
-    nj_dot_dx = np.einsum("ij,ij->i", unit[j_idx], dxv)
-    t_i = (rho[i_idx] * alpha_f[i_idx] * v_sig * h * psi[i_idx] * ni_dot_dx)[
-        :, None
-    ] * unit[i_idx]
-    t_j = (rho[j_idx] * alpha_f[j_idx] * v_sig * h * psi[j_idx] * nj_dot_dx)[
-        :, None
-    ] * unit[j_idx]
-
-    shared = (t_i - t_j) * (Wbar * r_inv)[:, None]
-    out = np.zeros_like(F)
-    np.add.at(out, i_idx, -(mass[j_idx] / rho[i_idx] ** 2)[:, None] * shared)
-    np.add.at(out, j_idx, -(mass[i_idx] / rho[j_idx] ** 2)[:, None] * shared)
-    return out
-
-
-box_H, n_H = 1.0, 24
-pos_H, dx_H = build_lattice(n_H, box_H)
-rho_H = np.full(n_H**3, 2.0)
-mass_H = np.full(n_H**3, 2.0 * dx_H**3)
-h_H = 1.8 * dx_H
-alpha_f_H = np.ones(n_H**3)
-c_hyp_H = np.full(n_H**3, 1.3)
-F_H = np.zeros((n_H**3, 3))
-F_H[:, 0] = 1.0  # uniform direction: n = x_hat everywhere, no |F| = 0 guard hit
-
-print("  Setup: periodic 24^3 lattice, F along x_hat, an imposed div(F) oscillation")
-print("  along x. The measurement is whether the term's own d(div F)/dt opposes")
-print("  the oscillation it is given (damping) or reinforces it (growth).")
-print()
-print(f"  {'wavelength':>12} {'sum psi*dpsi/dt':>18} {'verdict':>10}")
-print("  " + "-" * 44)
-
-overlaps = []
-for n_wave in (8, 6, 4, 3):
-    wavelength_in_dx = n_H / n_wave
-    psi_H = np.sin(2.0 * np.pi * n_wave * pos_H[:, 0] / box_H)
-    diss_F = flux_dissipation_accumulate(
-        pos_H, box_H, rho_H, mass_H, F_H, psi_H, h_H, alpha_f_H, c_hyp_H
-    )
-    # The divergence operator is linear in F, so applying it to dF/dt gives
-    # d(div F)/dt directly.
-    psi_dot = divergence_accumulate(pos_H, box_H, rho_H, mass_H, diss_F, h_H)
-    overlap = float(np.sum(psi_H * psi_dot))
-    overlaps.append(overlap)
-    print(
-        f"  {wavelength_in_dx:10.2f}dx {overlap:18.6e} "
-        f"{'DAMPS' if overlap < 0 else 'GROWS':>10}"
-    )
-print("  " + "-" * 44)
-for overlap in overlaps:
-    assert overlap < 0.0
-# The 2dx Nyquist mode is deliberately excluded above: the shared-coefficient
-# divergence operator has a null there on a cubic lattice, so its overlap is
-# float round-off (~1e-26) whose sign carries no information.
-print("  PASS: `sum_i psi_i * d(psi_i)/dt` is negative at every wavelength, so the")
-print("  shipped sign DAMPS a div(F) oscillation. Section 5.2 requires this to be")
-print("  established by measurement: the mirrored sign would give a positive")
-print("  overlap at every wavelength, i.e. an exponential growth term, and it")
-print("  would pass every dimensional and antisymmetry check unnoticed.")
-
-# The mirrored sign, measured explicitly, so the discrimination is on record.
-psi_H = np.sin(2.0 * np.pi * 6 * pos_H[:, 0] / box_H)
-diss_F = flux_dissipation_accumulate(
-    pos_H, box_H, rho_H, mass_H, F_H, psi_H, h_H, alpha_f_H, c_hyp_H
-)
-psi_dot_flipped = divergence_accumulate(pos_H, box_H, rho_H, mass_H, -diss_F, h_H)
-overlap_flipped = float(np.sum(psi_H * psi_dot_flipped))
-print(
-    f"  Control: with the sign flipped, the same mode gives "
-    f"{overlap_flipped:+.6e} (> 0, a growth term)."
-)
-assert overlap_flipped > 0.0
-print()
-
-# ---------------------------------------------------------------------------
-# Part I: the relocated amplification matrix G_r (Stage 1 in the force loop)
+# Part I: the relocated amplification matrix G_r (dissipation term evaluated
+# in the force loop rather than the density loop)
 # ---------------------------------------------------------------------------
 print("=" * 78)
 print("Part I: relocated (force-loop) amplification matrix G_r vs G_c")
 print("=" * 78)
 print("""
-  Stage 1 moved from the density loop to the force loop, so the dissipation
-  source is now evaluated at the intermediate state u* rather than at
-  u_prev. The per-step map changes from G_c to G_r
-  (design-lw-fuv-dissipation-before-cooling.md Section 5.2):
+  The dissipation term is applied in the force loop rather than the density
+  loop, so the dissipation source is evaluated at the intermediate state u*
+  rather than at u_prev. The per-step map changes from G_c to G_r:
 
     u*  = e u - i (nu/c) F          (density ghost, transport only)
     u\'  = (1 - a_d) u*              (end_force, dissipation correction)

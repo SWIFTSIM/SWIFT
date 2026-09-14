@@ -1,5 +1,5 @@
-"""Pure-numerics screens N0-N2, N5 of design-lw-fuv-dissipation-instability-
-tests.md Section 2, run before any 3-D simulation leg is spent. N0 checks
+"""Pure-numerics screens N0-N2, N5 of the dissipation term's instability
+tests, run before any 3-D simulation leg is spent. N0 checks
 non-normal transient growth of the one-step propagator on a heterogeneous
 (rarefied) particle field, a class of failure modal (eigenvalue) analysis
 cannot see by construction. N1 rebuilds the Jury-condition alpha_max(C_hyp)
@@ -69,7 +69,8 @@ def build_pairs(pos, h, boxsize):
 
 
 def grad_u(u, ii, jj, dx, r, wi_dr, wj_dr, rho, mass):
-    """diffmode==0: grad(rho*u)/rho^2 (design-lw-fuv-design-b.md Sec 2.2); deliberately omits the M1 upgrade's D (Eddington) tensor as a conservative stability bound, not an oversight."""
+    """diffmode==0: grad(rho*u)/rho^2; deliberately omits the M1 closure's D
+    (Eddington) tensor as a conservative stability bound, not an oversight."""
     d_ij = rho[ii] * u[ii] - rho[jj] * u[jj]
     rinv = 1.0 / r
     coef_i = -mass[jj] * d_ij * wi_dr * rinv / rho[ii] ** 2
@@ -100,7 +101,7 @@ def phi_relaxation_factor(a):
 
 # ---------------------------------------------------------------------------
 # N0: non-normal transient growth (gates S1; the coverage gap both design
-# docs share -- every stability number elsewhere comes from MODAL analysis
+# docs share, every stability number elsewhere comes from MODAL analysis
 # on a uniform lattice, which cannot see a transient, non-modal undershoot).
 # ---------------------------------------------------------------------------
 print("=" * 78)
@@ -111,10 +112,10 @@ print(
     "  worktree (snap dirs are wiped under disk pressure, per project convention).\n"
     "  The rarefaction contrast is therefore SYNTHESISED from the measured ratios\n"
     "  (Task 1's h_i/h_j = 1.44, 2.15; the causal-reach log's own density ratio\n"
-    "  ~3x), not read from that run directly -- stated explicitly, not silently\n"
+    "  ~3x), not read from that run directly, stated explicitly, not silently\n"
     "  substituted. Only the rarefaction-profile case (ii) is built here; the\n"
     "  smoothed-metallicity-slab case (i) from S1 is NOT run in this pass (no\n"
-    "  chemistry-smoothing machinery was assembled in the time available) -- N0\n"
+    "  chemistry-smoothing machinery was assembled in the time available), N0\n"
     "  is therefore not a full screen for S1 and that gap is reported, not hidden."
 )
 
@@ -201,7 +202,7 @@ assert (
 print("  PASS: at the shipped default C_hyp=0.5, up to 3x density contrast does NOT")
 print("  destabilise the exact linear propagator (a_d=0 throughout this section:")
 print("  this is the UNDISSIPATED baseline, so this is not the dissipation term")
-print("   protecting anything -- it is the baseline scheme's own margin at C_hyp=0.5).")
+print("   protecting anything, it is the baseline scheme's own margin at C_hyp=0.5).")
 print("  The instability this section's C_hyp=1.5 demonstration below exhibits is")
 print("  real, but its onset in C_hyp is between 1.0 and 1.4, well above production.")
 print()
@@ -225,7 +226,7 @@ print(
 
 def one_step(x):
     """The round-4 staggered update (dissipation §3.1's placement, alpha=0
-    here -- N0 screens the BASELINE propagator, not the dissipation term),
+    here, N0 screens the BASELINE propagator, not the dissipation term),
     S=0 (homogeneous: this measures whether small perturbations can grow
     transiently, not the driven steady state)."""
     u = x[:Npart]
@@ -305,7 +306,7 @@ else:
     print("  ==> NULL RESULT, reported plainly: no transient-growth mechanism found on")
     print("  this rarefaction geometry at this sampling. This does not clear S1's")
     print("  metallicity-slab geometry (case (i), not built here, see the scope note")
-    print("  above) -- only the rarefaction-profile case (ii).")
+    print("  above), only the rarefaction-profile case (ii).")
 print()
 
 # ---------------------------------------------------------------------------
@@ -531,7 +532,7 @@ print()
 print("  A5: verify nu = C_hyp*(Kh) and a = C_hyp*h/lambda are dt-independent")
 print("  under c_hyp = C_hyp*h/dt (radiation_isrf.c closure): nu = c_hyp*K*dt =")
 print("  C_hyp*h/dt*K*dt = C_hyp*(Kh); a = c_hyp*kappa*dt = C_hyp*h/dt*kappa*dt =")
-print("  C_hyp*h*kappa = C_hyp*h/lambda. Both cancel dt algebraically -- verified")
+print("  C_hyp*h*kappa = C_hyp*h/lambda. Both cancel dt algebraically, verified")
 print("  symbolically above, not by a numerical dt sweep (the cancellation is exact,")
 print("  not a limit): checked directly against radiation_isrf.c's own closure line.")
 print("  PASS (by construction / code inspection, not a numerical assertion).")
@@ -606,7 +607,7 @@ def S_smooth_step(x):
 
 def kernel_source_weights(x_star):
     """Kernel-weighted deposit onto the particles nearest x_star, normalised
-    to sum 1 -- a simplified stand-in for the real dose-reservoir deposit,
+    to sum 1, a simplified stand-in for the real dose-reservoir deposit,
     used only to drive a steady near-continuous source for this screen."""
     d = np.abs(pos1d - x_star)
     w = wc2_3d_W(d, np.full(N_CHAIN, H_n2))
@@ -716,7 +717,7 @@ final_at_worst_d = final_by_alpha0[worst_d]
 print()
 print(
     f"  Worst (most negative) transient ratio at alpha_max=0: {worst_overall:.5f}"
-    f" at distance {worst_d}h -- this is N2's own answer to 'which distance"
+    f" at distance {worst_d}h, this is N2's own answer to 'which distance"
     " maximises the interface undershoot' (S1's geometry, single lambda_opaque"
     " tested here)."
 )
@@ -724,7 +725,7 @@ n2_fires = abs(worst_overall) > EPS1 and abs(worst_overall) > 0.02
 transient_confirmed = abs(final_at_worst_d) < abs(worst_overall)
 print(
     f"  Screen result: {'FIRES' if n2_fires else 'NULL'} (threshold eps_1={EPS1},"
-    f" saturation 0.02) -- at distance {worst_d}h the ratio measured at the final"
+    f" saturation 0.02), at distance {worst_d}h the ratio measured at the final"
     f" sampled step is {final_at_worst_d:.5f} ({'confirming the dip relaxes by'
     ' t_end' if transient_confirmed else 'the dip does NOT relax by t_end'})."
 )
@@ -744,7 +745,7 @@ print(
         f"below the pass bar {residual_pass_bar}."
         if abs(worst_residual) < residual_pass_bar
         else f"ABOVE the pass bar {residual_pass_bar} by roughly "
-        f"{residual_over_bar:.1f}x -- not small."
+        f"{residual_over_bar:.1f}x, not small."
     )
 )
 print()
@@ -794,8 +795,8 @@ def project5(u, seed):
     return np.dot(u, seed) / np.dot(seed, seed)
 
 
-# Spec substitution: design-lw-fuv-dissipation-instability-tests.md's N5
-# calls for delta/kernel-bump/uniform+1%-noise seeds; this implementation
+# Spec substitution: the N5 probe spec calls for delta/kernel-bump/
+# uniform+1%-noise seeds; this implementation
 # uses two checkerboard parities instead (both are exact null modes of the
 # undissipated operator on this periodic lattice, so they exercise the same
 # operator-null-space property the spec seeds were meant to probe).
@@ -825,7 +826,7 @@ for name5, u0_5 in seeds5.items():
         # operator on an even lattice: sum(m_i*u_i) is identically 0 at t=0
         # by construction for a +-1 alternating pattern, so the two checks
         # below cannot fail regardless of whether conservation genuinely
-        # holds -- they demonstrate invariance under THIS seed's null mode,
+        # holds, they demonstrate invariance under THIS seed's null mode,
         # not a general conservation test (that needs a non-null seed).
         mass_sum_hist = [np.sum(m5 * u)] if alpha_fix == 0.0 else None
         energy_hist = (
@@ -872,7 +873,7 @@ for name5, u0_5 in seeds5.items():
                 f"    sum(m_i*u_i) stays at its t=0 value (0 by construction for this"
                 f" checkerboard) to {mass_dev:.1e} (bound 1e-12); discrete energy"
                 f" per-step growth g_fit={g_fit:.10f} (|g_fit-1|="
-                f"{abs(g_fit - 1.0):.1e}, bound 1e-7) -- both null-mode invariance,"
+                f"{abs(g_fit - 1.0):.1e}, bound 1e-7), both null-mode invariance,"
                 f" not a general conservation test."
             )
         else:
@@ -887,7 +888,7 @@ for name5, u0_5 in seeds5.items():
             )
 print(
     "  PASS (alpha=0): both checkerboard seeds stay at their t=0 null-mode value"
-    " -- this confirms the seeds ARE null modes of"
+    ", this confirms the seeds ARE null modes of"
     " the operator (as expected: sum(m_i*u_i)=0 for a +-1 pattern by construction),"
     " not that the scheme conserves mass/energy in general; a real conservation"
     " test needs a seed that is not itself a null mode."
@@ -904,10 +905,9 @@ print()
 
 print(
     "  A2: the trigger's own closed loop, tested against the ACTUAL shipped"
-    " (force-loop, same-step) lag, not the design doc's originally-specified"
+    " (force-loop, same-step) lag, not the originally-specified"
     " two-step lag (that description is the superseded pre-relocation"
-    " mechanism; design-lw-fuv-design-b-dissipation.md Sec 3 'Revised latency'"
-    " already documents the correction). Spec substitution: the design doc"
+    " mechanism). Spec substitution: the original spec"
     " calls for an FFT-based period-2/4 detector; this implementation counts"
     " re-trigger events on the carrier particle's own alpha history instead"
     " (a re-trigger is what period-2/4 chattering would produce in this"
@@ -956,13 +956,13 @@ if retrigger_events == 0:
     print(
         "  NO period-2/4 chattering found (0 re-trigger events): under the actual"
         " shipped same-step lag, once negativity clears alpha decays monotonically"
-        " and does not re-fire -- a clean pass for A2."
+        " and does not re-fire, a clean pass for A2."
     )
 else:
     print(
         f"  Period-2/4 chattering FOUND ({retrigger_events} re-trigger event(s)):"
         " under the actual shipped same-step lag, alpha re-fires after the first"
-        " release instead of decaying monotonically -- NOT a clean pass for A2."
+        " release instead of decaying monotonically, NOT a clean pass for A2."
     )
 print()
 print("N2/N5 CHECKS DONE. N3/N4 still not implemented in this pass.")

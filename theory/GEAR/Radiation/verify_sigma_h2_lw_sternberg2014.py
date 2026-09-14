@@ -8,11 +8,11 @@ Le Bourlot (2014, ApJ 790:10)'s free-space photodissociation rate
 
     D0 = 5.8e-11 * I_UV  s^-1                                   (their Eq 5)
 
-D0 is the free-space (full 4*pi) rate -- NOT D(0) = D0/2, which is a
+D0 is the free-space (full 4*pi) rate, NOT D(0) = D0/2, which is a
 slab-surface geometric factor (their Eq 6) that does not apply here.
 
 Sternberg's I_UV is normalized on the Draine (1978) spectrum integrated over
-the LW band (912-1108 A, 11.3-13.6 eV) specifically -- confirmed from the
+the LW band (912-1108 A, 11.3-13.6 eV) specifically, confirmed from the
 paper's own Section 2.1 and Eq 2-4 (not the broader 6-13.6 eV band some
 other "G0" conventions use). This codebase's k_diss formula likewise only
 ever reads the LW-band field (p->feedback_data.u_LW), not the FUV band, so
@@ -32,7 +32,7 @@ flux here.
 Result is informational only (feeds a human ruling on whether
 RADIATION_SIGMA_H2_LW_CGS is plausible), not a pass/fail gate. RESOLVED
 2026-09-06: with the LW-fraction-of-Habing correction below applied,
-k_diss/D0 = 0.898, within the ~10% expected uncertainty -- see
+k_diss/D0 = 0.898, within the ~10% expected uncertainty, see
 radiation.h's own doxygen on that constant, updated to record this
 verification.
 """
@@ -144,8 +144,12 @@ def main() -> None:
     print(f"Read from {RADIATION_H}:")
     print(f"  RADIATION_SIGMA_H2_LW_CGS   = {sigma_h2_lw_cgs:.4e} cm^2")
     print(f"  RADIATION_LW_PHOTON_ENERGY_EV = {E_LW_photon_ev:.3f} eV")
-    print(f"  RADIATION_HABING_FLUX_CGS   = {habing_flux_cgs:.4e} erg/s/cm^2 (combined FUV+LW)")
-    print(f"  LW fraction of Habing band  = {LW_FRACTION_OF_HABING} (verified 2026-09-06)")
+    print(
+        f"  RADIATION_HABING_FLUX_CGS   = {habing_flux_cgs:.4e} erg/s/cm^2 (combined FUV+LW)"
+    )
+    print(
+        f"  LW fraction of Habing band  = {LW_FRACTION_OF_HABING} (verified 2026-09-06)"
+    )
     print(f"  -> LW-only equivalent       = {habing_flux_LW_only_cgs:.4e} erg/s/cm^2")
     print()
 
@@ -173,13 +177,13 @@ def main() -> None:
         f"Ratio spread across the sweep: {spread:.6f}x "
         "(1.0 = perfectly constant, as expected: both formulas are "
         "linear in G0/I_UV, so the sweep cannot itself reveal a "
-        "spectral-shape-dependent discrepancy -- it only confirms the "
+        "spectral-shape-dependent discrepancy, it only confirms the "
         "ratio is a fixed multiplicative offset, not a scaling error)."
     )
     print(
-        f"k_diss/D0 = {ratios[0]:.3f} (LW-fraction-corrected; informational "
-        "-- see module docstring; not a pass/fail gate). Within ~10% of "
-        "1.0 given the ~5-10% band-integration uncertainty above -- "
+        f"k_diss/D0 = {ratios[0]:.3f} (LW-fraction-corrected; informational, "
+        "see module docstring; not a pass/fail gate). Within ~10% of "
+        "1.0 given the ~5-10% band-integration uncertainty above, "
         "RADIATION_SIGMA_H2_LW_CGS looks plausible, not in need of a "
         "fresh re-derivation."
     )

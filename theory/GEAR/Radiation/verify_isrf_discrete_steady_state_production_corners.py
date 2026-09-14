@@ -1,17 +1,16 @@
-"""Design B's own DISCRETE steady-state point-source solution, not the
-continuum Yukawa profile `isrf_yukawa_profile_check.py` fits against --
-evaluated at the production corners `.claude/dev/logs/
-2026-09-08_1003_design-b-tier1-production-corner-comparison.md` actually
+"""The scheme's own DISCRETE steady-state point-source solution, not the
+continuum Yukawa profile `isrf_yukawa_profile_check.py` fits against,
+evaluated at the production corners actually
 measured (`h/lambda_analytic` = 2.82, 4.71, 5.98, 9.97, 11.96, 19.93).
 
-Background / what this follows on from. That comparison fit Design B's
+Background / what this follows on from. That comparison fit the scheme's
 simulated radial profile against the CONTINUUM Yukawa Green's function and
 found the fitted lambda 2-6x off (`lambda_measured/h` = 0.54, 0.42, 0.38,
-0.31, 0.29, trending toward the design doc's own predicted `~0.25 h`
-resolution floor, Sec. 4.7). The operator's direct correction: this
-comparison is invalid on its own terms, because Design B does not claim to
+0.31, 0.29, trending toward the scheme's own predicted `~0.25 h`
+resolution floor). This
+comparison is invalid on its own terms, because the scheme does not claim to
 reproduce the continuum Yukawa profile once `h` is not small compared to
-`lambda` -- Sec. 4.7's own F.1 measurement (1D chain) already found the
+`lambda`: a 1D chain measurement already found the
 DISCRETE fixed point's own e-folding length departs from the input
 `lambda` in exactly this regime (`lambda_eff/lambda = 5.2` at `lambda =
 0.05 h`, i.e. `h/lambda = 20`). What was never built is the 3D counterpart
@@ -21,7 +20,7 @@ production-corner simulation output can be compared against the right
 target instead of the continuum one.
 
 This script builds that target, by extending
-`verify_design_b_timestepping_stability.py`'s own machinery:
+`verify_isrf_timestepping_stability.py`'s own machinery:
   - Part B's `lattice_symbol_3d` (the exact Fourier symbol of the
     Wendland-C2 kernel-gradient estimator on a 3D cubic lattice, this
     project's own `resolution_eta`) is generalised here from "one
@@ -32,40 +31,40 @@ This script builds that target, by extending
     `(1 + lambda^2 K(k)^2) u_hat(k) = tau S_hat(k)`, is solved on that
     grid instead of a 1D chain.
 On a UNIFORM cubic lattice the difference (`diffmode==0`, grad) and
-symmetric (`diffmode==1`, div) estimators of design-lw-fuv-design-b.md
-Sec 2.1/2.2 reduce to the identical real, odd symbol `K(k)`, exactly as
+symmetric (`diffmode==1`, div) estimators reduce to the identical
+real, odd symbol `K(k)`, exactly as
 `lattice_symbol_3d`'s own docstring states and Part C.2 already assumes
-(one operator `A` used for both div and grad) -- this script inherits
+(one operator `A` used for both div and grad), this script inherits
 that same simplification, so it says nothing new about GLASS disorder
 (Sec 4.7's own "glass value unknown" caveat stands unchanged; that is a
 distinct, unresolved discretization-vs-continuum question left for later
 work, not something this script can settle on a perfect lattice).
 
 Part 0 is an INDEPENDENT cross-check of the continuum steady state (already
-established by direct ODE solve in verify_design_b_tier1_fit_target_
+established by direct ODE solve in verify_isrf_tier1_fit_target_
 validity.py) via a second route: the Fourier-Laplace transform method of
 `~/swiftsim_0/theory/GEAR/Diffusion/hyperbolic.tex` (the same repo's own
 Cattaneo/telegrapher metal-diffusion scheme, cited there for its exact
 time-dependent point-source Green's functions). That document's own system
 (`d(rho*Z)/dt + div(F) = 0`, `dF/dt = -(K/tau)*grad(driver) - F/tau`, Eqs.
 mass_conservation/cattaneo) has NO sink term on its conserved quantity
-(metals are transported, never absorbed) -- structurally different from
-Design B's `Du/Dt = -(1/rho)div(rho F) - u/tau + S`, which has an explicit
+(metals are transported, never absorbed), structurally different from
+the scheme's `Du/Dt = -(1/rho)div(rho F) - u/tau + S`, which has an explicit
 `-u/tau` absorption term (radiation IS absorbed by dust; this is what
 produces the Yukawa screening in the first place, and its absence in the
 metal-diffusion case is why that document's own exact Green's function
 never screens, only diffuses/propagates). Because of this, `hyperbolic.
-tex`'s own closed-form formula does not apply to Design B literally; Part 0
-instead applies its SAME two-transform technique to Design B's actual
+tex`'s own closed-form formula does not apply to the scheme literally; Part 0
+instead applies its SAME two-transform technique to the scheme's actual
 (different) equations, confirms that dropping the `-u/tau` sink recovers
 `hyperbolic.tex`'s own Eq. (transform-solution) exactly (a check that this
 script's application of the method is not simply asserted), and confirms
-separately that Design B's own steady state (via the final-value theorem)
+separately that the scheme's own steady state (via the final-value theorem)
 reproduces the same `tau*S_hat/(1+lambda^2 k^2)` transfer function Part 1
-below states from the real-space ODE and verify_design_b_tier1_fit_target_
-validity.py already confirmed by direct `sympy.dsolve` -- three independent
+below states from the real-space ODE and verify_isrf_tier1_fit_target_
+validity.py already confirmed by direct `sympy.dsolve`, three independent
 derivations of the same object, now in agreement. It also explains, from
-that structural difference, why Design B's own transients cannot inherit
+that structural difference, why the scheme's own transients cannot inherit
 `hyperbolic.tex`'s persistent ballistic-front/dipole-layer pathology
 (Remark 3d-front-dipole there): the `-u/tau` term exponentially damps any
 such feature at the SAME rate that sets the whole scheme's relaxation,
@@ -88,10 +87,11 @@ grid to confirm the continuum limit (`h/lambda -> 0` recovers
 prediction directly against the actual simulation numbers from the
 2026-09-08 comparison log.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: P1-ERA STUDY, NUMBERS SUPERSEDED.
 #
-# Same disposition as `verify_design_b_convergence_sweep.py`, which extends
+# Same disposition as `verify_isrf_convergence_sweep.py`, which extends
 # this script: the discrete solve here uses the ISOTROPIC (P1) scalar
 # `grad_u`, with no closure tensor and no flux limiter, so its per-corner
 # lambda_eff targets are P1 values. The methodology carries over unchanged
@@ -105,7 +105,7 @@ import sympy as sp
 # ---------------------------------------------------------------------------
 # Part 0: cross-check against ~/swiftsim_0's Cattaneo/telegrapher Green's
 # function derivation (hyperbolic.tex), via the SAME Fourier-Laplace
-# transform technique applied to Design B's own (different) equations.
+# transform technique applied to the scheme's own (different) equations.
 # ---------------------------------------------------------------------------
 print("=" * 78)
 print("Part 0: cross-check against swiftsim_0's telegrapher transform method")
@@ -128,7 +128,7 @@ print("  Uhat(k,p) =", Uhat_source_sol)
 
 # Cross-check A: drop the source, use an initial delta-function condition
 # instead (swiftsim_0's own problem), and take tau_u -> infinity (no u
-# sink -- exactly hyperbolic.tex's conserved-metal system, Eqs.
+# sink, exactly hyperbolic.tex's conserved-metal system, Eqs.
 # mass_conservation/cattaneo: d(rho Z)/dt + div(F) = 0, dF/dt =
 # -(K/tau)grad(driver) - F/tau, with K identified as this script's D).
 eq_u_ic = sp.Eq(p * Uhat - U0, -sp.I * k * Fhat_sol - Uhat / tau_u)
@@ -143,39 +143,43 @@ print("delta-function IC instead of a continuous source):")
 print("  Uhat(k,p), tau_u -> inf:", Uhat_ic_noSink)
 print("  hyperbolic.tex Eq. (transform-solution), kappa == D:", target_swiftsim0)
 print("  difference:", residual_A)
-assert residual_A == 0, "does not reduce to swiftsim_0's own formula -- method applied wrongly"
+assert (
+    residual_A == 0
+), "does not reduce to swiftsim_0's own formula, method applied wrongly"
 print("  MATCH: this script's transform method reproduces hyperbolic.tex's own")
 print("  formula exactly once its (different, sink-free) physics is used.")
 
-# Cross-check B: Design B's OWN system (shared tau_u = tau_F = tau, the
-# operator's ruling, HANDOFF item 4), continuous source, steady state via
+# Cross-check B: the scheme's OWN system (shared tau_u = tau_F = tau),
+# continuous source, steady state via
 # the final-value theorem (lim_{t->inf} u(t) = lim_{p->0} p*Uhat(p)).
 tau = sp.symbols("tau", positive=True)
-Uhat_design_b = Uhat_source_sol.subs({tau_u: tau, tau_F: tau})
-u_steady = sp.simplify(sp.limit(p * Uhat_design_b, p, 0))
+Uhat_shared_tau = Uhat_source_sol.subs({tau_u: tau, tau_F: tau})
+u_steady = sp.simplify(sp.limit(p * Uhat_shared_tau, p, 0))
 lam = sp.symbols("lambda", positive=True)
 target_screened = tau * S0 / (1 + lam**2 * k**2)
 residual_B = sp.simplify((u_steady - target_screened).subs(D_s, lam**2 / tau))
 print()
-print("Cross-check B (Design B's own shared-tau, absorptive system, continuous")
+print("Cross-check B (the scheme's own shared-tau, absorptive system, continuous")
 print("source, steady state via the final-value theorem):")
 print("  u_steady(k) =", u_steady, " (D = lambda^2/tau, i.e. tau*D = lambda^2)")
 print("  screened-Poisson target tau*S/(1+lambda^2 k^2):", target_screened)
 print("  difference (after D = lambda^2/tau):", residual_B)
-assert residual_B == 0, "Design B's own steady state does not match the screened-Poisson target"
+assert (
+    residual_B == 0
+), "the scheme's own steady state does not match the screened-Poisson target"
 print("  MATCH: independently reproduces the same transfer function Part 1 below")
 print("  states from the real-space ODE, and that")
-print("  verify_design_b_tier1_fit_target_validity.py already confirmed by direct")
-print("  sympy.dsolve of the steady ODE -- three independent routes, one answer.")
+print("  verify_isrf_tier1_fit_target_validity.py already confirmed by direct")
+print("  sympy.dsolve of the steady ODE, three independent routes, one answer.")
 print()
 print("Interpretation: hyperbolic.tex's own closed-form time-dependent Green's")
 print("function (ballistic front + Bessel-function interior + a front dipole")
-print("layer, Remark 3d-front-dipole) does NOT apply to Design B literally --")
+print("layer, Remark 3d-front-dipole) does NOT apply to the scheme literally:")
 print("it is the solution of a DIFFERENT equation (no u sink: metals are")
-print("transported, never absorbed). Design B's explicit -u/tau term damps any")
+print("transported, never absorbed). the scheme's explicit -u/tau term damps any")
 print("such transient feature at the same rate that sets the whole scheme's")
 print("relaxation, rather than letting an undamped wave feature persist")
-print("indefinitely as in the conservative metal-diffusion case -- consistent")
+print("indefinitely as in the conservative metal-diffusion case, consistent")
 print("with (not proof beyond) the 2026-09-08 log's own empirical finding that")
 print("the production-corner runs are flat to <0.05% over the last 5 snapshots,")
 print("i.e. genuinely steady, not a slowly-relaxing transient.")
@@ -191,8 +195,8 @@ print("=" * 78)
 
 lam_s, K_s, tau_s, S_s = sp.symbols("lambda K tau S", positive=True)
 u_hat, S_hat = sp.symbols("u_hat S_hat")
-# Real-space fixed point (design-lw-fuv-design-b.md Sec 4.5, verified by
-# verify_design_b_timestepping_stability.py Part C.2): u - lambda^2 * A A u
+# Real-space fixed point (verified by
+# verify_isrf_timestepping_stability.py Part C.2): u - lambda^2 * A A u
 # = tau S, with A the (shared, uniform-lattice) div/grad operator, Fourier
 # symbol i*K(k). Composing div(grad) gives symbol (iK)(iK) = -K^2, so:
 fixed_point_fourier = sp.Eq((1 + lam_s**2 * K_s**2) * u_hat, tau_s * S_s)
@@ -207,16 +211,19 @@ print("=> u_hat(k) =", u_hat_sol)
 # 1/(1+lambda^2 k^2), i.e. the Yukawa profile's own Fourier transform.
 k_s = sp.symbols("k", positive=True)
 continuum_form = u_hat_sol.subs(K_s, k_s)
-print("Continuum limit (K(k) -> |k|): u_hat(k) ->", continuum_form,
-      "(the Yukawa Green's function's own transform)")
+print(
+    "Continuum limit (K(k) -> |k|): u_hat(k) ->",
+    continuum_form,
+    "(the Yukawa Green's function's own transform)",
+)
 print()
 
-ETA = 1.2348          # resolution_eta, every shipped SubgridRadiation example
-GAMMA_3D = 1.936492   # kernel_gamma, Wendland C2, 3D (src/kernel_hydro.h)
+ETA = 1.2348  # resolution_eta, every shipped SubgridRadiation example
+GAMMA_3D = 1.936492  # kernel_gamma, Wendland C2, 3D (src/kernel_hydro.h)
 
 
 def wc2_3d_dwdr(r, H):
-    """dW/dr of the 3D Wendland C2 kernel, support radius H -- H may be a
+    """dW/dr of the 3D Wendland C2 kernel, support radius H, H may be a
     scalar (Parts 1-4's fixed-h idealized lattice) or a per-element array
     matching r (Part 5's real, per-particle h_i/h_j on an actual glass)."""
     H = np.broadcast_to(np.asarray(H, dtype=float), np.shape(r))
@@ -225,12 +232,16 @@ def wc2_3d_dwdr(r, H):
     out = np.zeros_like(r, dtype=float)
     qi, Hi = q[inside], H[inside]
     norm_i = 21.0 / (2.0 * np.pi * Hi**3)
-    out[inside] = norm_i * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4) / Hi
+    out[inside] = (
+        norm_i
+        * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4)
+        / Hi
+    )
     return out
 
 
 def wc2_3d_w(r, H):
-    """W of the 3D Wendland C2 kernel, support radius H -- same scalar-or-
+    """W of the 3D Wendland C2 kernel, support radius H, same scalar-or-
     array broadcasting as wc2_3d_dwdr."""
     H = np.broadcast_to(np.asarray(H, dtype=float), np.shape(r))
     q = r / H
@@ -263,11 +274,11 @@ def build_stencil(dx=1.0):
 
 def symbol_full(kvecs, pos, c):
     """K(k) for arbitrary wavevectors (not just a single direction): a
-    plane wave e^{i k.x} response of the shared-coefficient gradient/
-    divergence estimator is K(k) = (1/|k|) * sum_n c_n (pos_n.k) sin(pos_n.k)
-    -- reduces exactly to lattice_symbol_3d's own
-    sum_n c_n (pos_n.k_hat) sin(k |pos_n.k_hat|) when k = k*k_hat, verified
-    below against that function's own reported numbers."""
+     plane wave e^{i k.x} response of the shared-coefficient gradient/
+     divergence estimator is K(k) = (1/|k|) * sum_n c_n (pos_n.k) sin(pos_n.k)
+    , reduces exactly to lattice_symbol_3d's own
+     sum_n c_n (pos_n.k_hat) sin(k |pos_n.k_hat|) when k = k*k_hat, verified
+     below against that function's own reported numbers."""
     dot = pos @ kvecs.T  # (Nn, Nk)
     term = c[:, None] * dot * np.sin(dot)
     kmag = np.linalg.norm(kvecs, axis=1)
@@ -277,27 +288,36 @@ def symbol_full(kvecs, pos, c):
     return out
 
 
-# Cross-check against verify_design_b_timestepping_stability.py's own
+# Cross-check against verify_isrf_timestepping_stability.py's own
 # lattice_symbol_3d numbers along its three tested directions, several |k|.
-print("Cross-check: symbol_full vs. the existing script's lattice_symbol_3d "
-      "(same stencil, three directions):")
+print(
+    "Cross-check: symbol_full vs. the existing script's lattice_symbol_3d "
+    "(same stencil, three directions):"
+)
 pos0, c0, h0 = build_stencil(dx=1.0)
 max_relerr = 0.0
-for k_hat in (np.array([1.0, 0, 0]), np.array([1.0, 1.0, 0]) / np.sqrt(2),
-              np.ones(3) / np.sqrt(3)):
+for k_hat in (
+    np.array([1.0, 0, 0]),
+    np.array([1.0, 1.0, 0]) / np.sqrt(2),
+    np.ones(3) / np.sqrt(3),
+):
     k_values = np.array([0.3, 1.0, 2.0, 3.0])
     kvecs = k_values[:, None] * k_hat[None, :]
     K_new = symbol_full(kvecs, pos0, c0)
-    # reference, verbatim from verify_design_b_timestepping_stability.py
+    # reference, verbatim from verify_isrf_timestepping_stability.py
     proj = pos0 @ k_hat
     r0 = np.linalg.norm(pos0, axis=1)
-    K_ref = np.array([np.sum(c0 * r0 * (proj / r0) * np.sin(k * proj)) for k in k_values])
+    K_ref = np.array(
+        [np.sum(c0 * r0 * (proj / r0) * np.sin(k * proj)) for k in k_values]
+    )
     relerr = np.max(np.abs(K_new - K_ref)) / np.max(np.abs(K_ref))
     max_relerr = max(max_relerr, relerr)
     print(f"  direction {np.round(k_hat, 3)}: max relative discrepancy = {relerr:.2e}")
 assert max_relerr < 1e-10, "generalised 3D symbol disagrees with the existing script"
-print(f"  ==> generalised symbol matches the already-verified lattice_symbol_3d "
-      f"to {max_relerr:.1e} (same operator, more general k)")
+print(
+    f"  ==> generalised symbol matches the already-verified lattice_symbol_3d "
+    f"to {max_relerr:.1e} (same operator, more general k)"
+)
 print()
 
 # ---------------------------------------------------------------------------
@@ -325,7 +345,7 @@ def symbol_grid(N, dx=1.0):
 def kernel_weighted_source(N, dx=1.0, h_src=None):
     """A normalised Wendland-C2 kernel deposit centred on one grid site,
     same functional form as the gas density kernel (Sec 4.5 step 6's
-    injection is kernel-weighted over the star's own neighbours) -- an
+    injection is kernel-weighted over the star's own neighbours), an
     idealised stand-in for the star's real deposit, not a literal
     reproduction of radiation_iact.h's neighbour loop."""
     if h_src is None:
@@ -336,7 +356,10 @@ def kernel_weighted_source(N, dx=1.0, h_src=None):
     # centred at grid index (N//2, N//2, N//2); periodic minimum-image
     d = (idx - N // 2 + N // 2) % N - N // 2
     DX, DY, DZ = np.meshgrid(d, d, d, indexing="ij")
-    r = np.sqrt(DX.astype(float) ** 2 + DY.astype(float) ** 2 + DZ.astype(float) ** 2) * dx
+    r = (
+        np.sqrt(DX.astype(float) ** 2 + DY.astype(float) ** 2 + DZ.astype(float) ** 2)
+        * dx
+    )
     S = wc2_3d_w(r, H)
     S /= S.sum()
     return S
@@ -344,7 +367,7 @@ def kernel_weighted_source(N, dx=1.0, h_src=None):
 
 def discrete_fixed_point_profile(N, lam, dx=1.0):
     """Solve (1+lambda^2 K(k)^2) u_hat = S_hat on the N^3 periodic grid
-    (tau*S_tot = 1, an arbitrary normalisation -- irrelevant to the
+    (tau*S_tot = 1, an arbitrary normalisation, irrelevant to the
     log-linear slope fit below) and return the real-space u(x) array plus
     the grid spacing dx."""
     K, h = symbol_grid(N, dx)
@@ -358,13 +381,16 @@ def discrete_fixed_point_profile(N, lam, dx=1.0):
 def radial_profile_and_fit(u, N, dx=1.0, n_bins=25):
     """Bin u by distance from the source (grid centre) with periodic
     minimum-image wrapping, fit log(u*r) vs r over
-    [r_min, r_max] = [2*d, 0.7*half_box] -- IDENTICAL range and fit to
+    [r_min, r_max] = [2*d, 0.7*half_box], IDENTICAL range and fit to
     isrf_yukawa_profile_check.py's fit_slope, d = box/N (here == dx
     exactly, since N particles per side, box = N*dx)."""
     idx = np.arange(N)
     d = (idx - N // 2 + N // 2) % N - N // 2
     DX, DY, DZ = np.meshgrid(d, d, d, indexing="ij")
-    r = np.sqrt(DX.astype(float) ** 2 + DY.astype(float) ** 2 + DZ.astype(float) ** 2) * dx
+    r = (
+        np.sqrt(DX.astype(float) ** 2 + DY.astype(float) ** 2 + DZ.astype(float) ** 2)
+        * dx
+    )
     r_flat, u_flat = r.ravel(), u.ravel()
 
     box = N * dx
@@ -397,8 +423,10 @@ corners = [
     ("m=760 Msun, LW", 19.93, None, None, None),  # sim: float32 underflow, unmeasurable
 ]
 
-print(f"{'Corner':<18}{'h/lambda':>10}{'lambda_dx':>12}{'lambda_eff/h (predicted)':>26}"
-      f"{'lambda_eff/h (measured)':>26}{'discrete/measured':>20}")
+print(
+    f"{'Corner':<18}{'h/lambda':>10}{'lambda_dx':>12}{'lambda_eff/h (predicted)':>26}"
+    f"{'lambda_eff/h (measured)':>26}{'discrete/measured':>20}"
+)
 predicted_ratios = {}
 for name, h_over_lam, rel_A, rel_B, meas_ratio in corners:
     lam_dx = ETA / h_over_lam  # lambda in units of dx, since h = ETA*dx
@@ -406,10 +434,18 @@ for name, h_over_lam, rel_A, rel_B, meas_ratio in corners:
     lam_fit, centres, u_binned = radial_profile_and_fit(u, N_PROD, dx=1.0)
     pred_ratio = lam_fit / h if lam_fit is not None and np.isfinite(lam_fit) else np.nan
     predicted_ratios[name] = pred_ratio
-    meas_str = f"{meas_ratio:.3f}" if meas_ratio is not None else "n/a (float32 underflow)"
-    cmp_str = f"{pred_ratio / meas_ratio:.3f}" if (meas_ratio and np.isfinite(pred_ratio)) else "n/a"
-    print(f"{name:<18}{h_over_lam:>10.2f}{lam_dx:>12.4f}{pred_ratio:>26.3f}"
-          f"{meas_str:>26}{cmp_str:>20}")
+    meas_str = (
+        f"{meas_ratio:.3f}" if meas_ratio is not None else "n/a (float32 underflow)"
+    )
+    cmp_str = (
+        f"{pred_ratio / meas_ratio:.3f}"
+        if (meas_ratio and np.isfinite(pred_ratio))
+        else "n/a"
+    )
+    print(
+        f"{name:<18}{h_over_lam:>10.2f}{lam_dx:>12.4f}{pred_ratio:>26.3f}"
+        f"{meas_str:>26}{cmp_str:>20}"
+    )
 print()
 print("(lambda_eff/h (measured) is the actual SPH simulation's fitted lambda,")
 print(" from the 2026-09-08 production-corner comparison log; 'discrete/measured'")
@@ -420,19 +456,22 @@ print()
 # ---------------------------------------------------------------------------
 # Part 3: wide h/lambda sweep at a box always >= 10*lambda (so the fit range
 # never runs into the periodic-image bias Part 2's fixed N=32 box shows once
-# lambda is a large fraction of the box -- Part 2 intentionally keeps that
+# lambda is a large fraction of the box, Part 2 intentionally keeps that
 # bias in, since it is what the ACTUAL production runs' own finite box does
 # too; Part 3 isolates the box-size-independent h/lambda dependence alone).
 # Confirms the continuum limit and cross-checks the deep-floor regime against
-# the existing 1D chain result (verify_design_b_timestepping_stability.py
+# the existing 1D chain result (verify_isrf_timestepping_stability.py
 # Part F.1, lam=lambda/h=0.05, i.e. h/lambda=20, found lambda_eff/lambda=5.2).
 # ---------------------------------------------------------------------------
 print("=" * 78)
 print("Part 3: h/lambda sweep, box >= 10*lambda at every point (box-size-independent)")
 print("=" * 78)
-h_over_lam_sweep = np.array([0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 2.82, 4.71, 5.98,
-                              9.97, 11.96, 19.93, 20.0])
-print(f"{'h/lambda':>10}{'N (grid)':>10}{'lambda_eff/lambda_analytic':>28}{'lambda_eff/h':>16}")
+h_over_lam_sweep = np.array(
+    [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 2.82, 4.71, 5.98, 9.97, 11.96, 19.93, 20.0]
+)
+print(
+    f"{'h/lambda':>10}{'N (grid)':>10}{'lambda_eff/lambda_analytic':>28}{'lambda_eff/h':>16}"
+)
 sweep_results = []
 for hol in h_over_lam_sweep:
     lam_dx = ETA / hol
@@ -442,34 +481,43 @@ for hol in h_over_lam_sweep:
     N = int(min(256, 2 ** np.ceil(np.log2(max(32, 10.0 * lam_dx)))))
     u, h = discrete_fixed_point_profile(N, lam_dx, dx=1.0)
     lam_fit, _, _ = radial_profile_and_fit(u, N, dx=1.0)
-    ratio_to_analytic = lam_fit / lam_dx if lam_fit is not None and np.isfinite(lam_fit) else np.nan
+    ratio_to_analytic = (
+        lam_fit / lam_dx if lam_fit is not None and np.isfinite(lam_fit) else np.nan
+    )
     ratio_to_h = lam_fit / h if lam_fit is not None and np.isfinite(lam_fit) else np.nan
     sweep_results.append((hol, N, ratio_to_analytic, ratio_to_h))
     print(f"{hol:>10.2f}{N:>10d}{ratio_to_analytic:>28.3f}{ratio_to_h:>16.3f}")
 
 thin = [row for row in sweep_results if row[0] <= 0.1]
-assert all(abs(row[2] - 1.0) < 0.15 for row in thin), (
-    "continuum limit not recovered as h/lambda -> 0 -- derivation bug")
+assert all(
+    abs(row[2] - 1.0) < 0.15 for row in thin
+), "continuum limit not recovered as h/lambda -> 0, derivation bug"
 print()
-print("Continuum-limit sanity check (h/lambda <= 0.1): lambda_eff/lambda_analytic "
-      f"within 15% of 1 in every case ({[f'{row[2]:.3f}' for row in thin]}) -- the "
-      "discrete solve reduces to the continuum Yukawa target as the resolution")
+print(
+    "Continuum-limit sanity check (h/lambda <= 0.1): lambda_eff/lambda_analytic "
+    f"within 15% of 1 in every case ({[f'{row[2]:.3f}' for row in thin]}), the "
+    "discrete solve reduces to the continuum Yukawa target as the resolution"
+)
 print("gets fine relative to lambda, as it must, once the box is large enough")
 print("relative to lambda that periodic images do not bias the far-field fit.")
 deep_floor = [row for row in sweep_results if row[0] >= 19.5][0]
-print(f"\nDeep-floor cross-check at h/lambda ~ 20 (this script, 3D, box-independent): "
-      f"lambda_eff/lambda_analytic = {deep_floor[2]:.2f}, lambda_eff/h = {deep_floor[3]:.3f}")
-print("(the existing 1D chain result at the same h/lambda=20 corner, "
-      "verify_design_b_timestepping_stability.py Part F.1's lam=0.05 row: "
-      "lambda_eff/lambda = 5.2, i.e. lambda_eff/h ~ 0.26 -- same order of "
-      "magnitude and same direction (floored, not collapsed); a 1D vs 3D "
-      "geometry difference in the exact prefactor is expected, not a red flag)")
+print(
+    f"\nDeep-floor cross-check at h/lambda ~ 20 (this script, 3D, box-independent): "
+    f"lambda_eff/lambda_analytic = {deep_floor[2]:.2f}, lambda_eff/h = {deep_floor[3]:.3f}"
+)
+print(
+    "(the existing 1D chain result at the same h/lambda=20 corner, "
+    "verify_isrf_timestepping_stability.py Part F.1's lam=0.05 row: "
+    "lambda_eff/lambda = 5.2, i.e. lambda_eff/h ~ 0.26, same order of "
+    "magnitude and same direction (floored, not collapsed); a 1D vs 3D "
+    "geometry difference in the exact prefactor is expected, not a red flag)"
+)
 print()
 print("Comparing this box-independent sweep to Part 2's fixed-N=32 (real production")
 print("box) values at the SAME h/lambda shows how much of the earlier discrepancy")
 print("is a genuine small-h/lambda discrete-operator effect versus a finite-box")
 print("(periodic-image) effect specific to this example's own box size at these")
-print("particle counts -- both are real properties of the ACTUAL shipped example,")
+print("particle counts, both are real properties of the ACTUAL shipped example,")
 print("not artifacts of this script, but they are conceptually distinct causes.")
 print()
 
@@ -490,21 +538,21 @@ m=760, FUV        11.96       0.29                      see table above
 """)
 print("If the ratio (predicted/measured) in Part 2's table sits close to 1 across")
 print("all five measurable corners, the actual SPH implementation is correctly")
-print("solving ITS OWN discretized equations at these resolutions -- the earlier")
+print("solving ITS OWN discretized equations at these resolutions, the earlier")
 print("comparison's 'FAIL' verdict was a wrong-target problem (continuum Yukawa),")
 print("not a code-correctness problem. A systematic offset would instead point to")
 print("glass disorder, the a=1 cosmological-factor assumption, boundary handling,")
-print("or a genuine implementation bug -- distinguishable from the idealized-")
+print("or a genuine implementation bug, distinguishable from the idealized-")
 print("lattice floor by the SIZE and DIRECTION of the residual after this")
 print("comparison, not knowable before it.")
 print()
 # ---------------------------------------------------------------------------
-# Part 5: the actual thing -- solve the coupled (u, F) fixed point on the
+# Part 5: the actual thing, solve the coupled (u, F) fixed point on the
 # REAL glass/snapshot particle distribution (real x_i, h_i, rho_i from a
 # converged snapshot of the 2026-09-08 production-corner run, not an
 # idealized perfect lattice), using the EXACT diffmode==1 div(F)/diffmode==0
 # grad(u) pairwise formulas of Sec 2.2 and the exact-relaxation staggered
-# iteration of Sec 4.5 -- run to its own fixed point. This removes every
+# iteration of Sec 4.5, run to its own fixed point. This removes every
 # idealization Parts 1-4 make (perfect lattice, kernel-smoothed point
 # source, single global h): real glass disorder, real per-particle h_i and
 # rho_i, and the real diffmode0-vs-diffmode1 distinction (only equal on a
@@ -564,8 +612,17 @@ def load_snapshot(path):
         Z = gas["MetalMassFractions"][:, -1]
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
-    return dict(boxsize=boxsize, unit_length_cgs=uL, unit_mass_cgs=uM, pos=pos,
-                rho=rho, h=h, mass=mass, Z=Z, star_pos=star_pos)
+    return dict(
+        boxsize=boxsize,
+        unit_length_cgs=uL,
+        unit_mass_cgs=uM,
+        pos=pos,
+        rho=rho,
+        h=h,
+        mass=mass,
+        Z=Z,
+        star_pos=star_pos,
+    )
 
 
 def build_pairs(pos, h, boxsize):
@@ -586,7 +643,7 @@ def build_pairs(pos, h, boxsize):
 
 
 def grad_u(u, ii, jj, dx, r, wi_dr, wj_dr, rho, mass):
-    """diffmode==0: grad(rho*u)/rho^2, design-lw-fuv-design-b.md Sec 2.2."""
+    """diffmode==0: grad(rho*u)/rho^2."""
     d_ij = rho[ii] * u[ii] - rho[jj] * u[jj]
     rinv = 1.0 / r
     coef_i = -mass[jj] * d_ij * wi_dr * rinv / rho[ii] ** 2
@@ -664,8 +721,10 @@ def solve_real_fixed_point(snap, lam, r_min, r_max, n_bins=25, n_iter=4000, tol=
     return lam_fit, it, converged
 
 
-SCRATCH = ("/tmp/claude-1000/-home-darwinr-swiftsim-3/"
-           "9a9748ae-16ff-4941-8b97-e213770168b0/scratchpad/tier1_designB")
+SCRATCH = (
+    "/tmp/claude-1000/-home-darwinr-swiftsim-3/"
+    "9a9748ae-16ff-4941-8b97-e213770168b0/scratchpad/tier1_designB"
+)
 run_dirs = {
     "default (m=0.1, Tier 1's own thin corner)": "run",
     "m=10": "run_m10",
@@ -674,26 +733,36 @@ run_dirs = {
 }
 
 if not os.path.isdir(SCRATCH):
-    print(f"Scratch directory {SCRATCH!r} not found (session-specific, may have been "
-          "cleaned up) -- skipping the real-snapshot cross-check; Parts 1-4's "
-          "idealized-lattice result stands on its own.")
+    print(
+        f"Scratch directory {SCRATCH!r} not found (session-specific, may have been "
+        "cleaned up), skipping the real-snapshot cross-check; Parts 1-4's "
+        "idealized-lattice result stands on its own."
+    )
 else:
-    print(f"{'Corner':<42}{'band':>5}{'h/lambda':>10}{'lambda_eff/h':>14}"
-          f"{'measured (sim)':>16}{'real/measured':>16}{'iters':>8}")
+    print(
+        f"{'Corner':<42}{'band':>5}{'h/lambda':>10}{'lambda_eff/h':>14}"
+        f"{'measured (sim)':>16}{'real/measured':>16}{'iters':>8}"
+    )
     # default corner's lambda_measured/h is not recorded directly in the
     # 2026-09-08 log, only rel_err (0.005 FUV, 0.074 LW) against
     # lambda_analytic/h = 1/0.61 = 1.639 (FUV), 1/1.01 = 0.990 (LW); sign
     # inferred as over-prediction (the "+" branch), consistent with every
-    # other corner's own measured direction -- marked (inferred) below.
+    # other corner's own measured direction, marked (inferred) below.
     measured_lookup = {
-        ("default", "FUV"): 1.639 * 1.005, ("default", "LW"): 0.990 * 1.074,
-        ("m10", "FUV"): 0.54, ("m10", "LW"): 0.42,
-        ("m95", "FUV"): 0.38, ("m95", "LW"): 0.31,
-        ("m760", "FUV"): 0.29, ("m760", "LW"): None,
+        ("default", "FUV"): 1.639 * 1.005,
+        ("default", "LW"): 0.990 * 1.074,
+        ("m10", "FUV"): 0.54,
+        ("m10", "LW"): 0.42,
+        ("m95", "FUV"): 0.38,
+        ("m95", "LW"): 0.31,
+        ("m760", "FUV"): 0.29,
+        ("m760", "LW"): None,
     }
     inferred_keys = {("default", "FUV"), ("default", "LW")}
     for label, subdir in run_dirs.items():
-        snap_glob = sorted(glob.glob(os.path.join(SCRATCH, subdir, "snap", "snapshot_*.hdf5")))
+        snap_glob = sorted(
+            glob.glob(os.path.join(SCRATCH, subdir, "snap", "snapshot_*.hdf5"))
+        )
         if not snap_glob:
             print(f"  {label}: no snapshots found under {subdir}/snap/, skipping")
             continue
@@ -704,32 +773,45 @@ else:
         r_max = 0.7 * (snap["boxsize"] / 2.0)
         h_mean = float(np.median(snap["h"]))
         for band, sigma_d in (("FUV", SIGMA_D_FUV_CGS), ("LW", SIGMA_D_LW_CGS)):
-            lam_cgs = analytic_lambda_cgs(Z_mean, rho_mean, snap["unit_length_cgs"],
-                                           snap["unit_mass_cgs"], sigma_d)
+            lam_cgs = analytic_lambda_cgs(
+                Z_mean,
+                rho_mean,
+                snap["unit_length_cgs"],
+                snap["unit_mass_cgs"],
+                sigma_d,
+            )
             lam = lam_cgs / snap["unit_length_cgs"]
             h_over_lam = h_mean / lam
             key = (subdir.replace("run_", "") if subdir != "run" else "default", band)
             meas = measured_lookup.get(key)
             lam_fit, iters, converged = solve_real_fixed_point(snap, lam, r_min, r_max)
             if lam_fit is None or not np.isfinite(lam_fit):
-                print(f"  {label:<40}{band:>5}{h_over_lam:>10.2f}{'no fit':>14}"
-                      f"{'n/a' if meas is None else meas:>16}{'n/a':>16}{iters:>8}")
+                print(
+                    f"  {label:<40}{band:>5}{h_over_lam:>10.2f}{'no fit':>14}"
+                    f"{'n/a' if meas is None else meas:>16}{'n/a':>16}{iters:>8}"
+                )
                 continue
             ratio_h = lam_fit / h_mean
             cmp_str = f"{ratio_h / meas:.3f}" if meas else "n/a"
-            meas_str = (f"{meas:.3f}*" if key in inferred_keys else f"{meas:.3f}") if meas else "n/a"
+            meas_str = (
+                (f"{meas:.3f}*" if key in inferred_keys else f"{meas:.3f}")
+                if meas
+                else "n/a"
+            )
             conv_flag = "" if converged else " (NOT CONVERGED)"
-            print(f"  {label:<40}{band:>5}{h_over_lam:>10.2f}{ratio_h:>14.3f}"
-                  f"{meas_str:>16}{cmp_str:>16}{iters:>8}{conv_flag}")
+            print(
+                f"  {label:<40}{band:>5}{h_over_lam:>10.2f}{ratio_h:>14.3f}"
+                f"{meas_str:>16}{cmp_str:>16}{iters:>8}{conv_flag}"
+            )
     print()
     print("(* default corner's 'measured' value is inferred from the 2026-09-08 log's")
-    print("  rel_err, not read off directly -- see comment above measured_lookup.)")
+    print("  rel_err, not read off directly, see comment above measured_lookup.)")
     print()
     print("This is the direct answer to 'does the simulation match ITS OWN discrete")
     print("steady state': ratios near 1 in the 'real/measured' column mean the")
     print("actual code output matches the exact fixed point of its own real")
     print("(disordered, variable-h) discretization, not an idealized perfect-lattice")
-    print("approximation of it -- the strongest form of this check this script builds.")
+    print("approximation of it, the strongest form of this check this script builds.")
 print()
 
 print("ALL CHECKS PASSED")

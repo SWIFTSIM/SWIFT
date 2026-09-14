@@ -1,6 +1,6 @@
-"""Verify the time-stepping scheme of Design B (design-lw-fuv-design-b.md
-Section 4.5) by von Neumann analysis, and confirm the properties the
-design document claims for it.
+"""Verify the ISRF hyperbolic propagation scheme's time-stepping by von
+Neumann analysis, and confirm its claimed stability and consistency
+properties.
 
 Three candidate per-step update schemes for the P1-relaxation system
 
@@ -45,24 +45,24 @@ prediction of Section 1.0.1: a source moving at v_rel through static gas
 leaves a steady profile whose centroid trails the source by exactly
 v_rel*tau.
 """
+
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: STILL VALID, READ AS THE ISOTROPIC LIMIT.
+# Still valid under the M1 closure, read as the isotropic limit.
 #
 # The von Neumann analysis below linearizes the transport operator on a
 # uniform lattice, i.e. it is the f -> 0 (isotropic, D = I/3) limit of the
 # shipped M1 system. That is the right object for a linear stability
 # statement: M1's characteristic speeds are bounded by [-c_hyp, c_hyp] for
 # every f by construction, so c_hyp remains the speed the bound is written
-# against, now read as the fastest M1 characteristic rather than as the P1
-# signal speed (design-lw-fuv-m1-upgrade.md D3). The joint (alpha_max,
-# C_hyp) bound was re-verified under that reading in Phase 1
-# (`verify_design_b_dissipation.py` Part C, clean pass, no constant
-# changes). One relabelling for a future reader: the header's
-# `D = c_hyp*lambda` is the old two-knob parametrisation; the shipped
-# coefficient is `c_hyp^2` multiplying `div(D(f)*u)`, whose isotropic limit
-# is `c_hyp^2/3 * grad(u)`, i.e. `D = c_hyp*lambda/3`. That changes the
-# steady state's screening length, NOT the stability symbol's structure or
-# the Courant number the bound is expressed in.
+# against, now read as the fastest M1 characteristic rather than as the
+# earlier P1 signal speed. The joint (alpha_max, C_hyp) stability bound was
+# re-verified under that reading in `verify_isrf_dissipation.py` Part C
+# (clean pass, no constant changes). One relabelling for a future reader:
+# the header's `D = c_hyp*lambda` is the old two-knob parametrisation; the
+# shipped coefficient is `c_hyp^2` multiplying `div(D(f)*u)`, whose
+# isotropic limit is `c_hyp^2/3 * grad(u)`, i.e. `D = c_hyp*lambda/3`. That
+# changes the steady state's screening length, NOT the stability symbol's
+# structure or the Courant number the bound is expressed in.
 # =============================================================================
 import numpy as np
 import sympy as sp
@@ -103,7 +103,10 @@ print("      once lambda exceeds ~2 h/(C_CFL (Kh)^2), the thin regime again.")
 
 # S2: exact relaxation, staggered ordering (F sees the NEW u).
 G2 = sp.Matrix(
-    [[e, -I * tau * (1 - e) * K], [-I * D * (1 - e) * e * K, e - tau * D * K**2 * (1 - e) ** 2]]
+    [
+        [e, -I * tau * (1 - e) * K],
+        [-I * D * (1 - e) * e * K, e - tau * D * K**2 * (1 - e) ** 2],
+    ]
 )
 det2 = sp.simplify(G2.det())
 tr2 = sp.simplify(G2.trace())
@@ -119,7 +122,10 @@ cond = sp.solve(sp.Eq(T_expr, -(1 + e**2)), Xs)
 # The two roots are +-(1+e)/(1-e); only the positive one (0 < e < 1) applies.
 assert any(sp.simplify(c_ - (1 + e) / (1 - e)) == 0 for c_ in cond), cond
 # (1+e)/(1-e) with e = exp(-a) is coth(a/2).
-assert sp.simplify((1 + sp.exp(-a)) / (1 - sp.exp(-a)) - sp.coth(a / 2).rewrite(sp.exp)) == 0
+assert (
+    sp.simplify((1 + sp.exp(-a)) / (1 - sp.exp(-a)) - sp.coth(a / 2).rewrite(sp.exp))
+    == 0
+)
 print("   -> complex roots: |g| = e exactly (decay at the physical rate, no")
 print("      numerical damping and no growth); real roots stay in [-1,1] iff")
 print("      X <= (1+e)/(1-e) = coth(a/2).")
@@ -136,9 +142,9 @@ print("=" * 78)
 print("Part B: Wendland C2 gradient symbol on a 3D cubic lattice, closure sweep")
 print("=" * 78)
 
-ETA = 1.2348          # resolution_eta in every shipped SubgridRadiation example
-GAMMA_3D = 1.936492   # kernel_gamma, Wendland C2, 3D (src/kernel_hydro.h)
-C_CFL = 0.1           # CFL_condition in every shipped SubgridRadiation example
+ETA = 1.2348  # resolution_eta in every shipped SubgridRadiation example
+GAMMA_3D = 1.936492  # kernel_gamma, Wendland C2, 3D (src/kernel_hydro.h)
+C_CFL = 0.1  # CFL_condition in every shipped SubgridRadiation example
 
 
 def wc2_3d_dwdr(r, H):
@@ -148,7 +154,9 @@ def wc2_3d_dwdr(r, H):
     inside = q < 1.0
     out = np.zeros_like(r)
     qi = q[inside]
-    out[inside] = norm * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4) / H
+    out[inside] = (
+        norm * (-4.0 * (1.0 - qi) ** 3 * (4.0 * qi + 1.0) + 4.0 * (1.0 - qi) ** 4) / H
+    )
     return out
 
 
@@ -169,17 +177,27 @@ def lattice_symbol_3d(k_hat, k_values, dx=1.0):
     pos, r = pos[keep], r[keep]
     dwdr = wc2_3d_dwdr(r, H)
     proj = pos @ k_hat
-    out = np.array([np.sum(dx**3 * dwdr * (proj / r) * np.sin(k * proj)) for k in k_values])
+    out = np.array(
+        [np.sum(dx**3 * dwdr * (proj / r) * np.sin(k * proj)) for k in k_values]
+    )
     return out, h
 
 
 k_values = np.linspace(1e-3, np.pi, 400)
 Kh_max = 0.0
-for k_hat in (np.array([1.0, 0, 0]), np.array([1.0, 1.0, 0]) / np.sqrt(2), np.ones(3) / np.sqrt(3)):
+for k_hat in (
+    np.array([1.0, 0, 0]),
+    np.array([1.0, 1.0, 0]) / np.sqrt(2),
+    np.ones(3) / np.sqrt(3),
+):
     Ksym, h = lattice_symbol_3d(k_hat, k_values)
     Kh_max = max(Kh_max, np.max(np.abs(Ksym)) * h)
-    print(f"  direction {np.round(k_hat, 3)}: max_k |K(k)| h = {np.max(np.abs(Ksym)) * h:.4f}")
-print(f"  ==> (K h)_max = {Kh_max:.4f}; C_CFL (K h)_max = {C_CFL * Kh_max:.4f} (must be <= 2)")
+    print(
+        f"  direction {np.round(k_hat, 3)}: max_k |K(k)| h = {np.max(np.abs(Ksym)) * h:.4f}"
+    )
+print(
+    f"  ==> (K h)_max = {Kh_max:.4f}; C_CFL (K h)_max = {C_CFL * Kh_max:.4f} (must be <= 2)"
+)
 assert C_CFL * Kh_max <= 2.0
 
 
@@ -204,8 +222,10 @@ w3 = wc2_3d_w(r3, H3)
 w3 /= w3.sum()
 nyq_axis = abs(np.sum(w3 * (-1.0) ** X3))
 nyq_corner = abs(np.sum(w3 * (-1.0) ** (X3 + Y3 + Z3)))
-print(f"  Nyquist content of a kernel-weighted deposit (3D lattice, eta = {ETA}):"
-      f" axis-face mode {nyq_axis:.2e}, corner mode {nyq_corner:.2e} (single-particle deposit: 1)")
+print(
+    f"  Nyquist content of a kernel-weighted deposit (3D lattice, eta = {ETA}):"
+    f" axis-face mode {nyq_axis:.2e}, corner mode {nyq_corner:.2e} (single-particle deposit: 1)"
+)
 print("  (the support is only 2.4 dx at this eta, so a face mode keeps a quarter of")
 print("   its amplitude; on an N-particle lattice the null faces are ~3 N^(2/3) of N")
 print("   modes, so their spatial weight at the source scales as N^(-1/3))")
@@ -232,10 +252,10 @@ Kh = np.abs(Ksym_x) * h
 lam_over_h = np.logspace(-3, 4, 71)
 worst = {"S0": [], "S1": [], "S2": []}
 for y in lam_over_h:
-    a_ = C_CFL / y            # dt/tau under the closure
+    a_ = C_CFL / y  # dt/tau under the closure
     e_ = np.exp(-a_)
-    nu_ = C_CFL * Kh          # c_hyp K dt = C_CFL K h
-    X_ = Kh * y               # K lambda
+    nu_ = C_CFL * Kh  # c_hyp K dt = C_CFL K h
+    X_ = Kh * y  # K lambda
     worst["S0"].append(np.max(amp_S0(e_, nu_)))
     worst["S1"].append(np.max(amp_S1(e_, X_)))
     worst["S2"].append(np.max(amp_S2(e_, X_)))
@@ -244,21 +264,31 @@ for key in worst:
 
 print("\n  max_k |g| under the closure c_hyp = C_CFL h/dt, C_CFL = 0.1:")
 print("  lambda/h      S0        S1        S2")
-for y, g0, g1, g2 in zip(lam_over_h[::10], worst["S0"][::10], worst["S1"][::10], worst["S2"][::10]):
+for y, g0, g1, g2 in zip(
+    lam_over_h[::10], worst["S0"][::10], worst["S1"][::10], worst["S2"][::10]
+):
     print(f"  {y:9.3e}  {g0:8.5f}  {g1:8.5f}  {g2:8.5f}")
 
 first_unstable_S0 = lam_over_h[np.argmax(worst["S0"] > 1 + 1e-12)]
 first_unstable_S1 = lam_over_h[np.argmax(worst["S1"] > 1 + 1e-12)]
 pred_S0 = 2 * C_CFL / np.log(1 + (C_CFL * Kh_max) ** 2)
-print(f"\n  S0 first unstable at lambda/h ~ {first_unstable_S0:.2f} (analytic 2 C_CFL/ln(1+nu_max^2) = {pred_S0:.2f})")
+print(
+    f"\n  S0 first unstable at lambda/h ~ {first_unstable_S0:.2f} (analytic 2 C_CFL/ln(1+nu_max^2) = {pred_S0:.2f})"
+)
 print(f"  S1 first unstable at lambda/h ~ {first_unstable_S1:.2f}")
-print(f"  S0 growth per step as lambda -> inf: {worst['S0'][-1]:.5f} (sqrt(1+nu_max^2) = {np.sqrt(1 + (C_CFL * Kh_max) ** 2):.5f})")
+print(
+    f"  S0 growth per step as lambda -> inf: {worst['S0'][-1]:.5f} (sqrt(1+nu_max^2) = {np.sqrt(1 + (C_CFL * Kh_max) ** 2):.5f})"
+)
 print(f"  S2 max |g| over the whole sweep: {np.max(worst['S2']):.12f}")
 assert np.max(worst["S2"]) <= 1.0 + 1e-12
 assert worst["S0"][-1] > 1.0 and worst["S1"][-1] > 1.0
 # The margin: how much larger c_hyp could be before S2's thin-limit bound binds.
-print(f"  S2 thin-limit margin: nu_max = {C_CFL * Kh_max:.3f} vs bound 2, i.e. the closure")
-print(f"  coefficient could rise from C_CFL = {C_CFL} to {2 / Kh_max:.2f} before S2 destabilizes.")
+print(
+    f"  S2 thin-limit margin: nu_max = {C_CFL * Kh_max:.3f} vs bound 2, i.e. the closure"
+)
+print(
+    f"  coefficient could rise from C_CFL = {C_CFL} to {2 / Kh_max:.2f} before S2 destabilizes."
+)
 print()
 
 # ---------------------------------------------------------------------------
@@ -277,7 +307,11 @@ def wc2_1d_dwdr(r, H):
     inside = q < 1.0
     out = np.zeros_like(r)
     qi = q[inside]
-    out[inside] = (5.0 / (4.0 * H)) * (-3.0 * (1.0 - qi) ** 2 * (1.0 + 3.0 * qi) + 3.0 * (1.0 - qi) ** 3) / H
+    out[inside] = (
+        (5.0 / (4.0 * H))
+        * (-3.0 * (1.0 - qi) ** 2 * (1.0 + 3.0 * qi) + 3.0 * (1.0 - qi) ** 3)
+        / H
+    )
     return out
 
 
@@ -345,8 +379,12 @@ for _ in range(nsteps):
 ratio_S0 = np.max(np.abs(uS0)) / np.max(np.abs(u0))
 ratio_S2 = np.max(np.abs(uS2)) / np.max(np.abs(u0))
 K1d = np.abs(np.linalg.eigvals(A)).max()
-print(f"  C.1 kappa = 0, {nsteps} steps, c_hyp = C_CFL h/dt, nu_max = {c_hyp * K1d * dt:.3f}:")
-print(f"      S0 amplitude ratio = {ratio_S0:.3e} (expected ~ (1+nu^2)^(N/2) for the worst mode)")
+print(
+    f"  C.1 kappa = 0, {nsteps} steps, c_hyp = C_CFL h/dt, nu_max = {c_hyp * K1d * dt:.3f}:"
+)
+print(
+    f"      S0 amplitude ratio = {ratio_S0:.3e} (expected ~ (1+nu^2)^(N/2) for the worst mode)"
+)
 print(f"      S2 amplitude ratio = {ratio_S2:.3e}")
 assert ratio_S0 > 1e3, "S0 did not blow up; the FTCS instability claim would be wrong"
 assert ratio_S2 < 10.0, "S2 grew; the staggered-scheme stability claim would be wrong"
@@ -372,8 +410,12 @@ for c_factor in (0.01, 0.1, 0.5):
     M = np.eye(n) - lam**2 * (A @ A)
     u_direct = np.linalg.solve(M, tau_ * S)
     rel = np.max(np.abs(u - u_direct)) / np.max(np.abs(u_direct))
-    print(f"  C.2 lambda = {lam} dx, c_hyp = {c_factor} h/dt (dt/tau = {a_:.3f}, {it} iterations):")
-    print(f"      |u - u_direct|/|u|_max = {rel:.2e}; sum(u)/(tau S_tot) = {np.sum(u) / (tau_ * np.sum(S)):.6f}")
+    print(
+        f"  C.2 lambda = {lam} dx, c_hyp = {c_factor} h/dt (dt/tau = {a_:.3f}, {it} iterations):"
+    )
+    print(
+        f"      |u - u_direct|/|u|_max = {rel:.2e}; sum(u)/(tau S_tot) = {np.sum(u) / (tau_ * np.sum(S)):.6f}"
+    )
     assert rel < 1e-8
     assert abs(np.sum(u) / (tau_ * np.sum(S)) - 1.0) < 1e-8
     profiles.append(u / tau_)
@@ -383,9 +425,15 @@ x = (np.arange(n) - n // 2) * dx
 yukawa_1d = np.sum(S) / (2 * lam) * np.exp(-np.abs(x) / lam)
 mask = (np.abs(x) > 2 * h) & (np.abs(x) < 6 * lam)
 slope_meas = np.polyfit(np.abs(x[mask]), np.log(profiles[0][mask]), 1)[0]
-print(f"      u/tau profiles identical across c_hyp to 1e-8 (fixed point is dt- and c_hyp-independent);")
-print(f"      e-folding length of the discrete fixed point: {-1 / slope_meas:.3f} dx (target lambda = {lam} dx)")
-print(f"      amplitude at the source vs 1D Yukawa S/(2 lambda): {profiles[0][n // 2] / yukawa_1d[n // 2]:.3f}")
+print(
+    f"      u/tau profiles identical across c_hyp to 1e-8 (fixed point is dt- and c_hyp-independent);"
+)
+print(
+    f"      e-folding length of the discrete fixed point: {-1 / slope_meas:.3f} dx (target lambda = {lam} dx)"
+)
+print(
+    f"      amplitude at the source vs 1D Yukawa S/(2 lambda): {profiles[0][n // 2] / yukawa_1d[n // 2]:.3f}"
+)
 assert abs(-1 / slope_meas - lam) / lam < 0.05
 
 
@@ -406,10 +454,14 @@ tau_ = lam / (C_CFL * h / dt)
 u_delta = np.linalg.solve(np.eye(n) - lam**2 * (A @ A), tau_ * S)
 u_smooth = np.linalg.solve(np.eye(n) - lam**2 * (A @ A), tau_ * S_smooth)
 print(f"  C.3 null-mode diagnostic (lambda = {lam} dx):")
-print(f"      delta source:           peak/Yukawa = {u_delta[n // 2] / (tau_ * yukawa_1d[n // 2]):.3f},"
-      f" Nyquist content = {nyquist_content(u_delta):.4f}")
-print(f"      kernel-weighted source: peak/Yukawa = {u_smooth[n // 2] / (tau_ * yukawa_1d[n // 2]):.3f},"
-      f" Nyquist content = {nyquist_content(u_smooth):.4f}")
+print(
+    f"      delta source:           peak/Yukawa = {u_delta[n // 2] / (tau_ * yukawa_1d[n // 2]):.3f},"
+    f" Nyquist content = {nyquist_content(u_delta):.4f}"
+)
+print(
+    f"      kernel-weighted source: peak/Yukawa = {u_smooth[n // 2] / (tau_ * yukawa_1d[n // 2]):.3f},"
+    f" Nyquist content = {nyquist_content(u_smooth):.4f}"
+)
 assert abs(nyquist_content(u_delta) - 1.0) < 1e-10
 assert nyquist_content(u_smooth) < 0.05
 print()
@@ -491,18 +543,21 @@ for a_ in (0.01, 1.0, 100.0):
         u = e_ * u + tau_ * (1 - e_) * S_n
         dose += u * dt_
         max_lag = max(max_lag, abs(u - tau_ * S_n))
-    print(f"  dt/tau = {a_:6.2f}: dose/(tau int S dt) = {dose / (tau_ * np.sum(S_series) * dt_):.12f},"
-          f" max |u - tau S(t)|/(tau S_on) = {max_lag / tau_:.3f}")
+    print(
+        f"  dt/tau = {a_:6.2f}: dose/(tau int S dt) = {dose / (tau_ * np.sum(S_series) * dt_):.12f},"
+        f" max |u - tau S(t)|/(tau S_on) = {max_lag / tau_:.3f}"
+    )
     assert abs(dose / (tau_ * np.sum(S_series) * dt_) - 1.0) < 1e-10
 print("  (the instantaneous error is the lag; the dose is exact; stiff dt/tau")
 print("   has no lag at all, u jumps to tau S each step)")
 print()
 
 # ---------------------------------------------------------------------------
-# Part F: cross-checks against Design A's three failure modes
+# Part F: cross-checks against the earlier screened-diffusion scheme's
+# three failure modes
 # ---------------------------------------------------------------------------
 print("=" * 78)
-print("Part F: cross-checks against Design A's failure modes (HANDOFF brief)")
+print("Part F: cross-checks against the earlier diffusion scheme's failure modes")
 print("=" * 78)
 
 
@@ -549,9 +604,9 @@ hh = rng.uniform(1.6, 2.6, size=n_)
 rho = m / 1.0
 Ag, Bg = chain_operators_general(xpos, m, rho, hh, box)
 W = np.diag(m * rho)
-assert np.allclose(m @ Ag, 0.0, atol=1e-12)                 # sum_i m_i (div F)_i = 0
-assert np.allclose(W @ Bg, -(W @ Ag).T, atol=1e-12)         # B = -W^-1 A^T W
-assert not np.allclose(W @ Ag, -(W @ Ag).T, atol=1e-6)      # A is NOT skew in W
+assert np.allclose(m @ Ag, 0.0, atol=1e-12)  # sum_i m_i (div F)_i = 0
+assert np.allclose(W @ Bg, -(W @ Ag).T, atol=1e-12)  # B = -W^-1 A^T W
+assert not np.allclose(W @ Ag, -(W @ Ag).T, atol=1e-6)  # A is NOT skew in W
 print("  F.3 disordered chain, non-uniform m/rho/h: W B_dif = -(W A_sym)^T exactly;")
 print("      A_sym is not skew-adjoint to itself.")
 S = np.zeros(n_)
@@ -576,8 +631,10 @@ for label, Bop in (("(sym, sym) pairing", Ag), ("(sym, dif) pairing", Bg)):
     energy = np.array(energy)
     excursion = (energy.max() - energy.min()) / energy[0]
     trend = np.polyfit(np.arange(len(energy)), energy / energy[0], 1)[0] * len(energy)
-    print(f"      {label}: sum(m u)/injected = {budget:.12f}, max|u| = {np.max(np.abs(u)):.3e},"
-          f" energy after source-off: excursion {excursion:.2e}, trend {trend:+.2e}")
+    print(
+        f"      {label}: sum(m u)/injected = {budget:.12f}, max|u| = {np.max(np.abs(u)):.3e},"
+        f" energy after source-off: excursion {excursion:.2e}, trend {trend:+.2e}"
+    )
     if label.startswith("(sym, sym)"):
         assert np.max(np.abs(u)) > 1e3, "expected the (sym, sym) pairing to blow up"
     else:
@@ -585,11 +642,17 @@ for label, Bop in (("(sym, sym) pairing", Ag), ("(sym, dif) pairing", Bg)):
         # symplectic Euler conserves a modified energy: bounded O(nu) oscillation, no trend
         assert excursion < 0.1 and abs(trend) < 5e-3
         assert np.max(np.abs(u)) < 1e3
-print("      (sym, sym) grows ~10% per step; (sym, dif) conserves sum(m u) to round-off")
+print(
+    "      (sym, sym) grows ~10% per step; (sym, dif) conserves sum(m u) to round-off"
+)
 print("      and keeps the discrete energy sum m rho (u^2 + F^2/c^2) within a bounded")
-print("      O(nu) oscillation with no secular trend (source off). max|u| for (sym, dif)")
+print(
+    "      O(nu) oscillation with no secular trend (source off). max|u| for (sym, dif)"
+)
 print("      is the Nyquist content of the two single-particle sources accumulating on")
-print("      those particles with kappa = 0 (Part C.3): confined, linear in time, small")
+print(
+    "      those particles with kappa = 0 (Part C.3): confined, linear in time, small"
+)
 print("      for kernel-weighted injection.")
 
 # F.2 (failure 2, kappa -> 0): bounded free streaming with continuous
@@ -604,7 +667,9 @@ x = (np.arange(n_) - n_ // 2) * dx
 # group speed of the discrete wave: c_hyp * dK/dk, never above c_hyp
 ks = 2 * np.pi * np.arange(1, n_ // 2) / n_
 Ks = np.array([np.imag((A @ np.exp(1j * kk * np.arange(n_)))[0]) for kk in ks])
-print(f"  F.2 kappa = 0: max group speed / c_hyp = {np.max(np.gradient(Ks, ks)):.3f} (1D chain symbol)")
+print(
+    f"  F.2 kappa = 0: max group speed / c_hyp = {np.max(np.gradient(Ks, ks)):.3f} (1D chain symbol)"
+)
 u, F = np.zeros(n_), np.zeros(n_)
 for T in (1000, 3000):
     while_steps = T - (1000 if T == 3000 else 0)
@@ -613,9 +678,11 @@ for T in (1000, 3000):
     # median: robust to the dispersive ringing behind the front at early times
     plateau = np.median(u[(np.abs(x) > 20) & (np.abs(x) < 0.5 * c_ * T * dt)])
     fronts = {thr: np.max(np.abs(x[u > thr * plateau])) for thr in (1e-1, 1e-2, 1e-3)}
-    print(f"      {T} steps: plateau u = {plateau:.4f} (S/(2 c_hyp) = {1 / (2 * c_):.4f}), c_hyp t = {c_ * T * dt:.0f} dx;"
-          f" front at 10%/1%/0.1% of plateau: {fronts[1e-1]:.0f}/{fronts[1e-2]:.0f}/{fronts[1e-3]:.0f} dx;"
-          f" sum(u) dx/(S t) = {np.sum(u) * dx / T:.6f}")
+    print(
+        f"      {T} steps: plateau u = {plateau:.4f} (S/(2 c_hyp) = {1 / (2 * c_):.4f}), c_hyp t = {c_ * T * dt:.0f} dx;"
+        f" front at 10%/1%/0.1% of plateau: {fronts[1e-1]:.0f}/{fronts[1e-2]:.0f}/{fronts[1e-3]:.0f} dx;"
+        f" sum(u) dx/(S t) = {np.sum(u) * dx / T:.6f}"
+    )
     assert abs(plateau * 2 * c_ - 1.0) < 0.05
     assert fronts[1e-1] <= c_ * T * dt + 2 * h
     assert fronts[1e-2] <= c_ * T * dt + 8 * h
@@ -629,7 +696,7 @@ print("      sub-linearly with t), not a superluminal mode.")
 # length against the chosen lambda, across lambda/h from the production
 # clump regime (lambda << h) to the thin regime. lambda is a chosen input
 # here (D = c_hyp lambda), not an emergent one, so it cannot collapse the
-# way Design A's did; what CAN happen is that the discrete screened-Poisson
+# way the earlier diffusion scheme's did; what CAN happen is that the discrete screened-Poisson
 # solution cannot represent a decay shorter than the particle spacing.
 n_, dx, h, dt = 1024, 1.0, 2.0, 1.0
 A = chain_operator(n_, h, dx)
@@ -645,7 +712,11 @@ for lam in (0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0):
     u_fp = np.linalg.solve(np.eye(n_) - lam_dx**2 * (A @ A), tau_ * S)
     # e-folding length from the far-field envelope (skip the source region
     # and the null-mode odd-even pattern: use even-indexed particles only)
-    sel = (np.abs(x) > 3 * h) & (np.abs(x) < 3 * h + 12 * max(lam_dx, 2 * dx)) & (np.arange(n_) % 2 == 0)
+    sel = (
+        (np.abs(x) > 3 * h)
+        & (np.abs(x) < 3 * h + 12 * max(lam_dx, 2 * dx))
+        & (np.arange(n_) % 2 == 0)
+    )
     pos_u = u_fp[sel] > 0
     if np.sum(pos_u) >= 4:
         slope_ = np.polyfit(np.abs(x[sel][pos_u]), np.log(u_fp[sel][pos_u]), 1)[0]
@@ -675,7 +746,7 @@ A, B = chain_operators_general(xpos, m, rho, hh, float(n_))
 S = np.zeros(n_)
 S[n_ // 2] = 1.0
 kappa_i = 10.0 ** rng.uniform(-3, 0.5, size=n_)  # lambda_i from 0.3 dx to 1000 dx
-dt_i = dt * 2.0 ** rng.integers(0, 4, size=n_)   # a 3-bin time-step spread
+dt_i = dt * 2.0 ** rng.integers(0, 4, size=n_)  # a 3-bin time-step spread
 c_i = C_CFL * hh / dt_i
 a_i = c_i * kappa_i * dt
 u, F = np.zeros(n_), np.zeros(n_)
@@ -687,7 +758,9 @@ for it in range(20000):
     u, F = un, Fn
     if it % 1000 == 999:
         peak.append(np.max(np.abs(u)))
-print(f"  F.4 heterogeneous tau/c_hyp/m/rho/h (lambda 0.3-1000 dx, 3 time bins), 20000 steps:")
+print(
+    f"  F.4 heterogeneous tau/c_hyp/m/rho/h (lambda 0.3-1000 dx, 3 time bins), 20000 steps:"
+)
 print(f"      max|u| every 1000 steps: " + " ".join(f"{p_:.3g}" for p_ in peak))
 assert peak[-1] < 2.0 * max(peak[:5]) and np.all(np.isfinite(u))
 print("      bounded (no growth over the last 15000 steps); a smoke test only.")

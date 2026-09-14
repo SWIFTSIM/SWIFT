@@ -12,7 +12,7 @@ The commonly-cited form of that formula is
     Gamma_PE = gamma_ha * epsilon * G0 * n_H         (naive form)
 
 with gamma_ha=1e-24 erg/s and epsilon=0.05 hardcoded in Grackle's own
-rate_functions.c (gammah_rate(), igammah>1 branch) -- not SWIFT-side
+rate_functions.c (gammah_rate(), igammah>1 branch), not SWIFT-side
 constants, so they are not read from radiation.h below; they are Grackle's
 compiled behaviour being checked, not a value this codebase owns.
 
@@ -38,7 +38,7 @@ so the real formula is
 idustfield=0 is confirmed to be what SWIFT's own wrapper actually uses,
 not assumed: grepping src/cooling/grackle/ for use_dust_density_field or
 dust_density finds no reference at all, so it stays at Grackle's own default
-(FALSE, grackle_chemistry_data_fields.def) -- SWIFT never sets it or
+(FALSE, grackle_chemistry_data_fields.def), SWIFT never sets it or
 supplies a dust_density field. Note this means Grackle's
 local_dust_to_gas_ratio parameter (which radiation.h's own doxygen
 documents as scaling extinction) plays NO role in this heating term at
@@ -47,14 +47,14 @@ metallicity(i), never on whatever local_dust_to_gas_ratio is set to. Same
 underlying parameter, two different roles in two different code paths.
 
 z_solar here is Grackle's own SolarMetalFractionByMass (0.01295, Cloudy
-v13 abundances -- also confirmed unreferenced in src/cooling/grackle/,
+v13 abundances, also confirmed unreferenced in src/cooling/grackle/,
 hence left at that default). This is the exact same value radiation.h's
 RADIATION_GRACKLE_SOLAR_METAL_FRACTION already records, so "Z'=1" means
-the same thing on both sides of the coupling -- no Zsun-convention
+the same thing on both sides of the coupling, no Zsun-convention
 mismatch to worry about here.
 
 rhoH(i) itself is confirmed (cool1d_multi_g.F lines ~228-270) to be TOTAL
-hydrogen (HI+HII, +H2 when tracked), not neutral-only H0 -- so "n_H" in
+hydrogen (HI+HII, +H2 when tracked), not neutral-only H0, so "n_H" in
 both forms above is the same total-hydrogen quantity this codebase's own
 n_H means, not a species-restricted one.
 
@@ -70,7 +70,7 @@ compiles and runs a small standalone C harness
 (verify_photoelectric_heating_rate_grackle_harness.c, same directory)
 against the compiled libgrackle at GRACKLE_LIB_DIR/GRACKLE_INCLUDE_DIR
 (default /home/darwinr/local/{lib,include}, source
-/home/darwinr/programs/grackle-swift -- confirmed byte-identical headers
+/home/darwinr/programs/grackle-swift, confirmed byte-identical headers
 against the installed ones before trusting them). The harness calls
 calculate_cooling_time() twice per Z' (photoelectric_heating=2 and =0,
 otherwise identical one-zone state) and isolates Gamma_PE as the edot
@@ -82,11 +82,11 @@ Part 4 (G0 unit-convention check): radiation_get_part_isrf_habing()
 computes G0 = c*rho*(u_FUV+u_LW)_cgs / RADIATION_HABING_FLUX_CGS, i.e. the
 standard combined FUV+LW Habing (1968) convention (RADIATION_HABING_FLUX_
 CGS=1.6e-3 erg/s/cm^2, radiation.h). Grackle's igammah=2/3 Fortran path
-consumes myisrf(i) = isrf_habing(i,j,k) with no internal rescaling --
+consumes myisrf(i) = isrf_habing(i,j,k) with no internal rescaling:
 it trusts the caller's G0 to already be in this same Habing convention.
 Corroborating evidence this actually is the same convention (not just
 same-named): rate_functions.c's igammah<=1 default docstring states its
-fixed rate assumes "epsilon=0.05, G_0=1.7" -- 1.7 is exactly this
+fixed rate assumes "epsilon=0.05, G_0=1.7", 1.7 is exactly this
 codebase's own DRAINE_OVER_HABING constant (see
 verify_sigma_h2_lw_sternberg2014.py), i.e. Grackle's own comment is
 quoting the Draine field's value *in Habing units*, the same units
@@ -97,7 +97,7 @@ Habing constant), the photoelectric path is Habing-native on both sides.
 
 Result: PASS if the call-through Gamma_PE matches the actual formula
 (with the Z' factor) to within floating-point tolerance at every swept
-Z', not just at Z'=1 -- this is what would catch a real discrepancy
+Z', not just at Z'=1, this is what would catch a real discrepancy
 rather than one hidden by the sweep's own test point.
 """
 
@@ -162,7 +162,7 @@ def _check_headers_match_installed_lib() -> None:
         source = Path(GRACKLE_SOURCE_DIR) / "src" / "clib" / name
         if not installed.read_bytes() == source.read_bytes():
             raise RuntimeError(
-                f"{installed} differs from {source} -- installed Grackle "
+                f"{installed} differs from {source}, installed Grackle "
                 "headers do not match the claimed source tree; refusing "
                 "to trust the call-through result."
             )
@@ -273,7 +273,7 @@ def main() -> None:
     )
     print(
         "  Grackle rate_functions.c's igammah<=1 default docstring cites "
-        f"G_0={draine_over_habing} for the Draine field -- matches this "
+        f"G_0={draine_over_habing} for the Draine field, matches this "
         "codebase's own DRAINE_OVER_HABING, confirming both sides use the "
         "same Habing convention."
     )
@@ -313,7 +313,7 @@ def main() -> None:
     if not all_temperatures_calibrated:
         raise RuntimeError(
             "Harness's temperature calibration did not converge to the "
-            f"requested T={T_K} K (see per-row T_on/T_off above) -- "
+            f"requested T={T_K} K (see per-row T_on/T_off above), "
             "igammah=2 has no explicit T-dependence below the 2e4 K "
             "cutoff, so this would not itself invalidate the Gamma_PE "
             "comparison above, but it means the reported 'T=100 K' test "
@@ -334,7 +334,7 @@ def main() -> None:
     else:
         print(
             "FAIL: the Z'-corrected formula does not match Grackle's "
-            "call-through result to <1e-6 at every swept Z' -- see ratios "
+            "call-through result to <1e-6 at every swept Z', see ratios "
             "above. This would indicate either a mistake in this script's "
             "reproduction of the Fortran formula, or a real behaviour "
             "change in the linked libgrackle build."
@@ -346,7 +346,7 @@ def main() -> None:
         "This codebase's own G0-to-Grackle pipeline "
         "(radiation_get_part_isrf_habing) hands G0 straight through with "
         "no extra scaling, which is exactly what this Habing-native "
-        "path expects -- so it inherits this Z'-dependence directly and "
+        "path expects, so it inherits this Z'-dependence directly and "
         "correctly (dust2gas comes from Grackle's own metal_density field, "
         "not something SWIFT would need to fold into G0 itself). No unit "
         "mismatch found between the two sides; the only real finding is "

@@ -1,14 +1,14 @@
-"""Verify the Design B `div(F)` discretization's conservation property
-(design-lw-fuv-design-b.md Section 2.2), for h_i != h_j.
+"""Verify the scheme's pairwise `div(F)` discretization's conservation
+property, for h_i != h_j.
 
 Plan-review finding 1 (2026-09-07 report) showed the design doc's
-originally-drafted `div(F)` estimator -- each particle's contribution
-finalized *independently* with its own `rho_i * h_i^-(dim+1)` factor --
+originally-drafted `div(F)` estimator, each particle's contribution
+finalized *independently* with its own `rho_i * h_i^-(dim+1)` factor
 does NOT cancel exactly under a mass-weighted sum when `h_i != h_j`
 (SWIFT's normal case under adaptive smoothing lengths). This script
 demonstrates that failure numerically, then demonstrates that the
 REVISED construction (mirroring `src/rt/SPHM1RT/rt_gradients.h`'s
-`radiation_divergence_SPH`, `diffmode == 1` branch -- a single shared
+`radiation_divergence_SPH`, `diffmode == 1` branch, a single shared
 scalar built from both particles' own kernel-gradient terms inside one
 pairwise call, applied with mirrored mass/sign to each side, exactly the
 `runner_iact_force`-style pattern the review pointed at) DOES cancel to
@@ -20,6 +20,7 @@ pure transport: for a single pairwise interaction, this requires
 -(div F)_i`). This is checked directly, not the divergence's physical
 accuracy (which is a separate, well-understood SPH question, §2.3).
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 # The divergence loop is untouched by the P1-to-M1 upgrade (the closure
@@ -51,7 +52,7 @@ def kernel_dr(r: float, h: float) -> float:
     """dW/dr for a particle with smoothing length h, SWIFT's `wi_dr`
     convention: `wi_dr = h^-(dim+1) * dW/dq` (dim=3 -> h^-4), i.e. the
     dimension-dependent h-normalization ("h_i^-(dim+1)") is folded in
-    HERE, at kernel-evaluation time -- not as a separate later finalize
+    HERE, at kernel-evaluation time, not as a separate later finalize
     step. This is the exact point the flawed draft got wrong (it kept
     the h-normalization as a distinct post-hoc finalize multiplication).
     """
@@ -78,7 +79,7 @@ def old_flawed_construction(dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, Fj):
     # finalize: independently, using each particle's OWN rho_i*h_i^-(dim+1)
     # (h_i^-(dim+1) is already inside wi_dr per kernel_dr above, so the
     # doc's "finalize *= rho_i * h_i^-(dim+1)" reduces to "finalize *=
-    # rho_i" given this script's kernel_dr convention -- reproduced
+    # rho_i" given this script's kernel_dr convention, reproduced
     # faithfully here.)
     div_F_i = raw_i * rhoi
     div_F_j = raw_j * rhoj
@@ -88,7 +89,7 @@ def old_flawed_construction(dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, Fj):
 def new_shared_coefficient_construction(dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, Fj):
     """The REVISED formula: mirrors `radiation_divergence_SPH`'s
     `diffmode == 1` branch in `src/rt/SPHM1RT/rt_gradients.h`
-    (lines 288-297) exactly -- a single shared scalar built from BOTH
+    (lines 288-297) exactly, a single shared scalar built from BOTH
     particles' own (F, rho, wi_dr) inside one pairwise call, applied
     with mirrored mass/sign to each side. No separate per-particle
     finalize step.
@@ -98,8 +99,7 @@ def new_shared_coefficient_construction(dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, F
     wj_dr = kernel_dr(r, hj)
 
     shared = (
-        np.dot(Fi, dx) / rhoi * wi_dr * r_inv
-        + np.dot(Fj, dx) / rhoj * wj_dr * r_inv
+        np.dot(Fi, dx) / rhoi * wi_dr * r_inv + np.dot(Fj, dx) / rhoj * wj_dr * r_inv
     )
     div_F_i = mj * shared
     div_F_j = -mi * shared
@@ -126,8 +126,17 @@ print("=" * 70)
 print("Case A: hi == hj AND rhoi == rhoj (the fully-degenerate case the")
 print("flawed draft happens to get right, isolating the effect under test)")
 print("=" * 70)
-r_old_equal = check("OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.5, 1.0, 1.0)
-r_new_equal = check("NEW (shared coefficient)          ", new_shared_coefficient_construction, 0.5, 0.5, 1.0, 1.0)
+r_old_equal = check(
+    "OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.5, 1.0, 1.0
+)
+r_new_equal = check(
+    "NEW (shared coefficient)          ",
+    new_shared_coefficient_construction,
+    0.5,
+    0.5,
+    1.0,
+    1.0,
+)
 assert abs(r_old_equal) < 1e-12, "OLD should trivially cancel when hi=hj and rhoi=rhoj"
 assert abs(r_new_equal) < 1e-12, "NEW must cancel when hi=hj and rhoi=rhoj"
 
@@ -136,32 +145,56 @@ print("=" * 70)
 print("Case B: hi != hj, rhoi == rhoj (isolates the h-heterogeneity effect")
 print("the plan-review report specifically identified)")
 print("=" * 70)
-r_old_diff = check("OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.9, 1.0, 1.0)
-r_new_diff = check("NEW (shared coefficient)          ", new_shared_coefficient_construction, 0.5, 0.9, 1.0, 1.0)
+r_old_diff = check(
+    "OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.9, 1.0, 1.0
+)
+r_new_diff = check(
+    "NEW (shared coefficient)          ",
+    new_shared_coefficient_construction,
+    0.5,
+    0.9,
+    1.0,
+    1.0,
+)
 
 print()
 print("=" * 70)
 print("Case C: hi != hj AND rhoi != rhoj (the fully general, realistic case)")
 print("=" * 70)
-r_old_general = check("OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.9, 1.3, 0.8)
-r_new_general = check("NEW (shared coefficient)          ", new_shared_coefficient_construction, 0.5, 0.9, 1.3, 0.8)
-assert abs(r_old_general) > 1e-3, "OLD should also fail to cancel in the fully general case"
+r_old_general = check(
+    "OLD (flawed, independent finalize)", old_flawed_construction, 0.5, 0.9, 1.3, 0.8
+)
+r_new_general = check(
+    "NEW (shared coefficient)          ",
+    new_shared_coefficient_construction,
+    0.5,
+    0.9,
+    1.3,
+    0.8,
+)
+assert (
+    abs(r_old_general) > 1e-3
+), "OLD should also fail to cancel in the fully general case"
 assert abs(r_new_general) < 1e-12, "NEW must cancel in the fully general case too"
 
 print()
 assert abs(r_old_diff) > 1e-3, (
     "Expected the OLD construction to show a real (non-floating-point-noise) "
-    "conservation violation when hi != hj -- if this assertion fires, the "
+    "conservation violation when hi != hj, if this assertion fires, the "
     "reproduction of the flawed draft above is wrong, not the finding."
 )
 assert abs(r_new_diff) < 1e-12, (
-    "NEW construction must cancel to machine precision for hi != hj -- "
+    "NEW construction must cancel to machine precision for hi != hj, "
     "this is the whole point of the fix."
 )
 
 print("CONFIRMED:")
-print(f"  OLD construction: residual = {r_old_diff:.4f} (order-unity, NOT noise) when hi != hj")
-print(f"  NEW construction: residual = {r_new_diff:.2e} (machine precision) when hi != hj")
+print(
+    f"  OLD construction: residual = {r_old_diff:.4f} (order-unity, NOT noise) when hi != hj"
+)
+print(
+    f"  NEW construction: residual = {r_new_diff:.2e} (machine precision) when hi != hj"
+)
 print()
 print("Repeating with several random (hi, hj, rho, m, F) draws, hi != hj")
 print("enforced every time (rho also allowed to vary, the fully general")
@@ -182,7 +215,9 @@ for trial in range(200):
     old_resid = abs(mi * di + mj * dj)
     max_old_resid = max(max_old_resid, old_resid)
 
-    di2, dj2 = new_shared_coefficient_construction(dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, Fj)
+    di2, dj2 = new_shared_coefficient_construction(
+        dx, r, hi, hj, rhoi, rhoj, mi, mj, Fi, Fj
+    )
     new_resid = abs(mi * di2 + mj * dj2)
     max_new_resid = max(max_new_resid, new_resid)
 

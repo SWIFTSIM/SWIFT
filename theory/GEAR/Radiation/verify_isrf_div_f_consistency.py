@@ -1,34 +1,34 @@
-"""Verify WHICH differential operator the Design B `div(F)` estimator
-(design-lw-fuv-design-b.md Section 2.2) actually converges to.
+"""Verify WHICH differential operator the scheme's pairwise `div(F)`
+estimator actually converges to.
 
 Round-2 `/plan-review` (2026-09-07 report, Revision 2 section) found that
 `src/rt/SPHM1RT/rt_gradients.h`'s own doxygen (lines 29, 249) states its
-`radiation_divergence_SPH` function computes `(1/rho)*div(rho*fin)` -- a
-mass-density-weighted divergence -- for ALL THREE `diffmode` branches
+`radiation_divergence_SPH` function computes `(1/rho)*div(rho*fin)`, a
+mass-density-weighted divergence, for ALL THREE `diffmode` branches
 uniformly. At the time this script was first written, Section 1's
 governing equation was copied unmodified from the theory doc's own
 volumetric RTE-moment convention (`du/dt + div F = -u/tau + S`, plain
-`div(F)`), which this estimator does NOT compute -- these differ by
+`div(F)`), which this estimator does NOT compute, these differ by
 `F.grad(ln rho)`, nonzero whenever the density field has a real gradient.
 
 **Superseded, 2026-09-07 (operator ruling + re-derivation).** The
 mismatch above was a governing-equation bug, not a numerics bug: `u`/`F`
 are mass-specific throughout this implementation (injection already does
-`u_i += u_inject/m_i`), and `verify_design_b_lagrangian_mass_specific_
+`u_i += u_inject/m_i`), and `verify_isrf_lagrangian_mass_specific_
 derivation.py` derives, from the volumetric RTE moments plus mass
 continuity, that the CORRECT Lagrangian/mass-specific governing equation
 is `Du/Dt = -(1/rho)*div(rho*F) - u/tau + S` (up to a leftover
 `(1/rho)*div(u_V*v)` gas-advection term the discretization does not yet
-include -- a separate, newly-identified gap, see that script and the
+include, a separate, newly-identified gap, see that script and the
 design doc's §1/Known-gaps for the full account; NOT resolved by this
-script). This script's own finding below -- that the §2.2 estimator
-converges to `(1/rho)*div(rho*F)` -- is therefore now the CONFIRMATION
+script). This script's own finding below, that the §2.2 estimator
+converges to `(1/rho)*div(rho*F)`, is therefore now the CONFIRMATION
 that the estimator matches its (corrected) target, not a discrepancy
 needing an operator ruling. The sweep/assertions below are unchanged;
 only this framing paragraph and the module-level conclusion differ from
 this script's original version.
 
-The existing script (`verify_design_b_div_f_conservation.py`) checks only
+The existing script (`verify_isrf_div_f_conservation.py`) checks only
 CONSERVATION: does `m_i*(div F)_i_pair + m_j*(div F)_j_pair` cancel
 exactly for a single interacting pair? It says nothing about which
 operator the *converged* value approximates. This script checks
@@ -57,6 +57,7 @@ features" caveat is about accuracy on a DISORDERED distribution, a
 separate question from "which operator does the formula converge to,"
 which is what this script isolates.
 """
+
 # =============================================================================
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 # The divergence loop is untouched by the P1-to-M1 upgrade; which operator
@@ -88,7 +89,7 @@ def wendland_c2_3d(q):
 
 def kernel_dr(r, h):
     """`wi_dr = h^-(dim+1) * dW/dq`, SWIFT's own convention (dim=3 -> h^-4),
-    matching `verify_design_b_div_f_conservation.py`'s `kernel_dr`.
+    matching `verify_isrf_div_f_conservation.py`'s `kernel_dr`.
     """
     q = r / h
     _, dwdq = wendland_c2_3d(q)
@@ -129,7 +130,7 @@ def divF_pair_difference_shared_rho(dx, r, wi_dr, wj_dr, rhoi, rhoj, mi, mj, Fi,
     r_ij -> 0 (rho_i + rho_j -> 2*rho(x_i) for a smooth field), so the
     O(h) error this substitution introduces is the same *order* as the
     estimator's own already-acknowledged zeroth-order truncation error
-    (§2.3), not a new O(1) bias -- unlike the F.grad(ln rho) term the
+    (§2.3), not a new O(1) bias, unlike the F.grad(ln rho) term the
     density-weighted-sum form carries at every resolution.
     """
     r_inv = 1.0 / r
@@ -150,13 +151,13 @@ def divF_pair_rho_squared(dx, r, wi_dr, wj_dr, rhoi, rhoj, mi, mj, Fi, Fj):
     For the analogous SCALAR case (`grad(P)`), this exact `rho^2` structure
     is the textbook reason the standard hydro force is both exactly
     momentum-conserving AND an unbiased estimator of `(1/rho)*grad(P)` (the
-    `(P/rho^2)*grad(rho)` pieces from each term cancel exactly) -- unlike
+    `(P/rho^2)*grad(rho)` pieces from each term cancel exactly), unlike
     the `rho^1` structure, which leaves that piece uncancelled (§2.2's
     `F.grad(ln rho)` finding above). Whether the same cancellation survives
     here, for a VECTOR-to-scalar divergence built from two *different*
     kernels (`wi_dr` on the `rho_i`-term, `wj_dr` on the `rho_j`-term,
     unlike the single-kernel scalar identity), is exactly what this
-    candidate's numerical test settles -- not assumed.
+    candidate's numerical test settles, not assumed.
     """
     r_inv = 1.0 / r
     shared = (
@@ -175,7 +176,7 @@ CONSTRUCTIONS = {
 
 # ---------------------------------------------------------------------------
 # Part 1: exact-conservation sanity check for BOTH constructions
-# (mirrors verify_design_b_div_f_conservation.py's own check, extended to
+# (mirrors verify_isrf_div_f_conservation.py's own check, extended to
 # the candidate fix, so we never trade consistency for conservation.)
 # ---------------------------------------------------------------------------
 def check_pairwise_conservation():
@@ -204,7 +205,7 @@ def check_pairwise_conservation():
     for name, val in max_resid.items():
         assert val < 1e-10, f"{name} FAILED exact conservation (residual {val:.3e})"
     print("PASS: all constructions cancel to machine precision, h_i!=h_j, rho_i!=rho_j")
-    print("(expected -- an algebraic property of the shared-value/mirrored-mass-")
+    print("(expected, an algebraic property of the shared-value/mirrored-mass-")
     print("and-sign pattern itself, independent of what the shared value")
     print("represents; says nothing about which operator each converges to, see")
     print("Part 2 for that).")
@@ -243,12 +244,12 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
     symmetric kernel's convolution with a linear function is exact (the
     first odd moment vanishes by symmetry). The only remaining source of
     deviation from each estimator's true continuum-limit operator is
-    particle-discreteness / kernel-quadrature error -- and that shrinks
+    particle-discreteness / kernel-quadrature error, and that shrinks
     specifically as the NUMBER OF NEIGHBOURS within the kernel support
     grows (`h/dx_p -> infinity`), not merely as `h` itself shrinks at fixed
     neighbour count. An earlier version of this script swept `n_per_dim`
     at fixed `h_over_dxp` and found a residual that did not shrink at all
-    over a 4x range in `h` -- exactly consistent with this: that sweep
+    over a 4x range in `h`, exactly consistent with this: that sweep
     never changed the neighbour count, so it could not have shown
     convergence either way. Sweeping `h_over_dxp` instead isolates the
     right variable.
@@ -257,7 +258,8 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
     # converge to, as closed-form functions of (x_p, rho_p).
     TARGETS = {
         "plain div(F)": lambda x_p, rho_p: 3.0 * F0,
-        "(1/rho)*div(rho*F)": lambda x_p, rho_p: 3.0 * F0 + F0 * x_p * rho0 * slope / rho_p,
+        "(1/rho)*div(rho*F)": lambda x_p, rho_p: 3.0 * F0
+        + F0 * x_p * rho0 * slope / rho_p,
         "(1/rho)*div(F)": lambda x_p, rho_p: 3.0 * F0 / rho_p,
     }
 
@@ -265,14 +267,18 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
     print("Part 2: full-field consistency check (neighbour-count sweep)")
     print(f"  rho(x) = {rho0} * (1 + {slope}*x)   F(r) = {F0} * r")
     for tname, tfn in TARGETS.items():
-        print(f"  analytic {tname} at x=0.4/0.5/0.6: "
-              f"{tfn(0.4*box_l, rho_field(np.array([[0.4*box_l,0,0]]), rho0, slope)[0]):.4f} / "
-              f"{tfn(0.5*box_l, rho_field(np.array([[0.5*box_l,0,0]]), rho0, slope)[0]):.4f} / "
-              f"{tfn(0.6*box_l, rho_field(np.array([[0.6*box_l,0,0]]), rho0, slope)[0]):.4f}")
-    print(f"  n_per_dim fixed at {n_per_dim}; h_over_dxp swept over {h_over_dxp_values}")
+        print(
+            f"  analytic {tname} at x=0.4/0.5/0.6: "
+            f"{tfn(0.4*box_l, rho_field(np.array([[0.4*box_l,0,0]]), rho0, slope)[0]):.4f} / "
+            f"{tfn(0.5*box_l, rho_field(np.array([[0.5*box_l,0,0]]), rho0, slope)[0]):.4f} / "
+            f"{tfn(0.6*box_l, rho_field(np.array([[0.6*box_l,0,0]]), rho0, slope)[0]):.4f}"
+        )
+    print(
+        f"  n_per_dim fixed at {n_per_dim}; h_over_dxp swept over {h_over_dxp_values}"
+    )
     print("=" * 78)
 
-    # A handful of fixed x-locations (in units of box_l) to probe -- chosen
+    # A handful of fixed x-locations (in units of box_l) to probe, chosen
     # well inside the interior (>= 1.5h from every domain edge at every
     # h_over_dxp tested, including the largest) so boundary under-sampling
     # never contaminates the comparison.
@@ -316,15 +322,23 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
         for name, fn in CONSTRUCTIONS.items():
             div_F = np.zeros(pos.shape[0])
             di, dj = fn(
-                dx, r, wi_dr, wj_dr, rho[i_idx], rho[j_idx],
-                mass[i_idx], mass[j_idx], F[i_idx], F[j_idx],
+                dx,
+                r,
+                wi_dr,
+                wj_dr,
+                rho[i_idx],
+                rho[j_idx],
+                mass[i_idx],
+                mass[j_idx],
+                F[i_idx],
+                F[j_idx],
             )
             np.add.at(div_F, i_idx, di)
             np.add.at(div_F, j_idx, dj)
 
             print(
-                f"\n  -- {name}, h_over_dxp={h_over_dxp:.2f} "
-                f"(~{n_neighbours_est:.0f} neighbours, h={h:.4f}, dx_p={dx_p:.4f}) --"
+                f"\n{name}, h_over_dxp={h_over_dxp:.2f} "
+                f"(~{n_neighbours_est:.0f} neighbours, h={h:.4f}, dx_p={dx_p:.4f}):"
             )
             for frac in probe_fracs:
                 target_x = frac * box_l
@@ -338,7 +352,9 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
 
                 measured = div_F[p_idx]
                 target_vals = {tname: tfn(x_p, rho_p) for tname, tfn in TARGETS.items()}
-                results[name][frac].append((h_over_dxp, n_neighbours_est, measured, target_vals))
+                results[name][frac].append(
+                    (h_over_dxp, n_neighbours_est, measured, target_vals)
+                )
                 err_str = "  ".join(
                     f"{tname}={tval:+.6f} (err={measured-tval:+.2e})"
                     for tname, tval in target_vals.items()
@@ -357,14 +373,19 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
             rows = results[name][frac]
             for h_over_dxp, n_neigh, measured, target_vals in rows:
                 for tname, tval in target_vals.items():
-                    err_by_target_by_hod[tname].setdefault(h_over_dxp, []).append(abs(measured - tval))
+                    err_by_target_by_hod[tname].setdefault(h_over_dxp, []).append(
+                        abs(measured - tval)
+                    )
         for h_over_dxp in h_over_dxp_values:
             n_neigh = (4.0 / 3.0) * np.pi * h_over_dxp**3
             parts = [
                 f"{tname}={np.mean(err_by_target_by_hod[tname][h_over_dxp]):.4e}"
                 for tname in TARGETS
             ]
-            print(f"  h_over_dxp={h_over_dxp:.2f} (~{n_neigh:.0f} nbrs): " + "   ".join(parts))
+            print(
+                f"  h_over_dxp={h_over_dxp:.2f} (~{n_neigh:.0f} nbrs): "
+                + "   ".join(parts)
+            )
 
         # Converged-to-target means: the error vs that target shrinks
         # substantially (>= 5x) over the FULL sweep AND ends up much
@@ -372,7 +393,7 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
         # finest neighbour count tested. A narrow sweep can show a
         # transient crossing that looks like convergence to the wrong
         # target (observed at h_over_dxp~1.8 for the current formula, see
-        # module docstring) -- the >=5x-shrink-over-the-FULL-sweep
+        # module docstring), the >=5x-shrink-over-the-FULL-sweep
         # requirement guards against reading that transient as the verdict.
         last, first = h_over_dxp_values[-1], h_over_dxp_values[0]
         err_last = {t: np.mean(err_by_target_by_hod[t][last]) for t in TARGETS}
@@ -383,9 +404,13 @@ def run_convergence_check(rho0, slope, F0, box_l, n_per_dim, h_over_dxp_values):
         if shrink_factor >= 5.0 and err_last[best_target] * 10.0 < min(others_last):
             verdict = best_target
         else:
-            verdict = "AMBIGUOUS (" + ", ".join(
-                f"{t}: {err_first[t]:.2e}->{err_last[t]:.2e}" for t in TARGETS
-            ) + ")"
+            verdict = (
+                "AMBIGUOUS ("
+                + ", ".join(
+                    f"{t}: {err_first[t]:.2e}->{err_last[t]:.2e}" for t in TARGETS
+                )
+                + ")"
+            )
         verdicts[name] = verdict
         print(f"  ==> converges to: {verdict}")
 
@@ -415,12 +440,12 @@ if __name__ == "__main__":
     rho_sq = verdicts["rho_squared (momentum-eq-style)"]
     assert current == "(1/rho)*div(rho*F)", (
         "Expected the CURRENT §2.2 formula to converge to the density-weighted "
-        f"operator per the SPHM1RT doxygen claim; got '{current}' instead -- "
+        f"operator per the SPHM1RT doxygen claim; got '{current}' instead, "
         "if this assertion fires, re-examine before trusting the doc update."
     )
     assert difference_shared != "plain div(F)", (
         "This candidate was expected to FAIL (collapse toward zero, not "
-        f"converge to any target) -- got '{difference_shared}' instead. If it "
+        f"converge to any target), got '{difference_shared}' instead. If it "
         "actually converges to plain div(F), that overturns the doc's "
         "'no in-family exact-conservative fix exists' finding; re-examine "
         "before trusting anything written about it."
@@ -434,18 +459,18 @@ if __name__ == "__main__":
     print(f"  difference_shared_rho (candidate fix) -> {difference_shared}")
     print(f"    (collapses toward zero: forcing a mirrored-mass/sign pattern onto")
     print(f"    a plain DIFFERENCE-of-F scalar is structurally self-cancelling for")
-    print(f"    an isotropic neighbour distribution -- NOT a viable fix.)")
+    print(f"    an isotropic neighbour distribution, NOT a viable fix.)")
     print(f"  rho_squared (momentum-eq-style) -> {rho_sq}")
     print(f"    (same rho^1 -> rho^2 trick that makes runner_iact_force exactly")
     print(f"    momentum-conserving AND grad(P)/rho-consistent; removes the")
     print(f"    F.grad(ln rho) bias, but the result still carries an extra 1/rho")
-    print(f"    factor relative to plain div(F) -- see module docstring/design doc")
+    print(f"    factor relative to plain div(F), see module docstring/design doc")
     print(f"    for why multiplying it out by rho_i afterward would break exact")
     print(f"    conservation again.)")
     print()
     print("No construction tested here reaches PLAIN div(F) while retaining exact")
-    print("pairwise (mass-weighted-sum) conservation -- this is expected and no")
-    print("longer an open question: verify_design_b_lagrangian_mass_specific_")
+    print("pairwise (mass-weighted-sum) conservation, this is expected and no")
+    print("longer an open question: verify_isrf_lagrangian_mass_specific_")
     print("derivation.py derives (1/rho)*div(rho*F), not plain div(F), as the")
     print("CORRECT mass-specific Lagrangian target, so the current §2.2 formula's")
     print("convergence to (1/rho)*div(rho*F) above is a PASS, not a gap.")

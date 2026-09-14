@@ -1,6 +1,5 @@
-"""Verify the injection-cadence analysis of the Design B dissipation
-design doc (design-lw-fuv-design-b-dissipation.md Section 4.6): the
-current once-per-STAR-step lump-sum injection versus a per-gas-sub-step
+"""Verify the injection-cadence analysis of the scheme's dissipation term:
+the current once-per-STAR-step lump-sum injection versus a per-gas-sub-step
 source RATE applied inside the exact-relaxation `u` update.
 
 Both schemes use the same exact-relaxation integrator (radiation_isrf.c,
@@ -20,7 +19,7 @@ Part A: 0-D (no transport). Closed-form steady states, time averages,
         the value cooling reads, and the per-star-step budget of each
         scheme.
 Part B: 1-D periodic chain with transport (the machinery of
-        verify_design_b_timestepping_stability.py Part C), kernel-weighted
+        verify_isrf_timestepping_stability.py Part C), kernel-weighted
         source, stiff and thin regimes, gas sub-steps N per star step.
         B.1 measures what cooling reads under each scheme and the L(N=1)
         vs R fixed-point difference; B.2 the kappa = 0 budget; B.3 the
@@ -44,14 +43,14 @@ Exit 0 iff every assertion holds.
 # M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
 # Both schemes compared here differ only in WHEN the source enters the
 # exact-relaxation `u` update, which the closure does not touch. The
-# constant multiplying the source did change (`3*c_hyp/c` -> `c_hyp/c`,
-# design-lw-fuv-m1-upgrade.md D2), but it multiplies both schemes
+# constant multiplying the source did change (`3*c_hyp/c` -> `c_hyp/c`),
+# but it multiplies both schemes
 # identically and cancels out of every comparison made below.
 # =============================================================================
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# Shared pieces (same conventions as verify_design_b_timestepping_stability.py)
+# Shared pieces (same conventions as verify_isrf_timestepping_stability.py)
 # ---------------------------------------------------------------------------
 GAMMA_1D = 1.620185
 C_HYP = 0.5  # ISRF_c_hyp_margin default
@@ -90,7 +89,7 @@ def wc2_1d_dwdr(r, H):
 
 def chain_operator(n, h, dx=1.0):
     """Antisymmetric kernel-gradient matrix on a uniform periodic chain
-    (verify_design_b_timestepping_stability.py Part C)."""
+    (verify_isrf_timestepping_stability.py Part C)."""
     H = GAMMA_1D * h
     A = np.zeros((n, n))
     nmax = int(np.ceil(H / dx))
