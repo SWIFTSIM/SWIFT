@@ -540,8 +540,8 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   const int periodic = s->periodic;
 
   /* Minimum star mass allowed after nibbling: 50% of mean baryon particle mass. */
-  const double min_star_mass_for_nibbling =
-      0.5 * s->initial_mean_mass_particles[swift_type_gas];
+  // const double min_star_mass_for_nibbling =
+  //     0.5 * s->initial_mean_mass_particles[swift_type_gas];
 
   /* Anything to do here? */
   if (c->black_holes.count == 0) return;
@@ -576,7 +576,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   /* Half-life for TDE mass loss: star loses 50% of available mass per Gyr. */
   const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
   const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
-  const double ln2_over_t_half = log(2.0) / t_half;
+  // const double ln2_over_t_half = log(2.0) / t_half;
 
   for (int i = 0; i < count; i++) {
 
@@ -598,7 +598,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* --- Also get mean velocity --- */
     double M_total = 0.0;
     double nearest_r2 = aperture_comoving2;
-    struct spart *nearest_sp = NULL;
+    // struct spart *nearest_sp = NULL;
     int star_count = 0;
     double v_mean_x = 0.0;
     double v_mean_y = 0.0;
@@ -745,30 +745,30 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     message("BH (ID %lld), tde_calculations: # ti_current, t, redshift, scale factor, star_count, within radius (kpc), bh dynamical mass, bh subgrid mass, 1D velocity dispersion)", bp->id);
     message("BH (ID %lld), tde_calculations: %lld, %e, %f, %f, %d, %.2f, %f, %f, %f", bp->id, e->ti_current, e->ti_current * e->time_base, cosmo->z, cosmo->a, star_count, aperture_phys, (double)bp->mass, (double)bp->subgrid_mass, sig_total);
 
-    /* Print profiles as arrays */
-    char buf[3201];
-    int offset = 0;
-    for (int j = 0; j < n_bins; j++){
-    offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", density_per_shell[j]);
-    }
-    message("BH (ID %lld), tde_calculations: density [%s]",
-        bp->id, buf);
+    // /* Print profiles as arrays */
+    // char buf[3201];
+    // int offset = 0;
+    // for (int j = 0; j < n_bins; j++){
+    // offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", density_per_shell[j]);
+    // }
+    // message("BH (ID %lld), tde_calculations: density [%s]",
+    //     bp->id, buf);
 
-    offset = 0;
-    for (int j = 0; j < n_bins; j++){
-    offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", sig_per_shell[j]);
-    }
-    message("BH (ID %lld), tde_calculations: sigma [%s]",
-        bp->id, buf);
+    // offset = 0;
+    // for (int j = 0; j < n_bins; j++){
+    // offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", sig_per_shell[j]);
+    // }
+    // message("BH (ID %lld), tde_calculations: sigma [%s]",
+    //     bp->id, buf);
 
-    offset = 0;
-    for (int j = 0; j < n_bins; j++){
-    offset += snprintf(buf + offset, sizeof(buf) - offset, "%f ", bin_centres[j]);
-    }
-    message("BH (ID %lld), tde_calculations: radii [%s]", bp->id, buf);
+    // offset = 0;
+    // for (int j = 0; j < n_bins; j++){
+    // offset += snprintf(buf + offset, sizeof(buf) - offset, "%f ", bin_centres[j]);
+    // }
+    // message("BH (ID %lld), tde_calculations: radii [%s]", bp->id, buf);
 
-    message("BH (ID %lld), tde_calculations: mean_velocity (%f, %f, %f)",
-            bp->id, v_mean_x, v_mean_y, v_mean_z);
+    // message("BH (ID %lld), tde_calculations: mean_velocity (%f, %f, %f)",
+    //         bp->id, v_mean_x, v_mean_y, v_mean_z);
     
     /* --------------------------------- */
     /* nibbling from star particles      */
@@ -847,7 +847,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     // if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
 
     /* Update NSC mass */
-    const double nsc_mass_orig = (double)bp->nsc_mass;
+    // const double nsc_mass_orig = (double)bp->nsc_mass;
     bp->nsc_mass = new_nsc_mass;
 
     /* Update BH velocity to conserve momentum of the accreted mass,
