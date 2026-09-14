@@ -148,9 +148,6 @@ struct gpart_foreign {
 
   /* Time of the last drift */
   integertime_t ti_drift;
-
-  /* Particle ID (for debugging) */
-  long long id_or_neg_offset;
 #endif
 };
 

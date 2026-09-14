@@ -471,9 +471,6 @@ void *runner_main(void *data) {
                   "last rebuild! ci->cellID=%lld count_relinked=%d "
                   "count_total=%d",
                   ci->cellID, count_relinked, ci->grav.count_total);
-#ifdef SWIFT_DEBUG_CHECKS
-            cell_debug_stamp_grav_counts_recv(ci, r->e->ti_current);
-#endif
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

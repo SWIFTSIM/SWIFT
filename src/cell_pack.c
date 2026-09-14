@@ -929,21 +929,3 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   return 0;
 #endif
 }
-
-#ifdef SWIFT_DEBUG_CHECKS
-/**
- * @brief Debug-only: stamp when a grav_counts delivery touched this cell
- * and its sub-cells.
- *
- * @param c The #cell.
- * @param ti_current The current integer time.
- */
-void cell_debug_stamp_grav_counts_recv(struct cell *c,
-                                       integertime_t ti_current) {
-  c->grav.counts_recv_at_tic = ti_current;
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_debug_stamp_grav_counts_recv(c->progeny[k], ti_current);
-}
-#endif
