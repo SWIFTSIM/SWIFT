@@ -47,6 +47,7 @@
 #include "inline.h"
 #include "lock.h"
 #include "mpiuse.h"
+#include "part.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
@@ -164,6 +165,10 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_sink_swallow",
     "sink_swallow",
     "sink_do_gas_swallow",
+    "task_subtype_sink_formation_counts",
+    "task_subtype_sink_rho",
+    "task_subtype_sink_gas_swallow",
+    "task_subtype_sink_merger",
     "rt_gradient",
     "rt_transport",
 };
@@ -599,9 +604,7 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
       } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
-#endif
       } else { /* hydro */
         cell_unlocktree(ci);
       }
@@ -645,10 +648,8 @@ void task_unlock(struct task *t) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
       } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
         cell_unlocktree(cj);
-#endif
       } else { /* hydro */
         cell_unlocktree(ci);
         cell_unlocktree(cj);
@@ -740,6 +741,24 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* A completed gpart recv must have delivered exactly grav.count
+       * entries: Stage 2's counts-before-data ordering guarantees the
+       * two always describe the same pre-SF snapshot. A mismatch here
+       * means that guarantee broke somewhere. */
+      if (res && type == task_type_recv && subtype == task_subtype_gpart) {
+        int received = 0;
+        MPI_Get_count(&stat, gpart_foreign_mpi_type, &received);
+        if (received == MPI_UNDEFINED)
+          error("gpart recv byte count is not a multiple of the datatype.");
+        if (received != ci->grav.count)
+          error(
+              "gpart recv delivered %d entries but ci->grav.count=%d "
+              "(cellID=%lld)",
+              received, ci->grav.count, ci->cellID);
+      }
+#endif
 
       /* And log deactivation, if logging enabled. */
       if (res) {
@@ -856,10 +875,9 @@ int task_lock(struct task *t) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
       } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Also touches the hydro sort arrays, so needs the same lock. */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
-#endif
       } else { /* subtype == hydro */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -968,14 +986,13 @@ int task_lock(struct task *t) {
           return 0;
         }
       } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Also touches the hydro sort arrays, so needs the same lock. */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
         if (cell_locktree(cj) != 0) {
           cell_unlocktree(ci);
           return 0;
         }
-#endif
       } else { /* subtype == hydro */
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;

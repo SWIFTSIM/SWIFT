@@ -68,10 +68,23 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* The resort tasks are at either the chosen depth or the super level,
-   * whichever comes first. */
-  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
-      c->hydro.count > 0) {
-    scheduler_activate(s, c->hydro.stars_resort);
+   * whichever comes first. Stop descending here unconditionally: whether
+   * there is anything to activate must not gate the recursion itself. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+
+    /* Mirror engine_make_hierarchical_tasks_hydro()'s creation criterion
+     * exactly, so we only activate a task that was actually created. */
+    const int with_stars = (s->space->e->policy & engine_policy_stars);
+    const int with_sinks = (s->space->e->policy & engine_policy_sinks);
+    const int with_star_formation =
+        (s->space->e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if ((c->hydro.count > 0 && with_star_formation) ||
+        ((c->hydro.count > 0 || c->sinks.count > 0) &&
+         with_star_formation_sink)) {
+      scheduler_activate(s, c->hydro.stars_resort);
+    }
   } else {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
@@ -2006,10 +2019,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-#ifdef WITH_MPI
-  const int with_star_formation = e->policy & engine_policy_star_formation;
-#endif
-
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2049,9 +2058,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-        /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active)
+        /* If the local cell is active, receive data from the foreign cell.
+         * grav_counts must be co-activated with the data, gated on whether
+         * the task exists at all (not a re-derived local count), so the
+         * count and data channels always share the same pre-SF snapshot. */
+        if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+          if (cell_get_recv(ci, task_subtype_grav_counts) != NULL)
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2059,30 +2074,29 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
 
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
-                                  ci_nodeID);
+          struct link *l_send = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
-             itself. */
-          cell_activate_drift_gpart(cj, s);
-        }
+             itself. cj can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_gpart(l_send->t->ci, s);
 
-        /* Propagating new star counts? */
-        if (with_star_formation) {
-          if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
-          }
-          if (cj_active && cj->hydro.count > 0) {
+          if (cell_get_send_task(cj, task_subtype_grav_counts, ci_nodeID) !=
+              NULL)
             scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
                                     ci_nodeID);
-          }
         }
 
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active)
+        if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+          if (cell_get_recv(cj, task_subtype_grav_counts) != NULL)
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2090,26 +2104,22 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
 
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
-                                  cj_nodeID);
+          struct link *l_send = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
-             itself. */
-          cell_activate_drift_gpart(ci, s);
-        }
+             itself. ci can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_gpart(l_send->t->ci, s);
 
-        /* Propagating new star counts? */
-        if (with_star_formation) {
-          if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
-          }
-          if (ci_active && ci->hydro.count > 0) {
+          if (cell_get_send_task(ci, task_subtype_grav_counts, cj_nodeID) !=
+              NULL)
             scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
                                     cj_nodeID);
-          }
         }
-      }
+      } /* cj_nodeID != nodeID */
 #endif
     }
   }
@@ -2269,13 +2279,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
-                                  ci_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_spart_density, ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
                                   ci_nodeID);
 #endif
-          cell_activate_drift_spart(cj, s);
+          /* Drift the cell which will be sent at the level at which it is
+             sent, i.e. drift the cell specified in the send task (l->t)
+             itself. cj can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (ci_active) {
@@ -2305,13 +2320,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
-                                  cj_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_spart_density, cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-          cell_activate_drift_spart(ci, s);
+          /* Drift the cell which will be sent at the level at which it is
+             sent, i.e. drift the cell specified in the send task (l->t)
+             itself. ci can be a deeper cell than the send task's own ci
+             when the two share the same MPI send/pack task (created once,
+             linked onto every descendant that also targets this node). */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (cj_active) {
@@ -2355,12 +2375,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int cj_active =
         (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
                                                    with_star_formation_sink);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (with_star_formation_sink) {
-      error("TODO");
-    }
-#endif
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -2407,12 +2421,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #else
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (with_star_formation_sink) {
-      error("TODO");
-    }
 #endif
 
     const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
@@ -2477,6 +2485,17 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate(s, ci->hydro.super->stars.stars_out);
         if (cj_nodeID == nodeID)
           scheduler_activate(s, cj->hydro.super->stars.stars_out);
+
+        /* Gate the ghost chain on pair activity, not per-side activity, or
+         * the passive side's ghost never activates (engine_do_unskip_stars
+         * only recurses into active cells) and the stars_ghost_out ->
+         * pair_stars_feedback edge is silently severed for that side. */
+        if (ci_nodeID == nodeID && ci->hydro.super->stars.ghost_in != NULL)
+          cell_activate_stars_ghosts(ci->hydro.super, s, e, with_star_formation,
+                                     with_star_formation_sink);
+        if (cj_nodeID == nodeID && cj->hydro.super->stars.ghost_in != NULL)
+          cell_activate_stars_ghosts(cj->hydro.super, s, e, with_star_formation,
+                                     with_star_formation_sink);
       }
 
       /* We only want to activate the task if the cell is active and is
@@ -2600,6 +2619,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
+      /* TODO(sink_mpi_physics): same per-side-active gating bug fixed for
+       * sinks in a722fbb14 and for stars alongside this comment. Gate on
+       * (ci_active || cj_active) instead, mirroring bh_in/bh_out above.
+       * Left as-is: black holes aren't compiled in this checkout
+       * (BLACK_HOLES_NONE), so the fix can't be tested here. */
       if (ci->hydro.super->black_holes.count > 0 && ci_active)
         scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost_1);
       if (cj->hydro.super->black_holes.count > 0 && cj_active)
@@ -2849,22 +2873,27 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
+#ifdef WITH_MPI
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation_sink = with_sinks && with_stars;
+#endif
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_feedback = e->policy & engine_policy_feedback;
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (c->sinks.drift != NULL)
+  if (c->sinks.drift != NULL) {
     if (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e)) {
       cell_activate_drift_sink(c, s);
     }
+  }
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->sinks.density; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2922,11 +2951,154 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
-#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
-      error("TODO");
-#endif
+      /* Mirror sink_in/sink_out: gate on pair activity, not per-side, or an
+       * inactive side's ghosts silently sever ordering. */
+      if (ci_active || cj_active) {
+        if (ci_nodeID == nodeID) {
+          if (ci->hydro.super->sinks.density_ghost != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.density_ghost);
+          if (ci->hydro.super->sinks.sink_ghost1 != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
+          if (ci->hydro.super->sinks.sink_ghost2 != NULL)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_ghost2);
+        }
+        if (cj_nodeID == nodeID) {
+          if (cj->hydro.super->sinks.density_ghost != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.density_ghost);
+          if (cj->hydro.super->sinks.sink_ghost1 != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
+          if (cj->hydro.super->sinks.sink_ghost2 != NULL)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_ghost2);
+        }
+      }
+
+#ifdef WITH_MPI
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
+        if ((ci_active || cj_active)) {
+          /* We must exchange the foreign sinks no matter the activity status */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_rho);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_rho,
+                                  ci_nodeID);
+
+          /* Drift before you send */
+          if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
+        }
+
+        if (cj_active) {
+          /* Receive the foreign parts to compute sink properties and do
+           * the swallowing */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, ci->mpi.recv,
+                                  task_subtype_sink_gas_swallow);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
+        }
+
+        if (ci_active) {
+          /* Send the local sink information so that on the other rank, ci can
+             compute the sink properties and do the swallowing. */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send,
+                                  task_subtype_sink_gas_swallow, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
+                                  ci_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
+        }
+
+        /* Propagating new sink counts? */
+        if (ci_active && ci->hydro.count > 0) {
+          scheduler_activate_recv(s, ci->mpi.recv,
+                                  task_subtype_sink_formation_counts);
+        }
+        if (cj_active && cj->hydro.count > 0) {
+          scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_sink_formation_counts, ci_nodeID);
+        }
+
+        /* Propagating new star counts? */
+        if (with_star_formation_sink) {
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+          }
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
+                                    ci_nodeID);
+          }
+        }
+
+      } else if (cj_nodeID != nodeID) {
+
+        if ((ci_active || cj_active)) {
+          /* We must exchange the foreign sinks no matter the activity status */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_rho);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_rho,
+                                  cj_nodeID);
+
+          /* Drift before you send */
+          if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
+        }
+
+        if (cj_active) {
+          /* Send the local sink information so that on the other rank, ci can
+             compute the sink properties and do the swallowing. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send,
+                                  task_subtype_sink_gas_swallow, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
+                                  cj_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+        }
+
+        if (ci_active) {
+          /* Receive the foreign parts to compute sink properties and do
+           * the swallowing */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, cj->mpi.recv,
+                                  task_subtype_sink_gas_swallow);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
+        }
+
+        /* Propagating new sink counts? */
+        if (cj_active && cj->hydro.count > 0) {
+          scheduler_activate_recv(s, cj->mpi.recv,
+                                  task_subtype_sink_formation_counts);
+        }
+        if (ci_active && ci->hydro.count > 0) {
+          scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_sink_formation_counts, cj_nodeID);
+        }
+
+        /* Propagating new star counts? */
+        if (with_star_formation_sink) {
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+          }
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
+                                    cj_nodeID);
+          }
+        }
+      }
+#endif /* WITH_MPI */
     }
   }
+
+  /* Note: Have a look at parts. They activate the tasks for the foreign cell
+   * if the local cell is active to not miss any dependencies:
+   * "Additionally unskip force interactions between inactive local cell and
+   * active remote cell. (The cell unskip will only be called for active cells,
+   * so, we have to do this now, from the active remote cell)."
+   */
 
   /* Un-skip the swallow tasks involved with this cell. */
   for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {

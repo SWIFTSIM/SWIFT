@@ -307,6 +307,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
               h_max_active = max(h_max_active, sp->h);
             }
 
+#ifdef SWIFT_DEBUG_CHECKS
+            sp->debug_density_converged_at_tic = e->ti_current;
+#endif
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -399,6 +403,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
         }
 
         /* We now have a particle whose smoothing length has converged */
+
+#ifdef SWIFT_DEBUG_CHECKS
+        sp->debug_density_converged_at_tic = e->ti_current;
+#endif
 
         /* Set the correct depth */
         cell_set_spart_h_depth(sp, c);

@@ -39,10 +39,12 @@ examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
+examples/**/*.csv
 examples/*/*/*.dot
 examples/**/cell_hierarchy.html
 examples/*/*/energy.txt
 examples/**/task_level.txt
+examples/**/task_level_*.txt
 examples/*/*/timesteps_*.txt
 examples/**/timesteps.txt
 examples/**/SFR.txt
@@ -59,6 +61,8 @@ examples/*/*/used_parameters.yml
 examples/*/*/unused_parameters.yml
 examples/*/*/fof_used_parameters.yml
 examples/*/*/fof_unused_parameters.yml
+examples/**/used_parameters.yml
+examples/**/unused_parameters.yml
 examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
 examples/*/*/coolingtables.tar.gz
@@ -85,6 +89,7 @@ examples/**/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
 examples/**/POPIIsw.h5
 examples/**/GRACKLE_INFO
 examples/**/snap/
+examples/**/snap_*/
 examples/SinkParticles/HomogeneousBox/snapshot_0003restart.hdf5
 
 

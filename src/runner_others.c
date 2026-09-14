@@ -204,8 +204,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
  */
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                    const int timer) {
-
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION)
   return;
 #endif
 
@@ -425,6 +424,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running star formation task on a foreign node!");
+  c->hydro.sf_ran_at_tic = ti_current;
 #endif
 
   /* Anything to do here? */
@@ -570,6 +570,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
+#ifdef SWIFT_DEBUG_CHECKS
+                /* p keeps existing (reduced mass) only on a spawn, not a
+                 * full conversion -- count how many times this exact
+                 * particle has been partially depleted this way. */
+                if (!part_converted) xp->sf_data.n_sf_spawn_events++;
+#endif
+
                 sp->x_diff[0] += displacement[0];
                 sp->x_diff[1] += displacement[1];
                 sp->x_diff[2] += displacement[2];
@@ -694,8 +701,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
  * @param c cell
  */
 void runner_do_sink_formation(struct runner *r, struct cell *c) {
-
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION)
   return;
 #endif
 

@@ -390,7 +390,24 @@ void scheduler_ranktasks(struct scheduler *s) {
   /* Main loop. */
   for (int j = 0, rank = 0; j < nr_tasks; rank++) {
     /* Did we get anything? */
-    if (j == left) error("Unsatisfiable task dependencies detected.");
+    if (j == left) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Dump the tasks still waiting on an unlock to help identify the
+       * cycle. */
+      int printed = 0;
+      for (int k = 0; k < nr_tasks && printed < 60; k++) {
+        struct task *t = &tasks[k];
+        if (t->wait == 0) continue;
+        printed++;
+        const long long ci_id = t->ci ? t->ci->cellID : -1;
+        const long long cj_id = t->cj ? t->cj->cellID : -1;
+        message("STUCK TASK: idx=%d type=%s subtype=%s wait=%d ci=%lld cj=%lld",
+                k, taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+                ci_id, cj_id);
+      }
+#endif
+      error("Unsatisfiable task dependencies detected.");
+    }
 
     /* Unlock the next layer of tasks. */
     const int left_old = left;
@@ -974,6 +991,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+          count = size = t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+          count = size = sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(count);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -998,6 +1022,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Mirror of the send-side check: bound against the top-level
+           * cell's real allocation via pointer arithmetic. */
+          {
+            const ptrdiff_t rel_end = (t->ci->grav.parts_foreign + count) -
+                                      t->ci->top->grav.parts_foreign;
+            if (rel_end > t->ci->top->grav.count_total)
+              error(
+                  "Posting a gpart recv beyond the top-level cell's "
+                  "capacity: rel_end=%td top->grav.count_total=%d "
+                  "t->ci->cellID=%lld t->ci->depth=%d "
+                  "t->ci->top->cellID=%lld t->ci->top->grav.count=%d",
+                  rel_end, t->ci->top->grav.count_total, t->ci->cellID,
+                  t->ci->depth, t->ci->top->cellID, t->ci->top->grav.count);
+          }
+#endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
           buff = t->ci->grav.parts_foreign;
@@ -1025,14 +1065,30 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+          /* TODO: sf_sinks and sf will use the same function and
+             structs. Hence, add  || (t->subtype ==
+             task_subtype_sf_sinks_counts) */
         } else if (t->subtype == task_subtype_sf_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+          /* Note: This is used for star and sink formation */
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          count = size =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
           buff = t->buff = malloc(count);
 
         } else {
@@ -1085,6 +1141,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+
+          size = count = t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_gas_swallow(t->ci, (struct sink_part_data *)buff);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+
+          size = count = sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(size);
+          cell_pack_sink_swallow(t->ci, (struct sink_sink_data *)t->buff);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -1106,6 +1174,24 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
+#ifdef SWIFT_DEBUG_CHECKS
+          /* A sub-cell's own count_total is a zero-headroom split-time
+           * snapshot (cell_split.c), not a live capacity ceiling. Only
+           * the top-level cell owns real, headroom-bearing storage. Bound
+           * against the top's allocation via pointer arithmetic instead. */
+          {
+            const ptrdiff_t rel_end =
+                (t->ci->grav.parts + count) - t->ci->top->grav.parts;
+            if (rel_end > t->ci->top->grav.count_total)
+              error(
+                  "Sending a gpart buffer beyond the top-level cell's "
+                  "capacity: rel_end=%td top->grav.count_total=%d "
+                  "t->ci->cellID=%lld t->ci->depth=%d "
+                  "t->ci->top->cellID=%lld t->ci->top->grav.count=%d",
+                  rel_end, t->ci->top->grav.count_total, t->ci->cellID,
+                  t->ci->depth, t->ci->top->cellID, t->ci->top->grav.count);
+          }
+#endif
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
           buff = t->buff;
@@ -1133,6 +1219,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+          /* TODO: sf_sinks and sf will use the same function and
+             structs. Hence, add  || (t->subtype ==
+             task_subtype_sf_sinks_counts) */
         } else if (t->subtype == task_subtype_sf_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
@@ -1140,10 +1236,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+          /* Note: This is used for star and sink formation */
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
           cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
+
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          size = count =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_formation_counts(
+              t->ci, (struct pcell_sink_formation_sinks *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
