@@ -130,13 +130,13 @@ case $host_cpu in
 	    *b?6[[7af]]?:*:*:*) ax_gcc_arch="raptorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Raptor Lake
 	    *b?65?:*:*:*) ax_gcc_arch="arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake-U
 	    *b?66?:*:*:*) ax_gcc_arch="grandridge sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Grand Ridge
-	    *b?6e?:*:*:*) ax_gcc_arch="alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Alder Lake-N (Gracemont)
-	    *b?6d?:*:*:*) ax_gcc_arch="arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Lunar Lake
+	    *b?6e?:*:*:*) ax_gcc_arch="gracemont alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Alder Lake-N (Gracemont)
+	    *b?6d?:*:*:*) ax_gcc_arch="lunarlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Lunar Lake
 	    *c?65?:*:*:*) ax_gcc_arch="arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake-H
 	    *c?66?:*:*:*) ax_gcc_arch="arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake
 	    *c?6c?:*:*:*) ax_gcc_arch="pantherlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Panther Lake
 	    *c?6f?:*:*:*) ax_gcc_arch="emeraldrapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Emerald Rapids
-	    *d?65?:*:*:*) ax_gcc_arch="pantherlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Wildcat Lake
+	    *d?65?:*:*:*) ax_gcc_arch="wildcatlake pantherlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Wildcat Lake
 	    *d?67?:*:*:*) ax_gcc_arch="raptorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Bartlett Lake
 	    *d?6d?:*:*:*) ax_gcc_arch="clearwaterforest sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Clearwater Forest
 	    *4??f??:*:*:*) ax_gcc_arch="diamondrapids graniterapids-d graniterapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Diamond Rapids (family 0x13)
