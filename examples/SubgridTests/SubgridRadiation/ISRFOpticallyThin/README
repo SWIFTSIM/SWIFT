@@ -45,9 +45,10 @@ approaches the box edge.
 `params.yml` holds the Stage-1 artificial-conductivity coefficient at a
 fixed 0.5 via `LW_FUV_dissipation_alpha_pin_for_debugging`, instead of
 letting the negativity trigger set it, so that what is measured is the
-transport operator alone. At this example's screening length the shipped
-`LW_FUV_dissipation_alpha_max` default of 0.25 is not enough: the field
-rings in sign and has no radial profile to measure. 0.5 still satisfies the
+transport operator alone. At this example's screening length, a
+`LW_FUV_dissipation_alpha_max` of 0.25 (below the shipped default, 0.5) is
+not enough: the field rings in sign and has no radial profile to measure.
+0.5, the pinned value above, still satisfies the
 joint stability bound `6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2` at the default
 `C_hyp = 0.5`. Set `alpha_pin=0 ./run.sh` to see the trigger-gated
 behaviour instead.

@@ -124,8 +124,8 @@ GEARFeedback:
   # measured is the transport operator alone, with no trigger-gating
   # variance folded in. 0.5 satisfies the joint stability bound
   # 6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2 at the default C_hyp=0.5. See the
-  # README for why the shipped alpha_max default is not enough at this
-  # example's screening length.
+  # README for why an alpha_max of 0.25 (below the shipped default, 0.5)
+  # is not enough at this example's screening length.
   LW_FUV_dissipation_alpha_max:  0.25
   LW_FUV_dissipation_alpha_pin_for_debugging: 0.5
   with_photoionization:          0
