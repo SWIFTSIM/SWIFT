@@ -174,7 +174,9 @@ actually present between the particle and the star,
 evaluated on the run's own radial H2 profile. In a uniform medium the ratio
 is ``2 l_shield / r``: the factor 2 is the convention of Eq. (4), the rest is
 how far the local length is from the true path. Printed per radial shell,
-alongside the shielding length itself.
+alongside the shielding length itself, for a shielding mode only; it is
+meaningful while the H2 profile is still close to uniform, as in the
+self-shielded configuration, and is not printed for mode 0.
 """
 
 import argparse
@@ -624,7 +626,9 @@ def cumulative_integral(times: np.ndarray, values: np.ndarray) -> np.ndarray:
     return np.vstack([np.zeros((1, values.shape[1])), np.cumsum(segments, axis=0)])
 
 
-def report_shells(history: Dict[str, np.ndarray], index: int, n_shells: int) -> None:
+def report_shells(
+    history: Dict[str, np.ndarray], index: int, n_shells: int, shielded: bool
+) -> None:
     """Print the radial profiles at one snapshot, including the mode diagnostic.
 
     Parameters
@@ -635,6 +639,9 @@ def report_shells(history: Dict[str, np.ndarray], index: int, n_shells: int) -> 
         Snapshot index to report.
     n_shells : int
         Number of equal-width radial shells.
+    shielded : bool
+        Whether a shielding mode was active. Without one the column plays no
+        role, so the column ratio is not printed.
     """
     radius = history["radius"]
     edges = np.linspace(0.0, radius.max(), n_shells + 1)
@@ -662,7 +669,7 @@ def report_shells(history: Dict[str, np.ndarray], index: int, n_shells: int) -> 
         if not np.any(mask):
             continue
         column = np.median(history["column"][index][mask])
-        ratio = column / geometric[i] if geometric[i] > 0.0 else np.nan
+        ratio = column / geometric[i] if shielded and geometric[i] > 0.0 else np.nan
         print(
             f"{centres[i] / PARSEC_CGS:9.3f} "
             f"{np.median(history['habing'][index][mask]):11.4g} "
@@ -799,7 +806,12 @@ def main() -> int:
     )
     print()
     print(f"Radial profiles at the last snapshot:")
-    report_shells(history, len(filenames) - 1, options.n_shells)
+    report_shells(
+        history,
+        len(filenames) - 1,
+        options.n_shells,
+        options.h2_self_shielding != 0,
+    )
     print()
 
     failures: List[str] = []
