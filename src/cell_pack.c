@@ -26,16 +26,7 @@
 #include "cell.h"
 
 /* Local headers */
-#include "atomic.h"
-#include "error.h"
 #include "gravity.h"
-
-#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
-/*! Rate-limiter for the foreign gpart layout divergence report. */
-static int cell_grav_layout_divergence_reported = 0;
-/*! Rate-limiter for the star formation layout divergence report. */
-static int cell_sf_layout_divergence_reported = 0;
-#endif
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
@@ -772,18 +763,6 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
   c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Only fires if cell_link_sparts() ever stops linking the whole tree,
-   * breaking the shared-layout assumption above. */
-  if (c->depth == 0 && c->stars.count > c->stars.count_total &&
-      atomic_inc(&cell_sf_layout_divergence_reported) < 20)
-    message(
-        "SF_COUNTS_LAYOUT_DIVERGENCE cellID=%lld stars.count=%d "
-        "stars.count_total=%d delta_from_rebuild=%td",
-        c->cellID, c->stars.count, c->stars.count_total,
-        (ptrdiff_t)pcells[0].delta_from_rebuild);
-#endif
-
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -900,19 +879,6 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
    * receiver's is. cell_relink_foreign_gparts() re-derives them from these
    * counts instead, in the receiver's own layout. */
   c->grav.count = pcells[0].count;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* The sender holds more gparts here than this rank reserved, so its
-   * offsets are in the uncompacted layout and cannot be used to reconstruct
-   * pointers here. Top level only: the counter is shared by all runners. */
-  if (c->depth == 0 && c->grav.count > c->grav.count_total &&
-      atomic_inc(&cell_grav_layout_divergence_reported) < 20)
-    message(
-        "GRAV_COUNTS_LAYOUT_DIVERGENCE cellID=%lld grav.count=%d "
-        "grav.count_total=%d delta_from_rebuild=%td",
-        c->cellID, c->grav.count, c->grav.count_total,
-        (ptrdiff_t)pcells[0].delta_from_rebuild);
-#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
