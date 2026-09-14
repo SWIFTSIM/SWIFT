@@ -333,6 +333,19 @@ if test "$ac_test_CFLAGS" != "set"; then
      ;;
   esac
 
+  # Nothing above can work out the target when cross compiling. AX_GCC_ARCHFLAG
+  # skips its tables, on every architecture and not just some, and asking the
+  # compiler about a machine it is not running on is meaningless, so the native
+  # paths are skipped too. The result is a build with no architecture flags at
+  # all, which succeeds and is merely slower than it should be, so say so
+  # rather than leave it to be discovered. --with-gcc-arch is exempt because it
+  # replaces the detection instead of refining it, and so still applies here.
+  if test "x$cross_compiling" = xyes && test -z "$with_gcc_arch"; then
+     AC_MSG_WARN([cross compiling: no architecture flags have been selected, so
+this build will not be tuned for the machine it is meant to run on. Use
+--with-gcc-arch=<arch> with GCC or clang, or set CFLAGS yourself, to choose one.])
+  fi
+
   if test -z "$CFLAGS"; then
 	echo ""
 	echo "********************************************************"

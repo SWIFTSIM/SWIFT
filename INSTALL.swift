@@ -115,6 +115,16 @@ Finally, running configure and make inside an interactive job on a compute
 node sidesteps the question, the build machine then being the machine that
 will run the code.
 
+Cross compiling is the same problem taken to its limit, and none of the
+detection above applies to it. The CPU tables are skipped, on every
+architecture and not only ARM, and the compiler cannot usefully be asked
+about a machine it is not running on, so no architecture flag is selected at
+all. The build succeeds and is simply slower than it could be. Note that
+"--enable-portable-binary" does not help here. Configure warns when this
+happens; name the target with "--with-gcc-arch=<arch>", which is honoured
+while cross compiling precisely because it replaces the detection rather
+than refining it, or pass the flags yourself in CFLAGS.
+
 Note that any CFLAGS that you supply will be added to those determined by
 configure in all circumstances. To build SWIFT with debugging support you
 can use:

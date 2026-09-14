@@ -209,6 +209,17 @@ Alternatively, run ``configure`` and ``make`` from an interactive job on a
 compute node, so that the machine building the code is the machine that will
 run it.
 
+.. note::
+    Cross compiling is the same problem taken to its limit, and none of the
+    detection above applies. The CPU tables are skipped, on every architecture
+    rather than only ARM, and the compiler cannot usefully be asked about a
+    machine it is not running on, so no architecture flag is chosen at all and
+    the build is merely slower than it could be. ``--enable-portable-binary``
+    does not help. ``configure`` warns when this happens; name the target with
+    ``--with-gcc-arch=<arch>``, which is honoured while cross compiling because
+    it replaces the detection rather than refining it, or pass the flags
+    yourself in ``CFLAGS``.
+
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~
 
