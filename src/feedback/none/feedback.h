@@ -30,6 +30,9 @@
  * @brief Computes the time-step length of a given star particle from feedback
  * physics
  *
+ * The "none" feedback model imposes no timestep limit, so both outputs are
+ * always set to FLT_MAX.
+ *
  * @param sp Pointer to the s-particle data.
  * @param feedback_props Properties of the feedback model.
  * @param phys_const The #phys_const.
@@ -40,14 +43,22 @@
  * @param ti_current The current time (in integer)
  * @param time The current time (in double)
  * @param time_base The time base.
+ * @param old_time_bin Unused; kept for interface parity with the GEAR
+ * feedback module, which is required whenever --with-stars=GEAR (see
+ * src/stars/GEAR/stars.h) regardless of the feedback module chosen.
+ * @param dt_event_side (out) Unused, always FLT_MAX.
+ * @param dt_evolution_ssp (out) Unused, always FLT_MAX.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline)) INLINE static void
 feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base) {
-  return FLT_MAX;
+    const integertime_t ti_current, const double time, const double time_base,
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp) {
+  *dt_event_side = FLT_MAX;
+  *dt_evolution_ssp = FLT_MAX;
 }
 
 /**
@@ -340,7 +351,12 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
  * @param feedback_props The properties of the feedback model.
  */
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
-    struct spart *sp, const struct feedback_props *feedback_props) {}
+    struct spart *sp, const struct feedback_props *feedback_props) {
+
+  /* This no-feedback model has no star-evolution-finished state; kept
+     false so src/stars/GEAR/stars.h's dt_cfl gate never skips this star. */
+  sp->feedback_data.is_dead = 0;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -394,12 +410,15 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param with_cosmology Are we running with cosmology on?
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (unused: this module does no feedback at all).
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     const struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {}
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {}
 
 /**
  * @brief Clean-up the memory allocated for the feedback routines

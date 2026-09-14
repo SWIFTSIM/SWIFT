@@ -113,9 +113,9 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
   }
 
   float dt_event_side, dt_evolution_ssp;
-  feedback_compute_spart_timestep(sp, feedback_props, phys_const, us,
-                                  with_cosmology, cosmo, ti_current, time,
-                                  time_base, &dt_event_side, &dt_evolution_ssp);
+  feedback_compute_spart_timestep(
+      sp, feedback_props, phys_const, us, with_cosmology, cosmo, ti_current,
+      time, time_base, sp->time_bin, &dt_event_side, &dt_evolution_ssp);
 
   float dt_age = 0.0;
   /* What age category are we in? */
