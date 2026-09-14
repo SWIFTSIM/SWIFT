@@ -195,6 +195,34 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
     struct spart *sp, const struct feedback_props *feedback_props) {}
 
 /**
+ * @brief Prepare the feedback fields after a star is born.
+ *
+ * Called unconditionally from sink_copy_properties_to_star() and
+ * star_formation_copy_properties() whenever --with-sink=GEAR or
+ * --with-star-formation=GEAR is selected, regardless of the feedback module
+ * chosen. This header is parsed under every --with-stars= choice (`none` is
+ * the default feedback model), so its parameter list must not depend on
+ * anything that only exists under --with-stars=GEAR: `star_type` is typed
+ * `int` rather than `enum stellar_type` (only declared by
+ * src/stars/GEAR/stars_stellar_type.h), and `sp->star_type` (only a member
+ * of the GEAR #spart) is never written here.
+ *
+ * @param sp The #spart to act upon.
+ * @param feedback_props Unused; kept for interface parity with the other
+ * feedback modules.
+ * @param star_type Unused, for the same reason.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_init_after_star_formation(struct spart *sp,
+                                   const struct feedback_props *feedback_props,
+                                   const int star_type) {
+
+  /* This no-feedback model has no star-evolution-finished state; kept
+     false so src/stars/GEAR/stars.h's dt_cfl gate never skips this star. */
+  sp->feedback_data.is_dead = 0;
+}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been
