@@ -531,13 +531,13 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
                                     int timer) {
 
   struct engine *e = r->e;
-  struct space *s = e->s;
+  // struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const struct unit_system *us = e->internal_units;
   const struct black_holes_props *props = e->black_holes_properties;
   const struct phys_const *constants = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const int periodic = s->periodic;
+  // const int periodic = s->periodic;
 
   /* Minimum star mass allowed after nibbling: 50% of mean baryon particle mass. */
   // const double min_star_mass_for_nibbling =
