@@ -451,15 +451,8 @@ void zoom_engine_makeproxies(struct engine *e) {
                     (ci->nodeID != nodeID && cj->nodeID != nodeID))
                   continue;
 
-                const int is_direct_neighbour =
-                    ((abs(i - iii) <= 1 || abs(i - iii - bkg_cdim[0]) <= 1 ||
-                      abs(i - iii + bkg_cdim[0]) <= 1) &&
-                     (abs(j - jjj) <= 1 || abs(j - jjj - bkg_cdim[1]) <= 1 ||
-                      abs(j - jjj + bkg_cdim[1]) <= 1) &&
-                     (abs(k - kkk) <= 1 || abs(k - kkk - bkg_cdim[2]) <= 1 ||
-                      abs(k - kkk + bkg_cdim[2]) <= 1));
                 const int proxy_type = engine_get_proxy_type(
-                    e, ci, cj, is_direct_neighbour, bkg_r_max);
+                    e, ci, i, j, k, cj, iii, jjj, kkk, bkg_r_max);
                 if (proxy_type == proxy_cell_type_none) continue;
                 engine_add_proxy(e, ci, cj, proxy_type);
 
