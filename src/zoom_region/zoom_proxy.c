@@ -30,42 +30,22 @@
 #ifdef WITH_MPI
 
 /**
- * @brief Apply proxy criteria to a pair of equal-width cells.
+ * @brief Apply gravity proxy criteria to a pair of equal-width cells.
  *
  * @param e The #engine.
- * @param ci First cell whose proxy is being constructed.
- * @param cj Second cell whose proxy is being constructed.
  * @param proxy_ci First cell used for geometric proxy criteria.
  * @param proxy_cj Second cell used for geometric proxy criteria.
- * @param is_direct_neighbour Whether the cells are direct zoom neighbours.
- * @return Bit mask describing required proxy data.
+ * @return #proxy_cell_type_gravity if a proxy is required, otherwise zero.
  */
-static int zoom_get_proxy_type(const struct engine *e, const struct cell *ci,
-                               const struct cell *cj,
-                               const struct cell *proxy_ci,
-                               const struct cell *proxy_cj,
-                               const int is_direct_neighbour) {
+static int zoom_get_gravity_proxy_type(const struct engine *e,
+                                       const struct cell *proxy_ci,
+                                       const struct cell *proxy_cj) {
 
   const struct space *s = e->s;
-  const int with_hydro_policy = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
-  int proxy_type = 0;
-
-  /* Hydro is only possible between direct zoom neighbours. */
-  const int both_zoom =
-      (ci->type == cell_type_zoom && cj->type == cell_type_zoom);
-  if (with_hydro_policy && both_zoom && is_direct_neighbour) {
-    proxy_type |= (int)proxy_cell_type_hydro;
-  }
-
-  if (!with_gravity) return proxy_type;
-
-  if (is_direct_neighbour) {
-    proxy_type |= (int)proxy_cell_type_gravity;
-    return proxy_type;
-  }
+  if (!with_gravity) return proxy_cell_type_none;
 
   const double r_diag2 = proxy_ci->width[0] * proxy_ci->width[0] +
                          proxy_ci->width[1] * proxy_ci->width[1] +
@@ -78,11 +58,36 @@ static int zoom_get_proxy_type(const struct engine *e, const struct cell *ci,
   if (s->periodic) {
     if ((min_dist_CoM2 < max_mesh_dist2) &&
         !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-      proxy_type |= (int)proxy_cell_type_gravity;
+      return proxy_cell_type_gravity;
   } else {
     if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-      proxy_type |= (int)proxy_cell_type_gravity;
+      return proxy_cell_type_gravity;
   }
+  return proxy_cell_type_none;
+}
+
+/**
+ * @brief Apply proxy criteria to a pair of zoom cells.
+ *
+ * Hydro proxies are only possible for direct zoom neighbours. Gravity uses
+ * the same geometric criterion as the normal proxy construction.
+ *
+ * @param e The #engine.
+ * @param ci First zoom cell.
+ * @param cj Second zoom cell.
+ * @param is_direct_neighbour Whether the cells are direct zoom neighbours.
+ * @return Bit mask describing required proxy data.
+ */
+static int zoom_get_zoom_proxy_type(const struct engine *e,
+                                    const struct cell *ci,
+                                    const struct cell *cj,
+                                    const int is_direct_neighbour) {
+
+  int proxy_type = zoom_get_gravity_proxy_type(e, ci, cj);
+  if ((e->policy & engine_policy_hydro) && is_direct_neighbour)
+    proxy_type |= (int)proxy_cell_type_hydro;
+  if (is_direct_neighbour && (e->policy & engine_policy_self_gravity))
+    proxy_type |= (int)proxy_cell_type_gravity;
   return proxy_type;
 }
 
@@ -158,7 +163,7 @@ static void zoom_make_zoom_pair_proxies_recursive(
       is_direct_neighbour = 1;
 
     const int proxy_type =
-        zoom_get_proxy_type(e, ci, cj, ci, cj, is_direct_neighbour);
+        zoom_get_zoom_proxy_type(e, ci, cj, is_direct_neighbour);
     if (proxy_type == proxy_cell_type_none) return;
 
     engine_add_proxy(e, ci, cj, proxy_type);
@@ -251,8 +256,7 @@ static void zoom_make_zoom_bkg_proxies_recursive(
         (zoom_cell->nodeID != e->nodeID && bkg_cell->nodeID != e->nodeID))
       return;
 
-    const int proxy_type = zoom_get_proxy_type(
-        e, zoom_cell, bkg_cell, void_cell, bkg_cell, 0);
+    const int proxy_type = zoom_get_gravity_proxy_type(e, void_cell, bkg_cell);
     if (proxy_type != proxy_cell_type_none)
       engine_add_proxy(e, zoom_cell, bkg_cell, proxy_type);
     return;
