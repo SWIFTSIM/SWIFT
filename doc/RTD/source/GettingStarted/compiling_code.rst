@@ -143,6 +143,62 @@ We use autotools for setup. To get a basic running version of the code use:
 
 the executable binaries are found in the top directory.
 
+Targeting the Host Architecture
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default ``configure`` selects optimisation flags aimed at the machine it is
+run on. What it picks depends on the compiler:
+
++ **GCC and clang**: ``-march=native`` on x86, ``-mcpu=native`` on ARM and
+  POWER. Where the compiler does not accept those, a table of known CPUs is
+  consulted and the closest matching ``-march=`` used instead.
++ **Intel icc and icx (oneAPI)**: ``-xHost``, falling back to a table that
+  selects an instruction set with ``-x``, such as ``-xCORE-AVX512``.
++ **Everything else**, including NVIDIA ``nvc`` (NVHPC), Cray and Fujitsu:
+  nothing is selected. These compilers keep whatever autotools defaults to,
+  usually just ``-g -O2``, so pass your own ``CFLAGS``.
+
+.. warning::
+    On a cluster whose login nodes differ from its compute nodes, building on
+    the login node can produce a binary that uses instructions the compute
+    nodes do not implement. It will fail there with ``Illegal instruction``
+    and nothing more informative. The reverse is quieter but also costly: a
+    login node older than the compute nodes yields a binary that underuses
+    them.
+
+To build something that runs on any node:
+
+.. code-block:: bash
+
+  ./configure --enable-portable-binary
+
+With GCC and clang this tunes for the build machine while restricting the
+instruction set; with the Intel compilers it omits the ``-x`` flag entirely.
+
+To name the target rather than detect it, GCC and clang accept:
+
+.. code-block:: bash
+
+  ./configure --with-gcc-arch=cascadelake
+
+.. note::
+    Despite covering clang as well as GCC, this option is read only by those
+    two paths. It has **no effect** with ``icc`` or ``icx``.
+
+For the Intel compilers, and as a compiler-independent alternative, pass the
+flag yourself:
+
+.. code-block:: bash
+
+  ./configure CFLAGS="-xCORE-AVX512"
+
+``CFLAGS`` you supply are appended after the ones ``configure`` chooses, so a
+flag given this way wins.
+
+Alternatively, run ``configure`` and ``make`` from an interactive job on a
+compute node, so that the machine building the code is the machine that will
+run it.
+
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -57,6 +57,53 @@ selection of flags using:
 and then supply your own flags using the "CFLAGS" environment variable, as for
 CC.
 
+What gets chosen depends on the compiler:
+
+  - GCC and clang: flags targeting the build machine, "-march=native" on x86
+    and "-mcpu=native" on ARM and POWER. Where the compiler will not accept
+    those, a table of known CPUs is consulted and the closest matching
+    "-march=" used instead.
+
+  - Intel icc and icx (oneAPI): "-xHost", falling back to a table that picks
+    an instruction set with "-x", for example "-xCORE-AVX512".
+
+  - Other compilers, including NVIDIA nvc (NVHPC), Cray and Fujitsu, have no
+    entry in the selection logic. Nothing is chosen for them and they keep
+    whatever autotools defaults to, usually just "-g -O2", so supply your own
+    CFLAGS with these.
+
+This deserves attention on a cluster whose login nodes are not the same model
+as its compute nodes, which is common. Building on the login node can produce
+a binary that uses instructions the compute nodes do not implement, and it
+will fail there with "Illegal instruction" rather than anything more helpful.
+The reverse costs performance silently: a login node older than the compute
+nodes gives a binary that underuses them.
+
+To build something that will run on any node,
+
+   ./configure --enable-portable-binary
+
+which, with GCC and clang, tunes for the build machine while restricting the
+instruction set, and with the Intel compilers omits the "-x" flag entirely.
+
+To name the target instead of detecting it, GCC and clang accept
+
+   ./configure --with-gcc-arch=<arch>
+
+for instance --with-gcc-arch=cascadelake. Note this option is read only by
+the GCC and clang paths, despite covering both; it has no effect with icc or
+icx. For those, and as a compiler-independent alternative, pass the flag
+yourself:
+
+   ./configure CFLAGS="-xCORE-AVX512"
+
+Any CFLAGS you supply are added after the ones configure picks, so a flag
+given this way wins.
+
+Finally, running configure and make inside an interactive job on a compute
+node sidesteps the question, the build machine then being the machine that
+will run the code.
+
 Note that any CFLAGS that you supply will be added to those determined by
 configure in all circumstances. To build SWIFT with debugging support you
 can use:

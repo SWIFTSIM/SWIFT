@@ -181,6 +181,16 @@ if test "$ac_test_CFLAGS" != "set"; then
             done
             icc_flags=$icc_oneapi_flags
           fi
+          # -xHost targets the build host directly, which is more accurate and
+          # stays current without this table being edited, so offer it ahead of
+          # the table flags; the loop below falls through to them if the driver
+          # rejects it. Intel parts only: on AMD the -x codes gate on a
+          # GenuineIntel check at run time, which is why the AMD entries above
+          # use -march= instead. When cross compiling the cpuid is unknown, so
+          # this does not match and -xHost is not offered.
+          case $ax_cv_gcc_x86_cpuid_0 in
+            *:756e6547:6c65746e:49656e69) icc_flags="-xHost $icc_flags" ;;
+          esac
           if test "x$icc_flags" != x; then
             for flag in $icc_flags; do
               AX_CHECK_COMPILE_FLAG($flag, [icc_archflag=$flag; break])
@@ -207,7 +217,26 @@ if test "$ac_test_CFLAGS" != "set"; then
      # not all codes will benefit from this.
      AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
 
-     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     # Prefer the compiler's own host detection to the CPUID tables in
+     # AX_GCC_ARCHFLAG. It is more accurate, it stays current without this file
+     # being edited, and on Darwin it is the only thing that can work at all.
+     # Skip it when a portable binary is asked for, and when cross compiling,
+     # where native would describe the build machine and not the target. The
+     # tables remain the fallback for both of those cases, as does an explicit
+     # --with-gcc-arch=<arch>, which must keep overriding the guess.
+     ax_maxopt_gotnative=no
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno \
+        && test -z "$with_gcc_arch"; then
+       case $host_cpu in
+         aarch64*|arm64*|powerpc*) ax_maxopt_nativeflag="-mcpu=native" ;;
+         *) ax_maxopt_nativeflag="-march=native" ;;
+       esac
+       AX_CHECK_COMPILE_FLAG([$ax_maxopt_nativeflag],
+         [CFLAGS="$CFLAGS $ax_maxopt_nativeflag"; ax_maxopt_gotnative=yes])
+     fi
+     if test "x$ax_maxopt_gotnative" = xno; then
+       AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     fi
      ;;
 
     gnu)
@@ -227,7 +256,26 @@ if test "$ac_test_CFLAGS" != "set"; then
      # not all codes will benefit from this.
      AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
 
-     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     # Prefer the compiler's own host detection to the CPUID tables in
+     # AX_GCC_ARCHFLAG. It is more accurate, it stays current without this file
+     # being edited, and on Darwin it is the only thing that can work at all.
+     # Skip it when a portable binary is asked for, and when cross compiling,
+     # where native would describe the build machine and not the target. The
+     # tables remain the fallback for both of those cases, as does an explicit
+     # --with-gcc-arch=<arch>, which must keep overriding the guess.
+     ax_maxopt_gotnative=no
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno \
+        && test -z "$with_gcc_arch"; then
+       case $host_cpu in
+         aarch64*|arm64*|powerpc*) ax_maxopt_nativeflag="-mcpu=native" ;;
+         *) ax_maxopt_nativeflag="-march=native" ;;
+       esac
+       AX_CHECK_COMPILE_FLAG([$ax_maxopt_nativeflag],
+         [CFLAGS="$CFLAGS $ax_maxopt_nativeflag"; ax_maxopt_gotnative=yes])
+     fi
+     if test "x$ax_maxopt_gotnative" = xno; then
+       AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     fi
      ;;
 
     microsoft)
