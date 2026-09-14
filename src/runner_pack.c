@@ -32,6 +32,7 @@
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
+#include "timeline.h"
 #include "timers.h"
 
 /**
@@ -48,25 +49,25 @@
  * interactions.
  *
  * @param c The #cell (and its progeny) whose time-bins were just unpacked.
- * @param max_active_bin The current maximal active time-bin.
+ * @param e The #engine containing the current time information.
  */
 static void cell_update_hydro_h_max_active(struct cell *c,
-                                           const timebin_t max_active_bin) {
+                                           const struct engine *e) {
 
   float h_max_active = 0.f;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        cell_update_hydro_h_max_active(c->progeny[k], max_active_bin);
+        cell_update_hydro_h_max_active(c->progeny[k], e);
         h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
       }
     }
   } else {
     const struct part *parts = c->hydro.parts;
     for (int i = 0; i < c->hydro.count; ++i) {
-      if (parts[i].time_bin == time_bin_inhibited) continue;
-      if (parts[i].time_bin <= max_active_bin)
+      if (part_is_inhibited(&parts[i], e)) continue;
+      if (part_is_active(&parts[i], e))
         h_max_active = max(h_max_active, parts[i].h);
     }
   }
@@ -108,7 +109,7 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
 
   /* The time-bins we just overwrote may have woken particles up; make sure
      h_max_active reflects that before the limiter task reads it. */
-  cell_update_hydro_h_max_active(c, r->e->max_active_bin);
+  cell_update_hydro_h_max_active(c, r->e);
 
   free(buffer);
 }
