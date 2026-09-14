@@ -116,22 +116,39 @@ if test "$ac_test_CFLAGS" != "set"; then
 	      case $ax_cv_gcc_x86_cpuid_0 in # see AX_GCC_ARCHFLAG
                 *:756e6547:6c65746e:49656e69) # Intel
                   case $ax_cv_gcc_x86_cpuid_1 in
+		    # The table below this comment stops at Kaby Lake and Skylake-AVX512, so
+		    # every more recent CPU fell through it with icc_flags empty and got no
+		    # -x flag at all, leaving both compilers on their SSE2 default. Unlike the
+		    # gcc path there is no AX_EXT rescue: configure.ac skips SIMD_FLAGS for the
+		    # Intel vendor. These entries are grouped by instruction set rather than by
+		    # microarchitecture, since that is what -x actually selects.
+		    # Atom cores come first: they are SSE4.2-only, and model 0x4d collides with
+		    # the Skylake pattern further down, which would hand an Avoton -xCORE-AVX2.
+		    *3?67?:*:*:*|*[[45]]?6[[acd]]?:*:*:*|*5?6[[cf]]?:*:*:*|*7?6[[5a]]?:*:*:*|*8?6[[6a]]?:*:*:*|*9?6[[6c]]?:*:*:*) icc_flags="-xSSE4.2" ;; # Silvermont..Tremont
+		    *5?65?:*:*:*|*6?6[[6ac]]?:*:*:*|*7?6[[de]]?:*:*:*|*9?6d?:*:*:*|*8?6[[cdf]]?:*:*:*|*a?6[[7de]]?:*:*:*|*c?6f?:*:*:*|*4??f??:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;; # AVX-512 parts
+		    *3?6[[cdf]]?:*:*:*|*4?6[[567ef]]?:*:*:*|*5?6[[6e]]?:*:*:*|*8?6e?:*:*:*|*9?6[[7ae]]?:*:*:*|*a?6[[56acf]]?:*:*:*|*b?6[[567adef]]?:*:*:*|*c?6[[56c]]?:*:*:*|*d?6[[57d]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;; # Alder Lake onwards
+		    *8?65?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xAVX -xSSE4.2" ;; # Knights Mill
 		    *0?6[[78ab]]?:*:*:*|?6[[78ab]]?:*:*:*|6[[78ab]]?:*:*:*) icc_flags="-xK" ;;
 		    *0?6[[9d]]?:*:*:*|?6[[9d]]?:*:*:*|6[[9d]]?:*:*:*|*1?65?:*:*:*) icc_flags="-xSSE2 -xB -xK" ;;
 		    *0?6e?:*:*:*|?6e?:*:*:*|6e?:*:*:*) icc_flags="-xSSE3 -xP -xO -xB -xK" ;;
 		    *0?6f?:*:*:*|?6f?:*:*:*|6f?:*:*:*|*1?66?:*:*:*) icc_flags="-xSSSE3 -xT -xB -xK" ;;
 		    *1?6[[7d]]?:*:*:*) icc_flags="-xSSE4.1 -xS -xT -xB -xK" ;;
 		    *1?6[[aef]]?:*:*:*|*2?6[[5cef]]?:*:*:*) icc_flags="-xSSE4.2 -xS -xT -xB -xK" ;;
-		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Sandy-bridge
-		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; #Ivy-bridge
-		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Haswell
-		    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) icc_flags=" -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Broadwell
-		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake
-		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
-		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
-		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;# Kabylake
+		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Sandy-bridge
+		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; #Ivy-bridge
+		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Haswell
+		    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) icc_flags=" -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Broadwell
+		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Skylake
+		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
+		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
+		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;;# Kabylake
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
+		    # Unknown recent Intel: extended model >= 9 postdates Skylake, so AVX2 is a
+		    # safe floor. The AVX2-less Tremont parts carry extended model 8 and 9 but
+		    # are matched explicitly above, so they cannot reach this. Without it an
+		    # unrecognised CPU gets no -x flag at all and falls back to SSE2.
+		    *[[9a-f]]?6??:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;;
                   esac ;;
                 *:68747541:444d4163:69746e65) # AMDs with AVX2 support.
                   case $ax_cv_gcc_x86_cpuid_1 in
@@ -150,6 +167,20 @@ if test "$ac_test_CFLAGS" != "set"; then
                   esac ;;
               esac ;;
           esac
+          # icx (oneAPI) dropped the single-letter and pre-SSE4.2 processor
+          # codes that classic icc still accepts, so do not offer it flags its
+          # driver will reject. Any host new enough to be worth building with
+          # icx reaches one of the instruction-set entries above.
+          if test "x$ax_cv_c_compiler_vendor" = xoneapi; then
+            icc_oneapi_flags=""
+            for flag in $icc_flags; do
+              case $flag in
+                -xSSE4.2|-xAVX|-xCORE-AVX-I|-xCORE-AVX2|-xCORE-AVX512|-xMIC-AVX512)
+                  icc_oneapi_flags="$icc_oneapi_flags $flag" ;;
+              esac
+            done
+            icc_flags=$icc_oneapi_flags
+          fi
           if test "x$icc_flags" != x; then
             for flag in $icc_flags; do
               AX_CHECK_COMPILE_FLAG($flag, [icc_archflag=$flag; break])
