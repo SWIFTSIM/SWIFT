@@ -1,0 +1,83 @@
+# Intro
+A single star at the center of a uniform, periodic glass-IC gas box, with
+photoelectric heating and LW/FUV hyperbolic propagation on (photoionization
+and radiation pressure off), same as `../ISRFHyperbolicPropagation/`. The
+star's mass is chosen so it reaches the end of its main-sequence lifetime
+partway through the run: this example checks that the LW/FUV field it built
+up decays away afterwards instead of persisting at its last injected level.
+`isrf_source_turn_off_check.py` tracks the box-total mass-weighted FUV/LW
+specific energy over time, marks the star's death time (computed from its
+mass and metallicity, not read off any snapshot field), and checks the
+post-death decay against the absorption timescale `1/(c_hyp*kappa)`.
+
+Unlike `../ISRFHyperbolicPropagation/`, this example leaves
+`LW_FUV_dissipation_alpha_max`/`LW_FUV_dissipation_alpha_floor`/
+`LW_FUV_c_hyp_margin` unset in `params.yml`, so it runs at GEARFeedback's own
+shipped defaults (see `parameter_example.yml`) rather than isolating pure
+propagation.
+
+## Snapshot cadence
+The field builds up over the star's few-Myr lifetime, then decays on a much
+shorter absorption timescale once the star dies, so a single fixed
+`delta_time` cannot resolve both. `Snapshots:output_list` instead lists a
+handful of coarse points early on and a fine, closely-spaced run starting
+slightly before the star's expected death through the decay that follows.
+The shipped `output_list_isrf_source_turn_off.txt` is tied to `star_mass`
+and `initial_metallicity` (they set the death time) and to `gas_density`,
+`gas_mass` and `dt_max` (they set the post-death decay timescale, through
+`c_hyp = C_hyp*h/dt`); `level` only sets the box size. `time_end` was chosen
+as `t_death + 15*tau_FUV` and must not be shortened below the output list's
+last entry. Regenerate the list if you change any of the coupled parameters
+materially: fine spacing about `tau_LW/4`, from `0.85*t_death` to
+`t_death + 15*tau_FUV`, then phase-shifted so no entry falls within
+`2*dt_max` of `t_death` (a snapshot that close to the switch-off step reads
+as ambiguous, neither clearly pre- nor post-death). Take `t_death` and the
+e-fold times from `isrf_source_turn_off_check.py`'s own printed output on a
+run with the new parameters.
+
+## Metallicity
+As in `../ISRFHyperbolicPropagation/`: the dust screening/absorption length
+scales with metallicity relative to Grackle's solar value, so
+`initial_metallicity` must stay above 0. Defaults to solar (`Z/Zsun=1`).
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output.
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var -- gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+(`star_mass`), star type (`star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`), metallicity (`initial_metallicity`), and thread count
+(`n_threads`); see `run.sh` for the full list and defaults. `run_name=<dir>
+./run.sh` moves the run's outputs into `<dir>` once done.
+
+# Checking
+```
+python3 isrf_source_turn_off_check.py
+```
+`run.sh` runs this automatically, last, against the final run's own
+snapshots (repointed at `<dir>` if `run_name` was set; running the check
+manually against a moved run needs `--snapshot`, `--timesteps-log` and
+`--used-parameters` repointed the same way). It prints the star's
+mass/metallicity/death time, then three things:
+- the measured post-death e-folding time of each band against the analytic
+  `1/(c_hyp*kappa)` estimate -- informational only, not a pass/fail gate;
+- the residual field fraction left at `time_end` relative to the pre-death
+  level -- **gated**;
+- whether any particle's field went negative after death, excluding
+  snapshots within `--negativity-settle-myr` of death (the switch-off
+  transient, reported separately, not scored) -- **gated**. A FAIL
+  confined to the switch-off transient is expected and not a problem; a
+  FAIL in a later, scored snapshot indicates a real issue.
+
+Produces a plot of both bands' total energy vs. time (`--output`, default
+`isrf_source_turn_off_check.png`).
