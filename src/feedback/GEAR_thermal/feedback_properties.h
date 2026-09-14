@@ -82,7 +82,7 @@ struct feedback_props {
   /*! Timestep refinement factor as lifetime_myr -> 0, used by
    * feedback_compute_spart_timestep()'s logistic transition (SSP particles
    * only; single_star particles use the exact, zero-tuning-parameter
-   * dt_event instead -- see event_dt_floor_Myr below). The logistic's
+   * dt_event instead, see event_dt_floor_Myr below). The logistic's
    * midpoint and steepness are fixed internal constants
    * (GEAR_dt_evolution_lifetime_myr_0/GEAR_dt_evolution_steepness in
    * feedback_common.c), not parsed from params.yml. */
@@ -92,7 +92,7 @@ struct feedback_props {
    * and dt_HII_safe for every star type) in internal units, before they are
    * combined with the coarser min_star_timestep-floored non-event terms
    * (stars_compute_timestep(), src/stars/GEAR/stars.h). Runs for every
-   * star regardless of radiation, so parsed unconditionally -- unlike
+   * star regardless of radiation, so parsed unconditionally. Unlike
    * HII_rebuild_floor_Myr, which stays 0.0 (no floor at all) whenever
    * with_photoionization is off, this constant must never be zero, since
    * dt_event applies to every single_star particle unconditionally. */
@@ -133,9 +133,9 @@ struct feedback_props {
    * use the formula. Never set in a production run. */
   float ISRF_c_hyp_pin_for_debugging;
 
-  /*! Ceiling of the triggered artificial-conductivity coefficient
-   * (design-lw-fuv-design-b-dissipation.md Section 3-4). On by default at
-   * the calibrated ceiling; 0 disables the term (for A/B runs). The
+  /*! Ceiling of the triggered artificial-conductivity coefficient. On by
+   * default at the calibrated ceiling; 0 disables the term (for A/B runs).
+   * The
    * enforced range depends on #ISRF_c_hyp_margin (see
    * feedback_properties_init()'s own range check), so raising
    * #ISRF_c_hyp_margin can require lowering this. */
@@ -144,16 +144,14 @@ struct feedback_props {
   /*! Undershoot of a particle's own `rho_prev*u` below the neighbours'
    * kernel-mean `|rho_prev*u_prev|`, relative, at which the
    * negativity-triggered dissipation coefficient reaches
-   * #ISRF_dissipation_alpha_max (design-
-   * lw-fuv-design-b-dissipation.md Section 4.3). */
+   * #ISRF_dissipation_alpha_max. */
   float ISRF_dissipation_negativity_threshold;
 
   /*! Floor under the negativity trigger, `h/lambda`-gated: the trigger fires
    * only on negativity and is exactly zero on the positive delta-shell
    * front of an optically-thin P1 pulse, so a purely reactive coefficient
    * cannot damp the resulting dispersive wake there. This floor supplies
-   * dissipation the trigger structurally cannot
-   * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4). Combined
+   * dissipation the trigger structurally cannot. Combined
    * with #ISRF_dissipation_floor_h_over_lambda as
    * `alpha_floor/(1+(h*kappa/eps_lambda)^4)`, then taken as a max against
    * the trigger's own output. 0 disables the floor and recovers the
@@ -428,7 +426,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * the Lyman-Werner/FUV band split (see
    * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
    * Previously omitted radiation_policy_photoelectric_heating here because
-   * "photoelectric heating has no downstream consumer yet" -- now that it
+   * "photoelectric heating has no downstream consumer yet". Now that it
    * does, leaving it out would silently skip opening the radiation table
    * (and its Teff dataset) for a with_photoelectric_heating-only run,
    * and desync from feedback_struct_restore()'s own copy of this same
@@ -626,9 +624,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "alpha = 0).",
           ISRF_c_hyp_absolute_bound, fp->ISRF_c_hyp_margin);
 
-    /* Negativity-triggered artificial dissipation (design-lw-fuv-design-b-
-     * dissipation.md Section 5.3). Shipped default 0.5, the same value as
-     * the floor's own ceiling, so the joint stability bound checked below
+    /* Negativity-triggered artificial dissipation. Shipped default 0.5,
+     * the same value as the floor's own ceiling, so the joint stability
+     * bound checked below
      * is unchanged. Parsed and validated unconditionally,
      * like the pin and the stability margin above, so a validation run can
      * exercise these even with ISRF_propagation off. */
@@ -650,8 +648,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "in (0, 1] (got %g).",
           fp->ISRF_dissipation_negativity_threshold);
 
-    /* Diffuse-phase floor under the trigger (PHASE5B_diffuse_phase_fable_
-     * review_2026-09-11.md Section 4): shipped defaults 0.5/0.5. The
+    /* Diffuse-phase floor under the trigger: shipped defaults 0.5/0.5. The
      * eps_lambda default moved 0.05 -> 0.5 together with the roll-off
      * exponent 2 -> 4: the quartic tail is what keeps the thick regime
      * negligible, so the knee itself no longer has to sit an order of
@@ -689,11 +686,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "disables the gate.",
           fp->ISRF_dissipation_floor_relaxation_residual);
 
-    /* Joint (alpha_max, C_hyp) stability bound (design-lw-fuv-design-b-
-     * dissipation.md Section 3.6): 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2,
-     * the kernel's own Wendland-C2 lattice constants (I_W = 3.10,
+    /* Joint (alpha_max, C_hyp) stability bound: 6.2 = 2*I_W and
+     * 0.70 = nu_max_coeff^2/2, the kernel's own Wendland-C2 lattice
+     * constants (I_W = 3.10,
      * nu_max_coeff = 1.18), reproduced by
-     * theory/GEAR/Radiation/verify_design_b_dissipation.py's Part C. The
+     * theory/GEAR/Radiation/verify_isrf_dissipation.py's Part C. The
      * floor can dissipate even where the trigger never fires (it is not
      * gated on negativity), so it must satisfy the same bound as the
      * trigger's own ceiling: check max(alpha_max, alpha_floor). */

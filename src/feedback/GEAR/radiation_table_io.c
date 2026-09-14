@@ -1018,9 +1018,9 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
  * unconditionally reads first is guaranteed to exist for the
  * #has_raw_ISRF case; an #has_integrated_ISRF=1/#has_raw_ISRF=0
  * table (integrated present, raw missing) would still hit this unconditional
- * read and error -- accepted as an unsupported edge case per the design
- * doc, since pychem always derives Integrated_L_FUV/L_LW from the raw
- * arrays and so never produces one without the other in practice. @p
+ * read and error. This is accepted as an unsupported edge case: pychem
+ * always derives Integrated_L_FUV/L_LW from the raw arrays and so never
+ * produces one without the other in practice. @p
  * integrated_1d/@p integrated_2d are only requested (non-NULL) when
  * #has_integrated_ISRF is also set, so a raw-only table does not hit
  * #radiation_build_tables's fatal "Integrated_L_FUV missing" branch.
@@ -1432,7 +1432,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int n_HII_pixels_before = rad->n_HII_pixels;
   /* with_ISRF round-trips for the same reason: radiation_zero_pointers()
      below clears it (see its own doxygen), but it was already set moments
-     ago -- by radiation_init() (fresh start) or by the flat restore in
+     ago, by radiation_init() (fresh start) or by the flat restore in
      radiation_restore() (restart), which both run before this function is
      called and before radiation_read_teff_array() below needs to read it.
      Without this round-trip the Teff dataset (and hence L_FUV/L_LW) is

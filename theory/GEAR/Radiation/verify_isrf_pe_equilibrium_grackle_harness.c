@@ -10,8 +10,8 @@
  * settle at, evolving under exactly the Grackle configuration a real
  * with_photoelectric_heating=1 SWIFT run uses (dust_chemistry=1,
  * photoelectric_heating=2, use_isrf_field=1, real Cloudy metal-line
- * cooling) -- i.e. this harness DOES exercise the dust-recombination-
- * cooling code path the 2026-09-08 NaN fix touched, which the rate-only
+ * cooling), i.e. this harness DOES exercise the dust-recombination-
+ * cooling code path the NaN fix touched, which the rate-only
  * harness provably never did.
  *
  * Units: same density_units=m_H trick as the sibling harness (dom=1
@@ -43,7 +43,7 @@
  *
  * Prints one "DATA,<T_initial_K>,<T_equilibrium_K>,<n_iterations>,
  * <t_elapsed_s>,<converged 0/1>" CSV line per invocation (one tuple per
- * process, unlike the sibling harness's internal Z' sweep loop -- the
+ * process, unlike the sibling harness's internal Z' sweep loop. The
  * Python driver invokes this binary once per extracted SWIFT particle).
  */
 
@@ -64,7 +64,7 @@
 /* An adaptive dt sized off the instantaneous cooling time overshoots near
  * equilibrium (the cooling time itself diverges there) and settles into a
  * persistent few-percent limit-cycle oscillation rather than damping to a
- * point -- confirmed by tracing (HARNESS_TRACE=1). A step-to-step or
+ * point, confirmed by tracing (HARNESS_TRACE=1). A step-to-step or
  * trailing-band tolerance therefore never triggers on an already-settled
  * state. Convergence is judged instead by comparing the time-weighted
  * mean temperature (the physically meaningful "average heating balances
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   /* This is the real GEARFeedback:with_photoelectric_heating=1 branch
    * cooling.c's cooling_init_grackle() sets (dust_chemistry bundles
    * photoelectric heating, dust-recombination cooling, and H2-on-dust
-   * formation under one switch) -- deliberately NOT simplified to
+   * formation under one switch), deliberately NOT simplified to
    * dust_chemistry=0 the way the sibling rate-only harness is, since
    * exercising the dust-recombination-cooling path is this harness's
    * whole point. */
@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
   if (have_u_measured) {
     /* Report the temperature Grackle's OWN internal mu convention assigns
      * to a caller-supplied specific internal energy, at this same (n_H,
-     * Z', mode) state -- this harness's density_units=m_H/length_units=1cm/
+     * Z', mode) state, this harness's density_units=m_H/length_units=1cm/
      * time_units=1s choice makes the code-unit specific energy numerically
      * equal to erg/g, so no conversion is needed before assigning it. Only
      * meaningful at primordial_chemistry=0: that tabulated mode's mu(T,Z)

@@ -73,7 +73,7 @@ def parse_options():
 def read_delta_t(log_path, time):
     """Read the star's feedback Delta_t from swift's own step-table log, by
     matching the row whose Time column equals the checked snapshot's time.
-    Never assume Delta_t == TimeIntegration:dt_max -- individual
+    Never assume Delta_t == TimeIntegration:dt_max: individual
     time-stepping can settle on a smaller step (see README)."""
     with open(log_path, "r") as f:
         for line in f:

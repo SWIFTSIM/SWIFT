@@ -189,7 +189,7 @@ void radiation_snapshot_part_propagation(struct part *p,
       local_dust_to_gas_ratio);
 
   /* Hyperbolic propagation speed closure: c_hyp_i = min(C_hyp*h_i/dt_i, c),
-   * using this particle's own already-decided integer timestep -- not a
+   * using this particle's own already-decided integer timestep, not a
    * new timestep-computation hook. dt_i is floored at FLT_MIN so a
    * not-yet-assigned time_bin (only possible before this particle's very
    * first real step) cannot divide by an exact zero. */
@@ -223,8 +223,7 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.c_hyp = c_hyp;
   p->feedback_data.dt_prev = dt_phys;
 
-  /* Dose-reservoir drawdown (design-lw-fuv-design-b-dissipation.md
-   * Section 4.6.5), for active particles only: a cell drifted for an
+  /* Dose-reservoir drawdown, for active particles only: a cell drifted for an
    * inactive particle must not draw down a dose it will not integrate this
    * step. An inactive particle's u_*_source_rate is simply left at last
    * step's value; it is never read again before this function next runs
@@ -300,9 +299,8 @@ float radiation_relaxation_phi_factor(float a) {
  * @brief Exact-relaxation update of #u_FUV/#u_LW, from the `div(F)`
  * accumulators radiation_propagation_iact.h filled during the density loop
  * and this step's own #u_FUV_source_rate/#u_LW_source_rate (drawn down from
- * the dose reservoir by #radiation_snapshot_part_propagation,
- * design-lw-fuv-design-b-dissipation.md Section 4.6.5). Idempotent: always
- * recomputed from the stable #u_FUV_prev snapshot and this h-iteration's
+ * the dose reservoir by #radiation_snapshot_part_propagation). Idempotent:
+ * always recomputed from the stable #u_FUV_prev snapshot and this h-iteration's
  * `div(F)` accumulator, so repeated calls across h-iterations converge to
  * the same answer regardless of how many there are.
  *
@@ -336,8 +334,8 @@ float radiation_relaxation_phi_factor(float a) {
  * redshift ACROSS these two narrow band edges, a loss `-H*u` does not model,
  * so `-H*u` is a lower bound on the true band loss rather than an
  * overestimate to be suppressed. `c_hyp` here plays the role of the M1 reduced
- * light speed `c_M` (design-lw-fuv-m1-upgrade.md D2/D3): the `c_M/c` rescale
- * (replacing the old, P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively
+ * light speed `c_M`: the `c_M/c` rescale (replacing the old,
+ * P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively
  * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
  *
  * The result is the INTERMEDIATE state `u*`, not this step's final `u`:
@@ -345,9 +343,8 @@ float radiation_relaxation_phi_factor(float a) {
  * of it by
  * #radiation_end_force_propagation, after the force loop has accumulated
  * the mirrored pairwise term. The gradient loop and the negativity trigger
- * therefore both see `u*`, which is what closes the trigger's one-step lag
- * (design-lw-fuv-design-b-dissipation.md Section 4.3). No-op when
- * propagation is off.
+ * therefore both see `u*`, which is what closes the trigger's one-step lag.
+ * No-op when propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -379,9 +376,10 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief M1 flux limiter for one particle, one band (design-lw-fuv-m1-
- * upgrade.md "New pieces"): `F <- F*min(1, c_M*u/|F|)` for `u > 0`,
- * `F <- 0` for `u <= 0`. Enforces D1's guarantee (the interior field is
+ * @brief M1 flux limiter for one particle, one band:
+ * `F <- F*min(1, c_M*u/|F|)` for `u > 0`,
+ * `F <- 0` for `u <= 0`. Enforces the reduced-flux closure's guarantee
+ * (the interior field is
  * `|F|/c_M`, not more) against whatever `u` this call is given.
  *
  * Guarded rather than relying on algebraic cancellation: `F = 0` under
@@ -420,10 +418,9 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * update #radiation_end_density_propagation left at its intermediate state
  * `u_star`. Then applies the M1 flux limiter
  * (#radiation_apply_flux_limiter_band) to #specific_flux_FUV/#specific_flux_LW
- * against this step's final, post-correction `u` -- the insertion site and
- * ordering are load-bearing (design-lw-fuv-m1-upgrade.md "Insertion site,
- * pinned explicitly"): the extra ghost that precedes the force loop only
- * ever sees the PRE-correction `u`, so clamping there could leave
+ * against this step's final, post-correction `u`. The insertion site and
+ * ordering are load-bearing: the extra ghost that precedes the force loop
+ * only ever sees the PRE-correction `u`, so clamping there could leave
  * `|F| > c_M*u` at exactly the near-front, low-`u` particles the trigger's
  * own correction moves the most.
  *
@@ -500,12 +497,10 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 
 /**
  * @brief One band's negativity-triggered artificial-dissipation coefficient
- * update
- * (design-lw-fuv-design-b-dissipation.md Section 4.3): raised instantly to
- * a negativity-triggered target, or decayed toward it otherwise. Reads the
- * particle's LIVE, this-step `u_V = rho_prev*u_star` rather than the
- * `u_*_prev` snapshot the design document's own text specifies: with the
- * dose-reservoir injection form (Section 4.6.5) already landed, injection
+ * update: raised instantly to a negativity-triggered target, or decayed
+ * toward it otherwise. Reads the particle's LIVE, this-step
+ * `u_V = rho_prev*u_star` rather than a stored `u_*_prev` snapshot: with
+ * the dose-reservoir injection form already landed, injection
  * no longer writes `u` at all, so the value seen here (after
  * #radiation_end_density_propagation has already run in the density ghost,
  * before any star touches this step's `u` again) is this step's own
@@ -550,8 +545,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
 
 /**
  * @brief The `h/lambda`-gated floor under
- * #radiation_update_dissipation_alpha_band's trigger
- * (PHASE5B_diffuse_phase_fable_review_2026-09-11.md Section 4): the trigger
+ * #radiation_update_dissipation_alpha_band's trigger: the trigger
  * fires only on negativity and is exactly zero on the positive delta-shell
  * front of an optically-thin P1 pulse, so a purely reactive coefficient
  * cannot damp the resulting dispersive wake there. This floor supplies

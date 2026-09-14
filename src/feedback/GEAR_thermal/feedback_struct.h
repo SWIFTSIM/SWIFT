@@ -26,7 +26,7 @@
     be split across (12*nside_max^2). Every star carries a fixed-size
     array of this length regardless of the run's actual
     GEARFeedback:HII_angular_nside, so this is a memory/generality
-    trade-off, not a physics one -- set via
+    trade-off, not a physics one. Set via
     ./configure --with-number-of-hii-angular-pixels=N (default 12, i.e.
     nside<=1) rather than hardcoded here, so builds that only ever need
     nside<=1 don't pay for a finer split they'll never request.
@@ -152,8 +152,7 @@ struct feedback_part_data {
   float div_specific_flux_FUV;
   float div_specific_flux_LW;
 
-  /*! Negativity-triggered artificial-dissipation source term
-      (design-lw-fuv-design-b-dissipation.md Section 3.1), FORCE loop
+  /*! Negativity-triggered artificial-dissipation source term, FORCE loop
       (radiation_propagation_iact.h): pairwise signal-velocity conductivity
       on the live u_FUV/u_LW jump, applied as an additive correction to the
       intermediate state #radiation_end_density_propagation leaves behind,
@@ -174,8 +173,7 @@ struct feedback_part_data {
   float ngb_mean_abs_u_V_FUV;
   float ngb_mean_abs_u_V_LW;
 
-  /*! Negativity-triggered artificial-dissipation coefficient
-      (design-lw-fuv-design-b-dissipation.md Section 4.3), REACTIVE
+  /*! Negativity-triggered artificial-dissipation coefficient, REACTIVE
       component: raised by the
       negativity trigger and decayed otherwise, updated once per step in
       #radiation_end_gradient_propagation (not the density ghost, which
@@ -235,7 +233,7 @@ struct feedback_part_data {
       1.0f at first init (before any real density has ever been computed,
       see radiation_isrf.c) rather than 0.0f, since `grad(u)`'s own formula
       needs `rho_i` itself (not just `1/rho_i`), and a 0.0f seed would turn
-      into +inf under any reciprocal taken from it -- a placeholder value
+      into +inf under any reciprocal taken from it. A placeholder value
       is safe there regardless, since `u`/`F` are also still 0 at that
       point, so every term the placeholder feeds into is itself 0. */
   float rho_prev;
@@ -266,8 +264,7 @@ struct feedback_part_data {
       ever-growing total, while still summing multiple
       simultaneously-illuminating stars correctly within one step. With
       ISRF_propagation on, this is only bookkeeping (the last step any star
-      touched this particle): the dose-reservoir form
-      (design-lw-fuv-design-b-dissipation.md Section 4.6.5) never resets
+      touched this particle): the dose-reservoir form never resets
       #u_FUV/#u_LW, so no consumer relies on it there. feedback_first_init_part
       sets this to -1 (never a valid step) so the very first touch of a
       particle's life also resets rather than summing onto uninitialized
@@ -298,7 +295,7 @@ struct feedback_part_data {
       `ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step` on
       every injection touch (ti_step = the illuminating star's own
       integer timestep), whether or not this is the particle's first touch
-      this episode -- mirrors #feedback_iact_HII_maintain_ionized_part's
+      this episode. Mirrors #feedback_iact_HII_maintain_ionized_part's
       per-pass renewal of the HII tag's own end_time. The
       RADIATION_ISRF_TAG_LIFETIME_INTERVALS buffer (radiation.h) keeps
       the window from lapsing between two touches by a star on a coarser
@@ -316,8 +313,7 @@ struct feedback_part_data {
       particles only, by #radiation_snapshot_part_propagation into
       #u_FUV_source_rate/#u_LW_source_rate; every star's touch only ever
       adds to it, so any number of stars on any time bins superpose without
-      losing or double-counting emission (design-lw-fuv-design-b-dissipation.md
-      Section 4.6.5). */
+      losing or double-counting emission. */
   float u_FUV_dose_reservoir;
   float u_LW_dose_reservoir;
 
@@ -467,7 +463,7 @@ struct feedback_spart_data {
         HII_region_last_rebuild, which only advances on an actual rebuild).
         Anchors the photon-budget interval dt_back instead, so a pass
         skipped by a gas-free working-level cell does not make the next
-        real pass look like it covers the whole gap -- see
+        real pass look like it covers the whole gap. See
         runner_radiation_feedback.c. */
     double HII_region_last_attempt;
 

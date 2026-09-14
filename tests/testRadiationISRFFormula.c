@@ -235,7 +235,7 @@ static void check_injection(const struct unit_system *us) {
     error("injection: timestep_sync_part not triggered on first touch.");
 
   /* A second, independently-illuminating star, same step (ti_current=0
-   * again): must ADD to the same particle, not overwrite it -- multiple
+   * again): must ADD to the same particle, not overwrite it. Multiple
    * simultaneously-illuminating sources must superpose within one step. */
   pj.limiter_data.to_be_synchronized = 0;
 
@@ -306,11 +306,11 @@ static void check_injection(const struct unit_system *us) {
 }
 
 /* ---------------------------------------------------------------------
- * Dose reservoir (design-lw-fuv-design-b-dissipation.md Section 4.6.5):
- * exact accumulation across several stars on different time bins, and the
- * `f = delta/(Delta - k*delta)` drawdown schedule that turns the deposited
- * dose into a constant source rate over the receiving particle's own
- * sub-steps. Mirrors Part D of verify_design_b_injection_cadence.py. Zero
+ * Dose reservoir: exact accumulation across several stars on different
+ * time bins, and the `f = delta/(Delta - k*delta)` drawdown schedule that
+ * turns the deposited dose into a constant source rate over the
+ * receiving particle's own sub-steps. Mirrors the equivalent cadence
+ * check in theory/GEAR/Radiation/verify_isrf_injection_cadence.py. Zero
  * metallicity throughout: extinction is then exactly 1.0 (check_extinction
  * above), isolating the reservoir bookkeeping from the extinction formula.
  * ------------------------------------------------------------------- */
@@ -480,7 +480,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
  * Grackle coupling: isrf_habing (photoelectric heating field) and the H2
  * Lyman-Werner dissociation rate, both a formula-identity check against a
  * hand computation, a zero-field check, and a linearity-in-flux check
- * (doubling u_FUV/u_LW must double the resulting rate -- both formulas
+ * (doubling u_FUV/u_LW must double the resulting rate, since both formulas
  * are a plain photon-flux * cross-section/normalization product), plus
  * the cooling-side gate wrappers.
  * ------------------------------------------------------------------- */

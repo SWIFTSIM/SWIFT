@@ -32,7 +32,7 @@ doxygen states it computes `(1/rho)*grad(rho*uin)`.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# CLOSURE-INDEPENDENT: NO CHANGE UNDER THE M1 UPGRADE.
 #
 # The question this script settles, which differential operator the
 # gradient estimator converges to, `(1/rho)grad(rho u)` rather than

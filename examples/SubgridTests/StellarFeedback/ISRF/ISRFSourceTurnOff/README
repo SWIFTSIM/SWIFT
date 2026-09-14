@@ -52,7 +52,7 @@ make -j
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var -- gas density
+Override any parameter via the matching env var: gas density
 (`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
 (`star_mass`), star type (`star_type`), resolution level (`level`, N =
 `(2**level)**3` gas particles), run duration and stepping (`time_end`,
@@ -70,12 +70,12 @@ manually against a moved run needs `--snapshot`, `--timesteps-log` and
 `--used-parameters` repointed the same way). It prints the star's
 mass/metallicity/death time, then three things:
 - the measured post-death e-folding time of each band against the analytic
-  `1/(c_hyp*kappa)` estimate -- informational only, not a pass/fail gate;
+  `1/(c_hyp*kappa)` estimate: informational only, not a pass/fail gate;
 - the residual field fraction left at `time_end` relative to the pre-death
-  level -- **gated**;
+  level: **gated**;
 - whether any particle's field went negative after death, excluding
   snapshots within `--negativity-settle-myr` of death (the switch-off
-  transient, reported separately, not scored) -- **gated**. A FAIL
+  transient, reported separately, not scored): **gated**. A FAIL
   confined to the switch-off transient is expected and not a problem; a
   FAIL in a later, scored snapshot indicates a real issue.
 

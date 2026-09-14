@@ -18,7 +18,7 @@
 ################################################################################
 """
 Per-run metrics for the ISRFPropagationSpeedSweep example (c_hyp sweep, Legs
-P/N/R/I -- see README). Computes the effective Courant number nu_eff from the
+P/N/R/I: see README). Computes the effective Courant number nu_eff from the
 run's own measured h and dt (never assumed), the stability bound nu_max at
 the run's own alpha, the pulse front position, and the realized-timestep
 validity precondition Leg P's cross-run comparison depends on. Writes all of

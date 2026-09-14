@@ -1,9 +1,8 @@
 """Verify WHICH differential operator the scheme's pairwise `div(F)`
 estimator actually converges to.
 
-Round-2 `/plan-review` (2026-09-07 report, Revision 2 section) found that
-`src/rt/SPHM1RT/rt_gradients.h`'s own doxygen (lines 29, 249) states its
-`radiation_divergence_SPH` function computes `(1/rho)*div(rho*fin)`, a
+`src/rt/SPHM1RT/rt_gradients.h`'s own doxygen (lines 29, 249) states that
+its `radiation_divergence_SPH` function computes `(1/rho)*div(rho*fin)`, a
 mass-density-weighted divergence, for ALL THREE `diffmode` branches
 uniformly. At the time this script was first written, Section 1's
 governing equation was copied unmodified from the theory doc's own
@@ -11,8 +10,7 @@ volumetric RTE-moment convention (`du/dt + div F = -u/tau + S`, plain
 `div(F)`), which this estimator does NOT compute, these differ by
 `F.grad(ln rho)`, nonzero whenever the density field has a real gradient.
 
-**Superseded, 2026-09-07 (operator ruling + re-derivation).** The
-mismatch above was a governing-equation bug, not a numerics bug: `u`/`F`
+**Resolved: this was a governing-equation bug, not a numerics bug.** `u`/`F`
 are mass-specific throughout this implementation (injection already does
 `u_i += u_inject/m_i`), and `verify_isrf_lagrangian_mass_specific_
 derivation.py` derives, from the volumetric RTE moments plus mass
@@ -20,13 +18,12 @@ continuity, that the CORRECT Lagrangian/mass-specific governing equation
 is `Du/Dt = -(1/rho)*div(rho*F) - u/tau + S` (up to a leftover
 `(1/rho)*div(u_V*v)` gas-advection term the discretization does not yet
 include, a separate, newly-identified gap, see that script and the
-design doc's §1/Known-gaps for the full account; NOT resolved by this
+theory doc's §1/Known-gaps for the full account; NOT resolved by this
 script). This script's own finding below, that the §2.2 estimator
 converges to `(1/rho)*div(rho*F)`, is therefore now the CONFIRMATION
-that the estimator matches its (corrected) target, not a discrepancy
-needing an operator ruling. The sweep/assertions below are unchanged;
-only this framing paragraph and the module-level conclusion differ from
-this script's original version.
+that the estimator matches its corrected target, not a discrepancy. The
+sweep/assertions below are unchanged; only this framing paragraph and the
+module-level conclusion differ from this script's original version.
 
 The existing script (`verify_isrf_div_f_conservation.py`) checks only
 CONSERVATION: does `m_i*(div F)_i_pair + m_j*(div F)_j_pair` cancel
@@ -59,7 +56,7 @@ which is what this script isolates.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# CLOSURE-INDEPENDENT: NO CHANGE UNDER THE M1 UPGRADE.
 # The divergence loop is untouched by the P1-to-M1 upgrade; which operator
 # it converges to is a property of that loop alone.
 # =============================================================================

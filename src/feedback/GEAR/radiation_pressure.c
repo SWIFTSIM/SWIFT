@@ -117,11 +117,11 @@ radiation_get_physical_optical_depth(const struct spart *sp,
  *
  * LEBRON momentum coupling (Hopkins, Quataert & Murray 2012, MNRAS 421,
  * 3488, Sec 2.1; Hopkins et al. 2014, MNRAS 445, 581, App A): dot_p =
- * (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c -- fraction of the non-ionizing
+ * (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c: fraction of the non-ionizing
  * continuum absorbed before dust reprocessing (was assumed always 1), times
  * the IR-trapping boost, sharing one Sobolev column. kappa_NUV=1800
  * cm^2/g*(Z/Zsun) is one flux-mean opacity standing in for the whole
- * non-ionizing continuum (912A-3um) -- no band-by-band transport here, so
+ * non-ionizing continuum (912A-3um), with no band-by-band transport here so
  * no per-band split either; 1800 is where the 2012 (single flux-mean over
  * that range) and 2020 (NUV sub-band) papers agree. Both are population-
  * (STARBURST99), not single-star-, calibrated, same caveat kappa_IR

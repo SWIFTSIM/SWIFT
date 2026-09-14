@@ -40,61 +40,99 @@ def parse_options():
     parser = argparse.ArgumentParser(description=usage)
 
     parser.add_argument(
-        "--rho", action="store", dest="rho", type=float, default=5,
+        "--rho",
+        action="store",
+        dest="rho",
+        type=float,
+        default=5,
         help="Mean gas density in atom/cm3",
     )
     parser.add_argument(
-        "--mass", action="store", dest="mass", type=float, default=0.1,
+        "--mass",
+        action="store",
+        dest="mass",
+        type=float,
+        default=0.1,
         help="Gas particle mass in solar mass",
     )
     parser.add_argument(
-        "--level", action="store", dest="level", type=int, default=6,
+        "--level",
+        action="store",
+        dest="level",
+        type=int,
+        default=6,
         help="Resolution level: N = (2**l)**3",
     )
     parser.add_argument(
-        "--boxsize", action="store", dest="boxsize", type=float, default=None,
+        "--boxsize",
+        action="store",
+        dest="boxsize",
+        type=float,
+        default=None,
         help="Boxzise in kpc",
     )
     parser.add_argument(
-        "-o", action="store", dest="outputfilename", type=str, default="box.hdf5",
+        "-o",
+        action="store",
+        dest="outputfilename",
+        type=str,
+        default="box.hdf5",
         help="output filename",
     )
 
     parser.add_argument(
-        "--variant", type=str, default="shear", choices=["shear", "contrast"],
+        "--variant",
+        type=str,
+        default="shear",
+        choices=["shear", "contrast"],
         help="shear: uniform gas, sheared velocity only. contrast: also a "
         "density/temperature contrast across the shear layer.",
     )
     parser.add_argument(
-        "--v-shear-km-s", type=float, default=1.0,
+        "--v-shear-km-s",
+        type=float,
+        default=1.0,
         help="Full v_rel between the two streams (km/s).",
     )
     parser.add_argument(
-        "--layer-width-h", type=float, default=4.0,
+        "--layer-width-h",
+        type=float,
+        default=4.0,
         help="tanh half-width of the transition, in units of the mean "
         "smoothing length.",
     )
     parser.add_argument(
-        "--bulk-temperature-K", type=float, default=1000.0,
+        "--bulk-temperature-K",
+        type=float,
+        default=1000.0,
         help="Bulk gas temperature (K); requires SPH:initial_temperature: 0 "
         "in params.yml so the per-particle value survives.",
     )
     parser.add_argument(
-        "--density-ratio", type=float, default=2.0,
+        "--density-ratio",
+        type=float,
+        default=2.0,
         help="contrast variant only: density ratio across the shear layer, "
         "via a particle-mass ratio at uniform number density.",
     )
     parser.add_argument(
-        "--source-geometry", type=str, default="blobs", choices=["blobs", "slab"],
+        "--source-geometry",
+        type=str,
+        default="blobs",
+        choices=["blobs", "slab"],
         help="blobs: two Gaussian FUV/LW blobs, one per stream (gated). "
         "slab: a y-dependent slab seeded on the lower interface (report only).",
     )
     parser.add_argument(
-        "--pulse-amplitude", type=float, default=1.0,
+        "--pulse-amplitude",
+        type=float,
+        default=1.0,
         help="Peak seeded FUVSpecificEnergy/LWSpecificEnergy (internal units).",
     )
     parser.add_argument(
-        "--pulse-sigma-h", type=float, default=2.0,
+        "--pulse-sigma-h",
+        type=float,
+        default=2.0,
         help="Gaussian width, in units of the mean smoothing length.",
     )
 
@@ -241,14 +279,14 @@ else:
     s = 0.5 * (np.tanh((y - 0.25) / d) - np.tanh((y - 0.75) / d) + 1.0)  # 0 -> 1
     mass = m * (1.0 + (R - 1.0) * s)
     T = opt.bulk_temperature_K * (1.0 + (R - 1.0) * s) ** -1.0
-    print(f"stream T (K)                          : {opt.bulk_temperature_K} / "
-          f"{opt.bulk_temperature_K / R} (bulk / +V/2 stream)")
+    print(
+        f"stream T (K)                          : {opt.bulk_temperature_K} / "
+        f"{opt.bulk_temperature_K / R} (bulk / +V/2 stream)"
+    )
     print(f"stream mass (code)                    : {m} / {m * R} (bulk / +V/2 stream)")
 
 UnitVelocity_cgs2 = UnitVelocity_in_cgs**2
-u = np.array(
-    [internal_energy_from_temperature_cgs(t) / UnitVelocity_cgs2 for t in T]
-)
+u = np.array([internal_energy_from_temperature_cgs(t) / UnitVelocity_cgs2 for t in T])
 
 #####################
 # Seeded FUV/LW field: two Gaussian blobs (gated) or an x-independent slab
@@ -297,7 +335,7 @@ if opt.source_geometry == "blobs":
     )
 else:
     # slab: x-independent, seeded on the lower (y=0.25) interface.
-    dy = (pos[:, 1] - 0.25 * L_code)
+    dy = pos[:, 1] - 0.25 * L_code
     dy -= L_code * np.round(dy / L_code)
     u_fuv = A * np.exp(-0.5 * dy**2 / sigma**2)
     u_lw = u_fuv.copy()

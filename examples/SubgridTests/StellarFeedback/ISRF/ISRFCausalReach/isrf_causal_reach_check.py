@@ -21,8 +21,8 @@ Sec 6.2's causal-reach test: the propagated FUV/LW field must not exceed its
 causal reach `r <= c_hyp*t` (from injection start) beyond the SPH kernel's
 own expected numerical smearing.
 
-`c_hyp` is not itself a snapshot field (design-lw-fuv-design-b.md's own
-"no ad hoc debug macros" rule rules out adding one purely for this check).
+`c_hyp` is not itself a snapshot field (this project's "no ad hoc debug
+macros" convention rules out adding one purely for this check).
 It is instead reconstructed from the run's own `timesteps.txt` (the modal
 gas time-step, excluding the transient step 0) and each snapshot's own
 median smoothing length, via the exact formula radiation_isrf.c uses:
@@ -34,15 +34,15 @@ estimate and checks it separately (see `--hot-particle-id`'s own help).
 
 Pass criterion (Sec 6.2): for each of epsilon in {0.1, 0.01, 0.001}, the
 outer radius where the radially-binned u(r) last exceeds
-`epsilon * u_plateau` (u_plateau := max(u) this snapshot -- no 1-D-style
+`epsilon * u_plateau` (u_plateau := max(u) this snapshot, no 1-D-style
 flat plateau exists for a 3-D point source, so this is the most permissive
 definition, per this project's own review of the 1-D reference numbers)
 must not exceed `c_hyp*(t-t0) + C(epsilon)*h` by more than a generous
 margin; C(epsilon) is measured and reported, not assumed, since the 1-D
-reference values (`verify_design_b_timestepping_stability.py` Part F.2,
-C~1/6/12 h at 10%/1%/0.1%) do not necessarily transfer to a 3-D point
-source's geometric (1/r) dilution. `t0` is the star's BirthTime (0 here,
-so no offset is applied) -- the run's own README/params.yml choice is
+reference values (this project's 1-D timestepping-stability verification,
+Part F.2, C~1/6/12 h at 10%/1%/0.1%) do not necessarily transfer to a 3-D
+point source's geometric (1/r) dilution. `t0` is the star's BirthTime (0
+here, so no offset is applied): the run's own README/params.yml choice is
 recorded, not assumed universally correct.
 
 Negativity is GATED for this leg (unlike the Tier-1 steady-state check's

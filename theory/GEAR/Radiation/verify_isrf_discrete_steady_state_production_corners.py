@@ -69,9 +69,9 @@ that structural difference, why the scheme's own transients cannot inherit
 (Remark 3d-front-dipole there): the `-u/tau` term exponentially damps any
 such feature at the SAME rate that sets the whole scheme's relaxation,
 rather than letting it persist as an undamped wave feature indefinitely,
-consistent with the 2026-09-08 log's own empirical finding that the
-production-corner runs are flat to <0.05% over the last 5 snapshots (a
-genuinely converged steady state, not a slow-to-settle transient).
+consistent with the production-corner runs' own empirical finding that
+they are flat to <0.05% over the last 5 snapshots (a genuinely converged
+steady state, not a slow-to-settle transient).
 
 Part 1 sets up the discrete Green's-function problem and cross-checks the
 generalised 3D symbol against `lattice_symbol_3d`'s own special-direction
@@ -85,11 +85,11 @@ grid to confirm the continuum limit (`h/lambda -> 0` recovers
 `lambda_eff/lambda_analytic -> 1`) and to cross-check against the existing
 1D chain result at the matching corner. Part 4 compares the discrete
 prediction directly against the actual simulation numbers from the
-2026-09-08 comparison log.
+production-corner comparison run.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: P1-ERA STUDY, NUMBERS SUPERSEDED.
+# P1-ERA STUDY: THE lambda_eff NUMBERS BELOW ARE SUPERSEDED.
 #
 # Same disposition as `verify_isrf_convergence_sweep.py`, which extends
 # this script: the discrete solve here uses the ISOTROPIC (P1) scalar
@@ -522,7 +522,7 @@ print("not artifacts of this script, but they are conceptually distinct causes."
 print()
 
 # ---------------------------------------------------------------------------
-# Part 4: explicit comparison table against the 2026-09-08 measurement log
+# Part 4: explicit comparison table against the measured production-corner results
 # ---------------------------------------------------------------------------
 print("=" * 78)
 print("Part 4: discrete prediction vs. the actual production-corner simulation")
@@ -549,15 +549,15 @@ print()
 # ---------------------------------------------------------------------------
 # Part 5: the actual thing, solve the coupled (u, F) fixed point on the
 # REAL glass/snapshot particle distribution (real x_i, h_i, rho_i from a
-# converged snapshot of the 2026-09-08 production-corner run, not an
-# idealized perfect lattice), using the EXACT diffmode==1 div(F)/diffmode==0
+# converged snapshot of the production-corner run, not an idealized perfect
+# lattice), using the EXACT diffmode==1 div(F)/diffmode==0
 # grad(u) pairwise formulas of Sec 2.2 and the exact-relaxation staggered
 # iteration of Sec 4.5, run to its own fixed point. This removes every
 # idealization Parts 1-4 make (perfect lattice, kernel-smoothed point
 # source, single global h): real glass disorder, real per-particle h_i and
 # rho_i, and the real diffmode0-vs-diffmode1 distinction (only equal on a
 # perfect lattice) all enter. Snapshots reused from the already-completed
-# 2026-09-08 comparison run (still on disk in this session's scratchpad;
+# production-corner comparison run (still on disk in the scratch directory;
 # no rerun needed).
 # ---------------------------------------------------------------------------
 print("=" * 78)
@@ -743,8 +743,8 @@ else:
         f"{'Corner':<42}{'band':>5}{'h/lambda':>10}{'lambda_eff/h':>14}"
         f"{'measured (sim)':>16}{'real/measured':>16}{'iters':>8}"
     )
-    # default corner's lambda_measured/h is not recorded directly in the
-    # 2026-09-08 log, only rel_err (0.005 FUV, 0.074 LW) against
+    # default corner's lambda_measured/h is not recorded directly, only
+    # rel_err (0.005 FUV, 0.074 LW) against
     # lambda_analytic/h = 1/0.61 = 1.639 (FUV), 1/1.01 = 0.990 (LW); sign
     # inferred as over-prediction (the "+" branch), consistent with every
     # other corner's own measured direction, marked (inferred) below.

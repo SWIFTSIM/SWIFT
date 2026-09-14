@@ -201,7 +201,7 @@ radiation_iact_nonsym_feedback_apply(
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
   /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
-   * cosmological runs -- mirror compute_time()'s branch (feedback_common.c)
+   * cosmological runs: mirror compute_time()'s branch (feedback_common.c)
    * rather than use it directly. Shared by radiation pressure and LW/FUV
    * injection below: both use the star's own feedback timestep. */
   float Delta_t;
@@ -237,7 +237,7 @@ radiation_iact_nonsym_feedback_apply(
         delta_p_rad, 0.f, delta_p_rad / mj);
 
     /* Set the indication of a radiation-pressure event, matching
-       hit_by_SN/hit_by_winds -- without this, feedback_update_part_radiation()
+       hit_by_SN/hit_by_winds. Without this, feedback_update_part_radiation()
        never applies the momentum just accumulated above. */
     xpj->feedback_data.hit_by_radiation = 1;
   }
@@ -268,8 +268,8 @@ radiation_iact_nonsym_feedback_apply(
                                (double)extinction_LW;
 
     if (fb_props->ISRF_propagation) {
-      /* Dose-reservoir form (design-lw-fuv-design-b-dissipation.md Section
-         4.6.5): pure accumulation of the elapsed star step's own
+      /* Dose-reservoir accumulator: pure accumulation of the elapsed star
+         step's own
          (unrescaled) deposit, no reset, no first-touch logic, so any number
          of stars on any time bins just add without losing or
          double-counting emission. The rescale/phi fold-in that used to
@@ -298,7 +298,7 @@ radiation_iact_nonsym_feedback_apply(
       pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
     }
 
-    /* Renew the illumination window on every touch, first or not -- mirrors
+    /* Renew the illumination window on every touch, first or not: mirrors
        feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII
        tag's own end_time, so a continuously-illuminated particle's window
        never lapses between touches. The expiry check itself

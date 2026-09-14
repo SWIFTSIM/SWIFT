@@ -198,7 +198,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "Co-moving HII region radius of the star particles when the HII was last "
       "rebuilt. This is the search/tagging algorithm's own bookkeeping (how "
       "far the star has claimed gas as ionized), not a measurement of the "
-      "gas's actual physical state -- previously-tagged gas can stay warm "
+      "gas's actual physical state. Previously-tagged gas can stay warm "
       "well past its tag's expiry without being re-tagged, so the true "
       "thermally-affected extent can be larger than this radius.");
 
@@ -327,7 +327,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Floor applied to the star's final time-step, after combining the
      age-based bound above with the feedback module's own criteria
      (stellar-evolution stage, HII rebuild cadence, ...). Guards against a
-     near-zero remainder violating dt_min. Not a physics floor -- see
+     near-zero remainder violating dt_min. Not a physics floor: see
      GEARFeedback:HII_rebuild_floor_Myr for the floor on the photon-budget
      rebuild interval itself, a different quantity kept separate from this
      one. */
@@ -383,7 +383,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
    * regions (e.g. cosmological zoom-ins) where a single HII search pass
    * may need several passes to cover all gas within the search radius
    * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
-   * constant -- see runner_radiation_feedback.h). */
+   * constant, see runner_radiation_feedback.h). */
   sp->HII_max_retry_full_buffer =
       parser_get_opt_param_int(params, "Stars:HII_max_retry_full_buffer", 10);
 

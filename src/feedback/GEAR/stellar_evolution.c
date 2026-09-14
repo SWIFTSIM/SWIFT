@@ -1600,9 +1600,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float mean_excess_photon_energy_HI;
     /* Upper mass bound for the has_integrated_ISRF table-direct read
        below: the same MS-lifetime-capped value dot_N_ion uses for a 2D
-       table (operator ruling, 2026-09-06 -- a star past its own main-
-       sequence lifetime emits nothing, ionizing or not, so L_FUV/L_LW stop
-       the same way Q_H already does), or the uncapped m_sup for a 1D table,
+       table (a star past its own main-sequence lifetime emits nothing,
+       ionizing or not, so L_FUV/L_LW stop the same way Q_H already does),
+       or the uncapped m_sup for a 1D table,
        which has no MS-lifetime concept at all (matching dot_N_ion's own
        uncapped 1D read below). */
     float m_sup_capped = m_sup;
@@ -1655,10 +1655,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
        Integrated_L_FUV/Integrated_L_LW when the loaded table has them
        (has_integrated_ISRF), bounded by the same m_sup_capped dot_N_ion
        uses above (a real, deliberate behaviour change from the Teff
-       fallback below for a population with stars past m_sup_capped, per
-       the operator's 2026-09-06 ruling -- not merely a plumbing swap: a
-       star that has left the main sequence emits nothing, ionizing or
-       not). Else, the existing Teff fallback (see the individual-star
+       fallback below for a population with stars past m_sup_capped, and
+       not merely a plumbing swap: a star that has left the main sequence
+       emits nothing, ionizing or not). Else, the existing Teff fallback
+       (see the individual-star
        path's identical block for the physics): Teff has no IMF-integrated
        table concept (#radiation.raw's own doxygen on the teff/teff_2d
        union), so a single representative Teff at m_sup (this step's upper
@@ -1773,8 +1773,7 @@ void stellar_evolution_zero_pointers(struct stellar_model sm) {
      copy, not the caller's own struct. Left unfixed: changing this
      function's signature to take a pointer would make these zeroing
      calls live on the restart-dump path, which needs a full restart-
-     safety re-verification before landing (see CLAUDE.md, "Restart
-     works"). */
+     safety re-verification before landing. */
 }
 
 /**

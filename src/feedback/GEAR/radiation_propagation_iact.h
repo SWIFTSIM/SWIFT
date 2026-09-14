@@ -38,21 +38,21 @@
  * - `grad(u)` (gradient loop, `runner_iact_[nonsym_]isrf_gradient`): the
  *   anisotropic M1 pressure-tensor divergence, `diffmode==0` form (each
  *   particle's own separate `wi_dr`/`wj_dr`, no shared average, and no
- *   grad-h `forcef` factor -- the divergence loop above carries none
- *   either, which the pairing below requires -- unlike
+ *   grad-h `forcef` factor: the divergence loop above carries none
+ *   either, which the pairing below requires, unlike
  *   `radiation_gradient_aniso_SPH`'s `diffmode==2` branch in
  *   `src/rt/SPHM1RT/rt_gradients.h`/`rt_iact.h:582-627`, which SPHM1RT uses
  *   instead). This own-derivative form is the COMPLEMENT of the
  *   divergence loop's shared-coefficient (`diffmode==1`) construction
  *   above, not a copy of it: `diffmode==1` divergence paired with
  *   `diffmode==0` gradient is what makes the two exactly skew-adjoint
- *   (see below) -- matching both loops to the same `diffmode` would NOT
+ *   (see below). Matching both loops to the same `diffmode` would NOT
  *   achieve this. Per particle D(f) tensor
  *   (#radiation_get_m1_closure_tensor_band). This is the exact skew-adjoint
  *   of the `diffmode==1` divergence above, in the `D^-1`-weighted inner
  *   product (not the plain `m*rho` one the P1 pairing used), for any
  *   `h_i != h_j`, `rho_i != rho_j`, whenever `D` is locally constant
- *   between neighbours (`D_i = D_j`) -- which includes `F=0`, every
+ *   between neighbours (`D_i = D_j`), which includes `F=0`, every
  *   particle's initial condition and permanent far-field state; a residual
  *   `O(h*grad(D))` remains when `D` varies between neighbours. This removes
  *   only that kernel-derivative-mismatch residual `R_h`. In the plain
@@ -62,12 +62,10 @@
  *   same constant anisotropic `D` on both particles. `R_D` is a PDE-level
  *   property of M1 itself (the isotropic-metric functional this fix
  *   generalizes is not a conserved quantity of M1 for anisotropic `D`),
- *   not a discretization defect, and this fix does not address it -- see
- *   `.claude/dev/M1_gradient_adjointness_investigation_2026-09-11.md` for
- *   the full derivation. Whether the staggered exact-relaxation time
- *   integrator's stability argument needs more than this weaker
- *   adjointness is an open question for Phase 1's stability
- *   re-verification, not resolved here.
+ *   not a discretization defect, and this fix does not address it.
+ *   Whether the staggered exact-relaxation time integrator's stability
+ *   argument needs more than this weaker adjointness remains an open
+ *   question, not resolved here.
  * - The negativity-triggered artificial dissipation (force loop,
  *   `runner_iact_[nonsym_]isrf_dissipation`): a triggered pairwise
  *   conductivity on the `rho*u` jump, credited to one particle and debited
@@ -200,8 +198,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 
 /**
  * @brief Band-specific pairwise contribution to particle i's
- * negativity-triggered artificial-dissipation source term
- * (design-lw-fuv-design-b- dissipation.md Section 3.1), and mirrored
+ * negativity-triggered artificial-dissipation source term, and mirrored
  * (mass-weighted, opposite sign) contribution to particle j's.
  *
  * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)` is a signal VELOCITY, with
@@ -300,9 +297,9 @@ radiation_dissipation_force_accumulate_band(
 
 /**
  * @brief M1 closure tensor `D(f)` for one particle, one band, built from its
- * own `(u, F, c_M)` (design-lw-fuv-m1-upgrade.md "New pieces"). `c_M` is the
- * same speed already carried as #feedback_part_data.c_hyp (D3: reinterpreted
- * as the fastest M1 characteristic, `f=1`, not a new field).
+ * own `(u, F, c_M)`. `c_M` is the
+ * same speed already carried as #feedback_part_data.c_hyp, reinterpreted
+ * as the fastest M1 characteristic, `f=1`, not a new field.
  *
  * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` for `u <= 0`;
  * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`;
@@ -310,7 +307,7 @@ radiation_dissipation_force_accumulate_band(
  *
  * Zero-flux guard, mandatory: `F = 0` is every particle's initial condition
  * and permanent far-field state, not a corner case. `F2 = F.F`,
- * `F_inv = (F2 > 0) ? 1/sqrt(F2) : 0`, `n = F*F_inv` -- a zero-guarded
+ * `F_inv = (F2 > 0) ? 1/sqrt(F2) : 0`, `n = F*F_inv`: a zero-guarded
  * reciprocal, so `n` stays well-defined at `F = 0` instead of dividing by
  * zero. `f`'s own division is guarded the same way: `c_M*u` is computed once
  * and only divided into when it is strictly positive, which also folds in the
@@ -417,7 +414,7 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
 
   /* Own kernel derivative per particle, no shared average and no grad-h
    * `forcef` factor: restores exact adjointness with the divergence loop
-   * above (D^-1 metric, D locally constant) -- see the header comment. */
+   * above (D^-1 metric, D locally constant). See the header comment. */
   const float fac_i =
       mj * rho_i_inv * rho_i_inv * wi_dr * a_factor_comoving_to_physical;
   const float fac_j =

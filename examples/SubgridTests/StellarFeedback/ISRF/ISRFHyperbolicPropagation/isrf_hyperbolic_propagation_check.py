@@ -46,12 +46,11 @@ many-source diffuse background lives on, which is this module's production
 use case but not this example's configuration.
 
 On top of that, the DISCRETE fixed point departs from either continuum
-profile whenever `h` is not much smaller than `lambda` -- true at this
-project's own production resolution -- so a continuum-target comparison
-reports a spurious failure (33%-249% error,
-`theory/GEAR/Radiation/verify_design_b_discrete_steady_state_production_
-corners.py`) even when the C code is solving its own discretized equations
-exactly.
+profile whenever `h` is not much smaller than `lambda`, true at this
+project's own production resolution, so a continuum-target comparison
+reports a spurious failure (33%-249% error, per this project's discrete
+steady-state production-corner verification) even when the C code is
+solving its own discretized equations exactly.
 
 So, as before, this script builds the DISCRETE steady-state prediction
 directly: it takes the run's own actual particle positions, smoothing
@@ -78,7 +77,7 @@ This script therefore gates on two closure-agnostic quantities instead,
 and reports the fitted lambda as information only:
 
   1. `u(r)`, bin by bin, simulation against discrete prediction, over the
-     same radial bins -- assumes no functional form at all, and subsumes
+     same radial bins, assumes no functional form at all, and subsumes
      both shape and amplitude. This is the primary gate (`--tol`).
   2. The total field amplitude, against a first-principles identity that
      needs no fit, no profile and no closure (theory doc
@@ -98,7 +97,7 @@ The reduced flux `f` realized in the fit range is printed, so a reader can
 see which branch the run is actually on rather than assuming one.
 
 Does not validate whether the governing equations themselves match real
-interstellar radiation transport -- that is a separate, physics-level
+interstellar radiation transport. That is a separate, physics-level
 question (Tier 2), not a numerics one.
 """
 
@@ -262,7 +261,7 @@ def kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs):
 
 def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs):
     """lambda = 1/(kappa_eff*rho): the physical dust-screening length,
-    independent of this project's own kernel/eta_neighbours choice -- see
+    independent of this project's own kernel/eta_neighbours choice: see
     radiation_get_part_linear_absorption_rate in radiation_isrf.c."""
     rho_cgs = rho_internal * unit_mass_cgs / unit_length_cgs**3
     kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)

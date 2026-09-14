@@ -28,7 +28,7 @@ temperature stays under a physically-motivated ceiling rather than showing
 signs of a numerical blow-up (magnitude check).
 
 This is deliberately NOT a quantitative match to any PDR literature target
-(that is Tier 2's job) -- just "didn't break the sign or blow up".
+(that is Tier 2's job), just "didn't break the sign or blow up".
 """
 
 import argparse
@@ -173,7 +173,7 @@ def main():
 
     # Common radial binning, out to the extent of whichever run's
     # illuminated gas has spread furthest (the heating-on run's near-star
-    # gas mildly expands as it heats -- see README).
+    # gas mildly expands as it heats: see README).
     r_max = max(r_on.max(), r_off.max()) * 0.5
     edges = np.linspace(0.0, r_max, opt.n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])

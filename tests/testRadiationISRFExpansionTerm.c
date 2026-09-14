@@ -179,8 +179,8 @@ int main(int argc, char *argv[]) {
 
   /* Stiff leg, the discriminating one: absorption depth 10 alongside a
    * redshift depth of 1. An explicit `-dt*phi*H*u` decrement instead of the
-   * rate used here would land near `-0.1*u_0` -- wrong sign, four orders of
-   * magnitude out -- rather than on `exp(-11)*u_0`. */
+   * rate used here would land near `-0.1*u_0`, wrong sign and four orders
+   * of magnitude out, rather than on `exp(-11)*u_0`. */
   run_case(/*a=*/0.5, /*H=*/10.0, /*kappa=*/50.f, /*dt=*/0.1f, /*c_hyp=*/2.f);
 
   /* Non-cosmological no-op: `cosmology_init_no_cosmo` leaves H exactly 0, so

@@ -14,7 +14,7 @@ sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
 
 This is an exact conservation identity (the injection formula's own
 kernel-weight normalization, `sum_j weight_j = 1`), not an approximate
-physics comparison like `ISRFHyperbolicPropagation`'s profile fit -- the
+physics comparison like `ISRFHyperbolicPropagation`'s profile fit. The
 check tolerance is correspondingly tight.
 
 ## Metallicity
@@ -33,8 +33,8 @@ ran before it.
 
 ## Star luminosity and timestep
 The star's own `FUVLuminosities`/`LWLuminosities` are read directly from
-the snapshot (star-particle output fields). `Delta_t` -- the star's own
-feedback timestep at the checked snapshot -- is read from swift's own
+the snapshot (star-particle output fields). `Delta_t`, the star's own
+feedback timestep at the checked snapshot, is read from swift's own
 step-table log rather than assumed to equal `TimeIntegration:dt_max`:
 individual time-stepping can settle the star on a smaller step.
 
@@ -57,7 +57,7 @@ themselves live on `struct part`'s `feedback_data`).
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var -- gas density
+Override any parameter via the matching env var: gas density
 (`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
 and type (`star_mass`, `star_type`), resolution level (`level`, N =
 `(2**level)**3` gas particles), run duration and stepping (`time_end`,
@@ -73,5 +73,5 @@ python3 isrf_injection_conservation_check.py
 `run.sh` runs this automatically against its own `output.log` and final
 snapshot. It sums `FUVSpecificEnergies * mass` (and the LW equivalent)
 over all illuminated gas particles and compares against `Delta_t *
-FUVLuminosities` (`--tol`, default relative error 1e-5 -- the measured
+FUVLuminosities` (`--tol`, default relative error 1e-5: the measured
 discrepancy is float32 snapshot-storage rounding, ~1e-7).

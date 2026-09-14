@@ -24,7 +24,7 @@ run_name=${run_name:=""}
 # The shipped output_list_isrf_source_turn_off.txt is tied to star_mass and
 # initial_metallicity (they set the death time) and to gas_density, gas_mass
 # and dt_max (they set the post-death decay timescale, through c_hyp =
-# C_hyp*h/dt -- see README). level only sets the box size. Overriding any
+# C_hyp*h/dt: see README). level only sets the box size. Overriding any
 # of the former without regenerating that file leaves the snapshot cadence
 # mismatched to the new death/decay times; time_end must not be shortened
 # below the list's last entry.

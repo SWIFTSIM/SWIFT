@@ -371,9 +371,7 @@ grp.create_dataset("BirthTime", data=star_birth_time, dtype="f")
 grp.create_dataset("StellarParticleType", data=star_particle_type, dtype="i")
 if metal_mass_fraction_star is not None:
     # Written for inspection only: GEAR has no chemistry_read_sparticles, so SWIFT never reads this and the star's Z stays at its zero-init value.
-    grp.create_dataset(
-        "MetalMassFraction", data=metal_mass_fraction_star, dtype="d"
-    )
+    grp.create_dataset("MetalMassFraction", data=metal_mass_fraction_star, dtype="d")
 
 fileOutput.close()
 

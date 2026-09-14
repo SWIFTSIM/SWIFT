@@ -3,8 +3,8 @@
 When radiation_level coarsening has not (yet) happened, each leaf is its own
 radiation_level region, so the wired stencil is only the leaf's up-to-26
 immediate neighbours (runner_radiation_feedback.c:266-274). A cell two
-regions away is structurally absent from radiation_in -- not filtered by the
-bounds check, simply never an edge in the graph -- even if the search radius
+regions away is structurally absent from radiation_in (not filtered by the
+bounds check, simply never an edge in the graph), even if the search radius
 geometrically reaches into it. Three guards bound how bad this gets, and a
 rebuild coarsens the stencil so C eventually enters it.
 """
@@ -107,17 +107,17 @@ def make_figure(output_path: str) -> None:
     ax_main.set_aspect("equal")
     ax_main.axis("off")
     ax_main.set_title(
-        "Fig. 5 -- Case 2: radiation_level at leaf level, C two regions away\n"
+        "Fig. 5, Case 2: radiation_level at leaf level, C two regions away\n"
         "radius sliver-covers C, but C is structurally invisible to the star's traversal",
         fontsize=10.3,
     )
 
     guard_text = (
         "Three guards bound this gap:\n"
-        "1. Split gate -- a region stops splitting once "
+        "1. Split gate: a region stops splitting once "
         "factor . kernel_gamma . h_hii_max >= 0.5 . dmin\n"
-        "2. Rebuild criterion -- whole-tree rebuild fires once reach + drift > dmin\n"
-        "3. In-pass clamp -- dynamic_search_radius capped at interaction_limit + dmin this pass;\n"
+        "2. Rebuild criterion: whole-tree rebuild fires once reach + drift > dmin\n"
+        "3. In-pass clamp: dynamic_search_radius capped at interaction_limit + dmin this pass;\n"
         "   the outer shell is deferred to the next rebuild, never lost"
     )
     fig.text(

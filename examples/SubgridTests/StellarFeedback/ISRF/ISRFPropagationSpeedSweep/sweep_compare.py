@@ -38,16 +38,22 @@ def parse_options():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "--mode", choices=["P", "N", "RI"], required=True,
+        "--mode",
+        choices=["P", "N", "RI"],
+        required=True,
         help="Which cross-run gate to compute.",
     )
     parser.add_argument(
-        "--runs", nargs="+", required=True,
+        "--runs",
+        nargs="+",
+        required=True,
         help="Run directories, in the order given by the run table (Leg P: "
         "P1..P7; Leg N: N1..N8; Leg RI: R1..R5 then I1..I4).",
     )
     parser.add_argument(
-        "--ref-index", type=int, default=3,
+        "--ref-index",
+        type=int,
+        default=3,
         help="Leg P only: 0-based index of the reference run in --runs "
         "(default 3 = P4, mid-sweep).",
     )
@@ -56,7 +62,9 @@ def parse_options():
         "--tol-retardation", type=float, default=0.10, help="M-C2 relative tolerance."
     )
     parser.add_argument(
-        "--bracket-factor", type=float, default=1.25,
+        "--bracket-factor",
+        type=float,
+        default=1.25,
         help="M-C3 bracket window (0.8x .. 1.25x nu_max).",
     )
     return parser.parse_args()
@@ -85,7 +93,11 @@ def mode_P(opt):
     # M-P6 validity precondition: nu_eff spread and step-count agreement.
     nu_effs = np.array([m["nu_eff"] for m in metrics])
     n_steps = np.array([m["n_steps"] for m in metrics])
-    nu_spread = (nu_effs.max() - nu_effs.min()) / np.mean(nu_effs) if np.mean(nu_effs) else np.inf
+    nu_spread = (
+        (nu_effs.max() - nu_effs.min()) / np.mean(nu_effs)
+        if np.mean(nu_effs)
+        else np.inf
+    )
     steps_agree = len(set(n_steps.tolist())) == 1
     valid = (nu_spread <= 0.01) and steps_agree
 
@@ -97,9 +109,11 @@ def mode_P(opt):
     print(f"=> {'VALID' if valid else 'INVALID'}")
 
     if not valid:
-        print("\nM-C1 and M-C2: INVALID (not FAILED) -- the dt-quantization "
-              "precondition is not met. Re-run with time_end adjusted so the "
-              "bin grid lands on the intended dt; do not interpret D below.")
+        print(
+            "\nM-C1 and M-C2: INVALID (not FAILED) -- the dt-quantization "
+            "precondition is not met. Re-run with time_end adjusted so the "
+            "bin grid lands on the intended dt; do not interpret D below."
+        )
 
     drift_void = np.array([m["drift_void"] for m in metrics])
 
@@ -121,30 +135,48 @@ def mode_P(opt):
             np.max(np.abs(ref_u_lw)), 1e-300
         )
         excluded = bool(drift_void[i])
-        status = "EXCLUDED (drift > 0.1h)" if excluded else (
-            "PASS" if valid and max(d_fuv, d_lw) <= opt.tol_d else "FAIL"
+        status = (
+            "EXCLUDED (drift > 0.1h)"
+            if excluded
+            else ("PASS" if valid and max(d_fuv, d_lw) <= opt.tol_d else "FAIL")
         )
         if not excluded and valid and max(d_fuv, d_lw) > opt.tol_d:
             all_pass = False
         print(f"{d}: D_FUV={d_fuv:.3e}  D_LW={d_lw:.3e}  -> {status}")
-    print(f"M-C1 overall: {'PASS' if (valid and all_pass) else ('INVALID' if not valid else 'FAIL')}")
+    print(
+        f"M-C1 overall: {'PASS' if (valid and all_pass) else ('INVALID' if not valid else 'FAIL')}"
+    )
 
     # M-C2: retardation collapse at eps=0.01.
     print("\n=== M-C2: retardation collapse (Leg P, eps=0.01) ===")
     norms_fuv, norms_lw = [], []
     for i, (d, m) in enumerate(zip(opt.runs, metrics)):
-        r_fuv = m["front"]["FUV"]["0.01"]["r_edge_norm"] if "0.01" in m["front"]["FUV"] else m["front"]["FUV"][0.01]["r_edge_norm"]
-        r_lw = m["front"]["LW"]["0.01"]["r_edge_norm"] if "0.01" in m["front"]["LW"] else m["front"]["LW"][0.01]["r_edge_norm"]
+        r_fuv = (
+            m["front"]["FUV"]["0.01"]["r_edge_norm"]
+            if "0.01" in m["front"]["FUV"]
+            else m["front"]["FUV"][0.01]["r_edge_norm"]
+        )
+        r_lw = (
+            m["front"]["LW"]["0.01"]["r_edge_norm"]
+            if "0.01" in m["front"]["LW"]
+            else m["front"]["LW"][0.01]["r_edge_norm"]
+        )
         norms_fuv.append(r_fuv)
         norms_lw.append(r_lw)
         void_str = " (drift-void, still reported)" if drift_void[i] else ""
         print(f"{d}: r_edge/(c_hyp*t) FUV={r_fuv:.4f}  LW={r_lw:.4f}{void_str}")
     kept_fuv = [v for v, void in zip(norms_fuv, drift_void) if not void]
     kept_lw = [v for v, void in zip(norms_lw, drift_void) if not void]
-    spread_fuv = (max(kept_fuv) - min(kept_fuv)) / np.mean(kept_fuv) if kept_fuv else np.inf
+    spread_fuv = (
+        (max(kept_fuv) - min(kept_fuv)) / np.mean(kept_fuv) if kept_fuv else np.inf
+    )
     spread_lw = (max(kept_lw) - min(kept_lw)) / np.mean(kept_lw) if kept_lw else np.inf
-    c2_pass = valid and spread_fuv <= opt.tol_retardation and spread_lw <= opt.tol_retardation
-    print(f"Spread (drift-valid runs only): FUV={spread_fuv:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})")
+    c2_pass = (
+        valid and spread_fuv <= opt.tol_retardation and spread_lw <= opt.tol_retardation
+    )
+    print(
+        f"Spread (drift-valid runs only): FUV={spread_fuv:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
+    )
     print(f"M-C2: {'PASS' if c2_pass else ('INVALID' if not valid else 'FAIL')}")
 
 
@@ -155,8 +187,7 @@ def mode_N(opt):
     nu_eff = [m["nu_eff"] for m in metrics]
     nu_max = [m["nu_max"] for m in metrics]
     for d, s, n, nm in zip(opt.runs, stable, nu_eff, nu_max):
-        print(f"{d}: nu_eff={n:.4f}  nu_max(predicted)={nm:.4f}  "
-              f"stable={s}")
+        print(f"{d}: nu_eff={n:.4f}  nu_max(predicted)={nm:.4f}  " f"stable={s}")
     # Group by alpha (nu_max value) since N7/N8 use alpha=0.
     by_alpha = {}
     for d, s, n, nm in zip(opt.runs, stable, nu_eff, nu_max):
@@ -171,19 +202,26 @@ def mode_N(opt):
         print(f"largest stable nu_eff: {largest_stable}")
         print(f"smallest unstable nu_eff: {smallest_unstable}")
         bracket_ok = True
-        for (d, s, n) in entries:
+        for d, s, n in entries:
             if not s and n < 0.8 * nm:
-                print(f"  FAIL: {d} at nu_eff={n} < 0.8*nu_max={0.8*nm:.4f} is unstable "
-                      f"-- bound is optimistic.")
+                print(
+                    f"  FAIL: {d} at nu_eff={n} < 0.8*nu_max={0.8*nm:.4f} is unstable "
+                    f"-- bound is optimistic."
+                )
                 bracket_ok = False
             if s and n > opt.bracket_factor * nm:
-                print(f"  FAIL: {d} at nu_eff={n} > {opt.bracket_factor}*nu_max="
-                      f"{opt.bracket_factor*nm:.4f} is stable -- bound over-restricts.")
+                print(
+                    f"  FAIL: {d} at nu_eff={n} > {opt.bracket_factor}*nu_max="
+                    f"{opt.bracket_factor*nm:.4f} is stable -- bound over-restricts."
+                )
                 bracket_ok = False
         if largest_stable is not None and smallest_unstable is not None:
-            brackets = largest_stable < nm < smallest_unstable or \
-                (largest_stable <= nm and smallest_unstable >= nm)
-            print(f"  Bracket [{largest_stable}, {smallest_unstable}] contains nu_max={nm:.4f}: {brackets}")
+            brackets = largest_stable < nm < smallest_unstable or (
+                largest_stable <= nm and smallest_unstable >= nm
+            )
+            print(
+                f"  Bracket [{largest_stable}, {smallest_unstable}] contains nu_max={nm:.4f}: {brackets}"
+            )
         overall_pass &= bracket_ok
     print(f"\nM-C3 overall: {'PASS' if overall_pass else 'FAIL'}")
     if not overall_pass:
@@ -196,7 +234,9 @@ def mode_RI(opt):
     SPEED_OF_LIGHT_KM_S = 2.99792458e5
     for d, m in zip(opt.runs, metrics):
         c_hyp = m["c_hyp"]
-        print(f"{d}: c_hyp={c_hyp:.4f} km/s  c/c_hyp={SPEED_OF_LIGHT_KM_S / c_hyp if c_hyp > 0 else float('nan'):.3e}")
+        print(
+            f"{d}: c_hyp={c_hyp:.4f} km/s  c/c_hyp={SPEED_OF_LIGHT_KM_S / c_hyp if c_hyp > 0 else float('nan'):.3e}"
+        )
 
 
 def main():

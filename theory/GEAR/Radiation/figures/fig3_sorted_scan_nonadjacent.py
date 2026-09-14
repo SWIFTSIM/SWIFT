@@ -4,7 +4,7 @@ Demonstrates that the sorted-window prune operates on a GLOBAL 1D axis of
 ABSOLUTE projections (runner_sort.c: entries[k].d = px . runner_shift[sid],
 px = parts[k].x, an absolute position). The star is projected onto that same
 axis (runner_radiation_feedback.c:998-1004); adjacency between A and C plays
-no role -- only whether the window [di_star - R - dx_max, di_star + R +
+no role: only whether the window [di_star - R - dx_max, di_star + R +
 dx_max] intersects C's own d-range.
 
 Panel (a) is the micro-example from the README: star at x=1.2, C spanning
@@ -212,7 +212,7 @@ def make_figure(output_path: str) -> None:
     )
 
     # Wrapped variant: box of size L=4.6, star near the right edge, C near
-    # the left edge -- shift = -L brings the star's image next to C.
+    # the left edge. Shift = -L brings the star's image next to C.
     box_len = 4.6
     star_x_wrapped = box_len - 0.3  # 4.3, near the right edge.
     ghost = star_x_wrapped - box_len  # -0.3, image on C's side.
@@ -265,7 +265,7 @@ def make_figure(output_path: str) -> None:
             linestyle="",
             markersize=12,
             markeredgewidth=2,
-            label="C tick: d <= di_max -- scanned",
+            label="C tick: d <= di_max, scanned",
         ),
         mlines.Line2D(
             [],
@@ -275,7 +275,7 @@ def make_figure(output_path: str) -> None:
             linestyle="",
             markersize=12,
             markeredgewidth=2,
-            label="C tick: d > di_max -- loop already stopped",
+            label="C tick: d > di_max, loop already stopped",
         ),
         mlines.Line2D(
             [],
@@ -299,7 +299,7 @@ def make_figure(output_path: str) -> None:
     fig.text(
         0.5,
         0.985,
-        "Fig. 3 -- Sorted scan against a non-adjacent receiver C\n"
+        "Fig. 3: Sorted scan against a non-adjacent receiver C\n"
         "adjacency is irrelevant: only window/d-range overlap on the global axis decides what is scanned",
         ha="center",
         va="top",

@@ -1146,7 +1146,7 @@ gr_float cooling_time(const struct phys_const *phys_const,
  * does not feed into any physics. Returns 0 if dust physics is inactive
  * (Grackle's chemistry_data.dust_chemistry and h2_on_dust both off), since
  * local_calculate_dust_temperature() silently leaves its output buffer
- * untouched in that case rather than returning an error -- 0 is this
+ * untouched in that case rather than returning an error. 0 is this
  * cooling model's existing convention for a quantity it does not compute
  * (see cooling_get_electron_pressure). Also returns 0 below
  * COOLING_GRACKLE_MODE 1 (primordial_chemistry < 1): Grackle's own

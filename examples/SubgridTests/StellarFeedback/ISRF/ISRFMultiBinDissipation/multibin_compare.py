@@ -17,8 +17,8 @@
 #
 ################################################################################
 """
-Cross-run gate for ISRFMultiBinDissipation, applying Sec 6 of
-DISSIPATION_multibin_test_2026-09-10.md. Each run's own
+Cross-run gate for ISRFMultiBinDissipation, applying the multi-bin
+dissipation test specification's Sec 6 criteria. Each run's own
 isrf_multibin_dissipation_check.py has already produced multibin_metrics.json;
 this script only combines them.
 
@@ -45,13 +45,22 @@ def parse_options():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--mode", choices=["gate", "report"], default="gate")
-    parser.add_argument("--runs", nargs="+", help="report mode: run directories to print.")
+    parser.add_argument(
+        "--runs", nargs="+", help="report mode: run directories to print."
+    )
     parser.add_argument("--s0", help="gate mode: S0 smoke run directory.")
     parser.add_argument("--m0", help="gate mode: M0 uniform control directory.")
     parser.add_argument("--m1", help="gate mode: M1 test directory.")
-    parser.add_argument("--m2", help="gate mode: M2 alpha_max=0 attribution twin directory.")
-    parser.add_argument("--m3", help="gate mode: M3 c_hyp-pin mechanism control (interpretation aid only).")
-    parser.add_argument("--m4", help="gate mode: M4 2x-finer-h uniform control directory.")
+    parser.add_argument(
+        "--m2", help="gate mode: M2 alpha_max=0 attribution twin directory."
+    )
+    parser.add_argument(
+        "--m3",
+        help="gate mode: M3 c_hyp-pin mechanism control (interpretation aid only).",
+    )
+    parser.add_argument(
+        "--m4", help="gate mode: M4 2x-finer-h uniform control directory."
+    )
     parser.add_argument("--m5", help="gate mode: M5 2x-finer-h test directory.")
     return parser.parse_args()
 
@@ -68,7 +77,7 @@ def last_third_points(series, t_max, t0=0.0):
 
 def compute_sigma(m0):
     """M0's own spread of |d_x|/h across its stars and last-third snapshots,
-    per band -- the honest within-family noise floor Sec 6 defines."""
+    per band: the honest within-family noise floor Sec 6 defines."""
     sigma = {}
     for band in BANDS:
         vals = []
@@ -100,7 +109,7 @@ def check_preconditions(s0, m0, sigma):
     # Resolving power is checked PER BAND: FUV and LW have genuinely
     # different physics (kappa, lambda, predicted dipole magnitude per
     # Sec 1.3), so one band failing does not make the other band's result
-    # uninterpretable -- it means STOP-3 fires for that band specifically
+    # uninterpretable: it means STOP-3 fires for that band specifically
     # while the other band's verdict still stands.
     band_ok = {}
     print("=== Sec 6.1 resolving-power precondition ===")
@@ -166,7 +175,9 @@ def mode_gate(opt):
 
     band_ok = check_preconditions(s0, m0, sigma)
     if not any(band_ok.values()):
-        print("\nOverall gate: INVALID -- resolving-power precondition failed for every band. No verdict.")
+        print(
+            "\nOverall gate: INVALID -- resolving-power precondition failed for every band. No verdict."
+        )
         sys.exit(1)
 
     if not m1.get("ab_matched", True):
@@ -183,7 +194,9 @@ def mode_gate(opt):
     for band in BANDS:
         print(f"-- {band} --")
         if not band_ok[band]:
-            print(f"  INVALID -- resolving-power precondition failed for {band} (STOP-3). No verdict for this band.")
+            print(
+                f"  INVALID -- resolving-power precondition failed for {band} (STOP-3). No verdict for this band."
+            )
             continue
         A1 = star_last(m1, "A", band)
         B1 = star_last(m1, "B", band)
@@ -210,16 +223,27 @@ def mode_gate(opt):
                 if p.get("d_total_h") is None or p["d_total_h"] <= 0.1:
                     continue
                 if p.get("void"):
-                    print(f"  crit2 note (VOID, not gated) in {tag}: |d|/h = {p['d_total_h']:.5f} > 0.1 at t={p['time']}")
+                    print(
+                        f"  crit2 note (VOID, not gated) in {tag}: |d|/h = {p['d_total_h']:.5f} > 0.1 at t={p['time']}"
+                    )
                     continue
                 crit2 = False
-                print(f"  crit2 VIOLATED in {tag}: |d|/h = {p['d_total_h']:.5f} > 0.1 at t={p['time']}")
-        print(f"  crit2 (|d|/h <= 0.1 everywhere, non-void): -> {'PASS' if crit2 else 'FAIL'}")
+                print(
+                    f"  crit2 VIOLATED in {tag}: |d|/h = {p['d_total_h']:.5f} > 0.1 at t={p['time']}"
+                )
+        print(
+            f"  crit2 (|d|/h <= 0.1 everywhere, non-void): -> {'PASS' if crit2 else 'FAIL'}"
+        )
         overall_ok &= crit2
 
         A5 = star_last(m5, "A", band)
         crit3 = True
-        if A1 and A5 and A1.get("d_total_h") is not None and A5.get("d_total_h") is not None:
+        if (
+            A1
+            and A5
+            and A1.get("d_total_h") is not None
+            and A5.get("d_total_h") is not None
+        ):
             growth = A5["d_total_h"] - A1["d_total_h"]
             crit3 = growth <= 3.0 * sigma[band]
             print(
@@ -254,7 +278,9 @@ def mode_gate(opt):
                 )
 
     if m3 is not None:
-        print("\n=== M3 mechanism control (interpretation aid, two-factor, do not over-read) ===")
+        print(
+            "\n=== M3 mechanism control (interpretation aid, two-factor, do not over-read) ==="
+        )
         for band in BANDS:
             A3 = star_last(m3, "A", band)
             if A3 is not None:
@@ -276,9 +302,24 @@ def mode_report(opt):
     for run_dir in opt.runs:
         m = load(run_dir)
         print(f"=== {run_dir} ===")
-        print(json.dumps({k: m[k] for k in ("variant", "bin_delta", "status", "bin_span",
-                                             "v_over_c_hyp_realized", "rho_match", "ab_matched")
-                           if k in m}, indent=2))
+        print(
+            json.dumps(
+                {
+                    k: m[k]
+                    for k in (
+                        "variant",
+                        "bin_delta",
+                        "status",
+                        "bin_span",
+                        "v_over_c_hyp_realized",
+                        "rho_match",
+                        "ab_matched",
+                    )
+                    if k in m
+                },
+                indent=2,
+            )
+        )
 
 
 def main():

@@ -281,8 +281,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "FUVArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       parts, xparts, convert_part_dissipation_alpha_FUV,
       "Negativity-triggered artificial-dissipation coefficient of the "
-      "FUV-band hyperbolic propagation "
-      "(design-lw-fuv-design-b-dissipation.md), in "
+      "FUV-band hyperbolic propagation, in "
       "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
       "Only meaningful when ISRF_propagation is on.");
 

@@ -22,7 +22,7 @@ Two Gaussian `FUVSpecificEnergy`/`LWSpecificEnergy` blobs are written
 directly into the IC (`--pulse-amplitude`/`--pulse-sigma-h`), one centred in
 each stream. This isolates the propagation and dissipation operators from
 injection, the star's own timestep, and any star-gas relative velocity
-entirely -- there is no star particle in this example at all. The specific
+entirely. There is no star particle in this example at all. The specific
 flux field is not an IC-readable quantity, so every run starts from `F = 0`;
 this is a well-posed initial condition, not a limitation. The two blob
 positions are chosen so the `variant=shear` initial condition has an exact
@@ -99,7 +99,7 @@ The gate is self-calibrating, not an absolute threshold: a sheared run
 passes a given metric if `|A_k| <= max(3*|A_k(0)|, floor)`, where `A_k(0)`
 is the same metric measured in the matching zero-shear control run in the
 same sweep. The factor of 3 and the floors (0.01 for all three metrics) are
-declared conventions, not derived bounds -- wide enough that ordinary
+declared conventions, not derived bounds: wide enough that ordinary
 glass-noise scatter between two runs does not trip the gate, narrow enough
 to catch an effect at the percent level. `shear_compare.py --mode gate`
 performs this comparison; a run flagged void, by the KH-contamination

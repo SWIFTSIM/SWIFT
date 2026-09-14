@@ -17,7 +17,7 @@ paper's own Section 2.1 and Eq 2-4 (not the broader 6-13.6 eV band some
 other "G0" conventions use). This codebase's k_diss formula likewise only
 ever reads the LW-band field (p->feedback_data.u_LW), not the FUV band, so
 the two are compared on the same band. Draine/Habing normalization
-(verified 2026-09-06 from the paper's own p.4 footnote 4): the Draine energy
+(verified from the paper's own p.4 footnote 4): the Draine energy
 density is 1.7x the Habing (1968) LW-band estimate, so
 
     I_UV (Draine) = G0 (Habing) / 1.7
@@ -29,12 +29,11 @@ radiation_get_part_isrf_habing() getter, which sums the FUV+LW bands for an
 unrelated purpose (photoelectric heating) and would double-count non-LW
 flux here.
 
-Result is informational only (feeds a human ruling on whether
-RADIATION_SIGMA_H2_LW_CGS is plausible), not a pass/fail gate. RESOLVED
-2026-09-06: with the LW-fraction-of-Habing correction below applied,
-k_diss/D0 = 0.898, within the ~10% expected uncertainty, see
-radiation.h's own doxygen on that constant, updated to record this
-verification.
+Result is informational only (used to judge whether
+RADIATION_SIGMA_H2_LW_CGS is plausible), not a pass/fail gate. RESOLVED:
+with the LW-fraction-of-Habing correction below applied, k_diss/D0 =
+0.898, within the ~10% expected uncertainty, see radiation.h's own
+doxygen on that constant, updated to record this verification.
 """
 
 from __future__ import annotations
@@ -50,7 +49,7 @@ RADIATION_H = (
 # rate for the Draine spectrum, in units of I_UV.
 STERNBERG_D0_PER_IUV_CGS = 5.8e-11  # s^-1
 
-# Verified 2026-09-06 from Sternberg et al. (2014), p.4 footnote 4.
+# Verified from Sternberg et al. (2014), p.4 footnote 4.
 DRAINE_OVER_HABING = 1.7
 
 # CODATA value used throughout this codebase

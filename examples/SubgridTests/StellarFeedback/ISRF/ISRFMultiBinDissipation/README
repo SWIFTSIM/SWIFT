@@ -84,7 +84,7 @@ and defaults. `run_name=<dir> ./run.sh` moves a run's outputs into `<dir>`.
 `gas_mass` sets resolution at fixed density (`h ~ (m/rho)^(1/3)`); it also
 halves the box, so `time_end`/`dt_max`/`delta_time` must be rescaled with it
 to keep the same number of steps and the same source travel distance in
-units of `h` -- see `run.sh`'s defaults for the baseline resolution and scale
+units of `h`: see `run.sh`'s defaults for the baseline resolution and scale
 accordingly for a finer one.
 
 # Checking

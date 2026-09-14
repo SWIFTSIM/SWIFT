@@ -31,7 +31,7 @@
  * snapshot output for the same quantity
  * (#convert_part_u_FUV/convert_part_u_LW, src/tracers/GEAR/tracers_io.h)
  * deliberately uses the plural "FUVSpecificEnergies"/"LWSpecificEnergies"
- * instead, so a snapshot cannot be fed back in as an IC unmodified -- this
+ * instead, so a snapshot cannot be fed back in as an IC unmodified. This
  * is a validation/testing tool, not a normal production IC input, and is
  * not meant to make that round-trip easy. It lets a test set an arbitrary,
  * analytically-known initial LW/FUV field shape (a value range across

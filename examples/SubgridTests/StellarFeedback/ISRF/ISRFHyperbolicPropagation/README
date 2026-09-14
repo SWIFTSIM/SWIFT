@@ -49,7 +49,7 @@ mode-gated species network).
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var -- gas density
+Override any parameter via the matching env var: gas density
 (`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
 and type (`star_mass`, `star_type`), resolution level (`level`, N =
 `(2**level)**3` gas particles), run duration and stepping (`time_end`,

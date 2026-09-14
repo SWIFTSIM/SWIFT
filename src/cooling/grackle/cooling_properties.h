@@ -172,7 +172,7 @@ struct cooling_function_data {
    * Cartesian 3D grid geometry), 2 = caller-supplied shielding length
    * (NOT wired: SWIFT does not populate Grackle's H2_self_shielding_length
    * field, so setting this to 2 falls back to whatever Grackle does with an
-   * unset length -- a pre-existing Grackle-level footgun, not guarded
+   * unset length, a pre-existing Grackle-level footgun, not guarded
    * against here), 3 = local Jeans length (computed internally by Grackle).
    * Unrelated to self_shielding_method above, which is a separate Grackle
    * field gating UV-background self-shielding. */
@@ -200,7 +200,7 @@ struct cooling_function_data {
       run completely normally. For isolating a Grackle-consuming subgrid
       channel (e.g. LW/FUV propagation) from Grackle's actual
       thermal/dynamical response without losing chemistry_data
-      resolution -- never set in a production run. */
+      resolution. Never set in a production run. */
   int disable_cooling_for_debugging;
 };
 

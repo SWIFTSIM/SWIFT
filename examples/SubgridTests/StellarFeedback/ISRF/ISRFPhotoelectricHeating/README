@@ -42,7 +42,7 @@ Two runs are needed, identical except for `with_photoelectric_heating`:
 with_pe_heating=1 run_name=heating_on  ./run.sh
 with_pe_heating=0 run_name=heating_off ./run.sh
 ```
-Override any other parameter via the matching env var -- gas density
+Override any other parameter via the matching env var: gas density
 (`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
 and type (`star_mass`, `star_type`), resolution level (`level`, N =
 `(2**level)**3` gas particles), run duration and stepping (`time_end`,

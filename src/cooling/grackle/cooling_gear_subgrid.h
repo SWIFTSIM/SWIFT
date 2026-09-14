@@ -55,7 +55,7 @@
  *        energy change.
  * @return 1 if the particle was held at the subgrid-ionized floor this
  *         call, 0 otherwise. The caller uses this to skip Grackle's own
- *         chemistry/cooling solve for this step -- otherwise Grackle's
+ *         chemistry/cooling solve for this step: otherwise Grackle's
  *         ODE integrator, unaware of the external forcing, pulls the
  *         energy back down within the same step it was just floored.
  */
@@ -78,7 +78,7 @@ INLINE static int cooling_ionize_part_subgrid(
        reset here either: that happens later, in cooling_new_energy after
        cooling_copy_to_grackle has consumed it, since resetting first would
        erase it before Grackle ever sees it. Return value means "did we
-       force the energy," not "is this particle ionized" -- cooling_new_energy
+       force the energy," not "is this particle ionized": cooling_new_energy
        still runs the solve. */
     return 0;
   }
@@ -87,7 +87,7 @@ INLINE static int cooling_ionize_part_subgrid(
   /* Specific internal energy this particle is held at while ionized
      (shared with radiation_get_part_rate_to_fully_ionize, which uses the
      same value to evaluate the temperature-dependent case-B
-     recombination coefficient -- keeping the two consistent). */
+     recombination coefficient, keeping the two consistent). */
   const float u_new = radiation_get_part_ionized_internal_energy(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   *u_out = u_new;
@@ -101,8 +101,8 @@ INLINE static int cooling_ionize_part_subgrid(
      the proton mass (Grackle's convention, see cooling_first_init_part), so the
      freed electrons are added at the same value. Incrementing rather than
      recomputing keeps the helium (and, mode >= 2, molecular) contributions
-     Grackle last solved for, and makes both updates idempotent -- required,
-     since this runs every step for as long as the tag is held. */
+     Grackle last solved for, and makes both updates idempotent. This is
+     required, since this runs every step for as long as the tag is held. */
   const float HI_frac_ionized = xp->cooling_data.HI_frac;
   xp->cooling_data.e_frac += HI_frac_ionized;
   xp->cooling_data.HII_frac += HI_frac_ionized;
@@ -110,7 +110,7 @@ INLINE static int cooling_ionize_part_subgrid(
 #endif
 
   /* Keep the particle flagged (and re-floored above, every step) until
-     the ionizing star's next HII rebuild -- reset only once that window
+     the ionizing star's next HII rebuild. Reset only once that window
      has elapsed. */
   if (time >= radiation_get_part_ionized_end_time(p, xp)) {
     radiation_reset_part_ionized_tag(p, xp);
@@ -221,7 +221,7 @@ INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
  * @param HI_ionization_rate (return) Photoionization rate coefficient, in
  *        internal 1/time (Grackle's own expected unit for this field).
  * @return 1 if this particle is rate-coupled and both rates were set, 0
- *         otherwise -- the caller should then fall back to its own generic
+ *         otherwise. The caller should then fall back to its own generic
  *         RT fields.
  */
 INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
@@ -299,7 +299,7 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
 /**
  * @brief Expire a GEAR rate-coupled HII tag once Grackle has consumed it for
  * this step's solve (see #cooling_get_rate_coupled_RT_fields_subgrid,
- * called earlier via cooling_copy_to_grackle -- resetting the tag before
+ * called earlier via cooling_copy_to_grackle: resetting the tag before
  * that call would erase it before Grackle ever sees the rate).
  *
  * @param cooling The #cooling_function_data used in the run.

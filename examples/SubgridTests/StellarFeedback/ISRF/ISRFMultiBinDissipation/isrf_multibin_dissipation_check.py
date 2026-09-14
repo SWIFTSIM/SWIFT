@@ -230,7 +230,7 @@ def kappa_internal(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs)
 
 def reconstruct_pairs(pos_w, h_w, boxsize):
     """All (i, j) index pairs (local to the window) with
-    r < GAMMA_3D*max(h_i, h_j) -- the SPH neighbour criterion both the
+    r < GAMMA_3D*max(h_i, h_j): the SPH neighbour criterion both the
     symmetric and non-symmetric dissipation interactions use."""
     tree = cKDTree(pos_w, boxsize=boxsize)
     h_max = float(np.max(h_w)) if len(h_w) else 0.0
@@ -316,7 +316,7 @@ def main():
 
     # --- bin reconstruction from timesteps.txt ---
     # dt_cold_realized: the coarse phase's own real period, from the modal
-    # spacing between full-box (Updates == n_gas) syncs -- empirically
+    # spacing between full-box (Updates == n_gas) syncs. Empirically
     # robust, cross-checked against the analytic floor below.
     #
     # dt_hot_realized is NOT read from the raw `Time-step` column's mode:
@@ -332,11 +332,11 @@ def main():
     # dt_cold_realized vs dt_cold_analytic check below), so applying it via
     # the ratio rather than re-detecting it empirically is the more robust
     # route. bin_delta is dN, a bin-LEVEL count: each level is a factor of
-    # 2 in dt, so the ratio is 2**bin_delta -- NOT 4**bin_delta (that would
-    # conflate the temperature ratio with the dt ratio; the design doc's
-    # own Sec 3.3.1 states the dt ratio "is exactly 4 by construction" at
-    # bin_delta=2, i.e. 2**bin_delta, contradicting its Sec 3.4 cross-check
-    # formula, which is corrected here).
+    # 2 in dt, so the ratio is 2**bin_delta, NOT 4**bin_delta (that would
+    # conflate the temperature ratio with the dt ratio; the test
+    # specification's own Sec 3.3.1 states the dt ratio "is exactly 4 by
+    # construction" at bin_delta=2, i.e. 2**bin_delta, contradicting its
+    # Sec 3.4 cross-check formula, which is corrected here).
     dt_cold_realized = modal_bulk_dt(opt.timesteps_log, n_gas)
     ratio_expected = 2.0**bin_delta
     dt_hot_realized = (
@@ -355,7 +355,7 @@ def main():
 
     # The one genuine empirical cross-check: dt_cold_realized must be the
     # nearest-power-of-two-floor of dt_cold_analytic. A naive relative
-    # disagreement bar is unusable here -- power-of-two flooring alone
+    # disagreement bar is unusable here: power-of-two flooring alone
     # spreads the realized value uniformly in log space across a factor of
     # 2, so up to ~50% disagreement is ordinary quantization, not a defect
     # (S0 measured 22.5%, passing this floor check cleanly). A dt off by an

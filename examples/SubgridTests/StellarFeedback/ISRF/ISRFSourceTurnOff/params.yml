@@ -9,7 +9,7 @@ InternalUnitSystem:
 Restarts:
   enable: 0
 
-# No Potential: block -- --external-gravity (run.sh) is a no-op force,
+# No Potential: block, since --external-gravity (run.sh) is a no-op force,
 # matching the sibling StromgrenSphere*/ISRFHyperbolicPropagation examples'
 # idiom for "no gravity".
 Gravity:
@@ -20,7 +20,7 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration -- see README for how the star's
+# Parameters governing the time integration. See README for how the star's
 # death time and the run duration were chosen.
 TimeIntegration:
   time_begin:        0.
@@ -139,7 +139,7 @@ Stars:
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr: 1e-4
   # Photoionization is off in this example, so this search radius is
-  # otherwise inert -- but it must still stay under the box half-width.
+  # otherwise inert, but it must still stay under the box half-width.
   HII_max_search_radius: 0.001
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5

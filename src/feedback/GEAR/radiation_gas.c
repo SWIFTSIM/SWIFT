@@ -97,9 +97,9 @@ radiation_get_part_number_hydrogen_atoms(
  * Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
  * fractions rather than total composition. Used only to price the one-off
  * cost of claiming a fresh candidate (feedback_iact_HII_ionization): a
- * particle whose species are already partly or fully ionized -- re-tagged
- * after its previous tag lapsed on a marginal budget shortfall, or
- * pre-ionized by a UV background -- does not need to pay to strip
+ * particle whose species are already partly or fully ionized, whether
+ * re-tagged after its previous tag lapsed on a marginal budget shortfall
+ * or pre-ionized by a UV background, does not need to pay to strip
  * electrons it has already lost. The maintenance cost
  * (radiation_get_part_rate_to_fully_ionize) keeps using the total, since
  * upkeep of a fully-ionized particle scales with its full electron/proton
@@ -107,7 +107,7 @@ radiation_get_part_number_hydrogen_atoms(
  *
  * At COOLING_GRACKLE_MODE == 0 (no species tracking) there is nothing to
  * distinguish neutral from ionized, so this falls back to the total N_H
- * (radiation_get_part_number_hydrogen_atoms) -- the pre-existing,
+ * (radiation_get_part_number_hydrogen_atoms), the pre-existing,
  * conservative behaviour.
  *
  * @param phys_const Physical constants.
@@ -134,7 +134,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
   double X_HI = cool_data->HI_frac;
 #if COOLING_GRACKLE_MODE >= 2
   /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-     already singly-ionized, so it is excluded -- the same H2II
+     already singly-ionized, so it is excluded. This is the same H2II
      approximation radiation_get_part_total_hydrogen_mass_fraction's own
      doxygen already notes for the total-hydrogen accounting. */
   X_HI += cool_data->H2I_frac + cool_data->HM_frac;
@@ -162,7 +162,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
  * only on Z (used by radiation_get_part_ionized_internal_energy).
  *
  * Compile with -DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<value>
- * to force this to a fixed value regardless of Z -- e.g. to reproduce a paper's
+ * to force this to a fixed value regardless of Z, e.g. to reproduce a paper's
  * own flat T_i=1e4 K convention at Z=0 (pure hydrogen, no metal-line
  * cooling), decoupling the ionized-gas temperature from the metallicity
  * this fit would otherwise require to hit that value (Z/Zsun~0.231 for
@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
  * ionized: the minimum of the energy needed to fully ionize it and the
  * metallicity-dependent collisional-equilibrium energy (see
  * cooling_ionize_part_subgrid in cooling_gear_subgrid.h). Pure
- * computation, no side effects -- shared by cooling_ionize_part_subgrid
+ * computation, no side effects: shared by cooling_ionize_part_subgrid
  * (which actually floors the particle's temperature) and
  * radiation_get_part_rate_to_fully_ionize (which evaluates the case-B
  * recombination coefficient at the temperature the gas is actually held
@@ -377,7 +377,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
     /* A pass overdraws its pixel by up to one particle's cost, since the
        boundary particle is claimed in full. Carry that debt forward instead of
        forgiving it: forgiven once per pass, it would over-issue photons in
-       proportion to the number of passes, i.e. as 1/dt_back -- a cadence
+       proportion to the number of passes, i.e. as 1/dt_back, a cadence
        dependence. Unspent *positive* budget is not carried, those photons
        reached no gas and escaped. */
     const double debt =
@@ -407,7 +407,7 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * @param xp The extended data of the particle.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which this particle should
- * stay flagged as ionized (the ionizing star's next HII rebuild) -- cooling
+ * stay flagged as ionized (the ionizing star's next HII rebuild). Cooling
  * keeps re-flooring its temperature until then instead of undoing the
  * ionization on the very next step.
  */
@@ -537,8 +537,8 @@ radiation_get_part_photoionization_rate_coefficient(const struct part *p,
  * Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
  * flux (photons / area / time, internal units), via the standard hydrogen
  * photoionization cross-section at the Lyman limit (sigma_HI = 6.3e-18
- * cm^2, Osterbrock & Ferland 2006 -- a physical constant, not a tunable
- * parameter). Called once at tag time (feedback_iact_HII_ionization): the
+ * cm^2, Osterbrock & Ferland 2006), a physical constant, not a tunable
+ * parameter. Called once at tag time (feedback_iact_HII_ionization): the
  * raw flux is too large for float32 in this unit system, but the product
  * with the tiny cross-section is safely representable, so only that
  * product is stored.

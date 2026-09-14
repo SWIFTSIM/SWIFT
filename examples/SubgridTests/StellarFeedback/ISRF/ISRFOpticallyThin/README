@@ -13,16 +13,15 @@ settled field behind the causal front is
 
     u(r) = L * exp(-r/lambda) / (4 * pi * c * rho * r^2)
 
-with `lambda = 1/(kappa_eff*rho)` the dust absorption length, `kappa_eff`
-the dust mass opacity, and `c` the true speed of light (the reduced
-propagation speed `c_hyp` cancels; see `theory/GEAR/Radiation/
-02_fuv_isrf.tex`, "Steady states"). `isrf_optically_thin_check.py` fits the
-settled profile against this `1/r^2` law, in both bands, with no fitted
-parameter. It also plots the isotropic/diffusion-closure profile the same
-source would give if the field isotropized,
-`3*L*exp(-sqrt(3)*r/lambda)/(4*pi*c*lambda*rho*r)`, for comparison only:
-that profile is not a valid steady state this close to a single source and
-is not what this check gates on.
+with `lambda = 1/(kappa_eff*rho)` the dust absorption length, `kappa_eff` the
+dust mass opacity, and `c` the true speed of light (the reduced propagation
+speed `c_hyp` cancels in this steady state). `isrf_optically_thin_check.py`
+fits the settled profile against this `1/r^2` law, in both bands, with no
+fitted parameter. It also plots the isotropic/diffusion-closure profile the
+same source would give if the field isotropized,
+`3*L*exp(-sqrt(3)*r/lambda)/(4*pi*c*lambda*rho*r)`, for comparison only: that
+profile is not a valid steady state this close to a single source and is not
+what this check gates on.
 
 `ISRFHyperbolicPropagation` measures the SCREENED steady state instead,
 where `lambda` is comparable to `h` and compares against a discrete solve
@@ -84,17 +83,18 @@ radial range available for the slope fit shrinks with it.
 ```
 python3 isrf_optically_thin_check.py
 ```
-`run.sh` runs this automatically against its own `output.log` and
-snapshots. For each band it bins the field radially inside the causal
-front and fits the log-log slope against the free-streaming prediction,
-averaging over the last few snapshots (`--n-late`). It fails if the slope
-is more than `--slope-tol` from the prediction, or if the radial spread of
-the measured/free-streaming ratio exceeds `--flatness-tol`; the defaults
-should not be loosened to make a run pass. The absolute amplitude ratio
-(measured field over the free-streaming prediction) is reported but not
-gated on: see `theory/GEAR/Radiation/02_fuv_isrf.tex`, "Limitations and
-open items". If the field is ringing in sign the script says so explicitly
-rather than reporting an unfittable profile as an error. Produces a
-comparison plot (`--output`, default `isrf_optically_thin_check.png`)
-showing the measured profile against both the free-streaming target and
-the diffusion-closure curve kept for comparison.
+`run.sh` runs this automatically against its own `output.log` and snapshots.
+For each band it bins the field radially inside the causal front and fits the
+log-log slope against the free-streaming prediction, averaging over the last
+few snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
+from the prediction, or if the radial spread of the measured/free-streaming
+ratio exceeds `--flatness-tol`; the defaults should not be loosened to make a
+run pass. The absolute amplitude ratio (measured field over the free-streaming
+prediction) is reported but not gated on: the flux limiter pins particles near
+the source before they reach the unlimited fixed point, biasing the settled
+amplitude there without changing the power-law slope this check measures. If
+the field is ringing in sign the script says so explicitly rather than
+reporting an unfittable profile as an error. Produces a comparison plot
+(`--output`, default `isrf_optically_thin_check.png`) showing the measured
+profile against both the free-streaming target and the diffusion-closure
+curve kept for comparison.

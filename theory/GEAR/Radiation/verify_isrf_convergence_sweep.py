@@ -45,8 +45,8 @@ Two extensions to the corners script's own machinery, both used here:
    REAL-GLASS configuration (each tile is an exact copy of the same
    relaxed disordered positions; periodic boundary conditions already
    assume the box represents a piece of a seamlessly-repeating field);
-   it is not the idealized perfect lattice this task is instructed not to
-   substitute for the real-glass method. This extends the safely-fittable
+   it is not the idealized perfect lattice, which must not stand in for
+   the real-glass method here. This extends the safely-fittable
    range down to h/lambda ~ 0.15-0.2. Going further (3x3x3 = 27x, ~885k
    particles) was benchmarked during development at ~7s to build the pair
    list and of order a minute-plus per GMRES solve, too expensive to
@@ -65,12 +65,12 @@ Part 1 rebuilds the idealized-lattice discrete Green's function machinery
 of h/lambda alone. Part 2 rebuilds the real-glass machinery (verbatim
 kernel/pairwise formulas from the corners script's Part 5) plus the two
 extensions above. Part 3 reproduces the corners script's own eight-point
-table as a consistency check (objective of this task's Verification
-section). Part 4 runs the dense sweep. Part 5 makes the plots.
+table as a consistency check. Part 4 runs the dense sweep. Part 5 makes
+the plots.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: P1-ERA STUDY, NUMBERS SUPERSEDED.
+# P1-ERA STUDY: THE lambda_eff NUMBERS BELOW ARE SUPERSEDED.
 #
 # The lambda_eff-vs-h/lambda curve this script produces was measured with
 # the ISOTROPIC (P1) scalar `grad_u` operator, which is no longer the
@@ -488,10 +488,10 @@ run_dirs = {
     "m=95": "run_m95",
     "m=760": "run_m760",
 }
-# From the 2026-09-08 discrete-steady-state-vs-production-corners log's own
-# Part 5 table (lambda_eff/h): the real-glass discrete PREDICTION already
+# From the discrete-steady-state-vs-production-corners script's own Part 5
+# table (lambda_eff/h): the real-glass discrete PREDICTION already
 # established there (iterative solver), and the actual measured-simulation
-# value. Default corner's measured value is inferred from that log's own
+# value. Default corner's measured value is inferred from that script's own
 # rel_err (see its comment there); not read off a raw number directly.
 established = {
     ("default", "FUV"): dict(
