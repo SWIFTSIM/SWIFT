@@ -12,7 +12,7 @@ rho0 = 1.0
 cs2 = 1.0 #3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
-Bi_fraction = 1e-4
+Bi_fraction = 1e-10 #1e-4
 
 # output file
 fileOutputName = "RobertsFlow.hdf5"
@@ -241,7 +241,7 @@ def add_other_particle_properties(
 
         vol = L ** 3
         # Put path to IC snapshots here
-        filename ="./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5" #"./ICfiles/rf4d_o1_g64_randB_withVP.hdf5" #"./ICfiles/RF2_pattern_0090.hdf5" #"./ICfiles/rf2d_o1_g64_randB_withVP.hdf5" #"./ICfiles/rf2d_g128_randB_withVP.hdf5"
+        filename ="./ICfiles/rf1d_o1_npar2_g64_randB_withVP.hdf5" #"./ICfiles/rf4d_o1_g64_randB_withVP.hdf5" #"./ICfiles/RF2_pattern_0090.hdf5" #"./ICfiles/rf2d_o1_g64_randB_withVP.hdf5" #"./ICfiles/rf2d_g128_randB_withVP.hdf5"
         # read the variables of interest from the snapshot file
         pos = None
         h = None

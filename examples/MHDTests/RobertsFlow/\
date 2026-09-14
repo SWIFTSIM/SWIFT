@@ -199,3 +199,122 @@ rf2d_o1_npar2_64_16_02	1	0.7071	0.0075	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1
 rf2d_o1_npar2_64_17_02	1	0.7071	0.005	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed.
 rf2d_o1_npar2_64_15_02rr01	1	0.7071	0.01	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	C_cfl = 0.039 ~ 1/8pi
 rf2d_o1_npar2_64_17_02rr02	1	0.7071	0.005	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	rerun with different cfl = 0.039
+RF1D_O1_064_128_06	1	0.7071	0.4	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_07	1	0.7071	0.25	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_08	1	0.7071	0.17	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_09	1	0.7071	0.12	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_10	1	0.7071	0.1	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_11	1	0.7071	0.08	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_12	1	0.7071	0.07	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_13	1	0.7071	0.06	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_14	1	0.7071	0.05	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_15	1	0.7071	0.04	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_16	1	0.7071	0.03	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_17	1	0.7071	0.02	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_20	1	0.7071	0.45	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_21	1	0.7071	0.35	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_22	1	0.7071	0.3	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_23	1	0.7071	0.14	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_24	1	0.7071	0.49	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_25	1	0.7071	0.5	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_26	1	0.7071	0.225	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_27	1	0.7071	0.2	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_28	1	0.7071	0.11	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_29	1	0.7071	0.09	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_30	1	0.7071	0.045	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_31	1	0.7071	0.035	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_32	1	0.7071	0.0325	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_33	1	0.7071	0.025	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_41	1	0.7071	0.0225	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_42	1	0.7071	0.125	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_43	1	0.7071	0.1525	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_44	1	0.7071	0.185	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_45	1	0.7071	0.51	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_46	1	0.7071	0.55	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_47	1	0.7071	0.0275	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_48	1	0.7071	0.026	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_52	1	0.7071	0.13	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_53	1	0.7071	0.135	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_54	1	0.7071	0.16	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_55	1	0.7071	0.0285	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_56	1	0.7071	0.029	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_71	1	0.7071	0.024	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_40	1	0.7071	0.0175	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_34	1	0.7071	0.015	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_57	1	0.7071	0.0135	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_35	1	0.7071	0.0125	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_58	1	0.7071	0.012	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_49	1	0.7071	0.0115	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF1D_O1_064_128_59_02	1	0.7071	0.011	1	1	6.2831853	1	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 1 box deformed same way as flow 2.
+RF2D_O1_064_128_01_02	1	0.7071	0.15	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_02_02	1	0.7071	0.1399	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_03_02	1	0.7071	0.13	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_04_02	1	0.7071	0.12	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_05_02	1	0.7071	0.11	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_06_02	1	0.7071	0.1	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_07_02	1	0.7071	0.08	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_08_02	1	0.7071	0.07	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_09_02	1	0.7071	0.06	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_10_02	1	0.7071	0.05	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	200.0	0.01	v		done	Flow 2 box deformed, w=1
+RF3D_O1_064_128_01	1	0.7071	0.3	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_02	1	0.7071	0.25	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_03	1	0.7071	0.2	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_04	1	0.7071	0.15	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_05	1	0.7071	0.1	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_06	1	0.7071	0.05	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_07	1	0.7071	0.025	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_10	1	0.7071	0.325	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_11	1	0.7071	0.275	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_12	1	0.7071	0.225	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_13	1	0.7071	0.175	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_14	1	0.7071	0.125	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_15	1	0.7071	0.075	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_16	1	0.7071	0.034	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_17	1	0.7071	0.02	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF3D_O1_064_128_35	1	0.7071	0.06	1	1	6.2831853	3	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 3 box deformed, w=1
+RF4D_O1_064_128_01	1	1.0	0.3	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_02	1	1.0	0.25	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_03	1	1.0	0.2	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_04	1	1.0	0.15	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_05	1	1.0	0.1	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_06	1	1.0	0.05	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_12	1	1.0	0.125	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_13	1	1.0	0.075	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_16	1	1.0	0.175	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_29	1	1.0	0.23	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_30	1	1.0	0.22	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_31	1	1.0	0.115	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_32	1	1.0	0.085	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_33	1	1.0	0.0625	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	100.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_07_03	1	1.0	0.025	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_15_03	1	1.0	0.018	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_09_03	1	1.0	0.005	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_17_03	1	1.0	0.0075	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_18_03	1	1.0	0.0175	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_21_04	1	1.0	0.0045	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_22_04	1	1.0	0.004	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_23_04	1	1.0	0.0035	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_24_04	1	1.0	0.003	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_29_04	1	1.0	0.016	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_30_04	1	1.0	0.014	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_31_04	1	1.0	0.0115	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_32_04	1	1.0	0.011	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_33_04	1	1.0	0.009	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_34_04	1	1.0	0.008	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF4D_O1_064_128_35_04	1	1.0	0.006	1	1	6.2831853	4	ODI	g64	1	2	1	1			0	0	0	500.0	0.01	v		done	Flow 4 box deformed, w=1
+RF2D_O1_064_128_08_04	1	0.7071	0.07	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_09_04	1	0.7071	0.06	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_10_04	1	0.7071	0.05	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_11_04	1	0.7071	0.04	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_12_04	1	0.7071	0.03	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_13_04	1	0.7071	0.02	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_14_04	1	0.7071	0.015	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_15_04	1	0.7071	0.01	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_16_04	1	0.7071	0.0075	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_17_04	1	0.7071	0.005	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_23_04	1	0.7071	0.004	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_25_04	1	0.7071	0.003	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v		done	Flow 2 box deformed, w=1
+RF2D_O1_064_128_26_04	1	0.7071	0.0025	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v			Flow 2 box deformed, w=1
+RF2D_O1_064_128_27_04	1	0.7071	0.002	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v			Flow 2 box deformed, w=1
+RF2D_O1_064_128_28_04	1	0.7071	0.0015	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v			Flow 2 box deformed, w=1
+RF2D_O1_064_128_29_04	1	0.7071	0.001	1	1	6.2831853	2	ODI	g64	1	2	1	1			0	0	0	1000.0	0.01	v			Flow 2 box deformed, w=1

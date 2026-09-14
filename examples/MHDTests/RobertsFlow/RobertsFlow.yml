@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            RobertsFlow   # Common part of the name of output files
   time_first:          0.            # Time of the first output (in internal units)
-  delta_time:          500.0 #50.0 #25.0 #5.0           # Time difference between consecutive outputs (in internal units)
+  delta_time:          500.0 #50.0 #50.0 #25.0 #5.0           # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics
@@ -27,7 +27,7 @@ Statistics:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.3663   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
-  CFL_condition:         0.039 #0.075    # Courant-Friedrich-Levy condition for time integration.
+  CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
 
 
 
