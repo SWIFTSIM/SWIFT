@@ -614,7 +614,9 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * whenever `F` alone is nonzero. Rescaled by `(kappa+H/c_hyp)` relative to
  * the `|F+C*grad_u|` form (the two are algebraically identical; this one
  * avoids computing `C` as its own value, which can overflow float32 at
- * near-primordial `kappa`).
+ * near-primordial `kappa`). `R` and `(R/eps_R)^2` are formed in double so
+ * that the squared denominator cannot underflow to zero under this
+ * build's fast-math folding of the ratio and its square into one division.
  *
  * @param F This band's #specific_flux_FUV/LW, from BEFORE this step's own
  * update (the incoming flux this step's `u` was actually produced from,
@@ -665,9 +667,13 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
    * squared, turning this case into `0/0`. */
   if (den <= 0.f) return 0.f;
 
-  const float R = num / den;
-  const float ratio = R / eps_R;
-  return min(1.f, ratio * ratio);
+  /* R is formed and squared in double: under -ffast-math this expression
+   * gets folded into a single division by (den*eps_R)^2, which underflows
+   * float32 to zero for small enough den and yields an unfiltered NaN;
+   * double's exponent range keeps that denominator representable. */
+  const double R = (double)num / (double)den;
+  const double ratio2 = (R / eps_R) * (R / eps_R);
+  return (float)min(1.0, ratio2);
 }
 
 /**
