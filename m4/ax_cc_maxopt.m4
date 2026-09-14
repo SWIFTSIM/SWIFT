@@ -278,8 +278,12 @@ if test "$ac_test_CFLAGS" != "set"; then
      fi
      ;;
 
-    portland)
-     # nvc, the NVIDIA HPC SDK compiler, formerly PGI. Its reference guide says
+    portland | nvhpc)
+     # nvc, the NVIDIA HPC SDK compiler, formerly PGI. Both vendor strings are
+     # matched on purpose: nvc defines __NVCOMPILER as well as __PGI, and while
+     # the AX_COMPILER_VENDOR in this tree only tests for the latter, upstream
+     # added an nvhpc entry ahead of portland. Accepting either means a refresh
+     # of that macro cannot silently drop this branch. Its reference guide says
      # of -fast that "the appropriate -tp option is automatically included to
      # enable generation of code optimized for the type of system on which
      # compilation is performed", so the one flag covers both the optimisation
