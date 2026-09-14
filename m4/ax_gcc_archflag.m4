@@ -269,7 +269,53 @@ case $host_cpu in
      cpuimpl=`grep 'CPU implementer' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      cpuarch=`grep 'CPU architecture' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      cpuvar=`grep 'CPU variant' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
+     cpupart=`grep 'CPU part' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      case $cpuimpl in
+       0x41) # ARM Ltd: the Neoverse line and the server Cortex cores
+          case $cpupart in
+            0xd08) ax_gcc_arch="native cortex-a72 armv8-a" ;;
+            0xd0b|0xd0e) ax_gcc_arch="native cortex-a76 armv8-a" ;;
+            0xd0c) ax_gcc_arch="native neoverse-n1 cortex-a76 armv8-a" ;; # Graviton2, Altra
+            0xd40) ax_gcc_arch="native neoverse-v1 neoverse-n1 armv8-a" ;; # Graviton3
+            0xd41|0xd42|0xd4b) ax_gcc_arch="native cortex-a78 cortex-a76 armv8-a" ;;
+            0xd49) ax_gcc_arch="native neoverse-n2 neoverse-n1 armv8-a" ;;
+            0xd4f) ax_gcc_arch="native neoverse-v2 neoverse-n2 neoverse-v1 armv8-a" ;; # Grace, Graviton4
+            0xd83) ax_gcc_arch="native neoverse-v3ae neoverse-v3 neoverse-v2 armv8-a" ;;
+            0xd84) ax_gcc_arch="native neoverse-v3 neoverse-v2 armv8-a" ;;
+            0xd8e) ax_gcc_arch="native neoverse-n3 neoverse-n2 armv8-a" ;;
+          esac
+          ;;
+       0x46) # Fujitsu
+          case $cpupart in
+            0x001|0x1) ax_gcc_arch="native a64fx armv8.2-a+sve armv8-a" ;;
+            0x003|0x3) ax_gcc_arch="native fujitsu-monaka a64fx armv8-a" ;;
+          esac
+          ;;
+       0x48) # HiSilicon
+          case $cpupart in
+            0xd01) ax_gcc_arch="native tsv110 armv8-a" ;;
+          esac
+          ;;
+       0x4e) # NVIDIA. Grace is not here: it uses ARM's own Neoverse V2 above.
+          case $cpupart in
+            0x003|0x3|0x004|0x4) ax_gcc_arch="native carmel armv8-a" ;;
+            0x010|0x10) ax_gcc_arch="native olympus neoverse-v3 neoverse-v2 armv8-a" ;;
+            0x011|0x11) ax_gcc_arch="native rigel olympus neoverse-v3 armv8-a" ;;
+          esac
+          ;;
+       0x50) # Applied Micro
+          case $cpupart in
+            0x000|0x0) ax_gcc_arch="native xgene1 armv8-a" ;;
+          esac
+          ;;
+       0xc0) # Ampere Computing. Altra is Neoverse N1 and appears under 0x41.
+          case $cpupart in
+            0xac3) ax_gcc_arch="native ampere1 armv8-a" ;;
+            0xac4) ax_gcc_arch="native ampere1a ampere1 armv8-a" ;;
+            0xac5) ax_gcc_arch="native ampere1b ampere1a ampere1 armv8-a" ;;
+            0xac7) ax_gcc_arch="native ampere1c ampere1b ampere1a ampere1 armv8-a" ;;
+          esac
+          ;;
        0x42) case $cpuarch in
                8) case $cpuvar in
                     0x0) ax_gcc_arch="native thunderx2t99 vulcan armv8.1-a armv8-a+lse armv8-a" ;;
