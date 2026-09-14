@@ -81,15 +81,22 @@ mass density, so ``H2I / m_H`` is ``2 n_H2``, not ``n_H2``. SWIFT stores the
 same quantity as the mass fraction ``H2I`` in the snapshots, so
 ``n_H2 = H2I * rho / (2 m_H)``.
 
-Mode 3, the local Jeans length, is the only mode this check predicts:
+Mode 3 uses the local Jeans length,
 
-    l_shield = sqrt(gamma * pi * k_B * T / (G * mu * m_H * rho)) .        (5)
+    l_shield = sqrt(gamma * pi * k_B * T / (G * mu * m_H * rho)) ,        (5)
 
-Mode 1 (Sobolev-like) reads six neighbouring grid points that do not exist
-under SWIFT's one-cell-per-particle Grackle calling convention, and mode 2
-needs a shielding-length field SWIFT never fills; neither is predictable
-here, and the script refuses to gate on them. Mode 0 disables shielding
-altogether, ``f_shield = 1``, and is the unshielded reference.
+and mode 2 uses the length SWIFT supplies per particle, the kernel support
+radius
+
+    l_shield = gamma_K * h ,                                             (5b)
+
+with ``h`` the snapshot's ``SmoothingLengths`` and ``gamma_K`` the kernel's
+support-to-smoothing ratio (``--kernel-gamma``, 1.936492 for the Wendland C2
+kernel in 3D). With Eq. (4), mode 2 is the H2 column through a path of
+``2 gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at start-up: it reads
+six neighbouring grid points that do not exist when Grackle is called on
+one particle. Mode 0 disables shielding altogether, ``f_shield = 1``, and is
+the unshielded reference.
 
 The mean molecular weight follows Grackle's own definition
 (``cool1d_multi_g.F``),
@@ -163,6 +170,17 @@ what the run happens to produce.
   ln-drop is of order 1e-2, so the same absolute 1e-2 Grackle sub-cycling
   error is a larger relative error on the numerator.
 
+Rate normalisation (reported, never gated)
+------------------------------------------
+
+Eq. (1) over ``3.3e-11 G_0`` is ``6.229 * u_LW / (u_FUV + u_LW)`` for a mean
+LW photon energy of ``E_LW``: the constant is
+``sigma_H2 * 1.6e-3 erg s^-1 cm^-2 / (E_LW * 3.3e-11 s^-1)``. It is 1 only
+for an LW fraction of 0.161. The Draine (1978) field, which the
+``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 0.92). The
+script prints the measured ratio and ``6.229`` times the measured LW
+fraction; ``draine_spectrum`` uses a star with the Draine LW fraction.
+
 Mode-choice diagnostic (reported, never gated)
 ----------------------------------------------
 The quantity that decides which ``H2_self_shielding`` mode to use is not a
@@ -206,6 +224,14 @@ ELECTRON_VOLT_CGS: float = 1.602176634e-12
 PARSEC_CGS: float = 3.0856775814913673e18
 # Grackle's H2 column normalisation, Eq. (2)
 N_H2_NORM_CGS: float = 5.0e14
+# Wendland C2 support-to-smoothing ratio in 3D, src/kernel_hydro.h
+KERNEL_GAMMA_WENDLAND_C2: float = 1.936492
+# Eq. (1) over 3.3e-11 G_0, per unit LW fraction
+RATE_RATIO_PER_LW_FRACTION: float = (
+    SIGMA_H2_LW_CGS
+    * HABING_FLUX_CGS
+    / (LW_PHOTON_ENERGY_EV * ELECTRON_VOLT_CGS * DB96_UNSHIELDED_RATE_CGS)
+)
 # Mean atomic weight Grackle assigns to the metal field, cool1d_multi_g.F
 MU_METAL: float = 16.0
 GAMMA: float = 5.0 / 3.0
@@ -230,16 +256,24 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        choices=["thin", "thick"],
+        choices=["thin", "thick", "draine_spectrum"],
         required=True,
-        help="H2 column regime the run was launched in; selects the pass bar",
+        help="Configuration the run was launched with; selects the pass bar "
+        "(draine_spectrum uses the thin bar)",
     )
     parser.add_argument(
         "--h2-self-shielding",
         type=int,
         default=3,
-        help="GrackleCooling:H2_self_shielding the run used; 0 and 3 are "
-        "predictable, 1 and 2 are not (default: %(default)s)",
+        help="GrackleCooling:H2_self_shielding the run used: 0, 2 or 3 "
+        "(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--kernel-gamma",
+        type=float,
+        default=KERNEL_GAMMA_WENDLAND_C2,
+        help="Kernel support-to-smoothing ratio, mode 2 only "
+        "(default: %(default)s, Wendland C2 in 3D)",
     )
     parser.add_argument(
         "--thin-tol",
@@ -332,6 +366,7 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
             "InternalEnergies",
             "LWSpecificEnergies",
             "FUVSpecificEnergies",
+            "SmoothingLengths",
             "ParticleIDs",
             "HI",
             "HII",
@@ -345,11 +380,21 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
         ]
         raw = {name: gas[name][:].astype(np.float64) for name in names}
         metals = gas["MetalMassFractions"][:].astype(np.float64)
+        named_columns = "/SubgridScheme/NamedColumns/MetalMassFractions"
+        metal_names = (
+            [name.decode() for name in handle[named_columns][:]]
+            if named_columns in handle
+            else []
+        )
         star_position = handle["/PartType4/Coordinates"][:].astype(np.float64)
         snapshot_time = float(np.atleast_1d(handle["/Header"].attrs["Time"]).ravel()[0])
 
     energy_cgs = (length_cgs / time_cgs) ** 2
-    metallicity = metals.sum(axis=1) if metals.ndim == 2 else metals
+    # The per-element columns are part of the total in the "Metals" column.
+    if metals.ndim == 2:
+        metallicity = metals[:, metal_names.index("Metals")]
+    else:
+        metallicity = metals
 
     density = raw["Densities"] * mass_cgs / length_cgs**3
     # Grackle's own mean molecular weight, Eq. (6).
@@ -376,6 +421,7 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
         "time": snapshot_time * time_cgs,
         "star_position": star_position[0] * length_cgs,
         "position": raw["Coordinates"] * length_cgs,
+        "smoothing_length": raw["SmoothingLengths"] * length_cgs,
         "ids": raw["ParticleIDs"],
         "density": density,
         "mu": mu,
@@ -491,7 +537,7 @@ def shielding_factor(
 
 
 def build_history(
-    filenames: List[str], self_shielding_mode: int
+    filenames: List[str], self_shielding_mode: int, kernel_gamma: float
 ) -> Dict[str, np.ndarray]:
     """Assemble the per-particle time series this check compares.
 
@@ -504,13 +550,15 @@ def build_history(
         Snapshot paths in time order.
     self_shielding_mode : int
         ``GrackleCooling:H2_self_shielding`` the run used.
+    kernel_gamma : float
+        Kernel support-to-smoothing ratio, for the mode-2 length.
 
     Returns
     -------
     dict of str to numpy.ndarray
         Arrays of shape ``(n_snapshots, n_particles)`` for ``x_H2``,
-        ``rate``, ``f_shield``, ``column``, ``habing`` and
-        ``shielding_length``, plus ``time`` of shape ``(n_snapshots,)``,
+        ``rate``, ``f_shield``, ``column``, ``habing``, ``length``,
+        ``temperature`` and ``lw_fraction``, plus ``time`` of shape ``(n_snapshots,)``,
         ``radius`` and ``n_H2`` of shape ``(n_particles,)`` taken at the
         first snapshot.
     """
@@ -519,7 +567,17 @@ def build_history(
     reference_ids = first["ids"][order]
 
     series: Dict[str, List[np.ndarray]] = {
-        key: [] for key in ("x_H2", "rate", "f_shield", "column", "habing", "length")
+        key: []
+        for key in (
+            "x_H2",
+            "rate",
+            "f_shield",
+            "column",
+            "habing",
+            "length",
+            "temperature",
+            "lw_fraction",
+        )
     }
     times: List[float] = []
 
@@ -534,20 +592,23 @@ def build_history(
         temperature = take("temperature")
         mu = take("mu")
         n_H2 = take("n_H2")
-        length = jeans_shielding_length(temperature, density, mu)
+        if self_shielding_mode == 2:
+            length = kernel_gamma * take("smoothing_length")
+        elif self_shielding_mode in (0, 3):
+            length = jeans_shielding_length(temperature, density, mu)
+        else:
+            raise RuntimeError(
+                f"H2_self_shielding={self_shielding_mode} is not a mode SWIFT "
+                "runs. Use 0, 2 or 3."
+            )
         column = 2.0 * n_H2 * length
         number_density = density / (mu * M_H_CGS)
         if self_shielding_mode == 0:
             factor = np.ones_like(column)
-        elif self_shielding_mode == 3:
-            factor = shielding_factor(column, temperature, number_density)
         else:
-            raise RuntimeError(
-                f"H2_self_shielding={self_shielding_mode} is not predictable "
-                "here: mode 1 reads neighbouring grid points SWIFT does not "
-                "provide and mode 2 needs a shielding-length field SWIFT does "
-                "not fill. Use mode 0 or 3."
-            )
+            factor = shielding_factor(column, temperature, number_density)
+        u_LW = take("u_LW")
+        u_total = take("u_FUV") + u_LW
 
         series["x_H2"].append(take("H2I_fraction"))
         series["rate"].append(unshielded_rate(density, take("u_LW")))
@@ -555,6 +616,10 @@ def build_history(
         series["column"].append(column)
         series["habing"].append(habing_field(density, take("u_FUV"), take("u_LW")))
         series["length"].append(length)
+        series["temperature"].append(temperature)
+        series["lw_fraction"].append(
+            np.divide(u_LW, u_total, out=np.zeros_like(u_LW), where=u_total > 0.0)
+        )
         times.append(snapshot["time"])
 
     radius = np.linalg.norm(first["position"][order] - first["star_position"], axis=1)
@@ -749,12 +814,13 @@ def main() -> int:
         print(f"Need at least 4 snapshots, found {len(filenames)}")
         return 1
 
-    history = build_history(filenames, options.h2_self_shielding)
+    history = build_history(filenames, options.h2_self_shielding, options.kernel_gamma)
+    gated_config = "thin" if options.config == "draine_spectrum" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
 
-    floor_margin = options.floor_margin if options.config == "thin" else 0.0
+    floor_margin = options.floor_margin if gated_config == "thin" else 0.0
     start, end, reached = particle_windows(
         history, options.field_arrival_fraction, floor_margin
     )
@@ -798,11 +864,23 @@ def main() -> int:
         f"{np.median(shielded_integral[qualifies]):.4g} (predicted e-folds)"
     )
     print(f"Median measured e-folds: {np.median(measured_drop[qualifies]):.4g}")
+    lit = history["habing"][-1] > 0.0
+    measured_rate_ratio = np.median(
+        rate[-1][lit] / (DB96_UNSHIELDED_RATE_CGS * history["habing"][-1][lit])
+    )
+    lw_fraction = np.median(history["lw_fraction"][-1][lit])
     print(
         f"Cross-check, median G_0 at the last snapshot: "
         f"{np.median(history['habing'][-1]):.4g}; Draine and Bertoldi (1996) "
         f"3.3e-11 G_0 = {DB96_UNSHIELDED_RATE_CGS * np.median(history['habing'][-1]):.4g} "
         f"1/s vs Eq. (1) {np.median(rate[-1]):.4g} 1/s"
+    )
+    print(
+        f"Rate normalisation: Eq. (1) / (3.3e-11 G_0) median "
+        f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_FUV+u_LW) "
+        f"{lw_fraction:.4g}, times {RATE_RATIO_PER_LW_FRACTION:.4g} = "
+        f"{RATE_RATIO_PER_LW_FRACTION * lw_fraction:.4g} (Draine 1978 field: "
+        f"LW fraction 0.148, ratio 0.92)"
     )
     print()
     print(f"Radial profiles at the last snapshot:")
@@ -815,7 +893,7 @@ def main() -> int:
     print()
 
     failures: List[str] = []
-    if options.config == "thin":
+    if gated_config == "thin":
         # First snapshot, inside each window, at which the predicted
         # integral reaches the reference number of e-folds.
         snapshot_index = np.arange(len(times))[:, np.newaxis]
@@ -887,7 +965,7 @@ def main() -> int:
         predicted_plot = predicted_ratio
         measured_plot = np.maximum(measured_ratio, 1e-12)
 
-    make_figure(history, predicted_plot, measured_plot, options.config, options.output)
+    make_figure(history, predicted_plot, measured_plot, gated_config, options.output)
 
     print()
     if failures:

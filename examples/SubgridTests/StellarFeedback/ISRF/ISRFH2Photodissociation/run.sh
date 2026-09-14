@@ -10,10 +10,17 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-config=${config:="thin"}  #H2 column regime: thin or thick
+config=${config:="thin"}  #thin, thick or draine_spectrum
 
-# The two regimes differ only in the initial H2 abundance, which sets the
-# column Grackle's local self-shielding estimate sees; the box is identical.
+# thin and thick differ only in the initial H2 abundance, which sets the
+# column Grackle's local self-shielding estimate sees. draine_spectrum is thin
+# with a 7.61 Msun star, whose LW fraction u_LW/(u_FUV+u_LW) = 0.148 matches
+# the Draine (1978) field; its LW luminosity is 184 times lower, hence the
+# longer run.
+star_mass_default=29.7
+time_end_default=2.6e-8
+delta_time_default=6.5e-10
+initial_metallicity_default=0
 case "$config" in
     thin)
 	nH2_ratio_default=5e-10
@@ -21,8 +28,14 @@ case "$config" in
     thick)
 	nH2_ratio_default=3.1e-5
 	;;
+    draine_spectrum)
+	nH2_ratio_default=5e-10
+	star_mass_default=7.61
+	time_end_default=3.24e-7
+	delta_time_default=8.1e-9
+	;;
     *)
-	echo "Unknown config '$config'. Use config=thin or config=thick."
+	echo "Unknown config '$config'. Use thin, thick or draine_spectrum."
 	exit 1
 	;;
 esac
@@ -30,17 +43,17 @@ esac
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
-star_mass=${star_mass:=29.7} #Star mass (Msun)
+star_mass=${star_mass:=$star_mass_default} #Star mass (Msun)
 star_type=${star_type:="single_star"}
 level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 nH2_ratio=${nH2_ratio:=$nH2_ratio_default} #GrackleCooling:initial_nH2I_to_nH_ratio override
-h2_self_shielding=${h2_self_shielding:=3} #GrackleCooling:H2_self_shielding override (0=off, 3=local Jeans length)
-time_end=${time_end:=2.6e-8} #TimeIntegration:time_end override (internal units)
+h2_self_shielding=${h2_self_shielding:=3} #GrackleCooling:H2_self_shielding override (0=off, 2=kernel support radius, 3=local Jeans length)
+time_end=${time_end:=$time_end_default} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1.6e-10} #TimeIntegration:dt_max override (internal units)
-delta_time=${delta_time:=6.5e-10} #Snapshots:delta_time override (internal units)
+delta_time=${delta_time:=$delta_time_default} #Snapshots:delta_time override (internal units)
 max_star_dt_myr=${max_star_dt_myr:=1e-7} #Stars:max_timestep_young_Myr override
 min_star_dt_myr=${min_star_dt_myr:=1e-9} #Stars:min_star_timestep_Myr override
-initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override (Z/Zsun)
+initial_metallicity=${initial_metallicity:=$initial_metallicity_default} #GEARChemistry:initial_metallicity override (Z/Zsun)
 run_name=${run_name:=""}
 
 # Remove the ICs
