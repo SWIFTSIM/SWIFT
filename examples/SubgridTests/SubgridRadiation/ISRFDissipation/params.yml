@@ -116,7 +116,7 @@ GEARFeedback:
   with_photoelectric_heating:    1
   LW_FUV_propagation:            1
   LW_FUV_c_hyp_margin:           0.5
-  # Stage-1 triggered artificial-conductivity term (see parameter_example.yml
+  # Negativity-triggered artificial-conductivity term (see parameter_example.yml
   # for the full description): on, below its shipped default (0.5), the
   # value chosen for this test. This is the term this example demonstrates.
   LW_FUV_dissipation_alpha_max:  0.25

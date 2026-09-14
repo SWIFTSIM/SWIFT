@@ -62,8 +62,9 @@
 #define RADIATION_LW_FUV_TAG_LIFETIME_INTERVALS 2
 
 /*! Memory length, in units of a particle's own smoothing length, of the
-    Stage-1 artificial-dissipation coefficient's decay (design-lw-fuv-
-    design-b-dissipation.md Section 4.3): the coefficient relaxes toward
+    negativity-triggered artificial-dissipation coefficient's decay
+    (design-lw-fuv-design-b-dissipation.md Section 4.3): the coefficient
+    relaxes toward
     its trigger-driven target at rate c_hyp*(1/(this*h) + kappa) per unit
     time, i.e. an e-folding of `this` particle-own-steps at the default
     LW_FUV_c_hyp_margin. A compile-time constant, not a runtime parameter,

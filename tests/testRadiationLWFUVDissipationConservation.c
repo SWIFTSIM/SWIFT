@@ -28,7 +28,8 @@
 /* Local headers. */
 #include "swift.h"
 
-/* The Stage-1 LW/FUV artificial-dissipation term is GEAR-only physics and
+/* The negativity-triggered LW/FUV artificial-dissipation term is GEAR-only
+ * physics and
  * lives in the hydro force loop. This test drives the real DOSELF2 force
  * dispatch (runner_doself2_branch_force), not the accumulate-band function
  * in isolation: the conservation property under test is a property of the
@@ -425,7 +426,7 @@ int main(int argc, char *argv[]) {
   }
 
   free(runner);
-  message("All Stage-1 dissipation conservation checks passed.");
+  message("All negativity-triggered dissipation conservation checks passed.");
   return 0;
 }
 
@@ -433,8 +434,8 @@ int main(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
   message(
-      "Skipping: the Stage-1 LW/FUV dissipation term needs GEAR feedback "
-      "and the SPHENIX hydro scheme.");
+      "Skipping: the negativity-triggered LW/FUV dissipation term needs GEAR "
+      "feedback and the SPHENIX hydro scheme.");
   return 0;
 }
 

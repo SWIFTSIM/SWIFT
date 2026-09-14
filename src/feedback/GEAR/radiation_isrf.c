@@ -341,7 +341,8 @@ float radiation_relaxation_phi_factor(float a) {
  * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
  *
  * The result is the INTERMEDIATE state `u*`, not this step's final `u`:
- * the Stage-1 artificial-dissipation correction is added on top of it by
+ * the negativity-triggered artificial-dissipation correction is added on top
+ * of it by
  * #radiation_end_force_propagation, after the force loop has accumulated
  * the mirrored pairwise term. The gradient loop and the negativity trigger
  * therefore both see `u*`, which is what closes the trigger's one-step lag
@@ -412,7 +413,8 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
 }
 
 /**
- * @brief Stage-1 artificial-dissipation correction of #u_FUV/#u_LW, from
+ * @brief Negativity-triggered artificial-dissipation correction of
+ * #u_FUV/#u_LW, from
  * the accumulators radiation_propagation_iact.h filled during the force
  * loop: `u = u_star + dt*phi*dissipation_u`, closing the exact-relaxation
  * update #radiation_end_density_propagation left at its intermediate state
@@ -497,7 +499,8 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief One band's Stage-1 artificial-dissipation coefficient update
+ * @brief One band's negativity-triggered artificial-dissipation coefficient
+ * update
  * (design-lw-fuv-design-b-dissipation.md Section 4.3): raised instantly to
  * a negativity-triggered target, or decayed toward it otherwise. Reads the
  * particle's LIVE, this-step `u_V = rho_prev*u_star` rather than the
@@ -673,8 +676,8 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * gradient loop, which reads this step's already-relaxed `u`
  * (#radiation_end_density_propagation having already run in the density ghost).
  * Runs once per step in the extra ghost, never re-run: the gradient loop itself
- * only runs once per step. Also updates the two Stage-1 dissipation
- * components, #dissipation_alpha_trigger_FUV/LW (see
+ * only runs once per step. Also updates the two negativity-triggered
+ * dissipation components, #dissipation_alpha_trigger_FUV/LW (see
  * #radiation_update_dissipation_alpha_band) and
  * #dissipation_alpha_floor_FUV/LW (see
  * #radiation_dissipation_alpha_floor_band), once per step and separately,

@@ -1086,7 +1086,7 @@ float feedback_get_part_u_LW(const struct part *p) {
 }
 
 /**
- * @brief Stage-1 artificial-dissipation coefficient, see
+ * @brief Negativity-triggered artificial-dissipation coefficient, see
  * #feedback_part_data.dissipation_alpha_trigger_FUV and
  * #feedback_part_data.dissipation_alpha_floor_FUV. Thin dispatch wrapper,
  * same reasoning as #feedback_get_part_u_FUV.

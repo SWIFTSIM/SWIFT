@@ -152,8 +152,8 @@ struct feedback_part_data {
   float div_specific_flux_FUV;
   float div_specific_flux_LW;
 
-  /*! Stage-1 artificial-dissipation source term (design-lw-fuv-design-b-
-      dissipation.md Section 3.1), FORCE loop
+  /*! Negativity-triggered artificial-dissipation source term
+      (design-lw-fuv-design-b-dissipation.md Section 3.1), FORCE loop
       (radiation_propagation_iact.h): pairwise signal-velocity conductivity
       on the live u_FUV/u_LW jump, applied as an additive correction to the
       intermediate state #radiation_end_density_propagation leaves behind,
@@ -168,14 +168,15 @@ struct feedback_part_data {
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_*_prev|, density loop
       (radiation_propagation_iact.h): the local field-scale reference the
-      Stage-1 negativity trigger (#radiation_end_gradient_propagation)
+      negativity trigger (#radiation_end_gradient_propagation)
       divides an undershoot by. Scratch: zeroed every h-iteration alongside
       #div_specific_flux_FUV/LW. */
   float ngb_mean_abs_u_V_FUV;
   float ngb_mean_abs_u_V_LW;
 
-  /*! Stage-1 artificial-dissipation coefficient (design-lw-fuv-design-b-
-      dissipation.md Section 4.3), REACTIVE component: raised by the
+  /*! Negativity-triggered artificial-dissipation coefficient
+      (design-lw-fuv-design-b-dissipation.md Section 4.3), REACTIVE
+      component: raised by the
       negativity trigger and decayed otherwise, updated once per step in
       #radiation_end_gradient_propagation (not the density ghost, which
       re-runs across h-iterations). Persistent, dumped with #part like
@@ -190,7 +191,8 @@ struct feedback_part_data {
   float dissipation_alpha_trigger_FUV;
   float dissipation_alpha_trigger_LW;
 
-  /*! Stage-1 artificial-dissipation coefficient, ANTICIPATORY component:
+  /*! Negativity-triggered artificial-dissipation coefficient, ANTICIPATORY
+      component:
       the `h/lambda`-gated floor (#radiation_dissipation_alpha_floor_band),
       which supplies dissipation on a positive front the negativity trigger
       is structurally blind to. Written alongside the trigger component

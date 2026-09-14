@@ -215,7 +215,8 @@ __attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
 }
 
 /**
- * @brief Stage-1 artificial-dissipation coefficient. Nothing to do here.
+ * @brief Negativity-triggered artificial-dissipation coefficient. Nothing to do
+ * here.
  *
  * @param p The #part to query.
  */

@@ -118,7 +118,7 @@ GEARFeedback:
   # the LW/FUV propagation channel this example measures (see README).
   with_photoelectric_heating:    1
   LW_FUV_propagation:            1
-  # Stage-1 artificial-conductivity term (see parameter_example.yml for
+  # Negativity-triggered artificial-conductivity term (see parameter_example.yml for
   # the full description). This example holds the coefficient at a fixed
   # 0.5 rather than letting the negativity trigger set it, so that what is
   # measured is the transport operator alone, with no trigger-gating

@@ -68,7 +68,7 @@
  *   integrator's stability argument needs more than this weaker
  *   adjointness is an open question for Phase 1's stability
  *   re-verification, not resolved here.
- * - The Stage-1 artificial dissipation (force loop,
+ * - The negativity-triggered artificial dissipation (force loop,
  *   `runner_iact_[nonsym_]isrf_dissipation`): a triggered pairwise
  *   conductivity on the `rho*u` jump, credited to one particle and debited
  *   from the other. It lives in the force loop, not the density loop, for
@@ -89,7 +89,8 @@
  * evaluating any of them on comoving inputs returns `a` times the physical
  * value, in any dimension (divergence: `dx` gives `a^-1`, `1/rho` gives
  * `a^-dim`, `wi_dr` gives `a^(dim+1)` and `r_inv` gives `a^1`, summing to
- * `a^1`; the gradient and the Stage-1 dissipation give the same total term
+ * `a^1`; the gradient and the negativity-triggered dissipation give the same
+ * total term
  * by term). Each is therefore closed with a single named conversion factor,
  * `a_factor_comoving_to_physical = 1/a`, computed once per pair dispatch in
  * the hooks below and applied where the comoving estimate becomes the
@@ -158,7 +159,7 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
 /**
  * @brief Band-specific pairwise contribution to each particle's kernel-mean
  * `|rho_prev*u_prev|` reference accumulator, the local field scale the
- * Stage-1 negativity trigger divides an undershoot by (radiation_isrf.c's
+ * negativity trigger divides an undershoot by (radiation_isrf.c's
  * #radiation_update_dissipation_alpha_band).
  *
  * Accumulated in the density loop, from the stable `u_*_prev` snapshot and
@@ -198,10 +199,10 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 }
 
 /**
- * @brief Band-specific pairwise contribution to particle i's Stage-1
- * artificial-dissipation source term (design-lw-fuv-design-b-
- * dissipation.md Section 3.1), and mirrored (mass-weighted, opposite
- * sign) contribution to particle j's.
+ * @brief Band-specific pairwise contribution to particle i's
+ * negativity-triggered artificial-dissipation source term
+ * (design-lw-fuv-design-b- dissipation.md Section 3.1), and mirrored
+ * (mass-weighted, opposite sign) contribution to particle j's.
  *
  * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)` is a signal VELOCITY, with
  * no `h` factor: the length scale enters only through `Wbar_ij`'s own
@@ -567,8 +568,8 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
  * Runs in the gradient loop, after the density ghost has finalized `u_FUV`/
  * `u_LW` for this step (the exact-relaxation `u` update, radiation_isrf.c):
  * reads them directly, not a `_prev` snapshot. `u_FUV`/`u_LW` are written
- * again later in this same step, by the end-force ghost's Stage-1
- * dissipation correction (radiation_isrf.c's
+ * again later in this same step, by the end-force ghost's
+ * negativity-triggered dissipation correction (radiation_isrf.c's
  * #radiation_end_force_propagation), before star feedback injection ever
  * runs.
  *
@@ -701,8 +702,8 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 }
 
 /**
- * @brief Stage-1 artificial-dissipation interaction between two particles
- * (symmetric): both particles' accumulators are updated.
+ * @brief Negativity-triggered artificial-dissipation interaction between two
+ * particles (symmetric): both particles' accumulators are updated.
  *
  * Runs in the force loop, after the density ghost has produced `u*` and the
  * extra ghost has set this step's #dissipation_alpha_trigger_FUV/LW and
@@ -764,8 +765,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 }
 
 /**
- * @brief Stage-1 artificial-dissipation interaction between two particles
- * (non-symmetric): only particle i's accumulator is updated.
+ * @brief Negativity-triggered artificial-dissipation interaction between two
+ * particles (non-symmetric): only particle i's accumulator is updated.
  *
  * The force loop reaches this variant once per side, so a pair whose two
  * sides are both dispatched still receives the mirrored credit/debit pair

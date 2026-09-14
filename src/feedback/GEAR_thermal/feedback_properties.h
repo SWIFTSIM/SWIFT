@@ -133,7 +133,7 @@ struct feedback_props {
    * use the formula. Never set in a production run. */
   float LW_FUV_c_hyp_pin_for_debugging;
 
-  /*! Ceiling of the Stage-1 triggered artificial-conductivity coefficient
+  /*! Ceiling of the triggered artificial-conductivity coefficient
    * (design-lw-fuv-design-b-dissipation.md Section 3-4). On by default at
    * the calibrated ceiling; 0 disables the term (for A/B runs). The
    * enforced range depends on #LW_FUV_c_hyp_margin (see
@@ -142,12 +142,13 @@ struct feedback_props {
   float LW_FUV_dissipation_alpha_max;
 
   /*! Undershoot of a particle's own `rho_prev*u` below the neighbours'
-   * kernel-mean `|rho_prev*u_prev|`, relative, at which the Stage-1
-   * dissipation coefficient reaches #LW_FUV_dissipation_alpha_max (design-
+   * kernel-mean `|rho_prev*u_prev|`, relative, at which the
+   * negativity-triggered dissipation coefficient reaches
+   * #LW_FUV_dissipation_alpha_max (design-
    * lw-fuv-design-b-dissipation.md Section 4.3). */
   float LW_FUV_dissipation_negativity_threshold;
 
-  /*! Floor under the Stage-1 trigger, `h/lambda`-gated: the trigger fires
+  /*! Floor under the negativity trigger, `h/lambda`-gated: the trigger fires
    * only on negativity and is exactly zero on the positive delta-shell
    * front of an optically-thin P1 pulse, so a purely reactive coefficient
    * cannot damp the resulting dispersive wake there. This floor supplies
@@ -198,7 +199,7 @@ struct feedback_props {
    * everywhere) and recovers the `h/lambda`-only floor exactly. */
   float LW_FUV_dissipation_floor_relaxation_residual;
 
-  /*! Debug/test-only: bypass the Stage-1 negativity trigger and hold every
+  /*! Debug/test-only: bypass the negativity trigger and hold every
    * particle's dissipation coefficient (both bands) at this fixed value,
    * whenever positive. Not itself subject to the joint
    * (LW_FUV_dissipation_alpha_max, LW_FUV_c_hyp_margin) bound; only a
@@ -583,7 +584,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "alpha = 0).",
           LW_FUV_c_hyp_absolute_bound, fp->LW_FUV_c_hyp_margin);
 
-    /* Stage-1 artificial dissipation (design-lw-fuv-design-b-
+    /* Negativity-triggered artificial dissipation (design-lw-fuv-design-b-
      * dissipation.md Section 5.3). Shipped default 0.5, the same value as
      * the floor's own ceiling, so the joint stability bound checked below
      * is unchanged. Parsed and validated unconditionally,

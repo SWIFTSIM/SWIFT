@@ -151,7 +151,7 @@ void feedback_end_gradient(struct part *p, const struct engine *e) {
 
 /**
  * @brief Finishes the #part force calculation: LW/FUV propagation's
- * Stage-1 dissipation correction is shared GEAR physics, see
+ * negativity-triggered dissipation correction is shared GEAR physics, see
  * #radiation_end_force_propagation.
  *
  * @param p The particle to act upon.

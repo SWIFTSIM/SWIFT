@@ -165,8 +165,9 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
                                  const float H) {}
 
 /**
- * @brief Stage-1 artificial-dissipation interaction (symmetric): no-op, this
- * feedback model does not track u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
+ * no-op, this feedback model does not track
+ * u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -183,8 +184,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
     const float H) {}
 
 /**
- * @brief Stage-1 artificial-dissipation interaction (non-symmetric): no-op,
- * this feedback model does not track
+ * @brief Negativity-triggered artificial-dissipation interaction
+ * (non-symmetric): no-op, this feedback model does not track
  * u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
  *
  * @param r2 Comoving square distance between the two particles.

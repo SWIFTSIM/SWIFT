@@ -42,7 +42,7 @@ about 0.9 decades in radius; running longer narrows it again as the front
 approaches the box edge.
 
 ## Dissipation coefficient
-`params.yml` holds the Stage-1 artificial-conductivity coefficient at a
+`params.yml` holds the negativity-triggered artificial-conductivity coefficient at a
 fixed 0.5 via `LW_FUV_dissipation_alpha_pin_for_debugging`, instead of
 letting the negativity trigger set it, so that what is measured is the
 transport operator alone. At this example's screening length, a

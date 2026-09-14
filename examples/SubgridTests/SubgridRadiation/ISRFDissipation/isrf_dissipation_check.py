@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Regression check for the LW/FUV Stage-1 triggered artificial-dissipation
+Regression check for the LW/FUV negativity-triggered artificial-dissipation
 term (`GEARFeedback:LW_FUV_dissipation_alpha_max`).
 
 Adapted from the sibling `ISRFCausalReach` example's own check script (same
