@@ -558,25 +558,25 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   struct bpart *restrict bparts = c->black_holes.parts;
   const int count = c->black_holes.count;
 
-  /* Physical aperture radius: 1 kpc in internal length units. */
-  const double kpc_in_cm = 3.08567758e21;
-  const double aperture_phys = kpc_in_cm / us->UnitLength_in_cgs;
+  // /* Physical aperture radius: 1 kpc in internal length units. */
+  // const double kpc_in_cm = 3.08567758e21;
+  // const double aperture_phys = kpc_in_cm / us->UnitLength_in_cgs;
 
-  /* Comoving aperture threshold (positions are stored in comoving coords). */
-  const double aperture_comoving = aperture_phys / cosmo->a;
-  const double aperture_comoving2 = aperture_comoving * aperture_comoving;
+  // /* Comoving aperture threshold (positions are stored in comoving coords). */
+  // const double aperture_comoving = aperture_phys / cosmo->a;
+  // const double aperture_comoving2 = aperture_comoving * aperture_comoving;
 
-  /* Physical volume of the aperture sphere. */
-  const double aperture_volume =
-      (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
+  // /* Physical volume of the aperture sphere. */
+  // const double aperture_volume =
+  //     (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
 
-  /* Define inner aperture radius for binning*/
-  const double aperture_inner_phys = 0.35 * aperture_phys;
-  const double aperture_inner_comoving = aperture_inner_phys / cosmo->a;
-  /* Half-life for TDE mass loss: star loses 50% of available mass per Gyr. */
-  const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
-  const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
-  // const double ln2_over_t_half = log(2.0) / t_half;
+  // /* Define inner aperture radius for binning*/
+  // const double aperture_inner_phys = 0.35 * aperture_phys;
+  // const double aperture_inner_comoving = aperture_inner_phys / cosmo->a;
+  // /* Half-life for TDE mass loss: star loses 50% of available mass per Gyr. */
+  // const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
+  // const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
+  // // const double ln2_over_t_half = log(2.0) / t_half;
 
   for (int i = 0; i < count; i++) {
 
