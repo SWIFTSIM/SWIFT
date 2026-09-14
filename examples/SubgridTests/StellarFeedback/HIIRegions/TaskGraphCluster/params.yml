@@ -76,8 +76,8 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 0
-  maximal_density_Hpcm3: 1e4                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates
-                                                # this parameter.
+  maximal_density_Hpcm3: 1e4                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0
+                                                # deactivates this parameter.
   HydrogenFractionByMass: 0.76                  # Hydrogen fraction by mass. (Default: 0.76)
   use_radiative_transfer: 0                     # Arrays of ionization/heating rates are provided. (Default: 0)
   cmb_temperature_floor: 1                      # Enable/disable an effective CMB temperature floor. (Default: 1)
@@ -98,29 +98,32 @@ GEARChemistry:
   diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
 GEARFeedback:
-  supernovae_Ia_energy_erg: 1e51                # supernovae energy, used only for SNIa
-  supernovae_efficiency: 0                      # supernovae energy efficiency, used for both SNIa and SNII
-  with_stellar_wind_feedback: 0
-  stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
-  discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
-  discrete_yields: 1
-  imf_transition_metallicity: -5                # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table.
+  # Stellar evolution
+  yields_table: POPIIsw.h5                                  # Stellar yields table filename
+  yields_table_first_stars: POPIIsw.h5                      # First-star (Pop III) yields table
+  imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
+  discrete_yields: 1                                        # Use discrete stellar yields
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
+  discrete_star_minimal_gravity_mass_Msun: 0.1
+  dt_evolution_factor_max: 300                              # Young-SSP timestep refinement factor (default)
+  event_dt_floor_Myr: 1e-4
 
-  # Radiation
-  with_photoelectric_heating:    0          # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere.
-  with_photoionization:          1          # Whether to run with the subgrid photoionization model to mimick Strömgren sphere.
-  HII_min_density_Hpcm3: 0.01               # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The Default:1 value is tuned to exclude diffuse, non-HI-bound gas in cosmological runs; this idealized single-cloud
-                                            # test evacuates its own ionized region down to ~0.1-1 H/cm^3, which self-quenches the region against that default.
-  radiation_pressure_efficiency: 0          # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
-  HII_max_age_Myr:        50.0              # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_rebuild_time_Myr:   0.5               # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
-  HII_rebuild_floor_Myr: 1e-4               # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass photon budget is integrated over. (Default: 1e-4)
-  HII_angular_nside:             0          # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. (Default: 0)
-  HII_deterministic_boundary_ionization: 0  # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
-  HII_couple_ionization_rate: 0             # Rate-couple HII photoionization into Grackle's own RT fields instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1. (Default: 0)
+  # Supernovae
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0                                  # SN energy efficiency, SNIa+SNII
+
+  # Stellar winds
+  with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
+
+  # HII regions
+  with_photoionization: 1                                   # Subgrid photoionization switch
+  HII_min_density_Hpcm3: 0.01                               # Minimum density for HII eligibility, H/cm^3
+  HII_max_age_Myr: 50
+  HII_rebuild_time_Myr: 0.5
+  HII_angular_nside: 0                                      # HEALPix splitting of HII budget, 0=spherical (default)
+  HII_deterministic_boundary_ionization: 0                  # Boundary-particle ionization rule (default)
+  HII_rebuild_floor_Myr: 1e-4
+  HII_couple_ionization_rate: 0                             # Rate-couple HII into Grackle's RT fields (default)
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.  # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.

@@ -1,34 +1,32 @@
 # Intro
 A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
-box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
-(photoionization and radiation pressure off), in the OPTICALLY-THIN corner:
-the metallicity is low enough that the dust screening length is much larger
-than both the smoothing length and the box (`h/lambda ~ 6e-3`, against
-`h/lambda ~ 1` in the sibling `ISRFHyperbolicPropagation`).
+box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure)
+propagation on (photoionization and radiation pressure off), in the
+OPTICALLY-THIN corner: the metallicity is low enough that the dust
+screening length is much larger than both the smoothing length and the box
+(`h/lambda ~ 6e-3`, against `h/lambda ~ 1` in the sibling
+`ISRFHyperbolicPropagation`).
 
-In that corner the scheme's own analytic solution is exact and simple. The
-P1 system's point-source solution is time-constant everywhere behind the
-causal front and equal to
+In that corner a single point source in an absorbing medium never
+scatters, so the M1 closure is exact and reduces to free streaming: the
+settled field behind the causal front is
 
-    u(r) = 3 * L * kappa_eff * exp(-r/lambda) / (4 * pi * c * r)
+    u(r) = L * exp(-r/lambda) / (4 * pi * c * rho * r^2)
 
-with `kappa_eff` the dust mass opacity, `lambda = 1/(kappa_eff*rho)`, and
-`c` the true speed of light (the reduced propagation speed `c_hyp` cancels).
-Where `r << lambda` this is a geometric `1/r` dilution. It is NOT the
-`1/r^2` inverse-square law of free-streaming transport, which the same
-configuration would give as `L*exp(-r/lambda)/(4*pi*c*rho*r^2)`; the two
-differ by a factor `3*r/lambda`. The `1/r` behaviour is the P1 closure's
-streaming limit (the Eddington factor 1/3 is exact only for a
-near-isotropic field), not an artifact of this discretization.
-`isrf_optically_thin_check.py` measures which of the two the code produces,
-in both bands, against an absolute prediction with no fitted parameter.
+with `lambda = 1/(kappa_eff*rho)` the dust absorption length, `kappa_eff`
+the dust mass opacity, and `c` the true speed of light (the reduced
+propagation speed `c_hyp` cancels; see `theory/GEAR/Radiation/
+02_fuv_isrf.tex`, "Steady states"). `isrf_optically_thin_check.py` fits the
+settled profile against this `1/r^2` law, in both bands, with no fitted
+parameter. It also plots the isotropic/diffusion-closure profile the same
+source would give if the field isotropized,
+`3*L*exp(-sqrt(3)*r/lambda)/(4*pi*c*lambda*rho*r)`, for comparison only:
+that profile is not a valid steady state this close to a single source and
+is not what this check gates on.
 
-## Why this corner and not the sibling example's
-`ISRFHyperbolicPropagation` measures the SCREENED steady state, where
-`lambda` is comparable to `h` and the discrete SPH estimator's fixed point
-departs from the continuum profile; that example therefore compares against
-a discrete solve rather than a continuum formula. Here `lambda >> h`, the
-continuum formula is valid, and the comparison can be absolute.
+`ISRFHyperbolicPropagation` measures the SCREENED steady state instead,
+where `lambda` is comparable to `h` and compares against a discrete solve
+rather than a continuum formula.
 
 ## Measurement window
 The field is measured strictly inside the causal front, over
@@ -37,21 +35,9 @@ the front radius and `H` the kernel support. The first term excludes the
 star's injection footprint, the second the front itself (which the
 estimator smears over a couple of supports), and the third every periodic
 image, which cannot have reached radius `r` before `c_hyp*t = L_box - r`.
-`time_end` is chosen so that this window is as wide as the box allows,
-about 0.9 decades in radius; running longer narrows it again as the front
-approaches the box edge.
-
-## Dissipation coefficient
-`params.yml` holds the negativity-triggered artificial-conductivity coefficient at a
-fixed 0.5 via `ISRF_dissipation_alpha_pin_for_debugging`, instead of
-letting the negativity trigger set it, so that what is measured is the
-transport operator alone. At this example's screening length, a
-`ISRF_dissipation_alpha_max` of 0.25 (below the shipped default, 0.5) is
-not enough: the field rings in sign and has no radial profile to measure.
-0.5, the pinned value above, still satisfies the
-joint stability bound `6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2` at the default
-`C_hyp = 0.5`. Set `alpha_pin=0 ./run.sh` to see the trigger-gated
-behaviour instead.
+`time_end` is set long enough that the fitted snapshots sample the field
+well past its initial transient, before the causal front's own approach to
+the periodic box edge narrows the window again.
 
 ## Metallicity, cooling
 `initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
@@ -78,17 +64,17 @@ mode-gated species network).
 ```
 ./run.sh
 ```
-The default resolution is `level=6` (262144 gas particles), needed for the
-radial range the slope fit wants; it takes a few minutes on 8 threads.
-Override any parameter via the matching env var -- gas density
-(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
-and type (`star_mass`, `star_type`), resolution level (`level`, N =
-`(2**level)**3` gas particles), run duration and stepping (`time_end`,
-`dt_max`, `delta_time`), metallicity (`initial_metallicity`), dissipation
-coefficient (`alpha_pin`) and thread count (`n_threads`); see `run.sh` for
-the full list and defaults. `run_name=<dir> ./run.sh` moves the run's
-outputs into `<dir>` once done, to keep more than one run's outputs side by
-side.
+Runs on `params.yml`'s shipped defaults throughout, including the ISRF
+dissipation coefficients. The default resolution is `level=6` (262144 gas
+particles), needed for the radial range the slope fit wants. Override any
+parameter via the matching env var: gas density (`gas_density`,
+atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass and type
+(`star_mass`, `star_type`), resolution level (`level`, N = `(2**level)**3`
+gas particles), run duration and stepping (`time_end`, `dt_max`,
+`delta_time`), metallicity (`initial_metallicity`), and thread count
+(`n_threads`); see `run.sh` for the full list and defaults.
+`run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done,
+to keep more than one run's outputs side by side.
 
 Lowering `level` shortens the run but narrows the measurement window:
 `L_box/h` scales as `N^(1/3)` at fixed particle mass and density, so the
@@ -100,14 +86,15 @@ python3 isrf_optically_thin_check.py
 ```
 `run.sh` runs this automatically against its own `output.log` and
 snapshots. For each band it bins the field radially inside the causal
-front, fits the log-log slope, and compares both the slope and the absolute
-amplitude against the analytic profile above, averaging over the last few
-snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
-from the prediction, if the amplitude is more than `--amplitude-tol` from
-unity, or if the amplitude ratio's radial spread exceeds `--flatness-tol`;
-the defaults are set from the measured values with margin and should not be
-loosened to make a run pass. If the field is ringing in sign the script
-says so explicitly rather than reporting an unfittable profile as an error.
-Produces a comparison plot (`--output`, default
-`isrf_optically_thin_check.png`) showing the measured profile against both
-the P1 and the inverse-square predictions.
+front and fits the log-log slope against the free-streaming prediction,
+averaging over the last few snapshots (`--n-late`). It fails if the slope
+is more than `--slope-tol` from the prediction, or if the radial spread of
+the measured/free-streaming ratio exceeds `--flatness-tol`; the defaults
+should not be loosened to make a run pass. The absolute amplitude ratio
+(measured field over the free-streaming prediction) is reported but not
+gated on: see `theory/GEAR/Radiation/02_fuv_isrf.tex`, "Limitations and
+open items". If the field is ringing in sign the script says so explicitly
+rather than reporting an unfittable profile as an error. Produces a
+comparison plot (`--output`, default `isrf_optically_thin_check.png`)
+showing the measured profile against both the free-streaming target and
+the diffusion-closure curve kept for comparison.

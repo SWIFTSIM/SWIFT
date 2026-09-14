@@ -279,18 +279,50 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Chemistry elements: %s", txt);
   }
 
-  /* Print the feedback properties */
-  message("Supernovae efficiency                                      = %.2g",
-          feedback_props->supernovae_efficiency);
-  message("Stellar wind feedback                                      = %s",
-          feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
-  message("Stellar winds efficiency                                   = %.2g",
-          feedback_props->winds_efficiency);
+  /* Print the feedback properties, grouped by mechanism to match
+   * GEARFeedback's layout in parameter_example.yml: stellar evolution, SN,
+   * stellar winds, radiation pressure, HII regions, ISRF. */
+
+  /* Stellar evolution */
+  message("Yields table                                               = %s",
+          feedback_props->stellar_model.yields_table);
   message("dt_evolution factor_max                                    = %g",
           feedback_props->dt_evolution_factor_max);
   message("event_dt_floor (internal units)                            = %g",
           feedback_props->event_dt_floor_Myr);
 
+  /* Print the stellar model */
+  stellar_model_print(&feedback_props->stellar_model);
+
+  /* Print the first stars */
+  if (feedback_props->metallicity_max_first_stars != -1) {
+    message("Yields table first stars                                 = %s",
+            feedback_props->stellar_model_first_stars.yields_table);
+    stellar_model_print(&feedback_props->stellar_model_first_stars);
+    message("Metallicity max for the first stars (in abundance)       = %g",
+            feedback_props->imf_transition_metallicity);
+    message("Metallicity max for the first stars (in mass fraction)   = %g",
+            feedback_props->metallicity_max_first_stars);
+  }
+
+  /* Supernovae */
+  message("Supernovae efficiency                                      = %.2g",
+          feedback_props->supernovae_efficiency);
+
+  /* Stellar winds */
+  message("Stellar wind feedback                                      = %s",
+          feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
+  message("Stellar winds efficiency                                   = %.2g",
+          feedback_props->winds_efficiency);
+
+  /* Radiation pressure */
+  message(
+      "Radiation pressure                                         = %i",
+      feedback_props->radiation_policy & radiation_policy_radiation_pressure);
+  message("Radiation pressure efficiency                              = %.2g",
+          feedback_props->radiation_pressure_efficiency);
+
+  /* HII regions */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
   message("Photoionization                                            = %i",
@@ -311,11 +343,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->HII_rebuild_floor_Myr);
   }
 
-  message(
-      "Radiation pressure                                         = %i",
-      feedback_props->radiation_policy & radiation_policy_radiation_pressure);
-  message("Radiation pressure efficiency                              = %.2g",
-          feedback_props->radiation_pressure_efficiency);
+  /* ISRF */
   const char do_photoelectric_heating =
       feedback_props->radiation_policy & radiation_policy_photoelectric_heating;
   message("Photo-electric heating / H2 photodissociation (ISRF)       = %i",
@@ -345,23 +373,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             "ISRF dissipation alpha pinned for debugging                = %g",
             feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
     }
-  }
-
-  message("Yields table                                               = %s",
-          feedback_props->stellar_model.yields_table);
-
-  /* Print the stellar model */
-  stellar_model_print(&feedback_props->stellar_model);
-
-  /* Print the first stars */
-  if (feedback_props->metallicity_max_first_stars != -1) {
-    message("Yields table first stars                                 = %s",
-            feedback_props->stellar_model_first_stars.yields_table);
-    stellar_model_print(&feedback_props->stellar_model_first_stars);
-    message("Metallicity max for the first stars (in abundance)       = %g",
-            feedback_props->imf_transition_metallicity);
-    message("Metallicity max for the first stars (in mass fraction)   = %g",
-            feedback_props->metallicity_max_first_stars);
   }
 }
 

@@ -193,7 +193,7 @@ def main():
     used_params = load_used_parameters(opt.used_parameters)
     fb = used_params.get("GEARFeedback", {}) if used_params else {}
     ti = used_params.get("TimeIntegration", {}) if used_params else {}
-    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.25))
+    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.5))
     alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
     dt_max_param = float(ti.get("dt_max", np.nan))
     alpha_eff = alpha_pin if alpha_pin > 0.0 else alpha_max

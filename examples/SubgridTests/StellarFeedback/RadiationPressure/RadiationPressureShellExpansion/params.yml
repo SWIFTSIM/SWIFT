@@ -97,23 +97,25 @@ GEARChemistry:
   diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
 GEARFeedback:
-  supernovae_Ia_energy_erg: 1e51
-  supernovae_efficiency: 0
-  with_stellar_wind_feedback: 0
-  stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
-  discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
-  discrete_yields: 1
-  imf_transition_metallicity: -5
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+  # Stellar evolution
+  yields_table: POPIIsw.h5                                  # Stellar yields table filename
+  yields_table_first_stars: POPIIsw.h5                      # First-star (Pop III) yields table
+  imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
+  discrete_yields: 1                                        # Use discrete stellar yields
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
+  discrete_star_minimal_gravity_mass_Msun: 0.1
+  dt_evolution_factor_max: 300                              # Young-SSP timestep refinement factor (default)
+  event_dt_floor_Myr: 1e-4
 
-  # Radiation -- photoionization off, radiation pressure on: isolates the
-  # momentum-injection channel from the (separate) thermal/ionization one.
-  with_photoelectric_heating:    0
-  with_photoionization:          0
-  radiation_pressure_efficiency: 1
-  HII_rebuild_time_Myr:   0.5
+  # Supernovae
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0                                  # SN energy efficiency, SNIa+SNII
+
+  # Stellar winds
+  with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
+
+  # Radiation pressure
+  radiation_pressure_efficiency: 1                          # Radiation-pressure momentum efficiency
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.

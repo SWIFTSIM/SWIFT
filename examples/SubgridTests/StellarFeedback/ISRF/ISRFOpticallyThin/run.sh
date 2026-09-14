@@ -16,11 +16,10 @@ gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
 level=${level:=6} #Resolution level: N = (2**level)**3 gas particles
-time_end=${time_end:=5.3e-4} #TimeIntegration:time_end override (internal units)
+time_end=${time_end:=1.6e-3} #TimeIntegration:time_end override (internal units): long enough that the fitted snapshots sample the field past its initial transient, before the front's approach to the box narrows the window again
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1e-2} #GEARChemistry:initial_metallicity override (Z/Zsun)
-alpha_pin=${alpha_pin:=0.5} #GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging override
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -83,11 +82,10 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   params.yml 2>&1 | tee output.log
 
-# Check the propagated field against the analytic P1 profile, and against
-# the inverse-square law it is often mistaken for (see README).
+# Check the propagated field against the free-streaming profile, and
+# against the diffusion-closure curve kept for comparison (see README).
 python3 isrf_optically_thin_check.py
 
 if [ -z "$run_name" ]; then

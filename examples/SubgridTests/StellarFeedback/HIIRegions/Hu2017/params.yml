@@ -115,32 +115,32 @@ GEARChemistry:
   diffusion_coefficient: 1e-3  # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). (Default: 1e-3)
 
 GEARFeedback:
-  supernovae_Ia_energy_erg: 1e51
-  supernovae_efficiency: 0
-  with_stellar_wind_feedback: 0
-  stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
-  discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
-  discrete_yields: 1
-  imf_transition_metallicity: -5
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+  # Stellar evolution
+  yields_table: POPIIsw.h5                                  # Stellar yields table filename
+  yields_table_first_stars: POPIIsw.h5                      # First-star (Pop III) yields table
+  imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
+  discrete_yields: 1                                        # Use discrete stellar yields
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
+  discrete_star_minimal_gravity_mass_Msun: 0.1
+  dt_evolution_factor_max: 300                              # Young-SSP timestep refinement factor (default)
+  event_dt_floor_Myr: 1e-4
 
-  # Radiation
-  with_photoelectric_heating:    0
-  with_photoionization:          1
+  # Supernovae
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0                                  # SN energy efficiency, SNIa+SNII
+
+  # Stellar winds
+  with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
+
+  # HII regions
+  with_photoionization: 1                                   # Subgrid photoionization switch
   HII_min_density_Hpcm3: 1
-  radiation_pressure_efficiency: 0
-  HII_max_age_Myr:        50.0
-  HII_rebuild_time_Myr:   0.01              # Fixed cadence, ~8x t_rec(n_H=100cm^-3, 1e4K)~1.2e-3 Myr. Numerical
-                                            # parameter, not a physical one; may be changed freely for cadences
-                                            # <=0.03 Myr.
-  HII_rebuild_floor_Myr: 1e-4               # Floors the elapsed interval the per-pass photon budget is integrated
-                                            # over.
-  HII_angular_nside: 0                      # Spherical (no angular splitting) -- this is Hu et al.'s own
-                                            # algorithm, uniform medium, nothing for angular splitting to fix.
-  HII_deterministic_boundary_ionization: 0  # Probabilistic, the validated default.
-  HII_couple_ionization_rate: 0             # Rate-couple HII photoionization into Grackle's own RT fields instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1. (Default: 0)
+  HII_max_age_Myr: 50
+  HII_rebuild_time_Myr: 0.01                                # HII region rebuild cadence, Myr
+  HII_angular_nside: 0                                      # HEALPix splitting of HII budget, 0=spherical (default)
+  HII_deterministic_boundary_ionization: 0                  # Boundary-particle ionization rule (default)
+  HII_rebuild_floor_Myr: 1e-4
+  HII_couple_ionization_rate: 0                             # Rate-couple HII into Grackle's RT fields (default)
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.

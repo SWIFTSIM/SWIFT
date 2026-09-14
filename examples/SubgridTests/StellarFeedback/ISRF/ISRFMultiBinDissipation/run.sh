@@ -25,7 +25,7 @@ star_type=${star_type:="single_star"}
 n_stars=${n_stars:=3}
 c_hyp_margin=${c_hyp_margin:=0.5}
 c_hyp_pin=${c_hyp_pin:=0}                       # ISRF_c_hyp_pin_for_debugging, km/s
-alpha_max=${alpha_max:=0.25}
+alpha_max=${alpha_max:=0.5}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
 initial_metallicity=${initial_metallicity:=1}

@@ -24,7 +24,7 @@ pulse_amplitude=${pulse_amplitude:=1.0}
 pulse_sigma_h=${pulse_sigma_h:=2.0}
 c_hyp_margin=${c_hyp_margin:=0.5}
 c_hyp_pin=${c_hyp_pin:=0}
-alpha_max=${alpha_max:=0.25}
+alpha_max=${alpha_max:=0.5}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
 initial_metallicity=${initial_metallicity:=0.05}

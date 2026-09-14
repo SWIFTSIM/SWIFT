@@ -651,7 +651,8 @@ GrackleCooling:
   initial_nH2I_to_nH_ratio:    -1              # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
-  disable_cooling_for_debugging: 0             # (optional, debug/test only) Skip the per-particle cooling/heating update entirely while cooling_init() (table loading, chemistry_data resolution) still runs normally. Never set in a production run. (Default: 0)
+  disable_cooling_for_debugging: 0             # (optional, debug/test only) Skip the per-particle cooling/heating update entirely while cooling_init() (table loading, chemistry_data resolution) still runs normally. Never set in a production run.
+                                               # (Default: 0)
 
 
 
@@ -776,27 +777,50 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernovae of type Ia.
-  supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
-  with_stellar_wind_feedback: 1                            # activate the stellar wind feedback
-  stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
+  # Stellar evolution: yields tables, IMF transition, and timestep refinement
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
   imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
-  dt_evolution_factor_max: 300                              # Timestep refinement factor applied to a young SSP population, transitioning logistically to 1 as it ages. single_star particles use the exact dt_event instead. Used for every SSP star, not just radiation runs. (Default: 300)
-  event_dt_floor_Myr: 1e-4                                  # Floor (in Myr) applied to the event-anchored timestep terms (single_star's exact death moment, and dt_HII_safe for every star type). Used for every star, not just radiation runs; must exceed TimeIntegration:dt_min. (Default: 1e-4)
+  dt_evolution_factor_max: 300                              # Timestep refinement factor applied to a young SSP population, transitioning logistically to 1 as it ages. single_star particles use the exact dt_event instead. Used for every SSP star, not just
+                                                            # radiation runs. (Default: 300)
+  event_dt_floor_Myr: 1e-4                                  # Floor (in Myr) applied to the event-anchored timestep terms (single_star's exact death moment, and dt_HII_safe for every star type). Used for every star, not just radiation runs; must exceed
+                                                            # TimeIntegration:dt_min. (Default: 1e-4)
 
-  # Radiation parameters
+  # Supernovae
+  supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernovae of type Ia.
+  supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+
+  # Stellar winds
+  with_stellar_wind_feedback: 1                            # activate the stellar wind feedback
+  stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
+
+  # Radiation pressure
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+
+  # HII regions (subgrid photoionization, Strömgren-sphere model)
+  with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
+  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
+  HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5)
+  HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), N>=1 = 12*N^2 HEALPix pixels. Requires building with --with-chealpix for nside > 0; the
+                                                           # requested pixel count must also fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. nside<=1). (Default: 0)
+  HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default:
+                                                           # 0)
+  HII_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass ionizing photon budget is integrated over. (Default: 1e-4)
+  HII_couple_ionization_rate: 0                     # Rate-couple HII photoionization into Grackle's own RT_HI_ionization_rate/RT_heating_rate fields (a physically derived, distance-dependent per-particle rate) instead of the instant flag-and-floor
+                                                    # scheme. Requires COOLING_GRACKLE_MODE >= 1; forces GrackleCooling:use_radiative_transfer on internally. 1: on, 0: off. (Default: 0)
+
+  # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation)
   with_photoelectric_heating:    0                         # Master switch for the local ISRF feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
   ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
                                                            # (Default: 0)
-  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor) = 0; the joint
-                                                           # stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
+                                                           # ISRF_dissipation_alpha_floor) = 0; the joint stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only
+                                                           # meaningful when ISRF_propagation is on. (Default: 0.5)
   ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
                                                            # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
   ISRF_dissipation_alpha_max: 0.5                          # (optional) Ceiling of the triggered artificial-conductivity coefficient. 0 disables the trigger, but ISRF_dissipation_alpha_floor still
@@ -821,20 +845,10 @@ GEARFeedback:
                                                            # toward 0 if negative undershoots appear in optically thin gas. Only meaningful when ISRF_propagation is on. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug/test only) Bypass the negativity trigger and hold every particle's dissipation coefficient (both bands) at this fixed value, whenever positive. Not itself
                                                            # subject to the (alpha_max, C_hyp) stability bound. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
-  with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
-  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
-  HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5)
-  HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), N>=1 = 12*N^2 HEALPix pixels. Requires building with --with-chealpix for nside > 0; the
-                                                           # requested pixel count must also fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. nside<=1). (Default: 0)
-  HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default:
-                                                           # 0)
-  HII_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass ionizing photon budget is integrated over. (Default: 1e-4)
-  HII_couple_ionization_rate: 0                     # Rate-couple HII photoionization into Grackle's own RT_HI_ionization_rate/RT_heating_rate fields (a physically derived, distance-dependent per-particle rate) instead of the instant flag-and-floor
-                                                    # scheme. Requires COOLING_GRACKLE_MODE >= 1; forces GrackleCooling:use_radiative_transfer on internally. 1: on, 0: off. (Default: 0)
 
 GEARRadiation:
-  interpolation_size_mass:        500       # Number of elements to keep in the mass interpolation of the Data/Radiation table. Matches the shipped table's own native grid size (500), avoiding a lossy down-sample: a smaller value costs up to ~17.6% per-star error near the source fits' own mass-relation breakpoints. (Default: 500)
+  interpolation_size_mass:        500       # Number of elements to keep in the mass interpolation of the Data/Radiation table. Matches the shipped table's own native grid size (500), avoiding a lossy down-sample: a smaller value costs up to ~17.6% per-
+                                            # star error near the source fits' own mass-relation breakpoints. (Default: 500)
   interpolation_size_metallicity: 110       # Number of elements to keep in the metallicity interpolation of the Data/Radiation table (only used for a mass x metallicity table). (Default: 110)
 
 GEARSupernovaeII:
