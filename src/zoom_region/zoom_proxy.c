@@ -30,11 +30,14 @@
 #ifdef WITH_MPI
 
 /**
- * @brief Apply gravity proxy criteria to a pair of equal-width cells.
+ * @brief Apply gravity proxy criteria to a pair of cells.
+ *
+ * Note that cells must have equal widths.
  *
  * @param e The #engine.
  * @param proxy_ci First cell used for geometric proxy criteria.
  * @param proxy_cj Second cell used for geometric proxy criteria.
+ *
  * @return #proxy_cell_type_gravity if a proxy is required, otherwise zero.
  */
 static int zoom_get_gravity_proxy_type(const struct engine *e,
@@ -45,24 +48,31 @@ static int zoom_get_gravity_proxy_type(const struct engine *e,
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
+
+  /* Nothing to do if gravity is not enabled. */
   if (!with_gravity) return proxy_cell_type_none;
 
+  /* Derive the geometric criterion for a proxy. */
   const double r_diag2 = proxy_ci->width[0] * proxy_ci->width[0] +
                          proxy_ci->width[1] * proxy_ci->width[1] +
                          proxy_ci->width[2] * proxy_ci->width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
   const double r_max = 2.0 * r_diag;
+
+  /* Minimal distance between any two points in the cells. */
   const double min_dist_CoM2 =
       cell_min_dist2(proxy_ci, proxy_cj, s->periodic, s->dim);
 
-  if (s->periodic) {
-    if ((min_dist_CoM2 < max_mesh_dist2) &&
-        !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-      return proxy_cell_type_gravity;
-  } else {
-    if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-      return proxy_cell_type_gravity;
+  /* No gravity proxy is required beyond the mesh cutoff. */
+  if (s->periodic && min_dist_CoM2 >= max_mesh_dist2) {
+    return proxy_cell_type_none;
   }
+
+  /* Check whether a gravity proxy is required. */
+  if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2)) {
+    return proxy_cell_type_gravity;
+  }
+
   return proxy_cell_type_none;
 }
 
@@ -170,8 +180,7 @@ static void zoom_make_zoom_pair_proxies_recursive(
     return;
   }
 
-  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1],
-                               0.5 * width[2]};
+  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1], 0.5 * width[2]};
   for (int i = 0; i < 8; i++) {
     double sub_loc_i[3] = {loc_i[0] + ((i & 4) ? sub_width[0] : 0.0),
                            loc_i[1] + ((i & 2) ? sub_width[1] : 0.0),
@@ -191,15 +200,15 @@ static void zoom_make_zoom_pair_proxies_recursive(
  *
  * Recurse through the 8 octants of a top-level void cell, generating pair
  * recursions between every pair of octants (and self recursions on each
- * octant). At the leaves this produces zoom<->zoom proxy decisions between
- * zoom top cells contained in the same top-level void.
+ * octant). At zoom top-level depth this produces zoom<->zoom proxy decisions
+ * between zoom cells contained in the same top-level void.
  *
  * @param e         The #engine.
  * @param s         The #space.
  * @param loc       Lower-left corner of the current geometric region.
  * @param width     Width of the current geometric region.
  * @param depth     Recursion depth below the top-level void.
- * @param zoom_depth Depth at which the leaves are zoom top cells.
+ * @param zoom_depth Depth at which zoom top-level cells are reached.
  */
 static void zoom_make_void_self_proxies(struct engine *e, const struct space *s,
                                         const double loc[3],
@@ -227,8 +236,8 @@ static void zoom_make_void_self_proxies(struct engine *e, const struct space *s,
   /* Pair recursion on every pair of octants. */
   for (int a = 0; a < 8; a++) {
     for (int b = a + 1; b < 8; b++) {
-      zoom_make_zoom_pair_proxies_recursive(
-          e, s, sub_loc[a], sub_loc[b], sub_width, depth + 1, zoom_depth);
+      zoom_make_zoom_pair_proxies_recursive(e, s, sub_loc[a], sub_loc[b],
+                                            sub_width, depth + 1, zoom_depth);
     }
   }
 }
@@ -243,7 +252,7 @@ static void zoom_make_void_self_proxies(struct engine *e, const struct space *s,
  * @param depth Current recursion depth below the void cell.
  * @param void_cell The top-level void cell used for geometric criteria.
  * @param bkg_cell The top-level background cell receiving the proxy.
- * @param zoom_depth Depth at which the zoom top-level cells are reached.
+ * @param zoom_depth Depth at which zoom top-level cells are reached.
  */
 static void zoom_make_zoom_bkg_proxies_recursive(
     struct engine *e, const struct space *s, const double loc[3],
@@ -262,13 +271,11 @@ static void zoom_make_zoom_bkg_proxies_recursive(
     return;
   }
 
-  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1],
-                               0.5 * width[2]};
+  const double sub_width[3] = {0.5 * width[0], 0.5 * width[1], 0.5 * width[2]};
   for (int i = 0; i < 8; i++) {
-    const double sub_loc[3] = {
-        loc[0] + ((i & 4) ? sub_width[0] : 0.0),
-        loc[1] + ((i & 2) ? sub_width[1] : 0.0),
-        loc[2] + ((i & 1) ? sub_width[2] : 0.0)};
+    const double sub_loc[3] = {loc[0] + ((i & 4) ? sub_width[0] : 0.0),
+                               loc[1] + ((i & 2) ? sub_width[1] : 0.0),
+                               loc[2] + ((i & 1) ? sub_width[2] : 0.0)};
     zoom_make_zoom_bkg_proxies_recursive(e, s, sub_loc, sub_width, depth + 1,
                                          void_cell, bkg_cell, zoom_depth);
   }
@@ -397,22 +404,19 @@ void zoom_engine_makeproxies(struct engine *e) {
 
                 /* Construct zoom-zoom proxies between two void cells. */
                 zoom_make_zoom_pair_proxies_recursive(
-                    e, s, ci->loc, cj->loc, ci->width, /*depth=*/0,
-                    zoom_depth);
+                    e, s, ci->loc, cj->loc, ci->width, /*depth=*/0, zoom_depth);
 
               } else if (ci_void) {
 
                 /* Construct zoom-background proxies from the first void. */
                 zoom_make_zoom_bkg_proxies_recursive(
-                    e, s, ci->loc, ci->width, /*depth=*/0, ci, cj,
-                    zoom_depth);
+                    e, s, ci->loc, ci->width, /*depth=*/0, ci, cj, zoom_depth);
 
               } else {
 
                 /* Construct zoom-background proxies from the second void. */
                 zoom_make_zoom_bkg_proxies_recursive(
-                    e, s, cj->loc, cj->width, /*depth=*/0, cj, ci,
-                    zoom_depth);
+                    e, s, cj->loc, cj->width, /*depth=*/0, cj, ci, zoom_depth);
               }
             }
           }
