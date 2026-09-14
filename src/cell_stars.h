@@ -136,19 +136,6 @@ struct cell_stars {
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
-
-    /*! ti_old_part on entry to the last cell_drift_spart() call. */
-    integertime_t ti_old_part_on_entry;
-
-    /*! Whether cell_flag_do_stars_drift was set directly (not inherited) at the
-     * last cell_drift_spart() call. */
-    int drift_force_on_entry;
-
-    /*! ti_current of the last sf_counts delivery to this cell. */
-    integertime_t sf_counts_recv_at_tic;
-
-    /*! ti_current of the last runner_do_recv_spart() on this cell. */
-    integertime_t spart_recv_at_tic;
 #endif
 
 #ifdef STARS_NONE

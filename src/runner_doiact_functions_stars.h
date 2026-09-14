@@ -278,19 +278,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
       error(
           "Particle has h larger than h_max_active: hi=%e "
           "ci->stars.h_max_active=%e ci->cellID=%lld ci->nodeID=%d "
-          "e->nodeID=%d ci->depth=%d ci->split=%d ci->stars.count=%d "
-          "ci->stars.ti_old_part=%lld ci->stars.ti_old_part_on_entry=%lld "
-          "ci->stars.drift_force_on_entry=%d e->ti_current=%lld "
-          "ci_is_own_hydro_super=%d si->id=%lld si->time_bin=%d "
-          "si->depth_h=%d si->ti_drift=%lld si->birth_time=%e "
-          "ci->stars.sf_counts_recv_at_tic=%lld "
-          "ci->stars.spart_recv_at_tic=%lld",
-          hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, e->nodeID,
-          ci->depth, ci->split, ci->stars.count, ci->stars.ti_old_part,
-          ci->stars.ti_old_part_on_entry, ci->stars.drift_force_on_entry,
-          e->ti_current, ci == ci->hydro.super, si->id, si->time_bin,
-          si->depth_h, si->ti_drift, si->birth_time,
-          ci->stars.sf_counts_recv_at_tic, ci->stars.spart_recv_at_tic);
+          "ci->depth=%d ci->stars.count=%d e->ti_current=%lld si->id=%lld",
+          hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, ci->depth,
+          ci->stars.count, e->ti_current, si->id);
 #endif
 
     /* Skip particles not in the range of h we care about */
@@ -482,19 +472,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
         error(
             "Particle has h larger than h_max_active: hi=%e "
             "ci->stars.h_max_active=%e ci->cellID=%lld ci->nodeID=%d "
-            "e->nodeID=%d ci->depth=%d ci->split=%d ci->stars.count=%d "
-            "ci->stars.ti_old_part=%lld ci->stars.ti_old_part_on_entry=%lld "
-            "ci->stars.drift_force_on_entry=%d e->ti_current=%lld "
-            "ci_is_own_hydro_super=%d spi->id=%lld spi->time_bin=%d "
-            "spi->depth_h=%d spi->ti_drift=%lld spi->birth_time=%e "
-            "ci->stars.sf_counts_recv_at_tic=%lld "
-            "ci->stars.spart_recv_at_tic=%lld",
-            hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, e->nodeID,
-            ci->depth, ci->split, ci->stars.count, ci->stars.ti_old_part,
-            ci->stars.ti_old_part_on_entry, ci->stars.drift_force_on_entry,
-            e->ti_current, ci == ci->hydro.super, spi->id, spi->time_bin,
-            spi->depth_h, spi->ti_drift, spi->birth_time,
-            ci->stars.sf_counts_recv_at_tic, ci->stars.spart_recv_at_tic);
+            "ci->depth=%d ci->stars.count=%d e->ti_current=%lld spi->id=%lld",
+            hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, ci->depth,
+            ci->stars.count, e->ti_current, spi->id);
 #endif
 
       /* Skip particles not in the range of h we care about */
@@ -664,19 +644,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
         error(
             "Particle has h larger than h_max_active: hj=%e "
             "cj->stars.h_max_active=%e cj->cellID=%lld cj->nodeID=%d "
-            "e->nodeID=%d cj->depth=%d cj->split=%d cj->stars.count=%d "
-            "cj->stars.ti_old_part=%lld cj->stars.ti_old_part_on_entry=%lld "
-            "cj->stars.drift_force_on_entry=%d e->ti_current=%lld "
-            "cj_is_own_hydro_super=%d spj->id=%lld spj->time_bin=%d "
-            "spj->depth_h=%d spj->ti_drift=%lld spj->birth_time=%e "
-            "cj->stars.sf_counts_recv_at_tic=%lld "
-            "cj->stars.spart_recv_at_tic=%lld",
-            hj, cj->stars.h_max_active, cj->cellID, cj->nodeID, e->nodeID,
-            cj->depth, cj->split, cj->stars.count, cj->stars.ti_old_part,
-            cj->stars.ti_old_part_on_entry, cj->stars.drift_force_on_entry,
-            e->ti_current, cj == cj->hydro.super, spj->id, spj->time_bin,
-            spj->depth_h, spj->ti_drift, spj->birth_time,
-            cj->stars.sf_counts_recv_at_tic, cj->stars.spart_recv_at_tic);
+            "cj->depth=%d cj->stars.count=%d e->ti_current=%lld spj->id=%lld",
+            hj, cj->stars.h_max_active, cj->cellID, cj->nodeID, cj->depth,
+            cj->stars.count, e->ti_current, spj->id);
 #endif
 
       /* Skip particles not in the range of h we care about */
