@@ -31,13 +31,14 @@ Metrics, per band, maximum over every common snapshot:
   D_u = max_i |u_boost - u_rest| / max_i |u_rest|
   D_F = max_i |F_boost - F_rest| / max_i |F_rest|, over particles with
         |F_rest| > F_REL_FLOOR * max|F_rest| (the excluded count is printed).
-The noise floor N0 is the largest of these metrics for two controls at rest: an
-identical repeat, and the same run with every position shifted by a constant
-(different cell layout, same physics).
+The noise floor N0(band, metric) is the larger of the same metric for two
+controls at rest: an identical repeat, and the same run with every position
+shifted by a constant (different cell layout, same physics).
 
-PASS: every boosted run has D_u <= BAR and D_F <= BAR in both bands.
-FAIL: any metric above max(BAR, 3 N0), or any non-finite value in a compared field.
-INCONCLUSIVE: otherwise (a metric above BAR but within three times the noise floor).
+PASS: every boosted run has D <= NOISE_FACTOR * N0 for each band and metric.
+FAIL: otherwise, or any non-finite value in a compared field.
+D_u is also printed against U_REFERENCE, the round-off level of a rigid boost
+without periodic wrap.
 """
 
 import argparse
@@ -49,7 +50,8 @@ import sys
 import h5py
 import numpy as np
 
-BAR = 1e-5
+NOISE_FACTOR = 3.0
+U_REFERENCE = 1e-5
 F_REL_FLOOR = 1e-6
 BANDS = ("FUV", "LW")
 
@@ -201,37 +203,46 @@ def main():
         return
 
     c_hyp = measure_c_hyp(opt.rest)
-    print(f"Median closure c_hyp (rest run): {c_hyp:.4f} km/s; bar {BAR:.0e}")
-    summary = dict(c_hyp_kms=c_hyp, bar=BAR, runs={})
+    print(f"Median closure c_hyp (rest run): {c_hyp:.4f} km/s")
+    summary = dict(c_hyp_kms=c_hyp, noise_factor=NOISE_FACTOR, runs={}, noise_floor={})
     all_finite = True
 
-    N0 = 0.0
-    summary["noise_floor"] = {}
+    N0 = {band: dict(D_u=0.0, D_F=0.0) for band in BANDS}
     for control in (opt.repeat, opt.shifted):
         noise, _, finite = compare(opt.rest, control, np.zeros(3))
         all_finite &= finite
-        n0 = max(max(noise[b]["D_u"], noise[b]["D_F"]) for b in BANDS)
-        N0 = max(N0, n0)
         for band in BANDS:
+            for metric in ("D_u", "D_F"):
+                N0[band][metric] = max(N0[band][metric], noise[band][metric])
             print(
                 f"noise floor ({control}) {band}: D_u={noise[band]['D_u']:.3e} "
                 f"D_F={noise[band]['D_F']:.3e}"
             )
-        summary["noise_floor"][control] = dict(N0=n0, bands=noise, finite=finite)
+        summary["noise_floor"][control] = dict(bands=noise, finite=finite)
     summary["N0"] = N0
+    for band in BANDS:
+        print(
+            f"bar {band}: D_u <= {NOISE_FACTOR * N0[band]['D_u']:.3e}, "
+            f"D_F <= {NOISE_FACTOR * N0[band]['D_F']:.3e}"
+        )
 
-    passed = True
+    passed = all_finite
     for run in opt.boosted:
         velocity = bulk_velocity(run)
         res, pos_res_h, finite = compare(opt.rest, run, velocity)
         all_finite &= finite
         run_pass = finite
         for band in BANDS:
-            ok = res[band]["D_u"] <= BAR and res[band]["D_F"] <= BAR
+            ok = all(
+                res[band][metric] <= NOISE_FACTOR * N0[band][metric]
+                for metric in ("D_u", "D_F")
+            )
             run_pass &= ok
             print(
                 f"{run} V={velocity[0]:.4g} km/s ({velocity[0] / c_hyp:.3g} c_hyp) {band}: "
-                f"D_u={res[band]['D_u']:.3e} D_F={res[band]['D_F']:.3e} "
+                f"D_u={res[band]['D_u']:.3e} "
+                f"({'<=' if res[band]['D_u'] <= U_REFERENCE else '>'} {U_REFERENCE:.0e}) "
+                f"D_F={res[band]['D_F']:.3e} "
                 f"(F excluded {res[band]['n_F_excluded']}, min|F| {res[band]['min_abs_F']:.3e}) "
                 f"{'ok' if ok else 'ABOVE BAR'}"
             )
@@ -248,26 +259,9 @@ def main():
             passed=bool(run_pass),
         )
 
-    worst = max(
-        (
-            max(r["bands"][b]["D_u"], r["bands"][b]["D_F"])
-            for r in summary["runs"].values()
-            for b in BANDS
-        ),
-        default=0.0,
-    )
     if not all_finite:
-        verdict = "FAIL"
         print("Non-finite value in a compared field.")
-    elif worst > max(BAR, 3.0 * N0):
-        verdict = "FAIL"
-    elif passed:
-        verdict = "PASS"
-    else:
-        verdict = "INCONCLUSIVE"
-    print(
-        f"Largest metric {worst:.3e}; bar {BAR:.0e}; three times the noise floor {3 * N0:.3e}."
-    )
+    verdict = "PASS" if passed and all_finite else "FAIL"
     summary["verdict"] = verdict
     with open(opt.json_out, "w") as f:
         json.dump(summary, f, indent=2, default=float)

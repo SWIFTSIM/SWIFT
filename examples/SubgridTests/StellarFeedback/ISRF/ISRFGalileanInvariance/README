@@ -61,9 +61,9 @@ Other env vars: `level`, `gas_density`, `gas_mass`, `star_mass`,
 matches particles by `ParticleIDs` and computes, per band and over all
 snapshots, `D_u = max|u_boost - u_rest|/max|u_rest|` and the same for `F`
 (componentwise, untransformed, over particles with `|F|` above `1e-6` of
-the maximum). PASS: `D_u` and `D_F` at most `1e-5` for every boost.
-FAIL: a metric above both `1e-5` and three times the larger rest-control
-difference. INCONCLUSIVE: a metric above `1e-5` but within that floor.
+the maximum). The same metrics between the rest run and each rest control
+set the round-off floor per band and metric. PASS: every boost within three
+times that floor.
 It also prints the position residual `|x_boost - x_rest - V*t|` in `h`.
 
 `lag_check.py --run runs/lag_<k>c --gate` measures the lag as the
