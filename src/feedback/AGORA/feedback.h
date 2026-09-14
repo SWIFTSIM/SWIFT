@@ -244,9 +244,9 @@ void feedback_prepare_feedback(struct spart *restrict sp,
  * @param with_cosmology Are we running with cosmology on?
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
- * @param old_time_bin The star's time bin for the step that just finished
- * (unused: AGORA has the same stale-bin exposure as GEAR, tracked for a
- * separate follow-up fix, not this commit).
+ * @param old_time_bin The star's time bin for the step that just finished,
+ * captured by the caller before it overwrites sp->time_bin with the next
+ * step's bin.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
