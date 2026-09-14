@@ -345,7 +345,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float mu_0) {
 
-  p->force.balsara = 1.f;
+ // p->force.balsara = 1.f;
 }
 
 /**

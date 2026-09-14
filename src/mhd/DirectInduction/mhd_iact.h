@@ -438,13 +438,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                        Brj * r_inv * Bj[2] * tensile_correction_scale_j;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+  //pi->a_hydro[0] -= mj * sph_acc_term_i[0];
+  //pi->a_hydro[1] -= mj * sph_acc_term_i[1];
+  //pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
-  pj->a_hydro[0] -= mi * sph_acc_term_j[0];
-  pj->a_hydro[1] -= mi * sph_acc_term_j[1];
-  pj->a_hydro[2] -= mi * sph_acc_term_j[2];
+  //pj->a_hydro[0] -= mi * sph_acc_term_j[0];
+  //pj->a_hydro[1] -= mi * sph_acc_term_j[1];
+  //pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {
@@ -736,9 +736,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bi[2] * tensile_correction_scale_i;
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+  //pi->a_hydro[0] -= mj * sph_acc_term_i[0];
+  //pi->a_hydro[1] -= mj * sph_acc_term_i[1];
+  //pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {
