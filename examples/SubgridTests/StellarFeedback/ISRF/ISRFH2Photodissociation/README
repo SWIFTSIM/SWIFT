@@ -22,7 +22,8 @@ density, not by the size of the cloud. With mode 3, `thin` gives
 `u_LW/(u_FUV+u_LW)` is 0.148, the value of the Draine (1978) field that the
 Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
 star gives 0.36). The code's rate is then 0.92 times that rate, instead of
-2.24. The star is fainter in the LW band, so the run is 12.5 times longer.
+2.24. The star is fainter in the LW band, so the run is 12.5 times longer, with
+snapshots 6.2 times further apart.
 
 ## Self-shielding modes
 `h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:
@@ -66,7 +67,7 @@ them together to keep the box size: `level=5 gas_mass=0.1` (the default)
 and `level=6 gas_mass=0.0125` give the same 5.1 pc box. Level 5 is the
 lowest level SWIFT accepts here: at level 4, the star's initial smoothing
 length is larger than a top-level cell. A level-5 run takes two to three
-minutes on 8 threads (`draine_spectrum` about 40 minutes). See `run.sh` for the other overrides.
+minutes on 8 threads (`draine_spectrum` about seven minutes). See `run.sh` for the other overrides.
 
 # Checking
 ```

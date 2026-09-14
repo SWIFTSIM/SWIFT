@@ -16,7 +16,8 @@ config=${config:="thin"}  #thin, thick or draine_spectrum
 # column Grackle's local self-shielding estimate sees. draine_spectrum is thin
 # with a 7.61 Msun star, whose LW fraction u_LW/(u_FUV+u_LW) = 0.148 matches
 # the Draine (1978) field; its LW luminosity is 184 times lower, hence the
-# longer run.
+# longer run. Its snapshot spacing keeps the same number of snapshots per
+# e-fold as thin, which the check's quadrature error assumes.
 star_mass_default=29.7
 time_end_default=2.6e-8
 delta_time_default=6.5e-10
@@ -32,7 +33,7 @@ case "$config" in
 	nH2_ratio_default=5e-10
 	star_mass_default=7.61
 	time_end_default=3.24e-7
-	delta_time_default=8.1e-9
+	delta_time_default=4.05e-9
 	;;
     *)
 	echo "Unknown config '$config'. Use thin, thick or draine_spectrum."
