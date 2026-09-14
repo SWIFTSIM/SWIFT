@@ -24,6 +24,20 @@
 #   Requires macros: AX_CHECK_COMPILE_FLAG, AX_COMPILER_VENDOR,
 #   AX_GCC_ARCHFLAG, AX_GCC_X86_CPUID.
 #
+#   NOTE: this copy has diverged from the Autoconf Archive and should not be
+#   replaced wholesale by a newer upstream revision without merging what
+#   follows. Measured against upstream serial 23, it adds branches for clang,
+#   for icx (oneAPI), and for nvc, Cray and Fujitsu, none of which upstream
+#   selects useful flags for; an Intel -x table that reaches current CPUs
+#   rather than stopping at Haswell, with AMD parts given -march= instead
+#   because the -x codes gate on a GenuineIntel check at run time; and a
+#   preference for asking the compiler to target the build host itself, with
+#   -march=native, -mcpu=native, -xHost or -fast, leaving the CPUID tables as
+#   the fallback for portable and cross builds. It also spells the Intel
+#   aliasing flag -ansi-alias rather than -ansi_alias, and tests
+#   ac_test_CFLAGS against "set" rather than against the empty string, which
+#   is the form configure.ac in this tree depends on.
+#
 # LICENSE
 #
 #   Copyright (c) 2008 Steven G. Johnson <stevenj@alum.mit.edu>
@@ -55,7 +69,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 18
+#serial 18 (modified for SWIFT)
 
 AC_DEFUN([AX_CC_MAXOPT],
 [
