@@ -67,10 +67,21 @@ What gets chosen depends on the compiler:
   - Intel icc and icx (oneAPI): "-xHost", falling back to a table that picks
     an instruction set with "-x", for example "-xCORE-AVX512".
 
-  - Other compilers, including NVIDIA nvc (NVHPC), Cray and Fujitsu, have no
-    entry in the selection logic. Nothing is chosen for them and they keep
-    whatever autotools defaults to, usually just "-g -O2", so supply your own
-    CFLAGS with these.
+  - NVIDIA nvc (NVHPC): "-fast". The NVHPC reference guide notes that this
+    also includes the appropriate "-tp" for the machine compiling, so it
+    covers the host targeting as well as the optimisation level.
+
+  - Cray: "-O3" only. On a Cray the cc wrapper takes the target architecture
+    from the loaded craype-* module, so configure does not set one itself.
+
+  - Fujitsu fcc in Trad mode: "-Kfast".
+
+  - Anything else keeps whatever autotools defaults to, usually just
+    "-g -O2", so supply your own CFLAGS with those.
+
+Note that Cray CCE 9 and later, and Fujitsu fcc in Clang mode, identify
+themselves as clang and therefore follow the first line above rather than
+their own.
 
 This deserves attention on a cluster whose login nodes are not the same model
 as its compute nodes, which is common. Building on the login node can produce

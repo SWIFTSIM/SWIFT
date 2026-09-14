@@ -154,9 +154,19 @@ run on. What it picks depends on the compiler:
   consulted and the closest matching ``-march=`` used instead.
 + **Intel icc and icx (oneAPI)**: ``-xHost``, falling back to a table that
   selects an instruction set with ``-x``, such as ``-xCORE-AVX512``.
-+ **Everything else**, including NVIDIA ``nvc`` (NVHPC), Cray and Fujitsu:
-  nothing is selected. These compilers keep whatever autotools defaults to,
-  usually just ``-g -O2``, so pass your own ``CFLAGS``.
++ **NVIDIA nvc (NVHPC)**: ``-fast``, which per the NVHPC reference guide also
+  includes the appropriate ``-tp`` for the machine compiling, covering host
+  targeting as well as the optimisation level.
++ **Cray**: ``-O3`` only. The ``cc`` wrapper takes the target architecture
+  from the loaded ``craype-*`` module, so ``configure`` does not set one.
++ **Fujitsu** ``fcc`` in Trad mode: ``-Kfast``.
++ **Anything else**: nothing is selected, and the compiler keeps whatever
+  autotools defaults to, usually just ``-g -O2``, so pass your own ``CFLAGS``.
+
+.. note::
+    Cray CCE 9 and later, and Fujitsu ``fcc`` in Clang mode, identify
+    themselves as clang and so follow the first entry above rather than their
+    own.
 
 .. warning::
     On a cluster whose login nodes differ from its compute nodes, building on

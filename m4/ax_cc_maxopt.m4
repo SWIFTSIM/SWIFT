@@ -278,6 +278,37 @@ if test "$ac_test_CFLAGS" != "set"; then
      fi
      ;;
 
+    portland)
+     # nvc, the NVIDIA HPC SDK compiler, formerly PGI. Its reference guide says
+     # of -fast that "the appropriate -tp option is automatically included to
+     # enable generation of code optimized for the type of system on which
+     # compilation is performed", so the one flag covers both the optimisation
+     # level and the host targeting that -march=native gives elsewhere. That
+     # also makes it the wrong choice for a portable binary, hence the test.
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno; then
+       AX_CHECK_COMPILE_FLAG(-fast, CFLAGS="$CFLAGS -fast", [CFLAGS="$CFLAGS -O3"])
+     else
+       CFLAGS="$CFLAGS -O3"
+     fi
+     ;;
+
+    cray)
+     # Classic Cray C only. CCE 9 and later are clang based and define
+     # __clang__, which AX_COMPILER_VENDOR tests before _CRAYC, so those are
+     # handled by the clang branch above. No architecture flag is set here: on
+     # a Cray the cc wrapper takes the target from the loaded craype-* module,
+     # and overriding that from configure is more likely to fight it than help.
+     CFLAGS="$CFLAGS -O3"
+     ;;
+
+    fujitsu)
+     # fcc in Trad mode. In Clang mode it defines __clang__ and is handled by
+     # the clang branch above. -Kfast is the aggregate optimisation flag and
+     # already implies the relaxed floating point that the gcc and clang paths
+     # ask for with -ffast-math, as well as targeting the build host.
+     AX_CHECK_COMPILE_FLAG(-Kfast, CFLAGS="$CFLAGS -Kfast", [CFLAGS="$CFLAGS -O3"])
+     ;;
+
     microsoft)
      # default optimization flags for MSVC opt builds
      CFLAGS="$CFLAGS -O2"
