@@ -249,18 +249,44 @@ case $host_cpu in
      ax_gcc_arch="$ax_gcc_arch powerpc"
      ;;
   aarch64*|arm64*)
-     # gcc and clang both implement -mcpu=native on aarch64 by reading MIDR_EL1,
-     # which is the same lookup a table here would be doing by hand, and they
-     # keep it current for cores that do not exist yet. It is also the only
-     # thing that can work on Darwin, where there is no /proc/cpuinfo to parse
-     # and so no table could ever match. Leave the identification to them.
+     # Ask the compiler first. gcc and clang both implement -mcpu=native on
+     # aarch64 by reading MIDR_EL1, which is the same lookup the entries below
+     # do by hand, and they track cores that do not exist yet. It is also the
+     # only thing that can work on Darwin, where there is no /proc/cpuinfo and
+     # so no table here could ever match, which covers Apple silicon.
      #
-     # The two implementers previously listed here, Broadcom and Cavium, were
-     # already resolved this way; every other vendor, which is to say every
-     # Neoverse part including NVIDIA Grace, along with Ampere, Fujitsu A64FX
-     # and Apple silicon, matched nothing and got no architecture flag at all.
+     # The named cores follow it rather than replace it, as a fallback for a
+     # toolchain that will not accept -mcpu=native. Note the whole block is
+     # already skipped when cross compiling, so these never serve that case.
+     # They cover only the Broadcom and Cavium parts, which is what upstream
+     # carried; every other vendor, meaning every Neoverse part including
+     # NVIDIA Grace, as well as Ampere, Fujitsu and Apple, relies on native.
+     #
+     # The architecture names among them, armv8-a and the like, are rejected
+     # by -mcpu= but accepted by -march=, which the loop below tries on its
+     # second pass over the flag prefixes.
      ax_gcc_arch="native"
-     ;;
+     cpuimpl=`grep 'CPU implementer' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
+     cpuarch=`grep 'CPU architecture' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
+     cpuvar=`grep 'CPU variant' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
+     case $cpuimpl in
+       0x42) case $cpuarch in
+               8) case $cpuvar in
+                    0x0) ax_gcc_arch="native thunderx2t99 vulcan armv8.1-a armv8-a+lse armv8-a" ;;
+                  esac
+                  ;;
+             esac
+             ;;
+       0x43) case $cpuarch in
+               8) case $cpuvar in
+                    0x0) ax_gcc_arch="native thunderx armv8-a" ;;
+                    0x1) ax_gcc_arch="native thunderx+lse armv8.1-a armv8-a+lse armv8-a" ;;
+                  esac
+                  ;;
+             esac
+             ;;
+      esac
+      ;;
 esac
 fi # not cross-compiling
 fi # guess arch
