@@ -17,8 +17,7 @@ Gravity:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 # Shortened relative to HomogeneousBox: this test only needs the tree to be
-# built and a handful of active steps taken, so the debug probes in
-# scheduler_splittasks.c / runner_doiact_functions_sinks.h fire.
+# built and a handful of active steps taken.
 TimeIntegration:
   time_begin:        0.                          # The starting time of the simulation (in internal units).
   time_end:          5e-3                        # 5 Myr # The end time of the simulation (in internal units).
@@ -63,14 +62,12 @@ Scheduler:
   # explicit tree everywhere.
   cell_split_size: 800
   # Forced to 0 so that any cell with sinks.count > 0 (but hydro.count ==
-  # stars.count == 0, as in our corner hierarchy) takes the *explicit*
+  # stars.count == 0, as in the corner hierarchy) takes the explicit
   # task-split branch in scheduler_splittasks.c instead of being folded
-  # into a single lazily-recursed "sub" task. The "DROPPED SELF DENSITY
-  # TASK for sink-only progeny" / "DROPPED INTRA-PARENT PAIR DENSITY
-  # TASKS for sink-only progeny" debug probes only live in that explicit
-  # branch: with the (huge) SWIFT defaults (32000), a 0-hydro-count cell
-  # always satisfies "0 < default" and never reaches them. Since
-  # cell_split_size above confines actual tree splitting to the
+  # into a single lazily-recursed "sub" task: with the SWIFT defaults
+  # (32000) a 0-hydro-count cell always satisfies "0 < default" and never
+  # reaches the per-progeny filters this example is meant to exercise.
+  # Since cell_split_size above confines actual tree splitting to the
   # gas-free corner, this only affects that hierarchy, not the bulk of
   # the box.
   cell_sub_size_self_hydro: 0
