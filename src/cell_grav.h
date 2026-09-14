@@ -109,33 +109,6 @@ struct cell_grav {
   /*! Last (integer) time the cell's gpart were drifted forward in time. */
   integertime_t ti_old_part;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! ti_old_part on entry to the last cell_drift_gpart() call on this cell. */
-  integertime_t ti_old_part_on_entry;
-
-  /*! Number of gparts visited by the last direct drift of this cell, or -1
-   * if the direct drift branch wasn't taken. */
-  int count_drifted;
-
-  /*! Whether the force flag was already set on this cell (not just
-   * inherited) on the last cell_drift_gpart() call. */
-  int drift_force_on_entry;
-
-  /*! ti_current the last time a grav_counts delivery touched this cell. */
-  integertime_t counts_recv_at_tic;
-
-  /*! ti_current the last time the gpart data channel delivered fresh
-   * foreign particles to this cell. */
-  integertime_t data_recv_at_tic;
-
-  /*! #count at that last data delivery. */
-  int data_recv_count;
-
-  /*! Number of times runner_do_recv_gpart visited this cell, including via
-   * recursion (unlike subtasks_executed, which only counts direct hits). */
-  int data_recv_exec_count;
-#endif
-
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
 
