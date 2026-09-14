@@ -1,0 +1,66 @@
+# GEAR stellar feedback examples
+
+Test cases for the GEAR stellar feedback mechanisms, organised by
+mechanism directory. Each subdirectory is self-contained and carries its
+own README with the configure line, the run command and how to check the
+result; start there once you have picked one below. `radiation_table_reader.py`
+in this directory is shared by several of the analytic-check scripts below;
+it is not an example on its own.
+
+## Supernovae
+
+No shipped example yet.
+
+## `StellarWinds/`
+
+| Example | Tests |
+|---|---|
+| `StellarWindBubble` | Bubble propagation driven by stellar-wind injection in a homogeneous, periodic gas box. |
+| `StellarWindInjection` | Wind energy injection in isolation, on a cartesian IC grid, with no external influence. |
+
+## `RadiationPressure/`
+
+| Example | Tests |
+|---|---|
+| `RadiationPressureShellExpansion` | The radiation-pressure momentum channel alone (photoionization, cooling and gravity off). Compared against the momentum-conserving analytic solution of Krumholz & Matzner (2009, ApJ 703, 1352). |
+
+## `HIIRegions/`
+
+| Example | Tests |
+|---|---|
+| `StromgrenSphere` | Equilibrium Stromgren radius and Spitzer (1978) D-type expansion for a single source in a uniform box. The simplest case, and the base configuration the others vary. |
+| `Starbench` | The STARBENCH late-phase D-type expansion test (Bisbas et al. 2015, MNRAS 453, 1324), checked against that paper's own semi-empirical solution rather than Spitzer, which over-predicts at late times. |
+| `Hu2017` | Four co-located sources in a dense uniform medium (Hu et al. 2017, MNRAS 471, 2151, Appendix A; the same test appears in Smith et al. 2021). Also the setup used for cadence studies. |
+| `ClumpSmith2021` | Erosion of a dense clump by a nearby source (Smith et al. 2021, MNRAS 506, 3882, Fig. 2). Ships matrix-analysis scripts as well as a single-run one. |
+| `StromgrenSphereCosmo` | The `StromgrenSphere` box with cosmology enabled: an identity tier at a ~ 1 that must reproduce the non-cosmological result, and a high-redshift tier checked against the analytic formulas at the instantaneous physical density. |
+| `TaskGraphPair` | A source whose region spans a pair of top-level cells, exercising the neighbour search across a cell boundary. No analytic reference; correct means reaching `time_end` with no error. |
+| `TaskGraphCluster` | Many co-located sources competing for gas in the same region, exercising the locking in the star loops. No analytic reference; correct means reaching `time_end` with no error. |
+
+`Starbench`, `Hu2017`, and `ClumpSmith2021` need `--with-cooling=grackle_1`:
+at mode 1 and above the photon budget is priced against the neutral
+hydrogen fraction from the species network rather than against total
+hydrogen, which is part of the physics they compare. The others run with
+any mode; each README states which it needs.
+
+## `ISRF/`
+
+Interstellar radiation field (photoelectric heating and its FUV/LW
+propagation and dissipation), independent of the HII photoionization
+mechanism above.
+
+| Example | Tests |
+|---|---|
+| `ISRFPhotoelectricHeating` | Photoelectric heating in isolation (injection, no propagation), against real Grackle cooling. |
+| `ISRFInjectionConservation` | Injection alone (propagation off), checking the field is conserved. |
+| `ISRFHyperbolicPropagation` | The hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation scheme against its own discrete steady-state prediction. |
+| `ISRFCausalReach` | Propagation with the field initialised to zero, checking the causal reach of the hyperbolic scheme. |
+| `ISRFPropagationSpeedSweep` | A `c_hyp` sweep of the propagation scheme, from `c_hyp ~ c` down to `c_hyp << c`. |
+| `ISRFOpticallyThin` | Propagation in the optically-thin corner of parameter space. |
+| `ISRFDissipation` | The negativity-triggered dissipation mechanism. |
+| `ISRFDissipationExtreme` | Dissipation under an extreme parameter combination. |
+| `ISRFMultiBinDissipation` | Two hydrostatic gas phases at different SWIFT timestep bins, with sources placed to probe cross-bin dissipation behaviour. |
+| `ISRFShearAsymmetry` | A stabilised shear layer carrying two seeded Gaussian FUV/LW blobs, checking the propagation and dissipation scheme stays isotropic. |
+| `ISRFSourceTurnOff` | Field decay once the source star dies, same setup as `ISRFHyperbolicPropagation` otherwise. |
+
+Reconfiguring rebuilds `swift` in place, so check before you start a run
+that depends on the current binary.
