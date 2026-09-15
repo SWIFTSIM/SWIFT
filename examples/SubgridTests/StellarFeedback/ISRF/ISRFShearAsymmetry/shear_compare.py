@@ -44,7 +44,7 @@ def parse_options():
     parser.add_argument("--mode", choices=["gate", "pair"], required=True)
     parser.add_argument("--runs", nargs="+", help="Gate mode: sheared run directories.")
     parser.add_argument(
-        "--zero", help="Gate mode: the matching zero-shear control run directory."
+        "--control", help="Gate mode: the matching zero-shear control run directory."
     )
     parser.add_argument("--plus", help="Pair mode: the +v_shear run directory.")
     parser.add_argument("--minus", help="Pair mode: the -v_shear run directory.")
@@ -58,33 +58,33 @@ def load_metrics(run_dir):
 
 
 def mode_gate(opt):
-    zero = load_metrics(opt.zero)
-    print(f"=== Gate: zero-shear control = {opt.zero} ===")
-    if zero.get("void"):
+    control = load_metrics(opt.control)
+    print(f"=== Gate: zero-shear control = {opt.control} ===")
+    if control.get("void"):
         raise RuntimeError(
-            f"{opt.zero} (the zero-shear control) is itself VOID; "
+            f"{opt.control} (the zero-shear control) is itself VOID; "
             "it cannot be used as the gate's calibration baseline."
         )
     overall_ok = True
     for run in opt.runs:
         m = load_metrics(run)
         print(f"\n-- {run} --")
-        if m.get("moment_weighting") != zero.get("moment_weighting"):
+        if m.get("moment_weighting") != control.get("moment_weighting"):
             raise RuntimeError(
                 f"moment_weighting mismatch: {run}={m.get('moment_weighting')!r} vs "
-                f"{opt.zero}={zero.get('moment_weighting')!r} -- one of these "
+                f"{opt.control}={control.get('moment_weighting')!r}: one of these "
                 "shear_metrics.json files predates the negative-weight-clipping fix; "
                 "rerun isrf_shear_asymmetry_check.py on both before gating."
             )
         if m.get("void"):
             print(
-                "  VOID (KH contamination or negative-weight share) -- "
+                "  VOID (KH contamination or negative-weight share): "
                 "gate not meaningful for this run."
             )
             continue
         for band in ("FUV", "LW"):
             b = m["bands"][band]
-            b0 = zero["bands"][band]
+            b0 = control["bands"][band]
             for key in ("A_centroid", "A_spread", "A_energy"):
                 a = abs(b[key])
                 a0 = abs(b0[key])

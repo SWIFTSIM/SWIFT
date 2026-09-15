@@ -73,8 +73,9 @@ insufficient resolving power at that resolution and `--pulse-sigma-h` or
 # Checking
 ```
 python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
-python3 shear_compare.py --mode gate --runs dir1 dir2 ... --zero zero_shear_dir
+python3 shear_compare.py --mode gate --runs dir1 dir2 ... --control zero_shear_dir
 python3 shear_compare.py --mode pair --plus plus_dir --minus minus_dir
+python3 shear_compare_ensemble.py --shear-runs dir1 dir2 ... --control-runs zero_dir1 zero_dir2 ...
 ```
 `run.sh` runs the per-run check automatically, computing `A_centroid`,
 `A_spread`, and `A_energy` (the reflection-symmetry violation, `shear`
@@ -105,6 +106,25 @@ to catch an effect at the percent level. `shear_compare.py --mode gate`
 performs this comparison; a run flagged void, by the KH-contamination
 control or by the negative-weight-share check above, is excluded from the
 gate rather than trusted.
+
+`shear_compare_ensemble.py` runs the ensemble, time-averaged version of
+the same gate: each realisation's metric is time-averaged over the
+settled half of its run (`t >= window_frac * t_last`, default
+`window_frac=0.5`), and the bar comes from an ensemble of independent
+zero-shear-control realisations (different glass shifts via `makeIC.py
+--glass-shift`) rather than one control run's single last-snapshot value.
+`--pulse-sigma-h` and `--layer-width-h` must match the values the runs
+were generated with (`makeIC.py`'s own defaults, 2.0 and 4.0, if left
+unset). The gate is `|mean(shear) - mean(control)| <= 3*sqrt(SE_shear^2 +
+SE_control^2)`, `SE = sample std / sqrt(N)`; a band/metric with fewer than
+2 usable realisations in either group is reported `INCONCLUSIVE`, never a
+silent PASS or FAIL, and a non-finite realisation FAILs that band/metric
+outright rather than being dropped from the average. `--minus-runs`
+accepts `v_shear < 0` realisations: they form their own group (mean, SE)
+compared against the control ensemble as a separate, report-only check,
+and are never pooled into `--shear-runs`. Use `--mode gate` for a quick
+single-run check and `shear_compare_ensemble.py` to decide whether the
+example passes.
 
 The `contrast` variant (no exact symmetry) and the `slab` source geometry
 are report-only: `--mode pair` compares a `+v_shear`/`-v_shear` pair via a
