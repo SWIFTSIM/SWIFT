@@ -802,6 +802,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* TDE rate of solar mass stars per year */
     const double M_bh_6 = bp->subgrid_mass / (1e6 * M_sun_internal);
     const double tde_rate_per_yr = 7.1e-4 * pow(M_bh_6, -0.28);
+    bp->tde_rate_per_yr = tde_rate_per_yr;
     const double tde_rate_internal = tde_rate_per_yr / yr_internal;
 
     /* Convert to mass lost per timestep in internal units */

@@ -115,6 +115,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->nsc_mass = props->nsc_seed_mass;
   bp->total_accreted_mass = 0.f;
   bp->mass_gained_from_tde = 0.f;
+  bp->tde_rate_per_yr = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
   bp->energy_reservoir = 0.f;
@@ -1334,6 +1335,7 @@ INLINE static void black_holes_create_from_gas(
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
   bp->mass_gained_from_tde = 0.f;
+  bp->tde_rate_per_yr = 0.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
   bp->number_of_gas_swallows = 0;

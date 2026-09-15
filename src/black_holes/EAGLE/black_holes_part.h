@@ -104,6 +104,9 @@ struct bpart {
   /*! Gas mass to be gained by NSC this timestep */
   float nsc_mass_to_gain;
 
+  /*! TDE rate (yr-1) from last NSC mass transfer*/
+  float tde_rate_per_yr;
+
   /*! Energy reservoir for feedback */
   float energy_reservoir;
 
