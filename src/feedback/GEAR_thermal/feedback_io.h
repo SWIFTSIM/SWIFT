@@ -27,8 +27,8 @@
  * Reads "FUVSpecificEnergy"/"LWSpecificEnergy" (singular: the codebase's
  * own IC-read convention, e.g. hydro's "Density"/"SmoothingLength", vs. the
  * plural "Densities"/"SmoothingLengths" used for the matching snapshot
- * output) as OPTIONAL fields into #feedback_part_data.u_FUV/u_LW. The
- * snapshot output for the same quantity
+ * output) as OPTIONAL fields into #feedback_isrf_band_data.u.
+ * The snapshot output for the same quantity
  * (#convert_part_u_FUV/convert_part_u_LW, src/tracers/GEAR/tracers_io.h)
  * deliberately uses the plural "FUVSpecificEnergies"/"LWSpecificEnergies"
  * instead, so a snapshot cannot be fed back in as an IC unmodified. This
@@ -41,13 +41,13 @@
  * though this reader does not itself enforce that.
  *
  * An IC without these fields is unaffected: #radiation_first_init_part no
- * longer zeroes #feedback_part_data.u_FUV/u_LW (and seeds u_FUV_prev/
- * u_LW_prev from them, not from 0.f, so a supplied value also survives the
- * very first propagation update when `GEARFeedback:ISRF_propagation` is
- * on) so that a supplied value survives first-init, but every #part is
- * bzero'd before this read runs (single_io.c/parallel_io.c/serial_io.c),
- * so a missing field still leaves exactly 0.f, matching pre-existing
- * behaviour.
+ * longer zeroes #feedback_isrf_band_data.u (and seeds
+ * #feedback_isrf_band_data.u_prev from it, not from 0.f, so a supplied value
+ * also survives the very first propagation update when
+ * `GEARFeedback:ISRF_propagation` is on) so that a supplied value survives
+ * first-init, but every #part is bzero'd before this read runs
+ * (single_io.c/parallel_io.c/serial_io.c), so a missing field still leaves
+ * exactly 0.f, matching pre-existing behaviour.
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
@@ -63,10 +63,10 @@ INLINE static int feedback_read_particles(struct part *parts,
 
   list[0] = io_make_input_field("FUVSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                feedback_data.u_FUV);
+                                feedback_data.isrf_band[ISRF_BAND_FUV].u);
   list[1] = io_make_input_field("LWSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                feedback_data.u_LW);
+                                feedback_data.isrf_band[ISRF_BAND_LW].u);
 
   return 2;
 }

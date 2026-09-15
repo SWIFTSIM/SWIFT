@@ -357,8 +357,8 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   sp->feedback_data.radiation.L_bol = 0.f;
   sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
-  sp->feedback_data.radiation.L_FUV = 0.;
-  sp->feedback_data.radiation.L_LW = 0.;
+  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+    sp->feedback_data.radiation.L_band[b] = 0.;
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
 
@@ -533,7 +533,7 @@ radiation_get_part_ionized_end_time(const struct part *p,
  * though nothing in the injection pass itself runs for an un-illuminated
  * particle.
  *
- * With LW/FUV propagation off, an expiring particle also has u_FUV/u_LW
+ * With LW/FUV propagation off, an expiring particle also has every band's u
  * zeroed here: nothing else decays that stale value once the particle
  * stops being illuminated (propagation ON already handles this via its own
  * per-step decay/mixing update, so it is deliberately left untouched
@@ -551,8 +551,8 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
   p->feedback_data.is_illuminated_ISRF = 0;
 
   if (!e->feedback_props->ISRF_propagation) {
-    p->feedback_data.u_FUV = 0.f;
-    p->feedback_data.u_LW = 0.f;
+    for (int b = 0; b < ISRF_BAND_COUNT; b++)
+      p->feedback_data.isrf_band[b].u = 0.f;
   }
 }
 
@@ -679,12 +679,12 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
 /**
  * Local ISRF strength in Habing units, from this #part's own FUV+LW
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
- * with u = u_FUV + u_LW (post-injection/extinction). Feeds Grackle's
+ * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
  * use_isrf_field, forced on by GEARFeedback:with_photoelectric_heating).
  * Zero for a particle no star has ever illuminated and whose IC did not
  * supply "FUVSpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
- * before the IC read; #radiation_first_init_part leaves u_FUV/u_LW
+ * before the IC read; #radiation_first_init_part leaves the band fields
  * untouched either way).
  *
  * Clamped to be non-negative before being returned: see
@@ -702,8 +702,8 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_sum =
-      (double)p->feedback_data.u_FUV + (double)p->feedback_data.u_LW;
+  const double u_sum = (double)p->feedback_data.isrf_band[ISRF_BAND_FUV].u +
+                       (double)p->feedback_data.isrf_band[ISRF_BAND_LW].u;
   const double flux = phys_const->const_speed_light_c * rho * u_sum;
   const double flux_cgs =
       flux *
@@ -747,7 +747,7 @@ double radiation_get_part_LW_dissociation_rate_internal(
     const struct cosmology *cosmo, const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_LW = (double)p->feedback_data.u_LW;
+  const double u_LW = (double)p->feedback_data.isrf_band[ISRF_BAND_LW].u;
   const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
   const double flux_LW_cgs =
       flux_LW *

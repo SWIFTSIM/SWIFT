@@ -1088,14 +1088,14 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 
 /**
  * @brief Local specific FUV-band radiation field, see
- * #feedback_part_data.u_FUV. Thin dispatch wrapper, same reasoning as
- * #feedback_is_part_tagged_as_ionized: every feedback model provides
- * this function, returning 0 everywhere except here for GEAR.
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].u. Thin dispatch wrapper, same
+ * reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
+ * provides this function, returning 0 everywhere except here for GEAR.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_u_FUV(const struct part *p) {
-  return p->feedback_data.u_FUV;
+  return p->feedback_data.isrf_band[ISRF_BAND_FUV].u;
 }
 
 /**
@@ -1105,14 +1105,14 @@ float feedback_get_part_u_FUV(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_u_LW(const struct part *p) {
-  return p->feedback_data.u_LW;
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].u;
 }
 
 /**
  * @brief Negativity-triggered artificial-dissipation coefficient, see
- * #feedback_part_data.dissipation_alpha_trigger_FUV and
- * #feedback_part_data.dissipation_alpha_floor_FUV. Thin dispatch wrapper,
- * same reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger and
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_FUV.
  *
  * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
  * the per-pair `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`,
@@ -1122,8 +1122,9 @@ float feedback_get_part_u_LW(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
-  return max(p->feedback_data.dissipation_alpha_trigger_FUV,
-             p->feedback_data.dissipation_alpha_floor_FUV);
+  return max(
+      p->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger,
+      p->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor);
 }
 
 /**
@@ -1132,19 +1133,19 @@ float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
-  return max(p->feedback_data.dissipation_alpha_trigger_LW,
-             p->feedback_data.dissipation_alpha_floor_LW);
+  return max(p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger,
+             p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_floor);
 }
 
 /**
  * @brief `(1/rho) div(rho F)` accumulator, see
- * #feedback_part_data.div_specific_flux_FUV. Thin dispatch wrapper, same
- * reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].div_specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_FUV.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_div_specific_flux_FUV(const struct part *p) {
-  return p->feedback_data.div_specific_flux_FUV;
+  return p->feedback_data.isrf_band[ISRF_BAND_FUV].div_specific_flux;
 }
 
 /**
@@ -1153,21 +1154,21 @@ float feedback_get_part_div_specific_flux_FUV(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_div_specific_flux_LW(const struct part *p) {
-  return p->feedback_data.div_specific_flux_LW;
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].div_specific_flux;
 }
 
 /**
  * @brief Tracked specific flux moment, see
- * #feedback_part_data.specific_flux_FUV. Thin dispatch wrapper, same
- * reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_FUV.
  *
  * @param p The #part to query.
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
-  ret[0] = p->feedback_data.specific_flux_FUV[0];
-  ret[1] = p->feedback_data.specific_flux_FUV[1];
-  ret[2] = p->feedback_data.specific_flux_FUV[2];
+  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[0];
+  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[1];
+  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[2];
 }
 
 /**
@@ -1177,9 +1178,9 @@ void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
-  ret[0] = p->feedback_data.specific_flux_LW[0];
-  ret[1] = p->feedback_data.specific_flux_LW[1];
-  ret[2] = p->feedback_data.specific_flux_LW[2];
+  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[0];
+  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[1];
+  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[2];
 }
 
 /**

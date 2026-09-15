@@ -624,13 +624,16 @@ GrackleCooling:
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+  max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve; a solve that exceeds it fails and the failure is counted in the log. (Default: 10000)
+  subcycle_on_failure: 2                       # (optional) Retries of a failed Grackle solve, in [0, 20]. Retry i splits the time-step into 2^i consecutive solves. If every retry fails, the hydro (adiabatic)
+                                               # change is applied but that step's cooling and heating are skipped (lost, not deferred). Worst case (2^(subcycle_on_failure+1)-1) x max_steps Grackle iterations
+                                               # for one particle's one step, for failing particles only. (Default: 2)
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-  H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 1 = Sobolev-like (Wolcott-Green & Haiman 2019, Cartesian-3D-grid geometry), 2 = caller-supplied
-                                                # shielding length (NOT wired: SWIFT does not populate Grackle's H2_self_shielding_length field), 3 = local Jeans length (Grackle-internal). (Default: 0)
+  H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 2 = shielding length set to the kernel support radius (kernel_gamma * h, physical),
+                                                # 3 = local Jeans length (Grackle-internal). 1 (Sobolev-like, needs a Cartesian grid) is rejected. (Default: 0)
+                                                # Leaving this at 0 with GEARFeedback:with_photoelectric_heating on and primordial_chemistry >= 2 unshields the local LW dissociation rate: a start-up warning fires; use 2 or 3.
   maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0
                                                # deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
@@ -645,6 +648,10 @@ GrackleCooling:
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+  H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping, Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >= 2
+                                               # and a Grackle build that provides it. 1: on, 0: off. (Default: 0)
+  photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency used when GEARFeedback:with_photoelectric_heating is on. constant: 0.05 with prefactor 1e-24 (Wolfire et al. 1995 Eq. 1). wolfire1995: electron-density-dependent
+                                               # (Wolfire et al. 1995 Eq. 2). density_dependent: min(0.07, 0.0149 n_H^0.235) with prefactor 1.3e-24 (Smith 2026 Eqs. A1-A2), needs a Grackle build that provides it. (Default: constant)
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.

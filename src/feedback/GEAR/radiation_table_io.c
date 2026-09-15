@@ -1472,8 +1472,8 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
      a run with GEARFeedback:with_photoelectric_heating off but a table
      that happens to carry L_FUV/L_LW (increasingly the common case now
      that pychem writes them by default) would still populate
-     sp->feedback_data.radiation.L_FUV/L_LW with real, nonzero values,
-     contradicting radiation_iact.h's documented invariant that they are
+     sp->feedback_data.radiation.L_band with real, nonzero
+     values, contradicting radiation_iact.h's documented invariant that they are
      "Zero unless GEARFeedback:with_photoelectric_heating is on." Gating
      here, at the single point both flags are produced, means every
      downstream consumer's existing branch structure is already correct

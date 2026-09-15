@@ -215,14 +215,14 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 
   list[10] = io_make_output_field(
       "FUVLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
-      feedback_data.radiation.L_FUV,
+      feedback_data.radiation.L_band[ISRF_BAND_FUV],
       "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
       "physical units. Feeds the ISRF injection term; 0 unless "
       "GEARFeedback:with_photoelectric_heating is on.");
 
   list[11] = io_make_output_field(
       "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
-      feedback_data.radiation.L_LW,
+      feedback_data.radiation.L_band[ISRF_BAND_LW],
       "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
       "physical units. See #FUVLuminosities.");
 

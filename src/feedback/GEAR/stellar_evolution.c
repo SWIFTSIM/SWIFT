@@ -1401,19 +1401,19 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        radiation_pressure_efficiency scaling of that same field: L_FUV/L_LW
        are deliberately independent of that separate efficiency knob. */
     if (sm->rad.has_raw_ISRF) {
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           radiation_get_star_l_fuv(&sm->rad, log_m, log_z);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
     } else if (sm->rad.with_ISRF) {
       const float Teff_K =
           radiation_get_star_teff(&sm->rad, log_m, log_z) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_FUV_BAND_LOW_EV,
                                          RADIATION_FUV_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
                                          RADIATION_LW_BAND_HIGH_EV);
@@ -1684,8 +1684,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
          1e2-1e4x too large across GEAR's stated production mass range and
          would still run to completion with finite, positive,
          plausible-looking numbers). */
-      sp->feedback_data.radiation.L_FUV = L_FUV_per_msun * m_init;
-      sp->feedback_data.radiation.L_LW = L_LW_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
+          L_FUV_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] = L_LW_per_msun * m_init;
     } else if (sm->rad.with_ISRF) {
       const float log_m_sup = log10f(m_sup);
       const float Teff_K =
@@ -1695,11 +1696,11 @@ void stellar_evolution_compute_preSN_feedback_spart(
                      log_m_sup)
                : radiation_get_teff_from_raw(&sm->rad, log_m_sup)) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_FUV_BAND_LOW_EV,
                                          RADIATION_FUV_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
                                          RADIATION_LW_BAND_HIGH_EV);

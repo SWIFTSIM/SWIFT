@@ -54,6 +54,9 @@ struct cooling_function_data {
   /*! Flag to enable H2 formation on dust grains */
   int H2_on_dust;
 
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 
@@ -121,6 +124,11 @@ struct cooling_function_data {
       subgrid. */
   int with_ISRF;
 
+  /*! Grackle photoelectric_heating option used when with_ISRF is on,
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
+      3 (wolfire1995) or 4 (density_dependent). */
+  int photoelectric_heating_efficiency;
+
   /*! Volumetric heating rates */
   float volumetric_heating_rates;
 
@@ -168,24 +176,22 @@ struct cooling_function_data {
   float self_shielding_threshold;
 
   /*! Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding):
-   * 0 = off, 1 = Sobolev-like (Wolcott-Green & Haiman 2019, assumes a
-   * Cartesian 3D grid geometry), 2 = caller-supplied shielding length
-   * (NOT wired: SWIFT does not populate Grackle's H2_self_shielding_length
-   * field, so setting this to 2 falls back to whatever Grackle does with an
-   * unset length, a pre-existing Grackle-level footgun, not guarded
-   * against here), 3 = local Jeans length (computed internally by Grackle).
-   * Unrelated to self_shielding_method above, which is a separate Grackle
-   * field gating UV-background self-shielding. */
+   * 0 = off, 2 = shielding length supplied per particle as the kernel
+   * support radius kernel_gamma * h (physical), 3 = local Jeans length
+   * (computed internally by Grackle). Mode 1 (Sobolev-like, differences
+   * neighbouring grid cells) is rejected at start-up, since SWIFT calls
+   * Grackle on a single particle. Unrelated to self_shielding_method above,
+   * which is a separate Grackle field gating UV-background self-shielding. */
   int H2_self_shielding;
 
-  /*! convergence limit for first init */
-  float convergence_limit;
-
-  /*! number of step max for first init */
+  /*! Maximal number of Grackle sub-cycle iterations per solve
+   * (GrackleCooling:max_steps, Grackle's chemistry_data.max_iterations). */
   int max_step;
 
-  /*! over relaxation parameter */
-  float omega;
+  /*! Number of retries of a failed Grackle solve
+   * (GrackleCooling:subcycle_on_failure). Retry i splits the time-step into
+   * 2^i consecutive solves. 0 disables the retries. */
+  int subcycle_on_failure;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;

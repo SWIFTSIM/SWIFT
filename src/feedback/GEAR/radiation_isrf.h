@@ -26,6 +26,8 @@
  * absorption rate, and the propagation mixing fraction.
  */
 
+#include "feedback_struct.h"
+
 struct part;
 struct xpart;
 struct cosmology;
@@ -46,7 +48,7 @@ float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
 void radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
-    float *extinction_FUV, float *extinction_LW);
+    float extinction[ISRF_BAND_COUNT]);
 float radiation_get_part_linear_absorption_rate(const struct unit_system *us,
                                                 float Z, float rho_p,
                                                 float sigma_d_band_cgs,

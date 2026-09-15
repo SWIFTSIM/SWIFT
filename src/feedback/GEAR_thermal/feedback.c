@@ -164,7 +164,7 @@ void feedback_end_force(struct part *p, const struct engine *e) {
 /**
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
- * u_FUV/u_LW and caches this step's absorption rate (shared GEAR
+ * every band's u and caches this step's absorption rate (shared GEAR
  * physics), see #radiation_snapshot_part_propagation, and expires a
  * lapsed LW/FUV illumination tag, see
  * #radiation_reset_part_ISRF_illumination_tag.
