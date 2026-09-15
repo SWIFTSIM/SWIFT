@@ -54,6 +54,9 @@ struct cooling_function_data {
   /*! Flag to enable H2 formation on dust grains */
   int H2_on_dust;
 
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 
@@ -121,6 +124,11 @@ struct cooling_function_data {
       subgrid. */
   int with_ISRF;
 
+  /*! Grackle photoelectric_heating option used when with_ISRF is on,
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
+      3 (wolfire1995) or 4 (density_dependent). */
+  int photoelectric_heating_efficiency;
+
   /*! Volumetric heating rates */
   float volumetric_heating_rates;
 
@@ -182,14 +190,14 @@ struct cooling_function_data {
    * so the length handed to it is half this path. */
   float H2_self_shielding_path_in_kernel_radii;
 
-  /*! convergence limit for first init */
-  float convergence_limit;
-
-  /*! number of step max for first init */
+  /*! Maximal number of Grackle sub-cycle iterations per solve
+   * (GrackleCooling:max_steps, Grackle's chemistry_data.max_iterations). */
   int max_step;
 
-  /*! over relaxation parameter */
-  float omega;
+  /*! Number of retries of a failed Grackle solve
+   * (GrackleCooling:subcycle_on_failure). Retry i splits the time-step into
+   * 2^i consecutive solves. 0 disables the retries. */
+  int subcycle_on_failure;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
@@ -204,7 +212,7 @@ struct cooling_function_data {
       run completely normally. For isolating a Grackle-consuming subgrid
       channel (e.g. LW/FUV propagation) from Grackle's actual
       thermal/dynamical response without losing chemistry_data
-      resolution -- never set in a production run. */
+      resolution. Never set in a production run. */
   int disable_cooling_for_debugging;
 };
 

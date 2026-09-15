@@ -43,7 +43,9 @@ def parse_options():
     )
     parser.add_argument("--mode", choices=["gate", "pair"], required=True)
     parser.add_argument("--runs", nargs="+", help="Gate mode: sheared run directories.")
-    parser.add_argument("--zero", help="Gate mode: the matching zero-shear control run directory.")
+    parser.add_argument(
+        "--zero", help="Gate mode: the matching zero-shear control run directory."
+    )
     parser.add_argument("--plus", help="Pair mode: the +v_shear run directory.")
     parser.add_argument("--minus", help="Pair mode: the -v_shear run directory.")
     parser.add_argument("--grid-n", type=int, default=32)
@@ -59,8 +61,10 @@ def mode_gate(opt):
     zero = load_metrics(opt.zero)
     print(f"=== Gate: zero-shear control = {opt.zero} ===")
     if zero.get("void"):
-        raise RuntimeError(f"{opt.zero} (the zero-shear control) is itself VOID; "
-                            "it cannot be used as the gate's calibration baseline.")
+        raise RuntimeError(
+            f"{opt.zero} (the zero-shear control) is itself VOID; "
+            "it cannot be used as the gate's calibration baseline."
+        )
     overall_ok = True
     for run in opt.runs:
         m = load_metrics(run)
@@ -73,8 +77,10 @@ def mode_gate(opt):
                 "rerun isrf_shear_asymmetry_check.py on both before gating."
             )
         if m.get("void"):
-            print("  VOID (KH contamination or negative-weight share) -- "
-                  "gate not meaningful for this run.")
+            print(
+                "  VOID (KH contamination or negative-weight share) -- "
+                "gate not meaningful for this run."
+            )
             continue
         for band in ("FUV", "LW"):
             b = m["bands"][band]
@@ -85,8 +91,10 @@ def mode_gate(opt):
                 limit = max(FACTOR * a0, FLOORS[key])
                 ok = a <= limit
                 overall_ok &= ok
-                print(f"  {band} {key}: |A|={a:.4e}  limit=max(3*{a0:.4e}, {FLOORS[key]})="
-                      f"{limit:.4e}  -> {'PASS' if ok else 'FAIL'}")
+                print(
+                    f"  {band} {key}: |A|={a:.4e}  limit=max(3*{a0:.4e}, {FLOORS[key]})="
+                    f"{limit:.4e}  -> {'PASS' if ok else 'FAIL'}"
+                )
     print(f"\nOverall gate: {'PASS' if overall_ok else 'FAIL'}")
     if not overall_ok:
         sys.exit(1)
@@ -154,7 +162,11 @@ def mode_pair(opt):
         # Map the -v run through x -> L - x (flip the first grid axis).
         grid_m_mapped = grid_m[::-1, :, :]
         u_max = np.max(np.abs(grid_p))
-        A_pair = np.max(np.abs(grid_p - grid_m_mapped)) / u_max if u_max > 0 else float("nan")
+        A_pair = (
+            np.max(np.abs(grid_p - grid_m_mapped)) / u_max
+            if u_max > 0
+            else float("nan")
+        )
         print(f"{band}: A_pair = {A_pair:.4e}  (report only, no threshold)")
 
 

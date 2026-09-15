@@ -54,6 +54,9 @@ struct swift_params;
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+void cooling_pop_grackle_solve_failure_counts(long long *failed,
+                                              long long *recovered);
+
 void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,

@@ -1,15 +1,14 @@
 """Verify the Lagrangian/mass-specific re-derivation of the scheme's
 zeroth-moment governing equation.
 
-**Why this script exists.** Two prior `/plan-review` rounds established,
-empirically (`verify_isrf_div_f_consistency.py`), that the §2.2
-`div(F)` SPH estimator computes `(1/rho)*div(rho*F)`, not the plain
-`div(F)` that Section 1's governing equation, copied unmodified from the
-theory doc's own **volumetric** RTE-moment convention
-(`02_fuv_isrf.tex` Eq. fuv-p1-zeroth/fuv-p1-first), literally calls for.
-The operator ruled: `u`/`F` are mass-specific throughout this
+**Why this script exists.** `verify_isrf_div_f_consistency.py` established,
+empirically, that the §2.2 `div(F)` SPH estimator computes
+`(1/rho)*div(rho*F)`, not the plain `div(F)` that Section 1's governing
+equation, copied unmodified from the theory doc's own **volumetric**
+RTE-moment convention (`02_fuv_isrf.tex` Eq. fuv-p1-zeroth/fuv-p1-first),
+literally calls for. `u`/`F` are mass-specific throughout this
 implementation (matching injection's own `u_i += u_inject/m_i`, and the
-shipped `FUVSpecificEnergy`/`LWSpecificEnergy` I/O names), and Section 1
+shipped `FUVSpecificEnergy`/`LWSpecificEnergy` I/O names), so Section 1
 must be re-derived into its correct Lagrangian/mass-specific form rather
 than have the discretization chase the doc.
 
@@ -37,9 +36,9 @@ sympy, rather than asserting it survives or cancels by analogy.
 **Result, stated up front**: the dilation piece of that extra term
 cancels EXACTLY against the mass-continuity term that appears when
 differentiating `u = u_V/rho` itself, this is the genuinely non-obvious,
-previously un-verified step (flagged by round-1 `/plan-review`, sec 4.6,
-as "asserted by the standard SPH argument but not rigorously re-derived
-term by term"). What is LEFT OVER after that cancellation is a single
+previously un-verified step (asserted by the standard SPH argument but
+not rigorously re-derived term by term). What is LEFT OVER after that
+cancellation is a single
 term, `(1/rho)*div(u_V*v)`, that the discretization does not compute (no
 `v_i`/`v_j` enters `grad(u)`/`div(F)`/the local finalize).
 
@@ -69,7 +68,7 @@ is right there since its c_red >> v_box.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# CLOSURE-INDEPENDENT: NO CHANGE UNDER THE M1 UPGRADE.
 # This derivation converts the volumetric RTE moments into the
 # mass-specific form the implementation tracks; the closure sits inside the
 # pressure term (`P = D(f)u` in place of `u/3 I`) and is carried through
@@ -262,7 +261,7 @@ print()
 # ---------------------------------------------------------------------
 # Step 7b: decompose the leftover term to see WHICH piece SPH's own
 # Lagrangian d/dt already provides for free (the "double-counting"
-# question this task set out to resolve). div(u_V*v) = u_V*div(v) +
+# question this script sets out to resolve). div(u_V*v) = u_V*div(v) +
 # v.grad(u_V) [product rule]; writing u_V = rho*u and dividing by rho:
 #   (1/rho)*div(u_V*v) = u*div(v) + v.grad(u) + u*(v.grad(rho))/rho
 # The middle piece, v.grad(u), is the Eulerian advection term an SPH

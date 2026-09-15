@@ -21,7 +21,7 @@ would pass Part A's conservation check unnoticed.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED IN PHASE 1, NO CHANGE NEEDED.
+# CHECKED UNDER THE M1 CLOSURE: NO CHANGE NEEDED.
 # Part C's joint (alpha_max, C_hyp) stability bound was re-run under the M1
 # reading of C_hyp (bounding c_hyp as the fastest M1 characteristic, f = 1,
 # rather than the P1 signal speed): clean pass, the enforced constants

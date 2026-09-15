@@ -8,7 +8,7 @@
  * numerically equals a number density in cm^-3 for pure hydrogen gas
  * (HydrogenFractionByMass forced to 1.0 to avoid He bookkeeping), and
  * coolunit = length_units^2*m_H/time_units^3 = m_H exactly, giving a
- * direct, traceable erg/s/cm^3 <-> code-unit conversion for edot -- this
+ * direct, traceable erg/s/cm^3 <-> code-unit conversion for edot, which
  * sidesteps hand-deriving Grackle's comoving dom/coolunit bookkeeping.
  *
  * Isolates the photoelectric contribution by calling
@@ -16,7 +16,7 @@
  * photoelectric_heating=2 vs 0: edot = internal_energy_density /
  * cooling_time, and the difference between the two calls is Gamma_PE
  * (up to a negligible cross-term from other channels barely shifting
- * with edot -- checked to be ~1e-49 erg/s/cm^3, i.e. noise, at this
+ * with edot, checked to be ~1e-49 erg/s/cm^3, i.e. noise, at this
  * script's test point).
  *
  * internal_energy=T_K/temperature_units is not physical T_K by itself

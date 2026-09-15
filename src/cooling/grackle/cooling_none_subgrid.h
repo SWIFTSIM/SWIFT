@@ -39,7 +39,7 @@
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
  * @param u_out (return) The forced internal energy. Unused.
- * @return Always 0 -- this subgrid model never floors a particle's energy.
+ * @return Always 0: this subgrid model never floors a particle's energy.
  */
 INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
@@ -62,7 +62,7 @@ INLINE static int cooling_update_part_subgrid(
  * @param heating_rate_cgs (return) Heating rate, in raw cgs. Unused.
  * @param HI_ionization_rate (return) Photoionization rate coefficient, in
  *        internal 1/time. Unused.
- * @return Always 0 -- no per-particle rates from this subgrid model.
+ * @return Always 0: no per-particle rates from this subgrid model.
  */
 INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
     const struct cooling_function_data *cooling, const struct part *p,
@@ -123,7 +123,7 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param u_out (return) The forced internal energy. Unused.
- * @return Always 0 -- this subgrid model never forces a particle's energy.
+ * @return Always 0: this subgrid model never forces a particle's energy.
  */
 INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,

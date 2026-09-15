@@ -782,7 +782,8 @@ def checkerboard(pos, axes):
 
 
 def dissipation_u5(u, alpha_ij):
-    """Design-b Sec 3.3's fixed formula, symmetric variant, dt=1 implicit."""
+    """Fixed-coefficient artificial-dissipation formula, symmetric variant,
+    dt=1 implicit."""
     d_ij = rho5[ii5] * u[ii5] - rho5[jj5] * u[jj5]
     Psi_ij = (alpha_ij * c_hyp5) * d_ij * Wbar5 / (rho5[ii5] * rho5[jj5])
     out = np.zeros(N5)

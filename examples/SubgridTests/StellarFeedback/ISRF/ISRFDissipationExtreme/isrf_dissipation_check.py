@@ -47,7 +47,7 @@ Two independent checks, both per snapshot and per band (`FUV`, `LW`):
    `c_hyp = min(ISRF_c_hyp_margin * h / dt, c)`. `C(eps)`, reported per
    epsilon in {0.1, 0.01, 0.001}, is how far past the causal front (in units
    of the local smoothing length) the field still exceeds
-   `eps * u_plateau` -- an over-smoothing dissipation coefficient would
+   `eps * u_plateau`, an over-smoothing dissipation coefficient would
    inflate it. This is an absolute light-cone bound, not a cross-run
    comparison, so the per-run `u_plateau` normalization it uses is fine
    here; it is only unsound when used to compare transport fidelity
@@ -257,7 +257,7 @@ def check_band(
     """`u`/`r`/`mass` are the masked (bulk) arrays used for u_plateau, the
     energy-weighted sign-closure metric, `R50`/`R90`, and the causal-reach
     metric; `u_all_incl_hot` is the full, unmasked array used for `n_neg`/
-    `u_min` -- a negative value at the heated particle itself is still a
+    `u_min`, a negative value at the heated particle itself is still a
     failure of the mechanism, even though it is excluded from the bulk
     energy budget. `n_neg`/`u_min`/the informational ratio are always
     reported; the gated statistic is `|E_neg|/E_bulk`, returned here

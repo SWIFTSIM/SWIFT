@@ -22,10 +22,10 @@ on a FIXED background (pos/rho/mass/h frozen, exactly what the real
 per-step density snapshot `rho_prev` does; only `(u, F)` evolve), with
 absorption (`kappa`), dissipation (`alpha_max`/`alpha_floor`) and the
 source term all off. This isolates the propagation-only linear/quasi-linear
-operator the Phase 0 review's concern is about.
+operator that the skew-adjointness concern above is about.
 
-Conserved-functional formula (P1/isotropic-limit convention, plan's own
-spec, `dF/dt = -c_hyp^2*G` with the `1/3` already folded into `G`):
+Conserved-functional formula (P1/isotropic-limit convention,
+`dF/dt = -c_hyp^2*G` with the `1/3` already folded into `G`):
 
     E = sum_i m_i*rho_i*(u_i^2/2 + 3*|F_i|^2/(2*c_hyp^2))
 
@@ -39,11 +39,11 @@ the residual at all. `sum(m*u)` is checked at every resolution as an
 independent correctness control on the (unchanged, exactly antisymmetric)
 density loop.
 
-Verdict rule (plan's own): drift that SHRINKS WITH RESOLUTION (h -> 0) is
-an expected, bounded consistency error, monitor only, no action needed.
-Drift that GROWS IN TIME AT FIXED h (accelerating, not just linear
-accumulation) is a real non-normal mode, STOP, escalate to the operator,
-do not proceed into Phase 2 on this script's own authority.
+Verdict rule: drift that SHRINKS WITH RESOLUTION (h -> 0) is an expected,
+bounded consistency error, monitor only, no action needed. Drift that
+GROWS IN TIME AT FIXED h (accelerating, not just linear accumulation) is a
+real non-normal mode, STOP: this script's own authority is not sufficient
+to clear it, diagnose the cause before trusting any downstream result.
 
 STATUS: a parallel investigation found
 that the isotropic `(u, F)` functional above is NOT a conserved quantity of
@@ -196,11 +196,11 @@ def divergence_accumulate_varh(pairs, rho, mass, F, N):
 
 
 def gradient_accumulate_varh(pairs, rho, mass, u, D, N):
-    """`grad_u` accumulator, #radiation_gradient_accumulate_band. UPDATED
-    2026-09-11 to `diffmode==0` (each particle's own `wi_dr`/`wj_dr`
-    separately, no shared average, no grad-h factor), matching the fix that
-    landed in `radiation_propagation_iact.h` (working tree, uncommitted, not
-    edited by this script/session): exact
+    """`grad_u` accumulator, #radiation_gradient_accumulate_band. Updated to
+    `diffmode==0` (each particle's own `wi_dr`/`wj_dr` separately, no shared
+    average, no grad-h factor), matching the fix that landed in
+    `radiation_propagation_iact.h` (working tree, uncommitted, not edited by
+    this script): exact
     skew-adjoint of the `diffmode==1` divergence loop in the `D^-1`-weighted
     inner product (not the plain `m*rho` one), for any `h_i != h_j`, whenever
     `D` is locally constant between neighbours."""

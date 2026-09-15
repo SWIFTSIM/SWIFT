@@ -160,7 +160,7 @@ def main():
     fb = used.get("GEARFeedback", {})
     ti = used.get("TimeIntegration", {})
     dt_max_param = float(ti.get("dt_max", np.nan))
-    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.25))
+    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.5))
     alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
 
     snap0 = load_snapshot(files[0])

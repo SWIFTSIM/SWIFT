@@ -22,8 +22,8 @@
 /**
  * @file src/feedback/GEAR/radiation_propagation_iact.h
  * @brief Gas-gas density-loop, gradient-loop and force-loop hooks for the
- * hyperbolic M1-relaxation propagation of the u_FUV/specific_flux_FUV (and
- * u_LW/specific_flux_LW) fields.
+ * hyperbolic M1-relaxation propagation of the per-band u and specific_flux
+ * fields.
  *
  * Three pairwise SPH operators are accumulated here, in three different
  * loops:
@@ -38,21 +38,21 @@
  * - `grad(u)` (gradient loop, `runner_iact_[nonsym_]isrf_gradient`): the
  *   anisotropic M1 pressure-tensor divergence, `diffmode==0` form (each
  *   particle's own separate `wi_dr`/`wj_dr`, no shared average, and no
- *   grad-h `forcef` factor -- the divergence loop above carries none
- *   either, which the pairing below requires -- unlike
+ *   grad-h `forcef` factor: the divergence loop above carries none
+ *   either, which the pairing below requires, unlike
  *   `radiation_gradient_aniso_SPH`'s `diffmode==2` branch in
  *   `src/rt/SPHM1RT/rt_gradients.h`/`rt_iact.h:582-627`, which SPHM1RT uses
  *   instead). This own-derivative form is the COMPLEMENT of the
  *   divergence loop's shared-coefficient (`diffmode==1`) construction
  *   above, not a copy of it: `diffmode==1` divergence paired with
  *   `diffmode==0` gradient is what makes the two exactly skew-adjoint
- *   (see below) -- matching both loops to the same `diffmode` would NOT
+ *   (see below). Matching both loops to the same `diffmode` would NOT
  *   achieve this. Per particle D(f) tensor
  *   (#radiation_get_m1_closure_tensor_band). This is the exact skew-adjoint
  *   of the `diffmode==1` divergence above, in the `D^-1`-weighted inner
  *   product (not the plain `m*rho` one the P1 pairing used), for any
  *   `h_i != h_j`, `rho_i != rho_j`, whenever `D` is locally constant
- *   between neighbours (`D_i = D_j`) -- which includes `F=0`, every
+ *   between neighbours (`D_i = D_j`), which includes `F=0`, every
  *   particle's initial condition and permanent far-field state; a residual
  *   `O(h*grad(D))` remains when `D` varies between neighbours. This removes
  *   only that kernel-derivative-mismatch residual `R_h`. In the plain
@@ -62,12 +62,10 @@
  *   same constant anisotropic `D` on both particles. `R_D` is a PDE-level
  *   property of M1 itself (the isotropic-metric functional this fix
  *   generalizes is not a conserved quantity of M1 for anisotropic `D`),
- *   not a discretization defect, and this fix does not address it -- see
- *   `.claude/dev/M1_gradient_adjointness_investigation_2026-09-11.md` for
- *   the full derivation. Whether the staggered exact-relaxation time
- *   integrator's stability argument needs more than this weaker
- *   adjointness is an open question for Phase 1's stability
- *   re-verification, not resolved here.
+ *   not a discretization defect, and this fix does not address it.
+ *   Whether the staggered exact-relaxation time integrator's stability
+ *   argument needs more than this weaker adjointness remains an open
+ *   question, not resolved here.
  * - The negativity-triggered artificial dissipation (force loop,
  *   `runner_iact_[nonsym_]isrf_dissipation`): a triggered pairwise
  *   conductivity on the `rho*u` jump, credited to one particle and debited
@@ -200,8 +198,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 
 /**
  * @brief Band-specific pairwise contribution to particle i's
- * negativity-triggered artificial-dissipation source term
- * (design-lw-fuv-design-b- dissipation.md Section 3.1), and mirrored
+ * negativity-triggered artificial-dissipation source term, and mirrored
  * (mass-weighted, opposite sign) contribution to particle j's.
  *
  * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)` is a signal VELOCITY, with
@@ -209,8 +206,8 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * `h^-(dim+1)` normalisation, exactly as for an ordinary SPH Laplacian.
  *
  * The pair coefficient combines the two components the extra ghost stores
- * separately (#dissipation_alpha_trigger_FUV/LW,
- * #dissipation_alpha_floor_FUV/LW):
+ * separately (#feedback_isrf_band_data.dissipation_alpha_trigger,
+ * #feedback_isrf_band_data.dissipation_alpha_floor):
  *
  *   `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`.
  *
@@ -237,7 +234,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * Accumulated in the force loop, which runs after the density ghost has
  * produced the intermediate state `u* = e*u_prev + dt*phi*(source - div_F)`
  * and after the extra ghost has set this step's `alpha`: the jump is
- * therefore built from the LIVE `u_FUV`/`u_LW` (`u*`), not from the
+ * therefore built from the LIVE `u` (`u*`), not from the
  * `u_*_prev` snapshot the density loop needs. The force loop runs exactly
  * once per step, so there is no h-iteration stability requirement here.
  *
@@ -256,14 +253,14 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param c_hyp_i Particle i's own hyperbolic propagation speed.
  * @param c_hyp_j Particle j's own hyperbolic propagation speed.
- * @param alpha_trigger_i Particle i's #dissipation_alpha_trigger_FUV/LW
- * (this band).
- * @param alpha_trigger_j Particle j's #dissipation_alpha_trigger_FUV/LW
- * (this band).
- * @param alpha_floor_i Particle i's #dissipation_alpha_floor_FUV/LW (this
- * band).
- * @param alpha_floor_j Particle j's #dissipation_alpha_floor_FUV/LW (this
- * band).
+ * @param alpha_trigger_i Particle i's
+ * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
+ * @param alpha_trigger_j Particle j's
+ * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
+ * @param alpha_floor_i Particle i's
+ * #feedback_isrf_band_data.dissipation_alpha_floor (this band).
+ * @param alpha_floor_j Particle j's
+ * #feedback_isrf_band_data.dissipation_alpha_floor (this band).
  * @param u_i Particle i's live specific field `u*` (this band).
  * @param u_j Particle j's live specific field `u*` (this band).
  * @param a_factor_comoving_to_physical `1/a`, the file header's single
@@ -300,9 +297,9 @@ radiation_dissipation_force_accumulate_band(
 
 /**
  * @brief M1 closure tensor `D(f)` for one particle, one band, built from its
- * own `(u, F, c_M)` (design-lw-fuv-m1-upgrade.md "New pieces"). `c_M` is the
- * same speed already carried as #feedback_part_data.c_hyp (D3: reinterpreted
- * as the fastest M1 characteristic, `f=1`, not a new field).
+ * own `(u, F, c_M)`. `c_M` is the
+ * same speed already carried as #feedback_part_data.c_hyp, reinterpreted
+ * as the fastest M1 characteristic, `f=1`, not a new field.
  *
  * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` for `u <= 0`;
  * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`;
@@ -310,7 +307,7 @@ radiation_dissipation_force_accumulate_band(
  *
  * Zero-flux guard, mandatory: `F = 0` is every particle's initial condition
  * and permanent far-field state, not a corner case. `F2 = F.F`,
- * `F_inv = (F2 > 0) ? 1/sqrt(F2) : 0`, `n = F*F_inv` -- a zero-guarded
+ * `F_inv = (F2 > 0) ? 1/sqrt(F2) : 0`, `n = F*F_inv`: a zero-guarded
  * reciprocal, so `n` stays well-defined at `F = 0` instead of dividing by
  * zero. `f`'s own division is guarded the same way: `c_M*u` is computed once
  * and only divided into when it is strictly positive, which also folds in the
@@ -417,7 +414,7 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
 
   /* Own kernel derivative per particle, no shared average and no grad-h
    * `forcef` factor: restores exact adjointness with the divergence loop
-   * above (D^-1 metric, D locally constant) -- see the header comment. */
+   * above (D^-1 metric, D locally constant). See the header comment. */
   const float fac_i =
       mj * rho_i_inv * rho_i_inv * wi_dr * a_factor_comoving_to_physical;
   const float fac_j =
@@ -473,21 +470,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_FUV, &fdj->div_specific_flux_FUV);
-  radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_LW, &fdj->div_specific_flux_LW);
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-  radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
-      &fdi->ngb_mean_abs_u_V_FUV, &fdj->ngb_mean_abs_u_V_FUV);
-  radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_LW_prev, fdj->u_LW_prev,
-      &fdi->ngb_mean_abs_u_V_LW, &fdj->ngb_mean_abs_u_V_LW);
+    radiation_divergence_accumulate_band(
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->specific_flux,
+        bj->specific_flux, a_factor_comoving_to_physical,
+        &bi->div_specific_flux, &bj->div_specific_flux);
+
+    radiation_dissipation_reference_accumulate_band(
+        wi, wj, mi, mj, rho_i, rho_j, bi->u_prev, bj->u_prev,
+        &bi->ngb_mean_abs_u_V, &bj->ngb_mean_abs_u_V);
+  }
 }
 
 /**
@@ -536,38 +531,34 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  /* Particle j's own accumulator is not touched (non-symmetric): pass a
-   * discarded local, seeded to 0 rather than read from fdj, as the
-   * required (return, accumulated) output. */
-  float unused_div_specific_flux_FUV = 0.f;
-  float unused_div_specific_flux_LW = 0.f;
-  float unused_ngb_mean_abs_u_V_FUV = 0.f;
-  float unused_ngb_mean_abs_u_V_LW = 0.f;
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-  radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_FUV, &unused_div_specific_flux_FUV);
-  radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_LW, &unused_div_specific_flux_LW);
+    /* Particle j's own accumulator is not touched (non-symmetric): pass a
+     * discarded local, seeded to 0 rather than read from fdj, as the
+     * required (return, accumulated) output. */
+    float unused_div_specific_flux = 0.f;
+    float unused_ngb_mean_abs_u_V = 0.f;
 
-  radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
-      &fdi->ngb_mean_abs_u_V_FUV, &unused_ngb_mean_abs_u_V_FUV);
-  radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_LW_prev, fdj->u_LW_prev,
-      &fdi->ngb_mean_abs_u_V_LW, &unused_ngb_mean_abs_u_V_LW);
+    radiation_divergence_accumulate_band(
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->specific_flux,
+        bj->specific_flux, a_factor_comoving_to_physical,
+        &bi->div_specific_flux, &unused_div_specific_flux);
+
+    radiation_dissipation_reference_accumulate_band(
+        wi, wj, mi, mj, rho_i, rho_j, bi->u_prev, bj->u_prev,
+        &bi->ngb_mean_abs_u_V, &unused_ngb_mean_abs_u_V);
+  }
 }
 
 /**
  * @brief `grad(u)` interaction between two particles (symmetric): both
  * particles' accumulators are updated.
  *
- * Runs in the gradient loop, after the density ghost has finalized `u_FUV`/
- * `u_LW` for this step (the exact-relaxation `u` update, radiation_isrf.c):
- * reads them directly, not a `_prev` snapshot. `u_FUV`/`u_LW` are written
+ * Runs in the gradient loop, after the density ghost has finalized `u` for
+ * this step (the exact-relaxation `u` update, radiation_isrf.c):
+ * reads them directly, not a `_prev` snapshot. `u` are written
  * again later in this same step, by the end-force ghost's
  * negativity-triggered dissipation correction (radiation_isrf.c's
  * #radiation_end_force_propagation), before star feedback injection ever
@@ -611,24 +602,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
-  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
-                                       fdi->c_hyp, D_FUV_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
-                                       fdj->c_hyp, D_FUV_j);
-  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
-                                       fdi->c_hyp, D_LW_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
-                                       fdj->c_hyp, D_LW_j);
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
-                                     D_FUV_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_FUV, fdj->grad_u_FUV);
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_LW, fdj->grad_u_LW);
+    float D_i[3][3], D_j[3][3];
+    radiation_get_m1_closure_tensor_band(bi->u, bi->specific_flux, fdi->c_hyp,
+                                         D_i);
+    radiation_get_m1_closure_tensor_band(bj->u, bj->specific_flux, fdj->c_hyp,
+                                         D_j);
+
+    radiation_gradient_accumulate_band(
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,
+        a_factor_comoving_to_physical, bi->grad_u, bj->grad_u);
+  }
 }
 
 /**
@@ -675,30 +662,25 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  /* Particle j is `const` here (non-symmetric): its own accumulator is not
-   * touched, so pass a discarded, zero-seeded local as the writable
-   * destination the shared accumulator function requires for j. */
-  float unused_grad_u_FUV[3] = {0.f, 0.f, 0.f};
-  float unused_grad_u_LW[3] = {0.f, 0.f, 0.f};
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-  float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
-  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
-                                       fdi->c_hyp, D_FUV_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
-                                       fdj->c_hyp, D_FUV_j);
-  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
-                                       fdi->c_hyp, D_LW_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
-                                       fdj->c_hyp, D_LW_j);
+    /* Particle j is `const` here (non-symmetric): its own accumulator is not
+     * touched, so pass a discarded, zero-seeded local as the writable
+     * destination the shared accumulator function requires for j. */
+    float unused_grad_u[3] = {0.f, 0.f, 0.f};
 
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
-                                     D_FUV_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_FUV, unused_grad_u_FUV);
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_LW, unused_grad_u_LW);
+    float D_i[3][3], D_j[3][3];
+    radiation_get_m1_closure_tensor_band(bi->u, bi->specific_flux, fdi->c_hyp,
+                                         D_i);
+    radiation_get_m1_closure_tensor_band(bj->u, bj->specific_flux, fdj->c_hyp,
+                                         D_j);
+
+    radiation_gradient_accumulate_band(
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,
+        a_factor_comoving_to_physical, bi->grad_u, unused_grad_u);
+  }
 }
 
 /**
@@ -706,9 +688,10 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * particles (symmetric): both particles' accumulators are updated.
  *
  * Runs in the force loop, after the density ghost has produced `u*` and the
- * extra ghost has set this step's #dissipation_alpha_trigger_FUV/LW and
- * #dissipation_alpha_floor_FUV/LW: reads the live
- * `u_FUV`/`u_LW` directly, not a `_prev` snapshot. The force loop's
+ * extra ghost has set this step's
+ * #feedback_isrf_band_data.dissipation_alpha_trigger and
+ * #feedback_isrf_band_data.dissipation_alpha_floor: reads the live
+ * `u` directly, not a `_prev` snapshot. The force loop's
  * dispatch fires both sides of a pair whenever either kernel reaches, which
  * is what keeps the mirrored credit/debit pair whole at h_i != h_j; see
  * #radiation_dissipation_force_accumulate_band.
@@ -750,18 +733,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_FUV, fdj->dissipation_alpha_trigger_FUV,
-      fdi->dissipation_alpha_floor_FUV, fdj->dissipation_alpha_floor_FUV,
-      fdi->u_FUV, fdj->u_FUV, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_FUV, &fdj->dissipation_u_FUV);
-  radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_LW, fdj->dissipation_alpha_trigger_LW,
-      fdi->dissipation_alpha_floor_LW, fdj->dissipation_alpha_floor_LW,
-      fdi->u_LW, fdj->u_LW, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_LW, &fdj->dissipation_u_LW);
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+
+    radiation_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
+        bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
+        a_factor_comoving_to_physical, &bi->dissipation_u, &bj->dissipation_u);
+  }
 }
 
 /**
@@ -811,24 +792,22 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
    * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  /* Particle j's own accumulator is not touched (non-symmetric): pass a
-   * discarded local, seeded to 0 rather than read from fdj, as the
-   * required (return, accumulated) output. */
-  float unused_dissipation_u_FUV = 0.f;
-  float unused_dissipation_u_LW = 0.f;
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
+    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-  radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_FUV, fdj->dissipation_alpha_trigger_FUV,
-      fdi->dissipation_alpha_floor_FUV, fdj->dissipation_alpha_floor_FUV,
-      fdi->u_FUV, fdj->u_FUV, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_FUV, &unused_dissipation_u_FUV);
-  radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_LW, fdj->dissipation_alpha_trigger_LW,
-      fdi->dissipation_alpha_floor_LW, fdj->dissipation_alpha_floor_LW,
-      fdi->u_LW, fdj->u_LW, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_LW, &unused_dissipation_u_LW);
+    /* Particle j's own accumulator is not touched (non-symmetric): pass a
+     * discarded local, seeded to 0 rather than read from fdj, as the
+     * required (return, accumulated) output. */
+    float unused_dissipation_u = 0.f;
+
+    radiation_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
+        bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
+        a_factor_comoving_to_physical, &bi->dissipation_u,
+        &unused_dissipation_u);
+  }
 }
 
 #endif /* SWIFT_RADIATION_PROPAGATION_IACT_GEAR_H */

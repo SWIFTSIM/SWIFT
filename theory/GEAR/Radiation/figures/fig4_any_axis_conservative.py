@@ -145,7 +145,7 @@ def make_figure(output_path: str) -> None:
     ax.set_aspect("equal")
     ax.axis("off")
     ax.set_title(
-        "Fig. 4 -- Any-axis conservativeness of the sorted-window prune",
+        "Fig. 4: Any-axis conservativeness of the sorted-window prune",
         fontsize=11,
     )
 

@@ -70,8 +70,8 @@ printf "Running simulation..."
 
 # --external-gravity with no Potential: block gives zero gravitational
 # force. SPH:initial_temperature stays 0 (params.yml default) so
-# makeIC.py's own per-particle InternalEnergy -- including the heated
-# particle -- survives start-up: this example is always the
+# makeIC.py's own per-particle InternalEnergy, including the heated
+# particle, survives start-up: this example is always the
 # pinned-neighbour variant (see README).
 ../../../../../swift --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \

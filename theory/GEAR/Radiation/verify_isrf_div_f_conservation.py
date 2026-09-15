@@ -1,9 +1,8 @@
 """Verify the scheme's pairwise `div(F)` discretization's conservation
 property, for h_i != h_j.
 
-Plan-review finding 1 (2026-09-07 report) showed the design doc's
-originally-drafted `div(F)` estimator, each particle's contribution
-finalized *independently* with its own `rho_i * h_i^-(dim+1)` factor
+The originally-drafted `div(F)` estimator, each particle's contribution
+finalized *independently* with its own `rho_i * h_i^-(dim+1)` factor,
 does NOT cancel exactly under a mass-weighted sum when `h_i != h_j`
 (SWIFT's normal case under adaptive smoothing lengths). This script
 demonstrates that failure numerically, then demonstrates that the
@@ -11,8 +10,8 @@ REVISED construction (mirroring `src/rt/SPHM1RT/rt_gradients.h`'s
 `radiation_divergence_SPH`, `diffmode == 1` branch, a single shared
 scalar built from both particles' own kernel-gradient terms inside one
 pairwise call, applied with mirrored mass/sign to each side, exactly the
-`runner_iact_force`-style pattern the review pointed at) DOES cancel to
-machine precision, for the same h_i != h_j configuration.
+`runner_iact_force`-style pattern) DOES cancel to machine precision, for
+the same h_i != h_j configuration.
 
 The quantity checked is exact conservation of `sum_i m_i * u_i` under
 pure transport: for a single pairwise interaction, this requires
@@ -22,7 +21,7 @@ accuracy (which is a separate, well-understood SPH question, §2.3).
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# CLOSURE-INDEPENDENT: NO CHANGE UNDER THE M1 UPGRADE.
 # The divergence loop is untouched by the P1-to-M1 upgrade (the closure
 # enters only the pressure-tensor term of the flux equation). The exact
 # `sum_i m_i u_i` conservation verified here still holds, and is what makes

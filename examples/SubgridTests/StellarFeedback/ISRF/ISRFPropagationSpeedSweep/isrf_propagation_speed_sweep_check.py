@@ -18,7 +18,7 @@
 ################################################################################
 """
 Per-run metrics for the ISRFPropagationSpeedSweep example (c_hyp sweep, Legs
-P/N/R/I -- see README). Computes the effective Courant number nu_eff from the
+P/N/R/I: see README). Computes the effective Courant number nu_eff from the
 run's own measured h and dt (never assumed), the stability bound nu_max at
 the run's own alpha, the pulse front position, and the realized-timestep
 validity precondition Leg P's cross-run comparison depends on. Writes all of
@@ -193,7 +193,7 @@ def main():
     used_params = load_used_parameters(opt.used_parameters)
     fb = used_params.get("GEARFeedback", {}) if used_params else {}
     ti = used_params.get("TimeIntegration", {}) if used_params else {}
-    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.25))
+    alpha_max = float(fb.get("ISRF_dissipation_alpha_max", 0.5))
     alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
     dt_max_param = float(ti.get("dt_max", np.nan))
     alpha_eff = alpha_pin if alpha_pin > 0.0 else alpha_max

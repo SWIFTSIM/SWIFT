@@ -11,9 +11,8 @@ Method
 ------
 1. Load a real, already-converged `with_photoelectric_heating=1` SWIFT
    snapshot (this script reruns the example itself, in an isolated scratch
-   copy, since the original scratch runs referenced by the two logs above
-   were deleted from disk between sessions, confirmed missing, not
-   assumed).
+   copy, since the original scratch runs are no longer on disk, confirmed
+   missing, not assumed).
 2. For one near-star illuminated particle and one far-field (unilluminated)
    control particle, extract its own local G0, density, and metallicity
    directly from the snapshot, using EXACTLY the same formula
@@ -25,7 +24,7 @@ Method
    harness.c, which time-integrates Grackle's own solve_chemistry() (same
    compiled libgrackle, same dust_chemistry=1/photoelectric_heating=2
    configuration a real with_photoelectric_heating=1 run uses, this DOES
-   exercise the 2026-09-08 dust-recombination-cooling NaN fix's code path,
+   exercise the dust-recombination-cooling NaN fix's code path,
    unlike the sibling verify_photoelectric_heating_rate.py harness, which
    hardcodes dust_chemistry=0) until net heating equals net cooling.
 4. Compare that independently-computed equilibrium temperature against the

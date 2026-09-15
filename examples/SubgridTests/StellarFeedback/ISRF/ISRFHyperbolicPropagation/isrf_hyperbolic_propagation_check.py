@@ -46,12 +46,11 @@ many-source diffuse background lives on, which is this module's production
 use case but not this example's configuration.
 
 On top of that, the DISCRETE fixed point departs from either continuum
-profile whenever `h` is not much smaller than `lambda` -- true at this
-project's own production resolution -- so a continuum-target comparison
-reports a spurious failure (33%-249% error,
-`theory/GEAR/Radiation/verify_design_b_discrete_steady_state_production_
-corners.py`) even when the C code is solving its own discretized equations
-exactly.
+profile whenever `h` is not much smaller than `lambda`, true at this
+project's own production resolution, so a continuum-target comparison
+reports a spurious failure (33%-249% error, per this project's discrete
+steady-state production-corner verification) even when the C code is
+solving its own discretized equations exactly.
 
 So, as before, this script builds the DISCRETE steady-state prediction
 directly: it takes the run's own actual particle positions, smoothing
@@ -78,7 +77,7 @@ This script therefore gates on two closure-agnostic quantities instead,
 and reports the fitted lambda as information only:
 
   1. `u(r)`, bin by bin, simulation against discrete prediction, over the
-     same radial bins -- assumes no functional form at all, and subsumes
+     same radial bins, assumes no functional form at all, and subsumes
      both shape and amplitude. This is the primary gate (`--tol`).
   2. The total field amplitude, against a first-principles identity that
      needs no fit, no profile and no closure (theory doc
@@ -98,7 +97,7 @@ The reduced flux `f` realized in the fit range is printed, so a reader can
 see which branch the run is actually on rather than assuming one.
 
 Does not validate whether the governing equations themselves match real
-interstellar radiation transport -- that is a separate, physics-level
+interstellar radiation transport. That is a separate, physics-level
 question (Tier 2), not a numerics one.
 """
 
@@ -262,7 +261,7 @@ def kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs):
 
 def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs):
     """lambda = 1/(kappa_eff*rho): the physical dust-screening length,
-    independent of this project's own kernel/eta_neighbours choice -- see
+    independent of this project's own kernel/eta_neighbours choice: see
     radiation_get_part_linear_absorption_rate in radiation_isrf.c."""
     rho_cgs = rho_internal * unit_mass_cgs / unit_length_cgs**3
     kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)
@@ -628,24 +627,50 @@ def main():
             ok = False
 
         # --- Gate 1: the binned profile, simulation vs. discrete prediction.
-        valid = (
-            ~np.isnan(res["binned_sim"])
-            & ~np.isnan(res["binned_pred"])
-            & (res["binned_pred"] > 0)
+        # Populated bins (radial_bin() marks an empty bin NaN; that is
+        # absence of data, not a defect, and is excluded silently as
+        # before). Checked BEFORE the measurability cut below, over every
+        # populated bin, so a genuine non-finite (inf) value cannot hide
+        # behind the cut -- this must always FAIL, never read UNMEASURABLE.
+        populated = ~np.isnan(res["binned_sim"]) & ~np.isnan(res["binned_pred"])
+        non_finite = populated & (
+            np.isinf(res["binned_sim"]) | np.isinf(res["binned_pred"])
         )
-        if valid.sum() < 3:
-            print(f"{band}: too few valid radial bins to compare.")
+        if non_finite.any():
+            print(
+                f"{band}: FAIL -- non-finite (inf) binned u(r) at "
+                f"{non_finite.sum()} bin(s): {centres[non_finite].tolist()}."
+            )
             ok = False
             continue
+
+        # Measurability cut: a populated, finite bin whose prediction sits
+        # at or below the float32 noise floor cannot be compared
+        # meaningfully (a tiny denominator blows up the relative error for
+        # no physical reason). Such bins are UNMEASURABLE, not FAIL, and
+        # are dropped from the median/max relative error below.
+        measurability_floor = 1e3 * np.finfo(np.float32).tiny
+        measurable = populated & (res["binned_pred"] > measurability_floor)
+        n_unmeasurable = int(populated.sum() - measurable.sum())
+        if measurable.sum() < 3:
+            print(
+                f"{band}: profile gate UNMEASURABLE -- only "
+                f"{int(measurable.sum())} bin(s) above the measurability "
+                f"floor ({measurability_floor:.3e}), need >= 3 "
+                f"({n_unmeasurable} bin(s) excluded as unmeasurable)."
+            )
+            continue
         rel = (
-            np.abs(res["binned_sim"][valid] - res["binned_pred"][valid])
-            / res["binned_pred"][valid]
+            np.abs(res["binned_sim"][measurable] - res["binned_pred"][measurable])
+            / res["binned_pred"][measurable]
         )
         med_rel, max_rel = float(np.median(rel)), float(np.max(rel))
         profile_ok = med_rel < opt.tol
         ok = ok and profile_ok
         print(
-            f"{band}: profile u(r) vs. discrete prediction over {valid.sum()} bins: "
+            f"{band}: profile u(r) vs. discrete prediction over "
+            f"{int(measurable.sum())} measurable bins "
+            f"({n_unmeasurable} excluded as unmeasurable): "
             f"median rel_err={med_rel:.4f}, max={max_rel:.4f} "
             f"-> {'PASS' if profile_ok else 'FAIL'} (tol={opt.tol}) "
             f"[discrete solve: {res['iters']} iterations, "
@@ -689,15 +714,17 @@ def main():
             f"(f -> 1 is free streaming, f -> 0 is the isotropic/diffusive branch)"
         )
         _, lam_sim_fit = fit_slope(
-            centres[valid], res["binned_sim"][valid], r_min, r_max
+            centres[populated], res["binned_sim"][populated], r_min, r_max
         )
         _, lam_pred_fit = fit_slope(
-            centres[valid], res["binned_pred"][valid], r_min, r_max
+            centres[populated], res["binned_pred"][populated], r_min, r_max
         )
+        sim_fit_str = "fit failed" if lam_sim_fit is None else f"{lam_sim_fit:.4e}"
+        pred_fit_str = "fit failed" if lam_pred_fit is None else f"{lam_pred_fit:.4e}"
         print(
             f"{band}: (informational, NOT gated -- see this script's docstring) "
-            f"semi-log fit of u*r: sim={lam_sim_fit:.4e}, "
-            f"discrete={lam_pred_fit:.4e}, lambda_analytic={lam:.4e}"
+            f"semi-log fit of u*r: sim={sim_fit_str}, "
+            f"discrete={pred_fit_str}, lambda_analytic={lam:.4e}"
         )
 
     # Informational only: global negativity and profile monotonicity.

@@ -1401,19 +1401,19 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        radiation_pressure_efficiency scaling of that same field: L_FUV/L_LW
        are deliberately independent of that separate efficiency knob. */
     if (sm->rad.has_raw_ISRF) {
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           radiation_get_star_l_fuv(&sm->rad, log_m, log_z);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
     } else if (sm->rad.with_ISRF) {
       const float Teff_K =
           radiation_get_star_teff(&sm->rad, log_m, log_z) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_FUV_BAND_LOW_EV,
                                          RADIATION_FUV_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
                                          RADIATION_LW_BAND_HIGH_EV);
@@ -1600,9 +1600,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float mean_excess_photon_energy_HI;
     /* Upper mass bound for the has_integrated_ISRF table-direct read
        below: the same MS-lifetime-capped value dot_N_ion uses for a 2D
-       table (operator ruling, 2026-09-06 -- a star past its own main-
-       sequence lifetime emits nothing, ionizing or not, so L_FUV/L_LW stop
-       the same way Q_H already does), or the uncapped m_sup for a 1D table,
+       table (a star past its own main-sequence lifetime emits nothing,
+       ionizing or not, so L_FUV/L_LW stop the same way Q_H already does),
+       or the uncapped m_sup for a 1D table,
        which has no MS-lifetime concept at all (matching dot_N_ion's own
        uncapped 1D read below). */
     float m_sup_capped = m_sup;
@@ -1655,10 +1655,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
        Integrated_L_FUV/Integrated_L_LW when the loaded table has them
        (has_integrated_ISRF), bounded by the same m_sup_capped dot_N_ion
        uses above (a real, deliberate behaviour change from the Teff
-       fallback below for a population with stars past m_sup_capped, per
-       the operator's 2026-09-06 ruling -- not merely a plumbing swap: a
-       star that has left the main sequence emits nothing, ionizing or
-       not). Else, the existing Teff fallback (see the individual-star
+       fallback below for a population with stars past m_sup_capped, and
+       not merely a plumbing swap: a star that has left the main sequence
+       emits nothing, ionizing or not). Else, the existing Teff fallback
+       (see the individual-star
        path's identical block for the physics): Teff has no IMF-integrated
        table concept (#radiation.raw's own doxygen on the teff/teff_2d
        union), so a single representative Teff at m_sup (this step's upper
@@ -1684,8 +1684,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
          1e2-1e4x too large across GEAR's stated production mass range and
          would still run to completion with finite, positive,
          plausible-looking numbers). */
-      sp->feedback_data.radiation.L_FUV = L_FUV_per_msun * m_init;
-      sp->feedback_data.radiation.L_LW = L_LW_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
+          L_FUV_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] = L_LW_per_msun * m_init;
     } else if (sm->rad.with_ISRF) {
       const float log_m_sup = log10f(m_sup);
       const float Teff_K =
@@ -1695,11 +1696,11 @@ void stellar_evolution_compute_preSN_feedback_spart(
                      log_m_sup)
                : radiation_get_teff_from_raw(&sm->rad, log_m_sup)) *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_FUV =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_FUV] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_FUV_BAND_LOW_EV,
                                          RADIATION_FUV_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_LW =
+      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           sp->feedback_data.radiation.L_bol *
           radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
                                          RADIATION_LW_BAND_HIGH_EV);
@@ -1773,8 +1774,7 @@ void stellar_evolution_zero_pointers(struct stellar_model sm) {
      copy, not the caller's own struct. Left unfixed: changing this
      function's signature to take a pointer would make these zeroing
      calls live on the restart-dump path, which needs a full restart-
-     safety re-verification before landing (see CLAUDE.md, "Restart
-     works"). */
+     safety re-verification before landing. */
 }
 
 /**

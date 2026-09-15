@@ -40,7 +40,7 @@ Exit 0 iff every assertion holds.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: CHECKED, CLOSURE-INDEPENDENT, NO CHANGE.
+# CLOSURE-INDEPENDENT: NO CHANGE UNDER THE M1 UPGRADE.
 # Both schemes compared here differ only in WHEN the source enters the
 # exact-relaxation `u` update, which the closure does not touch. The
 # constant multiplying the source did change (`3*c_hyp/c` -> `c_hyp/c`),
@@ -270,9 +270,9 @@ for h_over_lam in (6.0, 0.6):
             # Stiff: what cooling reads under L is the e-suppressed trough of
             # the sawtooth (Part A), POSITIVE at the centre: F was relaxed from
             # the pre-injection profile, so transport cannot drive the centre
-            # negative (the plan-review's round-1 "-40%" and round-2
-            # "e(e-0.44) < 0" estimates both used the continuum Laplacian of
-            # the kernel, 20x the discrete composed operator's; see B.3).
+            # negative (earlier "-40%" and "e(e-0.44) < 0" estimates both used
+            # the continuum Laplacian of the kernel, 20x the discrete
+            # composed operator's; see B.3).
             e_stiff = np.exp(-a_)
             assert -1e-3 * peak_L < readsL[-1, n // 2] < 2.0 * e_stiff * peak_L
             if N == 1:

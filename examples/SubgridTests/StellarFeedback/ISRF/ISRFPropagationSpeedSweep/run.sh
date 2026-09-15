@@ -17,7 +17,7 @@ level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 seed_pulse=${seed_pulse:=1.0}          # >0: star-free seeded pulse (see README); 0: star source
 c_hyp_pin=${c_hyp_pin:=0}              # GEARFeedback:ISRF_c_hyp_pin_for_debugging (km/s); 0 = use the closure
 c_hyp_margin=${c_hyp_margin:=0.5}      # GEARFeedback:ISRF_c_hyp_margin
-alpha_max=${alpha_max:=0.25}           # GEARFeedback:ISRF_dissipation_alpha_max
+alpha_max=${alpha_max:=0.5}            # GEARFeedback:ISRF_dissipation_alpha_max
 alpha_pin=${alpha_pin:=0}              # GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging; 0 = use the trigger
 propagation=${propagation:=1}          # GEARFeedback:ISRF_propagation
 star_mass=${star_mass:=29.7} #Star mass (Msun); only used when seed_pulse=0

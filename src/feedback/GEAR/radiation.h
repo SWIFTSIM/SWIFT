@@ -62,15 +62,13 @@
 #define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
 /*! Memory length, in units of a particle's own smoothing length, of the
-    negativity-triggered artificial-dissipation coefficient's decay
-    (design-lw-fuv-design-b-dissipation.md Section 4.3): the coefficient
-    relaxes toward
-    its trigger-driven target at rate c_hyp*(1/(this*h) + kappa) per unit
-    time, i.e. an e-folding of `this` particle-own-steps at the default
-    ISRF_c_hyp_margin. A compile-time constant, not a runtime parameter,
-    per the MAGMA2 precedent (Section 5.1): it sets the term's transient
-    behaviour, not its steady-state strength (ISRF_dissipation_alpha_max
-    does that). */
+    negativity-triggered artificial-dissipation coefficient's decay. The
+    coefficient relaxes toward its trigger-driven target at rate
+    c_hyp*(1/(this*h) + kappa) per unit time, i.e. an e-folding of `this`
+    particle-own-steps at the default ISRF_c_hyp_margin. A compile-time
+    constant, not a runtime parameter, per the MAGMA2 precedent: it sets
+    the term's transient behaviour, not its steady-state strength
+    (ISRF_dissipation_alpha_max does that). */
 #define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
 
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
@@ -95,7 +93,8 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
-/*! Non-ionizing FUV band, eV (Habing band, 912-2000 Angstrom). */
+/*! Non-ionizing FUV band, eV (Habing band, 1107-2066 Angstrom: lambda =
+    hc/E with hc = 12398.42 eV*Angstrom). */
 #define RADIATION_FUV_BAND_LOW_EV 6.0
 #define RADIATION_FUV_BAND_HIGH_EV 11.2
 
@@ -164,8 +163,8 @@
     band-integrated H2 cross section depends on the spectrum within
     11.2-13.6 eV, not a single atomic-physics constant, so this is a
     single-line-averaged effective value, not re-derivable to arbitrary
-    precision). Verified 2026-09-06 against Sternberg, Le Petit, Roueff
-    & Le Bourlot (2014, ApJ 790:10): this codebase's own k_diss formula
+    precision). Verified against Sternberg, Le Petit, Roueff & Le Bourlot
+    (2014, ApJ 790:10): this codebase's own k_diss formula
     (radiation_get_part_LW_dissociation_rate_internal()) compared against
     their free-space photodissociation rate D0=5.8e-11*I_UV (their Eq 5),
     for an equivalent LW-band radiation intensity, gives k_diss/D0=0.898
@@ -251,7 +250,7 @@ struct radiation_grid_metadata {
       an "L_FUV" dataset only; boundary_condition_error otherwise, matching
       every other edge_policy_* field's convention for a table where the
       corresponding dataset does not apply), from the group's own
-      edge_policy_l_fuv_below/above attributes -- a dedicated pair, NOT
+      edge_policy_l_fuv_below/above attributes, a dedicated pair, NOT
       shared with #edge_policy_luminosity, since pychem's L_FUV/L_LW default
       policy ("zero" below the native mass floor, "constant" above) differs
       from Luminosity's own. */
@@ -322,6 +321,7 @@ void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         int n_HII_pixels);
 void radiation_zero_spart_output(struct spart *sp);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
+void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);

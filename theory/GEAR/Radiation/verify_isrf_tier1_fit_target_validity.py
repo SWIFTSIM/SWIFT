@@ -66,12 +66,12 @@ numerics, at any finite kappa; the `~lambda/(3*r)` note is a separate,
 already-flagged, deliberately-deferred P1-vs-true-RT closure question (the
 cheap-M1 upgrade path), not a shape-fit bias affecting that functional
 form. A distinct, NOT-YET-RULED-OUT discretization-bias question (fitted
-lambda vs. true lambda at Tier 1's own lambda~h corner) is flagged in Part
-6 and left open, per the assigned diagnosis-only scope.
+lambda vs. true lambda at Tier 1's own lambda~h corner) is flagged in
+Part 6 and left open, as a diagnosis-only question.
 """
 
 # =============================================================================
-# M1 CLOSURE AUDIT, 2026-09-11: THIS SCRIPT'S CONCLUSION IS SUPERSEDED.
+# THIS SCRIPT'S CONCLUSION IS SUPERSEDED.
 #
 # Parts 1-5 below are correct for the P1 (isotropic-closure) system they
 # analyse, and are kept as the record of that analysis. Their conclusion,
@@ -352,8 +352,8 @@ print("comparable to the resolution h, not large compared to the box.")
 # state deviates from the CONTINUUM Yukawa profile this script analyzed
 # , a resolution effect, unrelated to the P1-vs-transparent-medium
 # question Parts 1-5 settle. Tier 1's own measured run sits at
-# h/lambda_FUV ~ 0.6 and h/lambda_LW ~ 1.0 (2026-09-07 validation log),
-# i.e. lambda ~ h to 1.7*h, NOT the lambda >> h regime where the
+# h/lambda_FUV ~ 0.6 and h/lambda_LW ~ 1.0 (validation run), i.e. lambda ~
+# h to 1.7*h, NOT the lambda >> h regime where the
 # continuum slope this script derives is guaranteed to be what the
 # discrete estimator actually converges to.
 # =====================================================================

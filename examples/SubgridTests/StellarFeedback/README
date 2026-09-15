@@ -62,6 +62,7 @@ mechanism above.
 | `ISRFShearAsymmetry` | A stabilised shear layer carrying two seeded Gaussian FUV/LW blobs, checking the propagation and dissipation scheme stays isotropic. |
 | `ISRFSourceTurnOff` | Field decay once the source star dies, same setup as `ISRFHyperbolicPropagation` otherwise. |
 | `ISRFH2Photodissociation` | H2 photodissociation by a star's propagated LW field in cold, zero-metallicity gas, against the shielded rate (Draine & Bertoldi 1996, Eq. 37, with Grackle's Wolcott-Green & Haiman 2019 exponent). Needs `--with-cooling=grackle_2` or above. |
+| `ISRFCosmology` | The ISRF module and Grackle couplings with and without cosmological expansion, checked against closed-form predictions. |
 
 Reconfiguring rebuilds `swift` in place, so check before you start a run
 that depends on the current binary.
