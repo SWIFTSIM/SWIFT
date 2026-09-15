@@ -130,8 +130,8 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
 
 #if COOLING_GRACKLE_MODE == 1
   const double nel = nHII + nHeII + 2 * nHeIII;
-  const double total_density =
-      nHI + nHII + nHeI + nHeII + nHeIII + nel + n_metal;
+  double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nel + n_metal;
+  if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
   const double mu =
       ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) / total_density;
   return mu;
@@ -147,8 +147,9 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
 
 #if COOLING_GRACKLE_MODE == 2
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-  const double total_density =
+  double total_density =
       nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHM + nel + n_metal;
+  if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
   const double mu =
       ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
       total_density;
@@ -159,8 +160,9 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nHDI = XHDI * rho / (3 * m_H);  // HD is 3 times the mass of H
 
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-  const double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nH2I +
-                               nH2II + nHM + nHDI + nel + n_metal;
+  double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II +
+                         nHM + nHDI + nel + n_metal;
+  if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
   const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
                      (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
                     total_density;
@@ -178,6 +180,12 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
  * @brief compute the (physical) specific internal energy of an ideal gas for
  * given temperature and mean molecular weight.
  *
+ * mu == 0 is a legitimate output of cooling_get_mean_molecular_weight() and
+ * cooling_get_h2_species_densities() for a particle with no tracked species
+ * at all (their own total_density floor stops that being a NaN, but a mu of
+ * exactly 0 would still turn this division into +-Inf); floor it here too
+ * rather than let every caller of this shared helper have to know that.
+ *
  * @param T Temperature of the gas.
  * @param mu Mean molecular weight of the gas.
  * @param kB Boltzmann constant.
@@ -186,7 +194,8 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
 __attribute__((always_inline)) INLINE static float
 cooling_internal_energy_from_T(const double T, const double mu, const double kB,
                                const double mp) {
-  return kB * T * hydro_one_over_gamma_minus_one / (mu * mp);
+  const double mu_safe = mu > 0.0 ? mu : 1.e-20;
+  return kB * T * hydro_one_over_gamma_minus_one / (mu_safe * mp);
 }
 
 /**
@@ -206,6 +215,85 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
 
 #if COOLING_GRACKLE_MODE >= 2
 /**
+ * @brief H2 and non-H2 number densities and this mode's mu, computed once
+ * from the particle's species fractions and shared by the forward
+ * (internal energy -> temperature) and inverse (temperature -> internal
+ * energy) H2-Gamma conversions, instead of each recomputing them.
+ */
+struct cooling_h2_species_densities {
+  double mu;
+  double nH2;
+  double number_density_noH2;
+};
+
+/**
+ * @brief compute mu and the H2/non-H2 number densities Grackle's Gamma
+ * correction needs (calculate_pressure.c, "Correct for Gamma from H2").
+ *
+ * Floors both denominators to Grackle's own tiny_number (1e-20) instead of
+ * leaving them at a literal 0, matching calculate_temperature.c/
+ * calculate_pressure.c exactly: a particle with every tracked species
+ * fraction at zero must never turn mu or Gamma1 into a 0/0 NaN that a
+ * later max()/max3() can silently let through under -ffast-math.
+ *
+ * @param phys_const Physical constants.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return mu, nH2 and number_density_noH2 for this particle.
+ */
+__attribute__((always_inline)) INLINE static struct cooling_h2_species_densities
+cooling_get_h2_species_densities(const struct phys_const *phys_const,
+                                 const struct cosmology *cosmo,
+                                 const struct part *p, const struct xpart *xp) {
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double m_H = phys_const->const_proton_mass;
+
+  const double nHI = cool_data->HI_frac * rho / m_H;
+  const double nHII = cool_data->HII_frac * rho / m_H;
+  const double nHeI = cool_data->HeI_frac * rho / (4 * m_H);
+  const double nHeII = cool_data->HeII_frac * rho / (4 * m_H);
+  const double nHeIII = cool_data->HeIII_frac * rho / (4 * m_H);
+  const double nHM = cool_data->HM_frac * rho / m_H;
+  const double nH2I = cool_data->H2I_frac * rho / (2 * m_H);
+  const double nH2II = cool_data->H2II_frac * rho / (2 * m_H);
+  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
+  const double nH2 = nH2I + nH2II;
+
+  const double MU_METAL = 16.0;
+  const double n_metal =
+      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
+      (MU_METAL * m_H);
+
+  const double tiny_number = 1.e-20;
+
+  /* Grackle's "number_density" local to the Gamma correction -- everything
+     except H2 (tracked separately as nH2). */
+  double number_density_noH2 = nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
+  if (number_density_noH2 == 0.0) number_density_noH2 = tiny_number;
+
+#if COOLING_GRACKLE_MODE == 2
+  double total_density = number_density_noH2 + nH2 + n_metal;
+  if (total_density == 0.0) total_density = tiny_number;
+  const double mu =
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
+      total_density;
+#else /* COOLING_GRACKLE_MODE == 3: also track HDI */
+  const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
+  double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
+  if (total_density == 0.0) total_density = tiny_number;
+  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
+                    total_density;
+#endif
+
+  return (struct cooling_h2_species_densities){
+      .mu = mu, .nH2 = nH2, .number_density_noH2 = number_density_noH2};
+}
+
+/**
  * @brief Grackle's H2 rotational/vibrational effective adiabatic index
  * (calculate_pressure.c, "Correct for Gamma from H2"), given the H2 and
  * non-H2 number densities and a seed temperature to evaluate the
@@ -217,7 +305,10 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
  *
  * @param nH2 Number density of H2 (H2I + H2II).
  * @param number_density_noH2 Number density of everything except H2 that
- *   enters Grackle's own Gamma correction (see calculate_pressure.c).
+ *   enters Grackle's own Gamma correction (see calculate_pressure.c);
+ *   already floored to a tiny positive value by
+ *   cooling_get_h2_species_densities(), matching Grackle's own tiny_number
+ *   substitution, so the ratio below never divides by zero.
  * @param T_seed Temperature to evaluate the vibrational term at -- the
  *   forward direction seeds this with its own fixed-gamma estimate, the
  *   inverse direction already knows the exact target temperature.
@@ -232,8 +323,7 @@ __attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
      is non-trace and the gas isn't so cold the mode is frozen out
      (Grackle's own x < 10 guard -- avoids exp() overflow at low T). */
   double GammaH2Inverse = 0.5 * 5.0;
-  if (nH2 > 0.0 && number_density_noH2 > 0.0 &&
-      nH2 / number_density_noH2 > 1e-3) {
+  if (nH2 / number_density_noH2 > 1e-3) {
     const double x = 6100.0 / T_safe;
     if (x < 10.0) {
       const double ex = exp(x);
@@ -253,14 +343,12 @@ __attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
  * "Correct for Gamma from H2"), which
  * cooling_temperature_from_internal_energy() does not apply.
  *
- * Self-contained: computes mu and the Gamma1 correction from the same
- * number densities in one pass, rather than calling
- * cooling_get_mean_molecular_weight() and recomputing them a second time.
- * The fixed-gamma temperature from that mu is Grackle's own "default
- * Gamma" estimate (verified to agree with Grackle to ~1e-4% whenever H2 is
- * trace), so it doubles as the seed for Grackle's own iteration. The
- * corrected temperature is then that seed rescaled by (Gamma1-1)/(gamma-1),
- * exactly as Grackle rescales its pressure array.
+ * The fixed-gamma temperature from cooling_get_h2_species_densities()'s mu
+ * is Grackle's own "default Gamma" estimate (verified to agree with
+ * Grackle to ~1e-4% whenever H2 is trace), so it doubles as the seed for
+ * Grackle's own iteration. The corrected temperature is then that seed
+ * rescaled by (Gamma1-1)/(gamma-1), exactly as Grackle rescales its
+ * pressure array.
  *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
@@ -277,49 +365,16 @@ cooling_get_temperature_h2_gamma_corrected(const struct phys_const *phys_const,
                                            const struct xpart *xp,
                                            const double u) {
 
-  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-  const double rho = hydro_get_physical_density(p, cosmo);
   const double m_H = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
 
-  const double nHI = cool_data->HI_frac * rho / m_H;
-  const double nHII = cool_data->HII_frac * rho / m_H;
-  const double nHeI = cool_data->HeI_frac * rho / (4 * m_H);
-  const double nHeII = cool_data->HeII_frac * rho / (4 * m_H);
-  const double nHeIII = cool_data->HeIII_frac * rho / (4 * m_H);
-  const double nHM = cool_data->HM_frac * rho / m_H;
-  const double nH2I = cool_data->H2I_frac * rho / (2 * m_H);
-  const double nH2II = cool_data->H2II_frac * rho / (2 * m_H);
-  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-  const double nH2 = nH2I + nH2II;
-
-  const double MU_METAL = 16.0;
-  const double n_metal =
-      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
-      (MU_METAL * m_H);
-
-  /* Grackle's "number_density" local to the Gamma correction -- everything
-     except H2 (tracked separately as nH2). */
-  const double number_density_noH2 =
-      nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
-
-#if COOLING_GRACKLE_MODE == 2
-  const double total_density = number_density_noH2 + nH2 + n_metal;
-  const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
-      total_density;
-#else /* COOLING_GRACKLE_MODE == 3: also track HDI */
-  const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
-  const double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
-  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
-                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
-                    total_density;
-#endif
+  const struct cooling_h2_species_densities sd =
+      cooling_get_h2_species_densities(phys_const, cosmo, p, xp);
 
   const double T_default =
-      cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
+      cooling_temperature_from_internal_energy(u, sd.mu, k_B, m_H);
   const double Gamma1 =
-      cooling_h2_effective_gamma(nH2, number_density_noH2, T_default);
+      cooling_h2_effective_gamma(sd.nH2, sd.number_density_noH2, T_default);
 
   return T_default * (Gamma1 - 1.0) / hydro_gamma_minus_one;
 }
@@ -348,49 +403,18 @@ cooling_get_internal_energy_h2_gamma_corrected(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct part *p, const struct xpart *xp, const double T_target) {
 
-  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-  const double rho = hydro_get_physical_density(p, cosmo);
   const double m_H = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
 
-  const double nHI = cool_data->HI_frac * rho / m_H;
-  const double nHII = cool_data->HII_frac * rho / m_H;
-  const double nHeI = cool_data->HeI_frac * rho / (4 * m_H);
-  const double nHeII = cool_data->HeII_frac * rho / (4 * m_H);
-  const double nHeIII = cool_data->HeIII_frac * rho / (4 * m_H);
-  const double nHM = cool_data->HM_frac * rho / m_H;
-  const double nH2I = cool_data->H2I_frac * rho / (2 * m_H);
-  const double nH2II = cool_data->H2II_frac * rho / (2 * m_H);
-  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-  const double nH2 = nH2I + nH2II;
-
-  const double MU_METAL = 16.0;
-  const double n_metal =
-      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
-      (MU_METAL * m_H);
-
-  const double number_density_noH2 =
-      nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
-
-#if COOLING_GRACKLE_MODE == 2
-  const double total_density = number_density_noH2 + nH2 + n_metal;
-  const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
-      total_density;
-#else /* COOLING_GRACKLE_MODE == 3: also track HDI */
-  const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
-  const double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
-  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
-                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
-                    total_density;
-#endif
+  const struct cooling_h2_species_densities sd =
+      cooling_get_h2_species_densities(phys_const, cosmo, p, xp);
 
   /* T_target is already exact, so it is a better Gamma1 seed than the
      forward direction's own fixed-gamma approximation gets to use. */
   const double Gamma1 =
-      cooling_h2_effective_gamma(nH2, number_density_noH2, T_target);
+      cooling_h2_effective_gamma(sd.nH2, sd.number_density_noH2, T_target);
   const double u_default =
-      cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
+      cooling_internal_energy_from_T(T_target, sd.mu, k_B, m_H);
 
   return u_default * hydro_gamma_minus_one / (Gamma1 - 1.0);
 }
