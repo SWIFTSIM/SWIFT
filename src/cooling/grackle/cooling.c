@@ -1103,13 +1103,11 @@ void cooling_cool_part(const struct phys_const *phys_const,
   float u_ad_before =
       u_old + dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
-  /* Apply the CMB floor first, then the hydro limit */
   double u_CMB_agora = 0.0;
   if (cooling->agora_cmb_temperature_floor) {
     u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
         phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
-    /* Shall we apply the CMB floor? */
     if (u_ad_before < u_CMB_agora) {
       u_ad_before = u_CMB_agora;
       const float du_dt = (u_ad_before - u_old) / dt_therm;
@@ -1146,11 +1144,19 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Get the change in internal energy due to hydro forces */
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
-  /* We now need to check that we are not going to go below any of the limits */
+  /* We now need to check that we are not going to go below any of the limits.
+     Any energy this adds is a floor, not radiative cooling/heating, so fold
+     it into hydro_du_dt (excluded from radiated_energy below) instead of
+     cool_du_dt -- the same convention the pre-solve floor clamp above
+     already uses, so both stay booked the same way regardless of whether
+     the floor triggers before or after the Grackle solve. */
+  const gr_float u_new_solved = u_new;
   u_new = max3(u_new, u_minimal, u_CMB_agora);
+  const float floor_injection = u_new - u_new_solved;
+  if (floor_injection > 0.f) hydro_du_dt += floor_injection / dt_therm;
 
   /* Calculate the cooling rate */
-  float cool_du_dt = (u_new - u_ad_before) / dt_therm;
+  float cool_du_dt = (u_new_solved - u_ad_before) / dt_therm;
   float du_dt = cool_du_dt + hydro_du_dt;
 
   /* Update the internal energy time derivative */

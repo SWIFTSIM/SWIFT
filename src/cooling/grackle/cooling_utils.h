@@ -80,7 +80,7 @@ cooling_get_equilibrium_mean_molecular_weight(
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
- * @param hydro_properties The #hydro_props.
+ * @param hydro_props The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
