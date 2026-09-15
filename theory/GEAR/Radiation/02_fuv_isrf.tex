@@ -1238,11 +1238,17 @@ state is then
   \label{eq:fuv-diss-apply}
 \end{equation}
 The transient amplification, $\max_{n\le200}\|G^n\|_2$ along the
-closure, is not the same as for that placement: at the shipped
-$(\alpha_{\max}, C_{\rm hyp}) = (0.5, 0.5)$ it is $1.54$ against $1.35$,
-and $1.19$--$1.33$ times larger at the extreme rows of the scan. It is
-bounded (the spectral radius stays at or below one) and vanishes with
-the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
+closure, is not the same as for that placement: at $C_{\rm hyp} = 0.5$
+it equals the reference ($1.349$) for $\alpha\lesssim0.323$, reaches
+$1.540$ at the shipped $\alpha_{\max} = 0.5$, and $1.682$ at the guard
+limit $\alpha = 0.5887$. At the guard boundary itself the ratio to the
+reference grows with $C_{\rm hyp}$: $1.14\times$ at $C_{\rm hyp} =
+0.25$, $1.25\times$ at $C_{\rm hyp} = 0.5$, and $1.35\times$ at
+$C_{\rm hyp} = 1.0$
+(\texttt{verify\_isrf\_dissipation\_flux\_first\_parameters.py}, Part E).
+It is bounded within the stability bound of
+Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
+one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
 for pairs of active particles in the same time bin (Section~\ref{sec:fuv-operators});
 it does not conserve the first spatial moment: behind a source moving through the
 gas the trigger fires preferentially on the depleted trailing side, and
@@ -1483,8 +1489,6 @@ path.
     the production use, has not been validated directly; every
     propagation test above uses one source or one seeded pulse.
     Production resolution has been tested at one point only.
-  % Revised 2026-09-15: replaces "Inherited coefficients", re-derived for
-  % the flux-first order with e-weighted dissipation.
   \item \textbf{Dissipation coefficients.} The amplification matrix of
     the flux-first update (Eq.~\ref{eq:fuv-u-update}) has the same
     characteristic polynomial as a dissipation applied to the transported
