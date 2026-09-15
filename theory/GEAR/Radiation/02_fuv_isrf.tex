@@ -65,7 +65,7 @@ other dust channels there is no such addition: the per-particle field
 replaces Grackle's scalar background outright, so an unilluminated
 particle carries no residual background heating. H$_2$ self-shielding is
 not modelled here: Grackle attenuates the supplied dissociation rate
-with its own self-shielding prescription \citep{DraineBertoldi1996},
+with its own self-shielding prescription \citep{WolcottGreenHaiman2019},
 exactly as it attenuates the background rate.
 
 \subsection{The equations we solve}
@@ -138,10 +138,10 @@ Dust is the only absorber. The band-specific dust mass opacity is
 \end{equation}
 with $\sigma_{d,{\rm FUV}} = 9\times10^{-22}\,{\rm cm^2}$ and
 $\sigma_{d,{\rm LW}} = 1.5\times10^{-21}\,{\rm cm^2}$ the dust
-cross-sections per hydrogen nucleon in the two bands for a Milky-Way
-grain population \citep{WeingartnerDraine2001},
-% TODO(cite): Kim et al. (2023), the band-integrated tabulation of these
-% two dust cross-sections per hydrogen nucleon; details unverified.
+absorption cross-sections per hydrogen nucleon in the two bands,
+band-averaged over a coeval, $\sim$50\,Myr, Kroupa-IMF stellar
+population for Milky-Way grains \citep{WeingartnerDraine2001},
+matching \citet[their PE and LW bands, Section~2.4]{Kim2023} exactly,
 $\mu_H = 1.4$ the mean mass per hydrogen nucleon in units of
 $m_H$, and $\mathcal D(Z)$ the dust-to-gas ratio relative to the Milky
 Way. $\mathcal D$ scales linearly with the gas metal mass fraction $Z$,
@@ -303,7 +303,7 @@ them by $c/c_{\rm hyp}$ without any photon travelling differently.
     shields it. That physics is not transport and cannot be represented
     by a band-integrated energy: it enters through the $b$ dependence of
     the H$_2$ self-shielding function that the chemistry applies
-    \citep{DraineBertoldi1996}, to the rate this module supplies
+    \citep{WolcottGreenHaiman2019}, to the rate this module supplies
     (Section~\ref{sec:fuv-coupling}). Splitting the band into lines is
     the only way to do better, and it is outside a two-moment grey
     scheme.
@@ -671,8 +671,10 @@ Section~\ref{sec:fuv-opacity},
   \qquad (T < 2\times10^4\,{\rm K}) ,
   \label{eq:fuv-pe-heating}
 \end{equation}
-per unit volume, and scales its dust recombination cooling and
-H$_2$ formation on dust by the same $G_0$. The H$_2$ photodissociation
+per unit volume, and scales its dust recombination cooling by the same
+$G_0$; H$_2$ formation on dust also responds to $G_0$, but only
+indirectly, through the dust temperature $G_0$ helps set, not a direct
+scaling like the two terms above. The H$_2$ photodissociation
 rate is a cross-section times the LW photon flux,
 \begin{equation}
   k_{{\rm diss},i} = \sigma_{\rm H_2}\,
@@ -686,16 +688,20 @@ checked to within $10\%$ against the free-space photodissociation rate of
 \citet[their Eq.~5, $D_0 = 5.8\times10^{-11} I_{\rm UV}\,{\rm
 s^{-1}}$]{Sternberg2014} for an equivalent field. Grackle adds
 $k_{\rm diss}$ to its background dissociation rate and applies its own
-self-shielding factor \citep{DraineBertoldi1996} to the sum. Both quantities are clamped to be
+self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Both quantities are clamped to be
 non-negative before they reach Grackle; a negative value is an
 undershoot of the numerical scheme (Section~\ref{sec:fuv-dissipation})
-and is reported.
+and is reported. Grackle applies $k_{\rm diss}$ only to the H$_2$
+reaction network itself: it adds no heating for the photodissociation
+event or the UV pumping that precedes it, unlike the photoelectric and
+dust-recombination channels above.
 
 Enabling the module (\code{GEARFeedback:with\_photoelectric\_heating})
 configures Grackle for it: dust chemistry on, which selects the
 constant-efficiency photoelectric heating and dust recombination cooling
-together, and additionally H$_2$ formation on dust grains in the cooling
-modes that track H$_2$ (modes 2 and 3); the per-particle ISRF field
+together, and forces H$_2$ formation on dust grains
+(\code{h2\_on\_dust}) on in the cooling modes that track H$_2$
+(modes 2 and 3); the per-particle ISRF field
 instead of the scalar one, for every dust channel; and, in those same
 H$_2$-tracking modes, the radiative-transfer rate coupling that carries
 $k_{\rm diss}$. Photoelectric heating and dust recombination cooling
@@ -1304,14 +1310,18 @@ logbook.
     equal $\Delta t_\star L_b$ to floating-point precision, per band.
   \item \textbf{Screened steady state}, $h/\lambda$ from $0.6$ to $20$
     (production particle masses $0.1$--$760\,M_\odot$ at solar $Z$,
-    $n_H = 10^3\,{\rm cm^{-3}}$). Criterion: the fitted absorption
-    length of the settled profile within $15\%$ of the scheme's own
-    discrete fixed point, computed on the run's particle positions, in
-    both bands; the amplitude identity Eq.~\ref{eq:fuv-amplitude-identity}
-    reported. Outcome: pass at every corner, with amplitude agreement to
-    $0.2\%$ or better; the LW profile at $h/\lambda = 20$ is
-    unmeasurable because the field is zero on all but a few dozen
-    particles.
+    $n_H = 10^3\,{\rm cm^{-3}}$). Criterion: the settled radial profile
+    $u(r)$, binned and compared bin by bin against the scheme's own
+    discrete fixed point (computed on the run's particle positions, in
+    both bands), median relative error below $15\%$ over every radial
+    bin whose predicted value clears a float32-noise floor
+    ($10^3\times$ the smallest normal float32); a bin below that floor,
+    or a band with fewer than three such bins, is reported unmeasurable
+    rather than counted as a pass or a fail; the amplitude identity
+    Eq.~\ref{eq:fuv-amplitude-identity} reported alongside. Outcome:
+    pass at every corner, with amplitude agreement to $0.2\%$ or
+    better; the LW profile at $h/\lambda = 20$ is unmeasurable because
+    the field is zero on all but a few dozen particles.
   \item \textbf{Causal reach.} The field's edge at $10^{-3}$ of the peak
     must stay inside $r = c_{\rm hyp}(t - t_0)$ at every snapshot, in a
     uniform box and with one neighbour pinned to a $c_{\rm hyp}$ up to
