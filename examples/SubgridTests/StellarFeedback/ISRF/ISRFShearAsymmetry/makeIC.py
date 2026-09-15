@@ -135,6 +135,12 @@ def parse_options():
         default=2.0,
         help="Gaussian width, in units of the mean smoothing length.",
     )
+    parser.add_argument(
+        "--glass-shift",
+        type=float,
+        default=0.0,
+        help="Periodic shift of the glass along x, y and z, as a fraction of the box.",
+    )
 
     options = parser.parse_args()
     return options
@@ -236,6 +242,7 @@ if opt.level is not None and opt.boxsize is None:
         )
     eps = 1e-6
     pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * L
+    pos = (pos + opt.glass_shift * L) % L
     h = h_glass * L
 else:
     print(
