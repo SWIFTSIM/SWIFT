@@ -24,6 +24,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "stars/GEAR/stars_stellar_type.h"
 #include "units.h"
 
 /**
@@ -328,6 +329,28 @@ feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
     const struct spart *sp) {
   return 0.f;
+}
+
+/**
+ * @brief Star's current non-ionizing FUV-band luminosity. Nothing to do
+ * here; this model does not implement the ISRF radiation module.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_FUV(
+    const struct spart *sp) {
+  return 0.;
+}
+
+/**
+ * @brief Star's current Lyman-Werner-band luminosity, see
+ * #feedback_get_star_L_FUV.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_LW(
+    const struct spart *sp) {
+  return 0.;
 }
 
 /**

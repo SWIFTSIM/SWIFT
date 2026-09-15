@@ -1234,6 +1234,30 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
 }
 
 /**
+ * @brief Star's current non-ionizing FUV-band luminosity.
+ *
+ * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
+ * stars I/O converter, which is compiled whenever stars=GEAR regardless of
+ * the feedback model) can read this without depending on GEAR feedback
+ * being the one actually compiled in.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_L_FUV(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_band[ISRF_BAND_FUV];
+}
+
+/**
+ * @brief Star's current Lyman-Werner-band luminosity, see
+ * #feedback_get_star_L_FUV.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_L_LW(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_band[ISRF_BAND_LW];
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and
