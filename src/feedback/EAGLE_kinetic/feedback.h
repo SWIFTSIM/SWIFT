@@ -288,6 +288,28 @@ __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
 }
 
 /**
+ * @brief Star's current non-ionizing FUV-band luminosity. This model does
+ * not implement the ISRF radiation module.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_FUV(
+    const struct spart *sp) {
+  return 0.;
+}
+
+/**
+ * @brief Star's current Lyman-Werner-band luminosity, see
+ * #feedback_get_star_L_FUV.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_LW(
+    const struct spart *sp) {
+  return 0.;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon

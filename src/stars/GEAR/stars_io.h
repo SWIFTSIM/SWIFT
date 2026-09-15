@@ -135,6 +135,16 @@ INLINE static void convert_spart_HII_mass(const struct engine *e,
   ret[0] = feedback_get_star_HII_mass(sp);
 }
 
+INLINE static void convert_spart_L_FUV(const struct engine *e,
+                                       const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_FUV(sp);
+}
+
+INLINE static void convert_spart_L_LW(const struct engine *e,
+                                      const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_LW(sp);
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -213,16 +223,16 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "is compiled out, so this field counts only each pass's newly-tagged "
       "mass rather than the region's true total.");
 
-  list[10] = io_make_output_field(
+  list[10] = io_make_output_field_convert_spart(
       "FUVLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
-      feedback_data.radiation.L_band[ISRF_BAND_FUV],
+      convert_spart_L_FUV,
       "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
       "physical units. Feeds the ISRF injection term; 0 unless "
       "GEARFeedback:with_photoelectric_heating is on.");
 
-  list[11] = io_make_output_field(
+  list[11] = io_make_output_field_convert_spart(
       "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
-      feedback_data.radiation.L_band[ISRF_BAND_LW],
+      convert_spart_L_LW,
       "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
       "physical units. See #FUVLuminosities.");
 
