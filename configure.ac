@@ -3052,6 +3052,9 @@ case "$with_sink" in
     if test "$with_feedback" != "GEAR"; then
        AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR: the GEAR sink model reads the GEAR feedback module's stellar model (initial mass function) to sample star masses, so it cannot be built against any other feedback module])
     fi
+    if test "$with_cooling" != "grackle"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
+    fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
     *)
