@@ -40,6 +40,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testRadiationISRFComovingFactors \
         testRadiationISRFExpansionTerm \
         testRadiationISRFForceDispatchConservation \
+        testRadiationISRFFluxUnderflow \
         testRadiationGridMetadata \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -62,6 +63,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationISRFComovingFactors \
 		 testRadiationISRFExpansionTerm \
 		 testRadiationISRFForceDispatchConservation \
+		 testRadiationISRFFluxUnderflow \
 		 testRadiationGridMetadata \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -83,6 +85,7 @@ testRadiationISRFDissipationConservation_SOURCES = testRadiationISRFDissipationC
 testRadiationISRFComovingFactors_SOURCES = testRadiationISRFComovingFactors.c
 testRadiationISRFExpansionTerm_SOURCES = testRadiationISRFExpansionTerm.c
 testRadiationISRFForceDispatchConservation_SOURCES = testRadiationISRFForceDispatchConservation.c
+testRadiationISRFFluxUnderflow_SOURCES = testRadiationISRFFluxUnderflow.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
 
 testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c
