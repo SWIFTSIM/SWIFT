@@ -18,7 +18,7 @@ metallicity_default=0        # Z/Zsun
 u_fuv_default=0              # erg/g
 u_lw_default=0               # erg/g
 nH2_ratio_default=1e-8
-h2_self_shielding_default=0
+h2_self_shielding_default=3
 propagation_default=1
 c_hyp_pin_default=0          # km/s, 0 = off
 star_mass_default=0          # Msun, 0 = no star
@@ -32,6 +32,7 @@ case "$config" in
 	u_fuv_default=6.9955e4
 	u_lw_default=6.9955e4
 	nH2_ratio_default=2e-4
+	h2_self_shielding_default=0  # the check's closed form (A2) is unshielded
 	;;
     dust_absorption)
 	metallicity_default=1
