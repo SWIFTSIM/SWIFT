@@ -54,6 +54,9 @@ struct cooling_function_data {
   /*! Flag to enable H2 formation on dust grains */
   int H2_on_dust;
 
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 

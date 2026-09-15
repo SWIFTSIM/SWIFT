@@ -1504,6 +1504,10 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->h2_on_dust = cooling->H2_on_dust;
+#ifdef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
+  chemistry->H2_photodissociation_heating =
+      cooling->H2_photodissociation_heating;
+#endif
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   if (cooling->local_dust_to_gas_ratio > 0)

@@ -195,6 +195,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_on_dust =
       parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
 
+  cooling->H2_photodissociation_heating = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_photodissociation_heating", 0);
+#ifndef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
+  if (cooling->H2_photodissociation_heating)
+    error(
+        "GrackleCooling:H2_photodissociation_heating needs a Grackle build "
+        "that provides it; this SWIFT was built against one that does not.");
+#endif
+
   cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
 

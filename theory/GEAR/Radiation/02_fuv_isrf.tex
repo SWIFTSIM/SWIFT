@@ -705,7 +705,25 @@ checked to within $10\%$ against the free-space photodissociation rate of
 \citet[their Eq.~5, $D_0 = 5.8\times10^{-11} I_{\rm UV}\,{\rm
 s^{-1}}$]{Sternberg2014} for an equivalent field. Grackle adds
 $k_{\rm diss}$ to its background dissociation rate and applies its own
-self-shielding factor \citep{DraineBertoldi1996} to the sum. Both quantities are clamped to be
+self-shielding factor \citep{DraineBertoldi1996} to the sum. Grackle
+adds no heating for these dissociations by default. The optional switch
+\code{GrackleCooling:H2\_photodissociation\_heating} (off by default,
+a Grackle build that provides it) adds, following \citet[their
+Appendix~A]{Smith2026},
+\begin{equation}
+  \Gamma_{\rm H_2,diss} = \left[0.4 + \frac{2 f_{\rm pump}}
+    {1 + n_{\rm crit}/n}\right]{\rm eV}\;k_{\rm diss,shield}\,n_{\rm H_2},
+  \qquad f_{\rm pump} = 8 ,
+  \label{eq:fuv-h2-diss-heating}
+\end{equation}
+per unit volume: $0.4$\,eV from the dissociation itself and the
+collisionally thermalised part of the UV-pumping energy, with the
+critical density of \citet{Omukai2000} that Grackle already uses for
+H$_2$ formation heating. $k_{\rm diss,shield}$ is the shielded total
+rate (UV background plus $k_{\rm diss}$). \citet{Smith2026} write the
+pumping denominator as $1 + n/n_{\rm crit}$; the form above, which
+grows with density, is the one consistent with Grackle's formation
+heating that they cite. Both quantities are clamped to be
 non-negative before they reach Grackle; a negative value is an
 undershoot of the numerical scheme (Section~\ref{sec:fuv-dissipation})
 and is reported.
