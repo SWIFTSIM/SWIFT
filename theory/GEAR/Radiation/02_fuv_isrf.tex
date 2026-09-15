@@ -1483,10 +1483,25 @@ path.
     the production use, has not been validated directly; every
     propagation test above uses one source or one seeded pulse.
     Production resolution has been tested at one point only.
-  \item \textbf{Inherited coefficients.} $\alpha_{\max} = 0.5$ and the
-    negativity threshold $\varepsilon_1 = 0.01$ were set under the
-    isotropic closure and have not been re-derived for the current
-    closure, limiter and floor; $\varepsilon_\lambda = 0.5$ is the least
+  % Revised 2026-09-15: replaces "Inherited coefficients", re-derived for
+  % the flux-first order with e-weighted dissipation.
+  \item \textbf{Dissipation coefficients.} The amplification matrix of
+    the flux-first update (Eq.~\ref{eq:fuv-u-update}) has the same
+    characteristic polynomial as a dissipation applied to the transported
+    field, and the thin limit $e^{-a}\to1$ binds, so
+    Eq.~\ref{eq:fuv-stability-bound} is the stability condition of the
+    shipped order: at $C_{\rm hyp} = 0.5$ it admits $\alpha\le0.589$,
+    $1.18$ times $\alpha_{\max} = 0.5$. The bound uses $2I_W = 6.2$; the
+    lattice maximum of the dissipation symbol is $3.31$, so on a uniform
+    lattice the bound is about twice conservative in $\alpha$. The transient
+    amplification of the shipped order grows with $\alpha$ above
+    $\alpha\approx0.32$: $1.54$ at $0.5$ and $1.68$ at the bound, against
+    $1.35$ with the dissipation off
+    (\texttt{verify\_isrf\_dissipation\_flux\_first\_parameters.py}). The
+    negativity threshold $\varepsilon_1 = 0.01$ only sets where the
+    trigger saturates and does not enter the stability analysis; it was
+    measured under the isotropic closure and not re-measured with the
+    limiter and floor. $\varepsilon_\lambda = 0.5$ is the least
     constrained of the dissipation parameters.
   \item \textbf{Moment-closure physics.} Shadows behind dense clumps are
     softer than reality, and two beams crossing at a particle are merged
