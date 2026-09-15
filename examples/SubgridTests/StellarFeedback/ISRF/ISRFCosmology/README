@@ -1,0 +1,82 @@
+# Intro
+Tests the ISRF module and its Grackle coupling in an expanding box. Each
+configuration is run without cosmology (`redshift=0`) and with cosmology from
+`redshift=9`, from the same physical initial state, and the same check is
+applied to both. Where a closed form exists, the check compares against it:
+
+- `free_field`: a uniform seeded field in dust-free gas, no star. The
+  mass-specific field decays as `u0 a0/a` (constant without cosmology), and the
+  H2 abundance follows `ln x_H2 = -k0 int (a0/a)^4 dt` with the rate the module
+  hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
+- `dust_absorption`: the same at solar metallicity, with the propagation speed
+  pinned (`c_hyp_pin`, km/s), so the absorption rate is known:
+  `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - ln(a/a0)`.
+- `photoelectric` and `photoelectric_dark`: a seeded field of `G0 ~ 1` and the
+  same box without it. The difference of their internal energies must equal
+  the integral of Grackle's heating rate
+  `1e-24 * 0.05 * G0 * n_H * Z/0.01295 erg cm^-3 s^-1`.
+- `injection`: a star with propagation off. The injected energy
+  `sum m u` equals `Delta_t L` in each band.
+
+`h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
+self-shielding) has no closed form. It is compared between `redshift=0` and
+high redshift over 25 yr, where expansion does not change the physical state.
+The check equations and every pass bar are in the docstrings of
+`isrf_cosmology_check.py` and `isrf_cosmology_h2_identity_check.py`.
+
+## Initial conditions
+`makeIC.py` takes physical values at the starting redshift and writes the
+comoving box and density SWIFT expects; the internal energy stays physical,
+as SWIFT converts it at start-up. SWIFT stores the star's birth scale factor in
+single precision, so `makeIC.py` rounds it down: otherwise the star would be
+born after the start of the 25 yr runs. `GrackleCooling:cmb_temperature_floor`
+is 0 because the floor, `2.73(1+z)` K, differs between the two runs by more
+than the gas temperature. `cosmo_timeline.py` converts the proper-time
+duration of each configuration into `a_end`, a `dt_max` in `ln a` and the
+snapshot ratio.
+The star starts with the same age in both runs (`star_age`, internal units):
+a star of age 0 skips its first injection. Without cosmology the run starts at
+that time, because GEAR gives no feedback for a negative birth time.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`grackle_2` also works. H2 is only tracked in these two modes.
+
+# Run
+```
+config=free_field redshift=0 run_name=free_field_z0 ./run.sh
+config=free_field redshift=9 run_name=free_field_z9 ./run.sh
+```
+and likewise for the other configurations. `h2_shielded` also needs a
+reference rerun with another thread count, which sets its pass bar, and
+optionally a second redshift:
+```
+config=h2_shielded redshift=0 run_name=h2_z0 ./run.sh
+config=h2_shielded redshift=0 n_threads=3 run_name=h2_z0_replicate ./run.sh
+config=h2_shielded redshift=9 run_name=h2_z9 ./run.sh
+config=h2_shielded redshift=4 run_name=h2_z4 ./run.sh
+```
+Add `h2_self_shielding=2` for the kernel-length column. See `run.sh` for the
+other overrides (`level`, `gas_density`, `gas_mass`, `duration`, `steps`, ...).
+At level 5 each run takes a few minutes on 8 threads.
+
+# Checking
+```
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z9/snap/snapshot_*.hdf5" \
+    --reference "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config dust_absorption --c-hyp-pin 4 -s ...
+python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*.hdf5" \
+    --dark "pe_dark_z9/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config injection -s "inj_z9/snap/snapshot_*.hdf5" \
+    --log inj_z9/output.log
+python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.hdf5" \
+    --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
+    --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
+```
+Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
+(exit code 0 or 1). With `--reference`, the cosmological bar also includes
+twice the error the non-cosmological run measured.

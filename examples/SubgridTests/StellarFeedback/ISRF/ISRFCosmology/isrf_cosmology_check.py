@@ -1,0 +1,680 @@
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2026 Darwin Roduit (darwin.roduit@epfl.ch)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
+"""Check the ISRF module against closed-form solutions, with or without cosmology.
+
+Every snapshot field is converted to physical CGS with its own
+``a-scale exponent`` attribute. Elapsed proper time is ``Time`` minus the run's
+start time. ``a0`` is the scale factor at the start (1 without cosmology) and
+``H`` the Hubble rate from the snapshot's own ``Cosmology`` group,
+
+    H(a) = H0 sqrt(Omega_r a^-4 + Omega_m a^-3 + Omega_k a^-2 + Omega_lambda) .
+
+Integrals over time are done in ln a, ``dt = d ln a / H``, between the scale
+factors SWIFT wrote, so the reference uses SWIFT's own a(t).
+
+free_field
+    No star, no dust (kappa = 0), uniform seeded field, so the flux divergence
+    vanishes. The module's energy equation reduces to ``du/dt = -H u`` for the
+    mass-specific field (volumetric U ~ a^-4, rho ~ a^-3), hence
+
+        u(t) = u0 a0 / a(t)                    (u = u0 without cosmology).   (A1)
+
+    The unshielded H2 photodissociation rate the module hands to Grackle is
+    ``k = sigma_H2 c rho u_LW / E_LW``, with rho = rho0 (a0/a)^3, so
+
+        ln[x_H2(t)/x_H2(0)] = -k0 int_0^t (a0/a)^4 dt'    (-k0 t without).   (A2)
+
+dust_absorption
+    Seeded field, solar metallicity, propagation speed pinned to c_pin. The
+    exact solution of the module's relaxation update is
+
+        ln[u(t)/u0] = -c_pin kappa0 int_0^t (a0/a)^3 dt' - ln[a(t)/a0] ,     (B1)
+
+    with kappa0 = sigma_d (Z/0.01295) rho0 / (1.4 m_H) the linear absorption
+    coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for FUV and LW).
+
+photoelectric
+    Seeded G0, solar metallicity, low pinned speed so G0 barely changes.
+    Grackle's constant-efficiency photoelectric heating
+    (``photoelectric_heating = 2``, cool1d_multi_g.F) is
+
+        Gamma = 1e-24 * 0.05 * G0 * n_H * Z/0.01295   erg cm^-3 s^-1 ,       (D1)
+
+    for T < 2e4 K. The same fixture without the field (``photoelectric_dark``)
+    carries every other heating and cooling term, and expansion, so
+
+        u_on(t) - u_dark(t) = int_0^t Gamma / rho dt' .                      (D2)
+
+injection
+    Propagation off, no dust: the injection kernel weights sum to 1, so
+    ``sum_j m_j u_j = Delta_t L`` per band, Delta_t the star's step read from
+    the run log.
+
+Bars
+----
+Each bar is the sum of terms stated in the output, derived from the run's
+discretisation: the non-cosmological run of the same configuration measures
+the error that does not depend on a (float32 updates, flux divergence on the
+glass, Grackle's implicit solve); ``--reference`` passes it to the
+cosmological check, whose bar is the larger of the a-priori budget and twice
+that measured error, plus the cosmological terms:
+
+- H and the rates are frozen at the step end (``cosmology_update`` runs before
+  the step's tasks). For a rate r(a) ~ a^-p, the ln error per step is
+  (p/2) dlna_step * r dt (matter domination, d ln H/d ln a = -3/2 adds 3/4
+  for the H term), summed over the run.
+- Particles are updated at their step ends, so a snapshot can lag by one
+  step: one step's worth of the change.
+"""
+
+import argparse
+import glob
+import sys
+from typing import Dict, List, Optional
+
+import h5py
+import numpy as np
+from scipy.integrate import quad
+
+SIGMA_H2_LW_CGS = 2.47e-18
+LW_PHOTON_ENERGY_CGS = 12.0 * 1.602176634e-12
+HABING_FLUX_CGS = 1.6e-3
+SIGMA_D_CGS = {"FUV": 9e-22, "LW": 1.5e-21}
+MU_H = 1.4
+GRACKLE_SOLAR_METAL_FRACTION = 0.01295
+C_LIGHT_CGS = 2.99792458e10
+M_H_CGS = 1.67262171e-24
+HYDROGEN_MASS_FRACTION = 0.76
+PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
+FLOAT32_EPS = np.finfo(np.float32).eps
+
+
+def parse_options() -> argparse.Namespace:
+    """Parse the command line."""
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--config",
+        required=True,
+        choices=["free_field", "dust_absorption", "photoelectric", "injection"],
+    )
+    parser.add_argument("-s", "--snapshots", required=True, help="Snapshot glob")
+    parser.add_argument(
+        "--reference",
+        default=None,
+        help="Snapshot glob of the non-cosmological run of the same configuration",
+    )
+    parser.add_argument(
+        "--dark", default=None, help="Snapshot glob of photoelectric_dark"
+    )
+    parser.add_argument(
+        "--reference-dark",
+        default=None,
+        help="Snapshot glob of the non-cosmological photoelectric_dark run",
+    )
+    parser.add_argument("--log", default=None, help="Run log, for injection")
+    parser.add_argument(
+        "--dt-max",
+        type=float,
+        default=None,
+        help="TimeIntegration:dt_max of the run (ln a with cosmology); "
+        "read from used_parameters.yml next to snap/ when omitted",
+    )
+    parser.add_argument("--c-hyp-pin", type=float, default=None, help="km/s")
+    return parser.parse_args()
+
+
+def physical(dataset: h5py.Dataset, a: float, unit_cgs: float) -> np.ndarray:
+    """Return a snapshot dataset in physical CGS."""
+    exponent = float(np.atleast_1d(dataset.attrs["a-scale exponent"])[0])
+    return dataset[:].astype(np.float64) * a**exponent * unit_cgs
+
+
+def read_snapshot(filename: str) -> Dict:
+    """Read one snapshot in physical CGS."""
+    with h5py.File(filename, "r") as handle:
+        units = handle["/Units"].attrs
+        length = float(np.atleast_1d(units["Unit length in cgs (U_L)"])[0])
+        mass = float(np.atleast_1d(units["Unit mass in cgs (U_M)"])[0])
+        time = float(np.atleast_1d(units["Unit time in cgs (U_t)"])[0])
+        header = handle["/Header"].attrs
+        a = float(np.atleast_1d(header["Scale-factor"])[0])
+        cosmo = handle["/Cosmology"].attrs
+        is_cosmo = int(np.atleast_1d(cosmo.get("Cosmological run", [0]))[0]) == 1
+        velocity = length / time
+        energy = velocity**2
+        gas = handle["/PartType0"]
+        order = np.argsort(gas["ParticleIDs"][:])
+        out = {
+            "a": a,
+            "cosmological": is_cosmo,
+            "time": float(np.atleast_1d(header["Time"])[0]) * time,
+            "cosmology": {
+                key: float(np.atleast_1d(cosmo[key])[0])
+                for key in [
+                    "H0 [internal units]",
+                    "Omega_m",
+                    "Omega_r",
+                    "Omega_k",
+                    "Omega_lambda",
+                ]
+            },
+            "time_unit": time,
+            "mass_unit": mass,
+            "energy_unit": energy,
+            "density": physical(gas["Densities"], a, mass / length**3)[order],
+            "mass": physical(gas["Masses"], a, mass)[order],
+            "u": physical(gas["InternalEnergies"], a, energy)[order],
+            "u_FUV": physical(gas["FUVSpecificEnergies"], a, energy)[order],
+            "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
+            "H2I": gas["H2I"][:].astype(np.float64)[order],
+            "hydrogen": sum(
+                gas[name][:].astype(np.float64)[order]
+                for name in ["HI", "HII", "H2I", "H2II"]
+            ),
+        }
+        metals = gas["MetalMassFractions"][:].astype(np.float64)
+        out["Z"] = (metals[:, -1] if metals.ndim == 2 else metals)[order]
+        if "/PartType4" in handle and handle["/PartType4/Masses"].shape[0] > 0:
+            out["L_FUV"] = float(handle["/PartType4/FUVLuminosities"][0])
+            out["L_LW"] = float(handle["/PartType4/LWLuminosities"][0])
+            out["time_internal"] = float(np.atleast_1d(header["Time"])[0])
+    return out
+
+
+def load_run(pattern: str) -> List[Dict]:
+    """Read every snapshot of a run, sorted by time."""
+    files = sorted(glob.glob(pattern))
+    if len(files) < 2:
+        raise RuntimeError(f"Need at least two snapshots for {pattern!r}")
+    run = []
+    for name in files:
+        snap = read_snapshot(name)
+        # SWIFT also dumps at time_end, which can repeat the last output time.
+        if run and snap["time"] == run[-1]["time"]:
+            continue
+        run.append(snap)
+    return run
+
+
+def hubble_rate_cgs(a: float, snap: Dict) -> float:
+    """Return H(a) in s^-1 from the snapshot's cosmology (0 without cosmology)."""
+    if not snap["cosmological"]:
+        return 0.0
+    c = snap["cosmology"]
+    e2 = (
+        c["Omega_r"] * a**-4
+        + c["Omega_m"] * a**-3
+        + c["Omega_k"] * a**-2
+        + c["Omega_lambda"]
+    )
+    return c["H0 [internal units]"] * np.sqrt(e2) / snap["time_unit"]
+
+
+def power_integral(run: List[Dict], power: float) -> np.ndarray:
+    """Return int_0^t (a0/a)^power dt' at every snapshot, in seconds."""
+    first = run[0]
+    if not first["cosmological"]:
+        return np.array([s["time"] - first["time"] for s in run])
+    a0 = first["a"]
+    return np.array(
+        [
+            (
+                quad(
+                    lambda x: np.exp(-power * x)
+                    / hubble_rate_cgs(a0 * np.exp(x), first),
+                    0.0,
+                    np.log(s["a"] / a0),
+                    epsabs=0.0,
+                    epsrel=1e-12,
+                )[0]
+                if s["a"] > a0
+                else 0.0
+            )
+            for s in run
+        ]
+    )
+
+
+def friedmann_time_residual(run: List[Dict]) -> float:
+    """Return max |t_Friedmann/t_SWIFT - 1| over the snapshots (0 without cosmology)."""
+    if not run[0]["cosmological"]:
+        return 0.0
+    t_model = power_integral(run, 0.0)[1:]
+    t_swift = np.array([s["time"] - run[0]["time"] for s in run])[1:]
+    return float(np.max(np.abs(t_model / t_swift - 1.0)))
+
+
+def read_dt_max(pattern: str, given: Optional[float]) -> float:
+    """Return dt_max, from the argument or the run's used_parameters.yml."""
+    if given is not None:
+        return given
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        return float(yaml.safe_load(handle)["TimeIntegration"]["dt_max"])
+
+
+def summarize(label: str, error: np.ndarray) -> float:
+    """Print and return the worst per-snapshot median |error|."""
+    medians = np.median(np.abs(error), axis=1)
+    worst = float(np.max(medians))
+    print(
+        f"  {label:<34s} worst median |err| {worst:.3e}, "
+        f"worst particle {np.max(np.abs(error)):.3e}"
+    )
+    return worst
+
+
+def gate(label: str, worst: float, bar: float) -> bool:
+    """Print a pass/fail line."""
+    ok = bool(np.isfinite(worst)) and worst <= bar
+    print(
+        f"  {'PASS' if ok else 'FAIL'}: {label}: {worst:.3e} <= bar {bar:.3e}"
+        if ok
+        else f"  FAIL: {label}: {worst:.3e} > bar {bar:.3e}"
+    )
+    return ok
+
+
+def step_count(run: List[Dict], dt_max: float) -> float:
+    """Return the number of dt_max steps spanned by the run."""
+    first, last = run[0], run[-1]
+    if first["cosmological"]:
+        return np.log(last["a"] / first["a"]) / dt_max
+    return (last["time"] - first["time"]) / (dt_max * first["time_unit"])
+
+
+def free_field_errors(run: List[Dict]) -> Dict:
+    """Return the errors of Eqs. (A1) and (A2) at every snapshot.
+
+    The transport moves energy between particles and conserves sum m u, so on
+    a glass each particle's field departs from the uniform solution by the
+    glass noise while the mass-weighted mean follows (A1) exactly. The gates
+    use the box means; the per-particle spread is reported.
+    """
+    first = run[0]
+    a0 = first["a"]
+    mass = first["mass"]
+    out = {}
+    for band in ["FUV", "LW"]:
+        u0 = np.sum(mass * first[f"u_{band}"]) / np.sum(mass)
+        out[band] = np.array(
+            [
+                np.sum(s["mass"] * s[f"u_{band}"])
+                / np.sum(s["mass"])
+                / (u0 * a0 / s["a"])
+                - 1.0
+                for s in run
+            ]
+        )
+        out[f"{band}_spread"] = np.array(
+            [
+                np.median(
+                    np.abs(s[f"u_{band}"] / (first[f"u_{band}"] * a0 / s["a"]) - 1.0)
+                )
+                for s in run
+            ]
+        )
+    # Box-mean density and field: the closed form is for the uniform state.
+    rho0 = np.sum(mass) / np.sum(mass / first["density"])
+    u_lw0 = np.sum(mass * first["u_LW"]) / np.sum(mass)
+    k0 = SIGMA_H2_LW_CGS * C_LIGHT_CGS * rho0 * u_lw0 / LW_PHOTON_ENERGY_CGS
+    integral = power_integral(run, 4.0)
+    measured = np.array([np.mean(np.log(s["H2I"] / first["H2I"])) for s in run])
+    predicted = -k0 * integral
+    out["H2"] = (measured[1:] - predicted[1:]) / np.abs(predicted[1:])
+    out["exponent"] = float(-predicted[-1])
+    out["rate"] = k0
+    out["integral"] = integral
+    return out
+
+
+def check_free_field(opt: argparse.Namespace) -> bool:
+    """Check Eqs. (A1) and (A2)."""
+    run = load_run(opt.snapshots)
+    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    cosmological = run[0]["cosmological"]
+    n_steps = step_count(run, dt_max)
+    errors = free_field_errors(run)
+    span = float(np.log(run[-1]["a"] / run[0]["a"]))
+    elapsed = np.array([s["time"] - run[0]["time"] for s in run])[1:]
+    print(
+        f"free_field: cosmological={cosmological}, a {run[0]['a']:.6g} -> "
+        f"{run[-1]['a']:.6g}, {len(run)} snapshots, {n_steps:.0f} dt_max steps, "
+        f"H2 exponent {errors['exponent']:.3f}"
+    )
+    print(
+        f"  Friedmann time vs SWIFT time: max rel. diff {friedmann_time_residual(run):.2e}"
+    )
+    for band in ["FUV", "LW"]:
+        print(
+            f"  per-particle spread of u_{band} (glass noise, not gated): worst median "
+            f"{np.max(errors[f'{band}_spread']):.3e}"
+        )
+
+    reference = None
+    if opt.reference:
+        reference = free_field_errors(load_run(opt.reference))
+
+    ok = True
+    # Longest step in proper time, from dt_max (ln a with cosmology).
+    dt_step = (
+        dt_max / hubble_rate_cgs(run[0]["a"], run[0])
+        if cosmological
+        else dt_max * run[0]["time_unit"]
+    )
+    for band in ["FUV", "LW"]:
+        # Float32 round-off of each update, averaged over the particles.
+        budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
+        measured_nc = (
+            0.0 if reference is None else float(np.max(np.abs(reference[band])))
+        )
+        # Step-end H: (3/4) dlna_step per unit ln a; lag: one step of -H u.
+        cosmo = (0.75 * dt_max * span + dt_max) if cosmological else 0.0
+        bar = max(budget, 2.0 * measured_nc) + cosmo
+        worst = float(np.max(np.abs(errors[band])))
+        print(
+            f"  bar u_{band}: max(float32 {budget:.1e}, 2 x non-cosmological "
+            f"{2.0 * measured_nc:.1e}) + step-end H and lag {cosmo:.1e}"
+        )
+        ok &= gate(f"mass-weighted u_{band} / (u0 a0/a) - 1 (A1)", worst, bar)
+
+    # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
+    # (dt/t without cosmology; with it the rate varies as a^-4, same order),
+    # float32 round-off; with cosmology the step-end rate adds 2 dlna_step.
+    budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + FLOAT32_EPS * n_steps
+    cosmo = 2.0 * dt_max if cosmological else 0.0
+    measured_nc = np.zeros_like(budget)
+    if reference is not None:
+        # Snapshot by snapshot when both runs have the same output count: the
+        # lag term is largest at the first snapshots in both runs.
+        if reference["H2"].size == budget.size:
+            measured_nc = np.abs(reference["H2"])
+        else:
+            measured_nc = np.full_like(budget, np.max(np.abs(reference["H2"])))
+    bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
+    ratio = np.abs(errors["H2"]) / bar
+    k = int(np.argmax(ratio))
+    print(
+        f"  bar ln x_H2 (per snapshot): implicit solve {0.5 * errors['rate'] * dt_step:.1e} "
+        f"+ lag dt/t {dt_step / elapsed[-1]:.1e} (end) to {dt_step / elapsed[0]:.1e} (first), "
+        f"2 x non-cosmological up to {2.0 * np.max(measured_nc):.1e}, step-end rate {cosmo:.1e}"
+    )
+    print(
+        f"  worst snapshot {k + 1}: error {errors['H2'][k]:.3e}, bar {bar[k]:.3e}; "
+        f"final error {errors['H2'][-1]:.3e}, bar {bar[-1]:.3e}"
+    )
+    ok &= gate("box-mean ln x_H2 exponent (A2), worst error/bar", float(ratio[k]), 1.0)
+    return ok
+
+
+def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
+    """Return the per-snapshot error of Eq. (B1) on the box, in ln u.
+
+    The transport conserves sum m u and mixes the field between neighbours,
+    so a particle does not decay at its own kappa (its SPH density scatters by
+    a few 1e-3 on the glass) but at the neighbourhood mean. The box sum decays
+    exactly at the mass-weighted mean kappa for a uniform field, which is what
+    is compared. kappa is proportional to the density; the drift of the
+    mass-weighted mean comoving density over the run is returned for the bar.
+    """
+    first = run[0]
+    a0 = first["a"]
+    mass = first["mass"]
+    integral = power_integral(run, 3.0)
+    ln_a = np.array([np.log(s["a"] / a0) for s in run])
+    comoving_mean = np.array(
+        [
+            np.sum(s["mass"] * s["density"]) / np.sum(s["mass"]) * (s["a"] / a0) ** 3
+            for s in run
+        ]
+    )
+    out = {
+        "density_drift": float(np.max(np.abs(comoving_mean / comoving_mean[0] - 1.0)))
+    }
+    rho0 = comoving_mean[0]
+    z0 = np.sum(mass * first["Z"]) / np.sum(mass)
+    for band in ["FUV", "LW"]:
+        kappa0 = (
+            SIGMA_D_CGS[band]
+            * (z0 / GRACKLE_SOLAR_METAL_FRACTION)
+            * rho0
+            / (MU_H * M_H_CGS)
+        )
+        predicted = -c_pin_cgs * kappa0 * integral - ln_a
+        total0 = np.sum(mass * first[f"u_{band}"])
+        measured = np.array(
+            [np.log(np.sum(s["mass"] * s[f"u_{band}"]) / total0) for s in run]
+        )
+        out[band] = (measured - predicted)[:, None]
+        out[f"{band}_depth"] = float(-predicted[-1])
+    return out
+
+
+def check_dust_absorption(opt: argparse.Namespace) -> bool:
+    """Check Eq. (B1)."""
+    if opt.c_hyp_pin is None:
+        raise RuntimeError("--c-hyp-pin (km/s) is required for dust_absorption")
+    run = load_run(opt.snapshots)
+    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    cosmological = run[0]["cosmological"]
+    n_steps = step_count(run, dt_max)
+    errors = dust_absorption_errors(run, opt.c_hyp_pin * 1e5)
+    span = np.log(run[-1]["a"] / run[0]["a"])
+    print(
+        f"dust_absorption: cosmological={cosmological}, {len(run)} snapshots, "
+        f"{n_steps:.0f} dt_max steps, final ln depth FUV {errors['FUV_depth']:.3f}, "
+        f"LW {errors['LW_depth']:.3f}; median Z {np.median(run[0]['Z']):.4g}"
+    )
+    worst = {
+        band: summarize(f"box ln sum m u_{band} (B1)", errors[band]) for band in ["FUV", "LW"]
+    }
+    nc = {"FUV": 0.0, "LW": 0.0}
+    if opt.reference:
+        ref = dust_absorption_errors(load_run(opt.reference), opt.c_hyp_pin * 1e5)
+        nc = {
+            band: float(np.max(np.median(np.abs(ref[band]), axis=1)))
+            for band in ["FUV", "LW"]
+        }
+        print(
+            f"  non-cosmological reference errors: FUV {nc['FUV']:.3e}, LW {nc['LW']:.3e}"
+        )
+    ok = True
+    for band in ["FUV", "LW"]:
+        depth = errors[f"{band}_depth"]
+        per_step = depth / max(n_steps, 1.0)
+        budget = (
+            FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
+            + per_step
+            + depth * errors["density_drift"]
+        )
+        cosmo = (1.5 * dt_max * depth + 0.75 * dt_max * span) if cosmological else 0.0
+        bar = max(budget, 2.0 * nc[band]) + cosmo
+        print(
+            f"  bar {band}: max(float32 + one-step lag + density drift "
+            f"{errors['density_drift']:.1e} x depth = {budget:.1e}, 2 x reference "
+            f"{2 * nc[band]:.1e}) + step-end kappa and H {cosmo:.1e}"
+        )
+        ok &= gate(f"box ln sum m u_{band} (B1)", worst[band], bar)
+    return ok
+
+
+def photoelectric_errors(on: List[Dict], dark: List[Dict]) -> Dict:
+    """Return the per-snapshot relative error of Eq. (D2) and its inputs."""
+    if len(on) != len(dark):
+        raise RuntimeError("photoelectric and photoelectric_dark differ in snapshots")
+    times = np.array([s["time"] - on[0]["time"] for s in on])
+    heating = []
+    for s in on:
+        g0 = C_LIGHT_CGS * s["density"] * (s["u_FUV"] + s["u_LW"]) / HABING_FLUX_CGS
+        # Grackle's rhoH: the hydrogen species, not the primordial fraction.
+        n_h = s["hydrogen"] * s["density"] / M_H_CGS
+        gamma = (
+            PHOTOELECTRIC_RATE_CGS * g0 * n_h * s["Z"] / GRACKLE_SOLAR_METAL_FRACTION
+        )
+        heating.append(np.median(gamma / s["density"]))
+    heating = np.array(heating)
+    predicted = np.concatenate(
+        [[0.0], np.cumsum(0.5 * (heating[1:] + heating[:-1]) * np.diff(times))]
+    )
+    measured = np.array([np.median(s["u"] - d["u"]) for s, d in zip(on, dark)])
+    measured -= measured[0]
+    dark_u = np.array([np.median(d["u"]) for d in dark])
+    on_u = np.array([np.median(s["u"]) for s in on])
+    return {
+        "times": times,
+        "heating": heating,
+        "predicted": predicted,
+        "relative": (measured[1:] - predicted[1:]) / predicted[1:],
+        "dark_u": dark_u,
+        "on_u": on_u,
+    }
+
+
+def check_photoelectric(opt: argparse.Namespace) -> bool:
+    """Check Eq. (D2)."""
+    if opt.dark is None:
+        raise RuntimeError("--dark is required for photoelectric")
+    on = load_run(opt.snapshots)
+    dark = load_run(opt.dark)
+    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    cosmological = on[0]["cosmological"]
+    err = photoelectric_errors(on, dark)
+    dt_step = (
+        dt_max / hubble_rate_cgs(on[0]["a"], on[0])
+        if cosmological
+        else dt_max * on[0]["time_unit"]
+    )
+    print(
+        f"photoelectric: cosmological={cosmological}, heating "
+        f"{err['heating'][0]:.4e} -> {err['heating'][-1]:.4e} erg/g/s, "
+        f"u_on - u_dark at end {err['predicted'][-1] * (1 + err['relative'][-1]):.4e} erg/g, "
+        f"u_dark {err['dark_u'][0]:.4e} -> {err['dark_u'][-1]:.4e} erg/g"
+    )
+    # Terms of the per-snapshot bar:
+    # - a snapshot can lag the heating by one step: dt/t;
+    # - the heated gas cools faster than the dark gas. Fine-structure cooling
+    #   scales as exp(-T_line/T) with T_line = 92 K (C+), so the dark run's
+    #   own net loss, scaled by exp(92/T_dark - 92/T_on) - 1, bounds the
+    #   difference; any T-independent loss cancels in the dark twin;
+    # - float32 storage of u relative to the difference.
+    t = err["times"][1:]
+    temperature_ratio = err["on_u"][1:] / err["dark_u"][1:]
+    # Neutral atomic gas, mu = 4/(1 + 3 X).
+    t_dark = (
+        (2.0 / 3.0)
+        * (4.0 / (1.0 + 3.0 * HYDROGEN_MASS_FRACTION))
+        * M_H_CGS
+        * err["dark_u"][1:]
+        / 1.380649e-16
+    )
+    boost = np.expm1(92.0 / t_dark * (1.0 - 1.0 / temperature_ratio))
+    cooling = (
+        np.abs(err["dark_u"][1:] - err["dark_u"][0]) * boost / err["predicted"][1:]
+    )
+    lag = dt_step / t
+    storage = 4.0 * FLOAT32_EPS * err["on_u"][1:] / err["predicted"][1:]
+    bar = lag + cooling + storage
+    if opt.reference:
+        if opt.reference_dark is None:
+            raise RuntimeError("--reference needs --reference-dark for photoelectric")
+        ref = photoelectric_errors(
+            load_run(opt.reference), load_run(opt.reference_dark)
+        )
+        # Reference error at the same elapsed times.
+        ref_error = np.interp(t, ref["times"][1:], np.abs(ref["relative"]))
+        bar = np.maximum(bar, 2.0 * ref_error)
+        print(
+            f"  non-cosmological reference errors: first {ref['relative'][0]:.3e}, "
+            f"final {ref['relative'][-1]:.3e}"
+        )
+    ratio = np.abs(err["relative"]) / bar
+    k = int(np.argmax(ratio))
+    print(f"  errors: first {err['relative'][0]:.3e}, final {err['relative'][-1]:.3e}")
+    print(
+        f"  bar terms at the end: lag {lag[-1]:.1e}, cooling change {cooling[-1]:.1e}, "
+        f"float32 {storage[-1]:.1e}; worst snapshot {k + 1}: error "
+        f"{err['relative'][k]:.3e}, bar {bar[k]:.3e}"
+    )
+    return gate("photoelectric heating (D2), worst error/bar", float(ratio[k]), 1.0)
+
+
+def check_injection(opt: argparse.Namespace) -> bool:
+    """Check sum_j m_j u_j = Delta_t L on the last snapshot."""
+    if opt.log is None:
+        raise RuntimeError("--log is required for injection")
+    run = load_run(opt.snapshots)
+    last = run[-1]
+    if np.any(last["Z"] != 0.0):
+        raise RuntimeError("injection needs zero metallicity")
+    # The log prints Time with 7 significant digits, so take the step row
+    # closest to the snapshot time and require it to lie within half a step.
+    delta_t = None
+    best = np.inf
+    with open(opt.log) as handle:
+        for line in handle:
+            fields = line.split()
+            if len(fields) < 5:
+                continue
+            try:
+                int(fields[0])
+                t = float(fields[1])
+                dt = float(fields[4])
+            except ValueError:
+                continue
+            distance = abs(t - last["time_internal"])
+            if distance < best and distance <= 0.5 * dt:
+                best = distance
+                delta_t = dt
+    if delta_t is None:
+        raise RuntimeError("No step in the log matches the last snapshot's time")
+    ok = True
+    print(
+        f"injection: cosmological={last['cosmological']}, a {last['a']:.6g}, "
+        f"Delta_t {delta_t:.6e} internal"
+    )
+    for band in ["FUV", "LW"]:
+        lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
+            last["mass_unit"] * last["energy_unit"]
+        )
+        rhs = delta_t * last[f"L_{band}"]
+        ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
+    return ok
+
+
+def main() -> int:
+    """Run the requested check."""
+    opt = parse_options()
+    checks = {
+        "free_field": check_free_field,
+        "dust_absorption": check_dust_absorption,
+        "photoelectric": check_photoelectric,
+        "injection": check_injection,
+    }
+    ok = checks[opt.config](opt)
+    print("RESULT: PASS" if ok else "RESULT: FAIL")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
