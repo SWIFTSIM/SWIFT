@@ -278,8 +278,7 @@ static INLINE void tracers_first_init_xpart(
  * @param max_kick_velocity_channel Pointer to this channel's max-kick
  * -velocity field.
  * @param delta_p_magnitude Momentum magnitude received this event
- * (physical internal units, except the SN caller: see its own comoving
- * -frame caveat in GEAR_thermal/feedback_iact.h).
+ * (physical internal units).
  * @param delta_energy Specific internal energy received this event
  * (physical internal units), ignored if energy_channel is NULL.
  * @param kick_velocity Velocity magnitude of this event's kick (same

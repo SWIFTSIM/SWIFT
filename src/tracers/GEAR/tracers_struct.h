@@ -33,11 +33,8 @@ struct tracers_xpart_data {
 
     /*! Cumulative momentum magnitude received from SN and stellar winds
         (scalar sum of |delta_p| per event, not a vector sum: isotropic
-        kicks would otherwise cancel out). momentum_SN is comoving-frame
-        (the SN branch in feedback_iact.h doesn't convert to physical
-        velocities the way the winds branch does); exact for
-        non-cosmological runs, revisit before trusting in a cosmological
-        one. */
+        kicks would otherwise cancel out). Both channels converted to
+        physical (see feedback_iact.h). */
     float momentum_SN;
     float momentum_winds;
 

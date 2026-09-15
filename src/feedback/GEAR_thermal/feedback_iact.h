@@ -301,14 +301,12 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
     }
 
-    /* Lifetime-cumulative tracer. Comoving-frame momentum (this branch,
-       unlike the winds one above, never converts to physical velocities),
-       exact for the non-cosmological runs this is used for so far; revisit
-       the comoving/physical distinction here before trusting it in a
-       cosmological run. */
-    const float delta_p_mag_SN =
+    /* delta_p_SN is comoving; a_inv gives the physical momentum actually
+       applied (matches feedback_update_part()'s v_full += p/m). */
+    const float delta_p_mag_SN_comoving =
         sqrtf(delta_p_SN[0] * delta_p_SN[0] + delta_p_SN[1] * delta_p_SN[1] +
               delta_p_SN[2] * delta_p_SN[2]);
+    const float delta_p_mag_SN = delta_p_mag_SN_comoving * cosmo->a_inv;
     tracers_gear_accumulate_feedback(
         &xpj->tracers_data.feedback_cumulative.momentum_SN,
         &xpj->tracers_data.feedback_cumulative.energy_SN,
