@@ -284,8 +284,9 @@ runner_iact_nonsym_feedback_apply(
        feedback at the previous step. */
     new_mass += dm_SN;
 
-    /* Energy received */
-    const double du = (e_sn)*weight / new_mass;
+    /* Energy received. Guard against 0/0 (mj == 0): matches the winds
+       branch's own new_mass > 0.0 guard above. */
+    const double du = new_mass > 0.0 ? (e_sn)*weight / new_mass : 0.0;
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
@@ -314,7 +315,7 @@ runner_iact_nonsym_feedback_apply(
         &xpj->tracers_data.feedback_cumulative.energy_supernovae,
         &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
         delta_p_mag_supernovae, (float)du,
-        delta_p_mag_supernovae / (float)new_mass);
+        new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
