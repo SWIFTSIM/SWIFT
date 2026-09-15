@@ -93,7 +93,8 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
-/*! Non-ionizing FUV band, eV (Habing band, 912-2000 Angstrom). */
+/*! Non-ionizing FUV band, eV (Habing band, 1107-2066 Angstrom: lambda =
+    hc/E with hc = 12398.42 eV*Angstrom). */
 #define RADIATION_FUV_BAND_LOW_EV 6.0
 #define RADIATION_FUV_BAND_HIGH_EV 11.2
 

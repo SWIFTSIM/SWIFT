@@ -975,7 +975,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   chemistry_data_storage rates_grackle = cooling->chemistry_rates;
 
   /* initialize data */
-  grackle_field_data data;
+  grackle_field_data data = {0};
 
   /* set values */
   /* grid */
@@ -1085,7 +1085,7 @@ gr_float cooling_time(const struct phys_const *phys_const,
   code_units units = cooling->units;
 
   /* initialize data */
-  grackle_field_data data;
+  grackle_field_data data = {0};
   chemistry_data chemistry_grackle = cooling->chemistry_data;
   chemistry_data_storage rates_grackle = cooling->chemistry_rates;
 
@@ -1187,7 +1187,7 @@ gr_float cooling_get_dust_temperature(
   code_units units = cooling->units;
 
   /* initialize data */
-  grackle_field_data data;
+  grackle_field_data data = {0};
   chemistry_data chemistry_grackle = cooling->chemistry_data;
   chemistry_data_storage rates_grackle = cooling->chemistry_rates;
 
