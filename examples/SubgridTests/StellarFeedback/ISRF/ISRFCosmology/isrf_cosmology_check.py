@@ -487,7 +487,8 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
         f"LW {errors['LW_depth']:.3f}; median Z {np.median(run[0]['Z']):.4g}"
     )
     worst = {
-        band: summarize(f"box ln sum m u_{band} (B1)", errors[band]) for band in ["FUV", "LW"]
+        band: summarize(f"box ln sum m u_{band} (B1)", errors[band])
+        for band in ["FUV", "LW"]
     }
     nc = {"FUV": 0.0, "LW": 0.0}
     if opt.reference:
