@@ -95,10 +95,10 @@ support-to-smoothing ratio (``--kernel-gamma``, 1.936492 for the Wendland C2
 kernel in 3D). With Eq. (4), mode 2 is the H2 column through a path of
 ``2 gamma_K h``. With ``GrackleCooling:H2_self_shielding_path:
 kernel_radius`` (``--h2-self-shielding-path``) SWIFT supplies half that
-length, a path of ``gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at start-up: it reads
-six neighbouring grid points that do not exist when Grackle is called on
-one particle. Mode 0 disables shielding altogether, ``f_shield = 1``, and is
-the unshielded reference.
+length, a path of ``gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at
+start-up: it reads six neighbouring grid points that do not exist when
+Grackle is called on one particle. Mode 0 disables shielding altogether,
+``f_shield = 1``, and is the unshielded reference.
 
 The mean molecular weight follows Grackle's own definition
 (``cool1d_multi_g.F``),
@@ -608,7 +608,9 @@ def build_history(
         mu = take("mu")
         n_H2 = take("n_H2")
         if self_shielding_mode == 2:
-            length = 0.5 * path_in_kernel_radii * kernel_gamma * take("smoothing_length")
+            length = (
+                0.5 * path_in_kernel_radii * kernel_gamma * take("smoothing_length")
+            )
         elif self_shielding_mode in (0, 3):
             length = jeans_shielding_length(temperature, density, mu)
         else:
