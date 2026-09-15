@@ -245,7 +245,7 @@ radiation_iact_nonsym_feedback_apply(
   /* Local Lyman-Werner/FUV injection: always additive, since multiple
      simultaneously-illuminating stars must superpose on the same particle
      (a dose reservoir with propagation on, an instantaneous field with it
-     off). u_inject_FUV/u_inject_LW is an energy, so dividing by mj converts it
+     off). u_inject is an energy, so dividing by mj converts it
      to the specific energy u of each band (or the dose reservoir) actually
      stores. Zero unless GEARFeedback:with_photoelectric_heating is on
      (L_FUV/L_LW are then computed by stellar_evolution.c; 0 otherwise). Dust
@@ -256,31 +256,28 @@ radiation_iact_nonsym_feedback_apply(
       si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
-    float extinction_FUV, extinction_LW;
+    float extinction[ISRF_BAND_COUNT];
     radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
-                                               &extinction_FUV, &extinction_LW);
+                                               extinction);
 
-    const double u_inject_FUV =
-        (double)Delta_t * weight *
-        si->feedback_data.radiation.L_band[ISRF_BAND_FUV] *
-        (double)extinction_FUV;
-    const double u_inject_LW =
-        (double)Delta_t * weight *
-        si->feedback_data.radiation.L_band[ISRF_BAND_LW] *
-        (double)extinction_LW;
+    double u_inject[ISRF_BAND_COUNT];
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      u_inject[b] = (double)Delta_t * weight *
+                    si->feedback_data.radiation.L_band[b] *
+                    (double)extinction[b];
+    }
 
     if (fb_props->ISRF_propagation) {
       /* Dose-reservoir accumulator: pure accumulation of the elapsed star
-         step's own
-         (unrescaled) deposit, no reset, no first-touch logic, so any number
-         of stars on any time bins just add without losing or
-         double-counting emission. The rescale/phi fold-in that used to
-         happen here now happens once, at the receiving particle's own
-         cadence, in radiation_end_density_propagation. */
-      pj->feedback_data.u_dose_reservoir[ISRF_BAND_FUV] +=
-          (float)(u_inject_FUV / (double)mj);
-      pj->feedback_data.u_dose_reservoir[ISRF_BAND_LW] +=
-          (float)(u_inject_LW / (double)mj);
+         step's own (unrescaled) deposit, no reset, no first-touch logic, so
+         any number of stars on any time bins just add without losing or
+         double-counting emission. The rescale/phi fold-in happens once, at
+         the receiving particle's own cadence, in
+         radiation_end_density_propagation. */
+      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+        pj->feedback_data.isrf_band[b].u_dose_reservoir +=
+            (float)(u_inject[b] / (double)mj);
+      }
       pj->feedback_data.ISRF_reservoir_end_ti =
           max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
@@ -291,13 +288,14 @@ radiation_iact_nonsym_feedback_apply(
          since the last cooling call. A later touch this same step (a
          second illuminating star) sums into what the first just wrote. */
       if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        pj->feedback_data.u[ISRF_BAND_FUV] = 0.f;
-        pj->feedback_data.u[ISRF_BAND_LW] = 0.f;
+        for (int b = 0; b < ISRF_BAND_COUNT; b++)
+          pj->feedback_data.isrf_band[b].u = 0.f;
         pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
-      pj->feedback_data.u[ISRF_BAND_FUV] += (float)(u_inject_FUV / (double)mj);
-      pj->feedback_data.u[ISRF_BAND_LW] += (float)(u_inject_LW / (double)mj);
+      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+        pj->feedback_data.isrf_band[b].u += (float)(u_inject[b] / (double)mj);
+      }
     }
 
     /* Renew the illumination window on every touch, first or not: mirrors
