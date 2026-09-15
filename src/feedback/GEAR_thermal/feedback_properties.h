@@ -389,8 +389,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
 
-  /* Default absent any sink info; sink_props_init() sets 1 when configured. */
-  fp->with_sinks = 0;
+  /* Several fields below (ISRF_*, HII_*, stellar_model_first_stars) are only
+   * assigned inside a conditional branch; zero first so the disabled case
+   * reads a defined 0, not uninitialised stack memory, since those fields
+   * are read downstream unconditionally. sink_props_init() writes
+   * with_sinks after this function returns, not before. */
+  bzero(fp, sizeof(struct feedback_props));
 
   /* Supernovae energy efficiency */
   double e_efficiency =
