@@ -133,6 +133,7 @@ tests/testRadiationISRFFormula
 tests/testRadiationISRFDissipationConservation
 tests/testRadiationISRFComovingFactors
 tests/testRadiationISRFExpansionTerm
+tests/testRadiationISRFForceDispatchConservation
 tests/testRadiationGridMetadata
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset
