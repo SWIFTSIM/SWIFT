@@ -876,13 +876,12 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 }
 
 /**
- * @brief Choose the background cell count that minimises the zoom padding.
+ * @brief Find the background cdim that minimises any extra padding around the
+ * zoom region.
  *
- * The padding is the ratio of the void region (which must be a whole number of
- * background cells) to the high resolution particle extent, so minimising it
- * maximises the fraction of the zoom cells filled by the high resolution
- * region. The number of background cells is deliberately not part of the
- * objective: users who want to cap it set ZoomRegion:bkg_top_level_cells.
+ * This is only used when the user wants us to automatically optimise the
+ * background cdim. The user can always set their own value for the background
+ * cdim explicitly.
  *
  * @param s The space (contains zoom properties and box size)
  * @param ini_dim The initial dimension of the zoom region (particle extent)
@@ -891,38 +890,30 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
                                     const double max_dim) {
 
-  /* No search is needed, the answer is closed form. The region is centred on
-   * the box, so an odd cdim puts the box centre at the centre of a background
-   * cell and the padded region fits inside that one cell as soon as the cell is
-   * at least max_dim wide. The padding is then box_size / (cdim * ini_dim),
-   * which shrinks as cdim grows, so the best grid is the largest odd cdim
-   * <= box_size / max_dim. Even cdims put the centre on a cell boundary,
-   * forcing a two-cell void with the padding of the grid half their size but
-   * eight times the cells, so they are never optimal.
-   *
-   * Going finer would let several small cells hug the region more tightly, but
-   * costs at least 8x the background cells for a gain bounded by
-   * ~2 * max_dim / box_size, so we stop here. */
+  /* Find the best background cdim that minimises the padding around the zoom
+   * region. */
   int best_cdim = (int)floor(s->dim[0] / max_dim);
+
+  /* To ensure the zoom region is always contained within a single background
+   * cell we usually require an odd number of background cells when using
+   * automatic optimisation. */
   if (best_cdim % 2 == 0) best_cdim--;
 
-  /* Confirm the void really does snap to a single cell: when
-   * box_size / max_dim lands on (or within rounding of) an odd integer the
-   * region exactly fills a cell and the snap in zoom_get_void_geometry spills
-   * into the next one. Uses the same comparison as that snap so the two cannot
-   * disagree, and steps down at most one grid. */
-  while (best_cdim > 8) {
-    const double width = s->dim[0] / best_cdim;
-    if (floor((s->dim[0] / 2. - max_dim / 2.) / width) ==
-        floor((s->dim[0] / 2. + max_dim / 2.) / width))
-      break;
+  /* An exact odd ratio places the zoom bounds on background-cell edges. For
+   * example, a box size of 100 and max_dim of 4 gives a cdim of 25, a cell
+   * width of 4, and zoom bounds of 48 and 52. Since zoom_get_void_geometry
+   * assigns the upper edge to the next cell, reduce the cdim by two so the
+   * region fits strictly within one cell. */
+  const double width = s->dim[0] / best_cdim;
+  if (floor((s->dim[0] / 2. - max_dim / 2.) / width) !=
+      floor((s->dim[0] / 2. + max_dim / 2.) / width)) {
     best_cdim -= 2;
   }
 
-  /* Always keep a sane background grid, however large the zoom region is. */
+  /* Always keep a sane background grid with at least 8 cells per axis. */
   if (best_cdim < 8) best_cdim = 8;
 
-  /* Apply best value */
+  /* Attach the "optimal" background cdim to the zoom properties. */
   for (int i = 0; i < 3; i++) s->zoom_props->bkg_cdim[i] = best_cdim;
 
   message(
