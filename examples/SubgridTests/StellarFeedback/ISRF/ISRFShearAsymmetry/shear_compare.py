@@ -72,13 +72,13 @@ def mode_gate(opt):
         if m.get("moment_weighting") != control.get("moment_weighting"):
             raise RuntimeError(
                 f"moment_weighting mismatch: {run}={m.get('moment_weighting')!r} vs "
-                f"{opt.control}={control.get('moment_weighting')!r} -- one of these "
+                f"{opt.control}={control.get('moment_weighting')!r}: one of these "
                 "shear_metrics.json files predates the negative-weight-clipping fix; "
                 "rerun isrf_shear_asymmetry_check.py on both before gating."
             )
         if m.get("void"):
             print(
-                "  VOID (KH contamination or negative-weight share) -- "
+                "  VOID (KH contamination or negative-weight share): "
                 "gate not meaningful for this run."
             )
             continue
