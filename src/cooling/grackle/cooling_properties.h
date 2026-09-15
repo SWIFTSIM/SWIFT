@@ -176,13 +176,22 @@ struct cooling_function_data {
    * which is a separate Grackle field gating UV-background self-shielding. */
   int H2_self_shielding;
 
-  /*! convergence limit for first init */
+  /*! Relative convergence limit of the initial-composition equilibrium solve
+   * (GrackleCooling:convergence_limit). Inert: cooling_compute_equilibrium()
+   * is a stub. */
   float convergence_limit;
 
-  /*! number of step max for first init */
+  /*! Maximal number of Grackle sub-cycle iterations per solve
+   * (GrackleCooling:max_steps, Grackle's chemistry_data.max_iterations). */
   int max_step;
 
-  /*! over relaxation parameter */
+  /*! Number of retries of a failed Grackle solve
+   * (GrackleCooling:subcycle_on_failure). Retry i splits the time-step into
+   * 2^i consecutive solves. 0 disables the retries. */
+  int subcycle_on_failure;
+
+  /*! Over-relaxation parameter of the initial-composition equilibrium solve.
+   * Inert: never set or read. */
   float omega;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */

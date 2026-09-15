@@ -370,10 +370,20 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "deliberate.");
   }
 
-  /* Initial step convergence */
+  /* Grackle sub-cycle iteration limit */
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:max_steps", 10000);
+  if (cooling->max_step < 1)
+    error("GrackleCooling:max_steps must be >= 1, got %d.", cooling->max_step);
 
+  /* Retries of a failed solve, each one halving the sub-step */
+  cooling->subcycle_on_failure = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:subcycle_on_failure", 0);
+  if (cooling->subcycle_on_failure < 0 || cooling->subcycle_on_failure > 20)
+    error("GrackleCooling:subcycle_on_failure must be in [0, 20], got %d.",
+          cooling->subcycle_on_failure);
+
+  /* Only read by the initial-composition equilibrium solve, which is a stub */
   cooling->convergence_limit = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:convergence_limit", 1e-2);
 
