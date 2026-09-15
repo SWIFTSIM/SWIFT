@@ -450,8 +450,9 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param a Current scale factor (unused, for the same reason as `us` below).
+ * @param H Current Hubble parameter (unused, for the same reason as `us`
+ * below).
  * @param us Unit system (unused: the kernel mean needs only positions,
  * masses, the cached density snapshot, and the snapshotted field).
  */
@@ -461,12 +462,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
     const float H, const struct unit_system *us) {
 
   const float r = sqrtf(r2);
+  const float hi_inv = 1.f / hi;
+  const float hj_inv = 1.f / hj;
 
   float wi, wj;
-  kernel_eval(r / hi, &wi);
-  kernel_eval(r / hj, &wj);
-  wi *= pow_dimension(1.f / hi);
-  wj *= pow_dimension(1.f / hj);
+  kernel_eval(r * hi_inv, &wi);
+  kernel_eval(r * hj_inv, &wj);
+  wi *= pow_dimension(hi_inv);
+  wj *= pow_dimension(hj_inv);
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   struct feedback_part_data *fdj = &pj->feedback_data;
@@ -496,8 +499,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle (its own accumulators not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param a Current scale factor (unused, see #runner_iact_isrf_propagation).
+ * @param H Current Hubble parameter (unused, see
+ * #runner_iact_isrf_propagation).
  * @param us Unit system (unused, see #runner_iact_isrf_propagation).
  */
 __attribute__((always_inline)) INLINE static void
@@ -509,12 +513,14 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
                                     const struct unit_system *us) {
 
   const float r = sqrtf(r2);
+  const float hi_inv = 1.f / hi;
+  const float hj_inv = 1.f / hj;
 
   float wi, wj;
-  kernel_eval(r / hi, &wi);
-  kernel_eval(r / hj, &wj);
-  wi *= pow_dimension(1.f / hi);
-  wj *= pow_dimension(1.f / hj);
+  kernel_eval(r * hi_inv, &wi);
+  kernel_eval(r * hj_inv, &wj);
+  wi *= pow_dimension(hi_inv);
+  wj *= pow_dimension(hj_inv);
 
   struct feedback_part_data *fdi = &pi->feedback_data;
   const struct feedback_part_data *fdj = &pj->feedback_data;

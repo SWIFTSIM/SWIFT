@@ -90,7 +90,14 @@ void radiation_first_init_part(struct part *restrict p) {
     band->dissipation_alpha_trigger = 0.f;
     band->dissipation_alpha_floor = 0.f;
     band->dissipation_u = 0.f;
+    band->div_specific_flux = 0.f;
+#ifdef SWIFT_DEBUG_CHECKS
+    band->u_min_since_snapshot = 0.f;
+#endif
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  fd->u_min_snapshot_index = 0;
+#endif
   fd->ISRF_last_touch_ti = -1;
   /* -1 so an MPI foreign particle's uninitialized memory (not covered by
      the IC-read bzero above) can never read as "still illuminated". */
