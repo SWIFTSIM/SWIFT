@@ -539,18 +539,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* Define a flag for when the original task has been reused. */
   int reused = 0;
 
-  /* When we split a regular cell's task because it is interacting with a
-   * void cell, we can end up below the depth set by space_subdepth_diff_grav.
-   * This will cause absolute havoc with hierarchical gravity tasks being
-   * missing on the regular cell if we don't flag this somehow to ensure
-   * task recursions continue to this level. */
-  if (!cell_is_above_diff_grav_depth(ci)) {
-    ci->grav.tasks_below_diff_grav_depth = 1;
-  }
-  if (!cell_is_above_diff_grav_depth(cj)) {
-    cj->grav.tasks_below_diff_grav_depth = 1;
-  }
-
   /* Loop over the progeny. */
   for (int i = 0; i < 8; i++) {
     struct cell *cpi = ci->progeny[i];
@@ -888,6 +876,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
+
+    /* Ignore tasks already removed or converted by recursive splitting. */
+    if (t->type == task_type_none || t->type == task_type_grav_mm) continue;
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {

@@ -70,8 +70,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
    * the space is periodic. */
   const int periodic = s->periodic;
 
-  /* The range to search, computed once in engine_gravity_get_P2P_search_delta.
-   */
+  /* Use the same range as the regular gravity task loop. */
   const int delta_m = s->grav_P2P_search_delta_m;
   const int delta_p = s->grav_P2P_search_delta_p;
 

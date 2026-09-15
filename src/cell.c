@@ -1366,16 +1366,22 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
+ * When running a zoom simulation this function will also set the
+ * tasks_below_diff_grav_depth flag for any neighbour cells that have gravity
+ * tasks below space_subdepth_diff_grav due to pair tasks with zoom cells.
+ *
  * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
+ * @return Whether this cell or any progeny has a gravity task.
  */
-void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
-  /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL)) {
+int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+  const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
+
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure in zoom land we don't get any confusing empty top level cells
-     * with tasks (this breaks hierarchical task creation) */
+  /* Make sure in zoom land we don't get any confusing empty top level cells
+   * with tasks (this breaks hierarchical task creation) */
+  if (super_gravity == NULL && has_gravity_tasks) {
     if (cell_is_empty_mpole(c))
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
@@ -1383,8 +1389,11 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
           "c->grav.grav=%p c->grav.mm=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+  }
 #endif
 
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_gravity == NULL && has_gravity_tasks) {
     super_gravity = c;
   }
 
@@ -1397,11 +1406,26 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
     error("Zoom cell has a void cell super-gravity pointer!");
 #endif
 
-  /* Recurse */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_set_super_gravity(c->progeny[k], super_gravity);
+  /* Recurse and find whether there are final gravity tasks below this cell. */
+  int children_have_gravity_tasks = 0;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        children_have_gravity_tasks |=
+            cell_set_super_gravity(c->progeny[k], super_gravity);
+      }
+    }
+  }
+
+  /* When running a zoom we can get neighbour cells with task forced below
+   * space_subdepth_diff_grav because they have pair tasks with zoom cells. If
+   * this is the case we flag this cell so that we can force the gravity tasks
+   * to be executed below space_subdepth_diff_grav. */
+  c->grav.tasks_below_diff_grav_depth = c->subtype == cell_subtype_neighbour &&
+                                        !cell_is_above_diff_grav_depth(c) &&
+                                        children_have_gravity_tasks;
+
+  return has_gravity_tasks || children_have_gravity_tasks;
 }
 
 /**
@@ -2092,12 +2116,10 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
     return;
   }
 
-  /* The range the pair tasks were created over, computed once in
-   * engine_gravity_get_P2P_search_delta. Beyond it the pair was never a
-   * candidate for a task, so there is no task geometry to revalidate. */
+  /* Check the same range used to create the gravity pair tasks. */
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->grav_P2P_search_delta_m == 0)
-    error("Gravity pair search range unset (gravity tasks not yet made?)");
+    error("Gravity pair search range has not been set");
 #endif
   const int delta_m = s->grav_P2P_search_delta_m;
   const int delta_p = s->grav_P2P_search_delta_p;
@@ -2424,54 +2446,35 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
     return;
   }
 
-  /* Background cells are periodic at the box boundaries if the space is. */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int periodic = s->periodic;
 
-  /* The range the pair tasks were created over, computed once in
-   * engine_gravity_get_P2P_search_delta. Beyond it the pair was never a
-   * candidate for a task, so there is no task geometry to revalidate. */
+  /* Check the same range used to create the gravity pair tasks. */
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->grav_P2P_search_delta_m == 0)
-    error("Gravity pair search range unset (gravity tasks not yet made?)");
+    error("Gravity pair search range has not been set");
 #endif
   const int delta_m = s->grav_P2P_search_delta_m;
   const int delta_p = s->grav_P2P_search_delta_p;
 
-  /* Integer indices of this cell in the background top-level grid. Note that
-   * bkg_cells aliases &cells_top[bkg_cell_offset], so this index is in the
-   * same basis as cell_getid below. */
+  /* Get this cell's position in the background grid. */
   const int cid = c - bkg_cells;
   const int i = cid / (cdim[1] * cdim[2]);
   const int j = (cid / cdim[2]) % cdim[1];
   const int k = cid % cdim[2];
 
-  /* Now loop over the background/void top-level cells within range for pair
-   * interactions. This mirrors the pair tasks created between void cells. */
+  /* Loop over background cells that could have had a gravity pair task. */
   for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
-
-    /* Escape if non-periodic and beyond range */
-    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-
     for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
-
-      /* Escape if non-periodic and beyond range */
-      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-
       for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-        /* Escape if non-periodic and beyond range */
-        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-
-        /* Apply periodic BC (not harmful if not using periodic BC) */
+        /* Apply periodic boundary conditions. */
         const int iii = (ii + cdim[0]) % cdim[0];
         const int jjj = (jj + cdim[1]) % cdim[1];
         const int kkk = (kk + cdim[2]) % cdim[2];
 
-        /* Handle on the top-level cell */
         struct cell *cj = &bkg_cells[cell_getid(cdim, iii, jjj, kkk)];
 
-        /* Avoid self contributions (already handled above) */
+        /* Avoid self contributions (already handled above). */
         if (c == cj) continue;
 
         /* Skip pairs that would not have been created on this rank. */
@@ -2481,7 +2484,7 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
         if (cj->subtype == cell_subtype_void && !cj->contains_zoom_cells)
           continue;
 
-        /* Skip empty cells */
+        /* Skip empty cells. */
         if (cell_is_empty_mpole(cj)) continue;
 
         /* Can we use the mesh for this top-level pair? */
@@ -2501,7 +2504,7 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
           if (lock_unlock(&cj->grav.mlock) != 0)
             error("Impossible to unlock m-pole");
 
-          /* Check if we can no longer use the mesh */
+          /* Check if we can no longer use the mesh. */
           if (cell_cant_use_mesh_anymore(e, c, cj)) {
             atomic_inc(&e->forcerebuild);
             message(
@@ -2509,7 +2512,6 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
                 "pair failure");
             return;
           }
-          /* Mesh still valid, continue */
           continue;
         }
 
@@ -2518,13 +2520,10 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
                                  /*is_tree_walk=*/0,
                                  /*periodic boundaries*/ s->periodic,
                                  /*use_mesh*/ s->periodic)) {
-          /* M-M task handles this, nothing to check */
           continue;
         }
 
-        /* We would create a pair task here, so recurse to check mesh
-         * interactions that arise from task splitting through the void
-         * hierarchy */
+        /* Check mesh interactions introduced by splitting the void task. */
         if (cell_check_grav_mesh_pairs_zoom_pair_recursive(c, cj, e)) {
           message(
               "Pair interaction triggers a rebuild due to mesh pair failure");
