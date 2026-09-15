@@ -18,20 +18,21 @@
 #
 ################################################################################
 """
-Ensemble, time-averaged gate for ISRFShearAsymmetry (redesign of
-shear_compare.py's mode=gate; NEW SCRIPT, not a drop-in replacement -- the
-two must be reconciled when this branch is merged, see the item 5 follow-up
-log). Blob geometry, variant=shear only (the two moving blobs whose
-reflection asymmetry the gate probes); slab geometry is out of scope.
+Ensemble, time-averaged gate for ISRFShearAsymmetry: a redesign of
+shear_compare.py's mode=gate, as its own script rather than a drop-in
+replacement (`--mode gate` stays for a quick single-run/single-control
+check; this script is the one to gate a merge on). Reuses
+isrf_shear_asymmetry_check.py's per-band moment functions, so the metric
+definition itself has one source. Blob geometry, variant=shear only (the
+two moving blobs whose reflection asymmetry the gate probes); slab
+geometry is out of scope.
 
-Why a redesign (ISRF_MASTER.md 4d, 2026-09-15): the original gate compared
-one sheared run's LAST-snapshot A_centroid/A_spread/A_energy against 3x a
-single zero-shear control's OWN last-snapshot value. The control's
-A_centroid swings between about -0.1 and +0.1 over the run (pure numerical
-noise: there is no shear to break the reflection symmetry), so a
-single-snapshot bar depends on which snapshot it lands on and which glass
-realisation set it: the failing band switched between realisations, and
-+v/-v were not mirrors of each other (A_pair 0.55/0.61).
+Why a redesign: the original gate compared one sheared run's LAST-snapshot
+A_centroid/A_spread/A_energy against 3x a single zero-shear control's OWN
+last-snapshot value. The control's asymmetry metrics oscillate over the
+run around zero (pure numerical noise: there is no shear to break the
+reflection symmetry), so a single-snapshot bar depends on which snapshot
+it lands on and which glass realisation set it.
 
 Redesign:
 (a) each realisation's asymmetry metric is TIME-AVERAGED over the settled
@@ -66,9 +67,14 @@ import sys
 
 import h5py
 import numpy as np
-import yaml
 
-NEG_WEIGHT_VOID_THRESHOLD = 0.10
+from isrf_shear_asymmetry_check import (
+    asymmetry_from_pair,
+    blob_membership,
+    blob_pair_moments,
+    kh_contamination_void,
+)
+
 WINDOW_FRAC = 0.5
 SE_FACTOR = 3.0
 # v_shear is measured from particle velocities (see realisation_time_series),
@@ -92,12 +98,14 @@ def parse_options():
         help="Zero-shear control realisation run dirs (independent glass shifts).",
     )
     parser.add_argument("--window-frac", type=float, default=WINDOW_FRAC)
+    parser.add_argument(
+        "--pulse-sigma-h",
+        type=float,
+        default=2.0,
+        help="Must match the value makeIC.py/isrf_shear_asymmetry_check.py used.",
+    )
     parser.add_argument("--json-out", default="shear_ensemble_metrics.json")
     return parser.parse_args()
-
-
-def min_image(dx, boxsize):
-    return dx - boxsize * np.round(dx / boxsize)
 
 
 def load_snapshot(path):
@@ -127,26 +135,11 @@ def load_snapshot(path):
     )
 
 
-def blob_membership(pos0, boxsize, sigma):
-    centre_A = np.array([0.25 * boxsize, 0.50 * boxsize, 0.50 * boxsize])
-    centre_B = np.array([0.75 * boxsize, 0.00 * boxsize, 0.50 * boxsize])
-    dA = min_image(pos0 - centre_A, boxsize)
-    dB = min_image(pos0 - centre_B, boxsize)
-    in_A = np.sqrt(np.sum(dA**2, axis=1)) <= 3.0 * sigma
-    in_B = np.sqrt(np.sum(dB**2, axis=1)) <= 3.0 * sigma
-    return in_A, in_B, centre_A, centre_B
-
-
-def moments(w, dx_x):
-    w_sum = w.sum()
-    if w_sum == 0:
-        return 0.0, 0.0
-    return float(np.sum(w * dx_x) / w_sum), float(np.sum(w * dx_x**2) / w_sum)
-
-
-def realisation_time_series(run_dir):
+def realisation_time_series(run_dir, pulse_sigma_h):
     """Per-snapshot A_centroid/A_spread/A_energy (both bands), the run's own
-    v_shear, void flag and h_med_last, for one realisation directory."""
+    v_shear, void flag and h_med_last, for one realisation directory.
+    `pulse_sigma_h` must match the value used to generate the run's IC
+    (isrf_shear_asymmetry_check.py's own default, and its --pulse-sigma-h)."""
     files = sorted(glob.glob(os.path.join(run_dir, "snap", "snapshot_*.hdf5")))
     if not files:
         raise RuntimeError(f"No snapshots in {run_dir}")
@@ -160,7 +153,7 @@ def realisation_time_series(run_dir):
     L = snap0["boxsize"]
     n_gas = pos0.shape[0]
     h_mean_analytic = 1.2348 * L / n_gas ** (1.0 / 3.0)
-    sigma = 2.0 * h_mean_analytic
+    sigma = pulse_sigma_h * h_mean_analytic
     in_A, in_B, centre_A, centre_B = blob_membership(pos0, L, sigma)
     # v_shear is not in used_parameters.yml (it is a makeIC.py IC-generation
     # option, not a runtime SWIFT parameter): recover it by a linear fit of
@@ -189,7 +182,7 @@ def realisation_time_series(run_dir):
     vy_rms = float(np.sqrt(np.mean(snap_last["vel"][:, 1] ** 2)))
     kh = vy_rms / abs(v_shear) if is_sheared else float("nan")
     drho = float(np.max(np.abs(rho_last - rho0) / rho0))
-    kh_void = (is_sheared and kh > 0.05) or drho > 0.10
+    kh_void = kh_contamination_void(kh, drho, is_sheared)
 
     times, series = [], {
         b: {"A_centroid": [], "A_spread": [], "A_energy": []} for b in ("FUV", "LW")
@@ -203,34 +196,14 @@ def realisation_time_series(run_dir):
         times.append(t)
         for band, key in (("FUV", "u_fuv"), ("LW", "u_lw")):
             u = s[key][order]
-            band_Dx, band_Sxx, band_E = {}, {}, {}
-            for label, in_blob, sign, centre in (
-                ("A", in_A, +1.0, centre_A),
-                ("B", in_B, -1.0, centre_B),
-            ):
-                x_ref = centre + np.array([sign * (v_shear / 2.0) * t, 0.0, 0.0])
-                dx = min_image(pos[in_blob] - x_ref, L)[:, 0]
-                w_raw = mass0[in_blob] * u[in_blob]
-                w_clip = mass0[in_blob] * np.maximum(u[in_blob], 0.0)
-                w_abs_sum = float(np.sum(np.abs(w_raw)))
-                if w_abs_sum > 0:
-                    neg_share = float(-np.sum(w_raw[w_raw < 0]) / w_abs_sum)
-                    if neg_share > NEG_WEIGHT_VOID_THRESHOLD:
-                        neg_weight_void = True
-                Dx, Sxx = moments(w_clip, dx)
-                band_Dx[label], band_Sxx[label] = Dx, Sxx
-                band_E[label] = float(w_raw.sum())
-            denom_s = band_Sxx["A"] + band_Sxx["B"]
-            denom_e = band_E["A"] + band_E["B"]
-            series[band]["A_centroid"].append(
-                (band_Dx["A"] + band_Dx["B"]) / h_med_last if h_med_last > 0 else np.nan
+            pair = blob_pair_moments(
+                pos, u, mass0, in_A, in_B, centre_A, centre_B, v_shear, t, L
             )
-            series[band]["A_spread"].append(
-                2 * (band_Sxx["A"] - band_Sxx["B"]) / denom_s if denom_s else np.nan
-            )
-            series[band]["A_energy"].append(
-                2 * (band_E["A"] - band_E["B"]) / denom_e if denom_e else np.nan
-            )
+            asym = asymmetry_from_pair(pair, h_med_last)
+            neg_weight_void |= asym["void_neg_weight"]
+            series[band]["A_centroid"].append(asym["A_centroid"])
+            series[band]["A_spread"].append(asym["A_spread"])
+            series[band]["A_energy"].append(asym["A_energy"])
 
     void = bool(kh_void or neg_weight_void)
     return dict(
@@ -269,8 +242,12 @@ def group_stats(per_realisation_means):
 def main():
     opt = parse_options()
 
-    shear_series = [realisation_time_series(r) for r in opt.shear_runs]
-    control_series = [realisation_time_series(r) for r in opt.control_runs]
+    shear_series = [
+        realisation_time_series(r, opt.pulse_sigma_h) for r in opt.shear_runs
+    ]
+    control_series = [
+        realisation_time_series(r, opt.pulse_sigma_h) for r in opt.control_runs
+    ]
 
     for label, group in (("shear", shear_series), ("control", control_series)):
         for r in group:
