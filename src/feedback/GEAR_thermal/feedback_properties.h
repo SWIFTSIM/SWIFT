@@ -577,24 +577,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
+  /* Parsed unconditionally, so the LW/FUV injection never reads an unset
+   * path. */
+  char extinction_path[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
+                              extinction_path, "kernel_diameter");
+  if (strcmp(extinction_path, "kernel_diameter") == 0)
+    fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
+  else if (strcmp(extinction_path, "kernel_radius") == 0)
+    fp->ISRF_extinction_path_in_kernel_radii = 1.0f;
+  else
+    error(
+        "GEARFeedback:ISRF_extinction_path must be kernel_diameter or "
+        "kernel_radius, got '%s'.",
+        extinction_path);
+
   if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
-
-    char extinction_path[PARSER_MAX_LINE_SIZE];
-    parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
-                                extinction_path, "kernel_diameter");
-    if (strcmp(extinction_path, "kernel_diameter") == 0)
-      fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
-    else if (strcmp(extinction_path, "kernel_radius") == 0)
-      fp->ISRF_extinction_path_in_kernel_radii = 1.0f;
-    else
-      error(
-          "GEARFeedback:ISRF_extinction_path must be kernel_diameter or "
-          "kernel_radius, got '%s'.",
-          extinction_path);
 
     /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's own doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
