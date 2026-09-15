@@ -54,6 +54,9 @@ struct cooling_function_data {
   /*! Flag to enable H2 formation on dust grains */
   int H2_on_dust;
 
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 
@@ -120,6 +123,11 @@ struct cooling_function_data {
       cooling_get_isrf_habing_subgrid/cooling_get_LW_dissociation_rate_
       subgrid. */
   int with_ISRF;
+
+  /*! Grackle photoelectric_heating option used when with_ISRF is on,
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
+      3 (wolfire1995) or 4 (density_dependent). */
+  int photoelectric_heating_efficiency;
 
   /*! Volumetric heating rates */
   float volumetric_heating_rates;

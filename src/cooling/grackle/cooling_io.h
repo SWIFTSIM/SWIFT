@@ -195,6 +195,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_on_dust =
       parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
 
+  cooling->H2_photodissociation_heating = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_photodissociation_heating", 0);
+#if COOLING_GRACKLE_MODE < 2
+  if (cooling->H2_photodissociation_heating)
+    error(
+        "GrackleCooling:H2_photodissociation_heating needs "
+        "COOLING_GRACKLE_MODE >= 2 (H2 species tracked); this SWIFT was "
+        "compiled with mode %d.",
+        COOLING_GRACKLE_MODE);
+#endif
+#ifndef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
+  if (cooling->H2_photodissociation_heating)
+    error(
+        "GrackleCooling:H2_photodissociation_heating needs a Grackle build "
+        "that provides it; this SWIFT was built against one that does not.");
+#endif
+
   cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
 
@@ -259,12 +276,38 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* Lives under GEARFeedback, alongside its sibling with_photoionization/
      HII_couple_ionization_rate parameters, rather than GrackleCooling:
      forces the Grackle flags this needs (use_isrf_field, dust_chemistry,
-     photoelectric_heating=2 in cooling_init_grackle, and, at
+     photoelectric_heating in cooling_init_grackle, and, at
      COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
      RT_H2_dissociation_rate channel) on internally so the user only sets
      this one flag. */
   cooling->with_ISRF = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
+
+  char pe_efficiency[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GrackleCooling:photoelectric_heating_efficiency",
+                              pe_efficiency, "constant");
+  if (strcmp(pe_efficiency, "constant") == 0) {
+    cooling->photoelectric_heating_efficiency = 2;
+  } else if (strcmp(pe_efficiency, "wolfire1995") == 0) {
+    cooling->photoelectric_heating_efficiency = 3;
+  } else if (strcmp(pe_efficiency, "density_dependent") == 0) {
+    /* Require the capability only when the ISRF module is actually on. */
+#ifndef GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON
+    if (cooling->with_ISRF)
+      error(
+          "GrackleCooling:photoelectric_heating_efficiency: "
+          "density_dependent needs a Grackle build that provides it "
+          "(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this SWIFT was "
+          "built against one that does not.");
+#endif
+    cooling->photoelectric_heating_efficiency = 4;
+  } else {
+    error(
+        "Invalid GrackleCooling:photoelectric_heating_efficiency '%s': use "
+        "constant, wolfire1995 or density_dependent.",
+        pe_efficiency);
+  }
 
 #if COOLING_GRACKLE_MODE > 1
   if (cooling->with_ISRF) {

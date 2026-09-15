@@ -1520,6 +1520,10 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->h2_on_dust = cooling->H2_on_dust;
+#ifdef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
+  chemistry->H2_photodissociation_heating =
+      cooling->H2_photodissociation_heating;
+#endif
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   if (cooling->local_dust_to_gas_ratio > 0)
@@ -1546,15 +1550,15 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   /* Local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
      heating): dust_chemistry=1 bundles photoelectric heating, dust
      recombination cooling, and H2 formation on dust under one Grackle
-     switch. photoelectric_heating=2 uses a constant efficiency
-     (epsilon=0.05) rather than =3's electron-density-dependent one, since
-     Grackle's own docs flag that electron density as unreliable in dense,
-     cold gas. use_isrf_field=1 switches Grackle from the scalar
+     switch. photoelectric_heating is the efficiency chosen by
+     GrackleCooling:photoelectric_heating_efficiency (cooling_io.h).
+     use_isrf_field=1 switches Grackle from the scalar
      interstellar_radiation_field to the per-particle isrf_habing array
      this module fills (cooling_get_isrf_habing_subgrid). */
   if (cooling->with_ISRF) {
     chemistry->dust_chemistry = 1;
-    chemistry->photoelectric_heating = 2;
+    chemistry->photoelectric_heating =
+        cooling->photoelectric_heating_efficiency;
     chemistry->use_isrf_field = 1;
   }
 

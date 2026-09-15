@@ -18,7 +18,7 @@ solver \citep[Grackle,][]{Smith2017}.
 
 \textbf{What the module provides.} For each gas particle $i$ it carries
 two radiation energies per unit gas mass, $u_{{\rm FUV},i}$ for the
-$6$--$11.2$\,eV band and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
+$6$--$11.2$\,eV band (the PE band of \citealt{Kim2023}) and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
 ${\rm erg\,g^{-1}}$, sourced by the stars in the simulation and
 attenuated by dust. From them it derives, at every cooling call, the
 photoelectric heating strength $G_0$ in Habing units and the H$_2$
@@ -661,20 +661,45 @@ energy flux of a quasi-isotropic field, $c\,U$, in Habing units
 \end{equation}
 Grackle \citep{Smith2017} applies it as the heating rate of
 \citet[their Eq.~1]{Wolfire1995}, built on the grain photoelectric
-mechanism of \citet{BakesTielens1994}, with a constant grain
-photoelectric efficiency, scaled by the
+mechanism of \citet{BakesTielens1994}, scaled by the
 same gas metallicity relative to solar as the dust-to-gas ratio of
 Section~\ref{sec:fuv-opacity},
 \begin{equation}
-  \Gamma_{\rm PE} = 10^{-24}\,{\rm erg\,s^{-1}}\times 0.05\times G_0\,n_H\,
+  \Gamma_{\rm PE} = A\,\epsilon_{\rm PE}\,G_0\,n_H\,
     \frac{Z}{Z_\odot}
   \qquad (T < 2\times10^4\,{\rm K}) ,
   \label{eq:fuv-pe-heating}
 \end{equation}
-per unit volume, and scales its dust recombination cooling by the same
-$G_0$; H$_2$ formation on dust also responds to $G_0$, but only
+per unit volume, with $n_H$ the hydrogen nuclei number density
+(including H$_2$ nuclei), and scales its dust recombination cooling by
+the same $G_0$; H$_2$ formation on dust also responds to $G_0$, but only
 indirectly, through the dust temperature $G_0$ helps set, not a direct
-scaling like the two terms above. The H$_2$ photodissociation
+scaling like the two terms above.
+\code{GrackleCooling:photoelectric\_heating\_efficiency}
+selects $A$ and $\epsilon_{\rm PE}$. With \code{constant} (the default)
+the efficiency is constant, $A = 10^{-24}\,{\rm erg\,s^{-1}}$ and
+$\epsilon_{\rm PE} = 0.05$. With \code{wolfire1995}, $A$ is the same and
+$\epsilon_{\rm PE}$ follows \citet[their Eq.~2]{Wolfire1995}, a function
+of the grain charging parameter $G_0 T^{1/2}/n_e$, with Grackle's own
+electron density. With \code{density\_dependent} (a Grackle build that
+provides it) the efficiency is the density-only fit of
+\citet[their Eqs.~A1--A2]{Smith2026} to the solar-neighbourhood
+predictions of \citet{Wolfire2003},
+\begin{equation}
+  A = 1.3\times10^{-24}\,{\rm erg\,s^{-1}}, \qquad
+  \epsilon_{\rm PE} = \min\!\left[0.07,\;
+    0.0149\,\left(\frac{n_H}{{\rm cm^{-3}}}\right)^{0.235}\right] .
+  \label{eq:fuv-pe-efficiency-density}
+\end{equation}
+\citet{Smith2026} write $n$ for the gas number density and normalise the
+dust-to-gas ratio to $0.0081$; Grackle uses $n_H$ in both places and
+$Z/Z_\odot$, i.e. a dust-to-gas ratio normalised to its own $0.009387$.
+Relative to \code{constant}, \code{density\_dependent} heats by a factor
+$0.23$, $0.39$, $0.67$, $1.14$ and $1.82$ at $n_H = 0.1$, $1$, $10$, $100$
+and $\ge 725\,{\rm cm^{-3}}$. Grackle's documentation flags its electron
+density as unreliable in dense, cold gas, which affects
+\code{wolfire1995} only.
+The H$_2$ photodissociation
 rate is a cross-section times the LW photon flux,
 \begin{equation}
   k_{{\rm diss},i} = \sigma_{\rm H_2}\,
@@ -688,7 +713,33 @@ checked to within $10\%$ against the free-space photodissociation rate of
 \citet[their Eq.~5, $D_0 = 5.8\times10^{-11} I_{\rm UV}\,{\rm
 s^{-1}}$]{Sternberg2014} for an equivalent field. Grackle adds
 $k_{\rm diss}$ to its background dissociation rate and applies its own
-self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Both quantities are clamped to be
+self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Grackle
+adds no heating for these dissociations by default. The optional switch
+\code{GrackleCooling:H2\_photodissociation\_heating} (off by default,
+a Grackle build that provides it) adds, following
+\citet[their Eqs.~37--38]{Kim2023},
+\begin{equation}
+  \Gamma_{\rm H_2,diss} = \left[0.4 + \frac{2 f_{\rm pump}}
+    {1 + n_{\rm crit}/n}\right]{\rm eV}\;k_{\rm diss,shield}\,n_{\rm H_2},
+  \qquad f_{\rm pump} = 8 ,
+  \label{eq:fuv-h2-diss-heating}
+\end{equation}
+per unit volume, the sum of their Eq.~37 (UV pumping) and Eq.~38
+(dissociation): $0.4$\,eV from the dissociation itself and the
+collisionally thermalised part of the UV-pumping energy.
+$k_{\rm diss,shield}$ is the shielded total rate (UV background plus
+$k_{\rm diss}$). The thermalised fraction $1/(1 + n_{\rm crit}/n)$ uses
+the critical density of \citet[their Eq.~23]{Omukai2000} that Grackle
+already applies to H$_2$ formation heating,
+$n_{\rm crit}/n = n_{\rm cr,n}/(n_{\rm HI}\,n_{\rm cr,d1} + n_{\rm H_2}\,n_{\rm cr,d2})$.
+It differs from the critical density of \citet[their Eq.~39]{Kim2023},
+$(A_{\rm eff} + k_{\rm diss,shield})/(x_{\rm H}k_{\rm H_2\mbox{-}H} + x_{\rm H_2}k_{\rm H_2\mbox{-}H_2})$
+with $A_{\rm eff} = 2\times10^{-7}\,{\rm s^{-1}}$ \citep{Burton1990} and
+the de-excitation rates of \citet[their Eq.~A.1]{Visser2018}, by factors
+of $0.2$ to $10^5$ over $10$--$10^4$\,K and $0 < x_{\rm H_2} \le 0.5$
+(Omukai larger below about $200$\,K, smaller above).
+\citet[their Appendix~A]{Smith2026}, which adopts this heating, prints
+the reciprocal factor $1/(1 + n/n_{\rm crit})$. Both quantities are clamped to be
 non-negative before they reach Grackle; a negative value is an
 undershoot of the numerical scheme (Section~\ref{sec:fuv-dissipation})
 and is reported. Grackle applies $k_{\rm diss}$ only to the H$_2$
@@ -1252,6 +1303,12 @@ are meaningful only with propagation on.
   Master switch: compute $L_{\rm FUV}$, $L_{\rm LW}$, inject, and couple
   $G_0$ and $k_{\rm diss}$ into Grackle. \\
 \hline
+\code{photoelectric\_heating\_efficiency} (\code{GrackleCooling}) & &
+  \code{constant} & \code{constant}, \code{wolfire1995},
+  \code{density\_dependent} &
+  Grackle photoelectric efficiency (Eq.~\ref{eq:fuv-pe-heating} and
+  Eq.~\ref{eq:fuv-pe-efficiency-density}). \\
+\hline
 \code{ISRF\_propagation} & & 0 & 0 or 1 &
   0: instantaneous field (Section~\ref{sec:fuv-instantaneous}); 1:
   two-moment propagation with reservoir, transport and dissipation. \\
@@ -1402,9 +1459,13 @@ path.
   \item \textbf{Instantaneous mode.} The propagation-off field scales
     with the star's time step and reaches only kernel neighbours; it is
     a baseline, not a physical field.
-  \item \textbf{Grackle path.} Photoelectric heating uses a constant
-    grain efficiency; the electron-density-dependent efficiency Grackle
-    also offers \citep{Wolfire2003} is not selected. The H$_2$ cross-section is an effective
+  \item \textbf{Grackle path.} The photoelectric efficiency is constant,
+    follows the grain charging parameter with Grackle's electron density
+    \citep[their Eq.~2]{Wolfire1995}, or is a function of density alone
+    (Eq.~\ref{eq:fuv-pe-efficiency-density}). The density-only form
+    assumes gas on the solar-neighbourhood thermal equilibrium curve and
+    overestimates the efficiency at low metallicity \citep{Smith2026}.
+    The default is not yet chosen on evidence. The H$_2$ cross-section is an effective
     band average with an implicit spectral shape; no quantitative
     accuracy target exists yet for the $G_0$ path.
 \end{itemize}

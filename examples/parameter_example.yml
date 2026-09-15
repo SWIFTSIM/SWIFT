@@ -646,6 +646,10 @@ GrackleCooling:
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+  H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping, Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >= 2
+                                               # and a Grackle build that provides it. 1: on, 0: off. (Default: 0)
+  photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency used when GEARFeedback:with_photoelectric_heating is on. constant: 0.05 with prefactor 1e-24 (Wolfire et al. 1995 Eq. 1). wolfire1995: electron-density-dependent
+                                               # (Wolfire et al. 1995 Eq. 2). density_dependent: min(0.07, 0.0149 n_H^0.235) with prefactor 1.3e-24 (Smith 2026 Eqs. A1-A2), needs a Grackle build that provides it. (Default: constant)
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
