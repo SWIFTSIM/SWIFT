@@ -176,11 +176,6 @@ struct cooling_function_data {
    * which is a separate Grackle field gating UV-background self-shielding. */
   int H2_self_shielding;
 
-  /*! Relative convergence limit of the initial-composition equilibrium solve
-   * (GrackleCooling:convergence_limit). Inert: cooling_compute_equilibrium()
-   * is a stub. */
-  float convergence_limit;
-
   /*! Maximal number of Grackle sub-cycle iterations per solve
    * (GrackleCooling:max_steps, Grackle's chemistry_data.max_iterations). */
   int max_step;

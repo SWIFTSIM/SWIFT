@@ -383,10 +383,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GrackleCooling:subcycle_on_failure must be in [0, 20], got %d.",
           cooling->subcycle_on_failure);
 
-  /* Only read by the initial-composition equilibrium solve, which is a stub */
-  cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:convergence_limit", 1e-2);
-
   /* Thermal time */
   cooling->thermal_time = parser_get_param_double(
       parameter_file, "GrackleCooling:thermal_time_myr");

@@ -84,7 +84,6 @@ GrackleCooling:
   self_shielding_method: 0                     # Off
   self_shielding_threshold_atom_per_cm3: 0.007
   max_steps: 10000
-  convergence_limit: 1e-2
   thermal_time_myr: 0
   maximal_density_Hpcm3: 1e4                   # Cooling density ceiling
   HydrogenFractionByMass: 0.76                 # Hydrogen fraction by mass

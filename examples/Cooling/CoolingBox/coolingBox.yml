@@ -51,7 +51,6 @@ GrackleCooling:
   volumetric_heating_rates_cgs: 0              # (optional) User provide volumetric heating rates
   specific_heating_rates_cgs: 0                # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: 0                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding

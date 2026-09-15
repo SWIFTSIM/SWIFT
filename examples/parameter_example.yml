@@ -627,7 +627,6 @@ GrackleCooling:
   max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve; a solve that exceeds it fails and the failure is counted in the log. (Default: 10000)
   subcycle_on_failure: 0                       # (optional) Retries of a failed Grackle solve, in [0, 20]. Retry i splits the time-step into 2^i consecutive solves. If every retry fails, the particle keeps
                                                # its previous state. Costs extra solves for failing particles only. (Default: 0, no retry)
-  convergence_limit: 1e-2                      # (optional) Relative convergence threshold of the initial-composition equilibrium solve. Currently inert: that solve is not implemented.
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
