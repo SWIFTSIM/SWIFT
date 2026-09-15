@@ -529,7 +529,7 @@ runner_iact_nonsym_feedback_apply(
 
 /**
  * @brief ISRF propagation (symmetric): no-op, this feedback model
- * does not track u_FUV/u_LW.
+ * does not track the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -548,7 +548,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
 
 /**
  * @brief ISRF propagation (non-symmetric): no-op, this feedback
- * model does not track u_FUV/u_LW.
+ * model does not track the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -570,7 +570,7 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
 
 /**
  * @brief `grad(u)` interaction (symmetric): no-op, this
- * feedback model does not track u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ * feedback model does not track the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -588,7 +588,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
 
 /**
  * @brief `grad(u)` interaction (non-symmetric): no-op, this
- * feedback model does not track u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ * feedback model does not track the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -609,7 +609,7 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 /**
  * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
  * no-op, this feedback model does not track
- * u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ * the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -628,7 +628,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 /**
  * @brief Negativity-triggered artificial-dissipation interaction
  * (non-symmetric): no-op, this feedback model does not track
- * u_FUV/u_LW/specific_flux_FUV/specific_flux_LW.
+ * the ISRF band fields.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
