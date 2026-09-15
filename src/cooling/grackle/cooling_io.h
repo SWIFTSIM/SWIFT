@@ -259,12 +259,31 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* Lives under GEARFeedback, alongside its sibling with_photoionization/
      HII_couple_ionization_rate parameters, rather than GrackleCooling:
      forces the Grackle flags this needs (use_isrf_field, dust_chemistry,
-     photoelectric_heating=2 in cooling_init_grackle, and, at
+     photoelectric_heating in cooling_init_grackle, and, at
      COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
      RT_H2_dissociation_rate channel) on internally so the user only sets
      this one flag. */
   cooling->with_ISRF = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
+
+  cooling->photoelectric_heating_grackle_option = parser_get_opt_param_int(
+      parameter_file, "GEARFeedback:photoelectric_heating_grackle_option", 2);
+  if (cooling->photoelectric_heating_grackle_option != 2 &&
+      cooling->photoelectric_heating_grackle_option != 4)
+    error(
+        "GEARFeedback:photoelectric_heating_grackle_option must be 2 "
+        "(constant efficiency) or 4 (density-dependent efficiency), got %d.",
+        cooling->photoelectric_heating_grackle_option);
+
+  /* A Grackle without option 4 accepts the value and applies no heating. */
+#ifndef GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON
+  if (cooling->with_ISRF && cooling->photoelectric_heating_grackle_option == 4)
+    error(
+        "GEARFeedback:photoelectric_heating_grackle_option = 4 needs a "
+        "Grackle build that provides the density-dependent photoelectric "
+        "efficiency (GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this "
+        "SWIFT was built against one that does not.");
+#endif
 
 #if COOLING_GRACKLE_MODE > 1
   if (cooling->with_ISRF) {

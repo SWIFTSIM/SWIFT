@@ -661,17 +661,36 @@ energy flux of a quasi-isotropic field, $c\,U$, in Habing units
 \end{equation}
 Grackle \citep{Smith2017} applies it as the heating rate of
 \citet[their Eq.~1]{Wolfire1995}, built on the grain photoelectric
-mechanism of \citet{BakesTielens1994}, with a constant grain
-photoelectric efficiency, scaled by the
+mechanism of \citet{BakesTielens1994}, scaled by the
 same gas metallicity relative to solar as the dust-to-gas ratio of
 Section~\ref{sec:fuv-opacity},
 \begin{equation}
-  \Gamma_{\rm PE} = 10^{-24}\,{\rm erg\,s^{-1}}\times 0.05\times G_0\,n_H\,
+  \Gamma_{\rm PE} = A\,\epsilon_{\rm PE}\,G_0\,n_H\,
     \frac{Z}{Z_\odot}
   \qquad (T < 2\times10^4\,{\rm K}) ,
   \label{eq:fuv-pe-heating}
 \end{equation}
-per unit volume, and scales its dust recombination cooling and
+per unit volume, with $n_H$ the hydrogen nuclei number density
+(including H$_2$ nuclei). By default
+(\code{photoelectric\_heating\_grackle\_option: 2}) the grain
+photoelectric efficiency is constant, $A = 10^{-24}\,{\rm erg\,s^{-1}}$
+and $\epsilon_{\rm PE} = 0.05$. Option 4 (a Grackle build that provides
+it) uses the density-only fit of \citet[their Eqs.~A1--A2]{Smith2026} to
+the solar-neighbourhood predictions of \citet{Wolfire2003},
+\begin{equation}
+  A = 1.3\times10^{-24}\,{\rm erg\,s^{-1}}, \qquad
+  \epsilon_{\rm PE} = \min\!\left[0.07,\;
+    0.0149\,\left(\frac{n_H}{{\rm cm^{-3}}}\right)^{0.235}\right] .
+  \label{eq:fuv-pe-efficiency-density}
+\end{equation}
+\citet{Smith2026} write $n$ for the gas number density and normalise the
+dust-to-gas ratio to $0.0081$; Grackle uses $n_H$ in both places and
+$Z/Z_\odot$, i.e. a dust-to-gas ratio normalised to its own $0.009387$.
+Relative to the constant efficiency, option 4 heats by a factor $0.23$,
+$0.39$, $0.67$, $1.14$ and $1.82$ at $n_H = 0.1$, $1$, $10$, $100$ and
+$\ge 725\,{\rm cm^{-3}}$. Neither option uses the electron density, which
+Grackle's own documentation flags as unreliable in dense, cold gas.
+Grackle also scales its dust recombination cooling and
 H$_2$ formation on dust by the same $G_0$. The H$_2$ photodissociation
 rate is a cross-section times the LW photon flux,
 \begin{equation}
@@ -692,8 +711,8 @@ undershoot of the numerical scheme (Section~\ref{sec:fuv-dissipation})
 and is reported.
 
 Enabling the module (\code{GEARFeedback:with\_photoelectric\_heating})
-configures Grackle for it: dust chemistry on, which selects the
-constant-efficiency photoelectric heating and dust recombination cooling
+configures Grackle for it: dust chemistry on, which selects
+photoelectric heating (with the efficiency option above) and dust recombination cooling
 together, and additionally H$_2$ formation on dust grains in the cooling
 modes that track H$_2$ (modes 2 and 3); the per-particle ISRF field
 instead of the scalar one, for every dust channel; and, in those same
@@ -1246,6 +1265,10 @@ are meaningful only with propagation on.
   Master switch: compute $L_{\rm FUV}$, $L_{\rm LW}$, inject, and couple
   $G_0$ and $k_{\rm diss}$ into Grackle. \\
 \hline
+\code{photoelectric\_heating\_grackle\_option} & & 2 & 2 or 4 &
+  Grackle photoelectric efficiency: 2 constant, 4 density-only
+  (Eq.~\ref{eq:fuv-pe-efficiency-density}). \\
+\hline
 \code{ISRF\_propagation} & & 0 & 0 or 1 &
   0: instantaneous field (Section~\ref{sec:fuv-instantaneous}); 1:
   two-moment propagation with reservoir, transport and dissipation. \\
@@ -1392,9 +1415,14 @@ path.
   \item \textbf{Instantaneous mode.} The propagation-off field scales
     with the star's time step and reaches only kernel neighbours; it is
     a baseline, not a physical field.
-  \item \textbf{Grackle path.} Photoelectric heating uses a constant
-    grain efficiency; the electron-density-dependent efficiency Grackle
-    also offers \citep{Wolfire2003} is not selected. The H$_2$ cross-section is an effective
+  \item \textbf{Grackle path.} The photoelectric efficiency is either
+    constant or a function of density alone
+    (Eq.~\ref{eq:fuv-pe-efficiency-density}); the latter assumes gas on
+    the solar-neighbourhood thermal equilibrium curve and overestimates
+    the efficiency at low metallicity \citep{Smith2026}. Neither follows
+    the grain charging parameter, and the electron-density-dependent
+    efficiency Grackle also offers \citep[their Eq.~2]{Wolfire1995} is
+    not selectable. The H$_2$ cross-section is an effective
     band average with an implicit spectral shape; no quantitative
     accuracy target exists yet for the $G_0$ path.
 \end{itemize}

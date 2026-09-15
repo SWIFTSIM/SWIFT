@@ -822,6 +822,8 @@ GEARFeedback:
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation)
   with_photoelectric_heating:    0                         # Master switch for the local ISRF feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
+  photoelectric_heating_grackle_option: 2                  # (optional) Grackle photoelectric_heating option used when with_photoelectric_heating is on. 2: constant efficiency 0.05 (Wolfire et al. 1995). 4: density-dependent efficiency
+                                                           # min(0.07, 0.0149 n_H^0.235) with prefactor 1.3e-24 (Smith 2026, eqs. A1-A2); needs a Grackle build that provides option 4. (Default: 2)
   ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
                                                            # (Default: 0)
   ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
