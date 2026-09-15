@@ -297,6 +297,33 @@ feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
   ret[2] = 0.f;
 }
 
+struct engine;
+
+/**
+ * @brief Most negative FUV-band specific energy since the previous snapshot.
+ * Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_min_since_snapshot_FUV(const struct part *p,
+                                           const struct engine *e) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_u_min_since_snapshot_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
+                                          const struct engine *e) {
+  return 0.f;
+}
+
 /**
  * @brief Current ionized mass of this star's HII region.
  *

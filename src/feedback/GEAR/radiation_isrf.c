@@ -407,6 +407,14 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
       c_hyp / (float)e->physical_constants->const_speed_light_c;
   const float H = (float)e->cosmology->H;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (fd->u_min_snapshot_index != e->snapshot_output_count) {
+    for (int b = 0; b < ISRF_BAND_COUNT; b++)
+      fd->isrf_band[b].u_min_since_snapshot = 0.f;
+    fd->u_min_snapshot_index = e->snapshot_output_count;
+  }
+#endif
+
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *band = &fd->isrf_band[b];
     const float a = (c_hyp * band->kappa + H) * dt;
@@ -416,6 +424,11 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     band->u =
         decay * (band->u_prev + dt * phi * band->dissipation_u) +
         dt * phi * (rescale * band->u_source_rate - band->div_specific_flux);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (band->u < band->u_min_since_snapshot)
+      band->u_min_since_snapshot = band->u;
+#endif
   }
 }
 

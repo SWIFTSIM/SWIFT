@@ -202,6 +202,15 @@ struct feedback_isrf_band_data {
       active), but dumped anyway since it lives in #part alongside the
       persistent fields above. */
   float u_source_rate;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Most negative #u written by #radiation_end_force_propagation since the
+      previous snapshot, 0 if none was negative. Reset on the first update
+      after a snapshot (#feedback_part_data.u_min_snapshot_index). Written as
+      "FUVMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
+      #u. */
+  float u_min_since_snapshot;
+#endif
 };
 
 /**
@@ -280,6 +289,13 @@ struct feedback_part_data {
       #engine a second and third time in the extra ghost and end-force
       ghost. */
   float dt_prev;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! #engine.snapshot_output_count at the last write of
+      #feedback_isrf_band_data.u_min_since_snapshot: the index of the snapshot
+      those values belong to. */
+  int u_min_snapshot_index;
+#endif
 
   /*! With ISRF_propagation off: simulation step (#engine.ti_current)
       #feedback_isrf_band_data.u were last written at.
