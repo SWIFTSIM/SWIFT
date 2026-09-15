@@ -228,8 +228,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
 
-  /* Default absent any sink info; sink_props_init() sets 1 when configured. */
-  fp->with_sinks = 0;
+  /* The HII_* fields below and stellar_model_first_stars are only assigned
+   * inside a conditional branch (with_photoionization, or the first-stars
+   * metallicity threshold); zero first so the disabled case reads a defined
+   * 0, not uninitialised stack memory. HII_rebuild_time and HII_max_age are
+   * read unconditionally, for every star, in
+   * feedback_compute_spart_timestep(); sink_props_init() writes with_sinks
+   * after this function returns, not before. */
+  bzero(fp, sizeof(struct feedback_props));
 
   /* Supernovae energy efficiency */
   double e_efficiency =
