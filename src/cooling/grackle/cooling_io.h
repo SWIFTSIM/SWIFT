@@ -275,24 +275,30 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
 
-  cooling->photoelectric_heating_grackle_option = parser_get_opt_param_int(
-      parameter_file, "GEARFeedback:photoelectric_heating_grackle_option", 2);
-  if (cooling->photoelectric_heating_grackle_option != 2 &&
-      cooling->photoelectric_heating_grackle_option != 4)
-    error(
-        "GEARFeedback:photoelectric_heating_grackle_option must be 2 "
-        "(constant efficiency) or 4 (density-dependent efficiency), got %d.",
-        cooling->photoelectric_heating_grackle_option);
-
-  /* A Grackle without option 4 accepts the value and applies no heating. */
+  char pe_efficiency[32];
+  parser_get_opt_param_string(parameter_file,
+                              "GrackleCooling:photoelectric_heating_efficiency",
+                              pe_efficiency, "constant");
+  if (strcmp(pe_efficiency, "constant") == 0) {
+    cooling->photoelectric_heating_efficiency = 2;
+  } else if (strcmp(pe_efficiency, "wolfire1995") == 0) {
+    cooling->photoelectric_heating_efficiency = 3;
+  } else if (strcmp(pe_efficiency, "density_dependent") == 0) {
+    /* A Grackle without option 4 accepts the value and applies no heating. */
 #ifndef GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON
-  if (cooling->with_ISRF && cooling->photoelectric_heating_grackle_option == 4)
     error(
-        "GEARFeedback:photoelectric_heating_grackle_option = 4 needs a "
-        "Grackle build that provides the density-dependent photoelectric "
-        "efficiency (GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this "
-        "SWIFT was built against one that does not.");
+        "GrackleCooling:photoelectric_heating_efficiency: density_dependent "
+        "needs a Grackle build that provides it "
+        "(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this SWIFT was "
+        "built against one that does not.");
 #endif
+    cooling->photoelectric_heating_efficiency = 4;
+  } else {
+    error(
+        "Invalid GrackleCooling:photoelectric_heating_efficiency '%s': use "
+        "constant, wolfire1995 or density_dependent.",
+        pe_efficiency);
+  }
 
 #if COOLING_GRACKLE_MODE > 1
   if (cooling->with_ISRF) {

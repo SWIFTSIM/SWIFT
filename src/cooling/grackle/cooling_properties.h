@@ -124,11 +124,10 @@ struct cooling_function_data {
       subgrid. */
   int with_ISRF;
 
-  /*! Grackle photoelectric_heating option used when with_ISRF is on: 2
-      (constant efficiency 0.05, Wolfire et al. 1995) or 4 (density-only
-      efficiency, Smith 2026 eqs. A1-A2; needs a Grackle that defines
-      GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON). */
-  int photoelectric_heating_grackle_option;
+  /*! Grackle photoelectric_heating option used when with_ISRF is on,
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
+      3 (wolfire1995) or 4 (density_dependent). */
+  int photoelectric_heating_efficiency;
 
   /*! Volumetric heating rates */
   float volumetric_heating_rates;

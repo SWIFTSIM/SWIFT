@@ -1534,17 +1534,15 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   /* Local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
      heating): dust_chemistry=1 bundles photoelectric heating, dust
      recombination cooling, and H2 formation on dust under one Grackle
-     switch. photoelectric_heating=2 (constant efficiency 0.05) or =4
-     (density-only efficiency, Smith 2026 eqs. A1-A2) is used rather than
-     =3's electron-density-dependent one, since Grackle's own docs flag
-     that electron density as unreliable in dense, cold gas.
+     switch. photoelectric_heating is the efficiency chosen by
+     GrackleCooling:photoelectric_heating_efficiency (cooling_io.h).
      use_isrf_field=1 switches Grackle from the scalar
      interstellar_radiation_field to the per-particle isrf_habing array
      this module fills (cooling_get_isrf_habing_subgrid). */
   if (cooling->with_ISRF) {
     chemistry->dust_chemistry = 1;
     chemistry->photoelectric_heating =
-        cooling->photoelectric_heating_grackle_option;
+        cooling->photoelectric_heating_efficiency;
     chemistry->use_isrf_field = 1;
   }
 
