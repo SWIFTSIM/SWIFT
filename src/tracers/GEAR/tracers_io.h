@@ -367,8 +367,11 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       0.f, parts, xparts, convert_part_u_min_since_snapshot_FUV,
       "Most negative FUVSpecificEnergies value the propagation update wrote "
       "since the previous snapshot, 0 if none was negative. The number of "
-      "nonzero entries is the count of particles that undershot. Always 0 "
-      "unless the code is configured with --enable-debugging-checks.");
+      "nonzero entries is the count of particles that undershot. The "
+      "interval is since the last increment of engine.snapshot_output_count, "
+      "which also happens when a FOF seeding catalogue is dumped "
+      "(FOF:dump_catalogue_when_seeding), not only at a real snapshot. "
+      "Always 0 unless the code is configured with --enable-debugging-checks.");
 
   list[19] = io_make_output_field_convert_part(
       "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,

@@ -206,7 +206,11 @@ struct feedback_isrf_band_data {
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u written by #radiation_end_force_propagation since the
       previous snapshot, 0 if none was negative. Reset on the first update
-      after a snapshot (#feedback_part_data.u_min_snapshot_index). Written as
+      after a snapshot (#feedback_part_data.u_min_snapshot_index). "Since the
+      previous snapshot" means since the last increment of
+      #engine.snapshot_output_count, which also happens when a FOF seeding
+      catalogue is dumped (FOF:dump_catalogue_when_seeding, engine.c), not
+      only at a real snapshot dump. Written as
       "FUVMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
       #u. */
   float u_min_since_snapshot;
@@ -293,7 +297,9 @@ struct feedback_part_data {
 #ifdef SWIFT_DEBUG_CHECKS
   /*! #engine.snapshot_output_count at the last write of
       #feedback_isrf_band_data.u_min_since_snapshot: the index of the snapshot
-      those values belong to. */
+      those values belong to. Incremented by a FOF seeding catalogue dump as
+      well as a real snapshot; see
+     #feedback_isrf_band_data.u_min_since_snapshot. */
   int u_min_snapshot_index;
 #endif
 
