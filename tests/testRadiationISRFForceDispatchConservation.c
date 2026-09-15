@@ -244,6 +244,7 @@ static void check_cells(struct cell *cells[2], const char *label,
     double max_ref_div = 0., max_ref_diss = 0., max_err_div = 0.,
            max_err_diss = 0., min_cancel_div = 1.;
 
+    double max_masked_err_div = 0., max_masked_err_diss = 0.;
     for (int ci = 0; ci < 2; ci++) {
       for (int i = 0; i < cells[ci]->hydro.count; i++) {
         const struct part *pi = &cells[ci]->hydro.parts[i];
@@ -262,6 +263,12 @@ static void check_cells(struct cell *cells[2], const char *label,
          * rounding relative to the net alone is not a coverage signal. */
         double ref_div = 0., ref_diss = 0., abs_terms_div = 0.,
                abs_terms_diss = 0.;
+        /* Negative control: a reference that masks every pair with
+         * r >= H_i, as a dispatch that only ever visited i's own kernel
+         * (missing the H_i <= r < H_j reach extension) would. Proves the
+         * per-particle metric below is sensitive to that specific bug. */
+        const float Hi = kernel_gamma * pi->h;
+        double masked_ref_div = 0., masked_ref_diss = 0.;
         for (int cj = 0; cj < 2; cj++) {
           for (int j = 0; j < cells[cj]->hydro.count; j++) {
             const struct part *pj = &cells[cj]->hydro.parts[j];
@@ -284,6 +291,10 @@ static void check_cells(struct cell *cells[2], const char *label,
             ref_diss += d_diss;
             abs_terms_div += fabs(d_div);
             abs_terms_diss += fabs(d_diss);
+            if (r2 < Hi * Hi) {
+              masked_ref_div += d_div;
+              masked_ref_diss += d_diss;
+            }
           }
         }
         max_ref_div = max(max_ref_div, abs_terms_div);
@@ -298,6 +309,12 @@ static void check_cells(struct cell *cells[2], const char *label,
         max_err_diss = max(max_err_diss, err_diss);
         const double cancel_div = fabs(ref_div) / scale_div;
         min_cancel_div = min(min_cancel_div, cancel_div);
+        const double masked_err_div =
+            fabs((double)bi->div_specific_flux - masked_ref_div) / scale_div;
+        const double masked_err_diss =
+            fabs((double)bi->dissipation_u - masked_ref_diss) / scale_diss;
+        max_masked_err_div = max(max_masked_err_div, masked_err_div);
+        max_masked_err_diss = max(max_masked_err_diss, masked_err_diss);
       }
     }
 
@@ -317,6 +334,22 @@ static void check_cells(struct cell *cells[2], const char *label,
           "%s band %d: per-particle max error / sum |pair terms| div %.2e "
           "diss %.2e (smallest |net| / sum |terms| for div %.2e)",
           label, b, max_err_div, max_err_diss, min_cancel_div);
+
+      /* r >= H_i masked negative control: proves the per-particle metric
+         above would have caught a dispatch that dropped the H_i <= r < H_j
+         reach extension, by exceeding PER_PART_BAR many times over. */
+      if (!(max_masked_err_div > 10. * PER_PART_BAR) ||
+          !(max_masked_err_diss > 10. * PER_PART_BAR))
+        error(
+            "%s band %d: r>=H_i masked negative control margin div %.1fx "
+            "diss %.1fx does not exceed 10x",
+            label, b, max_masked_err_div / PER_PART_BAR,
+            max_masked_err_diss / PER_PART_BAR);
+      message(
+          "%s band %d: r>=H_i masked negative control margin (x bar) div "
+          "%.1f diss %.1f",
+          label, b, max_masked_err_div / PER_PART_BAR,
+          max_masked_err_diss / PER_PART_BAR);
     }
   }
 }
