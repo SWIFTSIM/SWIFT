@@ -413,12 +413,22 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "deliberate.");
   }
 
-  /* Initial step convergence */
+  /* Grackle sub-cycle iteration limit */
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:max_steps", 10000);
+  if (cooling->max_step < 1)
+    error("GrackleCooling:max_steps must be >= 1, got %d.", cooling->max_step);
 
-  cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:convergence_limit", 1e-2);
+  /* Retries of a failed solve, each one halving the sub-step. Default 2:
+   * two retries give 4x the iteration budget, which covered every stiff
+   * cell measured (14670-25574 iterations against the 10000 default),
+   * so stiff cells keep being integrated instead of skipping their
+   * cooling. */
+  cooling->subcycle_on_failure = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:subcycle_on_failure", 2);
+  if (cooling->subcycle_on_failure < 0 || cooling->subcycle_on_failure > 20)
+    error("GrackleCooling:subcycle_on_failure must be in [0, 20], got %d.",
+          cooling->subcycle_on_failure);
 
   /* Thermal time */
   cooling->thermal_time = parser_get_param_double(

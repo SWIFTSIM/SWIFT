@@ -30,11 +30,14 @@
 #include <fenv.h>
 #include <float.h>
 #include <math.h>
+#include <stdint.h>
+#include <string.h>
 
 /* The grackle library itself */
 #include <grackle.h>
 
 /* Local includes. */
+#include "atomic.h"
 #include "chemistry.h"
 #include "cooling_io.h"
 #include "entropy_floor.h"
@@ -70,6 +73,48 @@ double cooling_get_physical_density(
     const struct part *p, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling);
 
+/*! Grackle solves on this rank that failed after every retry since the last
+ * report. Each kept the particle's previous state. */
+static long long cooling_grackle_failed_solves = 0;
+
+/*! Grackle solves on this rank that failed once and then succeeded in a
+ * sub-cycled retry since the last report. */
+static long long cooling_grackle_recovered_solves = 0;
+
+/**
+ * @brief Return the numbers of failed and of recovered Grackle solves on this
+ * rank since the last call, and reset both to zero.
+ *
+ * @param failed (return) Solves that kept the particle's previous state.
+ * @param recovered (return) Solves that succeeded in a sub-cycled retry.
+ */
+void cooling_pop_grackle_solve_failure_counts(long long *failed,
+                                              long long *recovered) {
+  *failed = atomic_swap(&cooling_grackle_failed_solves, 0);
+  *recovered = atomic_swap(&cooling_grackle_recovered_solves, 0);
+}
+
+/**
+ * @brief Test that a stored value is finite and, optionally, strictly
+ * positive, from its IEEE-754 bits.
+ *
+ * -ffast-math marks a float parameter passed by value nofpclass(nan inf),
+ * making the bit test legally foldable even in a noinline function; a
+ * pointer to the stored field carries no such annotation.
+ *
+ * @param x Pointer to the stored value.
+ * @param positive Also require *x > 0.
+ * @return 1 if the test passes, 0 otherwise.
+ */
+__attribute__((noinline)) static int cooling_stored_value_is_valid(
+    const float *x, const int positive) {
+  uint32_t bits;
+  memcpy(&bits, x, sizeof(bits));
+  if (((bits >> 23) & 0xffU) == 0xffU) return 0;
+  if (!positive) return 1;
+  return (bits >> 31) == 0 && bits != 0;
+}
+
 /**
  * @brief Record the time when cooling was switched off for a particle.
  *
@@ -103,6 +148,15 @@ void cooling_update(const struct phys_const *phys_const,
     cooling->units.a_value = cosmo->a;
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
+
+  /* Report the Grackle failures of the previous step */
+  long long failed, recovered;
+  cooling_pop_grackle_solve_failure_counts(&failed, &recovered);
+  if (failed > 0 || recovered > 0)
+    message(
+        "Grackle solves in the previous step: %lld failed (particles kept "
+        "their previous state), %lld recovered by sub-cycling.",
+        failed, recovered);
 }
 
 /**
@@ -460,6 +514,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   }
 
   message("Thermal time = %g", cooling->thermal_time);
+  message("Max Grackle iterations = %d", cooling->max_step);
+  message("Grackle retries on failure = %d", cooling->subcycle_on_failure);
   if (cooling->disable_cooling_for_debugging)
     warning(
         "GrackleCooling:disable_cooling_for_debugging is set: the "
@@ -892,22 +948,13 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
 }
 
 /**
- * @brief copy a #xpart to the grackle data
- *
- * Warning this function creates some variable, therefore the grackle call
- * should be in a block that still has the variables.
+ * @brief Free the fields allocated by cooling_copy_to_grackle().
  *
  * @param data The grackle_field_data structure from grackle.
- * @param p The #part.
- * @param xp The #xpart.
- * @param rho The particle density.
+ * @param cooling The #cooling_function_data used in the run.
  */
-void cooling_copy_from_grackle(grackle_field_data *data, const struct part *p,
-                               struct xpart *xp, gr_float rho,
-                               const struct cooling_function_data *cooling) {
-  cooling_copy_from_grackle1(data, p, xp, rho);
-  cooling_copy_from_grackle2(data, p, xp, rho);
-  cooling_copy_from_grackle3(data, p, xp, rho);
+static void cooling_free_grackle_fields(
+    grackle_field_data *data, const struct cooling_function_data *cooling) {
 
   if (cooling->chemistry_data.use_volumetric_heating_rate)
     free(data->volumetric_heating_rate);
@@ -928,6 +975,26 @@ void cooling_copy_from_grackle(grackle_field_data *data, const struct part *p,
     free(data->H2_self_shielding_length);
 
   free(data->metal_density);
+}
+
+/**
+ * @brief Copy the grackle data back to a #xpart and free the fields
+ * cooling_copy_to_grackle() allocated.
+ *
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
+ * @param cooling The #cooling_function_data used in the run.
+ */
+void cooling_copy_from_grackle(grackle_field_data *data, const struct part *p,
+                               struct xpart *xp, gr_float rho,
+                               const struct cooling_function_data *cooling) {
+  cooling_copy_from_grackle1(data, p, xp, rho);
+  cooling_copy_from_grackle2(data, p, xp, rho);
+  cooling_copy_from_grackle3(data, p, xp, rho);
+
+  cooling_free_grackle_fields(data, cooling);
 }
 
 /**
@@ -960,7 +1027,17 @@ void cooling_apply_self_shielding(
 
 /**
  * @brief Compute the energy of a particle after dt and update the particle
- * chemistry data
+ * chemistry data, or keep the previous state if Grackle fails.
+ *
+ * A failed solve (FAIL returned by Grackle, e.g. more than max_steps
+ * sub-cycle iterations) is retried subcycle_on_failure times, retry i with
+ * 2^i consecutive solves of dt/2^i (worst case (2^(subcycle_on_failure+1)-1)
+ * x max_steps Grackle iterations for one particle's one step). If every
+ * retry fails, the species are not read back and this step's cooling and
+ * heating are skipped, not deferred: the next step integrates only its own
+ * dt. The failure is counted. A non-positive energy after the
+ * minimal-energy floor (a legitimate state, not a Grackle failure) takes
+ * the same kept-previous-state path without ever calling Grackle.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -973,17 +1050,21 @@ void cooling_apply_self_shielding(
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @param kept_previous_state (return) 1 if the particle kept its previous
+ * state (every solve failed, or the solve was skipped), 0 otherwise.
  *
- * @return du / dt
+ * @return The new internal energy, or the energy passed to Grackle if
+ * kept_previous_state is 1.
  */
-gr_float cooling_new_energy(const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            const struct cosmology *cosmo,
-                            const struct hydro_props *hydro_props,
-                            const struct pressure_floor_props *pressure_floor,
-                            const struct cooling_function_data *cooling,
-                            struct part *p, struct xpart *xp, double dt,
-                            double dt_therm, double time) {
+static gr_float cooling_new_energy_or_keep_previous(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm, double time,
+    int *kept_previous_state) {
+
+  *kept_previous_state = 0;
 
   /* set current time */
   code_units units = cooling->units;
@@ -1030,14 +1111,51 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     }
   }
 
+  /* A non-finite stored value, or a non-positive stored density, cannot be
+     integrated: Grackle would freeze the cell at its energy floor. The
+     stored energy is not required positive here: the minimal-energy floor
+     just below can legitimately clamp it to exactly 0 (the default
+     hydro_props_default_min_temp is 0 K), which is not itself an error. */
+  const float rho_stored = hydro_get_comoving_density(p);
+  const float u_stored = hydro_get_comoving_internal_energy(p, xp);
+  const float u_dt_stored = hydro_get_comoving_internal_energy_dt(p);
+  if (!cooling_stored_value_is_valid(&rho_stored, /*positive=*/1) ||
+      !cooling_stored_value_is_valid(&u_stored, /*positive=*/0) ||
+      !cooling_stored_value_is_valid(&u_dt_stored, /*positive=*/0))
+    error(
+        "Particle %lld has an invalid state before the Grackle solve: "
+        "comoving density = %e, comoving internal energy = %e, its time "
+        "derivative = %e.",
+        p->id, rho_stored, u_stored, u_dt_stored);
+
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
                     dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
+
+  /* The stored density already passed the finite/positive guard above, so a
+     non-positive physical density here is a real bug (e.g. a bad comoving
+     conversion): stop the run. */
+  if (density <= 0.)
+    error(
+        "Particle %lld has a non-positive physical density before the "
+        "Grackle solve: physical density = %e.",
+        p->id, density);
+
+  /* A non-positive energy after the minimal-energy floor is not a bug:
+     Grackle cannot integrate from it, so skip the solve and keep the
+     particle's previous state instead of calling error(). */
+  if (energy <= 0.) {
+    atomic_inc(&cooling_grackle_failed_solves);
+    *kept_previous_state = 1;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    return energy;
+  }
+
   /* keep this array here so you can point to and from it in
    * copy to/from grackle */
-  gr_float species_densities[12];
+  gr_float species_densities[12] = {0};
 
   /* initialize density */
   data.density = &density;
@@ -1054,20 +1172,53 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
                           phys_const, us, cosmo);
 
-  /* Expire the tag only after cooling_copy_to_grackle has consumed it above. */
-  cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
-
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
 
+  /* Grackle updates the energy and the densities in place: keep the input
+     for a retry or for keeping the previous state. */
+  const gr_float energy_before = energy;
+  gr_float species_densities_before[12];
+  memcpy(species_densities_before, species_densities,
+         sizeof(species_densities_before));
+  const gr_float metal_density_before = *data.metal_density;
+
   /* solve chemistry */
-  if (local_solve_chemistry(&chemistry_grackle, &rates_grackle, &units, &data,
-                            dt) == 0) {
-    error("Error in solve_chemistry.");
+  int solved = local_solve_chemistry(&chemistry_grackle, &rates_grackle, &units,
+                                     &data, dt) != 0;
+
+  for (int retry = 1; !solved && retry <= cooling->subcycle_on_failure;
+       retry++) {
+    energy = energy_before;
+    memcpy(species_densities, species_densities_before,
+           sizeof(species_densities_before));
+    *data.metal_density = metal_density_before;
+
+    const int n_sub_steps = 1 << retry;
+    solved = 1;
+    for (int i = 0; solved && i < n_sub_steps; i++)
+      solved = local_solve_chemistry(&chemistry_grackle, &rates_grackle, &units,
+                                     &data, dt / n_sub_steps) != 0;
+
+    if (solved) atomic_inc(&cooling_grackle_recovered_solves);
+  }
+
+  if (!solved) {
+    /* Grackle does not make the species consistent on a failed solve: do
+       not read them back. The rate-coupled HII tag is not expired, so the
+       next solve still receives the rate. */
+    cooling_free_grackle_fields(&data, cooling);
+    atomic_inc(&cooling_grackle_failed_solves);
+    *kept_previous_state = 1;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    return energy_before;
   }
 
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(&data, p, xp, density, cooling);
+
+  /* Expire the tag only once a solve has consumed it. */
+  cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
 
   /* Cache the species update just solved for above. Does not run for a
      particle held at the subgrid-ionized floor: that path already
@@ -1075,6 +1226,41 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
 
   return energy;
+}
+
+/**
+ * @brief Compute the energy of a particle after dt and update the particle
+ * chemistry data
+ *
+ * See #cooling_new_energy_or_keep_previous for the handling of a failed
+ * Grackle solve.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
+ * @param dt The time-step of this particle.
+ * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current simulation time.
+ *
+ * @return The new internal energy.
+ */
+gr_float cooling_new_energy(const struct phys_const *phys_const,
+                            const struct unit_system *us,
+                            const struct cosmology *cosmo,
+                            const struct hydro_props *hydro_props,
+                            const struct pressure_floor_props *pressure_floor,
+                            const struct cooling_function_data *cooling,
+                            struct part *p, struct xpart *xp, double dt,
+                            double dt_therm, double time) {
+  int kept_previous_state;
+  return cooling_new_energy_or_keep_previous(
+      phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
+      dt_therm, time, &kept_previous_state);
 }
 
 /**
@@ -1321,9 +1507,13 @@ void cooling_cool_part(const struct phys_const *phys_const,
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
   } else {
-    u_new =
-        cooling_new_energy(phys_const, us, cosmo, hydro_props, pressure_floor,
-                           cooling, p, xp, dt, dt_therm, time);
+    int kept_previous_state;
+    u_new = cooling_new_energy_or_keep_previous(
+        phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
+        dt_therm, time, &kept_previous_state);
+
+    /* No cooling this step: exactly the adiabatic energy */
+    if (kept_previous_state) u_new = u_ad_before;
   }
 
   /* Get the change in internal energy due to hydro forces */
@@ -1587,6 +1777,11 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
     chemistry->self_shielding_method = cooling->self_shielding_method;
 
   chemistry->H2_self_shielding = cooling->H2_self_shielding;
+
+  /* Sub-cycle limit. Exceeding it returns FAIL instead of a state integrated
+     over only part of the time-step. */
+  chemistry->max_iterations = cooling->max_step;
+  chemistry->exit_after_iterations_exceeded = 1;
 
   if (local_initialize_chemistry_data(&cooling->chemistry_data,
                                       &cooling->chemistry_rates,
