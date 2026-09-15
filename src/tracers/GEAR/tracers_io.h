@@ -317,7 +317,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_FUV,
       "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
-      "propagation, finalized in the density ghost. Physical, like the "
+      "propagation, accumulated in the force loop from the step's relaxed "
+      "flux. Physical, like the "
       "specific energy it is a rate of change of. Only meaningful when "
       "ISRF_propagation is on.");
 

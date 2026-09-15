@@ -40,7 +40,6 @@ void radiation_first_init_part(struct part *restrict p);
 void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e);
 void radiation_init_part_propagation(struct part *p);
-void radiation_end_density_propagation(struct part *p, const struct engine *e);
 void radiation_part_has_no_neighbours(struct part *p, const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);

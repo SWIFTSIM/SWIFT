@@ -70,7 +70,7 @@ struct feedback_isrf_band_data {
       per-unit-mass, it carries the volume part of cosmological dilution
       automatically through the physical gas density it is measured against;
       only the redshift residual `-H*u` is an explicit term, applied in
-      radiation_isrf.c's #radiation_end_density_propagation. Every field
+      radiation_isrf.c's #radiation_end_force_propagation. Every field
       feeding it is physical too: the pairwise operators in
       radiation_propagation_iact.h convert their comoving-coordinate
       estimates before accumulating. */
@@ -78,11 +78,9 @@ struct feedback_isrf_band_data {
 
   /*! Snapshot of #u taken once per step (feedback_reset_part,
       cell_drift.c), before the density loop's h-iterations begin. The
-      propagation update reads and mixes these (not #u
-      directly) so it stays correct no matter how many h-iterations a
-      particle or its neighbours need: #u are its per-iteration
-      output, safe to overwrite repeatedly since it is never read back as
-      an input mid-step. */
+      density loop's kernel mean reads it, so that value does not drift
+      across h-iterations, and the end-force update rebuilds #u from it, so
+      that update is idempotent. Until that update, #u still equals it. */
   float u_prev;
 
   /*! Band-specific local linear dust absorption rate (see
@@ -97,12 +95,12 @@ struct feedback_isrf_band_data {
   /*! Hyperbolic propagation state: the tracked specific flux moment,
       mass-specific like #u. Zeroed unconditionally at
       first init (no IC field proposed for it); relaxed every step in the
-      extra ghost (radiation_isrf.c's exact-relaxation update). Read
-      directly by neighbours in the density loop (radiation_propagation_
-      iact.h): no `_prev` snapshot needed, since it can only change in this
-      cell's own extra ghost, which runs after every cell it pairs with has
-      finished its own density loop (see radiation_isrf.c's own doxygen for
-      the full dependency argument). Written to snapshots as
+      extra ghost (radiation_isrf.c's exact-relaxation update), then limited
+      there against #u. Read by neighbours in the gradient loop (the old
+      value, before this cell's extra ghost) and in the force loop (the new
+      value: every force task runs after the extra ghosts of both cells it
+      pairs, and a foreign particle is received after its own). Written to
+      snapshots as
       "FUVSpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
       #u's own "FUVSpecificEnergy(ies)" convention; no IC input
       field exists, and one added later would be the singular
@@ -114,18 +112,21 @@ struct feedback_isrf_band_data {
       radiation_isrf.c's #radiation_end_gradient_propagation. */
   float specific_flux[3];
 
-  /*! `(1/rho) div(rho F)` accumulator, density loop
-      (radiation_propagation_iact.h). Scratch: zeroed every h-iteration by
-      radiation_init_part_propagation. PHYSICAL: the density loop converts its
-      comoving-coordinate estimate before accumulating, so the snapshot
-      output's declared `0.f` exponent (tracers_io.h) is correct. */
+  /*! `(1/rho) div(rho F)` accumulator of this step's relaxed flux, FORCE
+      loop (radiation_propagation_iact.h), whose dispatch fires both sides of
+      a pair whenever either kernel reaches, so the mirrored pair is never
+      split at h_i != h_j. Consumed by #radiation_end_force_propagation.
+      Zeroed once per step by #radiation_end_gradient_propagation, not at the
+      drift, so a snapshot holds the last step's value. PHYSICAL: the force
+      loop converts its comoving-coordinate estimate before accumulating, so
+      the snapshot output's declared `0.f` exponent (tracers_io.h) is
+      correct. */
   float div_specific_flux;
 
   /*! Negativity-triggered artificial-dissipation source term, FORCE loop
       (radiation_propagation_iact.h): pairwise signal-velocity conductivity
-      on the live #u jump, applied as an additive correction to the
-      intermediate state #radiation_end_density_propagation leaves behind,
-      by #radiation_end_force_propagation. The force loop's dispatch fires
+      on the #u jump, #u still holding `u^n` there, applied by
+      #radiation_end_force_propagation. The force loop's dispatch fires
       both sides of a pair whenever either kernel reaches, which is what
       keeps the mirrored credit/debit pair whole at h_i != h_j. Scratch:
       zeroed once per step by radiation_snapshot_part_propagation, like
@@ -146,8 +147,9 @@ struct feedback_isrf_band_data {
       #radiation_end_gradient_propagation (not the density ghost, which
       re-runs across h-iterations). Persistent, dumped with #part like
       #specific_flux; zero at first init, no IC field. Read by THIS
-      step's force loop: the extra ghost precedes the force loop, so the
-      trigger carries no lag. Applied to a pair UNGATED, as
+      step's force loop, which dissipates `u^n`, the same state the trigger
+      read, so an undershoot is corrected one step after it appears.
+      Applied to a pair UNGATED, as
       `max(trigger_i, trigger_j)`: the trigger only ever fires on a
       particle that is already locally wrong, so it is local by
       construction.
@@ -194,7 +196,7 @@ struct feedback_isrf_band_data {
   /*! This step's mass-specific per-band source rate, drawn down from
       #u_dose_reservoir by
       #radiation_snapshot_part_propagation and consumed by
-      #radiation_end_density_propagation's exact-relaxation update. Scratch:
+      #radiation_end_force_propagation's exact-relaxation update. Scratch:
       recomputed every step for active particles, not restart-critical (an
       inactive particle recomputes it correctly the moment it next becomes
       active), but dumped anyway since it lives in #part alongside the
@@ -245,12 +247,12 @@ struct feedback_part_data {
       radiation_snapshot_part_propagation at the same call site as
       #feedback_isrf_band_data.u_prev (before this step's density accumulators
       are reset), so it holds the previous step's fully-converged comoving
-      density. Needed because the density loop's `div(F)` accumulation
+      density. Needed because the density loop's kernel-mean accumulation
       (radiation_propagation_iact.h) runs interleaved with SPH's own density
       sum: `p->rho` is a partial accumulator there, not a density, until the
-      density ghost finalizes it. The gradient loop's `grad(u)` accumulation
-      uses this SAME snapshot rather than the by-then-available, more
-      current ghost-finalized density, because the staggered time
+      density ghost finalizes it. The gradient loop's `grad(u)` and the force
+      loop's `div(F)` use this SAME snapshot rather than the by-then-available,
+      more current ghost-finalized density, because the staggered time
       integrator's stability on a disordered particle distribution depends
       on `grad` being minus the adjoint of `div` in the `m*rho` inner
       product: that identity only holds when both operators are built from
@@ -275,7 +277,7 @@ struct feedback_part_data {
   /*! This particle's own physical timestep, cached alongside
       #c_hyp (same call site), so the exact-relaxation finalizes
       (radiation_isrf.c) do not need to recompute it from #time_bin/the
-      #engine a second and third time in the density ghost and extra
+      #engine a second and third time in the extra ghost and end-force
       ghost. */
   float dt_prev;
 

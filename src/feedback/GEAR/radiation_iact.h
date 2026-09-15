@@ -273,7 +273,7 @@ radiation_iact_nonsym_feedback_apply(
          any number of stars on any time bins just add without losing or
          double-counting emission. The rescale/phi fold-in happens once, at
          the receiving particle's own cadence, in
-         radiation_end_density_propagation. */
+         radiation_end_force_propagation. */
       for (int b = 0; b < ISRF_BAND_COUNT; b++) {
         pj->feedback_data.isrf_band[b].u_dose_reservoir +=
             (float)(u_inject[b] / (double)mj);

@@ -151,8 +151,8 @@ static void run_case(double a, double H, float kappa, float dt, float c_hyp) {
   struct part p;
   set_part(&p, kappa, dt, c_hyp);
 
-  radiation_end_density_propagation(&p, &e);
   radiation_end_gradient_propagation(&p, &e);
+  radiation_end_force_propagation(&p, &e);
 
   const float rate = c_hyp * kappa + (float)H;
   const float expected_decay = expf(-rate * dt);
@@ -197,8 +197,8 @@ int main(int argc, char *argv[]) {
 
   struct part p;
   set_part(&p, /*kappa=*/0.f, /*dt=*/0.5f, /*c_hyp=*/2.f);
-  radiation_end_density_propagation(&p, &e);
   radiation_end_gradient_propagation(&p, &e);
+  radiation_end_force_propagation(&p, &e);
 
   if (p.feedback_data.isrf_band[ISRF_BAND_FUV].u != u_FUV_0 ||
       p.feedback_data.isrf_band[ISRF_BAND_LW].u != u_LW_0)
