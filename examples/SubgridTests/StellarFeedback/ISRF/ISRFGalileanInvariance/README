@@ -68,6 +68,10 @@ It also prints the position residual `|x_boost - x_rest - V*t|` in `h`.
 
 `lag_check.py --run runs/lag_<k>c --gate` measures the lag as the
 mass-weighted first moment of `u` over the whole box relative to the star
-(no radius window, negative `u` included) at the last three snapshots.
-PASS: `|lag/prediction - 1| <= 0.02` in both bands at the last snapshot.
-`--report-only` prints `(lag - prediction)/h`. Any non-finite value fails.
+(no radius window, negative `u` included) over the last three snapshots.
+The steady-state prediction is corrected by `T2`, the first moment of the
+discrete flux-divergence accumulator (see the script's docstring). PASS:
+`|lag/(prediction + T2) - 1| <= 0.02` in both bands on every snapshot where
+`sum m u` changed by less than 1e-3 relative to the previous one; INVALID if
+no evaluated snapshot is steady. `--report-only` prints
+`(lag - prediction - T2)/h`. Any non-finite value fails.
