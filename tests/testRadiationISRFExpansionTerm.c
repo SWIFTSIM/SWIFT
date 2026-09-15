@@ -99,18 +99,18 @@ static void set_part(struct part *p, float kappa, float dt, float c_hyp) {
   struct feedback_part_data *fd = &p->feedback_data;
   fd->dt_prev = dt;
   fd->c_hyp = c_hyp;
-  fd->kappa_FUV = kappa;
-  fd->kappa_LW = kappa;
+  fd->isrf_band[ISRF_BAND_FUV].kappa = kappa;
+  fd->isrf_band[ISRF_BAND_LW].kappa = kappa;
   fd->rho_prev = 1.f;
-  fd->u_FUV_prev = u_FUV_0;
-  fd->u_LW_prev = u_LW_0;
-  fd->u_FUV = u_FUV_0;
-  fd->u_LW = u_LW_0;
-  fd->ngb_mean_abs_u_V_FUV = 1.f;
-  fd->ngb_mean_abs_u_V_LW = 1.f;
+  fd->isrf_band[ISRF_BAND_FUV].u_prev = u_FUV_0;
+  fd->isrf_band[ISRF_BAND_LW].u_prev = u_LW_0;
+  fd->isrf_band[ISRF_BAND_FUV].u = u_FUV_0;
+  fd->isrf_band[ISRF_BAND_LW].u = u_LW_0;
+  fd->isrf_band[ISRF_BAND_FUV].ngb_mean_abs_u_V = 1.f;
+  fd->isrf_band[ISRF_BAND_LW].ngb_mean_abs_u_V = 1.f;
   for (int k = 0; k < 3; k++) {
-    fd->specific_flux_FUV[k] = F_FUV_0[k];
-    fd->specific_flux_LW[k] = F_LW_0[k];
+    fd->isrf_band[ISRF_BAND_FUV].specific_flux[k] = F_FUV_0[k];
+    fd->isrf_band[ISRF_BAND_LW].specific_flux[k] = F_LW_0[k];
   }
 }
 
@@ -157,13 +157,17 @@ static void run_case(double a, double H, float kappa, float dt, float c_hyp) {
   const float rate = c_hyp * kappa + (float)H;
   const float expected_decay = expf(-rate * dt);
 
-  check_close("u_FUV", expected_decay * u_FUV_0, p.feedback_data.u_FUV, 1e-5f);
-  check_close("u_LW", expected_decay * u_LW_0, p.feedback_data.u_LW, 1e-5f);
+  check_close("u_FUV", expected_decay * u_FUV_0,
+              p.feedback_data.isrf_band[ISRF_BAND_FUV].u, 1e-5f);
+  check_close("u_LW", expected_decay * u_LW_0,
+              p.feedback_data.isrf_band[ISRF_BAND_LW].u, 1e-5f);
   for (int k = 0; k < 3; k++) {
     check_close("specific_flux_FUV", expected_decay * F_FUV_0[k],
-                p.feedback_data.specific_flux_FUV[k], 1e-5f);
+                p.feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[k],
+                1e-5f);
     check_close("specific_flux_LW", expected_decay * F_LW_0[k],
-                p.feedback_data.specific_flux_LW[k], 1e-5f);
+                p.feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[k],
+                1e-5f);
   }
 
   message("a = %g, H = %g, kappa = %g: decay %.8e as expected", a, H, kappa,
@@ -196,12 +200,14 @@ int main(int argc, char *argv[]) {
   radiation_end_density_propagation(&p, &e);
   radiation_end_gradient_propagation(&p, &e);
 
-  if (p.feedback_data.u_FUV != u_FUV_0 || p.feedback_data.u_LW != u_LW_0)
-    error("H = 0 is not a no-op on u: %.9e vs %.9e", p.feedback_data.u_FUV,
-          u_FUV_0);
+  if (p.feedback_data.isrf_band[ISRF_BAND_FUV].u != u_FUV_0 ||
+      p.feedback_data.isrf_band[ISRF_BAND_LW].u != u_LW_0)
+    error("H = 0 is not a no-op on u: %.9e vs %.9e",
+          p.feedback_data.isrf_band[ISRF_BAND_FUV].u, u_FUV_0);
   for (int k = 0; k < 3; k++)
-    if (p.feedback_data.specific_flux_FUV[k] != F_FUV_0[k] ||
-        p.feedback_data.specific_flux_LW[k] != F_LW_0[k])
+    if (p.feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[k] !=
+            F_FUV_0[k] ||
+        p.feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[k] != F_LW_0[k])
       error("H = 0 is not a no-op on the specific flux");
 
   message("H = 0 leaves u and F untouched, bit for bit");
