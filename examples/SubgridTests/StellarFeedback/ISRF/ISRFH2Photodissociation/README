@@ -1,0 +1,87 @@
+# Intro
+A single 29.7 Msun star at the centre of a uniform, periodic box of cold
+(50 K), zero-metallicity gas at 1e3 atom/cm^3, with ISRF propagation on and
+Grackle's H2 network. The star's Lyman-Werner (LW) band propagates through
+the box and photodissociates the H2. The check compares every gas
+particle's H2 abundance history against the shielded photodissociation rate
+`k_diss,0 * f_shield(N_H2)`, predicted from that particle's own LW field.
+The shielding function is Grackle's: the Draine and Bertoldi (1996, Eq. 37)
+form with the Wolcott-Green and Haiman (2019) exponent. The derivation, with
+equation numbers, is in the check script's docstring.
+
+## Configurations
+`config=thin` and `config=thick` differ only in the initial H2 abundance
+(`GrackleCooling:initial_nH2I_to_nH_ratio` 5e-10 and 3.1e-5). Grackle does
+not integrate the H2 column towards the star: it estimates it locally as
+`N_H2 = 2 n_H2 l_shield`. The column is therefore set by the local H2
+density, not by the size of the cloud. With mode 3, `thin` gives
+`N_H2 ~ 1e13 cm^-2` (`f_shield ~ 0.96`) and `thick` gives
+`N_H2 ~ 6e17 cm^-2` (`f_shield ~ 1e-3`).
+
+`config=draine_spectrum` is `thin` with a 7.61 Msun star. Its LW fraction
+`u_LW/(u_FUV+u_LW)` is 0.148, the value of the Draine (1978) field that the
+Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
+star gives 0.36). The code's rate is then 0.92 times that rate, instead of
+2.24. The star is fainter in the LW band, so the run is 12.5 times longer, with
+snapshots 6.2 times further apart.
+
+## Self-shielding modes
+`h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:
+- 0: no shielding.
+- 2: `l_shield` is the kernel support radius `gamma_K h` of the particle, so
+  the column depends on resolution.
+- 3: `l_shield` is the local Jeans length (4 pc in this setup).
+
+SWIFT rejects mode 1, which needs neighbouring grid cells.
+
+## Metallicity and ionization
+Zero metallicity removes dust, so there is no H2 formation on grains, no
+photoelectric heating and no dust extinction of the LW field. H2 photodissociation is then the only process that changes the H2
+abundance.
+`with_metal_cooling: 1` is still needed, because the ISRF module turns on
+Grackle's dust chemistry and Grackle requires metal cooling for it.
+`initial_nHII_to_nH_ratio: 1e-8` keeps H2 formation through H- negligible.
+With no dust, nothing absorbs the LW field, so the field keeps building up
+in the periodic box. The check reads the field from every snapshot, so this
+does not bias the comparison.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_2 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-cooling=grackle_2` (or `grackle_3`) is required, because H2 is only
+tracked in these modes. `--with-tracers=GEAR` registers the
+`LWSpecificEnergies` snapshot output.
+
+# Run
+```
+config=thin  run_name=thin  ./run.sh
+config=thick run_name=thick ./run.sh
+config=draine_spectrum run_name=draine_spectrum ./run.sh
+```
+Add `h2_self_shielding=0` for the unshielded reference, or
+`h2_self_shielding=2` for the kernel-length column. Resolution is set
+by `level` (`N = (2**level)**3` gas particles) and `gas_mass` (Msun). Change
+them together to keep the box size: `level=5 gas_mass=0.1` (the default)
+and `level=6 gas_mass=0.0125` give the same 5.1 pc box. Level 5 is the
+lowest level SWIFT accepts here: at level 4, the star's initial smoothing
+length is larger than a top-level cell. A level-5 run takes two to three
+minutes on 8 threads (`draine_spectrum` about seven minutes). See `run.sh` for the other overrides.
+
+# Checking
+```
+python3 isrf_h2_photodissociation_check.py --config thin  -s "thin/snap/snapshot_*.hdf5"
+python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapshot_*.hdf5"
+```
+Pass the run's `--h2-self-shielding` (0, 2 or 3), and check a mode-0 run
+with `--config thin`, since no shielding applies. `--config draine_spectrum`
+uses the `thin` bar. For `thin`, the median relative
+error on the H2 abundance must be at most 10% where the predicted
+destruction reaches two e-folds. For `thick`, the measured ratio of the
+shielded to the unshielded destruction rate must be within 25% of the
+predicted `f_shield`. The script also prints radial profiles of `G_0`, `k_diss,0`,
+the shielding length, `N_H2`, `f_shield`, and the ratio of Grackle's local
+column to the geometric column towards the star, and the ratio of the code's
+rate to `3.3e-11 G_0`. It writes a comparison
+figure (`--output`).

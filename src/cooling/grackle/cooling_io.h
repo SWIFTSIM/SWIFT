@@ -340,6 +340,18 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_self_shielding = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_self_shielding", 0);
 
+  /* Mode 1 differences the density against the six neighbouring grid
+     cells, which do not exist when Grackle is called on one particle. */
+  if (cooling->H2_self_shielding == 1)
+    error(
+        "GrackleCooling:H2_self_shielding = 1 is not supported: its "
+        "Sobolev-like length reads neighbouring grid cells, and SWIFT calls "
+        "Grackle one particle at a time. Use 2 (kernel support radius) or 3 "
+        "(local Jeans length).");
+  if (cooling->H2_self_shielding < 0 || cooling->H2_self_shielding > 3)
+    error("GrackleCooling:H2_self_shielding must be 0, 2 or 3, got %d.",
+          cooling->H2_self_shielding);
+
   /* With the ISRF on and H2 tracked, the local LW dissociation rate
      (cooling_get_LW_dissociation_rate_subgrid) reaches Grackle unshielded
      unless H2_self_shielding selects a column-length mode: at
@@ -353,8 +365,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GrackleCooling:primordial_chemistry >= 2 (H2 tracked) and "
         "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
         "dissociation rate this feature injects reaches Grackle with no "
-        "H2 self-shielding applied. Set H2_self_shielding to 2 (particle "
-        "smoothing length) or 3 (local Jeans length) unless this is "
+        "H2 self-shielding applied. Set H2_self_shielding to 2 (kernel "
+        "support radius) or 3 (local Jeans length) unless this is "
         "deliberate.");
   }
 
