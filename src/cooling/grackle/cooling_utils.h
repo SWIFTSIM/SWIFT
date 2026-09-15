@@ -206,6 +206,48 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
 
 #if COOLING_GRACKLE_MODE >= 2
 /**
+ * @brief Grackle's H2 rotational/vibrational effective adiabatic index
+ * (calculate_pressure.c, "Correct for Gamma from H2"), given the H2 and
+ * non-H2 number densities and a seed temperature to evaluate the
+ * vibrational term at.
+ *
+ * Shared by the forward (internal energy -> temperature) and inverse
+ * (temperature -> internal energy) conversions, so the two stay exact
+ * inverses of each other instead of drifting apart if edited separately.
+ *
+ * @param nH2 Number density of H2 (H2I + H2II).
+ * @param number_density_noH2 Number density of everything except H2 that
+ *   enters Grackle's own Gamma correction (see calculate_pressure.c).
+ * @param T_seed Temperature to evaluate the vibrational term at -- the
+ *   forward direction seeds this with its own fixed-gamma estimate, the
+ *   inverse direction already knows the exact target temperature.
+ * @return Grackle's effective Gamma1.
+ */
+__attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
+    const double nH2, const double number_density_noH2, const double T_seed) {
+
+  const double T_safe = T_seed > 1.0 ? T_seed : 1.0;
+
+  /* Rotational-only default; only refine with the vibrational term if H2
+     is non-trace and the gas isn't so cold the mode is frozen out
+     (Grackle's own x < 10 guard -- avoids exp() overflow at low T). */
+  double GammaH2Inverse = 0.5 * 5.0;
+  if (nH2 > 0.0 && number_density_noH2 > 0.0 &&
+      nH2 / number_density_noH2 > 1e-3) {
+    const double x = 6100.0 / T_safe;
+    if (x < 10.0) {
+      const double ex = exp(x);
+      GammaH2Inverse =
+          0.5 * (5.0 + 2.0 * x * x * ex / ((ex - 1.0) * (ex - 1.0)));
+    }
+  }
+
+  const double GammaInverse = hydro_one_over_gamma_minus_one;
+  return 1.0 + (nH2 + number_density_noH2) /
+                   (nH2 * GammaH2Inverse + number_density_noH2 * GammaInverse);
+}
+
+/**
  * @brief compute the gas temperature with Grackle's H2 rotational/
  * vibrational effective-gamma correction (calculate_pressure.c,
  * "Correct for Gamma from H2"), which
@@ -276,28 +318,81 @@ cooling_get_temperature_h2_gamma_corrected(const struct phys_const *phys_const,
 
   const double T_default =
       cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
-  const double T_safe = T_default > 1.0 ? T_default : 1.0;
-
-  /* Rotational-only default; only refine with the vibrational term if H2
-     is non-trace and the gas isn't so cold the mode is frozen out
-     (Grackle's own x < 10 guard -- avoids exp() overflow at low T). */
-  double GammaH2Inverse = 0.5 * 5.0;
-  if (nH2 > 0.0 && number_density_noH2 > 0.0 &&
-      nH2 / number_density_noH2 > 1e-3) {
-    const double x = 6100.0 / T_safe;
-    if (x < 10.0) {
-      const double ex = exp(x);
-      GammaH2Inverse =
-          0.5 * (5.0 + 2.0 * x * x * ex / ((ex - 1.0) * (ex - 1.0)));
-    }
-  }
-
-  const double GammaInverse = hydro_one_over_gamma_minus_one;
   const double Gamma1 =
-      1.0 + (nH2 + number_density_noH2) /
-                (nH2 * GammaH2Inverse + number_density_noH2 * GammaInverse);
+      cooling_h2_effective_gamma(nH2, number_density_noH2, T_default);
 
   return T_default * (Gamma1 - 1.0) / hydro_gamma_minus_one;
+}
+
+/**
+ * @brief invert cooling_get_temperature_h2_gamma_corrected(): the specific
+ * internal energy a particle with this composition must have for
+ * cooling_get_temperature() to report exactly T_target.
+ *
+ * Needed because cooling_agora_cmb_floor_internal_energy() sets a target
+ * temperature, not the other way around -- using the plain (uncorrected)
+ * inverse for MODE >= 2 would under-shoot the floor for H2-rich gas, since
+ * cooling_get_temperature() would then report a lower, Gamma1-corrected
+ * value for that same energy instead of T_target.
+ *
+ * @param phys_const Physical constants.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param T_target Desired temperature, e.g. the AGORA CMB floor.
+ * @return Specific internal energy that reproduces T_target under
+ *   cooling_get_temperature_h2_gamma_corrected().
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_internal_energy_h2_gamma_corrected(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct part *p, const struct xpart *xp, const double T_target) {
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  const double nHI = cool_data->HI_frac * rho / m_H;
+  const double nHII = cool_data->HII_frac * rho / m_H;
+  const double nHeI = cool_data->HeI_frac * rho / (4 * m_H);
+  const double nHeII = cool_data->HeII_frac * rho / (4 * m_H);
+  const double nHeIII = cool_data->HeIII_frac * rho / (4 * m_H);
+  const double nHM = cool_data->HM_frac * rho / m_H;
+  const double nH2I = cool_data->H2I_frac * rho / (2 * m_H);
+  const double nH2II = cool_data->H2II_frac * rho / (2 * m_H);
+  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
+  const double nH2 = nH2I + nH2II;
+
+  const double MU_METAL = 16.0;
+  const double n_metal =
+      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
+      (MU_METAL * m_H);
+
+  const double number_density_noH2 =
+      nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
+
+#if COOLING_GRACKLE_MODE == 2
+  const double total_density = number_density_noH2 + nH2 + n_metal;
+  const double mu =
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
+      total_density;
+#else /* COOLING_GRACKLE_MODE == 3: also track HDI */
+  const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
+  const double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
+  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
+                    total_density;
+#endif
+
+  /* T_target is already exact, so it is a better Gamma1 seed than the
+     forward direction's own fixed-gamma approximation gets to use. */
+  const double Gamma1 =
+      cooling_h2_effective_gamma(nH2, number_density_noH2, T_target);
+  const double u_default =
+      cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
+
+  return u_default * hydro_gamma_minus_one / (Gamma1 - 1.0);
 }
 #endif /* COOLING_GRACKLE_MODE >= 2 */
 
@@ -324,16 +419,20 @@ cooling_agora_cmb_floor_internal_energy(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-
   const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
   const double T_CMB_agora =
       CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN * (z + 1.0);
 
+#if COOLING_GRACKLE_MODE >= 2
+  return cooling_get_internal_energy_h2_gamma_corrected(phys_const, cosmo, p,
+                                                        xp, T_CMB_agora);
+#else
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
   return cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
+#endif
 }
 #endif /* SWIFT_COOLING_GRACKLE_COOLING_UTILS_H */
