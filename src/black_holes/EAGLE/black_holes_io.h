@@ -169,7 +169,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 46;
+  *num_fields = 47;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -470,6 +470,11 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
       "NSCMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       nsc_mass,
       "Subgrid masses of the nuclear star clusters around the black holes.");
+
+  list[46] = io_make_output_field(
+      "LastTdeRate", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      tde_rate_per_yr,
+      "TDE rate (yr-1) from last nibbling event.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
