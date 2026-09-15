@@ -28,9 +28,11 @@ snapshots 6.2 times further apart.
 ## Self-shielding modes
 `h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:
 - 0: no shielding.
-- 2: `l_shield` is the kernel support radius `gamma_K h` of the particle, so
-  the column depends on resolution. `h2_self_shielding_path=kernel_radius`
-  halves it (`GrackleCooling:H2_self_shielding_path`).
+- 2: `l_shield` is half the column path set by `h2_self_shielding_path`
+  (`GrackleCooling:H2_self_shielding_path`): `l_shield = path/2`, with
+  `path = kernel_diameter` (`2 gamma_K h`, the default) or `kernel_radius`
+  (`gamma_K h`), so the default gives `l_shield = gamma_K h` and
+  `kernel_radius` halves that. The column depends on resolution.
 - 3: `l_shield` is the local Jeans length (4 pc in this setup).
 
 SWIFT rejects mode 1, which needs neighbouring grid cells.
