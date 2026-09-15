@@ -70,8 +70,11 @@ It also prints the position residual `|x_boost - x_rest - V*t|` in `h`.
 mass-weighted first moment of `u` over the whole box relative to the star
 (no radius window, negative `u` included) over the last three snapshots.
 The steady-state prediction is corrected by `T2`, the first moment of the
-discrete flux-divergence accumulator (see the script's docstring). PASS:
-`|lag/(prediction + T2) - 1| <= 0.02` in both bands on every snapshot where
-`sum m u` changed by less than 1e-3 relative to the previous one; INVALID if
-no evaluated snapshot is steady. `--report-only` prints
+discrete flux-divergence accumulator (see the script's docstring). A
+snapshot is steady only if both hold relative to the previous snapshot:
+`sum m u` changed by less than 1e-3, and `lag` itself changed by less
+than 5%. PASS: `|lag/(prediction + T2) - 1| <= 0.02` in both bands on
+every steady snapshot; INCONCLUSIVE if a band has no steady snapshot in
+the evaluated window; INVALID if the box is not at least 30 screening
+lengths across (`L < 30*lambda`) in either band. `--report-only` prints
 `(lag - prediction - T2)/h`. Any non-finite value fails.

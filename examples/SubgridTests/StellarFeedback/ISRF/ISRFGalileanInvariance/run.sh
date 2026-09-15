@@ -99,7 +99,10 @@ else
         v=$(python3 -c "print($k * $c_hyp_pin)")
         run_one runs/lag_${k}c 0 $v
         gate_flag="--gate"
-        if [ "$alpha_max" != "0" ] || [ "$alpha_floor" != "0" ]; then
+        # Numeric, not string, comparison: alpha_max=0.0 must match "0".
+        if ! python3 -c "import sys
+sys.exit(0 if float(sys.argv[1]) == 0.0 and float(sys.argv[2]) == 0.0 else 1)" \
+            "$alpha_max" "$alpha_floor"; then
             gate_flag="--report-only"
         fi
         python3 lag_check.py --run runs/lag_${k}c $gate_flag || status=1

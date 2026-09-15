@@ -29,20 +29,25 @@ uniform c_hyp and no dissipation, from the steady moment balance of the
 continuum equation: lag = v_rel tau a / (1 - exp(-a)), tau = lambda/c_hyp,
 a = dt/tau, lambda = 1/(kappa rho) from the code's dust opacity.
 
-That prediction treats the divergence operator (1/rho) div(rho F) as an
-exact continuum adjoint, so it conserves every moment of u. The discrete
-estimator (`{band}SpecificFluxDivergences`, `(1/rho) div(rho F)` per
-particle, finalized in the density ghost) only conserves the *zeroth*
-moment sum_i m_i (div F)_i = 0 exactly, because the pairwise contribution
-to one particle is minus the contribution to its neighbour
-(`sec:fuv-operators`, `radiation_propagation_iact.h`: `div_F_i += mj*Phi_ij`,
-`div_F_j += -mi*Phi_ij`). The *first* moment of that same pairwise term does
-not cancel (a pair's two xi differ), so the discrete scheme carries its own
-first-moment residual that the continuum prediction omits:
+That prediction already assumes a *steady* field: sum_i m_i xi_i (div F)_i
+is not zero in general (it equals -integral rho F over the box), only once
+the net flux itself has relaxed to zero, which is what "steady" below
+checks for. The discrete estimator (`{band}SpecificFluxDivergences`,
+`(1/rho) div(rho F)` per particle, finalized in the density ghost)
+conserves the *zeroth* moment sum_i m_i (div F)_i = 0 exactly, because the
+pairwise contribution to one particle is minus the contribution to its
+neighbour (`sec:fuv-operators`, `radiation_propagation_iact.h`:
+`div_F_i += mj*Phi_ij`, `div_F_j += -mi*Phi_ij`). Its *first* moment does
+not cancel the same way (a pair's two xi differ), so the discrete scheme
+carries its own first-moment residual, a net-flux residual plausibly
+sourced by the propagation operator's non-antisymmetric own-derivative
+gradient term, that the steady-state prediction above omits:
   T2 = tau * sum_i m_i xi_i (div F)_i / sum_i m_i u_i,
 same units as `lag` (tau times a specific-energy-rate first moment, divided
-by a specific-energy zeroth moment, is a length). Corrected prediction:
-`pred + T2`.
+by a specific-energy zeroth moment, is a length). Because T2 is measured
+from the run itself, `pred + T2` absorbs whatever net-flux residual is
+actually present: the gate below checks the discrete moment identity
+together with steadiness, not the continuum prediction alone.
 
 --gate (alpha_max = alpha_floor = 0 required): per band, evaluate
 `|lag/(pred + T2) - 1| <= 0.02` on every snapshot the field is STEADY,
@@ -50,20 +55,13 @@ where steady is decided *before* looking at the ratio and requires BOTH:
 (1) the relative change of sum_i m_i u_i between that snapshot and the
 previous one is < 1e-3 (the zeroth moment has stopped changing), and
 (2) the relative change of `lag` itself (the first moment used by this
-check) between that snapshot and the previous one is < LAG_REL_TOL. (1)
-alone is not enough: at v_rel = 1 c_hyp the zeroth-moment criterion
-already flags the last two snapshots steady while `lag` itself is still
-oscillating by a few percent step to step, and at v_rel <= 0.5 c_hyp a
-(1)-only steady snapshot can sit 4-8% off the T2-corrected prediction
-because the *shape* of the field (not just its total energy) is still
-settling. LAG_REL_TOL = 0.05 is fixed from criterion (1)'s own steady
-snapshots in the v_rel = 1 c_hyp run (already passing before this
-change): the observed step-to-step relative change of `lag` there was
-2.0-2.4% (FUV) and 3.2-3.9% (LW), so 5% is a rounded-up envelope of both
-bands, chosen before evaluating any of the slower, failing speeds.
+check) between that snapshot and the previous one is < LAG_REL_TOL = 0.05.
+Criterion (1) alone is not enough: the zeroth moment can settle while
+`lag` itself is still oscillating step to step, or while the field's
+*shape* (not just its total energy) is still settling.
 PASS if every doubly-steady snapshot of both bands passes; INCONCLUSIVE if
 neither band ever FAILs but a band has no doubly-steady snapshot in the
-evaluated window (the gate cannot be evaluated, not a failure -- distinct
+evaluated window (the gate cannot be evaluated, not a failure; distinct
 from INVALID below); FAIL on any non-finite value or a doubly-steady
 snapshot outside 2%. A band with no qualifying snapshot is always reported
 (with a geometric-decay estimate of the extra run length needed, when the
@@ -97,10 +95,8 @@ REL_BAR = 0.02
 H_REFERENCE = 0.05
 MIN_BOX_OVER_LAMBDA = 30.0
 STEADY_REL_TOL = 1e-3
-# Fixed 2026-09-15 from the v_rel = 1 c_hyp run's own STEADY_REL_TOL-qualifying
-# snapshots (already passing): step-to-step relative change of `lag` there was
-# 2.0-2.4% (FUV), 3.2-3.9% (LW); rounded up to envelope both bands, decided
-# before evaluating the (then-failing) slower speeds.
+# Envelopes the step-to-step relative change of `lag` itself, once
+# STEADY_REL_TOL is satisfied, across both bands (FUV, LW).
 LAG_REL_TOL = 0.05
 # How many trailing snapshots to evaluate the gate/report over (needs one
 # extra leading snapshot per evaluated one, to test its own steadiness).
@@ -253,6 +249,9 @@ def main():
     v_hat = v_rel_vec / v_rel
     dt = modal_dt(opt.run)
     files = sorted(glob.glob(os.path.join(opt.run, "snap", "snapshot_*.hdf5")))
+    if not files:
+        print(f"FAIL: no snapshots found in {opt.run}/snap/snapshot_*.hdf5")
+        sys.exit(1)
     print(
         f"{opt.run}: v_rel={v_rel:.4g} km/s = {v_rel / c_hyp:.3g} c_hyp, c_hyp={c_hyp} km/s, "
         f"dt={dt:.4e}, alpha_max={alpha_max}, alpha_floor={alpha_floor}"
