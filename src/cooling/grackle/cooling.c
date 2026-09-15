@@ -1051,8 +1051,9 @@ void cooling_apply_self_shielding(
  * A failed solve (FAIL returned by Grackle, e.g. more than max_steps
  * sub-cycle iterations) is retried subcycle_on_failure times, retry i with
  * 2^i consecutive solves of dt/2^i. If every retry fails, the species are
- * not read back, this step's cooling is deferred to the next step, and the
- * failure is counted.
+ * not read back and this step's cooling and heating are skipped, not
+ * deferred: the next step integrates only its own dt. The failure is
+ * counted.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
