@@ -930,15 +930,16 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
   }
 
   /* Grackle's mode-2 H2 self-shielding forms N_H2 = 2 n_H2 l from this
-     length. The kernel support radius H = kernel_gamma h makes that the
-     H2 column through a path of 2 H, the same path the LW/FUV extinction
-     uses (radiation_get_comoving_gas_column_density_at_part). With
-     comoving_coordinates = 0, Grackle expects a physical length in
-     length_units. */
+     length, so l = path/2 gives the H2 column through the chosen path of
+     H2_self_shielding_path_in_kernel_radii kernel support radii
+     H = kernel_gamma h. With comoving_coordinates = 0, Grackle expects a
+     physical length in length_units. */
   data->H2_self_shielding_length = NULL;
   if (cooling->chemistry_data.H2_self_shielding == 2) {
     gr_float *H2_self_shielding_length = (gr_float *)malloc(sizeof(gr_float));
-    *H2_self_shielding_length = kernel_gamma * p->h * cosmo->a;
+    *H2_self_shielding_length =
+        0.5f * cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma *
+        p->h * cosmo->a;
     data->H2_self_shielding_length = H2_self_shielding_length;
   }
 

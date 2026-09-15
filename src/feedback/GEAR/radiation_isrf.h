@@ -44,11 +44,12 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e);
 void radiation_part_has_no_neighbours(struct part *p, const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);
-float radiation_get_comoving_gas_column_density_at_part(const struct part *p);
+float radiation_get_comoving_gas_column_density_at_part(
+    const struct part *p, const float path_in_kernel_radii);
 void radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
-    float extinction[ISRF_BAND_COUNT]);
+    const float path_in_kernel_radii, float extinction[ISRF_BAND_COUNT]);
 float radiation_get_part_linear_absorption_rate(const struct unit_system *us,
                                                 float Z, float rho_p,
                                                 float sigma_d_band_cgs,

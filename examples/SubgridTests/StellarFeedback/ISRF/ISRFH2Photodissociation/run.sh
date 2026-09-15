@@ -49,6 +49,7 @@ star_type=${star_type:="single_star"}
 level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 nH2_ratio=${nH2_ratio:=$nH2_ratio_default} #GrackleCooling:initial_nH2I_to_nH_ratio override
 h2_self_shielding=${h2_self_shielding:=3} #GrackleCooling:H2_self_shielding override (0=off, 2=kernel support radius, 3=local Jeans length)
+h2_self_shielding_path=${h2_self_shielding_path:="kernel_diameter"} #GrackleCooling:H2_self_shielding_path override, mode 2 only (kernel_diameter or kernel_radius)
 time_end=${time_end:=$time_end_default} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1.6e-10} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=$delta_time_default} #Snapshots:delta_time override (internal units)
@@ -113,6 +114,7 @@ printf "Running the %s configuration...\n" "$config"
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P GrackleCooling:initial_nH2I_to_nH_ratio:$nH2_ratio \
 		   -P GrackleCooling:H2_self_shielding:$h2_self_shielding \
+		   -P GrackleCooling:H2_self_shielding_path:$h2_self_shielding_path \
 		   -P Stars:max_timestep_young_Myr:$max_star_dt_myr \
 		   -P Stars:min_star_timestep_Myr:$min_star_dt_myr \
 		   params.yml 2>&1 | tee output.log

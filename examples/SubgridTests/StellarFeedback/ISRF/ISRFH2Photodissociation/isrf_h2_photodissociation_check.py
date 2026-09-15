@@ -93,10 +93,12 @@ radius
 with ``h`` the snapshot's ``SmoothingLengths`` and ``gamma_K`` the kernel's
 support-to-smoothing ratio (``--kernel-gamma``, 1.936492 for the Wendland C2
 kernel in 3D). With Eq. (4), mode 2 is the H2 column through a path of
-``2 gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at start-up: it reads
-six neighbouring grid points that do not exist when Grackle is called on
-one particle. Mode 0 disables shielding altogether, ``f_shield = 1``, and is
-the unshielded reference.
+``2 gamma_K h``. With ``GrackleCooling:H2_self_shielding_path:
+kernel_radius`` (``--h2-self-shielding-path``) SWIFT supplies half that
+length, a path of ``gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at
+start-up: it reads six neighbouring grid points that do not exist when
+Grackle is called on one particle. Mode 0 disables shielding altogether,
+``f_shield = 1``, and is the unshielded reference.
 
 The mean molecular weight follows Grackle's own definition
 (``cool1d_multi_g.F``),
@@ -274,6 +276,13 @@ def parse_options() -> argparse.Namespace:
         default=KERNEL_GAMMA_WENDLAND_C2,
         help="Kernel support-to-smoothing ratio, mode 2 only "
         "(default: %(default)s, Wendland C2 in 3D)",
+    )
+    parser.add_argument(
+        "--h2-self-shielding-path",
+        choices=["kernel_diameter", "kernel_radius"],
+        default="kernel_diameter",
+        help="GrackleCooling:H2_self_shielding_path the run used, mode 2 only "
+        "(default: %(default)s)",
     )
     parser.add_argument(
         "--thin-tol",
@@ -537,7 +546,10 @@ def shielding_factor(
 
 
 def build_history(
-    filenames: List[str], self_shielding_mode: int, kernel_gamma: float
+    filenames: List[str],
+    self_shielding_mode: int,
+    kernel_gamma: float,
+    path_in_kernel_radii: float,
 ) -> Dict[str, np.ndarray]:
     """Assemble the per-particle time series this check compares.
 
@@ -552,6 +564,9 @@ def build_history(
         ``GrackleCooling:H2_self_shielding`` the run used.
     kernel_gamma : float
         Kernel support-to-smoothing ratio, for the mode-2 length.
+    path_in_kernel_radii : float
+        Mode-2 H2 column path in kernel support radii: 2 for
+        ``kernel_diameter``, 1 for ``kernel_radius``.
 
     Returns
     -------
@@ -593,7 +608,9 @@ def build_history(
         mu = take("mu")
         n_H2 = take("n_H2")
         if self_shielding_mode == 2:
-            length = kernel_gamma * take("smoothing_length")
+            length = (
+                0.5 * path_in_kernel_radii * kernel_gamma * take("smoothing_length")
+            )
         elif self_shielding_mode in (0, 3):
             length = jeans_shielding_length(temperature, density, mu)
         else:
@@ -814,7 +831,15 @@ def main() -> int:
         print(f"Need at least 4 snapshots, found {len(filenames)}")
         return 1
 
-    history = build_history(filenames, options.h2_self_shielding, options.kernel_gamma)
+    path_in_kernel_radii = (
+        1.0 if options.h2_self_shielding_path == "kernel_radius" else 2.0
+    )
+    history = build_history(
+        filenames,
+        options.h2_self_shielding,
+        options.kernel_gamma,
+        path_in_kernel_radii,
+    )
     gated_config = "thin" if options.config == "draine_spectrum" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]

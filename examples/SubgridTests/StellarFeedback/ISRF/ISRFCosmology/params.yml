@@ -78,7 +78,7 @@ GrackleCooling:
   with_UV_background: 0                        # No metagalactic background
   redshift: -1                                 # Time-based redshift
   with_metal_cooling: 1                        # Required by dust chemistry
-  H2_self_shielding: 0                         # run.sh override
+  H2_self_shielding: 3                         # run.sh override
   initial_nHII_to_nH_ratio: 1e-8               # Residual ionization
   initial_nH2I_to_nH_ratio: 1e-8               # run.sh override
   self_shielding_method: 0                     # Off

@@ -67,6 +67,7 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
   cosmo->H = H;
 
   fp->ISRF_propagation = 1;
+  fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
   /* Only the dissipation-coefficient update reads these, and it cannot touch
    * `u` or `F`; they are set to sane non-zero values purely so that update's
    * own divisions stay defined. */

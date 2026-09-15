@@ -28,8 +28,11 @@ snapshots 6.2 times further apart.
 ## Self-shielding modes
 `h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:
 - 0: no shielding.
-- 2: `l_shield` is the kernel support radius `gamma_K h` of the particle, so
-  the column depends on resolution.
+- 2: `l_shield` is half the column path set by `h2_self_shielding_path`
+  (`GrackleCooling:H2_self_shielding_path`): `l_shield = path/2`, with
+  `path = kernel_diameter` (`2 gamma_K h`, the default) or `kernel_radius`
+  (`gamma_K h`), so the default gives `l_shield = gamma_K h` and
+  `kernel_radius` halves that. The column depends on resolution.
 - 3: `l_shield` is the local Jeans length (4 pc in this setup).
 
 SWIFT rejects mode 1, which needs neighbouring grid cells.
@@ -74,7 +77,8 @@ minutes on 8 threads (`draine_spectrum` about seven minutes). See `run.sh` for t
 python3 isrf_h2_photodissociation_check.py --config thin  -s "thin/snap/snapshot_*.hdf5"
 python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapshot_*.hdf5"
 ```
-Pass the run's `--h2-self-shielding` (0, 2 or 3), and check a mode-0 run
+Pass the run's `--h2-self-shielding` (0, 2 or 3) and, for mode 2,
+`--h2-self-shielding-path`, and check a mode-0 run
 with `--config thin`, since no shielding applies. `--config draine_spectrum`
 uses the `thin` bar. For `thin`, the median relative
 error on the H2 abundance must be at most 8% where the predicted

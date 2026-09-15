@@ -766,16 +766,19 @@ void radiation_end_gradient_propagation(struct part *p,
  * Comoving gas column density at a gas particle's own location: the
  * receiver-side analogue of the star-side Sobolev column
  * (#radiation_get_comoving_gas_column_density_at_star), used for LW/FUV
- * extinction. Simplified to the kernel-radius fallback (no resolved
- * density gradient on the gas side).
+ * extinction: the local density times a path of path_in_kernel_radii
+ * kernel support radii (no resolved density gradient on the gas side).
  *
  * @param p The #part.
+ * @param path_in_kernel_radii Path length in units of the kernel support
+ * radius kernel_gamma * h (GEARFeedback:ISRF_extinction_path).
  * @return Comoving gas column density at the particle's own location.
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_comoving_gas_column_density_at_part(const struct part *p) {
+radiation_get_comoving_gas_column_density_at_part(
+    const struct part *p, const float path_in_kernel_radii) {
   const float h_gas = p->h * kernel_gamma;
-  return 2.0f * h_gas * p->rho;
+  return path_in_kernel_radii * h_gas * p->rho;
 }
 
 /**
@@ -878,6 +881,8 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * @param Z The receiving particle's own metal mass fraction.
  * @param cooling The cooling function properties (for the resolved
  * chemistry_data.local_dust_to_gas_ratio).
+ * @param path_in_kernel_radii Extinction path in kernel support radii, see
+ * #radiation_get_comoving_gas_column_density_at_part.
  * @param extinction (return) Extinction factor of each band, indexed by
  * #radiation_isrf_band.
  */
@@ -885,10 +890,11 @@ __attribute__((always_inline)) INLINE void
 radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
-    float extinction[ISRF_BAND_COUNT]) {
+    const float path_in_kernel_radii, float extinction[ISRF_BAND_COUNT]) {
 
-  const float Sigma_gas_p =
-      radiation_get_comoving_gas_column_density_at_part(p) * cosmo->a2_inv;
+  const float Sigma_gas_p = radiation_get_comoving_gas_column_density_at_part(
+                                p, path_in_kernel_radii) *
+                            cosmo->a2_inv;
   /* Resolved value, never the raw `-1`-sentinel
    * cooling->local_dust_to_gas_ratio. */
   const float local_dust_to_gas_ratio =

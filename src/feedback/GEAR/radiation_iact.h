@@ -257,8 +257,9 @@ radiation_iact_nonsym_feedback_apply(
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction[ISRF_BAND_COUNT];
-    radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
-                                               extinction);
+    radiation_get_part_ISRF_extinction_factors(
+        us, cosmo, pj, Z_j, cooling,
+        fb_props->ISRF_extinction_path_in_kernel_radii, extinction);
 
     double u_inject[ISRF_BAND_COUNT];
     for (int b = 0; b < ISRF_BAND_COUNT; b++) {
