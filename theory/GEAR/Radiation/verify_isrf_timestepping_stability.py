@@ -25,6 +25,9 @@ one real, odd Fourier symbol K(k) (grad -> i*K, div -> i*K):
       u is finalized from the old F in the density ghost, grad(u) is then
       accumulated from the NEW u in the gradient loop, and F is finalized
       in the extra ghost.
+  S2' (the shipped scheme): S2 with the flux first. F is finalized in the
+      extra ghost from grad(u^n), and u from div(F^{n+1}) in the force
+      loop, whose pair dispatch is symmetric. Same det and trace as S2.
 
 Notation: a = dt/tau, e = exp(-a), X = K*lambda (dimensionless screening
 length in symbol units), nu = c_hyp*K*dt (the wave Courant number in
@@ -133,6 +136,20 @@ print("   Limits: a -> 0 (thin): X <= 2/a  <=>  nu = c_hyp K dt <= 2")
 print("           a -> inf (stiff): X <= 1  <=>  K lambda <= 1")
 print("   Under the closure c_hyp = C_CFL h/dt:  a = C_CFL h/lambda, so")
 print("   X <= coth(a/2) holds for ALL lambda iff C_CFL * max_k(K h) <= 2.")
+
+# S2': staggered with the flux first (u sees the NEW F); basis (u, F).
+G2F = sp.Matrix(
+    [
+        [e - tau * D * K**2 * (1 - e) ** 2, -I * tau * (1 - e) * e * K],
+        [-I * D * (1 - e) * K, e],
+    ]
+)
+det2F = sp.simplify(G2F.det())
+tr2F = sp.simplify(G2F.trace())
+assert sp.simplify(det2F - det2) == 0, det2F
+assert sp.simplify(tr2F - tr2) == 0, tr2F
+print("S2' (staggered, flux first):     det and tr equal S2's, so the same")
+print("   characteristic polynomial and the same stability condition.")
 print()
 
 # ---------------------------------------------------------------------------

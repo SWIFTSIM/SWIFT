@@ -1184,6 +1184,42 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
 }
 
 /**
+ * @brief Most negative FUV-band specific energy written since the previous
+ * snapshot, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_FUV].u_min_since_snapshot.
+ *
+ * Values stamped with an older snapshot index belong to an interval that
+ * saw no update of this particle, so they read as 0. Always 0 without
+ * SWIFT_DEBUG_CHECKS.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+float feedback_get_part_u_min_since_snapshot_FUV(const struct part *p,
+                                                 const struct engine *e) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
+    return p->feedback_data.isrf_band[ISRF_BAND_FUV].u_min_since_snapshot;
+#endif
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_u_min_since_snapshot_FUV, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
+                                                const struct engine *e) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
+    return p->feedback_data.isrf_band[ISRF_BAND_LW].u_min_since_snapshot;
+#endif
+  return 0.f;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR

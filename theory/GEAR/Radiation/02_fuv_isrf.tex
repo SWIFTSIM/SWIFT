@@ -772,22 +772,20 @@ separate radiation time step. In order:
   \item Set this step's signal speed $c_{{\rm hyp},i}$ and absorption
     rates $\kappa_{b}\rho_i$; draw this step's source rate $\dot s_i$
     from the particle's dose reservoir (Section~\ref{sec:fuv-injection}).
-  \item Density loop: accumulate the flux divergence
-    (Eq.~\ref{eq:fuv-div-op}) and the neighbour reference field for the
+  \item Density loop: accumulate the neighbour reference field for the
     dissipation trigger.
-  \item Update $u_i$ by exact relaxation (Eq.~\ref{eq:fuv-u-update}),
-    giving the intermediate state $u_i^\ast$.
-  \item Gradient loop: build the closure tensor from $(u^\ast,\mathbf
-    F)$ and accumulate the pressure-tensor divergence
+  \item Gradient loop: build the closure tensor from $(u^n,\mathbf F^n)$
+    and accumulate the pressure-tensor divergence of $u^n$
     (Eq.~\ref{eq:fuv-grad-op}).
   \item Update $\mathbf F_i$ by exact relaxation
-    (Eq.~\ref{eq:fuv-F-update}); update the dissipation coefficients
-    (Section~\ref{sec:fuv-dissipation}).
-  \item Force loop: accumulate the artificial-dissipation exchange
-    (Eq.~\ref{eq:fuv-diss-formula}).
-  \item Apply the dissipation correction to $u_i$
-    (Eq.~\ref{eq:fuv-diss-apply}), then the flux limiter
-    (Eq.~\ref{eq:fuv-flux-limiter}). This is the state cooling reads.
+    (Eq.~\ref{eq:fuv-F-update}), apply the flux limiter against $u_i^n$
+    (Eq.~\ref{eq:fuv-flux-limiter}), and update the dissipation
+    coefficients from $u^n$ (Section~\ref{sec:fuv-dissipation}).
+  \item Force loop: accumulate the divergence of the new flux
+    (Eq.~\ref{eq:fuv-div-op}) and the artificial-dissipation exchange of
+    $u^n$ (Eq.~\ref{eq:fuv-diss-formula}).
+  \item Update $u_i$ by exact relaxation with the dissipation folded in
+    (Eq.~\ref{eq:fuv-u-update}). This is the state cooling reads.
   \item Stars active this step deposit their band luminosities into
     the dose reservoirs of their kernel neighbours
     (Eq.~\ref{eq:fuv-inject}).
@@ -944,8 +942,13 @@ other:
 \end{equation}
 with the mirrored contribution $-m_i\,\Phi_{ij}$ added to particle
 $j$'s own sum. The mirrored credit and debit make $\sum_i m_i\,(\nabla\cdot)_i = 0$
-identically for any $h_i\ne h_j$, $\rho_i\ne\rho_j$: the raw divergence
-operator is exactly antisymmetric and mass-conservative on its own. What
+identically for any $h_i\ne h_j$, $\rho_i\ne\rho_j$, provided both sides
+of every pair are visited. The density and gradient loops reach particle
+$i$ only for $r_{ij} < H_i$, so a pair with $H_i \le r_{ij} < H_j$ would
+credit $j$ and never debit $i$; the divergence is therefore accumulated
+in the force loop, which visits a pair whenever either kernel reaches.
+The gradient operator below needs no such care: $i$'s own term carries
+$\nabla_i W_{ij}^{(i)}$, which vanishes for $r_{ij}\ge H_i$. What
 each particle applies, however, is that divergence scaled by its own
 $\Delta t_i\,\varphi(a_i)$ in Eq.~\ref{eq:fuv-u-update}, and $a_i$
 differs between particles whose time bin or $c_{\rm hyp}\kappa\rho$
@@ -972,7 +975,7 @@ $1/\rho^2$ normalisation:
 \end{equation}
 with $\hat{\mathbf x}_{ij} = \mathbf x_{ij}/r_{ij}$ and the mirrored
 term for $j$ using $\rho_j$ and $\nabla_i W_{ij}^{(j)}$. $\mathbf D_i$ is
-recomputed from the particle's own $(u_i^\ast, \mathbf F_i, c_{{\rm
+recomputed from the particle's own $(u_i^n, \mathbf F_i^n, c_{{\rm
 hyp},i})$ through Eq.~\ref{eq:fuv-m1-closure} in every pair interaction
 that needs it, rather than cached once per particle; it is never stored,
 and every recomputation over one step draws on the same frozen inputs.
@@ -1010,23 +1013,29 @@ factor
   \quad (\varphi\to1 \text{ as } a\to0,\ \ \varphi\to1/a \text{ as } a\to\infty),
   \label{eq:fuv-phi}
 \end{equation}
-the energy update reads
-\begin{equation}
-  u_i^\ast = e^{-a_i}\,u_i^{\,n}
-    + \Delta t_i\,\varphi(a_i)\left[\frac{c_{{\rm hyp},i}}{c}\,\dot s_i
-      - \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F)\Big)_i\right] ,
-  \label{eq:fuv-u-update}
-\end{equation}
-using the divergence of the \emph{previous} step's fluxes, and the flux
-update, from the pressure-tensor divergence of the \emph{newly} updated
-$u^\ast$,
+the flux update, from the pressure-tensor divergence of $u^n$, reads
 \begin{equation}
   \mathbf F_i^{\,n+1} = e^{-a_i}\,\mathbf F_i^{\,n}
-    - c_{{\rm hyp},i}^2\,\Delta t_i\,\varphi(a_i)\,\mathbf G_i .
+    - c_{{\rm hyp},i}^2\,\Delta t_i\,\varphi(a_i)\,\mathbf G_i[u^n] ,
   \label{eq:fuv-F-update}
 \end{equation}
-This is a staggered, leapfrog-like scheme: $u$ first from the old
-$\mathbf F$, then $\mathbf F$ from the new $u$. The exponential
+and the energy update, from the divergence of the \emph{newly} updated
+fluxes,
+\begin{equation}
+  u_i^{\,n+1} = e^{-a_i}\Big[u_i^{\,n}
+      + \Delta t_i\,\varphi(a_i)\,\dot u_i\big|_{\rm diss}\Big]
+    + \Delta t_i\,\varphi(a_i)\left[\frac{c_{{\rm hyp},i}}{c}\,\dot s_i
+      - \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F^{\,n+1})\Big)_i\right] ,
+  \label{eq:fuv-u-update}
+\end{equation}
+with the artificial dissipation of Section~\ref{sec:fuv-dissipation}
+evaluated on $u^n$. This is a staggered, leapfrog-like scheme: $\mathbf F$
+first from the old $u$, then $u$ from the new $\mathbf F$. Its
+amplification matrix has the same trace and determinant as the opposite
+order ($u$ first), so the stability condition below is unchanged
+(\texttt{verify\_isrf\_timestepping\_stability.py}, S2'). The order is
+forced by conservation: only the force loop visits both sides of every
+pair, and it runs after the flux update. The exponential
 integrator is unconditionally stable in the relaxation for any $\Delta
 t/\tau$, which matters because $\tau$ is far shorter than the hydro
 step in dense gas ($\tau\sim700$\,yr at $c_{\rm hyp}\sim50\,{\rm
@@ -1054,8 +1063,9 @@ from this fixed point.
 \subsubsection{The flux limiter}
 \label{sec:fuv-limiter}
 
-Once per step, after the dissipation correction has produced the
-step's final $u_i$, the flux is rescaled onto the admissible set:
+Once per step, right after the flux update, the flux is rescaled onto
+the admissible set against $u_i^n$, the field its closure tensor was
+built from:
 \begin{equation}
   \mathbf F_i \leftarrow \mathbf F_i\,
     \min\!\left(1,\ \frac{c_{{\rm hyp},i}\,u_i}{|\mathbf F_i|}\right)
@@ -1076,11 +1086,7 @@ admissibility once per step, so that the state the next step's closure is
 built from satisfies Eq.~\ref{eq:fuv-admissible} by construction; the
 $\min(f,1)$ inside the closure tensor (Eq.~\ref{eq:fuv-grad-op}) is a
 guard behind it, which with the limiter in place rarely binds. The limiter
-touches only $\mathbf F$ and conserves $\sum_i m_i u_i$. It is applied
-against the
-post-correction $u_i$ on purpose: clamping against the pre-correction
-value would leave $|\mathbf F| > c_{\rm hyp}u$ on exactly the
-near-front, low-$u$ particles the correction moves most.
+touches only $\mathbf F$ and conserves $\sum_i m_i u_i$.
 
 \subsubsection{Artificial dissipation}
 \label{sec:fuv-dissipation}
@@ -1094,8 +1100,8 @@ numerical conductivity that acts on the field
 and represents no physical process. It must not be confused
 with the physical absorption term of Eq.~\ref{eq:fuv-u-eq}.
 
-\textbf{The term.} Per pair and per band, with $U = \rho u^\ast$ the
-volumetric form of the intermediate state and $\bar W'_{ij} =
+\textbf{The term.} Per pair and per band, with $U = \rho u^n$ the
+volumetric form of the step's starting field and $\bar W'_{ij} =
 \tfrac12\big(|\nabla_i W_{ij}^{(i)}| + |\nabla_i W_{ij}^{(j)}|\big)$
 the symmetrised radial kernel derivative,
 \begin{equation}
@@ -1109,8 +1115,8 @@ the symmetrised radial kernel derivative,
 \end{equation}
 with the mirrored contribution $-m_i\,\Psi_{ij}$ added to particle
 $j$'s own sum. The exchange itself is antisymmetric between the pair,
-but it is applied through the same $\Delta t_i\,\varphi(a_i)$ factor as
-the relaxation update (Eq.~\ref{eq:fuv-diss-apply}), so $\sum_i m_i u_i$
+but it is applied through the same $e^{-a_i}\Delta t_i\,\varphi(a_i)$
+factor inside the relaxation update (Eq.~\ref{eq:fuv-u-update}), so $\sum_i m_i u_i$
 is conserved exactly over a pair only when both particles share the time
 bin and $c_{\rm hyp}\kappa\rho$, for the same reason as the flux
 divergence operator above. In the continuum
@@ -1199,8 +1205,8 @@ G_i$, the form above being that relation multiplied through by $w_i$ so
 that no intermediate overflows at small $\kappa$), and close to one on
 a fresh front, wherever only one of $\mathbf F_i$, $\mathbf G_i$ is
 nonzero, or where $\tau\gg\Delta t$ so that the flux has not relaxed
-yet. $\mathbf F_i$ here is the flux that produced this step's $u^\ast$,
-i.e.\ the previous step's limited flux. $\varepsilon_R$ (default
+yet. $\mathbf F_i$ here is the flux that produced $u^n$, i.e.\ the
+previous step's limited flux. $\varepsilon_R$ (default
 $0.40$) is the residual below which the floor is reduced; the gate can
 only lower the floor, never raise it. Three rules cover the degenerate
 inputs: a quiescent particle with $\mathbf F_i = \mathbf G_i = \mathbf 0$
@@ -1213,17 +1219,32 @@ never reaches the unlimited fixed point, so the gate keeps part of the
 floor there: a conservative false positive (Section~\ref{sec:fuv-limits}).
 
 \textbf{Application.} The exchange of Eq.~\ref{eq:fuv-diss-formula} is
-accumulated after both relaxations, with this step's coefficients, and
-applied as a correction to the intermediate state with the same
-integrating factor as the relaxation,
+accumulated in the force loop, with this step's coefficients, on $u^n$,
+and decays with $u^n$ inside the energy update
+(Eq.~\ref{eq:fuv-u-update}). The trigger reads $u^n$ against the kernel
+mean of the neighbours' $u^n$, so an undershoot created by one step's
+update is corrected by the next step's; cooling sees it for one step,
+through its non-negative clamp. Folding the exchange in with the decay
+factor $e^{-a_i}$, rather than adding it undamped, keeps the per-step
+amplification matrix with the same eigenvalues as a correction applied
+to an already relaxed field, which has the larger stability margin
+(\texttt{verify\_isrf\_dissipation.py}, Part I); the discrete steady
+state is then
 \begin{equation}
-  u_i^{\,n+1} = u_i^\ast + \Delta t_i\,\varphi(a_i)\,\dot u_i\big|_{\rm diss} ,
+  \big(1 - e^{-a_i}\big)\,u_i = \Delta t_i\,\varphi(a_i)
+    \left[\frac{c_{{\rm hyp},i}}{c}\,\dot s_i
+      - \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F)\Big)_i
+      + e^{-a_i}\,\dot u_i\big|_{\rm diss}\right] .
   \label{eq:fuv-diss-apply}
 \end{equation}
-before cooling reads $u_i$ and before the flux limiter runs. A
-coefficient raised by an undershoot therefore corrects the same step's
-field, not the next one's. The dissipation conserves $\sum_i m_i u_i$
-but not its first spatial moment: behind a source moving through the
+The transient amplification, $\max_{n\le200}\|G^n\|_2$ along the
+closure, is not the same as for that placement: at the shipped
+$(\alpha_{\max}, C_{\rm hyp}) = (0.5, 0.5)$ it is $1.54$ against $1.35$,
+and $1.19$--$1.33$ times larger at the extreme rows of the scan. It is
+bounded (the spectral radius stays at or below one) and vanishes with
+the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
+for pairs of active particles in the same time bin (Section~\ref{sec:fuv-operators});
+it does not conserve the first spatial moment: behind a source moving through the
 gas the trigger fires preferentially on the depleted trailing side, and
 the field's centroid lags the source by a small additional amount,
 measured at $0.2$--$1.8\%$ of $\lambda$ at the shipped ceiling. Because

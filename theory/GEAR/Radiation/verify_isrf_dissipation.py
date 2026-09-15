@@ -772,6 +772,64 @@ def G_relocated(e, a_d, nu, c=1.0):
     )
 
 
+def G_A(e, a_d, nu, c=1.0):
+    """Amplification matrix of the flux-first order, plain dissipation.
+
+    F' = e F - i c nu u, then u' = e u - a_d u - i (nu/c) F': the flux is
+    relaxed from u^n in the extra ghost, and div(F') and the dissipation of
+    u^n are both accumulated in the force loop.
+
+    Parameters
+    ----------
+    e : float
+        Per-step absorption factor, exp(-a).
+    a_d : float
+        Dissipation number, dt*phi*Gamma(k).
+    nu : float
+        Transport number, c_hyp*K*dt*phi.
+    c : float
+        Signal speed scaling of the flux component.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 2x2 complex amplification matrix.
+    """
+    return np.array(
+        [[e - a_d - nu**2, -1j * e * nu / c], [-1j * c * nu, e]],
+        dtype=complex,
+    )
+
+
+def G_A_ew(e, a_d, nu, c=1.0):
+    """Amplification matrix of the flux-first order, e-weighted dissipation.
+
+    F' = e F - i c nu u, then u' = e (u - a_d u) - i (nu/c) F': the
+    dissipation of u^n is decayed with u^n, u' = e (u + dt phi diss) +
+    dt phi (r s - div F').
+
+    Parameters
+    ----------
+    e : float
+        Per-step absorption factor, exp(-a).
+    a_d : float
+        Dissipation number, dt*phi*Gamma(k).
+    nu : float
+        Transport number, c_hyp*K*dt*phi.
+    c : float
+        Signal speed scaling of the flux component.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 2x2 complex amplification matrix.
+    """
+    return np.array(
+        [[e * (1.0 - a_d) - nu**2, -1j * e * nu / c], [-1j * c * nu, e]],
+        dtype=complex,
+    )
+
+
 rng_I = np.random.default_rng(20260909)
 worst_tr = 0.0
 worst_det = 0.0
@@ -890,5 +948,130 @@ for G_const, alpha, C_hyp in [(6.2, 0.5, 0.5), (6.2, 0.2, 1.0)]:
     assert tr_r <= tr_c * 1.05
 print("  PASS: the relocated placement's transient amplification does not")
 print("  exceed the current one's at the shipped C_hyp = 0.5, nor at 1.0.")
+
+print("\n  Flux-first order (div F in the force loop): plain G_A and e-weighted")
+print("  G_A_ew against the relocated placement G_r.")
+worst_A = 0.0
+worst_A_ew = 0.0
+for _ in range(20000):
+    e = float(rng_I.uniform(1e-3, 1.0))
+    a_d = float(rng_I.uniform(0.0, 2.0))
+    nu = float(rng_I.uniform(0.0, 1.5))
+    for G1, G2, key in [
+        (G_A(e, a_d, nu), G_current(e, a_d, nu), "A"),
+        (G_A_ew(e, a_d, nu), G_relocated(e, a_d, nu), "A_ew"),
+    ]:
+        d = max(
+            abs(np.trace(G1) - np.trace(G2)), abs(np.linalg.det(G1) - np.linalg.det(G2))
+        )
+        if key == "A":
+            worst_A = max(worst_A, d)
+        else:
+            worst_A_ew = max(worst_A_ew, d)
+print(f"  max invariant difference G_A    vs G_c: {worst_A:.3e}")
+print(f"  max invariant difference G_A_ew vs G_r: {worst_A_ew:.3e}")
+assert worst_A < 1e-12
+assert worst_A_ew < 1e-12
+
+
+def closure_scan_forms(G_const, alpha, C_hyp, n_x=241, n_frac=33):
+    """Maximum spectral radius of G_r, G_A and G_A_ew along the closure.
+
+    Parameters
+    ----------
+    G_const : float
+        Zone constant of the dissipation symbol (6.2 bound, 3.15 lattice).
+    alpha : float
+        Dissipation coefficient ceiling.
+    C_hyp : float
+        Courant-like margin of the hyperbolic speed closure.
+    n_x : int
+        Number of h/lambda samples, log-spaced over [1e-3, 1e3].
+    n_frac : int
+        Number of samples of each of a_d and nu inside their maxima.
+
+    Returns
+    -------
+    tuple of float
+        Maximum spectral radius of G_r, G_A and G_A_ew.
+    """
+    rho = np.zeros(3)
+    fracs = np.linspace(0.0, 1.0, n_frac)
+    for x in np.logspace(-3.0, 3.0, n_x):
+        e = float(np.exp(-C_hyp * x))
+        a_d_max = G_const * alpha * (1.0 - e) / x
+        nu_max = 1.18 * (1.0 - e) / x
+        for fa in fracs:
+            for fn in fracs:
+                a_d = fa * a_d_max
+                nu = fn * nu_max
+                for k, G in enumerate((G_relocated, G_A, G_A_ew)):
+                    rho[k] = max(rho[k], max(abs(np.linalg.eigvals(G(e, a_d, nu)))))
+    return tuple(rho)
+
+
+def transient_forms(G_const, alpha, C_hyp, n_steps=200):
+    """Maximum over n of ||G^n||_2 for G_r, G_A and G_A_ew along the closure.
+
+    Parameters
+    ----------
+    G_const : float
+        Zone constant of the dissipation symbol.
+    alpha : float
+        Dissipation coefficient ceiling.
+    C_hyp : float
+        Courant-like margin of the hyperbolic speed closure.
+    n_steps : int
+        Number of powers of G to probe.
+
+    Returns
+    -------
+    tuple of float
+        Maximum transient norm of G_r, G_A and G_A_ew.
+    """
+    tr = np.zeros(3)
+    for x in np.logspace(-3.0, 3.0, 61):
+        e = float(np.exp(-C_hyp * x))
+        a_d_max = G_const * alpha * (1.0 - e) / x
+        nu_max = 1.18 * (1.0 - e) / x
+        for fa in np.linspace(0.0, 1.0, 9):
+            for fn in np.linspace(0.0, 1.0, 9):
+                for k, G in enumerate((G_relocated, G_A, G_A_ew)):
+                    M = G(e, fa * a_d_max, fn * nu_max)
+                    P = np.eye(2, dtype=complex)
+                    for _ in range(n_steps):
+                        P = P @ M
+                        tr[k] = max(tr[k], float(np.linalg.norm(P, 2)))
+    return tuple(tr)
+
+
+# Gate: spectral radius within 1e-4 of G_r's at the shipped point and the
+# extreme rows. The transient is reported, not gated: the flux-first order
+# amplifies transiently by 1.14-1.33x G_r's maximum, a known property.
+print(
+    "\n  (G, alpha, C_hyp)   rho G_r   rho G_A   rho G_A_ew | tr G_r   tr G_A   tr G_A_ew"
+)
+verdict = {"A": True, "A_ew": True}
+for G_const, alpha, C_hyp in [
+    (6.2, 0.5, 0.5),
+    (6.2, 0.59, 0.5),
+    (3.15, 1.16, 0.5),
+    (6.2, 0.2, 1.0),
+]:
+    r_r, r_A, r_Aew = closure_scan_forms(G_const, alpha, C_hyp)
+    t_r, t_A, t_Aew = transient_forms(G_const, alpha, C_hyp)
+    for key, rr in [("A", r_A), ("A_ew", r_Aew)]:
+        if not (np.isfinite(rr) and np.isfinite(r_r)) or rr > r_r + 1e-4:
+            verdict[key] = False
+    print(
+        f"  ({G_const:4.2f}, {alpha:4.2f}, {C_hyp:3.1f})  {r_r:8.4f}  {r_A:8.4f}  "
+        f"{r_Aew:8.4f}   | {t_r:8.4f} {t_A:8.4f} {t_Aew:8.4f}"
+    )
+print(f"  plain G_A spectral radius:      {'PASS' if verdict['A'] else 'FAIL'}")
+print(f"  e-weighted G_A_ew spectral radius: {'PASS' if verdict['A_ew'] else 'FAIL'}")
+assert verdict["A_ew"]
+print("  PASS: the shipped flux-first order uses the e-weighted dissipation,")
+print("  whose spectral radius equals the relocated placement's; its transient")
+print("  amplification (right-hand columns) is reported, not gated.")
 print()
 print("ALL CHECKS PASSED")

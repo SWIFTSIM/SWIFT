@@ -111,17 +111,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation: LW/FUV propagation is
- * shared GEAR physics, see #radiation_end_density_propagation.
+ * @brief Finishes the #part density calculation. Nothing to do: the LW/FUV
+ * field is updated in #feedback_end_force, after the flux-divergence has been
+ * accumulated in the force loop.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
  * @param e The #engine.
  */
 void feedback_end_density(struct part *p, struct xpart *xp,
-                          const struct engine *e) {
-  radiation_end_density_propagation(p, e);
-}
+                          const struct engine *e) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0
@@ -150,9 +149,8 @@ void feedback_end_gradient(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief Finishes the #part force calculation: LW/FUV propagation's
- * negativity-triggered dissipation correction is shared GEAR physics, see
- * #radiation_end_force_propagation.
+ * @brief Finishes the #part force calculation: LW/FUV propagation's `u`
+ * update is shared GEAR physics, see #radiation_end_force_propagation.
  *
  * @param p The particle to act upon.
  * @param e The #engine.

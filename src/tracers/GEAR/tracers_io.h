@@ -199,6 +199,28 @@ INLINE static void convert_part_specific_flux_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #FUVMinimumSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_min_since_snapshot_FUV(const struct engine *e,
+                                                         const struct part *p,
+                                                         const struct xpart *xp,
+                                                         float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_FUV(p, e);
+}
+
+/**
+ * @brief Snapshot converter for #LWMinimumSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_LW(p, e);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -211,7 +233,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 18;
+  int num = 20;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -317,7 +339,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_FUV,
       "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
-      "propagation, finalized in the density ghost. Physical, like the "
+      "propagation, accumulated in the force loop from the step's relaxed "
+      "flux. Physical, like the "
       "specific energy it is a rate of change of. Only meaningful when "
       "ISRF_propagation is on.");
 
@@ -338,6 +361,22 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
       0.f, parts, xparts, convert_part_specific_flux_LW,
       "Same as FUVSpecificFluxes, Lyman-Werner band.");
+
+  list[18] = io_make_output_field_convert_part(
+      "FUVMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_u_min_since_snapshot_FUV,
+      "Most negative FUVSpecificEnergies value the propagation update wrote "
+      "since the previous snapshot, 0 if none was negative. The number of "
+      "nonzero entries is the count of particles that undershot. The "
+      "interval is since the last increment of engine.snapshot_output_count, "
+      "which also happens when a FOF seeding catalogue is dumped "
+      "(FOF:dump_catalogue_when_seeding), not only at a real snapshot. "
+      "Always 0 unless the code is configured with --enable-debugging-checks.");
+
+  list[19] = io_make_output_field_convert_part(
+      "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
+      "Same as FUVMinimumSpecificEnergies, Lyman-Werner band.");
 
   return num;
 }
