@@ -303,7 +303,9 @@ float radiation_relaxation_phi_factor(float a) {
  * Guarded rather than relying on algebraic cancellation: `F = 0` under
  * `u > 0` needs no division at all (scaling the zero vector is still
  * zero), so that case is skipped outright instead of computing
- * `c_M*u/|F|` unguarded.
+ * `c_M*u/|F|` unguarded. `F.F` and the limiter ratio are formed in double:
+ * in float32, `F.F` underflows to zero once `|F| < sqrt(FLT_MIN) ~ 1.1e-19`
+ * (internal units), which would skip the limiter for a nonzero flux.
  *
  * @param u This band's specific field `u^n`.
  * @param c_M This particle's own #feedback_part_data.c_hyp.
@@ -319,10 +321,11 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
     return;
   }
 
-  const float F2 = F[0] * F[0] + F[1] * F[1] + F[2] * F[2];
-  if (F2 <= 0.f) return;
+  const double F2 = (double)F[0] * (double)F[0] + (double)F[1] * (double)F[1] +
+                    (double)F[2] * (double)F[2];
+  if (F2 <= 0.) return;
 
-  const float limiter = min(1.f, c_M * u / sqrtf(F2));
+  const float limiter = (float)min(1., (double)c_M * (double)u / sqrt(F2));
   F[0] *= limiter;
   F[1] *= limiter;
   F[2] *= limiter;
@@ -610,28 +613,37 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
    * regardless of grad_u and break the s=1 guarantee documented above. */
   if (w <= 0.f) return 1.f;
 
-  const float wx = w * F[0] + c_hyp * grad_u[0];
-  const float wy = w * F[1] + c_hyp * grad_u[1];
-  const float wz = w * F[2] + c_hyp * grad_u[2];
-  const float num = sqrtf(wx * wx + wy * wy + wz * wz);
-  const float F_norm = sqrtf(F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
-  const float G_norm = sqrtf(grad_u[0] * grad_u[0] + grad_u[1] * grad_u[1] +
-                             grad_u[2] * grad_u[2]);
-  const float den = w * F_norm + c_hyp * G_norm;
+  /* The norms are formed in double: in float32 each squared component
+   * underflows to zero once its magnitude drops below sqrt(FLT_MIN) ~
+   * 1.1e-19 (internal units), which would report a small nonzero flux or
+   * gradient as exactly zero and send a front to the quiescent branch. */
+  const double w_d = w;
+  const double c_d = c_hyp;
+  const double F_d[3] = {F[0], F[1], F[2]};
+  const double G_d[3] = {grad_u[0], grad_u[1], grad_u[2]};
+  const double wx = w_d * F_d[0] + c_d * G_d[0];
+  const double wy = w_d * F_d[1] + c_d * G_d[1];
+  const double wz = w_d * F_d[2] + c_d * G_d[2];
+  const double num = sqrt(wx * wx + wy * wy + wz * wz);
+  const double F_norm =
+      sqrt(F_d[0] * F_d[0] + F_d[1] * F_d[1] + F_d[2] * F_d[2]);
+  const double G_norm =
+      sqrt(G_d[0] * G_d[0] + G_d[1] * G_d[1] + G_d[2] * G_d[2]);
+  const double den = w_d * F_norm + c_d * G_norm;
 
   /* Quiescent particle (`F` and `grad_u` both zero): trivially at the fixed
    * point, so `R = 0`. Branched rather than kept finite by an epsilon added
    * to the denominator: `R/eps_R` is squared below, and the optimizer folds
    * that into `num^2/(den/eps_R)^2`, where a denominator epsilon small
-   * enough not to perturb a real `den` underflows float32 to zero once
-   * squared, turning this case into `0/0`. */
-  if (den <= 0.f) return 0.f;
+   * enough not to perturb a real `den` underflows to zero once squared,
+   * turning this case into `0/0`. */
+  if (den <= 0.) return 0.f;
 
   /* R is formed and squared in double: under -ffast-math this expression
    * gets folded into a single division by (den*eps_R)^2, which underflows
    * float32 to zero for small enough den and yields an unfiltered NaN;
    * double's exponent range keeps that denominator representable. */
-  const double R = (double)num / (double)den;
+  const double R = num / den;
   const double ratio2 = (R / eps_R) * (R / eps_R);
   return (float)min(1.0, ratio2);
 }

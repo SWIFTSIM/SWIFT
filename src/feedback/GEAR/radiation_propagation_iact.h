@@ -329,6 +329,13 @@ radiation_dissipation_force_accumulate_band(
  * `chi = 1/3`, the `(3*chi-1)/2 = 0` coefficient multiplies the guarded,
  * well-defined zero `n` rather than a NaN.
  *
+ * `F2`, `|F|`, `c_M*u` and `f` are formed in double: in float32, `F.F`
+ * underflows to zero once `|F| < sqrt(FLT_MIN) ~ 1.1e-19` (internal units),
+ * which would take the zero-flux branch for a nonzero flux and turn a beam
+ * into an isotropic closure. Any nonzero float32 `F` has a nonzero double
+ * `F2`, so `F2 > 0` in double is exactly `F != 0`. `n` and the closure
+ * coefficients are O(1) and stay in float.
+ *
  * @param u This band's specific field `u^n` for this particle.
  * @param F This particle's tracked flux (this band).
  * @param c_M This particle's own #feedback_part_data.c_hyp.
@@ -338,13 +345,15 @@ __attribute__((always_inline)) INLINE static void
 radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
                                      float D[3][3]) {
 
-  const float F2 = F[0] * F[0] + F[1] * F[1] + F[2] * F[2];
-  const float F_inv = (F2 > 0.f) ? 1.f / sqrtf(F2) : 0.f;
-  const float Fmag = F2 * F_inv; /* sqrt(F2), no second sqrtf call */
-  const float n[3] = {F[0] * F_inv, F[1] * F_inv, F[2] * F_inv};
+  const double F2 = (double)F[0] * (double)F[0] + (double)F[1] * (double)F[1] +
+                    (double)F[2] * (double)F[2];
+  const double F_inv = (F2 > 0.) ? 1. / sqrt(F2) : 0.;
+  const double Fmag = F2 * F_inv; /* sqrt(F2), no second sqrt call */
+  const float n[3] = {(float)(F[0] * F_inv), (float)(F[1] * F_inv),
+                      (float)(F[2] * F_inv)};
 
-  const float denom = c_M * u;
-  const float f = (denom > 0.f) ? min(Fmag / denom, 1.f) : 0.f;
+  const double denom = (double)c_M * (double)u;
+  const float f = (denom > 0.) ? (float)min(Fmag / denom, 1.) : 0.f;
 
   const float sq = 4.f - 3.f * f * f;
   const float chi = (3.f + 4.f * f * f) / (5.f + 2.f * sqrtf(sq));
