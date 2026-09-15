@@ -62,7 +62,6 @@ GrackleCooling:
   specific_heating_rates_cgs: 0 # User provide specific heating rates
   self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 1e10  # Required only with GEAR's self shielding. Density threshold of the self shielding
-  max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 0
   maximal_density_Hpcm3: -1   # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.

@@ -624,9 +624,7 @@ GrackleCooling:
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  max_steps: 10000                             # (optional) Maximal number of Grackle sub-cycle iterations per particle solve (Grackle's max_iterations). A solve that exceeds it fails: the particle keeps its
-                                               # previous energy and species for the step, and the failures are counted in the log. Raise it (e.g. 30000) for dense, strongly irradiated gas on
-                                               # long time-steps; each iteration costs one cooling-rate evaluation, so a higher limit also makes every failing solve more expensive. (Default: 10000)
+  max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve; a solve that exceeds it fails and the failure is counted in the log. (Default: 10000)
   subcycle_on_failure: 0                       # (optional) Retries of a failed Grackle solve, in [0, 20]. Retry i splits the time-step into 2^i consecutive solves. If every retry fails, the particle keeps
                                                # its previous state. Costs extra solves for failing particles only. (Default: 0, no retry)
   convergence_limit: 1e-2                      # (optional) Relative convergence threshold of the initial-composition equilibrium solve. Currently inert: that solve is not implemented.
