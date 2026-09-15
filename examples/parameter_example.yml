@@ -631,7 +631,7 @@ GrackleCooling:
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-  H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 2 = shielding length set to the kernel support radius (kernel_gamma * h, physical),
+  H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 2 = shielding length set, with the default H2_self_shielding_path, to the kernel support radius (kernel_gamma * h, physical),
                                                 # 3 = local Jeans length (Grackle-internal). 1 (Sobolev-like, needs a Cartesian grid) is rejected. (Default: 0)
                                                 # Leaving this at 0 with GEARFeedback:with_photoelectric_heating on and primordial_chemistry >= 2 unshields the local LW dissociation rate: a start-up warning fires; use 2 or 3.
   H2_self_shielding_path: kernel_diameter      # (optional) Mode 2 only: H2 column path, N_H2 = n_H2 * path. kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h. (Default: kernel_diameter)

@@ -425,8 +425,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
         "dissociation rate this feature injects reaches Grackle with no "
         "H2 self-shielding applied. Set H2_self_shielding to 2 (kernel "
-        "support radius) or 3 (local Jeans length) unless this is "
-        "deliberate.");
+        "support radius, with the default H2_self_shielding_path) or 3 "
+        "(local Jeans length) unless this is deliberate.");
   }
 
   /* Grackle sub-cycle iteration limit */
