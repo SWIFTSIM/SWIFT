@@ -38,6 +38,13 @@
 #endif
 
 /**
+ * @brief The two non-ionizing radiation bands the ISRF module tracks: FUV
+ * (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). Indexes every per-band
+ * array of #feedback_part_data and #feedback_spart_data.
+ */
+enum radiation_isrf_band { ISRF_BAND_FUV = 0, ISRF_BAND_LW, ISRF_BAND_COUNT };
+
+/**
  * @brief Feedback fields carried by each hydro particles
  *
  * Carries the HII ionization tag core (radiation.c's
@@ -73,9 +80,12 @@ struct feedback_part_data {
       written for that particle. */
   float neutral_H_frac;
 
-  /*! Local specific FUV-band (6-11.2 eV) radiation field, internal
+  /*! Local specific radiation field of each band, internal
       specific-energy units (per-unit-mass, like this codebase's own
-      hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above). An
+      hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above). The
+      LW band feeds Grackle's RT_H2_dissociation_rate (COOLING_GRACKLE_MODE
+      > 1 only) separately from the FUV band, since the two bands carry
+      different dust opacities. An
       instantaneous field strength, not an accumulated dose: holds the
       illuminating star(s)' most recently computed contribution, summed
       across every star that touched this particle in the same step
@@ -93,24 +103,16 @@ struct feedback_part_data {
       feeding it is physical too: the pairwise operators in
       radiation_propagation_iact.h convert their comoving-coordinate
       estimates before accumulating. */
-  float u_FUV;
+  float u[ISRF_BAND_COUNT];
 
-  /*! Local specific Lyman-Werner-band (11.2-13.6 eV) radiation field,
-      internal specific-energy units. See #u_FUV; feeds Grackle's
-     RT_H2_dissociation_rate (COOLING_GRACKLE_MODE > 1 only) separately from
-     #u_FUV, since the two bands carry different dust opacities. Same
-     `a`-scaling as #u_FUV: PHYSICAL, mass-specific, no extra exponent. */
-  float u_LW;
-
-  /*! Snapshot of #u_FUV/#u_LW taken once per step (feedback_reset_part,
+  /*! Snapshot of #u taken once per step (feedback_reset_part,
       cell_drift.c), before the density loop's h-iterations begin. The
-      propagation update reads and mixes these (not #u_FUV/#u_LW
+      propagation update reads and mixes these (not #u
       directly) so it stays correct no matter how many h-iterations a
-      particle or its neighbours need: #u_FUV/#u_LW are its per-iteration
+      particle or its neighbours need: #u are its per-iteration
       output, safe to overwrite repeatedly since it is never read back as
       an input mid-step. */
-  float u_FUV_prev;
-  float u_LW_prev;
+  float u_prev[ISRF_BAND_COUNT];
 
   /*! Band-specific local linear dust absorption rate (see
       #radiation_get_part_linear_absorption_rate), cached once per step
@@ -119,11 +121,10 @@ struct feedback_part_data {
       The raw physical rate: distinct from and NOT interchangeable with the
       injection-side extinction's own, independently-computed kappa
       (#radiation_get_part_ISRF_extinction_factors). */
-  float kappa_FUV;
-  float kappa_LW;
+  float kappa[ISRF_BAND_COUNT];
 
   /*! Hyperbolic propagation state: the tracked specific flux moment,
-      mass-specific like #u_FUV/#u_LW. Zeroed unconditionally at
+      mass-specific like #u. Zeroed unconditionally at
       first init (no IC field proposed for it); relaxed every step in the
       extra ghost (radiation_isrf.c's exact-relaxation update). Read
       directly by neighbours in the density loop (radiation_propagation_
@@ -132,53 +133,49 @@ struct feedback_part_data {
       finished its own density loop (see radiation_isrf.c's own doxygen for
       the full dependency argument). Written to snapshots as
       "FUVSpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
-      #u_FUV/#u_LW's own "FUVSpecificEnergy(ies)" convention; no IC input
+      #u's own "FUVSpecificEnergy(ies)" convention; no IC input
       field exists, and one added later would be the singular
       "FUVSpecificFlux"/"LWSpecificFlux".
 
-      `a`-SCALING: PHYSICAL and mass-specific, like #u_FUV/#u_LW, with no
+      `a`-SCALING: PHYSICAL and mass-specific, like #u, with no
       scale-factor exponent of its own, which is what the output field
       declares. Its own redshift residual `-H*F` is applied in
       radiation_isrf.c's #radiation_end_gradient_propagation. */
-  float specific_flux_FUV[3];
-  float specific_flux_LW[3];
+  float specific_flux[ISRF_BAND_COUNT][3];
 
   /*! `(1/rho) div(rho F)` accumulator, density loop
       (radiation_propagation_iact.h). Scratch: zeroed every h-iteration by
       radiation_init_part_propagation, like the propagation accumulators
-      Design A used to keep here. PHYSICAL: the density loop converts its
+      used to be kept here. PHYSICAL: the density loop converts its
       comoving-coordinate estimate before accumulating, so the snapshot
       output's declared `0.f` exponent (tracers_io.h) is correct. */
-  float div_specific_flux_FUV;
-  float div_specific_flux_LW;
+  float div_specific_flux[ISRF_BAND_COUNT];
 
   /*! Negativity-triggered artificial-dissipation source term, FORCE loop
       (radiation_propagation_iact.h): pairwise signal-velocity conductivity
-      on the live u_FUV/u_LW jump, applied as an additive correction to the
+      on the live #u jump, applied as an additive correction to the
       intermediate state #radiation_end_density_propagation leaves behind,
       by #radiation_end_force_propagation. The force loop's dispatch fires
       both sides of a pair whenever either kernel reaches, which is what
       keeps the mirrored credit/debit pair whole at h_i != h_j. Scratch:
       zeroed once per step by radiation_snapshot_part_propagation, like
-      #grad_u_FUV/LW, since the force loop runs exactly once per step.
+      #grad_u, since the force loop runs exactly once per step.
       PHYSICAL, like every accumulator the pairwise operators fill. */
-  float dissipation_u_FUV;
-  float dissipation_u_LW;
+  float dissipation_u[ISRF_BAND_COUNT];
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_*_prev|, density loop
       (radiation_propagation_iact.h): the local field-scale reference the
       negativity trigger (#radiation_end_gradient_propagation)
       divides an undershoot by. Scratch: zeroed every h-iteration alongside
-      #div_specific_flux_FUV/LW. */
-  float ngb_mean_abs_u_V_FUV;
-  float ngb_mean_abs_u_V_LW;
+      #div_specific_flux. */
+  float ngb_mean_abs_u_V[ISRF_BAND_COUNT];
 
   /*! Negativity-triggered artificial-dissipation coefficient, REACTIVE
       component: raised by the
       negativity trigger and decayed otherwise, updated once per step in
       #radiation_end_gradient_propagation (not the density ghost, which
       re-runs across h-iterations). Persistent, dumped with #part like
-      #specific_flux_FUV; zero at first init, no IC field. Read by THIS
+      #specific_flux; zero at first init, no IC field. Read by THIS
       step's force loop: the extra ghost precedes the force loop, so the
       trigger carries no lag. Applied to a pair UNGATED, as
       `max(trigger_i, trigger_j)`: the trigger only ever fires on a
@@ -186,8 +183,7 @@ struct feedback_part_data {
       construction.
 
       `a`-SCALING: dimensionless, exponent 0. */
-  float dissipation_alpha_trigger_FUV;
-  float dissipation_alpha_trigger_LW;
+  float dissipation_alpha_trigger[ISRF_BAND_COUNT];
 
   /*! Negativity-triggered artificial-dissipation coefficient, ANTICIPATORY
       component:
@@ -205,20 +201,18 @@ struct feedback_part_data {
       two contributions can be read apart.
 
       `a`-SCALING: dimensionless, exponent 0. */
-  float dissipation_alpha_floor_FUV;
-  float dissipation_alpha_floor_LW;
+  float dissipation_alpha_floor[ISRF_BAND_COUNT];
 
   /*! `(1/rho) grad(rho u)` accumulator, gradient loop
       (radiation_propagation_iact.h). Scratch: zeroed once per step by
       radiation_snapshot_part_propagation, since the gradient loop runs
       exactly once per step (never re-run across h-iterations). PHYSICAL:
       per physical length, not per comoving one. */
-  float grad_u_FUV[3];
-  float grad_u_LW[3];
+  float grad_u[ISRF_BAND_COUNT][3];
 
   /*! Comoving density snapshot, cached once per step by
       radiation_snapshot_part_propagation at the same call site as
-      #u_FUV_prev (before this step's density accumulators are reset), so it
+      #u_prev (before this step's density accumulators are reset), so it
       holds the previous step's fully-converged comoving density. Needed
       because the density loop's `div(F)` accumulation
       (radiation_propagation_iact.h) runs interleaved with SPH's own density
@@ -243,7 +237,7 @@ struct feedback_part_data {
       step by radiation_snapshot_part_propagation from this step's own
       already-decided integer timestep, alongside the physical timestep
       #dt_prev it was derived from. Shared by both bands (unlike
-      #kappa_FUV/#kappa_LW): the propagation speed is a property of the
+      #kappa): the propagation speed is a property of the
       particle's resolution and timestep, not of its dust opacity. */
   float c_hyp;
 
@@ -255,25 +249,25 @@ struct feedback_part_data {
   float dt_prev;
 
   /*! With ISRF_propagation off: simulation step (#engine.ti_current)
-      #u_FUV/#u_LW were last written at. radiation_iact_nonsym_feedback_apply
+      #u were last written at. radiation_iact_nonsym_feedback_apply
       compares this against the current step: a match means some star
       already wrote this step, so a further touch (a second illuminating
       star) sums into the existing value; a mismatch means this is the first
-      touch this step, so #u_FUV/#u_LW are zeroed before summing. This is
+      touch this step, so #u are zeroed before summing. This is
       what makes the field an instantaneous strength rather than an
       ever-growing total, while still summing multiple
       simultaneously-illuminating stars correctly within one step. With
       ISRF_propagation on, this is only bookkeeping (the last step any star
       touched this particle): the dose-reservoir form never resets
-      #u_FUV/#u_LW, so no consumer relies on it there. feedback_first_init_part
+      #u, so no consumer relies on it there. feedback_first_init_part
       sets this to -1 (never a valid step) so the very first touch of a
       particle's life also resets rather than summing onto uninitialized
       memory. */
   integertime_t ISRF_last_touch_ti;
 
-  /*! Has this particle been illuminated (u_FUV or u_LW nonzero) by any
+  /*! Has this particle been illuminated (any band's #u nonzero) by any
       star's injection pass, and is that illumination episode still live?
-      Dedicated flag, not inferred from u_FUV/u_LW themselves, since those
+      Dedicated flag, not inferred from #u itself, since those
       now reset every step a star touches this particle and so cannot
       signal "newly illuminated" via a zero-crossing. Mirrors #is_ionized's
       claimed/not-claimed cycle, including the reset half: gates a
@@ -305,31 +299,29 @@ struct feedback_part_data {
       read as "still illuminated". */
   integertime_t ISRF_illumination_end_ti;
 
-  /*! Mass-specific FUV/LW emission dose still owed to this particle by
+  /*! Mass-specific per-band emission dose still owed to this particle by
       every star that has touched it (#radiation_iact_nonsym_feedback_apply),
-      not yet injected into #u_FUV/#u_LW. Persistent, dumped with #part like
-      #specific_flux_FUV; zero at first init, no IC field (an IC has no
+      not yet injected into #u. Persistent, dumped with #part like
+      #specific_flux; zero at first init, no IC field (an IC has no
       notion of "dose in flight"). Drained once per step, for active
       particles only, by #radiation_snapshot_part_propagation into
-      #u_FUV_source_rate/#u_LW_source_rate; every star's touch only ever
+      #u_source_rate; every star's touch only ever
       adds to it, so any number of stars on any time bins superpose without
       losing or double-counting emission. */
-  float u_FUV_dose_reservoir;
-  float u_LW_dose_reservoir;
+  float u_dose_reservoir[ISRF_BAND_COUNT];
 
-  /*! This step's mass-specific FUV/LW source rate, drawn down from
-      #u_FUV_dose_reservoir/#u_LW_dose_reservoir by
+  /*! This step's mass-specific per-band source rate, drawn down from
+      #u_dose_reservoir by
       #radiation_snapshot_part_propagation and consumed by
       #radiation_end_density_propagation's exact-relaxation update. Scratch:
       recomputed every step for active particles, not restart-critical (an
       inactive particle recomputes it correctly the moment it next becomes
       active), but dumped anyway since it lives in #part alongside the
       persistent fields above. */
-  float u_FUV_source_rate;
-  float u_LW_source_rate;
+  float u_source_rate[ISRF_BAND_COUNT];
 
   /*! Absolute integer time (#engine.ti_current units) by which every dose
-      currently held in #u_FUV_dose_reservoir/#u_LW_dose_reservoir must have
+      currently held in #u_dose_reservoir must have
       been fully drained. Extended to `ti_current + ti_step_star` on every
       star touch (never reset), so it always covers the latest-finishing
       contributing star's own step. feedback_first_init_part sets this to -1,
@@ -486,15 +478,13 @@ struct feedback_spart_data {
         system. */
     float mean_excess_photon_energy_HI;
 
-    /*! Non-ionizing FUV band luminosity, 6-11.2 eV (physical units), split
-        off L_bol via this star's own Teff (radiation_planck_band_fraction).
-        Feeds the injection term together with #L_LW; only computed when
+    /*! Band luminosity (physical units), indexed by #radiation_isrf_band:
+        non-ionizing FUV, 6-11.2 eV, and Lyman-Werner, 11.2-13.6 eV (H2
+        photodissociating photons). Split off L_bol via this star's own Teff
+        (radiation_planck_band_fraction) or read from the table. Feeds the
+        injection term; only computed when
         GEARFeedback:with_photoelectric_heating is on, 0 otherwise. */
-    double L_FUV;
-
-    /*! Lyman-Werner band luminosity, 11.2-13.6 eV (physical units): H2
-        photodissociating photons. See #L_FUV. */
-    double L_LW;
+    double L_band[ISRF_BAND_COUNT];
 
   } radiation;
 };

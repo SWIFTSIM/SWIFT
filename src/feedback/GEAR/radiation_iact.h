@@ -245,27 +245,29 @@ radiation_iact_nonsym_feedback_apply(
   /* Local Lyman-Werner/FUV injection: always additive, since multiple
      simultaneously-illuminating stars must superpose on the same particle
      (a dose reservoir with propagation on, an instantaneous field with it
-     off). u_inject_FUV/LW is an energy, so dividing by mj converts it to
-     the specific energy u_FUV/u_LW (or the dose reservoir) actually stores.
-     Zero unless GEARFeedback:with_photoelectric_heating is on (L_FUV/L_LW
-     are then computed by stellar_evolution.c; 0 otherwise). Dust extinction
-     is applied receiver-side, using pj's own local column density, rather
-     than at the source (see radiation_get_part_ISRF_extinction_factors
+     off). u_inject_FUV/u_inject_LW is an energy, so dividing by mj converts it
+     to the specific energy u of each band (or the dose reservoir) actually
+     stores. Zero unless GEARFeedback:with_photoelectric_heating is on
+     (L_FUV/L_LW are then computed by stellar_evolution.c; 0 otherwise). Dust
+     extinction is applied receiver-side, using pj's own local column density,
+     rather than at the source (see radiation_get_part_ISRF_extinction_factors
      for the extinction formula itself). */
-  if (si->feedback_data.radiation.L_FUV != 0.0 ||
-      si->feedback_data.radiation.L_LW != 0.0) {
+  if (si->feedback_data.radiation.L_band[ISRF_BAND_FUV] != 0.0 ||
+      si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction_FUV, extinction_LW;
     radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
                                                &extinction_FUV, &extinction_LW);
 
-    const double u_inject_FUV = (double)Delta_t * weight *
-                                si->feedback_data.radiation.L_FUV *
-                                (double)extinction_FUV;
-    const double u_inject_LW = (double)Delta_t * weight *
-                               si->feedback_data.radiation.L_LW *
-                               (double)extinction_LW;
+    const double u_inject_FUV =
+        (double)Delta_t * weight *
+        si->feedback_data.radiation.L_band[ISRF_BAND_FUV] *
+        (double)extinction_FUV;
+    const double u_inject_LW =
+        (double)Delta_t * weight *
+        si->feedback_data.radiation.L_band[ISRF_BAND_LW] *
+        (double)extinction_LW;
 
     if (fb_props->ISRF_propagation) {
       /* Dose-reservoir accumulator: pure accumulation of the elapsed star
@@ -275,9 +277,9 @@ radiation_iact_nonsym_feedback_apply(
          double-counting emission. The rescale/phi fold-in that used to
          happen here now happens once, at the receiving particle's own
          cadence, in radiation_end_density_propagation. */
-      pj->feedback_data.u_FUV_dose_reservoir +=
+      pj->feedback_data.u_dose_reservoir[ISRF_BAND_FUV] +=
           (float)(u_inject_FUV / (double)mj);
-      pj->feedback_data.u_LW_dose_reservoir +=
+      pj->feedback_data.u_dose_reservoir[ISRF_BAND_LW] +=
           (float)(u_inject_LW / (double)mj);
       pj->feedback_data.ISRF_reservoir_end_ti =
           max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
@@ -289,13 +291,13 @@ radiation_iact_nonsym_feedback_apply(
          since the last cooling call. A later touch this same step (a
          second illuminating star) sums into what the first just wrote. */
       if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        pj->feedback_data.u_FUV = 0.f;
-        pj->feedback_data.u_LW = 0.f;
+        pj->feedback_data.u[ISRF_BAND_FUV] = 0.f;
+        pj->feedback_data.u[ISRF_BAND_LW] = 0.f;
         pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
-      pj->feedback_data.u_FUV += (float)(u_inject_FUV / (double)mj);
-      pj->feedback_data.u_LW += (float)(u_inject_LW / (double)mj);
+      pj->feedback_data.u[ISRF_BAND_FUV] += (float)(u_inject_FUV / (double)mj);
+      pj->feedback_data.u[ISRF_BAND_LW] += (float)(u_inject_LW / (double)mj);
     }
 
     /* Renew the illumination window on every touch, first or not: mirrors

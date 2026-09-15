@@ -22,8 +22,8 @@
 /**
  * @file src/feedback/GEAR/radiation_propagation_iact.h
  * @brief Gas-gas density-loop, gradient-loop and force-loop hooks for the
- * hyperbolic M1-relaxation propagation of the u_FUV/specific_flux_FUV (and
- * u_LW/specific_flux_LW) fields.
+ * hyperbolic M1-relaxation propagation of the per-band u and specific_flux
+ * fields.
  *
  * Three pairwise SPH operators are accumulated here, in three different
  * loops:
@@ -206,8 +206,8 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * `h^-(dim+1)` normalisation, exactly as for an ordinary SPH Laplacian.
  *
  * The pair coefficient combines the two components the extra ghost stores
- * separately (#dissipation_alpha_trigger_FUV/LW,
- * #dissipation_alpha_floor_FUV/LW):
+ * separately (#dissipation_alpha_trigger,
+ * #dissipation_alpha_floor):
  *
  *   `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`.
  *
@@ -234,7 +234,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * Accumulated in the force loop, which runs after the density ghost has
  * produced the intermediate state `u* = e*u_prev + dt*phi*(source - div_F)`
  * and after the extra ghost has set this step's `alpha`: the jump is
- * therefore built from the LIVE `u_FUV`/`u_LW` (`u*`), not from the
+ * therefore built from the LIVE `u` (`u*`), not from the
  * `u_*_prev` snapshot the density loop needs. The force loop runs exactly
  * once per step, so there is no h-iteration stability requirement here.
  *
@@ -253,13 +253,13 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param c_hyp_i Particle i's own hyperbolic propagation speed.
  * @param c_hyp_j Particle j's own hyperbolic propagation speed.
- * @param alpha_trigger_i Particle i's #dissipation_alpha_trigger_FUV/LW
+ * @param alpha_trigger_i Particle i's #dissipation_alpha_trigger
  * (this band).
- * @param alpha_trigger_j Particle j's #dissipation_alpha_trigger_FUV/LW
+ * @param alpha_trigger_j Particle j's #dissipation_alpha_trigger
  * (this band).
- * @param alpha_floor_i Particle i's #dissipation_alpha_floor_FUV/LW (this
+ * @param alpha_floor_i Particle i's #dissipation_alpha_floor (this
  * band).
- * @param alpha_floor_j Particle j's #dissipation_alpha_floor_FUV/LW (this
+ * @param alpha_floor_j Particle j's #dissipation_alpha_floor (this
  * band).
  * @param u_i Particle i's live specific field `u*` (this band).
  * @param u_j Particle j's live specific field `u*` (this band).
@@ -471,20 +471,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   const float a_factor_comoving_to_physical = 1.f / a;
 
   radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_FUV, &fdj->div_specific_flux_FUV);
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j,
+      fdi->specific_flux[ISRF_BAND_FUV], fdj->specific_flux[ISRF_BAND_FUV],
+      a_factor_comoving_to_physical, &fdi->div_specific_flux[ISRF_BAND_FUV],
+      &fdj->div_specific_flux[ISRF_BAND_FUV]);
   radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_LW, &fdj->div_specific_flux_LW);
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j,
+      fdi->specific_flux[ISRF_BAND_LW], fdj->specific_flux[ISRF_BAND_LW],
+      a_factor_comoving_to_physical, &fdi->div_specific_flux[ISRF_BAND_LW],
+      &fdj->div_specific_flux[ISRF_BAND_LW]);
 
   radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
-      &fdi->ngb_mean_abs_u_V_FUV, &fdj->ngb_mean_abs_u_V_FUV);
+      wi, wj, mi, mj, rho_i, rho_j, fdi->u_prev[ISRF_BAND_FUV],
+      fdj->u_prev[ISRF_BAND_FUV], &fdi->ngb_mean_abs_u_V[ISRF_BAND_FUV],
+      &fdj->ngb_mean_abs_u_V[ISRF_BAND_FUV]);
   radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_LW_prev, fdj->u_LW_prev,
-      &fdi->ngb_mean_abs_u_V_LW, &fdj->ngb_mean_abs_u_V_LW);
+      wi, wj, mi, mj, rho_i, rho_j, fdi->u_prev[ISRF_BAND_LW],
+      fdj->u_prev[ISRF_BAND_LW], &fdi->ngb_mean_abs_u_V[ISRF_BAND_LW],
+      &fdj->ngb_mean_abs_u_V[ISRF_BAND_LW]);
 }
 
 /**
@@ -542,29 +546,33 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
   float unused_ngb_mean_abs_u_V_LW = 0.f;
 
   radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_FUV,
-      fdj->specific_flux_FUV, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_FUV, &unused_div_specific_flux_FUV);
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j,
+      fdi->specific_flux[ISRF_BAND_FUV], fdj->specific_flux[ISRF_BAND_FUV],
+      a_factor_comoving_to_physical, &fdi->div_specific_flux[ISRF_BAND_FUV],
+      &unused_div_specific_flux_FUV);
   radiation_divergence_accumulate_band(
-      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->specific_flux_LW,
-      fdj->specific_flux_LW, a_factor_comoving_to_physical,
-      &fdi->div_specific_flux_LW, &unused_div_specific_flux_LW);
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j,
+      fdi->specific_flux[ISRF_BAND_LW], fdj->specific_flux[ISRF_BAND_LW],
+      a_factor_comoving_to_physical, &fdi->div_specific_flux[ISRF_BAND_LW],
+      &unused_div_specific_flux_LW);
 
   radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_FUV_prev, fdj->u_FUV_prev,
-      &fdi->ngb_mean_abs_u_V_FUV, &unused_ngb_mean_abs_u_V_FUV);
+      wi, wj, mi, mj, rho_i, rho_j, fdi->u_prev[ISRF_BAND_FUV],
+      fdj->u_prev[ISRF_BAND_FUV], &fdi->ngb_mean_abs_u_V[ISRF_BAND_FUV],
+      &unused_ngb_mean_abs_u_V_FUV);
   radiation_dissipation_reference_accumulate_band(
-      wi, wj, mi, mj, rho_i, rho_j, fdi->u_LW_prev, fdj->u_LW_prev,
-      &fdi->ngb_mean_abs_u_V_LW, &unused_ngb_mean_abs_u_V_LW);
+      wi, wj, mi, mj, rho_i, rho_j, fdi->u_prev[ISRF_BAND_LW],
+      fdj->u_prev[ISRF_BAND_LW], &fdi->ngb_mean_abs_u_V[ISRF_BAND_LW],
+      &unused_ngb_mean_abs_u_V_LW);
 }
 
 /**
  * @brief `grad(u)` interaction between two particles (symmetric): both
  * particles' accumulators are updated.
  *
- * Runs in the gradient loop, after the density ghost has finalized `u_FUV`/
- * `u_LW` for this step (the exact-relaxation `u` update, radiation_isrf.c):
- * reads them directly, not a `_prev` snapshot. `u_FUV`/`u_LW` are written
+ * Runs in the gradient loop, after the density ghost has finalized `u` for
+ * this step (the exact-relaxation `u` update, radiation_isrf.c):
+ * reads them directly, not a `_prev` snapshot. `u` are written
  * again later in this same step, by the end-force ghost's
  * negativity-triggered dissipation correction (radiation_isrf.c's
  * #radiation_end_force_propagation), before star feedback injection ever
@@ -609,23 +617,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   const float a_factor_comoving_to_physical = 1.f / a;
 
   float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
-  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
+  radiation_get_m1_closure_tensor_band(fdi->u[ISRF_BAND_FUV],
+                                       fdi->specific_flux[ISRF_BAND_FUV],
                                        fdi->c_hyp, D_FUV_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
+  radiation_get_m1_closure_tensor_band(fdj->u[ISRF_BAND_FUV],
+                                       fdj->specific_flux[ISRF_BAND_FUV],
                                        fdj->c_hyp, D_FUV_j);
-  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
+  radiation_get_m1_closure_tensor_band(fdi->u[ISRF_BAND_LW],
+                                       fdi->specific_flux[ISRF_BAND_LW],
                                        fdi->c_hyp, D_LW_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
+  radiation_get_m1_closure_tensor_band(fdj->u[ISRF_BAND_LW],
+                                       fdj->specific_flux[ISRF_BAND_LW],
                                        fdj->c_hyp, D_LW_j);
 
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
-                                     D_FUV_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_FUV, fdj->grad_u_FUV);
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_LW, fdj->grad_u_LW);
+  radiation_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u[ISRF_BAND_FUV],
+      fdj->u[ISRF_BAND_FUV], D_FUV_i, D_FUV_j, a_factor_comoving_to_physical,
+      fdi->grad_u[ISRF_BAND_FUV], fdj->grad_u[ISRF_BAND_FUV]);
+  radiation_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u[ISRF_BAND_LW],
+      fdj->u[ISRF_BAND_LW], D_LW_i, D_LW_j, a_factor_comoving_to_physical,
+      fdi->grad_u[ISRF_BAND_LW], fdj->grad_u[ISRF_BAND_LW]);
 }
 
 /**
@@ -679,23 +691,27 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   float unused_grad_u_LW[3] = {0.f, 0.f, 0.f};
 
   float D_FUV_i[3][3], D_FUV_j[3][3], D_LW_i[3][3], D_LW_j[3][3];
-  radiation_get_m1_closure_tensor_band(fdi->u_FUV, fdi->specific_flux_FUV,
+  radiation_get_m1_closure_tensor_band(fdi->u[ISRF_BAND_FUV],
+                                       fdi->specific_flux[ISRF_BAND_FUV],
                                        fdi->c_hyp, D_FUV_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_FUV, fdj->specific_flux_FUV,
+  radiation_get_m1_closure_tensor_band(fdj->u[ISRF_BAND_FUV],
+                                       fdj->specific_flux[ISRF_BAND_FUV],
                                        fdj->c_hyp, D_FUV_j);
-  radiation_get_m1_closure_tensor_band(fdi->u_LW, fdi->specific_flux_LW,
+  radiation_get_m1_closure_tensor_band(fdi->u[ISRF_BAND_LW],
+                                       fdi->specific_flux[ISRF_BAND_LW],
                                        fdi->c_hyp, D_LW_i);
-  radiation_get_m1_closure_tensor_band(fdj->u_LW, fdj->specific_flux_LW,
+  radiation_get_m1_closure_tensor_band(fdj->u[ISRF_BAND_LW],
+                                       fdj->specific_flux[ISRF_BAND_LW],
                                        fdj->c_hyp, D_LW_j);
 
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_FUV, fdj->u_FUV, D_FUV_i,
-                                     D_FUV_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_FUV, unused_grad_u_FUV);
-  radiation_gradient_accumulate_band(dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i,
-                                     rho_j, fdi->u_LW, fdj->u_LW, D_LW_i,
-                                     D_LW_j, a_factor_comoving_to_physical,
-                                     fdi->grad_u_LW, unused_grad_u_LW);
+  radiation_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u[ISRF_BAND_FUV],
+      fdj->u[ISRF_BAND_FUV], D_FUV_i, D_FUV_j, a_factor_comoving_to_physical,
+      fdi->grad_u[ISRF_BAND_FUV], unused_grad_u_FUV);
+  radiation_gradient_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->u[ISRF_BAND_LW],
+      fdj->u[ISRF_BAND_LW], D_LW_i, D_LW_j, a_factor_comoving_to_physical,
+      fdi->grad_u[ISRF_BAND_LW], unused_grad_u_LW);
 }
 
 /**
@@ -703,9 +719,9 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * particles (symmetric): both particles' accumulators are updated.
  *
  * Runs in the force loop, after the density ghost has produced `u*` and the
- * extra ghost has set this step's #dissipation_alpha_trigger_FUV/LW and
- * #dissipation_alpha_floor_FUV/LW: reads the live
- * `u_FUV`/`u_LW` directly, not a `_prev` snapshot. The force loop's
+ * extra ghost has set this step's #dissipation_alpha_trigger and
+ * #dissipation_alpha_floor: reads the live
+ * `u` directly, not a `_prev` snapshot. The force loop's
  * dispatch fires both sides of a pair whenever either kernel reaches, which
  * is what keeps the mirrored credit/debit pair whole at h_i != h_j; see
  * #radiation_dissipation_force_accumulate_band.
@@ -749,16 +765,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 
   radiation_dissipation_force_accumulate_band(
       wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_FUV, fdj->dissipation_alpha_trigger_FUV,
-      fdi->dissipation_alpha_floor_FUV, fdj->dissipation_alpha_floor_FUV,
-      fdi->u_FUV, fdj->u_FUV, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_FUV, &fdj->dissipation_u_FUV);
+      fdi->dissipation_alpha_trigger[ISRF_BAND_FUV],
+      fdj->dissipation_alpha_trigger[ISRF_BAND_FUV],
+      fdi->dissipation_alpha_floor[ISRF_BAND_FUV],
+      fdj->dissipation_alpha_floor[ISRF_BAND_FUV], fdi->u[ISRF_BAND_FUV],
+      fdj->u[ISRF_BAND_FUV], a_factor_comoving_to_physical,
+      &fdi->dissipation_u[ISRF_BAND_FUV], &fdj->dissipation_u[ISRF_BAND_FUV]);
   radiation_dissipation_force_accumulate_band(
       wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_LW, fdj->dissipation_alpha_trigger_LW,
-      fdi->dissipation_alpha_floor_LW, fdj->dissipation_alpha_floor_LW,
-      fdi->u_LW, fdj->u_LW, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_LW, &fdj->dissipation_u_LW);
+      fdi->dissipation_alpha_trigger[ISRF_BAND_LW],
+      fdj->dissipation_alpha_trigger[ISRF_BAND_LW],
+      fdi->dissipation_alpha_floor[ISRF_BAND_LW],
+      fdj->dissipation_alpha_floor[ISRF_BAND_LW], fdi->u[ISRF_BAND_LW],
+      fdj->u[ISRF_BAND_LW], a_factor_comoving_to_physical,
+      &fdi->dissipation_u[ISRF_BAND_LW], &fdj->dissipation_u[ISRF_BAND_LW]);
 }
 
 /**
@@ -816,16 +836,20 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
 
   radiation_dissipation_force_accumulate_band(
       wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_FUV, fdj->dissipation_alpha_trigger_FUV,
-      fdi->dissipation_alpha_floor_FUV, fdj->dissipation_alpha_floor_FUV,
-      fdi->u_FUV, fdj->u_FUV, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_FUV, &unused_dissipation_u_FUV);
+      fdi->dissipation_alpha_trigger[ISRF_BAND_FUV],
+      fdj->dissipation_alpha_trigger[ISRF_BAND_FUV],
+      fdi->dissipation_alpha_floor[ISRF_BAND_FUV],
+      fdj->dissipation_alpha_floor[ISRF_BAND_FUV], fdi->u[ISRF_BAND_FUV],
+      fdj->u[ISRF_BAND_FUV], a_factor_comoving_to_physical,
+      &fdi->dissipation_u[ISRF_BAND_FUV], &unused_dissipation_u_FUV);
   radiation_dissipation_force_accumulate_band(
       wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
-      fdi->dissipation_alpha_trigger_LW, fdj->dissipation_alpha_trigger_LW,
-      fdi->dissipation_alpha_floor_LW, fdj->dissipation_alpha_floor_LW,
-      fdi->u_LW, fdj->u_LW, a_factor_comoving_to_physical,
-      &fdi->dissipation_u_LW, &unused_dissipation_u_LW);
+      fdi->dissipation_alpha_trigger[ISRF_BAND_LW],
+      fdj->dissipation_alpha_trigger[ISRF_BAND_LW],
+      fdi->dissipation_alpha_floor[ISRF_BAND_LW],
+      fdj->dissipation_alpha_floor[ISRF_BAND_LW], fdi->u[ISRF_BAND_LW],
+      fdj->u[ISRF_BAND_LW], a_factor_comoving_to_physical,
+      &fdi->dissipation_u[ISRF_BAND_LW], &unused_dissipation_u_LW);
 }
 
 #endif /* SWIFT_RADIATION_PROPAGATION_IACT_GEAR_H */
