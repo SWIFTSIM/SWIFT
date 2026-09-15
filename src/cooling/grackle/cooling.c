@@ -98,38 +98,21 @@ void cooling_pop_grackle_solve_failure_counts(long long *failed,
  * @brief Test that a stored value is finite and, optionally, strictly
  * positive, from its IEEE-754 bits.
  *
- * -ffast-math lets the compiler assume that no NaN or infinity occurs: a
- * floating-point comparison can be folded away, and arithmetic on a NaN or
- * an infinity gives an unpredictable result. The test therefore reads the
- * bits of a value loaded from the particle, before any arithmetic, in a
- * function that is not inlined.
+ * -ffast-math marks a float parameter passed by value nofpclass(nan inf),
+ * making the bit test legally foldable even in a noinline function; a
+ * pointer to the stored field carries no such annotation.
  *
- * @param x The value.
- * @param positive Also require x > 0.
+ * @param x Pointer to the stored value.
+ * @param positive Also require *x > 0.
  * @return 1 if the test passes, 0 otherwise.
  */
 __attribute__((noinline)) static int cooling_stored_value_is_valid(
-    const float x, const int positive) {
+    const float *x, const int positive) {
   uint32_t bits;
-  memcpy(&bits, &x, sizeof(bits));
+  memcpy(&bits, x, sizeof(bits));
   if (((bits >> 23) & 0xffU) == 0xffU) return 0;
   if (!positive) return 1;
   return (bits >> 31) == 0 && bits != 0;
-}
-
-/**
- * @brief Test that a computed value is strictly positive, from its IEEE-754
- * bits (see #cooling_stored_value_is_valid).
- *
- * @param x The value.
- * @return 1 if x is finite and > 0, 0 otherwise.
- */
-__attribute__((noinline)) static int cooling_computed_value_is_positive(
-    const double x) {
-  uint64_t bits;
-  memcpy(&bits, &x, sizeof(bits));
-  if (((bits >> 52) & 0x7ffULL) == 0x7ffULL) return 0;
-  return (bits >> 63) == 0 && bits != 0;
 }
 
 /**
@@ -995,10 +978,8 @@ static void cooling_free_grackle_fields(
 }
 
 /**
- * @brief copy a #xpart to the grackle data
- *
- * Warning this function creates some variable, therefore the grackle call
- * should be in a block that still has the variables.
+ * @brief Copy the grackle data back to a #xpart and free the fields
+ * cooling_copy_to_grackle() allocated.
  *
  * @param data The grackle_field_data structure from grackle.
  * @param p The #part.
@@ -1050,10 +1031,13 @@ void cooling_apply_self_shielding(
  *
  * A failed solve (FAIL returned by Grackle, e.g. more than max_steps
  * sub-cycle iterations) is retried subcycle_on_failure times, retry i with
- * 2^i consecutive solves of dt/2^i. If every retry fails, the species are
- * not read back and this step's cooling and heating are skipped, not
- * deferred: the next step integrates only its own dt. The failure is
- * counted.
+ * 2^i consecutive solves of dt/2^i (worst case (2^(subcycle_on_failure+1)-1)
+ * x max_steps Grackle iterations for one particle's one step). If every
+ * retry fails, the species are not read back and this step's cooling and
+ * heating are skipped, not deferred: the next step integrates only its own
+ * dt. The failure is counted. A non-positive energy after the
+ * minimal-energy floor (a legitimate state, not a Grackle failure) takes
+ * the same kept-previous-state path without ever calling Grackle.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -1066,8 +1050,8 @@ void cooling_apply_self_shielding(
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
- * @param kept_previous_state (return) 1 if every solve failed and the
- * particle kept its previous state, 0 otherwise.
+ * @param kept_previous_state (return) 1 if the particle kept its previous
+ * state (every solve failed, or the solve was skipped), 0 otherwise.
  *
  * @return The new internal energy, or the energy passed to Grackle if
  * kept_previous_state is 1.
@@ -1127,14 +1111,17 @@ static gr_float cooling_new_energy_or_keep_previous(
     }
   }
 
-  /* A non-finite or non-positive state cannot be integrated: Grackle would
-     freeze the cell at its energy floor. */
+  /* A non-finite stored value, or a non-positive stored density, cannot be
+     integrated: Grackle would freeze the cell at its energy floor. The
+     stored energy is not required positive here: the minimal-energy floor
+     just below can legitimately clamp it to exactly 0 (the default
+     hydro_props_default_min_temp is 0 K), which is not itself an error. */
   const float rho_stored = hydro_get_comoving_density(p);
   const float u_stored = hydro_get_comoving_internal_energy(p, xp);
   const float u_dt_stored = hydro_get_comoving_internal_energy_dt(p);
-  if (!cooling_stored_value_is_valid(rho_stored, /*positive=*/1) ||
-      !cooling_stored_value_is_valid(u_stored, /*positive=*/0) ||
-      !cooling_stored_value_is_valid(u_dt_stored, /*positive=*/0))
+  if (!cooling_stored_value_is_valid(&rho_stored, /*positive=*/1) ||
+      !cooling_stored_value_is_valid(&u_stored, /*positive=*/0) ||
+      !cooling_stored_value_is_valid(&u_dt_stored, /*positive=*/0))
     error(
         "Particle %lld has an invalid state before the Grackle solve: "
         "comoving density = %e, comoving internal energy = %e, its time "
@@ -1147,13 +1134,24 @@ static gr_float cooling_new_energy_or_keep_previous(
                     dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
 
-  if (!cooling_computed_value_is_positive(density) ||
-      !cooling_computed_value_is_positive(energy))
+  /* The stored density already passed the finite/positive guard above, so a
+     non-positive physical density here is a real bug (e.g. a bad comoving
+     conversion): stop the run. */
+  if (density <= 0.)
     error(
-        "Particle %lld has an invalid state before the Grackle solve: "
-        "physical density = %e, physical internal energy = %e (after the "
-        "minimal energy floor).",
-        p->id, density, energy);
+        "Particle %lld has a non-positive physical density before the "
+        "Grackle solve: physical density = %e.",
+        p->id, density);
+
+  /* A non-positive energy after the minimal-energy floor is not a bug:
+     Grackle cannot integrate from it, so skip the solve and keep the
+     particle's previous state instead of calling error(). */
+  if (energy <= 0.) {
+    atomic_inc(&cooling_grackle_failed_solves);
+    *kept_previous_state = 1;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    return energy;
+  }
 
   /* keep this array here so you can point to and from it in
    * copy to/from grackle */
