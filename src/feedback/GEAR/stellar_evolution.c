@@ -680,11 +680,8 @@ void stellar_evolution_compute_preSN_properties(
     const float dt_myr, const float m_beg_step, const float m_end_step,
     const float m_init) {
 
-  /* The end/beg step mass are already limited to the imf if SSP or
-     continuous IMF stars. Upper mass bound for this continuous-emission
-     channel this step; see
-     stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
-     overestimate/underestimate tradeoff. */
+  /* m_beg_step/m_end_step are already limited to the IMF for SSP and
+     continuous-IMF stars. */
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
@@ -1382,17 +1379,16 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (m_beg_step < sm->imf.mass_min) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback for the discrete part. m_end_step needs the same clamp: stellar
-  winds are a continuous emission (unlike SN's discrete death events), so a
-  young population where even m_end_step exceeds minimal_discrete_mass_Msun
-  is not "nothing to do yet" -- every star this particle can contain, up to
-  minimal_discrete_mass_Msun, is still alive and still emitting, so the
-  m_sup query point computed downstream (stellar_evolution_get_continuous_
-  feedback_mass_sup, via stellar_evolution_compute_preSN_properties) must
-  reach exactly that far, not stop early or reach past it. */
+  special treatment. They do not contain stars above the mass that separate
+  the IMF into two parts (variable called minimal_discrete_mass_Msun in the
+  sink module). So, if m_beg_step > minimal_discrete_mass_Msun, skip
+  feedback for the discrete part. m_end_step needs the same clamp: winds are
+  continuous emission, not discrete death events, so a young population with
+  m_end_step above minimal_discrete_mass_Msun still has every star up to
+  that mass alive and emitting. The m_sup query point computed downstream
+  (stellar_evolution_get_continuous_feedback_mass_sup, via
+  stellar_evolution_compute_preSN_properties) must reach exactly that far,
+  not stop early or overshoot. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
     m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);

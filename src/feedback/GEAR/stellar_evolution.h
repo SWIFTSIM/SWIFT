@@ -51,14 +51,14 @@ enum stellar_evolution_mass_sup_scheme {
 };
 
 /**
- * Compile-time default scheme for
- * stellar_evolution_get_continuous_feedback_mass_sup(), overridable at
- * configure time, e.g.
- * CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint"
- * ./configure mass_sup_scheme_end_step is the default because it reproduces
- * today's already-validated behaviour exactly; the other schemes exist for a
- * future bias-quantification study (HomogeneousBox), not for production use
- * yet.
+ * @brief Compile-time default scheme for
+ * stellar_evolution_get_continuous_feedback_mass_sup().
+ *
+ * Override at configure time, e.g.
+ * `CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint" ./configure`.
+ * mass_sup_scheme_end_step is the default: it reproduces today's validated
+ * behaviour exactly. The other schemes are for a future bias-quantification
+ * study (HomogeneousBox), not production use yet.
  */
 #ifndef STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME
 #define STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME mass_sup_scheme_end_step
