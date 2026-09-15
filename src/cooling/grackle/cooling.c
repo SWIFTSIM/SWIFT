@@ -1177,12 +1177,14 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cosmology *cosmo,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp) {
-  /* Physical constants */
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-
   /* Particle temperature */
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+
+#if COOLING_GRACKLE_MODE <= 1
+  /* Physical constants -- unused for MODE >= 2, which computes its own. */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+#endif
 
 #if COOLING_GRACKLE_MODE == 0
   /* Gas properties */
@@ -1199,6 +1201,9 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   else
     return T_transition;
 
+#elif COOLING_GRACKLE_MODE >= 2
+  return cooling_get_temperature_h2_gamma_corrected(phys_const, cosmo, p, xp,
+                                                    u);
 #else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);

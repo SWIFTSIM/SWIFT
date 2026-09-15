@@ -28,6 +28,8 @@
 #include "hydro.h"
 #include "units.h"
 
+#include <math.h>
+
 /**
  * Compute gas mean molecular weight.
  *
@@ -120,25 +122,35 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nHeII = XHeII * rho / (4 * m_H);
   const double nHeIII = XHeIII * rho / (4 * m_H);
 
+  /* Match Grackle's own mu (calculate_temperature.c: MU_METAL = 16). */
+  const double MU_METAL = 16.0;
+  const double n_metal =
+      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
+      (MU_METAL * m_H);
+
 #if COOLING_GRACKLE_MODE == 1
   const double nel = nHII + nHeII + 2 * nHeIII;
-  const double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nel;
+  const double total_density =
+      nHI + nHII + nHeI + nHeII + nHeIII + nel + n_metal;
   const double mu =
       ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) / total_density;
   return mu;
 
-#else /* COOLING_GRACKLE_MODE >= 2: also track H2I, H2II */
+#else /* COOLING_GRACKLE_MODE >= 2: also track H2I, H2II, HM */
   const double XH2I = cool_data->H2I_frac;
   const double XH2II = cool_data->H2II_frac;
   const double nH2I = XH2I * rho / (2 * m_H);  // H2 is 2 times the mass of H
   const double nH2II = XH2II * rho / (2 * m_H);
 
+  const double XHM = cool_data->HM_frac;
+  const double nHM = XHM * rho / m_H;  // HM (H-) has ~the mass of H
+
 #if COOLING_GRACKLE_MODE == 2
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
   const double total_density =
-      nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nel;
+      nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHM + nel + n_metal;
   const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2) /
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
       total_density;
   return mu;
 
@@ -147,10 +159,10 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nHDI = XHDI * rho / (3 * m_H);  // HD is 3 times the mass of H
 
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-  const double total_density =
-      nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHDI + nel;
+  const double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nH2I +
+                               nH2II + nHM + nHDI + nel + n_metal;
   const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
-                     (nH2I + nH2II) * 2 + nHDI * 3) /
+                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
                     total_density;
   return mu;
 #endif /* COOLING_GRACKLE_MODE == 3 */
@@ -191,6 +203,103 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
                                          const double kB, const double mp) {
   return u * hydro_gamma_minus_one * mu * mp / kB;
 }
+
+#if COOLING_GRACKLE_MODE >= 2
+/**
+ * @brief compute the gas temperature with Grackle's H2 rotational/
+ * vibrational effective-gamma correction (calculate_pressure.c,
+ * "Correct for Gamma from H2"), which
+ * cooling_temperature_from_internal_energy() does not apply.
+ *
+ * Self-contained: computes mu and the Gamma1 correction from the same
+ * number densities in one pass, rather than calling
+ * cooling_get_mean_molecular_weight() and recomputing them a second time.
+ * The fixed-gamma temperature from that mu is Grackle's own "default
+ * Gamma" estimate (verified to agree with Grackle to ~1e-4% whenever H2 is
+ * trace), so it doubles as the seed for Grackle's own iteration. The
+ * corrected temperature is then that seed rescaled by (Gamma1-1)/(gamma-1),
+ * exactly as Grackle rescales its pressure array.
+ *
+ * @param phys_const Physical constants.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param u The particle's (already-drifted, physical) specific internal
+ *   energy, so callers that already have it don't pay for it twice.
+ * @return Temperature, H2-Gamma corrected.
+ */
+__attribute__((always_inline)) INLINE static float
+cooling_get_temperature_h2_gamma_corrected(const struct phys_const *phys_const,
+                                           const struct cosmology *cosmo,
+                                           const struct part *p,
+                                           const struct xpart *xp,
+                                           const double u) {
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  const double nHI = cool_data->HI_frac * rho / m_H;
+  const double nHII = cool_data->HII_frac * rho / m_H;
+  const double nHeI = cool_data->HeI_frac * rho / (4 * m_H);
+  const double nHeII = cool_data->HeII_frac * rho / (4 * m_H);
+  const double nHeIII = cool_data->HeIII_frac * rho / (4 * m_H);
+  const double nHM = cool_data->HM_frac * rho / m_H;
+  const double nH2I = cool_data->H2I_frac * rho / (2 * m_H);
+  const double nH2II = cool_data->H2II_frac * rho / (2 * m_H);
+  const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
+  const double nH2 = nH2I + nH2II;
+
+  const double MU_METAL = 16.0;
+  const double n_metal =
+      chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
+      (MU_METAL * m_H);
+
+  /* Grackle's "number_density" local to the Gamma correction -- everything
+     except H2 (tracked separately as nH2). */
+  const double number_density_noH2 =
+      nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
+
+#if COOLING_GRACKLE_MODE == 2
+  const double total_density = number_density_noH2 + nH2 + n_metal;
+  const double mu =
+      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
+      total_density;
+#else /* COOLING_GRACKLE_MODE == 3: also track HDI */
+  const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
+  const double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
+  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
+                    total_density;
+#endif
+
+  const double T_default =
+      cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
+  const double T_safe = T_default > 1.0 ? T_default : 1.0;
+
+  /* Rotational-only default; only refine with the vibrational term if H2
+     is non-trace and the gas isn't so cold the mode is frozen out
+     (Grackle's own x < 10 guard -- avoids exp() overflow at low T). */
+  double GammaH2Inverse = 0.5 * 5.0;
+  if (nH2 > 0.0 && number_density_noH2 > 0.0 &&
+      nH2 / number_density_noH2 > 1e-3) {
+    const double x = 6100.0 / T_safe;
+    if (x < 10.0) {
+      const double ex = exp(x);
+      GammaH2Inverse =
+          0.5 * (5.0 + 2.0 * x * x * ex / ((ex - 1.0) * (ex - 1.0)));
+    }
+  }
+
+  const double GammaInverse = hydro_one_over_gamma_minus_one;
+  const double Gamma1 =
+      1.0 + (nH2 + number_density_noH2) /
+                (nH2 * GammaH2Inverse + number_density_noH2 * GammaInverse);
+
+  return T_default * (Gamma1 - 1.0) / hydro_gamma_minus_one;
+}
+#endif /* COOLING_GRACKLE_MODE >= 2 */
 
 /**
  * @brief compute the AGORA redshift-dependent CMB-floor specific internal
