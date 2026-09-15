@@ -75,11 +75,13 @@ INLINE static int cooling_ionize_part_subgrid(
     /* Rate-coupled path: cooling_copy_to_grackle() injects this particle's
        Gamma_HI/RT_heating_rate and Grackle's own solver computes the
        resulting state, so the energy is not forced here. The tag is not
-       reset here either: that happens later, in cooling_new_energy after
-       cooling_copy_to_grackle has consumed it, since resetting first would
-       erase it before Grackle ever sees it. Return value means "did we
-       force the energy," not "is this particle ionized": cooling_new_energy
-       still runs the solve. */
+       reset here either: cooling_new_energy_or_keep_previous only expires
+       it once cooling_copy_from_grackle has read back a successful solve,
+       not merely after cooling_copy_to_grackle has consumed it as input.
+       A persistent failure (every retry FAILs) therefore leaves the tag
+       alive across steps. Return value means "did we force the energy,"
+       not "is this particle ionized": cooling_new_energy still runs the
+       solve. */
     return 0;
   }
 #endif
