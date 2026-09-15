@@ -29,6 +29,8 @@
 #include "physical_constants.h"
 #include "units.h"
 
+#include <string.h>
+
 #ifdef HAVE_HDF5
 
 /**
@@ -351,6 +353,20 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   if (cooling->H2_self_shielding < 0 || cooling->H2_self_shielding > 3)
     error("GrackleCooling:H2_self_shielding must be 0, 2 or 3, got %d.",
           cooling->H2_self_shielding);
+
+  char H2_path[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GrackleCooling:H2_self_shielding_path", H2_path,
+                              "kernel_diameter");
+  if (strcmp(H2_path, "kernel_diameter") == 0)
+    cooling->H2_self_shielding_path_in_kernel_radii = 2.0f;
+  else if (strcmp(H2_path, "kernel_radius") == 0)
+    cooling->H2_self_shielding_path_in_kernel_radii = 1.0f;
+  else
+    error(
+        "GrackleCooling:H2_self_shielding_path must be kernel_diameter or "
+        "kernel_radius, got '%s'.",
+        H2_path);
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(

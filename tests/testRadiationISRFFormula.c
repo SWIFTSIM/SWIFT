@@ -98,7 +98,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
   make_default_cooling(&cooling);
 
   const float Sigma_gas_c =
-      radiation_get_comoving_gas_column_density_at_part(&p);
+      radiation_get_comoving_gas_column_density_at_part(&p, 2.0f);
   const float Sigma_gas_p = Sigma_gas_c * (float)cosmo.a2_inv;
 
   const double expected_FUV =
@@ -109,7 +109,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
                           RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
 
   float actual_FUV, actual_LW;
-  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
+  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 2.0f,
                                              &actual_FUV, &actual_LW);
 
   char buf[128];
@@ -189,8 +189,8 @@ static void check_injection(const struct unit_system *us) {
   make_default_cooling(&cooling);
 
   float extinction_FUV, extinction_LW;
-  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
-                                             &extinction_FUV, &extinction_LW);
+  radiation_get_part_ISRF_extinction_factors(
+      us, &cosmo, &pj, Z_gas, &cooling, 2.0f, &extinction_FUV, &extinction_LW);
 
   struct xpart xpj;
   bzero(&xpj, sizeof(struct xpart));
@@ -201,6 +201,7 @@ static void check_injection(const struct unit_system *us) {
    * reads fb_props->ISRF_propagation unconditionally. */
   struct feedback_props fb_props;
   bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.ISRF_extinction_path_in_kernel_radii = 2.0f;
 
   struct spart si;
   bzero(&si, sizeof(struct spart));
@@ -328,6 +329,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   struct feedback_props fb_props;
   bzero(&fb_props, sizeof(struct feedback_props));
   fb_props.ISRF_propagation = 1;
+  fb_props.ISRF_extinction_path_in_kernel_radii = 2.0f;
 
   const float hi = 1.0f;
   const float r = 0.3f;
@@ -675,7 +677,7 @@ static void check_local_dust_to_gas_ratio_scaling(
   cosmo.a2_inv = 1.0;
 
   const float Sigma_gas_p =
-      radiation_get_comoving_gas_column_density_at_part(&p) *
+      radiation_get_comoving_gas_column_density_at_part(&p, 2.0f) *
       (float)cosmo.a2_inv;
 
   const double ratios[3] = {RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
@@ -696,7 +698,7 @@ static void check_local_dust_to_gas_ratio_scaling(
         us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, ratios[i]);
     float actual_FUV, actual_LW;
     radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
-                                               &actual_FUV, &actual_LW);
+                                               2.0f, &actual_FUV, &actual_LW);
     char buf[128];
     snprintf(buf, sizeof(buf), "ratio scaling: FUV extinction, ratio=%.6g",
              ratios[i]);

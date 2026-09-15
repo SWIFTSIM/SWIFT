@@ -625,6 +625,7 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
   H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 2 = shielding length set to the kernel support radius (kernel_gamma * h, physical),
                                                 # 3 = local Jeans length (Grackle-internal). 1 (Sobolev-like, needs a Cartesian grid) is rejected. (Default: 0)
+  H2_self_shielding_path: kernel_diameter      # (optional) Mode 2 only: H2 column path, N_H2 = n_H2 * path. kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h. (Default: kernel_diameter)
   maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0
                                                # deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
@@ -795,6 +796,8 @@ GEARFeedback:
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
   ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
                                                            # (Default: 0)
+  ISRF_extinction_path: kernel_diameter                    # (optional) Path of the receiver-side dust extinction column, Sigma = rho * path: kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h.
+                                                           # Only meaningful when with_photoelectric_heating is on. (Default: kernel_diameter)
   ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor) = 0; the joint
                                                            # stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only meaningful when ISRF_propagation is on. (Default: 0.5)
   ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light

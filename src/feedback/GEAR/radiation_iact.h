@@ -257,8 +257,10 @@ radiation_iact_nonsym_feedback_apply(
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction_FUV, extinction_LW;
-    radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
-                                               &extinction_FUV, &extinction_LW);
+    radiation_get_part_ISRF_extinction_factors(
+        us, cosmo, pj, Z_j, cooling,
+        fb_props->ISRF_extinction_path_in_kernel_radii, &extinction_FUV,
+        &extinction_LW);
 
     const double u_inject_FUV = (double)Delta_t * weight *
                                 si->feedback_data.radiation.L_FUV *

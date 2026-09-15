@@ -27,6 +27,7 @@
 #include "minmax.h"
 
 #include <math.h>
+#include <string.h>
 
 #define default_HII_min_density_Hpcm3 1.0
 #define default_HII_max_age_Myr 50.0
@@ -110,6 +111,11 @@ struct feedback_props {
    * injection + receiver-side extinction? Only meaningful when
    * radiation_policy_photoelectric_heating is set. */
   char ISRF_propagation;
+
+  /*! Path of the receiver-side LW/FUV dust extinction column, in kernel
+   * support radii kernel_gamma * h: 2 for "kernel_diameter", 1 for
+   * "kernel_radius" (GEARFeedback:ISRF_extinction_path). */
+  float ISRF_extinction_path_in_kernel_radii;
 
   /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_i`
    * closure: an independently-tunable multiple of the hydro CFL margin,
@@ -576,6 +582,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
+
+    char extinction_path[PARSER_MAX_LINE_SIZE];
+    parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
+                                extinction_path, "kernel_diameter");
+    if (strcmp(extinction_path, "kernel_diameter") == 0)
+      fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
+    else if (strcmp(extinction_path, "kernel_radius") == 0)
+      fp->ISRF_extinction_path_in_kernel_radii = 1.0f;
+    else
+      error(
+          "GEARFeedback:ISRF_extinction_path must be kernel_diameter or "
+          "kernel_radius, got '%s'.",
+          extinction_path);
 
     /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's own doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
