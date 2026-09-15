@@ -185,10 +185,6 @@ struct cooling_function_data {
    * 2^i consecutive solves. 0 disables the retries. */
   int subcycle_on_failure;
 
-  /*! Over-relaxation parameter of the initial-composition equilibrium solve.
-   * Inert: never set or read. */
-  float omega;
-
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 
