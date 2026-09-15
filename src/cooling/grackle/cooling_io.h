@@ -376,9 +376,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   if (cooling->max_step < 1)
     error("GrackleCooling:max_steps must be >= 1, got %d.", cooling->max_step);
 
-  /* Retries of a failed solve, each one halving the sub-step */
+  /* Retries of a failed solve, each one halving the sub-step. Default 2:
+   * two retries give 4x the iteration budget, which covered every stiff
+   * cell measured (14670-25574 iterations against the 10000 default),
+   * so stiff cells keep being integrated instead of skipping their
+   * cooling. */
   cooling->subcycle_on_failure = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:subcycle_on_failure", 0);
+      parameter_file, "GrackleCooling:subcycle_on_failure", 2);
   if (cooling->subcycle_on_failure < 0 || cooling->subcycle_on_failure > 20)
     error("GrackleCooling:subcycle_on_failure must be in [0, 20], got %d.",
           cooling->subcycle_on_failure);
