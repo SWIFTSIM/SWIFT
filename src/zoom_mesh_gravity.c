@@ -56,8 +56,7 @@ static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh);
 static void zoom_mesh_free(struct zoom_pm_mesh *mesh);
 static void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh);
 static int zoom_mesh_cell_is_inside(const struct zoom_pm_mesh *mesh,
-                                    const struct cell *c,
-                                    const int use_max_dx);
+                                    const struct cell *c, const int use_max_dx);
 
 /**
  * @brief Initialize a zoom mesh structure for the case where it is disabled.
@@ -131,8 +130,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   const double r_cut_max_ratio =
       parser_get_param_double(params, "Gravity:zoom_r_cut_max");
-  if (r_cut_max_ratio <= 0.)
-    error("Gravity:zoom_r_cut_max must be positive.");
+  if (r_cut_max_ratio <= 0.) error("Gravity:zoom_r_cut_max must be positive.");
 
   const double r_cut_min_ratio =
       parser_get_opt_param_double(params, "Gravity:zoom_r_cut_min", 0.);
@@ -536,7 +534,8 @@ static void zoom_mesh_deposit_cell(const struct cell *c,
   }
 
   /* The zoom mesh correction follows the same cell coverage predicate as the
-   * tree split. Particles in partially covered cells keep the global PM split. */
+   * tree split. Particles in partially covered cells keep the global PM split.
+   */
   if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
 
   struct gpart *gparts = c->grav.parts;
@@ -581,7 +580,8 @@ static void zoom_mesh_to_gpart_CIC_mapper(void *map_data, int num,
     struct gpart *gp = &gparts[n];
     if (gp->time_bin == time_bin_inhibited) continue;
 
-    /* Skip particles outside the active mesh or too close to the stencil edge. */
+    /* Skip particles outside the active mesh or too close to the stencil edge.
+     */
     int ind[3];
     double d[3], t[3];
     if (!zoom_mesh_gpart_index(mesh, gp, ind, d, t, /*need_stencil=*/1))
@@ -651,12 +651,13 @@ static void zoom_mesh_to_gpart_CIC_mapper(void *map_data, int num,
  * @param c The #cell to update.
  * @param data The shared CIC mapper data.
  */
-static void zoom_mesh_interpolate_cell(struct cell *c,
-                                       const struct zoom_cic_mapper_data *data) {
+static void zoom_mesh_interpolate_cell(
+    struct cell *c, const struct zoom_cic_mapper_data *data) {
 
   if (c->split) {
     for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) zoom_mesh_interpolate_cell(c->progeny[k], data);
+      if (c->progeny[k] != NULL)
+        zoom_mesh_interpolate_cell(c->progeny[k], data);
     return;
   }
 
@@ -675,7 +676,8 @@ static void zoom_mesh_deposit_cells(const struct space *s,
                                     const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles; ++n) {
+    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles;
+         ++n) {
       const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
       zoom_mesh_deposit_cell(&s->cells_top[cid], data);
     }
@@ -697,11 +699,12 @@ static void zoom_mesh_deposit_cells(const struct space *s,
  * @param s The #space.
  * @param data The shared CIC mapper data.
  */
-static void zoom_mesh_interpolate_cells(const struct space *s,
-                                        const struct zoom_cic_mapper_data *data) {
+static void zoom_mesh_interpolate_cells(
+    const struct space *s, const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles; ++n) {
+    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles;
+         ++n) {
       const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
       zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
     }
@@ -718,7 +721,8 @@ static void zoom_mesh_interpolate_cells(const struct space *s,
 }
 
 /**
- * @brief Construct the zero padded Hockney-Eastwood isolated-convolution kernel.
+ * @brief Construct the zero padded Hockney-Eastwood isolated-convolution
+ * kernel.
  *
  * The active zoom mesh has side length N but the FFT domain has side length
  * 2N. Positive Green-function offsets are stored in [0, N-1] and negative
@@ -771,7 +775,8 @@ static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
             global_long = -erf(0.5 * r * global_r_s_inv) / r;
         }
 
-        /* Store only the correction that must be added to the global PM field. */
+        /* Store only the correction that must be added to the global PM field.
+         */
         kernel[zoom_mesh_index(i, j, k, M)] = zoom_long - global_long;
       }
     }
@@ -786,7 +791,8 @@ static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
  * density and Green's function are embedded in a zero-padded (2N)^3 FFT domain,
  * and the resulting circular convolution is therefore the isolated linear
  * convolution on the active mesh. The resulting correction is then interpolated
- * back to particles and added to their existing mesh acceleration and potential.
+ * back to particles and added to their existing mesh acceleration and
+ * potential.
  *
  * @param mesh The #zoom_pm_mesh.
  * @param s The #space containing the particles.
@@ -1089,7 +1095,8 @@ int zoom_mesh_can_use_mesh(const struct zoom_pm_mesh *mesh,
   /* Both cells must be fully covered by the high-resolution mesh. */
   if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/0)) return 0;
 
-  /* The gravity task recursion must only compare equal-sized cell pairs here. */
+  /* The gravity task recursion must only compare equal-sized cell pairs here.
+   */
   if (ci->width[0] != cj->width[0] || ci->width[1] != cj->width[1] ||
       ci->width[2] != cj->width[2])
     error("Cells of different size in zoom mesh pair predicate!");
@@ -1125,7 +1132,8 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
   /* Include particle motion since rebuild when checking mesh coverage. */
   if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/1)) return 0;
 
-  /* The gravity task recursion must only compare equal-sized cell pairs here. */
+  /* The gravity task recursion must only compare equal-sized cell pairs here.
+   */
   if (ci->width[0] != cj->width[0] || ci->width[1] != cj->width[1] ||
       ci->width[2] != cj->width[2])
     error("Cells of different size in zoom mesh pair predicate!");

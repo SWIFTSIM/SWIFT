@@ -89,11 +89,9 @@ static double zoom_mesh_test_kernel(const double r, const double r_s_zoom,
                                     const double r_s_global) {
 
   if (r == 0.)
-    return -M_2_SQRTPI * 0.5 / r_s_zoom +
-           M_2_SQRTPI * 0.5 / r_s_global;
+    return -M_2_SQRTPI * 0.5 / r_s_zoom + M_2_SQRTPI * 0.5 / r_s_global;
 
-  return -erf(0.5 * r / r_s_zoom) / r +
-         erf(0.5 * r / r_s_global) / r;
+  return -erf(0.5 * r / r_s_zoom) / r + erf(0.5 * r / r_s_global) / r;
 }
 
 /**
@@ -254,8 +252,8 @@ int main(int argc, char *argv[]) {
 
   struct cell mesh_cells[2];
   int local_cells_with_particles_top[2] = {0, 1};
-  const double source_x[3] = {zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac[0],
-                              y_node, z_node};
+  const double source_x[3] = {
+      zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac[0], y_node, z_node};
   const double probe_x[3] = {zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac[0],
                              y_node, z_node};
   const double source_loc[3] = {source_x[0] - 0.5, source_x[1] - 0.5,

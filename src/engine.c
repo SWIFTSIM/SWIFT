@@ -2610,8 +2610,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
     /* Add the high-resolution zoom mesh correction, if enabled. */
-    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool,
-                                e->verbose);
+    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool, e->verbose);
 
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
@@ -3288,8 +3287,7 @@ int engine_step(struct engine *e) {
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
     /* Add the high-resolution zoom mesh correction, if enabled. */
-    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool,
-                                e->verbose);
+    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool, e->verbose);
 
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);
