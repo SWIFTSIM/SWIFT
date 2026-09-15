@@ -863,6 +863,23 @@ through the receiving particle's own resolution element. It represents
 dust immediately local to the receiver (a particle inside its own dense
 clump) and is distinct from the absorption along the path, which the
 propagation handles. Extinction applies in both run modes.
+$\Sigma_j = 2\,H_j\,\rho_j$ is the default (\texttt{GEARFeedback:%
+ISRF\_extinction\_path} = \texttt{kernel\_diameter}); setting it to
+\texttt{kernel\_radius} instead uses $H_j\,\rho_j$.
+
+At \texttt{COOLING\_GRACKLE\_MODE} $>1$, Grackle's own H2
+self-shielding needs a separate column length, set independently via
+\texttt{GrackleCooling:H2\_self\_shielding\_path}. At mode 2
+(\texttt{H2\_self\_shielding} = 2, kernel support radius), Grackle forms
+$N_{\rm H2} = 2 n_{\rm H2} l$, so the length passed is
+$l = {\rm path}/2$ with ${\rm path} = {\rm path\_in\_kernel\_radii}\,
+\gamma_K h$ (physical); at mode 3 the length is Grackle's own local
+Jeans length instead. Dust extinction and H2 self-shielding use
+different lengths on purpose: the dust column is local to the
+receiver's own resolution element, while H2 self-shielding needs the
+scale over which the H2 column actually forms (the Jeans length at mode
+3); collapsing both onto one common length would cost accuracy in
+whichever regime it is not tuned for.
 
 \textbf{Dose reservoir.} A gas particle usually sits on a finer time
 bin than its star. Depositing the whole star-step energy in one lump
