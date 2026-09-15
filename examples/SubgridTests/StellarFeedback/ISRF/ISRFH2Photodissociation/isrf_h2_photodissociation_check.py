@@ -141,20 +141,19 @@ what the run happens to produce.
 * Optically thin configuration: for each particle, take the first snapshot
   at which the predicted integral of Eq. (8) reaches ``--thin-efolds``
   (default 2). The median, over particles, of the relative error on
-  ``x_H2`` there must be at or below ``--thin-tol`` (default 0.10), and
+  ``x_H2`` there must be at or below ``--thin-tol`` (default 0.08), and
   ``f_shield`` must stay at or above ``--thin-f-min`` (default 0.90) so the
   leg really is the unshielded limit. Comparing at a fixed number of
   predicted e-folds keeps the bar independent of the window length: a
   fractional rate error ``delta`` becomes an ``x_H2`` error of about
   ``exp(N delta) - 1`` after ``N`` e-folds. The rate error budget, summed
-  linearly: Grackle's sub-cycling tolerance
-  ``GrackleCooling:convergence_limit``, 1e-2; the trapezoid rule on a field
-  that changes by tens of percent per snapshot, about 1e-2; a lag of up to
-  one gas step between the field the chemistry used and the field the
-  snapshot records, about 3e-2 at this run's field growth rate; float32
-  storage, 1e-5. That is 5e-2, and ``exp(2 * 0.05) - 1 = 0.105`` at two
-  e-folds, hence 0.10. The median ratio of measured to predicted e-folds
-  over each full window is printed as well.
+  linearly: the trapezoid rule on a field that changes by tens of percent
+  per snapshot, about 1e-2; a lag of up to one gas step between the field
+  the chemistry used and the field the snapshot records, about 3e-2 at
+  this run's field growth rate; float32 storage, 1e-5. That is 4e-2, and
+  ``exp(2 * 0.04) - 1 = 0.0833`` at two e-folds, hence 0.08. The median
+  ratio of measured to predicted e-folds over each full window is printed
+  as well.
 
 * Self-shielded configuration: the measured shielding ratio
 
@@ -167,8 +166,9 @@ what the run happens to produce.
   below ``--thick-f-max`` (default 1e-2) so the leg really is strongly
   shielded. The bar is looser than the thin one because ``r`` is a ratio of
   a small ln-drop to a large integral: at ``f_shield ~ 1e-3`` the measured
-  ln-drop is of order 1e-2, so the same absolute 1e-2 Grackle sub-cycling
-  error is a larger relative error on the numerator.
+  ln-drop is of order 1e-2, so the same absolute few-times-1e-2
+  trapezoid/lag error (see the thin budget above) is a larger relative
+  error on the numerator.
 
 Rate normalisation (reported, never gated)
 ------------------------------------------
@@ -278,7 +278,7 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--thin-tol",
         type=float,
-        default=0.10,
+        default=0.08,
         help="Max median relative error on x_H2 at the end of the window, "
         "thin configuration (default: %(default)s)",
     )

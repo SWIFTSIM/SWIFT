@@ -77,7 +77,7 @@ python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapsho
 Pass the run's `--h2-self-shielding` (0, 2 or 3), and check a mode-0 run
 with `--config thin`, since no shielding applies. `--config draine_spectrum`
 uses the `thin` bar. For `thin`, the median relative
-error on the H2 abundance must be at most 10% where the predicted
+error on the H2 abundance must be at most 8% where the predicted
 destruction reaches two e-folds. For `thick`, the measured ratio of the
 shielded to the unshielded destruction rate must be within 25% of the
 predicted `f_shield`. The script also prints radial profiles of `G_0`, `k_diss,0`,
