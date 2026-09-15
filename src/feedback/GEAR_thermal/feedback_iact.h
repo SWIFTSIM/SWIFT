@@ -289,10 +289,10 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
-    float delta_p_SN[3];
+    float delta_p_supernovae[3];
     for (int i = 0; i < 3; i++) {
-      delta_p_SN[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
-      xpj->feedback_data.delta_p[i] += delta_p_SN[i];
+      delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
 
     /* Add the metals */
@@ -301,17 +301,20 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
     }
 
-    /* delta_p_SN is comoving; a_inv gives the physical momentum actually
-       applied (matches feedback_update_part()'s v_full += p/m). */
-    const float delta_p_mag_SN_comoving =
-        sqrtf(delta_p_SN[0] * delta_p_SN[0] + delta_p_SN[1] * delta_p_SN[1] +
-              delta_p_SN[2] * delta_p_SN[2]);
-    const float delta_p_mag_SN = delta_p_mag_SN_comoving * cosmo->a_inv;
+    /* delta_p_supernovae is comoving; a_inv gives the physical momentum
+       actually applied (matches feedback_update_part()'s v_full += p/m). */
+    const float delta_p_mag_supernovae_comoving =
+        sqrtf(delta_p_supernovae[0] * delta_p_supernovae[0] +
+              delta_p_supernovae[1] * delta_p_supernovae[1] +
+              delta_p_supernovae[2] * delta_p_supernovae[2]);
+    const float delta_p_mag_supernovae =
+        delta_p_mag_supernovae_comoving * cosmo->a_inv;
     tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_SN,
-        &xpj->tracers_data.feedback_cumulative.energy_SN,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_SN,
-        delta_p_mag_SN, (float)du, delta_p_mag_SN / (float)new_mass);
+        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
+        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+        delta_p_mag_supernovae, (float)du,
+        delta_p_mag_supernovae / (float)new_mass);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;

@@ -107,53 +107,49 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   int num = 6;
 
   list[0] = io_make_physical_output_field(
-      "CumulativeMomentumFromSN", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
-      tracers_data.feedback_cumulative.momentum_SN,
+      "CumulativeMomentumFromSupernovae", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f,
+      xparts, tracers_data.feedback_cumulative.momentum_supernovae,
       /*can convert to comoving=*/0,
-      "Cumulative momentum magnitude received from SN over this particle's "
-      "lifetime (scalar sum of |delta_p| per event, not a vector sum: "
-      "isotropic kicks would otherwise cancel out).");
+      "Cumulative |delta_p| per event from supernovae over this particle's "
+      "lifetime (scalar sum, not vector: isotropic kicks would else "
+      "cancel).");
 
   list[1] = io_make_physical_output_field(
       "CumulativeMomentumFromWinds", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
       tracers_data.feedback_cumulative.momentum_winds,
       /*can convert to comoving=*/0,
-      "Cumulative momentum magnitude received from stellar winds over this "
-      "particle's lifetime. Same scalar-sum convention as "
-      "CumulativeMomentumFromSN.");
+      "Same convention as CumulativeMomentumFromSupernovae, for stellar "
+      "winds.");
 
   list[2] = io_make_physical_output_field(
-      "CumulativeEnergyFromSN", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
-      xparts, tracers_data.feedback_cumulative.energy_SN,
+      "CumulativeEnergyFromSupernovae", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, xparts,
+      tracers_data.feedback_cumulative.energy_supernovae,
       /*can convert to comoving=*/0,
-      "Cumulative specific internal energy received from SN over this "
-      "particle's lifetime.");
+      "Cumulative specific internal energy received from supernovae over "
+      "this particle's lifetime.");
 
   list[3] = io_make_physical_output_field(
       "CumulativeEnergyFromWinds", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
       /*can convert to comoving=*/0,
-      "Cumulative specific internal energy received from stellar winds over "
-      "this particle's lifetime. Unlike CumulativeEnergyFromSN this is a "
-      "conservation residual (budgeted energy minus the actual kinetic "
-      "energy change from the kick), not a strictly positive injected "
-      "quantity: known to go negative when the gas was already moving "
-      "towards the star before the kick.");
+      "Cumulative specific internal energy received from stellar winds. "
+      "A conservation residual, not strictly positive: can go negative "
+      "when the gas was already moving towards the star before the kick.");
 
   list[4] = io_make_physical_output_field(
-      "MaxKickVelocityFromSN", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
-      tracers_data.feedback_cumulative.max_kick_velocity_SN,
+      "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
+      tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from SN "
-      "(outflow diagnostic: peak coupling speed near the source, before "
-      "deceleration).");
+      "Largest single-event kick velocity this particle received from "
+      "supernovae (outflow diagnostic).");
 
   list[5] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_winds,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from "
-      "stellar winds. Same convention as MaxKickVelocityFromSN.");
+      "Same convention as MaxKickVelocityFromSupernovae, for stellar "
+      "winds.");
 
   return num;
 }
@@ -175,11 +171,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "DensityAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.snii_events.density_at_last_event,
       /*can convert to comoving=*/0,
-      "Physical gas density at the star's own location (kernel-averaged, "
-      "same value the enrichment loop already computes) at its most recent "
-      "SNII event. 0 if it has never had one. Compare NumberOfSNIIEvents "
-      "between two snapshots to see if any events were missed between "
-      "them.");
+      "Gas density at the star's location at its most recent SNII event. "
+      "0 if it has never had one.");
 
   if (with_cosmology) {
     list[2] = io_make_physical_output_field(

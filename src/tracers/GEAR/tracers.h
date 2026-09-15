@@ -252,11 +252,11 @@ static INLINE void tracers_first_init_xpart(
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
-  xp->tracers_data.feedback_cumulative.momentum_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.energy_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.max_kick_velocity_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
 }
 
@@ -272,7 +272,7 @@ static INLINE void tracers_first_init_xpart(
  * otherwise be inseparable.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
- * field (feedback_cumulative.momentum_SN/winds).
+ * field (feedback_cumulative.momentum_supernovae/winds).
  * @param energy_channel Pointer to this channel's cumulative-energy field,
  * or NULL if this channel has no separate thermal contribution to track.
  * @param max_kick_velocity_channel Pointer to this channel's max-kick
