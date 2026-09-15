@@ -154,10 +154,9 @@ void radiation_snapshot_part_propagation(struct part *p,
   /* Stable comoving density snapshot, cached unconditionally (not gated on
    * ISRF_propagation below): the gradient loop's `grad(u)` accumulation
    * (radiation_propagation_iact.h) always runs, even in injection-only
-   * mode and reads
-   * this snapshot. See this field's own doxygen (feedback_struct.h) for
-   * why the density loop cannot use a live `p->rho` instead, and why it
-   * must never be left at 0.f. */
+   * mode, and reads this snapshot. See this field's own doxygen
+   * (feedback_struct.h) for why the density loop cannot use a live `p->rho`
+   * instead, and why it must never be left at 0.f. */
   const float rho_comoving = hydro_get_comoving_density(p);
   p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
 

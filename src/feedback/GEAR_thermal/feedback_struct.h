@@ -52,7 +52,8 @@ struct feedback_isrf_band_data {
 
   /*! Local specific radiation field of each band, internal
       specific-energy units (per-unit-mass, like this codebase's own
-      hydro `u`; NOT cgs, unlike mean_excess_photon_energy_HI above). The
+      hydro `u`; NOT cgs, unlike
+      #feedback_spart_data.radiation.mean_excess_photon_energy_HI). The
       LW band feeds Grackle's RT_H2_dissociation_rate (COOLING_GRACKLE_MODE
       > 1 only) separately from the FUV band, since the two bands carry
       different dust opacities. An
@@ -60,8 +61,8 @@ struct feedback_isrf_band_data {
       illuminating star(s)' most recently computed contribution, summed
       across every star that touched this particle in the same step
       (#feedback_part_data.ISRF_last_touch_ti), then held unchanged until the
-     next step any star touches it again. Never cleared by cooling: a reader
-     gets whatever was last written, however long ago that was.
+      next step any star touches it again. Never cleared by cooling: a reader
+      gets whatever was last written, however long ago that was.
 
       `a`-SCALING: PHYSICAL and mass-specific, with no scale-factor exponent
       of its own beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS already implies
@@ -115,8 +116,7 @@ struct feedback_isrf_band_data {
 
   /*! `(1/rho) div(rho F)` accumulator, density loop
       (radiation_propagation_iact.h). Scratch: zeroed every h-iteration by
-      radiation_init_part_propagation, like the propagation accumulators
-      used to be kept here. PHYSICAL: the density loop converts its
+      radiation_init_part_propagation. PHYSICAL: the density loop converts its
       comoving-coordinate estimate before accumulating, so the snapshot
       output's declared `0.f` exponent (tracers_io.h) is correct. */
   float div_specific_flux;
@@ -133,7 +133,7 @@ struct feedback_isrf_band_data {
       PHYSICAL, like every accumulator the pairwise operators fill. */
   float dissipation_u;
 
-  /*! Kernel-mean of the neighbours' |rho_prev*u_*_prev|, density loop
+  /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop
       (radiation_propagation_iact.h): the local field-scale reference the
       negativity trigger (#radiation_end_gradient_propagation)
       divides an undershoot by. Scratch: zeroed every h-iteration alongside
@@ -244,8 +244,8 @@ struct feedback_part_data {
   /*! Comoving density snapshot, cached once per step by
       radiation_snapshot_part_propagation at the same call site as
       #feedback_isrf_band_data.u_prev (before this step's density accumulators
-     are reset), so it holds the previous step's fully-converged comoving
-     density. Needed because the density loop's `div(F)` accumulation
+      are reset), so it holds the previous step's fully-converged comoving
+      density. Needed because the density loop's `div(F)` accumulation
       (radiation_propagation_iact.h) runs interleaved with SPH's own density
       sum: `p->rho` is a partial accumulator there, not a density, until the
       density ghost finalizes it. The gradient loop's `grad(u)` accumulation
@@ -269,7 +269,7 @@ struct feedback_part_data {
       already-decided integer timestep, alongside the physical timestep
       #dt_prev it was derived from. Shared by both bands (unlike
       #feedback_isrf_band_data.kappa): the propagation speed is a property of
-     the particle's resolution and timestep, not of its dust opacity. */
+      the particle's resolution and timestep, not of its dust opacity. */
   float c_hyp;
 
   /*! This particle's own physical timestep, cached alongside
@@ -281,27 +281,27 @@ struct feedback_part_data {
 
   /*! With ISRF_propagation off: simulation step (#engine.ti_current)
       #feedback_isrf_band_data.u were last written at.
-     radiation_iact_nonsym_feedback_apply compares this against the current
-     step: a match means some star already wrote this step, so a further touch
-     (a second illuminating star) sums into the existing value; a mismatch means
-     this is the first touch this step, so #feedback_isrf_band_data.u are zeroed
-     before summing. This is what makes the field an instantaneous strength
-     rather than an ever-growing total, while still summing multiple
+      radiation_iact_nonsym_feedback_apply compares this against the current
+      step: a match means some star already wrote this step, so a further touch
+      (a second illuminating star) sums into the existing value; a mismatch
+      means this is the first touch this step, so #feedback_isrf_band_data.u are
+      zeroed before summing. This is what makes the field an instantaneous
+      strength rather than an ever-growing total, while still summing multiple
       simultaneously-illuminating stars correctly within one step. With
       ISRF_propagation on, this is only bookkeeping (the last step any star
       touched this particle): the dose-reservoir form never resets
       #feedback_isrf_band_data.u, so no consumer relies on it there.
-     feedback_first_init_part sets this to -1 (never a valid step) so the very
-     first touch of a particle's life also resets rather than summing onto
-     uninitialized memory. */
+      feedback_first_init_part sets this to -1 (never a valid step) so the very
+      first touch of a particle's life also resets rather than summing onto
+      uninitialized memory. */
   integertime_t ISRF_last_touch_ti;
 
   /*! Has this particle been illuminated (any band's #feedback_isrf_band_data.u
-     nonzero) by any star's injection pass, and is that illumination episode
-     still live? Dedicated flag, not inferred from #feedback_isrf_band_data.u
-     itself, since those now reset every step a star touches this particle and
-     so cannot signal "newly illuminated" via a zero-crossing. Mirrors
-     #is_ionized's claimed/not-claimed cycle, including the reset half: gates a
+      nonzero) by any star's injection pass, and is that illumination episode
+      still live? Dedicated flag, not inferred from #feedback_isrf_band_data.u
+      itself, since those now reset every step a star touches this particle and
+      so cannot signal "newly illuminated" via a zero-crossing. Mirrors
+      #is_ionized's claimed/not-claimed cycle, including the reset half: gates a
       first-touch-only timestep_sync_part call in
       radiation_iact_nonsym_feedback_apply, mirroring
       feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's own
