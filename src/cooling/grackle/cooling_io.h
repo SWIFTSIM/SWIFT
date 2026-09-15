@@ -340,6 +340,24 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_self_shielding = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_self_shielding", 0);
 
+  /* With the ISRF on and H2 tracked, the local LW dissociation rate
+     (cooling_get_LW_dissociation_rate_subgrid) reaches Grackle unshielded
+     unless H2_self_shielding selects a column-length mode: at
+     N_H2 = 1e20 cm^-2 the Wolcott-Green & Haiman (2019) shielding factor
+     is of order 1e-5, so H2 cannot survive in an illuminated molecular
+     cloud without it. */
+  if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
+      cooling->H2_self_shielding == 0) {
+    warning(
+        "GEARFeedback:with_photoelectric_heating is on with "
+        "GrackleCooling:primordial_chemistry >= 2 (H2 tracked) and "
+        "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
+        "dissociation rate this feature injects reaches Grackle with no "
+        "H2 self-shielding applied. Set H2_self_shielding to 2 (particle "
+        "smoothing length) or 3 (local Jeans length) unless this is "
+        "deliberate.");
+  }
+
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:max_steps", 10000);
