@@ -252,7 +252,7 @@ radiation_iact_nonsym_feedback_apply(
      extinction is applied receiver-side, using pj's own local column density,
      rather than at the source (see radiation_get_part_ISRF_extinction_factors
      for the extinction formula itself). */
-  if (si->feedback_data.radiation.L_band[ISRF_BAND_FUV] != 0.0 ||
+  if (si->feedback_data.radiation.L_band[ISRF_BAND_PE] != 0.0 ||
       si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);

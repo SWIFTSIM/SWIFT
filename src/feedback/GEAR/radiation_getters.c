@@ -742,31 +742,31 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
 /**
  * @brief Get the non-IMF-integrated non-ionizing FUV band emission rate at
  * a given mass, from a 1D (mass-only) table. Mirrors
- * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_fuv.
+ * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_pe.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
  * @return FUV band emission rate, internal units.
  */
-float radiation_get_l_fuv_from_raw(const struct radiation *rad, float log_m) {
+float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  return (float)exp10(interpolate_1d(&rad->raw.l_fuv, log_m));
+  return (float)exp10(interpolate_1d(&rad->raw.l_pe, log_m));
 }
 
 /**
  * @brief Get the non-IMF-integrated FUV band emission rate at a given mass
  * and metallicity, from a 2D ("M,Z") table. Mirrors
- * #radiation_get_luminosities_from_raw_2d exactly, on #rad->raw.l_fuv_2d.
+ * #radiation_get_luminosities_from_raw_2d exactly, on #rad->raw.l_pe_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
  * @return FUV band emission rate, internal units.
  */
-float radiation_get_l_fuv_from_raw_2d(const struct radiation *rad, float log_z,
-                                      float log_m) {
+float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  return (float)exp10(interpolate_2d(&rad->raw.l_fuv_2d, log_z, log_m));
+  return (float)exp10(interpolate_2d(&rad->raw.l_pe_2d, log_z, log_m));
 }
 
 /**
@@ -781,17 +781,17 @@ float radiation_get_l_fuv_from_raw_2d(const struct radiation *rad, float log_z,
  * table.
  * @return FUV band emission rate, internal units.
  */
-float radiation_get_star_l_fuv(const struct radiation *rad, float log_m,
-                               float log_z) {
+float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
+                              float log_z) {
   if (rad->is_2d) {
-    return radiation_get_l_fuv_from_raw_2d(rad, log_z, log_m);
+    return radiation_get_l_pe_from_raw_2d(rad, log_z, log_m);
   }
-  return radiation_get_l_fuv_from_raw(rad, log_m);
+  return radiation_get_l_pe_from_raw(rad, log_m);
 }
 
 /**
  * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
- * given mass, from a 1D (mass-only) table. See #radiation_get_l_fuv_from_raw
+ * given mass, from a 1D (mass-only) table. See #radiation_get_l_pe_from_raw
  * (identical shape, on #rad->raw.l_lw).
  *
  * @param rad The #radiation model.
@@ -806,7 +806,7 @@ float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m) {
 /**
  * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
  * given mass and metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_fuv_from_raw_2d (identical shape, on #rad->raw.l_lw_2d).
+ * #radiation_get_l_pe_from_raw_2d (identical shape, on #rad->raw.l_lw_2d).
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -821,7 +821,7 @@ float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
 
 /**
  * @brief Get a single star's Lyman-Werner band emission rate at a given
- * mass, dispatching on #rad->is_2d. See #radiation_get_star_l_fuv (identical
+ * mass, dispatching on #rad->is_2d. See #radiation_get_star_l_pe (identical
  * shape); only valid when #radiation.has_raw_ISRF is set.
  *
  * @param rad The #radiation model.
@@ -842,7 +842,7 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @brief Get the IMF-averaged non-ionizing FUV band emission rate per mass,
  * from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_integral exactly, on
- * #rad->integrated.l_fuv. Only valid when #radiation.has_integrated_ISRF
+ * #rad->integrated.l_pe. Only valid when #radiation.has_integrated_ISRF
  * is set.
  *
  * @param rad The #radiation model.
@@ -850,19 +850,19 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @param log_m2 The upper mass in log.
  * @return FUV band emission rate per Msun of stars formed, internal units.
  */
-float radiation_get_l_fuv_from_integral(const struct radiation *rad,
-                                        float log_m1, float log_m2) {
+float radiation_get_l_pe_from_integral(const struct radiation *rad,
+                                       float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  const float l_fuv_1 = interpolate_1d(&rad->integrated.l_fuv, log_m1);
-  const float l_fuv_2 = interpolate_1d(&rad->integrated.l_fuv, log_m2);
-  return l_fuv_2 - l_fuv_1;
+  const float l_pe_1 = interpolate_1d(&rad->integrated.l_pe, log_m1);
+  const float l_pe_2 = interpolate_1d(&rad->integrated.l_pe, log_m2);
+  return l_pe_2 - l_pe_1;
 }
 
 /**
  * @brief Get the IMF-averaged FUV band emission rate per mass, at a given
  * metallicity, from a 2D ("M,Z") table. Mirrors
  * #radiation_get_luminosities_from_integral_2d exactly (including the
- * top-edge nudge), on #rad->integrated.l_fuv_2d.
+ * top-edge nudge), on #rad->integrated.l_pe_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -870,21 +870,21 @@ float radiation_get_l_fuv_from_integral(const struct radiation *rad,
  * @param log_m2 The upper mass in log.
  * @return FUV band emission rate per Msun of stars formed, internal units.
  */
-float radiation_get_l_fuv_from_integral_2d(const struct radiation *rad,
-                                           float log_z, float log_m1,
-                                           float log_m2) {
+float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
+                                          float log_z, float log_m1,
+                                          float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  const struct interpolation_2d *interp = &rad->integrated.l_fuv_2d;
-  const float l_fuv_1 = interpolate_2d(
+  const struct interpolation_2d *interp = &rad->integrated.l_pe_2d;
+  const float l_pe_1 = interpolate_2d(
       interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
-  const float l_fuv_2 = interpolate_2d(
+  const float l_pe_2 = interpolate_2d(
       interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
-  return l_fuv_2 - l_fuv_1;
+  return l_pe_2 - l_pe_1;
 }
 
 /**
  * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass,
- * from a 1D (mass-only) table. See #radiation_get_l_fuv_from_integral
+ * from a 1D (mass-only) table. See #radiation_get_l_pe_from_integral
  * (identical shape, on #rad->integrated.l_lw).
  *
  * @param rad The #radiation model.
@@ -904,7 +904,7 @@ float radiation_get_l_lw_from_integral(const struct radiation *rad,
 /**
  * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass, at
  * a given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_fuv_from_integral_2d (identical shape, on
+ * #radiation_get_l_pe_from_integral_2d (identical shape, on
  * #rad->integrated.l_lw_2d).
  *
  * @param rad The #radiation model.

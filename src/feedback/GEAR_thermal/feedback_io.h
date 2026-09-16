@@ -29,7 +29,7 @@
  * plural "Densities"/"SmoothingLengths" used for the matching snapshot
  * output) as OPTIONAL fields into #feedback_isrf_band_data.u.
  * The snapshot output for the same quantity
- * (#convert_part_u_FUV/convert_part_u_LW, src/tracers/GEAR/tracers_io.h)
+ * (#convert_part_u_PE/convert_part_u_LW, src/tracers/GEAR/tracers_io.h)
  * deliberately uses the plural "FUVSpecificEnergies"/"LWSpecificEnergies"
  * instead, so a snapshot cannot be fed back in as an IC unmodified. This
  * is a validation/testing tool, not a normal production IC input, and is
@@ -63,7 +63,7 @@ INLINE static int feedback_read_particles(struct part *parts,
 
   list[0] = io_make_input_field("FUVSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                feedback_data.isrf_band[ISRF_BAND_FUV].u);
+                                feedback_data.isrf_band[ISRF_BAND_PE].u);
   list[1] = io_make_input_field("LWSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_band[ISRF_BAND_LW].u);

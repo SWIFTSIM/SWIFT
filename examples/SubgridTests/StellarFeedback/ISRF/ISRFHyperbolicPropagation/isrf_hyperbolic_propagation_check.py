@@ -114,7 +114,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # src/feedback/GEAR/radiation.h
-SIGMA_D_FUV_CGS = 9e-22
+SIGMA_D_PE_CGS = 9e-22
 SIGMA_D_LW_CGS = 1.5e-21
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
@@ -213,14 +213,14 @@ def load_snapshot(path):
         rho = gas["Densities"][:].astype(np.float64)
         h = gas["SmoothingLengths"][:].astype(np.float64)
         mass = gas["Masses"][:].astype(np.float64)
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1]
 
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
         star_h = float(star["SmoothingLengths"][0])
-        L_FUV = float(star["FUVLuminosities"][0])
+        L_PE = float(star["FUVLuminosities"][0])
         L_LW = float(star["LWLuminosities"][0])
 
     return dict(
@@ -233,12 +233,12 @@ def load_snapshot(path):
         rho=rho,
         h=h,
         mass=mass,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
         Z=Z,
         star_pos=star_pos,
         star_h=star_h,
-        L_FUV=L_FUV,
+        L_PE=L_PE,
         L_LW=L_LW,
     )
 
@@ -553,13 +553,13 @@ def main():
     rho_mean = float(np.mean(snap["rho"]))
     h_mean = float(np.median(snap["h"]))
 
-    lambda_fuv = (
+    lambda_pe = (
         analytic_lambda_cgs(
             Z_mean,
             rho_mean,
             snap["unit_length_cgs"],
             snap["unit_mass_cgs"],
-            SIGMA_D_FUV_CGS,
+            SIGMA_D_PE_CGS,
         )
         / snap["unit_length_cgs"]
     )
@@ -586,7 +586,7 @@ def main():
 
     print(f"Snapshot: {files[-1]} (t={snap['time']:.4e})")
     print(f"Mean Z={Z_mean:.4e}, mean rho={rho_mean:.4e} (internal units)")
-    print(f"h/lambda: FUV={h_mean / lambda_fuv:.3f}, LW={h_mean / lambda_lw:.3f}")
+    print(f"h/lambda: FUV={h_mean / lambda_pe:.3f}, LW={h_mean / lambda_lw:.3f}")
     print(f"Fit/compare radial range: [{r_min:.4e}, {r_max:.4e}] (internal units)")
     print()
     print("Solving each band's discrete steady state on the run's own real")
@@ -595,7 +595,7 @@ def main():
     c_light_internal = C_LIGHT_CGS * snap["unit_time_cgs"] / snap["unit_length_cgs"]
     results = {}
     for band, lam, sigma_d, L_band, u_sim in (
-        ("FUV", lambda_fuv, SIGMA_D_FUV_CGS, snap["L_FUV"], snap["u_fuv"]),
+        ("FUV", lambda_pe, SIGMA_D_PE_CGS, snap["L_PE"], snap["u_pe"]),
         ("LW", lambda_lw, SIGMA_D_LW_CGS, snap["L_LW"], snap["u_lw"]),
     ):
         u_pred, _, f_pred, iters, converged = discrete_steady_state(
@@ -684,7 +684,7 @@ def main():
                 snap["rho"],
                 snap["unit_length_cgs"],
                 snap["unit_mass_cgs"],
-                SIGMA_D_FUV_CGS if band == "FUV" else SIGMA_D_LW_CGS,
+                SIGMA_D_PE_CGS if band == "FUV" else SIGMA_D_LW_CGS,
             )
             / snap["unit_length_cgs"]
         )
@@ -728,11 +728,11 @@ def main():
         )
 
     # Informational only: global negativity and profile monotonicity.
-    n_negative = int(np.sum(snap["u_fuv"] < 0) + np.sum(snap["u_lw"] < 0))
+    n_negative = int(np.sum(snap["u_pe"] < 0) + np.sum(snap["u_lw"] < 0))
     print()
     print(
         f"(informational) particles with u < 0: "
-        f"{n_negative}/{2 * len(snap['u_fuv'])}"
+        f"{n_negative}/{2 * len(snap['u_pe'])}"
     )
 
     if opt.check_chyp_invariance:
@@ -740,9 +740,9 @@ def main():
         print("Re-solving FUV at a 5x smaller arbitrary c_hyp...")
         u_alt, _, _, _, conv_alt = discrete_steady_state(
             snap,
-            lambda_fuv,
-            snap["L_FUV"],
-            SIGMA_D_FUV_CGS,
+            lambda_pe,
+            snap["L_PE"],
+            SIGMA_D_PE_CGS,
             opt.max_iter,
             opt.iter_tol,
             opt.relax,

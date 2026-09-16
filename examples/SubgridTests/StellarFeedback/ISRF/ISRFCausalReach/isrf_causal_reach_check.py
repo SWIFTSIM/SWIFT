@@ -199,7 +199,7 @@ def load_snapshot(path):
         pos = gas["Coordinates"][:, :]
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
@@ -209,7 +209,7 @@ def load_snapshot(path):
         pos=pos,
         h=h,
         ids=ids,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
         star_pos=star_pos,
     )
@@ -350,7 +350,7 @@ def main():
             f"r_front={c_hyp * (t - t0):.4e} ({c_hyp * (t - t0) / h_med:.2f} h) ---"
         )
 
-        for band, u_field in (("FUV", "u_fuv"), ("LW", "u_lw")):
+        for band, u_field in (("FUV", "u_pe"), ("LW", "u_lw")):
             u_all = snap[u_field]
             check_finite(u_field, u_all, fn, band=band)
             r, u = r_all[gas_mask], u_all[gas_mask]

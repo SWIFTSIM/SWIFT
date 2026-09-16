@@ -163,28 +163,26 @@ static struct cell *make_pair_cell(
   struct feedback_part_data *fdj = &pj->feedback_data;
   fdi->rho_prev = test_rho_prev_i;
   fdj->rho_prev = test_rho_prev_j;
-  fdi->isrf_band[ISRF_BAND_FUV].u = test_u_FUV_i;
-  fdj->isrf_band[ISRF_BAND_FUV].u = test_u_FUV_j;
+  fdi->isrf_band[ISRF_BAND_PE].u = test_u_FUV_i;
+  fdj->isrf_band[ISRF_BAND_PE].u = test_u_FUV_j;
   fdi->isrf_band[ISRF_BAND_LW].u = test_u_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].u = test_u_LW_j;
   fdi->c_hyp = test_c_hyp;
   fdj->c_hyp = test_c_hyp;
-  fdi->isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger =
+  fdi->isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger =
       test_alpha_trigger_FUV_i;
-  fdj->isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger =
+  fdj->isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger =
       test_alpha_trigger_FUV_j;
   fdi->isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger =
       test_alpha_trigger_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger =
       test_alpha_trigger_LW_j;
-  fdi->isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor =
-      test_alpha_floor_FUV_i;
-  fdj->isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor =
-      test_alpha_floor_FUV_j;
+  fdi->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_FUV_i;
+  fdj->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_FUV_j;
   fdi->isrf_band[ISRF_BAND_LW].dissipation_alpha_floor = test_alpha_floor_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].dissipation_alpha_floor = test_alpha_floor_LW_j;
-  fdi->isrf_band[ISRF_BAND_FUV].dissipation_u = 0.f;
-  fdj->isrf_band[ISRF_BAND_FUV].dissipation_u = 0.f;
+  fdi->isrf_band[ISRF_BAND_PE].dissipation_u = 0.f;
+  fdj->isrf_band[ISRF_BAND_PE].dissipation_u = 0.f;
   fdi->isrf_band[ISRF_BAND_LW].dissipation_u = 0.f;
   fdj->isrf_band[ISRF_BAND_LW].dissipation_u = 0.f;
 
@@ -287,10 +285,10 @@ static void check_ratio(float h_ratio, float bulk_velocity,
 
   const char *band_name[2] = {"FUV", "LW"};
   const double diss_i[2] = {
-      (double)pi->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_u,
+      (double)pi->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u,
       (double)pi->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u};
   const double diss_j[2] = {
-      (double)pj->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_u,
+      (double)pj->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u,
       (double)pj->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u};
   const double u_i[2] = {(double)test_u_FUV_i, (double)test_u_LW_i};
   const double u_j[2] = {(double)test_u_FUV_j, (double)test_u_LW_j};
@@ -338,8 +336,8 @@ static void check_ratio(float h_ratio, float bulk_velocity,
           (double)h_ratio, band_name[b], sum, scale, fabs(sum) / scale);
   }
 
-  out[0] = pi->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_u;
-  out[1] = pj->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_u;
+  out[0] = pi->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u;
+  out[1] = pj->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u;
   out[2] = pi->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u;
   out[3] = pj->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u;
 

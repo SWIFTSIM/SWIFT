@@ -199,7 +199,7 @@ struct radiation {
       Exception: #main_sequence_lifetime_2d stores log10(Myr), not
       log10(internal units); see its own doxygen below for why.
       #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess/teff/
-      l_fuv/l_lw counterparts are each an anonymous union (mirroring
+      l_pe/l_lw counterparts are each an anonymous union (mirroring
      src/hydro/SPHENIX/ hydro_part.h's density/force union idiom): #is_2d is
      fixed for a given #radiation instance's whole lifetime, so only one
      dimensionality's interpolation table is ever live, and storing both
@@ -241,7 +241,7 @@ struct radiation {
           dataset), used as a FALLBACK to split #luminosities into
           sub-Lyman-continuum bands (L_FUV/L_LW; see
           radiation_planck_band_fraction()) when the loaded table has no
-          direct #l_fuv/#l_lw ("L_FUV"/"L_LW") dataset of its own (see
+          direct #l_pe/#l_lw ("L_FUV"/"L_LW") dataset of its own (see
           #radiation.has_raw_ISRF/#has_integrated_ISRF below: a table
           with those present is read directly instead, at both the
           individual-star and population/SSP call sites, and Teff need not
@@ -269,16 +269,16 @@ struct radiation {
           quantity's union layout, even though no live table is currently
           1D with #has_raw_ISRF=1; revisit if pychem confirms no 1D
           table will ever carry this dataset. */
-      struct interpolation_1d l_fuv;
+      struct interpolation_1d l_pe;
 
-      /*! #l_fuv, mass x metallicity ("M,Z" dimensionality) variant. */
-      struct interpolation_2d l_fuv_2d;
+      /*! #l_pe, mass x metallicity ("M,Z" dimensionality) variant. */
+      struct interpolation_2d l_pe_2d;
     };
 
     union {
       /*! Lyman-Werner band (11.2-13.6 eV) energy emission rate, read
           directly from pychem's own "L_LW" dataset when present. See
-          #l_fuv's own doxygen. */
+          #l_pe's own doxygen. */
       struct interpolation_1d l_lw;
 
       /*! #l_lw, mass x metallicity variant. */
@@ -355,16 +355,16 @@ struct radiation {
           stars formed, read directly from pychem's "Integrated_L_FUV"
           dataset when present (see #radiation.has_integrated_ISRF).
           Linear (un-logged) value space, like #luminosities above. */
-      struct interpolation_1d l_fuv;
+      struct interpolation_1d l_pe;
 
-      /*! #l_fuv, mass x metallicity variant. */
-      struct interpolation_2d l_fuv_2d;
+      /*! #l_pe, mass x metallicity variant. */
+      struct interpolation_2d l_pe_2d;
     };
 
     union {
       /*! IMF-integrated Lyman-Werner band emission rate per Msun of stars
           formed, read directly from pychem's "Integrated_L_LW" dataset.
-          See #l_fuv's own doxygen. */
+          See #l_pe's own doxygen. */
       struct interpolation_1d l_lw;
 
       /*! #l_lw, mass x metallicity variant. */

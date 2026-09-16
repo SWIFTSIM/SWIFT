@@ -65,7 +65,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Same constants as the sibling ISRF*/checks (src/feedback/GEAR/radiation.h).
-SIGMA_D_FUV_CGS = 9e-22
+SIGMA_D_PE_CGS = 9e-22
 SIGMA_D_LW_CGS = 1.5e-21
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
@@ -292,7 +292,7 @@ def load_snapshot(path: str) -> dict:
         h = gas["SmoothingLengths"][:].astype(np.float64)
         rho = gas["Densities"][:].astype(np.float64)
         mass = gas["Masses"][:].astype(np.float64)
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
 
@@ -308,7 +308,7 @@ def load_snapshot(path: str) -> dict:
         h=h,
         rho=rho,
         mass=mass,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
         Z=Z,
         star_mass=star_mass,
@@ -443,22 +443,22 @@ def main() -> None:
 
     # A NaN specific energy is neither < 0 nor summable, so it would otherwise
     # read as a false PASS/NaN in the two gated legs below rather than a FAIL.
-    n_nonfinite_fuv = np.array([int(np.sum(~np.isfinite(s["u_fuv"]))) for s in snaps])
+    n_nonfinite_pe = np.array([int(np.sum(~np.isfinite(s["u_pe"]))) for s in snaps])
     n_nonfinite_lw = np.array([int(np.sum(~np.isfinite(s["u_lw"]))) for s in snaps])
-    bad = (n_nonfinite_fuv > 0) | (n_nonfinite_lw > 0)
+    bad = (n_nonfinite_pe > 0) | (n_nonfinite_lw > 0)
     if np.any(bad):
         i = int(np.argmax(bad))
         raise RuntimeError(
             f"Non-finite specific energy at snapshot {i} (t={times[i]:.6e}): "
-            f"{n_nonfinite_fuv[i]} FUV / {n_nonfinite_lw[i]} LW particles out of "
-            f"{len(snaps[i]['u_fuv'])} are NaN/inf. This is a corrupted radiation "
+            f"{n_nonfinite_pe[i]} FUV / {n_nonfinite_lw[i]} LW particles out of "
+            f"{len(snaps[i]['u_pe'])} are NaN/inf. This is a corrupted radiation "
             "field (a simulation-side defect), not a check-script threshold "
             "issue: fix the run, not this gate."
         )
 
-    E_fuv = np.array([np.sum(s["mass"] * s["u_fuv"]) for s in snaps])
+    E_pe = np.array([np.sum(s["mass"] * s["u_pe"]) for s in snaps])
     E_lw = np.array([np.sum(s["mass"] * s["u_lw"]) for s in snaps])
-    min_u_fuv = np.array([np.min(s["u_fuv"]) for s in snaps])
+    min_u_pe = np.array([np.min(s["u_pe"]) for s in snaps])
     min_u_lw = np.array([np.min(s["u_lw"]) for s in snaps])
 
     unit_length_cgs = snaps[0]["unit_length_cgs"]
@@ -507,19 +507,18 @@ def main() -> None:
     # the negativity report. Both are the median over the last three
     # pre-death snapshots, kept as two distinct quantities rather than one
     # rescaled by mass, so each name matches what it actually computes.
-    pre_death_level_fuv = float(np.median(E_fuv[pre_mask][-3:]))
+    pre_death_level_pe = float(np.median(E_pe[pre_mask][-3:]))
     pre_death_level_lw = float(np.median(E_lw[pre_mask][-3:]))
-    pre_death_median_u_fuv = float(
-        np.median([np.median(snaps[i]["u_fuv"]) for i in pre_indices[-3:]])
+    pre_death_median_u_pe = float(
+        np.median([np.median(snaps[i]["u_pe"]) for i in pre_indices[-3:]])
     )
     pre_death_median_u_lw = float(
         np.median([np.median(snaps[i]["u_lw"]) for i in pre_indices[-3:]])
     )
 
     t_rel_post = times[post_mask] - t_death
-    tau_fuv_measured_myr = (
-        fit_efold_time(t_rel_post, E_fuv[post_mask], pre_death_level_fuv)
-        * unit_time_myr
+    tau_pe_measured_myr = (
+        fit_efold_time(t_rel_post, E_pe[post_mask], pre_death_level_pe) * unit_time_myr
     )
     tau_lw_measured_myr = (
         fit_efold_time(t_rel_post, E_lw[post_mask], pre_death_level_lw) * unit_time_myr
@@ -540,22 +539,22 @@ def main() -> None:
     c_hyp_cgs = c_hyp * 1e5
     rho_cgs = rho_med_internal * unit_mass_cgs / unit_length_cgs**3
 
-    tau_fuv_expected_s = 1.0 / (
-        c_hyp_cgs * kappa_eff_mass_opacity_cgs(Z, SIGMA_D_FUV_CGS) * rho_cgs
+    tau_pe_expected_s = 1.0 / (
+        c_hyp_cgs * kappa_eff_mass_opacity_cgs(Z, SIGMA_D_PE_CGS) * rho_cgs
     )
     tau_lw_expected_s = 1.0 / (
         c_hyp_cgs * kappa_eff_mass_opacity_cgs(Z, SIGMA_D_LW_CGS) * rho_cgs
     )
-    tau_fuv_expected_myr = tau_fuv_expected_s / (1e6 * YEAR_CGS)
+    tau_pe_expected_myr = tau_pe_expected_s / (1e6 * YEAR_CGS)
     tau_lw_expected_myr = tau_lw_expected_s / (1e6 * YEAR_CGS)
 
     print()
     print("--- (a) e-folding time, measured vs. analytic (INFORMATIONAL) ---")
     print(f"c_hyp (reconstructed): {c_hyp:.4f} km/s")
     print(
-        f"FUV: measured e-fold={tau_fuv_measured_myr:.4f} Myr, "
-        f"expected={tau_fuv_expected_myr:.4f} Myr, "
-        f"ratio={tau_fuv_measured_myr / tau_fuv_expected_myr:.3f}"
+        f"FUV: measured e-fold={tau_pe_measured_myr:.4f} Myr, "
+        f"expected={tau_pe_expected_myr:.4f} Myr, "
+        f"ratio={tau_pe_measured_myr / tau_pe_expected_myr:.3f}"
     )
     print(
         f"LW:  measured e-fold={tau_lw_measured_myr:.4f} Myr, "
@@ -563,17 +562,17 @@ def main() -> None:
         f"ratio={tau_lw_measured_myr / tau_lw_expected_myr:.3f}"
     )
 
-    residual_fuv = E_fuv[-1] / pre_death_level_fuv
+    residual_pe = E_pe[-1] / pre_death_level_pe
     residual_lw = E_lw[-1] / pre_death_level_lw
     total_decay_time_myr = (times[-1] - t_death) * unit_time_myr
-    n_efolds_fuv = total_decay_time_myr / tau_fuv_measured_myr
+    n_efolds_pe = total_decay_time_myr / tau_pe_measured_myr
     n_efolds_lw = total_decay_time_myr / tau_lw_measured_myr
 
     print()
     print("--- (b) residual-fraction check (GATED) ---")
     print(
-        f"FUV: residual at time_end = {residual_fuv:.3e} "
-        f"({n_efolds_fuv:.2f} e-folds elapsed)"
+        f"FUV: residual at time_end = {residual_pe:.3e} "
+        f"({n_efolds_pe:.2f} e-folds elapsed)"
     )
     print(
         f"LW:  residual at time_end = {residual_lw:.3e} "
@@ -581,9 +580,9 @@ def main() -> None:
     )
 
     pass_residual = (
-        residual_fuv < opt.residual_tol
+        residual_pe < opt.residual_tol
         and residual_lw < opt.residual_tol
-        and n_efolds_fuv >= opt.min_efolds
+        and n_efolds_pe >= opt.min_efolds
         and n_efolds_lw >= opt.min_efolds
     )
 
@@ -606,7 +605,7 @@ def main() -> None:
     post_indices = np.where(post_mask)[0]
     t_rel_internal_post = times[post_indices] - t_death
     is_transient = t_rel_internal_post <= settle_internal
-    is_offender = (min_u_fuv[post_indices] < 0) | (min_u_lw[post_indices] < 0)
+    is_offender = (min_u_pe[post_indices] < 0) | (min_u_lw[post_indices] < 0)
 
     if not np.any(is_offender):
         print("No offending post-death snapshot (all specific energies stayed >= 0).")
@@ -618,27 +617,27 @@ def main() -> None:
             dt_units_str = f", {t_rel_internal_post[k] / dt_max_report:.2f} dt_max"
         else:
             dt_units_str = " (dt_max unavailable)"
-        n_neg_fuv_i = int(np.sum(snaps[i]["u_fuv"] < 0))
+        n_neg_pe_i = int(np.sum(snaps[i]["u_pe"] < 0))
         n_neg_lw_i = int(np.sum(snaps[i]["u_lw"] < 0))
         tag = " [switch-off transient, not scored]" if is_transient[k] else ""
         print(
             f"  snapshot {i}: t-t_death = {t_rel_myr:.5f} Myr{dt_units_str}, "
-            f"negative FUV particles = {n_neg_fuv_i}, "
+            f"negative FUV particles = {n_neg_pe_i}, "
             f"negative LW particles = {n_neg_lw_i}, "
-            f"min(u_fuv)/pre-death median = "
-            f"{min_u_fuv[i] / pre_death_median_u_fuv:.3e}, "
+            f"min(u_pe)/pre-death median = "
+            f"{min_u_pe[i] / pre_death_median_u_pe:.3e}, "
             f"min(u_lw)/pre-death median = "
             f"{min_u_lw[i] / pre_death_median_u_lw:.3e}{tag}"
         )
 
     scored = ~is_transient
-    n_negative_scored_fuv = int(np.sum((min_u_fuv[post_indices] < 0) & scored))
+    n_negative_scored_pe = int(np.sum((min_u_pe[post_indices] < 0) & scored))
     n_negative_scored_lw = int(np.sum((min_u_lw[post_indices] < 0) & scored))
-    pass_negativity = n_negative_scored_fuv == 0 and n_negative_scored_lw == 0
+    pass_negativity = n_negative_scored_pe == 0 and n_negative_scored_lw == 0
 
     print(
         f"Scored snapshots with a negative FUV specific energy: "
-        f"{n_negative_scored_fuv}/{int(np.sum(scored))}"
+        f"{n_negative_scored_pe}/{int(np.sum(scored))}"
     )
     print(
         f"Scored snapshots with a negative LW specific energy: "
@@ -650,7 +649,7 @@ def main() -> None:
     print(f"Negativity check (gated): {'PASS' if pass_negativity else 'FAIL'}")
 
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.semilogy(times, E_fuv, "o-", color="C0", label="FUV (total)")
+    ax.semilogy(times, E_pe, "o-", color="C0", label="FUV (total)")
     ax.semilogy(times, E_lw, "s-", color="C1", label="LW (total)")
     ax.axvline(t_death, color="k", linestyle="--", label="star death")
     ax.set_xlabel("time (internal units)")

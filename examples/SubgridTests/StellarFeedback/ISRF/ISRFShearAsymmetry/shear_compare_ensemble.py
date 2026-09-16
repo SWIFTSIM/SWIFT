@@ -133,7 +133,7 @@ def load_snapshot(path):
         rho = gas["Densities"][:].astype(np.float64)
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
         time=time,
@@ -144,7 +144,7 @@ def load_snapshot(path):
         rho=rho,
         h=h,
         ids=ids,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
     )
 
@@ -207,7 +207,7 @@ def realisation_time_series(run_dir, pulse_sigma_h, layer_width_h):
         pos = s["pos"][order]
         t = s["time"]
         times.append(t)
-        for band, key in (("FUV", "u_fuv"), ("LW", "u_lw")):
+        for band, key in (("FUV", "u_pe"), ("LW", "u_lw")):
             u = s[key][order]
             pair = blob_pair_moments(
                 pos, u, mass0, in_A, in_B, centre_A, centre_B, v_shear, t, L

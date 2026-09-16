@@ -112,19 +112,19 @@ char feedback_is_part_tagged_as_ionized(const struct part *p,
 long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp);
 float feedback_get_star_HII_mass(const struct spart *sp);
-double feedback_get_star_L_FUV(const struct spart *sp);
+double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
-float feedback_get_part_u_FUV(const struct part *p);
+float feedback_get_part_u_PE(const struct part *p);
 float feedback_get_part_u_LW(const struct part *p);
-float feedback_get_part_dissipation_alpha_FUV(const struct part *p);
+float feedback_get_part_dissipation_alpha_PE(const struct part *p);
 float feedback_get_part_dissipation_alpha_LW(const struct part *p);
-float feedback_get_part_div_specific_flux_FUV(const struct part *p);
+float feedback_get_part_div_specific_flux_PE(const struct part *p);
 float feedback_get_part_div_specific_flux_LW(const struct part *p);
-void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret);
+void feedback_get_part_specific_flux_PE(const struct part *p, float *ret);
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
 struct engine;
-float feedback_get_part_u_min_since_snapshot_FUV(const struct part *p,
-                                                 const struct engine *e);
+float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                                const struct engine *e);
 float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
                                                 const struct engine *e);
 

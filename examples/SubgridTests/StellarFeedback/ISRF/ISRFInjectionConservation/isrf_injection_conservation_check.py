@@ -108,12 +108,12 @@ def main():
         time = float(np.asarray(f["/Header"].attrs["Time"]).flat[0])
         gas = f["/PartType0"]
         mass = gas["Masses"][:].astype(np.float64)
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1]
 
         star = f["/PartType4"]
-        L_FUV = float(star["FUVLuminosities"][0])
+        L_PE = float(star["FUVLuminosities"][0])
         L_LW = float(star["LWLuminosities"][0])
 
     if np.any(Z != 0.0):
@@ -124,15 +124,15 @@ def main():
 
     Delta_t = read_delta_t(opt.log, time)
 
-    n_illuminated = int(np.sum(u_fuv > 0))
-    sum_fuv = float(np.sum(u_fuv * mass))
+    n_illuminated = int(np.sum(u_pe > 0))
+    sum_pe = float(np.sum(u_pe * mass))
     sum_lw = float(np.sum(u_lw * mass))
-    rhs_fuv = Delta_t * L_FUV
+    rhs_pe = Delta_t * L_PE
     rhs_lw = Delta_t * L_LW
 
     print(f"Snapshot: {snap_path} (t={time:.6e})")
     print(f"Delta_t (from {opt.log}): {Delta_t:.6e}")
-    print(f"Star: L_FUV={L_FUV:.10e}, L_LW={L_LW:.10e}")
+    print(f"Star: L_FUV={L_PE:.10e}, L_LW={L_LW:.10e}")
     print(f"Illuminated gas particles: {n_illuminated}")
 
     def report(band, lhs, rhs):
@@ -144,10 +144,10 @@ def main():
         )
         return rel_err < opt.tol
 
-    ok_fuv = report("FUV", sum_fuv, rhs_fuv)
+    ok_pe = report("FUV", sum_pe, rhs_pe)
     ok_lw = report("LW", sum_lw, rhs_lw)
 
-    if not (ok_fuv and ok_lw):
+    if not (ok_pe and ok_lw):
         sys.exit(1)
 
 

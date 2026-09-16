@@ -436,7 +436,7 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
         "mu": mu,
         "temperature": temperature,
         "u_LW": raw["LWSpecificEnergies"] * energy_cgs,
-        "u_FUV": raw["FUVSpecificEnergies"] * energy_cgs,
+        "u_PE": raw["FUVSpecificEnergies"] * energy_cgs,
         "H2I_fraction": raw["H2I"],
         "n_H2": raw["H2I"] * density / (2.0 * M_H_CGS),
     }
@@ -461,16 +461,14 @@ def unshielded_rate(density: np.ndarray, u_LW: np.ndarray) -> np.ndarray:
     return SIGMA_H2_LW_CGS * C_LIGHT_CGS * density * u_LW / photon_energy
 
 
-def habing_field(
-    density: np.ndarray, u_FUV: np.ndarray, u_LW: np.ndarray
-) -> np.ndarray:
+def habing_field(density: np.ndarray, u_PE: np.ndarray, u_LW: np.ndarray) -> np.ndarray:
     """Compute the band-summed field strength in Habing units.
 
     Parameters
     ----------
     density : numpy.ndarray
         Gas mass density, g cm^-3.
-    u_FUV : numpy.ndarray
+    u_PE : numpy.ndarray
         FUV-band specific energy, erg g^-1.
     u_LW : numpy.ndarray
         LW-band specific energy, erg g^-1.
@@ -480,7 +478,7 @@ def habing_field(
     numpy.ndarray
         G_0, dimensionless.
     """
-    return C_LIGHT_CGS * density * (u_FUV + u_LW) / HABING_FLUX_CGS
+    return C_LIGHT_CGS * density * (u_PE + u_LW) / HABING_FLUX_CGS
 
 
 def jeans_shielding_length(
@@ -625,13 +623,13 @@ def build_history(
         else:
             factor = shielding_factor(column, temperature, number_density)
         u_LW = take("u_LW")
-        u_total = take("u_FUV") + u_LW
+        u_total = take("u_PE") + u_LW
 
         series["x_H2"].append(take("H2I_fraction"))
         series["rate"].append(unshielded_rate(density, take("u_LW")))
         series["f_shield"].append(factor)
         series["column"].append(column)
-        series["habing"].append(habing_field(density, take("u_FUV"), take("u_LW")))
+        series["habing"].append(habing_field(density, take("u_PE"), take("u_LW")))
         series["length"].append(length)
         series["temperature"].append(temperature)
         series["lw_fraction"].append(

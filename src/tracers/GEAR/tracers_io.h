@@ -116,10 +116,10 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
  * @brief Snapshot converter for #FUVSpecificEnergy, see
  * #tracers_write_particles.
  */
-INLINE static void convert_part_u_FUV(const struct engine *e,
-                                      const struct part *p,
-                                      const struct xpart *xp, float *ret) {
-  ret[0] = feedback_get_part_u_FUV(p);
+INLINE static void convert_part_u_PE(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_u_PE(p);
 }
 
 /**
@@ -136,11 +136,11 @@ INLINE static void convert_part_u_LW(const struct engine *e,
  * @brief Snapshot converter for #FUVArtificialDissipationCoefficients, see
  * #tracers_write_particles.
  */
-INLINE static void convert_part_dissipation_alpha_FUV(const struct engine *e,
-                                                      const struct part *p,
-                                                      const struct xpart *xp,
-                                                      float *ret) {
-  ret[0] = feedback_get_part_dissipation_alpha_FUV(p);
+INLINE static void convert_part_dissipation_alpha_PE(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_PE(p);
 }
 
 /**
@@ -158,11 +158,11 @@ INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
  * @brief Snapshot converter for #FUVSpecificFluxDivergences, see
  * #tracers_write_particles.
  */
-INLINE static void convert_part_div_specific_flux_FUV(const struct engine *e,
-                                                      const struct part *p,
-                                                      const struct xpart *xp,
-                                                      float *ret) {
-  ret[0] = feedback_get_part_div_specific_flux_FUV(p);
+INLINE static void convert_part_div_specific_flux_PE(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_PE(p);
 }
 
 /**
@@ -180,11 +180,11 @@ INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
  * @brief Snapshot converter for #FUVSpecificFluxes, see
  * #tracers_write_particles.
  */
-INLINE static void convert_part_specific_flux_FUV(const struct engine *e,
-                                                  const struct part *p,
-                                                  const struct xpart *xp,
-                                                  float *ret) {
-  feedback_get_part_specific_flux_FUV(p, ret);
+INLINE static void convert_part_specific_flux_PE(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  feedback_get_part_specific_flux_PE(p, ret);
 }
 
 /**
@@ -202,11 +202,11 @@ INLINE static void convert_part_specific_flux_LW(const struct engine *e,
  * @brief Snapshot converter for #FUVMinimumSpecificEnergies, see
  * #tracers_write_particles.
  */
-INLINE static void convert_part_u_min_since_snapshot_FUV(const struct engine *e,
-                                                         const struct part *p,
-                                                         const struct xpart *xp,
-                                                         float *ret) {
-  ret[0] = feedback_get_part_u_min_since_snapshot_FUV(p, e);
+INLINE static void convert_part_u_min_since_snapshot_PE(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_PE(p, e);
 }
 
 /**
@@ -311,7 +311,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
      --with-tracers=GEAR. */
   list[10] = io_make_output_field_convert_part(
       "FUVSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
-      parts, xparts, convert_part_u_FUV,
+      parts, xparts, convert_part_u_PE,
       "Local specific FUV-band (6-11.2 eV) interstellar radiation field. "
       "Physical, mass-specific: no scale-factor exponent of its own.");
 
@@ -323,7 +323,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   list[12] = io_make_output_field_convert_part(
       "FUVArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-      parts, xparts, convert_part_dissipation_alpha_FUV,
+      parts, xparts, convert_part_dissipation_alpha_PE,
       "Negativity-triggered artificial-dissipation coefficient of the "
       "FUV-band hyperbolic propagation, in "
       "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
@@ -337,7 +337,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   list[14] = io_make_output_field_convert_part(
       "FUVSpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
-      convert_part_div_specific_flux_FUV,
+      convert_part_div_specific_flux_PE,
       "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
       "propagation, accumulated in the force loop from the step's relaxed "
       "flux. Physical, like the "
@@ -352,7 +352,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   list[16] = io_make_output_field_convert_part(
       "FUVSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
-      0.f, parts, xparts, convert_part_specific_flux_FUV,
+      0.f, parts, xparts, convert_part_specific_flux_PE,
       "Tracked specific flux moment of the FUV-band hyperbolic propagation, "
       "mass-specific like FUVSpecificEnergies. Physical: no scale-factor "
       "exponent of its own. Only meaningful when ISRF_propagation is on.");
@@ -364,7 +364,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   list[18] = io_make_output_field_convert_part(
       "FUVMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      0.f, parts, xparts, convert_part_u_min_since_snapshot_FUV,
+      0.f, parts, xparts, convert_part_u_min_since_snapshot_PE,
       "Most negative FUVSpecificEnergies value the propagation update wrote "
       "since the previous snapshot, 0 if none was negative. The number of "
       "nonzero entries is the count of particles that undershot. The "

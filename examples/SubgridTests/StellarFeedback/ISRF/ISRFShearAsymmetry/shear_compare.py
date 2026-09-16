@@ -105,10 +105,10 @@ def load_snapshot_last(run_dir):
     with h5py.File(files[-1], "r") as f:
         pos = f["/PartType0/Coordinates"][:, :]
         h = f["/PartType0/SmoothingLengths"][:].astype(np.float64)
-        u_fuv = f["/PartType0/FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = f["/PartType0/FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = f["/PartType0/LWSpecificEnergies"][:].astype(np.float64)
         boxsize = np.asarray(f["/Header"].attrs["BoxSize"], dtype=float).flatten()[0]
-    return pos, h, u_fuv, u_lw, boxsize
+    return pos, h, u_pe, u_lw, boxsize
 
 
 def wendland_c2(q):
@@ -152,11 +152,11 @@ def sph_interpolate(pos, h, field, boxsize, grid_n):
 
 
 def mode_pair(opt):
-    pos_p, h_p, fuv_p, lw_p, box_p = load_snapshot_last(opt.plus)
-    pos_m, h_m, fuv_m, lw_m, box_m = load_snapshot_last(opt.minus)
+    pos_p, h_p, pe_p, lw_p, box_p = load_snapshot_last(opt.plus)
+    pos_m, h_m, pe_m, lw_m, box_m = load_snapshot_last(opt.minus)
     boxsize = box_p
 
-    for band, field_p, field_m in (("FUV", fuv_p, fuv_m), ("LW", lw_p, lw_m)):
+    for band, field_p, field_m in (("FUV", pe_p, pe_m), ("LW", lw_p, lw_m)):
         grid_p = sph_interpolate(pos_p, h_p, field_p, boxsize, opt.grid_n)
         grid_m = sph_interpolate(pos_m, h_m, field_m, boxsize, opt.grid_n)
         # Map the -v run through x -> L - x (flip the first grid axis).

@@ -73,7 +73,7 @@ def parse_options() -> argparse.Namespace:
         help="Starting redshift, 0 = no cosmology",
     )
     parser.add_argument(
-        "--u-fuv",
+        "--u-pe",
         type=float,
         default=0.0,
         help="Seeded physical FUV specific energy, erg/g",
@@ -191,7 +191,7 @@ def main() -> None:
         gas.create_dataset("Density", data=np.full(n_gas, rho_comoving), dtype="f")
         gas.create_dataset(
             "FUVSpecificEnergy",
-            data=np.full(n_gas, opt.u_fuv / energy_unit),
+            data=np.full(n_gas, opt.u_pe / energy_unit),
             dtype="f",
         )
         gas.create_dataset(

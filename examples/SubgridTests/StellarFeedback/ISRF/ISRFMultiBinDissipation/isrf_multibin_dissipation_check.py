@@ -37,7 +37,7 @@ import yaml
 from scipy.spatial import cKDTree
 
 # src/feedback/GEAR/radiation.h
-SIGMA_D_FUV_CGS = 9e-22
+SIGMA_D_PE_CGS = 9e-22
 SIGMA_D_LW_CGS = 1.5e-21
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
@@ -141,9 +141,9 @@ def load_snapshot(path):
         mass = gas["Masses"][:].astype(np.float64)
         rho = gas["Densities"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
-        alpha_fuv = gas["FUVArtificialDissipationCoefficients"][:].astype(np.float64)
+        alpha_pe = gas["FUVArtificialDissipationCoefficients"][:].astype(np.float64)
         alpha_lw = gas["LWArtificialDissipationCoefficients"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
         star = f["/PartType4"]
@@ -158,9 +158,9 @@ def load_snapshot(path):
         mass=mass,
         rho=rho,
         ids=ids,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
-        alpha_fuv=alpha_fuv,
+        alpha_pe=alpha_pe,
         alpha_lw=alpha_lw,
         Z=Z,
         star_pos=star_pos,
@@ -478,13 +478,13 @@ def main():
             c_hyp = np.minimum(C_hyp * h / dt_i, SPEED_OF_LIGHT_KM_S)
 
         kappa = {}
-        for band, sigma in (("FUV", SIGMA_D_FUV_CGS), ("LW", SIGMA_D_LW_CGS)):
+        for band, sigma in (("FUV", SIGMA_D_PE_CGS), ("LW", SIGMA_D_LW_CGS)):
             kappa[band] = kappa_internal(
                 snap["Z"], rho, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma
             )
 
         for band, u_field, alpha_field in (
-            ("FUV", "u_fuv", "alpha_fuv"),
+            ("FUV", "u_pe", "alpha_pe"),
             ("LW", "u_lw", "alpha_lw"),
         ):
             u = snap[u_field]
@@ -603,7 +603,7 @@ def main():
         window = rs < (R_cut + 2.0) * h_median
         w_idx = np.where(window)[0]
         pos_w, h_w, mass_w = pos[w_idx], h[w_idx], mass[w_idx]
-        for band, alpha_field in (("FUV", "alpha_fuv"), ("LW", "alpha_lw")):
+        for band, alpha_field in (("FUV", "alpha_pe"), ("LW", "alpha_lw")):
             alpha_w = snap[alpha_field][w_idx]
             c_hyp_w = c_hyp[w_idx]
             i_loc, j_loc, dx_pair, r_pair = reconstruct_pairs(pos_w, h_w, L)

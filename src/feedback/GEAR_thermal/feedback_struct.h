@@ -42,7 +42,7 @@
  * (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). Indexes every per-band
  * array of #feedback_part_data and #feedback_spart_data.
  */
-enum radiation_isrf_band { ISRF_BAND_FUV = 0, ISRF_BAND_LW, ISRF_BAND_COUNT };
+enum radiation_isrf_band { ISRF_BAND_PE = 0, ISRF_BAND_LW, ISRF_BAND_COUNT };
 
 /**
  * @brief Per-band ISRF state carried by each hydro particle, one instance

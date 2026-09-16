@@ -82,9 +82,9 @@ def last_snapshot(run_dir):
     with h5py.File(files[-1], "r") as f:
         gas = f["/PartType0"]
         ids = gas["ParticleIDs"][:]
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
-    return ids, u_fuv, u_lw
+    return ids, u_pe, u_lw
 
 
 def mode_P(opt):
@@ -118,18 +118,18 @@ def mode_P(opt):
     drift_void = np.array([m["drift_void"] for m in metrics])
 
     # M-C1: self-similarity D against the reference run.
-    ref_ids, ref_u_fuv, ref_u_lw = last_snapshot(opt.runs[opt.ref_index])
+    ref_ids, ref_u_pe, ref_u_lw = last_snapshot(opt.runs[opt.ref_index])
     ref_sort = np.argsort(ref_ids)
     print("\n=== M-C1: self-similarity (Leg P) ===")
     all_pass = True
     for i, d in enumerate(opt.runs):
-        ids, u_fuv, u_lw = last_snapshot(d)
+        ids, u_pe, u_lw = last_snapshot(d)
         order = np.argsort(ids)
         if not np.array_equal(ids[order], ref_ids[ref_sort]):
             print(f"{d}: ParticleIDs do not match the reference run -- skipped.")
             continue
-        d_fuv = np.max(np.abs(u_fuv[order] - ref_u_fuv[ref_sort])) / max(
-            np.max(np.abs(ref_u_fuv)), 1e-300
+        d_pe = np.max(np.abs(u_pe[order] - ref_u_pe[ref_sort])) / max(
+            np.max(np.abs(ref_u_pe)), 1e-300
         )
         d_lw = np.max(np.abs(u_lw[order] - ref_u_lw[ref_sort])) / max(
             np.max(np.abs(ref_u_lw)), 1e-300
@@ -138,20 +138,20 @@ def mode_P(opt):
         status = (
             "EXCLUDED (drift > 0.1h)"
             if excluded
-            else ("PASS" if valid and max(d_fuv, d_lw) <= opt.tol_d else "FAIL")
+            else ("PASS" if valid and max(d_pe, d_lw) <= opt.tol_d else "FAIL")
         )
-        if not excluded and valid and max(d_fuv, d_lw) > opt.tol_d:
+        if not excluded and valid and max(d_pe, d_lw) > opt.tol_d:
             all_pass = False
-        print(f"{d}: D_FUV={d_fuv:.3e}  D_LW={d_lw:.3e}  -> {status}")
+        print(f"{d}: D_FUV={d_pe:.3e}  D_LW={d_lw:.3e}  -> {status}")
     print(
         f"M-C1 overall: {'PASS' if (valid and all_pass) else ('INVALID' if not valid else 'FAIL')}"
     )
 
     # M-C2: retardation collapse at eps=0.01.
     print("\n=== M-C2: retardation collapse (Leg P, eps=0.01) ===")
-    norms_fuv, norms_lw = [], []
+    norms_pe, norms_lw = [], []
     for i, (d, m) in enumerate(zip(opt.runs, metrics)):
-        r_fuv = (
+        r_pe = (
             m["front"]["FUV"]["0.01"]["r_edge_norm"]
             if "0.01" in m["front"]["FUV"]
             else m["front"]["FUV"][0.01]["r_edge_norm"]
@@ -161,21 +161,19 @@ def mode_P(opt):
             if "0.01" in m["front"]["LW"]
             else m["front"]["LW"][0.01]["r_edge_norm"]
         )
-        norms_fuv.append(r_fuv)
+        norms_pe.append(r_pe)
         norms_lw.append(r_lw)
         void_str = " (drift-void, still reported)" if drift_void[i] else ""
-        print(f"{d}: r_edge/(c_hyp*t) FUV={r_fuv:.4f}  LW={r_lw:.4f}{void_str}")
-    kept_fuv = [v for v, void in zip(norms_fuv, drift_void) if not void]
+        print(f"{d}: r_edge/(c_hyp*t) FUV={r_pe:.4f}  LW={r_lw:.4f}{void_str}")
+    kept_pe = [v for v, void in zip(norms_pe, drift_void) if not void]
     kept_lw = [v for v, void in zip(norms_lw, drift_void) if not void]
-    spread_fuv = (
-        (max(kept_fuv) - min(kept_fuv)) / np.mean(kept_fuv) if kept_fuv else np.inf
-    )
+    spread_pe = (max(kept_pe) - min(kept_pe)) / np.mean(kept_pe) if kept_pe else np.inf
     spread_lw = (max(kept_lw) - min(kept_lw)) / np.mean(kept_lw) if kept_lw else np.inf
     c2_pass = (
-        valid and spread_fuv <= opt.tol_retardation and spread_lw <= opt.tol_retardation
+        valid and spread_pe <= opt.tol_retardation and spread_lw <= opt.tol_retardation
     )
     print(
-        f"Spread (drift-valid runs only): FUV={spread_fuv:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
+        f"Spread (drift-valid runs only): FUV={spread_pe:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
     )
     print(f"M-C2: {'PASS' if c2_pass else ('INVALID' if not valid else 'FAIL')}")
 
