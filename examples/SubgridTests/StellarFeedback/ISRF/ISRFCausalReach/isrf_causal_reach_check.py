@@ -51,6 +51,13 @@ where Sec 2.3's estimator weakness is most likely to actually show up.
 Also checks u(r) is monotonically non-increasing behind the front, outside
 a near-injection-kernel exclusion zone (Sec 6.2's own carve-out for
 ordinary SPH discreteness ripples close to the star).
+
+Every field a gate reads (each band's specific energy, smoothing lengths,
+positions, box size, time, the bulk time-step) is checked for finiteness
+before it reaches a gate. A NaN compares False against every threshold, so
+an unchecked NaN would silently turn both the negativity gate and the
+causal-reach gate into a trivial pass; this check fails loudly instead,
+naming the snapshot, the band and the count of bad values.
 """
 
 import argparse
@@ -119,6 +126,41 @@ def parse_options():
         help="Output plot filename.",
     )
     return parser.parse_args()
+
+
+def check_finite(name, arr, snapshot, band=None):
+    """Fail loudly if `arr` contains a NaN or an infinite value.
+
+    A pass/fail check must never let a non-finite value slip through
+    unnoticed: NaN compares False against every threshold, so an
+    undetected NaN silently turns every downstream gate that reads it
+    into a trivial pass rather than a real failure.
+
+    Parameters
+    ----------
+    name : str
+        Human-readable name of the quantity being checked.
+    arr : numpy.ndarray
+        Values to test for finiteness.
+    snapshot : str
+        Path of the snapshot the values came from, for the error message.
+    band : str, optional
+        Radiation band the quantity belongs to, if any.
+
+    Raises
+    ------
+    RuntimeError
+        If any element of `arr` is not finite.
+    """
+    arr = np.asarray(arr)
+    n_bad = int(np.sum(~np.isfinite(arr)))
+    if n_bad > 0:
+        where = f", band {band}" if band else ""
+        raise RuntimeError(
+            f"{snapshot}{where}: {n_bad}/{arr.size} non-finite value(s) "
+            f"(NaN or inf) in {name} -- refusing to gate on a corrupted "
+            f"field."
+        )
 
 
 def modal_bulk_dt(path, n_total):
@@ -272,6 +314,7 @@ def main():
         n_gas = f["/PartType0/Coordinates"].shape[0]
     # "Updates" in timesteps.txt counts gas particles only (not the star).
     dt_bulk = modal_bulk_dt(opt.timesteps_log, n_gas)
+    check_finite("bulk time-step", np.atleast_1d(dt_bulk), opt.timesteps_log)
     print(f"Bulk gas time-step (timesteps.txt, n_gas={n_gas}): {dt_bulk:.6e}")
 
     all_ok = True
@@ -286,11 +329,18 @@ def main():
         if t <= t0:
             continue
         pos, h, ids = snap["pos"], snap["h"], snap["ids"]
+        check_finite("Coordinates", pos, fn)
+        check_finite("SmoothingLengths", h, fn)
+        check_finite("star Coordinates", snap["star_pos"], fn)
+        check_finite("BoxSize", np.atleast_1d(snap["boxsize"]), fn)
+        check_finite("Time", np.atleast_1d(t), fn)
         gas_mask = np.ones(len(ids), dtype=bool)
         if opt.hot_particle_id >= 0:
             gas_mask = ids != opt.hot_particle_id
         h_med = float(np.median(h[gas_mask]))
+        check_finite("median smoothing length h_med", np.atleast_1d(h_med), fn)
         c_hyp = min(opt.c_hyp_margin * h_med / dt_bulk, SPEED_OF_LIGHT_KM_S)
+        check_finite("c_hyp", np.atleast_1d(c_hyp), fn)
 
         r_all = radial_distance(pos, snap["star_pos"], snap["boxsize"])
         r_max_plot = 0.45 * snap["boxsize"]
@@ -302,6 +352,7 @@ def main():
 
         for band, u_field in (("FUV", "u_fuv"), ("LW", "u_lw")):
             u_all = snap[u_field]
+            check_finite(u_field, u_all, fn, band=band)
             r, u = r_all[gas_mask], u_all[gas_mask]
             res = check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot)
             all_ok &= res["ok"]
