@@ -38,7 +38,8 @@
  * declared in radiation_isrf.h), so they are exercised the same way
  * testRadiationISRFFluxUnderflow.c does: through
  * #radiation_end_gradient_propagation, reading back
- * #feedback_isrf_band_data.dissipation_alpha_trigger/dissipation_alpha_floor. */
+ * #feedback_isrf_band_data.dissipation_alpha_trigger/dissipation_alpha_floor.
+ */
 #if defined(FEEDBACK_GEAR)
 
 #include "feedback/GEAR/radiation_isrf.h"
@@ -189,7 +190,8 @@ static void test_eps_R_zero_disables_gate(void) {
 
   const float zero[3] = {0.f, 0.f, 0.f};
   const float kappa[ISRF_BAND_COUNT] = {1.f, 0.f};
-  /* h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4). */
+  /* h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4).
+   */
   const float expected[ISRF_BAND_COUNT] = {alpha_floor / 17.f, alpha_floor};
 
   struct part p;
@@ -330,8 +332,9 @@ static void test_w_positive_via_hubble_term(void) {
                 p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-4f,
                 1e-3f);
 
-  message("kappa = 0, H > 0: gate uses the Hubble term as the relaxation "
-          "timescale (s = 4/9)");
+  message(
+      "kappa = 0, H > 0: gate uses the Hubble term as the relaxation "
+      "timescale (s = 4/9)");
 }
 
 /**
@@ -370,8 +373,9 @@ static void test_den_zero_quiescent(void) {
             band->dissipation_alpha_floor);
   }
 
-  message("F = grad_u = 0, w > 0: gate returns 0 (exactly at the fixed "
-          "point), not 0/0");
+  message(
+      "F = grad_u = 0, w > 0: gate returns 0 (exactly at the fixed "
+      "point), not 0/0");
 }
 
 /**
@@ -398,8 +402,7 @@ static void test_exact_R_equals_one(void) {
   const float expected = alpha_floor / 17.f;
 
   for (int i = 0; i < 2; i++) {
-    make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., alpha_floor,
-                eps_R_values[i]);
+    make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., alpha_floor, eps_R_values[i]);
 
     struct part p_zero_flux, p_zero_grad;
     init_part(&p_zero_flux, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
@@ -415,17 +418,20 @@ static void test_exact_R_equals_one(void) {
     radiation_end_gradient_propagation(&p_zero_grad, &e);
 
     for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      check_close("R=1, zero flux", expected,
-                  p_zero_flux.feedback_data.isrf_band[b].dissipation_alpha_floor,
-                  1e-5f, 1e-3f);
-      check_close("R=1, zero grad_u", expected,
-                  p_zero_grad.feedback_data.isrf_band[b].dissipation_alpha_floor,
-                  1e-5f, 1e-3f);
+      check_close(
+          "R=1, zero flux", expected,
+          p_zero_flux.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
+          1e-3f);
+      check_close(
+          "R=1, zero grad_u", expected,
+          p_zero_grad.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
+          1e-3f);
     }
   }
 
-  message("R = 1 exactly whenever exactly one of F, grad_u is zero, at "
-          "eps_R in {1.0, 0.05}");
+  message(
+      "R = 1 exactly whenever exactly one of F, grad_u is zero, at "
+      "eps_R in {1.0, 0.05}");
 }
 
 /**
@@ -468,8 +474,9 @@ static void test_exact_R_equals_zero(void) {
             band->dissipation_alpha_floor);
   }
 
-  message("F, grad_u exactly Fickian-balanced: gate returns 0 (R = 0, not "
-          "the quiescent branch)");
+  message(
+      "F, grad_u exactly Fickian-balanced: gate returns 0 (R = 0, not "
+      "the quiescent branch)");
 }
 
 /**
@@ -505,7 +512,8 @@ static void test_alpha_trigger_boundaries(void) {
       {0.f, 1.f, alpha_max, alpha_max * expf(-0.2f),
        "zero energy, alpha_prev=alpha_max"},
       {-1.f, 0.f, 0.f, alpha_max, "deep negativity, alpha_prev=0"},
-      {-1.f, 0.f, alpha_max, alpha_max, "deep negativity, alpha_prev=alpha_max"},
+      {-1.f, 0.f, alpha_max, alpha_max,
+       "deep negativity, alpha_prev=alpha_max"},
   };
 
   for (int i = 0; i < 4; i++) {
@@ -519,12 +527,13 @@ static void test_alpha_trigger_boundaries(void) {
 
     for (int b = 0; b < ISRF_BAND_COUNT; b++)
       check_close(cases[i].label, cases[i].expected,
-                  p.feedback_data.isrf_band[b].dissipation_alpha_trigger,
-                  1e-5f, 1e-3f);
+                  p.feedback_data.isrf_band[b].dissipation_alpha_trigger, 1e-5f,
+                  1e-3f);
   }
 
-  message("alpha_prev at {0, alpha_max}, crossed with zero energy and deep "
-          "negativity: all four finite and match the closed form");
+  message(
+      "alpha_prev at {0, alpha_max}, crossed with zero energy and deep "
+      "negativity: all four finite and match the closed form");
 }
 
 int main(int argc, char *argv[]) {
