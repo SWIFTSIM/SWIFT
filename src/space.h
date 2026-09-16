@@ -168,11 +168,16 @@ struct space {
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
 
-  /*! High-water mark of h_max from ordinary hydro/star/black-hole/sink
-   * smoothing lengths only (excludes h_hii), used by space_regrid() to
+  /*! High-water mark of h_max from ordinary hydro/black-hole/sink
+   * smoothing lengths, plus a star's own smoothing length (stars.h_max,
+   * uncapped and unfactored, for cell_need_rebuild_for_stars_pair()) --
+   * excludes only h_hii and the separately capped/factored copy of
+   * stars.h_max routed into the star radiation term (for
+   * cell_need_rebuild_for_radiation_pair()). Used by space_regrid() to
    * keep its one-way coarsening ratchet for those quantities while
-   * letting h_hii's own, separately-tracked contribution shrink the
-   * grid back down once no star's HII search radius needs it any more. */
+   * letting the star radiation term's own, separately-tracked
+   * contribution shrink the grid back down once no star's search radius
+   * needs it any more. */
   float h_max_no_hii_hwm;
 
   /*! Maximal depth reached by the tree */
@@ -486,6 +491,15 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
+float space_regrid_radiation_cap_for(double cell_max_width);
+float space_regrid_star_radiation_term_for(float h_hii_max, float h_max,
+                                           double cell_max_width);
+float space_regrid_star_h_max_no_hii_term_for(float h_max_no_hii_so_far,
+                                              float h_max);
+double space_regrid_search_radius_for(float h_max_no_hii,
+                                      float h_max_radiation);
+double space_regrid_cell_width_for(float h_max_no_hii, float h_max_radiation,
+                                   double cell_min, double cell_max_width);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);

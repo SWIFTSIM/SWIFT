@@ -31,6 +31,126 @@
 #include "scheduler.h"
 
 /**
+ * @brief Upper bound applied to a star's radiation term (the larger of its
+ * HII search radius and its ordinary smoothing length) before it
+ * contributes to the top-level grid sizing.
+ *
+ * Exposed (rather than kept local to space_regrid()) so that the rebuild
+ * criterion's own regression test can ask the real function what grid a
+ * given radiation term produces, instead of re-deriving the expression and
+ * drifting from it.
+ *
+ * @param cell_max_width The coarsest top-level cell width the run allows.
+ */
+float space_regrid_radiation_cap_for(const double cell_max_width) {
+
+  return 0.99f * (float)cell_max_width /
+         (kernel_gamma * space_stretch * radiation_search_radius_factor);
+}
+
+/**
+ * @brief A star's contribution to the top-level grid's radiation term:
+ * the larger of its HII search radius and its own smoothing length,
+ * capped by space_regrid_radiation_cap_for().
+ *
+ * Exposed so that every accumulation site in space_regrid() below, and
+ * the rebuild criterion's own regression test, share this one routing
+ * decision instead of each re-deriving max(h_hii_max, h_max) locally and
+ * risking one site silently drifting from the others. This function feeds
+ * ONLY h_max_radiation (for cell_need_rebuild_for_radiation_pair()); the
+ * same raw h_max is separately and additionally folded into h_max_no_hii
+ * by the caller (for cell_need_rebuild_for_stars_pair(), which bounds a
+ * star's reach without this function's cap or factor) -- the two
+ * accumulators serve two different criteria, so a star's h_max belongs in
+ * both, not routed through only one of them.
+ *
+ * @param h_hii_max A star's (or a cell's max over its stars') HII search
+ * radius.
+ * @param h_max A star's (or a cell's max over its stars') ordinary
+ * smoothing length.
+ * @param cell_max_width The coarsest top-level cell width the run allows.
+ */
+float space_regrid_star_radiation_term_for(const float h_hii_max,
+                                           const float h_max,
+                                           const double cell_max_width) {
+
+  const float star_reach = fmaxf(h_hii_max, h_max);
+  return fminf(star_reach, space_regrid_radiation_cap_for(cell_max_width));
+}
+
+/**
+ * @brief A star's contribution to the top-level grid's UNCAPPED,
+ * unfactored h_max_no_hii accumulator: its own smoothing length, with no
+ * cap and no radiation_search_radius_factor, folded into the running
+ * maximum so far.
+ *
+ * Exposed alongside space_regrid_star_radiation_term_for() so the
+ * regression test can exercise both of a star's routing decisions
+ * directly instead of only the capped/factored one; this is the
+ * counterpart that keeps cell_need_rebuild_for_stars_pair() (unfactored,
+ * unexempted) correctly served.
+ *
+ * @param h_max_no_hii_so_far The running accumulator before this star.
+ * @param h_max A star's (or a cell's max over its stars') ordinary
+ * smoothing length.
+ */
+float space_regrid_star_h_max_no_hii_term_for(const float h_max_no_hii_so_far,
+                                              const float h_max) {
+
+  return fmaxf(h_max_no_hii_so_far, h_max);
+}
+
+/**
+ * @brief Search radius the top-level grid must be sized for.
+ *
+ * @param h_max_no_hii Largest ordinary hydro/black-hole/sink smoothing
+ * length (already passed through space::h_max_no_hii_hwm's ratchet).
+ * @param h_max_radiation Largest star radiation term (max of h_hii and the
+ * star's own smoothing length, per star, then maxed over stars), already
+ * capped by space_regrid_radiation_cap_for().
+ */
+double space_regrid_search_radius_for(const float h_max_no_hii,
+                                      const float h_max_radiation) {
+
+  /* The radiation runner (runner_do_stars_hii_ionization_feedback()), the
+     rebuild criterion (cell_need_rebuild_for_radiation_pair()) and the split
+     predicates (cell_can_split_{pair,self}_radiation_subgrid_task()) all
+     size a star's radiation reach as radiation_search_radius_factor *
+     kernel_gamma * max(h_hii_max, h_max) -- the split predicates express
+     this as two independent bounds on h_hii_max and h_max rather than a
+     literal max(), but bounding both terms against the same threshold is
+     equivalent to bounding their max. The top-level grid must be sized the
+     same way. Sizing it on the unfactored kernel_gamma * h_max_radiation
+     instead let cell_need_rebuild_for_radiation_pair() demand a coarsening
+     the regrid would not perform, which engine_rebuild() reports as
+     "engine_unskip failed after a rebuild!". The factor applies ONLY to the
+     star radiation term: hydro/black-hole/sink smoothing lengths keep their
+     historical sizing. */
+  const float radius_no_hii = h_max_no_hii * kernel_gamma * space_stretch;
+  const float radius_radiation = h_max_radiation * kernel_gamma *
+                                 space_stretch * radiation_search_radius_factor;
+  return fmaxf(radius_no_hii, radius_radiation);
+}
+
+/**
+ * @brief Effective top-level cell width for a given pair of maxima.
+ *
+ * @param h_max_no_hii As in space_regrid_search_radius_for().
+ * @param h_max_radiation As in space_regrid_search_radius_for().
+ * @param cell_min The finest top-level cell width the run allows.
+ * @param cell_max_width The coarsest top-level cell width the run allows.
+ */
+double space_regrid_cell_width_for(const float h_max_no_hii,
+                                   const float h_max_radiation,
+                                   const double cell_min,
+                                   const double cell_max_width) {
+
+  const double search_radius =
+      space_regrid_search_radius_for(h_max_no_hii, h_max_radiation);
+  return fmin(fmax(search_radius, cell_min), cell_max_width);
+}
+
+/**
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
@@ -46,31 +166,57 @@ void space_regrid(struct space *s, int verbose) {
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max, tracked separately for
-     ordinary hydro/star/black-hole/sink smoothing lengths (h_max_no_hii)
-     and for the star HII search radius (h_max_hii). They are combined
-     further down via space::h_max_no_hii_hwm's ratchet -- see the comment
-     there for why h_hii must stay independent of the ordinary quantities
-     instead of folding into one combined running value. */
+     ordinary hydro/black-hole/sink smoothing lengths (h_max_no_hii) and for
+     the star radiation term -- max(h_hii, h) per star, then maxed over
+     stars (h_max_radiation). They are combined further down via
+     space::h_max_no_hii_hwm's ratchet -- see the comment there for why the
+     star radiation term must stay independent of the ordinary quantities
+     instead of folding into one combined running value.
+
+     A star's ordinary smoothing length h feeds BOTH accumulators, not
+     either/or: h_max_no_hii, alongside hydro/black_holes/sinks, because
+     cell_need_rebuild_for_stars_pair() bounds a star-hydro pair by the
+     unfactored kernel_gamma * max(stars.h_max, hydro.h_max) with no
+     exemption, so a star's h must keep driving the same uncapped
+     ratchet/abort those quantities always have; and h_max_radiation, via
+     space_regrid_star_radiation_term_for(), because
+     cell_need_rebuild_for_radiation_pair() separately bounds a star's
+     reach by radiation_search_radius_factor * kernel_gamma *
+     max(h_hii_max, h_max), not h_hii_max alone -- a star resting at its
+     own h with no active HII region is the same growing-search-radius
+     hazard h_hii was fixed for, in a sparse top-level cell where h binds.
+     Routing stars.h_max through only the capped/factored term (dropping it
+     from h_max_no_hii) silently caps the grid's response to
+     cell_need_rebuild_for_stars_pair's own uncapped, unexempted bound,
+     reproducing the "engine_unskip failed after a rebuild!" deadlock this
+     fix line exists to close, via a criterion it was never meant to
+     touch. */
   // tic = getticks();
   const float h_max_floor = s->cell_min / kernel_gamma / space_stretch;
   float h_max_no_hii = h_max_floor;
-  float h_max_hii = h_max_floor;
+  /* Starts at zero, not at h_max_floor: the radiation term carries an extra
+     radiation_search_radius_factor (see space_regrid_search_radius_for()),
+     so seeding it with the floor would size a star-free grid as
+     radiation_search_radius_factor * cell_min and silently coarsen every
+     run in the tree. The floor is preserved by the cell_min clamp below,
+     which is where it belongs. */
+  float h_max_radiation = 0.f;
 
-  /* h_hii (the star HII ionization search radius) is a fundamentally
-     different, much larger-scale quantity than any ordinary smoothing
-     length, and is allowed to grow far beyond the box's characteristic
-     cell size. Once cdim is already at the coarsest grid the run allows
-     (Scheduler:min_top_level_cells, at least 3 when periodic), the 27-cell
-     radiation stencil wraps around and already covers the entire box, so
-     h_hii cannot miss any gas no matter how large it grows from there. Cap
-     h_hii's own contribution to h_max at the value that would size cells
-     down to exactly that minimum: it can still widen cells toward full
-     h_hii coverage at finer configurations, just never push cdim to the
-     floor for a quantity that buys nothing once coverage is already total.
-     Ordinary hydro/star h_max growth is NOT capped -- that remains a
-     genuine problem worth the "too few cells" error below. */
-  const float h_hii_max_for_regrid =
-      0.99f * (float)s->cell_max_width / (kernel_gamma * space_stretch);
+  /* A star's radiation term (max(h_hii, h)) is allowed to grow far beyond
+     the box's characteristic cell size. Once cdim is already at the
+     coarsest grid the run allows (Scheduler:min_top_level_cells, at least 3
+     when periodic), the 27-cell radiation stencil wraps around and already
+     covers the entire box, so the radiation term cannot miss any gas no
+     matter how large it grows from there. Cap its own contribution to
+     h_max at the value that would size cells down to exactly that minimum:
+     it can still widen cells toward full coverage at finer configurations,
+     just never push cdim to the floor for a quantity that buys nothing once
+     coverage is already total. Ordinary hydro/black-hole/sink h_max
+     growth, and a star's own h_max as it separately feeds h_max_no_hii
+     below, is NOT capped -- that remains a genuine problem worth the "too
+     few cells" error below. Only the copy of stars.h_max routed through
+     space_regrid_star_radiation_term_for() into h_max_radiation is
+     capped; the same value's other copy in h_max_no_hii is not. */
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -81,11 +227,12 @@ void space_regrid(struct space *s, int verbose) {
         if (c->hydro.h_max > h_max_no_hii) {
           h_max_no_hii = c->hydro.h_max;
         }
-        if (c->stars.h_max > h_max_no_hii) {
-          h_max_no_hii = c->stars.h_max;
-        }
-        if (min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max_hii) {
-          h_max_hii = min(c->stars.h_hii_max, h_hii_max_for_regrid);
+        h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(h_max_no_hii,
+                                                               c->stars.h_max);
+        const float star_radiation_term = space_regrid_star_radiation_term_for(
+            c->stars.h_hii_max, c->stars.h_max, s->cell_max_width);
+        if (star_radiation_term > h_max_radiation) {
+          h_max_radiation = star_radiation_term;
         }
         if (c->black_holes.h_max > h_max_no_hii) {
           h_max_no_hii = c->black_holes.h_max;
@@ -102,12 +249,15 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max_no_hii) {
           h_max_no_hii = c->hydro.h_max;
         }
-        if (c->nodeID == engine_rank && c->stars.h_max > h_max_no_hii) {
-          h_max_no_hii = c->stars.h_max;
-        }
-        if (c->nodeID == engine_rank &&
-            min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max_hii) {
-          h_max_hii = min(c->stars.h_hii_max, h_hii_max_for_regrid);
+        if (c->nodeID == engine_rank) {
+          h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(
+              h_max_no_hii, c->stars.h_max);
+          const float star_radiation_term =
+              space_regrid_star_radiation_term_for(
+                  c->stars.h_hii_max, c->stars.h_max, s->cell_max_width);
+          if (star_radiation_term > h_max_radiation) {
+            h_max_radiation = star_radiation_term;
+          }
         }
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max_no_hii) {
           h_max_no_hii = c->black_holes.h_max;
@@ -123,9 +273,12 @@ void space_regrid(struct space *s, int verbose) {
         if (s->parts[k].h > h_max_no_hii) h_max_no_hii = s->parts[k].h;
       }
       for (size_t k = 0; k < nr_sparts; k++) {
-        if (s->sparts[k].h > h_max_no_hii) h_max_no_hii = s->sparts[k].h;
-        if (min(s->sparts[k].h_hii, h_hii_max_for_regrid) > h_max_hii)
-          h_max_hii = min(s->sparts[k].h_hii, h_hii_max_for_regrid);
+        h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(h_max_no_hii,
+                                                               s->sparts[k].h);
+        const float star_radiation_term = space_regrid_star_radiation_term_for(
+            s->sparts[k].h_hii, s->sparts[k].h, s->cell_max_width);
+        if (star_radiation_term > h_max_radiation)
+          h_max_radiation = star_radiation_term;
       }
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max_no_hii) h_max_no_hii = s->bparts[k].h;
@@ -139,33 +292,50 @@ void space_regrid(struct space *s, int verbose) {
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. Reduce both quantities
    independently -- max() distributes over independent reductions, so this
-   gives the same global h_max_no_hii/h_max_hii as reducing one combined
-   value would, while keeping them separable for the ratchet below. */
+   gives the same global h_max_no_hii/h_max_radiation as reducing one
+   combined value would, while keeping them separable for the ratchet
+   below. */
 #ifdef WITH_MPI
   {
-    float buff_in[2] = {h_max_no_hii, h_max_hii};
+    float buff_in[2] = {h_max_no_hii, h_max_radiation};
     float buff_out[2];
     if (MPI_Allreduce(buff_in, buff_out, 2, MPI_FLOAT, MPI_MAX,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
     h_max_no_hii = buff_out[0];
-    h_max_hii = buff_out[1];
+    h_max_radiation = buff_out[1];
   }
 #endif
 
   /* space::h_max_no_hii_hwm is a one-way ratchet that exactly reproduces
-     this function's historical behaviour for ordinary hydro/star/
-     black-hole/sink smoothing lengths: once the grid has coarsened for one
-     of these, it stays coarse even if that h later shrinks (previously an
-     implicit effect of the cdim-can-only-shrink trigger below; now made
-     explicit so it can be kept separate from h_hii). h_hii is
-     deliberately NOT folded into this ratchet: it is a transient,
-     per-star quantity (reset to 0 when a star dies or ages out of HII
-     eligibility, see feedback_common.c) that should stop requiring a
-     coarse grid the moment no star's search radius needs it any more,
-     without perturbing the ratchet ordinary physics still relies on. */
+     this function's historical behaviour for ordinary hydro/black-hole/
+     sink/star smoothing lengths: once the grid has coarsened for one of
+     these (including a star's own h_max, folded into this accumulator
+     above alongside hydro/black_holes/sinks), it stays coarse even if
+     that h later shrinks (previously an implicit effect of the
+     cdim-can-only-shrink trigger below; now made explicit so it can be
+     kept separate from the star radiation term). This is what keeps
+     cell_need_rebuild_for_stars_pair() correctly served: that criterion's
+     own bound on stars.h_max is unfactored and unexempted, so the grid
+     must never un-coarsen for it, same as for hydro/black_holes/sinks.
+
+     The star radiation term (h_max_radiation) is a SEPARATE accumulator,
+     partly built from the same stars.h_max values, and is deliberately
+     NOT folded into this ratchet: h_hii is a transient, per-star quantity
+     (reset to 0 when a star dies or ages out of HII eligibility, see
+     feedback_common.c) that should stop requiring a coarse grid the
+     moment no star's search radius needs it any more, and
+     cell_need_rebuild_for_radiation_pair() -- the only criterion
+     h_max_radiation serves -- is itself exempted once
+     space_radiation_top_stencil_covers_box() holds, so un-coarsening this
+     term cannot reopen a demand that criterion still enforces. A star's
+     own h_max is therefore ratcheted once (via h_max_no_hii, for
+     cell_need_rebuild_for_stars_pair) and separately re-evaluated fresh
+     every regrid (via h_max_radiation, for
+     cell_need_rebuild_for_radiation_pair): two accumulators serving two
+     different criteria, not one unified quantity. */
   s->h_max_no_hii_hwm = fmaxf(s->h_max_no_hii_hwm, h_max_no_hii);
-  const float h_max = fmaxf(s->h_max_no_hii_hwm, h_max_hii);
+  const float h_max = fmaxf(s->h_max_no_hii_hwm, h_max_radiation);
 
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
@@ -176,9 +346,10 @@ void space_regrid(struct space *s, int verbose) {
      is capped there instead, so cdim never drops below
      Scheduler:min_top_level_cells regardless of what is driving the
      coarsening. */
-  const double search_radius = h_max * kernel_gamma * space_stretch;
-  const double cell_width =
-      fmin(fmax(search_radius, s->cell_min), s->cell_max_width);
+  const double search_radius =
+      space_regrid_search_radius_for(s->h_max_no_hii_hwm, h_max_radiation);
+  const double cell_width = space_regrid_cell_width_for(
+      s->h_max_no_hii_hwm, h_max_radiation, s->cell_min, s->cell_max_width);
   const int cdim[3] = {(int)floor(s->dim[0] / cell_width),
                        (int)floor(s->dim[1] / cell_width),
                        (int)floor(s->dim[2] / cell_width)};
@@ -205,12 +376,13 @@ void space_regrid(struct space *s, int verbose) {
   if (s->periodic && h_max > h_max_floor && search_radius > s->cell_max_width)
     error(
         "Must have at least Scheduler:min_top_level_cells cells in each "
-        "spatial dimension when periodicity is switched on (h_max = %g gives "
-        "a search radius of %g, but the coarsest top-level cell allowed is "
-        "%g).\nThe bound is the shortest box side divided by "
-        "Scheduler:min_top_level_cells, so raising "
-        "Scheduler:max_top_level_cells does not help. This error is often "
-        "caused by any of the followings:\n"
+        "spatial dimension when periodicity is switched on (h_max = %g, from "
+        "an ordinary smoothing length of %g and a star radiation term "
+        "(max of h_hii and a star's own h) of %g, gives a search radius of "
+        "%g, but the coarsest top-level cell allowed is %g).\nThe bound is "
+        "the shortest box side divided by Scheduler:min_top_level_cells, so "
+        "raising Scheduler:max_top_level_cells does not help. This error is "
+        "often caused by any of the followings:\n"
         " - too few particles to generate a sensible grid,\n"
         " - 'Scheduler:min_top_level_cells' is too large (it cannot go below "
         "3 when periodicity is switched on, in which case the box itself is "
@@ -219,7 +391,8 @@ void space_regrid(struct space *s, int verbose) {
         "predicted smoothing lengths too large for the box size,\n"
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n",
-        h_max, search_radius, s->cell_max_width);
+        h_max, s->h_max_no_hii_hwm, h_max_radiation, search_radius,
+        s->cell_max_width);
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -233,7 +406,8 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Capture state of current space. h_max_no_hii_hwm's ratchet (see
        above) means cdim can now also come out larger (finer) than before
-       -- only ever via h_hii shrinking, never via ordinary physics -- so
+       -- only ever via the star radiation term (h_hii or a star's own h)
+       shrinking, never via ordinary hydro/black-hole/sink physics -- so
        this capture must trigger on any change, not just a decrease. It
        still requires an existing grid: on the first call (from
        space_init) and on restart, s->cells_top is NULL while s->cdim may
@@ -270,9 +444,9 @@ void space_regrid(struct space *s, int verbose) {
   /* Do we need to re-build the upper-level cells? Any change now
      triggers a regrid, not just a decrease: h_max_no_hii_hwm's ratchet
      (above) guarantees cdim can only come out larger (finer) than
-     s->cdim because h_hii's own contribution shrank, never because
-     ordinary hydro/star/black-hole/sink h_max did -- so allowing that
-     direction here does not reopen the general one-way-coarsening
+     s->cdim because the star radiation term's own contribution shrank,
+     never because ordinary hydro/black-hole/sink h_max did -- so allowing
+     that direction here does not reopen the general one-way-coarsening
      behaviour those quantities still rely on. */
   // tic = getticks();
   if (s->cells_top == NULL || cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
