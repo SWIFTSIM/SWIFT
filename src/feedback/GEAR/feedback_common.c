@@ -1088,19 +1088,19 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 
 /**
  * @brief Local specific FUV-band radiation field, see
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].u. Thin dispatch wrapper, same
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].u. Thin dispatch wrapper, same
  * reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
  * provides this function, returning 0 everywhere except here for GEAR.
  *
  * @param p The #part to query.
  */
-float feedback_get_part_u_FUV(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_FUV].u;
+float feedback_get_part_u_PE(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].u;
 }
 
 /**
  * @brief Local specific Lyman-Werner-band radiation field, see
- * #feedback_get_part_u_FUV.
+ * #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
  */
@@ -1110,9 +1110,9 @@ float feedback_get_part_u_LW(const struct part *p) {
 
 /**
  * @brief Negativity-triggered artificial-dissipation coefficient, see
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger and
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor. Thin
- * dispatch wrapper, same reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger and
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
  * the per-pair `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`,
@@ -1121,14 +1121,13 @@ float feedback_get_part_u_LW(const struct part *p) {
  *
  * @param p The #part to query.
  */
-float feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
-  return max(
-      p->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_trigger,
-      p->feedback_data.isrf_band[ISRF_BAND_FUV].dissipation_alpha_floor);
+float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
+  return max(p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger,
+             p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor);
 }
 
 /**
- * @brief See #feedback_get_part_dissipation_alpha_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  */
@@ -1139,17 +1138,17 @@ float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
 
 /**
  * @brief `(1/rho) div(rho F)` accumulator, see
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].div_specific_flux. Thin dispatch
- * wrapper, same reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].div_specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
  */
-float feedback_get_part_div_specific_flux_FUV(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_FUV].div_specific_flux;
+float feedback_get_part_div_specific_flux_PE(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].div_specific_flux;
 }
 
 /**
- * @brief See #feedback_get_part_div_specific_flux_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  */
@@ -1159,20 +1158,20 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
 
 /**
  * @brief Tracked specific flux moment, see
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].specific_flux. Thin dispatch
- * wrapper, same reasoning as #feedback_get_part_u_FUV.
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
  * @param ret (return) The three components.
  */
-void feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
-  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[0];
-  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[1];
-  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_FUV].specific_flux[2];
+void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
+  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[0];
+  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[1];
+  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[2];
 }
 
 /**
- * @brief See #feedback_get_part_specific_flux_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  * @param ret (return) The three components.
@@ -1186,7 +1185,7 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
 /**
  * @brief Most negative FUV-band specific energy written since the previous
  * snapshot, see
- * #feedback_part_data.isrf_band[ISRF_BAND_FUV].u_min_since_snapshot.
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot.
  *
  * Values stamped with an older snapshot index belong to an interval that
  * saw no update of this particle, so they read as 0. Always 0 without
@@ -1195,17 +1194,17 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
  * @param p The #part to query.
  * @param e The #engine.
  */
-float feedback_get_part_u_min_since_snapshot_FUV(const struct part *p,
-                                                 const struct engine *e) {
+float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                                const struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_band[ISRF_BAND_FUV].u_min_since_snapshot;
+    return p->feedback_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot;
 #endif
   return 0.f;
 }
 
 /**
- * @brief See #feedback_get_part_u_min_since_snapshot_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  * @param e The #engine.
@@ -1243,13 +1242,13 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
  *
  * @param sp The #spart to query.
  */
-double feedback_get_star_L_FUV(const struct spart *sp) {
-  return sp->feedback_data.radiation.L_band[ISRF_BAND_FUV];
+double feedback_get_star_L_PE(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_band[ISRF_BAND_PE];
 }
 
 /**
  * @brief Star's current Lyman-Werner-band luminosity, see
- * #feedback_get_star_L_FUV.
+ * #feedback_get_star_L_PE.
  *
  * @param sp The #spart to query.
  */

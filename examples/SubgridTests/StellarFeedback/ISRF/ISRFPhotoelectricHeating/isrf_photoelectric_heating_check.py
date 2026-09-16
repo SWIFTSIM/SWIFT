@@ -102,7 +102,7 @@ def load_snapshot(path):
         gas = f["/PartType0"]
         pos = gas["Coordinates"][:, :]
         u = gas["InternalEnergies"][:] * u_to_cgs
-        u_fuv = gas["FUVSpecificEnergies"][:]
+        u_pe = gas["FUVSpecificEnergies"][:]
         u_lw = gas["LWSpecificEnergies"][:]
 
         # Species-based mean molecular weight when available
@@ -129,7 +129,7 @@ def load_snapshot(path):
         time=time,
         boxsize=boxsize,
         pos=pos,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
         temperature=temperature,
         star_pos=star_pos,
@@ -178,7 +178,7 @@ def main():
     edges = np.linspace(0.0, r_max, opt.n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
 
-    field_on = bin_by_radius(r_on, on["u_fuv"] + on["u_lw"], edges)
+    field_on = bin_by_radius(r_on, on["u_pe"] + on["u_lw"], edges)
     T_on = bin_by_radius(r_on, on["temperature"], edges)
     T_off = bin_by_radius(r_off, off["temperature"], edges)
 

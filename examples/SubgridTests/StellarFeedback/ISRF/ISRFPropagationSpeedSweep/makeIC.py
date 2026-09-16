@@ -271,7 +271,7 @@ L_code = L
 #####################
 # Seeded FUV/LW pulse (no star): see --seed-pulse-amplitude's own help.
 #####################
-u_fuv = np.zeros(N)
+u_pe = np.zeros(N)
 u_lw = np.zeros(N)
 if opt.seed_pulse_amplitude > 0.0:
     # 1.2348 = SPH:resolution_eta (params.yml); must match if that value changes.
@@ -281,8 +281,8 @@ if opt.seed_pulse_amplitude > 0.0:
     dx = pos - centre
     dx -= L_code * np.round(dx / L_code)
     r2 = np.sum(dx**2, axis=1)
-    u_fuv = opt.seed_pulse_amplitude * np.exp(-0.5 * r2 / sigma**2)
-    u_lw = u_fuv.copy()
+    u_pe = opt.seed_pulse_amplitude * np.exp(-0.5 * r2 / sigma**2)
+    u_lw = u_pe.copy()
     print(
         f"Seeded pulse: amplitude={opt.seed_pulse_amplitude}, "
         f"sigma={sigma} code = {sigma / h_mean} h, no star particle."
@@ -294,7 +294,7 @@ elif opt.seed_delta_amplitude > 0.0:
     dx = pos - centre
     dx -= L_code * np.round(dx / L_code)
     centre_idx = int(np.argmin(np.sum(dx**2, axis=1)))
-    u_fuv[centre_idx] = opt.seed_delta_amplitude
+    u_pe[centre_idx] = opt.seed_delta_amplitude
     u_lw[centre_idx] = opt.seed_delta_amplitude
     print(
         f"Seeded delta: amplitude={opt.seed_delta_amplitude} at particle "
@@ -303,9 +303,9 @@ elif opt.seed_delta_amplitude > 0.0:
 elif opt.seed_noise_amplitude > 0.0:
     # Uniform background + 1% relative white noise (S2 leg c), fixed seed
     # (np.random.seed(1) above) for reproducibility.
-    noise_fuv = 1.0 + 0.01 * np.random.standard_normal(N)
+    noise_pe = 1.0 + 0.01 * np.random.standard_normal(N)
     noise_lw = 1.0 + 0.01 * np.random.standard_normal(N)
-    u_fuv = opt.seed_noise_amplitude * noise_fuv
+    u_pe = opt.seed_noise_amplitude * noise_pe
     u_lw = opt.seed_noise_amplitude * noise_lw
     print(
         f"Seeded noise: background={opt.seed_noise_amplitude}, 1% relative "
@@ -392,7 +392,7 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho, dtype="f")
-grp.create_dataset("FUVSpecificEnergy", data=u_fuv, dtype="f")
+grp.create_dataset("FUVSpecificEnergy", data=u_pe, dtype="f")
 grp.create_dataset("LWSpecificEnergy", data=u_lw, dtype="f")
 
 

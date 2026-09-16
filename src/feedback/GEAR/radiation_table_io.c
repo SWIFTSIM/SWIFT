@@ -230,7 +230,7 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * radiation_parse_edge_policy()). This function never inspects the
  * group's "source" attribute: it only requires the specific attributes
  * it needs to be present, so a new pychem source mode works without a
- * companion SWIFT change. edge_policy_l_fuv/edge_policy_l_lw are the one
+ * companion SWIFT change. edge_policy_l_pe/edge_policy_l_lw are the one
  * exception to "requires the specific attributes to be present": they are
  * only read (and only required) when the group's own "L_FUV"/"L_LW"
  * datasets exist, since those datasets (and their edge-policy attributes)
@@ -332,15 +332,15 @@ void radiation_read_grid_metadata(hid_t group_id,
        first, unlike every field above (which pychem has always required),
        so an old-format 2D table still loads instead of erroring on a
        missing attribute it never had a reason to write. */
-    grid->edge_policy_l_fuv = boundary_condition_error;
+    grid->edge_policy_l_pe = boundary_condition_error;
     if (H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0) {
-      char l_fuv_below[16], l_fuv_above[16];
+      char l_pe_below[16], l_pe_above[16];
       radiation_read_string_attribute(group_id, "edge_policy_l_fuv_below",
-                                      l_fuv_below, sizeof(l_fuv_below));
+                                      l_pe_below, sizeof(l_pe_below));
       radiation_read_string_attribute(group_id, "edge_policy_l_fuv_above",
-                                      l_fuv_above, sizeof(l_fuv_above));
-      grid->edge_policy_l_fuv =
-          radiation_parse_edge_policy(l_fuv_below, l_fuv_above, "l_fuv");
+                                      l_pe_above, sizeof(l_pe_above));
+      grid->edge_policy_l_pe =
+          radiation_parse_edge_policy(l_pe_below, l_pe_above, "l_fuv");
     }
 
     grid->edge_policy_l_lw = boundary_condition_error;
@@ -359,7 +359,7 @@ void radiation_read_grid_metadata(hid_t group_id,
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
     grid->edge_policy_teff = boundary_condition_error;
-    grid->edge_policy_l_fuv = boundary_condition_error;
+    grid->edge_policy_l_pe = boundary_condition_error;
     grid->edge_policy_l_lw = boundary_condition_error;
   } else {
     error(
@@ -1031,24 +1031,24 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_read_l_fuv_array(struct radiation *rad, hid_t group_id,
-                                const struct radiation_grid_metadata *grid,
-                                const struct stellar_model *sm,
-                                const struct unit_system *us) {
+void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
 
   radiation_build_tables(
       group_id, "L_FUV", grid, sm, rad->interpolation_size,
       rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
-      &rad->raw.l_fuv, rad->has_integrated_ISRF ? &rad->integrated.l_fuv : NULL,
-      &rad->raw.l_fuv_2d,
-      rad->has_integrated_ISRF ? &rad->integrated.l_fuv_2d : NULL,
-      grid->edge_policy_l_fuv);
+      &rad->raw.l_pe, rad->has_integrated_ISRF ? &rad->integrated.l_pe : NULL,
+      &rad->raw.l_pe_2d,
+      rad->has_integrated_ISRF ? &rad->integrated.l_pe_2d : NULL,
+      grid->edge_policy_l_pe);
 }
 
 /**
  * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
- * table, if present. See #radiation_read_l_fuv_array's own doxygen
+ * table, if present. See #radiation_read_l_pe_array's own doxygen
  * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
  *
  * @param rad The #radiation model.
@@ -1554,7 +1554,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
      off, not a redundant check). Each call site (stellar_evolution.c)
      checks only the flag it actually needs. */
   if (rad->has_raw_ISRF || rad->has_integrated_ISRF) {
-    radiation_read_l_fuv_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
   }
 

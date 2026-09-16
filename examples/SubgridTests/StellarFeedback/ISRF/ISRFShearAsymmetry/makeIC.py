@@ -299,7 +299,7 @@ u = np.array([internal_energy_from_temperature_cgs(t) / UnitVelocity_cgs2 for t 
 # Seeded FUV/LW field: two Gaussian blobs (gated) or an x-independent slab
 # (report only). No star: see README.
 #####################
-u_fuv = np.zeros(N)
+u_pe = np.zeros(N)
 u_lw = np.zeros(N)
 sigma = opt.pulse_sigma_h * h_mean
 A = opt.pulse_amplitude
@@ -316,8 +316,8 @@ if opt.source_geometry == "blobs":
 
     u_A, dx_A = gaussian_blob(blob_A_centre)
     u_B, dx_B = gaussian_blob(blob_B_centre)
-    u_fuv = u_A + u_B
-    u_lw = u_fuv.copy()
+    u_pe = u_A + u_B
+    u_lw = u_pe.copy()
 
     print(f"Blob A centre (code)                  : {blob_A_centre}")
     print(f"Blob B centre (code)                  : {blob_B_centre}")
@@ -329,8 +329,8 @@ if opt.source_geometry == "blobs":
     in_B = r_B <= 3.0 * sigma
     N_A, N_B = int(in_A.sum()), int(in_B.sum())
     m_A, m_B = float(mass[in_A].sum()), float(mass[in_B].sum())
-    mu_A = float((mass * u_fuv)[in_A].sum())
-    mu_B = float((mass * u_fuv)[in_B].sum())
+    mu_A = float((mass * u_pe)[in_A].sum())
+    mu_B = float((mass * u_pe)[in_B].sum())
     imbalance_N = (N_A - N_B) / (N_A + N_B) if (N_A + N_B) > 0 else float("nan")
     imbalance_m = (m_A - m_B) / (m_A + m_B) if (m_A + m_B) > 0 else float("nan")
     imbalance_mu = (mu_A - mu_B) / (mu_A + mu_B) if (mu_A + mu_B) > 0 else float("nan")
@@ -344,8 +344,8 @@ else:
     # slab: x-independent, seeded on the lower (y=0.25) interface.
     dy = pos[:, 1] - 0.25 * L_code
     dy -= L_code * np.round(dy / L_code)
-    u_fuv = A * np.exp(-0.5 * dy**2 / sigma**2)
-    u_lw = u_fuv.copy()
+    u_pe = A * np.exp(-0.5 * dy**2 / sigma**2)
+    u_lw = u_pe.copy()
     print(f"Slab centred at y=0.25*L, sigma/h      : {sigma / h_mean}")
 
 rho_arr = np.ones(N) * rho
@@ -383,7 +383,7 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho_arr, dtype="f")
-grp.create_dataset("FUVSpecificEnergy", data=u_fuv, dtype="f")
+grp.create_dataset("FUVSpecificEnergy", data=u_pe, dtype="f")
 grp.create_dataset("LWSpecificEnergy", data=u_lw, dtype="f")
 
 fileOutput.close()

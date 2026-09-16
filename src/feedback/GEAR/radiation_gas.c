@@ -744,7 +744,7 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_BAND_FUV) +
+  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_BAND_PE) +
                        radiation_get_band_u_nonnegative(p, ISRF_BAND_LW);
   const double flux = phys_const->const_speed_light_c * rho * u_sum;
   const double flux_cgs =

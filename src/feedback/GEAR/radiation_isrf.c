@@ -167,7 +167,7 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
 
   if (!e->feedback_props->ISRF_propagation) {
-    p->feedback_data.isrf_band[ISRF_BAND_FUV].kappa = 0.f;
+    p->feedback_data.isrf_band[ISRF_BAND_PE].kappa = 0.f;
     p->feedback_data.isrf_band[ISRF_BAND_LW].kappa = 0.f;
     return;
   }
@@ -178,9 +178,9 @@ void radiation_snapshot_part_propagation(struct part *p,
    * cooling->local_dust_to_gas_ratio. */
   const float local_dust_to_gas_ratio =
       (float)e->cooling_func->chemistry_data.local_dust_to_gas_ratio;
-  p->feedback_data.isrf_band[ISRF_BAND_FUV].kappa =
+  p->feedback_data.isrf_band[ISRF_BAND_PE].kappa =
       radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
-                                                RADIATION_SIGMA_D_FUV_CGS,
+                                                RADIATION_SIGMA_D_PE_CGS,
                                                 local_dust_to_gas_ratio);
   p->feedback_data.isrf_band[ISRF_BAND_LW].kappa =
       radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
@@ -229,7 +229,7 @@ void radiation_snapshot_part_propagation(struct part *p,
    * for it (as active) and overwrites it. */
   struct feedback_part_data *fd = &p->feedback_data;
   if (part_is_active(p, e) &&
-      (fd->isrf_band[ISRF_BAND_FUV].u_dose_reservoir > 0.f ||
+      (fd->isrf_band[ISRF_BAND_PE].u_dose_reservoir > 0.f ||
        fd->isrf_band[ISRF_BAND_LW].u_dose_reservoir > 0.f)) {
     double t_rem;
     if (fd->ISRF_reservoir_end_ti <= ti_begin) {
@@ -893,8 +893,8 @@ radiation_get_part_ISRF_extinction_factors(
   const float local_dust_to_gas_ratio =
       (float)cooling->chemistry_data.local_dust_to_gas_ratio;
 
-  extinction[ISRF_BAND_FUV] = radiation_get_dust_extinction_factor(
-      us, Z, RADIATION_SIGMA_D_FUV_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
+  extinction[ISRF_BAND_PE] = radiation_get_dust_extinction_factor(
+      us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
   extinction[ISRF_BAND_LW] = radiation_get_dust_extinction_factor(
       us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
 }

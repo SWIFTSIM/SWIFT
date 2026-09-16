@@ -182,7 +182,7 @@ def read_snapshot(filename: str) -> Dict:
             "density": physical(gas["Densities"], a, mass / length**3)[order],
             "mass": physical(gas["Masses"], a, mass)[order],
             "u": physical(gas["InternalEnergies"], a, energy)[order],
-            "u_FUV": physical(gas["FUVSpecificEnergies"], a, energy)[order],
+            "u_PE": physical(gas["FUVSpecificEnergies"], a, energy)[order],
             "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
             "H2I": gas["H2I"][:].astype(np.float64)[order],
             "hydrogen": sum(
@@ -193,7 +193,7 @@ def read_snapshot(filename: str) -> Dict:
         metals = gas["MetalMassFractions"][:].astype(np.float64)
         out["Z"] = (metals[:, -1] if metals.ndim == 2 else metals)[order]
         if "/PartType4" in handle and handle["/PartType4/Masses"].shape[0] > 0:
-            out["L_FUV"] = float(handle["/PartType4/FUVLuminosities"][0])
+            out["L_PE"] = float(handle["/PartType4/FUVLuminosities"][0])
             out["L_LW"] = float(handle["/PartType4/LWLuminosities"][0])
             out["time_internal"] = float(np.atleast_1d(header["Time"])[0])
     return out
@@ -317,10 +317,11 @@ def free_field_errors(run: List[Dict]) -> Dict:
     mass = first["mass"]
     out = {}
     for band in ["FUV", "LW"]:
-        u0 = np.sum(mass * first[f"u_{band}"]) / np.sum(mass)
+        key_band = "PE" if band == "FUV" else band
+        u0 = np.sum(mass * first[f"u_{key_band}"]) / np.sum(mass)
         out[band] = np.array(
             [
-                np.sum(s["mass"] * s[f"u_{band}"])
+                np.sum(s["mass"] * s[f"u_{key_band}"])
                 / np.sum(s["mass"])
                 / (u0 * a0 / s["a"])
                 - 1.0
@@ -330,7 +331,10 @@ def free_field_errors(run: List[Dict]) -> Dict:
         out[f"{band}_spread"] = np.array(
             [
                 np.median(
-                    np.abs(s[f"u_{band}"] / (first[f"u_{band}"] * a0 / s["a"]) - 1.0)
+                    np.abs(
+                        s[f"u_{key_band}"] / (first[f"u_{key_band}"] * a0 / s["a"])
+                        - 1.0
+                    )
                 )
                 for s in run
             ]
@@ -455,6 +459,7 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
     rho0 = comoving_mean[0]
     z0 = np.sum(mass * first["Z"]) / np.sum(mass)
     for band in ["FUV", "LW"]:
+        key_band = "PE" if band == "FUV" else band
         kappa0 = (
             SIGMA_D_CGS[band]
             * (z0 / GRACKLE_SOLAR_METAL_FRACTION)
@@ -462,9 +467,9 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
             / (MU_H * M_H_CGS)
         )
         predicted = -c_pin_cgs * kappa0 * integral - ln_a
-        total0 = np.sum(mass * first[f"u_{band}"])
+        total0 = np.sum(mass * first[f"u_{key_band}"])
         measured = np.array(
-            [np.log(np.sum(s["mass"] * s[f"u_{band}"]) / total0) for s in run]
+            [np.log(np.sum(s["mass"] * s[f"u_{key_band}"]) / total0) for s in run]
         )
         out[band] = (measured - predicted)[:, None]
         out[f"{band}_depth"] = float(-predicted[-1])
@@ -527,7 +532,7 @@ def photoelectric_errors(on: List[Dict], dark: List[Dict]) -> Dict:
     times = np.array([s["time"] - on[0]["time"] for s in on])
     heating = []
     for s in on:
-        g0 = C_LIGHT_CGS * s["density"] * (s["u_FUV"] + s["u_LW"]) / HABING_FLUX_CGS
+        g0 = C_LIGHT_CGS * s["density"] * (s["u_PE"] + s["u_LW"]) / HABING_FLUX_CGS
         # Grackle's rhoH: the hydrogen species, not the primordial fraction.
         n_h = s["hydrogen"] * s["density"] / M_H_CGS
         gamma = (
@@ -655,10 +660,11 @@ def check_injection(opt: argparse.Namespace) -> bool:
         f"Delta_t {delta_t:.6e} internal"
     )
     for band in ["FUV", "LW"]:
-        lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
+        key_band = "PE" if band == "FUV" else band
+        lhs = np.sum(last["mass"] * last[f"u_{key_band}"]) / (
             last["mass_unit"] * last["energy_unit"]
         )
-        rhs = delta_t * last[f"L_{band}"]
+        rhs = delta_t * last[f"L_{key_band}"]
         ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
     return ok
 

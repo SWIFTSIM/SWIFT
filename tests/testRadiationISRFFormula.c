@@ -102,7 +102,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
   const float Sigma_gas_p = Sigma_gas_c * (float)cosmo.a2_inv;
 
   const double expected_FUV =
-      expected_extinction(us, Z, RADIATION_SIGMA_D_FUV_CGS, Sigma_gas_p,
+      expected_extinction(us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p,
                           RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
   const double expected_LW =
       expected_extinction(us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p,
@@ -111,7 +111,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
   float actual[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 2.0f,
                                              actual);
-  const float actual_FUV = actual[ISRF_BAND_FUV];
+  const float actual_FUV = actual[ISRF_BAND_PE];
   const float actual_LW = actual[ISRF_BAND_LW];
 
   char buf[128];
@@ -148,7 +148,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
                                              actual_half);
   snprintf(buf, sizeof(buf), "%s: path=1.0 halves the FUV log-extinction",
            name);
-  assert_close(buf, log((double)actual_half[ISRF_BAND_FUV]),
+  assert_close(buf, log((double)actual_half[ISRF_BAND_PE]),
                0.5 * log((double)actual_FUV), 1e-4);
   snprintf(buf, sizeof(buf), "%s: path=1.0 halves the LW log-extinction", name);
   assert_close(buf, log((double)actual_half[ISRF_BAND_LW]),
@@ -201,7 +201,7 @@ static void check_injection(const struct unit_system *us) {
   pj.rho = rho_gas;
   pj.chemistry_data
       .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = Z_gas;
-  pj.feedback_data.isrf_band[ISRF_BAND_FUV].u = 0.f;
+  pj.feedback_data.isrf_band[ISRF_BAND_PE].u = 0.f;
   pj.feedback_data.isrf_band[ISRF_BAND_LW].u = 0.f;
   pj.feedback_data.ISRF_last_touch_ti = -1; /* never touched yet */
 
@@ -211,7 +211,7 @@ static void check_injection(const struct unit_system *us) {
   float extinction[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
                                              2.0f, extinction);
-  const float extinction_FUV = extinction[ISRF_BAND_FUV];
+  const float extinction_FUV = extinction[ISRF_BAND_PE];
   const float extinction_LW = extinction[ISRF_BAND_LW];
 
   struct xpart xpj;
@@ -229,7 +229,7 @@ static void check_injection(const struct unit_system *us) {
   bzero(&si, sizeof(struct spart));
   si.time_bin = time_bin;
   si.feedback_data.enrichment_weight = rho_star;
-  si.feedback_data.radiation.L_band[ISRF_BAND_FUV] = 1.0e5;
+  si.feedback_data.radiation.L_band[ISRF_BAND_PE] = 1.0e5;
   si.feedback_data.radiation.L_band[ISRF_BAND_LW] = 5.0e4;
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj,
@@ -239,7 +239,7 @@ static void check_injection(const struct unit_system *us) {
                                        /*with_cosmology=*/0);
 
   const double expected_u_FUV_1 =
-      Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_BAND_FUV] *
+      Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_BAND_PE] *
       extinction_FUV / (double)mj;
   const double expected_u_LW_1 =
       Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_BAND_LW] *
@@ -248,7 +248,7 @@ static void check_injection(const struct unit_system *us) {
   /* First touch this step (ISRF_last_touch_ti went from -1 to 0): result
    * must equal this star's own deposit exactly. */
   assert_close("injection: first star, u_FUV",
-               (double)pj.feedback_data.isrf_band[ISRF_BAND_FUV].u,
+               (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
                expected_u_FUV_1, 1e-4);
   assert_close("injection: first star, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
@@ -268,7 +268,7 @@ static void check_injection(const struct unit_system *us) {
   bzero(&si2, sizeof(struct spart));
   si2.time_bin = time_bin;
   si2.feedback_data.enrichment_weight = rho_star;
-  si2.feedback_data.radiation.L_band[ISRF_BAND_FUV] = 2.0e5;
+  si2.feedback_data.radiation.L_band[ISRF_BAND_PE] = 2.0e5;
   si2.feedback_data.radiation.L_band[ISRF_BAND_LW] = 1.0e5;
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj,
@@ -278,14 +278,14 @@ static void check_injection(const struct unit_system *us) {
                                        /*with_cosmology=*/0);
 
   const double expected_u_FUV_2 =
-      Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_BAND_FUV] *
+      Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_BAND_PE] *
       extinction_FUV / (double)mj;
   const double expected_u_LW_2 =
       Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_BAND_LW] *
       extinction_LW / (double)mj;
 
   assert_close("injection: two stars, u_FUV",
-               (double)pj.feedback_data.isrf_band[ISRF_BAND_FUV].u,
+               (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
                expected_u_FUV_1 + expected_u_FUV_2, 1e-4);
   assert_close("injection: two stars, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
@@ -304,7 +304,7 @@ static void check_injection(const struct unit_system *us) {
   bzero(&si3, sizeof(struct spart));
   si3.time_bin = time_bin;
   si3.feedback_data.enrichment_weight = rho_star;
-  si3.feedback_data.radiation.L_band[ISRF_BAND_FUV] = 4.0e5;
+  si3.feedback_data.radiation.L_band[ISRF_BAND_PE] = 4.0e5;
   si3.feedback_data.radiation.L_band[ISRF_BAND_LW] = 3.0e4;
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj,
@@ -314,14 +314,14 @@ static void check_injection(const struct unit_system *us) {
                                        /*with_cosmology=*/0);
 
   const double expected_u_FUV_3 =
-      Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_BAND_FUV] *
+      Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_BAND_PE] *
       extinction_FUV / (double)mj;
   const double expected_u_LW_3 =
       Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_BAND_LW] *
       extinction_LW / (double)mj;
 
   assert_close("injection: new step resets, u_FUV",
-               (double)pj.feedback_data.isrf_band[ISRF_BAND_FUV].u,
+               (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
                expected_u_FUV_3, 1e-4);
   assert_close("injection: new step resets, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
@@ -331,7 +331,7 @@ static void check_injection(const struct unit_system *us) {
       "injection OK: extinction_FUV=%.6f extinction_LW=%.6f "
       "u_FUV=%.6e u_LW=%.6e (after new-step reset, third star only)",
       (double)extinction_FUV, (double)extinction_LW,
-      (double)pj.feedback_data.isrf_band[ISRF_BAND_FUV].u,
+      (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
       (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u);
 }
 
@@ -398,7 +398,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   bzero(&siA, sizeof(struct spart));
   siA.time_bin = bin_A;
   siA.feedback_data.enrichment_weight = rho_star;
-  siA.feedback_data.radiation.L_band[ISRF_BAND_FUV] = 1.0e5;
+  siA.feedback_data.radiation.L_band[ISRF_BAND_PE] = 1.0e5;
   siA.feedback_data.radiation.L_band[ISRF_BAND_LW] = 5.0e4;
 
   radiation_iact_nonsym_feedback_apply(
@@ -410,7 +410,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   bzero(&siB, sizeof(struct spart));
   siB.time_bin = bin_B;
   siB.feedback_data.enrichment_weight = rho_star;
-  siB.feedback_data.radiation.L_band[ISRF_BAND_FUV] = 2.0e5;
+  siB.feedback_data.radiation.L_band[ISRF_BAND_PE] = 2.0e5;
   siB.feedback_data.radiation.L_band[ISRF_BAND_LW] = 1.0e5;
 
   radiation_iact_nonsym_feedback_apply(
@@ -421,13 +421,13 @@ static void check_dose_reservoir(const struct unit_system *us) {
   const double Delta_A = get_timestep(bin_A, time_base);
   const double Delta_B = get_timestep(bin_B, time_base);
   const double dose_A_FUV = Delta_A * weight *
-                            siA.feedback_data.radiation.L_band[ISRF_BAND_FUV] /
+                            siA.feedback_data.radiation.L_band[ISRF_BAND_PE] /
                             (double)mj;
   const double dose_A_LW = Delta_A * weight *
                            siA.feedback_data.radiation.L_band[ISRF_BAND_LW] /
                            (double)mj;
   const double dose_B_FUV = Delta_B * weight *
-                            siB.feedback_data.radiation.L_band[ISRF_BAND_FUV] /
+                            siB.feedback_data.radiation.L_band[ISRF_BAND_PE] /
                             (double)mj;
   const double dose_B_LW = Delta_B * weight *
                            siB.feedback_data.radiation.L_band[ISRF_BAND_LW] /
@@ -435,7 +435,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
 
   assert_close(
       "dose reservoir: two stars, different bins, FUV",
-      (double)pj.feedback_data.isrf_band[ISRF_BAND_FUV].u_dose_reservoir,
+      (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir,
       dose_A_FUV + dose_B_FUV, 1e-4);
   assert_close(
       "dose reservoir: two stars, different bins, LW",
@@ -472,7 +472,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
       /*with_cosmology=*/0);
 
   const double D0_FUV =
-      (double)pk.feedback_data.isrf_band[ISRF_BAND_FUV].u_dose_reservoir;
+      (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir;
   const double D0_LW =
       (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir;
   const double dt_gas = get_timestep(bin_B, time_base);
@@ -495,23 +495,22 @@ static void check_dose_reservoir(const struct unit_system *us) {
     e.ti_current = T + (integertime_t)k * get_integer_timestep(bin_B);
     radiation_snapshot_part_propagation(&pk, &e);
 
-    assert_close(
-        "dose reservoir: constant drain rate, FUV",
-        (double)pk.feedback_data.isrf_band[ISRF_BAND_FUV].u_source_rate, S_FUV,
-        1e-5);
+    assert_close("dose reservoir: constant drain rate, FUV",
+                 (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_source_rate,
+                 S_FUV, 1e-5);
     assert_close("dose reservoir: constant drain rate, LW",
                  (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_source_rate,
                  S_LW, 1e-5);
   }
 
-  if (fabs((double)pk.feedback_data.isrf_band[ISRF_BAND_FUV].u_dose_reservoir) >
+  if (fabs((double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir) >
           1e-6 * D0_FUV ||
       fabs((double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir) >
           1e-6 * D0_LW)
     error(
         "dose reservoir: not fully drained at the horizon (FUV=%.6e, "
         "LW=%.6e).",
-        (double)pk.feedback_data.isrf_band[ISRF_BAND_FUV].u_dose_reservoir,
+        (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir,
         (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir);
 
   message(
@@ -552,11 +551,11 @@ static void check_grackle_coupling(const struct unit_system *us) {
   struct part p;
   bzero(&p, sizeof(struct part));
   p.rho = (float)(rho_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
-  p.feedback_data.isrf_band[ISRF_BAND_FUV].u =
+  p.feedback_data.isrf_band[ISRF_BAND_PE].u =
       (float)(u_band_cgs /
               units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
   p.feedback_data.isrf_band[ISRF_BAND_LW].u =
-      p.feedback_data.isrf_band[ISRF_BAND_FUV].u;
+      p.feedback_data.isrf_band[ISRF_BAND_PE].u;
 
   /* --- isrf_habing: formula-identity check --- */
   const double u_sum_cgs = 2.0 * u_band_cgs;
@@ -592,7 +591,7 @@ static void check_grackle_coupling(const struct unit_system *us) {
    * G0 = c*rho*(u_FUV+u_LW)/const is a plain linear map of its input. */
   struct part p_double;
   p_double = p;
-  p_double.feedback_data.isrf_band[ISRF_BAND_FUV].u *= 2.0f;
+  p_double.feedback_data.isrf_band[ISRF_BAND_PE].u *= 2.0f;
   p_double.feedback_data.isrf_band[ISRF_BAND_LW].u *= 2.0f;
   const double G0_double =
       radiation_get_part_isrf_habing(&phys_const, us, &cosmo, &p_double);
@@ -607,10 +606,10 @@ static void check_grackle_coupling(const struct unit_system *us) {
    * silently suppressed field, since the sum itself stays positive and no
    * clamp event fires. */
   struct part p_mix = p;
-  p_mix.feedback_data.isrf_band[ISRF_BAND_FUV].u *= 4.0f;
+  p_mix.feedback_data.isrf_band[ISRF_BAND_PE].u *= 4.0f;
   p_mix.feedback_data.isrf_band[ISRF_BAND_LW].u *= -1.0f;
   struct part p_positive_band_only = p;
-  p_positive_band_only.feedback_data.isrf_band[ISRF_BAND_FUV].u *= 4.0f;
+  p_positive_band_only.feedback_data.isrf_band[ISRF_BAND_PE].u *= 4.0f;
   p_positive_band_only.feedback_data.isrf_band[ISRF_BAND_LW].u = 0.0f;
 
   const double G0_mix =
@@ -777,13 +776,13 @@ static void check_local_dust_to_gas_ratio_scaling(
     /* Injection-side: extinction factor must match the analytic formula
      * scaled by this ratio, not the default. */
     const double expected_FUV = expected_extinction(
-        us, Z, RADIATION_SIGMA_D_FUV_CGS, Sigma_gas_p, ratios[i]);
+        us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p, ratios[i]);
     const double expected_LW = expected_extinction(
         us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, ratios[i]);
     float actual[ISRF_BAND_COUNT];
     radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
                                                2.0f, actual);
-    const float actual_FUV = actual[ISRF_BAND_FUV];
+    const float actual_FUV = actual[ISRF_BAND_PE];
     const float actual_LW = actual[ISRF_BAND_LW];
     char buf[128];
     snprintf(buf, sizeof(buf), "ratio scaling: FUV extinction, ratio=%.6g",
@@ -798,7 +797,7 @@ static void check_local_dust_to_gas_ratio_scaling(
      * formula, from the public linear-absorption-rate entry point). */
     const float rho_phys = p.rho;
     const float kappa = radiation_get_part_linear_absorption_rate(
-        us, Z, rho_phys, RADIATION_SIGMA_D_FUV_CGS, (float)ratios[i]);
+        us, Z, rho_phys, RADIATION_SIGMA_D_PE_CGS, (float)ratios[i]);
     kappa_eff_FUV[i] = (double)kappa / (double)rho_phys;
   }
 

@@ -95,11 +95,11 @@
 
 /*! Non-ionizing FUV band, eV (Habing band, 1107-2066 Angstrom: lambda =
     hc/E with hc = 12398.42 eV*Angstrom). */
-#define RADIATION_FUV_BAND_LOW_EV 6.0
-#define RADIATION_FUV_BAND_HIGH_EV 11.2
+#define RADIATION_PE_BAND_LOW_EV 6.0
+#define RADIATION_PE_BAND_HIGH_EV 11.2
 
 /*! Lyman-Werner band, eV (H2 photodissociation, 912-1108 Angstrom): see
-    RADIATION_FUV_BAND_LOW_EV's doxygen. */
+    RADIATION_PE_BAND_LOW_EV's doxygen. */
 #define RADIATION_LW_BAND_LOW_EV 11.2
 #define RADIATION_LW_BAND_HIGH_EV 13.6
 
@@ -112,7 +112,7 @@
 #define RADIATION_PLANCK_QUADRATURE_N 200
 
 /*! Mean mass per hydrogen nucleon (He folded in), for converting a
-    per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_FUV_CGS/
+    per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_PE_CGS/
     #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
     radiation_get_dust_extinction_factor()'s own doxygen. */
 #define RADIATION_MU_H 1.4
@@ -123,7 +123,7 @@
 /*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
     al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV
     (FUV) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
-#define RADIATION_SIGMA_D_FUV_CGS 9e-22
+#define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
 /*! Grackle's own solar metal mass fraction, SolarMetalFractionByMass
@@ -254,11 +254,11 @@ struct radiation_grid_metadata {
       shared with #edge_policy_luminosity, since pychem's L_FUV/L_LW default
       policy ("zero" below the native mass floor, "constant" above) differs
       from Luminosity's own. */
-  enum interpolate_boundary_condition edge_policy_l_fuv;
+  enum interpolate_boundary_condition edge_policy_l_pe;
 
   /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
       "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
-      attributes. See #edge_policy_l_fuv's own doxygen. */
+      attributes. See #edge_policy_l_pe's own doxygen. */
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
@@ -399,22 +399,22 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
 double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
                                       double E_high_eV);
 
-float radiation_get_l_fuv_from_raw(const struct radiation *rad, float log_m);
-float radiation_get_l_fuv_from_raw_2d(const struct radiation *rad, float log_z,
-                                      float log_m);
-float radiation_get_star_l_fuv(const struct radiation *rad, float log_m,
-                               float log_z);
+float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
+                              float log_z);
 float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m);
 float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
                                      float log_m);
 float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
                               float log_z);
 
-float radiation_get_l_fuv_from_integral(const struct radiation *rad,
-                                        float log_m1, float log_m2);
-float radiation_get_l_fuv_from_integral_2d(const struct radiation *rad,
-                                           float log_z, float log_m1,
-                                           float log_m2);
+float radiation_get_l_pe_from_integral(const struct radiation *rad,
+                                       float log_m1, float log_m2);
+float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
+                                          float log_z, float log_m1,
+                                          float log_m2);
 float radiation_get_l_lw_from_integral(const struct radiation *rad,
                                        float log_m1, float log_m2);
 float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
@@ -442,10 +442,10 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,
                                const struct unit_system *us);
-void radiation_read_l_fuv_array(struct radiation *rad, hid_t group_id,
-                                const struct radiation_grid_metadata *grid,
-                                const struct stellar_model *sm,
-                                const struct unit_system *us);
+void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
 void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,

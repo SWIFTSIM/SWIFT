@@ -170,7 +170,7 @@ def load_snapshot(path):
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
         rho = gas["Densities"][:].astype(np.float64)
-        u_fuv = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
         time=time,
@@ -179,7 +179,7 @@ def load_snapshot(path):
         h=h,
         ids=ids,
         rho=rho,
-        u_fuv=u_fuv,
+        u_pe=u_pe,
         u_lw=u_lw,
     )
 
@@ -271,7 +271,7 @@ def main():
     # M-P3: stability (max|u|, growth factor, NaNs).
     print(f"\n--- M-P3: stability ---")
     stability_ok = True
-    for band, key in (("FUV", "u_fuv"), ("LW", "u_lw")):
+    for band, key in (("FUV", "u_pe"), ("LW", "u_lw")):
         max_u_series = np.array([np.max(np.abs(s[key])) for s in snaps])
         n_nan = int(sum(np.sum(~np.isfinite(s[key])) for s in snaps))
         g = max_u_series[1:] / np.where(
@@ -312,7 +312,7 @@ def main():
     front_results = {}
     fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
     colors = plt.cm.viridis(np.linspace(0, 0.9, len(snaps)))
-    for band, key in (("FUV", "u_fuv"), ("LW", "u_lw")):
+    for band, key in (("FUV", "u_pe"), ("LW", "u_lw")):
         u = last[key]
         u_max = float(u.max()) if u.size else 0.0
         band_results = {}

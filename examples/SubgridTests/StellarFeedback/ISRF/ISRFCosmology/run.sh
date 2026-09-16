@@ -15,7 +15,7 @@ gas_density_default=1        # atom/cm^3
 gas_mass_default=1           # Msun
 temperature_default=100      # K
 metallicity_default=0        # Z/Zsun
-u_fuv_default=0              # erg/g
+u_pe_default=0              # erg/g
 u_lw_default=0               # erg/g
 nH2_ratio_default=1e-8
 h2_self_shielding_default=3
@@ -29,14 +29,14 @@ max_star_dt_myr_default=1e-7  # Myr, young-star step cap
 star_age_default=0
 case "$config" in
     free_field)
-	u_fuv_default=6.9955e4
+	u_pe_default=6.9955e4
 	u_lw_default=6.9955e4
 	nH2_ratio_default=2e-4
 	h2_self_shielding_default=0  # the check's closed form (A2) is unshielded
 	;;
     dust_absorption)
 	metallicity_default=1
-	u_fuv_default=1e5
+	u_pe_default=1e5
 	u_lw_default=1e5
 	c_hyp_pin_default=4
 	;;
@@ -48,7 +48,7 @@ case "$config" in
 	snapshots_default=20
 	steps_default=200
 	if [ "$config" = "photoelectric" ]; then
-	    u_fuv_default=1.6e9
+	    u_pe_default=1.6e9
 	    u_lw_default=1.6e9
 	fi
 	;;
@@ -88,7 +88,7 @@ gas_density=${gas_density:=$gas_density_default}
 gas_mass=${gas_mass:=$gas_mass_default}
 temperature=${temperature:=$temperature_default}
 metallicity=${metallicity:=$metallicity_default}
-u_fuv=${u_fuv:=$u_fuv_default}
+u_pe=${u_pe:=$u_pe_default}
 u_lw=${u_lw:=$u_lw_default}
 nH2_ratio=${nH2_ratio:=$nH2_ratio_default}
 h2_self_shielding=${h2_self_shielding:=$h2_self_shielding_default} #0, 2 or 3
@@ -115,7 +115,7 @@ if [ ! -e POPIIsw.h5 ]; then
 fi
 
 python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass \
-    --temperature $temperature --redshift $redshift --u-fuv $u_fuv \
+    --temperature $temperature --redshift $redshift --u-pe $u_pe \
     --u-lw $u_lw --star-mass $star_mass --star-age $star_age -o ICs_isrf_cosmology.hdf5
 
 eval "$(python3 cosmo_timeline.py --redshift $redshift --duration $duration \

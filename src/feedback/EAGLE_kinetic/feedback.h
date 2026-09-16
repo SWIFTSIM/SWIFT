@@ -167,7 +167,7 @@ feedback_get_part_ionized_star_id(const struct part *p,
  *
  * @param p The #part to query.
  */
-__attribute__((always_inline)) INLINE static float feedback_get_part_u_FUV(
+__attribute__((always_inline)) INLINE static float feedback_get_part_u_PE(
     const struct part *p) {
   return 0.f;
 }
@@ -190,12 +190,12 @@ __attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
  * @param p The #part to query.
  */
 __attribute__((always_inline)) INLINE static float
-feedback_get_part_dissipation_alpha_FUV(const struct part *p) {
+feedback_get_part_dissipation_alpha_PE(const struct part *p) {
   return 0.f;
 }
 
 /**
- * @brief See #feedback_get_part_dissipation_alpha_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  */
@@ -210,12 +210,12 @@ feedback_get_part_dissipation_alpha_LW(const struct part *p) {
  * @param p The #part to query.
  */
 __attribute__((always_inline)) INLINE static float
-feedback_get_part_div_specific_flux_FUV(const struct part *p) {
+feedback_get_part_div_specific_flux_PE(const struct part *p) {
   return 0.f;
 }
 
 /**
- * @brief See #feedback_get_part_div_specific_flux_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  */
@@ -231,14 +231,14 @@ feedback_get_part_div_specific_flux_LW(const struct part *p) {
  * @param ret (return) The three components, zeroed.
  */
 __attribute__((always_inline)) INLINE static void
-feedback_get_part_specific_flux_FUV(const struct part *p, float *ret) {
+feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
   ret[0] = 0.f;
   ret[1] = 0.f;
   ret[2] = 0.f;
 }
 
 /**
- * @brief See #feedback_get_part_specific_flux_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  * @param ret (return) The three components, zeroed.
@@ -258,13 +258,13 @@ feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
  * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static float
-feedback_get_part_u_min_since_snapshot_FUV(const struct part *p,
-                                           const struct engine *e) {
+feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                          const struct engine *e) {
   return 0.f;
 }
 
 /**
- * @brief See #feedback_get_part_u_min_since_snapshot_FUV, Lyman-Werner band.
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
  * @param e The #engine.
@@ -293,14 +293,14 @@ __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
  *
  * @param sp The #spart to query.
  */
-__attribute__((always_inline)) INLINE static double feedback_get_star_L_FUV(
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_PE(
     const struct spart *sp) {
   return 0.;
 }
 
 /**
  * @brief Star's current Lyman-Werner-band luminosity, see
- * #feedback_get_star_L_FUV.
+ * #feedback_get_star_L_PE.
  *
  * @param sp The #spart to query.
  */
