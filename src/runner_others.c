@@ -860,6 +860,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt,
                             e->chemistry);
+        feedback_end_force(p, e);
 
         /* Apply the forcing terms (if any) */
         forcing_hydro_terms_apply(e->time, e->forcing_terms, e->s,

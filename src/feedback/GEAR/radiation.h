@@ -31,6 +31,7 @@
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "radiation_isrf.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"
 
@@ -47,6 +48,28 @@
     src/cooling/grackle/cooling_gear_subgrid.h) can clear it before the star
     ever gets the chance to renew it. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
+
+/*! Lifetime granted to an LW/FUV illumination episode, in units of the
+    illuminating star's own integer timestep. Integer, not a double factor
+    on a physical time like RADIATION_TAG_LIFETIME_INTERVALS: the
+    injection/expiry comparison this feeds (radiation_iact.h,
+    radiation_gas.c:radiation_reset_part_ISRF_illumination_tag) works
+    entirely in integertime_t, so there is no float boundary to round
+    against. Must exceed 1 for the same reason as RADIATION_TAG_LIFETIME_
+    INTERVALS: a touch has to outlive the gap to the star's next visit, or
+    the gas particle's own once-per-step expiry check (feedback_reset_part)
+    can clear it first. */
+#define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
+
+/*! Memory length, in units of a particle's own smoothing length, of the
+    negativity-triggered artificial-dissipation coefficient's decay. The
+    coefficient relaxes toward its trigger-driven target at rate
+    c_hyp*(1/(this*h) + kappa) per unit time, i.e. an e-folding of `this`
+    particle-own-steps at the default ISRF_c_hyp_margin. A compile-time
+    constant, not a runtime parameter, per the MAGMA2 precedent: it sets
+    the term's transient behaviour, not its steady-state strength
+    (ISRF_dissipation_alpha_max does that). */
+#define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
 
 /*! Ceiling on the elapsed interval the per-pass photon budget is integrated
     over, in units of the rebuild cadence actually in force. A scheduled pass
@@ -69,6 +92,88 @@
     exactly what it means in pychem, independently of SWIFT's unit
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
+
+/*! Non-ionizing FUV band, eV (Habing band, 1107-2066 Angstrom: lambda =
+    hc/E with hc = 12398.42 eV*Angstrom). */
+#define RADIATION_PE_BAND_LOW_EV 6.0
+#define RADIATION_PE_BAND_HIGH_EV 11.2
+
+/*! Lyman-Werner band, eV (H2 photodissociation, 912-1108 Angstrom): see
+    RADIATION_PE_BAND_LOW_EV's doxygen. */
+#define RADIATION_LW_BAND_LOW_EV 11.2
+#define RADIATION_LW_BAND_HIGH_EV 13.6
+
+/*! Boltzmann constant in eV/K, for #radiation_planck_band_fraction's
+    dimensionless photon energy x = h*nu / (k_B*T). */
+#define RADIATION_BOLTZMANN_K_EV_PER_K 8.617333262e-5
+
+/*! Number of Simpson's-rule sub-intervals #radiation_planck_band_fraction
+    integrates the Planck function over; see that function's own doxygen. */
+#define RADIATION_PLANCK_QUADRATURE_N 200
+
+/*! Mean mass per hydrogen nucleon (He folded in), for converting a
+    per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_PE_CGS/
+    #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
+    radiation_get_dust_extinction_factor()'s own doxygen. */
+#define RADIATION_MU_H 1.4
+
+/*! Hydrogen atomic mass, g (cgs); see #RADIATION_MU_H. */
+#define RADIATION_HYDROGEN_MASS_CGS 1.6726219e-24
+
+/*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
+    al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV
+    (FUV) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
+#define RADIATION_SIGMA_D_PE_CGS 9e-22
+#define RADIATION_SIGMA_D_LW_CGS 1.5e-21
+
+/*! Grackle's own solar metal mass fraction, SolarMetalFractionByMass
+    (grackle_chemistry_data_fields.def, default 0.01295), not
+    radiation_pressure.c's unrelated Z_sun=0.02 (used only for the
+    kappa_IR/kappa_NUV fit). By default (chemistry_data.use_dust_density_
+    field=0), Grackle computes its own dust-to-gas ratio as
+    local_dust_to_gas_ratio * (Z/#RADIATION_GRACKLE_SOLAR_METAL_FRACTION);
+    matching that convention keeps our own assumed dust abundance
+    consistent with Grackle's dust_chemistry=1-coupled channels for the
+    same gas. local_dust_to_gas_ratio only cancels out of our relative
+    D(Z)/D(Zsun) scaling when a run leaves it at Grackle's own compiled
+    default (#RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO); a run that
+    overrides GrackleCooling:local_dust_to_gas_ratio must scale D(Z) by
+    the resolved value relative to that default, so it is read
+    explicitly at both extinction call sites instead of assumed away. */
+#define RADIATION_GRACKLE_SOLAR_METAL_FRACTION 0.01295
+
+/*! Grackle's own compiled default for chemistry_data.local_dust_to_gas_
+    ratio (Pollack et al. 1994), resolved from the `-1` sentinel in
+    cooling.c when GrackleCooling:local_dust_to_gas_ratio is left unset;
+    see #RADIATION_GRACKLE_SOLAR_METAL_FRACTION. */
+#define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
+
+/*! Standard Habing-unit flux normalization, erg/s/cm^2: G0=1 corresponds
+    to this flux integrated over the FUV+LW bands. */
+#define RADIATION_HABING_FLUX_CGS 1.6e-3
+
+/*! Representative Lyman-Werner photon energy, eV (~12 eV, the band's own
+    6-11.2/11.2-13.6 eV midpoint region), for converting an energy flux to
+    a photon flux; see radiation_get_part_LW_dissociation_rate_internal()'s
+    own doxygen. */
+#define RADIATION_LW_PHOTON_ENERGY_EV 12.0
+
+/*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2:
+    an approximation with an implicit assumed spectral shape (the
+    band-integrated H2 cross section depends on the spectrum within
+    11.2-13.6 eV, not a single atomic-physics constant, so this is a
+    single-line-averaged effective value, not re-derivable to arbitrary
+    precision). Verified against Sternberg, Le Petit, Roueff & Le Bourlot
+    (2014, ApJ 790:10): this codebase's own k_diss formula
+    (radiation_get_part_LW_dissociation_rate_internal()) compared against
+    their free-space photodissociation rate D0=5.8e-11*I_UV (their Eq 5),
+    for an equivalent LW-band radiation intensity, gives k_diss/D0=0.898
+    (within ~10%, consistent with the ~5-10% uncertainty in converting
+    between this codebase's Habing-band convention and Sternberg's
+    Draine-normalized I_UV). See
+    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the full
+    calculation. */
+#define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
     the integrated table's own top mass edge before calling interpolate_2d(),
@@ -136,6 +241,25 @@ struct radiation_grid_metadata {
       MeanExcessPhotonEnergyHI/DotEExcess's own primary content, which
       need not match #edge_policy_q_h's variant. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
+
+  /*! Mass-axis boundary condition for the "Teff" dataset (2D tables only),
+      from the group's generic edge_policy_teff_below/above attributes. */
+  enum interpolate_boundary_condition edge_policy_teff;
+
+  /*! Mass-axis boundary condition for the "L_FUV" dataset (2D tables with
+      an "L_FUV" dataset only; boundary_condition_error otherwise, matching
+      every other edge_policy_* field's convention for a table where the
+      corresponding dataset does not apply), from the group's own
+      edge_policy_l_fuv_below/above attributes, a dedicated pair, NOT
+      shared with #edge_policy_luminosity, since pychem's L_FUV/L_LW default
+      policy ("zero" below the native mass floor, "constant" above) differs
+      from Luminosity's own. */
+  enum interpolate_boundary_condition edge_policy_l_pe;
+
+  /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
+      "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
+      attributes. See #edge_policy_l_pe's own doxygen. */
+  enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
 double radiation_get_part_number_hydrogen_atoms(
@@ -175,6 +299,8 @@ char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
 double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
+void radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                                const struct engine *e);
 long long radiation_get_part_ionized_star_id(const struct part *p,
                                              const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
@@ -183,6 +309,13 @@ float radiation_get_part_photoionization_rate_coefficient(
     const struct part *p, const struct xpart *xpj);
 double radiation_get_photoionization_rate_coefficient_from_flux_HI(
     const struct unit_system *us, const double ionizing_flux_HI);
+double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct cosmology *cosmo,
+                                      const struct part *p);
+double radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
@@ -258,6 +391,36 @@ double radiation_get_star_ionization_rate(const struct radiation *rad,
 double radiation_get_star_mean_excess_photon_energy_HI(
     const struct radiation *rad, float log_m, float log_z, float star_age_myr);
 
+float radiation_get_teff_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_teff(const struct radiation *rad, float log_m,
+                              float log_z);
+double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
+                                      double E_high_eV);
+
+float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
+                              float log_z);
+float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
+                              float log_z);
+
+float radiation_get_l_pe_from_integral(const struct radiation *rad,
+                                       float log_m1, float log_m2);
+float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
+                                          float log_z, float log_m1,
+                                          float log_m2);
+float radiation_get_l_lw_from_integral(const struct radiation *rad,
+                                       float log_m1, float log_m2);
+float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
+                                          float log_z, float log_m1,
+                                          float log_m2);
+
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
@@ -275,6 +438,18 @@ void radiation_read_mean_excess_photon_energy_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
+void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
+void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

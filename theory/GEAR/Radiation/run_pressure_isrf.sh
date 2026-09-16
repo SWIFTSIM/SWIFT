@@ -1,6 +1,8 @@
 #!/bin/bash
 echo "Generating PDF..."
-pdflatex -jobname=radiation_pressure_isrf radiation_pressure_isrf.tex
+PDFLATEX="pdflatex -interaction=nonstopmode -halt-on-error -jobname=radiation_pressure_isrf"
+$PDFLATEX radiation_pressure_isrf.tex || { echo "pdflatex failed, see radiation_pressure_isrf.log"; exit 1; }
 bibtex radiation_pressure_isrf.aux
-pdflatex -jobname=radiation_pressure_isrf radiation_pressure_isrf.tex
-pdflatex -jobname=radiation_pressure_isrf radiation_pressure_isrf.tex
+$PDFLATEX radiation_pressure_isrf.tex || { echo "pdflatex failed, see radiation_pressure_isrf.log"; exit 1; }
+$PDFLATEX radiation_pressure_isrf.tex || { echo "pdflatex failed, see radiation_pressure_isrf.log"; exit 1; }
+$PDFLATEX radiation_pressure_isrf.tex || { echo "pdflatex failed, see radiation_pressure_isrf.log"; exit 1; }

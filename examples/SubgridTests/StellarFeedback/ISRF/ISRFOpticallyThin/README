@@ -1,0 +1,100 @@
+# Intro
+A single, fixed-mass star at the centre of a uniform, periodic glass-IC gas
+box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure)
+propagation on (photoionization and radiation pressure off), in the
+OPTICALLY-THIN corner: the metallicity is low enough that the dust
+screening length is much larger than both the smoothing length and the box
+(`h/lambda ~ 6e-3`, against `h/lambda ~ 1` in the sibling
+`ISRFHyperbolicPropagation`).
+
+In that corner a single point source in an absorbing medium never
+scatters, so the M1 closure is exact and reduces to free streaming: the
+settled field behind the causal front is
+
+    u(r) = L * exp(-r/lambda) / (4 * pi * c * rho * r^2)
+
+with `lambda = 1/(kappa_eff*rho)` the dust absorption length, `kappa_eff` the
+dust mass opacity, and `c` the true speed of light (the reduced propagation
+speed `c_hyp` cancels in this steady state). `isrf_optically_thin_check.py`
+fits the settled profile against this `1/r^2` law, in both bands, with no
+fitted parameter. It also plots the isotropic/diffusion-closure profile the
+same source would give if the field isotropized,
+`3*L*exp(-sqrt(3)*r/lambda)/(4*pi*c*lambda*rho*r)`, for comparison only: that
+profile is not a valid steady state this close to a single source and is not
+what this check gates on.
+
+`ISRFHyperbolicPropagation` measures the SCREENED steady state instead,
+where `lambda` is comparable to `h` and compares against a discrete solve
+rather than a continuum formula.
+
+## Measurement window
+The field is measured strictly inside the causal front, over
+`[3*h_star, min(R_f - 2*H, L_box - R_f)]`, where `R_f = N_steps*C_hyp*h` is
+the front radius and `H` the kernel support. The first term excludes the
+star's injection footprint, the second the front itself (which the
+estimator smears over a couple of supports), and the third every periodic
+image, which cannot have reached radius `r` before `c_hyp*t = L_box - r`.
+`time_end` is set long enough that the fitted snapshots sample the field
+well past its initial transient, before the causal front's own approach to
+the periodic box edge narrows the window again.
+
+## Metallicity, cooling
+`initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
+0: the dust opacity, and hence `lambda`, is undefined at `Z=0`. It defaults
+to `Z/Zsun=1e-2`, giving `lambda_FUV = 32.2 pc` in a 10.2 pc box.
+`GrackleCooling:disable_cooling_for_debugging: 1` skips the per-particle
+cooling/heating update so the gas's thermal and dynamical state stays
+fixed, while `--cooling` (`run.sh`) still lets `cooling_init()` resolve
+`chemistry_data`, including the `local_dust_to_gas_ratio` the dust opacity
+depends on.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+themselves live on `struct part`'s `feedback_data`). The Grackle cooling
+mode is not critical here (only `chemistry_data` needs resolving, not any
+mode-gated species network).
+
+# Run
+```
+./run.sh
+```
+Runs on `params.yml`'s shipped defaults throughout, including the ISRF
+dissipation coefficients. The default resolution is `level=6` (262144 gas
+particles), needed for the radial range the slope fit wants. Override any
+parameter via the matching env var: gas density (`gas_density`,
+atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass and type
+(`star_mass`, `star_type`), resolution level (`level`, N = `(2**level)**3`
+gas particles), run duration and stepping (`time_end`, `dt_max`,
+`delta_time`), metallicity (`initial_metallicity`), and thread count
+(`n_threads`); see `run.sh` for the full list and defaults.
+`run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done,
+to keep more than one run's outputs side by side.
+
+Lowering `level` shortens the run but narrows the measurement window:
+`L_box/h` scales as `N^(1/3)` at fixed particle mass and density, so the
+radial range available for the slope fit shrinks with it.
+
+# Checking
+```
+python3 isrf_optically_thin_check.py
+```
+`run.sh` runs this automatically against its own `output.log` and snapshots.
+For each band it bins the field radially inside the causal front and fits the
+log-log slope against the free-streaming prediction, averaging over the last
+few snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
+from the prediction, or if the radial spread of the measured/free-streaming
+ratio exceeds `--flatness-tol`; the defaults should not be loosened to make a
+run pass. The absolute amplitude ratio (measured field over the free-streaming
+prediction) is reported but not gated on: the flux limiter pins particles near
+the source before they reach the unlimited fixed point, biasing the settled
+amplitude there without changing the power-law slope this check measures. If
+the field is ringing in sign the script says so explicitly rather than
+reporting an unfittable profile as an error. Produces a comparison plot
+(`--output`, default `isrf_optically_thin_check.png`) showing the measured
+profile against both the free-streaming target and the diffusion-closure
+curve kept for comparison.

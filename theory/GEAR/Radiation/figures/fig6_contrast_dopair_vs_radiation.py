@@ -2,7 +2,7 @@
 
 Left: the classic hydro sorted pair kernel (runner_doiact_functions_hydro.h)
 walks BOTH cells' sort arrays in lockstep along their shared sid, using
-rshift = shift . runner_shift[sid] to align the two cells' frames -- this
+rshift = shift . runner_shift[sid] to align the two cells' frames, which
 requires ci and cj to be sorted along the pair's own sid, which only their
 own pair tasks populate, so it is adjacency-bound by construction.
 
@@ -210,7 +210,7 @@ def make_figure(output_path: str) -> None:
     axr.set_title("Radiation gather (this code)", fontsize=10.5)
 
     fig.suptitle(
-        "Fig. 6 -- Two-sided lockstep vs one-sided star-centric scan",
+        "Fig. 6: Two-sided lockstep vs one-sided star-centric scan",
         fontsize=11.5,
         y=0.995,
     )

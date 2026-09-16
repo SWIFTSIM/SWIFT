@@ -135,6 +135,16 @@ INLINE static void convert_spart_HII_mass(const struct engine *e,
   ret[0] = feedback_get_star_HII_mass(sp);
 }
 
+INLINE static void convert_spart_L_PE(const struct engine *e,
+                                      const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_PE(sp);
+}
+
+INLINE static void convert_spart_L_LW(const struct engine *e,
+                                      const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_LW(sp);
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -148,7 +158,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 10;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -198,7 +208,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "Co-moving HII region radius of the star particles when the HII was last "
       "rebuilt. This is the search/tagging algorithm's own bookkeeping (how "
       "far the star has claimed gas as ionized), not a measurement of the "
-      "gas's actual physical state -- previously-tagged gas can stay warm "
+      "gas's actual physical state. Previously-tagged gas can stay warm "
       "well past its tag's expiry without being re-tagged, so the true "
       "thermally-affected extent can be larger than this radius.");
 
@@ -212,6 +222,19 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "never lapse and the maintenance pass that re-adds already-held mass "
       "is compiled out, so this field counts only each pass's newly-tagged "
       "mass rather than the region's true total.");
+
+  list[10] = io_make_output_field_convert_spart(
+      "FUVLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      convert_spart_L_PE,
+      "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
+      "physical units. Feeds the ISRF injection term; 0 unless "
+      "GEARFeedback:with_photoelectric_heating is on.");
+
+  list[11] = io_make_output_field_convert_spart(
+      "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      convert_spart_L_LW,
+      "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
+      "physical units. See #FUVLuminosities.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
@@ -314,7 +337,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Floor applied to the star's final time-step, after combining the
      age-based bound above with the feedback module's own criteria
      (stellar-evolution stage, HII rebuild cadence, ...). Guards against a
-     near-zero remainder violating dt_min. Not a physics floor -- see
+     near-zero remainder violating dt_min. Not a physics floor: see
      GEARFeedback:HII_rebuild_floor_Myr for the floor on the photon-budget
      rebuild interval itself, a different quantity kept separate from this
      one. */
@@ -370,7 +393,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
    * regions (e.g. cosmological zoom-ins) where a single HII search pass
    * may need several passes to cover all gas within the search radius
    * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
-   * constant -- see runner_radiation_feedback.h). */
+   * constant, see runner_radiation_feedback.h). */
   sp->HII_max_retry_full_buffer =
       parser_get_opt_param_int(params, "Stars:HII_max_retry_full_buffer", 10);
 

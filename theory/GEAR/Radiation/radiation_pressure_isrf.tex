@@ -64,9 +64,10 @@ this same directory) since they are largely self-contained: the
 \textbf{radiation-pressure} momentum-injection channel
 (Section~\ref{sec:radiation-pressure}, \code{src/feedback/GEAR/radiation.c}
 and related files, branch \code{darwin/gear\_radiation}), and the
-\textbf{FUV/ISRF} propagation design for photoelectric heating and
-H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}, not yet
-implemented). It describes the current design and physics only;
+\textbf{FUV/ISRF} channel for photoelectric heating and
+H$_2$ photodissociation (Section~\ref{sec:fuv-isrf},
+\code{src/feedback/GEAR/radiation\_isrf.c} and related files). It
+describes the current design and physics only;
 dated bug history and open-item tracking for both channels live in the
 \textbf{GEAR radiation logbook} (\code{swift-gear} repository,
 \code{theory/radiation/}), alongside the HII photoionization model's

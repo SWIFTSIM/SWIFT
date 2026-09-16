@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_INTERPOLATION_H
 
 #include "error.h"
+#include "exp10.h"
 #include "inline.h"
 #include "minmax.h"
 

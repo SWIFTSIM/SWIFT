@@ -54,6 +54,9 @@ struct cooling_function_data {
   /*! Flag to enable H2 formation on dust grains */
   int H2_on_dust;
 
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 
@@ -110,6 +113,22 @@ struct cooling_function_data {
   /*! Grackle RT_H2_dissociation_rate (in IU) */
   float RT_H2_dissociation_rate;
 
+  /*! Rate-couple GEAR's local Lyman-Werner/FUV feedback into Grackle's
+      per-particle isrf_habing (photoelectric heating/dust chemistry) and,
+      at COOLING_GRACKLE_MODE > 1, RT_H2_dissociation_rate (H2
+      photodissociation) fields, instead of Grackle's spatially-uniform
+      scalars. Forces use_isrf_field/dust_chemistry/photoelectric_heating
+      on internally (cooling_init_grackle) and, at COOLING_GRACKLE_MODE >
+      1, use_radiative_transfer (cooling_io.h). See cooling_gear_subgrid.h's
+      cooling_get_isrf_habing_subgrid/cooling_get_LW_dissociation_rate_
+      subgrid. */
+  int with_ISRF;
+
+  /*! Grackle photoelectric_heating option used when with_ISRF is on,
+      from GrackleCooling:photoelectric_heating_efficiency: 2 (constant),
+      3 (wolfire1995) or 4 (density_dependent). */
+  int photoelectric_heating_efficiency;
+
   /*! Volumetric heating rates */
   float volumetric_heating_rates;
 
@@ -156,20 +175,46 @@ struct cooling_function_data {
   /*! Self shielding threshold */
   float self_shielding_threshold;
 
-  /*! convergence limit for first init */
-  float convergence_limit;
+  /*! Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding):
+   * 0 = off, 2 = shielding length supplied per particle, with the default
+   * H2_self_shielding_path, as the kernel support radius kernel_gamma * h
+   * (physical), 3 = local Jeans length (computed internally by Grackle).
+   * Mode 1 (Sobolev-like, differences neighbouring grid cells) is rejected
+   * at start-up, since SWIFT calls Grackle on a single particle. Unrelated
+   * to self_shielding_method above, which is a separate Grackle field
+   * gating UV-background self-shielding. */
+  int H2_self_shielding;
 
-  /*! number of step max for first init */
+  /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 2
+   * for "kernel_diameter", 1 for "kernel_radius"
+   * (GrackleCooling:H2_self_shielding_path). Grackle forms N_H2 = 2 n_H2 l,
+   * so the length handed to it is half this path. */
+  float H2_self_shielding_path_in_kernel_radii;
+
+  /*! Maximal number of Grackle sub-cycle iterations per solve
+   * (GrackleCooling:max_steps, Grackle's chemistry_data.max_iterations). */
   int max_step;
 
-  /*! over relaxation parameter */
-  float omega;
+  /*! Number of retries of a failed Grackle solve
+   * (GrackleCooling:subcycle_on_failure). Retry i splits the time-step into
+   * 2^i consecutive solves. 0 disables the retries. */
+  int subcycle_on_failure;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 
   /*! Maximal allowed density for cooling (in internal units). */
   double cooling_density_max;
+
+  /*! Debug/test-only: skip cooling_cool_part()'s per-particle energy
+      update entirely (leaving hydro's own internal-energy derivative
+      untouched), while cooling_init() and everything it resolves (table
+      loading, chemistry_data, including local_dust_to_gas_ratio) still
+      run completely normally. For isolating a Grackle-consuming subgrid
+      channel (e.g. LW/FUV propagation) from Grackle's actual
+      thermal/dynamical response without losing chemistry_data
+      resolution. Never set in a production run. */
+  int disable_cooling_for_debugging;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GRACKLE_H */

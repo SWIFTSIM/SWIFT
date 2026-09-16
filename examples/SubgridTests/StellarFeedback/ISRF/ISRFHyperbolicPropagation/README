@@ -1,0 +1,89 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with photoelectric heating and ISRF hyperbolic propagation on
+(photoionization and radiation pressure off). The propagation scheme is a
+Cattaneo-type flux-relaxation system with a finite signal speed `c_hyp`, an
+M1 closure and a flux limiter; it is not a screened-diffusion (Yukawa)
+equation, and its steady state is not a single closed-form profile. Checks
+the converged radial profile of the propagated FUV/LW
+interstellar-radiation-field energy (`FUVSpecificEnergies`/
+`LWSpecificEnergies`) against this scheme's own DISCRETE steady-state
+prediction, computed on the run's own real particle positions and smoothing
+lengths, via `isrf_hyperbolic_propagation_check.py`.
+
+## Metallicity
+The screening length comes from a dust opacity that this code scales with
+metallicity relative to Grackle's solar value; at `Z=0` there is no dust
+and nothing to screen, so `initial_metallicity` (env var, `run.sh`) must
+stay above 0. It defaults to solar (`Z/Zsun=1`).
+
+`makeIC.py --metallicity-slab Z_LOW Z_HIGH AXIS FRACTION` writes a
+per-particle gas metallicity step instead of a uniform box, for probing
+`h/lambda` on both sides of a metallicity contrast in one IC. Requires
+`GEARChemistry:initial_metallicity:-1`,
+`scale_initial_metallicity:0` in `params.yml`. Only the gas side takes
+effect (SWIFT's GEAR chemistry has no star-particle read path, so any
+star-side metallicity this flag writes is inspection-only).
+
+## Cooling
+`run.sh` passes `--cooling` so `cooling_init()` resolves Grackle's
+`chemistry_data` (including `local_dust_to_gas_ratio`, which the dust
+opacity above depends on) even though gas thermodynamics play no role in
+what this example measures. `GrackleCooling:disable_cooling_for_debugging:
+1` in `params.yml` then skips the per-particle cooling/heating update
+itself, so the gas's thermal and dynamical state stays fixed and the
+propagated field is isolated from any gas response.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`--with-tracers=GEAR` is required: the tracers module registers the
+`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+themselves live on `struct part`'s `feedback_data`). The Grackle cooling
+mode is not critical here (only `chemistry_data` needs resolving, not any
+mode-gated species network).
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var: gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
+and type (`star_mass`, `star_type`), resolution level (`level`, N =
+`(2**level)**3` gas particles), run duration and stepping (`time_end`,
+`dt_max`, `delta_time`), metallicity (`initial_metallicity`), and thread
+count (`n_threads`); see `run.sh` for the full list and defaults.
+`run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done, to
+keep more than one run's outputs side by side.
+
+# Checking
+```
+python3 isrf_hyperbolic_propagation_check.py
+```
+`run.sh` runs this automatically against its own final snapshot. It solves
+this scheme's own discrete steady-state fixed point on the run's real
+particle positions/smoothing lengths/densities/masses, using the same
+pairwise operators, closure tensor and flux limiter the C code uses, and
+then applies two pass/fail criteria:
+
+- the radially-binned `u(r)` profile, simulation against that discrete
+  prediction, bin by bin (`--tol`, default 0.15 on the median relative
+  error);
+- a total-amplitude identity that needs no fit and no assumed profile,
+  `sum(m*u/lambda) = (1/c)*sum(weight*L*extinction)` (`--amp-tol`, default
+  0.10).
+
+It deliberately does NOT compare against a continuum profile: once the
+smoothing length is not small compared to the screening length (true well
+within this project's own production resolution range), the discrete
+scheme's own steady state departs from any continuum profile in a
+predictable way, and comparing against a continuum target reports a
+spurious failure. It also no longer gates on a fitted screening length,
+which is not a meaningful single number under this closure; the fit is
+still printed, for continuity, as information only. The reduced flux `f`
+realized in the compared range is printed too, so a reader can see whether
+the run sits on the free-streaming or the diffusive branch. Produces a
+comparison plot (`--output`, default
+`isrf_hyperbolic_propagation_check.png`).

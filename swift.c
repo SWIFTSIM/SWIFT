@@ -1229,6 +1229,26 @@ int main(int argc, char *argv[]) {
     }
     if (myrank == 0) cooling_print(&cooling_func);
 
+    /* Safety net: a subgrid channel that reads Grackle's resolved
+       chemistry_data (e.g. GEAR's local Lyman-Werner/FUV dust opacity,
+       local_dust_to_gas_ratio) silently sees an unresolved, zeroed
+       struct if cooling_init() never ran -- neither --cooling nor
+       --temperature was passed. That zeroes real physics without any
+       crash or warning otherwise, so fail loudly instead. */
+    if (feedback_props_needs_cooling_initialized(&feedback_properties) &&
+        !(with_cooling || with_temperature)) {
+      error(
+          "A feedback channel that needs Grackle's chemistry_data "
+          "resolved (e.g. GEARFeedback:with_photoelectric_heating) is "
+          "enabled, but neither --cooling nor --temperature was passed: "
+          "chemistry_data (including local_dust_to_gas_ratio) is never "
+          "resolved, silently zeroing that channel's dust opacity. Pass "
+          "--cooling or --temperature (with a working GrackleCooling: "
+          "block), or set GrackleCooling:disable_cooling_for_debugging "
+          "to keep chemistry_data initialization correct while skipping "
+          "the actual per-particle cooling/heating update.");
+    }
+
     /* Initialise the star formation law and its properties */
     bzero(&starform, sizeof(struct star_formation));
     if (with_star_formation) {

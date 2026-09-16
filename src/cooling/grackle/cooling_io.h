@@ -21,11 +21,15 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "cooling.h"
 #include "cooling_properties.h"
 #include "cooling_struct.h"
+#include "engine.h"
 #include "io_properties.h"
 #include "physical_constants.h"
 #include "units.h"
+
+#include <string.h>
 
 #ifdef HAVE_HDF5
 
@@ -53,6 +57,19 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 #endif
 }
 #endif
+
+/**
+ * @brief Snapshot converter for #DustTemperature, see
+ * #cooling_write_particles.
+ */
+INLINE static void convert_part_dust_temperature(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  ret[0] = cooling_get_dust_temperature(e->physical_constants,
+                                        e->internal_units, e->hydro_properties,
+                                        e->cosmology, e->cooling_func, p, xp);
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -129,6 +146,20 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num += 3;
 #endif
 
+  /* Diagnostic only: computed on the fly from Grackle's own dust-
+     temperature calculation, not a stored/evolved field. Reads 0 below
+     COOLING_GRACKLE_MODE 1 (Grackle's own routine needs species density
+     arrays this mode does not track) or when dust chemistry
+     (GEARFeedback:with_photoelectric_heating or GrackleCooling:
+     H2_on_dust) is off; see cooling_get_dust_temperature. */
+  list[num] = io_make_output_field_convert_part(
+      "DustTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+      convert_part_dust_temperature,
+      "Dust temperature from Grackle's own dust-temperature calculation. "
+      "Diagnostic only, not fed back into any physics; 0 if dust "
+      "chemistry is not active or COOLING_GRACKLE_MODE is below 1.");
+  num += 1;
+
   return num;
 }
 
@@ -166,6 +197,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_on_dust =
       parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
 
+  cooling->H2_photodissociation_heating = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_photodissociation_heating", 0);
+#if COOLING_GRACKLE_MODE < 2
+  if (cooling->H2_photodissociation_heating)
+    error(
+        "GrackleCooling:H2_photodissociation_heating needs "
+        "COOLING_GRACKLE_MODE >= 2 (H2 species tracked); this SWIFT was "
+        "compiled with mode %d.",
+        COOLING_GRACKLE_MODE);
+#endif
+#ifndef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
+  if (cooling->H2_photodissociation_heating)
+    error(
+        "GrackleCooling:H2_photodissociation_heating needs a Grackle build "
+        "that provides it; this SWIFT was built against one that does not.");
+#endif
+
   cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
 
@@ -185,7 +233,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GrackleCooling:use_radiative_transfer", 0);
 
   /* Lives under GEARFeedback, alongside its sibling HII_* parameters,
-     rather than GrackleCooling -- forces use_radiative_transfer on
+     rather than GrackleCooling: forces use_radiative_transfer on
      internally so the user only sets this one flag. */
   cooling->HII_couple_ionization_rate = parser_get_opt_param_int(
       parameter_file, "GEARFeedback:HII_couple_ionization_rate", 0);
@@ -226,6 +274,65 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "rate-coupled RT fields -- if it is a leftover from before "
         "HII_couple_ionization_rate was enabled, set it to 0.");
   }
+
+  /* Lives under GEARFeedback, alongside its sibling with_photoionization/
+     HII_couple_ionization_rate parameters, rather than GrackleCooling:
+     forces the Grackle flags this needs (use_isrf_field, dust_chemistry,
+     photoelectric_heating in cooling_init_grackle, and, at
+     COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
+     RT_H2_dissociation_rate channel) on internally so the user only sets
+     this one flag. */
+  cooling->with_ISRF = parser_get_opt_param_int(
+      parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
+
+  char pe_efficiency[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GrackleCooling:photoelectric_heating_efficiency",
+                              pe_efficiency, "constant");
+  if (strcmp(pe_efficiency, "constant") == 0) {
+    cooling->photoelectric_heating_efficiency = 2;
+  } else if (strcmp(pe_efficiency, "wolfire1995") == 0) {
+    cooling->photoelectric_heating_efficiency = 3;
+  } else if (strcmp(pe_efficiency, "density_dependent") == 0) {
+    /* Require the capability only when the ISRF module is actually on. */
+#ifndef GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON
+    if (cooling->with_ISRF)
+      error(
+          "GrackleCooling:photoelectric_heating_efficiency: "
+          "density_dependent needs a Grackle build that provides it "
+          "(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON); this SWIFT was "
+          "built against one that does not.");
+#endif
+    cooling->photoelectric_heating_efficiency = 4;
+  } else {
+    error(
+        "Invalid GrackleCooling:photoelectric_heating_efficiency '%s': use "
+        "constant, wolfire1995 or density_dependent.",
+        pe_efficiency);
+  }
+
+#if COOLING_GRACKLE_MODE > 1
+  if (cooling->with_ISRF) {
+    cooling->use_radiative_transfer = 1;
+  }
+
+  /* Same double-counting concern as HII_couple_ionization_rate's own
+     RT_*_cgs check above, for the one field with_ISRF also injects
+     per-particle every step (cooling_get_LW_dissociation_rate_subgrid). */
+  if (cooling->with_ISRF && cooling->RT_H2_dissociation_rate != 0) {
+    warning(
+        "GEARFeedback:with_photoelectric_heating is on and "
+        "GrackleCooling:RT_H2_dissociation_rate_cgs is nonzero. That "
+        "constant is applied as an all-gas background on top of the "
+        "per-particle LW-band-derived rate -- if it is a leftover from "
+        "before with_photoelectric_heating was enabled, set it to 0.");
+  }
+#endif
+
+  /* Debug/test-only: see cooling_function_data.disable_cooling_for_
+     debugging's own doxygen. Never set in a production run. */
+  cooling->disable_cooling_for_debugging = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:disable_cooling_for_debugging", 0);
 
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:volumetric_heating_rates_cgs", 0);
@@ -275,12 +382,69 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
 
-  /* Initial step convergence */
+  cooling->H2_self_shielding = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_self_shielding", 0);
+
+  /* Mode 1 differences the density against the six neighbouring grid
+     cells, which do not exist when Grackle is called on one particle. */
+  if (cooling->H2_self_shielding == 1)
+    error(
+        "GrackleCooling:H2_self_shielding = 1 is not supported: its "
+        "Sobolev-like length reads neighbouring grid cells, and SWIFT calls "
+        "Grackle one particle at a time. Use 2 (kernel support radius) or 3 "
+        "(local Jeans length).");
+  if (cooling->H2_self_shielding < 0 || cooling->H2_self_shielding > 3)
+    error("GrackleCooling:H2_self_shielding must be 0, 2 or 3, got %d.",
+          cooling->H2_self_shielding);
+
+  char H2_path[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GrackleCooling:H2_self_shielding_path", H2_path,
+                              "kernel_diameter");
+  if (strcmp(H2_path, "kernel_diameter") == 0)
+    cooling->H2_self_shielding_path_in_kernel_radii = 2.0f;
+  else if (strcmp(H2_path, "kernel_radius") == 0)
+    cooling->H2_self_shielding_path_in_kernel_radii = 1.0f;
+  else
+    error(
+        "GrackleCooling:H2_self_shielding_path must be kernel_diameter or "
+        "kernel_radius, got '%s'.",
+        H2_path);
+
+  /* With the ISRF on and H2 tracked, the local LW dissociation rate
+     (cooling_get_LW_dissociation_rate_subgrid) reaches Grackle unshielded
+     unless H2_self_shielding selects a column-length mode: at
+     N_H2 = 1e20 cm^-2 the Wolcott-Green & Haiman (2019) shielding factor
+     is of order 1e-5, so H2 cannot survive in an illuminated molecular
+     cloud without it. */
+  if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
+      cooling->H2_self_shielding == 0) {
+    warning(
+        "GEARFeedback:with_photoelectric_heating is on with "
+        "GrackleCooling:primordial_chemistry >= 2 (H2 tracked) and "
+        "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
+        "dissociation rate this feature injects reaches Grackle with no "
+        "H2 self-shielding applied. Set H2_self_shielding to 2 (kernel "
+        "support radius, with the default H2_self_shielding_path) or 3 "
+        "(local Jeans length) unless this is deliberate.");
+  }
+
+  /* Grackle sub-cycle iteration limit */
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:max_steps", 10000);
+  if (cooling->max_step < 1)
+    error("GrackleCooling:max_steps must be >= 1, got %d.", cooling->max_step);
 
-  cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:convergence_limit", 1e-2);
+  /* Retries of a failed solve, each one halving the sub-step. Default 2:
+   * two retries give 4x the iteration budget, which covered every stiff
+   * cell measured (14670-25574 iterations against the 10000 default),
+   * so stiff cells keep being integrated instead of skipping their
+   * cooling. */
+  cooling->subcycle_on_failure = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:subcycle_on_failure", 2);
+  if (cooling->subcycle_on_failure < 0 || cooling->subcycle_on_failure > 20)
+    error("GrackleCooling:subcycle_on_failure must be in [0, 20], got %d.",
+          cooling->subcycle_on_failure);
 
   /* Thermal time */
   cooling->thermal_time = parser_get_param_double(

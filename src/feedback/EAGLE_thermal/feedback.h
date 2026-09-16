@@ -50,6 +50,57 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
     struct part *p, struct xpart *xp, const struct engine *e) {}
 
 /**
+ * @brief Finishes the #part density calculation. Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_density(
+    struct part *p, struct xpart *xp, const struct engine *e) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours. Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                const struct engine *e) {}
+
+/**
+ * @brief Finishes the #part gradient calculation. Nothing to do here:
+ * this feedback model does not track a propagated radiation flux.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_gradient(
+    struct part *p, const struct engine *e) {}
+
+/**
+ * @brief Finishes the #part force calculation. Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_end_force(
+    struct part *p, const struct engine *e) {}
+
+/**
+ * @brief Re-initialise the gas particle-carried fields related to
+ * feedback at the start of each density h-iteration. Nothing to do here.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_init_part(
+    struct part *p, const struct engine *e) {}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *
@@ -57,9 +108,18 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part *p, struct xpart *xp) {}
+    struct part *p, struct xpart *xp, const struct engine *e) {}
+
+/**
+ * @brief First-init of a #part's feedback-model state. Nothing to do here.
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static void feedback_first_init_part(
+    struct part *restrict p) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -101,6 +161,118 @@ feedback_get_part_ionized_star_id(const struct part *p,
                                   const struct xpart *xp) {
   return 0;
 }
+/**
+ * @brief Local specific FUV-band radiation field. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_part_u_PE(
+    const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief Local specific Lyman-Werner-band radiation field. Nothing to do
+ * here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
+    const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation coefficient. Nothing to do
+ * here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_dissipation_alpha_PE(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_dissipation_alpha_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief `(1/rho) div(rho F)` accumulator. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_div_specific_flux_PE(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_div_specific_flux_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief Tracked specific flux moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components, zeroed.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components, zeroed.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
+}
+
+/**
+ * @brief Most negative FUV-band specific energy since the previous snapshot.
+ * Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                          const struct engine *e) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
+                                          const struct engine *e) {
+  return 0.f;
+}
 
 /**
  * @brief Current ionized mass of this star's HII region.
@@ -112,6 +284,28 @@ feedback_get_part_ionized_star_id(const struct part *p,
 __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
     const struct spart *sp) {
   return 0.f;
+}
+
+/**
+ * @brief Star's current non-ionizing FUV-band luminosity. This model does
+ * not implement the ISRF radiation module.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_PE(
+    const struct spart *sp) {
+  return 0.;
+}
+
+/**
+ * @brief Star's current Lyman-Werner-band luminosity, see
+ * #feedback_get_star_L_PE.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static double feedback_get_star_L_LW(
+    const struct spart *sp) {
+  return 0.;
 }
 
 /**

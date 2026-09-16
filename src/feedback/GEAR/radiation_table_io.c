@@ -230,7 +230,11 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * radiation_parse_edge_policy()). This function never inspects the
  * group's "source" attribute: it only requires the specific attributes
  * it needs to be present, so a new pychem source mode works without a
- * companion SWIFT change.
+ * companion SWIFT change. edge_policy_l_pe/edge_policy_l_lw are the one
+ * exception to "requires the specific attributes to be present": they are
+ * only read (and only required) when the group's own "L_FUV"/"L_LW"
+ * datasets exist, since those datasets (and their edge-policy attributes)
+ * are optional (see #radiation.has_raw_ISRF's own doxygen).
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
@@ -291,6 +295,7 @@ void radiation_read_grid_metadata(hid_t group_id,
     char luminosity_below[16], luminosity_above[16];
     char q_h_below[16], q_h_above[16];
     char mean_excess_energy_below[16], mean_excess_energy_above[16];
+    char teff_below[16], teff_above[16];
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_below",
                                     luminosity_below, sizeof(luminosity_below));
     radiation_read_string_attribute(group_id, "edge_policy_luminosity_above",
@@ -305,6 +310,10 @@ void radiation_read_grid_metadata(hid_t group_id,
     radiation_read_string_attribute(
         group_id, "edge_policy_mean_excess_energy_above",
         mean_excess_energy_above, sizeof(mean_excess_energy_above));
+    radiation_read_string_attribute(group_id, "edge_policy_teff_below",
+                                    teff_below, sizeof(teff_below));
+    radiation_read_string_attribute(group_id, "edge_policy_teff_above",
+                                    teff_above, sizeof(teff_above));
 
     grid->edge_policy_luminosity = radiation_parse_edge_policy(
         luminosity_below, luminosity_above, "luminosity");
@@ -313,11 +322,45 @@ void radiation_read_grid_metadata(hid_t group_id,
     grid->edge_policy_dot_e_excess = radiation_parse_edge_policy(
         mean_excess_energy_below, mean_excess_energy_above,
         "mean_excess_energy");
+    grid->edge_policy_teff =
+        radiation_parse_edge_policy(teff_below, teff_above, "teff");
+
+    /* L_FUV/L_LW are optional (see radiation.h's own doxygen on
+       #has_raw_ISRF): a table generated before pychem added them has
+       neither dataset, and hence no matching edge_policy_l_fuv_ or
+       edge_policy_l_lw_ attributes either. Guard on dataset presence
+       first, unlike every field above (which pychem has always required),
+       so an old-format 2D table still loads instead of erroring on a
+       missing attribute it never had a reason to write. */
+    grid->edge_policy_l_pe = boundary_condition_error;
+    if (H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0) {
+      char l_pe_below[16], l_pe_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_below",
+                                      l_pe_below, sizeof(l_pe_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_above",
+                                      l_pe_above, sizeof(l_pe_above));
+      grid->edge_policy_l_pe =
+          radiation_parse_edge_policy(l_pe_below, l_pe_above, "l_fuv");
+    }
+
+    grid->edge_policy_l_lw = boundary_condition_error;
+    if (H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0) {
+      char l_lw_below[16], l_lw_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_below",
+                                      l_lw_below, sizeof(l_lw_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_above",
+                                      l_lw_above, sizeof(l_lw_above));
+      grid->edge_policy_l_lw =
+          radiation_parse_edge_policy(l_lw_below, l_lw_above, "l_lw");
+    }
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
     grid->edge_policy_luminosity = boundary_condition_error;
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
+    grid->edge_policy_teff = boundary_condition_error;
+    grid->edge_policy_l_pe = boundary_condition_error;
+    grid->edge_policy_l_lw = boundary_condition_error;
   } else {
     error(
         "Data/Radiation has an unrecognised 'dimensionality' attribute "
@@ -630,9 +673,11 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * @param expected_units See radiation_read_cgs_array().
  * @param raw_1d (output) Raw 1D interpolation table (1D tables only),
  * holding log10(value in internal units), pychem-floored.
- * @param integrated_1d (output) IMF-integrated 1D interpolation table (1D
- * tables only), holding the linear (un-logged) cumulative value; see
- * this function's own doxygen for why.
+ * @param integrated_1d (output, optional) IMF-integrated 1D interpolation
+ * table (1D tables only), holding the linear (un-logged) cumulative value;
+ * see this function's own doxygen for why. Pass NULL for a dataset with no
+ * IMF-integrated concept (Teff); left untouched then, mirroring @p
+ * integrated_2d.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
@@ -779,6 +824,12 @@ static void radiation_build_tables(
   free(data);
   free(log_data);
 
+  /* NULL for a dataset with no IMF-integrated concept (Teff: the band
+     fraction built from it is a nonlinear function of Teff, so no single
+     IMF-integrated Teff would give the right integrated band luminosity).
+     Mirrors the 2D branch's own integrated_2d == NULL early return above. */
+  if (integrated_1d == NULL) return;
+
   /* integrated_1d is built from pychem's own precomputed, number-weighted,
      cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
      integrating the raw values above. See this function's own doxygen. */
@@ -916,6 +967,109 @@ void radiation_read_mean_excess_photon_energy_array(
       RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
       &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
       &rad->integrated.dot_E_excess_2d, grid->edge_policy_dot_e_excess);
+}
+
+/**
+ * @brief Read the Teff (spectral-hardness effective temperature) array from
+ * the table.
+ *
+ * Raw-only, both dimensionalities: unlike Luminosity/Q_H/DotEExcess, Teff
+ * has no "Integrated_Teff" dataset in either a 1D ("M") or 2D ("M,Z") table
+ * (see #radiation.raw's own doxygen on the #teff/#teff_2d union for why an
+ * IMF-integrated Teff would not give the right integrated band luminosity
+ * anyway), so @p integrated_1d/@p integrated_2d are passed NULL to
+ * #radiation_build_tables, which skips requiring or building them.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  const htri_t exists = H5Lexists(group_id, "Teff", H5P_DEFAULT);
+  if (exists <= 0) {
+    error(
+        "This Data/Radiation group has no 'Teff' dataset. This table was "
+        "generated before pychem added it and needs regenerating: run "
+        "pychem's pychem_generate_hdf5_parameters on this table's own "
+        "chimieparam file, then point GEARFeedback:yields_table (or "
+        "yields_table_first_stars, for the PopIII model) at the "
+        "regenerated file.");
+  }
+
+  radiation_build_tables(group_id, "Teff", grid, sm, rad->interpolation_size,
+                         rad->interpolation_size_metallicity,
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE),
+                         1., "K", &rad->raw.teff, NULL, &rad->raw.teff_2d, NULL,
+                         grid->edge_policy_teff);
+}
+
+/**
+ * @brief Read the L_FUV (non-ionizing FUV band emission rate) array from the
+ * table, if present.
+ *
+ * Only called when #radiation.has_raw_ISRF or #has_integrated_ISRF is
+ * set (radiation_read_data()). The raw "L_FUV" dataset this function
+ * unconditionally reads first is guaranteed to exist for the
+ * #has_raw_ISRF case; an #has_integrated_ISRF=1/#has_raw_ISRF=0
+ * table (integrated present, raw missing) would still hit this unconditional
+ * read and error. This is accepted as an unsupported edge case: pychem
+ * always derives Integrated_L_FUV/L_LW from the raw arrays and so never
+ * produces one without the other in practice. @p
+ * integrated_1d/@p integrated_2d are only requested (non-NULL) when
+ * #has_integrated_ISRF is also set, so a raw-only table does not hit
+ * #radiation_build_tables's fatal "Integrated_L_FUV missing" branch.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(
+      group_id, "L_FUV", grid, sm, rad->interpolation_size,
+      rad->interpolation_size_metallicity,
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
+      &rad->raw.l_pe, rad->has_integrated_ISRF ? &rad->integrated.l_pe : NULL,
+      &rad->raw.l_pe_2d,
+      rad->has_integrated_ISRF ? &rad->integrated.l_pe_2d : NULL,
+      grid->edge_policy_l_pe);
+}
+
+/**
+ * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
+ * table, if present. See #radiation_read_l_pe_array's own doxygen
+ * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(
+      group_id, "L_LW", grid, sm, rad->interpolation_size,
+      rad->interpolation_size_metallicity,
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
+      &rad->raw.l_lw, rad->has_integrated_ISRF ? &rad->integrated.l_lw : NULL,
+      &rad->raw.l_lw_2d,
+      rad->has_integrated_ISRF ? &rad->integrated.l_lw_2d : NULL,
+      grid->edge_policy_l_lw);
 }
 
 /**
@@ -1276,6 +1430,14 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int interpolation_size_metallicity_before =
       rad->interpolation_size_metallicity;
   const int n_HII_pixels_before = rad->n_HII_pixels;
+  /* with_ISRF round-trips for the same reason: radiation_zero_pointers()
+     below clears it (see its own doxygen), but it was already set moments
+     ago, by radiation_init() (fresh start) or by the flat restore in
+     radiation_restore() (restart), which both run before this function is
+     called and before radiation_read_teff_array() below needs to read it.
+     Without this round-trip the Teff dataset (and hence L_FUV/L_LW) is
+     silently never read, on both the fresh-start and restart paths. */
+  const char with_ISRF_before = rad->with_ISRF;
 
   /* Zero every table up front: radiation_build_tables() only populates the
      _1d or _2d variant matching this table's dimensionality, and only the
@@ -1287,6 +1449,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   rad->interpolation_size = interpolation_size_before;
   rad->interpolation_size_metallicity = interpolation_size_metallicity_before;
   rad->n_HII_pixels = n_HII_pixels_before;
+  rad->with_ISRF = with_ISRF_before;
 
   hid_t file_id, group_id;
   radiation_open_data_group(sm->yields_table, &file_id, &group_id);
@@ -1294,6 +1457,34 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   struct radiation_grid_metadata grid;
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
+
+  /* File-derived, like #is_2d above: probed fresh on every read (including
+     restart, which re-opens and re-probes the same file). Independent per
+     field, per the schema-divergence risk a table's raw and IMF-integrated
+     L_FUV/L_LW datasets can diverge on: each call site below only checks
+     the flag it actually needs.
+
+     ANDed with #with_ISRF so these flags can only be true when the
+     feature itself is enabled: stellar_evolution.c's two call sites read
+     `if (has_raw_ISRF) {...} else if (with_ISRF) {...}` (and the
+     population-level equivalent with has_integrated_ISRF), never ANDing
+     with_ISRF into the first branch themselves. Without this gate here,
+     a run with GEARFeedback:with_photoelectric_heating off but a table
+     that happens to carry L_FUV/L_LW (increasingly the common case now
+     that pychem writes them by default) would still populate
+     sp->feedback_data.radiation.L_band with real, nonzero
+     values, contradicting radiation_iact.h's documented invariant that they are
+     "Zero unless GEARFeedback:with_photoelectric_heating is on." Gating
+     here, at the single point both flags are produced, means every
+     downstream consumer's existing branch structure is already correct
+     with no further change. */
+  rad->has_raw_ISRF = rad->with_ISRF &&
+                      H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0 &&
+                      H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0;
+  rad->has_integrated_ISRF =
+      rad->with_ISRF &&
+      H5Lexists(group_id, "Integrated_L_FUV", H5P_DEFAULT) > 0 &&
+      H5Lexists(group_id, "Integrated_L_LW", H5P_DEFAULT) > 0;
 
   /* A no-op on a table without pychem's precomputed IMF-integrated
      datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
@@ -1355,6 +1546,29 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
+
+  /* Read L_FUV/L_LW directly from the table whenever the table carries them
+     AND GEARFeedback:with_photoelectric_heating is on (has_raw_ISRF/
+     has_integrated_ISRF are already ANDed with with_ISRF above, so
+     this condition is a no-op build-avoidance skip when the feature is
+     off, not a redundant check). Each call site (stellar_evolution.c)
+     checks only the flag it actually needs. */
+  if (rad->has_raw_ISRF || rad->has_integrated_ISRF) {
+    radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
+  }
+
+  /* Read the spectral-hardness effective temperature, used as a FALLBACK
+     to split Luminosity into sub-Lyman-continuum bands (L_FUV/L_LW) when
+     the table has no direct L_FUV/L_LW dataset of its own. Gated on
+     with_ISRF (see its own doxygen): a table generated before this
+     feature existed has no "Teff" dataset, and a photoionization-/
+     radiation-pressure-only run has no use for it either. Additionally
+     skipped when both LW/FUV flags above are already set: neither call
+     site's Teff-fallback branch can then ever run, so building this table
+     (and its interpolate_2d_init() cost) would be pure waste. */
+  if (rad->with_ISRF && !(rad->has_raw_ISRF && rad->has_integrated_ISRF))
+    radiation_read_teff_array(rad, group_id, &grid, sm, us);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets

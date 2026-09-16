@@ -55,6 +55,7 @@ static INLINE void part_init(struct part *p, struct xpart *xp,
   mhd_init_part(p);
   black_holes_init_potential(&p->black_holes_data);
   chemistry_init_part(p, e->chemistry);
+  feedback_init_part(p, e);
   star_formation_init_part(p, e->star_formation);
   tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                      with_cosmology, e->cosmology, e->hydro_properties,

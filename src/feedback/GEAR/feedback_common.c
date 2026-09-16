@@ -24,6 +24,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 #include "part.h"
 #include "radiation.h"
 #include "stellar_evolution.h"
@@ -128,7 +129,7 @@ void feedback_compute_spart_timestep(
        inversion, to the turnoff mass driving feedback right now).
        star_age_beg_step can be slightly negative here (compute_time()
        subtracts the full timestep-bin length, not time-since-birth, from
-       a >=0-clamped end-of-step age -- routinely negative right after a
+       a >=0-clamped end-of-step age, routinely negative right after a
        star forms), so clamp it. */
     const double star_age_beg_step_safe =
         star_age_beg_step < 0 ? 0 : star_age_beg_step;
@@ -184,7 +185,7 @@ void feedback_compute_spart_timestep(
        struct and is only ever written a non-negative age (see the stamp
        in runner_dosub_stars_hii_ionization_feedback()), so treating it
        as "0.0 = never rebuilt yet" below is correct for a brand-new
-       star too -- no separate first-time case is needed. */
+       star too, so no separate first-time case is needed. */
     const double HII_region_last_rebuild =
         sp->feedback_data.radiation.HII_region_last_rebuild;
 
@@ -596,7 +597,7 @@ feedback_get_star_ionization_budget(const struct spart *sp, int pixel) {
 /**
  * Get the largest remaining ionizing photon count across all of the
  * #spart's active angular pixels. Used only for loop-termination/retry
- * decisions -- one exhausted pixel doesn't mean the star is done.
+ * decisions: one exhausted pixel doesn't mean the star is done.
  *
  * @param sp The star.
  * @return Largest remaining ionizing photon count over all active pixels.
@@ -695,8 +696,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  *
  * The cooling task cannot recompute it later (it has no neighbour search),
  * so it is stored on the particle. The intermediate photon flux would
- * overflow float32 in this unit system, so only the final coefficient --
- * computed in double up to that point -- is returned. Zero unless
+ * overflow float32 in this unit system, so only the final coefficient,
+ * computed in double up to that point, is returned. Zero unless
  * GEARFeedback:HII_couple_ionization_rate is on.
  *
  * @param si The #spart (star) providing photons.
@@ -789,7 +790,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * renew its tag.
  *
  * Recombinations must be replaced continuously to hold gas ionized, so a
- * particle already held ionized costs photons every pass -- charging only
+ * particle already held ionized costs photons every pass: charging only
  * newly-claimed ones is what let the ionized volume grow without bound as the
  * rebuild cadence was refined. There is no one-off N_H term here: those
  * electrons are already stripped.
@@ -885,15 +886,15 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
 
   /* Photons this candidate costs: a one-off payment to strip its remaining
-     NEUTRAL hydrogen (not its total hydrogen content -- a particle whose
+     NEUTRAL hydrogen (not its total hydrogen content: a particle whose
      tag lapsed on a marginal budget shortfall, or one pre-ionized by a UV
      background, is already partway or fully stripped, and re-paying full
      N_H on reclaim would be a cadence-coupled photon sink), plus a
      maintenance reserve sized by the *elapsed* interval (the next
      interval's recombinations are charged by
      feedback_iact_HII_maintain_ionized_part, not here). That reserve is what
-     makes region growth implicit -- dS/dt = (Q-S)/t_rec integrates as
-     dS = (Q-S)*dt/(t_rec+dt) -- and so unconditionally stable at the
+     makes region growth implicit (dS/dt = (Q-S)/t_rec integrates as
+     dS = (Q-S)*dt/(t_rec+dt)), and so unconditionally stable at the
      dt >> t_rec the default HII_rebuild_time_Myr produces. Dropping it would
      give explicit Euler, which overshoots and then churns. */
   const double N_HI = radiation_get_part_number_neutral_hydrogen_atoms(
@@ -926,7 +927,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     /* Keyed on the star and the pixel, deliberately *not* on pj: this must be
        one trial per pixel per pass for the identity below to hold. The same
        number is drawn for every candidate offered to this pixel, so a loss
-       rejects the whole remaining shell -- which is exactly the (1 - proba)
+       rejects the whole remaining shell, which is exactly the (1 - proba)
        branch. Rolling per candidate instead would give each of the up-to
        HII_max_retry_full_buffer x max_ngbs candidates an independent shot in a
        loop that stops at the first win, so a pass would claim one particle
@@ -1057,7 +1058,7 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
  * Thin dispatch wrapper so callers outside this feedback model (e.g.
  * star_formation/GEAR, sink/GEAR, both of which are selectable
  * independently of the feedback model) can query ionization state without
- * depending on this model being the one actually compiled in -- every
+ * depending on this model being the one actually compiled in: every
  * feedback model provides this function, matching #radiation_is_part_
  * tagged_as_ionized() here for GEAR and unconditionally returning false
  * everywhere else.
@@ -1086,6 +1087,138 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 }
 
 /**
+ * @brief Local specific FUV-band radiation field, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].u. Thin dispatch wrapper, same
+ * reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
+ * provides this function, returning 0 everywhere except here for GEAR.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_u_PE(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].u;
+}
+
+/**
+ * @brief Local specific Lyman-Werner-band radiation field, see
+ * #feedback_get_part_u_PE.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_u_LW(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].u;
+}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation coefficient, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger and
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
+ *
+ * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
+ * the per-pair `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`,
+ * which has no single-particle representation. This returns the value the
+ * particle would contribute against an identical partner.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
+  return max(p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger,
+             p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor);
+}
+
+/**
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
+  return max(p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger,
+             p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_floor);
+}
+
+/**
+ * @brief `(1/rho) div(rho F)` accumulator, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].div_specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_PE.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_div_specific_flux_PE(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].div_specific_flux;
+}
+
+/**
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_div_specific_flux_LW(const struct part *p) {
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].div_specific_flux;
+}
+
+/**
+ * @brief Tracked specific flux moment, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].specific_flux. Thin dispatch
+ * wrapper, same reasoning as #feedback_get_part_u_PE.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components.
+ */
+void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
+  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[0];
+  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[1];
+  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[2];
+}
+
+/**
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components.
+ */
+void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
+  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[0];
+  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[1];
+  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[2];
+}
+
+/**
+ * @brief Most negative FUV-band specific energy written since the previous
+ * snapshot, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot.
+ *
+ * Values stamped with an older snapshot index belong to an interval that
+ * saw no update of this particle, so they read as 0. Always 0 without
+ * SWIFT_DEBUG_CHECKS.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                                const struct engine *e) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
+    return p->feedback_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot;
+#endif
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
+                                                const struct engine *e) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
+    return p->feedback_data.isrf_band[ISRF_BAND_LW].u_min_since_snapshot;
+#endif
+  return 0.f;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
@@ -1097,6 +1230,30 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
  */
 float feedback_get_star_HII_mass(const struct spart *sp) {
   return sp->feedback_data.radiation.mass_HII_region;
+}
+
+/**
+ * @brief Star's current non-ionizing FUV-band luminosity.
+ *
+ * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
+ * stars I/O converter, which is compiled whenever stars=GEAR regardless of
+ * the feedback model) can read this without depending on GEAR feedback
+ * being the one actually compiled in.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_L_PE(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_band[ISRF_BAND_PE];
+}
+
+/**
+ * @brief Star's current Lyman-Werner-band luminosity, see
+ * #feedback_get_star_L_PE.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_L_LW(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_band[ISRF_BAND_LW];
 }
 
 /**
@@ -1242,12 +1399,19 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                       stream, NULL, "feedback function");
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
-   * restored by the flat block read above. Both photoionization and
-   * radiation pressure consume the radiation table (see
-   * stellar_evolution_props_init()); photoelectric heating does not. */
+   * restored by the flat block read above. Photoionization, radiation
+   * pressure, and the local Lyman-Werner/FUV feedback (photoelectric
+   * heating / H2 photodissociation, which shares the radiation table's
+   * Teff dataset with L_bol) all consume the radiation table (see
+   * stellar_evolution_props_init()); must match feedback_props_init()'s
+   * own with_radiation computation exactly, or a restart can restore a
+   * feedback_props whose radiation table was never opened even though the
+   * original run's was. This is a restart-consistency hazard that must be
+   * re-checked whenever this struct's radiation fields change. */
   const char with_radiation =
-      (feedback->radiation_policy & (radiation_policy_photoionization |
-                                     radiation_policy_radiation_pressure)) != 0;
+      (feedback->radiation_policy &
+       (radiation_policy_photoionization | radiation_policy_radiation_pressure |
+        radiation_policy_photoelectric_heating)) != 0;
 
   stellar_evolution_restore(&feedback->stellar_model, stream,
                             feedback->with_stellar_wind_feedback,

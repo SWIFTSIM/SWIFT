@@ -24,6 +24,7 @@
 #include "../GEAR/radiation.h"
 #include "../GEAR/radiation_iact.h"
 #include "../GEAR/stellar_evolution.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -31,10 +32,13 @@
 #include "feedback_properties.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
 
+#include <float.h>
+#include <math.h>
 #include <strings.h>
 
 /**
@@ -107,26 +111,94 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation.
- *
- * Nothing to do here.
+ * @brief Finishes the #part density calculation. Nothing to do: the LW/FUV
+ * field is updated in #feedback_end_force, after the flux-divergence has been
+ * accumulated in the force loop.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
+ * @param e The #engine.
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part *p, struct xpart *xp) {}
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e) {}
 
 /**
- * @brief Reset the gas particle-carried fields related to feedback at the
- * start of a step.
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours: LW/FUV dose-reservoir recovery is shared GEAR physics, see
+ * #radiation_part_has_no_neighbours.
  *
- * Nothing to do here in the GEAR model.
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e) {
+  radiation_part_has_no_neighbours(p, e);
+}
+
+/**
+ * @brief Finishes the #part gradient calculation: LW/FUV propagation's
+ * `F` relaxation is shared GEAR physics, see
+ * #radiation_end_gradient_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_gradient(struct part *p, const struct engine *e) {
+  radiation_end_gradient_propagation(p, e);
+}
+
+/**
+ * @brief Finishes the #part force calculation: LW/FUV propagation's `u`
+ * update is shared GEAR physics, see #radiation_end_force_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_force(struct part *p, const struct engine *e) {
+  radiation_end_force_propagation(p, e);
+}
+
+/**
+ * @brief Reset the gas particle-carried fields related to feedback once
+ * per step, before the density loop's h-iterations begin: snapshots
+ * every band's u and caches this step's absorption rate (shared GEAR
+ * physics), see #radiation_snapshot_part_propagation, and expires a
+ * lapsed LW/FUV illumination tag, see
+ * #radiation_reset_part_ISRF_illumination_tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e) {
+  radiation_snapshot_part_propagation(p, e);
+  radiation_reset_part_ISRF_illumination_tag(p, e);
+}
+
+/**
+ * @brief Re-initialise the gas particle-carried fields related to
+ * feedback at the start of each density h-iteration: LW/FUV propagation
+ * accumulators are shared GEAR physics, see
+ * #radiation_init_part_propagation.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+void feedback_init_part(struct part *p, const struct engine *e) {
+  radiation_init_part_propagation(p);
+}
+
+/**
+ * @brief First-init of a #part's feedback-model state: LW/FUV init is
+ * shared GEAR physics, see #radiation_first_init_part.
+ *
+ * @param p The #part to initialise.
+ */
+void feedback_first_init_part(struct part *restrict p) {
+  radiation_first_init_part(p);
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?

@@ -43,6 +43,7 @@
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
@@ -1036,6 +1037,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
           num_fields += mhd_read_particles(*parts, list + num_fields);
           num_fields += chemistry_read_particles(*parts, list + num_fields);
           num_fields += rt_read_particles(*parts, list + num_fields);
+          num_fields += feedback_read_particles(*parts, list + num_fields);
         }
         break;
 

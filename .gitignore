@@ -55,13 +55,19 @@ examples/**/task_level.txt
 
 # Run outputs from examples nested deeper than examples/<group>/<example>/,
 # which the examples/*/*/ patterns above cannot reach (e.g.
-# examples/SubgridTests/SubgridRadiation/<Example>/).
+# examples/SubgridTests/StellarFeedback/<Mechanism>/<Example>/).
 examples/**/restart/
 examples/**/*.png
 examples/**/task_level_*.txt
 examples/**/dependency_graph_*.csv
 examples/**/used_parameters.yml
 examples/**/unused_parameters.yml
+examples/**/energy.txt
+examples/**/*.csv
+examples/**/*.dat
+examples/**/*.xmf
+examples/**/timesteps_*.txt
+examples/**/memuse_report*
 
 examples/*/*/timesteps_*.txt
 examples/**/timesteps.txt
@@ -122,8 +128,15 @@ tests/test27cells
 tests/test27cells_subset
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
+tests/testRadiationPressureFormula
+tests/testRadiationISRFFormula
+tests/testRadiationISRFDissipationConservation
+tests/testRadiationISRFComovingFactors
+tests/testRadiationISRFExpansionTerm
+tests/testRadiationISRFForceDispatchConservation
+tests/testRadiationISRFFluxUnderflow
+tests/testRadiationISRFGateDegenerate
 tests/testRadiationGridMetadata
-tests/testStellarEvolutionSNOnce
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset
 tests/testPeriodicBC

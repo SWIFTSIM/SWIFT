@@ -28,12 +28,15 @@
  * duplication.
  */
 
+#include "chemistry.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "feedback_properties.h"
+#include "minmax.h"
 #include "radiation.h"
 #include "random.h"
+#include "timestep_sync_part.h"
 #include "tracers.h"
 
 /**
@@ -193,21 +196,26 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
+  /* Cosmology-independent: also reused below to renew the LW/FUV
+   * illumination window (radiation_reset_part_ISRF_illumination_tag). */
+  const integertime_t ti_step = get_integer_timestep(si->time_bin);
+
+  /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
+   * cosmological runs: mirror compute_time()'s branch (feedback_common.c)
+   * rather than use it directly. Shared by radiation pressure and LW/FUV
+   * injection below: both use the star's own feedback timestep. */
+  float Delta_t;
+  if (with_cosmology) {
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, si->time_bin);
+    Delta_t =
+        (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+  } else {
+    Delta_t = get_timestep(si->time_bin, time_base);
+  }
+
   /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {
-    /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
-     * cosmological runs -- mirror compute_time()'s branch
-     * (feedback_common.c) rather than use it directly. */
-    float Delta_t;
-    if (with_cosmology) {
-      const integertime_t ti_step = get_integer_timestep(si->time_bin);
-      const integertime_t ti_begin =
-          get_integer_time_begin(ti_current, si->time_bin);
-      Delta_t =
-          (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-    } else {
-      Delta_t = get_timestep(si->time_bin, time_base);
-    }
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
@@ -229,16 +237,87 @@ radiation_iact_nonsym_feedback_apply(
         delta_p_rad, 0.f, delta_p_rad / mj);
 
     /* Set the indication of a radiation-pressure event, matching
-       hit_by_SN/hit_by_winds -- without this, feedback_update_part_radiation()
+       hit_by_SN/hit_by_winds. Without this, feedback_update_part_radiation()
        never applies the momentum just accumulated above. */
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /*
-     5. Transport the emergent FUV radiation. And then compute the
-     photohelectric heating. We assume that the effect is only local and so we
-     do not transport radiation.
-  */
+  /* Local Lyman-Werner/FUV injection: always additive, since multiple
+     simultaneously-illuminating stars must superpose on the same particle
+     (a dose reservoir with propagation on, an instantaneous field with it
+     off). u_inject is an energy, so dividing by mj converts it
+     to the specific energy u of each band (or the dose reservoir) actually
+     stores. Zero unless GEARFeedback:with_photoelectric_heating is on
+     (L_band is then computed by stellar_evolution.c; 0 otherwise). Dust
+     extinction is applied receiver-side, using pj's own local column density,
+     rather than at the source (see radiation_get_part_ISRF_extinction_factors
+     for the extinction formula itself). */
+  if (si->feedback_data.radiation.L_band[ISRF_BAND_PE] != 0.0 ||
+      si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
+
+    const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
+    float extinction[ISRF_BAND_COUNT];
+    radiation_get_part_ISRF_extinction_factors(
+        us, cosmo, pj, Z_j, cooling,
+        fb_props->ISRF_extinction_path_in_kernel_radii, extinction);
+
+    double u_inject[ISRF_BAND_COUNT];
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      u_inject[b] = (double)Delta_t * weight *
+                    si->feedback_data.radiation.L_band[b] *
+                    (double)extinction[b];
+    }
+
+    if (fb_props->ISRF_propagation) {
+      /* Dose-reservoir accumulator: pure accumulation of the elapsed star
+         step's own (unrescaled) deposit, no reset, no first-touch logic, so
+         any number of stars on any time bins just add without losing or
+         double-counting emission. The rescale/phi fold-in happens once, at
+         the receiving particle's own cadence, in
+         radiation_end_force_propagation. */
+      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+        pj->feedback_data.isrf_band[b].u_dose_reservoir +=
+            (float)(u_inject[b] / (double)mj);
+      }
+      pj->feedback_data.ISRF_reservoir_end_ti =
+          max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
+      pj->feedback_data.ISRF_last_touch_ti = ti_current;
+    } else {
+      /* An instantaneous field strength, not an accumulated dose: reset to
+         0 on the first touch this step (by any star), so a later read sees
+         this step's illumination rather than a total across every step
+         since the last cooling call. A later touch this same step (a
+         second illuminating star) sums into what the first just wrote. */
+      if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+        for (int b = 0; b < ISRF_BAND_COUNT; b++)
+          pj->feedback_data.isrf_band[b].u = 0.f;
+        pj->feedback_data.ISRF_last_touch_ti = ti_current;
+      }
+
+      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+        pj->feedback_data.isrf_band[b].u += (float)(u_inject[b] / (double)mj);
+      }
+    }
+
+    /* Renew the illumination window on every touch, first or not: mirrors
+       feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII
+       tag's own end_time, so a continuously-illuminated particle's window
+       never lapses between touches. The expiry check itself
+       (radiation_reset_part_ISRF_illumination_tag) runs once per step in
+       feedback_reset_part, not here. */
+    pj->feedback_data.ISRF_illumination_end_ti =
+        ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step;
+
+    /* First-touch-only sync, mirroring feedback_hii_claim_part vs.
+       feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split
+       (feedback_common.c): do not re-sync an already-illuminated particle
+       every pass, or every held particle drags the whole region down to
+       the shortest time bin. */
+    if (!pj->feedback_data.is_illuminated_ISRF) {
+      pj->feedback_data.is_illuminated_ISRF = 1;
+      timestep_sync_part(pj);
+    }
+  }
 }
 
 /**

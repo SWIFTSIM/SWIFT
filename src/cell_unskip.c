@@ -2281,6 +2281,26 @@ static void cell_radiation_activate_hii(struct scheduler *s, struct cell *c) {
 }
 
 /**
+ * @brief Record which cell's radiation criterion demanded a rebuild.
+ *
+ * Read only by engine_rebuild() when a demand survives the rebuild it asked
+ * for, which is fatal; the unsynchronised write is safe there because any
+ * one of the demanding cells identifies the problem equally well.
+ *
+ * @param e The #engine.
+ * @param c The #cell whose criterion fired.
+ */
+static void cell_record_radiation_rebuild_demand(struct engine *e,
+                                                 const struct cell *c) {
+  e->rebuild_demand_criterion = "cell_need_rebuild_for_radiation_pair";
+  e->rebuild_demand_loc[0] = c->loc[0];
+  e->rebuild_demand_loc[1] = c->loc[1];
+  e->rebuild_demand_loc[2] = c->loc[2];
+  e->rebuild_demand_width = c->width[0];
+  e->rebuild_demand_depth = c->depth;
+}
+
+/**
  * @brief Un-skip the subgrid radiation (HII ionization) tasks for a cell.
  *
  * @param c The #cell.
@@ -2423,10 +2443,12 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       if (!(top_stencil_ok && ci->top == ci) &&
           cell_need_rebuild_for_radiation_pair(ci, cj)) {
         rebuild = 1;
+        cell_record_radiation_rebuild_demand(e, ci);
       }
       if (!(top_stencil_ok && cj->top == cj) &&
           cell_need_rebuild_for_radiation_pair(cj, ci)) {
         rebuild = 1;
+        cell_record_radiation_rebuild_demand(e, cj);
       }
     }
     /* Nothing more to do here, all drifts and sorts activated above */

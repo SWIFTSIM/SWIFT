@@ -39,7 +39,7 @@
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
  * @param u_out (return) The forced internal energy. Unused.
- * @return Always 0 -- this subgrid model never floors a particle's energy.
+ * @return Always 0: this subgrid model never floors a particle's energy.
  */
 INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
@@ -62,13 +62,51 @@ INLINE static int cooling_update_part_subgrid(
  * @param heating_rate_cgs (return) Heating rate, in raw cgs. Unused.
  * @param HI_ionization_rate (return) Photoionization rate coefficient, in
  *        internal 1/time. Unused.
- * @return Always 0 -- no per-particle rates from this subgrid model.
+ * @return Always 0: no per-particle rates from this subgrid model.
  */
 INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp, double time_units, double *heating_rate_cgs,
     double *HI_ionization_rate) {
   return 0;
+}
+
+/**
+ * @brief Compute Grackle's per-particle isrf_habing for the local
+ * Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_isrf_habing_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
+}
+
+/**
+ * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
+ * local Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_LW_dissociation_rate_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
 }
 
 /**
@@ -85,7 +123,7 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param u_out (return) The forced internal energy. Unused.
- * @return Always 0 -- this subgrid model never forces a particle's energy.
+ * @return Always 0: this subgrid model never forces a particle's energy.
  */
 INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,

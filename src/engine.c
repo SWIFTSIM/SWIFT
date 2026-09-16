@@ -1573,13 +1573,26 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
   /* Run through the cells, and their tasks to mark as unskipped. */
+  e->rebuild_demand_criterion = NULL;
   engine_unskip(e);
-  if (e->forcerebuild)
-    error(
-        "engine_unskip failed after a rebuild! A rebuild was demanded again "
-        "by the tree that was just built, so some rebuild criterion asks for "
-        "a reach no grid this run can provide. Check the startup warnings "
-        "for a search radius exceeding the top-level cell width.");
+  if (e->forcerebuild) {
+    if (e->rebuild_demand_criterion != NULL)
+      error(
+          "engine_unskip failed after a rebuild! %s demanded another rebuild "
+          "for the cell at [%g %g %g] (width %g, depth %d), so that criterion "
+          "asks for a reach no grid this run can provide. Check the startup "
+          "warnings for a search radius exceeding the top-level cell width.",
+          e->rebuild_demand_criterion, e->rebuild_demand_loc[0],
+          e->rebuild_demand_loc[1], e->rebuild_demand_loc[2],
+          e->rebuild_demand_width, e->rebuild_demand_depth);
+    else
+      error(
+          "engine_unskip failed after a rebuild! A rebuild was demanded again "
+          "by the tree that was just built. No radiation criterion recorded "
+          "the demand, so it came from one of the uninstrumented criteria "
+          "(hydro, stars, black holes, sinks or RT) -- do not read this as a "
+          "radiation reach problem.");
+  }
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);

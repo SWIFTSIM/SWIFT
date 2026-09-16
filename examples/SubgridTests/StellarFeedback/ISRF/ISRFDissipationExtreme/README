@@ -1,0 +1,66 @@
+# Intro
+A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
+box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
+(photoionization and radiation pressure off) and the negativity-triggered
+artificial-dissipation term on (`GEARFeedback:ISRF_dissipation_alpha_max:
+0.5`). Same pinned-neighbour IC family as the sibling `ISRFDissipation`
+and `ISRFCausalReach` examples, but at a more extreme local
+density/temperature contrast: the heated particle nearest the star
+defaults to `T_hot = 1e6 K` here, versus `3e4 K` in `ISRFDissipation`.
+
+This example exercises the dissipation term at that extreme contrast and
+reports the same sign-closure and causal-reach metrics as
+`ISRFDissipation`. No pass/fail bar is established for this contrast:
+treat `isrf_dissipation_check.py`'s output as diagnostic, not a
+validated pass criterion.
+
+## Dissipation term
+`ISRF_dissipation_alpha_max` bounds a triggered artificial-conductivity
+coefficient (see `parameter_example.yml` for the full parameter
+description). It activates per-particle where a particle's own field
+undershoots its neighbours' kernel-mean field
+(`GEARFeedback:ISRF_dissipation_negativity_threshold`, code default),
+and is bounded by the runtime stability check in `feedback_properties.h`,
+checked jointly on `max(alpha_max, alpha_floor)`, not `alpha_max` alone:
+`6.2*max(alpha_max, alpha_floor)*ISRF_c_hyp_margin + 0.70*ISRF_c_hyp_margin^2 <= 2`.
+At this example's shipped values (both 0.5), raising `ISRF_c_hyp_margin`
+above 0.571 requires lowering them; `alpha_max`, `alpha_floor`, and
+`ISRF_c_hyp_margin` cannot all be changed independently of that bound.
+
+## Pinned-neighbour variant, metallicity, cooling
+Same as `ISRFCausalReach`: see that example's README for the full
+mechanism (`hot_particle_temperature_K`, `SPH:initial_temperature: 0`,
+`isrf_dissipation_check.py --hot-particle-id`, metallicity/cooling
+isolation).
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Override the dissipation ceiling (`alpha_max`), the hot particle's
+temperature (`hot_particle_temperature_K`), gas density (`gas_density`),
+gas particle mass (`gas_mass`), star mass/type (`star_mass`,
+`star_type`), resolution level (`level`), run duration and stepping
+(`time_end`, `dt_max`, `delta_time`), bulk temperature
+(`bulk_temperature_K`), metallicity (`initial_metallicity`), and thread
+count (`n_threads`); see `run.sh` for defaults. `run_name=<dir> ./run.sh`
+moves a run's outputs into `<dir>`.
+
+# Checking
+```
+python3 isrf_dissipation_check.py --hot-particle-id $(cat hot_particle_id.txt)
+```
+`run.sh` runs this automatically. Prints, per snapshot and band, the
+sign-closure metrics (`n_neg`, `u_min`, the energy-weighted
+`|E_neg|/E_bulk`, and `|u_min|/u_plateau` reported for continuity but not
+gated), `R50`/`R90`, and the causal-reach metrics (measured field extent
+against `c_hyp*(t-t0)` at three amplitude levels). Gates on the same two
+criteria as `ISRFDissipation` (see that README); whether they pass at
+this contrast is exactly the open question this example exists to let you
+check, un-asserted here. Produces a comparison plot (`--output`).
