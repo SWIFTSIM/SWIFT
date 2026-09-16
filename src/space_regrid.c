@@ -31,6 +31,65 @@
 #include "scheduler.h"
 
 /**
+ * @brief Upper bound applied to a star's h_hii before it contributes to the
+ * top-level grid sizing.
+ *
+ * Exposed (rather than kept local to space_regrid()) so that the rebuild
+ * criterion's own regression test can ask the real function what grid a
+ * given h_hii produces, instead of re-deriving the expression and drifting
+ * from it.
+ *
+ * @param cell_max_width The coarsest top-level cell width the run allows.
+ */
+float space_regrid_h_hii_cap_for(const double cell_max_width) {
+
+  return 0.99f * (float)cell_max_width /
+         (kernel_gamma * space_stretch * radiation_search_radius_factor);
+}
+
+/**
+ * @brief Search radius the top-level grid must be sized for.
+ *
+ * @param h_max_no_hii Largest ordinary hydro/star/black-hole/sink smoothing
+ * length (already passed through space::h_max_no_hii_hwm's ratchet).
+ * @param h_max_hii Largest star HII search radius, already capped by
+ * space_regrid_h_hii_cap_for().
+ */
+double space_regrid_search_radius_for(const float h_max_no_hii,
+                                      const float h_max_hii) {
+
+  /* The radiation runner, the rebuild criterion and the split predicates all
+     size HII coverage as radiation_search_radius_factor * kernel_gamma *
+     h_hii, so the top-level grid must be sized the same way. Sizing it on
+     the unfactored kernel_gamma * h_hii instead let
+     cell_need_rebuild_for_radiation_pair() demand a coarsening the regrid
+     would not perform, which engine_rebuild() reports as "engine_unskip
+     failed after a rebuild!". The factor applies ONLY to the HII term:
+     ordinary smoothing lengths keep their historical sizing. */
+  const float radius_no_hii = h_max_no_hii * kernel_gamma * space_stretch;
+  const float radius_hii =
+      h_max_hii * kernel_gamma * space_stretch * radiation_search_radius_factor;
+  return fmaxf(radius_no_hii, radius_hii);
+}
+
+/**
+ * @brief Effective top-level cell width for a given pair of maxima.
+ *
+ * @param h_max_no_hii As in space_regrid_search_radius_for().
+ * @param h_max_hii As in space_regrid_search_radius_for().
+ * @param cell_min The finest top-level cell width the run allows.
+ * @param cell_max_width The coarsest top-level cell width the run allows.
+ */
+double space_regrid_cell_width_for(const float h_max_no_hii,
+                                   const float h_max_hii, const double cell_min,
+                                   const double cell_max_width) {
+
+  const double search_radius =
+      space_regrid_search_radius_for(h_max_no_hii, h_max_hii);
+  return fmin(fmax(search_radius, cell_min), cell_max_width);
+}
+
+/**
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
@@ -54,7 +113,13 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   const float h_max_floor = s->cell_min / kernel_gamma / space_stretch;
   float h_max_no_hii = h_max_floor;
-  float h_max_hii = h_max_floor;
+  /* Starts at zero, not at h_max_floor: the HII term carries an extra
+     radiation_search_radius_factor (see space_regrid_search_radius_for()),
+     so seeding it with the floor would size a star-free grid as
+     radiation_search_radius_factor * cell_min and silently coarsen every
+     run in the tree. The floor is preserved by the cell_min clamp below,
+     which is where it belongs. */
+  float h_max_hii = 0.f;
 
   /* h_hii (the star HII ionization search radius) is a fundamentally
      different, much larger-scale quantity than any ordinary smoothing
@@ -70,7 +135,7 @@ void space_regrid(struct space *s, int verbose) {
      Ordinary hydro/star h_max growth is NOT capped -- that remains a
      genuine problem worth the "too few cells" error below. */
   const float h_hii_max_for_regrid =
-      0.99f * (float)s->cell_max_width / (kernel_gamma * space_stretch);
+      space_regrid_h_hii_cap_for(s->cell_max_width);
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -176,9 +241,10 @@ void space_regrid(struct space *s, int verbose) {
      is capped there instead, so cdim never drops below
      Scheduler:min_top_level_cells regardless of what is driving the
      coarsening. */
-  const double search_radius = h_max * kernel_gamma * space_stretch;
-  const double cell_width =
-      fmin(fmax(search_radius, s->cell_min), s->cell_max_width);
+  const double search_radius =
+      space_regrid_search_radius_for(s->h_max_no_hii_hwm, h_max_hii);
+  const double cell_width = space_regrid_cell_width_for(
+      s->h_max_no_hii_hwm, h_max_hii, s->cell_min, s->cell_max_width);
   const int cdim[3] = {(int)floor(s->dim[0] / cell_width),
                        (int)floor(s->dim[1] / cell_width),
                        (int)floor(s->dim[2] / cell_width)};
@@ -205,9 +271,10 @@ void space_regrid(struct space *s, int verbose) {
   if (s->periodic && h_max > h_max_floor && search_radius > s->cell_max_width)
     error(
         "Must have at least Scheduler:min_top_level_cells cells in each "
-        "spatial dimension when periodicity is switched on (h_max = %g gives "
-        "a search radius of %g, but the coarsest top-level cell allowed is "
-        "%g).\nThe bound is the shortest box side divided by "
+        "spatial dimension when periodicity is switched on (h_max = %g, from "
+        "an ordinary smoothing length of %g and an HII search radius of %g, "
+        "gives a search radius of %g, but the coarsest top-level cell "
+        "allowed is %g).\nThe bound is the shortest box side divided by "
         "Scheduler:min_top_level_cells, so raising "
         "Scheduler:max_top_level_cells does not help. This error is often "
         "caused by any of the followings:\n"
@@ -219,7 +286,8 @@ void space_regrid(struct space *s, int verbose) {
         "predicted smoothing lengths too large for the box size,\n"
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n",
-        h_max, search_radius, s->cell_max_width);
+        h_max, s->h_max_no_hii_hwm, h_max_hii, search_radius,
+        s->cell_max_width);
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.

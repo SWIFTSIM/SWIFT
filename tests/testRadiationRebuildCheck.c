@@ -487,6 +487,100 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Case 8: the criterion and the top-level grid must agree. If
+   * cell_need_rebuild_for_radiation_pair() demands a rebuild and the unskip
+   * guard does not exempt the pair, the rebuild that follows MUST produce a
+   * different grid -- otherwise unskip demands a rebuild again immediately
+   * and engine_rebuild() aborts with "engine_unskip failed after a
+   * rebuild!".
+   *
+   * Geometry is TaskGraphPair's (examples/SubgridTests/StellarFeedback/
+   * HIIRegions/TaskGraphPair/params.yml): a periodic box of 0.16 with
+   * Scheduler:max_top_level_cells 4 and the default min_top_level_cells 3,
+   * so the grid sits at cdim = {4,4,4} with dmin = 0.04. cell_min and
+   * cell_max_width mirror space_init()'s derivation (src/space.c:1271 and
+   * :1297); the grid sizing itself is NOT mirrored -- it calls the real
+   * space_regrid_cell_width_for(), so this case cannot drift from
+   * space_regrid.c the way an in-test copy of the formula would.
+   *
+   * The sweep deliberately runs well past space_regrid_h_hii_cap_for()
+   * (~0.0186 for this box before the fix): the measured failure on Jed (job
+   * 66523970) had h_hii at 0.0337-0.0372, roughly twice that cap. Because
+   * the cap is applied unconditionally, every h_hii above it produces the
+   * same capped grid, so the demand is not a transient window but an
+   * absorbing state. Sampling only near the onset would miss that. */
+  {
+    const double dim = 0.16;
+    const int maxtcells = 4;
+    const int mintcells = 3;
+    const double tol = fmax(1.0 - 1.0 / (double)(maxtcells * maxtcells), 0.99);
+    const double cell_min = tol * dim / (double)maxtcells;
+    const double cell_max_width = dim / (double)mintcells;
+    const float h_max_floor = (float)cell_min / kernel_gamma / space_stretch;
+    const double dmin = dim / (double)maxtcells;
+
+    struct space test_space;
+    bzero(&test_space, sizeof(struct space));
+    test_space.periodic = 1;
+    test_space.cdim[0] = test_space.cdim[1] = test_space.cdim[2] = maxtcells;
+
+    /* A star-free grid must be untouched by anything the radiation term
+     * does: with no h_hii anywhere the width is the cell_min floor and the
+     * grid stays at max_top_level_cells. Without this, scaling the HII term
+     * while its accumulator still starts at the floor value would coarsen
+     * every run in the tree, HII or not, and no example-level test would
+     * attribute it. */
+    {
+      const double width = space_regrid_cell_width_for(
+          h_max_floor, /*h_max_hii=*/0.f, cell_min, cell_max_width);
+      if (!(width > 0.))
+        error("Star-free regrid width is not a positive number (%g).", width);
+      const int cd = (int)floor(dim / width);
+      if (cd != maxtcells)
+        error(
+            "A star-free grid (h_hii = 0) must stay at "
+            "Scheduler:max_top_level_cells (%d), got cdim = %d. The "
+            "radiation term must not contribute when no star has an HII "
+            "region.",
+            maxtcells, cd);
+    }
+
+    for (int i = 0; i <= 290; ++i) {
+      const float h_hii = 0.016f + 0.0001f * (float)i;
+
+      setup_pair(&ci, &cj, (float)dmin, /*stars_h_max=*/0.01f,
+                 /*stars_h_hii_max=*/h_hii, /*hydro_h_max=*/0.01f,
+                 /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+      ci.top = &ci;
+      cj.top = &cj;
+
+      const int exempt =
+          space_radiation_top_stencil_covers_box(&test_space) && ci.top == &ci;
+      if (!cell_need_rebuild_for_radiation_pair(&ci, &cj) || exempt) continue;
+
+      /* What the next regrid would build from this same h_hii. */
+      const float h_hii_capped =
+          fminf(h_hii, space_regrid_h_hii_cap_for(cell_max_width));
+      const double width = space_regrid_cell_width_for(
+          h_max_floor, h_hii_capped, cell_min, cell_max_width);
+      if (!(width > 0.))
+        error("Regrid width is not a positive number (%g) at h_hii = %g.",
+              width, h_hii);
+      const int cd[3] = {(int)floor(dim / width), (int)floor(dim / width),
+                         (int)floor(dim / width)};
+
+      if (cd[0] == maxtcells && cd[1] == maxtcells && cd[2] == maxtcells)
+        error(
+            "cell_need_rebuild_for_radiation_pair demands a rebuild at "
+            "h_hii = %g (dmin = %g, unskip guard does not exempt the pair), "
+            "but the regrid rebuilds the identical cdim = {%d %d %d} grid "
+            "(width %g, capped h_hii %g). The demand can never be "
+            "satisfied, so engine_unskip() re-raises it and "
+            "engine_rebuild() aborts.",
+            h_hii, dmin, cd[0], cd[1], cd[2], width, h_hii_capped);
+    }
+  }
+
   /* cell_boxes_touch_under_shift(): the geometric facing test that replaces
    * cell_split_pairs/space_getsid for asymmetric radiation pair descent
    * (scheduler_splittasks.c). Only loc/width matter -- everything else is

@@ -486,6 +486,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
+float space_regrid_h_hii_cap_for(double cell_max_width);
+double space_regrid_search_radius_for(float h_max_no_hii, float h_max_hii);
+double space_regrid_cell_width_for(float h_max_no_hii, float h_max_hii,
+                                   double cell_min, double cell_max_width);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
