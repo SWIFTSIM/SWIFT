@@ -15,19 +15,21 @@ T=${T:=200}  # Gas temperature
 gas_density=${gas_density:=100} # Gas density in atom/cm^3
 num_star=${num_star:=1} # number of stars
 
-set -e 
+set -e
+
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
 if [ ! -e POPII.hdf5 ] || [ ! -e POPIII_PISNe.hdf5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh --with-winds
 fi
 
 echo "The star masse = ${star_mass[@]}"

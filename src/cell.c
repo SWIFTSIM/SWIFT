@@ -651,12 +651,16 @@ void cell_sanitize(struct cell *c, int treated) {
 
     /* Apply it */
     for (int i = 0; i < count; ++i) {
-      if (parts[i].h == 0.f || parts[i].h > upper_h_max)
+      if (parts[i].h == 0.f || parts[i].h > upper_h_max) {
         parts[i].h = upper_h_max;
+        parts[i].depth_h = c->depth;
+      }
     }
     for (int i = 0; i < scount; ++i) {
-      if (sparts[i].h == 0.f || sparts[i].h > upper_h_max)
+      if (sparts[i].h == 0.f || sparts[i].h > upper_h_max) {
         sparts[i].h = upper_h_max;
+        sparts[i].depth_h = c->depth;
+      }
     }
   }
 
