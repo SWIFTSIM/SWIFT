@@ -408,6 +408,47 @@ cooling_get_internal_energy_h2_gamma_corrected(
 #endif /* COOLING_GRACKLE_MODE >= 2 */
 
 /**
+ * @brief compute the specific internal energy a particle with this
+ * composition must have for cooling_get_temperature() to report exactly
+ * T_target: the T-to-u counterpart of cooling_get_temperature() itself.
+ *
+ * Every caller that needs to turn a target temperature into the u that
+ * actually produces it (currently just the AGORA CMB floor, potentially
+ * others later) should go through this one function rather than repeat
+ * the COOLING_GRACKLE_MODE dispatch itself.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param T_target Desired temperature.
+ * @return Specific internal energy that reproduces T_target under
+ *   cooling_get_temperature().
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_internal_energy_from_temperature(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, const double T_target) {
+
+#if COOLING_GRACKLE_MODE >= 2
+  return cooling_get_internal_energy_h2_gamma_corrected(phys_const, cosmo, p,
+                                                        xp, T_target);
+#else
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+
+  return cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
+#endif
+}
+
+/**
  * @brief compute the AGORA redshift-dependent CMB-floor specific internal
  * energy for a particle, from its current composition.
  *
@@ -434,16 +475,7 @@ cooling_agora_cmb_floor_internal_energy(
   const double T_CMB_agora =
       CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN * (z + 1.0);
 
-#if COOLING_GRACKLE_MODE >= 2
-  return cooling_get_internal_energy_h2_gamma_corrected(phys_const, cosmo, p,
-                                                        xp, T_CMB_agora);
-#else
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
-
-  return cooling_internal_energy_from_T(T_CMB_agora, mu, k_B, m_H);
-#endif
+  return cooling_get_internal_energy_from_temperature(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, T_CMB_agora);
 }
 #endif /* SWIFT_COOLING_GRACKLE_COOLING_UTILS_H */
