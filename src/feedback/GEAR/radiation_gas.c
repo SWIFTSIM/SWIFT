@@ -676,6 +676,45 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
   return 0.;
 }
 
+/*! Human-readable band names for #radiation_get_band_u_nonnegative's
+    clamp warnings, indexed by #radiation_isrf_band. */
+static const char *const radiation_isrf_band_clamp_name[ISRF_BAND_COUNT] = {
+    "FUV-band specific energy", "LW-band specific energy"};
+
+/**
+ * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
+ *
+ * Every quantity handed to Grackle is built from the bands through this
+ * fetch, so that a band which has undershot below zero contributes
+ * nothing instead of cancelling part of another band's real signal.
+ * Clamping only the summed result would let a negative LW energy be
+ * subtracted from a positive FUV energy, suppressing the field Grackle
+ * receives with no clamp event and no warning.
+ *
+ * The clamp count is per band, not per particle: a particle whose LW band
+ * is negative passes through here once for the LW photodissociation rate
+ * and once more for the Habing sum.
+ *
+ * Read-only on the particle. The stored band energy keeps its negative
+ * value, so the propagation state and the u_min_since_snapshot
+ * diagnostic stay intact.
+ *
+ * @param p The particle.
+ * @param b The band to read (#radiation_isrf_band).
+ * @return The band's specific energy, or 0 if it was negative.
+ */
+static double radiation_get_band_u_nonnegative(const struct part *p,
+                                               const int b) {
+
+  static volatile long long band_clamp_count[ISRF_BAND_COUNT] = {0};
+  static volatile double band_clamp_worst[ISRF_BAND_COUNT] = {0.};
+
+  return radiation_clamp_nonnegative_for_grackle(
+      radiation_isrf_band_clamp_name[b],
+      (double)p->feedback_data.isrf_band[b].u, &band_clamp_count[b],
+      &band_clamp_worst[b]);
+}
+
 /**
  * Local ISRF strength in Habing units, from this #part's own FUV+LW
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
@@ -687,7 +726,10 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
  * before the IC read; #radiation_first_init_part leaves the band fields
  * untouched either way).
  *
- * Clamped to be non-negative before being returned: see
+ * Each band is clamped to be non-negative as it is read, BEFORE the two
+ * are summed (#radiation_get_band_u_nonnegative), so a band that has
+ * undershot reads as zero illumination rather than cancelling part of the
+ * other band. The summed result passes through the same clamp again; see
  * #radiation_clamp_nonnegative_for_grackle.
  *
  * @param phys_const Physical constants.
@@ -702,8 +744,8 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_sum = (double)p->feedback_data.isrf_band[ISRF_BAND_FUV].u +
-                       (double)p->feedback_data.isrf_band[ISRF_BAND_LW].u;
+  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_BAND_FUV) +
+                       radiation_get_band_u_nonnegative(p, ISRF_BAND_LW);
   const double flux = phys_const->const_speed_light_c * rho * u_sum;
   const double flux_cgs =
       flux *
@@ -730,7 +772,9 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
  * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
  * only forced on for this feature at that mode, see cooling_io.h).
  *
- * Clamped to be non-negative before being returned: see
+ * The LW band is clamped to be non-negative as it is read
+ * (#radiation_get_band_u_nonnegative), and the resulting rate passes
+ * through the same clamp again; see
  * #radiation_clamp_nonnegative_for_grackle.
  *
  * @param phys_const Physical constants.
@@ -747,7 +791,7 @@ double radiation_get_part_LW_dissociation_rate_internal(
     const struct cosmology *cosmo, const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_LW = (double)p->feedback_data.isrf_band[ISRF_BAND_LW].u;
+  const double u_LW = radiation_get_band_u_nonnegative(p, ISRF_BAND_LW);
   const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
   const double flux_LW_cgs =
       flux_LW *

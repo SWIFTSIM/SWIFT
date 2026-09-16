@@ -599,6 +599,47 @@ static void check_grackle_coupling(const struct unit_system *us) {
   assert_close("Grackle coupling: isrf_habing linearity in u_FUV/u_LW",
                G0_double, 2.0 * actual_G0, 1e-6);
 
+  /* A band that has undershot below zero must contribute nothing, not be
+   * subtracted from the other band: a negative LW energy is propagation
+   * undershoot, whose physical contribution is zero illumination. So a
+   * mixed-sign particle must give exactly what the positive band alone
+   * gives. Clamping only the summed result would instead deliver a
+   * silently suppressed field, since the sum itself stays positive and no
+   * clamp event fires. */
+  struct part p_mix = p;
+  p_mix.feedback_data.isrf_band[ISRF_BAND_FUV].u *= 4.0f;
+  p_mix.feedback_data.isrf_band[ISRF_BAND_LW].u *= -1.0f;
+  struct part p_positive_band_only = p;
+  p_positive_band_only.feedback_data.isrf_band[ISRF_BAND_FUV].u *= 4.0f;
+  p_positive_band_only.feedback_data.isrf_band[ISRF_BAND_LW].u = 0.0f;
+
+  const double G0_mix =
+      radiation_get_part_isrf_habing(&phys_const, us, &cosmo, &p_mix);
+  const double G0_positive_band_only = radiation_get_part_isrf_habing(
+      &phys_const, us, &cosmo, &p_positive_band_only);
+
+  /* Bracket rather than a bare lower bound: a non-finite result compares
+   * false against every bound and would pass a one-sided gate silently. */
+  if (!(G0_mix >= 0.0 && G0_mix < 1e30))
+    error(
+        "Grackle coupling: isrf_habing with a negative LW band gave a "
+        "non-finite or out-of-range value (%.8e).",
+        G0_mix);
+
+  assert_close("Grackle coupling: isrf_habing clamps each band before summing",
+               G0_mix, G0_positive_band_only, 1e-12);
+
+  /* The same, one level down: k_diss reads the LW band alone, so a
+   * negative LW energy must give exactly zero. */
+  const double k_diss_negative_LW =
+      radiation_get_part_LW_dissociation_rate_internal(&phys_const, us, &cosmo,
+                                                       &p_mix);
+  if (k_diss_negative_LW != 0.0)
+    error(
+        "Grackle coupling: LW dissociation rate at a negative u_LW gave "
+        "%.8e, expected exactly 0.",
+        k_diss_negative_LW);
+
   /* The gate wrapper must pass the same value through unchanged. */
   struct cooling_function_data cooling;
   bzero(&cooling, sizeof(struct cooling_function_data));
