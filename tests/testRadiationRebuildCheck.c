@@ -487,28 +487,47 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Case 8: the criterion and the top-level grid must agree. If
-   * cell_need_rebuild_for_radiation_pair() demands a rebuild and the unskip
-   * guard does not exempt the pair, the rebuild that follows MUST produce a
-   * different grid -- otherwise unskip demands a rebuild again immediately
-   * and engine_rebuild() aborts with "engine_unskip failed after a
-   * rebuild!".
+  /* Case 8: the criterion and the top-level grid must agree. If a rebuild
+   * criterion demands a rebuild and the unskip guard does not exempt the
+   * pair, the rebuild that follows MUST produce a different grid (or,
+   * once no grid can satisfy it, space_regrid()'s own "too few cells"
+   * abort must catch it) -- otherwise unskip demands a rebuild again
+   * immediately and engine_rebuild() aborts with "engine_unskip failed
+   * after a rebuild!". Two independent criteria read a star's smoothing
+   * lengths, so this case covers both: cell_need_rebuild_for_radiation_pair()
+   * bounds a star's reach by max(h_hii_max, h_max), factored and exempted
+   * once the radiation stencil covers the box (8a sweeps h_hii, 8b sweeps
+   * h_max, h_max held/held-at-0 respectively);
+   * cell_need_rebuild_for_stars_pair() separately bounds it by the unfactored,
+   * unexempted stars.h_max alone (8c).
    *
    * Geometry is TaskGraphPair's (examples/SubgridTests/StellarFeedback/
    * HIIRegions/TaskGraphPair/params.yml): a periodic box of 0.16 with
    * Scheduler:max_top_level_cells 4 and the default min_top_level_cells 3,
    * so the grid sits at cdim = {4,4,4} with dmin = 0.04. cell_min and
    * cell_max_width mirror space_init()'s derivation (src/space.c:1271 and
-   * :1297); the grid sizing itself is NOT mirrored -- it calls the real
-   * space_regrid_cell_width_for(), so this case cannot drift from
-   * space_regrid.c the way an in-test copy of the formula would.
+   * :1297); the grid sizing itself is NOT mirrored -- "what the next
+   * regrid would build" calls the real space_regrid_star_radiation_term_for(),
+   * space_regrid_star_h_max_no_hii_term_for() and
+   * space_regrid_cell_width_for(), the exact functions space_regrid() itself
+   * calls at every one of its three accumulation sites (the
+   * local_cells_with_particles_top loop, the cells_top loop, and the
+   * flat-particle-array fallback), so this case's ROUTING FORMULAS cannot
+   * drift from space_regrid.c's the way an in-test re-derivation would.
+   * This does NOT cover wiring: the test supplies its own arguments to
+   * these functions directly, so a future edit that stops calling either
+   * function from one of the three sites (reverting to an inline
+   * re-implementation there instead) would not be caught here -- only a
+   * direct read of space_regrid.c's three call sites catches that.
    *
-   * The sweep deliberately runs well past space_regrid_h_hii_cap_for()
-   * (~0.0186 for this box before the fix): the measured failure on Jed (job
-   * 66523970) had h_hii at 0.0337-0.0372, roughly twice that cap. Because
-   * the cap is applied unconditionally, every h_hii above it produces the
-   * same capped grid, so the demand is not a transient window but an
-   * absorbing state. Sampling only near the onset would miss that. */
+   * All three sweeps deliberately run well past
+   * space_regrid_radiation_cap_for() (the coarsening threshold below which
+   * the radiation-pair demand cannot be satisfied), so 8a/8b also exercise
+   * the capped branch (radiation term == cap, grid at min_top_level_cells),
+   * not only the transitional window around first onset; 8c's h_max_no_hii
+   * route is uncapped, so its sweep instead crosses into the range where
+   * no grid can satisfy the demand and the "too few cells" abort is the
+   * correct outcome (see 8c's own comment). */
   {
     const double dim = 0.16;
     const int maxtcells = 4;
@@ -525,59 +544,212 @@ int main(int argc, char *argv[]) {
     test_space.cdim[0] = test_space.cdim[1] = test_space.cdim[2] = maxtcells;
 
     /* A star-free grid must be untouched by anything the radiation term
-     * does: with no h_hii anywhere the width is the cell_min floor and the
-     * grid stays at max_top_level_cells. Without this, scaling the HII term
-     * while its accumulator still starts at the floor value would coarsen
-     * every run in the tree, HII or not, and no example-level test would
-     * attribute it. */
+     * does: with no h_hii and no star anywhere the width stays at the
+     * cell_min floor and the grid stays at max_top_level_cells. Without
+     * this, scaling the radiation term while its accumulator still starts
+     * at the floor value would coarsen every run in the tree, radiation or
+     * not, and no example-level test would attribute it. */
     {
+      const float star_radiation_term = space_regrid_star_radiation_term_for(
+          /*h_hii_max=*/0.f, /*h_max=*/0.f, cell_max_width);
       const double width = space_regrid_cell_width_for(
-          h_max_floor, /*h_max_hii=*/0.f, cell_min, cell_max_width);
+          h_max_floor, star_radiation_term, cell_min, cell_max_width);
       if (!(width > 0.))
         error("Star-free regrid width is not a positive number (%g).", width);
       const int cd = (int)floor(dim / width);
       if (cd != maxtcells)
         error(
-            "A star-free grid (h_hii = 0) must stay at "
+            "A star-free grid (h_hii = h_max = 0) must stay at "
             "Scheduler:max_top_level_cells (%d), got cdim = %d. The "
-            "radiation term must not contribute when no star has an HII "
-            "region.",
+            "radiation term must not contribute when no star is present.",
             maxtcells, cd);
     }
 
-    for (int i = 0; i <= 290; ++i) {
-      const float h_hii = 0.016f + 0.0001f * (float)i;
+    /* Case 8a: h_hii-driven, h_max held small (0.01, well below the sweep
+     * range) so max(h_hii_max, h_max) == h_hii_max throughout. */
+    {
+      int fired = 0;
+      for (int i = 0; i <= 290; ++i) {
+        const float h_hii = 0.016f + 0.0001f * (float)i;
 
-      setup_pair(&ci, &cj, (float)dmin, /*stars_h_max=*/0.01f,
-                 /*stars_h_hii_max=*/h_hii, /*hydro_h_max=*/0.01f,
-                 /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
-      ci.top = &ci;
-      cj.top = &cj;
+        setup_pair(&ci, &cj, (float)dmin, /*stars_h_max=*/0.01f,
+                   /*stars_h_hii_max=*/h_hii, /*hydro_h_max=*/0.01f,
+                   /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+        ci.top = &ci;
+        cj.top = &cj;
 
-      const int exempt =
-          space_radiation_top_stencil_covers_box(&test_space) && ci.top == &ci;
-      if (!cell_need_rebuild_for_radiation_pair(&ci, &cj) || exempt) continue;
+        const int exempt =
+            space_radiation_top_stencil_covers_box(&test_space) &&
+            ci.top == &ci;
+        if (!cell_need_rebuild_for_radiation_pair(&ci, &cj) || exempt) continue;
+        ++fired;
 
-      /* What the next regrid would build from this same h_hii. */
-      const float h_hii_capped =
-          fminf(h_hii, space_regrid_h_hii_cap_for(cell_max_width));
-      const double width = space_regrid_cell_width_for(
-          h_max_floor, h_hii_capped, cell_min, cell_max_width);
-      if (!(width > 0.))
-        error("Regrid width is not a positive number (%g) at h_hii = %g.",
-              width, h_hii);
-      const int cd[3] = {(int)floor(dim / width), (int)floor(dim / width),
-                         (int)floor(dim / width)};
+        const float star_radiation_term = space_regrid_star_radiation_term_for(
+            h_hii, /*h_max=*/0.01f, cell_max_width);
+        const double width = space_regrid_cell_width_for(
+            h_max_floor, star_radiation_term, cell_min, cell_max_width);
+        if (!(width > 0.))
+          error("Regrid width is not a positive number (%g) at h_hii = %g.",
+                width, h_hii);
+        const int cd = (int)floor(dim / width);
 
-      if (cd[0] == maxtcells && cd[1] == maxtcells && cd[2] == maxtcells)
+        if (cd == maxtcells)
+          error(
+              "Case 8a: cell_need_rebuild_for_radiation_pair demands a "
+              "rebuild at h_hii = %g (dmin = %g, unskip guard does not "
+              "exempt the pair), but the regrid rebuilds the identical "
+              "cdim = %d grid (width %g, radiation term %g). The demand can "
+              "never be satisfied, so engine_unskip() re-raises it and "
+              "engine_rebuild() aborts.",
+              h_hii, dmin, cd, width, star_radiation_term);
+      }
+      if (fired == 0)
         error(
-            "cell_need_rebuild_for_radiation_pair demands a rebuild at "
-            "h_hii = %g (dmin = %g, unskip guard does not exempt the pair), "
-            "but the regrid rebuilds the identical cdim = {%d %d %d} grid "
-            "(width %g, capped h_hii %g). The demand can never be "
-            "satisfied, so engine_unskip() re-raises it and "
-            "engine_rebuild() aborts.",
-            h_hii, dmin, cd[0], cd[1], cd[2], width, h_hii_capped);
+            "Case 8a swept h_hii across [0.016, 0.045] and no sample ever "
+            "made cell_need_rebuild_for_radiation_pair fire a non-exempt "
+            "demand; the sweep range no longer exercises the invariant it "
+            "is meant to check.");
+    }
+
+    /* Case 8b: h_max-driven, h_hii held at 0 so max(h_hii_max, h_max) ==
+     * h_max throughout -- a star with no active HII region, resting on its
+     * own ordinary smoothing length in a sparse top-level cell. */
+    {
+      int fired = 0;
+      for (int i = 0; i <= 290; ++i) {
+        const float stars_h_max = 0.016f + 0.0001f * (float)i;
+
+        setup_pair(&ci, &cj, (float)dmin, /*stars_h_max=*/stars_h_max,
+                   /*stars_h_hii_max=*/0.f, /*hydro_h_max=*/0.01f,
+                   /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+        ci.top = &ci;
+        cj.top = &cj;
+
+        const int exempt =
+            space_radiation_top_stencil_covers_box(&test_space) &&
+            ci.top == &ci;
+        if (!cell_need_rebuild_for_radiation_pair(&ci, &cj) || exempt) continue;
+        ++fired;
+
+        const float star_radiation_term = space_regrid_star_radiation_term_for(
+            /*h_hii_max=*/0.f, stars_h_max, cell_max_width);
+        const double width = space_regrid_cell_width_for(
+            h_max_floor, star_radiation_term, cell_min, cell_max_width);
+        if (!(width > 0.))
+          error("Regrid width is not a positive number (%g) at h_max = %g.",
+                width, stars_h_max);
+        const int cd = (int)floor(dim / width);
+
+        if (cd == maxtcells)
+          error(
+              "Case 8b: cell_need_rebuild_for_radiation_pair demands a "
+              "rebuild at stars.h_max = %g with h_hii = 0 (dmin = %g, "
+              "unskip guard does not exempt the pair), but the regrid "
+              "rebuilds the identical cdim = %d grid (width %g, radiation "
+              "term %g). A star with no HII region can hit the same "
+              "unsatisfiable-rebuild deadlock as an HII-driven star unless "
+              "stars.h_max is folded into the same factored/capped term as "
+              "h_hii.",
+              stars_h_max, dmin, cd, width, star_radiation_term);
+      }
+      if (fired == 0)
+        error(
+            "Case 8b swept stars.h_max across [0.016, 0.045] and no sample "
+            "ever made cell_need_rebuild_for_radiation_pair fire a "
+            "non-exempt demand; the sweep range no longer exercises the "
+            "invariant it is meant to check.");
+    }
+
+    /* Case 8c: the SAME invariant as 8a/8b, but for
+     * cell_need_rebuild_for_stars_pair() -- unfactored, uncapped, and
+     * unexempted, unlike the radiation-pair criterion above. It reads
+     * ci->stars.h_max directly (cell_unskip.c:2593-2594 calls it
+     * unconditionally on every pair task), so stars.h_max must feed
+     * h_max_no_hii via space_regrid_star_h_max_no_hii_term_for() -- not
+     * only h_max_radiation via space_regrid_star_radiation_term_for() --
+     * or this criterion can demand a rebuild space_regrid() never
+     * satisfies and never aborts on either, since h_max_no_hii never sees
+     * the growth. h_hii is irrelevant to this criterion, so it is held at
+     * 0 throughout. */
+    {
+      int fired = 0;
+      for (int i = 0; i <= 290; ++i) {
+        const float stars_h_max = 0.016f + 0.0001f * (float)i;
+
+        setup_pair(&ci, &cj, (float)dmin, /*stars_h_max=*/stars_h_max,
+                   /*stars_h_hii_max=*/0.f, /*hydro_h_max=*/0.01f,
+                   /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+
+        if (!cell_need_rebuild_for_stars_pair(&ci, &cj)) continue;
+        ++fired;
+
+        /* What the next regrid would accumulate: stars.h_max folded into
+         * BOTH terms, exactly as space_regrid()'s three sites now do. */
+        const float h_max_no_hii_sample =
+            space_regrid_star_h_max_no_hii_term_for(h_max_floor, stars_h_max);
+        const float star_radiation_term = space_regrid_star_radiation_term_for(
+            /*h_hii_max=*/0.f, stars_h_max, cell_max_width);
+        const double width = space_regrid_cell_width_for(
+            h_max_no_hii_sample, star_radiation_term, cell_min, cell_max_width);
+        if (!(width > 0.))
+          error("Regrid width is not a positive number (%g) at h_max = %g.",
+                width, stars_h_max);
+        const int cd = (int)floor(dim / width);
+
+        /* The precise invariant: unlike 8a/8b (where "cdim changed" and
+         * "the criterion is satisfied" coincide by construction of the
+         * radiation cap), here they do NOT -- the radiation-term route
+         * alone can still coarsen cdim away from maxtcells while
+         * saturating below this criterion's own unfactored bound, which
+         * scales differently (no radiation_search_radius_factor). So
+         * check the bound directly: a fresh check against the produced
+         * width must NOT fire again. Beyond cell_max_width (where no grid
+         * can satisfy it), space_regrid()'s own "too few cells" abort
+         * (h_max_no_hii's search radius > cell_max_width) must be the one
+         * to catch it instead. */
+        if (kernel_gamma * (double)stars_h_max <= cell_max_width) {
+          if (!(kernel_gamma * (double)stars_h_max <= width))
+            error(
+                "Case 8c: cell_need_rebuild_for_stars_pair demands a "
+                "rebuild at stars.h_max = %g (dmin = %g, no exemption "
+                "exists for this criterion), but the regrid's own width "
+                "(%g, cdim = %d) still does not satisfy the criterion's "
+                "unfactored bound (kernel_gamma * h_max = %g). "
+                "stars.h_max is not reaching h_max_no_hii, so the demand "
+                "can never be satisfied and engine_rebuild() aborts with "
+                "\"engine_unskip failed after a rebuild!\".",
+                stars_h_max, dmin, width, cd,
+                kernel_gamma * (double)stars_h_max);
+        } else {
+          /* Unsatisfiable by any grid (dmin is already pinned at
+           * cell_max_width / mintcells): space_regrid()'s "too few cells"
+           * abort requires h_max_no_hii's OWN search radius -- not just
+           * the capped star_radiation_term -- to exceed cell_max_width.
+           * If stars.h_max never reaches h_max_no_hii, this never
+           * triggers either, and the unsatisfiable demand becomes
+           * invisible: cdim stays pinned (via the radiation-term route
+           * alone), no abort ever fires, and
+           * cell_need_rebuild_for_stars_pair keeps demanding a rebuild
+           * forever. */
+          if (!(h_max_no_hii_sample * kernel_gamma * space_stretch >
+                cell_max_width))
+            error(
+                "Case 8c: at stars.h_max = %g the pair criterion's own "
+                "unfactored bound needs a search radius beyond "
+                "cell_max_width (%g), which no grid can satisfy -- but "
+                "h_max_no_hii (%g) does not reflect that growth, so "
+                "space_regrid()'s \"too few cells\" abort will never fire "
+                "either. The demand is unsatisfiable AND invisible: "
+                "engine_rebuild() loops instead of aborting loudly.",
+                stars_h_max, cell_max_width, h_max_no_hii_sample);
+        }
+      }
+      if (fired == 0)
+        error(
+            "Case 8c swept stars.h_max across [0.016, 0.045] and no sample "
+            "ever made cell_need_rebuild_for_stars_pair fire; the sweep "
+            "range no longer exercises the invariant it is meant to "
+            "check.");
     }
   }
 
