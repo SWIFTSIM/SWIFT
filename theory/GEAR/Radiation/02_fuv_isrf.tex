@@ -199,6 +199,21 @@ forbid $|\mathbf F_V| > cU$; the admissibility constraint
 \end{equation}
 is imposed explicitly (Section~\ref{sec:fuv-limiter}).
 
+\textbf{Precision of the reduced flux.} The squared flux norm that $f$
+above, the flux limiter of Eq.~\ref{eq:fuv-flux-limiter} and the
+flux-relaxation-residual gate of Eq.~\ref{eq:fuv-diss-gate} all read
+from $\mathbf F$ is evaluated in double precision, not the particle's
+native float32. A well-attenuated far band routinely carries
+$|\mathbf F|$ below $\sqrt{\code{FLT\_MIN}}\approx1.08\times10^{-19}$ in
+the code's internal units, and squaring a value that small in float32
+underflows silently to exactly zero: the closure then reads $f=0$ and
+returns the isotropic $\mathbf D=\mathbf I/3$ even though the physical
+flux is merely small rather than zero, the limiter's clamp is skipped
+because it sees no flux to limit, and the gate's residual denominator
+vanishes with it. Only the squared norm, its reciprocal square root and
+the gate's residual ratio are widened; the closure coefficients,
+$\mathbf D$ itself and $u$ stay float32.
+
 \textbf{Reduced signal speed.} The characteristic speeds of
 Eqs.~\ref{eq:fuv-moment-zero}--\ref{eq:fuv-moment-one} lie in
 $[-c, c]$, which would impose a time step $\Delta t \lesssim h/c$, far
@@ -1409,6 +1424,15 @@ logbook.
   \item \textbf{Injection normalisation.} Propagation off, $Z=0$ so
     that $\zeta = 1$: the energy summed over the star's kernel must
     equal $\Delta t_\star L_b$ to floating-point precision, per band.
+  \item \textbf{Time-bin seam conservation.} A fixture straddling a
+    time-bin boundary, dissipation off, $Z=0$, checked per band against
+    a uniform-glass control carrying the same dose in flight:
+    $E(t) = (c/c_{\rm hyp})\sum_i m_i u_i/L - t$. Criterion:
+    $|E_{\rm seam}(t) - E_{\rm uniform}(t)|/t \le 10^{-5}$ at every
+    snapshot $t>0$. Outcome: $9.3\times10^{-8}$ (FUV), $6.6\times10^{-8}$
+    (LW), down from $5.0\times10^{-2}$ before the pair with
+    $H_i \le r_{ij} < H_j$ was dispatched from the force loop
+    (Section~\ref{sec:fuv-operators}).
   \item \textbf{Screened steady state}, $h/\lambda$ from $0.6$ to $20$
     (production particle masses $0.1$--$760\,M_\odot$ at solar $Z$,
     $n_H = 10^3\,{\rm cm^{-3}}$). Criterion: the settled radial profile
@@ -1422,7 +1446,11 @@ logbook.
     Eq.~\ref{eq:fuv-amplitude-identity} reported alongside. Outcome:
     pass at every corner, with amplitude agreement to $0.2\%$ or
     better; the LW profile at $h/\lambda = 20$ is unmeasurable because
-    the field is zero on all but a few dozen particles.
+    the field is zero on all but a few dozen particles. The
+    $95\,M_\odot$ (LW) and $760\,M_\odot$ (FUV) corners exercise the
+    float32 underflow of Section~\ref{sec:fuv-moments} directly: median
+    relative error $0.5014$ and $0.5551$ before evaluating the flux norm
+    in double, $0.0074$ and $0.0104$ after, on the same check.
   \item \textbf{Causal reach.} The field's edge at $10^{-3}$ of the peak
     must stay inside $r = c_{\rm hyp}(t - t_0)$ at every snapshot, in a
     uniform box and with one neighbour pinned to a $c_{\rm hyp}$ up to
@@ -1489,6 +1517,21 @@ path.
     the production use, has not been validated directly; every
     propagation test above uses one source or one seeded pulse.
     Production resolution has been tested at one point only.
+  \item \textbf{Symmetric divergence dispatch: a positivity cost.}
+    Reaching every pair with $H_i \le r_{ij} < H_j$ from the force loop
+    (Section~\ref{sec:fuv-operators}) fixed the time-bin seam's
+    energy-conservation error above, but is not free. In a strong
+    hot/cold density-contrast fixture (a $10^6$\,K neighbour against a
+    cold background) the early-transient negative-$u$ population grows
+    to $323$ particles (FUV) and $456$ (LW) at snapshots $3$ to $8$,
+    against at most $1$ before the dispatch moved; a smaller, standing
+    negative population also appears at time-bin boundaries, where
+    particles that do not share a time bin or the same $c_{\rm
+    hyp}\kappa\rho$ leave a residual by construction
+    (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
+    Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
+    positivity at time-bin boundaries and in strongly contrasted gas,
+    without changing transport in smooth fields, is open.
   \item \textbf{Dissipation coefficients.} The amplification matrix of
     the flux-first update (Eq.~\ref{eq:fuv-u-update}) has the same
     characteristic polynomial as a dissipation applied to the transported
@@ -1497,7 +1540,12 @@ path.
     shipped order: at $C_{\rm hyp} = 0.5$ it admits $\alpha\le0.589$,
     $1.18$ times $\alpha_{\max} = 0.5$. The bound uses $2I_W = 6.2$; the
     lattice maximum of the dissipation symbol is $3.31$, so on a uniform
-    lattice the bound is about twice conservative in $\alpha$. The transient
+    lattice the bound is about twice conservative in $\alpha$. A direct
+    grid scan of the discrete recurrence's instability onset in
+    $C_{\rm hyp}$, at fixed $\alpha \in \{0.25, 0.5, 0.75\}$, places it
+    at $1.97$--$2.58$ times the analytic root of
+    Eq.~\ref{eq:fuv-stability-bound}, consistent with that same margin
+    rather than with any unmodelled effect. The transient
     amplification of the shipped order grows with $\alpha$ above
     $\alpha\approx0.32$: $1.54$ at $0.5$ and $1.68$ at the bound, against
     $1.35$ with the dissipation off
