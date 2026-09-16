@@ -54,6 +54,8 @@ INLINE static void black_holes_read_particles(struct bpart *bparts,
                                 UNIT_CONV_ENERGY, bparts, energy_reservoir);
   list[6] = io_make_input_field("SubgridMasses", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_MASS, bparts, subgrid_mass);
+  list[7] = io_make_input_field("NSCMasses", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_MASS, bparts, nsc_mass);                              
 }
 
 INLINE static void convert_bpart_pos(const struct engine *e,
@@ -472,7 +474,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
       "Subgrid masses of the nuclear star clusters around the black holes.");
 
   list[46] = io_make_output_field(
-      "LastTdeRate", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      "LastTDERate", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       tde_rate_per_yr,
       "TDE rate (yr-1) from last nibbling event.");
 
