@@ -1145,11 +1145,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* We now need to check that we are not going to go below any of the limits.
-     Any energy this adds is a floor, not radiative cooling/heating, so fold
-     it into hydro_du_dt (excluded from radiated_energy below) instead of
-     cool_du_dt -- the same convention the pre-solve floor clamp above
-     already uses, so both stay booked the same way regardless of whether
-     the floor triggers before or after the Grackle solve. */
+     Any energy this adds is a floor, not radiative cooling/heating: fold it
+     into hydro_du_dt (excluded from radiated_energy below) instead of
+     cool_du_dt, matching the pre-solve floor clamp above, so both book the
+     floor the same way regardless of when it triggers. */
   const gr_float u_new_solved = u_new;
   u_new = max3(u_new, u_minimal, u_CMB_agora);
   const float floor_injection = u_new - u_new_solved;
@@ -1187,7 +1186,7 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
 
 #if COOLING_GRACKLE_MODE <= 1
-  /* Physical constants -- unused for MODE >= 2, which computes its own. */
+  /* Physical constants; unused for MODE >= 2, which computes its own. */
   const double m_H = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
 #endif

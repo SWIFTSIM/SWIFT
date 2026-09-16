@@ -103,9 +103,8 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   return mu;
 
 #elif COOLING_GRACKLE_MODE >= 1
-  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1 -- shared by
-     modes 1-3 instead of re-declared (and, for modes 2-3, previously
-     forgotten) in each one. */
+  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1, computed once
+     here and shared by modes 1-3. */
   const struct cooling_xpart_data *cool_data = &xp->cooling_data;
   const double rho = hydro_get_physical_density(p, cosmo);
   const double m_H = phys_const->const_proton_mass;
@@ -180,11 +179,9 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
  * @brief compute the (physical) specific internal energy of an ideal gas for
  * given temperature and mean molecular weight.
  *
- * mu == 0 is a legitimate output of cooling_get_mean_molecular_weight() and
- * cooling_get_h2_species_densities() for a particle with no tracked species
- * at all (their own total_density floor stops that being a NaN, but a mu of
- * exactly 0 would still turn this division into +-Inf); floor it here too
- * rather than let every caller of this shared helper have to know that.
+ * mu == 0 is a legitimate output for a particle with no tracked species at
+ * all, and would turn this division into +-Inf, so floor it here once
+ * rather than make every caller know that.
  *
  * @param T Temperature of the gas.
  * @param mu Mean molecular weight of the gas.
@@ -215,10 +212,8 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
 
 #if COOLING_GRACKLE_MODE >= 2
 /**
- * @brief H2 and non-H2 number densities and this mode's mu, computed once
- * from the particle's species fractions and shared by the forward
- * (internal energy -> temperature) and inverse (temperature -> internal
- * energy) H2-Gamma conversions, instead of each recomputing them.
+ * @brief mu and the H2/non-H2 number densities, shared by the forward and
+ * inverse H2-Gamma conversions instead of each recomputing them.
  */
 struct cooling_h2_species_densities {
   double mu;
@@ -230,11 +225,9 @@ struct cooling_h2_species_densities {
  * @brief compute mu and the H2/non-H2 number densities Grackle's Gamma
  * correction needs (calculate_pressure.c, "Correct for Gamma from H2").
  *
- * Floors both denominators to Grackle's own tiny_number (1e-20) instead of
- * leaving them at a literal 0, matching calculate_temperature.c/
- * calculate_pressure.c exactly: a particle with every tracked species
- * fraction at zero must never turn mu or Gamma1 into a 0/0 NaN that a
- * later max()/max3() can silently let through under -ffast-math.
+ * Floors both denominators to Grackle's own tiny_number (1e-20), matching
+ * calculate_temperature.c/calculate_pressure.c: a particle with every
+ * species fraction at zero must not turn mu or Gamma1 into a 0/0 NaN.
  *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
@@ -269,7 +262,7 @@ cooling_get_h2_species_densities(const struct phys_const *phys_const,
 
   const double tiny_number = 1.e-20;
 
-  /* Grackle's "number_density" local to the Gamma correction -- everything
+  /* Grackle's "number_density" local to the Gamma correction: everything
      except H2 (tracked separately as nH2). */
   double number_density_noH2 = nHI + nHII + nHeI + nHeII + nHeIII + nHM + nel;
   if (number_density_noH2 == 0.0) number_density_noH2 = tiny_number;
@@ -295,22 +288,19 @@ cooling_get_h2_species_densities(const struct phys_const *phys_const,
 
 /**
  * @brief Grackle's H2 rotational/vibrational effective adiabatic index
- * (calculate_pressure.c, "Correct for Gamma from H2"), given the H2 and
- * non-H2 number densities and a seed temperature to evaluate the
- * vibrational term at.
+ * (calculate_pressure.c, "Correct for Gamma from H2").
  *
- * Shared by the forward (internal energy -> temperature) and inverse
- * (temperature -> internal energy) conversions, so the two stay exact
+ * Shared by the forward and inverse conversions so they stay exact
  * inverses of each other instead of drifting apart if edited separately.
  *
  * @param nH2 Number density of H2 (H2I + H2II).
  * @param number_density_noH2 Number density of everything except H2 that
- *   enters Grackle's own Gamma correction (see calculate_pressure.c);
- *   already floored to a tiny positive value by
- *   cooling_get_h2_species_densities(), matching Grackle's own tiny_number
- *   substitution, so the ratio below never divides by zero.
- * @param T_seed Temperature to evaluate the vibrational term at -- the
- *   forward direction seeds this with its own fixed-gamma estimate, the
+ *   enters Grackle's own Gamma correction (see calculate_pressure.c).
+ *   Already floored to a tiny positive value by
+ *   cooling_get_h2_species_densities(), so the ratio below never divides
+ *   by zero.
+ * @param T_seed Temperature to evaluate the vibrational term at. The
+ *   forward direction seeds this with its own fixed-gamma estimate; the
  *   inverse direction already knows the exact target temperature.
  * @return Grackle's effective Gamma1.
  */
@@ -319,9 +309,9 @@ __attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
 
   const double T_safe = T_seed > 1.0 ? T_seed : 1.0;
 
-  /* Rotational-only default; only refine with the vibrational term if H2
-     is non-trace and the gas isn't so cold the mode is frozen out
-     (Grackle's own x < 10 guard -- avoids exp() overflow at low T). */
+  /* Rotational-only default. Refine with the vibrational term only if H2
+     is non-trace and the gas isn't cold enough to freeze the mode out
+     (Grackle's own x < 10 guard avoids exp() overflow at low T). */
   double GammaH2Inverse = 0.5 * 5.0;
   if (nH2 / number_density_noH2 > 1e-3) {
     const double x = 6100.0 / T_safe;
@@ -340,15 +330,12 @@ __attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
 /**
  * @brief compute the gas temperature with Grackle's H2 rotational/
  * vibrational effective-gamma correction (calculate_pressure.c,
- * "Correct for Gamma from H2"), which
- * cooling_temperature_from_internal_energy() does not apply.
+ * "Correct for Gamma from H2").
  *
- * The fixed-gamma temperature from cooling_get_h2_species_densities()'s mu
- * is Grackle's own "default Gamma" estimate (verified to agree with
- * Grackle to ~1e-4% whenever H2 is trace), so it doubles as the seed for
- * Grackle's own iteration. The corrected temperature is then that seed
- * rescaled by (Gamma1-1)/(gamma-1), exactly as Grackle rescales its
- * pressure array.
+ * The fixed-gamma temperature is Grackle's own "default Gamma" estimate
+ * (agrees with Grackle to ~1e-4% whenever H2 is trace), so it doubles as
+ * the seed for Grackle's own iteration, then gets rescaled by
+ * (Gamma1-1)/(gamma-1) exactly as Grackle rescales its pressure array.
  *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
@@ -385,10 +372,10 @@ cooling_get_temperature_h2_gamma_corrected(const struct phys_const *phys_const,
  * cooling_get_temperature() to report exactly T_target.
  *
  * Needed because cooling_agora_cmb_floor_internal_energy() sets a target
- * temperature, not the other way around -- using the plain (uncorrected)
- * inverse for MODE >= 2 would under-shoot the floor for H2-rich gas, since
- * cooling_get_temperature() would then report a lower, Gamma1-corrected
- * value for that same energy instead of T_target.
+ * temperature, not the other way around. The plain (uncorrected) inverse
+ * would under-shoot the floor for H2-rich gas: cooling_get_temperature()
+ * would then report a lower, Gamma1-corrected value for that same energy
+ * instead of T_target.
  *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
