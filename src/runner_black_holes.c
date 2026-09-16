@@ -833,6 +833,10 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* Update BH subgrid mass and energy reservoir. */
     const double bh_mass_gain =
         black_holes_do_tde_accretion(bp, props, constants, nsc_mass_loss_rate, dt);
+    
+    /* Update NSC mass */
+    // const double nsc_mass_orig = (double)bp->nsc_mass;
+    bp->nsc_mass = new_nsc_mass;
 
     message(
         "BH (ID %lld) z=%.4f  tde_rate_yr=%g (yr^-1)  tde_rate=%g (internal)"
@@ -847,14 +851,10 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     // nearest_sp->mass_lost_to_tde += (float)star_mass_loss;
     // if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
 
-    /* Update NSC mass */
-    // const double nsc_mass_orig = (double)bp->nsc_mass;
-    bp->nsc_mass = new_nsc_mass;
-
     /* Update BH velocity to conserve momentum of the accreted mass,
      * mirroring the gas nibbling momentum update. */
-    const double bp_mass_orig = (double)bp->mass;
-    const double new_bp_mass = bp_mass_orig + bh_mass_gain;
+    // const double bp_mass_orig = (double)bp->mass;
+    // const double new_bp_mass = bp_mass_orig + bh_mass_gain;
     // bp->v[0] = (float)((bp_mass_orig * bp->v[0] +
     //                     bh_mass_gain * nearest_sp->v[0]) / new_bp_mass);
     // bp->v[1] = (float)((bp_mass_orig * bp->v[1] +
@@ -864,8 +864,10 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
 
     /* Add the net accreted mass (excluding radiation) to the BH dynamical
      * mass, consistent with how gas nibbling updates bp->mass. */
-    bp->mass = (float)new_bp_mass;
-    bp->gpart->mass = (float)new_bp_mass;
+    // bp->mass = (float)new_bp_mass;
+    // bp->gpart->mass = (float)new_bp_mass;
+    
+    /* in the nsc model, no dynamical mass change is done, since only mass transfer from subgrid to subgrid is done.*/
     bp->mass_gained_from_tde += (float)bh_mass_gain;
   }
 }
