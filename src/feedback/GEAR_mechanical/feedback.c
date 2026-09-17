@@ -582,13 +582,13 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
   /* No gas to cool: every neighbour is outside the cooling radius */
   if (mean_density <= 0.f) return 0.f;
 
-  /* Compute the cooling radius */
-  const float p_terminal_2 = p_terminal * p_terminal;
-  const float p_SN_initial_2 = p_SN_initial * p_SN_initial;
-  /* The max prevents negative values that would propagate into r_cool */
-  const float second_part = max(0.0, p_terminal_2 / p_SN_initial_2 - 1.0);
+  /* Swept-up mass at the end of the energy-conserving phase, from
+     (m_ej + m_swept) v_f^2 = m_ej v_ej^2 and p_terminal = m_swept v_f
+     (Hopkins et al. 2018b, footnote 12) */
+  const float q = p_terminal * p_terminal / (p_SN_initial * p_SN_initial);
+  const float m_swept = 0.5 * m_ej * (q + sqrtf(q * q + 4.0f * q));
   const float r_cool =
-      pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
+      pow(3.0 * m_swept / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
   return r_cool;
 }
