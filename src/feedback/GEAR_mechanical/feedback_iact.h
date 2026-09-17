@@ -282,9 +282,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const float mj_new = mj + dm_SW;
   const float mj_new_inv = 1.0 / mj_new;
 
-  /* Accumulate (pay attention to the conversions to physical units) */
-  const float v_ij[3] = {xpj->v_full[0] - si->v[0], xpj->v_full[1] - si->v[1],
-                         xpj->v_full[2] - si->v[2]};
+  /* Accumulate (pay attention to the conversions to physical units). This
+     loop only gets the drifted velocity: the xpart is not available for
+     foreign particles, so the feedback loop's v_full cannot be used here. */
+  const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+                         pj->v[2] - si->v[2]};
 
   /* Calculate the velocity with the Hubble flow. The Hubble term is relative
      wrt the star particle, hence -dx = pj - si for the gas. */
