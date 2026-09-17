@@ -157,7 +157,8 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @param sp The #spart.
  */
 int feedback_should_inject_SN_feedback(const struct spart *sp) {
-  return sp->feedback_data.supernovae.energy_ejected != 0;
+  return sp->feedback_data.supernovae.energy_ejected > 0 &&
+         sp->feedback_data.supernovae.mass_ejected > 0;
 }
 
 /**
@@ -169,7 +170,8 @@ int feedback_should_inject_SN_feedback(const struct spart *sp) {
  * @param sp The #spart.
  */
 int feedback_should_inject_wind_feedback(const struct spart *sp) {
-  return sp->feedback_data.winds.energy_ejected != 0;
+  return sp->feedback_data.winds.energy_ejected > 0 &&
+         sp->feedback_data.winds.mass_ejected > 0;
 }
 
 /**

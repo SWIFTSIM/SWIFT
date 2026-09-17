@@ -212,8 +212,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
                                            DEFAULT_F_KIN_0);
 
-  if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
-    error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
+  /* f_kin_0 = 0 would give a zero coupled kinetic energy and divisions by 0 */
+  if (fp->f_kin_0 <= 0 || fp->f_kin_0 > 1) {
+    error("f_kin_0 must be comprised between 0 and 1  (0 < f_kin_0 <= 1)!");
   }
 #endif
 
