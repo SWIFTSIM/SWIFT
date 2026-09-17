@@ -318,6 +318,58 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 
   sp->tracers_data.snii_events = (struct tracers_sn_event_data){0};
   sp->tracers_data.snia_events = (struct tracers_sn_event_data){0};
+  sp->tracers_data.winds = (struct tracers_winds_data){0};
+}
+
+/**
+ * @brief Record one stellar-wind injection step of a star.
+ *
+ * Counts the step only under the same condition as the gas-side injection
+ * in runner_iact_nonsym_feedback_apply(): non-zero wind energy and gas
+ * neighbours (enrichment_weight > 0). The energy passed here must already
+ * include the winds efficiency factor; the mass is not scaled by it.
+ *
+ * The momentum is the star-frame ejecta budget sqrt(2 m_ej E_ej), the same
+ * p_ej the gas-side injection distributes. It excludes the change-of-frame
+ * term m_ej v_star that the gas-side CumulativeMomentumFromWinds includes,
+ * so the two agree exactly only for a star at rest. The gas receives the
+ * budget in the step after this call, so a snapshot can see the star-side
+ * totals lead the gas-side totals by one step.
+ *
+ * @param w The star's #tracers_winds_data to update.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, after the winds
+ * efficiency factor (physical internal units).
+ * @param comoving_density The star's local gas density (enrichment_weight),
+ * comoving. Converted to physical here before storing.
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current simulation time (internal units, only used if
+ * !with_cosmology).
+ */
+static INLINE void tracers_gear_update_winds(struct tracers_winds_data *w,
+                                             const double mass_ejected,
+                                             const double energy_ejected,
+                                             const float comoving_density,
+                                             const int with_cosmology,
+                                             const struct cosmology *cosmo,
+                                             const double time) {
+
+  if (energy_ejected == 0. || comoving_density <= 0.f) return;
+
+  /* Same once-per-active-star-per-step assumption as
+     tracers_gear_update_sn_event(). */
+  w->mass_ejected += mass_ejected;
+  w->energy_ejected += energy_ejected;
+  const double p2 = 2. * mass_ejected * energy_ejected;
+  if (p2 > 0.) w->momentum_ejected += sqrt(p2);
+  w->n_injection_steps += 1;
+  w->density_at_last_injection = comoving_density * (float)cosmo->a3_inv;
+  if (with_cosmology) {
+    w->last_injection_scale_factor = cosmo->a;
+  } else {
+    w->last_injection_time = (float)time;
+  }
 }
 
 /**
