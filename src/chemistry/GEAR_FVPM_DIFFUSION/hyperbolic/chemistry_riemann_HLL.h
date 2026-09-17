@@ -138,23 +138,6 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
                         lprod * (UR[2] - UL[2]) * one_over_dl,
                         lprod * (UR[3] - UL[3]) * one_over_dl};
 
-    /* Hopkins-2017-style limiter on the raw HLL dissipation, based on how
-       far the dynamical flux still is from its own Fickian relaxation
-       target ("flux memory") -- see chemistry_riemann_utils.h. Always
-       limits the mass-density dissipation (component 0); whether it also
-       limits the flux-component dissipation (1-3) is a parameter-file
-       choice, since limiting flux memory too aggressively could preserve
-       it instead of letting it decay. */
-    const double limiter_factor =
-        chemistry_riemann_compute_hyperbolic_diffusivity_limiter(
-            pi, pj, m, chem_data, cosmo);
-    F_diss[0] *= limiter_factor;
-    if (chem_data->hyperbolic_limiter_scope == limiter_all_components) {
-      F_diss[1] *= limiter_factor;
-      F_diss[2] *= limiter_factor;
-      F_diss[3] *= limiter_factor;
-    }
-
     /* Causal bound: rescale F_diss by zeta = min(1, c_hyp*dt_ij/length), so
        its transport rate can never exceed c_hyp -- see the theory document,
        "A Causal Bound on the Dissipation". The length scale is the smaller of
@@ -162,13 +145,12 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        Lax-Wendroff stability floor for this term. zeta is floored at a small
        strictly positive value: it must not reach zero when c_hyp -> 0
        (turbulent_mode with vanishing local shear), a legitimate flow state
-       that still needs some dissipation to stay stable. As with the
-       flux-memory limiter above, component 0 is always rescaled while
-       components 1-3 follow hyperbolic_limiter_scope, since unconditionally
-       suppressing their dissipation would preserve rather than decay an
-       already-stale flux memory. dt_ij uses the same order-independent
-       mindt as chemistry.c's chemistry_compute_pair_fluxes() and
-       the MUSCL predictor (chemistry_gradients.h): the smallest positive
+       that still needs some dissipation to stay stable. Component 0 is
+       always rescaled while components 1-3 follow hyperbolic_limiter_scope,
+       since unconditionally suppressing their dissipation would preserve
+       rather than decay an already-stale flux. dt_ij uses the same
+       order-independent mindt as chemistry.c's chemistry_compute_pair_fluxes()
+       and the MUSCL predictor (chemistry_gradients.h): the smallest positive
        flux.dt among the two particles, whichever slot it ends up in after
        canonicalisation. */
     const double c_max = max(c_diff_L, c_diff_R);

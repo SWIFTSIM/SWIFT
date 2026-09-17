@@ -1,0 +1,130 @@
+% theory/ParabolicDiffusion/GEAR_FVPM_Diffusion_Theory.tex
+% Master document. Preamble and front matter only: the actual physics
+% content lives in parabolic.tex, hyperbolic.tex, and appendices.tex,
+% pulled in below with \input. Edit those files directly; each covers one
+% topic and keeps its own focused diff. Regenerate the PDF with ./run.sh.
+
+\documentclass[11pt, a4paper, parskip]{scrartcl}
+\usepackage[margin=2.7cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc} % Required for Unicode characters
+\usepackage{xcolor}         % Required for coloring text
+\usepackage{enumitem}       % For customizing list environments
+\usepackage{physics}        % For common physics notations like dv, grad, div, etc.
+\usepackage{booktabs}       % For clean tables
+\usepackage{tabularx}       % For fixed-width, line-wrapping table columns
+\usepackage{seqsplit}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+% \code{} is \texttt{} that may break mid-identifier/mid-path across lines
+% (long function names, file paths) instead of overflowing the margin,
+% used for long \texttt content in running text. Left as plain \texttt{}
+% inside captions/section titles, where \seqsplit's \futurelet-based
+% scanning cannot survive LaTeX's full expansion of moving arguments.
+\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
+
+% KOMA-Script disables the classic \rm/\bf/\it/... font-switch commands
+% by default; the numbered sections use them freely for math-mode units
+% ($h_{\rm phys}$, $c_{\rm hyp}$, ...), matching the old article.cls
+% setup, so restore the standard LaTeX2e old-font-command behaviour here
+% rather than editing every occurrence.
+\makeatletter
+\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
+\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
+\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
+\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
+\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
+\makeatother
+
+\setkomafont{title}{\rmfamily\bfseries\boldmath}
+\addtokomafont{section}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+
+% ---------------------------------------------------------------------------
+% Physics macros, shared between the parabolic and hyperbolic parts. Names
+% are chosen to mirror the GEAR\_FVPM\_DIFFUSION source (see the
+% Nomenclature appendix for the symbol <-> code-identifier map).
+% ---------------------------------------------------------------------------
+\newcommand{\Zfrac}{Z}                                  % metal mass fraction
+\newcommand{\rhoZ}{\rho \Zfrac}                          % metal mass density
+\newcommand{\driver}{q}                                  % diffusion driver
+\newcommand{\Kmat}{\mathbf{K}}                            % diffusion tensor
+\newcommand{\Kstar}{\mathbf{K}^{\star}}                   % interface diffusion tensor
+\newcommand{\Shear}{\mathbf{S}}                           % shear tensor
+\newcommand{\Splus}{\mathbf{S}_{+}}                       % regularised (PSD) shear tensor
+\newcommand{\Fdiff}{\mathbf{F}}                           % diffusive flux (algebraic in Part I, dynamical from Part II on)
+\newcommand{\kappaC}{\kappa_{0}}                          % chem\_data->diffusion\_coefficient
+\newcommand{\kappaP}{\kappa}                              % per-particle chemistry\_data.kappa
+\newcommand{\CCFL}{C_{\mathrm{CFL}}}                      % chem\_data->C\_CFL\_chemistry
+\newcommand{\psiHLL}{\psi}                                % hll\_riemann\_solver\_psi
+\newcommand{\epsHLL}{\epsilon}                            % hll\_riemann\_solver\_epsilon
+\newcommand{\gammak}{\gamma_{k}}                          % kernel\_gamma
+\newcommand{\Aij}{A_{ij}}                                 % interface area
+\newcommand{\xij}{\mathbf{x}_{ij}}                        % interface position
+\newcommand{\nunit}{\mathbf{n}}                           % interface unit normal
+\newcommand{\dx}{\Delta x}                                % GIZMO particle size
+\newcommand{\dt}{\Delta t}                                % explicit timestep
+\newcommand{\dth}{\dt_{1/2}}                              % predictor half-timestep (Section~\ref{sec:predictor}), distinct from smoothing length h
+\newcommand{\Uvec}{\mathbf{U}}                            % hyperbolic state vector
+\newcommand{\Gflux}[1]{\mathbf{G}^{(#1)}}                 % flux tensor, direction-#1 component
+\newcommand{\chyp}{c_{\rm hyp}}                           % hyperbolic diffusion sound speed
+\newcommand{\taurelax}{\tau}                              % relaxation time
+\newcommand{\Deff}{\mathbf{D}}                            % effective diffusivity tensor, D = K*(q/U)
+\newcommand{\expr}{\mathcal{E}}                           % chemistry_timesteps.h's gradient-suppression "expression"
+\newcommand{\Rstiff}{\mathcal{R}}                         % Berthon-blend stiffness ratio tau_star/tau_num (Section~\ref{sec:berthon-blend})
+
+\title{Theoretical Foundations of the GEAR FVPM Metal-Diffusion Scheme}
+\subtitle{Theory document: parabolic (Fickian) and hyperbolic
+(Cattaneo-relaxation) formulations}
+\author{Darwin Roduit}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+This is the theoretical and numerical reference for both variants of the
+GEAR FVPM metal-diffusion chemistry scheme
+(\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/}): the parabolic (Fickian)
+formulation, configured with
+\code{--with-chemistry=GEAR-FVPM-DIFFUSION\_N} (Part~\ref{part:parabolic}),
+and the hyperbolic (Cattaneo-relaxation) formulation, configured with
+\code{--with-chemistry=GEAR-FVPM-HYPERBOLIC-DIFFUSION\_N}
+(\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}, from
+Part~\ref{part:hyperbolic}). Every equation is cross-referenced to the C
+source. User-facing configuration and parameters are documented in the
+RTD pages under \code{doc/RTD/source/SubgridModels/GEAR/diffusion/}.
+Regenerate this PDF with \code{./run.sh}.
+
+\tableofcontents
+
+\input{parabolic}
+
+\input{hyperbolic}
+
+\appendix
+
+\input{appendices}
+
+\bibliography{references}
+
+\end{document}

@@ -28,7 +28,7 @@ from tqdm import tqdm
 import swiftsimio as sw
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from chemistry_tests_common import get_fe_metal_mass
+from chemistry_tests_common import get_fe_metal_mass, lattice_bin_count
 
 # %%
 
@@ -66,8 +66,11 @@ def parse_option():
         description="Plot the Fe 1D x-density profile")
 
     parser.add_argument("files", nargs="+", type=str, help="File name(s).")
-    parser.add_argument("--n_bins", type=int, default=40,
-                        help="Number of bins")
+    parser.add_argument("--n_bins", type=int, default=None,
+                        help="Number of bins. Defaults to the count that "
+                        "lines up with the IC's particle lattice spacing "
+                        "(a mismatched fixed count aliases into spurious "
+                        "spikes where a bin boundary lands mid-spacing).")
     parser.add_argument("--x_min", type=float, default=-
                         1.0, help="Minimum x [kpc]")
     parser.add_argument("--x_max", type=float, default=1.0,
@@ -88,7 +91,6 @@ def parse_option():
 args, files = parse_option()
 x_min = args.x_min
 x_max = args.x_max
-n_bins = args.n_bins
 log = args.log
 figsize = (6.4, 4.8)
 
@@ -97,6 +99,14 @@ print("Reading initial conditions from:", files[0])
 
 # Open the data in the first snapshot to grab some information
 data_init = sw.load(files[0])
+
+n_bins = args.n_bins
+if n_bins is None:
+    L = float(data_init.metadata.boxsize[0].value)
+    n_bins = lattice_bin_count(
+        data_init.gas.coordinates.value[:, 0], L, window=x_max - x_min
+    )
+    print(f"Auto-selected n_bins = {n_bins} (matches the IC lattice spacing)")
 
 # Read kappa from the parameter file
 try:
@@ -121,7 +131,7 @@ x_0 = L/2
 #####################
 
 for filename in tqdm(files):
-    snapshot_number = int(filename.split('_')[1].split('.')[0])
+    snapshot_number = int(os.path.basename(filename).split('_')[1].split('.')[0])
     output_name = f"metal_x_profile{snapshot_number}"
     data = sw.load(filename)
 
