@@ -1325,11 +1325,17 @@ INLINE static void black_holes_create_from_gas(
   bp->formation_scale_factor = cosmo->a;
   bp->formation_gas_density = hydro_get_physical_density(p, cosmo);
 
+  /* Available mass check */
+  if (bp->mass < (props->subgrid_seed_mass + props->nsc_seed_mass)) {
+    warning("Gas particle with ID %lld converting to BH seed does not have enough available mass"
+            "for both the black hole subgrid_mass and nsc_mass. Setting nsc_mass = 0");
+    bp->nsc_mass = 0.f;
+  } else {
+    /* Initial NSC seed mass */
+    bp->nsc_mass = props->nsc_seed_mass;
+  }
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;
-
-  /* Initial NSC seed mass */
-  bp->nsc_mass = props->nsc_seed_mass;
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
