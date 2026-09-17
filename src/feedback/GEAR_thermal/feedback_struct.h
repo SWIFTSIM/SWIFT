@@ -203,6 +203,15 @@ struct feedback_isrf_band_data {
       persistent fields above. */
   float u_source_rate;
 
+  /*! M1 closure coefficients (flux direction `n`, `(1-chi)/2`,
+      `(3chi-1)/2`) from #u, #specific_flux and
+      #feedback_part_data.c_hyp, cached by
+      #radiation_cache_m1_closure_part at the drift-time reset so the
+      gradient loop assembles `D` per pair without recomputing them. */
+  float m1_closure_n[3];
+  float m1_closure_iso;
+  float m1_closure_aniso;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u written by #radiation_end_force_propagation since the
       previous snapshot, 0 if none was negative. Reset on the first update
