@@ -212,8 +212,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
                                            DEFAULT_F_KIN_0);
 
-  if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
-    error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
+  /* f_kin_0 = 0 would give a zero coupled kinetic energy and divisions by 0 */
+  if (fp->f_kin_0 <= 0 || fp->f_kin_0 > 1) {
+    error("f_kin_0 must be comprised between 0 and 1  (0 < f_kin_0 <= 1)!");
   }
 #endif
 
@@ -222,9 +223,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       params, "GEARFeedback:terminal_momentum_normalisation_Msun_km_per_s",
       DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S);
 
-  /* Convert to internal units. Note the 1e-5 term since we read it in km and
-   * not cm. */
-  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e-5 *
+  /* Convert to internal units. The 1e5 term converts km/s to cm/s. */
+  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e5 /
                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Do we want to correct the total momentum of the gas particles after

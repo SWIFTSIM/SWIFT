@@ -63,10 +63,14 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update the density */
   p->rho *= new_mass / old_mass;
 
-  /* Update internal energy */
+  /* Update internal energy. The feedback can remove internal energy, e.g.
+     when the gas recedes from the star, so keep it above the hydro floor. The
+     comparison is explicit: a clamp does not shield a non-finite value. */
   const float u =
       hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
-  const float u_new = u + xp->feedback_data.delta_u;
+  const float u_min = e->hydro_properties->minimal_internal_energy;
+  const float u_feedback = u + xp->feedback_data.delta_u;
+  const float u_new = (u_feedback > u_min) ? u_feedback : u_min;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
@@ -80,7 +84,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
       (N_SN > 1 || N_SW > 1)) {
     const float f_corr =
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-            p, xp, cosmo, old_mass, new_mass);
+            p, xp, cosmo);
 
     /* Update the xpart accumulated dp from the feedback */
     xp->feedback_data.delta_p[0] *= f_corr;
@@ -104,7 +108,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Reset the values */
   xp->feedback_data.delta_u = 0.0;
-  xp->feedback_data.delta_E_kin = 0.0;
+  xp->feedback_data.delta_p_norm_2_sum = 0.0;
   xp->feedback_data.delta_mass = 0.0;
   xp->feedback_data.number_SN = 0;
   xp->feedback_data.number_winds = 0;
@@ -157,7 +161,8 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @param sp The #spart.
  */
 int feedback_should_inject_SN_feedback(const struct spart *sp) {
-  return sp->feedback_data.supernovae.energy_ejected != 0;
+  return sp->feedback_data.supernovae.energy_ejected > 0 &&
+         sp->feedback_data.supernovae.mass_ejected > 0;
 }
 
 /**
@@ -169,7 +174,8 @@ int feedback_should_inject_SN_feedback(const struct spart *sp) {
  * @param sp The #spart.
  */
 int feedback_should_inject_wind_feedback(const struct spart *sp) {
-  return sp->feedback_data.winds.energy_ejected != 0;
+  return sp->feedback_data.winds.energy_ejected > 0 &&
+         sp->feedback_data.winds.mass_ejected > 0;
 }
 
 /**
@@ -582,13 +588,13 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
   /* No gas to cool: every neighbour is outside the cooling radius */
   if (mean_density <= 0.f) return 0.f;
 
-  /* Compute the cooling radius */
-  const float p_terminal_2 = p_terminal * p_terminal;
-  const float p_SN_initial_2 = p_SN_initial * p_SN_initial;
-  /* The max prevents negative values that would propagate into r_cool */
-  const float second_part = max(0.0, p_terminal_2 / p_SN_initial_2 - 1.0);
+  /* Swept-up mass at the end of the energy-conserving phase, from
+     (m_ej + m_swept) v_f^2 = m_ej v_ej^2 and p_terminal = m_swept v_f
+     (Hopkins et al. 2018b, footnote 12) */
+  const float q = p_terminal * p_terminal / (p_SN_initial * p_SN_initial);
+  const float m_swept = 0.5 * m_ej * (q + sqrtf(q * q + 4.0f * q));
   const float r_cool =
-      pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
+      pow(3.0 * m_swept / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
   return r_cool;
 }
@@ -610,37 +616,35 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  * @param p The #part to correct.
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
- * @param old_mass The mass before feeback events.
- * @param new_mass The mass after feeback events.
  */
 __attribute__((always_inline)) INLINE float
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const float old_mass, const float new_mass) {
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
 
-  /* delta_E_kin is physical, delta_p is comoving */
-  const float delta_E_kin = xp->feedback_data.delta_E_kin;
+  /* The events sum their own squared momentum, physical, while delta_p is
+     comoving. The gas mass cancels between the two kinetic energies, so only
+     the momenta remain. */
+  const float dp_sum_norm_2 = xp->feedback_data.delta_p_norm_2_sum;
   const float dp[3] = {xp->feedback_data.delta_p[0] * cosmo->a_inv,
                        xp->feedback_data.delta_p[1] * cosmo->a_inv,
                        xp->feedback_data.delta_p[2] * cosmo->a_inv};
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
-  /* This is called Delta KE^naive in Hopkins+2023 */
-  const float delta_E_kin_eff = 0.5 * dp_norm_2 / new_mass;
+  /* The events cancelled each other: nothing to correct */
+  if (dp_norm_2 <= 0.f) return 1.f;
 
   /* The correction factor is simply: */
-  const float f_corr = sqrtf(delta_E_kin / delta_E_kin_eff);
+  const float f_corr = sqrtf(dp_sum_norm_2 / dp_norm_2);
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   if (f_corr < 1.0)
     message(
         "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = "
         "%e, "
-        "delta_E_kin = %e, delta_E_kin_eff = %e",
+        "dp_sum_norm_2 = %e",
         p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
         xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
-        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, delta_E_kin,
-        delta_E_kin_eff);
+        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, dp_sum_norm_2);
 #endif
 
   if (f_corr >= 1.0) {

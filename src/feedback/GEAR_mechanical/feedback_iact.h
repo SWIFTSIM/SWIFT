@@ -269,12 +269,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
-  /* TODO: Winds + SN ejected mass ? Or should I split into two variables? */
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
   const float mj_inv = 1.0 / mj;
   const float m_ej_SN = si->feedback_data.supernovae.mass_ejected;
-  const float m_ej_SW = si->feedback_data.supernovae.mass_ejected;
+  const float m_ej_SW = si->feedback_data.winds.mass_ejected;
   const float dm_SN = max(w_j_bar_norm * m_ej_SN, FLT_MIN);
   const float dm_SW = max(w_j_bar_norm * m_ej_SW, FLT_MIN);
 
@@ -284,16 +283,17 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const float mj_new_inv = 1.0 / mj_new;
 
   /* Accumulate (pay attention to the conversions to physical units) */
-  const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
-                         pj->v[2] - si->v[2]};
+  const float v_ij[3] = {xpj->v_full[0] - si->v[0], xpj->v_full[1] - si->v[1],
+                         xpj->v_full[2] - si->v[2]};
 
-  /* Calculate the velocity with the Hubble flow */
+  /* Calculate the velocity with the Hubble flow. The Hubble term is relative
+     wrt the star particle, hence -dx = pj - si for the gas. */
   const float a = cosmo->a;
   const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const float v_ij_plus_H_flow[3] = {
-      a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1], a2H * dx[2] + v_ij[2]};
+      -a2H * dx[0] + v_ij[0], -a2H * dx[1] + v_ij[1], -a2H * dx[2] + v_ij[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
   const float v_ij_p[3] = {v_ij_plus_H_flow[0] * a_inv,
@@ -438,12 +438,12 @@ runner_iact_nonsym_feedback_apply(
 
     /* Now we treat the fluxes distribution differently for each mode */
     double dU_SW = 0.0;
-    double dKE_SW = 0.0;
+    double dp_norm_2_SW = 0.0;
     double dp_SW[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SW[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_stellar_winds_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SW, m_ej, mj,
-        dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dKE_SW,
+        dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dp_norm_2_SW,
         dp_SW, dp_ejecta_SW);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
@@ -468,7 +468,7 @@ runner_iact_nonsym_feedback_apply(
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU_SW / new_mass;
 
-    xpj->feedback_data.delta_E_kin += dKE_SW;
+    xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SW;
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */
@@ -525,13 +525,13 @@ runner_iact_nonsym_feedback_apply(
 
     /* Now we treat the fluxes distribution differently for each mode */
     double dU = 0.0;
-    double dKE = 0.0;
+    double dp_norm_2_SN = 0.0;
     double dp_SN[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
-        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_SN,
-        dp_ejecta_SN);
+        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dp_norm_2_SN,
+        dp_SN, dp_ejecta_SN);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -557,7 +557,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU / new_mass;
-    xpj->feedback_data.delta_E_kin += dKE;
+    xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SN;
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */

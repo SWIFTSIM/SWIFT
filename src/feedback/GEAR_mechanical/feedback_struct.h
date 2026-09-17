@@ -43,9 +43,9 @@ struct feedback_xpart_data {
   /*! Physical specific energy received from supernovae and stellar winds */
   float delta_u;
 
-  /*! Kinetic energy (not specific!) received from supernovae and stellar winds
-   */
-  float delta_E_kin;
+  /*! Sum over the feedback events of the squared norm of the physical
+      momentum received from the blastwave */
+  float delta_p_norm_2_sum;
 
   /*! Comoving feedback momentum received from the blastwave. */
   float delta_p[3];
