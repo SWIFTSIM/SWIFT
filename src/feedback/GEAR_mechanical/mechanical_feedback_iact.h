@@ -135,8 +135,9 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 
   /* The momentum of the gas particle j after receiving the momentum from
    * stellar wind */
-  const double p_new[3] = {mj * v_j_p[0] + dp[0], mj * v_j_p[1] + dp[1],
-                           mj * v_j_p[2] + dp[2]};
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
                               p_new[2] * p_new[2]};
 
