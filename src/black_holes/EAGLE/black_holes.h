@@ -112,7 +112,6 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
         "to 0.",
         bp->id, bp->subgrid_mass);
   }
-  bp->nsc_mass = props->nsc_seed_mass;
   bp->total_accreted_mass = 0.f;
   bp->mass_gained_from_tde = 0.f;
   bp->tde_rate_per_yr = 0.f;
