@@ -438,12 +438,12 @@ runner_iact_nonsym_feedback_apply(
 
     /* Now we treat the fluxes distribution differently for each mode */
     double dU_SW = 0.0;
-    double dKE_SW = 0.0;
+    double dp_norm_2_SW = 0.0;
     double dp_SW[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SW[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_stellar_winds_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SW, m_ej, mj,
-        dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dKE_SW,
+        dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dp_norm_2_SW,
         dp_SW, dp_ejecta_SW);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
@@ -468,7 +468,7 @@ runner_iact_nonsym_feedback_apply(
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU_SW / new_mass;
 
-    xpj->feedback_data.delta_E_kin += dKE_SW;
+    xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SW;
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */
@@ -525,13 +525,13 @@ runner_iact_nonsym_feedback_apply(
 
     /* Now we treat the fluxes distribution differently for each mode */
     double dU = 0.0;
-    double dKE = 0.0;
+    double dp_norm_2_SN = 0.0;
     double dp_SN[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
-        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_SN,
-        dp_ejecta_SN);
+        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dp_norm_2_SN,
+        dp_SN, dp_ejecta_SN);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -557,7 +557,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU / new_mass;
-    xpj->feedback_data.delta_E_kin += dKE;
+    xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SN;
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */

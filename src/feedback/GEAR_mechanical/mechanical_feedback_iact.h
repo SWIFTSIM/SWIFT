@@ -77,8 +77,8 @@ mechanical_feedback_accumulate_fluxes_for_conservation_check(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -89,8 +89,8 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
   const double new_mass_inv = 1.0 / new_mass;
 
@@ -152,7 +152,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
      which simplifies the formulas. */
-  *dKE = 0.5 * dp_norm2 * new_mass_inv;
+  *dp_norm_2_return = dp_norm2;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const double dE_kin = E_kin_new - E_kin_old;
@@ -163,9 +163,9 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
   message(
       "E_ej = %e, p_ej = %e | E_new = %e, U_new = %e, E_kin_new = %e, "
       "E_old = %e, U_old = %e, E_kin_old = %e | dE_prime = %e, dU = %e, "
-      "dE_kin = %e, dKE_gas_frame = %e",
+      "dE_kin = %e, dp_norm_2 = %e",
       E_ej, p_ej, E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
-      dE_change_of_frame, *dU, dE_kin, *dKE);
+      dE_change_of_frame, *dU, dE_kin, *dp_norm_2_return);
 #endif /* SWIFT_FEEDBACK_DEBUG CHECKS */
 }
 
@@ -193,8 +193,8 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -205,11 +205,10 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
   const float dm_inv = 1.0 / dm;
-  const double new_mass_inv = 1.0 / new_mass;
 
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
@@ -282,7 +281,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
 
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
      which simplifies the formulas. */
-  *dKE = 0.5 * dp_norm_2 * new_mass_inv;
+  *dp_norm_2_return = dp_norm_2;
 
   /* Compute the comoving cooling radius */
   const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(
@@ -345,8 +344,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -357,10 +356,8 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
-
-  const double new_mass_inv = 1.0 / new_mass;
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
   /* Compute the relevant variables from the accumulators. */
   const double E_tot =
@@ -393,12 +390,13 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
      which simplifies the formulas. */
   const double dp_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  *dKE = 0.5 * dp_2 * new_mass_inv;
+  *dp_norm_2_return = dp_2;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   /* Compute kinetic energy difference before and after SN */
   const double mj_2 = mj * mj;
   const double mj_inv = 1.0 / mj;
+  const double new_mass_inv = 1.0 / new_mass;
   const double p_old_norm_2 =
       mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_ejecta[0] + dp[0],
@@ -413,9 +411,9 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
   message(
       "beta_1 = %e, beta_2 = %e | E_ej = %e, p_ej = %e | E_tot = %e, U_tot = "
       "%e, E_kin_tot = %e | E_kin_old = %e, E_kin_new = %e | dU = %e, "
-      "f_therm = %e, dE_kin = %e, dKE_gas_frame = %e",
+      "f_therm = %e, dE_kin = %e, dp_norm_2 = %e",
       beta_1, beta_2, E_ej, p_ej, E_tot, U_tot, epsilon, E_kin_old, E_kin_new,
-      *dU, f_therm, dE_kin, *dKE);
+      *dU, f_therm, dE_kin, *dp_norm_2_return);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
@@ -444,8 +442,8 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -456,10 +454,9 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
-  const double new_mass_inv = 1.0 / new_mass;
   const double f_kin_0 = fb_props->f_kin_0;
 
   /* Compute the relevant variables from the accumulators. */
@@ -503,12 +500,13 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
      which simplifies the formulas. */
   const double dp_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  *dKE = 0.5 * dp_2 * new_mass_inv;
+  *dp_norm_2_return = dp_2;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   /* Compute kinetic energy difference before and after SN */
   const double mj_2 = mj * mj;
   const double mj_inv = 1.0 / mj;
+  const double new_mass_inv = 1.0 / new_mass;
   const double p_old_norm_2 =
       mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_ejecta[0] + dp[0],
@@ -525,10 +523,10 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
       "beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = "
       "%e | xsi = %e, p_t = %e | E_ej = %e, p_ej = %e | E_tot = %e, U_tot = %e"
       ", E_kin_tot = %e | E_kin_old = %e, E_kin_new = %e | p_terminal = %e, "
-      "dU = %e, f_therm = %e, dE_kin = %e, dKE_gas_frame = %e",
+      "dU = %e, f_therm = %e, dE_kin = %e, dp_norm_2 = %e",
       beta_1, beta_2, psi, psi * p_available, p_available, xsi, p_terminal,
       E_ej, p_ej, E_tot, U_tot, epsilon, E_kin_old, E_kin_new, p_terminal, *dU,
-      f_therm, dE_kin, *dKE);
+      f_therm, dE_kin, *dp_norm_2_return);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
   /* Now we accumulate to verify the conservation of the fluxes. */
@@ -565,8 +563,8 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -577,17 +575,19 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_stellar_winds_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
+      dp_ejecta);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_stellar_winds_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
+      dp_ejecta);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif
@@ -618,8 +618,8 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
  * @param constants The physical constants (in internal units).
  * @param us The internal system of units.
  * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
+ * @param dp_norm_2 (return) Squared norm of the momentum given to j by this
+ * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
@@ -630,17 +630,19 @@ runner_iact_nonsym_mechanical_feedback_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp[3],
-    double dp_ejecta[3]) {
+    const struct unit_system *us, double *dU, double *dp_norm_2_return,
+    double dp[3], double dp_ejecta[3]) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
+      dp_ejecta);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
+      dp_ejecta);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif

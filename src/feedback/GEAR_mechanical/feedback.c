@@ -84,7 +84,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
       (N_SN > 1 || N_SW > 1)) {
     const float f_corr =
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-            p, xp, cosmo, old_mass, new_mass);
+            p, xp, cosmo);
 
     /* Update the xpart accumulated dp from the feedback */
     xp->feedback_data.delta_p[0] *= f_corr;
@@ -108,7 +108,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Reset the values */
   xp->feedback_data.delta_u = 0.0;
-  xp->feedback_data.delta_E_kin = 0.0;
+  xp->feedback_data.delta_p_norm_2_sum = 0.0;
   xp->feedback_data.delta_mass = 0.0;
   xp->feedback_data.number_SN = 0;
   xp->feedback_data.number_winds = 0;
@@ -616,37 +616,35 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  * @param p The #part to correct.
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
- * @param old_mass The mass before feeback events.
- * @param new_mass The mass after feeback events.
  */
 __attribute__((always_inline)) INLINE float
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const float old_mass, const float new_mass) {
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
 
-  /* delta_E_kin is physical, delta_p is comoving */
-  const float delta_E_kin = xp->feedback_data.delta_E_kin;
+  /* The events sum their own squared momentum, physical, while delta_p is
+     comoving. The gas mass cancels between the two kinetic energies, so only
+     the momenta remain. */
+  const float dp_sum_norm_2 = xp->feedback_data.delta_p_norm_2_sum;
   const float dp[3] = {xp->feedback_data.delta_p[0] * cosmo->a_inv,
                        xp->feedback_data.delta_p[1] * cosmo->a_inv,
                        xp->feedback_data.delta_p[2] * cosmo->a_inv};
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
-  /* This is called Delta KE^naive in Hopkins+2023 */
-  const float delta_E_kin_eff = 0.5 * dp_norm_2 / new_mass;
+  /* The events cancelled each other: nothing to correct */
+  if (dp_norm_2 <= 0.f) return 1.f;
 
   /* The correction factor is simply: */
-  const float f_corr = sqrtf(delta_E_kin / delta_E_kin_eff);
+  const float f_corr = sqrtf(dp_sum_norm_2 / dp_norm_2);
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   if (f_corr < 1.0)
     message(
         "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = "
         "%e, "
-        "delta_E_kin = %e, delta_E_kin_eff = %e",
+        "dp_sum_norm_2 = %e",
         p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
         xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
-        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, delta_E_kin,
-        delta_E_kin_eff);
+        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, dp_sum_norm_2);
 #endif
 
   if (f_corr >= 1.0) {
