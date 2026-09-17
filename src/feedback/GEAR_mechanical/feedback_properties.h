@@ -222,9 +222,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       params, "GEARFeedback:terminal_momentum_normalisation_Msun_km_per_s",
       DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S);
 
-  /* Convert to internal units. Note the 1e-5 term since we read it in km and
-   * not cm. */
-  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e-5 *
+  /* Convert to internal units. The 1e5 term converts km/s to cm/s. */
+  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e5 /
                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Do we want to correct the total momentum of the gas particles after
