@@ -24,6 +24,7 @@
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -252,6 +253,16 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
+      /* Lifetime-cumulative tracer, using this branch's own locally-computed
+         momentum/energy (not the shared feedback_data.delta_p/delta_u,
+         which the SN branch below can also add to this same step). */
+      const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
+      tracers_gear_accumulate_feedback(
+          &xpj->tracers_data.feedback_cumulative.momentum_winds,
+          &xpj->tracers_data.feedback_cumulative.energy_winds,
+          &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
+          delta_p_mag_winds, (float)du, delta_p_mag_winds / (float)new_mass);
+
       xpj->feedback_data.hit_by_winds = 1;
     }
   }
@@ -273,13 +284,16 @@ runner_iact_nonsym_feedback_apply(
        feedback at the previous step. */
     new_mass += dm_SN;
 
-    /* Energy received */
-    const double du = (e_sn)*weight / new_mass;
+    /* Energy received. Guard against 0/0 (mj == 0): matches the winds
+       branch's own new_mass > 0.0 guard above. */
+    const double du = new_mass > 0.0 ? (e_sn)*weight / new_mass : 0.0;
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
+    float delta_p_supernovae[3];
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
+      delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
 
     /* Add the metals */
@@ -292,6 +306,21 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
 #endif
     }
+
+    /* delta_p_supernovae is comoving; a_inv gives the physical momentum
+       actually applied (matches feedback_update_part()'s v_full += p/m). */
+    const float delta_p_mag_supernovae_comoving =
+        sqrtf(delta_p_supernovae[0] * delta_p_supernovae[0] +
+              delta_p_supernovae[1] * delta_p_supernovae[1] +
+              delta_p_supernovae[2] * delta_p_supernovae[2]);
+    const float delta_p_mag_supernovae =
+        delta_p_mag_supernovae_comoving * cosmo->a_inv;
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
+        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+        delta_p_mag_supernovae, (float)du,
+        new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;

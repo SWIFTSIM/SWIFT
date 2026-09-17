@@ -23,7 +23,9 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes.h"
 #include "cooling.h"
+#include "cosmology.h"
 #include "engine.h"
 #include "part.h"
 #include "sink.h"
@@ -33,7 +35,7 @@
  * @brief Update the particle tracers just after it has been initialised at the
  * start of a step.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
@@ -53,7 +55,7 @@ static INLINE void tracers_after_init(
 /**
  * @brief Update the particle tracers just after it has been drifted.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
@@ -127,7 +129,7 @@ static INLINE void tracers_after_timestep_spart(
  * @brief Update the black hole particle tracers just after its time-step has
  * been computed.
  *
- * Nothing to do here.
+ * In GEAR, we record the average accretion rate.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -144,10 +146,34 @@ static INLINE void tracers_after_timestep_bpart(
     struct bpart *bp, const struct unit_system *us,
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
-    const int *const tracers_triggers_started) {}
+    const int *const tracers_triggers_started) {
+
+  const float accr_rate = black_holes_get_accretion_rate(bp);
+
+  /* Accumulate average accretion rate. If averaged_accretion_rate[i] < 0
+   * this is the first step after the trigger fired: the stored value is
+   * -time_to_remove, so (time_step_length + averaged_accretion_rate[i])
+   * gives only the in-window fraction, using a single consistent rate value
+   * and never going negative. */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (tracers_triggers_started[i]) {
+      if (bp->tracers_data.averaged_accretion_rate[i] < 0.f) {
+        const double in_window =
+            time_step_length + bp->tracers_data.averaged_accretion_rate[i];
+        bp->tracers_data.averaged_accretion_rate[i] = accr_rate * in_window;
+      } else {
+        bp->tracers_data.averaged_accretion_rate[i] +=
+            accr_rate * time_step_length;
+      }
+    }
+  }
+}
 
 static INLINE void tracers_after_recording_trigger_bpart(
-    struct bpart *bp, const int trigger_index, const double time_to_remove) {}
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {
+  bp->tracers_data.averaged_accretion_rate[trigger_index] =
+      -(float)time_to_remove;
+}
 
 /**
  * @brief Update the sink particle tracers just after its time-step has
@@ -224,7 +250,51 @@ static INLINE void tracers_first_init_xpart(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling) {}
+    const struct cooling_function_data *cooling) {
+
+  xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
+}
+
+/**
+ * @brief Accumulate one channel's contribution to a gas particle's
+ * lifetime-cumulative feedback tracers.
+ *
+ * Called once per channel per feedback event, from inside that channel's
+ * own branch in the SN/winds/radiation-pressure interaction code, using
+ * that branch's own locally-computed momentum/energy, not read back from
+ * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
+ * winds can both fire on the same gas particle in the same step and would
+ * otherwise be inseparable.
+ *
+ * @param momentum_channel Pointer to this channel's cumulative-momentum
+ * field (feedback_cumulative.momentum_supernovae/winds).
+ * @param energy_channel Pointer to this channel's cumulative-energy field,
+ * or NULL if this channel has no separate thermal contribution to track.
+ * @param max_kick_velocity_channel Pointer to this channel's max-kick
+ * -velocity field.
+ * @param delta_p_magnitude Momentum magnitude received this event
+ * (physical internal units).
+ * @param delta_energy Specific internal energy received this event
+ * (physical internal units), ignored if energy_channel is NULL.
+ * @param kick_velocity Velocity magnitude of this event's kick (same
+ * frame as delta_p_magnitude).
+ */
+static INLINE void tracers_gear_accumulate_feedback(
+    float *momentum_channel, float *energy_channel,
+    float *max_kick_velocity_channel, const float delta_p_magnitude,
+    const float delta_energy, const float kick_velocity) {
+
+  *momentum_channel += delta_p_magnitude;
+  if (energy_channel != NULL) *energy_channel += delta_energy;
+  if (kick_velocity > *max_kick_velocity_channel) {
+    *max_kick_velocity_channel = kick_velocity;
+  }
+}
 
 /**
  * @brief Initialise the star tracer data at the start of a calculation.
@@ -241,12 +311,56 @@ static INLINE void tracers_first_init_xpart(
 static INLINE void tracers_first_init_spart(struct spart *sp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+                                            const struct cosmology *cosmo) {
+
+  sp->tracers_data.snii_events = (struct tracers_sn_event_data){0};
+  sp->tracers_data.snia_events = (struct tracers_sn_event_data){0};
+}
+
+/**
+ * @brief Update one channel's SN-event tracer (count, density and
+ * time/scale-factor at the last event) after this star produced
+ * `number_events` SN(e) this step.
+ *
+ * Shared by both the discrete (single_star, always number_events == 1) and
+ * population (star_population/star_population_continuous_IMF, possibly
+ * fractional) SN feedback paths. Called only when number_events > 0.
+ *
+ * @param ev The channel's #tracers_sn_event_data to update.
+ * @param number_events Number of SN(e) this channel produced this step.
+ * @param comoving_density The star's own local gas density
+ * (enrichment_weight), comoving. Converted to physical here before storing,
+ * matching part->rho's own comoving convention and hydro_get_physical_density.
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current simulation time (internal units, only used if
+ * !with_cosmology).
+ */
+static INLINE void tracers_gear_update_sn_event(
+    struct tracers_sn_event_data *ev, const float number_events,
+    const float comoving_density, const int with_cosmology,
+    const struct cosmology *cosmo, const double time) {
+
+  if (number_events <= 0.f) return;
+
+  const float density = comoving_density * (float)cosmo->a3_inv;
+
+  /* Assumes this runs exactly once per active star per step (true today:
+     the sole call chain is feedback_will_do_feedback, the timestep task).
+     Unlike every other field feedback_will_do_feedback sets this step
+     (plain assignment), this one accumulates, so a future double-dispatch
+     bug here would silently double-count instead of self-healing. */
+  ev->n_events += number_events;
+  ev->density_at_last_event = density;
+  if (with_cosmology) {
+    ev->last_event_scale_factor = cosmo->a;
+  } else {
+    ev->last_event_time = (float)time;
+  }
+}
 
 /**
  * @brief Initialise the black hole tracer data at the start of a calculation.
- *
- * Nothing to do here.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -258,7 +372,10 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 static INLINE void tracers_first_init_bpart(struct bpart *bp,
                                             const struct unit_system *us,
                                             const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+                                            const struct cosmology *cosmo) {
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Initialise the sink tracer data at the start of a calculation.
@@ -345,11 +462,13 @@ static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
 /**
  * @brief Tracer event called after a snapshot was written.
  *
- * Nothing to do here.
- *
  * @param sp the #spart.
  */
-static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
+static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
+}
 
 /**
  * @brief Tracer event called after a snapshot was written.
