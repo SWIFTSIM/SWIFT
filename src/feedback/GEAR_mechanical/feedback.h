@@ -53,9 +53,10 @@ void feedback_prepare_feedback(struct spart *restrict sp,
 
 /**
  * @brief Get the comoving gas density around the star, averaged with the
- * isotropic vector weights |w_j_bar|.
+ * norms of the
+ * isotropic vector weights |w_j|.
  *
- * Only valid after the third feedback preparation loop.
+ * Only valid after runner_iact_nonsym_feedback_prep3().
  *
  * @param sp The #spart.
  */
@@ -67,9 +68,10 @@ INLINE static float feedback_get_weighted_gas_density(const struct spart *sp) {
 
 /**
  * @brief Get the gas metal mass fraction around the star, averaged with the
- * isotropic vector weights |w_j_bar|.
+ * norms of the
+ * isotropic vector weights |w_j|.
  *
- * Only valid after the third feedback preparation loop.
+ * Only valid after runner_iact_nonsym_feedback_prep3().
  *
  * @param sp The #spart.
  */
