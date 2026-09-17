@@ -23,12 +23,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import swiftsimio as sw
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "MetalDiffusionOnePeak")
 )
 from profile_vs_exact import u_1d, metal_mass
-
-NBIN = 512
+from chemistry_tests_common import lattice_bin_count
 
 
 def green_kernel_bins(t, tau, kappa, L, nbin, parabolic):
@@ -70,11 +70,11 @@ def scan_run(rundir, snap_indices=(5, 10, 20, 50)):
     parabolic = tau_raw is None
     tau = float(tau_raw) if tau_raw is not None else np.inf
     L = float(d0.metadata.boxsize.value[0])
-    edges = np.linspace(0.0, L, NBIN + 1)
-    dx = L / NBIN
-
     m0 = metal_mass(d0)
     x0 = d0.gas.coordinates.value[:, 0]
+    nbin = lattice_bin_count(x0, L)
+    edges = np.linspace(0.0, L, nbin + 1)
+    dx = L / nbin
     lam0, _ = np.histogram(x0 % L, bins=edges, weights=m0)
     M = m0.sum()
     if M <= 0 or lam0.max() <= 0:
@@ -93,7 +93,7 @@ def scan_run(rundir, snap_indices=(5, 10, 20, 50)):
         m = metal_mass(d)
         x = d.gas.coordinates.value[:, 0] % L
         sim, _ = np.histogram(x, bins=edges, weights=m)
-        ker = green_kernel_bins(t, tau, kappa, L, NBIN, parabolic)
+        ker = green_kernel_bins(t, tau, kappa, L, nbin, parabolic)
         ex = np.real(np.fft.ifft(np.fft.fft(lam0) * np.fft.fft(ker)))
         # circular W1: subtract the median of the cumulative difference so
         # the value doesn't depend on where the periodic box is cut
@@ -108,8 +108,8 @@ def scan_run(rundir, snap_indices=(5, 10, 20, 50)):
             dist = (
                 np.min(
                     np.abs(
-                        (np.arange(NBIN)[:, None] - sidx[None, :] + NBIN / 2) % NBIN
-                        - NBIN / 2
+                        (np.arange(nbin)[:, None] - sidx[None, :] + nbin / 2) % nbin
+                        - nbin / 2
                     ),
                     axis=1,
                 )

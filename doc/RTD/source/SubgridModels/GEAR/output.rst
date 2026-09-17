@@ -89,12 +89,39 @@ Since hydro scheme writes its own set of outputs, we only provide the outputs th
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
 | Name                                     | Description                                                 | Units                  | Comments                                           |
 +==========================================+=============================================================+========================+====================================================+
-| ``SmoothedMetalMassFractions``           | | Mass fraction of each metal element                       | [-]                    | | *Only in GEAR chemistry module.*                 |
-|                                          | | smoothed over the SPH kernel                              |                        | | Array of length ``N``, set at compile time by    |
-|                                          |                                                             |                        | | ``--with-chemistry=GEAR_N``                      |
+| ``SmoothedMetalMassFractions``           | | Mass fraction of each metal element                       | [-]                    | | *Only in GEAR chemistry module*                  |
+|                                          | | smoothed over the SPH kernel                              |                        | | (``GEAR_N``). Array of length ``N``.             |
+|                                          |                                                             |                        | | Not written by the FVPM diffusion                |
+|                                          |                                                             |                        | | modules below.                                   |
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
-| ``MetalMassFractions``                   | | Raw (non-smoothed) mass fraction of                       | [-]                    | | *Only in GEAR chemistry module.*                 |
-|                                          | | each metal element                                        |                        | | Same layout as above.                            |
+| ``MetalMassFractions``                   | | Raw (non-smoothed) mass fraction of                       | [-]                    | | *In GEAR chemistry* (``GEAR_N``) *and*           |
+|                                          | | each metal element                                        |                        | | *both FVPM diffusion modules*                    |
+|                                          |                                                             |                        | | (``GEAR-FVPM-DIFFUSION_N``,                      |
+|                                          |                                                             |                        | | ``GEAR-FVPM-HYPERBOLIC-DIFFUSION_N``).           |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``DiffusionMatrices``                    | | Physical effective diffusivity matrix D = K*(q/U),        | [U_L^2 U_T^{-1}]       | | *Only in GEAR FVPM diffusion chemistry module*   |
+|                                          | | flattened to a 9-element (3x3) vector                     |                        | | (parabolic or hyperbolic). D always has ordinary |
+|                                          |                                                             |                        | | diffusivity units, regardless of                 |
+|                                          |                                                             |                        | | ``diffusion_mode``.                              |
+|                                          |                                                             |                        | | Always physical (never comoving).                |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``DiffusedMetalMasses``                  | | Mass of each element transferred to the particle          | [U_M]                  | | *Debug-only* (``SWIFT_CHEMISTRY_DEBUG_CHECKS``). |
+|                                          | | by diffusion (cumulative over the run)                    |                        | | Array of length ``N`` (number of elements).      |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``FeedbackMetalMasses``                  | | Mass of each element received by feedback events          | [U_M]                  | | *Debug-only* (``SWIFT_CHEMISTRY_DEBUG_CHECKS``). |
+|                                          | | (cumulative over the run)                                 |                        | | Array of length ``N``.                           |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``NormDiffusionFluxes``                  | | Norm of the hyperbolic diffusion flux vector,             | [U_M U_L^{-2} U_T^{-1}]| | *Debug-only and hyperbolic-only*                 |
+|                                          | | for each element                                          |                        | | (``SWIFT_CHEMISTRY_DEBUG_CHECKS`` and the        |
+|                                          |                                                             |                        | | hyperbolic variant).                             |
+|                                          |                                                             |                        | | Array of length ``N``.                           |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``DiffusionFluxes``                      | | Physical hyperbolic diffusion flux vector F of each       | [U_M U_L^{-2} U_T^{-1}]| | *Hyperbolic variant only*. Always physical (never|
+|                                          | | element, stored as [F_0x, F_0y, F_0z, F_1x, ...]          |                        | | comoving).                                       |
+|                                          |                                                             |                        | | Array of length ``3N``.                          |
++------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
+| ``RelaxationTimes``                      | | Physical diffusion relaxation time (tau) of the           | [U_T]                  | | *Hyperbolic variant only*. Always physical (never|
+|                                          | | particle                                                  |                        | | comoving).                                       |
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+
 | ``HI``                                   | | Mass fraction of neutral H (:math:`\mathrm{H}`)           | [-]                    | | *Only if* ``GRACKLE_1 to 3``                     |
 +------------------------------------------+-------------------------------------------------------------+------------------------+----------------------------------------------------+

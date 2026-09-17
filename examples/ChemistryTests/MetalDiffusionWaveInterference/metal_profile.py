@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from chemistry_tests_common import (
     get_fe_metal_mass,
     radial_profile,
+    lattice_bin_count,
     hyperbolic_diffusion_solution_convolved,
 )
 
@@ -79,7 +80,13 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --log
     )
 
     parser.add_argument(
-        "--n_bins", action="store", type=int, default=40, help="Number bins"
+        "--n_bins",
+        action="store",
+        type=int,
+        default=None,
+        help="Number of bins. Defaults to the count that lines up with the "
+        "IC's particle lattice spacing (a mismatched fixed count aliases "
+        "into spurious spikes where a bin boundary lands mid-spacing).",
     )
 
     parser.add_argument(
@@ -108,7 +115,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --log
 # %%
 # Parse the arguments
 args, files = parse_option()
-n_bins = args.n_bins
 epsilon = args.epsilon
 log = args.log
 
@@ -120,6 +126,10 @@ data_init = sw.load(files[0])
 boxsize = data_init.metadata.boxsize
 L = float(boxsize[0].value)
 r_max = args.r_max if args.r_max is not None else L / 2.0
+n_bins = args.n_bins
+if n_bins is None:
+    n_bins = lattice_bin_count(data_init.gas.coordinates.value[:, 0], L)
+    print(f"Auto-selected n_bins = {n_bins} (matches the IC lattice spacing)")
 
 # Read kappa from the parameter file
 try:
@@ -155,7 +165,7 @@ total_mass_2 = float(m0.value[r0_centered >= 0.0].sum())
 print(f"Seed masses: M1={total_mass_1:.3e}  M2={total_mass_2:.3e}")
 
 for filename in tqdm(files):
-    snapshot_number = int(filename.split("_")[1].split(".")[0])
+    snapshot_number = int(os.path.basename(filename).split("_")[1].split(".")[0])
     output_name = "metal_profile" + str(snapshot_number)
     data = sw.load(filename)
 

@@ -15,6 +15,7 @@ and run with the option ``--gear``. A few examples exist and can be found in ``e
 
    gear_model
    chemistry
+   diffusion/index
    feedback
    supernova_feedback
    sinks/index
