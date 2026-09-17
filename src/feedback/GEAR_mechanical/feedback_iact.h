@@ -269,12 +269,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
-  /* TODO: Winds + SN ejected mass ? Or should I split into two variables? */
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
   const float mj_inv = 1.0 / mj;
   const float m_ej_SN = si->feedback_data.supernovae.mass_ejected;
-  const float m_ej_SW = si->feedback_data.supernovae.mass_ejected;
+  const float m_ej_SW = si->feedback_data.winds.mass_ejected;
   const float dm_SN = max(w_j_bar_norm * m_ej_SN, FLT_MIN);
   const float dm_SW = max(w_j_bar_norm * m_ej_SW, FLT_MIN);
 
