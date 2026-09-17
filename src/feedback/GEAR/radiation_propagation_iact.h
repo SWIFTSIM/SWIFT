@@ -419,13 +419,17 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
  * and #feedback_part_data.c_hyp.
  *
  * Must run after the last write of those three fields that precedes a
- * gradient loop reading the particle. The drift-time reset
- * (feedback_reset_part) satisfies this for active and inactive particles
- * alike: it runs for every particle of a drifted cell, it writes `c_hyp`,
- * every cell a gradient task reads is drifted first, and `u` and `F` are
- * only written after the gradient loop (end-force ghost, extra ghost) or at
- * the end of the step (star injection). First init must also call it: the
- * initial ti = 0 pass reaches the gradient loop without a drift.
+ * gradient loop reading the particle. Two call sites cover this. The
+ * drift-time reset (feedback_reset_part) runs for every particle of a
+ * drifted cell, active or not, and every cell a gradient task reads is
+ * drifted first; it does NOT write `c_hyp` any more (that needs the
+ * density loop's neighbour-bin maximum), so this call there only picks up
+ * `u`/`F` after an illumination tag's expiry, against whatever `c_hyp` this
+ * particle's last active step left behind. The density-ghost call
+ * (radiation_end_density_propagation) additionally rebuilds the cache for
+ * active particles once THIS step's `c_hyp` is known. First init must also
+ * call it: the initial ti = 0 pass reaches the gradient loop without a
+ * drift.
  *
  * @param p The #part.
  */
@@ -558,6 +562,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
+  /* Kernel-local propagation speed: track the slowest clock in each
+   * particle's own kernel (radiation_end_density_propagation reads this
+   * once the h-iteration converges). Symmetric hook, so both sides. */
+  fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
+  fdj->max_ngb_time_bin = max(fdj->max_ngb_time_bin, pi->time_bin);
+
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
     struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
@@ -608,6 +618,10 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
+
+  /* Non-symmetric: only i's own accumulator is updated, see
+   * #runner_iact_isrf_propagation. */
+  fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];

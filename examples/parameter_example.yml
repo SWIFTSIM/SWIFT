@@ -834,10 +834,11 @@ GEARFeedback:
                                                            # (Default: 0)
   ISRF_extinction_path: kernel_diameter                    # (optional) Path of the receiver-side dust extinction column, Sigma = rho * path: kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h.
                                                            # Only meaningful when with_photoelectric_heating is on. (Default: kernel_diameter)
-  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
+  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_max(i) closure, dt_max(i) the longest time step among particle i and every neighbour in its kernel
+                                                           # (not just i's own step: this keeps the receiver's CFL condition c_i*dt_j <= C_hyp*h_i satisfied for every pair). Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
                                                            # ISRF_dissipation_alpha_floor) = 0; the joint stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only
                                                            # meaningful when ISRF_propagation is on. (Default: 0.5)
-  ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
+  ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt_max, whenever positive. Bypasses the speed-of-light
                                                            # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
   ISRF_c_hyp_fixed_fraction_of_c: 0                        # (optional) Uniform reduced light-speed candidate: sets every particle's c_hyp_i = f*c, independent of h_i/dt_i, whenever positive. Valid range [0, 1]. 0 (default): disabled,
                                                            # the shipped c_hyp_i = min(C_hyp*h_i/dt_i, c) formula runs unchanged. Mutually exclusive with ISRF_c_hyp_pin_for_debugging. Adds a matching radiation timestep term

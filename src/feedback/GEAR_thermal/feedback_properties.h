@@ -117,12 +117,14 @@ struct feedback_props {
    * "kernel_radius" (GEARFeedback:ISRF_extinction_path). */
   float ISRF_extinction_path_in_kernel_radii;
 
-  /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_i`
-   * closure: an independently-tunable multiple of the hydro CFL margin,
-   * rather than silently inheriting whatever SPH:CFL_condition happens to
-   * be. Documented valid range (0, sqrt(2/0.70)] (~1.6903); the staggered
-   * exact-relaxation scheme is stable for every lambda/h only below that
-   * bound (see radiation_isrf.c). That ~1.6903 ceiling only applies at
+  /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_max(i)`
+   * closure, `dt_max(i)` the longest time step among particle i and every
+   * neighbour in its kernel, not just i's own step: an independently-
+   * tunable multiple of the hydro CFL margin, rather than silently
+   * inheriting whatever SPH:CFL_condition happens to be. Documented valid
+   * range (0, sqrt(2/0.70)] (~1.6903); the staggered exact-relaxation
+   * scheme is stable for every lambda/h only below that bound (see
+   * radiation_isrf.c). That ~1.6903 ceiling only applies at
    * max(#ISRF_dissipation_alpha_max, #ISRF_dissipation_alpha_floor) =
    * 0: the joint stability bound checked in feedback_props_init() is
    * tighter whenever either dissipation coefficient is nonzero (e.g. the
@@ -132,7 +134,7 @@ struct feedback_props {
 
   /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
    * to this fixed physical value instead of computing it from `C_hyp*h_i/
-   * dt_i`, whenever positive. Needed by the causal-reach validation leg
+   * dt_max(i)`, whenever positive. Needed by the causal-reach validation leg
    * (a single, unambiguous wavefront speed to check the field against) and
    * by the steady-state amplitude leg's two-`c_hyp` cross-check (confirming
    * the source-rescaling cancellation empirically). 0 (default): disabled,
@@ -821,8 +823,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         warning(
             "GEARFeedback:ISRF_c_hyp_pin_for_debugging is set: every "
             "particle's own hyperbolic propagation speed is pinned to %g "
-            "(physical units) instead of C_hyp*h/dt. Never use this in a "
-            "production run.",
+            "(physical units) instead of C_hyp*h/dt_max. Never use this in "
+            "a production run.",
             fp->ISRF_c_hyp_pin_for_debugging);
 
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in

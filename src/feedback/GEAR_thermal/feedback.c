@@ -112,16 +112,20 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation. Nothing to do: the LW/FUV
- * field is updated in #feedback_end_force, after the flux-divergence has been
- * accumulated in the force loop.
+ * @brief Finishes the #part density calculation: caches this step's
+ * kernel-local LW/FUV propagation speed, now that the density loop's
+ * neighbour-bin maximum is known, see #radiation_end_density_propagation.
+ * The field `u` itself is still updated in #feedback_end_force, after the
+ * flux-divergence has been accumulated in the force loop.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
  * @param e The #engine.
  */
 void feedback_end_density(struct part *p, struct xpart *xp,
-                          const struct engine *e) {}
+                          const struct engine *e) {
+  radiation_end_density_propagation(p, e);
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0
