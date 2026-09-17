@@ -104,7 +104,6 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   }
 
   /* Initialize the minimal gravity mass for the stars */
-  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
   sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
       params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
       DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
@@ -241,8 +240,8 @@ void stellar_evolution_read_elements(struct stellar_model *sm,
 /**
  * @brief Read the solar abundances.
  *
- * @param parameter_file The parsed parameter file.
- * @param data The properties to initialise.
+ * @param sm The #stellar_model.
+ * @param params The #swift_params.
  */
 void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
                                              struct swift_params *params) {
@@ -328,13 +327,10 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart *restrict sp,
     if (null_mass) {
       message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
               sp->mass, sp->feedback_data.supernovae.mass_ejected);
-      /* If the star ejects all its mass (for very massive stars), give it a
-         zero mass so that we know it has exploded.
-         We do not remove the star from the simulation to keep track of its
-         properties, e.g. to check the IMF sampling (with sinks).
-
-         Bug fix (28.04.2024): The mass of the star should not be set to
-         0 because of gravity. So, we give some minimal value. */
+      /* The star ejected all its mass. Keep it in the simulation (not
+         removed) to preserve its properties, e.g. for IMF sampling checks
+         with sinks, but give it a small nonzero mass: the gravity solver
+         cannot handle exactly 0. */
       sp->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* If somehow the star has a negative mass, we have a problem. */
@@ -631,7 +627,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
  * today's validated default). The other schemes are point-estimate
  * compromises between the two. All schemes agree when the window has zero
  * width (single stars, or a continuous-IMF particle clamped at the
- * discrete-mass split, see f493e9158).
+ * discrete-mass split).
  *
  * @param sm The #stellar_model (only used for the IMF, needed by
  * mass_sup_scheme_imf_weighted).
@@ -820,16 +816,18 @@ void stellar_evolution_compute_preSN_properties(
  * @brief Evolve an individual star represented by a #spart, with pre-supernovae
  * and supernovae feedback.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of single/individual stars.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_wind_feedback Enable stellar wind feedback?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -898,10 +896,12 @@ void stellar_evolution_evolve_individual_star(
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
- * @param with_stellar_winds Enable stellar winds?
+ * @param with_stellar_wind_feedback Enable stellar wind feedback?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -951,7 +951,7 @@ void stellar_evolution_evolve_spart(
  * @param sp The particle for which we compute the initial mass.
  * @param sm The #stellar_model structure.
  * @param phys_const the physical constants in internal units.
- * @param (return) m_init Initial mass of the star particle (in M_sun).
+ * @return Initial mass of the star particle (in M_sun).
  */
 float stellar_evolution_compute_initial_mass(
     const struct spart *restrict sp, const struct stellar_model *sm,
@@ -981,18 +981,19 @@ float stellar_evolution_compute_initial_mass(
 /**
  * @brief Compute the supernova feedback for an individual #spart.
  *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank. It also compute the supernovae
- * energy to be released by the star.
+ * Computes the SN rate and yields, and the supernovae energy to be
+ * released by the star, ahead of sending this information to a
+ * different MPI rank.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of single/individual stars.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
  * @param ti_begin The #integertime_t at the begining of the step.
@@ -1102,12 +1103,11 @@ void stellar_evolution_compute_SN_feedback_individual_star(
 /**
  * @brief Compute the supernova feedback for a SSP/continuous-IMF #spart.
  *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank. It also compute the supernovae
- * energy to be released by the star.
+ * Computes the SN rate and yields, and the supernovae energy to be
+ * released by the star, ahead of sending this information to a
+ * different MPI rank.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of particles representing the whole IMF
  * (star_type = star_population) and the particles representing only the
@@ -1115,7 +1115,9 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
  * @param ti_begin The #integertime_t at the begining of the step.
@@ -1803,7 +1805,7 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
   /* Dump the stellar wind model */
   stellar_wind_dump(&sm->sw, stream, sm);
 
-  /* Dump the supernovae II model */
+  /* Dump the radiation model */
   radiation_dump(&sm->rad, stream, sm);
 }
 

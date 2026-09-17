@@ -182,39 +182,32 @@ struct supernovae_ii {
 
 /*! Cap on the number of metallicity rows #radiation.longest_ms_lifetime_myr
     can hold, as a fixed-size struct member rather than a separately
-    allocated pointer. See that field's own doxygen for why. Defined here,
-    not in radiation.h (radiation.h includes this file, not the other way
-    round), so it is in scope where #radiation itself is declared. */
+    allocated pointer. Defined here, not in radiation.h (radiation.h
+    includes this file, not the other way round), so it is in scope where
+    #radiation itself is declared. */
 #define RADIATION_MAX_METALLICITY_ROWS 64
 
 /**
  * @brief Model for radiation.
+ *
+ * #raw holds per-mass ("M" or "M,Z") tables; #integrated holds the
+ * corresponding IMF-integrated ("per Msun of stars formed") ones. Every
+ * field stores log10(value in internal units); each raw getter
+ * exponentiates back. Exception: #main_sequence_lifetime_2d stores
+ * log10(Myr) (see its own doxygen). Each raw quantity is a union of its 1D
+ * and 2D interpolation table: #is_2d is fixed for a #radiation instance's
+ * whole lifetime, so only one dimensionality is ever live. Every read site
+ * gates on #is_2d before touching either member, and #radiation_zero_
+ * pointers/#radiation_clean must do the same.
  */
 struct radiation {
 
-  /*! Yields not integrated, mass-only ("M" dimensionality) tables. Store
-      log10(value in internal units), pychem-floored, not the raw value.
-      See radiation.c's radiation_build_tables()/radiation_read_cgs_array()
-      doxygen; every radiation_get_*_from_raw() getter exponentiates back.
-      Exception: #main_sequence_lifetime_2d stores log10(Myr), not
-      log10(internal units); see its own doxygen below for why.
-      #luminosities/#luminosities_2d and their dot_N_ion/dot_E_excess/teff/
-      l_pe/l_lw counterparts are each an anonymous union (mirroring
-     src/hydro/SPHENIX/ hydro_part.h's density/force union idiom): #is_2d is
-     fixed for a given #radiation instance's whole lifetime, so only one
-     dimensionality's interpolation table is ever live, and storing both
-     simultaneously as separate members would waste memory. Every read site
-     already gates on #is_2d before touching either name
-     (radiation_check_dimensionality()/ the is_2d dispatch in
-     radiation_get_star_*()); #radiation_zero_pointers
-      /#radiation_clean must do the same. See their own doxygen. */
   struct {
     union {
       /*! Bolometric luminosity emitted. */
       struct interpolation_1d luminosities;
 
-      /*! Bolometric luminosity emitted, mass x metallicity ("M,Z"
-          dimensionality) variant. */
+      /*! Bolometric luminosity emitted, mass x metallicity variant. */
       struct interpolation_2d luminosities_2d;
     };
 
@@ -228,8 +221,7 @@ struct radiation {
 
     union {
       /*! Excess-energy emission rate above the 13.6 eV HI threshold,
-          dot_N_ion(m) * mean_excess_photon_energy_HI(m); see
-          #radiation_get_mean_excess_photon_energy_HI_from_integral. */
+          dot_N_ion(m) * mean_excess_photon_energy_HI(m). */
       struct interpolation_1d dot_E_excess;
 
       /*! Excess-energy emission rate, mass x metallicity variant. */
@@ -238,47 +230,31 @@ struct radiation {
 
     union {
       /*! Spectral-hardness effective temperature (pychem's "Teff"
-          dataset), used as a FALLBACK to split #luminosities into
-          sub-Lyman-continuum bands (L_FUV/L_LW; see
-          radiation_planck_band_fraction()) when the loaded table has no
-          direct #l_pe/#l_lw ("L_FUV"/"L_LW") dataset of its own (see
-          #radiation.has_raw_ISRF/#has_integrated_ISRF below: a table
-          with those present is read directly instead, at both the
-          individual-star and population/SSP call sites, and Teff need not
-          even be built then; see radiation_read_data()'s own doxygen).
-          Has no IMF-integrated counterpart in #integrated below (unlike
-          #luminosities): the band fraction is a nonlinear function of
-          Teff, so an IMF-integrated band luminosity cannot be built from
-          an IMF-integrated Teff the way #integrated.luminosities is built
-          directly from pychem's own precomputed integral. This Teff
-          fallback is therefore always evaluated from the raw (per-mass)
-          value, even along the population/SSP feedback path that
-          otherwise reads #integrated for L_bol/dot_N_ion/dot_E_excess. */
+          dataset), used to split #luminosities into FUV/LW bands via
+          radiation_planck_band_fraction() when the table has no direct
+          #l_pe/#l_lw (see #has_raw_ISRF/#has_integrated_ISRF). No
+          IMF-integrated counterpart: the band fraction is nonlinear in
+          Teff, so the population/SSP path also falls back to this raw
+          (per-mass) value. */
       struct interpolation_1d teff;
 
-      /*! #teff, mass x metallicity ("M,Z" dimensionality) variant. */
+      /*! #teff, mass x metallicity variant. */
       struct interpolation_2d teff_2d;
     };
 
     union {
-      /*! Non-ionizing FUV band (6-11.2 eV) energy emission rate, read
-          directly from pychem's own "L_FUV" dataset when present (see
-          #radiation.has_raw_ISRF). Same log-log storage convention as
-          #luminosities above; every raw getter exponentiates back. 1D
-          variant included for structural consistency with every other
-          quantity's union layout, even though no live table is currently
-          1D with #has_raw_ISRF=1; revisit if pychem confirms no 1D
-          table will ever carry this dataset. */
+      /*! Non-ionizing FUV band (6-11.2 eV) emission rate, read directly
+          from pychem's "L_FUV" dataset when present (#has_raw_ISRF). Same
+          log-log storage as #luminosities. */
       struct interpolation_1d l_pe;
 
-      /*! #l_pe, mass x metallicity ("M,Z" dimensionality) variant. */
+      /*! #l_pe, mass x metallicity variant. */
       struct interpolation_2d l_pe_2d;
     };
 
     union {
-      /*! Lyman-Werner band (11.2-13.6 eV) energy emission rate, read
-          directly from pychem's own "L_LW" dataset when present. See
-          #l_pe's own doxygen. */
+      /*! Lyman-Werner band (11.2-13.6 eV) emission rate, read directly
+          from pychem's "L_LW" dataset when present. See #l_pe. */
       struct interpolation_1d l_lw;
 
       /*! #l_lw, mass x metallicity variant. */
@@ -286,44 +262,27 @@ struct radiation {
     };
 
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
-        metallicity, 2D-only ("MainSequenceLifetime" has no 1D/"M"-table
-        analogue). Stored log10(Myr), in the same log-log scheme
-        #interpolate_2d_init() applies to the three fields above (see
-        radiation_build_tables()'s doxygen), but deliberately left in
-        Myr rather than converted to internal units, since it is only ever
-        compared against a star's age in Myr
-        (radiation_get_ionization_rate_from_raw_2d(),
-        radiation_get_mean_excess_photon_energy_HI_from_raw_2d()), which
-        take that age directly with no #unit_system available to convert
-        back with. Matches how GEAR's own Poirier lifetime model already
-        works natively in log10(Myr)
-        (lifetime_get_log_lifetime_from_mass(),
-        src/feedback/GEAR/lifetime.h). Used to cap Q_H/DotEExcess to 0 once
-        a star exceeds the table's own main-sequence window;
-        #luminosities_2d is a real physical property independent of that
-        window and is never capped by it. */
+        metallicity, 2D-only. Stored as log10(Myr), NOT log10(internal
+        units) like the fields above: it is only ever compared against a
+        star's age in Myr, and GEAR's own Poirier lifetime model
+        (lifetime_get_log_lifetime_from_mass()) already works natively in
+        log10(Myr). Caps Q_H/DotEExcess to 0 once a star exceeds this
+        window; #luminosities_2d is not capped by it. */
     struct interpolation_2d main_sequence_lifetime_2d;
 
     /*! (Z, age) -> mass inverse of #main_sequence_lifetime_2d: the mass
-        whose PARSEC main-sequence lifetime equals a population's own age,
-        at a given metallicity. Population-feedback-only cap (used by
-        stellar_evolution_compute_preSN_feedback_spart(), a different call
-        site than #main_sequence_lifetime_2d's single-star cap). Age axis
-        identity-resampled from the native "Age"/a0/da/na grid (Ny = na,
-        exact native bounds), NOT #interpolation_size_metallicity's
-        resolution. See radiation_read_main_sequence_lifetime_inverse_
-        array()'s own doxygen for why. Z axis uses that resolution, like
-        every other 2D field above. Stored log10(Msun), same log-log scheme
-        as the fields above; radiation_get_ms_lifetime_inverse_mass_2d()
-        exponentiates back. 2D-only, no 1D analogue. */
+        whose PARSEC main-sequence lifetime equals a population's age at a
+        given metallicity. Population-feedback cap only (see
+        stellar_evolution_compute_preSN_feedback_spart()). Age axis
+        identity-resampled at the table's native resolution (not
+        #interpolation_size_metallicity); Z axis uses that resolution like
+        every other 2D field. Stored log10(Msun); 2D-only. */
     struct interpolation_2d main_sequence_lifetime_inverse_2d;
   } raw;
 
-  /*! Yields integrated (IMF-integrated), read directly from pychem's own
-      precomputed, number-weighted, cumulative-from-Mmin "Integrated_*"
-      datasets (radiation_table_io.c's radiation_build_tables() doxygen),
-      never integrated on the SWIFT side. Same union-per-field layout as
-      #raw above, for the same reason (see its own doxygen). */
+  /*! IMF-integrated yields, read directly from pychem's precomputed,
+      number-weighted "Integrated_*" datasets; never integrated on the
+      SWIFT side. Same union-per-field layout as #raw. */
   struct {
 
     union {
@@ -351,10 +310,10 @@ struct radiation {
     };
 
     union {
-      /*! IMF-integrated non-ionizing FUV band emission rate per Msun of
-          stars formed, read directly from pychem's "Integrated_L_FUV"
-          dataset when present (see #radiation.has_integrated_ISRF).
-          Linear (un-logged) value space, like #luminosities above. */
+      /*! IMF-integrated FUV emission rate per Msun of stars formed, from
+          pychem's "Integrated_L_FUV" dataset when present
+          (#has_integrated_ISRF). Linear (un-logged), unlike #raw's log10
+          storage. */
       struct interpolation_1d l_pe;
 
       /*! #l_pe, mass x metallicity variant. */
@@ -362,9 +321,8 @@ struct radiation {
     };
 
     union {
-      /*! IMF-integrated Lyman-Werner band emission rate per Msun of stars
-          formed, read directly from pychem's "Integrated_L_LW" dataset.
-          See #l_pe's own doxygen. */
+      /*! IMF-integrated Lyman-Werner emission rate per Msun of stars
+          formed, from pychem's "Integrated_L_LW" dataset. See #l_pe. */
       struct interpolation_1d l_lw;
 
       /*! #l_lw, mass x metallicity variant. */
@@ -372,12 +330,11 @@ struct radiation {
     };
   } integrated;
 
-  /*! Is this a mass x metallicity ("M,Z") table rather than a mass-only
-      ("M") one? Set from the Data/Radiation group's own "dimensionality"
-      attribute in radiation_read_data(); dispatches between the raw 1D
-      and 2D fields above in the read functions, selects the live member of
-      each union'd field pair above (see #raw's own doxygen), and gates the
-      getters that do not yet take a metallicity argument. */
+  /*! Is this a mass x metallicity ("M,Z") table rather than mass-only
+      ("M")? Set from the table's "dimensionality" attribute in
+      radiation_read_data(); selects the live member of each union above
+      and gates the getters that do not yet take a metallicity
+      argument. */
   char is_2d;
 
   /*! Number of element in the interpolation array (mass axis) */
@@ -392,78 +349,58 @@ struct radiation {
       GEARFeedback:HII_angular_nside in radiation_init(). */
   int n_HII_pixels;
 
-  /*! Longest tabulated MS lifetime (Myr) per native metallicity row (index
-      by #ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity below),
-      reduced at read time from MainSequenceLifetimeInverseExcluded (2D
-      tables only). FLT_MAX for a row with no Excluded cells at all (not
-      INFINITY: this build's -ffast-math disallows it).
-      Fixed-size, not a separately allocated pointer, so it needs neither a
-      #radiation_zero_pointers nor a #radiation_clean entry. See
-      radiation_read_main_sequence_lifetime_inverse_array()'s own doxygen. */
+  /*! Longest tabulated MS lifetime (Myr) per native metallicity row,
+      indexed by #ms_lifetime_inverse_log_z_min/_step/_n_metallicity below.
+      Reduced at read time from MainSequenceLifetimeInverseExcluded (2D
+      tables only). FLT_MAX (not INFINITY: -ffast-math disallows it) for a
+      row with no excluded cells. Fixed-size, so neither
+      #radiation_zero_pointers nor #radiation_clean needs an entry for
+      it. */
   float longest_ms_lifetime_myr[RADIATION_MAX_METALLICITY_ROWS];
 
   /*! Longest tabulated age across every metallicity row (Myr), from the
-      "Age" dataset's own "age_max_myr" group attr (2D tables only, 0
-      otherwise). A population age above this has no grid point at all in
-      #raw.main_sequence_lifetime_inverse_2d, a separate case from
-      #longest_ms_lifetime_myr (which only covers in-grid ages beyond one
-      row's own longest tabulated lifetime). */
+      "Age" dataset's "age_max_myr" attribute (2D tables only, 0
+      otherwise). A population older than this has no grid point at all in
+      #main_sequence_lifetime_inverse_2d, unlike #longest_ms_lifetime_myr
+      (which covers ages beyond one row's own tabulated lifetime, still
+      in-grid). */
   float age_max_myr;
 
-  /*! Native metallicity-grid parameters (log10(Z) space, same convention as
-      every other 2D field's Z axis) #longest_ms_lifetime_myr is indexed by.
-      NOT the same as #raw.main_sequence_lifetime_inverse_2d's own xmin/dx,
-      which describe its OUTPUT-resampled grid (#interpolation_size_
-      metallicity points, generally finer than the native nz-row grid these
-      three fields describe). See radiation_get_ms_lifetime_inverse_mass_
-      2d()'s own doxygen for why the distinction matters. 0/0/0 for a 1D
-      table. */
+  /*! Native metallicity-grid parameters (log10(Z)) indexing
+      #longest_ms_lifetime_myr. NOT the same grid as
+      #main_sequence_lifetime_inverse_2d's own output-resampled one
+      (#interpolation_size_metallicity points, generally finer). 0/0/0 for
+      a 1D table. */
   float ms_lifetime_inverse_log_z_min;
   float ms_lifetime_inverse_log_z_step;
   int ms_lifetime_inverse_n_metallicity;
 
   /*! Is a radiation table actually loaded? False when neither
-      photoionization nor radiation pressure is enabled (see
-      stellar_evolution_props_init()): every other field above is then
-      zero-pointered by #radiation_zero_pointers, so callers must check this
-      before touching them (radiation_get_*_from_raw()/_from_integral()
-      would read a zeroed interpolation table otherwise). Set to 1 at the
-      end of radiation_read_data(), 0 by #radiation_zero_pointers. */
+      photoionization nor radiation pressure is enabled: every other field
+      is then zero-pointered by #radiation_zero_pointers, so callers must
+      check this before touching them. Set to 1 at the end of
+      radiation_read_data(), 0 by #radiation_zero_pointers. */
   int is_active;
 
   /*! Is the local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
-      heating) on? Set from that parameter in radiation_init(), before
-      radiation_read_data() is called (radiation_init() calls it), so
-      radiation_read_data() can gate radiation_read_teff_array() on it (see
-      #has_raw_ISRF/#has_integrated_ISRF below for the full gating
-      condition): the "Teff" dataset is a phase-1 LW/FUV-specific addition
-      to the table (see radiation_planck_band_fraction()), and requiring
-      every photoionization-/radiation-pressure-only run's table to already
-      carry it (rather than gating the read) would be a needless, disruptive
-      compatibility break for every table generated before this feature.
-      Persists across restart as a plain scalar in the raw block read/write
-      (#radiation_dump/#radiation_restore), like #is_2d, so
-      radiation_read_data()'s restart call can read it before params is
-      available again (params is NULL on restart). */
+      heating) on? Set in radiation_init(), before radiation_read_data() is
+      called, so the latter can gate the Teff-table read on it. Persists
+      across restart as a plain scalar (#radiation_dump/#radiation_restore),
+      since params is NULL on restart. */
   char with_ISRF;
 
   /*! Does the loaded table carry raw "L_FUV" AND "L_LW" datasets, AND is
-      #with_ISRF itself on? File-derived (like #is_2d), set fresh in
-      radiation_read_data() on every read including restart (the restart
-      path re-opens and re-probes the same file), never round-tripped like
-      #with_ISRF. ANDed with #with_ISRF at the point it is set so it
-      can never be true with the feature disabled: stellar_evolution.c's
-      `if (has_raw_ISRF) {...} else if (with_ISRF) {...}` checks this
-      flag alone, first, so an ungated has_raw_ISRF would populate
-      L_FUV/L_LW even with with_photoelectric_heating off. Gates the
-      individual-star call site's table-direct L_FUV/L_LW read
-      (stellar_evolution.c); independent of #has_integrated_ISRF, since a
-      table can carry either dataset pair without the other. */
+      #with_ISRF itself on? File-derived like #is_2d: re-probed fresh on
+      every read including restart, never round-tripped. ANDed with
+      #with_ISRF at the point it is set, so it can never be true with the
+      feature disabled (stellar_evolution.c checks this flag first). Gates
+      the individual-star table-direct L_FUV/L_LW read; independent of
+      #has_integrated_ISRF. */
   char has_raw_ISRF;
 
   /*! Does the loaded table carry "Integrated_L_FUV" AND "Integrated_L_LW"
-      datasets? See #has_raw_ISRF's own doxygen; gates the population/SSP
-      call site's table-direct read instead of the individual-star one. */
+      datasets? See #has_raw_ISRF; gates the population/SSP call site's
+      table-direct read instead of the individual-star one. */
   char has_integrated_ISRF;
 };
 
@@ -497,10 +434,10 @@ struct stellar_wind {
   /*! Maximal mass for a SW */
   float mass_max;
 
-  /*! Minimal mass for a SW */
+  /*! Minimal metallicity for a SW */
   float metallicity_min;
 
-  /*! Maximal mass for a SW */
+  /*! Maximal metallicity for a SW */
   float metallicity_max;
 
   /*! Number of mass element in the interpolation 2d array*/
@@ -518,7 +455,7 @@ struct stellar_model {
   /*! Name of the different elements */
   char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 
-  /* Solar mass abundances read from the chemistry table */
+  /*! Solar mass abundances read from the chemistry table */
   float solar_abundances[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! The initial mass function */
@@ -542,20 +479,13 @@ struct stellar_model {
   /*! Use a discrete yields approach */
   char discrete_yields;
 
-  /* Filename of the yields table */
+  /*! Filename of the yields table */
   char yields_table[FILENAME_BUFFER_SIZE];
 
-  /* Minimal gravity mass after a discrete star has completely exploded.
-
-     This will be the mass of the gpart's friend of the star. The mass of the
-     star will be 0 after it losses all its mass.
-
-     The purpose of this is to avoid zero mass for the gravitsy
-     computations. We keep the star so that we know it *existed* and we can
-     extract its properties at the end of a run. If we remove the star, then
-     we do not have any information about its existence.
-     However, since the star is dead/inexistent, the gravity mass must be small
-     so that it does not drastically alter the dynamics of the systems. */
+  /*! Floor on a discrete star's gravity mass once it has fully exploded:
+      the gravity solver cannot handle an exactly-zero mass. The star is
+      kept (not removed) so its properties stay available at the end of a
+      run; this mass is kept small enough not to perturb the dynamics. */
   float discrete_star_minimal_gravity_mass;
 };
 

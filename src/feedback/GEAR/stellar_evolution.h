@@ -55,10 +55,10 @@ enum stellar_evolution_mass_sup_scheme {
  * stellar_evolution_get_continuous_feedback_mass_sup(), overridable at
  * configure time, e.g.
  * CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint"
- * ./configure mass_sup_scheme_end_step is the default because it reproduces
- * today's already-validated behaviour exactly; the other schemes exist for a
- * future bias-quantification study (HomogeneousBox), not for production use
- * yet.
+ * ./configure
+ *
+ * mass_sup_scheme_end_step is the default: it matches this branch's
+ * validated behaviour. The other schemes are not yet used in production.
  */
 #ifndef STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME
 #define STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME mass_sup_scheme_end_step
@@ -80,7 +80,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
     const float m_init, const float number_snia_f, const float number_snii_f);
 void stellar_evolution_compute_discrete_feedback_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct phys_const *phys_const, const float log_m_beg_step,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init, const int number_snia,
     const int number_snii);
 
