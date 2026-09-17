@@ -574,6 +574,9 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
   const float mean_density =
       feedback_get_weighted_gas_density(sp) * cosmo->a3_inv;
 
+  /* No gas to cool: every neighbour is outside the cooling radius */
+  if (mean_density <= 0.f) return 0.f;
+
   /* Compute the cooling radius */
   const float p_terminal_2 = p_terminal * p_terminal;
   const float p_SN_initial_2 = p_SN_initial * p_SN_initial;

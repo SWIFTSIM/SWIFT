@@ -301,7 +301,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool_2) {
     const float r = sqrt(r2);
-    *dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
+    /* Written with r_cool / r so that r_cool = 0 gives 0, not 0^-6.5 */
+    *dU *= pow(r_cool / r, -(internal_energy_snowplow_exponent));
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
             r_cool);
