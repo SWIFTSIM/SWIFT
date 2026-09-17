@@ -306,15 +306,16 @@ runner_iact_nonsym_feedback_apply(
        feedback at the previous step. */
     new_mass += dm_SN;
 
-    /* Energy received */
-    const double du = (e_sn)*weight / new_mass;
+    /* Energy received. Guard against 0/0 (mj == 0): matches the winds
+       branch's own new_mass > 0.0 guard above. */
+    const double du = new_mass > 0.0 ? (e_sn)*weight / new_mass : 0.0;
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
-    float delta_p_SN[3];
+    float delta_p_supernovae[3];
     for (int i = 0; i < 3; i++) {
-      delta_p_SN[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
-      xpj->feedback_data.delta_p[i] += delta_p_SN[i];
+      delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
 
     /* Add the metals */
@@ -323,31 +324,20 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
     }
 
-    /* Physical-frame momentum, for the tracer below only: delta_p_SN itself
-       and the kick applied to the gas particle above stay in this branch's
-       existing comoving convention (changing those is a separate, bigger
-       physics change, out of scope here); the two differ by exactly the
-       differential Hubble-flow term dm_SN * a_dot * dx. Uses dx (the
-       periodicity-corrected separation this function is already handed),
-       not si->x - pj->x directly: those are unwrapped absolute positions,
-       off by a box length for a pair straddling a periodic boundary. */
-    const float a = cosmo->a;
-    const float a_inv = cosmo->a_inv;
-    const float a_dot = a * cosmo->H;
-    const float delta_p_SN_phys[3] = {
-        (float)dm_SN * (a_dot * dx[0] + (si->v[0] - xpj->v_full[0]) * a_inv),
-        (float)dm_SN * (a_dot * dx[1] + (si->v[1] - xpj->v_full[1]) * a_inv),
-        (float)dm_SN * (a_dot * dx[2] + (si->v[2] - xpj->v_full[2]) * a_inv)};
-
-    /* Lifetime-cumulative tracer. */
-    const float delta_p_mag_SN = sqrtf(delta_p_SN_phys[0] * delta_p_SN_phys[0] +
-                                       delta_p_SN_phys[1] * delta_p_SN_phys[1] +
-                                       delta_p_SN_phys[2] * delta_p_SN_phys[2]);
+    /* delta_p_supernovae is comoving; a_inv gives the physical momentum
+       actually applied (matches feedback_update_part()'s v_full += p/m). */
+    const float delta_p_mag_supernovae_comoving =
+        sqrtf(delta_p_supernovae[0] * delta_p_supernovae[0] +
+              delta_p_supernovae[1] * delta_p_supernovae[1] +
+              delta_p_supernovae[2] * delta_p_supernovae[2]);
+    const float delta_p_mag_supernovae =
+        delta_p_mag_supernovae_comoving * cosmo->a_inv;
     tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_SN,
-        &xpj->tracers_data.feedback_cumulative.energy_SN,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_SN,
-        delta_p_mag_SN, (float)du, delta_p_mag_SN / (float)new_mass);
+        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
+        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+        delta_p_mag_supernovae, (float)du,
+        new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;

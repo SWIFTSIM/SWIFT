@@ -252,12 +252,12 @@ static INLINE void tracers_first_init_xpart(
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
-  xp->tracers_data.feedback_cumulative.momentum_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
-  xp->tracers_data.feedback_cumulative.energy_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.max_kick_velocity_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
 }
@@ -274,13 +274,14 @@ static INLINE void tracers_first_init_xpart(
  * otherwise be inseparable.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
- * field (feedback_cumulative.momentum_SN/winds/radiation).
+ * field (feedback_cumulative.momentum_supernovae/winds/radiation).
  * @param energy_channel Pointer to this channel's cumulative-energy field,
- * or NULL (radiation pressure has no separate thermal channel).
+ * or NULL if this channel has no separate thermal contribution to track
+ * (radiation pressure).
  * @param max_kick_velocity_channel Pointer to this channel's max-kick
  * -velocity field.
- * @param delta_p_magnitude Momentum magnitude received this event (physical
- * internal units).
+ * @param delta_p_magnitude Momentum magnitude received this event
+ * (physical internal units).
  * @param delta_energy Specific internal energy received this event
  * (physical internal units), ignored if energy_channel is NULL.
  * @param kick_velocity Velocity magnitude of this event's kick (same

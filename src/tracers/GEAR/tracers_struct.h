@@ -54,21 +54,19 @@ struct tracers_xpart_data {
    * units. */
   struct {
 
-    /*! Cumulative momentum magnitude received from SN, stellar winds and
-        radiation pressure, all physical-frame. */
-    float momentum_SN;
+    /*! Cumulative |delta_p| per event (scalar sum, not vector: isotropic
+        kicks would else cancel), physical. */
+    float momentum_supernovae;
     float momentum_winds;
     float momentum_radiation;
 
-    /*! Cumulative specific internal energy received from SN and stellar
-        winds (radiation pressure carries no separate thermal channel) */
-    float energy_SN;
+    /*! Cumulative specific internal energy received (radiation pressure has
+        no separate thermal channel). */
+    float energy_supernovae;
     float energy_winds;
 
-    /*! Largest single-event kick velocity received from each channel
-        (outflow diagnostic; the peak coupling velocity near the source,
-        before deceleration) */
-    float max_kick_velocity_SN;
+    /*! Largest single-event kick velocity received (outflow diagnostic). */
+    float max_kick_velocity_supernovae;
     float max_kick_velocity_winds;
     float max_kick_velocity_radiation;
 
@@ -78,16 +76,8 @@ struct tracers_xpart_data {
 /**
  * @brief Per-channel record of a star's own SN events over its lifetime.
  *
- * One event for a discrete (single_star) particle, possibly many for a
- * population particle (star_population/star_population_continuous_IMF)
- * sampled over its life. For a population particle, "event" means an
- * active step with nonzero fractional SN count, not a single discrete
- * explosion: the model spreads its SN injection continuously over an
- * extended window, so density_at_last_event there reads more like "density
- * at the star's last SN-active step" than "density at one specific blast".
- * Density is the star's own kernel-averaged local gas density
- * (feedback_data.enrichment_weight, comoving, converted to physical here),
- * not any one neighbour's.
+ * One event for a discrete star; for a population particle, "event" means
+ * an active SN step (possibly fractional), not one discrete explosion.
  */
 struct tracers_sn_event_data {
 
