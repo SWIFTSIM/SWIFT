@@ -84,7 +84,9 @@ struct feedback_spart_data {
   double f_sum_plus_term[3];
   double f_sum_minus_term[3];
 
-  /*! Sum of the weighted gas properties used to compute terminal momentum */
+  /*! Sums of the |w_j|-weighted comoving gas properties used to compute the
+     terminal momentum. Normalize with feedback_get_weighted_gas_density() and
+     feedback_get_weighted_gas_metallicity(). */
   float weighted_gas_density;
   double weighted_gas_metallicity;
 

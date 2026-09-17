@@ -204,7 +204,16 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
   /* Accumulate w_j norm for later */
   const double w_j_norm_2 = w_j[0] * w_j[0] + w_j[1] * w_j[1] + w_j[2] * w_j[2];
-  si->feedback_data.enrichment_weight += sqrt(w_j_norm_2);
+  const double w_j_norm = sqrt(w_j_norm_2);
+  si->feedback_data.enrichment_weight += w_j_norm;
+
+  /* Weighted sums of the comoving gas properties around the star with our
+     isotropic weighting scheme. Since |w_j_bar| = |w_j| / enrichment_weight,
+     they are normalized in feedback_get_weighted_gas_density() and
+     feedback_get_weighted_gas_metallicity(). */
+  si->feedback_data.weighted_gas_density += w_j_norm * pj->rho;
+  si->feedback_data.weighted_gas_metallicity +=
+      w_j_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
@@ -318,12 +327,6 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
       w_prime_ij_SW * w_j_bar_norm * mj_inv;
   si->feedback_data.accumulator_sn.beta_2 +=
       w_prime_ij_SN * w_j_bar_norm * mj_new_inv;
-
-  /* Compute the comoving weigthed average of the gas properties around the star
-     with our isotropic weighting scheme. */
-  si->feedback_data.weighted_gas_density += w_j_bar_norm * pj->rho;
-  si->feedback_data.weighted_gas_metallicity +=
-      w_j_bar_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
 #endif /*  FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
