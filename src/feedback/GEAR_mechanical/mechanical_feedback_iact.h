@@ -251,15 +251,11 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
      radiated away. Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal / p_ej);
 
+  /* The factor applies in the rest frame of the star, before the boost to the
+     laboratory frame (Hopkins et al. 2018b, Sect. 2.3.2 and eq. 23). */
   for (int i = 0; i < 3; i++) {
-    /* Now, we can compute dp */
     dp[i] *= p_factor;
-
-    /* And the boost to the 'laboratory' frame */
-    dp_ejecta[i] *= p_factor;
-
-    /* Gather all in a variable */
-    dp_prime[i] *= p_factor;
+    dp_prime[i] = dp_ejecta[i] + dp[i];
   }
 
   /* Note: Changing dp_prime after computing the total energy is correct. The
