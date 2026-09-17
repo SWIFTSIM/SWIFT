@@ -175,9 +175,7 @@ void compute_time(struct spart *sp, const int with_cosmology,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
- * @param old_time_bin The star's time bin for the step that just finished
- * (unused: AGORA has the same stale-bin exposure as GEAR, tracked for a
- * separate follow-up fix, not this commit).
+ * @param old_time_bin The star's time bin for the step that just finished.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,

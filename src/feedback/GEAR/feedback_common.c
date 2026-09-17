@@ -73,9 +73,7 @@ float feedback_compute_spart_timestep(
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
- * @param old_time_bin The star's time bin for the step that just finished,
- * captured by the caller before it overwrites sp->time_bin with the next
- * step's bin.
+ * @param old_time_bin The star's time bin for the step that just finished.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
