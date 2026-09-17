@@ -192,6 +192,7 @@ int feedback_should_inject_feedback(const struct spart *sp) {
  */
 void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.enrichment_weight = 0.0;
+  sp->feedback_data.gas_density = 0.0;
   sp->feedback_data.weighted_gas_density = 0.0;
   sp->feedback_data.weighted_gas_metallicity = 0.0;
 
@@ -271,7 +272,23 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const struct phys_const *phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
-                               const int with_cosmology) {}
+                               const int with_cosmology) {
+  /* Add missing h factor */
+  const float hi_inv = 1.f / sp->h;
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  sp->feedback_data.gas_density *= hi_inv_dim;
+}
+
+/**
+ * @brief Get the comoving SPH gas density at the star position.
+ *
+ * Only valid after feedback_prepare_feedback() has been called for this step.
+ *
+ * @param sp The #spart.
+ */
+float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
+  return sp->feedback_data.gas_density;
+}
 
 /**
  * @brief Compute the scalar weight for the feedback. This scalar weight is
@@ -499,7 +516,7 @@ feedback_get_physical_SN_terminal_momentum(
   const double velocity_factor = 1;
 
   /* Get metallicity factor */
-  const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
+  const double Z_mean = feedback_get_weighted_gas_metallicity(sp);
   const double Z_sun = 0.0134;
   const double Z_mean_over_Z_sun = Z_mean / Z_sun;
   double metallicity_factor = 0.0;
@@ -516,7 +533,7 @@ feedback_get_physical_SN_terminal_momentum(
   const double m_p_cgs = phys_const->const_proton_mass *
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   const double density_mean =
-      sp->feedback_data.weighted_gas_density * cosmo->a3_inv *
+      feedback_get_weighted_gas_density(sp) * cosmo->a3_inv *
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
 
   double density_factor = 0.0;
@@ -555,7 +572,7 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
 
   /* Convert to physical units */
   const float mean_density =
-      sp->feedback_data.weighted_gas_density * cosmo->a3_inv;
+      feedback_get_weighted_gas_density(sp) * cosmo->a3_inv;
 
   /* Compute the cooling radius */
   const float p_terminal_2 = p_terminal * p_terminal;

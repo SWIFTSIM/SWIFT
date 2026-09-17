@@ -68,6 +68,8 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
+float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
+
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
 void feedback_clean(struct feedback_props *feedback);

@@ -136,6 +136,17 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 }
 
 /**
+ * @brief Get the comoving SPH gas density at the star position.
+ *
+ * Only valid after feedback_prepare_feedback() has been called for this step.
+ *
+ * @param sp The #spart.
+ */
+float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
+  return sp->feedback_data.enrichment_weight;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
