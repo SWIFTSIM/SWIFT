@@ -32,8 +32,8 @@
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
- * In GEAR, this function does nothing. What we need is the
- * star->density.wcount computed in runner_iact_nonsym_stars_density().
+ * Accumulates the SPH gas density at the star position. The normalization
+ * by 1 / h^d is done in feedback_prepare_feedback().
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -55,18 +55,11 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
-  const float r_max_2 = fb_props->r_max * fb_props->r_max;
-
-  /* If the particle is farther than the maximal radius, it does not receive
-     feedback. Hence, do not count it. */
-  if (r2 > r_max_2) {
-    return;
-  }
-
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
-    return;
-  }
+  const float mj = hydro_get_mass(pj);
+  const float ui = sqrtf(r2) / hi;
+  float wi;
+  kernel_eval(ui, &wi);
+  si->feedback_data.gas_density += mj * wi;
 }
 
 /**

@@ -73,6 +73,9 @@ struct feedback_spart_data {
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
 
+  /*! Comoving SPH gas density at the star position */
+  float gas_density;
+
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
