@@ -283,16 +283,17 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const float mj_new_inv = 1.0 / mj_new;
 
   /* Accumulate (pay attention to the conversions to physical units) */
-  const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
-                         pj->v[2] - si->v[2]};
+  const float v_ij[3] = {xpj->v_full[0] - si->v[0], xpj->v_full[1] - si->v[1],
+                         xpj->v_full[2] - si->v[2]};
 
-  /* Calculate the velocity with the Hubble flow */
+  /* Calculate the velocity with the Hubble flow. The Hubble term is relative
+     wrt the star particle, hence -dx = pj - si for the gas. */
   const float a = cosmo->a;
   const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const float v_ij_plus_H_flow[3] = {
-      a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1], a2H * dx[2] + v_ij[2]};
+      -a2H * dx[0] + v_ij[0], -a2H * dx[1] + v_ij[1], -a2H * dx[2] + v_ij[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
   const float v_ij_p[3] = {v_ij_plus_H_flow[0] * a_inv,
