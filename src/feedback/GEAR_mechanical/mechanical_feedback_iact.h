@@ -135,8 +135,9 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 
   /* The momentum of the gas particle j after receiving the momentum from
    * stellar wind */
-  const double p_new[3] = {mj * v_j_p[0] + dp[0], mj * v_j_p[1] + dp[1],
-                           mj * v_j_p[2] + dp[2]};
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
                               p_new[2] * p_new[2]};
 
@@ -251,15 +252,11 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
      radiated away. Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal / p_ej);
 
+  /* The factor applies in the rest frame of the star, before the boost to the
+     laboratory frame (Hopkins et al. 2018b, Sect. 2.3.2 and eq. 23). */
   for (int i = 0; i < 3; i++) {
-    /* Now, we can compute dp */
     dp[i] *= p_factor;
-
-    /* And the boost to the 'laboratory' frame */
-    dp_ejecta[i] *= p_factor;
-
-    /* Gather all in a variable */
-    dp_prime[i] *= p_factor;
+    dp_prime[i] = dp_ejecta[i] + dp[i];
   }
 
   /* Note: Changing dp_prime after computing the total energy is correct. The
@@ -301,7 +298,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool_2) {
     const float r = sqrt(r2);
-    *dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
+    /* Written with r_cool / r so that r_cool = 0 gives 0, not 0^-6.5 */
+    *dU *= pow(r_cool / r, -(internal_energy_snowplow_exponent));
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
             r_cool);

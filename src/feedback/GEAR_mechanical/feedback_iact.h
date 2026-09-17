@@ -450,12 +450,19 @@ runner_iact_nonsym_feedback_apply(
        Note: Do not give momentum for the isotropy check test. Momentum pushes
        particles too efficiently and then the python face area computations are
        not exacly the same as SWIFT. */
+    float delta_p_mag_winds = 0.f;
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.delta_p[i] += dp_SW[i] * a;
       xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SW[i] * a;
     }
+
+    /* Physical lab-frame momentum given to pj, as in GEAR_thermal winds */
+    delta_p_mag_winds = (float)sqrt(
+        (dp_SW[0] + dp_ejecta_SW[0]) * (dp_SW[0] + dp_ejecta_SW[0]) +
+        (dp_SW[1] + dp_ejecta_SW[1]) * (dp_SW[1] + dp_ejecta_SW[1]) +
+        (dp_SW[2] + dp_ejecta_SW[2]) * (dp_SW[2] + dp_ejecta_SW[2]));
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
     /* Note: This is physical internal energy. See feedback_update_part(). */
@@ -463,17 +470,8 @@ runner_iact_nonsym_feedback_apply(
 
     xpj->feedback_data.delta_E_kin += dKE_SW;
 
-    /* Lifetime-cumulative tracer: physical lab-frame momentum actually given
-       to pj by this channel, before the multiple-event correction f_corr of
-       feedback_update_part(). */
-#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
-    const float delta_p_mag_winds = (float)sqrt(
-        (dp_SW[0] + dp_ejecta_SW[0]) * (dp_SW[0] + dp_ejecta_SW[0]) +
-        (dp_SW[1] + dp_ejecta_SW[1]) * (dp_SW[1] + dp_ejecta_SW[1]) +
-        (dp_SW[2] + dp_ejecta_SW[2]) * (dp_SW[2] + dp_ejecta_SW[2]));
-#else
-    const float delta_p_mag_winds = 0.f;
-#endif
+    /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
+       of feedback_update_part() */
     tracers_gear_accumulate_feedback(
         &xpj->tracers_data.feedback_cumulative.momentum_winds,
         &xpj->tracers_data.feedback_cumulative.energy_winds,
@@ -539,29 +537,30 @@ runner_iact_nonsym_feedback_apply(
        Note: Do not give momentum for the isotropy check test. Momentum pushes
        particles too efficiently and then the python face area computations are
        not exacly the same as SWIFT. */
+    float delta_p_mag_supernovae = 0.f;
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.delta_p[i] += dp_SN[i] * a;
       xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
     }
+
+    /* Physical momentum given to pj in its own frame, as in GEAR_thermal SN.
+       It does not depend on the bulk motion of the star-gas pair. */
+    const double dp_SN_rel[3] = {dp_SN[0] + dm_SN * (v_i_p[0] - v_j_p[0]),
+                                 dp_SN[1] + dm_SN * (v_i_p[1] - v_j_p[1]),
+                                 dp_SN[2] + dm_SN * (v_i_p[2] - v_j_p[2])};
+    delta_p_mag_supernovae =
+        (float)sqrt(dp_SN_rel[0] * dp_SN_rel[0] + dp_SN_rel[1] * dp_SN_rel[1] +
+                    dp_SN_rel[2] * dp_SN_rel[2]);
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU / new_mass;
     xpj->feedback_data.delta_E_kin += dKE;
 
-    /* Lifetime-cumulative tracer: physical lab-frame momentum actually given
-       to pj by this channel, before the multiple-event correction f_corr of
-       feedback_update_part(). */
-#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
-    const float delta_p_mag_supernovae = (float)sqrt(
-        (dp_SN[0] + dp_ejecta_SN[0]) * (dp_SN[0] + dp_ejecta_SN[0]) +
-        (dp_SN[1] + dp_ejecta_SN[1]) * (dp_SN[1] + dp_ejecta_SN[1]) +
-        (dp_SN[2] + dp_ejecta_SN[2]) * (dp_SN[2] + dp_ejecta_SN[2]));
-#else
-    const float delta_p_mag_supernovae = 0.f;
-#endif
+    /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
+       of feedback_update_part() */
     tracers_gear_accumulate_feedback(
         &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
         &xpj->tracers_data.feedback_cumulative.energy_supernovae,

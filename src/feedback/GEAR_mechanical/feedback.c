@@ -80,7 +80,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
       (N_SN > 1 || N_SW > 1)) {
     const float f_corr =
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-            p, xp, old_mass, new_mass);
+            p, xp, cosmo, old_mass, new_mass);
 
     /* Update the xpart accumulated dp from the feedback */
     xp->feedback_data.delta_p[0] *= f_corr;
@@ -234,7 +234,12 @@ void feedback_init_spart(struct spart *sp) {
  * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
-                             const struct feedback_props *feedback_props) {}
+                             const struct feedback_props *feedback_props) {
+  /* Add missing h factor */
+  const float hi_inv = 1.f / sp->h;
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  sp->feedback_data.gas_density *= hi_inv_dim;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -574,6 +579,9 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
   const float mean_density =
       feedback_get_weighted_gas_density(sp) * cosmo->a3_inv;
 
+  /* No gas to cool: every neighbour is outside the cooling radius */
+  if (mean_density <= 0.f) return 0.f;
+
   /* Compute the cooling radius */
   const float p_terminal_2 = p_terminal * p_terminal;
   const float p_SN_initial_2 = p_SN_initial * p_SN_initial;
@@ -601,18 +609,20 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  *
  * @param p The #part to correct.
  * @param xp The #xpart.
+ * @param cosmo The #cosmology.
  * @param old_mass The mass before feeback events.
  * @param new_mass The mass after feeback events.
  */
 __attribute__((always_inline)) INLINE float
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part *p, struct xpart *xp, const float old_mass,
-    const float new_mass) {
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass) {
 
+  /* delta_E_kin is physical, delta_p is comoving */
   const float delta_E_kin = xp->feedback_data.delta_E_kin;
-  const float dp[3] = {xp->feedback_data.delta_p[0],
-                       xp->feedback_data.delta_p[1],
-                       xp->feedback_data.delta_p[2]};
+  const float dp[3] = {xp->feedback_data.delta_p[0] * cosmo->a_inv,
+                       xp->feedback_data.delta_p[1] * cosmo->a_inv,
+                       xp->feedback_data.delta_p[2] * cosmo->a_inv};
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
   /* This is called Delta KE^naive in Hopkins+2023 */
