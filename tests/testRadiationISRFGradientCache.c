@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
     float ref_grad_u_i[3], ref_grad_u_j[3];
     reference_grad(sc, ref_grad_u_i, ref_grad_u_j);
 
-    /* Symmetric dispatch, from the cached coefficients on both sides. */
+    /* Symmetric dispatch, from the cached closure tensor on both sides. */
     struct part p_i = p_i0, p_j = p_j0;
     runner_iact_isrf_gradient(r2, dx, hi, hj, &p_i, &p_j, a, H);
     for (int b = 0; b < ISRF_BAND_COUNT; b++) {
