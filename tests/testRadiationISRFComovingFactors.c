@@ -115,8 +115,8 @@ static void evaluate_operators(float a, float a_factor,
   out->dissipation_u_i = 0.f;
   out->dissipation_u_j = 0.f;
   radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp, alpha_i,
-      alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j, a_factor,
+      wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, alpha_i, alpha_j,
+      /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j, a_factor,
       &out->dissipation_u_i, &out->dissipation_u_j);
 
   /* One flux relaxation step at zero opacity (decay = phi = 1), then the M1

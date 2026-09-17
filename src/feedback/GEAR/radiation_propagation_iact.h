@@ -265,8 +265,8 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
- * @param c_hyp_i Particle i's own hyperbolic propagation speed.
- * @param c_hyp_j Particle j's own hyperbolic propagation speed.
+ * @param c_hyp_min `min(c_hyp_i, c_hyp_j)`, the smaller of both particles' own
+ * hyperbolic propagation speeds.
  * @param alpha_trigger_i Particle i's
  * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
  * @param alpha_trigger_j Particle j's
@@ -287,7 +287,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 __attribute__((always_inline)) INLINE static void
 radiation_dissipation_force_accumulate_band(
     float wi_dr, float wj_dr, float mi, float mj, float rho_i, float rho_j,
-    float c_hyp_i, float c_hyp_j, float alpha_trigger_i, float alpha_trigger_j,
+    float c_hyp_min, float alpha_trigger_i, float alpha_trigger_j,
     float alpha_floor_i, float alpha_floor_j, float u_i, float u_j,
     float a_factor_comoving_to_physical, float *dissipation_u_i,
     float *dissipation_u_j) {
@@ -301,7 +301,7 @@ radiation_dissipation_force_accumulate_band(
   const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
 
   const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
-  const float v_sig_ij = alpha_ij * min(c_hyp_i, c_hyp_j);
+  const float v_sig_ij = alpha_ij * c_hyp_min;
   const float Psi_ij = v_sig_ij * d_ij * Wbar_ij / (rho_i * rho_j) *
                        a_factor_comoving_to_physical;
 
@@ -339,8 +339,8 @@ radiation_dissipation_force_accumulate_band(
  * The closure is split in two steps:
  * #radiation_get_m1_closure_coefficients_band forms `n`, `(1-chi)/2` and
  * `(3chi-1)/2`, and #radiation_build_m1_closure_tensor assembles `D` from them.
- * The gradient loop reads the coefficients cached per particle by
- * #radiation_cache_m1_closure_part and only runs the second step per pair.
+ * The gradient loop reads the tensor cached per particle by
+ * #radiation_cache_m1_closure_part and runs neither step per pair.
  *
  * @param u This band's specific field `u^n` for this particle.
  * @param F This particle's tracked flux (this band).
@@ -414,7 +414,7 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
 }
 
 /**
- * @brief Cache every band's M1 closure coefficients on the particle, from its
+ * @brief Cache every band's M1 closure tensor on the particle, from its
  * current #feedback_isrf_band_data.u, #feedback_isrf_band_data.specific_flux
  * and #feedback_part_data.c_hyp.
  *
@@ -435,9 +435,8 @@ radiation_cache_m1_closure_part(struct part *p) {
   struct feedback_part_data *fd = &p->feedback_data;
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    radiation_get_m1_closure_coefficients_band(
-        band->u, band->specific_flux, fd->c_hyp, band->m1_closure_n,
-        &band->m1_closure_iso, &band->m1_closure_aniso);
+    radiation_get_m1_closure_tensor_band(band->u, band->specific_flux,
+                                         fd->c_hyp, band->m1_closure_D);
   }
 }
 
@@ -477,8 +476,7 @@ radiation_cache_m1_closure_part(struct part *p) {
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param u_i Particle i's specific field `u^n` (this band).
  * @param u_j Particle j's specific field `u^n` (this band).
- * @param D_i Particle i's own M1 closure tensor (this band), assembled by
- * #radiation_build_m1_closure_tensor from its coefficients cached by
+ * @param D_i Particle i's own M1 closure tensor (this band), cached by
  * #radiation_cache_m1_closure_part.
  * @param D_j Particle j's own M1 closure tensor (this band), same source.
  * @param a_factor_comoving_to_physical `1/a`, the file header's single
@@ -677,15 +675,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
     struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-    float D_i[3][3], D_j[3][3];
-    radiation_build_m1_closure_tensor(bi->m1_closure_n, bi->m1_closure_iso,
-                                      bi->m1_closure_aniso, D_i);
-    radiation_build_m1_closure_tensor(bj->m1_closure_n, bj->m1_closure_iso,
-                                      bj->m1_closure_aniso, D_j);
-
     radiation_gradient_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,
-        a_factor_comoving_to_physical, bi->grad_u, bj->grad_u);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u,
+        bi->m1_closure_D, bj->m1_closure_D, a_factor_comoving_to_physical,
+        bi->grad_u, bj->grad_u);
   }
 }
 
@@ -742,15 +735,10 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
      * destination the shared accumulator function requires for j. */
     float unused_grad_u[3] = {0.f, 0.f, 0.f};
 
-    float D_i[3][3], D_j[3][3];
-    radiation_build_m1_closure_tensor(bi->m1_closure_n, bi->m1_closure_iso,
-                                      bi->m1_closure_aniso, D_i);
-    radiation_build_m1_closure_tensor(bj->m1_closure_n, bj->m1_closure_iso,
-                                      bj->m1_closure_aniso, D_j);
-
     radiation_gradient_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,
-        a_factor_comoving_to_physical, bi->grad_u, unused_grad_u);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u,
+        bi->m1_closure_D, bj->m1_closure_D, a_factor_comoving_to_physical,
+        bi->grad_u, unused_grad_u);
   }
 }
 
@@ -801,6 +789,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
+  /* Outside the band loop: the band writes may alias c_hyp for the compiler. */
+  const float c_hyp_min = min(fdi->c_hyp, fdj->c_hyp);
 
   /* Single named conversion factor for every spatial operator below, built
    * once per pair dispatch: see this file's header. */
@@ -816,7 +806,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
         &bi->div_specific_flux, &bj->div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
-        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_hyp_min,
         bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
         bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
         a_factor_comoving_to_physical, &bi->dissipation_u, &bj->dissipation_u);
@@ -867,6 +857,8 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
+  /* Outside the band loop: the band writes may alias c_hyp for the compiler. */
+  const float c_hyp_min = min(fdi->c_hyp, fdj->c_hyp);
 
   /* Single named conversion factor for every spatial operator below, built
    * once per pair dispatch: see this file's header. */
@@ -888,7 +880,7 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
         &bi->div_specific_flux, &unused_div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
-        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_hyp_min,
         bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
         bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
         a_factor_comoving_to_physical, &bi->dissipation_u,
