@@ -20,7 +20,11 @@ solver \citep[Grackle,][]{Smith2017}.
 two radiation energies per unit gas mass, $u_{{\rm FUV},i}$ for the
 $6$--$11.2$\,eV band (the PE band of \citealt{Kim2023}) and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
 ${\rm erg\,g^{-1}}$, sourced by the stars in the simulation and
-attenuated by dust. From them it derives, at every cooling call, the
+attenuated by dust. The code stores the two bands under the internal
+identifiers \code{ISRF\_BAND\_PE} and \code{ISRF\_BAND\_LW}; this document
+keeps calling the first band FUV throughout, and the snapshot I/O fields
+keep the FUV name too (\code{FUVSpecificEnergy}, \code{LWSpecificEnergy}).
+From them it derives, at every cooling call, the
 photoelectric heating strength $G_0$ in Habing units and the H$_2$
 photodissociation rate $k_{\rm diss}$, which Grackle consumes through two
 of its own per-cell input fields (Section~\ref{sec:fuv-coupling}).
@@ -668,12 +672,22 @@ residual described there.
 At every cooling call, the two fields are converted to the quantities
 Grackle expects. The photoelectric heating strength is the band-summed
 energy flux of a quasi-isotropic field, $c\,U$, in Habing units
-\citep{Habing1968},
+\citep{Habing1968}, with each band clamped to non-negative before the
+sum, not the sum clamped afterwards,
 \begin{equation}
-  G_{0,i} = \frac{c\,\rho_i\,(u_{{\rm FUV},i} + u_{{\rm LW},i})}
+  G_{0,i} = \frac{c\,\rho_i\,\big(\max(u_{{\rm FUV},i},0) +
+                 \max(u_{{\rm LW},i},0)\big)}
                  {1.6\times10^{-3}\,{\rm erg\,s^{-1}\,cm^{-2}}} .
   \label{eq:fuv-g0}
 \end{equation}
+Clamping the sum instead would let a negative band, a propagation
+undershoot (Section~\ref{sec:fuv-dissipation}), subtract from the other
+band rather than contribute nothing: on a fixture with one band negative
+and the other positive this delivered $1.50432$ against the unbiased
+$2.00576$, both in Habing units, a $25\%$ suppression that raised no
+warning because the sum itself stayed positive throughout. Mixed sign
+between the two bands is ordinary at source turn-on, not a rare corner
+case, so the two clamps cannot be merged into one on the sum.
 Grackle \citep{Smith2017} applies it as the heating rate of
 \citet[their Eq.~1]{Wolfire1995}, built on the grain photoelectric
 mechanism of \citet{BakesTielens1994}, scaled by the
@@ -1573,4 +1587,28 @@ path.
     The default is not yet chosen on evidence. The H$_2$ cross-section is an effective
     band average with an implicit spectral shape; no quantitative
     accuracy target exists yet for the $G_0$ path.
+  \item \textbf{Multi-source excess noise at high resolution, open.} A
+    lattice of many co-located sources (\texttt{ISRFMultiSourceSuperposition}),
+    checked outside every star's own kernel to probe the many-source
+    branch flagged untested above, agrees with the continuum
+    free-streaming prediction at a coarser gas resolution and does not at
+    a finer one: the second moment of $u$ runs $0.349$/$0.360$
+    (root-mean-square of $u/\langle u\rangle-1$, FUV/LW) against a
+    continuum prediction of $0.028$/$0.047$, about $12\times$ high in FUV
+    and $8\times$ in LW, and keeps changing from snapshot to snapshot
+    rather than settling, while the first moment $\langle u\rangle$
+    agrees with the prior implementation to four to six significant
+    figures. At the finer resolution the flux is pinned by the limiter
+    for essentially all of that outside-kernel gas ($99.75\%$ FUV,
+    $98.84\%$ LW), so the flux-relaxation-residual gate of
+    Eq.~\ref{eq:fuv-diss-gate} saturates at $s=1$ there, for the reason
+    already given in Section~\ref{sec:fuv-dissipation}: a limiter-pinned
+    flux never reaches the unlimited fixed point. That saturation is neither
+    necessary nor sufficient for the excess noise: removing the floor,
+    and removing the floor and the trigger together, both still fail the
+    fixture and make every other diagnostic worse (the second moment,
+    the step-to-step variation of $u$, and positivity all degrade
+    further), while forcing the same saturated coefficient onto the
+    coarser resolution leaves it passing and improves every diagnostic
+    there. The excess noise's own cause remains under investigation.
 \end{itemize}
