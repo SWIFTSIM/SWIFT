@@ -176,6 +176,8 @@ void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
   radiation_snapshot_part_propagation(p, e);
   radiation_reset_part_ISRF_illumination_tag(p, e);
+  /* Must stay after the tag reset: expiring an ISRF tag can zero `u`, and the
+   * cache below must read that post-expiry value. */
   radiation_cache_m1_closure_part(p);
 }
 

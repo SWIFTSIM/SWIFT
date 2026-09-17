@@ -477,9 +477,10 @@ radiation_cache_m1_closure_part(struct part *p) {
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param u_i Particle i's specific field `u^n` (this band).
  * @param u_j Particle j's specific field `u^n` (this band).
- * @param D_i Particle i's own M1 closure tensor (this band), from
- * #radiation_get_m1_closure_tensor_band.
- * @param D_j Particle j's own M1 closure tensor (this band).
+ * @param D_i Particle i's own M1 closure tensor (this band), assembled by
+ * #radiation_build_m1_closure_tensor from its coefficients cached by
+ * #radiation_cache_m1_closure_part.
+ * @param D_j Particle j's own M1 closure tensor (this band), same source.
  * @param a_factor_comoving_to_physical `1/a`, the file header's single
  * conversion factor: folded into `fac_i`/`fac_j` so both accumulators come
  * out physical.
