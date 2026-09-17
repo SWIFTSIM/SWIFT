@@ -101,6 +101,41 @@ struct tracers_sn_event_data {
 };
 
 /**
+ * @brief Record of a star's own stellar-wind budget over its lifetime.
+ *
+ * Winds are continuous, so the unit of record is an injection step: a
+ * timestep whose wind budget the star hands to its gas neighbours. All
+ * cumulative quantities are the budget the star ejected, counted once per
+ * star per step, not a sum over the receiving gas.
+ */
+struct tracers_winds_data {
+
+  /*! Cumulative mass ejected by winds (internal units). */
+  double mass_ejected;
+
+  /*! Cumulative wind energy ejected, after the winds efficiency factor
+      (physical internal units). */
+  double energy_ejected;
+
+  /*! Cumulative wind momentum magnitude, sqrt(2 m_ej E_ej) per step, in the
+      star's rest frame (physical internal units). */
+  double momentum_ejected;
+
+  /*! Number of injection steps so far */
+  int n_injection_steps;
+
+  /*! Density at the most recent injection step, physical internal units */
+  float density_at_last_injection;
+
+  /*! Scale-factor (cosmological runs) or time (non-cosmological), of the
+      most recent injection step */
+  union {
+    float last_injection_scale_factor;
+    float last_injection_time;
+  };
+};
+
+/**
  * @brief Properties of the tracers stored in the star particle data.
  *
  */
@@ -115,6 +150,9 @@ struct tracers_spart_data {
   /*! SN event tracers, one per channel */
   struct tracers_sn_event_data snii_events;
   struct tracers_sn_event_data snia_events;
+
+  /*! Stellar-wind injection tracers */
+  struct tracers_winds_data winds;
 };
 
 /**
