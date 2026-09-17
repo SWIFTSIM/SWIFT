@@ -336,6 +336,68 @@ radiation_dissipation_force_accumulate_band(
  * `F2`, so `F2 > 0` in double is exactly `F != 0`. `n` and the closure
  * coefficients are O(1) and stay in float.
  *
+ * The closure is split in two steps:
+ * #radiation_get_m1_closure_coefficients_band forms `n`, `(1-chi)/2` and
+ * `(3chi-1)/2`, and #radiation_build_m1_closure_tensor assembles `D` from them.
+ * The gradient loop reads the coefficients cached per particle by
+ * #radiation_cache_m1_closure_part and only runs the second step per pair.
+ *
+ * @param u This band's specific field `u^n` for this particle.
+ * @param F This particle's tracked flux (this band).
+ * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param n (return) The flux direction `F/|F|`, zero at `F = 0`.
+ * @param iso_coeff (return) `(1-chi)/2`.
+ * @param aniso_coeff (return) `(3chi-1)/2`.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_m1_closure_coefficients_band(float u, const float F[3], float c_M,
+                                           float n[3], float *iso_coeff,
+                                           float *aniso_coeff) {
+
+  const double F2 = (double)F[0] * (double)F[0] + (double)F[1] * (double)F[1] +
+                    (double)F[2] * (double)F[2];
+  const double F_inv = (F2 > 0.) ? 1. / sqrt(F2) : 0.;
+  const double Fmag = F2 * F_inv; /* sqrt(F2), no second sqrt call */
+  n[0] = (float)(F[0] * F_inv);
+  n[1] = (float)(F[1] * F_inv);
+  n[2] = (float)(F[2] * F_inv);
+
+  const double denom = (double)c_M * (double)u;
+  const float f = (denom > 0.) ? (float)min(Fmag / denom, 1.) : 0.f;
+
+  const float sq = 4.f - 3.f * f * f;
+  const float chi = (3.f + 4.f * f * f) / (5.f + 2.f * sqrtf(sq));
+
+  *iso_coeff = 0.5f * (1.f - chi);
+  *aniso_coeff = 0.5f * (3.f * chi - 1.f);
+}
+
+/**
+ * @brief Assemble the M1 closure tensor
+ * `D = iso_coeff I + aniso_coeff (n dyadic n)` from the coefficients of
+ * #radiation_get_m1_closure_coefficients_band.
+ *
+ * @param n The flux direction.
+ * @param iso_coeff `(1-chi)/2`.
+ * @param aniso_coeff `(3chi-1)/2`.
+ * @param D (return) The 3x3 closure tensor.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_build_m1_closure_tensor(const float n[3], float iso_coeff,
+                                  float aniso_coeff, float D[3][3]) {
+
+  for (int a = 0; a < 3; a++) {
+    D[a][0] = aniso_coeff * n[a] * n[0];
+    D[a][1] = aniso_coeff * n[a] * n[1];
+    D[a][2] = aniso_coeff * n[a] * n[2];
+    D[a][a] += iso_coeff;
+  }
+}
+
+/**
+ * @brief M1 closure tensor `D(f)` for one particle, one band, computed from
+ * scratch. See #radiation_get_m1_closure_coefficients_band.
+ *
  * @param u This band's specific field `u^n` for this particle.
  * @param F This particle's tracked flux (this band).
  * @param c_M This particle's own #feedback_part_data.c_hyp.
@@ -345,27 +407,37 @@ __attribute__((always_inline)) INLINE static void
 radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
                                      float D[3][3]) {
 
-  const double F2 = (double)F[0] * (double)F[0] + (double)F[1] * (double)F[1] +
-                    (double)F[2] * (double)F[2];
-  const double F_inv = (F2 > 0.) ? 1. / sqrt(F2) : 0.;
-  const double Fmag = F2 * F_inv; /* sqrt(F2), no second sqrt call */
-  const float n[3] = {(float)(F[0] * F_inv), (float)(F[1] * F_inv),
-                      (float)(F[2] * F_inv)};
+  float n[3], iso_coeff, aniso_coeff;
+  radiation_get_m1_closure_coefficients_band(u, F, c_M, n, &iso_coeff,
+                                             &aniso_coeff);
+  radiation_build_m1_closure_tensor(n, iso_coeff, aniso_coeff, D);
+}
 
-  const double denom = (double)c_M * (double)u;
-  const float f = (denom > 0.) ? (float)min(Fmag / denom, 1.) : 0.f;
+/**
+ * @brief Cache every band's M1 closure coefficients on the particle, from its
+ * current #feedback_isrf_band_data.u, #feedback_isrf_band_data.specific_flux
+ * and #feedback_part_data.c_hyp.
+ *
+ * Must run after the last write of those three fields that precedes a
+ * gradient loop reading the particle. The drift-time reset
+ * (feedback_reset_part) satisfies this for active and inactive particles
+ * alike: it runs for every particle of a drifted cell, it writes `c_hyp`,
+ * every cell a gradient task reads is drifted first, and `u` and `F` are
+ * only written after the gradient loop (end-force ghost, extra ghost) or at
+ * the end of the step (star injection). First init must also call it: the
+ * initial ti = 0 pass reaches the gradient loop without a drift.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_cache_m1_closure_part(struct part *p) {
 
-  const float sq = 4.f - 3.f * f * f;
-  const float chi = (3.f + 4.f * f * f) / (5.f + 2.f * sqrtf(sq));
-
-  const float iso_coeff = 0.5f * (1.f - chi);
-  const float aniso_coeff = 0.5f * (3.f * chi - 1.f);
-
-  for (int a = 0; a < 3; a++) {
-    D[a][0] = aniso_coeff * n[a] * n[0];
-    D[a][1] = aniso_coeff * n[a] * n[1];
-    D[a][2] = aniso_coeff * n[a] * n[2];
-    D[a][a] += iso_coeff;
+  struct feedback_part_data *fd = &p->feedback_data;
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
+    radiation_get_m1_closure_coefficients_band(
+        band->u, band->specific_flux, fd->c_hyp, band->m1_closure_n,
+        &band->m1_closure_iso, &band->m1_closure_aniso);
   }
 }
 
@@ -405,9 +477,10 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param u_i Particle i's specific field `u^n` (this band).
  * @param u_j Particle j's specific field `u^n` (this band).
- * @param D_i Particle i's own M1 closure tensor (this band), from
- * #radiation_get_m1_closure_tensor_band.
- * @param D_j Particle j's own M1 closure tensor (this band).
+ * @param D_i Particle i's own M1 closure tensor (this band), assembled by
+ * #radiation_build_m1_closure_tensor from its coefficients cached by
+ * #radiation_cache_m1_closure_part.
+ * @param D_j Particle j's own M1 closure tensor (this band), same source.
  * @param a_factor_comoving_to_physical `1/a`, the file header's single
  * conversion factor: folded into `fac_i`/`fac_j` so both accumulators come
  * out physical.
@@ -605,10 +678,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
     float D_i[3][3], D_j[3][3];
-    radiation_get_m1_closure_tensor_band(bi->u, bi->specific_flux, fdi->c_hyp,
-                                         D_i);
-    radiation_get_m1_closure_tensor_band(bj->u, bj->specific_flux, fdj->c_hyp,
-                                         D_j);
+    radiation_build_m1_closure_tensor(bi->m1_closure_n, bi->m1_closure_iso,
+                                      bi->m1_closure_aniso, D_i);
+    radiation_build_m1_closure_tensor(bj->m1_closure_n, bj->m1_closure_iso,
+                                      bj->m1_closure_aniso, D_j);
 
     radiation_gradient_accumulate_band(
         dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,
@@ -670,10 +743,10 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
     float unused_grad_u[3] = {0.f, 0.f, 0.f};
 
     float D_i[3][3], D_j[3][3];
-    radiation_get_m1_closure_tensor_band(bi->u, bi->specific_flux, fdi->c_hyp,
-                                         D_i);
-    radiation_get_m1_closure_tensor_band(bj->u, bj->specific_flux, fdj->c_hyp,
-                                         D_j);
+    radiation_build_m1_closure_tensor(bi->m1_closure_n, bi->m1_closure_iso,
+                                      bi->m1_closure_aniso, D_i);
+    radiation_build_m1_closure_tensor(bj->m1_closure_n, bj->m1_closure_iso,
+                                      bj->m1_closure_aniso, D_j);
 
     radiation_gradient_accumulate_band(
         dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u, D_i, D_j,

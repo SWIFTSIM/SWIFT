@@ -40,6 +40,7 @@
 #include "physical_constants.h"
 #include "radiation.h"
 #include "radiation_isrf.h"
+#include "radiation_propagation_iact.h"
 #include "timeline.h"
 
 #include <float.h>
@@ -119,6 +120,7 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->dt_prev = 0.f;
   fd->ISRF_reservoir_end_ti = -1;
   radiation_init_part_propagation(p);
+  radiation_cache_m1_closure_part(p);
 }
 
 /**
