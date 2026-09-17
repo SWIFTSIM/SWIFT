@@ -37,7 +37,7 @@ INLINE static void black_holes_read_particles(struct bpart *bparts,
                                               int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
