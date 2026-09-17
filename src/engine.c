@@ -1947,11 +1947,12 @@ void engine_launch(struct engine *e, const char *call) {
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
 
+  /* Load the tasks before releasing the runners, or pop order races the queue
+   * fill and runs are not reproducible. */
+  scheduler_start(&e->sched);
+
   /* Cry havoc and let loose the dogs of war. */
   swift_barrier_wait(&e->run_barrier);
-
-  /* Load the tasks. */
-  scheduler_start(&e->sched);
 
   /* Remove the safeguard. */
   pthread_mutex_lock(&e->sched.sleep_mutex);
