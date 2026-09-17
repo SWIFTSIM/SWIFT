@@ -63,10 +63,14 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update the density */
   p->rho *= new_mass / old_mass;
 
-  /* Update internal energy */
+  /* Update internal energy. The feedback can remove internal energy, e.g.
+     when the gas recedes from the star, so keep it above the hydro floor. The
+     comparison is explicit: a clamp does not shield a non-finite value. */
   const float u =
       hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
-  const float u_new = u + xp->feedback_data.delta_u;
+  const float u_min = e->hydro_properties->minimal_internal_energy;
+  const float u_feedback = u + xp->feedback_data.delta_u;
+  const float u_new = (u_feedback > u_min) ? u_feedback : u_min;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);

@@ -382,9 +382,12 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     dp_ejecta[i] = dm * v_i_p[i];
   }
 
-  /* ... physical internal energy */
+  /* ... physical internal energy. With psi = xsi = 1, U_tot is the energy
+     dissipated in the inelastic collision between the ejecta and the gas,
+     epsilon * sum_j w'_j |v_ij_p / v_ej - w_j_bar_hat|^2, hence positive. The
+     max() only absorbs the rounding of the float accumulators. */
   const double f_therm = beta_2 + 2.0 * beta_1;
-  const double U_tot = E_tot - f_therm * epsilon;
+  const double U_tot = max(E_tot - f_therm * epsilon, 0.0);
   *dU = w_j_bar_norm * U_tot;
 
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
