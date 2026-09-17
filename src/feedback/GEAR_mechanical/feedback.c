@@ -234,7 +234,12 @@ void feedback_init_spart(struct spart *sp) {
  * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
-                             const struct feedback_props *feedback_props) {}
+                             const struct feedback_props *feedback_props) {
+  /* Add missing h factor */
+  const float hi_inv = 1.f / sp->h;
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  sp->feedback_data.gas_density *= hi_inv_dim;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
