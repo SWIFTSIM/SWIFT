@@ -463,7 +463,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "CumulativeWindsMassEjected", DOUBLE, 1, UNIT_CONV_MASS, 0.f, sparts,
       tracers_data.winds.mass_ejected,
       "Mass this star ejected by stellar winds over its lifetime so far, "
-      "counted once per injection step from the star's own budget.");
+      "counted once per injection step from the star's own budget, but only "
+      "for a step whose preceding step left the star with gas neighbours; "
+      "the star's mass budget is spent regardless, so this undercounts the "
+      "star's true total wind mass loss whenever a step had none.");
 
   list[9] = io_make_physical_output_field(
       "CumulativeWindsEnergyEjected", DOUBLE, 1, UNIT_CONV_ENERGY, 0.f, sparts,
@@ -477,7 +480,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       sparts, tracers_data.winds.momentum_ejected,
       /*can convert to comoving=*/0,
       "Sum over injection steps of the wind momentum budget sqrt(2 m_ej E_ej), "
-      "in the star's rest frame. Excludes the m_ej v_star term that the gas "
+      "in the star's rest frame (scalar sum, not vector: isotropic ejecta "
+      "would else cancel). Excludes the m_ej v_star term that the gas "
       "CumulativeMomentumFromWinds includes.");
 
   list[11] = io_make_output_field(
@@ -490,8 +494,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "DensityAtLastWindInjection", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.winds.density_at_last_injection,
       /*can convert to comoving=*/0,
-      "Gas density at the star's location at its most recent wind injection "
-      "step. 0 if it has never had one.");
+      "Gas density at the star's location during the step before its most "
+      "recent wind injection, not during the injection step itself: the "
+      "budget is prepared from that preceding step's gas neighbours and "
+      "distributed starting the step after. 0 if it has never had one.");
 
   if (with_cosmology) {
     list[13] = io_make_physical_output_field(

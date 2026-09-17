@@ -355,7 +355,10 @@ static INLINE void tracers_gear_update_winds(struct tracers_winds_data *w,
                                              const struct cosmology *cosmo,
                                              const double time) {
 
-  if (energy_ejected == 0. || comoving_density <= 0.f) return;
+  /* Both budgets must be non-negative: a negative pair still yields a
+     positive sqrt(2 m E). */
+  if (energy_ejected <= 0. || mass_ejected < 0. || comoving_density <= 0.f)
+    return;
 
   /* Same once-per-active-star-per-step assumption as
      tracers_gear_update_sn_event(). */
