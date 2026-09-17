@@ -230,14 +230,6 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   const float norm2_v_j_p =
       v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
-  /* ... physical total energy */
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-                                 dp_prime[1] * dp_prime[1] +
-                                 dp_prime[2] * dp_prime[2];
-  const double dE = w_j_bar_norm * E_ej;
-  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) * dm_inv;
-
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion. If we cannot resolve this phase, we give mostly
      momentum. The thermal energy will be radiated away because of cooling. */
@@ -259,13 +251,15 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     dp_prime[i] = dp_ejecta[i] + dp[i];
   }
 
-  /* Note: Changing dp_prime after computing the total energy is correct. The
-     total energy does not specify how much energy goes into kinetic and
-     internal form. The p_factor changes the ratio: the energy that goes into
-     the PdV work (thus increasing the momentum and kinetic energy) is
-     automatically transformed from thermal to kinetic energy.
-     However, to compute the total kinetic energy, we need to use the updated
-     dp_prime. */
+  /* ... physical total energy. The coupled momentum is the one after the
+     PdV work, so the change of frame uses it too. The p_factor does not
+     change the total energy: it moves thermal energy into kinetic energy. */
+  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
+                                 dp_prime[1] * dp_prime[1] +
+                                 dp_prime[2] * dp_prime[2];
+  const double dE = w_j_bar_norm * E_ej;
+  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) * dm_inv;
 
   /* ... physical internal energy */
   /* Compute kinetic energy difference before and after SN */
