@@ -265,8 +265,8 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
- * @param c_hyp_i Particle i's own hyperbolic propagation speed.
- * @param c_hyp_j Particle j's own hyperbolic propagation speed.
+ * @param c_hyp_min `min(c_hyp_i, c_hyp_j)`, the smaller of both particles' own
+ * hyperbolic propagation speeds.
  * @param alpha_trigger_i Particle i's
  * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
  * @param alpha_trigger_j Particle j's
@@ -287,7 +287,7 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 __attribute__((always_inline)) INLINE static void
 radiation_dissipation_force_accumulate_band(
     float wi_dr, float wj_dr, float mi, float mj, float rho_i, float rho_j,
-    float c_hyp_i, float c_hyp_j, float alpha_trigger_i, float alpha_trigger_j,
+    float c_hyp_min, float alpha_trigger_i, float alpha_trigger_j,
     float alpha_floor_i, float alpha_floor_j, float u_i, float u_j,
     float a_factor_comoving_to_physical, float *dissipation_u_i,
     float *dissipation_u_j) {
@@ -301,7 +301,7 @@ radiation_dissipation_force_accumulate_band(
   const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
 
   const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
-  const float v_sig_ij = alpha_ij * min(c_hyp_i, c_hyp_j);
+  const float v_sig_ij = alpha_ij * c_hyp_min;
   const float Psi_ij = v_sig_ij * d_ij * Wbar_ij / (rho_i * rho_j) *
                        a_factor_comoving_to_physical;
 
@@ -801,6 +801,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
+  /* Outside the band loop: the band writes may alias c_hyp for the compiler. */
+  const float c_hyp_min = min(fdi->c_hyp, fdj->c_hyp);
 
   /* Single named conversion factor for every spatial operator below, built
    * once per pair dispatch: see this file's header. */
@@ -816,7 +818,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
         &bi->div_specific_flux, &bj->div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
-        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_hyp_min,
         bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
         bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
         a_factor_comoving_to_physical, &bi->dissipation_u, &bj->dissipation_u);
@@ -867,6 +869,8 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
+  /* Outside the band loop: the band writes may alias c_hyp for the compiler. */
+  const float c_hyp_min = min(fdi->c_hyp, fdj->c_hyp);
 
   /* Single named conversion factor for every spatial operator below, built
    * once per pair dispatch: see this file's header. */
@@ -888,7 +892,7 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
         &bi->div_specific_flux, &unused_div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
-        wi_dr, wj_dr, mi, mj, rho_i, rho_j, fdi->c_hyp, fdj->c_hyp,
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_hyp_min,
         bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
         bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
         a_factor_comoving_to_physical, &bi->dissipation_u,
