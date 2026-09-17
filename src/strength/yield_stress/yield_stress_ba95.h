@@ -150,6 +150,24 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
+ * @brief Check the yield criterion.
+ *
+ * Yield criterion sqrt(3 J_2) >= Y, evaluated as 3 J_2 >= Y^2 (Y is positive).
+ * Returns 1 if the stress is on or beyond the yield surface, 0 if it is inside.
+ *
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param yield_stress The yield stress.
+ */
+__attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
+    struct sym_matrix deviatoric_stress_tensor, const float yield_stress) {
+
+  const float J_2 =
+      strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
+
+  return 3.f * J_2 >= yield_stress * yield_stress;
+}
+
+/**
  * @brief Apply the yield stress to a symmetric matrix.
  *
  * ### Something about yield criterion

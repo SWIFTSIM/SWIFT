@@ -134,24 +134,38 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_end_force_strength(struct part *restrict p) {
 
- /* Update dS/dt for timestep. */
- stress_tensor_compute_dS_dt(p, p->strength_data.dv_force_loop);
+  /* Compute strain rate and rotation rate. */
+  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3];
+  strength_compute_strain_rate_tensor(strain_rate_tensor, p->strength_data.dv_force_loop);
+  strength_compute_rotation_rate_tensor(rotation_rate_tensor, p->strength_data.dv_force_loop);
+  get_sym_matrix_from_matrix(&p->strength_data.strain_rate_tensor, strain_rate_tensor);
+
+  /* Update dS/dt for timestep. */
+  stress_tensor_compute_dS_dt(p, strain_rate_tensor, rotation_rate_tensor);
 
   /* Get quantities needed for dD/dt calculation. */
   const int mat_id = p->mat_id;
+  const int phase = p->phase;
   const float mass = p->mass;
   const float density = p->strength_data.rho_evol;
   const float u = p->u;
   const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
+  const float yield_stress =
+      yield_compute_yield_stress(mat_id, phase, density, pressure, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
 
   struct sym_matrix stress_tensor = {0};
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
+  const int is_above_yield_criterion =
+      yield_check_yield_criterion(deviatoric_stress_tensor, yield_stress);
+
   /* Update damage accumulation timescale for timestep. */
-  damage_compute_timescale(p, stress_tensor, mat_id, mass, density, u);
+  damage_compute_timescale(p, stress_tensor, p->strength_data.strain_rate_tensor,
+                           is_above_yield_criterion,
+                           mat_id, mass, density, pressure);
 }
 
 /**
@@ -202,9 +216,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
-  // ### Since I have to calc dD/d now for timesteps, could this just use p->dD/dt?
+  const int is_above_yield_criterion =
+      yield_check_yield_criterion(deviatoric_stress_tensor, yield_stress);
+
   /* Evolve damage. */
-  damage_predict_evolve(p, stress_tensor, mat_id, mass, density, u, dt_therm);
+  damage_predict_evolve(p, stress_tensor, p->strength_data.strain_rate_tensor,
+                        is_above_yield_criterion,
+                        mat_id, mass, density, pressure, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase, dt_therm);
@@ -282,8 +300,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
+  const int is_above_yield_criterion =
+      yield_check_yield_criterion(deviatoric_stress_tensor, yield_stress);
+
   /* Evolve damage. */
-  damage_kick_evolve(p, xp, stress_tensor, mat_id, mass, density, u, dt_therm);
+  damage_kick_evolve(p, xp, stress_tensor, p->strength_data.strain_rate_tensor,
+                     is_above_yield_criterion,
+                     mat_id, mass, density, pressure, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase, dt_therm);

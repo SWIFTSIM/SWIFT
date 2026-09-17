@@ -166,16 +166,14 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
  * ### Description of how this ties in with Hooke's law
  *
  * @param p The particle of interest.
- * @param dv The velocity gradient dv/dr.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param rotation_rate_tensor The rotation rate tensor.
  */
-__attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(struct part *restrict p, const float dv[3][3]) {
+__attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
+    struct part *restrict p, const float strain_rate_tensor[3][3],
+    const float rotation_rate_tensor[3][3]) {
 
   const float shear_mod = material_shear_mod(p->mat_id);
-  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
-
-  /* Compute strain rate and rotation rate. */
-  strength_compute_strain_rate_tensor(strain_rate_tensor, dv);
-  strength_compute_rotation_rate_tensor(rotation_rate_tensor, dv);
 
   /* Convert deviatoric stress to 3x3 float to compute the rotation term . */
   float deviatoric_stress_tensor[3][3];
@@ -183,6 +181,7 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(st
                              &p->strength_data.deviatoric_stress_tensor);
 
   /* Compute rotation term. */
+  float rotation_term[3][3];
   strength_compute_rotation_term(rotation_term, rotation_rate_tensor,
                                  deviatoric_stress_tensor);
 

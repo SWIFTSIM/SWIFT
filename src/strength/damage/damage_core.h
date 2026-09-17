@@ -70,11 +70,7 @@ __attribute__((always_inline)) INLINE static void strength_set_damage_full(struc
 }
 
 /**
- * @brief Computes the damage time-step of a given particle
- *
- * Calculates a time-step based on the particle's rate of damage accumulation.
- * If this time-step is smaller than dt_cfl, dt_cfl gets overwritten to this
- * damage time-step.
+ * @brief Limits the time-step by the damage time-step.
  *
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
@@ -82,12 +78,7 @@ __attribute__((always_inline)) INLINE static void strength_set_damage_full(struc
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
     float *dt_cfl, const struct part *restrict p) {
 
-  const float damage_accumulation_timescale = p->strength_data.damage_accumulation_timescale;
-  const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL
-
-  if (*dt_cfl > damage_timestep_factor * damage_accumulation_timescale) {
-    *dt_cfl = damage_timestep_factor * damage_accumulation_timescale;
-  }
+  *dt_cfl = fminf(*dt_cfl, p->strength_data.dt_damage);
 }
 
 /**
@@ -140,22 +131,27 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param shear_damage The shear damage.
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
     float *damage, float *tensile_damage, float *shear_damage, struct part *restrict p,
-    const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {
+    const struct sym_matrix stress_tensor, const struct sym_matrix strain_rate_tensor,
+    const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {
 
   /* Evolve tensile damage. */
   damage_tensile_evolve(tensile_damage, p, stress_tensor, mat_id, mass, density, *damage, dt_therm);
 
   /* Evolve shear damage. */
-  damage_shear_evolve(shear_damage, p, mat_id, density, u);
+  damage_shear_evolve(shear_damage, is_above_yield_criterion, strain_rate_tensor,
+                      mat_id, pressure, dt_therm);
 
   /* Combine sources of damage. */
   *damage = fminf(*tensile_damage + *shear_damage, 1.f);
@@ -166,15 +162,19 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {
 
   /* Damage parameters set to values at drift time. */
   float damage = strength_get_damage(p);
@@ -182,8 +182,9 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
   float shear_damage = damage_get_shear_damage(p);
 
   /* Evolve damage. */
-  damage_evolve(&damage, &tensile_damage, &shear_damage, p,
-                  stress_tensor, mat_id, mass, density, u, dt_therm);
+  damage_evolve(&damage, &tensile_damage, &shear_damage, p, stress_tensor,
+                strain_rate_tensor, is_above_yield_criterion,
+                mat_id, mass, density, pressure, dt_therm);
 
   /* Update damage particle properties. */
   strength_set_damage(p, damage);
@@ -197,15 +198,19 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {
 
   /* Damage parameters set to values at kick time. */
   float damage = strength_get_damage_full(xp);
@@ -213,8 +218,9 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
   float shear_damage = damage_get_shear_damage_full(xp);
 
   /* Evolve damage. */
-  damage_evolve(&damage, &tensile_damage, &shear_damage, p,
-                  stress_tensor,  mat_id, mass, density, u, dt_therm);
+  damage_evolve(&damage, &tensile_damage, &shear_damage, p, stress_tensor,
+                strain_rate_tensor, is_above_yield_criterion,
+                mat_id, mass, density, pressure, dt_therm);
 
   /* Update damage particle properties. */
   strength_set_damage_full(xp, damage);
@@ -223,54 +229,68 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
 }
 
 /**
- * @brief Calculate timescale of damage accumulation.
+ * @brief Calculate the damage time-step.
+ *
+ * The time for damage to grow by damage_timestep_factor.
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u) {
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure) {
+
+  /* Growth in damage used to set the time-step. */
+  const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL in yaml
 
   /* Damage parameters set to values at drift time. */
-  const float tensile_damage = damage_get_tensile_damage(p);
   const float damage = strength_get_damage(p);
+  const float tensile_damage = damage_get_tensile_damage(p);
+  const float shear_damage = damage_get_shear_damage(p);
 
-  /* If full tensile damage or full damage, no accumulation. */
-  if (tensile_damage == 1.f || damage == 1.f) {
-      p->strength_data.damage_accumulation_timescale = FLT_MAX;
-      return;
+  float dt_damage = FLT_MAX;
+
+  /* Further damage accumulation has no effect on fully damaged material. */
+  if (damage >= 1.f) {
+    p->strength_data.dt_damage = dt_damage;
+    return;
   }
 
-  /* Compute tensile contribution. */
-  float tensile_cbrtD_dt = 0.f;
-  int number_of_activated_flaws = 0;
-  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt,
-                                  &number_of_activated_flaws,
-                                  p->strength_data.number_of_flaws,
-                                  p->strength_data.activation_thresholds,
-                                  stress_tensor,
-                                  mat_id,
-                                  mass,
-                                  density,
-                                  damage); // ### Should this be damage or tensile_damage?
+  /* Tensile contribution. */
+  if (tensile_damage < 1.f) {
+    float tensile_cbrtD_dt = 0.f;
+    int number_of_activated_flaws = 0;
+    damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws,
+                                    p, stress_tensor, mat_id, mass, density,
+                                    damage); // ### Should this be damage or tensile_damage?
 
-  /* If no active flaws or zero accumulation, no timescale. */
-  if (tensile_cbrtD_dt <= 0.f || number_of_activated_flaws == 0) {
-      p->strength_data.damage_accumulation_timescale = FLT_MAX;
-      return;
+    /* Tensile evolves cbrt(D), so a growth of damage_timestep_factor in D
+     * corresponds to this growth in cbrt(D). */
+    if (tensile_cbrtD_dt > 0.f) {
+      const float Delta_cbrtD =
+          cbrtf(tensile_damage + damage_timestep_factor) - cbrtf(tensile_damage);
+      dt_damage = fminf(dt_damage, Delta_cbrtD / tensile_cbrtD_dt);
+    }
   }
 
-  /* Compute the limiting timescale for tensile damage accumulation. */
-  const float damage_scale = 1.f;
-  p->strength_data.damage_accumulation_timescale = damage_scale / tensile_cbrtD_dt;
+  /* Shear contribution. */
+  float shear_dD_dt = 0.f;
+  damage_shear_compute_dD_dt(&shear_dD_dt, is_above_yield_criterion,
+                             strain_rate_tensor, mat_id, pressure, shear_damage);
 
-  // ### If we also have a shear damage timescale, we would need to compute that and then take the minimum of the two timescales here.
-  // ### That might be harder to do because of the way the delta damage is calculated directly rather than a time drivative
+  /* The shear model evolves D directly. */
+  if (shear_dD_dt > 0.f) {
+    dt_damage = fminf(dt_damage, damage_timestep_factor / shear_dD_dt);
+  }
+
+  p->strength_data.dt_damage = dt_damage;
 }
 
 /**

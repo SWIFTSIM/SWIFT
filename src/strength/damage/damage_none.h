@@ -104,31 +104,39 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param shear_damage The shear damage.
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
     float *damage, float *tensile_damage, float *shear_damage, struct part *restrict p,
-    const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
+    const struct sym_matrix stress_tensor, const struct sym_matrix strain_rate_tensor,
+    const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the drift
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the kick
@@ -136,30 +144,36 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure,
+    const float dt_therm) {}
 
 /**
- * @brief Calculate timescale of damage accumulation.
+ * @brief Calculate the damage time-step.
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
+ * @param strain_rate_tensor The strain rate tensor.
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, const struct sym_matrix stress_tensor,
-    const int mat_id, const float mass, const float density, const float u) {}
-
+    const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
+    const int mat_id, const float mass, const float density, const float pressure) {}
 /**
  * @brief Initialises the damage properties for the first time
  *

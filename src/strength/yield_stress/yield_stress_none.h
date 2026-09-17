@@ -145,6 +145,20 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
+ * @brief Check the yield criterion.
+ *
+ * With no yield stress method, there is no yield surface.
+ *
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param yield_stress The yield stress.
+ */
+__attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
+    struct sym_matrix deviatoric_stress_tensor, const float yield_stress) {
+
+  return 0;
+}
+
+/**
  * @brief Apply the yield stress to a symmetric matrix.
  *
  * Empty function when configuring without yield stress method.
