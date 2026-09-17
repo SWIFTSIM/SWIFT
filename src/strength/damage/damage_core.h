@@ -248,7 +248,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     const int mat_id, const float mass, const float density, const float pressure) {
 
   /* Growth in damage used to set the time-step. */
-  const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL in yaml
+  const float damage_timestep_factor = 0.1f; // ### Hardcoded for now. Treat this similarly to CFL in yaml
 
   /* Damage parameters set to values at drift time. */
   const float damage = strength_get_damage(p);
@@ -263,6 +263,9 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     return;
   }
 
+  /* Combined rate of total damage from both sources. */
+  float dD_dt = 0.f;
+
   /* Tensile contribution. */
   if (tensile_damage < 1.f) {
     float tensile_cbrtD_dt = 0.f;
@@ -271,28 +274,28 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
                                     p, stress_tensor, mat_id, mass, density,
                                     damage); // ### Should this be damage or tensile_damage?
 
-    /* Tensile evolves cbrt(D), so a growth of damage_timestep_factor in D
-     * corresponds to this growth in cbrt(D). */
+    /* Tensile evolves cbrt(D), so convert its rate to a dD/dt via the growth in
+     * cbrt(D) that corresponds to a growth of damage_timestep_factor in D. */
     if (tensile_cbrtD_dt > 0.f) {
       const float Delta_cbrtD =
           cbrtf(tensile_damage + damage_timestep_factor) - cbrtf(tensile_damage);
-      dt_damage = fminf(dt_damage, Delta_cbrtD / tensile_cbrtD_dt);
+      dD_dt += damage_timestep_factor * tensile_cbrtD_dt / Delta_cbrtD;
     }
   }
 
-  /* Shear contribution. */
+  /* Shear contribution. The shear model evolves D directly. */
   float shear_dD_dt = 0.f;
   damage_shear_compute_dD_dt(&shear_dD_dt, is_above_yield_criterion,
                              strain_rate_tensor, mat_id, pressure, shear_damage);
+  dD_dt += shear_dD_dt;
 
-  /* The shear model evolves D directly. */
-  if (shear_dD_dt > 0.f) {
-    dt_damage = fminf(dt_damage, damage_timestep_factor / shear_dD_dt);
+  /* Time for total damage to grow by damage_timestep_factor. */
+  if (dD_dt > 0.f) {
+    dt_damage = damage_timestep_factor / dD_dt;
   }
 
   p->strength_data.dt_damage = dt_damage;
 }
-
 /**
  * @brief Initialises the damage properties for the first time
  *
