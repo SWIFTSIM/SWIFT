@@ -52,6 +52,35 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const int with_cosmology);
 
 /**
+ * @brief Get the comoving gas density around the star, averaged with the
+ * isotropic vector weights |w_j_bar|.
+ *
+ * Only valid after the third feedback preparation loop.
+ *
+ * @param sp The #spart.
+ */
+INLINE static float feedback_get_weighted_gas_density(const struct spart *sp) {
+  if (sp->feedback_data.enrichment_weight <= 0.f) return 0.f;
+  return sp->feedback_data.weighted_gas_density /
+         sp->feedback_data.enrichment_weight;
+}
+
+/**
+ * @brief Get the gas metal mass fraction around the star, averaged with the
+ * isotropic vector weights |w_j_bar|.
+ *
+ * Only valid after the third feedback preparation loop.
+ *
+ * @param sp The #spart.
+ */
+INLINE static double feedback_get_weighted_gas_metallicity(
+    const struct spart *sp) {
+  if (sp->feedback_data.enrichment_weight <= 0.f) return 0.;
+  return sp->feedback_data.weighted_gas_metallicity /
+         sp->feedback_data.enrichment_weight;
+}
+
+/**
  * @brief Writes the current model of feedback to the file
  *
  * @param feedback The #feedback_props.

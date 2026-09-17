@@ -25,14 +25,15 @@
 #include "mechanical_feedback_iact.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 #include <math.h>
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
- * In GEAR, this function does nothing. What we need is the
- * star->density.wcount computed in runner_iact_nonsym_stars_density().
+ * Accumulates the SPH gas density at the star position. The normalization
+ * by 1 / h^d is done in feedback_prepare_feedback().
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -54,18 +55,11 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
-  const float r_max_2 = fb_props->r_max * fb_props->r_max;
-
-  /* If the particle is farther than the maximal radius, it does not receive
-     feedback. Hence, do not count it. */
-  if (r2 > r_max_2) {
-    return;
-  }
-
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
-    return;
-  }
+  const float mj = hydro_get_mass(pj);
+  const float ui = sqrtf(r2) / hi;
+  float wi;
+  kernel_eval(ui, &wi);
+  si->feedback_data.gas_density += mj * wi;
 }
 
 /**
@@ -210,7 +204,16 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
   /* Accumulate w_j norm for later */
   const double w_j_norm_2 = w_j[0] * w_j[0] + w_j[1] * w_j[1] + w_j[2] * w_j[2];
-  si->feedback_data.enrichment_weight += sqrt(w_j_norm_2);
+  const double w_j_norm = sqrt(w_j_norm_2);
+  si->feedback_data.enrichment_weight += w_j_norm;
+
+  /* Weighted sums of the comoving gas properties around the star with our
+     isotropic weighting scheme. Since |w_j_bar| = |w_j| / enrichment_weight,
+     they are normalized in feedback_get_weighted_gas_density() and
+     feedback_get_weighted_gas_metallicity(). */
+  si->feedback_data.weighted_gas_density += w_j_norm * pj->rho;
+  si->feedback_data.weighted_gas_metallicity +=
+      w_j_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
@@ -324,12 +327,6 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
       w_prime_ij_SW * w_j_bar_norm * mj_inv;
   si->feedback_data.accumulator_sn.beta_2 +=
       w_prime_ij_SN * w_j_bar_norm * mj_new_inv;
-
-  /* Compute the comoving weigthed average of the gas properties around the star
-     with our isotropic weighting scheme. */
-  si->feedback_data.weighted_gas_density += w_j_bar_norm * pj->rho;
-  si->feedback_data.weighted_gas_metallicity +=
-      w_j_bar_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
 #endif /*  FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
@@ -466,6 +463,24 @@ runner_iact_nonsym_feedback_apply(
 
     xpj->feedback_data.delta_E_kin += dKE_SW;
 
+    /* Lifetime-cumulative tracer: physical lab-frame momentum actually given
+       to pj by this channel, before the multiple-event correction f_corr of
+       feedback_update_part(). */
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    const float delta_p_mag_winds = (float)sqrt(
+        (dp_SW[0] + dp_ejecta_SW[0]) * (dp_SW[0] + dp_ejecta_SW[0]) +
+        (dp_SW[1] + dp_ejecta_SW[1]) * (dp_SW[1] + dp_ejecta_SW[1]) +
+        (dp_SW[2] + dp_ejecta_SW[2]) * (dp_SW[2] + dp_ejecta_SW[2]));
+#else
+    const float delta_p_mag_winds = 0.f;
+#endif
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_winds,
+        &xpj->tracers_data.feedback_cumulative.energy_winds,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
+        delta_p_mag_winds, (float)(dU_SW / new_mass),
+        delta_p_mag_winds / new_mass);
+
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
 
@@ -535,6 +550,24 @@ runner_iact_nonsym_feedback_apply(
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU / new_mass;
     xpj->feedback_data.delta_E_kin += dKE;
+
+    /* Lifetime-cumulative tracer: physical lab-frame momentum actually given
+       to pj by this channel, before the multiple-event correction f_corr of
+       feedback_update_part(). */
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    const float delta_p_mag_supernovae = (float)sqrt(
+        (dp_SN[0] + dp_ejecta_SN[0]) * (dp_SN[0] + dp_ejecta_SN[0]) +
+        (dp_SN[1] + dp_ejecta_SN[1]) * (dp_SN[1] + dp_ejecta_SN[1]) +
+        (dp_SN[2] + dp_ejecta_SN[2]) * (dp_SN[2] + dp_ejecta_SN[2]));
+#else
+    const float delta_p_mag_supernovae = 0.f;
+#endif
+    tracers_gear_accumulate_feedback(
+        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
+        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
+        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+        delta_p_mag_supernovae, (float)(dU / new_mass),
+        delta_p_mag_supernovae / new_mass);
 
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;

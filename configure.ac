@@ -2092,8 +2092,8 @@ AC_SUBST([SUNDIALS_INCS])
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
 		[Master switch for subgrid methods. Inexperienced user should
-		start here. Options are: @<:@none, GEAR, GEAR-G3, GEAR-mech1,
-		GEAR-mech2, GEAR-BH, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL,
+		start here. Options are: @<:@none, GEAR, GEAR-G3, GEAR-BH, GEAR-mech1,
+		GEAR-mech2, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL,
 		SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
@@ -2147,6 +2147,7 @@ case "$with_subgrid" in
    GEAR-mech1)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2159,6 +2160,7 @@ case "$with_subgrid" in
    GEAR-mech2)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR

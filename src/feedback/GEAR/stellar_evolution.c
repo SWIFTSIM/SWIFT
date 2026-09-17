@@ -23,6 +23,7 @@
 /* Include local headers */
 #include "../../feedback_struct.h"
 #include "exp10.h"
+#include "feedback_common.h"
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
@@ -969,7 +970,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
      exactly one SNII, never SNIa; see stellar_evolution_evolve_spart()'s
      own population-only counterpart for the SNIa channel). */
   tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
-                               sp->feedback_data.enrichment_weight,
+                               feedback_get_comoving_gas_density_at_star(sp),
                                with_cosmology, cosmo, time);
 
   /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
@@ -1153,10 +1154,10 @@ void stellar_evolution_compute_SN_feedback_spart(
     /* Record this star's own SN-event history for each channel that fired
        this step. */
     tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia,
-                                 sp->feedback_data.enrichment_weight,
+                                 feedback_get_comoving_gas_density_at_star(sp),
                                  with_cosmology, cosmo, time);
     tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
-                                 sp->feedback_data.enrichment_weight,
+                                 feedback_get_comoving_gas_density_at_star(sp),
                                  with_cosmology, cosmo, time);
 
     /* Compute the yields */
@@ -1172,10 +1173,10 @@ void stellar_evolution_compute_SN_feedback_spart(
     /* Record this star's own SN-event history for each channel that fired
        this step. */
     tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia_f,
-                                 sp->feedback_data.enrichment_weight,
+                                 feedback_get_comoving_gas_density_at_star(sp),
                                  with_cosmology, cosmo, time);
     tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii_f,
-                                 sp->feedback_data.enrichment_weight,
+                                 feedback_get_comoving_gas_density_at_star(sp),
                                  with_cosmology, cosmo, time);
 
     /* Compute the yields */
