@@ -132,8 +132,15 @@ echo
 echo "----------------------------"
 echo "Prep1 + 2 + 3 + 4 loop build"
 echo "----------------------------"
-CFLAGS
-="-DEXTRA_STAR_LOOPS_1 -DEXTRA_STAR_LOOPS_2 -DEXTRA_STAR_LOOPS_3 -DEXTRA_STAR_LOOPS_4" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+CFLAGS="-DEXTRA_STAR_LOOPS_1 -DEXTRA_STAR_LOOPS_2 -DEXTRA_STAR_LOOPS_3 -DEXTRA_STAR_LOOPS_4" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
+echo
+echo "-------------------"
+echo "GEAR with BHs build"
+echo "-------------------"
+do_configure --with-subgrid=GEAR-BH --with-hydro=sphenix --disable-hand-vec --with-grackle=${GRACKLE_HOME}/lib
 do_make
 do_make clean
 
