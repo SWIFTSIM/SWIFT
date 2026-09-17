@@ -257,11 +257,9 @@ runner_iact_nonsym_feedback_apply(
          momentum/energy (not the shared feedback_data.delta_p/delta_u,
          which the SN branch below can also add to this same step). */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
-      tracers_gear_accumulate_feedback(
-          &xpj->tracers_data.feedback_cumulative.momentum_winds,
-          &xpj->tracers_data.feedback_cumulative.energy_winds,
-          &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
-          delta_p_mag_winds, (float)du, delta_p_mag_winds / (float)new_mass);
+      tracers_after_stellar_winds_feedback_part(
+          xpj, delta_p_mag_winds, (float)du,
+          delta_p_mag_winds / (float)new_mass);
 
       xpj->feedback_data.hit_by_winds = 1;
     }
@@ -310,11 +308,8 @@ runner_iact_nonsym_feedback_apply(
               delta_p_supernovae[2] * delta_p_supernovae[2]);
     const float delta_p_mag_supernovae =
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
-    tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
-        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
-        delta_p_mag_supernovae, (float)du,
+    tracers_after_supernovae_feedback_part(
+        xpj, delta_p_mag_supernovae, (float)du,
         new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
