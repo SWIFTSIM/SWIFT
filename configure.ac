@@ -2132,6 +2132,7 @@ case "$with_subgrid" in
    GEAR-mech1)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2144,6 +2145,7 @@ case "$with_subgrid" in
    GEAR-mech2)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
