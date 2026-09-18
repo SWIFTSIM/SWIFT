@@ -908,20 +908,32 @@ $c_{\rm hyp}/c$ at the injecting particle's own value, so an identical
 star deposits a physically different amount of energy depending on the
 local gas's own time-stepping: a particle pinned to a short step (large
 $c_{\rm hyp}$) receives more of the true source than one on a long step,
-independent of the pathway-1 sign question above. This coupling is
-reported in the literature as wrong \emph{in general}, not merely as a
-consequence of $c_{\rm hyp}$ being per-particle rather than uniform
-(Section~\ref{sec:fuv-chyp-literature}); a single global $c_{\rm hyp}$
-would still need it fixed. What is measured: forcing a uniform speed
-(the pin, and independently a lowered $C_{\rm hyp}$) changes the final
-FUV band energy on \code{ISRFCausalReach} by $-18\%$ and $-15\%$
-respectively relative to the shipped, heterogeneous-speed run. This gap
-is not cleanly attributable to the amplitude coupling alone: the same
-fixture is still rising at $t_{\rm end}$ under every speed tested, so
-part of the difference is a slower relaxation clock (Section
-\ref{sec:fuv-chyp}'s own discussion of the transient), not a pure
-injection bias, and the two effects are not separated on the fixtures
-tested so far.
+independent of the pathway-1 sign question above. At a uniform
+$c_{\rm hyp}$ this construction is exactly self-consistent: the source
+rescale and the rate getters in \code{radiation\_gas.c} (which read the
+true $c$, never $c_{\rm hyp}$) form a matched pair whose propagation
+fixed point cancels the speed identically, with or without transport
+(same-day adversarial check, \code{.claude/dev/ISRF\_HISTORY.md},
+2026-09-18 $\sim$11:55). The defect is specific to $c_{\rm hyp}$
+\emph{varying between neighbours}: a particle's divergence sums fluxes
+carrying each sender's own $c_{{\rm hyp},j}$ while its own terms carry
+$c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
+\citet{Katz2017}'s problem class (Section~\ref{sec:fuv-chyp-literature}),
+not a general source-normalisation one. Whether the cancellation still
+holds under cosmology, where the Hubble term does not scale with
+$c_{\rm hyp}$, is unmeasured and needs an operator ruling before a
+cosmological run is trusted on this point.
+
+What is measured: forcing a uniform speed (the pin, and independently a
+lowered $C_{\rm hyp}$) changes the final FUV band energy on
+\code{ISRFCausalReach} relative to the shipped, heterogeneous-speed run;
+the fixture is still rising at $t_{\rm end}$ under every speed tested, and
+the same-day check above found this fixture's own cross-arm ratio has not
+settled by that point (still declining across snapshots), so no number
+from it is quoted here. Part of any gap measured this way is a slower
+relaxation clock (Section~\ref{sec:fuv-chyp}'s own discussion of the
+transient), not a pure injection bias, and the two effects are not
+separated on the fixtures tested so far.
 
 \paragraph{Speed definitions tested, and why none is shipped.} Three
 alternative definitions of $c_{{\rm hyp},i}$ were implemented as
@@ -1027,9 +1039,15 @@ confirm this numerically in an independent code (RAMSES-CUDATON):
 reducing $c$ by a factor $f$ inflates the post-reionisation neutral
 fraction by the same factor $f$ when the reduced speed leaks into the
 chemistry coupling, and the error disappears when the true $c$ is used
-there instead. Both papers describe exactly Pathway 2 above, and neither
-ties the diagnosis to whether the reduced speed is uniform or
-per-particle: a single global $c_{\rm hyp}$ would still need this fixed.
+there instead. Both papers warn against exactly this operation when the
+reduction is \emph{unmatched}: a source rescaled by $c_{\rm hyp}/c$ whose
+rate is then read back at the reduced speed. GEAR's convention pairs the
+source rescale with a rate getter that reads the true $c$
+(Section~\ref{sec:fuv-chyp}, Pathway 2), which a same-day check found to
+cancel exactly at a uniform speed; the residual defect these citations
+bound is therefore the per-neighbour interface case (heterogeneous
+$c_{\rm hyp}$, Pathway 2 above), not a general defect at any single
+global speed.
 
 \textbf{The RSLA validity criterion in the literature is derived for an
 ionizing, recombination-bounded front and does not transfer directly to
