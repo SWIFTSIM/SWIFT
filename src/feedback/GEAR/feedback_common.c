@@ -1474,6 +1474,20 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
+  /* #isrf_c_hyp_consistent_variable_c is a process-global, not a
+   * feedback_props field, so the flat block read above does not touch it;
+   * it stays at its zero-initialized value unless re-derived here from the
+   * restored #feedback_props.ISRF_c_hyp_scheme, exactly as
+   * feedback_props_init() derives it on a fresh start. Without this, a
+   * restarted scheme-3/4 run keeps the speed axis (ISRF_c_hyp_scheme) but
+   * silently loses the operator axis, reading the stored reduced flux as
+   * if it were physical. See #isrf_c_hyp_consistent_variable_c's own
+   * doxygen (radiation_isrf.h). */
+  isrf_c_hyp_consistent_variable_c =
+      (feedback->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
+       feedback->ISRF_c_hyp_scheme ==
+           isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
    * pressure, and the local Lyman-Werner/FUV feedback (photoelectric
