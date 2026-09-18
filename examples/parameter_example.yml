@@ -839,6 +839,13 @@ GEARFeedback:
                                                            # meaningful when ISRF_propagation is on. (Default: 0.5)
   ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
                                                            # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
+  ISRF_c_hyp_fixed_fraction_of_c: 0                        # (optional) Uniform reduced light-speed candidate: sets every particle's c_hyp_i = f*c, independent of h_i/dt_i, whenever positive. Valid range [0, 1]. 0 (default): disabled,
+                                                           # the shipped c_hyp_i = min(C_hyp*h_i/dt_i, c) formula runs unchanged. Mutually exclusive with ISRF_c_hyp_pin_for_debugging. Adds a matching radiation timestep term
+                                                           # (C_hyp*h_i/(f*c), same ISRF_c_hyp_margin) on particles carrying or near the field; see ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging. Only meaningful when
+                                                           # ISRF_propagation is on. (Default: 0, disabled)
+  ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging: 0  # (optional, debug/test only) With ISRF_c_hyp_fixed_fraction_of_c positive, skip the radiation timestep term that keeps the receiver-side CFL condition satisfied at that
+                                                           # fixed speed. 0 (default): the term is applied, the only supported configuration. 1: skipped, for A/B measuring the term's own step-count cost. Never set in a
+                                                           # production run. (Default: 0, disabled)
   ISRF_dissipation_alpha_max: 0.5                          # (optional) Ceiling of the triggered artificial-conductivity coefficient. 0 disables the trigger, but ISRF_dissipation_alpha_floor still
                                                            # applies unless it is also 0. The stability bound is checked jointly on max(alpha_max, alpha_floor):
                                                            # 6.2*max(alpha_max,alpha_floor)*ISRF_c_hyp_margin + 0.70*ISRF_c_hyp_margin^2 <= 2, so at the shipped 0.5 for both, raising ISRF_c_hyp_margin

@@ -354,6 +354,273 @@ static void check_cells(struct cell *cells[2], const char *label,
   }
 }
 
+/* ---------------------------------------------------------------------
+ * The uniform reduced light-speed candidate (S3,
+ * ISRF_c_hyp_fixed_fraction_of_c): off leaves c_hyp bit-identical to the
+ * shipped C_hyp*h/dt formula; on gives every particle exactly f*c,
+ * independent of h and time bin; and the matching radiation timestep term
+ * (radiation_isrf_part_timestep) returns C_hyp*h/(f*c) on an eligible
+ * particle and is inert (FLT_MAX) whenever the fraction is off.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief Minimal fixture for radiation_snapshot_part_propagation /
+ * radiation_isrf_part_timestep: a non-cosmological engine with just enough
+ * state to reach the c_hyp closure (cooling_func/internal_units are needed
+ * because the kappa computation ahead of it in
+ * radiation_snapshot_part_propagation is unconditional whenever
+ * ISRF_propagation is on), independent of the dispatch test's own engine
+ * above.
+ *
+ * @param e (return) The engine.
+ * @param cosmo (return) Non-cosmological (a=1) cosmology.
+ * @param pc (return) Physical constants.
+ * @param fp (return) Feedback properties.
+ * @param cooling (return) Cooling function data.
+ * @param us (return) Unit system.
+ * @param fixed_fraction ISRF_c_hyp_fixed_fraction_of_c.
+ * @param timestep_off_for_debugging
+ * ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging.
+ */
+static void make_c_hyp_speed_test_engine(
+    struct engine *e, struct cosmology *cosmo, struct phys_const *pc,
+    struct feedback_props *fp, struct cooling_function_data *cooling,
+    struct unit_system *us, float fixed_fraction,
+    char timestep_off_for_debugging) {
+
+  bzero(cosmo, sizeof(struct cosmology));
+  cosmo->a = 1.0;
+  cosmo->a2_inv = 1.0;
+  cosmo->a3_inv = 1.0;
+
+  bzero(pc, sizeof(struct phys_const));
+  pc->const_speed_light_c = 1.e4;
+
+  bzero(fp, sizeof(struct feedback_props));
+  fp->ISRF_propagation = 1;
+  fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
+  fp->ISRF_c_hyp_margin = 0.5f;
+  fp->ISRF_c_hyp_fixed_fraction_of_c = fixed_fraction;
+  fp->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging =
+      timestep_off_for_debugging;
+
+  bzero(cooling, sizeof(struct cooling_function_data));
+  cooling->chemistry_data.local_dust_to_gas_ratio = 0.01;
+
+  units_init(us, /*U_M_in_cgs=*/1.98892e33, /*U_L_in_cgs=*/3.08567758e18,
+             /*U_t_in_cgs=*/3.15576e13, /*U_C_in_cgs=*/1.0,
+             /*U_T_in_cgs=*/1.0);
+
+  bzero(e, sizeof(struct engine));
+  e->policy = 0; /* no cosmology: the plain get_timestep branch */
+  e->ti_current = 0;
+  e->time_base = 1.0;
+  e->max_active_bin = num_time_bins; /* every bin active */
+  e->internal_units = us;
+  e->physical_constants = pc;
+  e->cosmology = cosmo;
+  e->cooling_func = cooling;
+  e->feedback_props = fp;
+}
+
+/**
+ * @brief Set a particle's h/time_bin/rho, leaving every ISRF band field at
+ * its zero-init default.
+ *
+ * @param p (return) The particle.
+ * @param h The smoothing length.
+ * @param time_bin The time bin.
+ */
+static void set_c_hyp_test_part(struct part *p, float h, timebin_t time_bin) {
+  bzero(p, sizeof(struct part));
+  p->h = h;
+  p->time_bin = time_bin;
+  p->rho = 1.5f;
+  p->mass = 1.f;
+  p->feedback_data.ISRF_reservoir_end_ti = -1;
+  p->feedback_data.ISRF_illumination_end_ti = -1;
+}
+
+/**
+ * @brief Relative-tolerance check for a two-operator float formula
+ * (multiply-then-divide) reproduced independently in this test: not a hard
+ * `==`, since -ffast-math/-freciprocal-math may pick a different reciprocal
+ * instruction across translation units for a bit-for-bit identical source
+ * expression (see swift-knowledge.md's floating-point-hazards notes). A
+ * single-multiply comparison (fraction*c) has no such ambiguity and is
+ * checked with `==` instead.
+ *
+ * @param name Message label.
+ * @param actual The value read back from the code under test.
+ * @param expected This test's own independently-computed value.
+ */
+static void assert_close_c_hyp(const char *name, float actual, float expected) {
+  const float rel_err = fabsf(actual - expected) / fabsf(expected);
+  if (!(rel_err <= 1e-6f))
+    error("%s: got %.8e, expected %.8e (rel_err=%.3e).", name, (double)actual,
+          (double)expected, (double)rel_err);
+}
+
+/**
+ * @brief Fraction off (default): c_hyp must be bit-identical to the shipped
+ * min(C_hyp*h/dt, c) formula, for several (h, time_bin) combinations.
+ */
+static void test_c_hyp_fixed_fraction_off_matches_shipped_formula(void) {
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/0.f,
+                               /*timestep_off_for_debugging=*/0);
+
+  const float hs[3] = {0.5f, 1.0f, 2.3f};
+  const timebin_t bins[3] = {1, 3, 6};
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      struct part p;
+      set_c_hyp_test_part(&p, hs[i], bins[j]);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      const float dt_phys = (float)get_timestep(bins[j], e.time_base);
+      const float h_phys = (float)cosmo.a * hs[i];
+      float expected = fp.ISRF_c_hyp_margin * h_phys / dt_phys;
+      expected = min(expected, (float)pc.const_speed_light_c);
+
+      assert_close_c_hyp("fraction off: c_hyp vs shipped formula",
+                         p.feedback_data.c_hyp, expected);
+    }
+  }
+  message(
+      "c_hyp fixed fraction off: matches the shipped formula "
+      "at every (h, time_bin) tried.");
+}
+
+/**
+ * @brief Fraction on: every particle must get exactly f*c, regardless of h
+ * or time bin.
+ */
+static void test_c_hyp_fixed_fraction_on_gives_exact_fraction_of_c(void) {
+  const float f = 0.02f;
+
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/f,
+                               /*timestep_off_for_debugging=*/0);
+
+  const float expected = f * (float)pc.const_speed_light_c;
+  const float hs[3] = {0.5f, 1.0f, 2.3f};
+  const timebin_t bins[3] = {1, 3, 6};
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      struct part p;
+      set_c_hyp_test_part(&p, hs[i], bins[j]);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      if (p.feedback_data.c_hyp != expected)
+        error(
+            "fraction on, h=%g bin=%d: c_hyp=%.8e, expected f*c=%.8e "
+            "exactly, independent of h/time_bin.",
+            (double)hs[i], bins[j], (double)p.feedback_data.c_hyp,
+            (double)expected);
+    }
+  }
+  message(
+      "c_hyp fixed fraction on: exactly f*c=%.6e at every (h, time_bin) "
+      "tried.",
+      (double)expected);
+}
+
+/**
+ * @brief The radiation timestep term: C_hyp*h/(f*c) on an eligible particle
+ * with the fraction on and the debug off-switch clear; FLT_MAX (no
+ * constraint) whenever the fraction is off, whenever the debug off-switch
+ * is set, and on a particle outside the eligible set.
+ */
+static void test_c_hyp_fixed_fraction_timestep_term(void) {
+  const float f = 0.02f;
+  const float h = 1.7f;
+
+  /* Fraction off: FLT_MAX regardless of eligibility. */
+  {
+    struct engine e;
+    struct cosmology cosmo;
+    struct phys_const pc;
+    struct feedback_props fp;
+    struct cooling_function_data cooling;
+    struct unit_system us;
+    make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                                 /*fixed_fraction=*/0.f,
+                                 /*timestep_off_for_debugging=*/0);
+    struct part p;
+    set_c_hyp_test_part(&p, h, /*time_bin=*/3);
+    p.feedback_data.is_illuminated_ISRF = 1;
+    const float dt_rad = radiation_isrf_part_timestep(&p, &e);
+    if (dt_rad != FLT_MAX)
+      error(
+          "fraction off: radiation_isrf_part_timestep=%.8e, expected "
+          "FLT_MAX (not applied).",
+          (double)dt_rad);
+  }
+
+  /* Fraction on, debug off-switch clear, eligible particle (tagged
+   * illuminated): must return the receiver-side CFL bound exactly. */
+  {
+    struct engine e;
+    struct cosmology cosmo;
+    struct phys_const pc;
+    struct feedback_props fp;
+    struct cooling_function_data cooling;
+    struct unit_system us;
+    make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                                 /*fixed_fraction=*/f,
+                                 /*timestep_off_for_debugging=*/0);
+    struct part p;
+    set_c_hyp_test_part(&p, h, /*time_bin=*/3);
+    p.feedback_data.is_illuminated_ISRF = 1;
+
+    const float c_M = f * (float)pc.const_speed_light_c;
+    const float expected = fp.ISRF_c_hyp_margin * (float)cosmo.a * h / c_M;
+    const float dt_rad = radiation_isrf_part_timestep(&p, &e);
+    assert_close_c_hyp("fraction on, eligible: dt_rad vs C_hyp*h/(f*c)", dt_rad,
+                       expected);
+
+    /* Same fixture, debug off-switch set: must go back to FLT_MAX. */
+    fp.ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging = 1;
+    const float dt_rad_off = radiation_isrf_part_timestep(&p, &e);
+    if (dt_rad_off != FLT_MAX)
+      error(
+          "fraction on, timestep term off for debugging: "
+          "radiation_isrf_part_timestep=%.8e, expected FLT_MAX.",
+          (double)dt_rad_off);
+    fp.ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging = 0;
+
+    /* Same fixture, particle outside the eligible set (never illuminated,
+     * no illuminated neighbour in kernel): must also be FLT_MAX. */
+    struct part p_far;
+    set_c_hyp_test_part(&p_far, h, /*time_bin=*/3);
+    const float dt_rad_far = radiation_isrf_part_timestep(&p_far, &e);
+    if (dt_rad_far != FLT_MAX)
+      error(
+          "fraction on, not near field: radiation_isrf_part_timestep="
+          "%.8e, expected FLT_MAX.",
+          (double)dt_rad_far);
+  }
+  message(
+      "radiation timestep term: C_hyp*h/(f*c) on an eligible particle, "
+      "FLT_MAX with the fraction off, with the debug off-switch set, and "
+      "off the eligible set.");
+}
+
 /**
  * @brief Run one geometry: small-h cell at the origin, large-h cell at the
  * offset (or the reverse), swept without depth limits, then across two
@@ -429,6 +696,10 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
+
+  test_c_hyp_fixed_fraction_off_matches_shipped_formula();
+  test_c_hyp_fixed_fraction_on_gives_exact_fraction_of_c();
+  test_c_hyp_fixed_fraction_timestep_term();
 
   struct space space;
   struct engine engine;

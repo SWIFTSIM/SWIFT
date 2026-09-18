@@ -161,6 +161,19 @@ void feedback_end_force(struct part *p, const struct engine *e) {
 }
 
 /**
+ * @brief Radiation timestep contribution: the uniform reduced light-speed
+ * candidate's own stability term is shared GEAR physics, see
+ * #radiation_isrf_part_timestep.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ */
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e) {
+  return radiation_isrf_part_timestep(p, e);
+}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback once
  * per step, before the density loop's h-iterations begin: snapshots
  * every band's u and caches this step's absorption rate (shared GEAR

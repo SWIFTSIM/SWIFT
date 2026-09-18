@@ -214,8 +214,18 @@ void radiation_snapshot_part_propagation(struct part *p,
   dt_phys = max(dt_phys, FLT_MIN);
 
   const float h_phys = (float)e->cosmology->a * p->h;
-  float c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
-  c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
+  float c_hyp;
+  if (e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c > 0.f) {
+    /* Uniform reduced light-speed candidate (S3): every particle gets the
+     * same c_hyp, independent of h_phys/dt_phys above. The receiver-side
+     * CFL this removes coverage for is instead enforced by a dedicated
+     * timestep term, see radiation_isrf_part_timestep(). */
+    c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
+            (float)e->physical_constants->const_speed_light_c;
+  } else {
+    c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
+    c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
+  }
   /* The debug pin is applied after the light-speed clamp above and is not
    * itself clamped: a pin value above c gives a superluminal propagation
    * speed on purpose, for isolating dispersion behaviour at chosen values
@@ -255,6 +265,69 @@ void radiation_snapshot_part_propagation(struct part *p,
     for (int b = 0; b < ISRF_BAND_COUNT; b++)
       fd->isrf_band[b].u_source_rate = 0.f;
   }
+}
+
+/**
+ * @brief Radiation timestep term for the uniform reduced light-speed
+ * candidate (S3, #feedback_props.ISRF_c_hyp_fixed_fraction_of_c): every
+ * particle's c_hyp is fixed at `f*c` there, independent of h/dt, so unlike
+ * the shipped `c_hyp_i = min(C_hyp*h_i/dt_i, c)` formula this speed carries
+ * no built-in guarantee that `f*c*dt_i <= C_hyp*h_i`. This returns that
+ * bound directly, `C_hyp*h_i/(f*c)`, following the same #ISRF_c_hyp_margin
+ * used by the shipped formula.
+ *
+ * FLT_MAX (no constraint) whenever: the fixed fraction is off (0, the
+ * default -- the shipped scheme needs no such term, since its own c_hyp is
+ * already derived from dt_i); ISRF_propagation is off (no flux transport,
+ * so no receiver-side CFL to protect); the debug off-switch is set
+ * (diagnostic-only, see that parameter's own doxygen); or this particle is
+ * outside the narrow eligible set below.
+ *
+ * Eligible set (narrowest defensible, not "every particle"): this
+ * particle's own field is live (#feedback_part_data.is_illuminated_ISRF,
+ * or, since that tag lapses while #feedback_isrf_band_data.u itself is
+ * held indefinitely -- "never cleared by cooling", see that field's own
+ * doxygen -- any band's u != 0), OR a neighbour inside this particle's own
+ * kernel carries field this step (any band's
+ * #feedback_isrf_band_data.ngb_mean_abs_u_V > 0, the same kernel-mean the
+ * negativity trigger reads, giving one kernel of margin before the front
+ * itself arrives). A particle with neither can only start receiving flux
+ * next step via a neighbour that is itself constrained, or via direct
+ * star injection, which unconditionally calls timestep_sync_part on first
+ * touch (radiation_iact.h) and so picks up this constraint on the step it
+ * needs it, without waiting for its own next unforced timestep
+ * recomputation.
+ *
+ * @param p The #part to consider.
+ * @param e The #engine.
+ * @return The radiation timestep bound, or FLT_MAX if none applies.
+ */
+float radiation_isrf_part_timestep(const struct part *restrict p,
+                                   const struct engine *e) {
+  const float f = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c;
+  if (f <= 0.f) return FLT_MAX;
+  if (!e->feedback_props->ISRF_propagation) return FLT_MAX;
+  if (e->feedback_props->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging)
+    return FLT_MAX;
+
+  const struct feedback_part_data *fd = &p->feedback_data;
+  const int near_field = fd->is_illuminated_ISRF ||
+                         fd->isrf_band[ISRF_BAND_PE].u != 0.f ||
+                         fd->isrf_band[ISRF_BAND_LW].u != 0.f ||
+                         fd->isrf_band[ISRF_BAND_PE].ngb_mean_abs_u_V > 0.f ||
+                         fd->isrf_band[ISRF_BAND_LW].ngb_mean_abs_u_V > 0.f;
+  if (!near_field) return FLT_MAX;
+
+  const float h_phys = (float)e->cosmology->a * p->h;
+  /* Explicit branch, not a clamp: under -ffast-math a clamp does not
+   * shield a NaN/inf that a 0-numerator division could otherwise produce
+   * downstream (see swift-knowledge.md's floating-point-hazards section).
+   * h_phys <= 0 cannot happen for a real particle; guard it anyway rather
+   * than trust a clamp to absorb it. */
+  if (h_phys <= 0.f) return FLT_MAX;
+
+  const float c_M = f * (float)e->physical_constants->const_speed_light_c;
+  return e->feedback_props->ISRF_c_hyp_margin * h_phys / c_M;
 }
 
 /**

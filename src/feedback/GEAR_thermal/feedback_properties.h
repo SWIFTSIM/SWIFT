@@ -139,6 +139,35 @@ struct feedback_props {
    * use the formula. Never set in a production run. */
   float ISRF_c_hyp_pin_for_debugging;
 
+  /*! Uniform reduced light-speed candidate: fraction of the true speed of
+   * light `c` every particle's `c_hyp_i` is set to, `c_hyp_i = f*c`, with
+   * no dependence on `h_i` or on the particle's own timestep. 0 (default):
+   * disabled, the shipped `c_hyp_i = min(C_hyp*h_i/dt_i, c)` formula runs
+   * unchanged and this arm has no effect on the code path at all. A
+   * positive value removes the per-particle speed spread that
+   * #ISRF_c_hyp_margin alone cannot (two neighbours on different time bins or
+   * with different `h` otherwise get different `c_hyp_i`); the resulting
+   * receiver-side CFL violation is instead prevented up front by a dedicated
+   * timestep term (see #ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging).
+   * Mutually exclusive with #ISRF_c_hyp_pin_for_debugging
+   * (feedback_props_init() errors if both are set): the pin exists to probe a
+   * single chosen `c_hyp`, this exists to ship a uniform one with its own
+   * stability term, and stacking them would silently let one override the
+   * other. */
+  float ISRF_c_hyp_fixed_fraction_of_c;
+
+  /*! Debug/test-only: with #ISRF_c_hyp_fixed_fraction_of_c positive, skip
+   * the radiation timestep term (`C_hyp*h_i/(f*c)`) that keeps that
+   * particle's own receiver-side CFL condition satisfied. 0 (default): the
+   * term is applied, which is the only supported configuration whenever
+   * the fixed fraction is on. 1: the term is skipped, so
+   * #ISRF_c_hyp_fixed_fraction_of_c is exactly as unstable at a seam as the
+   * shipped per-particle formula -- this exists solely to measure, by A/B run,
+   * how much of the fixed fraction's step-count cost the timestep term itself
+   * is responsible for. Never set in a production run. No effect when
+   * #ISRF_c_hyp_fixed_fraction_of_c is 0. */
+  char ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging;
+
   /*! Ceiling of the triggered artificial-conductivity coefficient. On by
    * default at the calibrated ceiling; 0 disables the term (for A/B runs).
    * The
@@ -362,6 +391,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
         message(
             "ISRF c_hyp pinned for debugging (physical units)          = %g",
             feedback_props->ISRF_c_hyp_pin_for_debugging);
+      if (feedback_props->ISRF_c_hyp_fixed_fraction_of_c > 0.f) {
+        message(
+            "ISRF c_hyp fixed fraction of c                             = %g",
+            feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+        message(
+            "ISRF c_hyp fixed fraction timestep term                    = %s",
+            feedback_props->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging
+                ? "OFF for debugging (diagnostic only, not a supported "
+                  "configuration)"
+                : "ON");
+      }
       message("ISRF dissipation alpha_max                                 = %g",
               feedback_props->ISRF_dissipation_alpha_max);
       message("ISRF dissipation negativity threshold                      = %g",
@@ -618,6 +658,34 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * separately; only meaningful when it is. */
     fp->ISRF_c_hyp_pin_for_debugging = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_c_hyp_pin_for_debugging", 0.0f);
+
+    /* Uniform reduced light-speed candidate (S3): 0 disables it and leaves
+     * the shipped per-particle formula untouched. Parsed and validated
+     * unconditionally, like the pin above, so a validation run can set it
+     * even with ISRF_propagation off in the base config. */
+    fp->ISRF_c_hyp_fixed_fraction_of_c = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c", 0.0f);
+    fp->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging =
+        (char)parser_get_opt_param_int(
+            params,
+            "GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
+            0);
+
+    if (fp->ISRF_c_hyp_fixed_fraction_of_c < 0.f ||
+        fp->ISRF_c_hyp_fixed_fraction_of_c > 1.f)
+      error(
+          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c must lie in [0, 1] "
+          "(got %g): it is a fraction of the true speed of light c. 0 "
+          "disables it.",
+          fp->ISRF_c_hyp_fixed_fraction_of_c);
+
+    if (fp->ISRF_c_hyp_fixed_fraction_of_c > 0.f &&
+        fp->ISRF_c_hyp_pin_for_debugging > 0.f)
+      error(
+          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c and "
+          "GEARFeedback:ISRF_c_hyp_pin_for_debugging cannot both be set: "
+          "they are two different ways to override c_hyp_i and stacking "
+          "them leaves it ambiguous which one actually took effect.");
 
     /* Parsed and validated unconditionally, like the pin above: a
      * validation run can set and check the stability margin (and the

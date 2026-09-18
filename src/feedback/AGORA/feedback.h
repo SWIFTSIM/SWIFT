@@ -113,6 +113,20 @@ __attribute__((always_inline)) INLINE static void feedback_end_force(
     struct part *p, const struct engine *e) {}
 
 /**
+ * @brief Radiation timestep contribution. The AGORA feedback model tracks
+ * no propagated radiation flux, so this imposes no timestep limit.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ * @return FLT_MAX, always.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_compute_part_timestep(const struct part *restrict p,
+                               const struct engine *e) {
+  return FLT_MAX;
+}
+
+/**
  * @brief Re-initialise the gas particle-carried fields related to
  * feedback at the start of each density h-iteration. Nothing to do here.
  *
