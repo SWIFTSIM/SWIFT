@@ -221,6 +221,50 @@ INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #FUVCumulativeInjectedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_injected_PE(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_injected_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWCumulativeInjectedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_injected_LW(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_injected_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #FUVCumulativeAbsorbedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_absorbed_PE(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_absorbed_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWCumulativeAbsorbedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_absorbed_LW(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_absorbed_LW(p);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -233,7 +277,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 20;
+  int num = 24;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -380,6 +424,48 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
       "Same as FUVMinimumSpecificEnergies, Lyman-Werner band.");
+
+  list[20] = io_make_output_field_convert_part(
+      "FUVCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_injected_PE,
+      "Cumulative mass-specific FUV-band dose this particle has drawn from "
+      "the dose reservoir since first init, rescaled by c_hyp/c exactly as "
+      "FUVSpecificEnergies' own update rescales it, but not relaxed by the "
+      "per-step phi factor: the raw amount attempted every step, summed. "
+      "Energy-conservation diagnostic (with "
+      "FUVCumulativeAbsorbedSpecificEnergies and FUVSpecificEnergies); "
+      "always 0 unless the code is configured with "
+      "--enable-debugging-checks.");
+
+  list[21] = io_make_output_field_convert_part(
+      "LWCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_injected_LW,
+      "Same as FUVCumulativeInjectedSpecificEnergies, Lyman-Werner band.");
+
+  list[22] = io_make_output_field_convert_part(
+      "FUVCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_absorbed_PE,
+      "Cumulative mass-specific FUV-band energy FUVSpecificEnergies' own "
+      "exact-relaxation update has attributed to decay (dust absorption "
+      "and the cosmological redshift term) plus the fraction of each "
+      "step's source and transport terms that never reached the field "
+      "because the step was optically thick, summed since first init. "
+      "Energy-conservation diagnostic: FUVSpecificEnergies plus this field "
+      "minus FUVCumulativeInjectedSpecificEnergies isolates the transport "
+      "and artificial-dissipation residual the closed-form split does not "
+      "attribute to either term, which the SPH divergence's kernel-sum "
+      "identity and the dissipation's pairwise antisymmetry drive towards "
+      "0 when summed over every particle. Always 0 unless the code is "
+      "configured with --enable-debugging-checks.");
+
+  list[23] = io_make_output_field_convert_part(
+      "LWCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_absorbed_LW,
+      "Same as FUVCumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
 
   return num;
 }

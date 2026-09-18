@@ -1225,6 +1225,63 @@ float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
+ * @brief Cumulative FUV-band raw injected dose since first init, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_injected. Always 0
+ * without SWIFT_DEBUG_CHECKS.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_injected_PE(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].cumulative_injected;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_injected_LW(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].cumulative_injected;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief Cumulative FUV-band absorbed/transport-and-dissipation-attributed
+ * specific energy since first init, see
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_absorbed. Always 0
+ * without SWIFT_DEBUG_CHECKS.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_band[ISRF_BAND_PE].cumulative_absorbed;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_band[ISRF_BAND_LW].cumulative_absorbed;
+#else
+  return 0.f;
+#endif
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
