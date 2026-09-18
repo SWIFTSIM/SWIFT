@@ -202,7 +202,7 @@ self-shielded configuration, and is not printed for mode 0.
 import argparse
 import glob
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import h5py
 import matplotlib
@@ -686,6 +686,41 @@ def particle_windows(
     return start, end, reached
 
 
+def check_gate(name: str, value: float, bad: bool, message: str) -> Optional[str]:
+    """Build a failure string for one pass/fail gate, failing closed on NaN/inf.
+
+    A gate written as a bare ``value > bar`` (or ``< bar``) comparison lets a
+    non-finite ``value`` slip through silently: NaN compares ``False``
+    against every bound, so ``NaN > bar`` and ``NaN < bar`` are both
+    ``False`` and a bare comparison never fires. This helper tests
+    finiteness first, so a non-finite value always fails regardless of
+    ``bad``.
+
+    Parameters
+    ----------
+    name : str
+        Short name of the gated quantity, used only in the non-finite
+        message.
+    value : float
+        The measured value being gated.
+    bad : bool
+        Whether the value fails its bound; only consulted when ``value`` is
+        finite.
+    message : str
+        Failure message to use when ``value`` is finite and ``bad``.
+
+    Returns
+    -------
+    str or None
+        A failure message, or ``None`` if the gate passes.
+    """
+    if not np.isfinite(value):
+        return f"{name} is non-finite ({value!r})"
+    if bad:
+        return message
+    return None
+
+
 def cumulative_integral(times: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Trapezoid-integrate a per-particle time series from the first snapshot.
 
@@ -951,15 +986,23 @@ def main() -> int:
                 f"fewer than 10 percent of the particles reach "
                 f"{options.thin_efolds:g} predicted e-folds"
             )
-        if median_error > options.thin_tol:
-            failures.append(
-                f"relative error {median_error:.4g} above {options.thin_tol}"
-            )
-        if median_f_shield < options.thin_f_min:
-            failures.append(
+        for message in (
+            check_gate(
+                "THIN relative error",
+                median_error,
+                median_error > options.thin_tol,
+                f"relative error {median_error:.4g} above {options.thin_tol}",
+            ),
+            check_gate(
+                "THIN f_shield",
+                median_f_shield,
+                median_f_shield < options.thin_f_min,
                 f"f_shield {median_f_shield:.4g} below {options.thin_f_min}: "
-                "this run is not in the unshielded limit"
-            )
+                "this run is not in the unshielded limit",
+            ),
+        ):
+            if message is not None:
+                failures.append(message)
         predicted_plot = shielded_integral[qualifies]
         measured_plot = measured_drop[qualifies]
     else:
@@ -975,16 +1018,24 @@ def main() -> int:
             f"{np.percentile(quotient, 16):.4g} to "
             f"{np.percentile(quotient, 84):.4g} (bar {options.thick_tol})"
         )
-        if relative_error > options.thick_tol:
-            failures.append(
+        for message in (
+            check_gate(
+                "THICK shielding ratio",
+                relative_error,
+                relative_error > options.thick_tol,
                 f"shielding ratio off by {relative_error:.4g}, above "
-                f"{options.thick_tol}"
-            )
-        if median_f_shield > options.thick_f_max:
-            failures.append(
+                f"{options.thick_tol}",
+            ),
+            check_gate(
+                "THICK f_shield",
+                median_f_shield,
+                median_f_shield > options.thick_f_max,
                 f"f_shield {median_f_shield:.4g} above {options.thick_f_max}: "
-                "this run is not strongly shielded"
-            )
+                "this run is not strongly shielded",
+            ),
+        ):
+            if message is not None:
+                failures.append(message)
         predicted_plot = predicted_ratio
         measured_plot = np.maximum(measured_ratio, 1e-12)
 
