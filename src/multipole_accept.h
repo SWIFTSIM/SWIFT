@@ -227,15 +227,20 @@ gravity_M2L_min_accept_distance(
     const float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1],
     const int periodic) {
 
-  /* Order of the expansion */
-  const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
+  /* Order of the expansion. This *must* match the one used in
+   * gravity_M2L_accept() or the distance returned here is not a bound on the
+   * pairs that criterion will reject. */
+  const int p = 2;
 
   float E_BA_term = 0.f;
   for (int n = 0; n <= p; ++n) {
     E_BA_term +=
         binomial(p, n) * max_mpole_power[n] * integer_powf(size, p - n);
   }
-  E_BA_term *= 4.f;
+
+  /* gravity_M2L_accept() uses 8 * rho_max / (rho_A + rho_B) which is at most
+   * 8 (when one of the two multipoles is much smaller than the other). */
+  E_BA_term *= 8.f;
 
   /* Get the basic geometric critical angle */
   const float theta_crit = props->theta_crit;
@@ -247,7 +252,22 @@ gravity_M2L_min_accept_distance(
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
 
-  if (props->use_advanced_MAC) {
+  /* Distance obtained by demanding > softening */
+  const float dist_soft = props->use_tree_below_softening ? 0.f : max_softening;
+
+  if (props->use_advanced_MAC && props->use_gadget_tolerance) {
+
+    /* Gadget 4 paper -- eq. 36 solved for r:
+     * M_max * (rho_max / r)^(P-1) < eps * a_min * r^2 */
+    const int power = SELF_GRAVITY_MULTIPOLE_ORDER - 1;
+    const float dist_adapt =
+        powf(max_mpole_power[0] * integer_powf(size, power) /
+                 (eps * min_a_grav),
+             1.f / (power + 2.f));
+
+    return max(dist_adapt, dist_soft);
+
+  } else if (props->use_advanced_MAC) {
 
     /* Distance obtained by solving for the geometric criterion with theta = 1
      */
@@ -256,20 +276,12 @@ gravity_M2L_min_accept_distance(
     const float dist_adapt =
         powf(E_BA_term / (eps * min_a_grav), 1.f / (p + 2.f));
 
-    /* Distance obtained by demanding > softening */
-    const float dist_soft =
-        props->use_tree_below_softening ? 0.f : max_softening;
-
     return max3(dist_tree, dist_adapt, dist_soft);
 
   } else {
 
     /* Distance obtained by solving for the geometric criterion */
     const float dist_tree = sqrtf(size_sum * size_sum / theta_crit2);
-
-    /* Distance obtained by demanding > softening */
-    const float dist_soft =
-        props->use_tree_below_softening ? 0.f : max_softening;
 
     return max(dist_tree, dist_soft);
   }
