@@ -937,11 +937,21 @@ reducing bit-for-bit to the shipped scheme under a uniform speed (scheme
 $3$). All three measurably reduce pathway 1 relative to shipped on every
 fixture tested. \textbf{None is adopted, and none clears its own
 pre-registered acceptance bar}: each fails at least one fixture's exact
-sign-closure or accuracy criterion, one carries an initially
-undercounted particle-update cost of $+21$ to $+29\%$ once measured
-correctly, and one depends on a kernel-membership test that a
-uniform-resolution fixture cannot exercise but a real galaxy's
-density contrast can. The choice of propagation-speed definition, if
+sign-closure or accuracy criterion; the fixed-fraction scheme costs
+nothing extra at a fraction low enough to be free, but only because that
+fraction is below the bulk sound speed, making the radiation
+non-causal, while at the only fraction so far judged physically
+defensible it carries an initially undercounted particle-update cost of
+$+21$ to $+29\%$ once measured correctly (a low fraction can never bind
+the new timestep term, so it was never informative about cost); and the
+kernel-local scheme's own neighbour-maximum accumulates only over
+neighbours within $i$'s own kernel, so a larger-$h$ receiver that is
+inside a sender's kernel but has the sender outside its own reads that
+sender's flux without ever including it in its speed maximum -- a
+dense-short-step sender beside a diffuse-long-step receiver, which a
+uniform-resolution test fixture cannot exercise but a real galaxy's
+density contrast can, so this rule reduces pathway 1 without removing it
+"by construction". The choice of propagation-speed definition, if
 any change is made at all, remains an open operator decision; the
 default stays scheme $0$.
 
