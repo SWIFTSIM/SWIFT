@@ -1236,7 +1236,84 @@ conserves for frozen $\mathbf D$; where $\mathbf D$ varies between
 neighbours an $O(h|\nabla\mathbf D|)$ consistency error remains, and in
 the free-streaming limit the metric degenerates ($\mathbf D$'s
 transverse eigenvalue vanishes), so stability there rests on the Courant
-bound and on the artificial dissipation, not on this property.
+bound and on the artificial dissipation, not on this property. Whether
+the staggered integrator's stability (Section~\ref{sec:fuv-time}) needs
+more than this weaker, $\mathbf D_i=\mathbf D_j$-only adjointness is not
+resolved here.
+
+\subsubsection{The consistent variable-speed operators (schemes 3 and
+4)}
+\label{sec:fuv-variable-c-operators}
+
+Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} are exact only for
+a single, uniform $c_{\rm hyp}$: the reduced-speed-of-light method is a
+rescaling of every rate in
+Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq} by $c_{\rm hyp}/c$, and that
+rescaling commutes with the pairwise sum only when the same $c_{\rm hyp}$
+multiplies every term. Its correct generalisation to a per-particle
+$c_{{\rm hyp},i}$ (Section~\ref{sec:fuv-chyp-heterogeneity}) is a change
+of variable, not a new pair weight, so it leaves the SPH kernel-sum
+identity untouched -- unlike the neighbour-dependent pair weights tried
+and rejected in that section. Writing the reduced flux
+$\tilde{\mathbf F}_i = \mathbf F_i/c_{{\rm hyp},i}$ (so the admissibility
+constraint, Eq.~\ref{eq:fuv-admissible}, becomes $|\tilde{\mathbf
+F}_i|\le u_i$),
+\begin{equation}
+  \frac{du_i}{dt} = c_{{\rm hyp},i}\left(-\kappa\rho_i u_i
+    - \big(\nabla\cdot\tilde{\mathbf F}\big)_i + \frac{\dot s_i}{c}\right) ,
+  \qquad
+  \frac{d\tilde{\mathbf F}_i}{dt} = c_{{\rm hyp},i}\Big(-\kappa\rho_i
+    \tilde{\mathbf F}_i - \mathbf G_i[u]\Big) .
+  \label{eq:fuv-variable-c-eqs}
+\end{equation}
+Three things change relative to Section~\ref{sec:fuv-operators}.
+\textbf{(1)} \code{specific\_flux} stores $\tilde{\mathbf F}$ rather than
+$\mathbf F$, so a time-bin change rescales nothing and the
+temporal-impedance jump at a speed seam (Pathway 1,
+Section~\ref{sec:fuv-chyp-heterogeneity}) disappears. \textbf{(2)} The
+divergence's shared coefficient $\Phi_{ij}$ of Eq.~\ref{eq:fuv-div-op},
+already owner-normalised once $\tilde{\mathbf F}$ is the stored state, is
+multiplied by the \emph{receiver's} own speed rather than the sender's:
+particle $i$ receives $c_{{\rm hyp},i}\,m_j\,\Phi_{ij}$, particle $j$
+receives $-c_{{\rm hyp},j}\,m_i\,\Phi_{ij}$. \textbf{(3)} The
+dissipation's signal speed of Eq.~\ref{eq:fuv-diss-formula} becomes two
+receiver-side speeds, $\alpha_{ij}c_{{\rm hyp},i}$ and $\alpha_{ij}c_{{\rm
+hyp},j}$, rather than the shared $\alpha_{ij}\min(c_{{\rm hyp},i},c_{{\rm
+hyp},j})$.
+
+Both changes make the pair's two sides carry different scalars, so the
+plain mass-weighted sum $m_i X_i + m_j X_j$ that
+Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} conserve exactly
+under a uniform speed is no longer conserved. Dividing each side by its
+own $c_{\rm hyp}$ restores it,
+\begin{equation}
+  \frac{m_i X_i}{c_{{\rm hyp},i}} + \frac{m_j X_j}{c_{{\rm hyp},j}} = 0 ,
+  \label{eq:fuv-variable-c-conservation}
+\end{equation}
+because both changes above reduce to ``multiply by the receiver's own
+$c_{\rm hyp}$'' applied to what was otherwise the same shared,
+antisymmetric-under-$i\leftrightarrow j$ coefficient; checked directly by
+\code{tests/testRadiationISRFForceDispatchConservation.c}. The M1 closure
+tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$ under this
+scheme, since $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm
+hyp},i}u_i)$ identically, the same physical reduced flux $f$ the shipped
+scheme computes from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
+rewritten operator reduces bit-for-bit to its shipped counterpart
+whenever $c_{{\rm hyp},i}$ is spatially uniform, under a build that
+disables floating-point reassociation across the shared coefficient;
+this bit-identity is verified under \code{clang} only, since \code{GCC}
+has no block-scoped equivalent of the pragma that disables it, and does
+not carry over to a \code{GCC} (cluster) build.
+
+Scheme $3$ keeps $c_{{\rm hyp},i}$ at Eq.~\ref{eq:fuv-chyp}'s own formula
+and applies only this operator rewrite; scheme $4$ additionally uses the
+kernel-local speed of Section~\ref{sec:fuv-chyp-heterogeneity}'s scheme
+$1$. Scheme $4$ is the shipped default as of \code{a53ab8311}; scheme $0$
+(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula} unmodified) remains
+reachable by setting \code{GEARFeedback:ISRF\_c\_hyp\_scheme} explicitly.
+(Section~\ref{sec:fuv-chyp-heterogeneity}'s own ``none is adopted, the
+default stays scheme 0'' statement predates \code{a53ab8311} and needs
+updating separately; not done here, out of this pass's scope.)
 
 \subsubsection{Time integration: exact relaxation, staggered}
 \label{sec:fuv-time}
