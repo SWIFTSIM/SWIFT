@@ -323,6 +323,11 @@ void radiation_snapshot_part_propagation(struct part *p,
 float radiation_isrf_part_timestep(const struct part *restrict p,
                                    const struct engine *e) {
   const float f = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c;
+  /* Gating on f alone (not e->feedback_props->ISRF_c_hyp_scheme itself) is
+   * safe only because feedback_props_check_c_hyp_scheme() forces the two
+   * to agree at parse time: f > 0 implies isrf_c_hyp_scheme_fixed_fraction.
+   * If that pairing check is ever relaxed, this gate must switch to the
+   * scheme directly. */
   if (f <= 0.f) return FLT_MAX;
   if (!e->feedback_props->ISRF_propagation) return FLT_MAX;
   if (e->feedback_props->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging)
