@@ -46,6 +46,9 @@
 #include <float.h>
 #include <math.h>
 
+/* See this global's own doxygen, radiation_isrf.h. */
+int isrf_c_hyp_consistent_variable_c = 0;
+
 /**
  * @brief First-init of a #part's LW/FUV radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
@@ -488,7 +491,9 @@ float radiation_relaxation_phi_factor(float a) {
  * (internal units), which would skip the limiter for a nonzero flux.
  *
  * @param u This band's specific field `u^n`.
- * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param c_M This particle's own #feedback_part_data.c_hyp, or 1 under
+ * #isrf_c_hyp_consistent_variable_c (`F` is then already the reduced flux
+ * `Ft = F_true/c_hyp`, whose own bound is `|Ft| <= u`).
  * @param F (in/out) This particle's tracked flux (this band).
  */
 __attribute__((always_inline)) INLINE static void
@@ -873,6 +878,16 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * carried the same way, inside the relaxation depth
  * `a = (c_hyp*kappa + H)*dt`. No-op when propagation is off.
  *
+ * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_band_data.
+ * specific_flux stores the reduced flux `Ft = F_true/c_hyp` instead of
+ * `F_true` (see radiation_propagation_iact.h's file header): substituting
+ * `F = c_hyp*Ft` into the recurrence above and dividing through by the
+ * (this-step-constant) `c_hyp` removes exactly one power of it, giving
+ * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)`, and the M1 limiter's own bound
+ * becomes `|Ft| <= u` (#radiation_apply_flux_limiter_band with `c_M = 1`,
+ * matching #radiation_cache_m1_closure_part's own selection for the same
+ * scheme).
+ *
  * @param p The particle to act upon.
  * @param e The #engine.
  */
@@ -884,6 +899,10 @@ void radiation_end_gradient_propagation(struct part *p,
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
+  /* Under the consistent-variable-c scheme #specific_flux is already the
+   * reduced flux Ft = F/c_hyp, whose own limiter bound is |Ft| <= u: see
+   * this function's own doxygen. */
+  const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : c_hyp;
   const float H = (float)e->cosmology->H;
   const float h_phys = (float)e->cosmology->a * p->h;
 
@@ -903,7 +922,11 @@ void radiation_end_gradient_propagation(struct part *p,
     const float a = (c_hyp * band->kappa + H) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
-    const float coeff = c_hyp * c_hyp * dt * phi;
+    /* One power of c_hyp under the consistent-variable-c scheme: see this
+     * function's own doxygen for the substitution F = c_hyp*Ft. */
+    const float coeff = isrf_c_hyp_consistent_variable_c
+                            ? c_hyp * dt * phi
+                            : c_hyp * c_hyp * dt * phi;
 
     /* Snapshot for the floor's relaxation-residual gate below: `u^n` was
      * produced from THIS flux, not the one about to be computed. */
@@ -915,7 +938,7 @@ void radiation_end_gradient_propagation(struct part *p,
           decay * band->specific_flux[k] - coeff * band->grad_u[k];
     }
 
-    radiation_apply_flux_limiter_band(band->u, c_hyp, band->specific_flux);
+    radiation_apply_flux_limiter_band(band->u, c_M, band->specific_flux);
 
     /* Zeroed here rather than in the drift snapshot, unlike dissipation_u:
      * every drift, including the one before a snapshot dump, would otherwise

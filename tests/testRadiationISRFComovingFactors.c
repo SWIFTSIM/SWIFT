@@ -97,8 +97,8 @@ static void evaluate_operators(float a, float a_factor,
   out->div_F_i = 0.f;
   out->div_F_j = 0.f;
   radiation_divergence_accumulate_band(dx, r_inv, wi_dr, wj_dr, mass_i, mass_j,
-                                       rho_i, rho_j, F_i, F_j, a_factor,
-                                       &out->div_F_i, &out->div_F_j);
+                                       rho_i, rho_j, F_i, F_j, c_hyp, c_hyp,
+                                       a_factor, &out->div_F_i, &out->div_F_j);
 
   float D_i[3][3], D_j[3][3];
   radiation_get_m1_closure_tensor_band(u_i, F_i, c_hyp, D_i);
@@ -115,8 +115,8 @@ static void evaluate_operators(float a, float a_factor,
   out->dissipation_u_i = 0.f;
   out->dissipation_u_j = 0.f;
   radiation_dissipation_force_accumulate_band(
-      wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, alpha_i, alpha_j,
-      /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j, a_factor,
+      wi_dr, wj_dr, mass_i, mass_j, rho_i, rho_j, c_hyp, c_hyp, alpha_i,
+      alpha_j, /*alpha_floor_i=*/0.f, /*alpha_floor_j=*/0.f, u_i, u_j, a_factor,
       &out->dissipation_u_i, &out->dissipation_u_j);
 
   /* One flux relaxation step at zero opacity (decay = phi = 1), then the M1

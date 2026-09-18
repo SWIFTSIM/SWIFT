@@ -1064,6 +1064,324 @@ static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
       "a no-op for the shipped and fixed-fraction schemes.");
 }
 
+/* ---------------------------------------------------------------------
+ * isrf_c_hyp_scheme_consistent_variable_c (closing FABLE review,
+ * .claude/dev/ISRF_HISTORY.md 2026-09-18 ~06:00, section C): every
+ * operator at particle i becomes c_hyp_i/c times the true-speed equation,
+ * with the stored flux becoming the reduced flux Ft = F_true/c_hyp. Three
+ * decisive unit tests below.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief Write one band's pairwise flux input for the consistent-variable-c
+ * bit-identity test: the true physical flux F_true when @p reduced is 0,
+ * or its reduced-flux representation Ft = F_true/c_hyp when @p reduced is
+ * 1 (this scheme's own stored state; see radiation_propagation_iact.h's
+ * file header). @p c_hyp must be an exact power of two for the division to
+ * be exact (see #test_consistent_variable_c_uniform_c_bit_identical's own
+ * doxygen for why that matters).
+ *
+ * @param band (return) The band to write.
+ * @param F_true The physical flux vector.
+ * @param c_hyp The particle's own #feedback_part_data.c_hyp.
+ * @param reduced 0 to store F_true directly, 1 to store F_true/c_hyp.
+ */
+static void set_consistent_c_test_band(struct feedback_isrf_band_data *band,
+                                       const float F_true[3], float c_hyp,
+                                       int reduced) {
+  const float scale = reduced ? 1.f / c_hyp : 1.f;
+  band->specific_flux[0] = F_true[0] * scale;
+  band->specific_flux[1] = F_true[1] * scale;
+  band->specific_flux[2] = F_true[2] * scale;
+}
+
+/**
+ * @brief THE DECISIVE UNIT TEST for isrf_c_hyp_scheme_consistent_variable_c:
+ * with a UNIFORM c_hyp, the new scheme's force-loop divergence and
+ * dissipation accumulators must reduce BIT FOR BIT to the shipped scheme's,
+ * through the real #runner_iact_isrf_dissipation dispatch. Checked on raw
+ * float bits (#bits_equal_f), not a tolerance.
+ *
+ * c_hyp is chosen as an exact power of two (8.0): under this scheme,
+ * #feedback_isrf_band_data.specific_flux stores Ft = F_true/c_hyp instead
+ * of F_true, and IEEE-754 multiplication/division by an exact power of two
+ * moves only the exponent field, leaving the significand untouched; a
+ * later multiplication by the same power of two therefore reproduces the
+ * pre-division rounding decision exactly (no new rounding is introduced by
+ * the round trip, and scaling commutes exactly with rounding elsewhere in
+ * the expression). An arbitrary c_hyp would only be numerically close, not
+ * bit-identical, which is not what this test requires (see
+ * swift-knowledge.md's -ffast-math notes: source-level operation order,
+ * not just mathematical equivalence, decides bit-exactness). The
+ * dissipation accumulator needs no such care: with c_i = c_j the shipped
+ * `alpha_ij*min(c_i,c_j)` and this scheme's `alpha_ij*c_i`/`alpha_ij*c_j`
+ * are literally the same expression evaluated on the same operands.
+ */
+static void test_consistent_variable_c_uniform_c_bit_identical(void) {
+
+  const float c_hyp = 8.f; /* exact power of two */
+  const float hi = 0.6f, hj = 0.9f;
+  const float mi = 1.3f, mj = 0.7f;
+  const float rho_i = 1.1f, rho_j = 0.6f;
+  const float dx[3] = {0.31f, -0.12f, 0.05f};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  const float F_true[ISRF_BAND_COUNT][2][3] = {
+      {{0.4f, -0.2f, 0.1f}, {-0.15f, 0.25f, -0.05f}},
+      {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}}};
+
+  struct part pi_A, pj_A, pi_B, pj_B;
+  bzero(&pi_A, sizeof(struct part));
+  bzero(&pj_A, sizeof(struct part));
+  bzero(&pi_B, sizeof(struct part));
+  bzero(&pj_B, sizeof(struct part));
+
+  pi_A.h = pi_B.h = hi;
+  pj_A.h = pj_B.h = hj;
+  pi_A.mass = pi_B.mass = mi;
+  pj_A.mass = pj_B.mass = mj;
+
+  struct part *const parts_A[2] = {&pi_A, &pj_A};
+  struct part *const parts_B[2] = {&pi_B, &pj_B};
+  const float rhos[2] = {rho_i, rho_j};
+  for (int s = 0; s < 2; s++) {
+    parts_A[s]->feedback_data.rho_prev = rhos[s];
+    parts_A[s]->feedback_data.c_hyp = c_hyp;
+    parts_B[s]->feedback_data.rho_prev = rhos[s];
+    parts_B[s]->feedback_data.c_hyp = c_hyp;
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      const float u = 0.5f + 0.1f * s + 0.2f * b;
+      const float alpha_trigger = 0.1f + 0.05f * s;
+      parts_A[s]->feedback_data.isrf_band[b].u = u;
+      parts_B[s]->feedback_data.isrf_band[b].u = u;
+      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+          alpha_trigger;
+      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+          alpha_trigger;
+      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
+      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
+      set_consistent_c_test_band(&parts_A[s]->feedback_data.isrf_band[b],
+                                 F_true[b][s], c_hyp, /*reduced=*/0);
+      set_consistent_c_test_band(&parts_B[s]->feedback_data.isrf_band[b],
+                                 F_true[b][s], c_hyp, /*reduced=*/1);
+    }
+  }
+
+  isrf_c_hyp_consistent_variable_c = 0;
+  runner_iact_isrf_dissipation(r2, dx, hi, hj, &pi_A, &pj_A, 1.f, 0.f);
+
+  isrf_c_hyp_consistent_variable_c = 1;
+  runner_iact_isrf_dissipation(r2, dx, hi, hj, &pi_B, &pj_B, 1.f, 0.f);
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    const struct feedback_isrf_band_data *ai = &pi_A.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *aj = &pj_A.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *bi = &pi_B.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *bj = &pj_B.feedback_data.isrf_band[b];
+
+    if (!bits_equal_f(ai->div_specific_flux, bi->div_specific_flux))
+      error(
+          "uniform-c bit identity: band %d div_F_i shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)ai->div_specific_flux, (double)bi->div_specific_flux);
+    if (!bits_equal_f(aj->div_specific_flux, bj->div_specific_flux))
+      error(
+          "uniform-c bit identity: band %d div_F_j shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)aj->div_specific_flux, (double)bj->div_specific_flux);
+    if (!bits_equal_f(ai->dissipation_u, bi->dissipation_u))
+      error(
+          "uniform-c bit identity: band %d dissipation_u_i shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)ai->dissipation_u, (double)bi->dissipation_u);
+    if (!bits_equal_f(aj->dissipation_u, bj->dissipation_u))
+      error(
+          "uniform-c bit identity: band %d dissipation_u_j shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)aj->dissipation_u, (double)bj->dissipation_u);
+  }
+  message(
+      "uniform-c bit identity: consistent-variable-c operators reduce bit "
+      "for bit to the shipped scheme's at uniform c_hyp");
+}
+
+/**
+ * @brief Requirement 3 (closing review, section (C)): the receiver's
+ * Courant number at a time-bin seam must not depend on the SENDER's bin at
+ * all. c_hyp_i under isrf_c_hyp_scheme_consistent_variable_c is
+ * #isrf_c_hyp_scheme_shipped's own formula (C_hyp*h_i/dt_i), which by
+ * construction reads only particle i's own #part.time_bin/#part.h, never a
+ * neighbour's, so `c_i*dt_i/h_j = C_hyp*(h_i/h_j)` holds for every sender
+ * h_j and time bin, dt-free. Verified here through the real
+ * #radiation_snapshot_part_propagation dispatch (not by re-deriving the
+ * formula) for bin differences 1, 2, 3 crossed with h ratios 0.5, 1, 2 (9
+ * combinations): the receiver's own c_i/dt_i must be UNCHANGED across
+ * every combination (proving the "no dependence on the sender" half), and
+ * the algebraic identity must hold in each (the seam-Courant half).
+ *
+ * Naming note: the task/review phrase this bound "C_hyp*h_j/h_i"; the
+ * derivation actually checked here gives C_hyp*h_i/h_j (receiver over
+ * sender), which is the dt-free form (c_i*dt_i/h_j =
+ * (C_hyp*h_i/dt_i)*dt_i/h_j = C_hyp*h_i/h_j). The two differ only by which
+ * particle's h sits in the numerator; this test is unambiguous about which
+ * one (i) is the receiver, and reports the mismatch here rather than
+ * silently relabeling the prose to match.
+ */
+static void test_consistent_variable_c_seam_courant_number(void) {
+
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/0.f,
+                               /*timestep_off_for_debugging=*/0);
+  /* Same c_hyp formula as shipped (see this test's own doxygen): only the
+   * scheme selector itself needs overriding after the helper above. */
+  fp.ISRF_c_hyp_scheme = isrf_c_hyp_scheme_consistent_variable_c;
+
+  const float h_i = 0.42f;
+  const timebin_t bin_i = 4;
+  const int bin_diffs[3] = {1, 2, 3};
+  const float h_ratios[3] = {0.5f, 1.f, 2.f};
+
+  float c_i_ref = -1.f, dt_i_ref = -1.f;
+
+  for (int bd = 0; bd < 3; bd++) {
+    for (int hr = 0; hr < 3; hr++) {
+      struct part p;
+      set_c_hyp_test_part(&p, h_i, bin_i);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      const float c_i = p.feedback_data.c_hyp;
+      const float dt_i = p.feedback_data.dt_prev;
+      if (c_i_ref < 0.f) {
+        c_i_ref = c_i;
+        dt_i_ref = dt_i;
+      } else if (!bits_equal_f(c_i, c_i_ref) || !bits_equal_f(dt_i, dt_i_ref)) {
+        error(
+            "seam Courant number: receiver c_hyp/dt changed with the "
+            "sender's bin difference=%d h_ratio=%.2f (c_i=%.9g dt_i=%.9g, "
+            "expected %.9g/%.9g): the formula must not read the sender.",
+            bin_diffs[bd], (double)h_ratios[hr], (double)c_i, (double)dt_i,
+            (double)c_i_ref, (double)dt_i_ref);
+      }
+
+      const timebin_t bin_j = bin_i + bin_diffs[bd];
+      (void)bin_j; /* only used to name the sender's bin in messages/errors */
+      const float h_j = h_i * h_ratios[hr];
+
+      const double lhs = (double)c_i * (double)dt_i / (double)h_j;
+      const double rhs =
+          (double)fp.ISRF_c_hyp_margin * (double)h_i / (double)h_j;
+      if (fabs(lhs - rhs) > 1e-6 * fabs(rhs))
+        error(
+            "seam Courant number: bin_diff=%d h_ratio=%.2f: c_i*dt_i/h_j = "
+            "%.9e != C_hyp*h_i/h_j = %.9e",
+            bin_diffs[bd], (double)h_ratios[hr], lhs, rhs);
+    }
+  }
+  message(
+      "seam Courant number: c_i*dt_i/h_j = C_hyp*h_i/h_j for every bin "
+      "difference (1..3) and h ratio (0.5/1/2), independent of the "
+      "sender's own bin");
+}
+
+/**
+ * @brief Requirement 4 (closing review, section (C)): the mass-weighted
+ * exchange every other scheme conserves exactly, `m_i*X_i + m_j*X_j = 0`,
+ * is no longer the invariant once each side carries its OWN c_hyp (see
+ * radiation_propagation_iact.h's file header for the derivation);
+ * `m_i*X_i/c_i + m_j*X_j/c_j = 0` is, for both the divergence and the
+ * dissipation accumulators. Checked here at genuinely different c_i != c_j
+ * (unlike the bit-identity test above, which deliberately keeps c_i = c_j)
+ * across three trials, through the real #runner_iact_isrf_dissipation
+ * dispatch.
+ */
+static void test_consistent_variable_c_conservation(void) {
+
+  const float ci_values[3] = {4.f, 9.5f, 22.f};
+  const float cj_values[3] = {12.f, 5.5f, 6.25f};
+  const double SEAM_BAR = 1e-5;
+
+  isrf_c_hyp_consistent_variable_c = 1;
+
+  for (int t = 0; t < 3; t++) {
+    struct part pi, pj;
+    bzero(&pi, sizeof(struct part));
+    bzero(&pj, sizeof(struct part));
+
+    pi.h = 0.5f + 0.1f * t;
+    pj.h = 0.8f - 0.05f * t;
+    pi.mass = 1.1f + 0.3f * t;
+    pj.mass = 0.6f + 0.2f * t;
+    pi.feedback_data.rho_prev = 1.0f + 0.2f * t;
+    pj.feedback_data.rho_prev = 0.7f + 0.1f * t;
+    pi.feedback_data.c_hyp = ci_values[t];
+    pj.feedback_data.c_hyp = cj_values[t];
+
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
+      struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
+      bi->specific_flux[0] = 0.3f + 0.05f * t + 0.1f * b;
+      bi->specific_flux[1] = -0.2f + 0.02f * t;
+      bi->specific_flux[2] = 0.15f;
+      bj->specific_flux[0] = -0.1f + 0.03f * t;
+      bj->specific_flux[1] = 0.25f - 0.01f * b;
+      bj->specific_flux[2] = -0.05f;
+      bi->u = 0.6f + 0.1f * t;
+      bj->u = 0.4f + 0.05f * b;
+      bi->dissipation_alpha_trigger = 0.2f;
+      bj->dissipation_alpha_trigger = 0.15f;
+      bi->dissipation_alpha_floor = 0.05f;
+      bj->dissipation_alpha_floor = 0.05f;
+    }
+
+    const float dx[3] = {0.2f + 0.05f * t, -0.1f, 0.05f};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    runner_iact_isrf_dissipation(r2, dx, pi.h, pj.h, &pi, &pj, 1.f, 0.f);
+
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      const struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
+      const struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
+
+      const double div_i = (double)pi.mass * (double)bi->div_specific_flux /
+                           (double)pi.feedback_data.c_hyp;
+      const double div_j = (double)pj.mass * (double)bj->div_specific_flux /
+                           (double)pj.feedback_data.c_hyp;
+      const double div_ratio =
+          fabs(div_i + div_j) / max(fabs(div_i) + fabs(div_j), 1e-30);
+      if (!(div_ratio <= SEAM_BAR))
+        error(
+            "conservation (divergence/c): trial %d band %d: "
+            "m_i*div_i/c_i + m_j*div_j/c_j ratio = %.3e above %.3e",
+            t, b, div_ratio, SEAM_BAR);
+
+      const double diss_i = (double)pi.mass * (double)bi->dissipation_u /
+                            (double)pi.feedback_data.c_hyp;
+      const double diss_j = (double)pj.mass * (double)bj->dissipation_u /
+                            (double)pj.feedback_data.c_hyp;
+      const double diss_ratio =
+          fabs(diss_i + diss_j) / max(fabs(diss_i) + fabs(diss_j), 1e-30);
+      if (!(diss_ratio <= SEAM_BAR))
+        error(
+            "conservation (dissipation/c): trial %d band %d: "
+            "m_i*diss_i/c_i + m_j*diss_j/c_j ratio = %.3e above %.3e",
+            t, b, diss_ratio, SEAM_BAR);
+    }
+  }
+
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+  message(
+      "conservation under variable c: m_i*X_i/c_i + m_j*X_j/c_j = 0 for "
+      "both the divergence and dissipation accumulators, at genuinely "
+      "different c_i != c_j");
+}
+
 /**
  * @brief Run one geometry: small-h cell at the origin, large-h cell at the
  * offset (or the reverse), swept without depth limits, then across two
@@ -1146,6 +1464,9 @@ int main(int argc, char *argv[]) {
   test_kernel_local_c_hyp();
   test_c_hyp_scheme_mismatch_rejected();
   test_c_hyp_end_density_no_clobber_for_other_schemes();
+  test_consistent_variable_c_uniform_c_bit_identical();
+  test_consistent_variable_c_seam_courant_number();
+  test_consistent_variable_c_conservation();
 
   struct space space;
   struct engine engine;

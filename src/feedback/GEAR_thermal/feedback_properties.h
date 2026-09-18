@@ -54,10 +54,17 @@ enum radiation_policy {
 };
 
 /**
- * @brief Which propagation-speed scheme sets the ISRF hyperbolic speed
- * `c_hyp_i` (radiation_isrf.c). See #feedback_props.ISRF_c_hyp_scheme's own
- * doxygen for the formula each value selects; they are alternatives, not
- * layers, enforced at parse time by feedback_props_init().
+ * @brief Which ISRF hyperbolic-propagation scheme is active. For
+ * #isrf_c_hyp_scheme_shipped, #isrf_c_hyp_scheme_kernel_local and
+ * #isrf_c_hyp_scheme_fixed_fraction, this selects which formula sets the
+ * propagation speed `c_hyp_i` (radiation_isrf.c), all three consumed by the
+ * SAME pairwise operators (radiation_propagation_iact.h).
+ * #isrf_c_hyp_scheme_consistent_variable_c instead leaves `c_hyp_i` at
+ * #isrf_c_hyp_scheme_shipped's own formula and changes which operators
+ * consume it, so its own name describes the operators, not the speed. See
+ * #feedback_props.ISRF_c_hyp_scheme's own doxygen for the specifics of
+ * each value; they are alternatives, not layers, enforced at parse time by
+ * feedback_props_init().
  */
 enum isrf_c_hyp_scheme {
   /*! `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, `dt_i` this particle's own
@@ -70,6 +77,19 @@ enum isrf_c_hyp_scheme {
   /*! `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every particle,
    * independent of `h`/timestep. */
   isrf_c_hyp_scheme_fixed_fraction = 2,
+  /*! `c_hyp_i` unchanged from #isrf_c_hyp_scheme_shipped's own formula, but
+   * every pairwise transport/dissipation operator
+   * (radiation_propagation_iact.h) is rebuilt as the consistent
+   * generalisation of the single-uniform-speed reduced-speed-of-light
+   * method to a per-particle `c_hyp_i`: a change of variable (every
+   * operator at particle i becomes `c_hyp_i/c` times the true-speed
+   * equation, and the state stored becomes the reduced flux `Ft =
+   * F_true/c_hyp`, so a time-bin change rescales nothing), not a new pair
+   * weight. See radiation_propagation_iact.h's file header and
+   * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
+   * selection into that file's pairwise dispatch. Reduces bit-for-bit to
+   * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform. */
+  isrf_c_hyp_scheme_consistent_variable_c = 3,
 };
 
 /**
@@ -151,12 +171,14 @@ struct feedback_props {
    * range depends on both dissipation parameters, not just this one. */
   float ISRF_c_hyp_margin;
 
-  /*! Selects which propagation-speed scheme sets `c_hyp_i`
-   * (radiation_isrf.c): #isrf_c_hyp_scheme_shipped (0, default),
-   * #isrf_c_hyp_scheme_kernel_local (1), or
-   * #isrf_c_hyp_scheme_fixed_fraction (2, magnitude
-   * #ISRF_c_hyp_fixed_fraction_of_c). See that enum's own doxygen for the
-   * formula each value runs. The two non-default schemes are alternatives,
+  /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme):
+   * #isrf_c_hyp_scheme_shipped (0, default), #isrf_c_hyp_scheme_kernel_local
+   * (1) and #isrf_c_hyp_scheme_fixed_fraction (2, magnitude
+   * #ISRF_c_hyp_fixed_fraction_of_c) each select a `c_hyp_i` formula;
+   * #isrf_c_hyp_scheme_consistent_variable_c (3) instead keeps
+   * #isrf_c_hyp_scheme_shipped's own `c_hyp_i` formula and rebuilds the
+   * pairwise operators that consume it. See that enum's own doxygen for
+   * the specifics of each value. The non-default schemes are alternatives,
    * not layers: feedback_props_init() errors if #ISRF_c_hyp_fixed_fraction_of_c
    * is positive with this not set to #isrf_c_hyp_scheme_fixed_fraction, or
    * this is set to it with #ISRF_c_hyp_fixed_fraction_of_c left at 0. */
@@ -426,6 +448,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
       else if (feedback_props->ISRF_c_hyp_scheme ==
                isrf_c_hyp_scheme_fixed_fraction)
         isrf_c_hyp_scheme_name = "fixed fraction of c";
+      else if (feedback_props->ISRF_c_hyp_scheme ==
+               isrf_c_hyp_scheme_consistent_variable_c)
+        isrf_c_hyp_scheme_name =
+            "consistent variable-c operators (shipped c_hyp formula)";
       message("ISRF c_hyp scheme                                          = %s",
               isrf_c_hyp_scheme_name);
       if (feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
@@ -731,11 +757,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:ISRF_c_hyp_scheme", isrf_c_hyp_scheme_shipped);
     if (fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_shipped &&
         fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction)
+        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
+        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_consistent_variable_c)
       error(
           "GEARFeedback:ISRF_c_hyp_scheme must be 0 (shipped), 1 "
-          "(kernel-local) or 2 (fixed fraction of c) (got %d).",
+          "(kernel-local), 2 (fixed fraction of c) or 3 (consistent "
+          "variable-c operators) (got %d).",
           fp->ISRF_c_hyp_scheme);
+    /* Carries the selection into radiation_propagation_iact.h's pairwise
+     * dispatch, which has no #engine pointer to read #feedback_props from;
+     * see #isrf_c_hyp_consistent_variable_c's own doxygen. */
+    isrf_c_hyp_consistent_variable_c =
+        (fp->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c);
 
     /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's own doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
