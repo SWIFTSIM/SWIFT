@@ -1,0 +1,63 @@
+MetaData:
+  run_name: AREPO metal-advection comparison
+
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 1e10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:           0.
+  delta_time:           0.002   # ~100 stats dumps over the run
+
+Scheduler:
+  cell_split_size:    200
+  max_top_level_cells: 3
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          SWIFT_IC_TurbBox_N32.hdf5   # The file to read
+  periodic:           1                           # Are we running with periodic ICs?
+  shift:              [0.0, 0.0, 0.0]
+  cleanup_smoothing_lengths: 1
+
+# Parameters governing time integration
+TimeIntegration:
+  time_begin:        0.       # (in internal units)
+  time_end:          0.2048   # (in internal units) ~ AREPO's a=0.1 -> 0.1231292479 in flat LCDM
+  dt_min:            1e-10    # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2     # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir:             snap
+  basename:           snapshot        # Common part of the name of output files
+  time_first:         0.
+  delta_time:         0.0205          # ~10 snapshots over the run
+  compression:        9
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:                           adaptive   # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001      # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7        # Opening angle for the purely gemoetric criterion.
+  eta:                           0.025      # Constant dimensionless multiplier for time integration.
+  theta:                         0.7        # Opening angle (Multipole acceptance criterion).
+  mesh_side_length:              64         # PM mesh resolution (~2x cbrt(N_particles), tuned for this test's 24k particles)
+  max_physical_baryon_softening: 9.830e-02  # Physical softening length (in internal units).
+
+# Parameters for the hydrodynamics scheme (shared across sphenix/gizmo-mfm/gizmo-mfv builds)
+SPH:
+  resolution_eta:      1.2348     # Target smoothing length in units of the mean inter-particle separation.
+  CFL_condition:       0.1        # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:         0.032      # Minimal smoothing length in terms of the baryon length.
+  initial_temperature: 244.81     # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
+  minimal_temperature: 5.0
+
+GEARChemistry:
+  initial_metallicity: -1        # Negative: read per-particle MetalMassFraction from the ICs (converted from AREPO's ICs
+  scale_initial_metallicity: 0
