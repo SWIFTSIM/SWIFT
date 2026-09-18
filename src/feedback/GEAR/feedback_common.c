@@ -73,12 +73,14 @@ float feedback_compute_spart_timestep(
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
+ * @param old_time_bin The star's time bin for the step that just finished.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -106,7 +108,7 @@ void feedback_will_do_feedback(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time, old_time_bin);
 
   /* There is no feedback to do for newborn stars */
   const double star_age_end_step = star_age_beg_step + dt_enrichment;
@@ -212,14 +214,17 @@ double compute_star_age_end_of_step(const struct spart *sp,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The current time (in double)
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (not its possibly-already-overwritten current bin; see the caller's
+ * comment at its own call site for which value that is).
  */
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
-                  const double time) {
-  const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-  *ti_begin_star = get_integer_time_begin(ti_current, sp->time_bin);
+                  const double time, const timebin_t old_time_bin) {
+  const integertime_t ti_step = get_integer_timestep(old_time_bin);
+  *ti_begin_star = get_integer_time_begin(ti_current, old_time_bin);
 
   /* Get particle time-step */
   double dt_star;
@@ -227,7 +232,7 @@ void compute_time(const struct spart *sp, const int with_cosmology,
     dt_star = cosmology_get_delta_time(cosmo, *ti_begin_star,
                                        *ti_begin_star + ti_step);
   } else {
-    dt_star = get_timestep(sp->time_bin, time_base);
+    dt_star = get_timestep(old_time_bin, time_base);
   }
 
   /* Calculate age of the star at current time */
