@@ -97,13 +97,16 @@ def parse_options():
 
 def check_snapshot(path, tol, inj_floor):
     """Return True iff every band at this snapshot passes the ledger gate."""
-    ok = True
+    all_ok = True
     with h5py.File(path, "r") as f:
         time = float(np.asarray(f["/Header"].attrs["Time"]).flat[0])
         gas = f["/PartType0"]
         mass = gas["Masses"][:].astype(np.float64)
 
         for band in BANDS:
+            # Per-band: one band's failure must never suppress the other's check.
+            band_ok = True
+
             u = gas[f"{band}SpecificEnergies"][:].astype(np.float64)
             inj = gas[f"{band}CumulativeInjectedSpecificEnergies"][:].astype(np.float64)
             absorbed = gas[f"{band}CumulativeAbsorbedSpecificEnergies"][:].astype(
@@ -117,9 +120,10 @@ def check_snapshot(path, tol, inj_floor):
                         f"{path} t={time:.6e} {band}: {name} has {n_bad} "
                         "non-finite value(s) -> FAIL"
                     )
-                    ok = False
+                    band_ok = False
 
-            if not ok:
+            if not band_ok:
+                all_ok = False
                 continue
 
             E = float(np.sum(mass * u))
@@ -131,7 +135,7 @@ def check_snapshot(path, tol, inj_floor):
                     f"{path} t={time:.6e} {band}: mass-weighted sum is "
                     f"non-finite (E={E}, Inj={Inj}, Abs={Abs}) -> FAIL"
                 )
-                ok = False
+                all_ok = False
                 continue
 
             residual = E + Abs - Inj
@@ -154,9 +158,9 @@ def check_snapshot(path, tol, inj_floor):
                 f"Abs={Abs:.10e} metric={metric:.6e} (tol={tol:.3e}) "
                 f"-> {status}{note}"
             )
-            ok = ok and passed
+            all_ok = all_ok and passed
 
-    return ok
+    return all_ok
 
 
 def main():
