@@ -866,6 +866,187 @@ dissipation operator, and $0.70 = \nu_{\max}^2/2$ with $\nu_{\max} =
 is checked at start-up. With dissipation off it gives $C_{\rm hyp}\le
 1.69$; at the shipped $\alpha = 0.5$ it gives $C_{\rm hyp}\le 0.571$.
 
+\subsubsection{Speed heterogeneity: two failure pathways, an open
+residual, and what is settled about each}
+\label{sec:fuv-chyp-heterogeneity}
+
+Eq.~\ref{eq:fuv-chyp} is evaluated independently for every particle, so
+$c_{{\rm hyp},i}$ generally differs from $c_{{\rm hyp},j}$ for any pair
+$(i,j)$ that sits on different time bins or has different $h$ -- a
+``seam'' the pairwise transport and injection operators cross on every
+step. An investigation opened 2026-09-18 (operator-directed, following
+up the T6 validation above) separated this heterogeneity's consequences
+into two distinct failure pathways and quantified each against the
+shipped scheme's own example fixtures
+(\code{examples/SubgridTests/StellarFeedback/ISRF/}). Both are
+established; a residual mechanism beyond either is not, and no fix is
+adopted here -- \textbf{this section documents an open investigation, not
+a resolved design.}
+
+\paragraph{Pathway 1: negative energy at a speed seam.} A receiver
+particle's own Courant number is set by its neighbours' $c_{\rm hyp}$,
+not only its own; a fast-stepping neighbour with a large $c_{\rm hyp}$
+can drive the shared pairwise flux term past what the slower receiver's
+own step can absorb, undershooting $u$ past zero. This is now established
+as a real cause, three independent ways, on
+\code{ISRFDissipationExtreme} and \code{ISRFCausalReach}: pinning every
+particle to one uniform $c_{\rm hyp}$ removes the sign violation
+entirely (a fixture-specific sign-closure gate goes from $0.57\%$/$0.85\%$
+FUV/LW to exactly $0.0000\%$); lowering $C_{\rm hyp}$ alone, with no code
+change, removes every negative on a fixture where the artificial
+dissipation cannot repair one; and two independently implemented
+neighbour-dependent pair weights, predicted in advance to trade this
+pathway for a different SPH-consistency violation, both do exactly that,
+regressing the same fixture's sign closure by a factor of $10$--$13$. See
+the \code{swift-gear} logbook, \code{theory/radiation/}, for the full
+numbers and job references; this document states the mechanism, not the
+validation record.
+
+\paragraph{Pathway 2: an amplitude error from coupling the source to
+$c_{\rm hyp}$.} The source term in Eq.~\ref{eq:fuv-u-eq} is rescaled by
+$c_{\rm hyp}/c$ at the injecting particle's own value, so an identical
+star deposits a physically different amount of energy depending on the
+local gas's own time-stepping: a particle pinned to a short step (large
+$c_{\rm hyp}$) receives more of the true source than one on a long step,
+independent of the pathway-1 sign question above. This coupling is
+reported in the literature as wrong \emph{in general}, not merely as a
+consequence of $c_{\rm hyp}$ being per-particle rather than uniform
+(Section~\ref{sec:fuv-chyp-literature}); a single global $c_{\rm hyp}$
+would still need it fixed. What is measured: forcing a uniform speed
+(the pin, and independently a lowered $C_{\rm hyp}$) changes the final
+FUV band energy on \code{ISRFCausalReach} by $-18\%$ and $-15\%$
+respectively relative to the shipped, heterogeneous-speed run. This gap
+is not cleanly attributable to the amplitude coupling alone: the same
+fixture is still rising at $t_{\rm end}$ under every speed tested, so
+part of the difference is a slower relaxation clock (Section
+\ref{sec:fuv-chyp}'s own discussion of the transient), not a pure
+injection bias, and the two effects are not separated on the fixtures
+tested so far.
+
+\paragraph{Speed definitions tested, and why none is shipped.} Three
+alternative definitions of $c_{{\rm hyp},i}$ were implemented as
+selectable runtime schemes (\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme},
+default $0$, bit-identical to the formula above) and measured against
+the same fixtures: a kernel-local rule that takes the slowest step among
+a particle and every neighbour in its kernel (scheme $1$); a fixed
+global fraction of $c$, independent of $h$ or the time step (scheme
+$2$); and a ``consistent variable-$c$'' reformulation that changes which
+variable the pairwise operators carry so that every operator becomes the
+per-particle-speed generalisation of the reduced-speed-of-light method,
+reducing bit-for-bit to the shipped scheme under a uniform speed (scheme
+$3$). All three measurably reduce pathway 1 relative to shipped on every
+fixture tested. \textbf{None is adopted, and none clears its own
+pre-registered acceptance bar}: each fails at least one fixture's exact
+sign-closure or accuracy criterion, one carries an initially
+undercounted particle-update cost of $+21$ to $+29\%$ once measured
+correctly, and one depends on a kernel-membership test that a
+uniform-resolution fixture cannot exercise but a real galaxy's
+density contrast can. The choice of propagation-speed definition, if
+any change is made at all, remains an open operator decision; the
+default stays scheme $0$.
+
+\paragraph{Open question: is pathway 1 the whole story?} A same-day
+finding (2026-09-18, not yet independently re-tested) proposes that the
+scheme's central-SPH-divergence-plus-pairwise-dissipation structure is
+positive only in the diffusive regime and is \emph{not} positive for a
+free-streaming neighbour (M1 flux ratio $f\to1$) at any choice of
+$c_{\rm hyp}$, uniform or not, once the required dissipation coefficient
+exceeds what the shipped stability bound (Eq.~\ref{eq:fuv-stability-bound})
+allows -- which would mean the speed-seam heterogeneity mainly amplifies
+a pre-existing structural gap rather than being its root cause. This is
+a working hypothesis under active test as of this writing, not an
+established result: it is included here so the open question is stated
+precisely, not so a reader treats it as settled. It must not be read as
+a second candidate fix alongside the three above.
+
+\subsubsection{Literature position on a variable propagation speed}
+\label{sec:fuv-chyp-literature}
+
+A literature review conducted 2026-09-18
+(\code{.claude/dev/design-isrf-rsla-literature.md} in this checkout)
+answered whether any published radiation-transport scheme varies its
+reduced speed of light the way Eq.~\ref{eq:fuv-chyp} does. Citations
+below are separated as the review itself separates them: \textbf{verified}
+means the source's full text was read directly (or, for the two SWIFT
+modules, the source code); \textbf{secondary} means only a search
+summary or a citing paper's own reference list was checked, and no
+number from such a source should be trusted without re-reading it.
+
+\textbf{No published scheme ties the reduced speed of light to a
+per-element time step (verified).} Where the literature does vary the
+speed spatially, it is tied to a static hierarchy -- the AMR refinement
+level -- with an exact, fixed ratio (a factor $2$) between any two
+adjacent levels, not to an independently adaptive per-element quantity
+\citep{Katz2017,Rosdahl2018}. \citet{Katz2017} give an exact interface
+treatment for this case (their Appendix A): the neighbour's photon
+density is rescaled by the ratio of the two levels' speeds before
+entering a shared Lax-Friedrichs flux, which both sides of the interface
+compute identically, giving flux-exact conservation for a single common
+time step across all levels. This construction does not port to GEAR's
+SPH scheme: it relies on exactly two well-defined neighbour states per
+face and one shared flux value both sides agree on, whereas SPH's
+pairwise transport has each particle accumulate its own side of an
+interaction independently, with no shared face. Even in its native
+finite-volume setting, the exact proof degrades to an admitted
+few-percent, not sign-violating, leak once per-level time steps are
+allowed to desynchronise \citep{Katz2017,Rosdahl2018}. A citation inside
+\citet{Katz2017} (Commer\c{c}on, Debout \& Teyssier 2014, A\&A 563, A11)
+is flagged by the review as the one lead that addresses this
+asynchronous-time-step case directly; it was not independently read and
+its content is not asserted here.
+
+\textbf{SWIFT's own two RT modules both use a single, global, run-constant
+value (verified, read directly from \code{src/rt/}).} GEAR-RT
+(\code{src/rt/GEAR/rt\_properties.h}) sets \code{reduced\_speed\_of\_light}
+once at start-up from the parameter \code{GEARRT:f\_reduce\_c} and every
+particle reads the same global struct field. SPHM1RT
+(\code{src/rt/SPHM1RT/rt\_properties.h}) does the same with
+\code{SPHM1RT:cred}, copied unchanged into every particle at start-up. A
+single uniform speed is not a deviation from how this feature is
+normally used elsewhere in this codebase; every other user of a reduced
+speed of light in \swift{} uses exactly one number for the whole run.
+
+\textbf{The source/injection amplitude must not be coupled to the
+reduced speed at all (verified).} \citet{Gnedin2026} states this
+directly: ``this is the \emph{only} place where the speed of light
+should be reduced[;] \dots the speed of light should \emph{not} be
+reduced in the equation for the cosmic background\dots [n]or should $c$
+that enters the definition of $\psi_\nu$ \dots be reduced, as it would
+result in the incorrect photon production rate.'' \citet{Ocvirk2019}
+confirm this numerically in an independent code (RAMSES-CUDATON):
+reducing $c$ by a factor $f$ inflates the post-reionisation neutral
+fraction by the same factor $f$ when the reduced speed leaks into the
+chemistry coupling, and the error disappears when the true $c$ is used
+there instead. Both papers describe exactly Pathway 2 above, and neither
+ties the diagnosis to whether the reduced speed is uniform or
+per-particle: a single global $c_{\rm hyp}$ would still need this fixed.
+
+\textbf{The RSLA validity criterion in the literature is derived for an
+ionizing, recombination-bounded front and does not transfer directly to
+GEAR's non-ionizing bands (verified for the cited numbers, non-transfer
+is this review's own reading).} \citet{Rosdahl2013}'s criterion
+($f_c\gtrsim10\,t_{\rm cross}/\tau_{\rm sim}$) and the values people
+actually run at (STARFORGE, \citealt{Grudic2021}, single global
+$\tilde c=5$--$300\,{\rm km\,s^{-1}}$, fiducial $90\,{\rm km\,s^{-1}}$)
+are both set from ionizing-front or recombination timescales that have
+no analogue for photoelectric heating or H$_2$ photodissociation. No
+source found by the review gives a validity criterion or a value
+specific to non-ionizing ISM radiation transport; the general form that
+does transfer is simply that $c_{\rm hyp}$ must exceed every physical
+signal speed the transport is meant to resolve, evaluated against the
+shortest timescale of interest.
+
+\textbf{No prior report of negative radiation energy at a variable-speed
+interface was found (verified absence, not a positive claim).} The
+review checked every RSLA-interface source it read directly, including
+the paper most focused on RSLA conservation failures generally
+\citep{Gnedin2026}, for any mention of a sign-violating failure at a
+speed boundary; none was found. This may mean the failure is rare in
+schemes that never couple a per-element time step to the propagation
+speed the way this scheme does, or it may mean it is undocumented; the
+review could not distinguish the two, and the unread Commer\c{c}on et
+al. (2014) source above is the most promising remaining lead.
+
 \subsubsection{Injection: kernel deposit, extinction and dose reservoir}
 \label{sec:fuv-injection}
 
@@ -1545,7 +1726,11 @@ path.
     (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
     Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
     positivity at time-bin boundaries and in strongly contrasted gas,
-    without changing transport in smooth fields, is open.
+    without changing transport in smooth fields, is open. This is a
+    different mechanism from the $c_{\rm hyp}$-heterogeneity pathway of
+    Section~\ref{sec:fuv-chyp-heterogeneity} (a dispatch-coverage gap
+    versus a receiver-side Courant violation), and the two should not be
+    conflated: fixing one does not address the other.
   \item \textbf{Dissipation coefficients.} The amplification matrix of
     the flux-first update (Eq.~\ref{eq:fuv-u-update}) has the same
     characteristic polynomial as a dissipation applied to the transported
