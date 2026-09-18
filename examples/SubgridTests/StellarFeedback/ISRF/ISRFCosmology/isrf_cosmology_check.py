@@ -30,21 +30,63 @@ factors SWIFT wrote, so the reference uses SWIFT's own a(t).
 
 free_field
     No star, no dust (kappa = 0), uniform seeded field, so the flux divergence
-    vanishes. The module's energy equation reduces to ``du/dt = -H u`` for the
-    mass-specific field (volumetric U ~ a^-4, rho ~ a^-3), hence
+    vanishes. The module's energy equation reduces to ``du/dt = -(c_hyp/c) H
+    u`` for the mass-specific field: the reduced-speed-of-light method is
+    only correct if EVERY rate is dilated by the same c_hyp/c factor, and the
+    Hubble term is no exception (see radiation_isrf.c's
+    radiation_end_force_propagation, fixed for this). ``c_hyp`` in this
+    fixture is NOT pinned (c_hyp_pin is 0, the run.sh default for
+    ``free_field``), so it is a per-particle, per-step quantity
+    (ISRF_c_hyp_margin*h/dt, clamped at c), not a single constant, and the
+    exact solution is the integral
 
-        u(t) = u0 a0 / a(t)                    (u = u0 without cosmology).   (A1)
+        ln[u(t)/u0] = -(1/c) int_0^t c_hyp(t') H(t') dt'                    (A1)
+
+    which this check does not evaluate exactly (c_hyp is not a snapshot
+    field). What it checks instead is the practical consequence: with the
+    module's own light-speed clamp, c_hyp <= c always, and on every fixture
+    this file runs c_hyp/c is of order 1e-5 (c_hyp ~ margin*h/dt is a
+    resolved-region speed, km/s-scale, against c ~ 3e5 km/s in this unit
+    system), so the integral above is many orders below this check's own
+    float32/discretisation floor over the run's span. The practical
+    prediction is therefore u(t) = u0, with the un-modelled decay folded into
+    the bar as an explicit term bounded by c_hyp_bound/c (c_hyp_bound an
+    upper estimate from the run's own smoothing length and step size, printed
+    below), not asserted as exactly 0.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
-    ``k = sigma_H2 c rho u_LW / E_LW``, with rho = rho0 (a0/a)^3, so
+    ``k = sigma_H2 c rho u_LW / E_LW``, with rho = rho0 (a0/a)^3 and, to the
+    same leading order as A1 (u_LW ~= u_LW,0, not u_LW,0 a0/a as an undilated
+    Hubble term would give), so
 
-        ln[x_H2(t)/x_H2(0)] = -k0 int_0^t (a0/a)^4 dt'    (-k0 t without).   (A2)
+        ln[x_H2(t)/x_H2(0)] = -k0 int_0^t (a0/a)^3 dt'    (-k0 t without).   (A2)
+
+    This is the more discriminating of the two: the exponent changed from 4
+    (density cubed times a linearly-decaying field) to 3 (density alone, the
+    field no longer decaying at leading order), a ~10% shift in the
+    predicted x_H2 over this fixture's span, well above any noise floor.
 
 dust_absorption
-    Seeded field, solar metallicity, propagation speed pinned to c_pin. The
-    exact solution of the module's relaxation update is
+    Seeded field, solar metallicity, propagation speed pinned to c_pin (so,
+    unlike free_field, c_hyp/c is a single run-wide constant here, not a
+    per-particle/per-step quantity). The exact solution of the module's
+    relaxation update is
 
-        ln[u(t)/u0] = -c_pin kappa0 int_0^t (a0/a)^3 dt' - ln[a(t)/a0] ,     (B1)
+        ln[u(t)/u0] = -c_pin kappa0 int_0^t (a0/a)^3 dt'
+                      - (c_pin/c) ln[a(t)/a0] ,                              (B1)
+
+    the Hubble term dilated by the same c_pin/c factor as the absorption
+    term (see free_field's own note above); with c_pin a few km/s against
+    c ~ 3e5 km/s in this unit system, that second term is ~1e-5 of what an
+    undilated -ln[a(t)/a0] would give, negligible next to the dust-absorption
+    term for any metal-enriched fixture. This leg is not run as part of this
+    check's own verification (see the ISRF cosmological Hubble-term rescale
+    fix's own log): the correction is algebraically exact given a pinned
+    c_hyp (no simulation needed to derive it), and the dust-absorption term
+    dominates B1 by many orders of magnitude here, so this fixture does not
+    discriminate the fix either way; the formula and code below are kept
+    accurate regardless, so a future run is not compared against a
+    knowingly-stale reference.
 
     with kappa0 = sigma_d (Z/0.01295) rho0 / (1.4 m_H) the linear absorption
     coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for FUV and LW).
@@ -181,6 +223,7 @@ def read_snapshot(filename: str) -> Dict:
             "energy_unit": energy,
             "density": physical(gas["Densities"], a, mass / length**3)[order],
             "mass": physical(gas["Masses"], a, mass)[order],
+            "h": physical(gas["SmoothingLengths"], a, length)[order],
             "u": physical(gas["InternalEnergies"], a, energy)[order],
             "u_PE": physical(gas["FUVSpecificEnergies"], a, energy)[order],
             "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
@@ -274,6 +317,16 @@ def read_dt_max(pattern: str, given: Optional[float]) -> float:
         return float(yaml.safe_load(handle)["TimeIntegration"]["dt_max"])
 
 
+def read_c_hyp_margin(pattern: str) -> float:
+    """Return GEARFeedback:ISRF_c_hyp_margin from the run's used_parameters.yml."""
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        return float(yaml.safe_load(handle)["GEARFeedback"]["ISRF_c_hyp_margin"])
+
+
 def summarize(label: str, error: np.ndarray) -> float:
     """Print and return the worst per-snapshot median |error|."""
     medians = np.median(np.abs(error), axis=1)
@@ -311,9 +364,13 @@ def free_field_errors(run: List[Dict]) -> Dict:
     a glass each particle's field departs from the uniform solution by the
     glass noise while the mass-weighted mean follows (A1) exactly. The gates
     use the box means; the per-particle spread is reported.
+
+    A1's reference is u0 (see this module's own docstring: to the precision
+    this check can resolve, the c_hyp/c-dilated Hubble decay is un-modelled,
+    not asserted as exactly 0), so `out[band]` is the box-mean field's own
+    fractional departure from u0, not from an a-dependent target.
     """
     first = run[0]
-    a0 = first["a"]
     mass = first["mass"]
     out = {}
     for band in ["FUV", "LW"]:
@@ -321,21 +378,13 @@ def free_field_errors(run: List[Dict]) -> Dict:
         u0 = np.sum(mass * first[f"u_{key_band}"]) / np.sum(mass)
         out[band] = np.array(
             [
-                np.sum(s["mass"] * s[f"u_{key_band}"])
-                / np.sum(s["mass"])
-                / (u0 * a0 / s["a"])
-                - 1.0
+                np.sum(s["mass"] * s[f"u_{key_band}"]) / np.sum(s["mass"]) / u0 - 1.0
                 for s in run
             ]
         )
         out[f"{band}_spread"] = np.array(
             [
-                np.median(
-                    np.abs(
-                        s[f"u_{key_band}"] / (first[f"u_{key_band}"] * a0 / s["a"])
-                        - 1.0
-                    )
-                )
+                np.median(np.abs(s[f"u_{key_band}"] / first[f"u_{key_band}"] - 1.0))
                 for s in run
             ]
         )
@@ -343,7 +392,10 @@ def free_field_errors(run: List[Dict]) -> Dict:
     rho0 = np.sum(mass) / np.sum(mass / first["density"])
     u_lw0 = np.sum(mass * first["u_LW"]) / np.sum(mass)
     k0 = SIGMA_H2_LW_CGS * C_LIGHT_CGS * rho0 * u_lw0 / LW_PHOTON_ENERGY_CGS
-    integral = power_integral(run, 4.0)
+    # Power 3, not 4: rho ~ (a0/a)^3 alone now (A2, this module's docstring).
+    # u_LW no longer contributes an (a0/a)^1 factor once the Hubble term is
+    # correctly dilated by c_hyp/c.
+    integral = power_integral(run, 3.0)
     measured = np.array([np.mean(np.log(s["H2I"] / first["H2I"])) for s in run])
     predicted = -k0 * integral
     out["H2"] = (measured[1:] - predicted[1:]) / np.abs(predicted[1:])
@@ -387,27 +439,53 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         if cosmological
         else dt_max * run[0]["time_unit"]
     )
+    # Upper-bound estimate of c_hyp/c, from the run's own resolution: c_hyp is
+    # not a snapshot field (this fixture's c_hyp_pin is off, so c_hyp itself
+    # varies per particle and per step, see this module's own docstring), but
+    # it is bounded by ISRF_c_hyp_margin*h/dt_step (h the smallest physical
+    # dt_step gives the largest bound) and by c. dt_step above already uses
+    # H(a0), the largest H over this matter-domination run, hence the
+    # smallest physical dt: a conservative (not tight) upper bound.
+    c_hyp_ratio = 0.0
+    if cosmological:
+        margin = read_c_hyp_margin(opt.snapshots)
+        h_phys_cgs = np.median(run[0]["h"])
+        c_hyp_bound_cgs = min(C_LIGHT_CGS, margin * h_phys_cgs / dt_step)
+        c_hyp_ratio = c_hyp_bound_cgs / C_LIGHT_CGS
+        print(
+            f"  c_hyp/c upper bound: {c_hyp_ratio:.3e} (margin {margin:g}, "
+            f"median h {h_phys_cgs:.3e} cm, dt_step {dt_step:.3e} s)"
+        )
     for band in ["FUV", "LW"]:
         # Float32 round-off of each update, averaged over the particles.
         budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
         measured_nc = (
             0.0 if reference is None else float(np.max(np.abs(reference[band])))
         )
-        # Step-end H: (3/4) dlna_step per unit ln a; lag: one step of -H u.
-        cosmo = (0.75 * dt_max * span + dt_max) if cosmological else 0.0
+        # The un-modelled dilated decay itself (span), plus its own step-end
+        # H ((3/4) dlna_step per unit ln a) and one-step lag discretisation,
+        # all dilated by the same c_hyp/c factor as the term itself.
+        cosmo = (
+            c_hyp_ratio * (span + 0.75 * dt_max * span + dt_max)
+            if cosmological
+            else 0.0
+        )
         bar = max(budget, 2.0 * measured_nc) + cosmo
         worst = float(np.max(np.abs(errors[band])))
         print(
             f"  bar u_{band}: max(float32 {budget:.1e}, 2 x non-cosmological "
-            f"{2.0 * measured_nc:.1e}) + step-end H and lag {cosmo:.1e}"
+            f"{2.0 * measured_nc:.1e}) + c_hyp/c-dilated decay, step-end H "
+            f"and lag {cosmo:.1e}"
         )
-        ok &= gate(f"mass-weighted u_{band} / (u0 a0/a) - 1 (A1)", worst, bar)
+        ok &= gate(f"mass-weighted u_{band} / u0 - 1 (A1)", worst, bar)
 
     # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
-    # (dt/t without cosmology; with it the rate varies as a^-4, same order),
-    # float32 round-off; with cosmology the step-end rate adds 2 dlna_step.
+    # (dt/t without cosmology; with it the rate varies as a^-3, same order),
+    # float32 round-off; with cosmology the step-end rate adds 1.5 dlna_step
+    # ((p/2) dlna_step at p = 3, this module's own Bars section, not 2.0 at
+    # p = 4: A2's rate no longer carries u_LW's own a0/a factor).
     budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + FLOAT32_EPS * n_steps
-    cosmo = 2.0 * dt_max if cosmological else 0.0
+    cosmo = 1.5 * dt_max if cosmological else 0.0
     measured_nc = np.zeros_like(budget)
     if reference is not None:
         # Snapshot by snapshot when both runs have the same output count: the
@@ -466,7 +544,10 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
             * rho0
             / (MU_H * M_H_CGS)
         )
-        predicted = -c_pin_cgs * kappa0 * integral - ln_a
+        # The Hubble term dilated by c_pin/c, same factor as the absorption
+        # term (this module's own docstring, B1): negligible here (c_pin is
+        # km/s-scale) but kept exact rather than dropped.
+        predicted = -c_pin_cgs * kappa0 * integral - (c_pin_cgs / C_LIGHT_CGS) * ln_a
         total0 = np.sum(mass * first[f"u_{key_band}"])
         measured = np.array(
             [np.log(np.sum(s["mass"] * s[f"u_{key_band}"]) / total0) for s in run]
@@ -514,7 +595,15 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
             + per_step
             + depth * errors["density_drift"]
         )
-        cosmo = (1.5 * dt_max * depth + 0.75 * dt_max * span) if cosmological else 0.0
+        # The kappa step-end term is unaffected by the Hubble-term dilation
+        # (kappa was already correctly dilated); the H-alone step-end term is
+        # dilated by c_pin/c, same as the B1 formula's own second term above.
+        c_pin_ratio = (opt.c_hyp_pin * 1e5) / C_LIGHT_CGS if cosmological else 0.0
+        cosmo = (
+            1.5 * dt_max * depth + c_pin_ratio * 0.75 * dt_max * span
+            if cosmological
+            else 0.0
+        )
         bar = max(budget, 2.0 * nc[band]) + cosmo
         print(
             f"  bar {band}: max(float32 + one-step lag + density drift "

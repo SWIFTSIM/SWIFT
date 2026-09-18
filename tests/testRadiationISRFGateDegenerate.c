@@ -104,6 +104,12 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
 
   cosmo->a = 1.;
   cosmo->H = H;
+  /* The gate's own `w = kappa + H/c` divides by the TRUE speed of light, not
+   * c_hyp (radiation_isrf.c's radiation_dissipation_floor_relaxation_gate):
+   * every H = 0 case below is unaffected by the value chosen here (0/c = 0
+   * for any finite c > 0), but it must be nonzero to avoid a 0/0 when H is
+   * also 0. */
+  pc->const_speed_light_c = 1.e4;
 
   fp->ISRF_propagation = 1;
   fp->ISRF_dissipation_alpha_max = 1.f;
@@ -299,12 +305,16 @@ static void test_w_zero_kappa_and_H_zero(void) {
 
 /**
  * @brief `kappa = 0` but `H > 0`: the Hubble term alone still supplies a
- * relaxation timescale (`w = H/c_hyp > 0`), so the gate falls through to the
+ * relaxation timescale (`w = H/c > 0`), so the gate falls through to the
  * real R computation rather than the `w <= 0` short-circuit above -- the
  * cosmological path that matters for a production (comoving) run at
- * near-primordial kappa. w = H/c_hyp = 2/2 = 1. F = (1,0,0), grad_u =
- * (-1,0,0): wx = 1*1 + 2*(-1) = -1, num = 1; F_norm = G_norm = 1, den =
- * 1*1 + 2*1 = 3; R = 1/3. eps_R = 0.5: ratio2 = (R/eps_R)^2 = (2/3)^2 = 4/9.
+ * near-primordial kappa. `H` is chosen equal to `c` (both otherwise
+ * arbitrary here; the gate's own doxygen has why physically `c >> H`
+ * always) purely so that `w = H/c = 1`, giving the same clean arithmetic as
+ * before this function was fixed to divide by `c` instead of `c_hyp`: w =
+ * H/c = 1e4/1e4 = 1. F = (1,0,0), grad_u = (-1,0,0): wx = 1*1 + 2*(-1) = -1,
+ * num = 1; F_norm = G_norm = 1, den = 1*1 + 2*1 = 3; R = 1/3. eps_R = 0.5:
+ * ratio2 = (R/eps_R)^2 = (2/3)^2 = 4/9.
  */
 static void test_w_positive_via_hubble_term(void) {
 
@@ -313,7 +323,7 @@ static void test_w_positive_via_hubble_term(void) {
   struct feedback_props fp;
   struct phys_const pc;
   const float alpha_floor = 0.5f;
-  make_engine(&e, &cosmo, &fp, &pc, /*H=*/2., alpha_floor, /*eps_R=*/0.5f);
+  make_engine(&e, &cosmo, &fp, &pc, /*H=*/1.e4, alpha_floor, /*eps_R=*/0.5f);
 
   const float F[3] = {1.f, 0.f, 0.f};
   const float grad_u[3] = {-1.f, 0.f, 0.f};

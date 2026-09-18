@@ -474,11 +474,11 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
  * both ends except very close to `a=0`, where a short Taylor series is
  * used instead to avoid a `0/0` cancellation.
  *
- * @param a Dimensionless relaxation depth for this step: `(c_hyp*kappa +
- * H)*dt` at the two ghost sites, which relax an absorption rate and the
- * cosmological redshift rate together (see
- * #radiation_end_force_propagation), or the injection-site equivalent,
- * `c_hyp*kappa*Delta_t_star`. Always `>= 0`.
+ * @param a Dimensionless relaxation depth for this step: `c_hyp*(kappa +
+ * H/c)*dt` at the two ghost sites, which relax an absorption rate and the
+ * cosmological redshift rate together, both dilated by the same `c_hyp/c`
+ * factor (see #radiation_end_force_propagation), or the injection-site
+ * equivalent, `c_hyp*kappa*Delta_t_star`. Always `>= 0`.
  * @return phi(a).
  */
 float radiation_relaxation_phi_factor(float a) {
@@ -534,11 +534,29 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * reservoir by #radiation_snapshot_part_propagation).
  *
  * `u^{n+1} = e*(u_prev + dt*phi*diss) + dt*phi*((c_hyp/c)*source_rate -
- * div_F)`, with `e = exp(-a)`, `phi = (1-e)/a`, `a = (c_hyp*kappa + H)*dt`
+ * div_F)`, with `e = exp(-a)`, `phi = (1-e)/a`, `a = c_hyp*(kappa + H/c)*dt`
  * (#radiation_relaxation_phi_factor). Without the dissipation this is the
- * exact solution of `du/dt = -u/tau - H*u + (c_hyp/c)*source_rate - div(F)`
- * over one step with `source_rate` and `div(F)` frozen, `tau =
- * 1/(c_hyp*kappa)`. `div_F` is the divergence of this step's already-relaxed
+ * exact solution, UNDER THE SAME CHANGE OF VARIABLE the reduced-speed method
+ * applies to every other rate (see #isrf_c_hyp_consistent_variable_c's own
+ * doxygen, radiation_propagation_iact.h), of `du/dt = -u/tau - H*u +
+ * (c_hyp/c)*source_rate - div(F)` over one step with `source_rate` and
+ * `div(F)` frozen, `tau = 1/(c_hyp*kappa)`. The Hubble term is dilated by the
+ * SAME `c_hyp/c` factor as the absorption and injection terms: the
+ * reduced-speed-of-light method is only correct if every rate in the
+ * equation carries that factor, and `H`, unlike `kappa`, does not itself
+ * scale with `c_hyp` (it is a property of the expanding background, not of
+ * the radiation transport), so it must be dilated explicitly here rather
+ * than picking it up "for free" the way `c_hyp*kappa` does. Leaving `H`
+ * undilated (as this file did until this fix) makes the fixed point of the
+ * homogeneous (`div_F = 0`) equation `u* = (source_rate/c)/(kappa +
+ * H/c_hyp)` instead of the true-speed `u*_true = (source_rate/c)/(kappa +
+ * H/c)`: since `c_hyp << c`, `H/c_hyp >> H/c`, suppressing `u*` by the
+ * factor `x/(1+x)`, `x = c_hyp*kappa/H`, a spurious sink strongest exactly
+ * where `c_hyp*kappa` is smallest relative to `H` (low density, low
+ * metallicity, i.e. an early ultra-faint-dwarf's ISM). With `H` dilated,
+ * `c_hyp` cancels out of the fixed point identically to every other term,
+ * for any per-particle speed field, restoring `u*_true`. `div_F` is the
+ * divergence of this step's already-relaxed
  * flux `F^{n+1}` (#radiation_end_gradient_propagation): the flux is advanced
  * first, from `grad(u^n)`, then `u` from the new flux, a staggered order with
  * the same linear stability as advancing `u` first.
@@ -557,18 +575,28 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * against. Writing `E` for the physical volumetric band energy density,
  * `E ~ a^-4` under pure expansion (`a^-3` volume, `a^-1` redshift) while
  * `rho ~ a^-3`, so `u = E/rho` loses exactly the redshift residual:
- * `du/dt = (dE/dt)/rho - u*(drho/dt)/rho = -4H*u + 3H*u = -H*u`. The same
- * single power applies to the specific flux
+ * `du/dt = (dE/dt)/rho - u*(drho/dt)/rho = -4H*u + 3H*u = -H*u`. This is the
+ * TRUE-SPEED rate; what this update actually relaxes is its `c_hyp/c`-dilated
+ * counterpart `-(c_hyp/c)*H*u`, for the fixed-point reason given above. The
+ * same single power, and the same dilation, applies to the specific flux
  * (#radiation_end_gradient_propagation), whose volumetric counterpart
  * free-streams and therefore dilutes like `E`.
  *
  * It is folded into the relaxation depth rather than added as a separate
  * explicit decrement because it is a linear decay of the SAME state variable
- * the absorption term relaxes: `exp(-(1/tau + H)*dt)` is then exact for the
- * homogeneous problem at any `H*dt`, and cannot drive `u` negative the way
- * an explicit `-H*dt*u` can at high redshift with a long step. Ungated: SWIFT
+ * the absorption term relaxes: `exp(-(1/tau + (c_hyp/c)*H)*dt)` is then exact
+ * for the homogeneous problem at any `H*dt`, and cannot drive `u` negative
+ * the way an explicit `-(c_hyp/c)*H*dt*u` can at high redshift with a long
+ * step. A consequence of the dilation, not a defect: with no absorption at
+ * all (`kappa = 0`, e.g. the `ISRFCosmology` `free_field` fixture), the
+ * pure-expansion transient itself now decays at the SLOWED rate `(c_hyp/c)*H`
+ * rather than the true `H`, exactly like every other transient the reduced
+ * speed of light slows down; `examples/SubgridTests/StellarFeedback/ISRF/
+ * ISRFCosmology/isrf_cosmology_check.py`'s `free_field` reference is
+ * re-derived for this. Ungated: SWIFT
  * sets `cosmo->H = 0` for a non-cosmological run (`cosmology_init_no_cosmo`),
- * so the term vanishes there by construction, exactly as for
+ * so the term vanishes there by construction (multiplying it by `c_hyp/c`
+ * first does not change this: `(c_hyp/c)*0 = 0` exactly), exactly as for
  * `hydro.h`'s own `div_v + hydro_dimension*cosmo->H`. No gate on the spectrum
  * shape, unlike `src/rt/GEAR/rt.h`'s own redshift term: photons also
  * redshift ACROSS these two narrow band edges, a loss `-H*u` does not model,
@@ -618,6 +646,11 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   const float rescale =
       c_hyp / (float)e->physical_constants->const_speed_light_c;
   const float H = (float)e->cosmology->H;
+  /* Dilated by the same c_hyp/c factor as the absorption term: see this
+   * function's own doxygen. Bit-identical to the plain H when H = 0.f
+   * (SWIFT's non-cosmological cosmology_init_no_cosmo sets cosmo->H = 0):
+   * rescale * 0.f is exactly 0.f for any finite rescale, no rounding. */
+  const float H_dilated = rescale * H;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (fd->u_min_snapshot_index != e->snapshot_output_count) {
@@ -629,7 +662,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    const float a = (c_hyp * band->kappa + H) * dt;
+    const float a = (c_hyp * band->kappa + H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
 
@@ -768,12 +801,12 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
 /**
  * @brief Flux-relaxation residual gate on the floor's aim: a particle whose
  * flux is already in Fickian balance with this step's own gradient (`F ~=
- * -C*grad_u`, `C = c_hyp^2/(c_hyp*kappa+H)` the fixed point of
+ * -C*grad_u`, `C = c_hyp/(kappa+H/c)` the fixed point of
  * #radiation_end_gradient_propagation's own UNLIMITED flux-update
  * recurrence, i.e. before #radiation_apply_flux_limiter_band clamps it) is
  * at the discrete steady state the floor's cost formula assumes; a
- * particle on a genuine front, or with `tau = 1/(c_hyp*kappa+H) >> dt` so
- * the flux has not relaxed yet, is not. A particle whose flux is instead
+ * particle on a genuine front, or with `tau = 1/(c_hyp*(kappa+H/c)) >> dt`
+ * so the flux has not relaxed yet, is not. A particle whose flux is instead
  * pinned by the M1 limiter (`|F| = c_M*u`, the free-streaming branch)
  * generally never reaches that fixed point either, so `R` stays finite
  * there too: a conservative false positive that keeps part of the floor
@@ -783,7 +816,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * only ever be lowered, never raised: `s=1` whenever exactly one of `F`,
  * `grad_u` is zero (`R=1`), so a fresh front or a limiter-zeroed flux
  * keeps the full floor, provided the relaxation weight `w = kappa +
- * H/c_hyp` is nonzero (see below). The exception is a quiescent particle
+ * H/c` is nonzero (see below). The exception is a quiescent particle
  * with both `F` and `grad_u` zero: that is trivially at the fixed point,
  * so `R=0` and `s=0` there instead. `eps_R = 0` disables the gate
  * (returns 1 identically); `c_hyp <= 0` likewise (the relaxation has no
@@ -791,12 +824,16 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * returns 1 unconditionally, rather than falling through to the `R`
  * formula below: at `w=0`, `F` drops out of both that formula's numerator
  * and denominator, which would otherwise break the `s=1` guarantee above
- * whenever `F` alone is nonzero. Rescaled by `(kappa+H/c_hyp)` relative to
+ * whenever `F` alone is nonzero. Rescaled by `(kappa+H/c)` relative to
  * the `|F+C*grad_u|` form (the two are algebraically identical; this one
  * avoids computing `C` as its own value, which can overflow float32 at
- * near-primordial `kappa`). `R` and `(R/eps_R)^2` are formed in double so
- * that the squared denominator cannot underflow to zero under this
- * build's fast-math folding of the ratio and its square into one division.
+ * near-primordial `kappa`). `w` divides `H` by the TRUE speed of light
+ * `c`, not `c_hyp`: it is `a/(c_hyp*dt)` for this function's own fixed-point
+ * `a = c_hyp*(kappa+H/c)*dt` (#radiation_end_gradient_propagation), so
+ * `c_hyp` cancels out of `w` itself, unlike `a`. `R` and `(R/eps_R)^2` are
+ * formed in double so that the squared denominator cannot underflow to zero
+ * under this build's fast-math folding of the ratio and its square into one
+ * division.
  *
  * @param F This band's #feedback_isrf_band_data.specific_flux, from BEFORE this
  * step's own update (the flux `u^n` was produced from, as left by the previous
@@ -805,23 +842,27 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * @param c_hyp The particle's own #c_hyp.
  * @param kappa This band's #feedback_isrf_band_data.kappa.
  * @param H The Hubble rate, #cosmology.H.
+ * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
+ * `c_hyp`: see this function's own doxygen for why `w` uses the true speed).
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_dissipation_floor_relaxation_gate(const float F[3],
                                             const float grad_u[3], float c_hyp,
-                                            float kappa, float H, float eps_R) {
+                                            float kappa, float H, float c,
+                                            float eps_R) {
 
   if (eps_R <= 0.f) return 1.f;
   if (c_hyp <= 0.f) return 1.f;
 
-  /* Rescaled by (kappa + H/c_hyp) relative to the doxygen's |F + C*grad_u|
+  /* Rescaled by (kappa + H/c) relative to the doxygen's |F + C*grad_u|
    * form: algebraically identical (this factor cancels top and bottom),
    * but every term here stays O(1)-to-O(1e10) on production fixtures,
-   * where computing C = c_hyp^2/(c_hyp*kappa+H) as its own value first
-   * can overflow float32 at near-primordial kappa. */
-  const float w = kappa + H / c_hyp;
+   * where computing C = c_hyp/(kappa+H/c) as its own value first
+   * can overflow float32 at near-primordial kappa. Divides by the TRUE
+   * speed c, not c_hyp: see this function's own doxygen. */
+  const float w = kappa + H / c;
 
   /* No relaxation timescale to settle against (kappa = 0 and H = 0): keep
    * the floor at full strength. Also avoids F dropping out of both the R
@@ -884,9 +925,10 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * `dF/dt = -F/tau - H*F - (D/tau)*grad(u)` over one step with the source
  * term frozen at this step's value, `D/tau = c_hyp^2`. `-H*F` is the flux
  * counterpart of the `-H*u` derived at #radiation_end_force_propagation,
- * one power of the Hubble rate for the same mass-specific reason, and is
- * carried the same way, inside the relaxation depth
- * `a = (c_hyp*kappa + H)*dt`. No-op when propagation is off.
+ * one power of the Hubble rate for the same mass-specific reason, dilated by
+ * the same `c_hyp/c` factor for the same fixed-point reason, and carried the
+ * same way, inside the relaxation depth `a = c_hyp*(kappa + H/c)*dt`.
+ * No-op when propagation is off.
  *
  * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_band_data.
  * specific_flux stores the reduced flux `Ft = F_true/c_hyp` instead of
@@ -914,6 +956,11 @@ void radiation_end_gradient_propagation(struct part *p,
    * this function's own doxygen. */
   const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : c_hyp;
   const float H = (float)e->cosmology->H;
+  const float c = (float)e->physical_constants->const_speed_light_c;
+  /* Dilated by the same c_hyp/c factor as the absorption term: see this
+   * function's own doxygen and #radiation_end_force_propagation's. Bit-
+   * identical to the plain H when H = 0.f (non-cosmological runs). */
+  const float H_dilated = (c_hyp / c) * H;
   const float h_phys = (float)e->cosmology->a * p->h;
 
   const float alpha_pin =
@@ -929,7 +976,7 @@ void radiation_end_gradient_propagation(struct part *p,
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *band = &fd->isrf_band[b];
 
-    const float a = (c_hyp * band->kappa + H) * dt;
+    const float a = (c_hyp * band->kappa + H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
     /* One power of c_hyp under the consistent-variable-c scheme: see this
@@ -981,7 +1028,7 @@ void radiation_end_gradient_propagation(struct part *p,
        * value (`s <= 1`), computed from the incoming flux snapshotted
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
-          F_old, band->grad_u, c_hyp, band->kappa, H, eps_R);
+          F_old, band->grad_u, c_hyp, band->kappa, H, c, eps_R);
       band->dissipation_alpha_floor =
           s * radiation_dissipation_alpha_floor_band(band->kappa, h_phys,
                                                      alpha_floor, eps_lambda);

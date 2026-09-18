@@ -28,12 +28,14 @@
 #include "swift.h"
 
 /* The cosmological expansion term of the LW/FUV hyperbolic propagation:
- * `du/dt` and `dF/dt` each carry `-H` times the quantity itself, one power of
- * the Hubble rate, because `u` and `F` are mass-specific and therefore
- * already dilute with the physical gas density they are measured against.
- * Driven through the real ghost functions, with transport, sources and the
- * dissipation accumulators all held at zero, so only that term can move the
- * state. */
+ * `du/dt` and `dF/dt` each carry `-(c_hyp/c)*H` times the quantity itself,
+ * one power of the Hubble rate (because `u` and `F` are mass-specific and
+ * therefore already dilute with the physical gas density they are measured
+ * against), dilated by the SAME `c_hyp/c` factor as the absorption rate: the
+ * reduced-speed-of-light method is only correct if every rate carries it, so
+ * `c_hyp` cancels out of the fixed point for any speed field. Driven through
+ * the real ghost functions, with transport, sources and the dissipation
+ * accumulators all held at zero, so only that term can move the state. */
 #if defined(FEEDBACK_GEAR)
 
 #include "feedback/GEAR/radiation_isrf.h"
@@ -155,7 +157,8 @@ static void run_case(double a, double H, float kappa, float dt, float c_hyp) {
   radiation_end_gradient_propagation(&p, &e);
   radiation_end_force_propagation(&p, &e);
 
-  const float rate = c_hyp * kappa + (float)H;
+  const float rate =
+      c_hyp * kappa + (c_hyp / (float)pc.const_speed_light_c) * (float)H;
   const float expected_decay = expf(-rate * dt);
 
   check_close("u_FUV", expected_decay * u_FUV_0,
@@ -178,15 +181,30 @@ static void run_case(double a, double H, float kappa, float dt, float c_hyp) {
 int main(int argc, char *argv[]) {
 
   /* Pure redshift, two epochs. `H` is NOT what vanishes at a = 1 (there it is
-   * H_0), so both legs below carry a real term. */
+   * H_0), so both legs below carry a real (now c_hyp/c = 2e-4-dilated) term:
+   * decay 0.99997 and 0.99996 respectively, not the O(1) exp(-0.15)/exp(-0.2)
+   * an undilated `H` would give. */
   run_case(/*a=*/1.0, /*H=*/0.3, /*kappa=*/0.f, /*dt=*/0.5f, /*c_hyp=*/2.f);
   run_case(/*a=*/0.25, /*H=*/2.0, /*kappa=*/0.f, /*dt=*/0.1f, /*c_hyp=*/2.f);
 
-  /* Stiff leg, the discriminating one: absorption depth 10 alongside a
-   * redshift depth of 1. An explicit `-dt*phi*H*u` decrement instead of the
-   * rate used here would land near `-0.1*u_0`, wrong sign and four orders
-   * of magnitude out, rather than on `exp(-11)*u_0`. */
+  /* Stiff leg, the discriminating one: absorption depth 100 alongside a
+   * redshift depth of only 0.002 (c_hyp/c = 2e-4 times H*dt = 1), landing on
+   * `exp(-10.0002)*u_0`, indistinguishable from the absorption-only
+   * `exp(-10)`. This is the fix's own physical prediction (the corrected
+   * Hubble term "does almost nothing" once dust absorption dominates): the
+   * pre-fix code instead added an UNDILATED `H*dt = 1` to the exponent,
+   * landing on `exp(-11)*u_0`, a full order-1 term this leg would also
+   * catch if the fix regressed. */
   run_case(/*a=*/0.5, /*H=*/10.0, /*kappa=*/50.f, /*dt=*/0.1f, /*c_hyp=*/2.f);
+
+  /* Free-field regime (kappa = 0, no dust): the ISRFCosmology example's
+   * `free_field` fixture. A large H alongside a small c_hyp/c ratio, so the
+   * dilution is the dominant effect rather than a small correction: rate =
+   * (c_hyp/c)*H = (1/1e4)*1000 = 0.1, decay = exp(-0.1) = 0.905. The pre-fix
+   * formula would have used the undilated H = 1000 directly, giving
+   * decay = exp(-1000) ~= 0: this leg is the one that would have caught the
+   * original bug outright, not just by a small numerical margin. */
+  run_case(/*a=*/1.0, /*H=*/1000.0, /*kappa=*/0.f, /*dt=*/1.0f, /*c_hyp=*/1.f);
 
   /* Non-cosmological no-op: `cosmology_init_no_cosmo` leaves H exactly 0, so
    * the term must not perturb the state at all, bit for bit. */
