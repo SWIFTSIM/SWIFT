@@ -653,8 +653,8 @@ static void check_cells(struct cell *cells[2], const char *label,
 }
 
 /* ---------------------------------------------------------------------
- * The uniform reduced light-speed candidate (S3,
- * ISRF_c_hyp_fixed_fraction_of_c): off leaves c_hyp bit-identical to the
+ * The uniform reduced light-speed candidate
+ * (ISRF_c_hyp_fixed_fraction_of_c): off leaves c_hyp bit-identical to the
  * shipped C_hyp*h/dt formula; on gives every particle exactly f*c,
  * independent of h and time bin; and the matching radiation timestep term
  * (radiation_isrf_part_timestep) returns C_hyp*h/(f*c) on an eligible
@@ -951,8 +951,7 @@ static void assert_c_hyp_scheme_check_rejects(const char *label, int scheme,
   } else if (pid > 0) {
     int status;
     waitpid(pid, &status, 0);
-    const int exited_with_error =
-        WIFEXITED(status) && WEXITSTATUS(status) == 1;
+    const int exited_with_error = WIFEXITED(status) && WEXITSTATUS(status) == 1;
     const int aborted = WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT;
     if (!exited_with_error && !aborted)
       error(
