@@ -217,9 +217,17 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
    * function so the two schemes agree bit-for-bit whenever c_i and c_j
    * coincide, which is what makes them reduce to the same physical
    * operator at uniform c_hyp checkable in the first place
-   * (tests/testRadiationISRFForceDispatchConservation.c). */
+   * (tests/testRadiationISRFForceDispatchConservation.c).
+   *
+   * clang-only: GCC has no block-scoped equivalent (its `#pragma GCC
+   * optimize` is function-scoped and self-documented as debug-only, not
+   * for production). Under GCC this guard is ABSENT, so the bit-for-bit
+   * agreement above is unenforced there; a bit-identity result from a
+   * clang build (laptop) does not transfer to a GCC build (cluster). */
   {
+#if defined(__clang__)
 #pragma clang fp reassociate(off) contract(off) reciprocal(off)
+#endif
     const float Fi_dot_dx = F_i[0] * dx[0] + F_i[1] * dx[1] + F_i[2] * dx[2];
     const float Fj_dot_dx = F_j[0] * dx[0] + F_j[1] * dx[1] + F_j[2] * dx[2];
 
@@ -386,9 +394,15 @@ radiation_dissipation_force_accumulate_band(
    * textually identical shared expression rounding differently between
    * the two branches below despite bit-identical operands. Disabled for
    * this whole function so the two schemes agree bit-for-bit whenever c_i
-   * and c_j coincide. */
+   * and c_j coincide.
+   *
+   * clang-only: see #radiation_divergence_accumulate_band's identical
+   * guard for why GCC has no equivalent here and what that implies for a
+   * GCC (cluster) build. */
   {
+#if defined(__clang__)
 #pragma clang fp reassociate(off) contract(off) reciprocal(off)
+#endif
     const float d_ij = rho_i * u_i - rho_j * u_j;
 
     /* Split out rather than nested: max() expands to a statement
