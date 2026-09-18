@@ -127,6 +127,10 @@ float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
                                                 const struct engine *e);
 float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
                                                 const struct engine *e);
+float feedback_get_part_cumulative_injected_PE(const struct part *p);
+float feedback_get_part_cumulative_injected_LW(const struct part *p);
+float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
+float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

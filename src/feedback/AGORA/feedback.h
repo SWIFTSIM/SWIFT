@@ -320,6 +320,48 @@ feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
+ * @brief Cumulative FUV-band raw injected dose since first init. Nothing to
+ * do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_injected_PE(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_injected_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief Cumulative FUV-band absorbed/transport-and-dissipation-attributed
+ * specific energy since first init. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner band.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * This model does not implement HII photoionization feedback.

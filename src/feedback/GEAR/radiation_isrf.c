@@ -94,6 +94,8 @@ void radiation_first_init_part(struct part *restrict p) {
     band->div_specific_flux = 0.f;
 #ifdef SWIFT_DEBUG_CHECKS
     band->u_min_since_snapshot = 0.f;
+    band->cumulative_injected = 0.f;
+    band->cumulative_absorbed = 0.f;
 #endif
   }
 #ifdef SWIFT_DEBUG_CHECKS
@@ -396,6 +398,11 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * step's accumulators, never incremented, so a repeated call gives the same
  * state. The M1 flux limiter is not applied here: the extra ghost already
  * limited this step's flux against `u^n`, the `u` its closure was built from.
+ * The debug-only energy-ledger counters below (#feedback_isrf_band_data.
+ * cumulative_injected/cumulative_absorbed) are the one exception: they ARE
+ * incremented, relying on the task graph calling this exactly once per
+ * active particle per step (no h-iteration-style redo exists for the force
+ * ghost, unlike the density loop).
  *
  * Reads #dt_prev/#c_hyp/#feedback_isrf_band_data.kappa, all cached earlier in
  * this same step by #radiation_snapshot_part_propagation, and deliberately
@@ -432,6 +439,20 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     const float a = (c_hyp * band->kappa + H) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Energy-ledger accumulation, read from this step's own inputs before
+     * #u below overwrites #u_prev's role: the raw (unrelaxed) dose this
+     * step attempted, and the exact-relaxation update's own split of
+     * `u_prev` and the frozen source/transport terms into the fraction
+     * that decayed/never-arrived this step, using the SAME `decay`/`phi`
+     * #u's update uses. */
+    band->cumulative_injected += dt * rescale * band->u_source_rate;
+    band->cumulative_absorbed +=
+        (band->u_prev + dt * phi * band->dissipation_u) * (1.f - decay) +
+        (rescale * band->u_source_rate - band->div_specific_flux) * dt *
+            (1.f - phi);
+#endif
 
     band->u =
         decay * (band->u_prev + dt * phi * band->dissipation_u) +
