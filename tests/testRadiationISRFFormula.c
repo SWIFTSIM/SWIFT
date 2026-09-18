@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "feedback/GEAR/radiation_iact.h"
+#include "feedback/GEAR/radiation_isrf.h"
 #include "swift.h"
 
 /* Electron volt in erg (CODATA), hardcoded here for the same reason
@@ -814,6 +815,105 @@ static void check_local_dust_to_gas_ratio_scaling(
       kappa_eff_FUV[0], kappa_eff_FUV[1], kappa_eff_FUV[2]);
 }
 
+/* ---------------------------------------------------------------------
+ * Energy-ledger accumulation (#feedback_isrf_band_data.cumulative_injected/
+ * cumulative_absorbed, SWIFT_DEBUG_CHECKS only): #radiation_end_force_
+ * propagation's own I/A split, driven for two steps and checked against a
+ * hand-integration of the exact-relaxation ODE, not just a re-statement of
+ * the code's own expressions.
+ * ------------------------------------------------------------------- */
+
+#ifdef SWIFT_DEBUG_CHECKS
+static void check_energy_ledger_accumulation(void) {
+
+  struct cosmology cosmo;
+  struct feedback_props fp;
+  struct phys_const pc;
+  struct engine e;
+  bzero(&cosmo, sizeof(cosmo));
+  bzero(&fp, sizeof(fp));
+  bzero(&pc, sizeof(pc));
+  bzero(&e, sizeof(e));
+  cosmo.a = 1.0;
+  cosmo.H = 0.0; /* Non-cosmological: isolates the source/transport split. */
+  fp.ISRF_propagation = 1;
+  pc.const_speed_light_c = 1.0e4;
+  e.cosmology = &cosmo;
+  e.feedback_props = &fp;
+  e.physical_constants = &pc;
+
+  struct part p;
+  bzero(&p, sizeof(p));
+  struct feedback_part_data *fd = &p.feedback_data;
+  const float dt = 0.37f;
+  const float c_hyp = 3.2f;
+  const float kappa = 0.8f;
+  const float u_source_rate = 1.1f;
+  const float div_specific_flux = -0.6f;
+  const float dissipation_u = 0.4f;
+  const double u_prev0 = 2.5;
+  fd->dt_prev = dt;
+  fd->c_hyp = c_hyp;
+  fd->isrf_band[ISRF_BAND_PE].kappa = kappa;
+  fd->isrf_band[ISRF_BAND_PE].u_source_rate = u_source_rate;
+  fd->isrf_band[ISRF_BAND_PE].div_specific_flux = div_specific_flux;
+  fd->isrf_band[ISRF_BAND_PE].dissipation_u = dissipation_u;
+  fd->isrf_band[ISRF_BAND_PE].u_prev = (float)u_prev0;
+
+  /* Hand-integration, in double, of the same exact-relaxation ODE
+   * (radiation_isrf.c's #radiation_end_force_propagation): `a =
+   * (c_hyp*kappa + H)*dt`, `decay = exp(-a)`, `phi = (1-decay)/a` (`a` is
+   * not near 0 here, so the direct ratio is well-conditioned and does not
+   * need the Taylor branch #radiation_relaxation_phi_factor takes there),
+   * `rescale = c_hyp/c`. Two identical-input steps, `u_prev` snapshotted
+   * from the previous step's output between them, as the real per-step
+   * driver (#radiation_snapshot_part_propagation) does. */
+  const double a = ((double)c_hyp * kappa + cosmo.H) * dt;
+  const double decay = exp(-a);
+  const double phi = (1.0 - decay) / a;
+  const double rescale = (double)c_hyp / pc.const_speed_light_c;
+  const double I_step = dt * rescale * u_source_rate;
+  const double residual_step = dt * (phi * dissipation_u - div_specific_flux);
+
+  double u_prev = u_prev0;
+  double Inj_expected = 0.0, Abs_expected = 0.0;
+  for (int step = 0; step < 2; step++) {
+    const double A_step =
+        (u_prev + dt * phi * dissipation_u) * (1.0 - decay) +
+        (rescale * u_source_rate - div_specific_flux) * dt * (1.0 - phi);
+    const double u_new =
+        u_prev + I_step - A_step + residual_step; /* Identity, not restated
+                                                       from the code. */
+    Inj_expected += I_step;
+    Abs_expected += A_step;
+
+    radiation_end_force_propagation(&p, &e);
+    assert_close("cumulative_injected (running)",
+                 (double)fd->isrf_band[ISRF_BAND_PE].cumulative_injected,
+                 Inj_expected, 1e-5);
+    assert_close("cumulative_absorbed (running)",
+                 (double)fd->isrf_band[ISRF_BAND_PE].cumulative_absorbed,
+                 Abs_expected, 1e-5);
+    assert_close("u after end_force_propagation",
+                 (double)fd->isrf_band[ISRF_BAND_PE].u, u_new, 1e-5);
+
+    u_prev = u_new;
+    fd->isrf_band[ISRF_BAND_PE].u_prev = fd->isrf_band[ISRF_BAND_PE].u;
+  }
+
+  /* The ledger identity itself, `E + Abs - Inj`, hand-derived (not the
+   * code's own arithmetic): must equal the initial field plus the two
+   * steps' transport/dissipation residual. */
+  const double E = fd->isrf_band[ISRF_BAND_PE].u;
+  const double ledger_lhs = E + Abs_expected - Inj_expected;
+  const double ledger_rhs = u_prev0 + 2.0 * residual_step;
+  assert_close("ledger identity E+Abs-Inj", ledger_lhs, ledger_rhs, 1e-5);
+
+  message("energy ledger OK: Inj=%.6e, Abs=%.6e, E=%.6e, E+Abs-Inj=%.6e",
+          Inj_expected, Abs_expected, E, ledger_lhs);
+}
+#endif
+
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
@@ -835,6 +935,10 @@ int main(int argc, char *argv[]) {
   check_grackle_coupling(&us);
 
   check_local_dust_to_gas_ratio_scaling(&us);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  check_energy_ledger_accumulation();
+#endif
 
   return 0;
 }

@@ -220,6 +220,43 @@ struct feedback_isrf_band_data {
       "FUVMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
       #u. */
   float u_min_since_snapshot;
+
+  /*! Cumulative mass-specific dose this particle has been handed by the
+      dose reservoir since first init, RESCALED exactly as
+      #radiation_end_force_propagation rescales it into #u
+      (`c_hyp/c`) but NOT relaxed by #radiation_relaxation_phi_factor: the
+      raw amount attempted this step, `dt_prev*(c_hyp/c)*u_source_rate`,
+      summed step over step. Never reset (unlike #u_min_since_snapshot): an
+      energy-conservation check reads this as a running total at every
+      snapshot, so a mid-run reset would break its own conservation
+      identity. Written as
+      "FUVCumulativeInjectedSpecificEnergies"/
+      "LWCumulativeInjectedSpecificEnergies". PHYSICAL, like #u. */
+  float cumulative_injected;
+
+  /*! Cumulative mass-specific energy this particle's #u update has
+      attributed to relaxation (dust absorption plus the cosmological
+      redshift term folded into the same decay) and to the fraction of
+      this step's source/transport terms that never reached #u because
+      the step was optically thick (`(1-phi)` of each), since first init.
+      Exactly `(u_prev + dt_prev*phi*dissipation_u)*(1-e) +
+      ((c_hyp/c)*u_source_rate - div_specific_flux)*dt_prev*(1-phi)`,
+      `e = exp(-a)`, `phi = radiation_relaxation_phi_factor(a)`, `a =
+      (c_hyp*kappa + H)*dt_prev` -- the same `e`/`phi`/`a` #u's own update
+      uses this step, read before #u is overwritten. This is NOT the pure
+      dust-extinction loss alone: #div_specific_flux (transport) and
+      #dissipation_u (the artificial-dissipation source) are folded in
+      too, because the exact-relaxation update mixes all three under one
+      `phi`. Summed with #cumulative_injected and the current #u at a
+      snapshot, `E + Abs - Inj` isolates exactly the part of the update
+      the closed-form split above does not attribute to injection or the
+      surviving field: the transport and dissipation residual, which the
+      SPH divergence's kernel-sum identity and the dissipation's pairwise
+      antisymmetry drive to ~0 when summed over the whole particle set.
+      Never reset, for the same reason as #cumulative_injected. Written as
+      "FUVCumulativeAbsorbedSpecificEnergies"/
+      "LWCumulativeAbsorbedSpecificEnergies". PHYSICAL, like #u. */
+  float cumulative_absorbed;
 #endif
 };
 
