@@ -104,7 +104,12 @@ enum isrf_c_hyp_scheme {
    * weight. See radiation_propagation_iact.h's file header and
    * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
    * selection into that file's pairwise dispatch. Reduces bit-for-bit to
-   * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform. */
+   * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform,
+   * under a build that disables floating-point reassociation across the
+   * shared coefficient: clang-only (via `#pragma clang fp`), since GCC has
+   * no block-scoped equivalent, so this bit-identity does NOT hold on a
+   * GCC (cluster) build (radiation_propagation_iact.h,
+   * tests/testRadiationISRFForceDispatchConservation.c). */
   isrf_c_hyp_scheme_consistent_variable_c = 3,
   /*! Speed: #isrf_c_hyp_scheme_kernel_local's own `dt_max(i)` formula.
    * Operators: #isrf_c_hyp_scheme_consistent_variable_c's own change of

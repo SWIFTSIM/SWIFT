@@ -570,28 +570,60 @@ with the volumetric fields visible inside each divergence,
 and it is these two forms, rather than a bare divergence of $\mathbf F$ and
 a bare gradient of $u$, that Section~\ref{sec:fuv-operators} discretises.
 
-\textbf{The system integrated.} Collecting Steps 1 to 5 and substituting
-$c\to c_{\rm hyp}$,
+\textbf{The system integrated.} Collecting Steps 1 to 5 and rescaling by
+$c_{\rm hyp}/c$: the transport and pressure-tensor divergences already
+acquire that factor (once, respectively twice) from the plain
+$c\to c_{\rm hyp}$ replacement inside them, but the absorption-plus-expansion
+decay rate and the source term must be rescaled explicitly, as the whole
+true-speed rate $c/\lambda + H = c\,\kappa\rho + H$, because $H$ carries no
+factor of $c$ for the substitution to act on -- it is a property of the
+expanding background, not of the radiation transport, so unlike
+$\kappa$ it does not pick up the dilation "for free". Leaving $H$ out of
+that rescaling, as an earlier version of this document did, is the same
+class of error as leaving any other rate undilated:
 \begin{align}
   \frac{{\rm D}u}{{\rm D}t}
     &= -\frac{1}{\rho}\nabla\cdot(\rho\,\mathbf F)
-       - \left(\frac{c_{\rm hyp}}{\lambda} + H\right) u
+       - \frac{c_{\rm hyp}}{c}\left(\frac{c}{\lambda} + H\right) u
        + \frac{c_{\rm hyp}}{c}\,\dot s ,
   \label{eq:fuv-u-eq} \\
   \frac{{\rm D}\mathbf F}{{\rm D}t}
     &= -\frac{c_{\rm hyp}^2}{\rho}\nabla\cdot\big(\mathbf D(f)\,\rho u\big)
-       - \left(\frac{c_{\rm hyp}}{\lambda} + H\right)\mathbf F ,
+       - \frac{c_{\rm hyp}}{c}\left(\frac{c}{\lambda} + H\right)\mathbf F ,
   \qquad
   f = \min\!\left(\frac{|\mathbf F|}{c_{\rm hyp}u},\,1\right) ,
   \label{eq:fuv-F-eq}
 \end{align}
 with $\dot s = S_V/\rho$ the source rate per unit gas mass (${\rm
-erg\,g^{-1}\,s^{-1}}$) and $H$ the Hubble rate. This is the exact system
-the code integrates. The gradients in it are physical; the discrete
-operators are evaluated on comoving inputs and converted once, as
+erg\,g^{-1}\,s^{-1}}$), $H$ the Hubble rate, and $c/\lambda = c\,\kappa\rho$
+the true-speed absorption rate. This is the exact system the code
+integrates. The gradients in it are physical; the discrete operators are
+evaluated on comoving inputs and converted once, as
 Section~\ref{sec:fuv-cosmo} shows. Both equations carry the same single
-power of $H$, inside the same relaxation rate $c_{\rm hyp}/\lambda + H$,
-so absorption and expansion add as rates rather than as timescales.
+power of $H$, dilated by the same $c_{\rm hyp}/c$ factor as absorption
+and injection, inside the same relaxation rate
+$(c_{\rm hyp}/c)\big(c/\lambda + H\big)$, so absorption and expansion add
+as rates rather than as timescales, and $c_{\rm hyp}$ cancels out of the
+homogeneous equation's fixed point identically to every other term, for
+any per-particle speed field (Section~\ref{sec:fuv-time}).
+
+\textbf{Consequence of the undilated form.} Writing $H$ bare instead,
+$(c_{\rm hyp}/\lambda + H)$, as this document did until this fix and as
+the code did until \code{d47419d04}, suppresses the true-speed fixed
+point $u^\ast_{\rm true} = (\dot s/c)/(\kappa\rho + H/c)$ by the factor
+$x/(1+x)$, $x = c_{\rm hyp}\kappa\rho/H$: since $c_{\rm hyp}\ll c$,
+$H/c_{\rm hyp} \gg H/c$, so the bare-$H$ fixed point
+$(\dot s/c)/(\kappa\rho + H/c_{\rm hyp})$ undershoots the true one by
+exactly that ratio. This is a spurious sink, strongest exactly where
+$c_{\rm hyp}\kappa\rho$ is smallest relative to $H$, i.e.\ at low density
+and low metallicity -- the early ultra-faint-dwarf ISM this module is
+built for. Verified by a cosmological run of \code{ISRFCosmology}'s
+\code{free\_field} fixture, redshift $9$ to $a=0.125$: the corrected form
+passes (mass-weighted $u_{\rm FUV}/u_0-1$ and $u_{\rm LW}/u_0-1$ both
+$2.2\times10^{-8}$, $900\times$ below their bar), while the bare-$H$
+form's own prediction for that run, a decay of order $20\%$, would have
+failed catastrophically against it
+(\code{.claude/dev/logs/2026-09-18\_1349\_cosmo-hubble-rescale.md}).
 
 The relaxation time is $\tau = \lambda/c_{\rm hyp}$, and the flux equation
 is a Cattaneo-type relaxation equation \citep{Cattaneo1958}: in the
@@ -919,10 +951,16 @@ fixed point cancels the speed identically, with or without transport
 carrying each sender's own $c_{{\rm hyp},j}$ while its own terms carry
 $c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
 \citet{Katz2017}'s problem class (Section~\ref{sec:fuv-chyp-literature}),
-not a general source-normalisation one. Whether the cancellation still
-holds under cosmology, where the Hubble term does not scale with
-$c_{\rm hyp}$, is unmeasured and needs an operator ruling before a
-cosmological run is trusted on this point.
+not a general source-normalisation one. At a \emph{uniform} $c_{\rm hyp}$
+the cancellation now holds under cosmology too, since $H$ is dilated by
+the same $c_{\rm hyp}/c$ factor as every other rate
+(Section~\ref{sec:fuv-lagrangian}, \code{d47419d04}); an earlier version
+of this paragraph called this unmeasured because that dilation was
+missing at the time. Whether the cancellation still holds when
+$c_{{\rm hyp},i}$ varies \emph{between neighbours}, the actual subject of
+this pathway, is unmeasured under cosmology and needs an operator ruling
+before a cosmological run with heterogeneous speeds is trusted on this
+point.
 
 What is measured: forcing a uniform speed (the pin, and independently a
 lowered $C_{\rm hyp}$) changes the final FUV band energy on
@@ -935,24 +973,28 @@ relaxation clock (Section~\ref{sec:fuv-chyp}'s own discussion of the
 transient), not a pure injection bias, and the two effects are not
 separated on the fixtures tested so far.
 
-\paragraph{Speed definitions tested, and why none is shipped.} Three
-alternative definitions of $c_{{\rm hyp},i}$ were implemented as
-selectable runtime schemes (\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme},
-default $0$, bit-identical to the formula above) and measured against
-the same fixtures: a kernel-local rule that takes the slowest step among
-a particle and every neighbour in its kernel (scheme $1$); a fixed
-global fraction of $c$, independent of $h$ or the time step (scheme
-$2$); and a ``consistent variable-$c$'' reformulation that changes which
-variable the pairwise operators carry so that every operator becomes the
-per-particle-speed generalisation of the reduced-speed-of-light method,
-reducing bit-for-bit to the shipped scheme under a uniform speed (scheme
-$3$). All three measurably reduce pathway 1 relative to shipped on every
-fixture tested. \textbf{None is adopted, and none clears its own
-pre-registered acceptance bar}: each fails at least one fixture's exact
-sign-closure or accuracy criterion; the fixed-fraction scheme costs
-nothing extra at a fraction low enough to be free, but only because that
-fraction is below the bulk sound speed, making the radiation
-non-causal, while at the only fraction so far judged physically
+\paragraph{Speed definitions tested, and the default chosen among them.}
+Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
+operators were implemented as selectable runtime schemes
+(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}), against scheme $0$ (the
+formula above, unmodified operators) as baseline: a kernel-local speed
+rule that takes the slowest step among a particle and every neighbour in
+its kernel (scheme $1$); a fixed global fraction of $c$, independent of
+$h$ or the time step (scheme $2$); a ``consistent variable-$c$''
+reformulation that changes which variable the pairwise operators carry so
+that every operator becomes the per-particle-speed generalisation of the
+reduced-speed-of-light method, reducing bit-for-bit to the shipped scheme
+under a uniform speed (scheme $3$,
+Section~\ref{sec:fuv-variable-c-operators}); and the combination of the
+kernel-local speed with that operator rewrite (scheme $4$). All four
+measurably reduce pathway 1 relative to shipped on every fixture tested;
+scheme $4$ additionally clears most of Pathway 2's amplitude defect,
+which schemes $1$ and $2$ alone do not touch. None of $1$, $2$, $3$ alone
+clears its own pre-registered acceptance bar: each fails at least one
+fixture's exact sign-closure or accuracy criterion; the fixed-fraction
+scheme costs nothing extra at a fraction low enough to be free, but only
+because that fraction is below the bulk sound speed, making the
+radiation non-causal, while at the only fraction so far judged physically
 defensible it carries an initially undercounted particle-update cost of
 $+21$ to $+29\%$ once measured correctly (a low fraction can never bind
 the new timestep term, so it was never informative about cost); and the
@@ -963,9 +1005,24 @@ sender's flux without ever including it in its speed maximum -- a
 dense-short-step sender beside a diffuse-long-step receiver, which a
 uniform-resolution test fixture cannot exercise but a real galaxy's
 density contrast can, so this rule reduces pathway 1 without removing it
-"by construction". The choice of propagation-speed definition, if
-any change is made at all, remains an open operator decision; the
-default stays scheme $0$.
+``by construction''.
+
+\textbf{Scheme $4$ is the shipped default}, as of \code{a53ab8311}: of
+the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
+measured (two of them exact zeros) and the best amplitude,
+$1.088\times$ the exact fixed point against the shipped scheme's
+$3.06\times$, at bit-identical particle-update cost (neither the
+kernel-local speed formula nor the operator rewrite alone changes what
+work is done per particle). Scheme $0$ remains reachable by setting
+\code{ISRF\_c\_hyp\_scheme} explicitly. \textbf{This ranking rests on
+three fixtures only}, which the operator's own acceptance criterion for
+a default does not by itself consider sufficient
+(\code{.claude/dev/ISRF\_MASTER.md}); a validation campaign across every
+ISRF example, at several resolutions and including a cosmological run,
+is prepared and partly submitted as of this writing but not complete.
+\textbf{The default may yet be reverted to scheme $0$} if that campaign
+fails; this section reports the current shipped choice and its
+measured justification, not a closed validation.
 
 \paragraph{Open question: is pathway 1 the whole story?} A same-day
 finding (2026-09-18, not yet independently re-tested) proposes that the
@@ -1310,10 +1367,9 @@ and applies only this operator rewrite; scheme $4$ additionally uses the
 kernel-local speed of Section~\ref{sec:fuv-chyp-heterogeneity}'s scheme
 $1$. Scheme $4$ is the shipped default as of \code{a53ab8311}; scheme $0$
 (Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula} unmodified) remains
-reachable by setting \code{GEARFeedback:ISRF\_c\_hyp\_scheme} explicitly.
-(Section~\ref{sec:fuv-chyp-heterogeneity}'s own ``none is adopted, the
-default stays scheme 0'' statement predates \code{a53ab8311} and needs
-updating separately; not done here, out of this pass's scope.)
+reachable by setting \code{GEARFeedback:ISRF\_c\_hyp\_scheme} explicitly
+(Section~\ref{sec:fuv-chyp-heterogeneity} gives the full ranking and the
+default's caveats).
 
 \subsubsection{Time integration: exact relaxation, staggered}
 \label{sec:fuv-time}
@@ -1323,12 +1379,15 @@ transport term that is frozen over the step. Each is integrated exactly
 for frozen right-hand side. With the relaxation depth and integrating
 factor
 \begin{equation}
-  a_i = \big(c_{{\rm hyp},i}\,\kappa\rho_i + H\big)\,\Delta t_i , \qquad
+  a_i = c_{{\rm hyp},i}\left(\kappa\rho_i + \frac{H}{c}\right)\Delta t_i , \qquad
   \varphi(a) = \frac{1-e^{-a}}{a}
   \quad (\varphi\to1 \text{ as } a\to0,\ \ \varphi\to1/a \text{ as } a\to\infty),
   \label{eq:fuv-phi}
 \end{equation}
-the flux update, from the pressure-tensor divergence of $u^n$, reads
+$H$ entering divided by the true speed of light $c$, not
+$c_{{\rm hyp},i}$ (dilated by the same $c_{\rm hyp}/c$ factor as
+absorption, as Section~\ref{sec:fuv-lagrangian} derives), the flux
+update, from the pressure-tensor divergence of $u^n$, reads
 \begin{equation}
   \mathbf F_i^{\,n+1} = e^{-a_i}\,\mathbf F_i^{\,n}
     - c_{{\rm hyp},i}^2\,\Delta t_i\,\varphi(a_i)\,\mathbf G_i[u^n] ,
@@ -1366,12 +1425,13 @@ rather than added afterwards.
 The flux update has an exact fixed point for a frozen gradient,
 \begin{equation}
   \mathbf F_i^\ast = -\,\mathcal C_i\,\mathbf G_i , \qquad
-  \mathcal C_i = \frac{c_{{\rm hyp},i}^2}{c_{{\rm hyp},i}\,\kappa\rho_i + H} ,
+  \mathcal C_i = \frac{c_{{\rm hyp},i}}{\kappa\rho_i + H/c} ,
   \label{eq:fuv-fixed-point}
 \end{equation}
 which is the discrete form of Fick's law with $D = c_{\rm hyp}\lambda$
-in front of the tensor-weighted gradient (the $1/3$ sits inside
-$\mathbf D$). The dissipation floor gate of
+in front of the tensor-weighted gradient at $H=0$ (the $1/3$ sits inside
+$\mathbf D$); $H/c$ is the same dilated Hubble contribution as in $a_i$
+above. The dissipation floor gate of
 Section~\ref{sec:fuv-dissipation} measures each particle's distance
 from this fixed point.
 
@@ -1506,8 +1566,10 @@ floor costs accuracy on a resolved, settled profile in the band
 $0.25\lesssim h/\lambda\lesssim0.85$, where the physical absorption is
 too weak to damp it and the front it protects has long passed. A settled
 particle is recognisable: its flux sits at the fixed point of
-Eq.~\ref{eq:fuv-fixed-point}. With $w_i = \kappa\rho_i + H/c_{{\rm
-hyp},i}$, the residual
+Eq.~\ref{eq:fuv-fixed-point}. With $w_i = \kappa\rho_i + H/c$ -- the
+\emph{true} speed of light, not $c_{{\rm hyp},i}$: $w_i$ is
+$a_i/(c_{{\rm hyp},i}\Delta t_i)$ by construction, so $c_{{\rm hyp},i}$
+cancels out of $w_i$ itself, unlike $a_i$ -- the residual
 \begin{equation}
   R_i = \frac{\big|\,w_i\,\mathbf F_i + c_{{\rm hyp},i}\,\mathbf G_i\,\big|}
              {w_i\,|\mathbf F_i| + c_{{\rm hyp},i}\,|\mathbf G_i|}
@@ -1582,9 +1644,14 @@ With propagation on, each illuminated particle's reservoir drains to
 zero by its horizon, at most one star step after the last visit, and
 the field then obeys Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq} with no
 source: it spreads at $c_{\rm hyp}$ and decays with the $e$-folding time
-$\tau = 1/(c_{\rm hyp}\kappa\rho + H)$, the two decay rates adding
-directly (not their two $e$-folding times), so $\tau$ is shorter than
-$1/(c_{\rm hyp}\kappa\rho)$ alone in a cosmological run.
+$\tau = 1/\!\left[c_{\rm hyp}\big(\kappa\rho + H/c\big)\right]$, the two
+decay rates (absorption and the $c_{\rm hyp}/c$-dilated expansion term)
+adding directly (not their two $e$-folding times), so $\tau$ is shorter
+than $1/(c_{\rm hyp}\kappa\rho)$ alone in a cosmological run -- but, with
+$H$ correctly dilated, only by an amount suppressed by $c_{\rm hyp}/c$:
+for any $\kappa\rho$ not itself many orders of magnitude below $H/c$,
+the Hubble term's contribution to $\tau$ is negligible next to
+absorption (Section~\ref{sec:fuv-lagrangian}).
 The one-step drop of the source at a particle is the sharpest transient
 the scheme sees, and the trigger may fire on the innermost particles for
 a step or two before the field settles.
