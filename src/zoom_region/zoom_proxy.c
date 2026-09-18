@@ -32,11 +32,8 @@
 /**
  * @brief The square of the minimal distance between two equal sized regions.
  *
- * This is cell_min_dist2 applied to raw geometry rather than to a pair of
- * #cell. We need it because the regions we recurse through have no cells yet,
- * and because the cells we land on at the zoom level need not be the same size
- * as each other (a zoom cell reached alongside the background cell it
- * descended with). It is the geometry that has to match, not the cells.
+ * This is cell_min_dist2 but using raw geometry rather than to a pair of
+ * cells. This is because we do not have the cell trees to recurse through here.
  *
  * Both regions must have the same width, exactly as cell_min_dist2 demands of
  * its cells.
@@ -54,7 +51,10 @@ static double zoom_region_min_dist2(const double loc_i[3],
                                     const double width[3], const int periodic,
                                     const double dim[3]) {
 
+  /* Prepare the distance. */
   double dist2 = 0.0;
+
+  /* Loop over the three dimensions. */
   for (int k = 0; k < 3; k++) {
 
     const double i_min = loc_i[k];
@@ -62,6 +62,9 @@ static double zoom_region_min_dist2(const double loc_i[3],
     const double j_min = loc_j[k];
     const double j_max = loc_j[k] + width[k];
 
+    /* Get the minimal distance in this dimension, taking periodicity into
+     * account (the minimum distance between any two corners of the two
+     * "cells"). */
     double dx;
     if (periodic) {
       dx = min4(fabs(nearest(i_min - j_min, dim[k])),
@@ -84,10 +87,7 @@ static double zoom_region_min_dist2(const double loc_i[3],
  *
  * Note that regions must have equal widths, i.e. recursion is done in step.
  *
- * Both criteria are decided here, on the geometry, because the cells these
- * regions resolve to need not be the same size as each other (a zoom cell
- * reached alongside the background cell it descended with). Only their types
- * are needed, to know whether hydro is on the table at all.
+ * Only zoom <-> zoom pairs can ever be hydro pairs.
  *
  * @param e The #engine.
  * @param loc_i Lower corner of the first region.
@@ -171,20 +171,15 @@ static void zoom_make_proxy_for_pair(struct engine *e, struct cell *ci,
 /**
  * @brief Create proxies based on geometric pair recursion.
  *
- * This function will recurse through the pair of cells until we git the zoom
+ * This function will recurse through the pair of cells until we reach the zoom
  * top level depth. Once at the zoom top level depth we will check what proxies
  * we need.
  *
  * Note that this could lead to us creating proxies for cells that may never
- * exist but we don't have enough information yet.
+ * exist but we don't have enough information yet to avoid this.
  *
- * The criteria are applied at every level, not just at the zoom level, so that
- * a branch can be abandoned the moment it goes out of range. This is safe
- * because the test is monotonic: the regions only shrink as we descend, which
- * shrinks r_max and makes the M2L criterion easier to satisfy, so a pair of
- * regions needing no gravity proxy can hold no pair of sub-regions that does;
- * and regions that are not direct neighbours cannot hold sub-regions that are,
- * so the same goes for hydro.
+ * We don't have to recurse the whole way down. If a pair is found not not need
+ * a proxy at a given level then all levels below it will also not need a proxy.
  *
  * @param e The #engine.
  * @param s The #space.
@@ -203,9 +198,7 @@ static void zoom_make_proxies_pair_recursive(
 
   const int zoom_depth = e->s->zoom_props->zoom_cell_depth;
 
-  /* Apply the criteria at this level. Out of range? Then so is everything
-   * below us. Otherwise this is also the verdict we want at the zoom level, so
-   * hold on to it rather than deciding the same regions twice. */
+  /* Out of range? Then so is everything below us. */
   const int proxy_type =
       zoom_get_proxy_type(e, loc_i, loc_j, width, type_i, type_j);
   if (proxy_type == proxy_cell_type_none) return;
@@ -213,14 +206,17 @@ static void zoom_make_proxies_pair_recursive(
   /* At the zoom level we make the proxy (if necessary) */
   if (depth == zoom_depth) {
     /* Get the cells */
-    struct cell *ci = &s->cells_top[cell_getid_from_pos(
-        s, loc_i[0] + 0.5 * width[0], loc_i[1] + 0.5 * width[1],
-        loc_i[2] + 0.5 * width[2])];
-    struct cell *cj = &s->cells_top[cell_getid_from_pos(
-        s, loc_j[0] + 0.5 * width[0], loc_j[1] + 0.5 * width[1],
-        loc_j[2] + 0.5 * width[2])];
+    double xi = loc_i[0] + 0.5 * width[0];
+    double yi = loc_i[1] + 0.5 * width[1];
+    double zi = loc_i[2] + 0.5 * width[2];
+    struct cell *ci = &s->cells_top[cell_getid_from_pos(s, xi, yi, zi)];
+    double xj = loc_j[0] + 0.5 * width[0];
+    double yj = loc_j[1] + 0.5 * width[1];
+    double zj = loc_j[2] + 0.5 * width[2];
+    struct cell *cj = &s->cells_top[cell_getid_from_pos(s, xj, yj, zj)];
 
-    /* Make the proxies (if we need them) */
+    /* Make the proxies (if we need them), passing the proxy type we found
+     * above to avoid the duplicate proxy type calculation. */
     zoom_make_proxy_for_pair(e, ci, cj, proxy_type);
     return;
   }
