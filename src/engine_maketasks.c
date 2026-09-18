@@ -2192,6 +2192,13 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const int delta_m = s->grav_P2P_search_delta_m;
   const int delta_p = s->grav_P2P_search_delta_p;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the deltas are non-zero */
+  if (delta_m <= 0 || delta_p <= 0) {
+    error("Invalid P2P search range: delta_m=%d delta_p=%d", delta_m, delta_p);
+  }
+#endif
+
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
