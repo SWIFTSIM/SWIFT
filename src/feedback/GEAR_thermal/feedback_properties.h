@@ -80,8 +80,10 @@ enum radiation_policy {
  */
 enum isrf_c_hyp_scheme {
   /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, `dt_i` this particle's own
-   * timestep. Operators: shipped. Default; bit-identical to the scheme this
-   * comparison branch was built from. */
+   * timestep. Operators: shipped. Bit-identical to the scheme this
+   * comparison branch was built from; no longer the default (see
+   * #isrf_c_hyp_scheme_kernel_local_plus_variable_c), still reachable by
+   * setting #feedback_props.ISRF_c_hyp_scheme explicitly. */
   isrf_c_hyp_scheme_shipped = 0,
   /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
    * timestep among this particle and every neighbour in its kernel.
@@ -109,7 +111,8 @@ enum isrf_c_hyp_scheme {
    * variable. The kernel-local speed reduces the speed contrast between
    * neighbours (and so the negativity); the change of variable fixes the
    * pairwise operators' amplitude error; neither touches the other's
-   * mechanism, so the two compose without a combined re-derivation. */
+   * mechanism, so the two compose without a combined re-derivation.
+   * Default. */
   isrf_c_hyp_scheme_kernel_local_plus_variable_c = 4,
 };
 
@@ -192,12 +195,12 @@ struct feedback_props {
    * range depends on both dissipation parameters, not just this one. */
   float ISRF_c_hyp_margin;
 
-  /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme): 0 (shipped,
-   * default), 1 (kernel-local speed), 2 (fixed fraction of c, magnitude
+  /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme): 0 (shipped),
+   * 1 (kernel-local speed), 2 (fixed fraction of c, magnitude
    * #ISRF_c_hyp_fixed_fraction_of_c), 3 (consistent variable-c operators,
    * shipped speed formula) or 4 (kernel-local speed feeding the
-   * consistent-variable-c operators). See that enum's own doxygen for the
-   * specifics of each value. #isrf_c_hyp_scheme_fixed_fraction is an
+   * consistent-variable-c operators, default). See that enum's own doxygen for
+   * the specifics of each value. #isrf_c_hyp_scheme_fixed_fraction is an
    * alternative to the other four, not a layer: feedback_props_init()
    * errors if #ISRF_c_hyp_fixed_fraction_of_c is positive with this not set
    * to it, or this is set to it with #ISRF_c_hyp_fixed_fraction_of_c left at
@@ -776,9 +779,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's own doxygen.
      * Parsed unconditionally, like the pin/fraction below, so a validation
-     * run can set it even with ISRF_propagation off in the base config. */
+     * run can set it even with ISRF_propagation off in the base config.
+     * Default is scheme 4: best measured negativity and amplitude of the
+     * five; the previously shipped scheme 0 stays reachable by setting this
+     * parameter explicitly. */
     fp->ISRF_c_hyp_scheme = parser_get_opt_param_int(
-        params, "GEARFeedback:ISRF_c_hyp_scheme", isrf_c_hyp_scheme_shipped);
+        params, "GEARFeedback:ISRF_c_hyp_scheme",
+        isrf_c_hyp_scheme_kernel_local_plus_variable_c);
     if (fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_shipped &&
         fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
         fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&

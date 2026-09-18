@@ -834,13 +834,13 @@ GEARFeedback:
                                                            # (Default: 0)
   ISRF_extinction_path: kernel_diameter                    # (optional) Path of the receiver-side dust extinction column, Sigma = rho * path: kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h.
                                                            # Only meaningful when with_photoelectric_heating is on. (Default: kernel_diameter)
-  ISRF_c_hyp_scheme: 0                                     # (optional) Which ISRF scheme is active: 0 = shipped (c_hyp_i = min(C_hyp*h_i/dt_i, c), dt_i this particle's own timestep), 1 = kernel-local
+  ISRF_c_hyp_scheme: 4                                     # (optional) Which ISRF scheme is active: 0 = shipped (c_hyp_i = min(C_hyp*h_i/dt_i, c), dt_i this particle's own timestep), 1 = kernel-local
                                                            # (c_hyp_i = min(C_hyp*h_i/dt_max(i), c), dt_max(i) the longest timestep among this particle and every neighbour in its kernel), 2 = fixed fraction of c
                                                            # (c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c*c, which must then be positive), 3 = consistent variable-c operators (c_hyp_i left at scheme 0's own formula;
                                                            # every pairwise transport/dissipation operator is rebuilt as the per-particle-c_hyp generalisation of the reduced-speed-of-light method instead -- see
                                                            # radiation_propagation_iact.h's file header), 4 = the two independent axes combined: scheme 1's kernel-local c_hyp_i feeding scheme 3's operator rewrite.
                                                            # Alternatives, not layers: 2 requires ISRF_c_hyp_fixed_fraction_of_c > 0, and that parameter must be 0
-                                                           # whenever this is not 2. Only meaningful when ISRF_propagation is on. (Default: 0, bit-identical to the pre-scheme-selector behaviour)
+                                                           # whenever this is not 2. Only meaningful when ISRF_propagation is on. (Default: 4; set to 0 to recover the pre-scheme-selector shipped behaviour)
   ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the ISRF_c_hyp_scheme closure (dt_i for schemes 0/3, dt_max(i) for schemes 1/4; unused for scheme 2's own c_hyp
                                                            # but still sets that scheme's own timestep term, C_hyp*h_i/(f*c)). Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
                                                            # ISRF_dissipation_alpha_floor) = 0; the joint stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only
