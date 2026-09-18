@@ -987,12 +987,22 @@ static void test_c_hyp_scheme_mismatch_rejected(void) {
    * the fraction is only read when the scheme selects it). */
   assert_c_hyp_scheme_check_rejects("scheme=shipped, fraction=0.02",
                                     isrf_c_hyp_scheme_shipped, 0.02f);
+  /* Invalid: a magnitude set while the combined kernel-local +
+   * variable-c scheme is selected -- same stacking mistake as
+   * scheme=kernel_local above. */
+  assert_c_hyp_scheme_check_rejects(
+      "scheme=kernel_local_plus_variable_c, fraction=0.02",
+      isrf_c_hyp_scheme_kernel_local_plus_variable_c, 0.02f);
 
   /* Valid pairings must return normally (no fork needed: nothing to
    * observe but the absence of an abort). */
   feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_shipped, 0.f);
   feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_kernel_local, 0.f);
   feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_fixed_fraction, 0.02f);
+  feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_consistent_variable_c,
+                                    0.f);
+  feedback_props_check_c_hyp_scheme(
+      isrf_c_hyp_scheme_kernel_local_plus_variable_c, 0.f);
 
   message(
       "c_hyp scheme/fraction mismatch: every invalid pairing rejected at "
@@ -1000,15 +1010,19 @@ static void test_c_hyp_scheme_mismatch_rejected(void) {
 }
 
 /**
- * @brief #radiation_end_density_propagation must be a no-op for the two
+ * @brief #radiation_end_density_propagation must be a no-op for the three
  * schemes it does not own (#isrf_c_hyp_scheme_shipped,
- * #isrf_c_hyp_scheme_fixed_fraction): drift-time
- * #radiation_snapshot_part_propagation already decided #c_hyp for them, and
- * this is the one guard standing between the default scheme and silently
- * losing bit-identity with the pre-comparison-branch behaviour. Sets
- * #max_ngb_time_bin to a bin the kernel-local formula would definitely act
- * on if reached, so a regression that dropped the scheme gate would flip
- * this test.
+ * #isrf_c_hyp_scheme_fixed_fraction, #isrf_c_hyp_scheme_consistent_variable_c
+ * -- the last keeps the shipped `dt_i` speed formula, only the operators
+ * change): drift-time #radiation_snapshot_part_propagation already decided
+ * #c_hyp for them, and this is the one guard standing between the default
+ * scheme and silently losing bit-identity with the pre-comparison-branch
+ * behaviour. Sets #max_ngb_time_bin to a bin the kernel-local formula would
+ * definitely act on if reached, so a regression that dropped the scheme
+ * gate (or one that accidentally widened it to include scheme 3) would flip
+ * this test. The owning set (schemes 1 and 4) is covered separately by
+ * #test_kernel_local_c_hyp and
+ * #test_kernel_local_plus_variable_c_composition.
  */
 static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
 
@@ -1032,11 +1046,12 @@ static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
   e.ti_current = 8;
   e.policy = 0;
 
-  const int schemes[2] = {isrf_c_hyp_scheme_shipped,
-                          isrf_c_hyp_scheme_fixed_fraction};
+  const int schemes[3] = {isrf_c_hyp_scheme_shipped,
+                          isrf_c_hyp_scheme_fixed_fraction,
+                          isrf_c_hyp_scheme_consistent_variable_c};
   const float sentinel = 987.654f;
 
-  for (int s = 0; s < 2; s++) {
+  for (int s = 0; s < 3; s++) {
     fb_props.ISRF_c_hyp_scheme = schemes[s];
     fb_props.ISRF_c_hyp_fixed_fraction_of_c =
         schemes[s] == isrf_c_hyp_scheme_fixed_fraction ? 0.02f : 0.f;
@@ -1061,7 +1076,8 @@ static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
   }
   message(
       "c_hyp end-density no-clobber: radiation_end_density_propagation is "
-      "a no-op for the shipped and fixed-fraction schemes.");
+      "a no-op for the shipped, fixed-fraction and consistent-variable-c "
+      "schemes.");
 }
 
 /* ---------------------------------------------------------------------
@@ -1382,6 +1398,180 @@ static void test_consistent_variable_c_conservation(void) {
       "different c_i != c_j");
 }
 
+/* ---------------------------------------------------------------------
+ * isrf_c_hyp_scheme_kernel_local_plus_variable_c: the two candidates above
+ * fix different defects (kernel-local narrows the speed contrast between
+ * neighbours; consistent-variable-c fixes the pairwise operators'
+ * amplitude error) via disjoint gates (ISRF_c_hyp_scheme ==
+ * isrf_c_hyp_scheme_kernel_local for the speed formula,
+ * isrf_c_hyp_consistent_variable_c for the operators), so scheme 4 selects
+ * both without a combined re-derivation. The decisive test below exercises
+ * the ONE place they meet numerically: #radiation_cache_m1_closure_part's
+ * `c_M`, pinned to 1 under the change of variable regardless of `c_hyp`'s
+ * own value (see that function's own doxygen) -- so under scheme 4,
+ * #radiation_end_density_propagation must still move `c_hyp` itself (the
+ * kernel-local half, read by the pairwise operators' receiver-side
+ * multiply), while leaving the just-rebuilt M1 closure numerically
+ * unaffected by that move (the change-of-variable half). A regression that
+ * made the two interact (e.g. `c_M` accidentally reading the NEW `c_hyp`)
+ * would move `m1_closure_D` here and flip this test.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief THE DECISIVE UNIT TEST for
+ * #isrf_c_hyp_scheme_kernel_local_plus_variable_c: through the real
+ * #radiation_end_density_propagation dispatch, with
+ * #isrf_c_hyp_consistent_variable_c set (as feedback_props_init() would set
+ * it for this scheme), (1) `c_hyp` moves from a same-bin sentinel to the
+ * kernel-local `dt_max(i)` formula's value -- proving the speed axis is
+ * still engaged under scheme 4, exactly as it is under scheme 1 -- and (2)
+ * the M1 closure tensor rebuilt in the same call is bit-identical before
+ * and after, since #isrf_c_hyp_consistent_variable_c pins `c_M = 1`
+ * independent of `c_hyp` -- proving the two axes do not interact through
+ * this shared call site.
+ */
+static void test_kernel_local_plus_variable_c_composition(void) {
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  struct phys_const phys_const;
+  bzero(&phys_const, sizeof(struct phys_const));
+  phys_const.const_speed_light_c = 3e5;
+
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.ISRF_propagation = 1;
+  fb_props.ISRF_c_hyp_scheme = isrf_c_hyp_scheme_kernel_local_plus_variable_c;
+  fb_props.ISRF_c_hyp_margin = 0.5f;
+
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
+  e.feedback_props = &fb_props;
+  e.cosmology = &cosmo;
+  e.physical_constants = &phys_const;
+  e.time_base = 1e-3;
+  e.ti_current = 8;
+  e.policy = 0;
+
+  /* feedback_props_init() sets this global from ISRF_c_hyp_scheme; set it
+   * directly here since this unit test bypasses the parser. */
+  isrf_c_hyp_consistent_variable_c = 1;
+
+  struct part p;
+  bzero(&p, sizeof(struct part));
+  p.h = 0.37f;
+  p.time_bin = 6;
+  p.feedback_data.dt_prev = (float)get_timestep(p.time_bin, e.time_base);
+  /* Different from time_bin, exactly as the no-clobber test's sentinel is:
+   * the kernel-local formula must move c_hyp away from the same-bin value
+   * for this test to be decisive. */
+  p.feedback_data.max_ngb_time_bin = p.time_bin + 4;
+  const float sentinel_c_hyp = 42.f;
+  p.feedback_data.c_hyp = sentinel_c_hyp;
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    p.feedback_data.isrf_band[b].u = 0.6f + 0.1f * b;
+    p.feedback_data.isrf_band[b].specific_flux[0] = 0.2f + 0.05f * b;
+    p.feedback_data.isrf_band[b].specific_flux[1] = -0.1f;
+    p.feedback_data.isrf_band[b].specific_flux[2] = 0.05f;
+  }
+
+  radiation_end_density_propagation(&p, &e);
+
+  /* (1) Speed axis: c_hyp must equal the kernel-local dt_max(i) formula,
+   * moved away from the same-bin sentinel -- same computation scheme 1's
+   * own test_c_hyp_same_bin_cap_and_pin exercises directly (no cosmology
+   * here, so dt_max(i) is the plain get_timestep at the neighbour-maximum
+   * bin, matching radiation_end_density_propagation's own no-cosmology
+   * branch). */
+  float dt_max =
+      (float)get_timestep(p.feedback_data.max_ngb_time_bin, e.time_base);
+  dt_max = max(dt_max, FLT_MIN);
+  const float h_phys = (float)e.cosmology->a * p.h;
+  float expected_c_hyp = e.feedback_props->ISRF_c_hyp_margin * h_phys / dt_max;
+  expected_c_hyp =
+      min(expected_c_hyp, (float)e.physical_constants->const_speed_light_c);
+
+  if (bits_equal_f(p.feedback_data.c_hyp, sentinel_c_hyp))
+    error(
+        "composition: c_hyp did not move off the same-bin sentinel under "
+        "scheme 4 -- the kernel-local speed axis did not engage.");
+  if (!bits_equal_f(p.feedback_data.c_hyp, expected_c_hyp))
+    error("composition: c_hyp = %.9g != kernel-local dt_max(i) formula %.9g",
+          (double)p.feedback_data.c_hyp, (double)expected_c_hyp);
+
+  /* (2) Operator axis: the M1 closure rebuilt by the same call must match
+   * one built directly with c_M = 1 (isrf_c_hyp_consistent_variable_c's own
+   * formula), independent of the c_hyp value just computed above -- proving
+   * the closure did not pick up the NEW c_hyp through this call. */
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    float expected_D[3][3];
+    radiation_get_m1_closure_tensor_band(
+        p.feedback_data.isrf_band[b].u,
+        p.feedback_data.isrf_band[b].specific_flux,
+        /*c_M=*/1.f, expected_D);
+    for (int r = 0; r < 3; r++)
+      for (int c = 0; c < 3; c++)
+        if (!bits_equal_f(p.feedback_data.isrf_band[b].m1_closure_D[r][c],
+                          expected_D[r][c]))
+          error(
+              "composition: band %d m1_closure_D[%d][%d] = %.9g != the "
+              "c_M=1 closure %.9g -- the operator axis picked up the NEW "
+              "c_hyp instead of staying pinned at c_M=1.",
+              b, r, c, (double)p.feedback_data.isrf_band[b].m1_closure_D[r][c],
+              (double)expected_D[r][c]);
+  }
+
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+  message(
+      "composition: under scheme 4, c_hyp moves via the kernel-local "
+      "dt_max(i) formula (speed axis engaged) while the M1 closure stays "
+      "pinned at c_M=1, independent of that move (operator axis "
+      "unaffected) -- the two do not interact through this shared call "
+      "site.");
+}
+
+/**
+ * @brief The default ISRF scheme (#isrf_c_hyp_scheme_shipped == 0) must be
+ * unchanged by adding #isrf_c_hyp_scheme_kernel_local_plus_variable_c: the
+ * enum ordinal stays 0, the parser's own default argument
+ * (#feedback_props_init(), unchanged by this diff) still resolves to it,
+ * and #isrf_c_hyp_consistent_variable_c must stay unset for it.
+ */
+static void test_default_scheme_unchanged(void) {
+
+  if (isrf_c_hyp_scheme_shipped != 0)
+    error(
+        "default scheme regression: isrf_c_hyp_scheme_shipped = %d, "
+        "expected 0 -- adding scheme 4 must not renumber the existing "
+        "values.",
+        (int)isrf_c_hyp_scheme_shipped);
+
+  /* A zero-initialized feedback_props (the struct's own default before
+   * parsing, and what every other test in this file relies on) selects the
+   * shipped scheme and must not flag the change-of-variable operators. */
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  if (fb_props.ISRF_c_hyp_scheme != isrf_c_hyp_scheme_shipped)
+    error(
+        "default scheme regression: a zero-initialized feedback_props "
+        "does not resolve to isrf_c_hyp_scheme_shipped.");
+
+  isrf_c_hyp_consistent_variable_c =
+      (fb_props.ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
+       fb_props.ISRF_c_hyp_scheme ==
+           isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+  if (isrf_c_hyp_consistent_variable_c)
+    error(
+        "default scheme regression: the default scheme must not set "
+        "isrf_c_hyp_consistent_variable_c.");
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+
+  message(
+      "default scheme unchanged: isrf_c_hyp_scheme_shipped is still 0 and "
+      "a zero-initialized feedback_props still resolves to it, with the "
+      "change-of-variable operators left off.");
+}
+
 /**
  * @brief Run one geometry: small-h cell at the origin, large-h cell at the
  * offset (or the reverse), swept without depth limits, then across two
@@ -1467,6 +1657,8 @@ int main(int argc, char *argv[]) {
   test_consistent_variable_c_uniform_c_bit_identical();
   test_consistent_variable_c_seam_courant_number();
   test_consistent_variable_c_conservation();
+  test_kernel_local_plus_variable_c_composition();
+  test_default_scheme_unchanged();
 
   struct space space;
   struct engine engine;
