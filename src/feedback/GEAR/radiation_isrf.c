@@ -220,14 +220,16 @@ void radiation_snapshot_part_propagation(struct part *p,
   }
   dt_phys = max(dt_phys, FLT_MIN);
 
-  /* Scheme "kernel-local" defers c_hyp entirely to
-   * radiation_end_density_propagation, once the density loop's
-   * neighbour-bin maximum (dt_max(i)) is known; drift only caches dt_i
-   * here (below). The other two schemes decide c_hyp now, from dt_i, and
+  /* Schemes "kernel-local" and "kernel-local + variable-c" both defer
+   * c_hyp entirely to radiation_end_density_propagation, once the density
+   * loop's neighbour-bin maximum (dt_max(i)) is known; drift only caches
+   * dt_i here (below). The other schemes decide c_hyp now, from dt_i, and
    * radiation_end_density_propagation is a no-op for them, so this branch
-   * is the ENTIRE definition of c_hyp for schemes 0 and 2, bit-identical
+   * is the ENTIRE definition of c_hyp for schemes 0, 2 and 3, bit-identical
    * to the pre-comparison-branch shipped formula when scheme is 0. */
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local) {
+  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
+      e->feedback_props->ISRF_c_hyp_scheme !=
+          isrf_c_hyp_scheme_kernel_local_plus_variable_c) {
     const float h_phys = (float)e->cosmology->a * p->h;
     float c_hyp;
     if (e->feedback_props->ISRF_c_hyp_scheme ==
@@ -404,11 +406,17 @@ void radiation_init_part_propagation(struct part *p) {
  * would otherwise divide by an exact zero.
  *
  * No-op unless #feedback_props.ISRF_c_hyp_scheme is
- * #isrf_c_hyp_scheme_kernel_local: for the other two schemes, drift-time
- * #radiation_snapshot_part_propagation already decided #c_hyp (and
- * #feedback_reset_part already cached the M1 closure built from it), and
- * this function must leave that alone, bit-identical to the
- * pre-comparison-branch behaviour for the shipped scheme.
+ * #isrf_c_hyp_scheme_kernel_local or
+ * #isrf_c_hyp_scheme_kernel_local_plus_variable_c: for the other schemes,
+ * drift-time #radiation_snapshot_part_propagation already decided #c_hyp
+ * (and #feedback_reset_part already cached the M1 closure built from it),
+ * and this function must leave that alone, bit-identical to the
+ * pre-comparison-branch behaviour for the shipped scheme. Under
+ * #isrf_c_hyp_consistent_variable_c the rebuilt M1 closure's own `c_M` is
+ * pinned to 1 regardless of `c_hyp` (see #radiation_cache_m1_closure_part's
+ * own doxygen), so for scheme 4 this function still updates `c_hyp` itself
+ * (read by the pairwise operators' receiver-side multiply), even though the
+ * closure rebuild that follows does not change value because of it.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -416,7 +424,9 @@ void radiation_init_part_propagation(struct part *p) {
 void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->ISRF_propagation) return;
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local)
+  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
+      e->feedback_props->ISRF_c_hyp_scheme !=
+          isrf_c_hyp_scheme_kernel_local_plus_variable_c)
     return;
 
   struct feedback_part_data *fd = &p->feedback_data;
