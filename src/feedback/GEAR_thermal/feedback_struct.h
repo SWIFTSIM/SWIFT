@@ -205,8 +205,9 @@ struct feedback_isrf_band_data {
 
   /*! M1 closure tensor `D(f)` from #u, #specific_flux and
       #feedback_part_data.c_hyp, cached by
-      #radiation_cache_m1_closure_part at the drift-time reset so the
-      gradient loop reads it per pair without rebuilding it. */
+      #radiation_cache_m1_closure_part (drift-time reset and, once
+      #c_hyp itself is known, the density ghost) so the gradient loop
+      reads it per pair without rebuilding it. */
   float m1_closure_D[3][3];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -275,6 +276,20 @@ struct feedback_part_data {
   /*! Tag to mark the particle as ionized. */
   char is_ionized;
 
+  /*! Largest #part.time_bin among this particle and every neighbour
+      accumulated by the ISRF density loop this h-iteration
+      (radiation_propagation_iact.h's runner_iact_isrf_propagation and
+      runner_iact_nonsym_isrf_propagation), reset to #part.time_bin at
+      the start of each h-iteration by radiation_init_part_propagation.
+      Drives #c_hyp: the propagation speed is set from the SLOWEST
+      particle in the kernel, not this particle's own step, so that the
+      receiver's CFL condition holds for every pair by construction (see
+      radiation_end_density_propagation). Placed here, right after
+      #is_ionized, to land in that field's own compiler padding rather
+      than growing #part (verified by a standalone sizeof/offsetof
+      probe, not by inspection: `struct part` stays 640 bytes). */
+  timebin_t max_ngb_time_bin;
+
   /*! Id of the star that ionized this particle. */
   long long star_id;
 
@@ -321,20 +336,27 @@ struct feedback_part_data {
       point, so every term the placeholder feeds into is itself 0. */
   float rho_prev;
 
-  /*! This particle's own hyperbolic propagation speed
-      (`c_hyp_i = min(C_hyp*h_i/dt_i, c)`, physical units), cached once per
-      step by radiation_snapshot_part_propagation from this step's own
-      already-decided integer timestep, alongside the physical timestep
-      #dt_prev it was derived from. Shared by both bands (unlike
-      #feedback_isrf_band_data.kappa): the propagation speed is a property of
-      the particle's resolution and timestep, not of its dust opacity. */
+  /*! This particle's kernel-local hyperbolic propagation speed
+      (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
+      timestep among this particle and every neighbour in its kernel,
+      #max_ngb_time_bin), cached for active particles by
+      radiation_end_density_propagation (the density ghost, after the
+      h-iteration converges), so every receiver's CFL condition
+      `c_i*dt_j <= C_hyp*h_i` holds by construction for the pairs the
+      force loop reaches. An inactive particle's value is simply last
+      active step's, like #time_bin itself. Shared by both bands (unlike
+      #feedback_isrf_band_data.kappa): the propagation speed is a
+      property of the particle's resolution and its kernel's slowest
+      clock, not of its dust opacity. */
   float c_hyp;
 
-  /*! This particle's own physical timestep, cached alongside
-      #c_hyp (same call site), so the exact-relaxation finalizes
-      (radiation_isrf.c) do not need to recompute it from #time_bin/the
-      #engine a second and third time in the extra ghost and end-force
-      ghost. */
+  /*! This particle's own physical timestep (`dt_i`, NOT #max_ngb_time_bin's
+      `dt_max(i)`: only #c_hyp uses the kernel maximum), cached by
+      radiation_snapshot_part_propagation (the drift, once per step, every
+      particle whether active or not) so the exact-relaxation finalizes
+      (radiation_isrf.c) and the dose-reservoir drawdown/restore
+      (radiation_snapshot_part_propagation/radiation_part_has_no_neighbours)
+      do not need to recompute it a second and third time. */
   float dt_prev;
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -834,11 +834,26 @@ GEARFeedback:
                                                            # (Default: 0)
   ISRF_extinction_path: kernel_diameter                    # (optional) Path of the receiver-side dust extinction column, Sigma = rho * path: kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h.
                                                            # Only meaningful when with_photoelectric_heating is on. (Default: kernel_diameter)
-  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the c_hyp_i = C_hyp*h_i/dt_i closure. Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
+  ISRF_c_hyp_scheme: 0                                     # (optional) Which ISRF scheme is active: 0 = shipped (c_hyp_i = min(C_hyp*h_i/dt_i, c), dt_i this particle's own timestep), 1 = kernel-local
+                                                           # (c_hyp_i = min(C_hyp*h_i/dt_max(i), c), dt_max(i) the longest timestep among this particle and every neighbour in its kernel), 2 = fixed fraction of c
+                                                           # (c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c*c, which must then be positive), 3 = consistent variable-c operators (c_hyp_i left at scheme 0's own formula;
+                                                           # every pairwise transport/dissipation operator is rebuilt as the per-particle-c_hyp generalisation of the reduced-speed-of-light method instead -- see
+                                                           # radiation_propagation_iact.h's file header). Alternatives, not layers: 2 requires ISRF_c_hyp_fixed_fraction_of_c > 0, and that parameter must be 0
+                                                           # whenever this is not 2. Only meaningful when ISRF_propagation is on. (Default: 0, bit-identical to the pre-scheme-selector behaviour)
+  ISRF_c_hyp_margin: 0.5                                   # (optional) Stability-margin coefficient C_hyp in the ISRF_c_hyp_scheme closure (dt_i for scheme 0, dt_max(i) for scheme 1; unused for scheme 2's own c_hyp
+                                                           # but still sets that scheme's own timestep term, C_hyp*h_i/(f*c)). Valid range (0, sqrt(2/0.70)] (~1.6903) only at max(ISRF_dissipation_alpha_max,
                                                            # ISRF_dissipation_alpha_floor) = 0; the joint stability bound tightens this whenever either dissipation coefficient is nonzero (e.g. the shipped alpha_floor=0.5 caps this margin at 0.571). Only
                                                            # meaningful when ISRF_propagation is on. (Default: 0.5)
-  ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of C_hyp*h/dt, whenever positive. Bypasses the speed-of-light
-                                                           # clamp: a value above c gives superluminal propagation on purpose. Only meaningful when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
+  ISRF_c_hyp_pin_for_debugging: 0                          # (optional, debug/test only) Pin every particle's own hyperbolic propagation speed c_hyp to this fixed physical value instead of whichever formula
+                                                           # ISRF_c_hyp_scheme selects, whenever positive. Bypasses the speed-of-light clamp: a value above c gives superluminal propagation on purpose. Only meaningful
+                                                           # when ISRF_propagation is on. Never set in a production run. (Default: 0, disabled)
+  ISRF_c_hyp_fixed_fraction_of_c: 0                        # (optional) Magnitude for ISRF_c_hyp_scheme == 2: sets every particle's c_hyp_i = f*c, independent of h_i/dt_i. Valid range [0, 1]. Must be positive
+                                                           # when ISRF_c_hyp_scheme is 2, and must be 0 otherwise (feedback_props_init() errors on either mismatch). Mutually exclusive with ISRF_c_hyp_pin_for_debugging.
+                                                           # Adds a matching radiation timestep term (C_hyp*h_i/(f*c), same ISRF_c_hyp_margin) on particles carrying or near the field; see
+                                                           # ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging. Only meaningful when ISRF_propagation is on. (Default: 0, disabled)
+  ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging: 0  # (optional, debug/test only) With ISRF_c_hyp_fixed_fraction_of_c positive, skip the radiation timestep term that keeps the receiver-side CFL condition satisfied at that
+                                                           # fixed speed. 0 (default): the term is applied, the only supported configuration. 1: skipped, for A/B measuring the term's own step-count cost. Never set in a
+                                                           # production run. (Default: 0, disabled)
   ISRF_dissipation_alpha_max: 0.5                          # (optional) Ceiling of the triggered artificial-conductivity coefficient. 0 disables the trigger, but ISRF_dissipation_alpha_floor still
                                                            # applies unless it is also 0. The stability bound is checked jointly on max(alpha_max, alpha_floor):
                                                            # 6.2*max(alpha_max,alpha_floor)*ISRF_c_hyp_margin + 0.70*ISRF_c_hyp_margin^2 <= 2, so at the shipped 0.5 for both, raising ISRF_c_hyp_margin

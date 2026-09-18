@@ -38,6 +38,8 @@ void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
                                      const struct engine *e);
 void feedback_end_gradient(struct part *p, const struct engine *e);
 void feedback_end_force(struct part *p, const struct engine *e);
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e);
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e);
 void feedback_init_part(struct part *p, const struct engine *e);

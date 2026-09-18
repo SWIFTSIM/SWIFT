@@ -1164,16 +1164,27 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
 
 /**
  * @brief Tracked specific flux moment, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].specific_flux. Thin dispatch
- * wrapper, same reasoning as #feedback_get_part_u_PE.
+ * #feedback_part_data.isrf_band[ISRF_BAND_PE].specific_flux, ALWAYS
+ * returned as the true physical flux `F_true`, regardless of which ISRF
+ * scheme is active. Under #isrf_c_hyp_consistent_variable_c the stored
+ * field is instead the reduced flux `Ft = F_true/c_hyp`
+ * (radiation_propagation_iact.h's file header), so this getter rescales it
+ * back (`F_true = c_hyp*Ft`) before returning: the io field's meaning
+ * (FUVSpecificFluxes, tracers_io.h) and every downstream consumer (the
+ * ISRFHyperbolicPropagation check scripts included) stay scheme-
+ * independent, rather than leaking this internal representation choice
+ * into the snapshot format. A multiply, never a division: no new
+ * zero-denominator hazard.
  *
  * @param p The #part to query.
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
-  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[0];
-  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[1];
-  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[2];
+  const float rescale =
+      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  ret[0] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[0];
+  ret[1] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[1];
+  ret[2] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[2];
 }
 
 /**
@@ -1183,9 +1194,11 @@ void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
-  ret[0] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[0];
-  ret[1] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[1];
-  ret[2] = p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[2];
+  const float rescale =
+      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  ret[0] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[0];
+  ret[1] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[1];
+  ret[2] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[2];
 }
 
 /**

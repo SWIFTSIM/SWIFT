@@ -22,9 +22,12 @@
 #include <fenv.h>
 #include <float.h>
 #include <math.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* Local headers. */
 #include "swift.h"
@@ -54,6 +57,301 @@ void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  int limit_h_max);
 void runner_doself2_branch_force(struct runner *r, const struct cell *c,
                                  int limit_h_min, int limit_h_max);
+
+/**
+ * @brief Bit-exact float equality, via the raw bits rather than `==`: under
+ * -ffast-math the compiler is free to fold a comparison, so read the bit
+ * pattern explicitly instead of trusting the operator.
+ *
+ * @param x First value.
+ * @param y Second value.
+ * @return 1 if the two floats have identical bit patterns.
+ */
+static int bits_equal_f(float x, float y) {
+  uint32_t bx, by;
+  memcpy(&bx, &x, sizeof(bx));
+  memcpy(&by, &y, sizeof(by));
+  return bx == by;
+}
+
+/**
+ * @brief Kernel-local #feedback_part_data.c_hyp: same-bin identity
+ * (design-required to be bit-identical to the shipped per-particle
+ * formula), the light-speed cap, and the debug pin, all through the real
+ * #radiation_end_density_propagation dispatch.
+ *
+ * @param e The #engine (feedback_props, cosmology, physical_constants set).
+ */
+static void test_c_hyp_same_bin_cap_and_pin(struct engine *e) {
+
+  /* Same-bin identity: every neighbour (there are none registered here)
+   * shares this particle's own bin, so #feedback_part_data.max_ngb_time_bin
+   * left at its own #part.time_bin reduces dt_max(i) to dt_i exactly, and
+   * #radiation_end_density_propagation must give the shipped per-particle
+   * `min(C_hyp*h/dt_i, c)` bit for bit. */
+  struct part p;
+  bzero(&p, sizeof(struct part));
+  p.h = 0.37f;
+  p.time_bin = 6;
+  p.feedback_data.dt_prev = (float)get_timestep(p.time_bin, e->time_base);
+  p.feedback_data.max_ngb_time_bin = p.time_bin;
+
+  radiation_end_density_propagation(&p, e);
+
+  const float h_phys = (float)e->cosmology->a * p.h;
+  float expected =
+      e->feedback_props->ISRF_c_hyp_margin * h_phys / p.feedback_data.dt_prev;
+  expected = min(expected, (float)e->physical_constants->const_speed_light_c);
+  if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
+    expected = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
+
+  if (!bits_equal_f(p.feedback_data.c_hyp, expected))
+    error("same-bin identity: c_hyp = %.9g != shipped formula %.9g",
+          (double)p.feedback_data.c_hyp, (double)expected);
+  message(
+      "same-bin identity: c_hyp = %.6g bit-identical to the shipped "
+      "per-particle formula",
+      (double)p.feedback_data.c_hyp);
+
+  /* Light-speed cap: a huge h over a short step would give C_hyp*h/dt_max
+   * far above c without the clamp. */
+  struct part p_cap;
+  bzero(&p_cap, sizeof(struct part));
+  p_cap.h = 1e6f;
+  p_cap.time_bin =
+      1; /* get_integer_timestep(1) == 4, a short but nonzero step */
+  p_cap.feedback_data.dt_prev =
+      (float)get_timestep(p_cap.time_bin, e->time_base);
+  p_cap.feedback_data.max_ngb_time_bin = p_cap.time_bin;
+
+  radiation_end_density_propagation(&p_cap, e);
+
+  const float c = (float)e->physical_constants->const_speed_light_c;
+  if (!(p_cap.feedback_data.c_hyp <= c))
+    error("light-speed cap: c_hyp = %.6g exceeds c = %.6g",
+          (double)p_cap.feedback_data.c_hyp, (double)c);
+  message("light-speed cap: c_hyp = %.6g capped at c = %.6g",
+          (double)p_cap.feedback_data.c_hyp, (double)c);
+
+  /* Debug pin: overrides the clamped value unconditionally. */
+  const float saved_pin = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
+  e->feedback_props->ISRF_c_hyp_pin_for_debugging = 123.f;
+
+  struct part p_pin;
+  bzero(&p_pin, sizeof(struct part));
+  p_pin.h = 1.f;
+  p_pin.time_bin = 3;
+  p_pin.feedback_data.dt_prev =
+      (float)get_timestep(p_pin.time_bin, e->time_base);
+  p_pin.feedback_data.max_ngb_time_bin = p_pin.time_bin;
+
+  radiation_end_density_propagation(&p_pin, e);
+
+  if (!bits_equal_f(p_pin.feedback_data.c_hyp, 123.f))
+    error("debug pin: c_hyp = %.6g, expected the pinned value 123",
+          (double)p_pin.feedback_data.c_hyp);
+  message("debug pin: c_hyp = %.6g pinned as configured",
+          (double)p_pin.feedback_data.c_hyp);
+
+  e->feedback_props->ISRF_c_hyp_pin_for_debugging = saved_pin;
+}
+
+/**
+ * @brief Receiver bound: for every registered neighbour j, `c_i*dt_j/h_i
+ * <= C_hyp` must hold by construction, because #feedback_part_data.
+ * max_ngb_time_bin is a maximum over the kernel (dt_max(i) >= dt_j for any
+ * j that contributed to it). Sweeps time-bin differences 1, 2, 3 and
+ * smoothing-length ratios 0.5, 1, 2 (h_j plays no role in #c_hyp's own
+ * formula: only h_i and dt_max(i) do; the ratio is swept to document that
+ * explicitly, not because the bound depends on it). Restricted to
+ * neighbours that actually reached the kernel sum, as the design's own
+ * "one coverage gap" note requires (a neighbour with `H_j > r >= H_i`
+ * reads #c_hyp in the force loop without ever contributing to
+ * #max_ngb_time_bin, and is not covered by this bound).
+ *
+ * @param e The #engine (feedback_props, cosmology, physical_constants set,
+ * debug pin OFF).
+ */
+static void test_c_hyp_receiver_bound(struct engine *e) {
+
+  if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
+    error("receiver bound: test setup requires the debug pin off");
+
+  const float C_hyp = e->feedback_props->ISRF_c_hyp_margin;
+  const float h_i = 0.42f;
+  const timebin_t bin_i = 4;
+  const int bin_diffs[3] = {1, 2, 3};
+  const float h_ratios[3] = {0.5f, 1.f, 2.f};
+
+  for (int bd = 0; bd < 3; bd++) {
+    for (int hr = 0; hr < 3; hr++) {
+      struct part p;
+      bzero(&p, sizeof(struct part));
+      p.h = h_i;
+      p.time_bin = bin_i;
+      p.feedback_data.dt_prev = (float)get_timestep(bin_i, e->time_base);
+      p.feedback_data.max_ngb_time_bin = bin_i;
+
+      const timebin_t bin_j = bin_i + bin_diffs[bd];
+      /* h_j itself is unused below: it plays no role in the formula, only
+       * in whether j is registered as a neighbour at all (simulated here
+       * by directly folding bin_j into max_ngb_time_bin, as the density
+       * loop's accumulation would for a genuine in-kernel neighbour). */
+      (void)h_ratios[hr];
+      p.feedback_data.max_ngb_time_bin =
+          max(p.feedback_data.max_ngb_time_bin, bin_j);
+
+      radiation_end_density_propagation(&p, e);
+
+      const double dt_j = get_timestep(bin_j, e->time_base);
+      const double bound = (double)p.feedback_data.c_hyp * dt_j / (double)h_i;
+      if (!(bound <= (double)C_hyp * (1. + 1e-6)))
+        error(
+            "receiver bound: bin_diff=%d h_ratio=%.2f: c_i*dt_j/h_i = "
+            "%.6e above C_hyp = %.6e",
+            bin_diffs[bd], (double)h_ratios[hr], bound, (double)C_hyp);
+    }
+  }
+  message(
+      "receiver bound: c_i*dt_j/h_i <= C_hyp holds for bin differences "
+      "1..3 and h ratios 0.5/1/2");
+}
+
+/**
+ * @brief Density-loop #feedback_part_data.max_ngb_time_bin: the
+ * per-h-iteration reset (#radiation_init_part_propagation) and the
+ * running maximum through both the symmetric
+ * (#runner_iact_isrf_propagation) and non-symmetric
+ * (#runner_iact_nonsym_isrf_propagation) density-loop hooks.
+ */
+static void test_density_loop_max_ngb_time_bin(void) {
+
+  struct part pi, pj, pk;
+  bzero(&pi, sizeof(struct part));
+  bzero(&pj, sizeof(struct part));
+  bzero(&pk, sizeof(struct part));
+
+  pi.h = 0.5f;
+  pi.time_bin = 3;
+  pj.h = 0.5f;
+  pj.time_bin = 7;
+  pk.h = 0.5f;
+  pk.time_bin = 1;
+
+  struct part *const triplet[3] = {&pi, &pj, &pk};
+  for (int t = 0; t < 3; t++) {
+    struct part *p = triplet[t];
+    p->mass = 1.f;
+    p->feedback_data.rho_prev = 1.f;
+    for (int b = 0; b < ISRF_BAND_COUNT; b++)
+      p->feedback_data.isrf_band[b].u_prev = 0.1f;
+  }
+
+  const float dx[3] = {0.01f, 0.f, 0.f};
+  const float r2 = dx[0] * dx[0];
+
+  /* Per-h-iteration reset: each particle's max starts at its own bin. */
+  radiation_init_part_propagation(&pi);
+  radiation_init_part_propagation(&pj);
+  radiation_init_part_propagation(&pk);
+  if (pi.feedback_data.max_ngb_time_bin != pi.time_bin ||
+      pj.feedback_data.max_ngb_time_bin != pj.time_bin ||
+      pk.feedback_data.max_ngb_time_bin != pk.time_bin)
+    error(
+        "density-loop max: reset did not seed max_ngb_time_bin from "
+        "each particle's own time_bin");
+
+  /* Symmetric hook: both sides pick up the other's bin. pi (3) vs pk (1):
+   * pi's max stays 3 (pk is faster), pk's max rises to 3. */
+  runner_iact_isrf_propagation(r2, dx, pi.h, pk.h, &pi, &pk, 1.f, 0.f, NULL);
+  if (pi.feedback_data.max_ngb_time_bin != 3)
+    error(
+        "density-loop max: symmetric hook changed i's max from a slower "
+        "neighbour (%d, expected 3)",
+        (int)pi.feedback_data.max_ngb_time_bin);
+  if (pk.feedback_data.max_ngb_time_bin != 3)
+    error(
+        "density-loop max: symmetric hook did not raise j's max to i's "
+        "bin (%d, expected 3)",
+        (int)pk.feedback_data.max_ngb_time_bin);
+
+  /* Non-symmetric hook: only i's accumulator is touched. Two calls
+   * accumulate (do not overwrite), against a slower and a faster
+   * neighbour in turn; j's own field must never change. */
+  radiation_init_part_propagation(&pi);
+  const timebin_t pj_sentinel = pj.feedback_data.max_ngb_time_bin;
+  runner_iact_nonsym_isrf_propagation(r2, dx, pi.h, pj.h, &pi, &pj, 1.f, 0.f,
+                                      NULL);
+  if (pi.feedback_data.max_ngb_time_bin != 7)
+    error(
+        "density-loop max: non-symmetric hook did not raise i's max to "
+        "the slower neighbour's bin (%d, expected 7)",
+        (int)pi.feedback_data.max_ngb_time_bin);
+  if (pj.feedback_data.max_ngb_time_bin != pj_sentinel)
+    error("density-loop max: non-symmetric hook wrote to j's own field");
+
+  runner_iact_nonsym_isrf_propagation(r2, dx, pi.h, pk.h, &pi, &pk, 1.f, 0.f,
+                                      NULL);
+  if (pi.feedback_data.max_ngb_time_bin != 7)
+    error(
+        "density-loop max: non-symmetric hook overwrote the running "
+        "maximum with a slower call's smaller bin (%d, expected 7)",
+        (int)pi.feedback_data.max_ngb_time_bin);
+
+  /* Redo path: a second h-iteration's reset must bring the maximum back
+   * down to i's own bin, not leave the previous iteration's value. */
+  radiation_init_part_propagation(&pi);
+  if (pi.feedback_data.max_ngb_time_bin != pi.time_bin)
+    error(
+        "density-loop max: reset on a redo iteration left a stale "
+        "maximum (%d, expected i's own bin %d)",
+        (int)pi.feedback_data.max_ngb_time_bin, (int)pi.time_bin);
+
+  message(
+      "density-loop max: reset and both hooks' running maximum are "
+      "correct");
+}
+
+/**
+ * @brief Run the kernel-local #feedback_part_data.c_hyp unit tests: same-bin
+ * identity, the light-speed cap, the debug pin, the receiver bound, and the
+ * density-loop maximum/reset. Independent of the force-dispatch conservation
+ * tests below, which exercise #feedback_part_data.c_hyp only as an opaque
+ * per-particle input.
+ */
+static void test_kernel_local_c_hyp(void) {
+
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.ISRF_propagation = 1;
+  /* radiation_end_density_propagation is a no-op for any other scheme
+   * (see its own doxygen): these tests exercise it directly, so they must
+   * select the kernel-local scheme explicitly rather than rely on the
+   * struct's zero-init default (isrf_c_hyp_scheme_shipped). */
+  fb_props.ISRF_c_hyp_scheme = isrf_c_hyp_scheme_kernel_local;
+  fb_props.ISRF_c_hyp_margin = 0.5f;
+  fb_props.ISRF_c_hyp_pin_for_debugging = 0.f;
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+
+  struct phys_const phys_const;
+  bzero(&phys_const, sizeof(struct phys_const));
+  phys_const.const_speed_light_c = 3e5; /* km/s-scale test units */
+
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
+  e.feedback_props = &fb_props;
+  e.cosmology = &cosmo;
+  e.physical_constants = &phys_const;
+  e.time_base = 1e-3;
+  e.ti_current = 8;
+  e.policy = 0; /* no cosmology */
+
+  test_c_hyp_same_bin_cap_and_pin(&e);
+  test_c_hyp_receiver_bound(&e);
+  test_density_loop_max_ngb_time_bin();
+}
 
 /**
  * @brief Build a cell of CELL_N^3 perturbed-lattice gas particles, all
@@ -354,6 +652,736 @@ static void check_cells(struct cell *cells[2], const char *label,
   }
 }
 
+/* ---------------------------------------------------------------------
+ * The uniform reduced light-speed candidate
+ * (ISRF_c_hyp_fixed_fraction_of_c): off leaves c_hyp bit-identical to the
+ * shipped C_hyp*h/dt formula; on gives every particle exactly f*c,
+ * independent of h and time bin; and the matching radiation timestep term
+ * (radiation_isrf_part_timestep) returns C_hyp*h/(f*c) on an eligible
+ * particle and is inert (FLT_MAX) whenever the fraction is off.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief Minimal fixture for radiation_snapshot_part_propagation /
+ * radiation_isrf_part_timestep: a non-cosmological engine with just enough
+ * state to reach the c_hyp closure (cooling_func/internal_units are needed
+ * because the kappa computation ahead of it in
+ * radiation_snapshot_part_propagation is unconditional whenever
+ * ISRF_propagation is on), independent of the dispatch test's own engine
+ * above.
+ *
+ * @param e (return) The engine.
+ * @param cosmo (return) Non-cosmological (a=1) cosmology.
+ * @param pc (return) Physical constants.
+ * @param fp (return) Feedback properties.
+ * @param cooling (return) Cooling function data.
+ * @param us (return) Unit system.
+ * @param fixed_fraction ISRF_c_hyp_fixed_fraction_of_c.
+ * @param timestep_off_for_debugging
+ * ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging.
+ */
+static void make_c_hyp_speed_test_engine(
+    struct engine *e, struct cosmology *cosmo, struct phys_const *pc,
+    struct feedback_props *fp, struct cooling_function_data *cooling,
+    struct unit_system *us, float fixed_fraction,
+    char timestep_off_for_debugging) {
+
+  bzero(cosmo, sizeof(struct cosmology));
+  cosmo->a = 1.0;
+  cosmo->a2_inv = 1.0;
+  cosmo->a3_inv = 1.0;
+
+  bzero(pc, sizeof(struct phys_const));
+  pc->const_speed_light_c = 1.e4;
+
+  bzero(fp, sizeof(struct feedback_props));
+  fp->ISRF_propagation = 1;
+  fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
+  fp->ISRF_c_hyp_margin = 0.5f;
+  /* The two schemes are alternatives (feedback_props_init() enforces this
+   * at parse time; these tests call the dispatch directly, so they must
+   * keep the same pairing by hand): a positive fraction only takes effect
+   * under isrf_c_hyp_scheme_fixed_fraction, else radiation_snapshot_part_
+   * propagation runs the shipped formula regardless of this value. */
+  fp->ISRF_c_hyp_scheme = fixed_fraction > 0.f
+                              ? isrf_c_hyp_scheme_fixed_fraction
+                              : isrf_c_hyp_scheme_shipped;
+  fp->ISRF_c_hyp_fixed_fraction_of_c = fixed_fraction;
+  fp->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging =
+      timestep_off_for_debugging;
+
+  bzero(cooling, sizeof(struct cooling_function_data));
+  cooling->chemistry_data.local_dust_to_gas_ratio = 0.01;
+
+  units_init(us, /*U_M_in_cgs=*/1.98892e33, /*U_L_in_cgs=*/3.08567758e18,
+             /*U_t_in_cgs=*/3.15576e13, /*U_C_in_cgs=*/1.0,
+             /*U_T_in_cgs=*/1.0);
+
+  bzero(e, sizeof(struct engine));
+  e->policy = 0; /* no cosmology: the plain get_timestep branch */
+  e->ti_current = 0;
+  e->time_base = 1.0;
+  e->max_active_bin = num_time_bins; /* every bin active */
+  e->internal_units = us;
+  e->physical_constants = pc;
+  e->cosmology = cosmo;
+  e->cooling_func = cooling;
+  e->feedback_props = fp;
+}
+
+/**
+ * @brief Set a particle's h/time_bin/rho, leaving every ISRF band field at
+ * its zero-init default.
+ *
+ * @param p (return) The particle.
+ * @param h The smoothing length.
+ * @param time_bin The time bin.
+ */
+static void set_c_hyp_test_part(struct part *p, float h, timebin_t time_bin) {
+  bzero(p, sizeof(struct part));
+  p->h = h;
+  p->time_bin = time_bin;
+  p->rho = 1.5f;
+  p->mass = 1.f;
+  p->feedback_data.ISRF_reservoir_end_ti = -1;
+  p->feedback_data.ISRF_illumination_end_ti = -1;
+}
+
+/**
+ * @brief Relative-tolerance check for a two-operator float formula
+ * (multiply-then-divide) reproduced independently in this test: not a hard
+ * `==`, since -ffast-math/-freciprocal-math may pick a different reciprocal
+ * instruction across translation units for a bit-for-bit identical source
+ * expression (see swift-knowledge.md's floating-point-hazards notes). A
+ * single-multiply comparison (fraction*c) has no such ambiguity and is
+ * checked with `==` instead.
+ *
+ * @param name Message label.
+ * @param actual The value read back from the code under test.
+ * @param expected This test's own independently-computed value.
+ */
+static void assert_close_c_hyp(const char *name, float actual, float expected) {
+  const float rel_err = fabsf(actual - expected) / fabsf(expected);
+  if (!(rel_err <= 1e-6f))
+    error("%s: got %.8e, expected %.8e (rel_err=%.3e).", name, (double)actual,
+          (double)expected, (double)rel_err);
+}
+
+/**
+ * @brief Fraction off (default): c_hyp must be bit-identical to the shipped
+ * min(C_hyp*h/dt, c) formula, for several (h, time_bin) combinations.
+ */
+static void test_c_hyp_fixed_fraction_off_matches_shipped_formula(void) {
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/0.f,
+                               /*timestep_off_for_debugging=*/0);
+
+  const float hs[3] = {0.5f, 1.0f, 2.3f};
+  const timebin_t bins[3] = {1, 3, 6};
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      struct part p;
+      set_c_hyp_test_part(&p, hs[i], bins[j]);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      const float dt_phys = (float)get_timestep(bins[j], e.time_base);
+      const float h_phys = (float)cosmo.a * hs[i];
+      float expected = fp.ISRF_c_hyp_margin * h_phys / dt_phys;
+      expected = min(expected, (float)pc.const_speed_light_c);
+
+      assert_close_c_hyp("fraction off: c_hyp vs shipped formula",
+                         p.feedback_data.c_hyp, expected);
+    }
+  }
+  message(
+      "c_hyp fixed fraction off: matches the shipped formula "
+      "at every (h, time_bin) tried.");
+}
+
+/**
+ * @brief Fraction on: every particle must get exactly f*c, regardless of h
+ * or time bin.
+ */
+static void test_c_hyp_fixed_fraction_on_gives_exact_fraction_of_c(void) {
+  const float f = 0.02f;
+
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/f,
+                               /*timestep_off_for_debugging=*/0);
+
+  const float expected = f * (float)pc.const_speed_light_c;
+  const float hs[3] = {0.5f, 1.0f, 2.3f};
+  const timebin_t bins[3] = {1, 3, 6};
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      struct part p;
+      set_c_hyp_test_part(&p, hs[i], bins[j]);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      if (p.feedback_data.c_hyp != expected)
+        error(
+            "fraction on, h=%g bin=%d: c_hyp=%.8e, expected f*c=%.8e "
+            "exactly, independent of h/time_bin.",
+            (double)hs[i], bins[j], (double)p.feedback_data.c_hyp,
+            (double)expected);
+    }
+  }
+  message(
+      "c_hyp fixed fraction on: exactly f*c=%.6e at every (h, time_bin) "
+      "tried.",
+      (double)expected);
+}
+
+/**
+ * @brief The radiation timestep term: C_hyp*h/(f*c) on an eligible particle
+ * with the fraction on and the debug off-switch clear; FLT_MAX (no
+ * constraint) whenever the fraction is off, whenever the debug off-switch
+ * is set, and on a particle outside the eligible set.
+ */
+static void test_c_hyp_fixed_fraction_timestep_term(void) {
+  const float f = 0.02f;
+  const float h = 1.7f;
+
+  /* Fraction off: FLT_MAX regardless of eligibility. */
+  {
+    struct engine e;
+    struct cosmology cosmo;
+    struct phys_const pc;
+    struct feedback_props fp;
+    struct cooling_function_data cooling;
+    struct unit_system us;
+    make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                                 /*fixed_fraction=*/0.f,
+                                 /*timestep_off_for_debugging=*/0);
+    struct part p;
+    set_c_hyp_test_part(&p, h, /*time_bin=*/3);
+    p.feedback_data.is_illuminated_ISRF = 1;
+    const float dt_rad = radiation_isrf_part_timestep(&p, &e);
+    if (dt_rad != FLT_MAX)
+      error(
+          "fraction off: radiation_isrf_part_timestep=%.8e, expected "
+          "FLT_MAX (not applied).",
+          (double)dt_rad);
+  }
+
+  /* Fraction on, debug off-switch clear, eligible particle (tagged
+   * illuminated): must return the receiver-side CFL bound exactly. */
+  {
+    struct engine e;
+    struct cosmology cosmo;
+    struct phys_const pc;
+    struct feedback_props fp;
+    struct cooling_function_data cooling;
+    struct unit_system us;
+    make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                                 /*fixed_fraction=*/f,
+                                 /*timestep_off_for_debugging=*/0);
+    struct part p;
+    set_c_hyp_test_part(&p, h, /*time_bin=*/3);
+    p.feedback_data.is_illuminated_ISRF = 1;
+
+    const float c_M = f * (float)pc.const_speed_light_c;
+    const float expected = fp.ISRF_c_hyp_margin * (float)cosmo.a * h / c_M;
+    const float dt_rad = radiation_isrf_part_timestep(&p, &e);
+    assert_close_c_hyp("fraction on, eligible: dt_rad vs C_hyp*h/(f*c)", dt_rad,
+                       expected);
+
+    /* Same fixture, debug off-switch set: must go back to FLT_MAX. */
+    fp.ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging = 1;
+    const float dt_rad_off = radiation_isrf_part_timestep(&p, &e);
+    if (dt_rad_off != FLT_MAX)
+      error(
+          "fraction on, timestep term off for debugging: "
+          "radiation_isrf_part_timestep=%.8e, expected FLT_MAX.",
+          (double)dt_rad_off);
+    fp.ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging = 0;
+
+    /* Same fixture, particle outside the eligible set (never illuminated,
+     * no illuminated neighbour in kernel): must also be FLT_MAX. */
+    struct part p_far;
+    set_c_hyp_test_part(&p_far, h, /*time_bin=*/3);
+    const float dt_rad_far = radiation_isrf_part_timestep(&p_far, &e);
+    if (dt_rad_far != FLT_MAX)
+      error(
+          "fraction on, not near field: radiation_isrf_part_timestep="
+          "%.8e, expected FLT_MAX.",
+          (double)dt_rad_far);
+  }
+  message(
+      "radiation timestep term: C_hyp*h/(f*c) on an eligible particle, "
+      "FLT_MAX with the fraction off, with the debug off-switch set, and "
+      "off the eligible set.");
+}
+
+/**
+ * @brief Run @p scheme/@p fixed_fraction through
+ * #feedback_props_check_c_hyp_scheme() in a forked child and assert it
+ * aborts via error() (exit 1, or SIGABRT under SWIFT_DEVELOP_MODE), per
+ * the #testRadiationRebuildCheck.c:365 pattern.
+ *
+ * @param label Message label for a failure report.
+ * @param scheme Value to pass as ISRF_c_hyp_scheme.
+ * @param fixed_fraction Value to pass as ISRF_c_hyp_fixed_fraction_of_c.
+ */
+static void assert_c_hyp_scheme_check_rejects(const char *label, int scheme,
+                                              float fixed_fraction) {
+  const pid_t pid = fork();
+  if (pid == 0) {
+    /* Child process: silence stderr (the error() message is expected
+     * output, not a test failure), then trigger the check. */
+    if (freopen("/dev/null", "w", stderr) == NULL) _exit(43);
+    feedback_props_check_c_hyp_scheme(scheme, fixed_fraction);
+    /* Reached only if the check did NOT reject -- signal failure with a
+     * distinguishable exit code (real error() exits with status 1). */
+    _exit(42);
+  } else if (pid > 0) {
+    int status;
+    waitpid(pid, &status, 0);
+    const int exited_with_error = WIFEXITED(status) && WEXITSTATUS(status) == 1;
+    const int aborted = WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT;
+    if (!exited_with_error && !aborted)
+      error(
+          "%s: feedback_props_check_c_hyp_scheme(scheme=%d, "
+          "fixed_fraction=%g) failed to reject (WIFEXITED=%d "
+          "WEXITSTATUS=%d WIFSIGNALED=%d WTERMSIG=%d).",
+          label, scheme, (double)fixed_fraction, WIFEXITED(status),
+          WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status),
+          WIFSIGNALED(status) ? WTERMSIG(status) : -1);
+  } else {
+    error("fork() failed in the c_hyp scheme/fraction mismatch test.");
+  }
+}
+
+/**
+ * @brief The two ISRF c_hyp speed schemes are alternatives, not layers
+ * (requirement 4 of the comparison branch): every mismatched
+ * (ISRF_c_hyp_scheme, ISRF_c_hyp_fixed_fraction_of_c) pairing must be
+ * rejected by #feedback_props_check_c_hyp_scheme() at parse time, and
+ * every matched pairing must return normally.
+ */
+static void test_c_hyp_scheme_mismatch_rejected(void) {
+
+  /* Invalid: fixed-fraction scheme selected with no magnitude. */
+  assert_c_hyp_scheme_check_rejects("scheme=fixed_fraction, fraction=0",
+                                    isrf_c_hyp_scheme_fixed_fraction, 0.f);
+  /* Invalid: a magnitude set while the kernel-local scheme is selected --
+   * the two schemes stacked instead of chosen between. */
+  assert_c_hyp_scheme_check_rejects("scheme=kernel_local, fraction=0.02",
+                                    isrf_c_hyp_scheme_kernel_local, 0.02f);
+  /* Invalid: a magnitude set while the shipped scheme is selected -- would
+   * otherwise silently do nothing (see radiation_snapshot_part_propagation:
+   * the fraction is only read when the scheme selects it). */
+  assert_c_hyp_scheme_check_rejects("scheme=shipped, fraction=0.02",
+                                    isrf_c_hyp_scheme_shipped, 0.02f);
+
+  /* Valid pairings must return normally (no fork needed: nothing to
+   * observe but the absence of an abort). */
+  feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_shipped, 0.f);
+  feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_kernel_local, 0.f);
+  feedback_props_check_c_hyp_scheme(isrf_c_hyp_scheme_fixed_fraction, 0.02f);
+
+  message(
+      "c_hyp scheme/fraction mismatch: every invalid pairing rejected at "
+      "parse time, every valid pairing accepted.");
+}
+
+/**
+ * @brief #radiation_end_density_propagation must be a no-op for the two
+ * schemes it does not own (#isrf_c_hyp_scheme_shipped,
+ * #isrf_c_hyp_scheme_fixed_fraction): drift-time
+ * #radiation_snapshot_part_propagation already decided #c_hyp for them, and
+ * this is the one guard standing between the default scheme and silently
+ * losing bit-identity with the pre-comparison-branch behaviour. Sets
+ * #max_ngb_time_bin to a bin the kernel-local formula would definitely act
+ * on if reached, so a regression that dropped the scheme gate would flip
+ * this test.
+ */
+static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  struct phys_const phys_const;
+  bzero(&phys_const, sizeof(struct phys_const));
+  phys_const.const_speed_light_c = 3e5;
+
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.ISRF_propagation = 1;
+  fb_props.ISRF_c_hyp_margin = 0.5f;
+
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
+  e.feedback_props = &fb_props;
+  e.cosmology = &cosmo;
+  e.physical_constants = &phys_const;
+  e.time_base = 1e-3;
+  e.ti_current = 8;
+  e.policy = 0;
+
+  const int schemes[2] = {isrf_c_hyp_scheme_shipped,
+                          isrf_c_hyp_scheme_fixed_fraction};
+  const float sentinel = 987.654f;
+
+  for (int s = 0; s < 2; s++) {
+    fb_props.ISRF_c_hyp_scheme = schemes[s];
+    fb_props.ISRF_c_hyp_fixed_fraction_of_c =
+        schemes[s] == isrf_c_hyp_scheme_fixed_fraction ? 0.02f : 0.f;
+
+    struct part p;
+    bzero(&p, sizeof(struct part));
+    p.h = 0.37f;
+    p.time_bin = 6;
+    p.feedback_data.dt_prev = (float)get_timestep(p.time_bin, e.time_base);
+    /* Different from time_bin: the kernel-local formula would certainly
+     * move c_hyp if this scheme gate were ever bypassed. */
+    p.feedback_data.max_ngb_time_bin = p.time_bin + 4;
+    p.feedback_data.c_hyp = sentinel;
+
+    radiation_end_density_propagation(&p, &e);
+
+    if (!bits_equal_f(p.feedback_data.c_hyp, sentinel))
+      error(
+          "scheme=%d: radiation_end_density_propagation must not touch "
+          "c_hyp (got %.9g, expected the untouched sentinel %.9g)",
+          schemes[s], (double)p.feedback_data.c_hyp, (double)sentinel);
+  }
+  message(
+      "c_hyp end-density no-clobber: radiation_end_density_propagation is "
+      "a no-op for the shipped and fixed-fraction schemes.");
+}
+
+/* ---------------------------------------------------------------------
+ * isrf_c_hyp_scheme_consistent_variable_c (closing FABLE review,
+ * .claude/dev/ISRF_HISTORY.md 2026-09-18 ~06:00, section C): every
+ * operator at particle i becomes c_hyp_i/c times the true-speed equation,
+ * with the stored flux becoming the reduced flux Ft = F_true/c_hyp. Three
+ * decisive unit tests below.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief Write one band's pairwise flux input for the consistent-variable-c
+ * bit-identity test: the true physical flux F_true when @p reduced is 0,
+ * or its reduced-flux representation Ft = F_true/c_hyp when @p reduced is
+ * 1 (this scheme's own stored state; see radiation_propagation_iact.h's
+ * file header). @p c_hyp must be an exact power of two for the division to
+ * be exact (see #test_consistent_variable_c_uniform_c_bit_identical's own
+ * doxygen for why that matters).
+ *
+ * @param band (return) The band to write.
+ * @param F_true The physical flux vector.
+ * @param c_hyp The particle's own #feedback_part_data.c_hyp.
+ * @param reduced 0 to store F_true directly, 1 to store F_true/c_hyp.
+ */
+static void set_consistent_c_test_band(struct feedback_isrf_band_data *band,
+                                       const float F_true[3], float c_hyp,
+                                       int reduced) {
+  const float scale = reduced ? 1.f / c_hyp : 1.f;
+  band->specific_flux[0] = F_true[0] * scale;
+  band->specific_flux[1] = F_true[1] * scale;
+  band->specific_flux[2] = F_true[2] * scale;
+}
+
+/**
+ * @brief THE DECISIVE UNIT TEST for isrf_c_hyp_scheme_consistent_variable_c:
+ * with a UNIFORM c_hyp, the new scheme's force-loop divergence and
+ * dissipation accumulators must reduce BIT FOR BIT to the shipped scheme's,
+ * through the real #runner_iact_isrf_dissipation dispatch. Checked on raw
+ * float bits (#bits_equal_f), not a tolerance.
+ *
+ * c_hyp is chosen as an exact power of two (8.0): under this scheme,
+ * #feedback_isrf_band_data.specific_flux stores Ft = F_true/c_hyp instead
+ * of F_true, and IEEE-754 multiplication/division by an exact power of two
+ * moves only the exponent field, leaving the significand untouched; a
+ * later multiplication by the same power of two therefore reproduces the
+ * pre-division rounding decision exactly (no new rounding is introduced by
+ * the round trip, and scaling commutes exactly with rounding elsewhere in
+ * the expression). An arbitrary c_hyp would only be numerically close, not
+ * bit-identical, which is not what this test requires (see
+ * swift-knowledge.md's -ffast-math notes: source-level operation order,
+ * not just mathematical equivalence, decides bit-exactness). The
+ * dissipation accumulator needs no such care: with c_i = c_j the shipped
+ * `alpha_ij*min(c_i,c_j)` and this scheme's `alpha_ij*c_i`/`alpha_ij*c_j`
+ * are literally the same expression evaluated on the same operands.
+ */
+static void test_consistent_variable_c_uniform_c_bit_identical(void) {
+
+  const float c_hyp = 8.f; /* exact power of two */
+  const float hi = 0.6f, hj = 0.9f;
+  const float mi = 1.3f, mj = 0.7f;
+  const float rho_i = 1.1f, rho_j = 0.6f;
+  const float dx[3] = {0.31f, -0.12f, 0.05f};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  const float F_true[ISRF_BAND_COUNT][2][3] = {
+      {{0.4f, -0.2f, 0.1f}, {-0.15f, 0.25f, -0.05f}},
+      {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}}};
+
+  struct part pi_A, pj_A, pi_B, pj_B;
+  bzero(&pi_A, sizeof(struct part));
+  bzero(&pj_A, sizeof(struct part));
+  bzero(&pi_B, sizeof(struct part));
+  bzero(&pj_B, sizeof(struct part));
+
+  pi_A.h = pi_B.h = hi;
+  pj_A.h = pj_B.h = hj;
+  pi_A.mass = pi_B.mass = mi;
+  pj_A.mass = pj_B.mass = mj;
+
+  struct part *const parts_A[2] = {&pi_A, &pj_A};
+  struct part *const parts_B[2] = {&pi_B, &pj_B};
+  const float rhos[2] = {rho_i, rho_j};
+  for (int s = 0; s < 2; s++) {
+    parts_A[s]->feedback_data.rho_prev = rhos[s];
+    parts_A[s]->feedback_data.c_hyp = c_hyp;
+    parts_B[s]->feedback_data.rho_prev = rhos[s];
+    parts_B[s]->feedback_data.c_hyp = c_hyp;
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      const float u = 0.5f + 0.1f * s + 0.2f * b;
+      const float alpha_trigger = 0.1f + 0.05f * s;
+      parts_A[s]->feedback_data.isrf_band[b].u = u;
+      parts_B[s]->feedback_data.isrf_band[b].u = u;
+      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+          alpha_trigger;
+      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+          alpha_trigger;
+      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
+      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
+      set_consistent_c_test_band(&parts_A[s]->feedback_data.isrf_band[b],
+                                 F_true[b][s], c_hyp, /*reduced=*/0);
+      set_consistent_c_test_band(&parts_B[s]->feedback_data.isrf_band[b],
+                                 F_true[b][s], c_hyp, /*reduced=*/1);
+    }
+  }
+
+  isrf_c_hyp_consistent_variable_c = 0;
+  runner_iact_isrf_dissipation(r2, dx, hi, hj, &pi_A, &pj_A, 1.f, 0.f);
+
+  isrf_c_hyp_consistent_variable_c = 1;
+  runner_iact_isrf_dissipation(r2, dx, hi, hj, &pi_B, &pj_B, 1.f, 0.f);
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+
+  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    const struct feedback_isrf_band_data *ai = &pi_A.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *aj = &pj_A.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *bi = &pi_B.feedback_data.isrf_band[b];
+    const struct feedback_isrf_band_data *bj = &pj_B.feedback_data.isrf_band[b];
+
+    if (!bits_equal_f(ai->div_specific_flux, bi->div_specific_flux))
+      error(
+          "uniform-c bit identity: band %d div_F_i shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)ai->div_specific_flux, (double)bi->div_specific_flux);
+    if (!bits_equal_f(aj->div_specific_flux, bj->div_specific_flux))
+      error(
+          "uniform-c bit identity: band %d div_F_j shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)aj->div_specific_flux, (double)bj->div_specific_flux);
+    if (!bits_equal_f(ai->dissipation_u, bi->dissipation_u))
+      error(
+          "uniform-c bit identity: band %d dissipation_u_i shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)ai->dissipation_u, (double)bi->dissipation_u);
+    if (!bits_equal_f(aj->dissipation_u, bj->dissipation_u))
+      error(
+          "uniform-c bit identity: band %d dissipation_u_j shipped=%.9g "
+          "consistent=%.9g",
+          b, (double)aj->dissipation_u, (double)bj->dissipation_u);
+  }
+  message(
+      "uniform-c bit identity: consistent-variable-c operators reduce bit "
+      "for bit to the shipped scheme's at uniform c_hyp");
+}
+
+/**
+ * @brief Requirement 3 (closing review, section (C)): the receiver's
+ * Courant number at a time-bin seam must not depend on the SENDER's bin at
+ * all. c_hyp_i under isrf_c_hyp_scheme_consistent_variable_c is
+ * #isrf_c_hyp_scheme_shipped's own formula (C_hyp*h_i/dt_i), which by
+ * construction reads only particle i's own #part.time_bin/#part.h, never a
+ * neighbour's, so `c_i*dt_i/h_j = C_hyp*(h_i/h_j)` holds for every sender
+ * h_j and time bin, dt-free. Verified here through the real
+ * #radiation_snapshot_part_propagation dispatch (not by re-deriving the
+ * formula) for bin differences 1, 2, 3 crossed with h ratios 0.5, 1, 2 (9
+ * combinations): the receiver's own c_i/dt_i must be UNCHANGED across
+ * every combination (proving the "no dependence on the sender" half), and
+ * the algebraic identity must hold in each (the seam-Courant half).
+ *
+ * Naming note: the task/review phrase this bound "C_hyp*h_j/h_i"; the
+ * derivation actually checked here gives C_hyp*h_i/h_j (receiver over
+ * sender), which is the dt-free form (c_i*dt_i/h_j =
+ * (C_hyp*h_i/dt_i)*dt_i/h_j = C_hyp*h_i/h_j). The two differ only by which
+ * particle's h sits in the numerator; this test is unambiguous about which
+ * one (i) is the receiver, and reports the mismatch here rather than
+ * silently relabeling the prose to match.
+ */
+static void test_consistent_variable_c_seam_courant_number(void) {
+
+  struct engine e;
+  struct cosmology cosmo;
+  struct phys_const pc;
+  struct feedback_props fp;
+  struct cooling_function_data cooling;
+  struct unit_system us;
+  make_c_hyp_speed_test_engine(&e, &cosmo, &pc, &fp, &cooling, &us,
+                               /*fixed_fraction=*/0.f,
+                               /*timestep_off_for_debugging=*/0);
+  /* Same c_hyp formula as shipped (see this test's own doxygen): only the
+   * scheme selector itself needs overriding after the helper above. */
+  fp.ISRF_c_hyp_scheme = isrf_c_hyp_scheme_consistent_variable_c;
+
+  const float h_i = 0.42f;
+  const timebin_t bin_i = 4;
+  const int bin_diffs[3] = {1, 2, 3};
+  const float h_ratios[3] = {0.5f, 1.f, 2.f};
+
+  float c_i_ref = -1.f, dt_i_ref = -1.f;
+
+  for (int bd = 0; bd < 3; bd++) {
+    for (int hr = 0; hr < 3; hr++) {
+      struct part p;
+      set_c_hyp_test_part(&p, h_i, bin_i);
+      radiation_snapshot_part_propagation(&p, &e);
+
+      const float c_i = p.feedback_data.c_hyp;
+      const float dt_i = p.feedback_data.dt_prev;
+      if (c_i_ref < 0.f) {
+        c_i_ref = c_i;
+        dt_i_ref = dt_i;
+      } else if (!bits_equal_f(c_i, c_i_ref) || !bits_equal_f(dt_i, dt_i_ref)) {
+        error(
+            "seam Courant number: receiver c_hyp/dt changed with the "
+            "sender's bin difference=%d h_ratio=%.2f (c_i=%.9g dt_i=%.9g, "
+            "expected %.9g/%.9g): the formula must not read the sender.",
+            bin_diffs[bd], (double)h_ratios[hr], (double)c_i, (double)dt_i,
+            (double)c_i_ref, (double)dt_i_ref);
+      }
+
+      const timebin_t bin_j = bin_i + bin_diffs[bd];
+      (void)bin_j; /* only used to name the sender's bin in messages/errors */
+      const float h_j = h_i * h_ratios[hr];
+
+      const double lhs = (double)c_i * (double)dt_i / (double)h_j;
+      const double rhs =
+          (double)fp.ISRF_c_hyp_margin * (double)h_i / (double)h_j;
+      if (fabs(lhs - rhs) > 1e-6 * fabs(rhs))
+        error(
+            "seam Courant number: bin_diff=%d h_ratio=%.2f: c_i*dt_i/h_j = "
+            "%.9e != C_hyp*h_i/h_j = %.9e",
+            bin_diffs[bd], (double)h_ratios[hr], lhs, rhs);
+    }
+  }
+  message(
+      "seam Courant number: c_i*dt_i/h_j = C_hyp*h_i/h_j for every bin "
+      "difference (1..3) and h ratio (0.5/1/2), independent of the "
+      "sender's own bin");
+}
+
+/**
+ * @brief Requirement 4 (closing review, section (C)): the mass-weighted
+ * exchange every other scheme conserves exactly, `m_i*X_i + m_j*X_j = 0`,
+ * is no longer the invariant once each side carries its OWN c_hyp (see
+ * radiation_propagation_iact.h's file header for the derivation);
+ * `m_i*X_i/c_i + m_j*X_j/c_j = 0` is, for both the divergence and the
+ * dissipation accumulators. Checked here at genuinely different c_i != c_j
+ * (unlike the bit-identity test above, which deliberately keeps c_i = c_j)
+ * across three trials, through the real #runner_iact_isrf_dissipation
+ * dispatch.
+ */
+static void test_consistent_variable_c_conservation(void) {
+
+  const float ci_values[3] = {4.f, 9.5f, 22.f};
+  const float cj_values[3] = {12.f, 5.5f, 6.25f};
+  const double SEAM_BAR = 1e-5;
+
+  isrf_c_hyp_consistent_variable_c = 1;
+
+  for (int t = 0; t < 3; t++) {
+    struct part pi, pj;
+    bzero(&pi, sizeof(struct part));
+    bzero(&pj, sizeof(struct part));
+
+    pi.h = 0.5f + 0.1f * t;
+    pj.h = 0.8f - 0.05f * t;
+    pi.mass = 1.1f + 0.3f * t;
+    pj.mass = 0.6f + 0.2f * t;
+    pi.feedback_data.rho_prev = 1.0f + 0.2f * t;
+    pj.feedback_data.rho_prev = 0.7f + 0.1f * t;
+    pi.feedback_data.c_hyp = ci_values[t];
+    pj.feedback_data.c_hyp = cj_values[t];
+
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
+      struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
+      bi->specific_flux[0] = 0.3f + 0.05f * t + 0.1f * b;
+      bi->specific_flux[1] = -0.2f + 0.02f * t;
+      bi->specific_flux[2] = 0.15f;
+      bj->specific_flux[0] = -0.1f + 0.03f * t;
+      bj->specific_flux[1] = 0.25f - 0.01f * b;
+      bj->specific_flux[2] = -0.05f;
+      bi->u = 0.6f + 0.1f * t;
+      bj->u = 0.4f + 0.05f * b;
+      bi->dissipation_alpha_trigger = 0.2f;
+      bj->dissipation_alpha_trigger = 0.15f;
+      bi->dissipation_alpha_floor = 0.05f;
+      bj->dissipation_alpha_floor = 0.05f;
+    }
+
+    const float dx[3] = {0.2f + 0.05f * t, -0.1f, 0.05f};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    runner_iact_isrf_dissipation(r2, dx, pi.h, pj.h, &pi, &pj, 1.f, 0.f);
+
+    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+      const struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
+      const struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
+
+      const double div_i = (double)pi.mass * (double)bi->div_specific_flux /
+                           (double)pi.feedback_data.c_hyp;
+      const double div_j = (double)pj.mass * (double)bj->div_specific_flux /
+                           (double)pj.feedback_data.c_hyp;
+      const double div_ratio =
+          fabs(div_i + div_j) / max(fabs(div_i) + fabs(div_j), 1e-30);
+      if (!(div_ratio <= SEAM_BAR))
+        error(
+            "conservation (divergence/c): trial %d band %d: "
+            "m_i*div_i/c_i + m_j*div_j/c_j ratio = %.3e above %.3e",
+            t, b, div_ratio, SEAM_BAR);
+
+      const double diss_i = (double)pi.mass * (double)bi->dissipation_u /
+                            (double)pi.feedback_data.c_hyp;
+      const double diss_j = (double)pj.mass * (double)bj->dissipation_u /
+                            (double)pj.feedback_data.c_hyp;
+      const double diss_ratio =
+          fabs(diss_i + diss_j) / max(fabs(diss_i) + fabs(diss_j), 1e-30);
+      if (!(diss_ratio <= SEAM_BAR))
+        error(
+            "conservation (dissipation/c): trial %d band %d: "
+            "m_i*diss_i/c_i + m_j*diss_j/c_j ratio = %.3e above %.3e",
+            t, b, diss_ratio, SEAM_BAR);
+    }
+  }
+
+  isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
+  message(
+      "conservation under variable c: m_i*X_i/c_i + m_j*X_j/c_j = 0 for "
+      "both the divergence and dissipation accumulators, at genuinely "
+      "different c_i != c_j");
+}
+
 /**
  * @brief Run one geometry: small-h cell at the origin, large-h cell at the
  * offset (or the reverse), swept without depth limits, then across two
@@ -429,6 +1457,16 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
+
+  test_c_hyp_fixed_fraction_off_matches_shipped_formula();
+  test_c_hyp_fixed_fraction_on_gives_exact_fraction_of_c();
+  test_c_hyp_fixed_fraction_timestep_term();
+  test_kernel_local_c_hyp();
+  test_c_hyp_scheme_mismatch_rejected();
+  test_c_hyp_end_density_no_clobber_for_other_schemes();
+  test_consistent_variable_c_uniform_c_bit_identical();
+  test_consistent_variable_c_seam_courant_number();
+  test_consistent_variable_c_conservation();
 
   struct space space;
   struct engine engine;

@@ -36,13 +36,34 @@ struct hydro_props;
 struct engine;
 struct cooling_function_data;
 
+/*! 1 when #feedback_props.ISRF_c_hyp_scheme selects
+ * #isrf_c_hyp_scheme_consistent_variable_c, 0 for every other scheme. Set
+ * once by feedback_props_init() (feedback_properties.h) and read by the
+ * pairwise ISRF force-loop hooks (radiation_propagation_iact.h), which
+ * cannot reach #feedback_props there: every hydro interaction, including
+ * these, shares one fixed (r2, dx, hi, hj, pi, pj, a, H) signature
+ * (runner_doiact_functions_hydro.h) with no #engine pointer threaded
+ * through its ~30 call sites -- the same reason #feedback_part_data.c_hyp
+ * itself is a per-particle cache rather than a per-pair lookup. A global
+ * rather than a struct field: unlike #feedback_part_data.c_hyp, this value
+ * is identical for every particle in a run, so caching it on #part would
+ * grow #feedback_part_data for one bit every particle already shares.
+ * Mirrors SWIFT's own #engine_rank (error.h) and #space_splitsize
+ * (space.h): set once at start-up from parsed configuration, then read
+ * everywhere, including code with no #engine pointer in scope. Read-only
+ * for the remainder of the run once feedback_props_init() returns. */
+extern int isrf_c_hyp_consistent_variable_c;
+
 void radiation_first_init_part(struct part *restrict p);
 void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e);
 void radiation_init_part_propagation(struct part *p);
+void radiation_end_density_propagation(struct part *p, const struct engine *e);
 void radiation_part_has_no_neighbours(struct part *p, const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);
+float radiation_isrf_part_timestep(const struct part *restrict p,
+                                   const struct engine *e);
 float radiation_get_comoving_gas_column_density_at_part(
     const struct part *p, const float path_in_kernel_radii);
 void radiation_get_part_ISRF_extinction_factors(
