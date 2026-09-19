@@ -231,10 +231,7 @@ radiation_iact_nonsym_feedback_apply(
        momentum magnitude for this star-gas pair, before it gets projected
        onto the radial direction above. No separate energy channel (see
        tracers_struct.h). */
-    tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_radiation, NULL,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
-        delta_p_rad, 0.f, delta_p_rad / mj);
+    tracers_after_radiation_pressure_feedback_part(xpj, delta_p_rad, delta_p_rad / mj);
 
     /* Set the indication of a radiation-pressure event, matching
        hit_by_SN/hit_by_winds. Without this, feedback_update_part_radiation()
