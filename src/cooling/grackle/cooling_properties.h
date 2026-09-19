@@ -61,7 +61,7 @@ struct cooling_function_data {
   int cmb_temperature_floor;
 
   /*! Flag to enable the AGORA redshift dependent CMB floor:
-                    T_CMB = T_CMB,0 * (1+z)\
+                    T_CMB = T_CMB,0 * (1+z)
       This floor is different from the `cmb_temperature_floor`, which is
       internal to Grackle.
   */
