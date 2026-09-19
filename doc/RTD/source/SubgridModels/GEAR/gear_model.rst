@@ -134,6 +134,8 @@ In the parameters file, a few different parameters are available.
 
 - The initial elemental abundances can be specified with ``initial_nX_to_nY_ratio``, e.g. if you want to specify an initial HII to H abundance. A negative value ignores the parameter. The complete list can be found below.
 
+- ``GrackleCooling:cmb_temperature_floor`` enables Grackle's own internal CMB temperature floor. ``GrackleCooling:agora_cmb_temperature_floor`` enables a separate, SWIFT-side floor that clamps the gas temperature to :math:`T_{\mathrm{CMB},0} (1+z)` (using ``GrackleCooling:redshift``), matching the convention imposed by the other codes in the AGORA comparison project. The two floors are independent and may be used together.
+
 A maximal (physical) density must be set with the ``GrackleCooling:maximal_density_Hpcm3 parameter``. The density passed to Grackle is *the minimum of this density and the gas particle (physical) density*. A negative value (:math:`< 0`) deactivates the maximal density, i.e. there is no maximal density limit.
 The purpose of this parameter is the following. The Cloudy tables provided by Grackle are limited in density (typically to  :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`). In high-resolution simulations, particles can have densities higher than :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`. This maximal density ensures that we pass a density within the interpolation ranges of the table, should the density exceed it.
 It can be a solution to some of the following errors (with a translation of what the values mean):
@@ -187,8 +189,9 @@ Here is the complete section in the parameter file:
     H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
     H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
     H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
-    local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
+    local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value).
     cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
+    agora_cmb_temperature_floor : 0              # Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z))
 
     initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
     initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
