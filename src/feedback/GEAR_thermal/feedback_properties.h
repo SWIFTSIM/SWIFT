@@ -634,7 +634,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                cosmo, fp->with_stellar_wind_feedback,
                                with_radiation);
 
-  /* Read the metallicity threashold */
+  /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
       params, "GEARFeedback:imf_transition_metallicity", 0);
 
