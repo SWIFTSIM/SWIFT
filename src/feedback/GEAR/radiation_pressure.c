@@ -54,15 +54,7 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
 
   /* Cap the Sobolev length rho/|grad rho| at the kernel support radius
      rather than letting it blow up towards infinity for a locally uniform
-     density field (zero or near-zero gradient, e.g. an unperturbed
-     glass/grid IC, where the raw ratio is dominated by SPH summation
-     noise, not a resolved trend). Capping at h_gas, rather than switching
-     to a Jeans-length estimate, is the resolution-robust choice across
-     this model's wide production mass range. norm_grad_rho == 0 returns
-     h_gas directly rather than dividing by 0: the final return below
-     already zeroes the whole expression out for a star with no gas
-     neighbours (rho_gas == 0 there), so no separate rho_gas guard is
-     needed. */
+     density field (zero or near-zero gradient). */
   const float h_gas = sp->h * kernel_gamma;
   const float sobolev_length =
       norm_grad_rho > 0.0f ? fminf(rho_gas / norm_grad_rho, h_gas) : h_gas;
@@ -116,16 +108,14 @@ radiation_get_physical_optical_depth(const struct spart *sp,
  * Compute the physical radiation pressure emitted by the star.
  *
  * LEBRON momentum coupling (Hopkins, Quataert & Murray 2012, MNRAS 421,
- * 3488, Sec 2.1; Hopkins et al. 2014, MNRAS 445, 581, App A): dot_p =
- * (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c: fraction of the non-ionizing
- * continuum absorbed before dust reprocessing (was assumed always 1), times
- * the IR-trapping boost, sharing one Sobolev column. kappa_NUV=1800
- * cm^2/g*(Z/Zsun) is one flux-mean opacity standing in for the whole
- * non-ionizing continuum (912A-3um), with no band-by-band transport here so
- * no per-band split either; 1800 is where the 2012 (single flux-mean over
- * that range) and 2020 (NUV sub-band) papers agree. Both are population-
- * (STARBURST99), not single-star-, calibrated, same caveat kappa_IR
- * already carries.
+ * 3488, Sec 2.1; Hopkins et al. 2014, MNRAS 445, 581, App A): 
+ *          dot_p = (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c
+ * fraction of the non-ionizing continuum absorbed before dust reprocessing
+ * (was assumed always 1), times the IR-trapping boost.
+ *
+ * kappa_NUV=1800 cm^2/g*(Z/Zsun) is a flux-mean opacity standing in for the
+ * whole non-ionizing continuum (912A-3um). This is population-(STARBURST99),
+ * not single-star-, calibrated, same caveat kappa_IR already carries.
  *
  * @param sp The #spart.
  * @param Delta_t The current #spart timestep.
