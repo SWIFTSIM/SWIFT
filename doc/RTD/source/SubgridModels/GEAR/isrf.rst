@@ -36,6 +36,8 @@ Two configuration choices matter for this module in particular.
 
 **The snapshot fields need the GEAR tracers.** The radiation field itself lives on the gas particles whatever the tracers choice, but the snapshot outputs listed below are registered by the GEAR tracers module, so ``--with-tracers=GEAR`` is required to see them. See :ref:`gear_tracers`.
 
+**The yields table must carry the radiation datasets.** The band luminosities are read from the ``Data/Radiation`` group of ``GEARFeedback:yields_table``, and this module needs its ``L_FUV``, ``L_LW``, ``Integrated_L_FUV`` and ``Integrated_L_LW`` datasets. SWIFT stops at start-up on a table without them. The tables fetched by ``examples/GEAR_ICs_and_SCRIPTS/getChemistryTable.sh`` predate that group, so generate a table with pychem's ``pychem_generate_hdf5_parameters`` instead. Check any table with ``examples/GEAR_ICs_and_SCRIPTS/checkRadiationTable.sh <table.h5> --with-isrf``.
+
 Switching the module on
 -----------------------
 

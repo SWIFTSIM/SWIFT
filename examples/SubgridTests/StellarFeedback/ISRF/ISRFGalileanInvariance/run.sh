@@ -48,6 +48,10 @@ if [ ! -e POPIIsw.h5 ]; then
     "$scripts_location"/getChemistryTable.sh
 fi
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --with-isrf || exit 1
+
 # run_one <run_dir> <bulk vx> <star vx> [position shift]
 run_one() {
     local dir=$1 vbulk=$2 vstar=$3 shift=${4:-"[0.0,0.0,0.0]"}

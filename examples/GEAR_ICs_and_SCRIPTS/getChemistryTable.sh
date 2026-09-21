@@ -51,3 +51,9 @@ else
 fi
 
 echo "Done."
+echo
+echo "Note: GEAR photoionization, radiation pressure and the interstellar"
+echo "radiation field need a table carrying a 'Data/Radiation' group. The"
+echo "Cosma table does not: generate one with pychem's"
+echo "pychem_generate_hdf5_parameters instead. Check any table with"
+echo "  ./checkRadiationTable.sh <table.h5> [--with-isrf]"

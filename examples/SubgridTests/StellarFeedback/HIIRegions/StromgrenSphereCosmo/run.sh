@@ -55,6 +55,10 @@ if [ ! -e POPIIsw.h5 ]; then
     "$scripts_location"/getChemistryTable.sh
 fi
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 || exit 1
+
 DIR=snap
 if [ -d "$DIR" ]; then
     if [ "$restart" -ne 1 ]; then

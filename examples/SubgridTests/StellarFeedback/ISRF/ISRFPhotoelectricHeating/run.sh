@@ -50,6 +50,16 @@ then
     "$scripts_location"/getChemistryTable.sh
 fi
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+# The ISRF band datasets are only needed when the run enables the ISRF.
+isrf_table_check_flags=""
+if [ "$with_pe_heating" != "0" ]; then
+    isrf_table_check_flags="--with-isrf"
+fi
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 \
+    $isrf_table_check_flags || exit 1
+
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \
 	--mass $gas_particle_mass --star_mass $star_mass \

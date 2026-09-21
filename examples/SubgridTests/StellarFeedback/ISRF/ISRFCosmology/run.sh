@@ -114,6 +114,10 @@ if [ ! -e POPIIsw.h5 ]; then
     "$scripts_location"/getChemistryTable.sh
 fi
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --with-isrf || exit 1
+
 python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass \
     --temperature $temperature --redshift $redshift --u-pe $u_pe \
     --u-lw $u_lw --star-mass $star_mass --star-age $star_age -o ICs_isrf_cosmology.hdf5

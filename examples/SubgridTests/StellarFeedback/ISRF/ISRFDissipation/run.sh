@@ -47,6 +47,10 @@ then
     "$scripts_location"/getChemistryTable.sh
 fi
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --with-isrf || exit 1
+
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \
 	--mass $gas_particle_mass --star_mass $star_mass \
