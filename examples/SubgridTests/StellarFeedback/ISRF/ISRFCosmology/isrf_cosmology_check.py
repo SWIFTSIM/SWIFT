@@ -40,19 +40,45 @@ free_field
     (ISRF_c_hyp_margin*h/dt, clamped at c), not a single constant, and the
     exact solution is the integral
 
-        ln[u(t)/u0] = -(1/c) int_0^t c_hyp(t') H(t') dt'                    (A1)
+        ln[Q(t)/Q(0)] = -(1/c) int_0^t c_hyp(t') H(t') dt'                  (A1)
 
-    which this check does not evaluate exactly (c_hyp is not a snapshot
-    field). What it checks instead is the practical consequence: with the
-    module's own light-speed clamp, c_hyp <= c always, and on every fixture
-    this file runs c_hyp/c is of order 1e-5 (c_hyp ~ margin*h/dt is a
-    resolved-region speed, km/s-scale, against c ~ 3e5 km/s in this unit
-    system), so the integral above is many orders below this check's own
-    float32/discretisation floor over the run's span. The practical
-    prediction is therefore u(t) = u0, with the un-modelled decay folded into
-    the bar as an explicit term bounded by c_hyp_bound/c (c_hyp_bound an
-    upper estimate from the run's own smoothing length and step size, printed
-    below), not asserted as exactly 0.
+    with Q the ledger the run's own propagation scheme conserves. Which one
+    that is depends on GEARFeedback:ISRF_c_hyp_scheme, read from the run's
+    used_parameters.yml:
+
+        Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   schemes 3, 4
+        Q = [sum_i m_i u_i] / [sum_i m_i]                       schemes 0, 1, 2
+
+    The consistent-variable-c schemes (3, and 4, the shipped default) rewrite
+    every pairwise operator as c_hyp_i/c times the true-speed equation, so
+    their transport conserves sum m u / c_hyp and NOT sum m u; the
+    shared-pair-speed schemes conserve sum m u. Both statements are made by
+    radiation_propagation_iact.h at the two dispatch branches that implement
+    them. Measuring the second ledger on a scheme that conserves the first
+    reports the receiver-weighted redistribution as an error.
+
+    The c_hyp,i weights are the HyperbolicPropagationSpeeds snapshot field.
+    A snapshot written before that field existed, or one whose c_hyp is not
+    everywhere finite and positive, degrades to the sum m u ledger with a
+    printed message: exact for schemes 0 to 2, approximate for 3 and 4.
+
+    Both forms are ratios of two sums at the SAME time, so a spatially
+    uniform c_hyp cancels between numerator and denominator term by term,
+    whether or not it varies from one snapshot to the next. Every pinned run
+    (c_hyp_pin > 0), every fixed-fraction run (scheme 2) and every
+    scheme-0/1 run therefore gets exactly the number this check reported
+    before the ledger became scheme-aware.
+
+    A1 itself is not evaluated: with the module's own light-speed clamp,
+    c_hyp <= c always, and on every fixture this file runs c_hyp/c is of
+    order 1e-5 (c_hyp ~ margin*h/dt is a resolved-region speed, km/s-scale,
+    against c ~ 3e5 km/s in this unit system), so the integral above is many
+    orders below this check's own float32/discretisation floor over the
+    run's span. The practical prediction is therefore Q(t) = Q(0), with the
+    un-modelled decay folded into the bar as an explicit term bounded by
+    c_hyp_bound/c (c_hyp_bound an upper estimate from the run's own
+    smoothing length and step size, printed below), not asserted as exactly
+    0.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = sigma_H2 c rho u_LW / E_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -145,6 +171,9 @@ M_H_CGS = 1.67262171e-24
 HYDROGEN_MASS_FRACTION = 0.76
 PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
 FLOAT32_EPS = np.finfo(np.float32).eps
+# enum isrf_c_hyp_scheme values whose pairwise operators conserve
+# sum m u / c_hyp rather than sum m u (feedback_properties.h).
+VARIABLE_C_SCHEMES = (3, 4)
 
 
 def parse_options() -> argparse.Namespace:
@@ -227,6 +256,11 @@ def read_snapshot(filename: str) -> Dict:
             "u": physical(gas["InternalEnergies"], a, energy)[order],
             "u_PE": physical(gas["FUVSpecificEnergies"], a, energy)[order],
             "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
+            "c_hyp": (
+                physical(gas["HyperbolicPropagationSpeeds"], a, velocity)[order]
+                if "HyperbolicPropagationSpeeds" in gas
+                else None
+            ),
             "H2I": gas["H2I"][:].astype(np.float64)[order],
             "hydrogen": sum(
                 gas[name][:].astype(np.float64)[order]
@@ -327,6 +361,56 @@ def read_c_hyp_margin(pattern: str) -> float:
         return float(yaml.safe_load(handle)["GEARFeedback"]["ISRF_c_hyp_margin"])
 
 
+def read_c_hyp_scheme(pattern: str) -> Optional[int]:
+    """Return GEARFeedback:ISRF_c_hyp_scheme, or None when it is not recorded."""
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    path = os.path.join(directory, "used_parameters.yml")
+    if not os.path.exists(path):
+        return None
+    with open(path) as handle:
+        parameters = yaml.safe_load(handle)
+    try:
+        return int(parameters["GEARFeedback"]["ISRF_c_hyp_scheme"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
+    """Report whether the c_hyp-weighted ledger applies to this run.
+
+    It applies only to the consistent-variable-c schemes, and only when every
+    snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
+    Every rejection prints why, so a degraded run is never silently gated on
+    the wrong invariant.
+    """
+    scheme = read_c_hyp_scheme(pattern)
+    if scheme is None:
+        print(f"  {label}: ISRF_c_hyp_scheme not recorded, using the sum m u " "ledger")
+        return False
+    if scheme not in VARIABLE_C_SCHEMES:
+        return False
+    if any(s["c_hyp"] is None for s in run):
+        print(
+            f"  {label}: scheme {scheme} conserves sum m u / c_hyp, but "
+            "HyperbolicPropagationSpeeds is absent from these snapshots; "
+            "falling back to the sum m u ledger, which over-reports the "
+            "receiver-weighted redistribution as an error"
+        )
+        return False
+    for snap in run:
+        if not np.all(np.isfinite(snap["c_hyp"])) or np.any(snap["c_hyp"] <= 0.0):
+            print(
+                f"  {label}: HyperbolicPropagationSpeeds is not everywhere "
+                "finite and positive (propagation off, or a pre-first-step "
+                "snapshot); falling back to the sum m u ledger"
+            )
+            return False
+    return True
+
+
 def summarize(label: str, error: np.ndarray) -> float:
     """Print and return the worst per-snapshot median |error|."""
     medians = np.median(np.abs(error), axis=1)
@@ -357,30 +441,52 @@ def step_count(run: List[Dict], dt_max: float) -> float:
     return (last["time"] - first["time"]) / (dt_max * first["time_unit"])
 
 
-def free_field_errors(run: List[Dict]) -> Dict:
+def ledger_mean(snap: Dict, key: str, use_c_hyp: bool) -> float:
+    """Return one band's box mean under the ledger the run's scheme conserves.
+
+    With ``use_c_hyp`` the particle weight is ``m_i/c_hyp,i`` instead of
+    ``m_i``. Numerator and denominator are summed at the same time, so a
+    spatially uniform c_hyp cancels term by term and the two branches then
+    return the same value bit for bit.
+    """
+    mass = snap["mass"]
+    if not use_c_hyp:
+        return float(np.sum(mass * snap[key]) / np.sum(mass))
+    weight = mass / snap["c_hyp"]
+    return float(np.sum(weight * snap[key]) / np.sum(weight))
+
+
+def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     """Return the errors of Eqs. (A1) and (A2) at every snapshot.
 
-    The transport moves energy between particles and conserves sum m u, so on
-    a glass each particle's field departs from the uniform solution by the
-    glass noise while the mass-weighted mean follows (A1) exactly. The gates
-    use the box means; the per-particle spread is reported.
+    The transport moves energy between particles and conserves the ledger of
+    the run's own c_hyp scheme (this module's docstring), so on a glass each
+    particle's field departs from the uniform solution by the glass noise
+    while the box mean follows (A1) exactly. The gates use the box means; the
+    per-particle spread is reported.
 
-    A1's reference is u0 (see this module's own docstring: to the precision
-    this check can resolve, the c_hyp/c-dilated Hubble decay is un-modelled,
-    not asserted as exactly 0), so `out[band]` is the box-mean field's own
-    fractional departure from u0, not from an a-dependent target.
+    A1's reference is the ledger's own initial value (see this module's own
+    docstring: to the precision this check can resolve, the c_hyp/c-dilated
+    Hubble decay is un-modelled, not asserted as exactly 0), so `out[band]`
+    is the box mean's own fractional departure from it, not from an
+    a-dependent target.
+
+    Parameters
+    ----------
+    run
+        The run's snapshots, in time order.
+    use_c_hyp
+        Weight each particle by ``m_i/c_hyp,i`` rather than ``m_i``, for the
+        consistent-variable-c schemes. Decided by `use_c_hyp_ledger`.
     """
     first = run[0]
     mass = first["mass"]
     out = {}
     for band in ["FUV", "LW"]:
         key_band = "PE" if band == "FUV" else band
-        u0 = np.sum(mass * first[f"u_{key_band}"]) / np.sum(mass)
+        u0 = ledger_mean(first, f"u_{key_band}", use_c_hyp)
         out[band] = np.array(
-            [
-                np.sum(s["mass"] * s[f"u_{key_band}"]) / np.sum(s["mass"]) / u0 - 1.0
-                for s in run
-            ]
+            [ledger_mean(s, f"u_{key_band}", use_c_hyp) / u0 - 1.0 for s in run]
         )
         out[f"{band}_spread"] = np.array(
             [
@@ -411,13 +517,15 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     dt_max = read_dt_max(opt.snapshots, opt.dt_max)
     cosmological = run[0]["cosmological"]
     n_steps = step_count(run, dt_max)
-    errors = free_field_errors(run)
+    use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
+    ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
+    errors = free_field_errors(run, use_c_hyp)
     span = float(np.log(run[-1]["a"] / run[0]["a"]))
     elapsed = np.array([s["time"] - run[0]["time"] for s in run])[1:]
     print(
         f"free_field: cosmological={cosmological}, a {run[0]['a']:.6g} -> "
         f"{run[-1]['a']:.6g}, {len(run)} snapshots, {n_steps:.0f} dt_max steps, "
-        f"H2 exponent {errors['exponent']:.3f}"
+        f"H2 exponent {errors['exponent']:.3f}, ledger {ledger}"
     )
     print(
         f"  Friedmann time vs SWIFT time: max rel. diff {friedmann_time_residual(run):.2e}"
@@ -430,7 +538,16 @@ def check_free_field(opt: argparse.Namespace) -> bool:
 
     reference = None
     if opt.reference:
-        reference = free_field_errors(load_run(opt.reference))
+        reference_run = load_run(opt.reference)
+        use_c_hyp_reference = use_c_hyp_ledger(
+            reference_run, opt.reference, "reference"
+        )
+        if use_c_hyp_reference != use_c_hyp:
+            print(
+                "  WARNING: the reference run uses the other ledger, so its "
+                "measured error is not comparable with this run's"
+            )
+        reference = free_field_errors(reference_run, use_c_hyp_reference)
 
     ok = True
     # Longest step in proper time, from dt_max (ln a with cosmology).
@@ -477,7 +594,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"{2.0 * measured_nc:.1e}) + c_hyp/c-dilated decay, step-end H "
             f"and lag {cosmo:.1e}"
         )
-        ok &= gate(f"mass-weighted u_{band} / u0 - 1 (A1)", worst, bar)
+        ok &= gate(f"box-mean u_{band} / u0 - 1 (A1), {ledger}", worst, bar)
 
     # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
     # (dt/t without cosmology; with it the rate varies as a^-3, same order),
