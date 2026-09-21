@@ -1502,7 +1502,19 @@ static void test_kernel_local_plus_variable_c_composition(void) {
   /* (2) Operator axis: the M1 closure rebuilt by the same call must match
    * one built directly with c_M = 1 (isrf_c_hyp_consistent_variable_c's own
    * formula), independent of the c_hyp value just computed above -- proving
-   * the closure did not pick up the NEW c_hyp through this call. */
+   * the closure did not pick up the NEW c_hyp through this call.
+   *
+   * Compared to a tolerance, not on raw bits: the reference is the same
+   * function re-run in a different inlining context, so on an FMA-capable
+   * target the two contract differently and land a few ULP apart. The bar
+   * sits ~30x above that round-off and ~1e5 below the deviation a closure
+   * built on c_hyp instead of c_M = 1 produces (a factor of two). The
+   * absolute floor covers the off-diagonal components, which sit near zero
+   * where a purely relative bar carries no information. Finiteness is
+   * tested first: a non-finite value compares false against every bar and
+   * would slip through the tolerance gate silently. */
+  const double closure_rel_bar = 1e-5;
+  const double closure_abs_bar = 1e-8;
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     float expected_D[3][3];
     radiation_get_m1_closure_tensor_band(
@@ -1510,15 +1522,25 @@ static void test_kernel_local_plus_variable_c_composition(void) {
         p.feedback_data.isrf_band[b].specific_flux,
         /*c_M=*/1.f, expected_D);
     for (int r = 0; r < 3; r++)
-      for (int c = 0; c < 3; c++)
-        if (!bits_equal_f(p.feedback_data.isrf_band[b].m1_closure_D[r][c],
-                          expected_D[r][c]))
+      for (int c = 0; c < 3; c++) {
+        const double got =
+            (double)p.feedback_data.isrf_band[b].m1_closure_D[r][c];
+        const double ref = (double)expected_D[r][c];
+        if (!is_finite_bits(got) || !is_finite_bits(ref))
+          error(
+              "composition: band %d m1_closure_D[%d][%d] = %.9g against the "
+              "c_M=1 closure %.9g: a non-finite closure component.",
+              b, r, c, got, ref);
+        const double dev = fabs(got - ref);
+        const double bar = closure_rel_bar * fabs(ref) + closure_abs_bar;
+        if (!(dev <= bar))
           error(
               "composition: band %d m1_closure_D[%d][%d] = %.9g != the "
-              "c_M=1 closure %.9g -- the operator axis picked up the NEW "
-              "c_hyp instead of staying pinned at c_M=1.",
-              b, r, c, (double)p.feedback_data.isrf_band[b].m1_closure_D[r][c],
-              (double)expected_D[r][c]);
+              "c_M=1 closure %.9g (deviation %.3e above %.3e) -- the "
+              "operator axis picked up the NEW c_hyp instead of staying "
+              "pinned at c_M=1.",
+              b, r, c, got, ref, dev, bar);
+      }
   }
 
   isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
