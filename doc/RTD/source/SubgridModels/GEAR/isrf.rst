@@ -44,11 +44,11 @@ A single parameter enables the module:
 .. code:: YAML
 
    GEARFeedback:
-     with_photoelectric_heating: 1   # Master switch of the ISRF module
+     with_interstellar_radiation_field: 1   # Master switch of the ISRF module
 
 This switch turns on both channels and forces the Grackle flags they need (the ISRF field, the dust chemistry, the photoelectric heating and, from ``grackle_2`` upwards, the radiative-transfer rate channel) on internally, so you do not set those yourself.
 
-With ``with_photoelectric_heating: 1`` and everything else left at its default, stars illuminate their own kernels, the receiving gas is shielded by its own dust column, and no transport takes place. This is enough for the photoelectric heating channel in a well-resolved interstellar medium, and it is the cheapest configuration.
+With ``with_interstellar_radiation_field: 1`` and everything else left at its default, stars illuminate their own kernels, the receiving gas is shielded by its own dust column, and no transport takes place. This is enough for the photoelectric heating channel in a well-resolved interstellar medium, and it is the cheapest configuration.
 
 Propagation
 -----------
@@ -155,7 +155,7 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
 .. code:: YAML
 
    GEARFeedback:
-     with_photoelectric_heating: 0                           # Master switch of the ISRF module
+     with_interstellar_radiation_field: 0                    # Master switch of the ISRF module
      ISRF_propagation: 0                                     # Transport the injected field with the hyperbolic scheme
      ISRF_extinction_path: kernel_diameter                   # Receiver-side dust column path: kernel_diameter or kernel_radius
      ISRF_c_hyp_scheme: 4                                    # Propagation-speed and operator scheme, 0 to 4

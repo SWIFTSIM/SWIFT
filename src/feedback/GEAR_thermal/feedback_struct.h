@@ -582,7 +582,7 @@ struct feedback_spart_data {
         photodissociating photons). Read from the radiation table's own
         L_FUV/L_LW (or Integrated_L_FUV/Integrated_L_LW) datasets, which
         carry the band split directly. Feeds the injection term; only
-        computed when GEARFeedback:with_photoelectric_heating is on, 0
+        computed when GEARFeedback:with_interstellar_radiation_field is on, 0
         otherwise. */
     double L_band[ISRF_BAND_COUNT];
 

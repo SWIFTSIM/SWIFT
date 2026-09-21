@@ -359,7 +359,7 @@ struct feedback_props {
  * radiation_isrf.c's dust-opacity helpers.
  *
  * @param feedback_props The #feedback_props.
- * @return True if with_photoelectric_heating is enabled.
+ * @return True if with_interstellar_radiation_field is enabled.
  */
 __attribute__((always_inline)) INLINE static int
 feedback_props_needs_cooling_initialized(
@@ -599,8 +599,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * heating + H2 photodissociation)? Read early, for the same reason as
    * with_photoionization: it needs the radiation table, which carries the
    * L_FUV/L_LW band luminosities it consumes. */
-  const char with_photoelectric_heating = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_photoelectric_heating", 0);
+  const char with_interstellar_radiation_field = (char)parser_get_opt_param_int(
+      params, "GEARFeedback:with_interstellar_radiation_field", 0);
 
   /* The radiation table backs the HII photoionization band, the bolometric
    * radiation-pressure band, and the Lyman-Werner/FUV bands (see
@@ -608,12 +608,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * Previously omitted radiation_policy_photoelectric_heating here because
    * "photoelectric heating has no downstream consumer yet". Now that it
    * does, leaving it out would silently skip opening the radiation table
-   * for a with_photoelectric_heating-only run, and desync from
+   * for a with_interstellar_radiation_field-only run, and desync from
    * feedback_struct_restore()'s own copy of this same condition on restart
    * (see that function's matching comment). */
   const char with_radiation = with_photoionization ||
                               (radiation_pressure_efficiency > 0.0f) ||
-                              with_photoelectric_heating;
+                              with_interstellar_radiation_field;
 
   /* Pre-Supernovae energy efficiency */
   double w_efficiency = 0.0;
@@ -720,12 +720,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
-  /* Reject the pre-rename GEARFeedback:LW_FUV_* keys: an unrecognised key
+  /* Reject the pre-rename GEARFeedback ISRF keys: an unrecognised key
    * is otherwise only reported as unused, so an old parameter file would
    * silently lose these settings instead of failing loudly. A restart
    * bypasses this check by design: feedback_struct_restore() re-reads the
    * saved struct, not the parameter file. */
-  const char *const deprecated_ISRF_keys[9] = {
+  const char *const deprecated_ISRF_keys[10] = {
+      "GEARFeedback:with_photoelectric_heating",
       "GEARFeedback:LW_FUV_propagation",
       "GEARFeedback:LW_FUV_c_hyp_margin",
       "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
@@ -735,7 +736,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
       "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
       "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging"};
-  const char *const renamed_ISRF_keys[9] = {
+  const char *const renamed_ISRF_keys[10] = {
+      "GEARFeedback:with_interstellar_radiation_field",
       "GEARFeedback:ISRF_propagation",
       "GEARFeedback:ISRF_c_hyp_margin",
       "GEARFeedback:ISRF_c_hyp_pin_for_debugging",
@@ -745,7 +747,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       "GEARFeedback:ISRF_dissipation_floor_h_over_lambda",
       "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
       "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"};
-  for (int i = 0; i < 9; ++i) {
+  for (int i = 0; i < 10; ++i) {
     if (parser_does_param_exist(params, deprecated_ISRF_keys[i]))
       error("%s has been renamed to %s. Update the parameter file.",
             deprecated_ISRF_keys[i], renamed_ISRF_keys[i]);
@@ -775,7 +777,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         "kernel_radius, got '%s'.",
         extinction_path);
 
-  if (with_photoelectric_heating) {
+  if (with_interstellar_radiation_field) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
@@ -998,7 +1000,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
        * continuously as Z -> 0, with no floor on the opacity itself). */
       warning(
           "GEARFeedback:ISRF_propagation is on together with "
-          "GEARFeedback:with_photoelectric_heating. The propagation's only "
+          "GEARFeedback:with_interstellar_radiation_field. The propagation's "
+          "only "
           "loss channel is dust absorption, whose rate is proportional to "
           "the gas metallicity. Gas at or near zero metallicity has no "
           "loss channel. Check GEARChemistry:initial_metallicity and any "

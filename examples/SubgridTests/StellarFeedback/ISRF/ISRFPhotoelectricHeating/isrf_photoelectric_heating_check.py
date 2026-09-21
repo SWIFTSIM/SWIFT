@@ -18,8 +18,8 @@
 ################################################################################
 """
 Checks Grackle's photoelectric heating response to the ISRF field this
-codebase injects, against a `with_photoelectric_heating: 1` run compared
-to an otherwise-identical `with_photoelectric_heating: 0` run (same IC,
+codebase injects, against a `with_interstellar_radiation_field: 1` run compared
+to an otherwise-identical `with_interstellar_radiation_field: 0` run (same IC,
 same density/metallicity, same `time_end`).
 
 Sign/magnitude check (Tier 1, original)
@@ -74,7 +74,7 @@ subtracting the two runs' `du/dt` cancels every process identical between
 them (cooling, any work term), isolating the ON/OFF difference, which is
 Gamma_PE/rho to leading order. `G0`, `n_H` and `Z'` are read from the
 heating-ON run's own snapshot at the start of that interval (the
-heating-off run's ISRF fields are zero: `with_photoelectric_heating`
+heating-off run's ISRF fields are zero: `with_interstellar_radiation_field`
 gates the whole ISRF injection, not just its consumption by Grackle,
 `radiation_iact.h`) -- an input to this test, not one of its claims,
 matching `isrf_h2_photodissociation_check.py`'s own convention of taking
@@ -192,13 +192,13 @@ def parse_options():
     parser.add_argument(
         "--on-snapshot",
         default="snap_on/snapshot_*.hdf5",
-        help="Glob pattern for the with_photoelectric_heating=1 run's "
+        help="Glob pattern for the with_interstellar_radiation_field=1 run's "
         "snapshots (default: %(default)s)",
     )
     parser.add_argument(
         "--off-snapshot",
         default="snap_off/snapshot_*.hdf5",
-        help="Glob pattern for the with_photoelectric_heating=0 run's "
+        help="Glob pattern for the with_interstellar_radiation_field=0 run's "
         "snapshots (default: %(default)s)",
     )
     parser.add_argument("--n-bins", type=int, default=12, help="Number of radial bins.")
@@ -218,7 +218,7 @@ def parse_options():
     parser.add_argument(
         "--rate-on-snapshot",
         default=None,
-        help="Glob pattern for the FINE-CADENCE with_photoelectric_heating=1 "
+        help="Glob pattern for the FINE-CADENCE with_interstellar_radiation_field=1 "
         "run's snapshots, for Tier 2 (the quantitative rate check). A "
         "SEPARATE run from --on-snapshot: see docstring for why. Tier 2 is "
         "skipped, not failed, if this (and --rate-off-snapshot) are not "
@@ -227,7 +227,7 @@ def parse_options():
     parser.add_argument(
         "--rate-off-snapshot",
         default=None,
-        help="Glob pattern for the FINE-CADENCE with_photoelectric_heating=0 "
+        help="Glob pattern for the FINE-CADENCE with_interstellar_radiation_field=0 "
         "run's snapshots, for Tier 2. See --rate-on-snapshot.",
     )
     parser.add_argument(

@@ -233,7 +233,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       convert_spart_L_PE,
       "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
       "physical units. Feeds the ISRF injection term; 0 unless "
-      "GEARFeedback:with_photoelectric_heating is on.");
+      "GEARFeedback:with_interstellar_radiation_field is on.");
 
   list[11] = io_make_output_field_convert_spart(
       "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,

@@ -721,7 +721,7 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
  * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
- * use_isrf_field, forced on by GEARFeedback:with_photoelectric_heating).
+ * use_isrf_field, forced on by GEARFeedback:with_interstellar_radiation_field).
  * Zero for a particle no star has ever illuminated and whose IC did not
  * supply "FUVSpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
  * before the IC read; #radiation_first_init_part leaves the band fields

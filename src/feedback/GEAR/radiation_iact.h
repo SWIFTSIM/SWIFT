@@ -245,7 +245,7 @@ radiation_iact_nonsym_feedback_apply(
      (a dose reservoir with propagation on, an instantaneous field with it
      off). u_inject is an energy, so dividing by mj converts it
      to the specific energy u of each band (or the dose reservoir) actually
-     stores. Zero unless GEARFeedback:with_photoelectric_heating is on
+     stores. Zero unless GEARFeedback:with_interstellar_radiation_field is on
      (L_band is then computed by stellar_evolution.c; 0 otherwise). Dust
      extinction is applied receiver-side, using pj's own local column density,
      rather than at the source (see radiation_get_part_ISRF_extinction_factors

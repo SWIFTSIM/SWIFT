@@ -633,7 +633,7 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
   H2_self_shielding: 0                         # (optional) Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding): 0 = off, 2 = shielding length set, with the default H2_self_shielding_path, to the kernel support radius (kernel_gamma * h, physical),
                                                 # 3 = local Jeans length (Grackle-internal). 1 (Sobolev-like, needs a Cartesian grid) is rejected. (Default: 0)
-                                                # Leaving this at 0 with GEARFeedback:with_photoelectric_heating on and primordial_chemistry >= 2 unshields the local LW dissociation rate: a start-up warning fires; use 2 or 3.
+                                                # Leaving this at 0 with GEARFeedback:with_interstellar_radiation_field on and primordial_chemistry >= 2 unshields the local LW dissociation rate: a start-up warning fires; use 2 or 3.
   H2_self_shielding_path: kernel_diameter      # (optional) Mode 2 only: H2 column path, N_H2 = n_H2 * path. kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h. (Default: kernel_diameter)
   maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0
                                                # deactivates this parameter.
@@ -651,7 +651,7 @@ GrackleCooling:
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
   H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping, Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >= 2
                                                # and a Grackle build that provides it. 1: on, 0: off. (Default: 0)
-  photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency used when GEARFeedback:with_photoelectric_heating is on. constant: 0.05 with prefactor 1e-24 (Wolfire et al. 1995 Eq. 1). wolfire1995: electron-density-dependent
+  photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency used when GEARFeedback:with_interstellar_radiation_field is on. constant: 0.05 with prefactor 1e-24 (Wolfire et al. 1995 Eq. 1). wolfire1995: electron-density-dependent
                                                # (Wolfire et al. 1995 Eq. 2). density_dependent: min(0.07, 0.0149 n_H^0.235) with prefactor 1.3e-24 (Smith 2026 Eqs. A1-A2), needs a Grackle build that provides it. (Default: constant)
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
@@ -828,12 +828,12 @@ GEARFeedback:
                                                     # scheme. Requires COOLING_GRACKLE_MODE >= 1; forces GrackleCooling:use_radiative_transfer on internally. 1: on, 0: off. (Default: 0)
 
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation)
-  with_photoelectric_heating:    0                         # Master switch for the local ISRF feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
+  with_interstellar_radiation_field: 0                     # Master switch for the local ISRF feedback: photoelectric heating on dust (any Grackle mode) and H2 photodissociation (COOLING_GRACKLE_MODE > 1 only). Forces GrackleCooling's
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
-  ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_photoelectric_heating is on).
+  ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_interstellar_radiation_field is on).
                                                            # (Default: 0)
   ISRF_extinction_path: kernel_diameter                    # (optional) Path of the receiver-side dust extinction column, Sigma = rho * path: kernel_diameter = 2 kernel_gamma h, kernel_radius = kernel_gamma h.
-                                                           # Only meaningful when with_photoelectric_heating is on. (Default: kernel_diameter)
+                                                           # Only meaningful when with_interstellar_radiation_field is on. (Default: kernel_diameter)
   ISRF_c_hyp_scheme: 4                                     # (optional) Which ISRF scheme is active: 0 = shipped (c_hyp_i = min(C_hyp*h_i/dt_i, c), dt_i this particle's own timestep), 1 = kernel-local
                                                            # (c_hyp_i = min(C_hyp*h_i/dt_max(i), c), dt_max(i) the longest timestep among this particle and every neighbour in its kernel), 2 = fixed fraction of c
                                                            # (c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c*c, which must then be positive), 3 = consistent variable-c operators (c_hyp_i left at scheme 0's own formula;

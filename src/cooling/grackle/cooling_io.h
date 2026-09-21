@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
      temperature calculation, not a stored/evolved field. Reads 0 below
      COOLING_GRACKLE_MODE 1 (Grackle's own routine needs species density
      arrays this mode does not track) or when dust chemistry
-     (GEARFeedback:with_photoelectric_heating or GrackleCooling:
+     (GEARFeedback:with_interstellar_radiation_field or GrackleCooling:
      H2_on_dust) is off; see cooling_get_dust_temperature. */
   list[num] = io_make_output_field_convert_part(
       "DustTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
@@ -283,7 +283,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
      RT_H2_dissociation_rate channel) on internally so the user only sets
      this one flag. */
   cooling->with_ISRF = parser_get_opt_param_int(
-      parameter_file, "GEARFeedback:with_photoelectric_heating", 0);
+      parameter_file, "GEARFeedback:with_interstellar_radiation_field", 0);
 
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
@@ -321,11 +321,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
      per-particle every step (cooling_get_LW_dissociation_rate_subgrid). */
   if (cooling->with_ISRF && cooling->RT_H2_dissociation_rate != 0) {
     warning(
-        "GEARFeedback:with_photoelectric_heating is on and "
+        "GEARFeedback:with_interstellar_radiation_field is on and "
         "GrackleCooling:RT_H2_dissociation_rate_cgs is nonzero. That "
         "constant is applied as an all-gas background on top of the "
         "per-particle LW-band-derived rate -- if it is a leftover from "
-        "before with_photoelectric_heating was enabled, set it to 0.");
+        "before with_interstellar_radiation_field was enabled, set it to 0.");
   }
 #endif
 
@@ -420,7 +420,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
       cooling->H2_self_shielding == 0) {
     warning(
-        "GEARFeedback:with_photoelectric_heating is on with "
+        "GEARFeedback:with_interstellar_radiation_field is on with "
         "GrackleCooling:primordial_chemistry >= 2 (H2 tracked) and "
         "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
         "dissociation rate this feature injects reaches Grackle with no "

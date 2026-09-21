@@ -68,7 +68,7 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
      L_LW datasets whenever this is on (see #radiation.with_ISRF's own
      doxygen). */
   rad->with_ISRF = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_photoelectric_heating", 0);
+      params, "GEARFeedback:with_interstellar_radiation_field", 0);
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);

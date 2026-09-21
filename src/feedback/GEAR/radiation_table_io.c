@@ -1439,7 +1439,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
 
-  /* GEARFeedback:with_photoelectric_heating requires all four ISRF-band
+  /* GEARFeedback:with_interstellar_radiation_field requires all four ISRF-band
      datasets: pychem always writes L_FUV/L_LW/Integrated_L_FUV/
      Integrated_L_LW together, so a table missing one of them was
      generated before pychem added ISRF support and needs regenerating.
@@ -1453,7 +1453,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
         H5Lexists(group_id, "Integrated_L_LW", H5P_DEFAULT) > 0;
     if (!(has_l_pe && has_l_lw && has_integrated_l_pe && has_integrated_l_lw)) {
       error(
-          "'%s': GEARFeedback:with_photoelectric_heating is on but this "
+          "'%s': GEARFeedback:with_interstellar_radiation_field is on but this "
           "Data/Radiation group is missing%s%s%s%s. Regenerate the table "
           "with pychem's pychem_generate_hdf5_parameters on its own "
           "chimieparam file.",
@@ -1526,7 +1526,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
 
   /* Read L_FUV/L_LW directly from the table: validated above to exist
-     whenever GEARFeedback:with_photoelectric_heating is on. */
+     whenever GEARFeedback:with_interstellar_radiation_field is on. */
   /* Effective temperature, a stellar-evolution diagnostic written to the
      snapshot's star particles. Optional: a table generated before pychem
      exported it simply reports 0 for every star. */

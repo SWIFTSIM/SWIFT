@@ -9,7 +9,7 @@ gap.
 
 Method
 ------
-1. Load a real, already-converged `with_photoelectric_heating=1` SWIFT
+1. Load a real, already-converged `with_interstellar_radiation_field=1` SWIFT
    snapshot (this script reruns the example itself, in an isolated scratch
    copy, since the original scratch runs are no longer on disk, confirmed
    missing, not assumed).
@@ -23,7 +23,7 @@ Method
 3. Feed those extracted values into verify_isrf_pe_equilibrium_grackle_
    harness.c, which time-integrates Grackle's own solve_chemistry() (same
    compiled libgrackle, same dust_chemistry=1/photoelectric_heating=2
-   configuration a real with_photoelectric_heating=1 run uses, this DOES
+   configuration a real with_interstellar_radiation_field=1 run uses, this DOES
    exercise the dust-recombination-cooling NaN fix's code path,
    unlike the sibling verify_photoelectric_heating_rate.py harness, which
    hardcodes dust_chemistry=0) until net heating equals net cooling.
@@ -476,7 +476,7 @@ def main() -> None:
     print()
     print(
         "The primary claim under test is the near_star rows: G0>0 there, so "
-        "they exercise the actual with_photoelectric_heating=1 coupling "
+        "they exercise the actual with_interstellar_radiation_field=1 coupling "
         "(dust_chemistry=1, photoelectric_heating=2, use_isrf_field=1). The "
         "far_field rows are a G0=0 control that exercises NO part of that "
         "code path; their agreement/disagreement does not bear on whether "

@@ -1,7 +1,7 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
 box, with photoelectric heating on (ISRF injection, no propagation)
-and real Grackle cooling. Compares a `GEARFeedback:with_photoelectric_heating:
+and real Grackle cooling. Compares a `GEARFeedback:with_interstellar_radiation_field:
 1` run against an otherwise identical `0` run to check both the basic sign/
 magnitude of the thermal response (gas near the star should reach a HIGHER
 equilibrium temperature with heating on) and, quantitatively, the measured
@@ -37,7 +37,7 @@ itself only needs `GrackleCooling:with_metal_cooling: 1` (set in
 
 # Run
 Two runs are needed for the sign/magnitude check, identical except for
-`with_photoelectric_heating`:
+`with_interstellar_radiation_field`:
 ```
 with_pe_heating=1 run_name=heating_on  ./run.sh
 with_pe_heating=0 run_name=heating_off ./run.sh

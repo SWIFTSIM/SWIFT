@@ -8,7 +8,7 @@
  * question: given a fixed (G0, n_H, Z', primordial_chemistry) tuple, what
  * temperature does Grackle's OWN net-heating-equals-net-cooling balance
  * settle at, evolving under exactly the Grackle configuration a real
- * with_photoelectric_heating=1 SWIFT run uses (dust_chemistry=1,
+ * with_interstellar_radiation_field=1 SWIFT run uses (dust_chemistry=1,
  * photoelectric_heating=2, use_isrf_field=1, real Cloudy metal-line
  * cooling), i.e. this harness DOES exercise the dust-recombination-
  * cooling code path the NaN fix touched, which the rate-only
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
   grackle_data->UVbackground = 0;
   grackle_data->grackle_data_file = strdup(cloudy_table);
 
-  /* This is the real GEARFeedback:with_photoelectric_heating=1 branch
+  /* This is the real GEARFeedback:with_interstellar_radiation_field=1 branch
    * cooling.c's cooling_init_grackle() sets (dust_chemistry bundles
    * photoelectric heating, dust-recombination cooling, and H2-on-dust
    * formation under one switch), deliberately NOT simplified to

@@ -113,7 +113,7 @@ GEARFeedback:
   with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
 
   # ISRF
-  with_photoelectric_heating: 1                             # ISRF feedback master switch
+  with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_propagation: 1                                       # Run the hyperbolic ISRF propagation update
   ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
   ISRF_c_hyp_pin_for_debugging: 0                           # Debug: fixed c_hyp override (default)

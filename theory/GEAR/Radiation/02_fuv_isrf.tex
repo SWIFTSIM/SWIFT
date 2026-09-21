@@ -844,7 +844,7 @@ reaction network itself: it adds no heating for the photodissociation
 event or the UV pumping that precedes it, unlike the photoelectric and
 dust-recombination channels above.
 
-Enabling the module (\code{GEARFeedback:with\_photoelectric\_heating})
+Enabling the module (\code{GEARFeedback:with\_interstellar\_radiation\_field})
 configures Grackle for it: dust chemistry on, which selects the
 constant-efficiency photoelectric heating and dust recombination cooling
 together, and forces H$_2$ formation on dust grains
@@ -1767,7 +1767,7 @@ are meaningful only with propagation on.
 \textbf{Key} & \textbf{Symbol} & \textbf{Default} & \textbf{Range} &
   \textbf{Meaning} \\
 \hline
-\code{with\_photoelectric\_heating} & & 0 & 0 or 1 &
+\code{with\_interstellar\_radiation\_field} & & 0 & 0 or 1 &
   Master switch: compute $L_{\rm FUV}$, $L_{\rm LW}$, inject, and couple
   $G_0$ and $k_{\rm diss}$ into Grackle. \\
 \hline

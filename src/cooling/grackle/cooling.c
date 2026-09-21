@@ -917,7 +917,7 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
 
   /* Local Lyman-Werner/FUV feedback's per-particle ISRF strength
      (GrackleCooling chemistry_data.use_isrf_field, forced on by
-     GEARFeedback:with_photoelectric_heating): independent of
+     GEARFeedback:with_interstellar_radiation_field): independent of
      use_radiative_transfer above, since isrf_habing is Grackle's own
      separate, non-RT dust-physics field. */
   if (cooling->chemistry_data.use_isrf_field) {
@@ -1738,10 +1738,10 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   if (cooling->HII_couple_ionization_rate)
     chemistry->radiative_transfer_hydrogen_only = 1;
 
-  /* Local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
-     heating): dust_chemistry=1 bundles photoelectric heating, dust
-     recombination cooling, and H2 formation on dust under one Grackle
-     switch. photoelectric_heating is the efficiency chosen by
+  /* Local Lyman-Werner/FUV feedback
+     (GEARFeedback:with_interstellar_radiation_field): dust_chemistry=1 bundles
+     photoelectric heating, dust recombination cooling, and H2 formation on dust
+     under one Grackle switch. photoelectric_heating is the efficiency chosen by
      GrackleCooling:photoelectric_heating_efficiency (cooling_io.h).
      use_isrf_field=1 switches Grackle from the scalar
      interstellar_radiation_field to the per-particle isrf_habing array

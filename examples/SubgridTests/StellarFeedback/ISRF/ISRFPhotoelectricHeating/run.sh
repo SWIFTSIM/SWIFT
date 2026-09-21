@@ -20,7 +20,7 @@ time_end=${time_end:=1.5e-4} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1e-6} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1} #GEARChemistry:initial_metallicity override (Z/Zsun)
-with_pe_heating=${with_pe_heating:=1} #GEARFeedback:with_photoelectric_heating override (1=on, 0=off)
+with_pe_heating=${with_pe_heating:=1} #GEARFeedback:with_interstellar_radiation_field override (1=on, 0=off)
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -80,7 +80,7 @@ printf "Running simulation..."
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:with_photoelectric_heating:$with_pe_heating \
+		   -P GEARFeedback:with_interstellar_radiation_field:$with_pe_heating \
 		   params.yml 2>&1 | tee output.log
 
 if [ -z "$run_name" ]; then
