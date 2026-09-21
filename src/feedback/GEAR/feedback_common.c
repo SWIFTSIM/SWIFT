@@ -1485,8 +1485,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
    * pressure, and the local Lyman-Werner/FUV feedback (photoelectric
-   * heating / H2 photodissociation, which shares the radiation table's
-   * Teff dataset with L_bol) all consume the radiation table (see
+   * heating / H2 photodissociation, which reads the radiation table's
+   * L_FUV/L_LW datasets) all consume the radiation table (see
    * stellar_evolution_props_init()); must match feedback_props_init()'s
    * own with_radiation computation exactly, or a restart can restore a
    * feedback_props whose radiation table was never opened even though the

@@ -668,8 +668,7 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * @param integrated_1d (output, optional) IMF-integrated 1D interpolation
  * table (1D tables only), holding the linear (un-logged) cumulative value;
  * see this function's own doxygen for why. Pass NULL for a dataset with no
- * IMF-integrated concept (Teff); left untouched then, mirroring @p
- * integrated_2d.
+ * IMF-integrated concept; left untouched then, mirroring @p integrated_2d.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
@@ -816,10 +815,7 @@ static void radiation_build_tables(
   free(data);
   free(log_data);
 
-  /* NULL for a dataset with no IMF-integrated concept (Teff: the band
-     fraction built from it is a nonlinear function of Teff, so no single
-     IMF-integrated Teff would give the right integrated band luminosity).
-     Mirrors the 2D branch's own integrated_2d == NULL early return above. */
+  /* Mirrors the 2D branch's own integrated_2d == NULL early return above. */
   if (integrated_1d == NULL) return;
 
   /* integrated_1d is built from pychem's own precomputed, number-weighted,

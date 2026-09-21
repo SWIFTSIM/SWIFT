@@ -579,10 +579,11 @@ struct feedback_spart_data {
 
     /*! Band luminosity (physical units), indexed by #radiation_isrf_band:
         non-ionizing FUV, 6-11.2 eV, and Lyman-Werner, 11.2-13.6 eV (H2
-        photodissociating photons). Split off L_bol via this star's own Teff
-        (radiation_planck_band_fraction) or read from the table. Feeds the
-        injection term; only computed when
-        GEARFeedback:with_photoelectric_heating is on, 0 otherwise. */
+        photodissociating photons). Read from the radiation table's own
+        L_FUV/L_LW (or Integrated_L_FUV/Integrated_L_LW) datasets, which
+        carry the band split directly. Feeds the injection term; only
+        computed when GEARFeedback:with_photoelectric_heating is on, 0
+        otherwise. */
     double L_band[ISRF_BAND_COUNT];
 
   } radiation;

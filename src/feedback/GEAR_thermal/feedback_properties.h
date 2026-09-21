@@ -597,21 +597,20 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Are we running with the local Lyman-Werner/FUV feedback (photoelectric
    * heating + H2 photodissociation)? Read early, for the same reason as
-   * with_photoionization: it needs both the radiation table (for L_bol,
-   * from which L_FUV/L_LW are split via Teff) and the Teff table itself. */
+   * with_photoionization: it needs the radiation table, which carries the
+   * L_FUV/L_LW band luminosities it consumes. */
   const char with_photoelectric_heating = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_photoelectric_heating", 0);
 
   /* The radiation table backs the HII photoionization band, the bolometric
-   * radiation-pressure band, and (since Teff is stored on the same table)
-   * the Lyman-Werner/FUV band split (see
+   * radiation-pressure band, and the Lyman-Werner/FUV bands (see
    * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
    * Previously omitted radiation_policy_photoelectric_heating here because
    * "photoelectric heating has no downstream consumer yet". Now that it
    * does, leaving it out would silently skip opening the radiation table
-   * (and its Teff dataset) for a with_photoelectric_heating-only run,
-   * and desync from feedback_struct_restore()'s own copy of this same
-   * condition on restart (see that function's matching comment). */
+   * for a with_photoelectric_heating-only run, and desync from
+   * feedback_struct_restore()'s own copy of this same condition on restart
+   * (see that function's matching comment). */
   const char with_radiation = with_photoionization ||
                               (radiation_pressure_efficiency > 0.0f) ||
                               with_photoelectric_heating;
