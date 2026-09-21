@@ -45,6 +45,7 @@ Snapshots:
   compression:         4
   output_list_on:      1            # (Optional) Enable the output list
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  recording_triggers_sink: [-1, -1, -1]
 
 # Parameters governing the conserved quantities statistics
 Statistics:

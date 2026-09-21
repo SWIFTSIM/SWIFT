@@ -1,10 +1,10 @@
 To run this example, SWIFT must be configured with the following options:
 
-./configure --with-subgrid=AGORA
+./configure --with-subgrid=AGORA --with-grackle=/path/to/grackle
 
 or similarily 
 
-./configure --with-feedback=AGORA --with-chemistry=AGORA  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR 
+./configure --with-feedback=AGORA --with-chemistry=AGORA  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-grackle=/path/to/grackle
 
 
 An analysis script for this test case can be found in the AGORA project repository:

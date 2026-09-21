@@ -1,11 +1,12 @@
 """
-Makes a rho-T plot. Uses the swiftsimio library.
+Makes a gas density projection plot. Uses the swiftsimio library.
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import swiftsimio as sw
+from swiftsimio.visualisation.projection import project_gas
 
 import unyt
 from unyt import mh, cm
@@ -15,12 +16,10 @@ from matplotlib.animation import FuncAnimation
 
 # %%
 # Constants; these could be put in the parameter file but are rarely changed.
-density_bounds = [1e-6, 1e6]  # in nh/cm^3
-temperature_bounds = [1e0, 1e8]  # in K
-bins = 128
+image_resolution = 1024
 
 # Plotting controls
-cmap = "viridis"
+cmap = "inferno"
 
 # %%
 
@@ -29,8 +28,6 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
     """
     Return the mean molecular weight of the gas.
     """
-    from unyt.physical_constants import mh
-
     # Get the cooling model
     cooling = data.metadata.subgrid_scheme["Cooling Model"]
 
@@ -88,6 +85,8 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
         return mu
 
     else:  # Grackle0
+        # print("... found info for grackle mode=0")
+
         from unyt.physical_constants import kboltz_cgs as k_B_cgs
 
         gamma = data.metadata.gas_gamma[0]
@@ -124,7 +123,8 @@ def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     Compute the temperature of the gas.
     """
     from unyt.physical_constants import kboltz_cgs as k_B
-    from unyt.physical_constants import mh
+
+    # from unyt.physical_constants import mh
 
     # Convert to cgs
     mh.convert_to_cgs()
@@ -150,43 +150,38 @@ def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     return T
 
 
-def get_data(filename):
+def get_sink_and_stars_positions(filename):
+    data = sw.load(filename)
+
+    sink_pos = data.sinks.coordinates
+    star_pos = data.stars.coordinates
+
+    return sink_pos, star_pos
+
+
+def make_projection(filename, image_resolution):
     """
-    Grabs the data (T in Kelvin and density in mh / cm^3).
-
-    Note: Converts data.gas.densities to mh/cm^3.
+    Compute a mass projection with swiftsimio.
     """
-    data = sw.SWIFTDataset(filename)
+    data = sw.load(filename)
 
-    data.gas.densities = data.gas.densities.to(mh / (cm**3))
-    data.gas.temperatures = get_gas_temperatures(data)
-    data.gas.temperatures.convert_to_cgs()
-
-    return data.gas.densities, data.gas.temperatures
-
-
-def make_hist(filename, density_bounds, temperature_bounds, bins):
-    """
-    Makes the histogram for filename with bounds as lower, higher
-    for the bins and "bins" the number of bins along each dimension.
-
-    Also returns the edges for pcolormesh to use.
-    """
-
-    density_bins = np.logspace(
-        np.log10(density_bounds[0]), np.log10(density_bounds[1]), bins
-    )
-    temperature_bins = np.logspace(
-        np.log10(temperature_bounds[0]), np.log10(temperature_bounds[1]), bins
+    # Compute projected density
+    projected_mass = project_gas(
+        data,
+        resolution=image_resolution,
+        project="masses",
+        parallel=True,
+        periodic=True,
     )
 
-    # print(density_bins, temperature_bins)
+    boxsize = data.metadata.boxsize
+    x_edges = np.linspace(0 * unyt.kpc, boxsize[0], image_resolution)
+    y_edges = np.linspace(0 * unyt.kpc, boxsize[1], image_resolution)
 
-    H, density_edges, temperature_edges = np.histogram2d(
-        *get_data(filename), bins=[density_bins, temperature_bins]
-    )
+    # Convert to 1/cm**2
+    projected_mass = projected_mass.to(mh / (cm**2))
 
-    return H.T, density_edges, temperature_edges
+    return projected_mass.T, x_edges, y_edges
 
 
 def setup_axes():
@@ -195,39 +190,63 @@ def setup_axes():
     """
     fig, ax = plt.subplots(1, figsize=(6, 5), dpi=300)
 
-    ax.set_xlabel("Density [$n_H$ cm$^{-3}$]")
-    ax.set_ylabel("Temperature [K]")
-
-    ax.loglog()
+    ax.set_xlabel("x [kpc]")
+    ax.set_ylabel("y [kpc]")
 
     return fig, ax
 
 
-def make_single_image(filename, density_bounds, temperature_bounds, bins):
+def make_single_image(filename, image_resolution):
     """
-    Makes a single image and saves it to rhoTPlot_{filename}.png.
+    Makes a single image and saves it to mass_projection_{snapshot_number}.png.
 
     Filename should be given _without_ hdf5 extension.
     """
-
+    file = "{:s}.hdf5".format(filename)
     fig, ax = setup_axes()
-    hist, rho, T = make_hist(
-        "{:s}.hdf5".format(filename), density_bounds, temperature_bounds, bins
-    )
+    projected_mass, x_edges, y_edges = make_projection(file, image_resolution)
 
-    mappable = ax.pcolormesh(rho, T, hist, cmap=cmap, norm=LogNorm())
-    fig.colorbar(mappable, label="Number of particles", pad=0)
+    mappable = ax.pcolormesh(
+        x_edges, y_edges, projected_mass, cmap=cmap, norm=LogNorm()
+    )
+    fig.colorbar(mappable, label="Surface density [cm$^{-2}]$", pad=0)
+
+    sink_pos, star_pos = get_sink_and_stars_positions(file)
+
+    if star_pos.size != 0:
+        ax.scatter(star_pos[:, 0], star_pos[:, 1], c="limegreen", zorder=1, marker="*")
+
+    if sink_pos.size != 0:
+        ax.scatter(sink_pos[:, 0], sink_pos[:, 1], c="blue", zorder=2, marker=".")
+
+    ax.text(
+        0.7,
+        0.95,
+        r"$N_{\mathrm{star}}" + " = {}$".format(len(star_pos)),
+        transform=ax.transAxes,
+        fontsize=7,
+        bbox=dict(facecolor="white", alpha=0.8),
+    )
+    ax.text(
+        0.1,
+        0.95,
+        r"$N_{\mathrm{sink}}" + " = {}$".format(len(sink_pos)),
+        transform=ax.transAxes,
+        fontsize=7,
+        bbox=dict(facecolor="white", alpha=0.8),
+    )
 
     fig.tight_layout()
 
-    fig.savefig("rhoTPlot_{:s}.png".format(filename[-4:]))
+    image = "mass_projection_{:s}.png".format(filename[-4:])
+    fig.savefig(image)
 
     return
 
 
-def make_movie(args, density_bounds, temperature_bounds, bins):
+def make_movie(args, image_resolution):
     """
-    Makes a movie and saves it to rhoTPlot_{stub}.mp4.
+    Makes a movie and saves it to mass_projection_movie.mp4.
     """
 
     fig, ax = setup_axes()
@@ -241,18 +260,37 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
     def grab_data(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
 
-        H, _, _ = make_hist(filename, density_bounds, temperature_bounds, bins)
+        H, _, _ = make_projection(filename, image_resolution)
 
         # Need to ravel because pcolormesh's set_array takes a 1D array. Might
-        # as well do it here, beacuse 1d arrays are easier to max() than 2d.
+        # as well do it here, because 1d arrays are easier to max() than 2d.
         return H.ravel()
+
+    def grab_sink_star_pos(n):
+        filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
+
+        sink_pos, star_pos = get_sink_and_stars_positions(filename)
+
+        return sink_pos, star_pos
 
     histograms = [
         grab_data(n)
         for n in tqdm(
-            range(args["initial"], args["final"] + 1), desc="Histogramming data"
+            range(args["initial"], args["final"] + 1),
+            desc="Computing gas mass projection",
         )
     ]
+
+    sink_star = [
+        grab_sink_star_pos(n)
+        for n in tqdm(
+            range(args["initial"], args["final"] + 1),
+            desc="Getting sink and stars positions",
+        )
+    ]
+
+    sink_pos = [s[0] for s in sink_star]
+    star_pos = [s[1] for s in sink_star]
 
     metadata = [
         grab_metadata(n)
@@ -263,20 +301,17 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 
     # Need to get a reasonable norm so that we don't overshoot.
     max_particles = max([x.max() for x in histograms])
-
-    norm = LogNorm(vmin=1, vmax=max_particles)
+    min_particles = max([x.min() for x in histograms])
+    norm = LogNorm(vmin=min_particles, vmax=max_particles)
 
     # First, let's make the initial frame (we need this for our d, T values that we
     # got rid of in grab_data.
-    hist, d, T = make_hist(
-        "{:s}_{:04d}.hdf5".format(args["stub"], args["initial"]),
-        density_bounds,
-        temperature_bounds,
-        bins,
+    hist, x_edges, y_edges = make_projection(
+        "{:s}_{:04d}.hdf5".format(args["stub"], args["initial"]), image_resolution
     )
 
-    mappable = ax.pcolormesh(d, T, hist, cmap=cmap, norm=norm)
-    fig.colorbar(mappable, label="Number of particles", pad=0)
+    mappable = ax.pcolormesh(x_edges, y_edges, hist, cmap=cmap, norm=norm)
+    fig.colorbar(mappable, label="Surface density [cm$^{-2}]$", pad=0)
 
     fig.tight_layout()
 
@@ -298,6 +333,7 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
         ha="left",
         va="top",
         transform=ax.transAxes,
+        color="white",
     )
 
     ax.text(
@@ -307,19 +343,38 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
         ha="right",
         va="top",
         transform=ax.transAxes,
+        color="white",
     )
 
     def animate(data):
         mappable.set_array(histograms[data])
         text.set_text(format_metadata(metadata[data]))
 
+        if star_pos[data].size != 0:
+            ax.scatter(
+                star_pos[data][:, 0],
+                star_pos[data][:, 1],
+                c="limegreen",
+                zorder=1,
+                marker="*",
+            )
+
+        if sink_pos[data].size != 0:
+            ax.scatter(
+                sink_pos[data][:, 0],
+                sink_pos[data][:, 1],
+                c="blue",
+                zorder=2,
+                marker=".",
+            )
+
         return mappable
 
     animation = FuncAnimation(
-        fig, animate, range(len(histograms)), fargs=[], interval=1000 / 25
+        fig, animate, range(len(histograms)), fargs=[], interval=1000 / 10
     )
 
-    animation.save("rhoTPlot.mp4")
+    animation.save("mass_projection_movie.mp4")
 
     return
 
@@ -329,7 +384,7 @@ if __name__ == "__main__":
     import argparse as ap
 
     parser = ap.ArgumentParser(description="""
-             Plotting script for making a rho-T plot.
+             Plotting script for making a mass projection plot.
              Takes the filename handle, start, and (optionally) stop
              snapshots. If stop is not given, png plot is produced for
              that snapshot. If given, a movie is made.
@@ -369,18 +424,8 @@ if __name__ == "__main__":
         # Run in single image mode.
         filename = "{:s}_{:04d}".format(args["stub"], args["initial"])
 
-        make_single_image(
-            filename,
-            density_bounds=density_bounds,
-            temperature_bounds=temperature_bounds,
-            bins=bins,
-        )
+        make_single_image(filename, image_resolution=image_resolution)
 
     else:
         # Movie mode!
-        make_movie(
-            args,
-            density_bounds=density_bounds,
-            temperature_bounds=temperature_bounds,
-            bins=bins,
-        )
+        make_movie(args, image_resolution=image_resolution)

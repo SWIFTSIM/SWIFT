@@ -1,1 +1,1 @@
-../StromgrenSphere_3D/stromgren_plotting_tools.py
+/net/hypernova/data2/student_projects/stoot/swift_notde/examples/RadiativeTransferTests/CosmoPropagationTest_3D/../StromgrenSphere_3D/stromgren_plotting_tools.py
