@@ -3240,7 +3240,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   /* Un-skip the formation_gas tasks (gas-gas fixed-aperture loop). */
   {
-    const float r_cut = e->sink_properties->cut_off_radius;
+    const float r_cut = sink_formation_gas_loop_r_cut(e->sink_properties);
     for (struct link *l = c->sinks.formation_gas; l != NULL; l = l->next) {
       struct task *t = l->t;
       struct cell *ci = t->ci;

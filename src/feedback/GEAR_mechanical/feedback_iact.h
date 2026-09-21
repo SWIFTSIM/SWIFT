@@ -474,12 +474,9 @@ runner_iact_nonsym_feedback_apply(
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */
-    tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_winds,
-        &xpj->tracers_data.feedback_cumulative.energy_winds,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
-        delta_p_mag_winds, (float)(dU_SW / new_mass),
-        delta_p_mag_winds / new_mass);
+    tracers_after_stellar_winds_feedback_part(xpj, delta_p_mag_winds,
+                                              (float)(dU_SW / new_mass),
+                                              delta_p_mag_winds / new_mass);
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
@@ -563,12 +560,9 @@ runner_iact_nonsym_feedback_apply(
 
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */
-    tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
-        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
-        delta_p_mag_supernovae, (float)(dU / new_mass),
-        delta_p_mag_supernovae / new_mass);
+    tracers_after_supernovae_feedback_part(xpj, delta_p_mag_supernovae,
+                                           (float)(dU / new_mass),
+                                           delta_p_mag_supernovae / new_mass);
 
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;

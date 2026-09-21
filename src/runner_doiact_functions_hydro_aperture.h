@@ -19,18 +19,22 @@
  *
  ******************************************************************************/
 
-/* Gas-gas neighbour loop for sink particle formation.
+/* Fixed-aperture gas-gas neighbour loop.
  *
  * Implements pair and self interaction loops that accumulate quantities on
  * active gas particles using a fixed aperture radius @p r_cut, rather than
  * the per-particle smoothing-length radius used by the standard hydro density
  * loop.  The aperture radius is passed explicitly as an argument to every
- * function, making the loop generic and independent of any particular subgrid
- * sink model.
+ * function, and the accumulated quantities and their physics are entirely
+ * defined by the IACT_HYDRO_APERTURE/IACT_NONSYM_HYDRO_APERTURE callback, so
+ * the loop itself is generic and independent of any particular subgrid
+ * physics.  Its first use is GEAR's sink formation criterion
+ * (FUNCTION = "prep_sink_formation"), where @p r_cut is the sink formation
+ * search radius and the callback accumulates the gas properties needed to
+ * evaluate the formation criteria.
  *
- * Before including this file, define FUNCTION (e.g. "prep_sink_formation") and
- * FUNCTION_TASK_LOOP (e.g. TASK_LOOP_PREP_SINK_FORMATION).  The macro
- * expansion creates the following set of functions:
+ * Before including this file, define FUNCTION (e.g. "prep_sink_formation").
+ * The macro expansion creates the following set of functions:
  *   runner_dopair1_naive_hydro_aperture_FUNCTION   (brute-force reference)
  *   runner_doself1_naive_hydro_aperture_FUNCTION   (brute-force reference)
  *   runner_dopair1_hydro_aperture_FUNCTION         (sorted, optimised)
@@ -46,8 +50,8 @@
  * runner_iact_hydro_aperture_FUNCTION respectively.
  *
  * Only non-symmetric (_1_) variants are provided.  The formation loop uses a
- * pure gather pattern — each active particle independently accumulates from
- * its neighbours — so symmetric (_2_) variants and subset-reiteration
+ * pure gather pattern (each active particle independently accumulates from
+ * its neighbours) so symmetric (_2_) variants and subset-reiteration
  * functions (used by the standard hydro ghost loop) are not needed.
  *
  * Recursion termination:
@@ -58,11 +62,6 @@
  *   of descending to the true leaf cells. */
 
 #include "runner_doiact_hydro_aperture.h"
-
-/* ============================================================
- * DOPAIR1_NAIVE_HYDRO_APERTURE
- * Brute-force non-symmetric pair interaction.
- * ============================================================ */
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric,
@@ -178,11 +177,6 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
   TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOSELF1_NAIVE_HYDRO_APERTURE
- * Brute-force non-symmetric self interaction.
- * ============================================================ */
-
 /**
  * @brief Compute cell self-interactions (non-symmetric, brute force).
  *
@@ -272,21 +266,14 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
   TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOPAIR1_HYDRO_APERTURE
- * Sorted non-symmetric pair interaction with fixed aperture r_cut.
- * ============================================================ */
-
 /**
  * @brief Compute non-symmetric pair interactions using sorted particle lists.
  *
  * Uses two independent sweeps over the sorted lists of @p ci and @p cj:
- *
  *   - Active-ci pass: for each active pi in @p ci (descending along the pair
  *     axis), scan @p cj particles that fall within the fixed scan bound
  *     @c sort_i[pid].d + r_cut + dx_max - rshift.  The hit condition is
  *     @c r2 < r_cut^2.
- *
  *   - Active-cj pass: for each active pj in @p cj (ascending), scan @p ci
  *     particles within @c sort_j[pjd].d - r_cut - dx_max + rshift.
  *
@@ -319,7 +306,7 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Fixed-aperture scan bounds (replace hi/hj * kernel_gamma in the hydro
-   * loop).  hi_max accounts for the rshift projection so that the outer guard
+   * loop). hi_max accounts for the rshift projection so that the outer guard
    * in the ci loop correctly prunes particles whose sphere cannot reach cj. */
   const double hi_max = (double)r_cut - rshift;
   const double hj_max = (double)r_cut;
@@ -477,11 +464,6 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOPAIR1_BRANCH_HYDRO_APERTURE
- * Dispatch to sorted or naive DOPAIR1.
- * ============================================================ */
-
 /**
  * @brief Dispatch to the appropriate DOPAIR1 variant for this cell pair.
  *
@@ -533,23 +515,16 @@ void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
 #endif
 }
 
-/* ============================================================
- * DOSELF1_HYDRO_APERTURE
- * Optimised non-symmetric self interaction with active-particle list.
- * ============================================================ */
-
 /**
  * @brief Compute non-symmetric cell self-interactions (optimised).
  *
  * Builds a compact list @c indt[] of active particle indices to avoid
  * processing inactive-inactive pairs.  The main loop then uses two
  * regimes:
- *
  *   - If @c pi is passive: only iterate over active @c pj entries in
  *     @c indt[firstdt..countdt] that appear after @c pi in the array
  *     order, calling the non-symmetric interaction with @c pj as the
  *     accumulator.
- *
  *   - If @c pi is active: advance @c firstdt by 1 (pi has moved out of
  *     the pending-active window) and iterate all @c pj from @c pid+1 to
  *     @c count, calling the symmetric variant when both are active and
@@ -691,11 +666,6 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
   TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOSELF1_BRANCH_HYDRO_APERTURE
- * Dispatch to optimised or naive DOSELF1.
- * ============================================================ */
-
 /**
  * @brief Dispatch to the appropriate DOSELF1 variant for this cell.
  *
@@ -728,15 +698,10 @@ void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 #endif
 }
 
-/* ============================================================
- * DOSUB_PAIR1_HYDRO_APERTURE
- * Recursive sub-cell pair interaction.
- * ============================================================ */
-
 /**
  * @brief Recursively compute non-symmetric pair interactions for sub-cells.
  *
- * Recurses while @c r_cut < 0.5 * ci->dmin — i.e. while the fixed aperture
+ * Recurses while @c r_cut < 0.5 * ci->dmin, i.e. while the fixed aperture
  * is smaller than a sub-cell.  Once the aperture equals or exceeds half the
  * cell's minimum dimension, all sub-cell progeny pairs would interact and
  * no pruning is possible, so DOPAIR1_BRANCH_HYDRO_APERTURE is called at this
@@ -769,7 +734,7 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-  /* We reached a leaf OR the aperture is larger than a sub-cell — no benefit
+  /* We reached a leaf OR the aperture is larger than a sub-cell: no benefit
    * in recursing further since all sub-cell pairs would interact anyway.
    * For the fixed r_cut loop the threshold is r_cut >= 0.5 * ci->dmin, which
    * mirrors the cell_can_recurse_in_subpair_hydro_task condition that uses
@@ -810,15 +775,10 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR_HYDRO_APERTURE);
 }
 
-/* ============================================================
- * DOSUB_SELF1_HYDRO_APERTURE
- * Recursive sub-cell self interaction.
- * ============================================================ */
-
 /**
  * @brief Recursively compute non-symmetric self interactions for sub-cells.
  *
- * Recurses while @c r_cut < 0.5 * c->dmin — i.e. while the fixed aperture
+ * Recurses while @c r_cut < 0.5 * c->dmin, i.e. while the fixed aperture
  * is smaller than a sub-cell.  At the leaf level (or once the aperture covers
  * the sub-cell scale), calls DOSELF1_BRANCH_HYDRO_APERTURE for the self part
  * and DOSUB_PAIR1_HYDRO_APERTURE for the cross-progeny part.
@@ -836,7 +796,7 @@ void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
   /* Anything to do here? */
   if (c->hydro.count == 0 || !CELL_IS_ACTIVE(c, r->e)) return;
 
-  /* We reached a leaf OR the aperture is larger than a sub-cell — call the
+  /* We reached a leaf OR the aperture is larger than a sub-cell: call the
    * leaf self function at this level. */
   if (!c->split || c->hydro.count < space_recurse_size_self_hydro ||
       r_cut >= 0.5f * c->dmin) {
