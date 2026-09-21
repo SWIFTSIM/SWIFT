@@ -879,6 +879,9 @@ INLINE static void starformation_init_backend(
     /* Read the scale metallicity Z0 */
     starform->Z_dep_thresh.Z0 = parser_get_param_double(
         parameter_file, "EAGLEStarFormation:threshold_Z0");
+    if (starform->Z_dep_thresh.Z0 <= 0.)
+      error("EAGLEStarFormation:threshold_Z0 must be > 0, got %e.",
+            starform->Z_dep_thresh.Z0);
     starform->Z_dep_thresh.Z0_inv = 1. / starform->Z_dep_thresh.Z0;
 
     /* Read the power law of the critical density scaling */
