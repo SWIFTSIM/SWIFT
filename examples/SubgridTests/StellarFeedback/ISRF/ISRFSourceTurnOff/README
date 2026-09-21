@@ -70,14 +70,16 @@ snapshots (repointed at `<dir>` if `run_name` was set; running the check
 manually against a moved run needs `--snapshot`, `--timesteps-log` and
 `--used-parameters` repointed the same way). It prints the star's
 mass/metallicity/death time, then three things:
-- the measured post-death e-folding time of each band against the analytic
-  `1/(c_hyp*kappa)` estimate. The comparison against the estimate is
-  informational, but the measured time itself feeds the residual check
-  below;
+- the measured post-death e-folding time of each band, next to the analytic
+  `1/(c_hyp*kappa)` estimate. Only the comparison between the two is
+  informational. The measured time itself is **gated**, through the e-fold
+  count below;
 - the residual field fraction left at `time_end` relative to the pre-death
-  level: **gated**. This passes only if both bands are below
-  `--residual-tol` *and* each band decayed for at least `--min-efolds`
-  e-folds (default 5), measured with its own e-folding time above;
+  level: **gated**. It passes only if both bands sit below `--residual-tol`
+  *and* each band decayed for at least `--min-efolds` of its own measured
+  e-folding times (default 5). A `time_end` set too close to the star's
+  death therefore fails the example even on a clean residual: lengthen the
+  run rather than loosening either bar;
 - whether any particle's field went negative after death, excluding
   snapshots within `--negativity-settle-myr` of death (the switch-off
   transient, reported separately, not scored): **gated**. A FAIL
