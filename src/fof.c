@@ -3384,7 +3384,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
   /* Sum the total number of links across MPI domains over each MPI rank. */
   size_t global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
-                MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+                MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
   /* The global list is allocated as a single block on every rank, as are the
    * three 2x-as-long size_t arrays derived from it further down. The largest
@@ -3416,8 +3416,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
         "global group link list");
 
   /* Gather the total number of links on each rank. */
-  MPI_Allgather(&group_link_count, 1, MPI_UNSIGNED_LONG_LONG, group_link_counts,
-                1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+  MPI_Allgather(&group_link_count, 1, MPI_UNSIGNED_LONG, group_link_counts, 1,
+                MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
 
   /* Set the displacements into the global link list using the link counts from
    * each rank */
