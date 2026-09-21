@@ -87,12 +87,12 @@ python3 isrf_optically_thin_check.py
 For each band it bins the field radially inside the causal front and fits the
 log-log slope against the free-streaming prediction, averaging over the last
 few snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
-from the prediction, or if the radial spread of the measured/free-streaming
-ratio exceeds `--flatness-tol`; the defaults should not be loosened to make a
-run pass. The absolute amplitude ratio (measured field over the free-streaming
-prediction) is reported but not gated on: the flux limiter pins particles near
-the source before they reach the unlimited fixed point, biasing the settled
-amplitude there without changing the power-law slope this check measures. If
+from the prediction, or if any fitted quantity is not finite; `--slope-tol`
+should not be loosened to make a run pass. The absolute amplitude ratio
+(measured field over the free-streaming prediction) and its radial spread are
+reported but not gated on: the flux limiter pins particles near the source
+before they reach the unlimited fixed point, biasing the settled amplitude
+there without changing the power-law slope this check measures. If
 the field is ringing in sign the script says so explicitly rather than
 reporting an unfittable profile as an error. Produces a comparison plot
 (`--output`, default `isrf_optically_thin_check.png`) showing the measured

@@ -75,3 +75,18 @@ snapshot. It sums `FUVSpecificEnergies * mass` (and the LW equivalent)
 over all illuminated gas particles and compares against `Delta_t *
 FUVLuminosities` (`--tol`, default relative error 1e-5: the measured
 discrepancy is float32 snapshot-storage rounding, ~1e-7).
+
+`isrf_ledger_check.py` ships next to it and checks a different identity,
+the running energy ledger:
+
+```
+python3 isrf_ledger_check.py -s '<run>/snap/snapshot_*.hdf5'
+```
+Per band and per snapshot it gates `|E + Abs - Inj| / |Inj|` against
+`--tol` (default 1e-3), where `Inj` and `Abs` are the cumulative injected
+and absorbed specific energies. It needs a run with
+`GEARFeedback:ISRF_propagation: 1`, since only the propagation update
+writes those two fields, and a binary configured with
+`--enable-debugging-checks`, which is what makes them anything but zero.
+This example runs with propagation off, so `run.sh` does not invoke it;
+point it at a propagation example's run directory instead.

@@ -10,9 +10,10 @@ defaults to `T_hot = 1e6 K` here, versus `3e4 K` in `ISRFDissipation`.
 
 This example exercises the dissipation term at that extreme contrast and
 reports the same sign-closure and causal-reach metrics as
-`ISRFDissipation`. No pass/fail bar is established for this contrast:
-treat `isrf_dissipation_check.py`'s output as diagnostic, not a
-validated pass criterion.
+`ISRFDissipation`. `isrf_dissipation_check.py` gates on both and exits
+non-zero on a failure, at the bars it inherits from `ISRFDissipation`
+(`--energy-neg-threshold`, `--fail-margin-h`); those bars are not derived
+for this contrast.
 
 ## Dissipation term
 `ISRF_dissipation_alpha_max` bounds a triggered artificial-conductivity
