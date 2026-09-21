@@ -3419,7 +3419,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  const int global_group_list_size = 2 * global_group_link_count;
+  const size_t global_group_list_size = 2 * global_group_link_count;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
