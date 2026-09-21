@@ -25,9 +25,10 @@
  * hyperbolic M1-relaxation propagation of the per-band u and specific_flux
  * fields.
  *
- * `div(F)` sits in the force loop, not the density loop, because it needs both
- * sides of every pair credited and only the force loop's type-2 dispatch fires
- * both sides whenever either kernel reaches. Derivations are in
+ * `div(F)` sits in the force loop rather than a type-1 loop (density,
+ * gradient), which reaches particle i only for r < H_i: it needs both sides of
+ * every pair credited, and only the force loop's type-2 dispatch fires both
+ * sides whenever either kernel reaches. Derivations are in
  * theory/GEAR/Radiation/02_fuv_isrf.tex, secs. "Spatial operators" and "The
  * consistent variable-speed operators".
  *
