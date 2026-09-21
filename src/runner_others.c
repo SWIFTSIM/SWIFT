@@ -969,10 +969,23 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;
 
-          /* Check that this gpart has interacted with all the other
-           * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted !=
-              e->total_nr_gparts - e->count_inhibited_gparts) {
+          /* Number of g-particles removed since the last rebuild. */
+          const long long n_removed = (long long)e->s->nr_inhibited_gparts;
+
+          /* Define the range of acceptable interaction counts, accounting for
+           * newly inhibited particles. In rare instance g-particles can be
+           * removed during a step (i.e. in non-periodic runs when the
+           * drift inhibits any particle that has left the box, see
+           * cell_drift_gpart()) and the order relative to this check matters.
+           * When the order is just right (i.e. wrong) it can cause a failure
+           * here if we do a simple inequality. */
+          const long long min_interactions = e->total_nr_gparts - n_removed;
+          const long long max_interactions = e->total_nr_gparts;
+
+          /* Check that this gpart has interacted with all the other particles
+           * (via direct or multipoles) in the box.*/
+          if (gp->num_interacted < min_interactions ||
+              gp->num_interacted > max_interactions) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
             /* If we have the gravity force checks enabled, we print more
@@ -990,13 +1003,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
-                "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
-                "(local num_gparts=%zd inhibited_gparts=%lld) "
+                "gp->num_interacted=%lld, expected in [%lld, %lld] "
+                "(total_gparts=%lld removed_since_rebuild=%lld) "
+                "(local num_gparts=%zd) "
                 "(cell info: c->depth=%d c->grav.super->depth=%d)",
                 id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
-                e->s->nr_gparts, e->count_inhibited_gparts, c->depth,
-                c->grav.super->depth);
+                min_interactions, max_interactions, e->total_nr_gparts,
+                n_removed, e->s->nr_gparts, c->depth, c->grav.super->depth);
           }
         }
 #endif
