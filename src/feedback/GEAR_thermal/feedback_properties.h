@@ -1001,9 +1001,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       warning(
           "GEARFeedback:ISRF_propagation is on together with "
           "GEARFeedback:with_interstellar_radiation_field. The propagation's "
-          "only "
-          "loss channel is dust absorption, whose rate is proportional to "
-          "the gas metallicity. Gas at or near zero metallicity has no "
+          "only loss channel is dust absorption, whose rate is proportional "
+          "to the gas metallicity. Gas at or near zero metallicity has no "
           "loss channel. Check GEARChemistry:initial_metallicity and any "
           "MetalMassFraction field in the initial conditions before a long "
           "run.");
