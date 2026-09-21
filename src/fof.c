@@ -25,6 +25,7 @@
 /* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -920,9 +921,14 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 
   if (offset != NULL) {
 
-    /* If the element is a new entry set its value. */
+    /* If the element is a new entry set its value.
+     * The hashmap stores a long long: fine for anything below 2^63 groups. */
     if (created_new_element) {
-      (*offset).value_st = group_offset;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (group_offset > (size_t)LLONG_MAX)
+        error("Group offset %zu does not fit in the hashmap", group_offset);
+#endif
+      (*offset).value_st = (long long)group_offset;
     }
   } else
     error("Couldn't find key (%zu) or create new one.", group_id);
@@ -1230,8 +1236,9 @@ static INLINE void add_foreign_link_to_list(
       error("Overflow in the size of the list of foreign links (%zu elements)",
             old_size);
 
-    struct fof_mpi *temp = (struct fof_mpi *)realloc(
-        *group_links, new_size * sizeof(struct fof_mpi));
+    struct fof_mpi *temp =
+        (struct fof_mpi *)swift_realloc("fof_local_group_links", *group_links,
+                                        new_size * sizeof(struct fof_mpi));
     if (temp == NULL)
       error("Failed to re-allocate the list of foreign links to %zu elements",
             new_size);
@@ -2451,8 +2458,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
             "Overflow in the size of the list of foreign links (%zu elements)",
             old_size);
 
-      struct fof_mpi *temp = (struct fof_mpi *)realloc(
-          *group_links, new_size * sizeof(struct fof_mpi));
+      struct fof_mpi *temp = (struct fof_mpi *)swift_realloc(
+          "fof_group_links", *group_links, new_size * sizeof(struct fof_mpi));
       if (temp == NULL)
         error("Failed to re-allocate the list of foreign links to %zu elements",
               new_size);
