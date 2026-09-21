@@ -968,9 +968,9 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   /* Record this star's own SN-event history (single_star always fires
      exactly one SNII, never SNIa; see stellar_evolution_evolve_spart()'s
      own population-only counterpart for the SNIa channel). */
-  tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
-                               sp->feedback_data.enrichment_weight,
-                               with_cosmology, cosmo, time);
+  tracers_after_snii_event_spart(sp, number_snii,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
 
   /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
    */
@@ -1152,12 +1152,12 @@ void stellar_evolution_compute_SN_feedback_spart(
 
     /* Record this star's own SN-event history for each channel that fired
        this step. */
-    tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia,
-                                 sp->feedback_data.enrichment_weight,
-                                 with_cosmology, cosmo, time);
-    tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii,
-                                 sp->feedback_data.enrichment_weight,
-                                 with_cosmology, cosmo, time);
+    tracers_after_snia_event_spart(sp, number_snia,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
+    tracers_after_snii_event_spart(sp, number_snii,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
 
     /* Compute the yields */
     stellar_evolution_compute_discrete_feedback_properties(
@@ -1171,12 +1171,12 @@ void stellar_evolution_compute_SN_feedback_spart(
 
     /* Record this star's own SN-event history for each channel that fired
        this step. */
-    tracers_gear_update_sn_event(&sp->tracers_data.snia_events, number_snia_f,
-                                 sp->feedback_data.enrichment_weight,
-                                 with_cosmology, cosmo, time);
-    tracers_gear_update_sn_event(&sp->tracers_data.snii_events, number_snii_f,
-                                 sp->feedback_data.enrichment_weight,
-                                 with_cosmology, cosmo, time);
+    tracers_after_snia_event_spart(sp, number_snia_f,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
+    tracers_after_snii_event_spart(sp, number_snii_f,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
 
     /* Compute the yields */
     stellar_evolution_compute_continuous_feedback_properties(

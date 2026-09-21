@@ -361,7 +361,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
    * r_cut2 = r_cut * r_cut and dx/r2 all in float.  Using double here
    * would give a more precise r_cut2 and could exclude particles that
    * the formation loop (at float precision) correctly included. */
-  const float r_cut = (float)e->sink_properties->cut_off_radius;
+  const float r_cut = sink_formation_gas_loop_r_cut(e->sink_properties);
   const float r_cut2 = r_cut * r_cut;
   int counter = 0;
 
