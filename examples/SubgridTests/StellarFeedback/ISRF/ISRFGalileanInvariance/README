@@ -1,7 +1,7 @@
 # Intro
 Two frame tests of the ISRF hyperbolic propagation scheme (Cattaneo-type
 flux relaxation, M1 closure), on a single star at the centre of a uniform,
-periodic glass-IC gas box. The scheme evolves the mass-specific FUV/LW
+periodic glass-IC gas box. The scheme evolves the mass-specific PE/LW
 energy `u` and flux `F` along the gas trajectories and reads no particle
 velocity, so `F` is the flux in the gas frame.
 

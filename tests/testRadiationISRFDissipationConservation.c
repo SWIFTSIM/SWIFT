@@ -28,7 +28,7 @@
 /* Local headers. */
 #include "swift.h"
 
-/* The negativity-triggered LW/FUV artificial-dissipation term is GEAR-only
+/* The negativity-triggered LW/PE artificial-dissipation term is GEAR-only
  * physics and
  * lives in the hydro force loop. This test drives the real DOSELF2 force
  * dispatch (runner_doself2_branch_force), not the accumulate-band function
@@ -53,27 +53,27 @@ static const float test_mass_i = 1.0f;
 static const float test_mass_j = 2.5f;
 static const float test_rho_prev_i = 0.7f;
 static const float test_rho_prev_j = 1.3f;
-static const float test_u_FUV_i = 3.0f;
-static const float test_u_FUV_j = 0.9f;
+static const float test_u_PE_i = 3.0f;
+static const float test_u_PE_j = 0.9f;
 static const float test_u_LW_i = -0.4f;
 static const float test_u_LW_j = 1.1f;
 static const float test_c_hyp = 2.0f;
 
 /* The four coefficients the force loop combines as
  * alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j), all distinct:
- * the FUV set is won by a floor and the LW set by a trigger, so both
+ * the PE set is won by a floor and the LW set by a trigger, so both
  * branches of the combination are exercised and an argument-order slip at
  * either call site changes alpha_ij and trips the magnitude check below
  * rather than compiling silently. */
-static const float test_alpha_trigger_FUV_i = 0.10f;
-static const float test_alpha_trigger_FUV_j = 0.20f;
-static const float test_alpha_floor_FUV_i = 0.35f;
-static const float test_alpha_floor_FUV_j = 0.30f;
+static const float test_alpha_trigger_PE_i = 0.10f;
+static const float test_alpha_trigger_PE_j = 0.20f;
+static const float test_alpha_floor_PE_i = 0.35f;
+static const float test_alpha_floor_PE_j = 0.30f;
 static const float test_alpha_trigger_LW_i = 0.15f;
 static const float test_alpha_trigger_LW_j = 0.40f;
 static const float test_alpha_floor_LW_i = 0.10f;
 static const float test_alpha_floor_LW_j = 0.25f;
-static const float test_alpha_FUV = 0.35f;
+static const float test_alpha_PE = 0.35f;
 static const float test_alpha_LW = 0.40f;
 
 /**
@@ -163,22 +163,22 @@ static struct cell *make_pair_cell(
   struct feedback_part_data *fdj = &pj->feedback_data;
   fdi->rho_prev = test_rho_prev_i;
   fdj->rho_prev = test_rho_prev_j;
-  fdi->isrf_band[ISRF_BAND_PE].u = test_u_FUV_i;
-  fdj->isrf_band[ISRF_BAND_PE].u = test_u_FUV_j;
+  fdi->isrf_band[ISRF_BAND_PE].u = test_u_PE_i;
+  fdj->isrf_band[ISRF_BAND_PE].u = test_u_PE_j;
   fdi->isrf_band[ISRF_BAND_LW].u = test_u_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].u = test_u_LW_j;
   fdi->c_hyp = test_c_hyp;
   fdj->c_hyp = test_c_hyp;
   fdi->isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger =
-      test_alpha_trigger_FUV_i;
+      test_alpha_trigger_PE_i;
   fdj->isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger =
-      test_alpha_trigger_FUV_j;
+      test_alpha_trigger_PE_j;
   fdi->isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger =
       test_alpha_trigger_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger =
       test_alpha_trigger_LW_j;
-  fdi->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_FUV_i;
-  fdj->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_FUV_j;
+  fdi->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_PE_i;
+  fdj->isrf_band[ISRF_BAND_PE].dissipation_alpha_floor = test_alpha_floor_PE_j;
   fdi->isrf_band[ISRF_BAND_LW].dissipation_alpha_floor = test_alpha_floor_LW_i;
   fdj->isrf_band[ISRF_BAND_LW].dissipation_alpha_floor = test_alpha_floor_LW_j;
   fdi->isrf_band[ISRF_BAND_PE].dissipation_u = 0.f;
@@ -248,7 +248,7 @@ static double expected_Psi(double hi, double hj, double r, double u_i,
  * @param cosmo The cosmology.
  * @param hydro_props The hydro properties.
  * @param pressure_floor The pressure-floor properties.
- * @param out (return) The two particles' `dissipation_u` values, FUV then
+ * @param out (return) The two particles' `dissipation_u` values, PE then
  * LW, for i then j.
  */
 static void check_ratio(float h_ratio, float bulk_velocity,
@@ -283,16 +283,16 @@ static void check_ratio(float h_ratio, float bulk_velocity,
   const double mj = (double)test_mass_j;
   const double r = sqrt(r2);
 
-  const char *band_name[2] = {"FUV", "LW"};
+  const char *band_name[2] = {"PE", "LW"};
   const double diss_i[2] = {
       (double)pi->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u,
       (double)pi->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u};
   const double diss_j[2] = {
       (double)pj->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_u,
       (double)pj->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_u};
-  const double u_i[2] = {(double)test_u_FUV_i, (double)test_u_LW_i};
-  const double u_j[2] = {(double)test_u_FUV_j, (double)test_u_LW_j};
-  const double alpha[2] = {(double)test_alpha_FUV, (double)test_alpha_LW};
+  const double u_i[2] = {(double)test_u_PE_i, (double)test_u_LW_i};
+  const double u_j[2] = {(double)test_u_PE_j, (double)test_u_LW_j};
+  const double alpha[2] = {(double)test_alpha_PE, (double)test_alpha_LW};
 
   for (int b = 0; b < 2; b++) {
 
@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
   message(
-      "Skipping: the negativity-triggered LW/FUV dissipation term needs GEAR "
+      "Skipping: the negativity-triggered LW/PE dissipation term needs GEAR "
       "feedback and the SPHENIX hydro scheme.");
   return 0;
 }

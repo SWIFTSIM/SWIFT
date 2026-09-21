@@ -166,7 +166,7 @@ def extract_particle(
         G0_habing, n_H_cgs, Zprime, T_measured_K, r (internal length units).
     """
     rho_internal = float(gas["Densities"][idx])
-    u_fuv_internal = float(gas["FUVSpecificEnergies"][idx])
+    u_pe_internal = float(gas["PESpecificEnergies"][idx])
     u_lw_internal = float(gas["LWSpecificEnergies"][idx])
     u_internal = float(gas["InternalEnergies"][idx])
     Z = float(gas["SmoothedMetalMassFractions"][idx, -1])
@@ -175,16 +175,16 @@ def extract_particle(
     unit_specific_energy_cgs = (unit_length_cgs / unit_time_cgs) ** 2
 
     rho_cgs = rho_internal * unit_mass_density_cgs
-    u_fuv_cgs = u_fuv_internal * unit_specific_energy_cgs
+    u_pe_cgs = u_pe_internal * unit_specific_energy_cgs
     u_lw_cgs = u_lw_internal * unit_specific_energy_cgs
 
-    # radiation_get_part_isrf_habing(): G0 = c*rho*(u_FUV+u_LW) / HABING_FLUX,
+    # radiation_get_part_isrf_habing(): G0 = c*rho*(u_PE+u_LW) / HABING_FLUX,
     # all in cgs (the internal-unit computation and the cgs one are
     # equivalent since c*rho*u has pure mass/time^3 dimensions, no length
     # dependence, so converting rho and u to cgs separately here and
     # multiplying by C_LIGHT_CGS is exactly the internal-unit formula
     # evaluated in cgs, not an approximation of it).
-    G0 = C_LIGHT_CGS * rho_cgs * (u_fuv_cgs + u_lw_cgs) / habing_flux_cgs
+    G0 = C_LIGHT_CGS * rho_cgs * (u_pe_cgs + u_lw_cgs) / habing_flux_cgs
 
     # cooling.c: metal_density = chemistry_get_total_metal_mass_fraction_
     # for_cooling(p) * rho; Grackle's own metallicity(i) = metal_density /
@@ -267,7 +267,7 @@ def load_case_particles(example_dir: Path, habing_flux_cgs: float) -> dict:
         dx -= box * np.round(dx / box)
         r = np.sqrt((dx**2).sum(axis=1))
 
-        field = gas["FUVSpecificEnergies"][:] + gas["LWSpecificEnergies"][:]
+        field = gas["PESpecificEnergies"][:] + gas["LWSpecificEnergies"][:]
         idx_near = int(np.argmax(field))
         idx_far = int(np.argmin(field))
 

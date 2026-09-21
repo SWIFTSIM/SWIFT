@@ -7,7 +7,7 @@ the code default, 0.5). Same pinned-neighbour IC family as the sibling `ISRFCaus
 example (one gas particle nearest the star set to a different initial
 temperature, `T_hot = 3e4 K` by default here), which produces a sharp
 local density/temperature contrast. Demonstrates that the dissipation
-term eliminates negative `FUVSpecificEnergies`/`LWSpecificEnergies`
+term eliminates negative `PESpecificEnergies`/`LWSpecificEnergies`
 values that otherwise appear on that contrast, without degrading the
 propagated field's causal reach (`r <= c_hyp*(t - t0)`).
 

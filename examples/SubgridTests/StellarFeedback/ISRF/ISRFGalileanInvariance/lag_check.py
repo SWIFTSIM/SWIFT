@@ -19,7 +19,7 @@
 ################################################################################
 """
 Relative-velocity lag of the ISRF field behind a star moving through static
-gas (theory chapter, `sec:fuv-lagrangian` of `02_fuv_isrf.tex`).
+gas (theory chapter, `sec:pe-lagrangian` of `02_fuv_isrf.tex`).
 
 Measured lag, per band: the mass-weighted first moment of u over the whole
 periodic box, relative to the star, along its direction of motion,
@@ -36,7 +36,7 @@ checks for. The discrete estimator (`{band}SpecificFluxDivergences`,
 `(1/rho) div(rho F)` per particle, finalized in the density ghost)
 conserves the *zeroth* moment sum_i m_i (div F)_i = 0 exactly, because the
 pairwise contribution to one particle is minus the contribution to its
-neighbour (`sec:fuv-operators`, `radiation_propagation_iact.h`:
+neighbour (`sec:pe-operators`, `radiation_propagation_iact.h`:
 `div_F_i += mj*Phi_ij`, `div_F_j += -mi*Phi_ij`). Its *first* moment does
 not cancel the same way (a pair's two xi differ), so the discrete scheme
 carries its own first-moment residual, a net-flux residual plausibly
@@ -86,7 +86,7 @@ import numpy as np
 import yaml
 
 # src/feedback/GEAR/radiation.h
-SIGMA_D_CGS = {"FUV": 9e-22, "LW": 1.5e-21}
+SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
 # Grackle's SolarMetalFractionByMass default
@@ -96,7 +96,7 @@ H_REFERENCE = 0.05
 MIN_BOX_OVER_LAMBDA = 30.0
 STEADY_REL_TOL = 1e-3
 # Envelopes the step-to-step relative change of `lag` itself, once
-# STEADY_REL_TOL is satisfied, across both bands (FUV, LW).
+# STEADY_REL_TOL is satisfied, across both bands (PE, LW).
 LAG_REL_TOL = 0.05
 # How many trailing snapshots to evaluate the gate/report over (needs one
 # extra leading snapshot per evaluated one, to test its own steadiness).

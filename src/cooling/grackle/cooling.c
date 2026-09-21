@@ -820,7 +820,7 @@ void cooling_copy_from_grackle3(grackle_field_data *data, const struct part *p,
  * @param p The #part.
  * @param xp The #xpart.
  * @param rho The particle density.
- * @param cosmo The current #cosmology (for the local Lyman-Werner/FUV
+ * @param cosmo The current #cosmology (for the local Lyman-Werner/PE
  * feedback's own isrf_habing/RT_H2_dissociation_rate getters).
  */
 void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
@@ -887,7 +887,7 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     *RT_HeII_ionization_rate /= (1. / time_units);
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
-    /* H2 dissociation rate: local Lyman-Werner/FUV feedback's own
+    /* H2 dissociation rate: local Lyman-Werner/PE feedback's own
        per-particle rate (cooling_get_LW_dissociation_rate_subgrid,
        already internal 1/time) takes priority over the single global
        YAML scalar, mirroring RT_HI_ionization_rate's own local-vs-global
@@ -915,7 +915,7 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     data->RT_H2_dissociation_rate = NULL;
   }
 
-  /* Local Lyman-Werner/FUV feedback's per-particle ISRF strength
+  /* Local Lyman-Werner/PE feedback's per-particle ISRF strength
      (GrackleCooling chemistry_data.use_isrf_field, forced on by
      GEARFeedback:with_interstellar_radiation_field): independent of
      use_radiative_transfer above, since isrf_habing is Grackle's own
@@ -1738,7 +1738,7 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   if (cooling->HII_couple_ionization_rate)
     chemistry->radiative_transfer_hydrogen_only = 1;
 
-  /* Local Lyman-Werner/FUV feedback
+  /* Local Lyman-Werner/PE feedback
      (GEARFeedback:with_interstellar_radiation_field): dust_chemistry=1 bundles
      photoelectric heating, dust recombination cooling, and H2 formation on dust
      under one Grackle switch. photoelectric_heating is the efficiency chosen by

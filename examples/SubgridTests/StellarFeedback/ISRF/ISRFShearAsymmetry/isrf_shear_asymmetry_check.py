@@ -121,7 +121,7 @@ def load_snapshot(path):
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
         u_int = gas["InternalEnergies"][:].astype(np.float64)
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
         time=time,
@@ -365,7 +365,7 @@ def main():
 
         results = {}
         void_neg_weight_any = False
-        for band, u_last in (("FUV", u_last_pe), ("LW", u_last_lw)):
+        for band, u_last in (("PE", u_last_pe), ("LW", u_last_lw)):
             pair = blob_pair_moments(
                 pos_last,
                 u_last,
@@ -425,7 +425,7 @@ def main():
         metrics["void"] = bool(void)
 
         # Total conservation control (report only).
-        for band, u_field in (("FUV", "u_pe"), ("LW", "u_lw")):
+        for band, u_field in (("PE", "u_pe"), ("LW", "u_lw")):
             tot0 = float(np.sum(mass0 * snap0[u_field][order0]))
             totL = float(np.sum(mass0 * snap_last[u_field][orderL]))
             drift = (totL - tot0) / tot0 if tot0 != 0 else float("nan")
@@ -438,7 +438,7 @@ def main():
         # M-S4: A_xstructure (slab geometry, report only).
         pos_last = snap_last["pos"][orderL]
         results = {}
-        for band, key in (("FUV", "u_pe"), ("LW", "u_lw")):
+        for band, key in (("PE", "u_pe"), ("LW", "u_lw")):
             u_last = snap_last[key][orderL]
             y_edges = np.linspace(0, L_code, opt.n_y_slabs + 1)
             x_edges = np.linspace(0, L_code, opt.n_x_bins + 1)

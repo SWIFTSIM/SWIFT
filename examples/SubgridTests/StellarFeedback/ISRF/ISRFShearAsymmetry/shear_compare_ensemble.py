@@ -133,7 +133,7 @@ def load_snapshot(path):
         rho = gas["Densities"][:].astype(np.float64)
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return dict(
         time=time,
@@ -198,7 +198,7 @@ def realisation_time_series(run_dir, pulse_sigma_h, layer_width_h):
     kh_void = kh_contamination_void(kh, drho, is_sheared)
 
     times, series = [], {
-        b: {"A_centroid": [], "A_spread": [], "A_energy": []} for b in ("FUV", "LW")
+        b: {"A_centroid": [], "A_spread": [], "A_energy": []} for b in ("PE", "LW")
     }
     neg_weight_void = False
     for fn in files:
@@ -207,7 +207,7 @@ def realisation_time_series(run_dir, pulse_sigma_h, layer_width_h):
         pos = s["pos"][order]
         t = s["time"]
         times.append(t)
-        for band, key in (("FUV", "u_pe"), ("LW", "u_lw")):
+        for band, key in (("PE", "u_pe"), ("LW", "u_lw")):
             u = s[key][order]
             pair = blob_pair_moments(
                 pos, u, mass0, in_A, in_B, centre_A, centre_B, v_shear, t, L
@@ -289,7 +289,7 @@ def main():
 
     results = dict(window_frac=opt.window_frac, bands={})
     overall = "PASS"
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         results["bands"][band] = {}
         print(f"\n=== {band} ===")
         for metric in ("A_centroid", "A_spread", "A_energy"):

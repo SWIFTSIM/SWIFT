@@ -46,7 +46,7 @@ enum radiation_policy {
   radiation_policy_photoionization = (1 << 0),
   /*! Radiation pressure from the stars' bolometric luminosity */
   radiation_policy_radiation_pressure = (1 << 1),
-  /* Local Lyman-Werner/FUV feedback: photoelectric (PE) heating by FUV
+  /* Local Lyman-Werner/PE feedback: photoelectric (PE) heating by PE
      radiation on dust, and H2 photodissociation by the Lyman-Werner band.
      One switch for both, since they share the same two band luminosities
      and injected fields. */
@@ -182,7 +182,7 @@ struct feedback_props {
    * radiation_policy_photoelectric_heating is set. */
   char ISRF_propagation;
 
-  /*! Path of the receiver-side LW/FUV dust extinction column, in kernel
+  /*! Path of the receiver-side LW/PE dust extinction column, in kernel
    * support radii kernel_gamma * h: 2 for "kernel_diameter", 1 for
    * "kernel_radius" (GEARFeedback:ISRF_extinction_path). */
   float ISRF_extinction_path_in_kernel_radii;
@@ -356,7 +356,7 @@ struct feedback_props {
 /**
  * @brief Does this run need Grackle's chemistry_data actually resolved
  * (cooling_init() having run, via --cooling or --temperature), for
- * GEAR's own local Lyman-Werner/FUV photoelectric-heating channel to
+ * GEAR's own local Lyman-Werner/PE photoelectric-heating channel to
  * read a real (not silently zero) local_dust_to_gas_ratio? See
  * radiation_isrf.c's dust-opacity helpers.
  *
@@ -597,15 +597,15 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const float radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
-  /* Are we running with the local Lyman-Werner/FUV feedback (photoelectric
+  /* Are we running with the local Lyman-Werner/PE feedback (photoelectric
    * heating + H2 photodissociation)? Read early, for the same reason as
    * with_photoionization: it needs the radiation table, which carries the
-   * L_FUV/L_LW band luminosities it consumes. */
+   * L_PE/L_LW band luminosities it consumes. */
   const char with_interstellar_radiation_field = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_interstellar_radiation_field", 0);
 
   /* The radiation table backs the HII photoionization band, the bolometric
-   * radiation-pressure band, and the Lyman-Werner/FUV bands (see
+   * radiation-pressure band, and the Lyman-Werner/PE bands (see
    * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
    * Previously omitted radiation_policy_photoelectric_heating here because
    * "photoelectric heating has no downstream consumer yet". Now that it
@@ -722,39 +722,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
-  /* Reject the pre-rename GEARFeedback ISRF keys: an unrecognised key
-   * is otherwise only reported as unused, so an old parameter file would
-   * silently lose these settings instead of failing loudly. A restart
-   * bypasses this check by design: feedback_struct_restore() re-reads the
-   * saved struct, not the parameter file. */
-  const char *const deprecated_ISRF_keys[10] = {
-      "GEARFeedback:with_photoelectric_heating",
-      "GEARFeedback:LW_FUV_propagation",
-      "GEARFeedback:LW_FUV_c_hyp_margin",
-      "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
-      "GEARFeedback:LW_FUV_dissipation_alpha_max",
-      "GEARFeedback:LW_FUV_dissipation_negativity_threshold",
-      "GEARFeedback:LW_FUV_dissipation_alpha_floor",
-      "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
-      "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
-      "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging"};
-  const char *const renamed_ISRF_keys[10] = {
-      "GEARFeedback:with_interstellar_radiation_field",
-      "GEARFeedback:ISRF_propagation",
-      "GEARFeedback:ISRF_c_hyp_margin",
-      "GEARFeedback:ISRF_c_hyp_pin_for_debugging",
-      "GEARFeedback:ISRF_dissipation_alpha_max",
-      "GEARFeedback:ISRF_dissipation_negativity_threshold",
-      "GEARFeedback:ISRF_dissipation_alpha_floor",
-      "GEARFeedback:ISRF_dissipation_floor_h_over_lambda",
-      "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
-      "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"};
-  for (int i = 0; i < 10; ++i) {
-    if (parser_does_param_exist(params, deprecated_ISRF_keys[i]))
-      error("%s has been renamed to %s. Update the parameter file.",
-            deprecated_ISRF_keys[i], renamed_ISRF_keys[i]);
-  }
-
   /* TODO: For the future, enforce these to have a non-zero value */
 
   /* Radiation pressure */
@@ -764,7 +731,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
-  /* Parsed unconditionally, so the LW/FUV injection never reads an unset
+  /* Parsed unconditionally, so the LW/PE injection never reads an unset
    * path. */
   char extinction_path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",

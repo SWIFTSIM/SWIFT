@@ -41,7 +41,7 @@ amplitude error cannot make this check pass or fail.
 Equation (1) is the convention this code uses. The literature convention is a
 free-space rate per Habing field, ``k_diss,0 = 3.3e-11 * G_0 s^-1``
 (Draine and Bertoldi 1996, their Table 2 unshielded rate, with
-``G_0 = c * rho * (u_FUV + u_LW) / 1.6e-3 erg s^-1 cm^-2``, Habing 1968).
+``G_0 = c * rho * (u_PE + u_LW) / 1.6e-3 erg s^-1 cm^-2``, Habing 1968).
 The two differ because (1) counts only the LW band while ``G_0`` is the
 band-summed 6 to 13.6 eV field. Both are reported; only (1) is gated.
 
@@ -175,7 +175,7 @@ what the run happens to produce.
 Rate normalisation (reported, never gated)
 ------------------------------------------
 
-Eq. (1) over ``3.3e-11 G_0`` is ``6.229 * u_LW / (u_FUV + u_LW)`` for a mean
+Eq. (1) over ``3.3e-11 G_0`` is ``6.229 * u_LW / (u_PE + u_LW)`` for a mean
 LW photon energy of ``E_LW``: the constant is
 ``sigma_H2 * 1.6e-3 erg s^-1 cm^-2 / (E_LW * 3.3e-11 s^-1)``. It is 1 only
 for an LW fraction of 0.161. The Draine (1978) field, which the
@@ -374,7 +374,7 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
             "Densities",
             "InternalEnergies",
             "LWSpecificEnergies",
-            "FUVSpecificEnergies",
+            "PESpecificEnergies",
             "SmoothingLengths",
             "ParticleIDs",
             "HI",
@@ -436,7 +436,7 @@ def read_snapshot(filename: str) -> Dict[str, np.ndarray]:
         "mu": mu,
         "temperature": temperature,
         "u_LW": raw["LWSpecificEnergies"] * energy_cgs,
-        "u_PE": raw["FUVSpecificEnergies"] * energy_cgs,
+        "u_PE": raw["PESpecificEnergies"] * energy_cgs,
         "H2I_fraction": raw["H2I"],
         "n_H2": raw["H2I"] * density / (2.0 * M_H_CGS),
     }
@@ -469,7 +469,7 @@ def habing_field(density: np.ndarray, u_PE: np.ndarray, u_LW: np.ndarray) -> np.
     density : numpy.ndarray
         Gas mass density, g cm^-3.
     u_PE : numpy.ndarray
-        FUV-band specific energy, erg g^-1.
+        PE-band specific energy, erg g^-1.
     u_LW : numpy.ndarray
         LW-band specific energy, erg g^-1.
 
@@ -935,7 +935,7 @@ def main() -> int:
     )
     print(
         f"Rate normalisation: Eq. (1) / (3.3e-11 G_0) median "
-        f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_FUV+u_LW) "
+        f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_PE+u_LW) "
         f"{lw_fraction:.4g}, times {RATE_RATIO_PER_LW_FRACTION:.4g} = "
         f"{RATE_RATIO_PER_LW_FRACTION * lw_fraction:.4g} (Draine 1978 field: "
         f"LW fraction 0.148, ratio 0.92)"

@@ -18,7 +18,7 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_isrf.c
- * @brief Receiver-side LW/FUV dust extinction and hyperbolic
+ * @brief Receiver-side LW/PE dust extinction and hyperbolic
  * P1-relaxation propagation physics for GEAR.
  */
 
@@ -50,13 +50,13 @@
 int isrf_c_hyp_consistent_variable_c = 0;
 
 /**
- * @brief First-init of a #part's LW/FUV radiation-field state. Shared
+ * @brief First-init of a #part's LW/PE radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
  *
  * Deliberately does NOT zero #feedback_isrf_band_data.u: this
  * runs (space_first_init.c) after the IC file has been read into #part
  * (single_io.c/parallel_io.c/serial_io.c), and an IC may supply them via
- * the optional "FUVSpecificEnergy"/"LWSpecificEnergy" fields (see
+ * the optional "PESpecificEnergy"/"LWSpecificEnergy" fields (see
  * src/feedback/GEAR_thermal/feedback_io.h) for a validation setup that
  * bypasses star injection entirely; zeroing here would silently stomp
  * that value back to 0.f. An IC that does not supply them is unaffected:
@@ -999,7 +999,7 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Zeroed here rather than in the drift snapshot, unlike dissipation_u:
      * every drift, including the one before a snapshot dump, would otherwise
-     * blank the FUV/LWSpecificFluxDivergences output field. */
+     * blank the PE/LWSpecificFluxDivergences output field. */
     band->div_specific_flux = 0.f;
 
     const float u_V = fd->rho_prev * band->u;
@@ -1039,7 +1039,7 @@ void radiation_end_gradient_propagation(struct part *p,
 /**
  * Comoving gas column density at a gas particle's own location: the
  * receiver-side analogue of the star-side Sobolev column
- * (#radiation_get_comoving_gas_column_density_at_star), used for LW/FUV
+ * (#radiation_get_comoving_gas_column_density_at_star), used for LW/PE
  * extinction: the local density times a path of path_in_kernel_radii
  * kernel support radii (no resolved density gradient on the gas side).
  *
@@ -1147,7 +1147,7 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
 }
 
 /**
- * @brief Receiver-side LW/FUV dust extinction factors for a gas particle.
+ * @brief Receiver-side LW/PE dust extinction factors for a gas particle.
  *
  * @param us Unit system.
  * @param cosmo The current cosmological model.

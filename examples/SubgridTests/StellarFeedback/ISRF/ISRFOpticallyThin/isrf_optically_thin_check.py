@@ -244,12 +244,12 @@ def load_snapshot(path: str) -> dict:
             rho=gas["Densities"][:].astype(np.float64),
             h=gas["SmoothingLengths"][:].astype(np.float64),
             mass=gas["Masses"][:].astype(np.float64),
-            u_PE=gas["FUVSpecificEnergies"][:].astype(np.float64),
+            u_PE=gas["PESpecificEnergies"][:].astype(np.float64),
             u_LW=gas["LWSpecificEnergies"][:].astype(np.float64),
             Z=gas["MetalMassFractions"][:, -1],
             star_pos=star["Coordinates"][0, :],
             star_h=float(star["SmoothingLengths"][0]),
-            L_PE=float(star["FUVLuminosities"][0]),
+            L_PE=float(star["PELuminosities"][0]),
             L_LW=float(star["LWLuminosities"][0]),
         )
 
@@ -312,7 +312,7 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
     c_hyp_margin : float
         GEARFeedback:ISRF_c_hyp_margin used by the run.
     band : str
-        Either "FUV" or "LW".
+        Either "PE" or "LW".
     n_bins : int
         Number of log-spaced radial bins.
 
@@ -327,14 +327,13 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
     unit_length = snapshot["unit_length_cgs"]
     unit_mass = snapshot["unit_mass_cgs"]
     unit_time = snapshot["unit_time_cgs"]
-    sigma_d = SIGMA_D_PE_CGS if band == "FUV" else SIGMA_D_LW_CGS
-    key_band = "PE" if band == "FUV" else band
+    sigma_d = SIGMA_D_PE_CGS if band == "PE" else SIGMA_D_LW_CGS
 
     r = radial_distance(snapshot["pos"], snapshot["star_pos"], snapshot["boxsize"])
     r *= unit_length
-    u = snapshot["u_" + key_band] * (unit_length / unit_time) ** 2
+    u = snapshot["u_" + band] * (unit_length / unit_time) ** 2
     mass = snapshot["mass"] * unit_mass
-    luminosity = snapshot["L_" + key_band] * unit_mass * unit_length**2 / unit_time**3
+    luminosity = snapshot["L_" + band] * unit_mass * unit_length**2 / unit_time**3
 
     Z = np.median(snapshot["Z"])
     rho = np.median(snapshot["rho"]) * unit_mass / unit_length**3
@@ -451,7 +450,7 @@ def plot(results: dict, filename: str) -> None:
         Output image filename.
     """
     figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
-    for band, colour in (("FUV", "C0"), ("LW", "C1")):
+    for band, colour in (("PE", "C0"), ("LW", "C1")):
         item = results[band]
         if len(item["r_bin"]) == 0:
             continue
@@ -494,19 +493,19 @@ def main() -> int:
         return 1
     record = read_step_times(options.logfile)
 
-    per_band = {"FUV": [], "LW": []}
+    per_band = {"PE": [], "LW": []}
     for path in paths:
         snapshot = load_snapshot(path)
         if snapshot["time"] <= 0.0:
             continue
-        for band in ("FUV", "LW"):
+        for band in ("PE", "LW"):
             per_band[band].append(
                 measure(snapshot, record, options.c_hyp_margin, band, options.n_bins)
             )
 
     failures = []
     final = {}
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         items = per_band[band]
         usable = [item for item in items if not np.isnan(item["slope"])]
         print(f"\n=== {band} band ===")
@@ -587,7 +586,7 @@ def main() -> int:
             )
             failures.append(band)
 
-    if all(final.get(band) is not None for band in ("FUV", "LW")):
+    if all(final.get(band) is not None for band in ("PE", "LW")):
         plot(final, options.output)
 
     if failures:

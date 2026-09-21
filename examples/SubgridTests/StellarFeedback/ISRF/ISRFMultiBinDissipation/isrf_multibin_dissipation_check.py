@@ -18,7 +18,7 @@
 ################################################################################
 """
 Per-run, report-only metrics for ISRFMultiBinDissipation. Reconstructs the
-force loop's `dissipation_u_FUV`/`dissipation_u_LW` accumulators from
+force loop's `dissipation_u_PE`/`dissipation_u_LW` accumulators from
 snapshot fields alone (the accumulator itself is not a snapshot field), the
 same technique validated in the root-cause log's `diss_dipole.py` and the
 Phase-2 adjudication's `adjudicate_wake.py`. Never exits nonzero; writes
@@ -141,9 +141,9 @@ def load_snapshot(path):
         mass = gas["Masses"][:].astype(np.float64)
         rho = gas["Densities"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
-        alpha_pe = gas["FUVArtificialDissipationCoefficients"][:].astype(np.float64)
+        alpha_pe = gas["PEArtificialDissipationCoefficients"][:].astype(np.float64)
         alpha_lw = gas["LWArtificialDissipationCoefficients"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
         star = f["/PartType4"]
@@ -459,10 +459,10 @@ def main():
     C_hyp = opt.c_hyp_margin
     c_pin = opt.c_hyp_pin
 
-    per_star_series = {name: {"FUV": [], "LW": []} for name in star_names}
+    per_star_series = {name: {"PE": [], "LW": []} for name in star_names}
 
     # M4 conservation trace (global sum(m*u)), per band.
-    conservation = {"FUV": [], "LW": []}
+    conservation = {"PE": [], "LW": []}
 
     for snap in snaps:
         pos, h, mass, rho = snap["pos"], snap["h"], snap["mass"], snap["rho"]
@@ -478,13 +478,13 @@ def main():
             c_hyp = np.minimum(C_hyp * h / dt_i, SPEED_OF_LIGHT_KM_S)
 
         kappa = {}
-        for band, sigma in (("FUV", SIGMA_D_PE_CGS), ("LW", SIGMA_D_LW_CGS)):
+        for band, sigma in (("PE", SIGMA_D_PE_CGS), ("LW", SIGMA_D_LW_CGS)):
             kappa[band] = kappa_internal(
                 snap["Z"], rho, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma
             )
 
         for band, u_field, alpha_field in (
-            ("FUV", "u_pe", "alpha_pe"),
+            ("PE", "u_pe", "alpha_pe"),
             ("LW", "u_lw", "alpha_lw"),
         ):
             u = snap[u_field]
@@ -603,7 +603,7 @@ def main():
         window = rs < (R_cut + 2.0) * h_median
         w_idx = np.where(window)[0]
         pos_w, h_w, mass_w = pos[w_idx], h[w_idx], mass[w_idx]
-        for band, alpha_field in (("FUV", "alpha_pe"), ("LW", "alpha_lw")):
+        for band, alpha_field in (("PE", "alpha_pe"), ("LW", "alpha_lw")):
             alpha_w = snap[alpha_field][w_idx]
             c_hyp_w = c_hyp[w_idx]
             i_loc, j_loc, dx_pair, r_pair = reconstruct_pairs(pos_w, h_w, L)
@@ -644,7 +644,7 @@ def main():
     # fractional-change baseline would divide by zero. Use the first
     # NONZERO snapshot instead (the first snapshot after injection begins).
     m4 = {}
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         series = conservation[band]
         nonzero = [(t, v) for t, v in series if v != 0.0]
         t_last, c_last = series[-1]
@@ -664,7 +664,7 @@ def main():
 
     print("\n--- M1/M2 summary (last snapshot) ---")
     for name in star_names:
-        for band in ("FUV", "LW"):
+        for band in ("PE", "LW"):
             series = per_star_series[name][band]
             if not series:
                 continue

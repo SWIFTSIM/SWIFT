@@ -21,9 +21,11 @@ two radiation energies per unit gas mass, $u_{{\rm FUV},i}$ for the
 $6$--$11.2$\,eV band (the PE band of \citealt{Kim2023}) and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
 ${\rm erg\,g^{-1}}$, sourced by the stars in the simulation and
 attenuated by dust. The code stores the two bands under the internal
-identifiers \code{ISRF\_BAND\_PE} and \code{ISRF\_BAND\_LW}; this document
-keeps calling the first band FUV throughout, and the snapshot I/O fields
-keep the FUV name too (\code{FUVSpecificEnergy}, \code{LWSpecificEnergy}).
+identifiers \code{ISRF\_BAND\_PE} and \code{ISRF\_BAND\_LW}, and names the
+snapshot I/O fields to match (\code{PESpecificEnergy},
+\code{LWSpecificEnergy}); this document keeps writing the first band as
+FUV throughout, since $6$--$11.2$\,eV is the photoelectric part of the
+far-ultraviolet range.
 From them it derives, at every cooling call, the
 photoelectric heating strength $G_0$ in Habing units and the H$_2$
 photodissociation rate $k_{\rm diss}$, which Grackle consumes through two

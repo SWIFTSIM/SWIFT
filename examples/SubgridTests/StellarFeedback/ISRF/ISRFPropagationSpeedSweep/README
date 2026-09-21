@@ -1,7 +1,7 @@
 # Intro
 A `c_hyp` sweep of the ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation
 scheme, from `c_hyp ~ c` down to `c_hyp << c`, at both a star-sourced field
-and a star-free seeded Gaussian pulse (`FUVSpecificEnergy`/`LWSpecificEnergy`
+and a star-free seeded Gaussian pulse (`PESpecificEnergy`/`LWSpecificEnergy`
 in the IC). Measures the scheme's `c_hyp`-independent steady state and
 `c_hyp`-dependent transient (self-similarity and retardation), and locates
 the triggered-dissipation term's own Courant/stability bound empirically.
@@ -29,7 +29,7 @@ coefficient a smooth pulse's trigger might otherwise leave at zero, so Leg N
 tests the coefficient the stability bound is actually stated in terms of.
 
 ## Metallicity
-The FUV/LW screening length scales with metallicity; at solar `Z` a seeded
+The PE/LW screening length scales with metallicity; at solar `Z` a seeded
 pulse is absorbed within a handful of steps, leaving nothing to measure.
 `initial_metallicity` defaults to 0.05 here (Legs P, N) so absorption stays
 negligible over the run; Legs R and I use their own values (see `run.sh`).

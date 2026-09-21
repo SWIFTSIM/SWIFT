@@ -534,7 +534,7 @@ radiation_get_part_ionized_end_time(const struct part *p,
  * though nothing in the injection pass itself runs for an un-illuminated
  * particle.
  *
- * With LW/FUV propagation off, an expiring particle also has every band's u
+ * With LW/PE propagation off, an expiring particle also has every band's u
  * zeroed here: nothing else decays that stale value once the particle
  * stops being illuminated (propagation ON already handles this via its own
  * per-step decay/mixing update, so it is deliberately left untouched
@@ -636,7 +636,7 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
  * @brief Clamp a radiation quantity about to reach Grackle to be
  * non-negative, warning (throttled) whenever a negative value is caught.
  *
- * The propagated FUV/LW specific energy can undershoot below zero at an
+ * The propagated PE/LW specific energy can undershoot below zero at an
  * unresolved jump in the propagation scheme's non-dissipative central
  * difference. A negative flux is unphysical on its face: unclamped, it
  * turns into spurious cooling (or dissociation) inside Grackle instead of
@@ -669,7 +669,7 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
     warning(
         "Clamped %lld negative %s value(s) reaching Grackle to zero so far "
         "this run (this occurrence: %g, worst seen: %g). A negative flux is "
-        "unphysical; it indicates an undershoot in the LW/FUV propagation "
+        "unphysical; it indicates an undershoot in the LW/PE propagation "
         "scheme that this clamp only masks at the Grackle interface.",
         n, name, value, *worst);
   }
@@ -680,7 +680,7 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
 /*! Human-readable band names for #radiation_get_band_u_nonnegative's
     clamp warnings, indexed by #radiation_isrf_band. */
 static const char *const radiation_isrf_band_clamp_name[ISRF_BAND_COUNT] = {
-    "FUV-band specific energy", "LW-band specific energy"};
+    "PE-band specific energy", "LW-band specific energy"};
 
 /**
  * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
@@ -689,7 +689,7 @@ static const char *const radiation_isrf_band_clamp_name[ISRF_BAND_COUNT] = {
  * fetch, so that a band which has undershot below zero contributes
  * nothing instead of cancelling part of another band's real signal.
  * Clamping only the summed result would let a negative LW energy be
- * subtracted from a positive FUV energy, suppressing the field Grackle
+ * subtracted from a positive PE energy, suppressing the field Grackle
  * receives with no clamp event and no warning.
  *
  * The clamp count is per band, not per particle: a particle whose LW band
@@ -717,13 +717,13 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
 }
 
 /**
- * Local ISRF strength in Habing units, from this #part's own FUV+LW
+ * Local ISRF strength in Habing units, from this #part's own PE+LW
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
  * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
  * use_isrf_field, forced on by GEARFeedback:with_interstellar_radiation_field).
  * Zero for a particle no star has ever illuminated and whose IC did not
- * supply "FUVSpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
+ * supply "PESpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
  * before the IC read; #radiation_first_init_part leaves the band fields
  * untouched either way).
  *

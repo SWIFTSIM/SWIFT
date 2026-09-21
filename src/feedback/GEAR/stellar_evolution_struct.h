@@ -242,8 +242,8 @@ struct radiation {
     };
 
     union {
-      /*! Non-ionizing FUV band (6-11.2 eV) emission rate, read directly
-          from pychem's "L_FUV" dataset (required whenever #with_ISRF is
+      /*! Non-ionizing PE band (6-11.2 eV) emission rate, read directly
+          from pychem's "L_PE" dataset (required whenever #with_ISRF is
           on). Same log-log storage as #luminosities. */
       struct interpolation_1d l_pe;
 
@@ -309,8 +309,8 @@ struct radiation {
     };
 
     union {
-      /*! IMF-integrated FUV emission rate per Msun of stars formed, from
-          pychem's "Integrated_L_FUV" dataset (required whenever
+      /*! IMF-integrated PE emission rate per Msun of stars formed, from
+          pychem's "Integrated_L_PE" dataset (required whenever
           #with_ISRF is on). Linear (un-logged), unlike #raw's log10
           storage. */
       struct interpolation_1d l_pe;
@@ -376,10 +376,10 @@ struct radiation {
       radiation_read_data(), 0 by #radiation_zero_pointers. */
   int is_active;
 
-  /*! Is the local Lyman-Werner/FUV feedback
+  /*! Is the local Lyman-Werner/PE feedback
       (GEARFeedback:with_interstellar_radiation_field) on? Set in
       radiation_init(), before radiation_read_data() is
-      called: the latter requires L_FUV/L_LW/Integrated_L_FUV/
+      called: the latter requires L_PE/L_LW/Integrated_L_PE/
       Integrated_L_LW in the table whenever this is set (error() otherwise;
       no Teff-based fallback). Persists across restart as a plain scalar
       (#radiation_dump/#radiation_restore), since params is NULL on

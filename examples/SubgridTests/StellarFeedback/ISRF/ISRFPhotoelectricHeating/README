@@ -30,7 +30,7 @@ extinction this example also exercises needs a nonzero, known metallicity.
 make -j
 ```
 `--with-tracers=GEAR` is required: the tracers module registers the
-`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+`PESpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
 themselves live on `struct part`'s `feedback_data`). Photoelectric heating
 itself only needs `GrackleCooling:with_metal_cooling: 1` (set in
 `params.yml`); any Grackle cooling mode works, `grackle_0` included.

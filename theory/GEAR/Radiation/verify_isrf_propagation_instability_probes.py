@@ -585,7 +585,7 @@ print(
 )
 
 # kappa_eff(Z) is exactly linear in max(Z,0) (radiation_get_dust_mass_opacity),
-# so kappa_smooth(x) is Z_smooth(x) times the Tier-1 95 Msun FUV corner's
+# so kappa_smooth(x) is Z_smooth(x) times the Tier-1 95 Msun PE corner's
 # opaque-plateau value, lambda_opaque = h/6.
 LAMBDA_OPAQUE_OVER_H = 1.0 / 6.0
 kappa_opaque = 1.0 / (LAMBDA_OPAQUE_OVER_H * ETA)
@@ -686,7 +686,7 @@ def run_n2_leg(x_star, alpha_max, n_steps=3000):
 
 print()
 print(
-    "  Distance sweep x alpha_max, lambda_opaque/h=1/6 (Tier-1 95 Msun FUV corner),"
+    "  Distance sweep x alpha_max, lambda_opaque/h=1/6 (Tier-1 95 Msun PE corner),"
     " C_hyp=0.5:"
 )
 print(

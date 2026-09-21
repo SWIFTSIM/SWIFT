@@ -38,7 +38,7 @@
 #endif
 
 /**
- * @brief The two non-ionizing radiation bands the ISRF module tracks: FUV
+ * @brief The two non-ionizing radiation bands the ISRF module tracks: PE
  * (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). Indexes every per-band
  * array of #feedback_part_data and #feedback_spart_data.
  */
@@ -55,7 +55,7 @@ struct feedback_isrf_band_data {
       hydro `u`; NOT cgs, unlike
       #feedback_spart_data.radiation.mean_excess_photon_energy_HI). The
       LW band feeds Grackle's RT_H2_dissociation_rate (COOLING_GRACKLE_MODE
-      > 1 only) separately from the FUV band, since the two bands carry
+      > 1 only) separately from the PE band, since the two bands carry
       different dust opacities. An
       instantaneous field strength, not an accumulated dose: holds the
       illuminating star(s)' most recently computed contribution, summed
@@ -101,10 +101,10 @@ struct feedback_isrf_band_data {
       value: every force task runs after the extra ghosts of both cells it
       pairs, and a foreign particle is received after its own). Written to
       snapshots as
-      "FUVSpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
-      #u's own "FUVSpecificEnergy(ies)" convention; no IC input
+      "PESpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
+      #u's own "PESpecificEnergy(ies)" convention; no IC input
       field exists, and one added later would be the singular
-      "FUVSpecificFlux"/"LWSpecificFlux".
+      "PESpecificFlux"/"LWSpecificFlux".
 
       `a`-SCALING: PHYSICAL and mass-specific, like #u, with no
       scale-factor exponent of its own, which is what the output field
@@ -218,7 +218,7 @@ struct feedback_isrf_band_data {
       #engine.snapshot_output_count, which also happens when a FOF seeding
       catalogue is dumped (FOF:dump_catalogue_when_seeding, engine.c), not
       only at a real snapshot dump. Written as
-      "FUVMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
+      "PEMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
       #u. */
   float u_min_since_snapshot;
 
@@ -231,7 +231,7 @@ struct feedback_isrf_band_data {
       energy-conservation check reads this as a running total at every
       snapshot, so a mid-run reset would break its own conservation
       identity. Written as
-      "FUVCumulativeInjectedSpecificEnergies"/
+      "PECumulativeInjectedSpecificEnergies"/
       "LWCumulativeInjectedSpecificEnergies". PHYSICAL, like #u. */
   float cumulative_injected;
 
@@ -255,7 +255,7 @@ struct feedback_isrf_band_data {
       SPH divergence's kernel-sum identity and the dissipation's pairwise
       antisymmetry drive to ~0 when summed over the whole particle set.
       Never reset, for the same reason as #cumulative_injected. Written as
-      "FUVCumulativeAbsorbedSpecificEnergies"/
+      "PECumulativeAbsorbedSpecificEnergies"/
       "LWCumulativeAbsorbedSpecificEnergies". PHYSICAL, like #u. */
   float cumulative_absorbed;
 #endif
@@ -578,9 +578,9 @@ struct feedback_spart_data {
     float mean_excess_photon_energy_HI;
 
     /*! Band luminosity (physical units), indexed by #radiation_isrf_band:
-        non-ionizing FUV, 6-11.2 eV, and Lyman-Werner, 11.2-13.6 eV (H2
+        non-ionizing PE, 6-11.2 eV, and Lyman-Werner, 11.2-13.6 eV (H2
         photodissociating photons). Read from the radiation table's own
-        L_FUV/L_LW (or Integrated_L_FUV/Integrated_L_LW) datasets, which
+        L_PE/L_LW (or Integrated_L_PE/Integrated_L_LW) datasets, which
         carry the band split directly. Feeds the injection term; only
         computed when GEARFeedback:with_interstellar_radiation_field is on, 0
         otherwise. */

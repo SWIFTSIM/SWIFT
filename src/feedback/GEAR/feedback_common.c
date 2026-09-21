@@ -1094,7 +1094,7 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 }
 
 /**
- * @brief Local specific FUV-band radiation field, see
+ * @brief Local specific PE-band radiation field, see
  * #feedback_part_data.isrf_band[ISRF_BAND_PE].u. Thin dispatch wrapper, same
  * reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
  * provides this function, returning 0 everywhere except here for GEAR.
@@ -1171,7 +1171,7 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
  * field is instead the reduced flux `Ft = F_true/c_hyp`
  * (radiation_propagation_iact.h's file header), so this getter rescales it
  * back (`F_true = c_hyp*Ft`) before returning: the io field's meaning
- * (FUVSpecificFluxes, tracers_io.h) and every downstream consumer (the
+ * (PESpecificFluxes, tracers_io.h) and every downstream consumer (the
  * ISRFHyperbolicPropagation check scripts included) stay scheme-
  * independent, rather than leaking this internal representation choice
  * into the snapshot format. A multiply, never a division: no new
@@ -1203,7 +1203,7 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
 }
 
 /**
- * @brief Most negative FUV-band specific energy written since the previous
+ * @brief Most negative PE-band specific energy written since the previous
  * snapshot, see
  * #feedback_part_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot.
  *
@@ -1239,7 +1239,7 @@ float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
- * @brief Cumulative FUV-band raw injected dose since first init, see
+ * @brief Cumulative PE-band raw injected dose since first init, see
  * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_injected. Always 0
  * without SWIFT_DEBUG_CHECKS.
  *
@@ -1267,7 +1267,7 @@ float feedback_get_part_cumulative_injected_LW(const struct part *p) {
 }
 
 /**
- * @brief Cumulative FUV-band absorbed/transport-and-dissipation-attributed
+ * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
  * specific energy since first init, see
  * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_absorbed. Always 0
  * without SWIFT_DEBUG_CHECKS.
@@ -1324,7 +1324,7 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
 }
 
 /**
- * @brief Star's current non-ionizing FUV-band luminosity.
+ * @brief Star's current non-ionizing PE-band luminosity.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
  * stars I/O converter, which is compiled whenever stars=GEAR regardless of
@@ -1515,9 +1515,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
-   * pressure, and the local Lyman-Werner/FUV feedback (photoelectric
+   * pressure, and the local Lyman-Werner/PE feedback (photoelectric
    * heating / H2 photodissociation, which reads the radiation table's
-   * L_FUV/L_LW datasets) all consume the radiation table (see
+   * L_PE/L_LW datasets) all consume the radiation table (see
    * stellar_evolution_props_init()); must match feedback_props_init()'s
    * own with_radiation computation exactly, or a restart can restore a
    * feedback_props whose radiation table was never opened even though the

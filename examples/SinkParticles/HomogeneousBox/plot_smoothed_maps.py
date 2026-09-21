@@ -2,7 +2,7 @@
 """
 SPH-kernel-smoothed maps of any PartType0 dataset in a HomogeneousBox run.
 
-Generalises plot_lw_fuv_maps_smoothed2.py's four hardcoded panels (FUV/LW
+Generalises plot_lw_fuv_maps_smoothed2.py's four hardcoded panels (PE/LW
 specific energy, dust temperature, H2I mass fraction) to any gas dataset,
 via swiftsimio.visualisation.projection: a thick z-slab, projected with
 each particle's own SPH smoothing length, either as a mass-weighted
@@ -61,20 +61,20 @@ RESOLUTION_DEFAULT = 512
 LOG_DEX_THRESHOLD = 2
 
 #: --fields default: the four panels of the original hardcoded script.
-DEFAULT_FIELDS = ("FUVSpecificEnergies", "LWSpecificEnergies", "DustTemperature", "H2I")
+DEFAULT_FIELDS = ("PESpecificEnergies", "LWSpecificEnergies", "DustTemperature", "H2I")
 
 #: Per-field style, matching the original hardcoded script exactly, keyed
 #: by the bare HDF5 dataset name (a field's component, if any, does not
 #: change its style). Any field not listed here gets fully auto-derived
 #: style (see resolve_style).
 FIELD_PRESETS = {
-    "FUVSpecificEnergies": dict(
+    "PESpecificEnergies": dict(
         scale="log",
         cmap="inferno",
         floor=1e-2,
         clip_negative=True,
-        label="mass-weighted FUVSpecificEnergies [internal units]",
-        title="FUV-band (6-11.2 eV) specific energy (SPH-smoothed)",
+        label="mass-weighted PESpecificEnergies [internal units]",
+        title="PE-band (6-11.2 eV) specific energy (SPH-smoothed)",
     ),
     "LWSpecificEnergies": dict(
         scale="log",
@@ -376,14 +376,14 @@ def pick_slab(data, boxsize: float, min_count: int = 3000):
     """Centre a z-slab on the brightest star and widen it until it is populated.
 
     Falls back to a box-centred slab if this snapshot has no stars, or no
-    FUV-luminosity field on its stars (a config without radiation
+    PE-luminosity field on its stars (a config without radiation
     feedback), rather than assuming both are present.
     """
     z0 = 0.5 * boxsize
     try:
         stars = data.stars
-        if stars.fuvluminosities.size:
-            z0 = float(stars.coordinates[np.argmax(stars.fuvluminosities), 2].value)
+        if stars.peluminosities.size:
+            z0 = float(stars.coordinates[np.argmax(stars.peluminosities), 2].value)
     except AttributeError:
         pass
     z = data.gas.coordinates[:, 2].value
@@ -408,7 +408,7 @@ def freeze_slab(paths: list, boxsize: float) -> tuple:
     for path in reversed(paths):
         data = sw.load(path)
         try:
-            if data.stars.fuvluminosities.size:
+            if data.stars.peluminosities.size:
                 chosen = data
                 break
         except AttributeError:

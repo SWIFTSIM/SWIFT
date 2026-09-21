@@ -30,7 +30,7 @@ struct feedback_props {};
 
 /**
  * @brief Does this run need Grackle's chemistry_data resolved for a
- * local Lyman-Werner/FUV channel? Nothing to do here (no feedback at
+ * local Lyman-Werner/PE channel? Nothing to do here (no feedback at
  * all in this model).
  *
  * @param feedback_props The #feedback_props.

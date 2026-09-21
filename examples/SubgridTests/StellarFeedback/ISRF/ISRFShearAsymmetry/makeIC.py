@@ -120,14 +120,14 @@ def parse_options():
         type=str,
         default="blobs",
         choices=["blobs", "slab"],
-        help="blobs: two Gaussian FUV/LW blobs, one per stream (gated). "
+        help="blobs: two Gaussian PE/LW blobs, one per stream (gated). "
         "slab: a y-dependent slab seeded on the lower interface (report only).",
     )
     parser.add_argument(
         "--pulse-amplitude",
         type=float,
         default=1.0,
-        help="Peak seeded FUVSpecificEnergy/LWSpecificEnergy (internal units).",
+        help="Peak seeded PESpecificEnergy/LWSpecificEnergy (internal units).",
     )
     parser.add_argument(
         "--pulse-sigma-h",
@@ -296,7 +296,7 @@ UnitVelocity_cgs2 = UnitVelocity_in_cgs**2
 u = np.array([internal_energy_from_temperature_cgs(t) / UnitVelocity_cgs2 for t in T])
 
 #####################
-# Seeded FUV/LW field: two Gaussian blobs (gated) or an x-independent slab
+# Seeded PE/LW field: two Gaussian blobs (gated) or an x-independent slab
 # (report only). No star: see README.
 #####################
 u_pe = np.zeros(N)
@@ -383,7 +383,7 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho_arr, dtype="f")
-grp.create_dataset("FUVSpecificEnergy", data=u_pe, dtype="f")
+grp.create_dataset("PESpecificEnergy", data=u_pe, dtype="f")
 grp.create_dataset("LWSpecificEnergy", data=u_lw, dtype="f")
 
 fileOutput.close()

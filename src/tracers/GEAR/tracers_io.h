@@ -113,7 +113,7 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVSpecificEnergy, see
+ * @brief Snapshot converter for #PESpecificEnergy, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_u_PE(const struct engine *e,
@@ -133,7 +133,7 @@ INLINE static void convert_part_u_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVArtificialDissipationCoefficients, see
+ * @brief Snapshot converter for #PEArtificialDissipationCoefficients, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_dissipation_alpha_PE(const struct engine *e,
@@ -155,7 +155,7 @@ INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVSpecificFluxDivergences, see
+ * @brief Snapshot converter for #PESpecificFluxDivergences, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_div_specific_flux_PE(const struct engine *e,
@@ -177,7 +177,7 @@ INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVSpecificFluxes, see
+ * @brief Snapshot converter for #PESpecificFluxes, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_specific_flux_PE(const struct engine *e,
@@ -199,7 +199,7 @@ INLINE static void convert_part_specific_flux_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVMinimumSpecificEnergies, see
+ * @brief Snapshot converter for #PEMinimumSpecificEnergies, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_u_min_since_snapshot_PE(const struct engine *e,
@@ -221,7 +221,7 @@ INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVCumulativeInjectedSpecificEnergies, see
+ * @brief Snapshot converter for #PECumulativeInjectedSpecificEnergies, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_cumulative_injected_PE(const struct engine *e,
@@ -243,7 +243,7 @@ INLINE static void convert_part_cumulative_injected_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #FUVCumulativeAbsorbedSpecificEnergies, see
+ * @brief Snapshot converter for #PECumulativeAbsorbedSpecificEnergies, see
  * #tracers_write_particles.
  */
 INLINE static void convert_part_cumulative_absorbed_PE(const struct engine *e,
@@ -367,9 +367,9 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
      compile under any --with-feedback choice paired with
      --with-tracers=GEAR. */
   list[10] = io_make_output_field_convert_part(
-      "FUVSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      "PESpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_PE,
-      "Local specific FUV-band (6-11.2 eV) interstellar radiation field. "
+      "Local specific PE-band (6-11.2 eV) interstellar radiation field. "
       "Physical, mass-specific: no scale-factor exponent of its own.");
 
   list[11] = io_make_output_field_convert_part(
@@ -379,23 +379,23 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "radiation field.");
 
   list[12] = io_make_output_field_convert_part(
-      "FUVArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      "PEArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       parts, xparts, convert_part_dissipation_alpha_PE,
       "Negativity-triggered artificial-dissipation coefficient of the "
-      "FUV-band hyperbolic propagation, in "
+      "PE-band hyperbolic propagation, in "
       "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
       "Only meaningful when ISRF_propagation is on.");
 
   list[13] = io_make_output_field_convert_part(
       "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       parts, xparts, convert_part_dissipation_alpha_LW,
-      "Same as FUVArtificialDissipationCoefficients, Lyman-Werner band.");
+      "Same as PEArtificialDissipationCoefficients, Lyman-Werner band.");
 
   list[14] = io_make_output_field_convert_part(
-      "FUVSpecificFluxDivergences", FLOAT, 1,
+      "PESpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_PE,
-      "`(1/rho) div(rho F)` accumulator of the FUV-band hyperbolic "
+      "`(1/rho) div(rho F)` accumulator of the PE-band hyperbolic "
       "propagation, accumulated in the force loop from the step's relaxed "
       "flux. Physical, like the "
       "specific energy it is a rate of change of. Only meaningful when "
@@ -405,24 +405,24 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "LWSpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_LW,
-      "Same as FUVSpecificFluxDivergences, Lyman-Werner band.");
+      "Same as PESpecificFluxDivergences, Lyman-Werner band.");
 
   list[16] = io_make_output_field_convert_part(
-      "FUVSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
+      "PESpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
       0.f, parts, xparts, convert_part_specific_flux_PE,
-      "Tracked specific flux moment of the FUV-band hyperbolic propagation, "
-      "mass-specific like FUVSpecificEnergies. Physical: no scale-factor "
+      "Tracked specific flux moment of the PE-band hyperbolic propagation, "
+      "mass-specific like PESpecificEnergies. Physical: no scale-factor "
       "exponent of its own. Only meaningful when ISRF_propagation is on.");
 
   list[17] = io_make_output_field_convert_part(
       "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
       0.f, parts, xparts, convert_part_specific_flux_LW,
-      "Same as FUVSpecificFluxes, Lyman-Werner band.");
+      "Same as PESpecificFluxes, Lyman-Werner band.");
 
   list[18] = io_make_output_field_convert_part(
-      "FUVMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      "PEMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_min_since_snapshot_PE,
-      "Most negative FUVSpecificEnergies value the propagation update wrote "
+      "Most negative PESpecificEnergies value the propagation update wrote "
       "since the previous snapshot, 0 if none was negative. The number of "
       "nonzero entries is the count of particles that undershot. The "
       "interval is since the last increment of engine.snapshot_output_count, "
@@ -433,18 +433,18 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   list[19] = io_make_output_field_convert_part(
       "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
-      "Same as FUVMinimumSpecificEnergies, Lyman-Werner band.");
+      "Same as PEMinimumSpecificEnergies, Lyman-Werner band.");
 
   list[20] = io_make_output_field_convert_part(
-      "FUVCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      "PECumulativeInjectedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_injected_PE,
-      "Cumulative mass-specific FUV-band dose this particle has drawn from "
+      "Cumulative mass-specific PE-band dose this particle has drawn from "
       "the dose reservoir since first init, rescaled by c_hyp/c exactly as "
-      "FUVSpecificEnergies' own update rescales it, but not relaxed by the "
+      "PESpecificEnergies' own update rescales it, but not relaxed by the "
       "per-step phi factor: the raw amount attempted every step, summed. "
       "Energy-conservation diagnostic (with "
-      "FUVCumulativeAbsorbedSpecificEnergies and FUVSpecificEnergies); "
+      "PECumulativeAbsorbedSpecificEnergies and PESpecificEnergies); "
       "always 0 unless the code is configured with "
       "--enable-debugging-checks.");
 
@@ -452,19 +452,19 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "LWCumulativeInjectedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_injected_LW,
-      "Same as FUVCumulativeInjectedSpecificEnergies, Lyman-Werner band.");
+      "Same as PECumulativeInjectedSpecificEnergies, Lyman-Werner band.");
 
   list[22] = io_make_output_field_convert_part(
-      "FUVCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      "PECumulativeAbsorbedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_PE,
-      "Cumulative mass-specific FUV-band energy FUVSpecificEnergies' own "
+      "Cumulative mass-specific PE-band energy PESpecificEnergies' own "
       "exact-relaxation update has attributed to decay (dust absorption "
       "and the cosmological redshift term) plus the fraction of each "
       "step's source and transport terms that never reached the field "
       "because the step was optically thick, summed since first init. "
-      "Energy-conservation diagnostic: FUVSpecificEnergies plus this field "
-      "minus FUVCumulativeInjectedSpecificEnergies isolates the transport "
+      "Energy-conservation diagnostic: PESpecificEnergies plus this field "
+      "minus PECumulativeInjectedSpecificEnergies isolates the transport "
       "and artificial-dissipation residual the closed-form split does not "
       "attribute to either term, which the SPH divergence's kernel-sum "
       "identity and the dissipation's pairwise antisymmetry drive towards "
@@ -475,7 +475,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "LWCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_LW,
-      "Same as FUVCumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
+      "Same as PECumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
 
   list[24] = io_make_output_field_convert_part(
       "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,

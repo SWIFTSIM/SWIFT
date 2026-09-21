@@ -116,7 +116,7 @@ dust_absorption
     knowingly-stale reference.
 
     with kappa0 = sigma_d (Z/0.01295) rho0 / (1.4 m_H) the linear absorption
-    coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for FUV and LW).
+    coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for PE and LW).
 
 photoelectric
     Seeded G0, solar metallicity, low pinned speed so G0 barely changes.
@@ -164,7 +164,7 @@ from scipy.integrate import quad
 SIGMA_H2_LW_CGS = 2.47e-18
 LW_PHOTON_ENERGY_CGS = 12.0 * 1.602176634e-12
 HABING_FLUX_CGS = 1.6e-3
-SIGMA_D_CGS = {"FUV": 9e-22, "LW": 1.5e-21}
+SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 MU_H = 1.4
 GRACKLE_SOLAR_METAL_FRACTION = 0.01295
 C_LIGHT_CGS = 2.99792458e10
@@ -255,7 +255,7 @@ def read_snapshot(filename: str) -> Dict:
             "mass": physical(gas["Masses"], a, mass)[order],
             "h": physical(gas["SmoothingLengths"], a, length)[order],
             "u": physical(gas["InternalEnergies"], a, energy)[order],
-            "u_PE": physical(gas["FUVSpecificEnergies"], a, energy)[order],
+            "u_PE": physical(gas["PESpecificEnergies"], a, energy)[order],
             "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
             "c_hyp": (
                 physical(gas["HyperbolicPropagationSpeeds"], a, velocity)[order]
@@ -271,7 +271,7 @@ def read_snapshot(filename: str) -> Dict:
         metals = gas["MetalMassFractions"][:].astype(np.float64)
         out["Z"] = (metals[:, -1] if metals.ndim == 2 else metals)[order]
         if "/PartType4" in handle and handle["/PartType4/Masses"].shape[0] > 0:
-            out["L_PE"] = float(handle["/PartType4/FUVLuminosities"][0])
+            out["L_PE"] = float(handle["/PartType4/PELuminosities"][0])
             out["L_LW"] = float(handle["/PartType4/LWLuminosities"][0])
             out["time_internal"] = float(np.atleast_1d(header["Time"])[0])
     return out
@@ -484,17 +484,13 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     first = run[0]
     mass = first["mass"]
     out = {}
-    for band in ["FUV", "LW"]:
-        key_band = "PE" if band == "FUV" else band
-        u0 = ledger_mean(first, f"u_{key_band}", use_c_hyp)
+    for band in ["PE", "LW"]:
+        u0 = ledger_mean(first, f"u_{band}", use_c_hyp)
         out[band] = np.array(
-            [ledger_mean(s, f"u_{key_band}", use_c_hyp) / u0 - 1.0 for s in run]
+            [ledger_mean(s, f"u_{band}", use_c_hyp) / u0 - 1.0 for s in run]
         )
         out[f"{band}_spread"] = np.array(
-            [
-                np.median(np.abs(s[f"u_{key_band}"] / first[f"u_{key_band}"] - 1.0))
-                for s in run
-            ]
+            [np.median(np.abs(s[f"u_{band}"] / first[f"u_{band}"] - 1.0)) for s in run]
         )
     # Box-mean density and field: the closed form is for the uniform state.
     rho0 = np.sum(mass) / np.sum(mass / first["density"])
@@ -532,7 +528,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     print(
         f"  Friedmann time vs SWIFT time: max rel. diff {friedmann_time_residual(run):.2e}"
     )
-    for band in ["FUV", "LW"]:
+    for band in ["PE", "LW"]:
         print(
             f"  per-particle spread of u_{band} (glass noise, not gated): worst median "
             f"{np.max(errors[f'{band}_spread']):.3e}"
@@ -575,7 +571,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  c_hyp/c upper bound: {c_hyp_ratio:.3e} (margin {margin:g}, "
             f"median h {h_phys_cgs:.3e} cm, dt_step {dt_step:.3e} s)"
         )
-    for band in ["FUV", "LW"]:
+    for band in ["PE", "LW"]:
         # Float32 round-off of each update, averaged over the particles.
         budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
         measured_nc = (
@@ -655,8 +651,7 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
     }
     rho0 = comoving_mean[0]
     z0 = np.sum(mass * first["Z"]) / np.sum(mass)
-    for band in ["FUV", "LW"]:
-        key_band = "PE" if band == "FUV" else band
+    for band in ["PE", "LW"]:
         kappa0 = (
             SIGMA_D_CGS[band]
             * (z0 / GRACKLE_SOLAR_METAL_FRACTION)
@@ -667,9 +662,9 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
         # term (this module's own docstring, B1): negligible here (c_pin is
         # km/s-scale) but kept exact rather than dropped.
         predicted = -c_pin_cgs * kappa0 * integral - (c_pin_cgs / C_LIGHT_CGS) * ln_a
-        total0 = np.sum(mass * first[f"u_{key_band}"])
+        total0 = np.sum(mass * first[f"u_{band}"])
         measured = np.array(
-            [np.log(np.sum(s["mass"] * s[f"u_{key_band}"]) / total0) for s in run]
+            [np.log(np.sum(s["mass"] * s[f"u_{band}"]) / total0) for s in run]
         )
         out[band] = (measured - predicted)[:, None]
         out[f"{band}_depth"] = float(-predicted[-1])
@@ -688,25 +683,25 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
     span = np.log(run[-1]["a"] / run[0]["a"])
     print(
         f"dust_absorption: cosmological={cosmological}, {len(run)} snapshots, "
-        f"{n_steps:.0f} dt_max steps, final ln depth FUV {errors['FUV_depth']:.3f}, "
+        f"{n_steps:.0f} dt_max steps, final ln depth PE {errors['PE_depth']:.3f}, "
         f"LW {errors['LW_depth']:.3f}; median Z {np.median(run[0]['Z']):.4g}"
     )
     worst = {
         band: summarize(f"box ln sum m u_{band} (B1)", errors[band])
-        for band in ["FUV", "LW"]
+        for band in ["PE", "LW"]
     }
-    nc = {"FUV": 0.0, "LW": 0.0}
+    nc = {"PE": 0.0, "LW": 0.0}
     if opt.reference:
         ref = dust_absorption_errors(load_run(opt.reference), opt.c_hyp_pin * 1e5)
         nc = {
             band: float(np.max(np.median(np.abs(ref[band]), axis=1)))
-            for band in ["FUV", "LW"]
+            for band in ["PE", "LW"]
         }
         print(
-            f"  non-cosmological reference errors: FUV {nc['FUV']:.3e}, LW {nc['LW']:.3e}"
+            f"  non-cosmological reference errors: PE {nc['PE']:.3e}, LW {nc['LW']:.3e}"
         )
     ok = True
-    for band in ["FUV", "LW"]:
+    for band in ["PE", "LW"]:
         depth = errors[f"{band}_depth"]
         per_step = depth / max(n_steps, 1.0)
         budget = (
@@ -867,12 +862,11 @@ def check_injection(opt: argparse.Namespace) -> bool:
         f"injection: cosmological={last['cosmological']}, a {last['a']:.6g}, "
         f"Delta_t {delta_t:.6e} internal"
     )
-    for band in ["FUV", "LW"]:
-        key_band = "PE" if band == "FUV" else band
-        lhs = np.sum(last["mass"] * last[f"u_{key_band}"]) / (
+    for band in ["PE", "LW"]:
+        lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
             last["mass_unit"] * last["energy_unit"]
         )
-        rhs = delta_t * last[f"L_{key_band}"]
+        rhs = delta_t * last[f"L_{band}"]
         ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
     return ok
 

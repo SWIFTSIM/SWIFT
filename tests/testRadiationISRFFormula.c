@@ -102,7 +102,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
       radiation_get_comoving_gas_column_density_at_part(&p, 2.0f);
   const float Sigma_gas_p = Sigma_gas_c * (float)cosmo.a2_inv;
 
-  const double expected_FUV =
+  const double expected_PE =
       expected_extinction(us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p,
                           RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
   const double expected_LW =
@@ -112,29 +112,29 @@ static void check_extinction(const char *name, const struct unit_system *us,
   float actual[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 2.0f,
                                              actual);
-  const float actual_FUV = actual[ISRF_BAND_PE];
+  const float actual_PE = actual[ISRF_BAND_PE];
   const float actual_LW = actual[ISRF_BAND_LW];
 
   char buf[128];
-  snprintf(buf, sizeof(buf), "%s: FUV extinction", name);
-  assert_close(buf, (double)actual_FUV, expected_FUV, 1e-4);
+  snprintf(buf, sizeof(buf), "%s: PE extinction", name);
+  assert_close(buf, (double)actual_PE, expected_PE, 1e-4);
   snprintf(buf, sizeof(buf), "%s: LW extinction", name);
   assert_close(buf, (double)actual_LW, expected_LW, 1e-4);
 
-  if (actual_FUV <= 0.0f || actual_FUV > 1.0f)
-    error("%s: FUV extinction factor %.6e out of (0, 1].", name,
-          (double)actual_FUV);
+  if (actual_PE <= 0.0f || actual_PE > 1.0f)
+    error("%s: PE extinction factor %.6e out of (0, 1].", name,
+          (double)actual_PE);
   if (actual_LW <= 0.0f || actual_LW > 1.0f)
     error("%s: LW extinction factor %.6e out of (0, 1].", name,
           (double)actual_LW);
 
   /* Zero metallicity must give exactly no extinction (D(Z)=0). */
   if (Z == 0.0f) {
-    if (actual_FUV != 1.0f || actual_LW != 1.0f)
+    if (actual_PE != 1.0f || actual_LW != 1.0f)
       error(
           "%s: zero metallicity did not give exactly 1.0 extinction "
-          "(FUV=%.8e, LW=%.8e).",
-          name, (double)actual_FUV, (double)actual_LW);
+          "(PE=%.8e, LW=%.8e).",
+          name, (double)actual_PE, (double)actual_LW);
   }
 
   /* Halving the path (kernel_radius vs. the kernel_diameter default above)
@@ -147,10 +147,9 @@ static void check_extinction(const char *name, const struct unit_system *us,
   float actual_half[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 1.0f,
                                              actual_half);
-  snprintf(buf, sizeof(buf), "%s: path=1.0 halves the FUV log-extinction",
-           name);
+  snprintf(buf, sizeof(buf), "%s: path=1.0 halves the PE log-extinction", name);
   assert_close(buf, log((double)actual_half[ISRF_BAND_PE]),
-               0.5 * log((double)actual_FUV), 1e-4);
+               0.5 * log((double)actual_PE), 1e-4);
   snprintf(buf, sizeof(buf), "%s: path=1.0 halves the LW log-extinction", name);
   assert_close(buf, log((double)actual_half[ISRF_BAND_LW]),
                0.5 * log((double)actual_LW), 1e-4);
@@ -212,7 +211,7 @@ static void check_injection(const struct unit_system *us) {
   float extinction[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
                                              2.0f, extinction);
-  const float extinction_FUV = extinction[ISRF_BAND_PE];
+  const float extinction_PE = extinction[ISRF_BAND_PE];
   const float extinction_LW = extinction[ISRF_BAND_LW];
 
   struct xpart xpj;
@@ -239,18 +238,18 @@ static void check_injection(const struct unit_system *us) {
                                        &cooling, /*ti_current=*/0, time_base,
                                        /*with_cosmology=*/0);
 
-  const double expected_u_FUV_1 =
+  const double expected_u_PE_1 =
       Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_BAND_PE] *
-      extinction_FUV / (double)mj;
+      extinction_PE / (double)mj;
   const double expected_u_LW_1 =
       Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_BAND_LW] *
       extinction_LW / (double)mj;
 
   /* First touch this step (ISRF_last_touch_ti went from -1 to 0): result
    * must equal this star's own deposit exactly. */
-  assert_close("injection: first star, u_FUV",
+  assert_close("injection: first star, u_PE",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
-               expected_u_FUV_1, 1e-4);
+               expected_u_PE_1, 1e-4);
   assert_close("injection: first star, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
                expected_u_LW_1, 1e-4);
@@ -278,16 +277,16 @@ static void check_injection(const struct unit_system *us) {
                                        &cooling, /*ti_current=*/0, time_base,
                                        /*with_cosmology=*/0);
 
-  const double expected_u_FUV_2 =
+  const double expected_u_PE_2 =
       Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_BAND_PE] *
-      extinction_FUV / (double)mj;
+      extinction_PE / (double)mj;
   const double expected_u_LW_2 =
       Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_BAND_LW] *
       extinction_LW / (double)mj;
 
-  assert_close("injection: two stars, u_FUV",
+  assert_close("injection: two stars, u_PE",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
-               expected_u_FUV_1 + expected_u_FUV_2, 1e-4);
+               expected_u_PE_1 + expected_u_PE_2, 1e-4);
   assert_close("injection: two stars, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
                expected_u_LW_1 + expected_u_LW_2, 1e-4);
@@ -314,24 +313,24 @@ static void check_injection(const struct unit_system *us) {
                                        &cooling, /*ti_current=*/1, time_base,
                                        /*with_cosmology=*/0);
 
-  const double expected_u_FUV_3 =
+  const double expected_u_PE_3 =
       Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_BAND_PE] *
-      extinction_FUV / (double)mj;
+      extinction_PE / (double)mj;
   const double expected_u_LW_3 =
       Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_BAND_LW] *
       extinction_LW / (double)mj;
 
-  assert_close("injection: new step resets, u_FUV",
+  assert_close("injection: new step resets, u_PE",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
-               expected_u_FUV_3, 1e-4);
+               expected_u_PE_3, 1e-4);
   assert_close("injection: new step resets, u_LW",
                (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u,
                expected_u_LW_3, 1e-4);
 
   message(
-      "injection OK: extinction_FUV=%.6f extinction_LW=%.6f "
-      "u_FUV=%.6e u_LW=%.6e (after new-step reset, third star only)",
-      (double)extinction_FUV, (double)extinction_LW,
+      "injection OK: extinction_PE=%.6f extinction_LW=%.6f "
+      "u_PE=%.6e u_LW=%.6e (after new-step reset, third star only)",
+      (double)extinction_PE, (double)extinction_LW,
       (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u,
       (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u);
 }
@@ -421,23 +420,23 @@ static void check_dose_reservoir(const struct unit_system *us) {
 
   const double Delta_A = get_timestep(bin_A, time_base);
   const double Delta_B = get_timestep(bin_B, time_base);
-  const double dose_A_FUV = Delta_A * weight *
-                            siA.feedback_data.radiation.L_band[ISRF_BAND_PE] /
-                            (double)mj;
+  const double dose_A_PE = Delta_A * weight *
+                           siA.feedback_data.radiation.L_band[ISRF_BAND_PE] /
+                           (double)mj;
   const double dose_A_LW = Delta_A * weight *
                            siA.feedback_data.radiation.L_band[ISRF_BAND_LW] /
                            (double)mj;
-  const double dose_B_FUV = Delta_B * weight *
-                            siB.feedback_data.radiation.L_band[ISRF_BAND_PE] /
-                            (double)mj;
+  const double dose_B_PE = Delta_B * weight *
+                           siB.feedback_data.radiation.L_band[ISRF_BAND_PE] /
+                           (double)mj;
   const double dose_B_LW = Delta_B * weight *
                            siB.feedback_data.radiation.L_band[ISRF_BAND_LW] /
                            (double)mj;
 
   assert_close(
-      "dose reservoir: two stars, different bins, FUV",
+      "dose reservoir: two stars, different bins, PE",
       (double)pj.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir,
-      dose_A_FUV + dose_B_FUV, 1e-4);
+      dose_A_PE + dose_B_PE, 1e-4);
   assert_close(
       "dose reservoir: two stars, different bins, LW",
       (double)pj.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir,
@@ -472,12 +471,12 @@ static void check_dose_reservoir(const struct unit_system *us) {
       &fb_props, &phys_const, us, &cooling, /*ti_current=*/T, time_base,
       /*with_cosmology=*/0);
 
-  const double D0_FUV =
+  const double D0_PE =
       (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir;
   const double D0_LW =
       (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir;
   const double dt_gas = get_timestep(bin_B, time_base);
-  const double S_FUV = D0_FUV / Delta_A;
+  const double S_PE = D0_PE / Delta_A;
   const double S_LW = D0_LW / Delta_A;
   const int N = (int)lround(Delta_A / dt_gas);
 
@@ -496,20 +495,20 @@ static void check_dose_reservoir(const struct unit_system *us) {
     e.ti_current = T + (integertime_t)k * get_integer_timestep(bin_B);
     radiation_snapshot_part_propagation(&pk, &e);
 
-    assert_close("dose reservoir: constant drain rate, FUV",
+    assert_close("dose reservoir: constant drain rate, PE",
                  (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_source_rate,
-                 S_FUV, 1e-5);
+                 S_PE, 1e-5);
     assert_close("dose reservoir: constant drain rate, LW",
                  (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_source_rate,
                  S_LW, 1e-5);
   }
 
   if (fabs((double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir) >
-          1e-6 * D0_FUV ||
+          1e-6 * D0_PE ||
       fabs((double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir) >
           1e-6 * D0_LW)
     error(
-        "dose reservoir: not fully drained at the horizon (FUV=%.6e, "
+        "dose reservoir: not fully drained at the horizon (PE=%.6e, "
         "LW=%.6e).",
         (double)pk.feedback_data.isrf_band[ISRF_BAND_PE].u_dose_reservoir,
         (double)pk.feedback_data.isrf_band[ISRF_BAND_LW].u_dose_reservoir);
@@ -524,7 +523,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
  * Grackle coupling: isrf_habing (photoelectric heating field) and the H2
  * Lyman-Werner dissociation rate, both a formula-identity check against a
  * hand computation, a zero-field check, and a linearity-in-flux check
- * (doubling u_FUV/u_LW must double the resulting rate, since both formulas
+ * (doubling u_PE/u_LW must double the resulting rate, since both formulas
  * are a plain photon-flux * cross-section/normalization product), plus
  * the cooling-side gate wrappers.
  * ------------------------------------------------------------------- */
@@ -543,7 +542,7 @@ static void check_grackle_coupling(const struct unit_system *us) {
       test_electron_volt_cgs /
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
-  /* A typical diffuse-ISM point: n_H ~ 1 cm^-3, and u_FUV = u_LW chosen so
+  /* A typical diffuse-ISM point: n_H ~ 1 cm^-3, and u_PE = u_LW chosen so
    * their sum gives G0 ~ 1 in Habing units (c*rho*u_sum ~
    * RADIATION_HABING_FLUX_CGS). */
   const double rho_cgs = 1.6726219e-24;
@@ -584,19 +583,19 @@ static void check_grackle_coupling(const struct unit_system *us) {
       radiation_get_part_isrf_habing(&phys_const, us, &cosmo, &p_zero);
   if (G0_zero != 0.0)
     error(
-        "Grackle coupling: isrf_habing at u_FUV=u_LW=0 gave %.6e, "
+        "Grackle coupling: isrf_habing at u_PE=u_LW=0 gave %.6e, "
         "expected exactly 0.",
         G0_zero);
 
   /* Linearity: doubling the input flux (both bands) must double G0 --
-   * G0 = c*rho*(u_FUV+u_LW)/const is a plain linear map of its input. */
+   * G0 = c*rho*(u_PE+u_LW)/const is a plain linear map of its input. */
   struct part p_double;
   p_double = p;
   p_double.feedback_data.isrf_band[ISRF_BAND_PE].u *= 2.0f;
   p_double.feedback_data.isrf_band[ISRF_BAND_LW].u *= 2.0f;
   const double G0_double =
       radiation_get_part_isrf_habing(&phys_const, us, &cosmo, &p_double);
-  assert_close("Grackle coupling: isrf_habing linearity in u_FUV/u_LW",
+  assert_close("Grackle coupling: isrf_habing linearity in u_PE/u_LW",
                G0_double, 2.0 * actual_G0, 1e-6);
 
   /* A band that has undershot below zero must contribute nothing, not be
@@ -673,7 +672,7 @@ static void check_grackle_coupling(const struct unit_system *us) {
   assert_close("Grackle coupling: LW dissociation rate", actual_k_diss_cgs,
                expected_k_diss_cgs, 1e-3);
 
-  /* Zero LW field -> zero k_diss, exactly (independent of u_FUV: k_diss
+  /* Zero LW field -> zero k_diss, exactly (independent of u_PE: k_diss
    * only ever reads u_LW). */
   struct part p_zero_LW = p;
   p_zero_LW.feedback_data.isrf_band[ISRF_BAND_LW].u = 0.0f;
@@ -696,7 +695,7 @@ static void check_grackle_coupling(const struct unit_system *us) {
 
   /* Order of magnitude against Draine & Bertoldi's k_LW ~ 1e-10*chi s^-1
    * at a comparable G0 ~ 1 (chi and G0 use slightly different
-   * normalizations of the same local FUV/LW field, so this is an
+   * normalizations of the same local PE/LW field, so this is an
    * order-of-magnitude check, not an exact identity; see
    * theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
    * fuller cross-check against Sternberg et al. 2014). */
@@ -767,7 +766,7 @@ static void check_local_dust_to_gas_ratio_scaling(
   const double ratios[3] = {RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
                             2.0 * RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
                             0.5 * RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO};
-  double kappa_eff_FUV[3];
+  double kappa_eff_PE[3];
 
   for (int i = 0; i < 3; i++) {
     struct cooling_function_data cooling;
@@ -776,19 +775,19 @@ static void check_local_dust_to_gas_ratio_scaling(
 
     /* Injection-side: extinction factor must match the analytic formula
      * scaled by this ratio, not the default. */
-    const double expected_FUV = expected_extinction(
+    const double expected_PE = expected_extinction(
         us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p, ratios[i]);
     const double expected_LW = expected_extinction(
         us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, ratios[i]);
     float actual[ISRF_BAND_COUNT];
     radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
                                                2.0f, actual);
-    const float actual_FUV = actual[ISRF_BAND_PE];
+    const float actual_PE = actual[ISRF_BAND_PE];
     const float actual_LW = actual[ISRF_BAND_LW];
     char buf[128];
-    snprintf(buf, sizeof(buf), "ratio scaling: FUV extinction, ratio=%.6g",
+    snprintf(buf, sizeof(buf), "ratio scaling: PE extinction, ratio=%.6g",
              ratios[i]);
-    assert_close(buf, (double)actual_FUV, expected_FUV, 1e-4);
+    assert_close(buf, (double)actual_PE, expected_PE, 1e-4);
     snprintf(buf, sizeof(buf), "ratio scaling: LW extinction, ratio=%.6g",
              ratios[i]);
     assert_close(buf, (double)actual_LW, expected_LW, 1e-4);
@@ -799,20 +798,20 @@ static void check_local_dust_to_gas_ratio_scaling(
     const float rho_phys = p.rho;
     const float kappa = radiation_get_part_linear_absorption_rate(
         us, Z, rho_phys, RADIATION_SIGMA_D_PE_CGS, (float)ratios[i]);
-    kappa_eff_FUV[i] = (double)kappa / (double)rho_phys;
+    kappa_eff_PE[i] = (double)kappa / (double)rho_phys;
   }
 
   /* Doubling/halving the ratio relative to the default must double/halve
    * kappa_eff exactly: this is the linear-scaling claim the fix makes. */
-  assert_close("ratio scaling: kappa_eff doubles at 2x ratio", kappa_eff_FUV[1],
-               2.0 * kappa_eff_FUV[0], 1e-6);
-  assert_close("ratio scaling: kappa_eff halves at 0.5x ratio",
-               kappa_eff_FUV[2], 0.5 * kappa_eff_FUV[0], 1e-6);
+  assert_close("ratio scaling: kappa_eff doubles at 2x ratio", kappa_eff_PE[1],
+               2.0 * kappa_eff_PE[0], 1e-6);
+  assert_close("ratio scaling: kappa_eff halves at 0.5x ratio", kappa_eff_PE[2],
+               0.5 * kappa_eff_PE[0], 1e-6);
 
   message(
       "local_dust_to_gas_ratio scaling OK: kappa_eff(default)=%.6e, "
       "kappa_eff(2x)=%.6e, kappa_eff(0.5x)=%.6e",
-      kappa_eff_FUV[0], kappa_eff_FUV[1], kappa_eff_FUV[2]);
+      kappa_eff_PE[0], kappa_eff_PE[1], kappa_eff_PE[2]);
 }
 
 /* ---------------------------------------------------------------------

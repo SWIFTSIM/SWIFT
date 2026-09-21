@@ -1387,8 +1387,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     sp->feedback_data.radiation.L_bol =
         radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands, table-direct via
-       L_FUV/L_LW: radiation_read_data() requires these whenever with_ISRF
+    /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
+       L_PE/L_LW: radiation_read_data() requires these whenever with_ISRF
        is on, so no fallback branch is needed here. */
     if (sm->rad.with_ISRF) {
       sp->feedback_data.radiation.L_band[ISRF_BAND_PE] =
@@ -1581,10 +1581,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float L_bol;
     double dot_N_ion;
     float mean_excess_photon_energy_HI;
-    /* Upper mass bound for the L_FUV/L_LW table-direct read below: the
+    /* Upper mass bound for the L_PE/L_LW table-direct read below: the
        same MS-lifetime-capped value dot_N_ion uses for a 2D
        table (a star past its own main-sequence lifetime emits nothing,
-       ionizing or not, so L_FUV/L_LW stop the same way Q_H already does),
+       ionizing or not, so L_PE/L_LW stop the same way Q_H already does),
        or the uncapped m_sup for a 1D table,
        which has no MS-lifetime concept at all (matching dot_N_ion's own
        uncapped 1D read below). */
@@ -1634,8 +1634,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
     /* Convert to total luminosities */
     sp->feedback_data.radiation.L_bol = L_bol * m_init;
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands, table-direct via
-       Integrated_L_FUV/Integrated_L_LW: radiation_read_data() requires
+    /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
+       Integrated_L_PE/Integrated_L_LW: radiation_read_data() requires
        these whenever with_ISRF is on, so no fallback branch is needed
        here. Bounded by the same m_sup_capped dot_N_ion uses above: a star
        past its own main-sequence lifetime emits nothing, ionizing or

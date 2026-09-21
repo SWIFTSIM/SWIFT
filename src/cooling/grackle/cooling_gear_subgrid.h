@@ -255,7 +255,7 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
 
 /**
  * @brief Compute Grackle's per-particle isrf_habing for the local
- * Lyman-Werner/FUV feedback (GEARFeedback:with_interstellar_radiation_field).
+ * Lyman-Werner/PE feedback (GEARFeedback:with_interstellar_radiation_field).
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -274,7 +274,7 @@ INLINE static double cooling_get_isrf_habing_subgrid(
 
 /**
  * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
- * local Lyman-Werner/FUV feedback. COOLING_GRACKLE_MODE > 1 only: H2 is
+ * local Lyman-Werner/PE feedback. COOLING_GRACKLE_MODE > 1 only: H2 is
  * untracked otherwise.
  *
  * @param phys_const The physical constants in internal units.

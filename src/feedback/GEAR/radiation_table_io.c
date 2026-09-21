@@ -232,7 +232,7 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * it needs to be present, so a new pychem source mode works without a
  * companion SWIFT change. edge_policy_l_pe/edge_policy_l_lw are the one
  * exception to "requires the specific attributes to be present": they are
- * only read (and only required) when the group's own "L_FUV"/"L_LW"
+ * only read (and only required) when the group's own "L_PE"/"L_LW"
  * datasets exist, since those datasets (and their edge-policy attributes)
  * are only required when #radiation.with_ISRF is on. edge_policy_teff is
  * guarded the same way, on the group's own "Teff" dataset.
@@ -320,7 +320,7 @@ void radiation_read_grid_metadata(hid_t group_id,
         "mean_excess_energy");
 
     /* Teff is optional, and guarded on its own dataset for the same
-       reason as L_FUV/L_LW below: a table generated before pychem
+       reason as L_PE/L_LW below: a table generated before pychem
        exported it carries neither the dataset nor the matching
        attributes. */
     grid->edge_policy_teff = boundary_condition_error;
@@ -334,22 +334,22 @@ void radiation_read_grid_metadata(hid_t group_id,
           radiation_parse_edge_policy(teff_below, teff_above, "teff");
     }
 
-    /* L_FUV/L_LW are optional (see radiation.h's own doxygen on
+    /* L_PE/L_LW are optional (see radiation.h's own doxygen on
        #with_ISRF): a table generated before pychem added them has
-       neither dataset, and hence no matching edge_policy_l_fuv_ or
+       neither dataset, and hence no matching edge_policy_l_pe_ or
        edge_policy_l_lw_ attributes either. Guard on dataset presence
        first, unlike every field above (which pychem has always required),
        so an old-format 2D table still loads instead of erroring on a
        missing attribute it never had a reason to write. */
     grid->edge_policy_l_pe = boundary_condition_error;
-    if (H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0) {
+    if (H5Lexists(group_id, "L_PE", H5P_DEFAULT) > 0) {
       char l_pe_below[16], l_pe_above[16];
-      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_below",
+      radiation_read_string_attribute(group_id, "edge_policy_l_pe_below",
                                       l_pe_below, sizeof(l_pe_below));
-      radiation_read_string_attribute(group_id, "edge_policy_l_fuv_above",
+      radiation_read_string_attribute(group_id, "edge_policy_l_pe_above",
                                       l_pe_above, sizeof(l_pe_above));
       grid->edge_policy_l_pe =
-          radiation_parse_edge_policy(l_pe_below, l_pe_above, "l_fuv");
+          radiation_parse_edge_policy(l_pe_below, l_pe_above, "l_pe");
     }
 
     grid->edge_policy_l_lw = boundary_condition_error;
@@ -1003,7 +1003,7 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
 }
 
 /**
- * @brief Read the L_FUV (non-ionizing FUV band emission rate) array from the
+ * @brief Read the L_PE (non-ionizing PE band emission rate) array from the
  * table.
  *
  * Only called when #radiation.with_ISRF is set (radiation_read_data()),
@@ -1021,7 +1021,7 @@ void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
                                const struct stellar_model *sm,
                                const struct unit_system *us) {
 
-  radiation_build_tables(group_id, "L_FUV", grid, sm, rad->interpolation_size,
+  radiation_build_tables(group_id, "L_PE", grid, sm, rad->interpolation_size,
                          rad->interpolation_size_metallicity,
                          units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
                          "erg/s", &rad->raw.l_pe, &rad->integrated.l_pe,
@@ -1415,8 +1415,8 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
      below clears it (see its own doxygen), but it was already set moments
      ago, by radiation_init() (fresh start) or by the flat restore in
      radiation_restore() (restart), which both run before this function is
-     called and before the L_FUV/L_LW check below needs to read it. Without
-     this round-trip L_FUV/L_LW are silently never read, on both the
+     called and before the L_PE/L_LW check below needs to read it. Without
+     this round-trip L_PE/L_LW are silently never read, on both the
      fresh-start and restart paths. */
   const char with_ISRF_before = rad->with_ISRF;
 
@@ -1440,15 +1440,15 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   rad->is_2d = grid.is_2d;
 
   /* GEARFeedback:with_interstellar_radiation_field requires all four ISRF-band
-     datasets: pychem always writes L_FUV/L_LW/Integrated_L_FUV/
+     datasets: pychem always writes L_PE/L_LW/Integrated_L_PE/
      Integrated_L_LW together, so a table missing one of them was
      generated before pychem added ISRF support and needs regenerating.
      No Teff-based fallback exists for a table missing them. */
   if (rad->with_ISRF) {
-    const int has_l_pe = H5Lexists(group_id, "L_FUV", H5P_DEFAULT) > 0;
+    const int has_l_pe = H5Lexists(group_id, "L_PE", H5P_DEFAULT) > 0;
     const int has_l_lw = H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0;
     const int has_integrated_l_pe =
-        H5Lexists(group_id, "Integrated_L_FUV", H5P_DEFAULT) > 0;
+        H5Lexists(group_id, "Integrated_L_PE", H5P_DEFAULT) > 0;
     const int has_integrated_l_lw =
         H5Lexists(group_id, "Integrated_L_LW", H5P_DEFAULT) > 0;
     if (!(has_l_pe && has_l_lw && has_integrated_l_pe && has_integrated_l_lw)) {
@@ -1457,9 +1457,9 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
           "Data/Radiation group is missing%s%s%s%s. Regenerate the table "
           "with pychem's pychem_generate_hdf5_parameters on its own "
           "chimieparam file.",
-          sm->yields_table, has_l_pe ? "" : " 'L_FUV'",
+          sm->yields_table, has_l_pe ? "" : " 'L_PE'",
           has_l_lw ? "" : " 'L_LW'",
-          has_integrated_l_pe ? "" : " 'Integrated_L_FUV'",
+          has_integrated_l_pe ? "" : " 'Integrated_L_PE'",
           has_integrated_l_lw ? "" : " 'Integrated_L_LW'");
     }
   }
@@ -1525,7 +1525,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
 
-  /* Read L_FUV/L_LW directly from the table: validated above to exist
+  /* Read L_PE/L_LW directly from the table: validated above to exist
      whenever GEARFeedback:with_interstellar_radiation_field is on. */
   /* Effective temperature, a stellar-evolution diagnostic written to the
      snapshot's star particles. Optional: a table generated before pychem

@@ -207,7 +207,7 @@ def parse_options():
         type=float,
         default=1e-3,
         help="A radial bin is considered field-illuminated if the on-run's "
-        "mean (u_FUV+u_LW) there exceeds this fraction of the innermost "
+        "mean (u_PE+u_LW) there exceeds this fraction of the innermost "
         "bin's value (default: %(default)s).",
     )
     parser.add_argument(
@@ -289,7 +289,7 @@ def load_snapshot(path):
         u = gas["InternalEnergies"][:] * u_to_cgs
         # Raw (internal-unit) values, used only for the Tier 1 radial-bin
         # threshold; the Tier 2 rate check uses the cgs versions below.
-        u_pe = gas["FUVSpecificEnergies"][:]
+        u_pe = gas["PESpecificEnergies"][:]
         u_lw = gas["LWSpecificEnergies"][:]
         u_pe_cgs = u_pe * u_to_cgs
         u_lw_cgs = u_lw * u_to_cgs
@@ -385,7 +385,7 @@ def gamma_pe_over_rho_predicted(
     density_cgs : numpy.ndarray
         Gas mass density, g cm^-3.
     u_pe_cgs, u_lw_cgs : numpy.ndarray
-        FUV- and LW-band specific energy, erg g^-1.
+        PE- and LW-band specific energy, erg g^-1.
     metallicity : numpy.ndarray
         Metal mass fraction (dimensionless).
     hydrogen_fraction : float

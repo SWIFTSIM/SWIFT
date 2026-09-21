@@ -21,7 +21,7 @@
 
 /**
  * @file src/feedback/GEAR/radiation_isrf.h
- * @brief Receiver-side LW/FUV dust extinction and hyperbolic-relaxation
+ * @brief Receiver-side LW/PE dust extinction and hyperbolic-relaxation
  * propagation physics for GEAR: gas-side opacity, extinction, local
  * absorption rate, and the propagation mixing fraction.
  */

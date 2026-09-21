@@ -229,9 +229,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "mass rather than the region's true total.");
 
   list[10] = io_make_output_field_convert_spart(
-      "FUVLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      "PELuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
       convert_spart_L_PE,
-      "Star's current non-ionizing FUV-band (6-11.2 eV) luminosity, "
+      "Star's current non-ionizing PE-band (6-11.2 eV) luminosity, "
       "physical units. Feeds the ISRF injection term; 0 unless "
       "GEARFeedback:with_interstellar_radiation_field is on.");
 
@@ -239,7 +239,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
       convert_spart_L_LW,
       "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
-      "physical units. See #FUVLuminosities.");
+      "physical units. See #PELuminosities.");
 
   list[12] = io_make_output_field_convert_spart(
       "EffectiveTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,

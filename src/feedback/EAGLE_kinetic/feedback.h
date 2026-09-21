@@ -177,7 +177,7 @@ feedback_get_part_ionized_star_id(const struct part *p,
   return 0;
 }
 /**
- * @brief Local specific FUV-band radiation field. Nothing to do here.
+ * @brief Local specific PE-band radiation field. Nothing to do here.
  *
  * @param p The #part to query.
  */
@@ -265,7 +265,7 @@ feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
 }
 
 /**
- * @brief Most negative FUV-band specific energy since the previous snapshot.
+ * @brief Most negative PE-band specific energy since the previous snapshot.
  * Nothing to do here.
  *
  * @param p The #part to query.
@@ -290,7 +290,7 @@ feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
- * @brief Cumulative FUV-band raw injected dose since first init. Nothing to
+ * @brief Cumulative PE-band raw injected dose since first init. Nothing to
  * do here.
  *
  * @param p The #part to query.
@@ -311,7 +311,7 @@ feedback_get_part_cumulative_injected_LW(const struct part *p) {
 }
 
 /**
- * @brief Cumulative FUV-band absorbed/transport-and-dissipation-attributed
+ * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
  * specific energy since first init. Nothing to do here.
  *
  * @param p The #part to query.
@@ -354,7 +354,7 @@ __attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
 }
 
 /**
- * @brief Star's current non-ionizing FUV-band luminosity. This model does
+ * @brief Star's current non-ionizing PE-band luminosity. This model does
  * not implement the ISRF radiation module.
  *
  * @param sp The #spart to query.

@@ -30,7 +30,7 @@ internal energy from physical to comoving itself, so the file holds
 SWIFT stores the birth scale factor in single precision. It is rounded down to
 the nearest float32 value, otherwise the star is born up to one float32 step in
 a after the start (7.5e-9 in a at a = 0.1, a quarter of the H2 run's span).
-The seeded ``FUVSpecificEnergy`` and ``LWSpecificEnergy`` are physical and
+The seeded ``PESpecificEnergy`` and ``LWSpecificEnergy`` are physical and
 mass-specific, so they carry no scale factor. With ``--redshift 0`` the file is
 a plain non-cosmological IC.
 """
@@ -76,7 +76,7 @@ def parse_options() -> argparse.Namespace:
         "--u-pe",
         type=float,
         default=0.0,
-        help="Seeded physical FUV specific energy, erg/g",
+        help="Seeded physical PE specific energy, erg/g",
     )
     parser.add_argument(
         "--u-lw",
@@ -190,7 +190,7 @@ def main() -> None:
         gas.create_dataset("ParticleIDs", data=np.arange(n_gas), dtype="L")
         gas.create_dataset("Density", data=np.full(n_gas, rho_comoving), dtype="f")
         gas.create_dataset(
-            "FUVSpecificEnergy",
+            "PESpecificEnergy",
             data=np.full(n_gas, opt.u_pe / energy_unit),
             dtype="f",
         )

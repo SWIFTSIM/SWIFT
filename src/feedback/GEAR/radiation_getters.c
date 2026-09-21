@@ -725,13 +725,13 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get the non-IMF-integrated non-ionizing FUV band emission rate at
+ * @brief Get the non-IMF-integrated non-ionizing PE band emission rate at
  * a given mass, from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_pe.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
- * @return FUV band emission rate, internal units.
+ * @return PE band emission rate, internal units.
  */
 float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
@@ -739,14 +739,14 @@ float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m) {
 }
 
 /**
- * @brief Get the non-IMF-integrated FUV band emission rate at a given mass
+ * @brief Get the non-IMF-integrated PE band emission rate at a given mass
  * and metallicity, from a 2D ("M,Z") table. Mirrors
  * #radiation_get_luminosities_from_raw_2d exactly, on #rad->raw.l_pe_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @return FUV band emission rate, internal units.
+ * @return PE band emission rate, internal units.
  */
 float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
                                      float log_m) {
@@ -755,7 +755,7 @@ float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
 }
 
 /**
- * @brief Get a single star's FUV band emission rate at a given mass,
+ * @brief Get a single star's PE band emission rate at a given mass,
  * dispatching on #rad->is_2d, mirroring #radiation_get_star_luminosity.
  * Only valid when #radiation.with_ISRF is set; callers must check that
  * first (this getter does not, matching every other raw getter here).
@@ -764,7 +764,7 @@ float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
  * @param log_m The mass in log.
  * @param log_z The metallicity in log10, used only if #rad holds a 2D
  * table.
- * @return FUV band emission rate, internal units.
+ * @return PE band emission rate, internal units.
  */
 float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
                               float log_z) {
@@ -824,7 +824,7 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get the IMF-averaged non-ionizing FUV band emission rate per mass,
+ * @brief Get the IMF-averaged non-ionizing PE band emission rate per mass,
  * from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_integral exactly, on
  * #rad->integrated.l_pe. Only valid when #radiation.with_ISRF is set.
@@ -832,7 +832,7 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @return FUV band emission rate per Msun of stars formed, internal units.
+ * @return PE band emission rate per Msun of stars formed, internal units.
  */
 float radiation_get_l_pe_from_integral(const struct radiation *rad,
                                        float log_m1, float log_m2) {
@@ -843,7 +843,7 @@ float radiation_get_l_pe_from_integral(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged FUV band emission rate per mass, at a given
+ * @brief Get the IMF-averaged PE band emission rate per mass, at a given
  * metallicity, from a 2D ("M,Z") table. Mirrors
  * #radiation_get_luminosities_from_integral_2d exactly (including the
  * top-edge nudge), on #rad->integrated.l_pe_2d.
@@ -852,7 +852,7 @@ float radiation_get_l_pe_from_integral(const struct radiation *rad,
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @return FUV band emission rate per Msun of stars formed, internal units.
+ * @return PE band emission rate per Msun of stars formed, internal units.
  */
 float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
                                           float log_z, float log_m1,

@@ -85,7 +85,7 @@ printf "Running simulation..."
 		   -P Snapshots:delta_time:$delta_time \
 		   params.yml 2>&1 | tee output.log
 
-# Check that the injected FUV/LW energy sums to Delta_t * L_band per star
+# Check that the injected PE/LW energy sums to Delta_t * L_band per star
 # feedback pass (see README).
 python3 isrf_injection_conservation_check.py
 

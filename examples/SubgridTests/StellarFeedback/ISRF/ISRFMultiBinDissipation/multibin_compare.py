@@ -37,7 +37,7 @@ import sys
 
 import numpy as np
 
-BANDS = ("FUV", "LW")
+BANDS = ("PE", "LW")
 
 
 def parse_options():
@@ -106,7 +106,7 @@ def all_points(metrics, band):
 
 
 def check_preconditions(s0, m0, sigma):
-    # Resolving power is checked PER BAND: FUV and LW have genuinely
+    # Resolving power is checked PER BAND: PE and LW have genuinely
     # different physics (kappa, lambda, predicted dipole magnitude per
     # Sec 1.3), so one band failing does not make the other band's result
     # uninterpretable: it means STOP-3 fires for that band specifically

@@ -79,8 +79,8 @@ bookkeeping (density_units=m_H makes dom=1 exactly, sidestepping Grackle's
 comoving dom/dom_inv bookkeeping instead of hand-deriving it).
 
 Part 4 (G0 unit-convention check): radiation_get_part_isrf_habing()
-computes G0 = c*rho*(u_FUV+u_LW)_cgs / RADIATION_HABING_FLUX_CGS, i.e. the
-standard combined FUV+LW Habing (1968) convention (RADIATION_HABING_FLUX_
+computes G0 = c*rho*(u_PE+u_LW)_cgs / RADIATION_HABING_FLUX_CGS, i.e. the
+standard combined PE+LW Habing (1968) convention (RADIATION_HABING_FLUX_
 CGS=1.6e-3 erg/s/cm^2, radiation.h). Grackle's igammah=2/3 Fortran path
 consumes myisrf(i) = isrf_habing(i,j,k) with no internal rescaling:
 it trusts the caller's G0 to already be in this same Habing convention.
@@ -269,7 +269,7 @@ def main() -> None:
     print(f"Read from {RADIATION_H}:")
     print(
         f"  RADIATION_HABING_FLUX_CGS = {habing_flux_cgs:.4e} erg/s/cm^2 "
-        "(combined FUV+LW Habing normalization)"
+        "(combined PE+LW Habing normalization)"
     )
     print(
         "  Grackle rate_functions.c's igammah<=1 default docstring cites "

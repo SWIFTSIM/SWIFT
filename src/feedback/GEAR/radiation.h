@@ -48,7 +48,7 @@
     ever gets the chance to renew it. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
 
-/*! Lifetime granted to an LW/FUV illumination episode, in units of the
+/*! Lifetime granted to an LW/PE illumination episode, in units of the
     illuminating star's own integer timestep. Integer, not a double factor
     on a physical time like RADIATION_TAG_LIFETIME_INTERVALS: the
     injection/expiry comparison this feeds (radiation_iact.h,
@@ -102,7 +102,7 @@
 
 /*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
     al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV
-    (FUV) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
+    (PE) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
@@ -120,7 +120,7 @@
 #define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
 
 /*! Standard Habing-unit flux normalization, erg/s/cm^2: G0=1 corresponds
-    to this flux integrated over the FUV+LW bands. */
+    to this flux integrated over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
 /*! Representative Lyman-Werner photon energy, eV (~12 eV, the band's own
@@ -215,12 +215,12 @@ struct radiation_grid_metadata {
       dataset is absent). */
   enum interpolate_boundary_condition edge_policy_teff;
 
-  /*! Mass-axis boundary condition for the "L_FUV" dataset (2D tables with
-      an "L_FUV" dataset only; boundary_condition_error otherwise, matching
+  /*! Mass-axis boundary condition for the "L_PE" dataset (2D tables with
+      an "L_PE" dataset only; boundary_condition_error otherwise, matching
       every other edge_policy_* field's convention for a table where the
       corresponding dataset does not apply), from the group's own
-      edge_policy_l_fuv_below/above attributes, a dedicated pair, NOT
-      shared with #edge_policy_luminosity, since pychem's L_FUV/L_LW default
+      edge_policy_l_pe_below/above attributes, a dedicated pair, NOT
+      shared with #edge_policy_luminosity, since pychem's L_PE/L_LW default
       policy ("zero" below the native mass floor, "constant" above) differs
       from Luminosity's own. */
   enum interpolate_boundary_condition edge_policy_l_pe;

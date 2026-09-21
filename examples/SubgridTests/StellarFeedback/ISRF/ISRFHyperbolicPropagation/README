@@ -5,8 +5,8 @@ box, with photoelectric heating and ISRF hyperbolic propagation on
 Cattaneo-type flux-relaxation system with a finite signal speed `c_hyp`, an
 M1 closure and a flux limiter; it is not a screened-diffusion (Yukawa)
 equation, and its steady state is not a single closed-form profile. Checks
-the converged radial profile of the propagated FUV/LW
-interstellar-radiation-field energy (`FUVSpecificEnergies`/
+the converged radial profile of the propagated PE/LW
+interstellar-radiation-field energy (`PESpecificEnergies`/
 `LWSpecificEnergies`) against this scheme's own DISCRETE steady-state
 prediction, computed on the run's own real particle positions and smoothing
 lengths, via `isrf_hyperbolic_propagation_check.py`.
@@ -40,7 +40,7 @@ propagated field is isolated from any gas response.
 make -j
 ```
 `--with-tracers=GEAR` is required: the tracers module registers the
-`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+`PESpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
 themselves live on `struct part`'s `feedback_data`). The Grackle cooling
 mode is not critical here (only `chemistry_data` needs resolving, not any
 mode-gated species network).

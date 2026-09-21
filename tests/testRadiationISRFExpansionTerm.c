@@ -27,7 +27,7 @@
 /* Local headers. */
 #include "swift.h"
 
-/* The cosmological expansion term of the LW/FUV hyperbolic propagation:
+/* The cosmological expansion term of the LW/PE hyperbolic propagation:
  * `du/dt` and `dF/dt` each carry `-(c_hyp/c)*H` times the quantity itself,
  * one power of the Hubble rate (because `u` and `F` are mass-specific and
  * therefore already dilute with the physical gas density they are measured
@@ -40,9 +40,9 @@
 
 #include "feedback/GEAR/radiation_isrf.h"
 
-static const float u_FUV_0 = 3.0f;
+static const float u_PE_0 = 3.0f;
 static const float u_LW_0 = 0.8f;
-static const float F_FUV_0[3] = {0.4f, -0.2f, 0.1f};
+static const float F_PE_0[3] = {0.4f, -0.2f, 0.1f};
 static const float F_LW_0[3] = {-0.15f, 0.05f, 0.3f};
 
 /**
@@ -105,14 +105,14 @@ static void set_part(struct part *p, float kappa, float dt, float c_hyp) {
   fd->isrf_band[ISRF_BAND_PE].kappa = kappa;
   fd->isrf_band[ISRF_BAND_LW].kappa = kappa;
   fd->rho_prev = 1.f;
-  fd->isrf_band[ISRF_BAND_PE].u_prev = u_FUV_0;
+  fd->isrf_band[ISRF_BAND_PE].u_prev = u_PE_0;
   fd->isrf_band[ISRF_BAND_LW].u_prev = u_LW_0;
-  fd->isrf_band[ISRF_BAND_PE].u = u_FUV_0;
+  fd->isrf_band[ISRF_BAND_PE].u = u_PE_0;
   fd->isrf_band[ISRF_BAND_LW].u = u_LW_0;
   fd->isrf_band[ISRF_BAND_PE].ngb_mean_abs_u_V = 1.f;
   fd->isrf_band[ISRF_BAND_LW].ngb_mean_abs_u_V = 1.f;
   for (int k = 0; k < 3; k++) {
-    fd->isrf_band[ISRF_BAND_PE].specific_flux[k] = F_FUV_0[k];
+    fd->isrf_band[ISRF_BAND_PE].specific_flux[k] = F_PE_0[k];
     fd->isrf_band[ISRF_BAND_LW].specific_flux[k] = F_LW_0[k];
   }
 }
@@ -161,12 +161,12 @@ static void run_case(double a, double H, float kappa, float dt, float c_hyp) {
       c_hyp * kappa + (c_hyp / (float)pc.const_speed_light_c) * (float)H;
   const float expected_decay = expf(-rate * dt);
 
-  check_close("u_FUV", expected_decay * u_FUV_0,
+  check_close("u_PE", expected_decay * u_PE_0,
               p.feedback_data.isrf_band[ISRF_BAND_PE].u, 1e-5f);
   check_close("u_LW", expected_decay * u_LW_0,
               p.feedback_data.isrf_band[ISRF_BAND_LW].u, 1e-5f);
   for (int k = 0; k < 3; k++) {
-    check_close("specific_flux_FUV", expected_decay * F_FUV_0[k],
+    check_close("specific_flux_PE", expected_decay * F_PE_0[k],
                 p.feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[k],
                 1e-5f);
     check_close("specific_flux_LW", expected_decay * F_LW_0[k],
@@ -219,13 +219,12 @@ int main(int argc, char *argv[]) {
   radiation_end_gradient_propagation(&p, &e);
   radiation_end_force_propagation(&p, &e);
 
-  if (p.feedback_data.isrf_band[ISRF_BAND_PE].u != u_FUV_0 ||
+  if (p.feedback_data.isrf_band[ISRF_BAND_PE].u != u_PE_0 ||
       p.feedback_data.isrf_band[ISRF_BAND_LW].u != u_LW_0)
     error("H = 0 is not a no-op on u: %.9e vs %.9e",
-          p.feedback_data.isrf_band[ISRF_BAND_PE].u, u_FUV_0);
+          p.feedback_data.isrf_band[ISRF_BAND_PE].u, u_PE_0);
   for (int k = 0; k < 3; k++)
-    if (p.feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[k] !=
-            F_FUV_0[k] ||
+    if (p.feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[k] != F_PE_0[k] ||
         p.feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[k] != F_LW_0[k])
       error("H = 0 is not a no-op on the specific flux");
 

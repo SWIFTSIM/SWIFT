@@ -24,7 +24,7 @@ Adapted from the sibling `ISRFCausalReach` example's own check script (same
 pinned-neighbour IC family and the same causal-reach metric); this version
 adds the sign-closure metric that is this example's own point.
 
-Two independent checks, both per snapshot and per band (`FUV`, `LW`):
+Two independent checks, both per snapshot and per band (`PE`, `LW`):
 
 1. Sign closure, gated on the energy-weighted `|E_neg|/E_bulk` (bulk =
    all gas except the pinned hot particle; `E_neg` is the summed
@@ -228,7 +228,7 @@ def load_snapshot(path):
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
         mass = gas["Masses"][:].astype(np.float64)
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
@@ -412,7 +412,7 @@ def main():
         f"Last-third window (gated sign-closure statistic |E_neg|/E_bulk): "
         f"t >= {last_third_start:.4e} (t_max = {t_max:.4e})"
     )
-    late_neg_energy_frac = {"FUV": [], "LW": []}
+    late_neg_energy_frac = {"PE": [], "LW": []}
 
     for i, fn in enumerate(files):
         snap = load_snapshot(fn)
@@ -444,7 +444,7 @@ def main():
             f"last_third={in_last_third} ---"
         )
 
-        for band, u_field in (("FUV", "u_pe"), ("LW", "u_lw")):
+        for band, u_field in (("PE", "u_pe"), ("LW", "u_lw")):
             u_all = snap[u_field]
             check_finite(u_field, u_all, fn, band=band)
             r, u, mass = r_all[gas_mask], u_all[gas_mask], mass_all[gas_mask]
@@ -483,7 +483,7 @@ def main():
             for finding in res["findings"]:
                 print("  " + finding)
 
-            ax = axes[0] if band == "FUV" else axes[1]
+            ax = axes[0] if band == "PE" else axes[1]
             valid = res["means"] > 0
             ax.semilogy(
                 res["centres"][valid] / h_med,
@@ -494,7 +494,7 @@ def main():
             )
             ax.axvline(res["r_front"] / h_med, color=colors[i], ls="--", lw=1)
 
-    for ax, band in zip(axes, ("FUV", "LW")):
+    for ax, band in zip(axes, ("PE", "LW")):
         ax.set_xlabel("r / h")
         ax.set_title(f"{band}: solid = u(r); dashed = c_hyp*(t-t0)")
     axes[0].set_ylabel("u(r) (binned mean)")
@@ -504,7 +504,7 @@ def main():
     print(f"\nPlot saved to {opt.output}")
 
     print("\n--- Sign closure, run-level gate ---")
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         vals = late_neg_energy_frac[band]
         if not vals:
             continue

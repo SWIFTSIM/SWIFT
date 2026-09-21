@@ -79,7 +79,7 @@ Part 6 and left open, as a diagnosis-only question.
 # with", is NO LONGER the right target for the shipped scheme, which uses
 # the M1 closure (theory/GEAR/Radiation/02_fuv_isrf.tex Sec. `fuv-p1`).
 #
-# Under M1 the steady state has two branches (doc Sec. `fuv-steady-limits`):
+# Under M1 the steady state has two branches (doc Sec. `pe-steady-limits`):
 # free streaming, `u ~ exp(-r/lambda)/r^2`, and the isotropic/diffusive
 # branch, `u ~ exp(-sqrt(3)*r/lambda)/r`. A single point source in a purely
 # absorbing medium sits on the FREE-STREAMING branch (the diffusive one is
@@ -167,7 +167,7 @@ print("   u(r) = A * exp(-r/lam) / r      (PURE Yukawa, exact, not asymptotic)")
 # FULL inhomogeneous screened-Poisson ODE and confirm zero residual
 # (away from r=0) at several lambda values spanning many decades,
 # including values that bracket Tier 1's own measured h/lambda corner
-# (design doc Sec. 6.1: h/lambda_FUV ~ 0.6, h/lambda_LW ~ 1.0, i.e.
+# (design doc Sec. 6.1: h/lambda_PE ~ 0.6, h/lambda_LW ~ 1.0, i.e.
 # lambda and h are comparable there, well inside the "finite lambda"
 # regime, nowhere near lambda -> inf).
 # =====================================================================
@@ -339,7 +339,7 @@ print("itself, the P1 system's OWN exact solution is still pure Yukawa, with")
 print("no gradual creeping-in of an r/lambda-shaped correction term.")
 print()
 print("Tier 1's own regime (design doc Sec. 6.1, this session's actual run):")
-print("  h/lambda_FUV ~ 0.6, h/lambda_LW ~ 1.0, fit range r/lambda in [1, 9.2]")
+print("  h/lambda_PE ~ 0.6, h/lambda_LW ~ 1.0, fit range r/lambda in [1, 9.2]")
 print("is nowhere near this singular limit; lambda there is a finite length")
 print("comparable to the resolution h, not large compared to the box.")
 
@@ -352,7 +352,7 @@ print("comparable to the resolution h, not large compared to the box.")
 # state deviates from the CONTINUUM Yukawa profile this script analyzed
 # , a resolution effect, unrelated to the P1-vs-transparent-medium
 # question Parts 1-5 settle. Tier 1's own measured run sits at
-# h/lambda_FUV ~ 0.6 and h/lambda_LW ~ 1.0 (validation run), i.e. lambda ~
+# h/lambda_PE ~ 0.6 and h/lambda_LW ~ 1.0 (validation run), i.e. lambda ~
 # h to 1.7*h, NOT the lambda >> h regime where the
 # continuum slope this script derives is guaranteed to be what the
 # discrete estimator actually converges to.
@@ -373,11 +373,11 @@ smoothing length h are comparable, the design doc's own Sec. 6.1
 explicitly flags a resolution-dependent floor in this regime ("for
 lambda < h the discrete profile's e-folding length is floored at
 ~0.25 h"), and Tier 1's own already-run validation sits at
-h/lambda_FUV ~ 0.6, h/lambda_LW ~ 1.0, lambda comparable to h, not
+h/lambda_PE ~ 0.6, h/lambda_LW ~ 1.0, lambda comparable to h, not
 lambda >> h. Consistent with (not proof of) a real discretization bias at
 this corner: the 2026-09-07 validation run recovered lambda_LW (the more
 under-resolved band, h/lambda=1.0) to only 7.7%, about 6x worse than
-lambda_FUV (h/lambda=0.6, recovered to 1.2%), the direction the
+lambda_PE (h/lambda=0.6, recovered to 1.2%), the direction the
 floor argument predicts, though not isolated as the confirmed mechanism
 here. Two runs agreeing with each other at the SAME h/lambda corner (as
 the matched-nu re-run did, to <1%) would still share this bias if it is
@@ -443,7 +443,7 @@ estimator's fitted lambda is itself unbiased at Tier 1's own corner
 (lambda ~ h to 1.7h) is a resolution/discretization question this script
 does not address, already flagged in the design doc's own Sec. 6.1 "floor"
 note, and consistent with (not confirmed by) the measured 6x-worse
-lambda_LW recovery (h/lambda=1.0) vs lambda_FUV (h/lambda=0.6) in the
+lambda_LW recovery (h/lambda=1.0) vs lambda_PE (h/lambda=0.6) in the
 2026-09-07 run. Two independent runs agreeing with each other at that same
 corner does not rule this out, it would just mean both share the same
 discretization bias, not that the bias is absent. Recommended follow-up

@@ -464,7 +464,7 @@ grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
 grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
 
-# Write Gas particle group. FUVSpecificEnergy/LWSpecificEnergy are not
+# Write Gas particle group. PESpecificEnergy/LWSpecificEnergy are not
 # seeded: the field starts at zero and is built by the stars.
 grp = fileOutput.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")

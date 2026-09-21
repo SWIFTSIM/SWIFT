@@ -89,7 +89,7 @@ def last_snapshot(run_dir):
     with h5py.File(files[-1], "r") as f:
         gas = f["/PartType0"]
         ids = gas["ParticleIDs"][:]
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
     return ids, u_pe, u_lw
 
@@ -152,7 +152,7 @@ def mode_P(opt):
         )
         if not excluded and valid and max(d_pe, d_lw) > opt.tol_d:
             all_pass = False
-        print(f"{d}: D_FUV={d_pe:.3e}  D_LW={d_lw:.3e}  -> {status}")
+        print(f"{d}: D_PE={d_pe:.3e}  D_LW={d_lw:.3e}  -> {status}")
     print(
         f"M-C1 overall: {'PASS' if (valid and all_pass) else ('INVALID' if not valid else 'FAIL')}"
     )
@@ -162,9 +162,9 @@ def mode_P(opt):
     norms_pe, norms_lw = [], []
     for i, (d, m) in enumerate(zip(opt.runs, metrics)):
         r_pe = (
-            m["front"]["FUV"]["0.01"]["r_edge_norm"]
-            if "0.01" in m["front"]["FUV"]
-            else m["front"]["FUV"][0.01]["r_edge_norm"]
+            m["front"]["PE"]["0.01"]["r_edge_norm"]
+            if "0.01" in m["front"]["PE"]
+            else m["front"]["PE"][0.01]["r_edge_norm"]
         )
         r_lw = (
             m["front"]["LW"]["0.01"]["r_edge_norm"]
@@ -174,7 +174,7 @@ def mode_P(opt):
         norms_pe.append(r_pe)
         norms_lw.append(r_lw)
         void_str = " (drift-void, still reported)" if drift_void[i] else ""
-        print(f"{d}: r_edge/(c_hyp*t) FUV={r_pe:.4f}  LW={r_lw:.4f}{void_str}")
+        print(f"{d}: r_edge/(c_hyp*t) PE={r_pe:.4f}  LW={r_lw:.4f}{void_str}")
     kept_pe = [v for v, void in zip(norms_pe, drift_void) if not void]
     kept_lw = [v for v, void in zip(norms_lw, drift_void) if not void]
     spread_pe = (max(kept_pe) - min(kept_pe)) / np.mean(kept_pe) if kept_pe else np.inf
@@ -183,7 +183,7 @@ def mode_P(opt):
         valid and spread_pe <= opt.tol_retardation and spread_lw <= opt.tol_retardation
     )
     print(
-        f"Spread (drift-valid runs only): FUV={spread_pe:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
+        f"Spread (drift-valid runs only): PE={spread_pe:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
     )
     print(f"M-C2: {'PASS' if c2_pass else ('INVALID' if not valid else 'FAIL')}")
 

@@ -63,7 +63,7 @@ SPH:
   initial_temperature:   1000
 
 GEARChemistry:
-  # Z/Zsun=1e-2 puts the screening length at lambda_FUV = 32.2 pc, three
+  # Z/Zsun=1e-2 puts the screening length at lambda_PE = 32.2 pc, three
   # times the box and 1.6e2 times the smoothing length, which is what
   # makes the measured region optically thin (see README). It must stay
   # above 0: kappa_eff/D(Z) is undefined at Z=0.

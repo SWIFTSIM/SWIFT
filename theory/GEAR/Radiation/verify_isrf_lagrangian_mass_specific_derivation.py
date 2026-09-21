@@ -8,7 +8,7 @@ equation, copied unmodified from the theory doc's own **volumetric**
 RTE-moment convention (`02_fuv_isrf.tex` Eq. fuv-p1-zeroth/fuv-p1-first),
 literally calls for. `u`/`F` are mass-specific throughout this
 implementation (matching injection's own `u_i += u_inject/m_i`, and the
-shipped `FUVSpecificEnergy`/`LWSpecificEnergy` I/O names), so Section 1
+shipped `PESpecificEnergy`/`LWSpecificEnergy` I/O names), so Section 1
 must be re-derived into its correct Lagrangian/mass-specific form rather
 than have the discretization chase the doc.
 

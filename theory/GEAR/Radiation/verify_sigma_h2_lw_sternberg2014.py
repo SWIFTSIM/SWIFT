@@ -15,7 +15,7 @@ Sternberg's I_UV is normalized on the Draine (1978) spectrum integrated over
 the LW band (912-1108 A, 11.3-13.6 eV) specifically, confirmed from the
 paper's own Section 2.1 and Eq 2-4 (not the broader 6-13.6 eV band some
 other "G0" conventions use). This codebase's k_diss formula likewise only
-ever reads the LW-band field (p->feedback_data.u_LW), not the FUV band, so
+ever reads the LW-band field (p->feedback_data.u_LW), not the PE band, so
 the two are compared on the same band. Draine/Habing normalization
 (verified from the paper's own p.4 footnote 4): the Draine energy
 density is 1.7x the Habing (1968) LW-band estimate, so
@@ -25,7 +25,7 @@ density is 1.7x the Habing (1968) LW-band estimate, so
 This script sweeps a Habing-convention G0 taken to represent the LW-band
 flux alone (the quantity radiation_get_part_LW_dissociation_rate_internal()
 actually consumes), NOT this codebase's separate
-radiation_get_part_isrf_habing() getter, which sums the FUV+LW bands for an
+radiation_get_part_isrf_habing() getter, which sums the PE+LW bands for an
 unrelated purpose (photoelectric heating) and would double-count non-LW
 flux here.
 
@@ -144,7 +144,7 @@ def main() -> None:
     print(f"  RADIATION_SIGMA_H2_LW_CGS   = {sigma_h2_lw_cgs:.4e} cm^2")
     print(f"  RADIATION_LW_PHOTON_ENERGY_EV = {E_LW_photon_ev:.3f} eV")
     print(
-        f"  RADIATION_HABING_FLUX_CGS   = {habing_flux_cgs:.4e} erg/s/cm^2 (combined FUV+LW)"
+        f"  RADIATION_HABING_FLUX_CGS   = {habing_flux_cgs:.4e} erg/s/cm^2 (combined PE+LW)"
     )
     print(
         f"  LW fraction of Habing band  = {LW_FRACTION_OF_HABING} (verified 2026-09-06)"

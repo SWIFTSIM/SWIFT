@@ -5,7 +5,7 @@ and radiation pressure off), same as `../ISRFHyperbolicPropagation/`. The
 star's mass is chosen so it reaches the end of its main-sequence lifetime
 partway through the run: this example checks that the ISRF field it built
 up decays away afterwards instead of persisting at its last injected level.
-`isrf_source_turn_off_check.py` tracks the box-total mass-weighted FUV/LW
+`isrf_source_turn_off_check.py` tracks the box-total mass-weighted PE/LW
 specific energy over time, marks the star's death time (computed from its
 mass and metallicity, not read off any snapshot field), and checks the
 post-death decay against the absorption timescale `1/(c_hyp*kappa)`.
@@ -27,10 +27,10 @@ The shipped `output_list_isrf_source_turn_off.txt` is tied to `star_mass`
 and `initial_metallicity` (they set the death time) and to `gas_density`,
 `gas_mass` and `dt_max` (they set the post-death decay timescale, through
 `c_hyp = C_hyp*h/dt`); `level` only sets the box size. `time_end` was chosen
-as `t_death + 15*tau_FUV` and must not be shortened below the output list's
+as `t_death + 15*tau_PE` and must not be shortened below the output list's
 last entry. Regenerate the list if you change any of the coupled parameters
 materially: fine spacing about `tau_LW/4`, from `0.85*t_death` to
-`t_death + 15*tau_FUV`, then phase-shifted so no entry falls within
+`t_death + 15*tau_PE`, then phase-shifted so no entry falls within
 `2*dt_max` of `t_death` (a snapshot that close to the switch-off step reads
 as ambiguous, neither clearly pre- nor post-death). Take `t_death` and the
 e-fold times from `isrf_source_turn_off_check.py`'s own printed output on a
@@ -47,7 +47,7 @@ scales with metallicity relative to Grackle's solar value, so
 make -j
 ```
 `--with-tracers=GEAR` is required: the tracers module registers the
-`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output.
+`PESpecificEnergies`/`LWSpecificEnergies` snapshot output.
 
 # Run
 ```

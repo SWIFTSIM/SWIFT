@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-The ISRF energy ledger: the only valid running reference for the LW/FUV
+The ISRF energy ledger: the only valid running reference for the LW/PE
 propagation's carried band energy. It does not depend on any particular
 `c_hyp` scheme (uniform pin, per-particle, kernel-local, ...): it is built
 from `radiation_end_force_propagation`'s own exact-relaxation update
@@ -25,7 +25,7 @@ from `radiation_end_force_propagation`'s own exact-relaxation update
 runs that same update, and is meant to be re-run unchanged across
 candidates.
 
-Reads, per band (`FUV`, `LW`) and per snapshot:
+Reads, per band (`PE`, `LW`) and per snapshot:
 
     E   = sum(mass * <band>SpecificEnergies)
     Inj = sum(mass * <band>CumulativeInjectedSpecificEnergies)
@@ -62,7 +62,7 @@ import sys
 import h5py
 import numpy as np
 
-BANDS = ("FUV", "LW")
+BANDS = ("PE", "LW")
 
 
 def parse_options():

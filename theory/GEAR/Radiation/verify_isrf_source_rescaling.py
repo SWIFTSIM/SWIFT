@@ -2,12 +2,12 @@
 both steady-state limits they must reproduce.
 
 This is the executable companion to `theory/GEAR/Radiation/02_fuv_isrf.tex`
-Section `fuv-steady-limits`; every claim below is one the theory doc works
+Section `pe-steady-limits`; every claim below is one the theory doc works
 through by hand, checked here symbolically and exactly (not just to
 floating-point tolerance).
 
-The implemented system (theory doc Eqs. `fuv-rsol-zeroth`/
-`fuv-lambda-chyp-solve`) replaces the true light speed by a reduced one
+The implemented system (theory doc Eqs. `pe-rsol-zeroth`/
+`pe-lambda-chyp-solve`) replaces the true light speed by a reduced one
 everywhere it appears, and rescales the source by `c_hyp/c`:
 
     du/dt + div(F)                     = -u/tau + (c_hyp/c)*S
@@ -29,7 +29,7 @@ Checks, in order:
    why M1 selects the free-streaming branch around one star, and why both
    branches have to be derived rather than one assumed.
 4. The closure-independent amplitude identity `Integral(u dV) = lambda*L/c`
-   (theory doc Eq. `fuv-steady-amplitude`), which Tier 1 gates on.
+   (theory doc Eq. `pe-steady-amplitude`), which Tier 1 gates on.
 5. The SUPERSEDED, P1-tuned constants (pressure coefficient `c_hyp**2`
    with no `1/3`, source rescale `3*c_hyp/c`) reproduced and shown to be
    inconsistent: they give a diffusive screening length `lambda` instead

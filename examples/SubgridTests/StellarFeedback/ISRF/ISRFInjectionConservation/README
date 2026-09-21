@@ -8,7 +8,7 @@ energy over every gas particle the star's kernel reaches must reproduce
 `Delta_t * L_band` exactly, up to floating-point precision:
 
 ```
-sum_j(FUVSpecificEnergies_j * mass_j) == Delta_t * FUVLuminosities_star
+sum_j(PESpecificEnergies_j * mass_j) == Delta_t * PELuminosities_star
 sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
 ```
 
@@ -26,13 +26,13 @@ the injection term from the (separately validated) extinction physics.
 `ISRF_propagation: 0` isolates the injection step itself: with
 propagation on, the neighbour-mixing/decay update would redistribute
 energy between particles and confound this check. With it off, each star
-feedback pass resets and fully re-injects `FUVSpecificEnergies`/
+feedback pass resets and fully re-injects `PESpecificEnergies`/
 `LWSpecificEnergies` from scratch, so the last snapshot is a clean,
 self-contained record of one injection pass regardless of how many passes
 ran before it.
 
 ## Star luminosity and timestep
-The star's own `FUVLuminosities`/`LWLuminosities` are read directly from
+The star's own `PELuminosities`/`LWLuminosities` are read directly from
 the snapshot (star-particle output fields). `Delta_t`, the star's own
 feedback timestep at the checked snapshot, is read from swift's own
 step-table log rather than assumed to equal `TimeIntegration:dt_max`:
@@ -50,7 +50,7 @@ this example does not need real thermal evolution.
 make -j
 ```
 `--with-tracers=GEAR` is required: the tracers module registers the
-`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+`PESpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
 themselves live on `struct part`'s `feedback_data`).
 
 # Run
@@ -71,9 +71,9 @@ side.
 python3 isrf_injection_conservation_check.py
 ```
 `run.sh` runs this automatically against its own `output.log` and final
-snapshot. It sums `FUVSpecificEnergies * mass` (and the LW equivalent)
+snapshot. It sums `PESpecificEnergies * mass` (and the LW equivalent)
 over all illuminated gas particles and compares against `Delta_t *
-FUVLuminosities` (`--tol`, default relative error 1e-5: the measured
+PELuminosities` (`--tol`, default relative error 1e-5: the measured
 discrepancy is float32 snapshot-storage rounding, ~1e-7).
 
 `isrf_ledger_check.py` ships next to it and checks a different identity,

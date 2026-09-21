@@ -415,11 +415,11 @@ def radial_profile_and_fit(u, N, dx=1.0, n_bins=25):
 
 N_PROD = 32  # level 5 => 2**5 = 32 particles per side, every production run
 corners = [
-    ("m=10 Msun, FUV", 2.82, 0.117, 0.514, 0.54),
+    ("m=10 Msun, PE", 2.82, 0.117, 0.514, 0.54),
     ("m=10 Msun, LW", 4.71, 0.219, 0.963, 0.42),
-    ("m=95 Msun, FUV", 5.98, 0.275, 1.244, 0.38),
+    ("m=95 Msun, PE", 5.98, 0.275, 1.244, 0.38),
     ("m=95 Msun, LW", 9.97, 0.372, 2.092, 0.31),
-    ("m=760 Msun, FUV", 11.96, None, 2.485, 0.29),
+    ("m=760 Msun, PE", 11.96, None, 2.485, 0.29),
     ("m=760 Msun, LW", 19.93, None, None, None),  # sim: float32 underflow, unmeasurable
 ]
 
@@ -530,11 +530,11 @@ print("=" * 78)
 print("""
 Corner            h/lambda   lambda_measured/h (sim)   lambda_eff/h (this script's
                                                         idealized discrete prediction)
-m=10, FUV          2.82       0.54                      see table above
+m=10, PE          2.82       0.54                      see table above
 m=10, LW           4.71       0.42                      see table above
-m=95, FUV          5.98       0.38                      see table above
+m=95, PE          5.98       0.38                      see table above
 m=95, LW           9.97       0.31                      see table above
-m=760, FUV        11.96       0.29                      see table above
+m=760, PE        11.96       0.29                      see table above
 """)
 print("If the ratio (predicted/measured) in Part 2's table sits close to 1 across")
 print("all five measurable corners, the actual SPH implementation is correctly")
@@ -571,7 +571,7 @@ import os
 import h5py
 from scipy.spatial import cKDTree
 
-SIGMA_D_FUV_CGS = 9e-22
+SIGMA_D_PE_CGS = 9e-22
 SIGMA_D_LW_CGS = 1.5e-21
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
@@ -744,21 +744,21 @@ else:
         f"{'measured (sim)':>16}{'real/measured':>16}{'iters':>8}"
     )
     # default corner's lambda_measured/h is not recorded directly, only
-    # rel_err (0.005 FUV, 0.074 LW) against
-    # lambda_analytic/h = 1/0.61 = 1.639 (FUV), 1/1.01 = 0.990 (LW); sign
+    # rel_err (0.005 PE, 0.074 LW) against
+    # lambda_analytic/h = 1/0.61 = 1.639 (PE), 1/1.01 = 0.990 (LW); sign
     # inferred as over-prediction (the "+" branch), consistent with every
     # other corner's own measured direction, marked (inferred) below.
     measured_lookup = {
-        ("default", "FUV"): 1.639 * 1.005,
+        ("default", "PE"): 1.639 * 1.005,
         ("default", "LW"): 0.990 * 1.074,
-        ("m10", "FUV"): 0.54,
+        ("m10", "PE"): 0.54,
         ("m10", "LW"): 0.42,
-        ("m95", "FUV"): 0.38,
+        ("m95", "PE"): 0.38,
         ("m95", "LW"): 0.31,
-        ("m760", "FUV"): 0.29,
+        ("m760", "PE"): 0.29,
         ("m760", "LW"): None,
     }
-    inferred_keys = {("default", "FUV"), ("default", "LW")}
+    inferred_keys = {("default", "PE"), ("default", "LW")}
     for label, subdir in run_dirs.items():
         snap_glob = sorted(
             glob.glob(os.path.join(SCRATCH, subdir, "snap", "snapshot_*.hdf5"))
@@ -772,7 +772,7 @@ else:
         r_min = 2.0 * (snap["boxsize"] / snap["pos"].shape[0] ** (1.0 / 3.0))
         r_max = 0.7 * (snap["boxsize"] / 2.0)
         h_mean = float(np.median(snap["h"]))
-        for band, sigma_d in (("FUV", SIGMA_D_FUV_CGS), ("LW", SIGMA_D_LW_CGS)):
+        for band, sigma_d in (("PE", SIGMA_D_PE_CGS), ("LW", SIGMA_D_LW_CGS)):
             lam_cgs = analytic_lambda_cgs(
                 Z_mean,
                 rho_mean,

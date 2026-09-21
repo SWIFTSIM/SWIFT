@@ -28,7 +28,7 @@ Two extensions to the corners script's own machinery, both used here:
    `LinearOperator` built from the SAME `grad_u`/`div_F` pairwise
    functions the corners script uses, verbatim), instead of time-stepping
    to convergence. Cross-checked against the corners script's own
-   published number at the m=10 FUV corner during development: GMRES gives
+   published number at the m=10 PE corner during development: GMRES gives
    lambda_eff/h = 0.540 vs the corners script's iterative-scheme value of
    0.534 (both within the same ~1% band as that corner's own
    measured-simulation value, 0.540), the two solution METHODS of the
@@ -295,7 +295,7 @@ print("=" * 78)
 print("Part 2: real-glass machinery (verbatim kernel formulas + GMRES solve + tiling)")
 print("=" * 78)
 
-SIGMA_D_FUV_CGS = 9e-22
+SIGMA_D_PE_CGS = 9e-22
 SIGMA_D_LW_CGS = 1.5e-21
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
@@ -494,25 +494,25 @@ run_dirs = {
 # value. Default corner's measured value is inferred from that script's own
 # rel_err (see its comment there); not read off a raw number directly.
 established = {
-    ("default", "FUV"): dict(
+    ("default", "PE"): dict(
         h_over_lam=0.61, prior_predicted=1.642, measured=1.639 * 1.005, inferred=True
     ),
     ("default", "LW"): dict(
         h_over_lam=1.01, prior_predicted=1.067, measured=0.990 * 1.074, inferred=True
     ),
-    ("m10", "FUV"): dict(
+    ("m10", "PE"): dict(
         h_over_lam=2.82, prior_predicted=0.534, measured=0.540, inferred=False
     ),
     ("m10", "LW"): dict(
         h_over_lam=4.70, prior_predicted=0.423, measured=0.420, inferred=False
     ),
-    ("m95", "FUV"): dict(
+    ("m95", "PE"): dict(
         h_over_lam=5.98, prior_predicted=0.384, measured=0.380, inferred=False
     ),
     ("m95", "LW"): dict(
         h_over_lam=9.96, prior_predicted=0.325, measured=0.310, inferred=False
     ),
-    ("m760", "FUV"): dict(
+    ("m760", "PE"): dict(
         h_over_lam=11.96, prior_predicted=0.308, measured=0.290, inferred=False
     ),
     ("m760", "LW"): dict(
@@ -526,7 +526,7 @@ established = {
 # own table but marked `inferred=True` throughout this script and plotted
 # with a distinct marker; every summary statistic below ("measured-corner
 # residual", the assert threshold) uses only the five genuinely measured
-# corners (m10 FUV/LW, m95 FUV/LW, m760 FUV).
+# corners (m10 PE/LW, m95 PE/LW, m760 PE).
 
 corner_records = []  # for the dense-sweep overlay in Part 4/5
 print(
@@ -547,7 +547,7 @@ for label, subdir in run_dirs.items():
     snap = load_snapshot(snap_glob[-1])
     h_med = float(np.median(snap["h"]))
     pairs = build_pairs_fast(snap["pos"], snap["h"], snap["boxsize"])
-    for band, sigma_d in (("FUV", SIGMA_D_FUV_CGS), ("LW", SIGMA_D_LW_CGS)):
+    for band, sigma_d in (("PE", SIGMA_D_PE_CGS), ("LW", SIGMA_D_LW_CGS)):
         info = established[(key_root, band)]
         Z_mean = float(np.mean(snap["Z"]))
         rho_mean = float(np.mean(snap["rho"]))

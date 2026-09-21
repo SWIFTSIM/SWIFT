@@ -113,7 +113,7 @@ struct cooling_function_data {
   /*! Grackle RT_H2_dissociation_rate (in IU) */
   float RT_H2_dissociation_rate;
 
-  /*! Rate-couple GEAR's local Lyman-Werner/FUV feedback into Grackle's
+  /*! Rate-couple GEAR's local Lyman-Werner/PE feedback into Grackle's
       per-particle isrf_habing (photoelectric heating/dust chemistry) and,
       at COOLING_GRACKLE_MODE > 1, RT_H2_dissociation_rate (H2
       photodissociation) fields, instead of Grackle's spatially-uniform
@@ -211,7 +211,7 @@ struct cooling_function_data {
       untouched), while cooling_init() and everything it resolves (table
       loading, chemistry_data, including local_dust_to_gas_ratio) still
       run completely normally. For isolating a Grackle-consuming subgrid
-      channel (e.g. LW/FUV propagation) from Grackle's actual
+      channel (e.g. LW/PE propagation) from Grackle's actual
       thermal/dynamical response without losing chemistry_data
       resolution. Never set in a production run. */
   int disable_cooling_for_debugging;

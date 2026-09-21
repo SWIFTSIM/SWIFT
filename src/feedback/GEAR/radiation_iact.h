@@ -196,13 +196,13 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
-  /* Cosmology-independent: also reused below to renew the LW/FUV
+  /* Cosmology-independent: also reused below to renew the LW/PE
    * illumination window (radiation_reset_part_ISRF_illumination_tag). */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
   /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
    * cosmological runs: mirror compute_time()'s branch (feedback_common.c)
-   * rather than use it directly. Shared by radiation pressure and LW/FUV
+   * rather than use it directly. Shared by radiation pressure and LW/PE
    * injection below: both use the star's own feedback timestep. */
   float Delta_t;
   if (with_cosmology) {
@@ -240,7 +240,7 @@ radiation_iact_nonsym_feedback_apply(
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /* Local Lyman-Werner/FUV injection: always additive, since multiple
+  /* Local Lyman-Werner/PE injection: always additive, since multiple
      simultaneously-illuminating stars must superpose on the same particle
      (a dose reservoir with propagation on, an instantaneous field with it
      off). u_inject is an energy, so dividing by mj converts it

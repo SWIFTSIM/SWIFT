@@ -41,7 +41,7 @@ the periodic box edge narrows the window again.
 ## Metallicity, cooling
 `initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
 0: the dust opacity, and hence `lambda`, is undefined at `Z=0`. It defaults
-to `Z/Zsun=1e-2`, giving `lambda_FUV = 32.2 pc` in a 10.2 pc box.
+to `Z/Zsun=1e-2`, giving `lambda_PE = 32.2 pc` in a 10.2 pc box.
 `GrackleCooling:disable_cooling_for_debugging: 1` skips the per-particle
 cooling/heating update so the gas's thermal and dynamical state stays
 fixed, while `--cooling` (`run.sh`) still lets `cooling_init()` resolve
@@ -54,7 +54,7 @@ depends on.
 make -j
 ```
 `--with-tracers=GEAR` is required: the tracers module registers the
-`FUVSpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
+`PESpecificEnergies`/`LWSpecificEnergies` snapshot output (the fields
 themselves live on `struct part`'s `feedback_data`). The Grackle cooling
 mode is not critical here (only `chemistry_data` needs resolving, not any
 mode-gated species network).

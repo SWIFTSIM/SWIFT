@@ -73,7 +73,7 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
 
 /**
  * @brief Compute Grackle's per-particle isrf_habing for the local
- * Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * Lyman-Werner/PE feedback. No-op here: this subgrid model has no
  * radiation model to source it from.
  *
  * @param phys_const The physical constants in internal units.
@@ -92,7 +92,7 @@ INLINE static double cooling_get_isrf_habing_subgrid(
 
 /**
  * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
- * local Lyman-Werner/FUV feedback. No-op here: this subgrid model has no
+ * local Lyman-Werner/PE feedback. No-op here: this subgrid model has no
  * radiation model to source it from.
  *
  * @param phys_const The physical constants in internal units.

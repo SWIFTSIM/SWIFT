@@ -114,7 +114,7 @@ def parse_options():
         "--seed-pulse-amplitude",
         type=float,
         default=0.0,
-        help="If > 0, write a Gaussian FUVSpecificEnergy/LWSpecificEnergy "
+        help="If > 0, write a Gaussian PESpecificEnergy/LWSpecificEnergy "
         "pulse of this peak value (internal units) at the box centre and "
         "write no star particle.",
     )
@@ -131,7 +131,7 @@ def parse_options():
         "--seed-delta-amplitude",
         type=float,
         default=0.0,
-        help="If > 0, write this FUVSpecificEnergy/LWSpecificEnergy value on "
+        help="If > 0, write this PESpecificEnergy/LWSpecificEnergy value on "
         "the single particle nearest the box centre only (Nyquist-scale "
         "delta seed), zero elsewhere, and write no star particle.",
     )
@@ -140,7 +140,7 @@ def parse_options():
         "--seed-noise-amplitude",
         type=float,
         default=0.0,
-        help="If > 0, write a uniform FUVSpecificEnergy/LWSpecificEnergy "
+        help="If > 0, write a uniform PESpecificEnergy/LWSpecificEnergy "
         "background of this value plus 1%% relative white noise (fixed "
         "seed) on every particle, and write no star particle.",
     )
@@ -269,7 +269,7 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 L_code = L
 
 #####################
-# Seeded FUV/LW pulse (no star): see --seed-pulse-amplitude's own help.
+# Seeded PE/LW pulse (no star): see --seed-pulse-amplitude's own help.
 #####################
 u_pe = np.zeros(N)
 u_lw = np.zeros(N)
@@ -392,7 +392,7 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho, dtype="f")
-grp.create_dataset("FUVSpecificEnergy", data=u_pe, dtype="f")
+grp.create_dataset("PESpecificEnergy", data=u_pe, dtype="f")
 grp.create_dataset("LWSpecificEnergy", data=u_lw, dtype="f")
 
 

@@ -1,6 +1,6 @@
 # Intro
 A stabilized shear layer (two counter-streaming gas streams, no seed
-perturbation) carrying two seeded Gaussian FUV/LW blobs, one per stream.
+perturbation) carrying two seeded Gaussian PE/LW blobs, one per stream.
 Measures whether the ISRF hyperbolic propagation and dissipation scheme
 introduces a directional artifact under a persistent relative velocity
 across a contact discontinuity, using an exact reflection symmetry the
@@ -18,7 +18,7 @@ layer destabilizes has its asymmetry metrics declared void rather than
 silently trusted.
 
 ## The seeded field, and why there is no star
-Two Gaussian `FUVSpecificEnergy`/`LWSpecificEnergy` blobs are written
+Two Gaussian `PESpecificEnergy`/`LWSpecificEnergy` blobs are written
 directly into the IC (`--pulse-amplitude`/`--pulse-sigma-h`), one centred in
 each stream. This isolates the propagation and dissipation operators from
 injection, the star's own timestep, and any star-gas relative velocity

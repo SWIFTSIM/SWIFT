@@ -17,7 +17,7 @@
 #
 ################################################################################
 """
-Sec 6.2's causal-reach test: the propagated FUV/LW field must not exceed its
+Sec 6.2's causal-reach test: the propagated PE/LW field must not exceed its
 causal reach `r <= c_hyp*t` (from injection start) beyond the SPH kernel's
 own expected numerical smearing.
 
@@ -199,7 +199,7 @@ def load_snapshot(path):
         pos = gas["Coordinates"][:, :]
         h = gas["SmoothingLengths"][:].astype(np.float64)
         ids = gas["ParticleIDs"][:]
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
@@ -350,7 +350,7 @@ def main():
             f"r_front={c_hyp * (t - t0):.4e} ({c_hyp * (t - t0) / h_med:.2f} h) ---"
         )
 
-        for band, u_field in (("FUV", "u_pe"), ("LW", "u_lw")):
+        for band, u_field in (("PE", "u_pe"), ("LW", "u_lw")):
             u_all = snap[u_field]
             check_finite(u_field, u_all, fn, band=band)
             r, u = r_all[gas_mask], u_all[gas_mask]
@@ -370,7 +370,7 @@ def main():
             for finding in res["findings"]:
                 print("  " + finding)
 
-            ax = axes[0] if band == "FUV" else axes[1]
+            ax = axes[0] if band == "PE" else axes[1]
             valid = res["means"] > 0
             ax.semilogy(
                 res["centres"][valid] / h_med,
@@ -381,7 +381,7 @@ def main():
             )
             ax.axvline(res["r_front"] / h_med, color=colors[i], ls="--", lw=1)
 
-    for ax, band in zip(axes, ("FUV", "LW")):
+    for ax, band in zip(axes, ("PE", "LW")):
         ax.set_xlabel("r / h")
         ax.set_title(f"{band}: solid = u(r); dashed = c_hyp*(t-t0)")
     axes[0].set_ylabel("u(r) (binned mean)")

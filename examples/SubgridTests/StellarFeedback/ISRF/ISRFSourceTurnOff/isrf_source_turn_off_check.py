@@ -18,8 +18,8 @@
 ################################################################################
 """Check that the total ISRF field decays away once the star dies.
 
-Tracks the box-total mass-weighted FUV and LW specific energies,
-``sum(mass*FUVSpecificEnergies)``/``sum(mass*LWSpecificEnergies)``, across
+Tracks the box-total mass-weighted PE and LW specific energies,
+``sum(mass*PESpecificEnergies)``/``sum(mass*LWSpecificEnergies)``, across
 every snapshot. The star's death time is not read off any snapshot field
 (a dead star's last-computed luminosity is not necessarily reset to zero,
 so it is not a reliable death marker on its own); it is instead computed
@@ -46,7 +46,7 @@ informational:
     time have elapsed (5 e-folds of pure exponential decay already leaves
     under 1% residual, so requiring both jointly rules out a stalled-but-
     still-below-1%-by-coincidence read).
-(c) GATED. Whether any particle's FUV or LW specific energy goes negative
+(c) GATED. Whether any particle's PE or LW specific energy goes negative
     after death, excluding snapshots within ``--negativity-settle-myr`` of
     death (the switch-off transient: the field is still relaxing towards
     its post-death form there, and is reported separately, not scored).
@@ -292,7 +292,7 @@ def load_snapshot(path: str) -> dict:
         h = gas["SmoothingLengths"][:].astype(np.float64)
         rho = gas["Densities"][:].astype(np.float64)
         mass = gas["Masses"][:].astype(np.float64)
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
 
@@ -450,7 +450,7 @@ def main() -> None:
         i = int(np.argmax(bad))
         raise RuntimeError(
             f"Non-finite specific energy at snapshot {i} (t={times[i]:.6e}): "
-            f"{n_nonfinite_pe[i]} FUV / {n_nonfinite_lw[i]} LW particles out of "
+            f"{n_nonfinite_pe[i]} PE / {n_nonfinite_lw[i]} LW particles out of "
             f"{len(snaps[i]['u_pe'])} are NaN/inf. This is a corrupted radiation "
             "field (a simulation-side defect), not a check-script threshold "
             "issue: fix the run, not this gate."
@@ -552,7 +552,7 @@ def main() -> None:
     print("--- (a) e-folding time, measured vs. analytic (INFORMATIONAL) ---")
     print(f"c_hyp (reconstructed): {c_hyp:.4f} km/s")
     print(
-        f"FUV: measured e-fold={tau_pe_measured_myr:.4f} Myr, "
+        f"PE: measured e-fold={tau_pe_measured_myr:.4f} Myr, "
         f"expected={tau_pe_expected_myr:.4f} Myr, "
         f"ratio={tau_pe_measured_myr / tau_pe_expected_myr:.3f}"
     )
@@ -571,7 +571,7 @@ def main() -> None:
     print()
     print("--- (b) residual-fraction check (GATED) ---")
     print(
-        f"FUV: residual at time_end = {residual_pe:.3e} "
+        f"PE: residual at time_end = {residual_pe:.3e} "
         f"({n_efolds_pe:.2f} e-folds elapsed)"
     )
     print(
@@ -622,7 +622,7 @@ def main() -> None:
         tag = " [switch-off transient, not scored]" if is_transient[k] else ""
         print(
             f"  snapshot {i}: t-t_death = {t_rel_myr:.5f} Myr{dt_units_str}, "
-            f"negative FUV particles = {n_neg_pe_i}, "
+            f"negative PE particles = {n_neg_pe_i}, "
             f"negative LW particles = {n_neg_lw_i}, "
             f"min(u_pe)/pre-death median = "
             f"{min_u_pe[i] / pre_death_median_u_pe:.3e}, "
@@ -636,7 +636,7 @@ def main() -> None:
     pass_negativity = n_negative_scored_pe == 0 and n_negative_scored_lw == 0
 
     print(
-        f"Scored snapshots with a negative FUV specific energy: "
+        f"Scored snapshots with a negative PE specific energy: "
         f"{n_negative_scored_pe}/{int(np.sum(scored))}"
     )
     print(
@@ -649,7 +649,7 @@ def main() -> None:
     print(f"Negativity check (gated): {'PASS' if pass_negativity else 'FAIL'}")
 
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.semilogy(times, E_pe, "o-", color="C0", label="FUV (total)")
+    ax.semilogy(times, E_pe, "o-", color="C0", label="PE (total)")
     ax.semilogy(times, E_lw, "s-", color="C1", label="LW (total)")
     ax.axvline(t_death, color="k", linestyle="--", label="star death")
     ax.set_xlabel("time (internal units)")

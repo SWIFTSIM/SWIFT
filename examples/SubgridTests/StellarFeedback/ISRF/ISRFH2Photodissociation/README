@@ -19,7 +19,7 @@ density, not by the size of the cloud. With mode 3, `thin` gives
 `N_H2 ~ 6e17 cm^-2` (`f_shield ~ 1e-3`).
 
 `config=draine_spectrum` is `thin` with a 7.61 Msun star. Its LW fraction
-`u_LW/(u_FUV+u_LW)` is 0.148, the value of the Draine (1978) field that the
+`u_LW/(u_PE+u_LW)` is 0.148, the value of the Draine (1978) field that the
 Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
 star gives 0.36). The code's rate is then 0.92 times that rate, instead of
 2.24. The star is fainter in the LW band, so the run is 12.5 times longer, with

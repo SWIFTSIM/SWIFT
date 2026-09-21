@@ -53,7 +53,7 @@ import sys
 import h5py
 
 table, with_isrf = sys.argv[1], sys.argv[2] == "1"
-isrf_fields = ("L_FUV", "L_LW", "Integrated_L_FUV", "Integrated_L_LW")
+isrf_fields = ("L_PE", "L_LW", "Integrated_L_PE", "Integrated_L_LW")
 
 with h5py.File(table, "r") as f:
     if "Data/Radiation" not in f:

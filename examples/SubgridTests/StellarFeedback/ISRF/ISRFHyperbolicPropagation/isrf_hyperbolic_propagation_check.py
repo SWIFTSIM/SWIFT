@@ -23,8 +23,8 @@ equations.
 
 The governing equations, the closure, the flux limiter and both analytic
 steady-state limits are derived in `theory/GEAR/Radiation/02_fuv_isrf.tex`,
-Sections `fuv-p1` (closure and limiter), `fuv-lambda-chyp` (the
-RSOL-consistent constants) and `fuv-steady-limits` (the two limits, worked
+Sections `fuv-p1` (closure and limiter), `pe-lambda-chyp` (the
+RSOL-consistent constants) and `pe-steady-limits` (the two limits, worked
 through). This script's own prediction is the discrete image of those
 equations; read that section first, the algebra here is not repeated.
 
@@ -37,7 +37,7 @@ flux `f = |F|/(c_hyp*u)`:
   free streaming (f -> 1):   u(r) = L*exp(-r/lambda) / (4*pi*c*r**2)
   diffusion     (f -> 0):   u(r) = 3*L*exp(-sqrt(3)*r/lambda) / (4*pi*c*lambda*r)
 
-(theory doc Eqs. `fuv-steady-freestream`/`fuv-steady-diffusion`; both are
+(theory doc Eqs. `pe-steady-freestream`/`pe-steady-diffusion`; both are
 exact, and `c_hyp` cancels out of both). A single point source in a purely
 absorbing medium sits on the free-streaming branch: substituting the
 diffusive profile back into `f` gives `f -> 1/sqrt(3)`, not 0, so that
@@ -81,7 +81,7 @@ and reports the fitted lambda as information only:
      both shape and amplitude. This is the primary gate (`--tol`).
   2. The total field amplitude, against a first-principles identity that
      needs no fit, no profile and no closure (theory doc
-     Eq. `fuv-steady-amplitude`): summing the steady-state zeroth moment
+     Eq. `pe-steady-amplitude`): summing the steady-state zeroth moment
      over all particles kills the divergence term exactly, because the
      discrete `div(F)` operator is a mirrored credit/debit pair with
      `sum_i m_i*(div F)_i = 0` identically. What remains is
@@ -90,7 +90,7 @@ and reports the fitted lambda as information only:
 
      (exact for a uniform `c_hyp`; `weight_j`/`extinction_j` are the
      injection weights and receiver-side extinction of the theory doc's
-     Eq. `fuv-inject`). Gated with a wider tolerance (`--amp-tol`), since
+     Eq. `pe-inject`). Gated with a wider tolerance (`--amp-tol`), since
      the run's `c_hyp` is per-particle rather than exactly uniform.
 
 The reduced flux `f` realized in the fit range is printed, so a reader can
@@ -180,7 +180,7 @@ def parse_options():
     parser.add_argument(
         "--check-chyp-invariance",
         action="store_true",
-        help="Re-solve the FUV band at a 5x SMALLER arbitrary c_hyp and "
+        help="Re-solve the PE band at a 5x SMALLER arbitrary c_hyp and "
         "report the profile difference. The discrete fixed point is "
         "c_hyp-independent analytically (see discrete_steady_state's "
         "docstring); this re-measures that property rather than assuming it. "
@@ -213,14 +213,14 @@ def load_snapshot(path):
         rho = gas["Densities"][:].astype(np.float64)
         h = gas["SmoothingLengths"][:].astype(np.float64)
         mass = gas["Masses"][:].astype(np.float64)
-        u_pe = gas["FUVSpecificEnergies"][:].astype(np.float64)
+        u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1]
 
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
         star_h = float(star["SmoothingLengths"][0])
-        L_PE = float(star["FUVLuminosities"][0])
+        L_PE = float(star["PELuminosities"][0])
         L_LW = float(star["LWLuminosities"][0])
 
     return dict(
@@ -313,7 +313,7 @@ def radial_bin(r, u, edges):
 # exact pairwise operators of src/feedback/GEAR/radiation_propagation_iact.h
 # and the flux limiter of radiation_isrf.c, iterated to their own fixed
 # point. Theory: theory/GEAR/Radiation/02_fuv_isrf.tex, Sections `fuv-p1`,
-# `fuv-lambda-chyp`, `fuv-operators`, `fuv-steady-limits`.
+# `pe-lambda-chyp`, `pe-operators`, `pe-steady-limits`.
 # -----------------------------------------------------------------------------
 
 
@@ -449,7 +449,7 @@ def injection_source(snap, sigma_d_band_cgs, L_band):
     units), mirroring radiation_iact.h's `weight = mj*wi*si_inv_weight`.
     Also returns the total injected power `sum_j weight_j*L*extinction_j`,
     which the amplitude identity of the theory doc's
-    Eq. `fuv-steady-amplitude` needs."""
+    Eq. `pe-steady-amplitude` needs."""
     pos, mass, rho, h, Z = snap["pos"], snap["mass"], snap["rho"], snap["h"], snap["Z"]
     boxsize = snap["boxsize"]
     dxs = pos - snap["star_pos"]
@@ -586,7 +586,7 @@ def main():
 
     print(f"Snapshot: {files[-1]} (t={snap['time']:.4e})")
     print(f"Mean Z={Z_mean:.4e}, mean rho={rho_mean:.4e} (internal units)")
-    print(f"h/lambda: FUV={h_mean / lambda_pe:.3f}, LW={h_mean / lambda_lw:.3f}")
+    print(f"h/lambda: PE={h_mean / lambda_pe:.3f}, LW={h_mean / lambda_lw:.3f}")
     print(f"Fit/compare radial range: [{r_min:.4e}, {r_max:.4e}] (internal units)")
     print()
     print("Solving each band's discrete steady state on the run's own real")
@@ -595,7 +595,7 @@ def main():
     c_light_internal = C_LIGHT_CGS * snap["unit_time_cgs"] / snap["unit_length_cgs"]
     results = {}
     for band, lam, sigma_d, L_band, u_sim in (
-        ("FUV", lambda_pe, SIGMA_D_PE_CGS, snap["L_PE"], snap["u_pe"]),
+        ("PE", lambda_pe, SIGMA_D_PE_CGS, snap["L_PE"], snap["u_pe"]),
         ("LW", lambda_lw, SIGMA_D_LW_CGS, snap["L_LW"], snap["u_lw"]),
     ):
         u_pred, _, f_pred, iters, converged = discrete_steady_state(
@@ -684,7 +684,7 @@ def main():
                 snap["rho"],
                 snap["unit_length_cgs"],
                 snap["unit_mass_cgs"],
-                SIGMA_D_PE_CGS if band == "FUV" else SIGMA_D_LW_CGS,
+                SIGMA_D_PE_CGS if band == "PE" else SIGMA_D_LW_CGS,
             )
             / snap["unit_length_cgs"]
         )
@@ -737,7 +737,7 @@ def main():
 
     if opt.check_chyp_invariance:
         print()
-        print("Re-solving FUV at a 5x smaller arbitrary c_hyp...")
+        print("Re-solving PE at a 5x smaller arbitrary c_hyp...")
         u_alt, _, _, _, conv_alt = discrete_steady_state(
             snap,
             lambda_pe,
@@ -748,7 +748,7 @@ def main():
             opt.relax,
             c_hyp_dial=0.02,
         )
-        ref = results["FUV"]["u_pred"]
+        ref = results["PE"]["u_pred"]
         scale = np.max(np.abs(ref))
         print(
             f"c_hyp-invariance of the discrete fixed point: "
@@ -757,7 +757,7 @@ def main():
         )
 
     fig, ax = plt.subplots(figsize=(6, 5))
-    for band, colour, marker in (("FUV", "C0", "o"), ("LW", "C1", "s")):
+    for band, colour, marker in (("PE", "C0", "o"), ("LW", "C1", "s")):
         res = results[band]
         v = ~np.isnan(res["binned_sim"]) & ~np.isnan(res["binned_pred"])
         ax.semilogy(

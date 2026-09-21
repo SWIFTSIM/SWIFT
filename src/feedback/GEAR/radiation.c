@@ -64,7 +64,7 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct unit_system *us,
                     const struct phys_const *phys_const) {
 
-  /* Set before radiation_read_data() below, which requires the L_FUV/
+  /* Set before radiation_read_data() below, which requires the L_PE/
      L_LW datasets whenever this is on (see #radiation.with_ISRF's own
      doxygen). */
   rad->with_ISRF = (char)parser_get_opt_param_int(

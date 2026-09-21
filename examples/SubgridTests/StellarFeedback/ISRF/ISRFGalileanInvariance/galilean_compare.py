@@ -20,7 +20,7 @@
 """
 Galilean-invariance check of the ISRF propagation scheme.
 
-The scheme evolves the mass-specific FUV/LW energy u and flux F along the
+The scheme evolves the mass-specific PE/LW energy u and flux F along the
 gas trajectories and reads no particle velocity, so F is the fluid-frame
 flux. A run whose gas and star share a uniform bulk velocity V must then
 carry, on every gas particle, the same u and F as the run at rest, up to
@@ -53,7 +53,7 @@ import numpy as np
 NOISE_FACTOR = 3.0
 U_REFERENCE = 1e-5
 F_REL_FLOOR = 1e-6
-BANDS = ("FUV", "LW")
+BANDS = ("PE", "LW")
 
 
 def parse_options():
