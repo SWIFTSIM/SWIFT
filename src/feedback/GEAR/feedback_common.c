@@ -30,6 +30,7 @@
 #include "stellar_evolution.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 #include "units.h"
 
 /*! Fixed midpoint (Myr) of dt_evolution_ssp's logistic transition: factor =
@@ -365,6 +366,12 @@ void feedback_will_do_feedback(
 
   /* Multiply pre-SN energy by the efficiency */
   sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
+
+  /* Record the star's own wind budget, after the efficiency factor, so that
+     it can be compared with what the gas-side tracers report as received. */
+  tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
+                                  sp->feedback_data.winds.energy_ejected,
+                                  sp->feedback_data.enrichment_weight);
 
   /* Apply the radiation pressure efficiency factor */
   sp->feedback_data.radiation.L_bol *=

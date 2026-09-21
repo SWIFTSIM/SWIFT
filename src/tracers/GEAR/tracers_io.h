@@ -474,7 +474,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 8;
+  int num = 11;
 
   list[0] = io_make_output_field(
       "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
@@ -544,6 +544,32 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
         tracers_data.snia_events.last_event_time,
         "Same as TimeAtLastSNIIEvent, for the SNIa channel.");
   }
+
+  list[8] = io_make_output_field(
+      "CumulativeWindsMassEjected", DOUBLE, 1, UNIT_CONV_MASS, 0.f, sparts,
+      tracers_data.winds.mass_ejected,
+      "Mass this star ejected by stellar winds over its lifetime so far, "
+      "counted once per injection step from the star's own budget, but only "
+      "for a step whose preceding step left the star with gas neighbours; "
+      "the star's mass budget is spent regardless, so this undercounts the "
+      "star's true total wind mass loss whenever a step had none.");
+
+  list[9] = io_make_physical_output_field(
+      "CumulativeWindsEnergyEjected", DOUBLE, 1, UNIT_CONV_ENERGY, 0.f, sparts,
+      tracers_data.winds.energy_ejected,
+      /*can convert to comoving=*/0,
+      "Total (not specific) stellar-wind energy this star ejected over its "
+      "lifetime so far, after the winds efficiency factor.");
+
+  list[10] = io_make_physical_output_field(
+      "CumulativeWindsMomentumEjected", DOUBLE, 1, UNIT_CONV_MOMENTUM, 0.f,
+      sparts, tracers_data.winds.momentum_ejected,
+      /*can convert to comoving=*/0,
+      "Sum over injection steps of the wind momentum budget sqrt(2 m_ej E_ej), "
+      "in the star's rest frame (scalar sum, not vector: isotropic ejecta "
+      "would else cancel). Excludes the m_ej v_star term that the gas "
+      "CumulativeMomentumFromWinds includes, which is why the received/ejected "
+      "ratio is not 1 for a moving star.");
 
   return num;
 }

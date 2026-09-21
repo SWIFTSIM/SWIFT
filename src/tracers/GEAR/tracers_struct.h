@@ -101,6 +101,29 @@ struct tracers_sn_event_data {
 };
 
 /**
+ * @brief Record of a star's own stellar-wind budget over its lifetime.
+ *
+ * Winds are continuous, so the unit of record is an injection step: a
+ * timestep whose wind budget the star hands to its gas neighbours. All
+ * quantities are the budget the star ejected, summed once per star per
+ * step, not a sum over the receiving gas. They exist to form the star-side
+ * versus gas-side energy and momentum ratios.
+ */
+struct tracers_winds_data {
+
+  /*! Cumulative mass ejected by winds (internal units). */
+  double mass_ejected;
+
+  /*! Cumulative wind energy ejected, after the winds efficiency factor
+      (physical internal units). */
+  double energy_ejected;
+
+  /*! Cumulative wind momentum magnitude, sqrt(2 m_ej E_ej) per step, in the
+      star's rest frame (physical internal units). */
+  double momentum_ejected;
+};
+
+/**
  * @brief Properties of the tracers stored in the star particle data.
  *
  */
@@ -115,6 +138,9 @@ struct tracers_spart_data {
   /*! SN event tracers, one per channel */
   struct tracers_sn_event_data snii_events;
   struct tracers_sn_event_data snia_events;
+
+  /*! Stellar-wind ejecta budget */
+  struct tracers_winds_data winds;
 
   /* Two of the three radiation channels already have a tracer elsewhere, so
      only ISRF (photoelectric heating/LW dissociation) is untracked: HII has
