@@ -265,6 +265,16 @@ INLINE static void convert_part_cumulative_absorbed_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #HyperbolicPropagationSpeeds, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_c_hyp(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_c_hyp(p);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -277,7 +287,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 24;
+  int num = 25;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -466,6 +476,17 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_LW,
       "Same as FUVCumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
+
+  list[24] = io_make_output_field_convert_part(
+      "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,
+      xparts, convert_part_c_hyp,
+      "Kernel-local hyperbolic propagation speed the band updates and the "
+      "pairwise transport operators ran with, shared by both bands. "
+      "Physical: built from the physical smoothing length and a physical "
+      "timestep, so no scale-factor exponent of its own. The conserved "
+      "ledger of the consistent-variable-c schemes is `sum m u / c_hyp` "
+      "rather than `sum m u`, which is what this field makes measurable "
+      "from a snapshot. Only meaningful when ISRF_propagation is on.");
 
   return num;
 }

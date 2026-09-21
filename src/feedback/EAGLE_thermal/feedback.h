@@ -331,6 +331,16 @@ feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
 }
 
 /**
+ * @brief Kernel-local hyperbolic propagation speed. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_part_c_hyp(
+    const struct part *p) {
+  return 0.f;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * This model does not implement HII photoionization feedback.

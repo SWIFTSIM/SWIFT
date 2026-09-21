@@ -1296,6 +1296,20 @@ float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
 }
 
 /**
+ * @brief Kernel-local hyperbolic propagation speed, see
+ * #feedback_part_data.c_hyp. Thin dispatch wrapper, same reasoning as
+ * #feedback_get_part_u_PE.
+ *
+ * Shared by both bands, and physical: built from the physical smoothing
+ * length and a physical timestep.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_c_hyp(const struct part *p) {
+  return p->feedback_data.c_hyp;
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
