@@ -468,7 +468,6 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
  * @param xp The extended particle data.
  * @param delta_p_magnitude Norm of the momentum received (internal physical
  * units).
- * @param delta_u Specific internal energy received (internal physical units).
  * @param kick_velocity Norm of the velocity kick, in the same frame as
  * delta_p_magnitude (internal physical units).
  */

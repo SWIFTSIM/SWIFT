@@ -248,6 +248,22 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
     const float kick_velocity) {}
 
 /**
+ * @brief Update the gas particle tracer data after it received radiation
+ * feedback.
+ *
+ * Nothing to do here.
+ *
+ * @param xp The extended particle data.
+ * @param delta_p_magnitude Norm of the momentum received (internal physical
+ * units).
+ * @param kick_velocity Norm of the velocity kick, in the same frame as
+ * delta_p_magnitude (internal physical units).
+ */
+static INLINE void tracers_after_radiation_pressure_feedback_part(
+    struct xpart *xp, const float delta_p_magnitude,
+    const float kick_velocity) {}
+
+/**
  * @brief Update the gas particle tracer data after it received supernovae
  * feedback.
  *
