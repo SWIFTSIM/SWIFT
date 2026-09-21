@@ -25,45 +25,22 @@
  * hyperbolic M1-relaxation propagation of the per-band u and specific_flux
  * fields.
  *
- * Three pairwise operators, in three loops: `div(F)` and the
- * negativity-triggered artificial dissipation in the force loop
- * (`runner_iact_[nonsym_]isrf_dissipation`), `grad(u)` in the gradient loop
- * (`runner_iact_[nonsym_]isrf_gradient`), and the dissipation trigger's
- * neighbour-mean reference field in the density loop
- * (`runner_iact_[nonsym_]isrf_propagation`). The density and gradient loops
- * are type-1 (reach particle i only for r < H_i); `div(F)` needs both sides
- * of every pair credited, so it lives in the force loop instead, which is
- * type-2 and fires both sides whenever either kernel reaches. Full
- * derivation of each operator, its pair-coverage and skew-adjointness
- * properties, and the consistent-variable-c change of variable
- * (#isrf_c_hyp_consistent_variable_c) is in
- * theory/GEAR/Radiation/02_fuv_isrf.tex, secs. "Pairwise transport
- * operators" and "The consistent variable-speed operators".
+ * `div(F)` sits in the force loop, not the density loop, because it needs both
+ * sides of every pair credited and only the force loop's type-2 dispatch fires
+ * both sides whenever either kernel reaches. Derivations are in
+ * theory/GEAR/Radiation/02_fuv_isrf.tex, secs. "Spatial operators" and "The
+ * consistent variable-speed operators".
  *
- * Time levels within one step. Nothing writes `u` between the drift snapshot
- * and the end-force ghost (injection with propagation on writes only the
- * dose reservoir), so the live `u` the gradient loop and the dissipation
- * read IS `u^n`, equal to `u_prev`. The order is: the gradient loop builds
- * `grad(u^n)` with `D(u^n, F^n)`; the extra ghost relaxes `F^{n+1}` and
- * limits it against `u^n`; the force loop accumulates `div(F^{n+1})` and the
- * dissipation of `u^n`; the end-force ghost produces `u^{n+1}`.
+ * Nothing writes `u` between the drift snapshot and the end-force ghost, so
+ * the live `u` the gradient and dissipation loops read is `u^n`.
  *
- * Comoving-to-physical convention. Every quantity SWIFT hands these loops is
- * comoving (`dx`, `r`, `h`, and the `rho_prev` snapshot), while every field
- * they accumulate into is PHYSICAL. Each of the three spatial operators
- * carries exactly one net inverse length, so each closes with a single
- * named conversion factor, `a_factor_comoving_to_physical = 1/a`, computed
- * once per pair dispatch below (term-by-term dimensional count in
- * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Cosmological runs").
- * #radiation_dissipation_reference_accumulate_band needs no conversion
- * (read only as a ratio; see that function's own comment).
+ * The inputs are comoving and the accumulators physical. Each spatial operator
+ * carries one net inverse length, so each closes with
+ * `a_factor_comoving_to_physical = 1/a`.
  *
- * Every operator reads `p->feedback_data.rho_prev`, a comoving density
- * snapshot cached once per step by `radiation_snapshot_part_propagation`,
- * the same snapshot in every loop: the density loop runs interleaved with
- * SPH's own density accumulation, where `p->rho` is a partial sum, and the
- * skew-adjoint pairing of the divergence and the gradient needs both built
- * from the same `rho_i`/`rho_j`.
+ * All three read `feedback_data.rho_prev`, not `p->rho`: the density loop runs
+ * while `p->rho` is still a partial sum, and the skew-adjoint pairing of the
+ * divergence and the gradient needs both built from the same densities.
  */
 
 #include "dimension.h"
@@ -73,37 +50,24 @@
 #include <math.h>
 
 /**
- * @brief Band-specific pairwise contribution to particle i's `div(F)`
- * accumulator, and mirrored (mass-weighted, opposite sign) contribution to
- * particle j's, from a single shared coefficient built from both particles'
- * own flux, density, and kernel-gradient terms.
+ * @brief Band contribution to particle i's `div(F)` accumulator, and the
+ * mirrored, mass-weighted, opposite-sign contribution to j's.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
- * @param wi_dr Particle i's own kernel-gradient term,
- * h_i^-(dim+1) * dW/dq|_{r/h_i}.
- * @param wj_dr Particle j's own kernel-gradient term,
- * h_j^-(dim+1) * dW/dq|_{r/h_j}.
+ * @param wi_dr Particle i's kernel-gradient term, h_i^-(dim+1) * dW/dq.
+ * @param wj_dr Particle j's kernel-gradient term, h_j^-(dim+1) * dW/dq.
  * @param mi Particle i's mass.
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
- * @param F_i Particle i's tracked flux (this band): `F_true` for every
- * scheme except #isrf_c_hyp_consistent_variable_c, which stores the
- * reduced flux `Ft = F_true/c_hyp` there instead (see
- * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "The consistent
- * variable-speed operators").
- * @param F_j Particle j's tracked flux (this band), same convention as
- * `F_i`.
- * @param c_i Particle i's own #feedback_part_data.c_hyp. Unused (the
- * shared coefficient carries no `c_hyp` factor) except under
- * #isrf_c_hyp_consistent_variable_c, where it is the receiver-side
- * multiplier documented at #isrf_c_hyp_consistent_variable_c's own site.
- * @param c_j Particle j's own #feedback_part_data.c_hyp, same role as
- * `c_i` for particle j's side.
- * @param a_factor_comoving_to_physical `1/a`, the file header's single
- * conversion factor: the comoving inputs make the shared coefficient `a`
- * times the physical divergence, and both accumulators are physical.
+ * @param F_i Particle i's tracked flux (this band), or the reduced flux
+ * `Ft = F_true/c_hyp` under #isrf_c_hyp_consistent_variable_c.
+ * @param F_j Particle j's tracked flux, same convention.
+ * @param c_i Particle i's #feedback_part_data.c_hyp, used only under
+ * #isrf_c_hyp_consistent_variable_c.
+ * @param c_j Particle j's #feedback_part_data.c_hyp, same role.
+ * @param a_factor_comoving_to_physical `1/a`.
  * @param div_F_i (return, accumulated) Particle i's div(F) accumulator.
  * @param div_F_j (return, accumulated) Particle j's div(F) accumulator.
  */
@@ -115,15 +79,10 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
                                      float c_i, float c_j,
                                      float a_factor_comoving_to_physical,
                                      float *div_F_i, float *div_F_j) {
-  /* Every scheme evaluates the SAME shared coefficient Phi_ij, then
-   * applies it with a scheme-dependent trailing scalar. -freciprocal-math's
-   * approximate reciprocal and FMA contraction are call-site-sensitive
-   * under this build's -flto, so reassociation is disabled here to keep
-   * the two schemes bit-for-bit at uniform c_i/c_j
-   * (tests/testRadiationISRFForceDispatchConservation.c).
-   *
-   * clang-only: GCC has no block-scoped equivalent, so this bit-identity
-   * does NOT hold on a GCC (cluster) build. */
+  /* Both schemes share the coefficient Phi_ij and differ only in a trailing
+   * scalar. Reassociation is disabled so they stay bit-for-bit identical at
+   * uniform c_hyp (tests/testRadiationISRFForceDispatchConservation.c). This
+   * holds under clang only: GCC has no block-scoped equivalent. */
   {
 #if defined(__clang__)
 #pragma clang fp reassociate(off) contract(off) reciprocal(off)
@@ -136,12 +95,10 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
                          a_factor_comoving_to_physical;
 
     if (isrf_c_hyp_consistent_variable_c) {
-      /* F_i/F_j already hold the owner-normalized reduced flux Ft (this
-       * scheme's stored state), so Phi_ij above is already div(Ft)'s
-       * shared coefficient; each side is then multiplied by its OWN
-       * (receiver) c_hyp, not the owner's -- see
-       * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "The consistent
-       * variable-speed operators". */
+      /* F_i and F_j already hold the reduced flux, so Phi_ij is already
+       * div(Ft)'s shared coefficient and each side takes its OWN (receiver)
+       * c_hyp. The pair then conserves sum m_i X_i / c_hyp_i, not
+       * sum m_i X_i. */
       *div_F_i += c_i * mj * Phi_ij;
       *div_F_j += -c_j * mi * Phi_ij;
       return;
@@ -153,34 +110,25 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
 }
 
 /**
- * @brief Band-specific pairwise contribution to each particle's kernel-mean
- * `|rho_prev*u_prev|` reference accumulator, the local field scale the
- * negativity trigger divides an undershoot by (radiation_isrf.c's
- * #radiation_update_dissipation_alpha_band).
+ * @brief Band contribution to each particle's kernel-mean `|rho_prev*u_prev|`
+ * reference accumulator, the local field scale the negativity trigger divides
+ * an undershoot by (#radiation_update_dissipation_alpha_band).
  *
- * Accumulated in the density loop, from the stable `u_*_prev` snapshot and
- * `rho_prev`, so the value the trigger reads does not drift across a
- * particle's h-iterations. The dissipation term the trigger drives is
- * accumulated separately, in the force loop
- * (#radiation_dissipation_force_accumulate_band).
+ * Built from the `u_prev` and `rho_prev` snapshots, so the value does not
+ * drift across a particle's h-iterations. Takes no comoving-to-physical
+ * conversion: its only consumer divides it into `rho_prev*u`, which carries
+ * the same `a^3` weight, so converting here would introduce a bias.
  *
- * Takes no comoving-to-physical conversion, unlike the three spatial
- * operators in this file: its only consumer divides it into `rho_prev*u`,
- * which carries the same `a^3` comoving-density weight, so the two cancel.
- * Converting here would introduce a bias rather than remove one.
- *
- * @param wi Particle i's own kernel value, W(r/h_i)*h_i^-dim.
- * @param wj Particle j's own kernel value, W(r/h_j)*h_j^-dim.
+ * @param wi Particle i's kernel value, W(r/h_i)*h_i^-dim.
+ * @param wj Particle j's kernel value, W(r/h_j)*h_j^-dim.
  * @param mi Particle i's mass.
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
  * @param u_i_prev Particle i's snapshotted specific field (this band).
  * @param u_j_prev Particle j's snapshotted specific field (this band).
- * @param ngb_mean_abs_u_V_i (return, accumulated) Particle i's kernel-mean
- * `|rho_prev*u_prev|` accumulator.
- * @param ngb_mean_abs_u_V_j (return, accumulated) Particle j's kernel-mean
- * `|rho_prev*u_prev|` accumulator.
+ * @param ngb_mean_abs_u_V_i (return, accumulated) Particle i's accumulator.
+ * @param ngb_mean_abs_u_V_j (return, accumulated) Particle j's accumulator.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
@@ -195,27 +143,15 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
 }
 
 /**
- * @brief Band-specific pairwise contribution to particle i's
- * negativity-triggered artificial-dissipation source term, and mirrored
- * (mass-weighted, opposite sign) contribution to particle j's.
+ * @brief Band contribution to particle i's negativity-triggered
+ * artificial-dissipation source term, and the mirrored contribution to j's.
  *
- * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)`, `alpha_ij = max(trigger_i,
- * trigger_j, floor_i, floor_j)`. Under #isrf_c_hyp_consistent_variable_c
- * this becomes two RECEIVER-side speeds instead of one shared minimum: see
- * that flag's own doxygen. The trigger/floor design rationale and the
- * disclosed over-diffusion cost are in
- * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Artificial dissipation".
- *
- * Accumulated in the force loop, after the extra ghost has set this step's
- * `alpha`, from the live `u`, which is still `u^n` there (see the file
- * header). Applied unconditionally, with no mutual-reach gate: the force
- * loop's dispatch fires both sides whenever either kernel reaches, so the
- * pair is always mirrored. For every scheme except
- * #isrf_c_hyp_consistent_variable_c, `sum_i m_i*dissipation_u_i` is exactly
- * zero over a same-bin active-active pair for any h_i, h_j; under that
- * scheme the conserved statement becomes `sum_i m_i*dissipation_u_i/
- * c_hyp_i = 0` instead, both verified in
- * tests/testRadiationISRFForceDispatchConservation.c.
+ * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)` with
+ * `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`; see
+ * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Artificial dissipation". Runs
+ * after the extra ghost has set this step's `alpha`, on the live `u`, which is
+ * still `u^n` there. No mutual-reach gate is needed: the force loop fires both
+ * sides whenever either kernel reaches.
  *
  * @param wi_dr See #radiation_divergence_accumulate_band.
  * @param wj_dr See #radiation_divergence_accumulate_band.
@@ -223,24 +159,19 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
- * @param c_i Particle i's own #feedback_part_data.c_hyp.
- * @param c_j Particle j's own #feedback_part_data.c_hyp.
+ * @param c_i Particle i's #feedback_part_data.c_hyp.
+ * @param c_j Particle j's #feedback_part_data.c_hyp.
  * @param alpha_trigger_i Particle i's
  * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
- * @param alpha_trigger_j Particle j's
- * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
+ * @param alpha_trigger_j Particle j's, same field.
  * @param alpha_floor_i Particle i's
  * #feedback_isrf_band_data.dissipation_alpha_floor (this band).
- * @param alpha_floor_j Particle j's
- * #feedback_isrf_band_data.dissipation_alpha_floor (this band).
+ * @param alpha_floor_j Particle j's, same field.
  * @param u_i Particle i's live specific field `u^n` (this band).
  * @param u_j Particle j's live specific field `u^n` (this band).
- * @param a_factor_comoving_to_physical `1/a`, the file header's single
- * conversion factor, applied to the shared coefficient `Psi_ij`.
- * @param dissipation_u_i (return, accumulated) Particle i's dissipation
- * source-term accumulator.
- * @param dissipation_u_j (return, accumulated) Particle j's dissipation
- * source-term accumulator.
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param dissipation_u_i (return, accumulated) Particle i's accumulator.
+ * @param dissipation_u_j (return, accumulated) Particle j's accumulator.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_dissipation_force_accumulate_band(
@@ -251,8 +182,7 @@ radiation_dissipation_force_accumulate_band(
     float *dissipation_u_j) {
 
   /* Same fp-reassociation hazard and clang-only guard as
-   * #radiation_divergence_accumulate_band's identical pragma; not
-   * guaranteed under GCC. */
+   * #radiation_divergence_accumulate_band's pragma. */
   {
 #if defined(__clang__)
 #pragma clang fp reassociate(off) contract(off) reciprocal(off)
@@ -272,8 +202,8 @@ radiation_dissipation_force_accumulate_band(
         d_ij * Wbar_ij / (rho_i * rho_j) * a_factor_comoving_to_physical;
 
     if (isrf_c_hyp_consistent_variable_c) {
-      /* Two receiver-side speeds, not one shared minimum: see this
-       * function's own doxygen. */
+      /* Two receiver-side speeds, not one shared minimum. The pair then
+       * conserves sum m_i X_i / c_hyp_i, not sum m_i X_i. */
       *dissipation_u_i += mj * (alpha_ij * c_i * shape_ij);
       *dissipation_u_j += -mi * (alpha_ij * c_j * shape_ij);
       return;
@@ -287,29 +217,19 @@ radiation_dissipation_force_accumulate_band(
 }
 
 /**
- * @brief M1 closure tensor `D(f)` for one particle, one band, built from its
- * own `(u, F, c_M)`. `c_M` is #feedback_part_data.c_hyp, reinterpreted as
- * the fastest M1 characteristic (`f=1`), not a new field.
+ * @brief M1 closure coefficients for one particle, one band, built from its
+ * own `(u, F, c_M)`. `c_M` is #feedback_part_data.c_hyp, reinterpreted as the
+ * fastest M1 characteristic (`f=1`), not a new field.
  *
- * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` for `u <= 0`;
+ * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` otherwise;
  * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`;
- * `D(f) = (1-chi)/2 I + (3chi-1)/2 (n dyadic n)`, `n = F/|F|`; see
- * theory/GEAR/Radiation/02_fuv_isrf.tex eq. for the M1 closure and its
- * "Precision of the reduced flux" discussion.
+ * `D(f) = (1-chi)/2 I + (3chi-1)/2 (n dyadic n)`, `n = F/|F|`. See
+ * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Moment equations and closure".
  *
- * `F2`, `|F|`, `c_M*u` and `f` are formed in double: in float32, `F.F`
+ * `F2`, `|F|`, `c_M*u` and `f` are formed in double because in float32 `F.F`
  * underflows to zero once `|F| < sqrt(FLT_MIN) ~ 1.1e-19` (internal units),
- * which would take the zero-flux branch for a nonzero flux and turn a beam
- * into an isotropic closure. `n` and the closure coefficients stay float32,
- * zero-guarded (`F2 > 0 ? ... : 0`, `c_M*u > 0 ? ... : 0`) so `F = 0`
- * (every particle's initial condition and far-field state) gives a
- * well-defined `n = 0`, `f = 0` rather than a NaN.
- *
- * The closure is split in two steps:
- * #radiation_get_m1_closure_coefficients_band forms `n`, `(1-chi)/2` and
- * `(3chi-1)/2`, and #radiation_build_m1_closure_tensor assembles `D` from them.
- * The gradient loop reads the tensor cached per particle by
- * #radiation_cache_m1_closure_part and runs neither step per pair.
+ * which would turn a faint beam into an isotropic closure. The zero guards
+ * keep `F = 0` at `n = 0`, `f = 0` rather than a NaN.
  *
  * @param u This band's specific field `u^n` for this particle.
  * @param F This particle's tracked flux (this band).
@@ -343,8 +263,7 @@ radiation_get_m1_closure_coefficients_band(float u, const float F[3], float c_M,
 
 /**
  * @brief Assemble the M1 closure tensor
- * `D = iso_coeff I + aniso_coeff (n dyadic n)` from the coefficients of
- * #radiation_get_m1_closure_coefficients_band.
+ * `D = iso_coeff I + aniso_coeff (n dyadic n)`.
  *
  * @param n The flux direction.
  * @param iso_coeff `(1-chi)/2`.
@@ -383,29 +302,16 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
 }
 
 /**
- * @brief Cache every band's M1 closure tensor on the particle, from its
- * current #feedback_isrf_band_data.u, #feedback_isrf_band_data.specific_flux
- * and #feedback_part_data.c_hyp.
+ * @brief Cache every band's M1 closure tensor on the particle.
  *
- * Must run after the last write of those three fields that precedes a
- * gradient loop reading the particle. Two call sites cover this. The
- * drift-time reset (feedback_reset_part) runs for every particle of a
- * drifted cell, active or not, and every cell a gradient task reads is
- * drifted first; it does NOT write `c_hyp` any more (that needs the
- * density loop's neighbour-bin maximum), so this call there only picks up
- * `u`/`F` after an illumination tag's expiry, against whatever `c_hyp` this
- * particle's last active step left behind. The density-ghost call
- * (radiation_end_density_propagation) additionally rebuilds the cache for
- * active particles once THIS step's `c_hyp` is known. First init must also
- * call it: the initial ti = 0 pass reaches the gradient loop without a
- * drift.
+ * Must run after the last write of `u`, `specific_flux` and `c_hyp` preceding
+ * a gradient loop that reads the particle. Three call sites cover this: the
+ * drift-time reset, the density ghost once this step's `c_hyp` is known, and
+ * first init, since the initial ti = 0 pass reaches the gradient loop without
+ * a drift.
  *
- * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_band_data.
- * specific_flux holds the reduced flux `Ft = F_true/c_hyp` rather than
- * `F_true` (see theory/GEAR/Radiation/02_fuv_isrf.tex sec. "The consistent
- * variable-speed operators"), so the closure is built with `c_M = 1`:
- * `f = min(1, |Ft|/(1*u)) = min(1, |F_true|/(c_hyp*u))`, the same physical
- * `f` #isrf_c_hyp_scheme_shipped computes from `(F_true, c_hyp)`.
+ * Under #isrf_c_hyp_consistent_variable_c the stored flux is already reduced
+ * by `c_hyp`, so the closure is built with `c_M = 1` and yields the same `f`.
  *
  * @param p The #part.
  */
@@ -422,21 +328,14 @@ radiation_cache_m1_closure_part(struct part *p) {
 }
 
 /**
- * @brief Band-specific pairwise contribution to particle i's `grad(u)`
- * accumulator (and mirrored contribution to particle j's), the anisotropic
- * M1 pressure-tensor divergence `1/rho * div(D(f)*rho*u)`.
+ * @brief Band contribution to both particles' `grad(u)` accumulators: the
+ * anisotropic M1 pressure-tensor divergence `1/rho * div(D(f)*rho*u)`.
  *
- * Each particle's own kernel derivative and own closure tensor, no shared
- * average and no grad-h `forcef` factor: the deliberate COMPLEMENT of
- * #radiation_divergence_accumulate_band's shared-coefficient construction
- * above, not a copy of it -- pairing the two is what makes them exactly
- * skew-adjoint. Also not `src/rt/SPHM1RT/rt_gradients.h`'s
- * `radiation_gradient_aniso_SPH` `diffmode==2` branch
- * (`src/rt/SPHM1RT/rt_iact.h:582-627`), which SPHM1RT uses instead. See
- * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Pairwise transport
- * operators" for the full derivation and the SPHM1RT comparison. `D_i`,
- * `D_j` reduce to `(1/3) I` at `f=0` (both particles' fluxes zero, the
- * isotropic P1 limit).
+ * Each particle uses its own kernel derivative and own closure tensor, with no
+ * shared average and no grad-h `forcef` factor. That is the deliberate
+ * complement of #radiation_divergence_accumulate_band's shared-coefficient
+ * construction, and pairing the two is what makes them exactly skew-adjoint.
+ * See theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Spatial operators".
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -451,9 +350,7 @@ radiation_cache_m1_closure_part(struct part *p) {
  * @param D_i Particle i's own M1 closure tensor (this band), cached by
  * #radiation_cache_m1_closure_part.
  * @param D_j Particle j's own M1 closure tensor (this band), same source.
- * @param a_factor_comoving_to_physical `1/a`, the file header's single
- * conversion factor: folded into `fac_i`/`fac_j` so both accumulators come
- * out physical.
+ * @param a_factor_comoving_to_physical `1/a`, folded into `fac_i` and `fac_j`.
  * @param grad_u_i (return, accumulated) Particle i's grad(u) accumulator.
  * @param grad_u_j (return, accumulated) Particle j's grad(u) accumulator.
  */
@@ -478,10 +375,6 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
     temp_j[k] = Dj_dot_dx * rho_j * u_j * r_inv;
   }
 
-  /* Own kernel derivative per particle, no shared average and no grad-h
-   * `forcef` factor: restores exact adjointness with the divergence loop
-   * above. See theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Pairwise
-   * transport operators". */
   const float fac_i =
       mj * rho_i_inv * rho_i_inv * wi_dr * a_factor_comoving_to_physical;
   const float fac_j =
@@ -503,11 +396,9 @@ radiation_gradient_accumulate_band(const float dx[3], float r_inv, float wi_dr,
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle.
- * @param a Current scale factor (unused, for the same reason as `us` below).
- * @param H Current Hubble parameter (unused, for the same reason as `us`
- * below).
- * @param us Unit system (unused: the kernel mean needs only positions,
- * masses, the cached density snapshot, and the snapshotted field).
+ * @param a Current scale factor (unused, kept for interface conformance).
+ * @param H Current Hubble parameter (unused, same reason).
+ * @param us Unit system (unused, same reason).
  */
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -531,9 +422,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
-  /* Kernel-local propagation speed: track the slowest clock in each
-   * particle's own kernel (radiation_end_density_propagation reads this
-   * once the h-iteration converges). Symmetric hook, so both sides. */
+  /* Slowest clock in each particle's own kernel, read by
+   * radiation_end_density_propagation once the h-iteration converges. */
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
   fdj->max_ngb_time_bin = max(fdj->max_ngb_time_bin, pi->time_bin);
 
@@ -559,9 +449,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
  * @param pi First particle.
  * @param pj Second particle (its own accumulators not updated).
  * @param a Current scale factor (unused, see #runner_iact_isrf_propagation).
- * @param H Current Hubble parameter (unused, see
- * #runner_iact_isrf_propagation).
- * @param us Unit system (unused, see #runner_iact_isrf_propagation).
+ * @param H Current Hubble parameter (unused, same reason).
+ * @param us Unit system (unused, same reason).
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
@@ -588,17 +477,13 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
-  /* Non-symmetric: only i's own accumulator is updated, see
-   * #runner_iact_isrf_propagation. */
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
     const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-    /* Particle j's own accumulator is not touched (non-symmetric): pass a
-     * discarded local, seeded to 0 rather than read from fdj, as the
-     * required (return, accumulated) output. */
+    /* Particle j is not written here, so discard its side of the pair. */
     float unused_ngb_mean_abs_u_V = 0.f;
 
     radiation_dissipation_reference_accumulate_band(
@@ -610,11 +495,6 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
 /**
  * @brief `grad(u)` interaction between two particles (symmetric): both
  * particles' accumulators are updated.
- *
- * Runs in the gradient loop and reads the live `u`, which is `u^n` there
- * (see the file header): this step's `u` update happens later, in the
- * end-force ghost (radiation_isrf.c's #radiation_end_force_propagation),
- * from the flux the extra ghost relaxes out of this gradient.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -650,8 +530,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
-  /* Single named conversion factor for every spatial operator below, built
-   * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
@@ -705,17 +583,13 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
 
-  /* Single named conversion factor for every spatial operator below, built
-   * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
     const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-    /* Particle j is `const` here (non-symmetric): its own accumulator is not
-     * touched, so pass a discarded, zero-seeded local as the writable
-     * destination the shared accumulator function requires for j. */
+    /* Particle j is not written here, so discard its side of the pair. */
     float unused_grad_u[3] = {0.f, 0.f, 0.f};
 
     radiation_gradient_accumulate_band(
@@ -730,14 +604,9 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * (symmetric): both particles' `div(F)` and dissipation accumulators are
  * updated.
  *
- * Runs in the force loop, after the extra ghost has relaxed this step's
- * #feedback_isrf_band_data.specific_flux and set
- * #feedback_isrf_band_data.dissipation_alpha_trigger and
- * #feedback_isrf_band_data.dissipation_alpha_floor. The divergence reads that
- * new flux; the dissipation reads the live `u`, still `u^n` (see the file
- * header). The force loop's dispatch fires both sides of a pair whenever
- * either kernel reaches, which is what keeps both mirrored pairs whole at
- * h_i != h_j.
+ * Runs after the extra ghost has relaxed this step's `specific_flux` and set
+ * the dissipation `alpha`. The dispatch fires both sides of a pair whenever
+ * either kernel reaches, which keeps both mirrored pairs whole at h_i != h_j.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -772,15 +641,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
-  /* Outside the band loop: the band writes may alias c_hyp for the
-   * compiler. Both particles' own speed, not just their minimum: the
-   * consistent-variable-c scheme needs each side separately (see the two
-   * accumulate functions below). */
+  /* Read outside the band loop: the band writes may alias c_hyp for the
+   * compiler. Both speeds are kept, not just their minimum, because the
+   * consistent-variable-c scheme needs each side separately. */
   const float c_i = fdi->c_hyp;
   const float c_j = fdj->c_hyp;
 
-  /* Single named conversion factor for every spatial operator below, built
-   * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
@@ -805,9 +671,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
  * (non-symmetric): only particle i's `div(F)` and dissipation accumulators
  * are updated.
  *
- * The force loop reaches this variant once per side, so a pair whose two
- * sides are both dispatched still receives both mirrored pairs in full; see
- * #runner_iact_isrf_dissipation.
+ * Reached once per side, so a pair dispatched on both sides still receives
+ * both mirrored pairs in full; see #runner_iact_isrf_dissipation.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -844,23 +709,17 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   const float rho_j = fdj->rho_prev;
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
-  /* Outside the band loop: the band writes may alias c_hyp for the
-   * compiler. Both particles' own speed, not just their minimum: see
-   * #runner_iact_isrf_dissipation. */
+  /* Read outside the band loop, see #runner_iact_isrf_dissipation. */
   const float c_i = fdi->c_hyp;
   const float c_j = fdj->c_hyp;
 
-  /* Single named conversion factor for every spatial operator below, built
-   * once per pair dispatch: see this file's header. */
   const float a_factor_comoving_to_physical = 1.f / a;
 
   for (int b = 0; b < ISRF_BAND_COUNT; b++) {
     struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
     const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
 
-    /* Particle j's own accumulators are not touched (non-symmetric): pass
-     * discarded locals, seeded to 0 rather than read from fdj, as the
-     * required (return, accumulated) outputs. */
+    /* Particle j is not written here, so discard its side of the pair. */
     float unused_div_specific_flux = 0.f;
     float unused_dissipation_u = 0.f;
 
