@@ -415,6 +415,17 @@ __attribute__((always_inline)) INLINE static double feedback_get_star_L_LW(
 }
 
 /**
+ * @brief Star's photospheric effective temperature, see
+ * #feedback_get_star_L_PE.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_star_teff(
+    const struct spart *sp) {
+  return 0.f;
+}
+
+/**
  * @brief Returns the length of time since the particle last did
  * enrichment/feedback.
  *

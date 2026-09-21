@@ -145,6 +145,11 @@ INLINE static void convert_spart_L_LW(const struct engine *e,
   ret[0] = feedback_get_star_L_LW(sp);
 }
 
+INLINE static void convert_spart_teff(const struct engine *e,
+                                      const struct spart *sp, float *ret) {
+  ret[0] = feedback_get_star_teff(sp);
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -158,7 +163,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -235,6 +240,16 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       convert_spart_L_LW,
       "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
       "physical units. See #FUVLuminosities.");
+
+  list[12] = io_make_output_field_convert_spart(
+      "EffectiveTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
+      convert_spart_teff,
+      "Photospheric effective temperature of the star, from the radiation "
+      "table. For a particle representing a whole IMF population, this is "
+      "the value at the upper mass bound of the stars still alive, i.e. "
+      "the hottest surviving star, not an IMF average. A diagnostic of "
+      "stellar evolution only: no feedback channel uses it. 0 when no "
+      "radiation table is loaded or the table carries no Teff dataset.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

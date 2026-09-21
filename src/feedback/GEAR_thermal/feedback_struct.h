@@ -586,6 +586,14 @@ struct feedback_spart_data {
         otherwise. */
     double L_band[ISRF_BAND_COUNT];
 
+    /*! Photospheric effective temperature (internal units), a
+        stellar-evolution diagnostic written to the snapshot and not used
+        by any feedback channel. For an IMF-population particle it is the
+        value at the upper mass bound of the stars still alive, i.e. the
+        hottest surviving star, not an IMF average. 0 when the radiation
+        table carries no "Teff" dataset. */
+    float teff;
+
   } radiation;
 };
 

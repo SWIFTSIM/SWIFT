@@ -114,6 +114,7 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 float feedback_get_star_HII_mass(const struct spart *sp);
 double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
+float feedback_get_star_teff(const struct spart *sp);
 float feedback_get_part_u_PE(const struct part *p);
 float feedback_get_part_u_LW(const struct part *p);
 float feedback_get_part_dissipation_alpha_PE(const struct part *p);

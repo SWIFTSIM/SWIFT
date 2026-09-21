@@ -209,6 +209,12 @@ struct radiation_grid_metadata {
       need not match #edge_policy_q_h's variant. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
 
+  /*! Mass-axis boundary condition for the "Teff" dataset (2D tables with
+      a "Teff" dataset only; boundary_condition_error otherwise, matching
+      every other edge_policy_* field's convention for a table where the
+      dataset is absent). */
+  enum interpolate_boundary_condition edge_policy_teff;
+
   /*! Mass-axis boundary condition for the "L_FUV" dataset (2D tables with
       an "L_FUV" dataset only; boundary_condition_error otherwise, matching
       every other edge_policy_* field's convention for a table where the
@@ -354,6 +360,12 @@ double radiation_get_star_ionization_rate(const struct radiation *rad,
 double radiation_get_star_mean_excess_photon_energy_HI(
     const struct radiation *rad, float log_m, float log_z, float star_age_myr);
 
+float radiation_get_teff_from_raw(const struct radiation *rad, float log_m);
+float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m);
+float radiation_get_star_teff(const struct radiation *rad, float log_m,
+                              float log_z);
+
 float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m);
 float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
                                      float log_m);
@@ -393,6 +405,10 @@ void radiation_read_mean_excess_photon_energy_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us);
 void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,

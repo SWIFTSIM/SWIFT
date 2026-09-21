@@ -1334,6 +1334,16 @@ double feedback_get_star_L_LW(const struct spart *sp) {
 }
 
 /**
+ * @brief Star's photospheric effective temperature, see
+ * #feedback_get_star_L_PE.
+ *
+ * @param sp The #spart to query.
+ */
+float feedback_get_star_teff(const struct spart *sp) {
+  return sp->feedback_data.radiation.teff;
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and

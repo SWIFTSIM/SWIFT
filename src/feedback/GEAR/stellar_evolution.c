@@ -1397,6 +1397,14 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
     }
 
+    /* Photospheric effective temperature, a diagnostic of the star's
+       evolutionary state. Written to the snapshot only; no feedback
+       channel reads it. */
+    if (sm->rad.has_teff) {
+      sp->feedback_data.radiation.teff =
+          radiation_get_star_teff(&sm->rad, log_m, log_z);
+    }
+
     /* For the ionizing band, get the number of photons produced and split
        it across the active angular pixels. Zeroed past the table's own
        MainSequenceLifetime(Z, M) for a 2D table. */
@@ -1653,6 +1661,21 @@ void stellar_evolution_compute_preSN_feedback_spart(
          plausible-looking numbers). */
       sp->feedback_data.radiation.L_band[ISRF_BAND_PE] = L_PE_per_msun * m_init;
       sp->feedback_data.radiation.L_band[ISRF_BAND_LW] = L_LW_per_msun * m_init;
+    }
+
+    /* Population counterpart of the individual-star effective temperature
+       above. Teff has no IMF-integrated table analogue (an IMF average of
+       a photospheric temperature describes no star), so this reports the
+       raw value at m_sup, the upper mass bound of the stars still alive:
+       the hottest surviving star of the population. Diagnostic only. */
+    if (sm->rad.has_teff) {
+      const float log_m_sup = log10f(m_sup);
+      sp->feedback_data.radiation.teff =
+          sm->rad.is_2d
+              ? radiation_get_teff_from_raw_2d(
+                    &sm->rad, radiation_get_log_metallicity(metallicity),
+                    log_m_sup)
+              : radiation_get_teff_from_raw(&sm->rad, log_m_sup);
     }
 
     /* Convert to total ionizing emission rate and split it across the

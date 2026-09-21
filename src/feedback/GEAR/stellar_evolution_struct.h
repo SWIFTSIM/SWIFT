@@ -229,6 +229,19 @@ struct radiation {
     };
 
     union {
+      /*! Photospheric effective temperature (pychem's "Teff" dataset), a
+          stellar-evolution diagnostic exposed on the snapshot's star
+          particles. Raw (per-mass) only: pychem has no "Integrated_Teff"
+          dataset, an IMF average of an effective temperature having no
+          single-star meaning. Present only when the table carries the
+          dataset (#has_teff). */
+      struct interpolation_1d teff;
+
+      /*! #teff, mass x metallicity variant. */
+      struct interpolation_2d teff_2d;
+    };
+
+    union {
       /*! Non-ionizing FUV band (6-11.2 eV) emission rate, read directly
           from pychem's "L_FUV" dataset (required whenever #with_ISRF is
           on). Same log-log storage as #luminosities. */
@@ -371,6 +384,13 @@ struct radiation {
       (#radiation_dump/#radiation_restore), since params is NULL on
       restart. */
   char with_ISRF;
+
+  /*! Does the loaded table carry a "Teff" dataset? File-derived like
+      #is_2d: re-probed on every read, including restart, never
+      round-tripped. A table generated before pychem exported Teff has
+      none, and must still load: every read of #raw.teff is gated on this
+      flag. */
+  char has_teff;
 };
 
 /**

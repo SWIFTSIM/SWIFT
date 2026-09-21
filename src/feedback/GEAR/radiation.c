@@ -177,8 +177,8 @@ void radiation_restore(struct radiation *rad, FILE *stream,
 /**
  * @brief Clean the allocated memory.
  *
- * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess/l_pe/l_lw fields
- * are each an anonymous union of a #interpolation_1d and a
+ * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess/teff/l_pe/l_lw
+ * fields are each an anonymous union of a #interpolation_1d and a
  * #interpolation_2d variant.
  *
  * @param rad the #radiation.
@@ -192,6 +192,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->raw.luminosities_2d);
     interpolate_2d_free(&rad->raw.dot_N_ion_2d);
     interpolate_2d_free(&rad->raw.dot_E_excess_2d);
+    interpolate_2d_free(&rad->raw.teff_2d);
     interpolate_2d_free(&rad->raw.l_pe_2d);
     interpolate_2d_free(&rad->raw.l_lw_2d);
     interpolate_2d_free(&rad->integrated.luminosities_2d);
@@ -203,6 +204,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->raw.luminosities);
     interpolate_1d_free(&rad->raw.dot_N_ion);
     interpolate_1d_free(&rad->raw.dot_E_excess);
+    interpolate_1d_free(&rad->raw.teff);
     interpolate_1d_free(&rad->raw.l_pe);
     interpolate_1d_free(&rad->raw.l_lw);
     interpolate_1d_free(&rad->integrated.luminosities);
@@ -255,11 +257,13 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->ms_lifetime_inverse_log_z_step = 0.f;
   rad->ms_lifetime_inverse_n_metallicity = 0;
   rad->with_ISRF = 0;
+  rad->has_teff = 0;
 
   if (was_2d) {
     interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
+    interpolate_2d_zero_pointers(&rad->raw.teff_2d);
     interpolate_2d_zero_pointers(&rad->raw.l_pe_2d);
     interpolate_2d_zero_pointers(&rad->raw.l_lw_2d);
     interpolate_2d_zero_pointers(&rad->integrated.luminosities_2d);
@@ -271,6 +275,7 @@ void radiation_zero_pointers(struct radiation *rad) {
     interpolate_1d_zero_pointers(&rad->raw.luminosities);
     interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
     interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
+    interpolate_1d_zero_pointers(&rad->raw.teff);
     interpolate_1d_zero_pointers(&rad->raw.l_pe);
     interpolate_1d_zero_pointers(&rad->raw.l_lw);
     interpolate_1d_zero_pointers(&rad->integrated.luminosities);

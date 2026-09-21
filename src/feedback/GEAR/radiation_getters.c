@@ -674,6 +674,57 @@ double radiation_get_star_mean_excess_photon_energy_HI(
 }
 
 /**
+ * @brief Get the photospheric effective temperature at a given mass, from a
+ * 1D (mass-only) table.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_teff_from_raw(const struct radiation *rad, float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  return (float)exp10(interpolate_1d(&rad->raw.teff, log_m));
+}
+
+/**
+ * @brief Get the photospheric effective temperature at a given mass and
+ * metallicity, from a 2D ("M,Z") table.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m The mass in log.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
+                                     float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  return (float)exp10(interpolate_2d(&rad->raw.teff_2d, log_z, log_m));
+}
+
+/**
+ * @brief Get a single star's photospheric effective temperature at a given
+ * mass, dispatching on #rad->is_2d between the 1D (mass-only) and 2D
+ * (mass x metallicity) raw tables. Not capped by main_sequence_lifetime:
+ * like #radiation_get_star_luminosity, Teff describes the star's continued
+ * (post-main-sequence included) photospheric state. Only valid when
+ * #radiation.has_teff is set; callers must check that first (this getter
+ * does not, matching every other raw getter here).
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if #rad holds a 2D table.
+ * @return Effective temperature, internal units.
+ */
+float radiation_get_star_teff(const struct radiation *rad, float log_m,
+                              float log_z) {
+  if (rad->is_2d) {
+    return radiation_get_teff_from_raw_2d(rad, log_z, log_m);
+  }
+  return radiation_get_teff_from_raw(rad, log_m);
+}
+
+/**
  * @brief Get the non-IMF-integrated non-ionizing FUV band emission rate at
  * a given mass, from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_pe.

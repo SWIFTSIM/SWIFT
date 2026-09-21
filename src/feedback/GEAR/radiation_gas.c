@@ -359,6 +359,7 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
   sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
   for (int b = 0; b < ISRF_BAND_COUNT; b++)
     sp->feedback_data.radiation.L_band[b] = 0.;
+  sp->feedback_data.radiation.teff = 0.f;
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
 

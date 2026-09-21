@@ -234,7 +234,8 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * exception to "requires the specific attributes to be present": they are
  * only read (and only required) when the group's own "L_FUV"/"L_LW"
  * datasets exist, since those datasets (and their edge-policy attributes)
- * are only required when #radiation.with_ISRF is on.
+ * are only required when #radiation.with_ISRF is on. edge_policy_teff is
+ * guarded the same way, on the group's own "Teff" dataset.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
@@ -318,6 +319,21 @@ void radiation_read_grid_metadata(hid_t group_id,
         mean_excess_energy_below, mean_excess_energy_above,
         "mean_excess_energy");
 
+    /* Teff is optional, and guarded on its own dataset for the same
+       reason as L_FUV/L_LW below: a table generated before pychem
+       exported it carries neither the dataset nor the matching
+       attributes. */
+    grid->edge_policy_teff = boundary_condition_error;
+    if (H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0) {
+      char teff_below[16], teff_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_teff_below",
+                                      teff_below, sizeof(teff_below));
+      radiation_read_string_attribute(group_id, "edge_policy_teff_above",
+                                      teff_above, sizeof(teff_above));
+      grid->edge_policy_teff =
+          radiation_parse_edge_policy(teff_below, teff_above, "teff");
+    }
+
     /* L_FUV/L_LW are optional (see radiation.h's own doxygen on
        #with_ISRF): a table generated before pychem added them has
        neither dataset, and hence no matching edge_policy_l_fuv_ or
@@ -351,6 +367,7 @@ void radiation_read_grid_metadata(hid_t group_id,
     grid->edge_policy_luminosity = boundary_condition_error;
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
+    grid->edge_policy_teff = boundary_condition_error;
     grid->edge_policy_l_pe = boundary_condition_error;
     grid->edge_policy_l_lw = boundary_condition_error;
   } else {
@@ -958,6 +975,34 @@ void radiation_read_mean_excess_photon_energy_array(
 }
 
 /**
+ * @brief Read the Teff (photospheric effective temperature) array from the
+ * table.
+ *
+ * Only called when the group carries a "Teff" dataset (#radiation.has_teff,
+ * set in radiation_read_data()). Raw-only, both dimensionalities: neither a
+ * 1D ("M") nor a 2D ("M,Z") table has an "Integrated_Teff" dataset, so @p
+ * integrated_1d/@p integrated_2d are passed NULL to #radiation_build_tables,
+ * which then skips requiring or building them.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(group_id, "Teff", grid, sm, rad->interpolation_size,
+                         rad->interpolation_size_metallicity,
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE),
+                         1., "K", &rad->raw.teff, NULL, &rad->raw.teff_2d, NULL,
+                         grid->edge_policy_teff);
+}
+
+/**
  * @brief Read the L_FUV (non-ionizing FUV band emission rate) array from the
  * table.
  *
@@ -1482,6 +1527,12 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Read L_FUV/L_LW directly from the table: validated above to exist
      whenever GEARFeedback:with_photoelectric_heating is on. */
+  /* Effective temperature, a stellar-evolution diagnostic written to the
+     snapshot's star particles. Optional: a table generated before pychem
+     exported it simply reports 0 for every star. */
+  rad->has_teff = (char)(H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0);
+  if (rad->has_teff) radiation_read_teff_array(rad, group_id, &grid, sm, us);
+
   if (rad->with_ISRF) {
     radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
