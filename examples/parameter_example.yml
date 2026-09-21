@@ -621,6 +621,7 @@ PS2020Cooling:
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  primordial_chemistry: 3                      # (optional) Number of primordial species followed by the chemistry network: 0 = tabulated only, 1 = H/He, 2 = + H2, 3 = + D. Cannot exceed the value the binary was built with (--with-cooling=grackle_N). (Default: COOLING_GRACKLE_MODE)
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
