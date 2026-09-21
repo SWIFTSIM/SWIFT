@@ -1416,11 +1416,21 @@ scheme, since $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm
 hyp},i}u_i)$ identically, the same physical reduced flux $f$ the shipped
 scheme computes from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
 rewritten operator reduces bit-for-bit to its shipped counterpart
-whenever $c_{{\rm hyp},i}$ is spatially uniform, under a build that
-disables floating-point reassociation across the shared coefficient;
-this bit-identity is verified under \code{clang} only, since \code{GCC}
-has no block-scoped equivalent of the pragma that disables it, and does
-not carry over to a \code{GCC} (cluster) build.
+whenever $c_{{\rm hyp},i}$ is spatially uniform, asserted by
+\code{tests/testRadiationISRFForceDispatchConservation.c}. Agreement
+between two evaluations of the same operator in different inlining
+contexts is a separate and weaker matter: on an FMA-capable target the
+two contract differently and land a few ULP apart, so the test compares
+those against a tolerance rather than on raw bits (\code{480fdafd3}).
+That is a property of the target architecture and not of the compiler.
+No block-scoped escape from the contraction exists on either compiler:
+\code{clang}'s \code{contract(off)} and \code{GCC}'s
+\code{fp-contract=off} optimize attribute were each measured still
+emitting an FMA on an \code{always\_inline} function under
+\code{-ffast-math}. The pairwise conservation identity itself is
+untouched by any of this, holding to $10^{-8}$ or better against its own
+$10^{-5}$ bar on exactly those builds: what contraction moves is a
+bit-exact comparison, not the physics.
 
 Scheme $3$ keeps $c_{{\rm hyp},i}$ at Eq.~\ref{eq:fuv-chyp}'s own formula
 and applies only this operator rewrite; scheme $4$ additionally uses the
