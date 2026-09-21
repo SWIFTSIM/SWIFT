@@ -86,10 +86,10 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
   const struct cosmology *cosmo = e->cosmology;
   const float r_cut2 = r_cut * r_cut;
 
-  TIMER_TIC;
-
   /* Anything to do here? */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
+
+  TIMER_TIC;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -548,10 +548,14 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
-  /* Build a compact list of indices of active particles. */
-  int *indt = NULL;
+  /* Compact list of active particle indices; small cells avoid the heap. */
+  enum { indt_stack_size = 256 };
+  int indt_stack[indt_stack_size]
+      __attribute__((aligned(VEC_SIZE * sizeof(int))));
+  int *indt = indt_stack;
   int countdt = 0, firstdt = 0;
-  if (posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
+  if (count > indt_stack_size &&
+      posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
                      count * sizeof(int)) != 0)
     error("Failed to allocate active-particle index array.");
   for (int k = 0; k < count; k++) {
@@ -661,7 +665,7 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
     }
   }
 
-  free(indt);
+  if (indt != indt_stack) free(indt);
 
   TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
@@ -724,11 +728,11 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  TIMER_TIC;
-
   /* Anything to do here? */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+  TIMER_TIC;
 
   /* Get the pair direction and apply the canonical cell ordering. */
   double shift[3];
@@ -791,10 +795,10 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
 void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
                                 const float r_cut, const int gettimer) {
 
-  TIMER_TIC;
-
   /* Anything to do here? */
   if (c->hydro.count == 0 || !CELL_IS_ACTIVE(c, r->e)) return;
+
+  TIMER_TIC;
 
   /* We reached a leaf OR the aperture is larger than a sub-cell: call the
    * leaf self function at this level. */
