@@ -367,12 +367,6 @@ void feedback_will_do_feedback(
   /* Multiply pre-SN energy by the efficiency */
   sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
 
-  /* TODO: Move to stellar_evolution */
-  tracers_gear_update_winds(
-      &sp->tracers_data.winds, sp->feedback_data.winds.mass_ejected,
-      sp->feedback_data.winds.energy_ejected,
-      sp->feedback_data.enrichment_weight, with_cosmology, cosmo, time);
-
   /* Apply the radiation pressure efficiency factor */
   sp->feedback_data.radiation.L_bol *=
       feedback_props->radiation_pressure_efficiency;

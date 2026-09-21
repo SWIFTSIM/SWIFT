@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2026 Darwin Roduit (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -874,11 +875,23 @@ void stellar_evolution_evolve_individual_star(
     return;
   }
 
-  /* TODO: Update to pass the with_stellar_winds down */
-  /* Pre-SN feedback */
+  /* Pre-SN feedback (radiation unconditionally, stellar winds gated on
+     with_stellar_wind_feedback). TODO: this function's name still says
+     "preSN feedback" even though it now computes radiation too; consider
+     renaming to stellar_evolution_compute_continuous_feedback_individual_
+     star (operator ruling needed). */
   stellar_evolution_compute_preSN_feedback_individual_star(
       sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
       star_age_beg_step, dt);
+
+  /* Logs the raw ejecta energy: this runs before feedback_common.c's
+     winds_efficiency scaling of energy_ejected. */
+  if (with_stellar_wind_feedback) {
+    tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
+                                    sp->feedback_data.winds.energy_ejected,
+                                    sp->feedback_data.enrichment_weight,
+                                    with_cosmology, cosmo, time);
+  }
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
@@ -931,11 +944,20 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* Pre-SN feedback */
-  /* TODO: Update to pass the with_stellar_winds down or rename the function */
+  /* Pre-SN feedback (radiation unconditionally, stellar winds gated on
+     with_stellar_wind_feedback) */
   stellar_evolution_compute_preSN_feedback_spart(
       sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
       star_age_beg_step, dt);
+
+  /* Logs the raw ejecta energy: this runs before feedback_common.c's
+     winds_efficiency scaling of energy_ejected. */
+  if (with_stellar_wind_feedback) {
+    tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
+                                    sp->feedback_data.winds.energy_ejected,
+                                    sp->feedback_data.enrichment_weight,
+                                    with_cosmology, cosmo, time);
+  }
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, with_cosmology, cosmo,
@@ -1334,12 +1356,6 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   /*****************************************/
   /* Subgrid radiation */
-  /* Bands:
-     - ionizing : photo ionisation
-     - FUV : photoelectric heating
-     - NUV : single scattering --> radiation pressure
-     - optical/near-IR: single scattering --> radiation pressure
-     - mid/far-IR : reserved for light re-radiated by dust */
 
   /* Needed by the 2D radiation getters below and by the stellar-winds block
      further down; hoisted here since it is a pure read of sp's own state,
@@ -1363,9 +1379,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        value for a 1D table; clamped or zeroed, depending on the table's
        own edge_policy_* attributes, for a 2D one) instead of its own
        value, where the code used to abort ("Cannot extrapolate") before
-       this migration. Warn rather than stay silent, matching this file's
-       own fail-loud-on-boundary-violation convention elsewhere (the
-       FLT_MAX guard in radiation.c). */
+       this migration. */
     if (mass_msun > sm->imf.mass_max) {
       message(
           "WARNING: [id=%lld] star mass %g Msun exceeds the radiation "
@@ -1379,15 +1393,11 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     /* Only used by the 2D getters below (harmless, if unused, for a 1D
        table); star_age_beg_step_myr is already ZAMS-anchored: GEAR's star
        particles have no modeled pre-main-sequence phase.
-       lifetime_get_log_lifetime_from_mass() (src/feedback/GEAR/lifetime.h)
-       computes the Poirier main-sequence lifetime directly from a star's
-       spawn mass/metallicity, and
-       star_formation_set_spart_birth_time_or_scale_factor() (called from
-       the spawning code in src/sink/GEAR/sink.h) stamps birth_time at the
-       spawning event itself; no separate contraction stage is tracked
-       anywhere in this codebase's stellar treatment. So no ZAMS offset is
-       needed here to match MainSequenceLifetime's own ZAMS-to-TAMS
-       definition. */
+       lifetime_get_log_lifetime_from_mass() computes the Poirier main-sequence
+       lifetime directly from a star's spawn mass/metallicity, and
+       star_formation_set_spart_birth_time_or_scale_factor() stamps birth_time
+       at the spawning event itself. So no ZAMS offset is needed here to match
+       MainSequenceLifetime's own ZAMS-to-TAMS definition. */
     const float log_z = radiation_get_log_metallicity(metallicity);
     const float star_age_myr = (float)star_age_beg_step_myr;
 
@@ -1395,46 +1405,27 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     sp->feedback_data.radiation.L_bol =
         radiation_get_star_luminosity(&sm->rad, log_m, log_z);
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
-       L_FUV/L_LW when the loaded table has them (has_raw_ISRF), else this
-       star's own Teff via two more threshold-integrals of the same
-       blackbody curve already producing L_bol/Q_H above. The Teff fallback
-       uses the just-computed L_bol above, before feedback_common.c's later
-       radiation_pressure_efficiency scaling of that same field: L_FUV/L_LW
-       are deliberately independent of that separate efficiency knob. */
-    if (sm->rad.has_raw_ISRF) {
+    /* Split off the non-ionizing FUV/Lyman-Werner bands, table-direct via
+       L_FUV/L_LW: radiation_read_data() requires these whenever with_ISRF
+       is on, so no fallback branch is needed here. */
+    if (sm->rad.with_ISRF) {
       sp->feedback_data.radiation.L_band[ISRF_BAND_PE] =
           radiation_get_star_l_pe(&sm->rad, log_m, log_z);
       sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
-    } else if (sm->rad.with_ISRF) {
-      const float Teff_K =
-          radiation_get_star_teff(&sm->rad, log_m, log_z) *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_band[ISRF_BAND_PE] =
-          sp->feedback_data.radiation.L_bol *
-          radiation_planck_band_fraction(Teff_K, RADIATION_PE_BAND_LOW_EV,
-                                         RADIATION_PE_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
-          sp->feedback_data.radiation.L_bol *
-          radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
-                                         RADIATION_LW_BAND_HIGH_EV);
     }
 
     /* For the ionizing band, get the number of photons produced and split
        it across the active angular pixels. Zeroed past the table's own
-       MainSequenceLifetime(Z, M) for a 2D table.
-       See radiation_get_ionization_rate_from_raw_2d()'s doxygen. */
+       MainSequenceLifetime(Z, M) for a 2D table. */
     const double dot_N_ion_total = radiation_get_star_ionization_rate(
         &sm->rad, log_m, log_z, star_age_myr);
     radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
                                        sm->rad.n_HII_pixels);
 
     /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
-       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
-       (cooling reads this field only when that flag is on). Computed
-       unconditionally: it is a cheap single lookup, and keeping it in sync
-       with dot_N_ion_total avoids a second flag check here. */
+       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate.
+     */
     sp->feedback_data.radiation.mean_excess_photon_energy_HI =
         (float)radiation_get_star_mean_excess_photon_energy_HI(
             &sm->rad, log_m, log_z, star_age_myr);
@@ -1475,7 +1466,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_end_step = sp->mass / phys_const->const_solar_mass;
 
   /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
-      but this is used only for the StellarWindInjection example. */
+     but this is used only for the StellarWindInjection example. */
   const float m_init =
       stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
@@ -1600,8 +1591,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
     float L_bol;
     double dot_N_ion;
     float mean_excess_photon_energy_HI;
-    /* Upper mass bound for the has_integrated_ISRF table-direct read
-       below: the same MS-lifetime-capped value dot_N_ion uses for a 2D
+    /* Upper mass bound for the L_FUV/L_LW table-direct read below: the
+       same MS-lifetime-capped value dot_N_ion uses for a 2D
        table (a star past its own main-sequence lifetime emits nothing,
        ionizing or not, so L_FUV/L_LW stop the same way Q_H already does),
        or the uncapped m_sup for a 1D table,
@@ -1653,21 +1644,13 @@ void stellar_evolution_compute_preSN_feedback_spart(
     /* Convert to total luminosities */
     sp->feedback_data.radiation.L_bol = L_bol * m_init;
 
-    /* Split off the non-ionizing FUV/Lyman-Werner bands: table-direct via
-       Integrated_L_FUV/Integrated_L_LW when the loaded table has them
-       (has_integrated_ISRF), bounded by the same m_sup_capped dot_N_ion
-       uses above (a real, deliberate behaviour change from the Teff
-       fallback below for a population with stars past m_sup_capped, and
-       not merely a plumbing swap: a star that has left the main sequence
-       emits nothing, ionizing or not). Else, the existing Teff fallback
-       (see the individual-star
-       path's identical block for the physics): Teff has no IMF-integrated
-       table concept (#radiation.raw's own doxygen on the teff/teff_2d
-       union), so a single representative Teff at m_sup (this step's upper
-       mass bound, i.e. the hottest star still contributing) stands in for
-       a true IMF-integrated band fraction: an approximation, not yet
-       re-derived against a proper IMF-integrated band fraction. */
-    if (sm->rad.has_integrated_ISRF) {
+    /* Split off the non-ionizing FUV/Lyman-Werner bands, table-direct via
+       Integrated_L_FUV/Integrated_L_LW: radiation_read_data() requires
+       these whenever with_ISRF is on, so no fallback branch is needed
+       here. Bounded by the same m_sup_capped dot_N_ion uses above: a star
+       past its own main-sequence lifetime emits nothing, ionizing or
+       not. */
+    if (sm->rad.with_ISRF) {
       float L_PE_per_msun, L_LW_per_msun;
       if (sm->rad.is_2d) {
         const float log_z = radiation_get_log_metallicity(metallicity);
@@ -1688,23 +1671,6 @@ void stellar_evolution_compute_preSN_feedback_spart(
          plausible-looking numbers). */
       sp->feedback_data.radiation.L_band[ISRF_BAND_PE] = L_PE_per_msun * m_init;
       sp->feedback_data.radiation.L_band[ISRF_BAND_LW] = L_LW_per_msun * m_init;
-    } else if (sm->rad.with_ISRF) {
-      const float log_m_sup = log10f(m_sup);
-      const float Teff_K =
-          (sm->rad.is_2d
-               ? radiation_get_teff_from_raw_2d(
-                     &sm->rad, radiation_get_log_metallicity(metallicity),
-                     log_m_sup)
-               : radiation_get_teff_from_raw(&sm->rad, log_m_sup)) *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-      sp->feedback_data.radiation.L_band[ISRF_BAND_PE] =
-          sp->feedback_data.radiation.L_bol *
-          radiation_planck_band_fraction(Teff_K, RADIATION_PE_BAND_LOW_EV,
-                                         RADIATION_PE_BAND_HIGH_EV);
-      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
-          sp->feedback_data.radiation.L_bol *
-          radiation_planck_band_fraction(Teff_K, RADIATION_LW_BAND_LOW_EV,
-                                         RADIATION_LW_BAND_HIGH_EV);
     }
 
     /* Convert to total ionizing emission rate and split it across the

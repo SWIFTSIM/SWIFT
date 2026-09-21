@@ -27,6 +27,13 @@
 #define GEAR_NUMBER_TYPE_OF_COMPANION 2
 #define GEAR_LABELS_SIZE 10
 
+/*! Cap on the number of metallicity rows #radiation.longest_ms_lifetime_myr
+    can hold, as a fixed-size struct member rather than a separately
+    allocated pointer. Defined here, not in radiation.h (radiation.h
+    includes this file, not the other way round), so it is in scope where
+    #radiation itself is declared. */
+#define RADIATION_MAX_METALLICITY_ROWS 64
+
 /**
  * @brief Model for the initial mass function.
  *
@@ -180,13 +187,6 @@ struct supernovae_ii {
   struct interpolation_1d energy_per_progenitor_mass;
 };
 
-/*! Cap on the number of metallicity rows #radiation.longest_ms_lifetime_myr
-    can hold, as a fixed-size struct member rather than a separately
-    allocated pointer. Defined here, not in radiation.h (radiation.h
-    includes this file, not the other way round), so it is in scope where
-    #radiation itself is declared. */
-#define RADIATION_MAX_METALLICITY_ROWS 64
-
 /**
  * @brief Model for radiation.
  *
@@ -229,23 +229,9 @@ struct radiation {
     };
 
     union {
-      /*! Spectral-hardness effective temperature (pychem's "Teff"
-          dataset), used to split #luminosities into FUV/LW bands via
-          radiation_planck_band_fraction() when the table has no direct
-          #l_pe/#l_lw (see #has_raw_ISRF/#has_integrated_ISRF). No
-          IMF-integrated counterpart: the band fraction is nonlinear in
-          Teff, so the population/SSP path also falls back to this raw
-          (per-mass) value. */
-      struct interpolation_1d teff;
-
-      /*! #teff, mass x metallicity variant. */
-      struct interpolation_2d teff_2d;
-    };
-
-    union {
       /*! Non-ionizing FUV band (6-11.2 eV) emission rate, read directly
-          from pychem's "L_FUV" dataset when present (#has_raw_ISRF). Same
-          log-log storage as #luminosities. */
+          from pychem's "L_FUV" dataset (required whenever #with_ISRF is
+          on). Same log-log storage as #luminosities. */
       struct interpolation_1d l_pe;
 
       /*! #l_pe, mass x metallicity variant. */
@@ -311,8 +297,8 @@ struct radiation {
 
     union {
       /*! IMF-integrated FUV emission rate per Msun of stars formed, from
-          pychem's "Integrated_L_FUV" dataset when present
-          (#has_integrated_ISRF). Linear (un-logged), unlike #raw's log10
+          pychem's "Integrated_L_FUV" dataset (required whenever
+          #with_ISRF is on). Linear (un-logged), unlike #raw's log10
           storage. */
       struct interpolation_1d l_pe;
 
@@ -331,10 +317,7 @@ struct radiation {
   } integrated;
 
   /*! Is this a mass x metallicity ("M,Z") table rather than mass-only
-      ("M")? Set from the table's "dimensionality" attribute in
-      radiation_read_data(); selects the live member of each union above
-      and gates the getters that do not yet take a metallicity
-      argument. */
+      ("M")? Selects the live member of each union above. */
   char is_2d;
 
   /*! Number of element in the interpolation array (mass axis) */
@@ -353,9 +336,7 @@ struct radiation {
       indexed by #ms_lifetime_inverse_log_z_min/_step/_n_metallicity below.
       Reduced at read time from MainSequenceLifetimeInverseExcluded (2D
       tables only). FLT_MAX (not INFINITY: -ffast-math disallows it) for a
-      row with no excluded cells. Fixed-size, so neither
-      #radiation_zero_pointers nor #radiation_clean needs an entry for
-      it. */
+      row with no excluded cells. */
   float longest_ms_lifetime_myr[RADIATION_MAX_METALLICITY_ROWS];
 
   /*! Longest tabulated age across every metallicity row (Myr), from the
@@ -384,24 +365,12 @@ struct radiation {
 
   /*! Is the local Lyman-Werner/FUV feedback (GEARFeedback:with_photoelectric_
       heating) on? Set in radiation_init(), before radiation_read_data() is
-      called, so the latter can gate the Teff-table read on it. Persists
-      across restart as a plain scalar (#radiation_dump/#radiation_restore),
-      since params is NULL on restart. */
+      called: the latter requires L_FUV/L_LW/Integrated_L_FUV/
+      Integrated_L_LW in the table whenever this is set (error() otherwise;
+      no Teff-based fallback). Persists across restart as a plain scalar
+      (#radiation_dump/#radiation_restore), since params is NULL on
+      restart. */
   char with_ISRF;
-
-  /*! Does the loaded table carry raw "L_FUV" AND "L_LW" datasets, AND is
-      #with_ISRF itself on? File-derived like #is_2d: re-probed fresh on
-      every read including restart, never round-tripped. ANDed with
-      #with_ISRF at the point it is set, so it can never be true with the
-      feature disabled (stellar_evolution.c checks this flag first). Gates
-      the individual-star table-direct L_FUV/L_LW read; independent of
-      #has_integrated_ISRF. */
-  char has_raw_ISRF;
-
-  /*! Does the loaded table carry "Integrated_L_FUV" AND "Integrated_L_LW"
-      datasets? See #has_raw_ISRF; gates the population/SSP call site's
-      table-direct read instead of the individual-star one. */
-  char has_integrated_ISRF;
 };
 
 /**

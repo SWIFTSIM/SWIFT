@@ -64,27 +64,24 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct unit_system *us,
                     const struct phys_const *phys_const) {
 
-  /* Set before radiation_read_data() below, which gates reading the
-     "Teff" dataset on it (see #radiation.with_ISRF's own doxygen). */
+  /* Set before radiation_read_data() below, which requires the L_FUV/
+     L_LW datasets whenever this is on (see #radiation.with_ISRF's own
+     doxygen). */
   rad->with_ISRF = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_photoelectric_heating", 0);
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
 
-  /* Angular (HEALPix) splitting of the HII ionization budget. nside=0 means
-     spherical (HEALPix disabled, today's behaviour, n_HII_pixels=1); any
-     nside>=1 means the standard HEALPix RING-scheme tessellation
-     (n_HII_pixels=12*nside^2). RING, unlike NEST, has no power-of-2
-     restriction on nside, so any positive integer is mathematically valid
-     here (see /usr/include/chealpix.h). The practical ceiling is memory,
-     not geometry: every star carries a fixed-size
-     dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS] array
-     (src/feedback/GEAR_thermal/feedback_struct.h) sized by
+  /* Angular (HEALPix) splitting of the HII ionization budget.
+     - nside=0 means spherical (HEALPix disabled, today's behaviour,
+     n_HII_pixels=1);
+     - any nside>=1 means the standard HEALPix RING-scheme tessellation
+     (n_HII_pixels=12*nside^2).
+     Note that the practical ceiling is memory, not geometry: every star
+     carries a fixed-size dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS] array sized by
      ./configure --with-number-of-hii-angular-pixels (default 12, i.e.
-     nside<=1); a run requesting more pixels than that build was
-     configured for errors clearly below rather than overflowing the
-     array. */
+     nside<=1). */
   const int nside =
       parser_get_opt_param_int(params, "GEARFeedback:HII_angular_nside", 0);
   if (nside < 0) {
@@ -130,20 +127,18 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
 }
 
 /**
- * @brief Restore a radiation struct from the given FILE as a stream of
- * bytes.
+ * @brief Restore a radiation struct from the given FILE as a stream of bytes.
  *
  * The flat restore below copies the interpolation tables' internal data
  * pointers as raw bytes, meaningless in the new process, since they held
  * the old process's heap addresses. radiation_read_data() re-derives those
  * tables from scratch instead of trying to serialize them, avoiding ever
  * leaving a dangling pointer for radiation_clean() to free(). Re-derivation
- * reads sm->yields_table again (Data/Radiation) rather than recomputing
- * from mass/Z alone, so it is exact only if that path still resolves and
- * the file is unchanged since the run started, the same uncanonicalized-
- * path caveat already noted for GEARFeedback:yields_table in general
- * (feedback_properties.h); a restart resubmitted from a different working
- * directory with a relative path can fail here.
+ * reads sm->yields_table again rather than recomputing from mass/Z alone, so
+ * it is exact only if that path still resolves and  the file is unchanged
+ * since the run started, the same uncanonicalized-path caveat already noted
+ * for GEARFeedback:yields_table in general. A restart resubmitted from a
+ * different working directory with a relative path can fail here.
  *
  * @param rad the struct
  * @param stream the file stream
@@ -151,12 +146,7 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
  * @param us The unit system.
  * @param phys_const The physical constants in internal units.
  * @param with_radiation Are we restoring with photoionization and/or
- * radiation pressure? The raw struct bytes are always read back
- * (radiation_dump() always writes them, unlike e.g. stellar_wind_dump()),
- * but the tables, and #radiation.is_active, are only re-derived, and
- * sm->yields_table only re-opened, when this is set; otherwise
- * #radiation_zero_pointers overwrites whatever stale value the raw restore
- * above just wrote into is_active.
+ * radiation pressure?
  */
 void radiation_restore(struct radiation *rad, FILE *stream,
                        const struct stellar_model *sm,
@@ -168,8 +158,14 @@ void radiation_restore(struct radiation *rad, FILE *stream,
                       "radiation");
 
   if (!with_radiation) {
-    /* The bytes just restored are another process's heap addresses (see the
-       function's own doxygen above); never dereference or free them. */
+    /* The raw struct bytes are always read back (radiation_dump() always
+       writes them, unlike e.g. stellar_wind_dump()), but the tables, and
+       #radiation.is_active, are only re-derived, and sm->yields_table only
+       re-opened, when this is set; otherwise radiation_zero_pointers
+       overwrites whatever stale value the raw restore above just wrote into
+       is_active.
+       The bytes just restored are another process's heap addresses; never
+       dereference or free them. */
     radiation_zero_pointers(rad);
     return;
   }
@@ -181,30 +177,21 @@ void radiation_restore(struct radiation *rad, FILE *stream,
 /**
  * @brief Clean the allocated memory.
  *
- * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess/teff/l_pe/l_lw
- * fields are each an anonymous union of a #interpolation_1d and a
- * #interpolation_2d variant
- * (see #radiation's own doxygen); #is_2d selects which one is actually live
- * and must be freed via the matching interpolate_*d_free(). Freeing
- * through the other union member's helper on aliased memory would be wrong
- * (though not unsafe here: both #interpolation_1d and #interpolation_2d
- * have their `data` pointer as their first member, verified with
- * `offsetof()`, so either helper happens to null/free the right pointer
- * regardless of #is_2d. Not relied upon, since the non-pointer tail
- * fields still differ, but noted as the reason this is not a
- * memory-safety hazard even if #is_2d were ever wrong here).
- * #main_sequence_lifetime_2d/#main_sequence_lifetime_inverse_2d have no 1D
- * counterpart, so they are always freed unconditionally.
+ * #raw/#integrated's luminosities/dot_N_ion/dot_E_excess/l_pe/l_lw fields
+ * are each an anonymous union of a #interpolation_1d and a
+ * #interpolation_2d variant.
  *
  * @param rad the #radiation.
  */
 void radiation_clean(struct radiation *rad) {
 
+  /* is_2d selects which one is actually live and must be freed via the matching
+     interpolate_*d_free(). Freeing through the other union member's helper on
+     aliased memory would be wrong. */
   if (rad->is_2d) {
     interpolate_2d_free(&rad->raw.luminosities_2d);
     interpolate_2d_free(&rad->raw.dot_N_ion_2d);
     interpolate_2d_free(&rad->raw.dot_E_excess_2d);
-    interpolate_2d_free(&rad->raw.teff_2d);
     interpolate_2d_free(&rad->raw.l_pe_2d);
     interpolate_2d_free(&rad->raw.l_lw_2d);
     interpolate_2d_free(&rad->integrated.luminosities_2d);
@@ -216,7 +203,6 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->raw.luminosities);
     interpolate_1d_free(&rad->raw.dot_N_ion);
     interpolate_1d_free(&rad->raw.dot_E_excess);
-    interpolate_1d_free(&rad->raw.teff);
     interpolate_1d_free(&rad->raw.l_pe);
     interpolate_1d_free(&rad->raw.l_lw);
     interpolate_1d_free(&rad->integrated.luminosities);
@@ -226,49 +212,37 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->integrated.l_lw);
   }
 
+  /* main_sequence_lifetime_2d/main_sequence_lifetime_inverse_2d have no 1D
+     counterpart, so they are always freed unconditionally. */
   interpolate_2d_free(&rad->raw.main_sequence_lifetime_2d);
   interpolate_2d_free(&rad->raw.main_sequence_lifetime_inverse_2d);
 }
 
 /**
- * @brief Zero a #radiation struct (pointers, dimensions and #is_active)
- * so a struct that was never (or is not yet) initialized can be safely
- * passed to #radiation_clean, printed, or read by any of the getters (which
- * must check #is_active first; the getters themselves do not, and would
- * dereference the zeroed pointers below). Also called internally by
- * #radiation_read_data before it (re)builds the tables; see the scalar
- * save/restore around that call for why is_2d is the only field here it can
- * leave zeroed going in.
- *
- * #raw/#integrated's union'd fields (see #radiation's own doxygen) are
- * zero-pointered via the union member matching the INCOMING #is_2d (read
- * into @c was_2d before it is overwritten below), not both. Zero-
- * pointering through the other member's helper would target the same
- * `data` pointer (offset 0 in both #interpolation_1d and #interpolation_2d,
- * verified with `offsetof()`) but leave the two structs' differently-shaped
- * tail fields (xmin/dx/N/boundary_condition vs xmin/dx/ymin/dy/Nx/Ny/
- * boundary_condition_x/_y) only partially cleared.
- *
- * One caller reads @c was_2d from memory this function cannot prove was
- * ever initialised: #stellar_evolution_props_init's `!with_radiation`
- * branch calls this directly on a fresh, never-yet-built #radiation (part
- * of a #stellar_model that is itself part of a non-`bzero`'d
- * `struct feedback_props` on the stack in swift.c): @c was_2d there may
- * be garbage, not a real prior dimensionality. This is not a
- * memory-safety hazard even so: whichever dispatch branch runs still nulls
- * the SAME `data` pointer (the offset-0 property above), which is the only
- * field #radiation_clean's later interpolate_*d_free() call can actually
- * dereference; the non-pointer tail fields left in whatever pre-call state
- * they were in are inert scalars, always overwritten by the next
- * #radiation_build_tables() call before anything ever reads them. Confirmed
- * by tracing every call site (radiation_table_io.c's radiation_read_data(),
- * this file's own radiation_restore(), and stellar_evolution.c's
- * stellar_evolution_props_init()), not assumed.
+ * @brief Zero a #radiation struct so it can be safely passed to
+ * #radiation_clean, printed, or read by any getter (which must check
+ * #is_active first; the zeroed pointers below are not otherwise guarded).
  *
  * @param rad The #radiation.
  */
 void radiation_zero_pointers(struct radiation *rad) {
 
+  /* Read before being overwritten below: dispatches which union member
+     (1D or 2D) gets zero-pointered, matching the INCOMING dimensionality.
+     Both members' `data` pointer sits at offset 0 (verified with
+     offsetof()), so the wrong dispatch would still null the right
+     pointer, just leave the other member's differently-shaped tail
+     fields (xmin/dx/N/... vs xmin/dx/ymin/dy/Nx/Ny/...) only partially
+     cleared.
+
+     stellar_evolution_props_init()'s `!with_radiation` branch calls this
+     on a fresh, never-yet-built #radiation whose is_2d may be garbage
+     (part of a non-zeroed `struct feedback_props` on swift.c's stack):
+     not a memory-safety hazard even then, since either dispatch branch
+     still nulls the one pointer #radiation_clean's later
+     interpolate_*d_free() call can dereference, and the tail fields are
+     inert scalars always overwritten by the next
+     #radiation_build_tables() call before anything reads them. */
   const char was_2d = rad->is_2d;
 
   rad->is_active = 0;
@@ -281,14 +255,11 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->ms_lifetime_inverse_log_z_step = 0.f;
   rad->ms_lifetime_inverse_n_metallicity = 0;
   rad->with_ISRF = 0;
-  rad->has_raw_ISRF = 0;
-  rad->has_integrated_ISRF = 0;
 
   if (was_2d) {
     interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
     interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
-    interpolate_2d_zero_pointers(&rad->raw.teff_2d);
     interpolate_2d_zero_pointers(&rad->raw.l_pe_2d);
     interpolate_2d_zero_pointers(&rad->raw.l_lw_2d);
     interpolate_2d_zero_pointers(&rad->integrated.luminosities_2d);
@@ -300,7 +271,6 @@ void radiation_zero_pointers(struct radiation *rad) {
     interpolate_1d_zero_pointers(&rad->raw.luminosities);
     interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
     interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
-    interpolate_1d_zero_pointers(&rad->raw.teff);
     interpolate_1d_zero_pointers(&rad->raw.l_pe);
     interpolate_1d_zero_pointers(&rad->raw.l_lw);
     interpolate_1d_zero_pointers(&rad->integrated.luminosities);

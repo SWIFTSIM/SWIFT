@@ -337,7 +337,7 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  *
  * @param w The star's #tracers_winds_data to update.
  * @param mass_ejected Wind mass ejected this step (internal units).
- * @param energy_ejected Wind energy ejected this step, after the winds
+ * @param energy_ejected Wind energy ejected this step, before the winds
  * efficiency factor (physical internal units).
  * @param comoving_density The star's local gas density (enrichment_weight),
  * comoving. Converted to physical here before storing.
@@ -346,13 +346,11 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  * @param time The current simulation time (internal units, only used if
  * !with_cosmology).
  */
-static INLINE void tracers_gear_update_winds(struct tracers_winds_data *w,
-                                             const double mass_ejected,
-                                             const double energy_ejected,
-                                             const float comoving_density,
-                                             const int with_cosmology,
-                                             const struct cosmology *cosmo,
-                                             const double time) {
+static INLINE void tracers_gear_record_winds_event(
+    struct tracers_winds_data *w, const double mass_ejected,
+    const double energy_ejected, const float comoving_density,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const double time) {
 
   /* Both budgets must be non-negative: a negative pair still yields a
      positive sqrt(2 m E). */
@@ -562,6 +560,29 @@ static INLINE void tracers_after_snia_event_spart(struct spart *sp,
 
   tracers_gear_record_sn_event(&sp->tracers_data.snia_events, number_events,
                                comoving_density, with_cosmology, cosmo, time);
+}
+
+/**
+ * @brief Update the star particle tracer data after it released stellar wind
+ * feedback.
+ *
+ * @param sp The star particle.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, before the winds
+ * efficiency factor (physical internal units).
+ * @param comoving_density Gas density around the star (comoving).
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current time (used only without cosmology).
+ */
+static INLINE void tracers_after_winds_event_spart(
+    struct spart *sp, const double mass_ejected, const double energy_ejected,
+    const float comoving_density, const int with_cosmology,
+    const struct cosmology *cosmo, const double time) {
+
+  tracers_gear_record_winds_event(&sp->tracers_data.winds, mass_ejected,
+                                  energy_ejected, comoving_density,
+                                  with_cosmology, cosmo, time);
 }
 
 /**

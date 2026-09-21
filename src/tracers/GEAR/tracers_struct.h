@@ -152,7 +152,15 @@ struct tracers_spart_data {
   struct tracers_sn_event_data snia_events;
 
   /*! Stellar-wind injection tracers */
+  /* In the end, I don't think we need all these */
   struct tracers_winds_data winds;
+
+  /* Two of the three radiation channels already have a tracer elsewhere, so
+     only ISRF (photoelectric heating/LW dissociation) is untracked: HII has
+     final_HII_radius/final_HII_mass above (star-side); radiation pressure
+     has feedback_cumulative.momentum_radiation/max_kick_velocity_radiation
+     in tracers_xpart_data above (gas-side, via
+     tracers_after_radiation_pressure_feedback_part()). */
 };
 
 /**

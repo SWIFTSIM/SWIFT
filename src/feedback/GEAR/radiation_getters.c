@@ -80,37 +80,21 @@ radiation_check_dimensionality(const struct radiation *rad, int expect_2d,
  * @brief Floor a metallicity mass fraction and return its log10, for a 2D
  * getter's log_z argument.
  *
- * Floors at #RADIATION_LOG_FLOOR_CGS (the same 1e-300 floor
- * radiation_read_cgs_array() applies to a table VALUE, reused here for a
- * QUERY metallicity, matching pychem's own convention of flooring before
- * any log10() that could otherwise see an exact 0
- * (PyChemInitTable.parsec.interpolate._safe_log10()/_LOG_FLOOR, also
- * 1e-300): Z=0 (e.g. pristine or Pop III gas) would otherwise hand log10()
- * a genuine 0 and produce -inf, undefined behaviour once #interpolate_2d
- * truncates it to an int. The metallicity axis's own boundary condition
- * (boundary_condition_const, set in radiation_build_tables()) already
- * clamps any out-of-range query to the table's lowest tabulated row
- * regardless of how far below it Z sits, so this floor changes nothing
- * about which row a very-low-Z star lands on; it only keeps the log10()
- * call itself finite. It does not, however, preserve mass-axis
- * interpolation for those stars: #interpolate_2d's out-of-range branch
- * (metallicity below the table's lowest tabulated value, which is exactly
- * what a floored Z=0 query is) returns a single clamped cell rather than
- * blending between neighbouring mass points, so every star at or below
- * the table's lowest tabulated Z is quantized onto the mass grid's own
- * resolution instead of interpolated: a real, if small, discontinuity
- * for the pristine/Pop III population #radiation_get_log_metallicity()
- * exists specifically to route down this path.
- *
- * Computed in double throughout, narrowed to float only on the return:
- * doing the max() in float would first narrow #RADIATION_LOG_FLOOR_CGS
- * (1e-300) to exactly 0.0f (float32's smallest denormal is ~1.4e-45),
- * silently defeating the floor and reintroducing log10(0).
+ * Floors at #RADIATION_LOG_FLOOR_CGS so Z=0 (pristine/Pop III gas) does
+ * not hand log10() a genuine 0. #interpolate_2d's boundary condition
+ * already clamps any out-of-range metallicity to the table's lowest row,
+ * but as a single cell, not blended with its neighbours: every star at
+ * or below the table's lowest tabulated Z loses mass-axis interpolation,
+ * a small real discontinuity this floor exists to route into.
  *
  * @param Z Metallicity mass fraction (may be exactly 0).
  * @return log10(max(Z, #RADIATION_LOG_FLOOR_CGS)).
  */
 float radiation_get_log_metallicity(float Z) {
+  /* Floor computed in double, narrowed to float only on return: flooring
+     in float first would narrow RADIATION_LOG_FLOOR_CGS (1e-300) to
+     exactly 0.0f (float32's smallest denormal is ~1.4e-45), silently
+     defeating the floor and reintroducing log10(0). */
   const double Z_floored = max((double)Z, RADIATION_LOG_FLOOR_CGS);
   return (float)log10(Z_floored);
 }
@@ -690,56 +674,6 @@ double radiation_get_star_mean_excess_photon_energy_HI(
 }
 
 /**
- * @brief Get the effective temperature at a given mass, from a 1D
- * (mass-only) table.
- *
- * @param rad The #radiation model.
- * @param log_m The mass in log.
- * @return Effective temperature, internal units.
- */
-float radiation_get_teff_from_raw(const struct radiation *rad, float log_m) {
-  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
-  return (float)exp10(interpolate_1d(&rad->raw.teff, log_m));
-}
-
-/**
- * @brief Get the effective temperature at a given mass and metallicity,
- * from a 2D ("M,Z") table.
- *
- * @param rad The #radiation model.
- * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
- * @param log_m The mass in log.
- * @return Effective temperature, internal units.
- */
-float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
-                                     float log_m) {
-  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
-  return (float)exp10(interpolate_2d(&rad->raw.teff_2d, log_z, log_m));
-}
-
-/**
- * @brief Get a single star's effective temperature at a given mass,
- * dispatching on #rad->is_2d between the 1D (mass-only) and 2D (mass x
- * metallicity) raw tables. Not capped by main_sequence_lifetime: like
- * #radiation_get_star_luminosity, Teff describes the star's continued
- * (post-main-sequence included) photospheric state, not just its
- * main-sequence ionizing output.
- *
- * @param rad The #radiation model.
- * @param log_m The mass in log.
- * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
- * used only if #rad holds a 2D table.
- * @return Effective temperature, internal units.
- */
-float radiation_get_star_teff(const struct radiation *rad, float log_m,
-                              float log_z) {
-  if (rad->is_2d) {
-    return radiation_get_teff_from_raw_2d(rad, log_z, log_m);
-  }
-  return radiation_get_teff_from_raw(rad, log_m);
-}
-
-/**
  * @brief Get the non-IMF-integrated non-ionizing FUV band emission rate at
  * a given mass, from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_pe.
@@ -772,8 +706,8 @@ float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
 /**
  * @brief Get a single star's FUV band emission rate at a given mass,
  * dispatching on #rad->is_2d, mirroring #radiation_get_star_luminosity.
- * Only valid when #radiation.has_raw_ISRF is set; callers must check
- * that first (this getter does not, matching every other raw getter here).
+ * Only valid when #radiation.with_ISRF is set; callers must check that
+ * first (this getter does not, matching every other raw getter here).
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -822,7 +756,7 @@ float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
 /**
  * @brief Get a single star's Lyman-Werner band emission rate at a given
  * mass, dispatching on #rad->is_2d. See #radiation_get_star_l_pe (identical
- * shape); only valid when #radiation.has_raw_ISRF is set.
+ * shape); only valid when #radiation.with_ISRF is set.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -842,8 +776,7 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @brief Get the IMF-averaged non-ionizing FUV band emission rate per mass,
  * from a 1D (mass-only) table. Mirrors
  * #radiation_get_luminosities_from_integral exactly, on
- * #rad->integrated.l_pe. Only valid when #radiation.has_integrated_ISRF
- * is set.
+ * #rad->integrated.l_pe. Only valid when #radiation.with_ISRF is set.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -924,70 +857,4 @@ float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
   const float l_lw_2 = interpolate_2d(
       interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
   return l_lw_2 - l_lw_1;
-}
-
-/**
- * @brief Planck spectral-radiance integrand, x^3/(e^x - 1), used by
- * #radiation_planck_band_fraction's Simpson-rule quadrature.
- *
- * Switches to the Wien-tail asymptote (x^3 e^{-x}) above x=40: e^x
- * overflows double at x ~ 709, but well before that, e^x - 1 == e^x to
- * float64 precision (expm1(x) itself returns exactly e^x there), and the
- * asymptote avoids computing e^x at all for the very large x this
- * function's own band edges can reach at low Teff (the FUV/LW band edges,
- * ~6-13.6 eV, correspond to x >~ 40 already below Teff ~ 2000 K).
- *
- * @param x Dimensionless photon energy, h*nu / (k_B * T).
- * @return x^3 / (e^x - 1).
- */
-static double radiation_planck_integrand(double x) {
-  if (x > 40.) return x * x * x * exp(-x);
-  return x * x * x / expm1(x);
-}
-
-/**
- * @brief Fraction of a Planck (blackbody) spectrum's total power falling
- * between two photon energies, at a given temperature.
- *
- * Integrates the dimensionless Planck function x^3/(e^x-1) (x = h*nu /
- * (k_B*T)) between the two band edges with a fixed-order Simpson's rule,
- * and normalizes by the full closed-form integral over all x,
- * int_0^infty x^3/(e^x-1) dx = pi^4/15 (the same identity behind the
- * Stefan-Boltzmann law). Used to split a star's L_bol into L_FUV/L_LW by
- * its own Teff, rather than assuming a fixed spectral shape for every
- * star.
- *
- * @param T_kelvin Effective temperature, Kelvin. Returns exactly 0 for a
- * non-positive value (a star with no valid Teff, e.g. #radiation.is_active
- * == 0) rather than dividing by zero.
- * @param E_low_eV Lower band edge, eV.
- * @param E_high_eV Upper band edge, eV. Must exceed @p E_low_eV.
- * @return Band fraction, in [0, 1].
- */
-double radiation_planck_band_fraction(double T_kelvin, double E_low_eV,
-                                      double E_high_eV) {
-  if (!(T_kelvin > 0.)) return 0.;
-  if (!(E_high_eV > E_low_eV))
-    error(
-        "radiation_planck_band_fraction: E_high_eV (%g) must exceed "
-        "E_low_eV (%g).",
-        E_high_eV, E_low_eV);
-
-  const double kT_eV = RADIATION_BOLTZMANN_K_EV_PER_K * T_kelvin;
-  const double x_low = E_low_eV / kT_eV;
-  const double x_high = E_high_eV / kT_eV;
-
-  /* Fixed-order composite Simpson's rule: RADIATION_PLANCK_QUADRATURE_N
-     (even) sub-intervals, adequate for the smooth, single-humped
-     integrand here (no adaptive refinement needed). */
-  const int n = RADIATION_PLANCK_QUADRATURE_N;
-  const double dx = (x_high - x_low) / n;
-  double sum =
-      radiation_planck_integrand(x_low) + radiation_planck_integrand(x_high);
-  for (int i = 1; i < n; i++) {
-    sum += (i % 2 == 0 ? 2. : 4.) * radiation_planck_integrand(x_low + i * dx);
-  }
-  const double integral = sum * dx / 3.;
-  const double planck_total = M_PI * M_PI * M_PI * M_PI / 15.;
-  return integral / planck_total;
 }
