@@ -63,11 +63,12 @@ free_field
     printed message: exact for schemes 0 to 2, approximate for 3 and 4.
 
     Both forms are ratios of two sums at the SAME time, so a spatially
-    uniform c_hyp cancels between numerator and denominator term by term,
-    whether or not it varies from one snapshot to the next. Every pinned run
-    (c_hyp_pin > 0), every fixed-fraction run (scheme 2) and every
-    scheme-0/1 run therefore gets exactly the number this check reported
-    before the ledger became scheme-aware.
+    uniform c_hyp cancels between numerator and denominator, whether or not
+    it varies from one snapshot to the next. Every pinned run (c_hyp_pin >
+    0), every fixed-fraction run (scheme 2) and every scheme-0/1 run
+    therefore gets the number this check reported before the ledger became
+    scheme-aware, up to round-off: the weighted branch divides each mass by
+    c_hyp before summing, so the two are not the same float expression.
 
     A1 itself is not evaluated: with the module's own light-speed clamp,
     c_hyp <= c always, and on every fixture this file runs c_hyp/c is of
@@ -446,8 +447,9 @@ def ledger_mean(snap: Dict, key: str, use_c_hyp: bool) -> float:
 
     With ``use_c_hyp`` the particle weight is ``m_i/c_hyp,i`` instead of
     ``m_i``. Numerator and denominator are summed at the same time, so a
-    spatially uniform c_hyp cancels term by term and the two branches then
-    return the same value bit for bit.
+    spatially uniform c_hyp cancels between them and the two branches then
+    agree to round-off, whether or not c_hyp varies from snapshot to
+    snapshot.
     """
     mass = snap["mass"]
     if not use_c_hyp:
