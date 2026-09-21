@@ -17,7 +17,8 @@
 
 # Add the non-standard paths to the included library headers
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) \
-        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS)
+        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS) \
+        $(AGAMA_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -412,7 +413,8 @@ nobase_noinst_HEADERS += cooling/const_du/cooling_io.h cooling/const_du/cooling_
 nobase_noinst_HEADERS += cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h
 nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h cooling/const_lambda/cooling_debug.h
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
-nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h cooling/grackle/cooling_debug.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
@@ -508,6 +510,10 @@ nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_part.h black_holes/SPI
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_properties.h black_holes/SPIN_JET/black_holes_parameters.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_spin.h black_holes/SPIN_JET/black_holes_struct.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_debug.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes.h black_holes/GEAR/black_holes_io.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_part.h black_holes/GEAR/black_holes_iact.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_properties.h black_holes/GEAR/black_holes_parameters.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_struct.h black_holes/GEAR/black_holes_debug.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h

@@ -3,6 +3,8 @@
 # make run.sh fail if a subcommand fails
 set -e
 
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
 n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=5}  #Number of particles = 2^(3*level)
@@ -29,14 +31,14 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh
 fi
 
 

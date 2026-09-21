@@ -217,7 +217,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
   struct sink *restrict sinks = c->sinks.parts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
+
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   const int current_stars_count = c->stars.count;
@@ -294,9 +297,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           float displacement[3] = {0.0, 0.0, 0.0};
 
           /* Copy the properties to the star particle */
-          sink_copy_properties_to_star(sink, sp, e, sink_props, cosmo,
-                                       with_cosmology, phys_const, us,
-                                       displacement);
+          sink_copy_properties_to_star(sink, sp, e, sink_props, hydro_props,
+                                       cooling, cosmo, with_cosmology,
+                                       phys_const, us, displacement);
 
           sp->x_diff[0] += displacement[0];
           sp->x_diff[1] += displacement[1];
