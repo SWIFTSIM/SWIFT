@@ -164,7 +164,7 @@ testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
 
-testHydroMPIrules = testHydroMPIrules.c
+testHydroMPIrules_SOURCES = testHydroMPIrules.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
