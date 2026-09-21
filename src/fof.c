@@ -25,6 +25,7 @@
 /* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
+#include <stdint.h>
 #include <unistd.h>
 
 /* MPI headers. */
@@ -1218,20 +1219,31 @@ static INLINE void add_foreign_link_to_list(
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
-    const size_t new_size = 2 * (*group_links_size);
+    const size_t old_size = *group_links_size;
 
-    *group_links_size = new_size;
+    /* Grow geometrically but make sure we always make progress. */
+    const size_t new_size = (old_size > 0) ? 2 * old_size : 1;
 
-    (*group_links) = (struct fof_mpi *)realloc(
+    /* The doubling must not wrap around and the buffer must remain
+     * addressable. */
+    if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+      error("Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
+
+    struct fof_mpi *temp = (struct fof_mpi *)realloc(
         *group_links, new_size * sizeof(struct fof_mpi));
+    if (temp == NULL)
+      error("Failed to re-allocate the list of foreign links to %zu elements",
+            new_size);
+
+    *group_links = temp;
+    *group_links_size = new_size;
 
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %zd to %zd elements.",
-            *local_link_count, new_size);
-
-    // if (new_size < 0) error("Overflow in size of list of foreign links");
+    message("Re-allocating local group links from %zu to %zu elements.",
+            old_size, new_size);
   }
 
   /* Store the particle group properties for communication. */
@@ -2420,19 +2432,35 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     size_t *restrict group_link_count = &props->group_link_count;
     struct fof_mpi **group_links = &props->group_links;
 
+    /* Total number of links we need to be able to store. */
+    const size_t needed = *group_link_count + local_link_count;
+    if (needed < *group_link_count)
+      error("Overflow in the number of foreign links (%zu + %zu)",
+            *group_link_count, local_link_count);
+
     /* If the global group_links array is not big enough re-allocate it. */
-    if (*group_link_count + local_link_count > *group_links_size) {
+    if (needed > *group_links_size) {
 
       const size_t old_size = *group_links_size;
-      const size_t new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
+      const size_t new_size = max(needed, 2 * old_size);
 
-      (*group_links) = (struct fof_mpi *)realloc(
+      /* The growth must not wrap around and the buffer must remain
+       * addressable. */
+      if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+        error(
+            "Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
+
+      struct fof_mpi *temp = (struct fof_mpi *)realloc(
           *group_links, new_size * sizeof(struct fof_mpi));
+      if (temp == NULL)
+        error("Failed to re-allocate the list of foreign links to %zu elements",
+              new_size);
 
+      (*group_links) = temp;
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %zd to %zd elements.",
+      message("Re-allocating global group links from %zu to %zu elements.",
               old_size, new_size);
     }
 
@@ -3358,8 +3386,14 @@ void fof_link_foreign_fragments(struct fof_props *props,
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
                 MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-  /* if (global_group_link_count < 0) */
-  /*   error("Overflow of the size of the global list of foreign links"); */
+  /* The global list is allocated as a single block on every rank, as are the
+   * three 2x-as-long size_t arrays derived from it further down. The largest
+   * of those is the list itself, so checking it covers them all. */
+  if (global_group_link_count > SIZE_MAX / sizeof(struct fof_mpi))
+    error(
+        "Overflow of the size of the global list of foreign links (%zu "
+        "elements)",
+        global_group_link_count);
 
   struct fof_mpi *global_group_links = NULL;
   size_t *displ = NULL, *group_link_counts = NULL;
@@ -3390,7 +3424,13 @@ void fof_link_foreign_fragments(struct fof_props *props,
   displ[0] = 0;
   for (int i = 1; i < e->nr_nodes; i++) {
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
-    /* if (displ[i] < 0) error("Number of group links overflowing!"); */
+
+    /* The running sum is monotonic unless it has wrapped around. */
+    if (displ[i] < displ[i - 1])
+      error(
+          "Overflow of the displacements into the global list of foreign "
+          "links at rank %d",
+          i);
   }
 
   /* Gather the global link list on all ranks. */
