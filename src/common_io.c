@@ -1703,14 +1703,24 @@ void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
   }
 
   /* Are we using a sub-dir? */
+  int len_file, len_xmf;
   if (strlen(subdir) > 0) {
-    sprintf(filename, "%s/%s_%0*d.hdf5", subdir, basename, number_digits,
-            snap_number);
-    sprintf(xmf_filename, "%s/%s.xmf", default_subdir, default_basename);
+    len_file = snprintf(filename, FILENAME_BUFFER_SIZE, "%s/%s_%0*d.hdf5",
+                        subdir, basename, number_digits, snap_number);
+    len_xmf = snprintf(xmf_filename, FILENAME_BUFFER_SIZE, "%s/%s.xmf",
+                       default_subdir, default_basename);
   } else {
-    sprintf(filename, "%s_%0*d.hdf5", basename, number_digits, snap_number);
-    sprintf(xmf_filename, "%s.xmf", default_basename);
+    len_file = snprintf(filename, FILENAME_BUFFER_SIZE, "%s_%0*d.hdf5",
+                        basename, number_digits, snap_number);
+    len_xmf = snprintf(xmf_filename, FILENAME_BUFFER_SIZE, "%s.xmf",
+                       default_basename);
   }
+  if (len_file < 0 || len_file >= FILENAME_BUFFER_SIZE || len_xmf < 0 ||
+      len_xmf >= FILENAME_BUFFER_SIZE)
+    error(
+        "Snapshot file name too long (max %d characters). Shorten "
+        "Snapshots:subdir and/or Snapshots:basename.",
+        FILENAME_BUFFER_SIZE - 1);
 }
 /**
  * @brief Set all ParticleIDs for each gpart to 1.
