@@ -1002,6 +1002,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_sigma");
+  if (cooling->He_reion_z_sigma <= 0.f)
+    error("EAGLECooling:He_reion_z_sigma must be > 0, got %e.",
+          cooling->He_reion_z_sigma);
   cooling->He_reion_heat_cgs =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_eV_p_H");
 
