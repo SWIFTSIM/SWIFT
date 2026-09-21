@@ -844,7 +844,7 @@ reaction network itself: it adds no heating for the photodissociation
 event or the UV pumping that precedes it, unlike the photoelectric and
 dust-recombination channels above.
 
-Enabling the module (\code{GEARFeedback:with\_photoelectric\_heating})
+Enabling the module (\code{GEARFeedback:with\_interstellar\_radiation\_field})
 configures Grackle for it: dust chemistry on, which selects the
 constant-efficiency photoelectric heating and dust recombination cooling
 together, and forces H$_2$ formation on dust grains
@@ -1035,13 +1035,19 @@ defensible it carries an initially undercounted particle-update cost of
 $+21$ to $+29\%$ once measured correctly (a low fraction can never bind
 the new timestep term, so it was never informative about cost); and the
 kernel-local scheme's own neighbour-maximum accumulates only over
-neighbours within $i$'s own kernel, so a larger-$h$ receiver that is
-inside a sender's kernel but has the sender outside its own reads that
-sender's flux without ever including it in its speed maximum -- a
-dense-short-step sender beside a diffuse-long-step receiver, which a
-uniform-resolution test fixture cannot exercise but a real galaxy's
-density contrast can, so this rule reduces pathway 1 without removing it
-``by construction''.
+neighbours within $i$'s own kernel, so at an asymmetric pair
+$H_j \le r_{ij} < H_i$ only the larger-$h$ particle $i$ records the
+smaller-$h$ particle $j$'s bin: $j$ never sees $i$'s bin in its own
+maximum, yet still receives $i$'s flux, since the force loop dispatches
+both sides of a pair whenever either kernel reaches
+(Section~\ref{sec:fuv-operators}). The maximum selects the longest
+neighbour step, so the direction that is kept adds a shorter step and
+cannot lower $i$'s speed, while the direction that is dropped is the one
+that would have lowered $j$'s. The rule therefore misses exactly the
+dense short-step particle beside diffuse long-step gas that it exists to
+slow, a configuration a uniform-resolution test fixture cannot exercise
+but a real galaxy's density contrast can, so it reduces pathway 1
+without removing it ``by construction''.
 
 \textbf{Scheme $4$ is the shipped default}, as of \code{a53ab8311}: of
 the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
@@ -1761,7 +1767,7 @@ are meaningful only with propagation on.
 \textbf{Key} & \textbf{Symbol} & \textbf{Default} & \textbf{Range} &
   \textbf{Meaning} \\
 \hline
-\code{with\_photoelectric\_heating} & & 0 & 0 or 1 &
+\code{with\_interstellar\_radiation\_field} & & 0 & 0 or 1 &
   Master switch: compute $L_{\rm FUV}$, $L_{\rm LW}$, inject, and couple
   $G_0$ and $k_{\rm diss}$ into Grackle. \\
 \hline
