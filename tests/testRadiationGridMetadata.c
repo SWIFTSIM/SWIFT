@@ -44,9 +44,10 @@ void radiation_read_grid_metadata(hid_t group_id,
  * every attribute radiation_read_grid_metadata() requires: the two generic
  * edge_policy_q_h_below/above and
  * edge_policy_mean_excess_energy_below/above attributes pychem's
- * write_h5_table_v2() always writes alongside the per-variant ones, plus
- * edge_policy_teff_below/above (both "constant" in every real table checked
- * with h5dump, e.g. .claude/dev/tables/parsec_qtable_popII.hdf5).
+ * write_h5_table_v2() always writes alongside the per-variant ones. The
+ * edge_policy_teff_below/above pair is written too: pychem still emits it
+ * and every real table carries it, but radiation_read_grid_metadata()
+ * never reads it, so the fixture only mirrors the on-disk schema here.
  *
  * @param file_id Open HDF5 file id to create the group in.
  * @param source_value The group's "source" attribute value: an
@@ -210,11 +211,6 @@ int main(int argc, char *argv[]) {
           "boundary_condition_const (from the generic "
           "edge_policy_mean_excess_energy_below/above attributes), got %d.",
           grid.edge_policy_dot_e_excess);
-    if (grid.edge_policy_teff != boundary_condition_const)
-      error(
-          "edge_policy_teff mismatch: expected boundary_condition_const "
-          "(from the edge_policy_teff_below/above attributes), got %d.",
-          grid.edge_policy_teff);
 
     free(grid.metallicity);
     H5Gclose(grp);
@@ -226,9 +222,9 @@ int main(int argc, char *argv[]) {
    * enforced. io_read_attribute()/radiation_read_string_attribute() already
    * error() loudly on a missing attribute; this confirms that fires for
    * each of these names. */
+  run_negative_case("edge_policy_luminosity_below");
   run_negative_case("edge_policy_q_h_below");
   run_negative_case("edge_policy_mean_excess_energy_below");
-  run_negative_case("edge_policy_teff_below");
 
   return 0;
 }
