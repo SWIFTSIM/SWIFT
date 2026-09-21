@@ -147,6 +147,9 @@ INLINE static int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
     return MPI_ERR_INTERN;
   }
 
+  /* Nothing committed yet: the clean-up below relies on these being set. */
+  *send_type_mpi = MPI_DATATYPE_NULL;
+
   int req_count = 0;
   int status = MPI_SUCCESS;
 
@@ -172,8 +175,10 @@ INLINE static int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
 
   /* Post Non-Blocking Sends using a localized large-count structure */
   if (status == MPI_SUCCESS && sendcount > 0) {
-    status = create_large_count_type(sendcount, sendtype, send_type_mpi);
+    MPI_Datatype send_layout;
+    status = create_large_count_type(sendcount, sendtype, &send_layout);
     if (status == MPI_SUCCESS) {
+      *send_type_mpi = send_layout;
       MPI_Type_commit(send_type_mpi);
       for (int i = 0; i < size; ++i) {
         MPI_Isend(sendbuf, 1, *send_type_mpi, i, 0, comm,
@@ -183,12 +188,21 @@ INLINE static int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
   }
 
   /* Complete network operations and perform structural deallocations */
-  if (status == MPI_SUCCESS && req_count > 0) {
-    status = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+  if (req_count > 0) {
+    if (status == MPI_SUCCESS) {
+      status = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+    } else {
+
+      /* We bailed out whilst setting up the transfers. Only receives have been
+       * posted at this point and they will never be matched, so cancel them
+       * and reap them all before the request buffer disappears. */
+      for (int i = 0; i < req_count; ++i) MPI_Cancel(&requests[i]);
+      MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+    }
   }
 
   /* Garbage collection of custom committed structures */
-  if (sendcount > 0 && *send_type_mpi != MPI_DATATYPE_NULL) {
+  if (*send_type_mpi != MPI_DATATYPE_NULL) {
     MPI_Type_free(send_type_mpi);
   }
   for (int i = 0; i < size; ++i) {
