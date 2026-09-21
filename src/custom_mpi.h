@@ -108,15 +108,13 @@ INLINE static int create_large_count_type(const size_t total_count,
 /**
  * @brief Implementation of MPI_Allgatherv which allows for size_t arguments
  *
- * Code in part inspired by Gemini AI.
- *
  * @param sendbuf Starting address of send buffer.
  * @param sendcount Number of elements in send buffer.
  * @param sendtype Data type of send buffer elements.
  * @param recvbuf Address of receive buffer.
- * @param recvcounts Integer array (of length group size) containing the number
+ * @param recvcounts size_t array (of length group size) containing the number
  * of elements that are to be received from each process.
- * @param displs Integer array (of length group size). Entry i specifies the
+ * @param displs size_t array (of length group size). Entry i specifies the
  * displacement (relative to recvbuf ) at which to place the incoming data from
  * process i.
  * @param recvtype Data type of receive buffer elements.
@@ -153,7 +151,7 @@ INLINE static int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
   int req_count = 0;
   int status = MPI_SUCCESS;
 
-  /*vPost Non-Blocking Receives with custom structural byte offsets */
+  /* Post Non-Blocking Receives with custom structural byte offsets */
   for (int i = 0; i < size; ++i) {
     recv_types_mpi[i] = MPI_DATATYPE_NULL;
     if (recvcounts[i] == 0) continue;
