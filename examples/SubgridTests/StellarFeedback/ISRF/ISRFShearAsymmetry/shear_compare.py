@@ -66,6 +66,7 @@ def mode_gate(opt):
             "it cannot be used as the gate's calibration baseline."
         )
     overall_ok = True
+    n_gated = 0
     for run in opt.runs:
         m = load_metrics(run)
         print(f"\n-- {run} --")
@@ -82,6 +83,7 @@ def mode_gate(opt):
                 "gate not meaningful for this run."
             )
             continue
+        n_gated += 1
         for band in ("FUV", "LW"):
             b = m["bands"][band]
             b0 = control["bands"][band]
@@ -95,6 +97,12 @@ def mode_gate(opt):
                     f"  {band} {key}: |A|={a:.4e}  limit=max(3*{a0:.4e}, {FLOORS[key]})="
                     f"{limit:.4e}  -> {'PASS' if ok else 'FAIL'}"
                 )
+    if n_gated == 0:
+        # Every run was skipped, so nothing was compared. Reporting PASS here
+        # would say the gate held when it never ran.
+        print("\nOverall gate: NO VERDICT -- every run was VOID, nothing gated.")
+        sys.exit(1)
+
     print(f"\nOverall gate: {'PASS' if overall_ok else 'FAIL'}")
     if not overall_ok:
         sys.exit(1)
