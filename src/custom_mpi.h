@@ -24,9 +24,10 @@
 
 /* Some standard headers. */
 #include <limits.h>
-#include <mpi.h>
-#include <stdint.h>
 #include <stdlib.h>
+
+/* Local headers. */
+#include "inline.h"
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -121,10 +122,11 @@ INLINE static int create_large_count_type(const size_t total_count,
  * @param recvtype Data type of receive buffer elements.
  * @param comm MPI communicator.
  */
-int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
-                         MPI_Datatype sendtype, void *recvbuf,
-                         const size_t recvcounts[], const size_t displs[],
-                         MPI_Datatype recvtype, MPI_Comm comm) {
+INLINE static int MPI_Allgatherv_sizet(const void *sendbuf, size_t sendcount,
+                                       MPI_Datatype sendtype, void *recvbuf,
+                                       const size_t recvcounts[],
+                                       const size_t displs[],
+                                       MPI_Datatype recvtype, MPI_Comm comm) {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
