@@ -998,12 +998,13 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                      e->physical_constants, e->cosmology,
                                      e->cooling_func, e->entropy_floor, e->time,
                                      with_cosmology, dt, e->ti_current);
+        
+        /* Brute-force stellar accretion (TDE) for all active BHs in this cell. */
+        runner_do_bh_stellar_accretion(r, c, 0);
       }
     }
   }
 
-  /* Brute-force stellar accretion (TDE) for all active BHs in this cell. */
-  runner_do_bh_stellar_accretion(r, c, 0);
 
   if (timer) TIMER_TOC(timer_do_black_holes_ghost);
 }
