@@ -839,9 +839,9 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     bp->nsc_mass = new_nsc_mass;
 
     message(
-        "BH (ID %lld) z=%.4f  tde_rate_yr=%g (yr^-1)  tde_rate=%g (internal)"
+        "BH (ID %lld) z=%.4f  tde_rate_yr=%g (yr^-1)  tde_rate=%g (internal), nsc_mass_loss_rate=%g (internal), nsc_mass_loss=%g (internal),"
         "bh_mass_gain=%g (internal)",
-        bp->id, cosmo->z, tde_rate_per_yr, tde_rate_internal, bh_mass_gain);
+        bp->id, cosmo->z, tde_rate_per_yr, tde_rate_internal, nsc_mass_loss_rate, nsc_mass_loss, bh_mass_gain);
 
     /* Lock the space to prevent concurrent writes from other BH cells
      * being processed simultaneously on different threads. */
