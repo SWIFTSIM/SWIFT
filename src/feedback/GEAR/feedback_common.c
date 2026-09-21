@@ -30,7 +30,6 @@
 #include "stellar_evolution.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
-#include "tracers.h"
 #include "units.h"
 
 /*! Fixed midpoint (Myr) of dt_evolution_ssp's logistic transition: factor =

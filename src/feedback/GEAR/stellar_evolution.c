@@ -884,15 +884,6 @@ void stellar_evolution_evolve_individual_star(
       sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
       star_age_beg_step, dt);
 
-  /* Logs the raw ejecta energy: this runs before feedback_common.c's
-     winds_efficiency scaling of energy_ejected. */
-  if (with_stellar_wind_feedback) {
-    tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
-                                    sp->feedback_data.winds.energy_ejected,
-                                    sp->feedback_data.enrichment_weight,
-                                    with_cosmology, cosmo, time);
-  }
-
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
       sp, sm, with_cosmology, cosmo, time, us, phys_const, ti_begin,
@@ -949,15 +940,6 @@ void stellar_evolution_evolve_spart(
   stellar_evolution_compute_preSN_feedback_spart(
       sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
       star_age_beg_step, dt);
-
-  /* Logs the raw ejecta energy: this runs before feedback_common.c's
-     winds_efficiency scaling of energy_ejected. */
-  if (with_stellar_wind_feedback) {
-    tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
-                                    sp->feedback_data.winds.energy_ejected,
-                                    sp->feedback_data.enrichment_weight,
-                                    with_cosmology, cosmo, time);
-  }
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, with_cosmology, cosmo,
