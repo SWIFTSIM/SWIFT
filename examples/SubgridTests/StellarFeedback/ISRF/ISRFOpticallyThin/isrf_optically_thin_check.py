@@ -572,6 +572,11 @@ def main() -> int:
             'theory/GEAR/Radiation/02_fuv_isrf.tex, "Limitations and open items".'
         )
 
+        # The slope gate below is a `> tol -> FAIL` comparison, which a NaN
+        # passes silently, so finiteness is tested first and separately.
+        if not np.isfinite(slope) or not np.isfinite(predicted):
+            print("  FAIL: the fitted slope or its prediction is not finite.")
+            failures.append(band)
         if not np.isfinite(amplitude) or not np.isfinite(flatness):
             print("  FAIL: amplitude or radial spread is not finite.")
             failures.append(band)

@@ -21,6 +21,12 @@ Cross-run comparisons for ISRFPropagationSpeedSweep: M-C1/M-C2 (Leg P), M-C3
 (Leg N), M-C4 (Legs R and I, report only). Each run directory must already
 contain its own sweep_metrics.json (isrf_propagation_speed_sweep_check.py)
 and its last snapshot.
+
+Modes P and N exit 0 only on an unambiguous PASS. INVALID (the M-P6
+precondition not met) and a skipped run both exit non-zero as well: the
+exit code says whether the comparison can be relied on, and the printout
+distinguishes INVALID from FAIL for the reader. Mode RI is report only
+and always exits 0.
 """
 
 import argparse
@@ -126,7 +132,10 @@ def mode_P(opt):
         ids, u_pe, u_lw = last_snapshot(d)
         order = np.argsort(ids)
         if not np.array_equal(ids[order], ref_ids[ref_sort]):
+            # Not comparable, so not a PASS either: a comparison in which
+            # every run was skipped must not report PASS.
             print(f"{d}: ParticleIDs do not match the reference run -- skipped.")
+            all_pass = False
             continue
         d_pe = np.max(np.abs(u_pe[order] - ref_u_pe[ref_sort])) / max(
             np.max(np.abs(ref_u_pe)), 1e-300
@@ -176,6 +185,9 @@ def mode_P(opt):
         f"Spread (drift-valid runs only): FUV={spread_pe:.4%}  LW={spread_lw:.4%}  (limit {opt.tol_retardation:.0%})"
     )
     print(f"M-C2: {'PASS' if c2_pass else ('INVALID' if not valid else 'FAIL')}")
+
+    if not (valid and all_pass and c2_pass):
+        sys.exit(1)
 
 
 def mode_N(opt):
