@@ -34,7 +34,17 @@
 #include <mpi.h>
 
 /**
- * @brief Create MPI data types for > 2^31 bytes transfers.
+ * @brief Creates a datatype describing a contiguous run of more elements than
+ * fit in an int.
+ *
+ * The run is split into full chunks of INT_MAX elements followed by the
+ * remainder, if any, glued together in a struct. Counts that fit in an int
+ * simply yield a contiguous type.
+ *
+ * @param total_count Number of elements.
+ * @param oldtype Datatype of the elements.
+ * @param newtype (return) The new, uncommitted, datatype. MPI_DATATYPE_NULL if
+ * total_count is 0.
  */
 INLINE static int create_large_count_type(const size_t total_count,
                                           MPI_Datatype oldtype,
@@ -57,56 +67,32 @@ INLINE static int create_large_count_type(const size_t total_count,
   MPI_Aint lb, extent;
   MPI_Type_get_extent(oldtype, &lb, &extent);
 
-  /* Build the structural definitions for the large layout */
+  /* At most two blocks: the full chunks and, if there is one, the remainder
+   * placed right after them. */
   const int count = (remainder > 0) ? 2 : 1;
-  int *blocklengths = (int *)malloc(count * sizeof(int));
-  MPI_Aint *displacements = (MPI_Aint *)malloc(count * sizeof(MPI_Aint));
-  MPI_Datatype *types = (MPI_Datatype *)malloc(count * sizeof(MPI_Datatype));
+  int blocklengths[2] = {1, 1};
+  MPI_Aint displacements[2] = {0, (MPI_Aint)chunks * INT_MAX * extent};
+  MPI_Datatype types[2] = {MPI_DATATYPE_NULL, MPI_DATATYPE_NULL};
 
-  if (!blocklengths || !displacements || !types) {
-    free(blocklengths);
-    free(displacements);
-    free(types);
-    return MPI_ERR_INTERN;
-  }
+  MPI_Type_vector((int)chunks, INT_MAX, INT_MAX, oldtype, &types[0]);
+  if (remainder > 0) MPI_Type_contiguous(remainder, oldtype, &types[1]);
 
-  /* Create a vector representing the massive blocks of full INT_MAX chunks */
-  MPI_Datatype chunks_type;
-  MPI_Type_vector((int)chunks, INT_MAX, INT_MAX, oldtype, &chunks_type);
-
-  blocklengths[0] = 1;
-  displacements[0] = 0;
-  types[0] = chunks_type;
-
-  /* If a remainder exists, tie it to the end of the full chunks */
-  if (remainder > 0) {
-    MPI_Datatype remainder_type;
-    MPI_Type_contiguous(remainder, oldtype, &remainder_type);
-
-    blocklengths[1] = 1;
-    displacements[1] = (MPI_Aint)chunks * INT_MAX * extent;
-    types[1] = remainder_type;
-  }
-
-  /* Merge everything seamlessly using an absolute struct layout */
   int status = MPI_Type_create_struct(count, blocklengths, displacements, types,
                                       newtype);
 
-  /* Clean up temporary sub-types
-   * Note: they are retained inside the struct wrapper */
-  MPI_Type_free(&chunks_type);
-  if (remainder > 0) {
-    MPI_Type_free(&types[1]);
-  }
+  /* The struct holds its own references to the sub-types */
+  MPI_Type_free(&types[0]);
+  if (remainder > 0) MPI_Type_free(&types[1]);
 
-  free(blocklengths);
-  free(displacements);
-  free(types);
   return status;
 }
 
 /**
  * @brief Implementation of MPI_Allgatherv which allows for size_t arguments
+ *
+ * Every rank sends its data to every rank with point-to-point messages. The
+ * displacements are applied as plain pointer arithmetic, so derived datatypes
+ * are only ever built for the (rare) counts that do not fit in an int.
  *
  * @param sendbuf Starting address of send buffer.
  * @param sendcount Number of elements in send buffer.
@@ -131,55 +117,58 @@ INLINE static int swift_mpi_allgatherv_sizet(
   MPI_Aint lb, extent;
   MPI_Type_get_extent(recvtype, &lb, &extent);
 
-  /* Create custom types */
-  MPI_Datatype *send_type_mpi = (MPI_Datatype *)malloc(sizeof(MPI_Datatype));
-  MPI_Datatype *recv_types_mpi =
+  /* Per-rank receive types (only used for counts that do not fit in an int)
+   * and one request per receive and per send. */
+  MPI_Datatype *recv_types =
       (MPI_Datatype *)malloc(size * sizeof(MPI_Datatype));
   MPI_Request *requests = (MPI_Request *)malloc(2 * size * sizeof(MPI_Request));
 
-  if (!send_type_mpi || !recv_types_mpi || !requests) {
-    free(send_type_mpi);
-    free(recv_types_mpi);
+  if (!recv_types || !requests) {
+    free(recv_types);
     free(requests);
     return MPI_ERR_INTERN;
   }
 
   /* Nothing committed yet: the clean-up below relies on these being set. */
-  *send_type_mpi = MPI_DATATYPE_NULL;
+  MPI_Datatype send_type = MPI_DATATYPE_NULL;
+  for (int i = 0; i < size; ++i) recv_types[i] = MPI_DATATYPE_NULL;
 
   int req_count = 0;
   int status = MPI_SUCCESS;
 
-  /* Post Non-Blocking Receives with custom structural byte offsets */
+  /* Post the non-blocking receives, each straight into its slot */
   for (int i = 0; i < size; ++i) {
-    recv_types_mpi[i] = MPI_DATATYPE_NULL;
     if (recvcounts[i] == 0) continue;
 
-    MPI_Datatype data_layout;
-    status = create_large_count_type(recvcounts[i], recvtype, &data_layout);
-    if (status != MPI_SUCCESS) break;
+    char *const dest = (char *)recvbuf + (MPI_Aint)displs[i] * extent;
 
-    /* Apply 64-bit byte displacements directly to the base buffer pointer */
-    MPI_Aint byte_disp = (MPI_Aint)displs[i] * extent;
-    MPI_Type_create_hindexed_block(1, 1, &byte_disp, data_layout,
-                                   &recv_types_mpi[i]);
-    MPI_Type_commit(&recv_types_mpi[i]);
-    MPI_Type_free(&data_layout);
-
-    MPI_Irecv(recvbuf, 1, recv_types_mpi[i], i, 0, comm,
-              &requests[req_count++]);
+    if (recvcounts[i] <= INT_MAX) {
+      MPI_Irecv(dest, (int)recvcounts[i], recvtype, i, 0, comm,
+                &requests[req_count++]);
+    } else {
+      MPI_Datatype layout;
+      status = create_large_count_type(recvcounts[i], recvtype, &layout);
+      if (status != MPI_SUCCESS) break;
+      recv_types[i] = layout;
+      MPI_Type_commit(&recv_types[i]);
+      MPI_Irecv(dest, 1, recv_types[i], i, 0, comm, &requests[req_count++]);
+    }
   }
 
-  /* Post Non-Blocking Sends using a localized large-count structure */
+  /* Post the non-blocking sends of the same buffer to every rank */
   if (status == MPI_SUCCESS && sendcount > 0) {
-    MPI_Datatype send_layout;
-    status = create_large_count_type(sendcount, sendtype, &send_layout);
-    if (status == MPI_SUCCESS) {
-      *send_type_mpi = send_layout;
-      MPI_Type_commit(send_type_mpi);
-      for (int i = 0; i < size; ++i) {
-        MPI_Isend(sendbuf, 1, *send_type_mpi, i, 0, comm,
+    if (sendcount <= INT_MAX) {
+      for (int i = 0; i < size; ++i)
+        MPI_Isend(sendbuf, (int)sendcount, sendtype, i, 0, comm,
                   &requests[req_count++]);
+    } else {
+      MPI_Datatype layout;
+      status = create_large_count_type(sendcount, sendtype, &layout);
+      if (status == MPI_SUCCESS) {
+        send_type = layout;
+        MPI_Type_commit(&send_type);
+        for (int i = 0; i < size; ++i)
+          MPI_Isend(sendbuf, 1, send_type, i, 0, comm, &requests[req_count++]);
       }
     }
   }
@@ -199,17 +188,12 @@ INLINE static int swift_mpi_allgatherv_sizet(
   }
 
   /* Garbage collection of custom committed structures */
-  if (*send_type_mpi != MPI_DATATYPE_NULL) {
-    MPI_Type_free(send_type_mpi);
-  }
+  if (send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
   for (int i = 0; i < size; ++i) {
-    if (recv_types_mpi[i] != MPI_DATATYPE_NULL) {
-      MPI_Type_free(&recv_types_mpi[i]);
-    }
+    if (recv_types[i] != MPI_DATATYPE_NULL) MPI_Type_free(&recv_types[i]);
   }
 
-  free(send_type_mpi);
-  free(recv_types_mpi);
+  free(recv_types);
   free(requests);
   return status;
 }
