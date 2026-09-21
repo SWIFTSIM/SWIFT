@@ -90,6 +90,8 @@ examples/SinkParticles/HomogeneousBox/snapshot_0003restart.hdf5
 
 tests/testActivePair
 tests/testActivePair.sh
+tests/testCustomMPI
+tests/testCustomMPI.sh
 tests/brute_force_periodic_BC_standard.dat
 tests/swift_periodic_BC_standard.dat
 tests/brute_force_periodic_BC_pertrubed.dat
