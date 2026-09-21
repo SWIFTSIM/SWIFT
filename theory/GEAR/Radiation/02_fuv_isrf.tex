@@ -1052,10 +1052,28 @@ without removing it ``by construction''.
 \textbf{Scheme $4$ is the shipped default}, as of \code{a53ab8311}: of
 the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
 measured (two of them exact zeros) and the best amplitude,
-$1.088\times$ the exact fixed point against the shipped scheme's
+$1.088\times$ the uniform-speed reference against the shipped scheme's
 $3.06\times$, at bit-identical particle-update cost (neither the
 kernel-local speed formula nor the operator rewrite alone changes what
-work is done per particle). Scheme $0$ remains reachable by setting
+work is done per particle). That reference is not an analytic solution.
+It is \code{ISRFDissipationExtreme}'s own settled FUV band energy
+$E_{\rm end} = \sum_i m_i u_i$ at $t_{\rm end}$, measured on a scheme
+$2$ arm at the uniform $c_{\rm hyp} = 16.494\,{\rm km\,s^{-1}}$,
+$3.7226\times10^{-8}$, and both ratios are that same fixture's FUV
+$E_{\rm end}$ against it. It stands in for the discrete fixed point
+because, as noted above, that fixed point is independent of a
+\emph{uniform} $c_{\rm hyp}$ exactly, in scheme $0$ as much as in scheme
+$4$: the divergence operator inherits one power of $c_{\rm hyp}$ through
+the flux's own fixed point, cancelling the $c_{\rm hyp}$ that the energy
+denominator carries. The only residue is the single $\exp(-a)$ factor
+weighting the dissipation term, with
+$a = C_{\rm hyp}\,h/\lambda \approx 0.24$ in the FUV band on this
+fixture. What the two ratios measure is therefore the heterogeneity of
+the speed field: an error of zeroth order in the neighbour ratio
+$c_{{\rm hyp},j}/c_{{\rm hyp},i}$, not in $c_{\rm hyp}$ itself, so
+lowering a uniform $c_{\rm hyp}$ would not reduce it. Both arms have
+settled by $t_{\rm end}$ on this fixture, so neither ratio is a
+transient. Scheme $0$ remains reachable by setting
 \code{ISRF\_c\_hyp\_scheme} explicitly. \textbf{This ranking rests on
 three fixtures only}, which the operator's own acceptance criterion for
 a default does not by itself consider sufficient
