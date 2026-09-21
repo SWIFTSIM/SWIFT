@@ -769,10 +769,46 @@ rate is a cross-section times the LW photon flux,
   E_{\rm LW} = 12\,{\rm eV} ,
   \label{eq:fuv-kdiss}
 \end{equation}
-with $\sigma_{\rm H_2}$ an effective band-averaged cross-section
-checked to within $10\%$ against the free-space photodissociation rate of
-\citet[their Eq.~5, $D_0 = 5.8\times10^{-11} I_{\rm UV}\,{\rm
-s^{-1}}$]{Sternberg2014} for an equivalent field. Grackle adds
+with $\sigma_{\rm H_2}$ an effective, spectrum-averaged band cross-section,
+not an atomic-physics constant. H$_2$ absorbs in the Lyman and Werner
+line systems, so the true dissociation rate is a sum over discrete lines
+weighted by the radiation field's own shape across $11.2$--$13.6$\,eV;
+$\sigma_{\rm H_2}$ is the single number that reproduces that sum for one
+assumed shape. \code{RADIATION\_SIGMA\_H2\_LW\_CGS} in
+\code{src/feedback/GEAR/radiation.h} holds it as a compile-time constant,
+not a run-time parameter, since it is a property of the assumed spectrum
+rather than a knob to tune per run.
+
+The assumed shape is the \citet{Draine1978} interstellar field. Both
+$\sigma_{\rm H_2}$ and $E_{\rm LW}$ are fixed under that assumption, and
+since $k_{\rm diss}\propto\sigma_{\rm H_2}/E_{\rm LW}$ only their ratio is
+constrained: the two are calibrated jointly, not independently.
+$E_{\rm LW} = 12$\,eV is itself a band-midpoint stand-in, used because a
+gas particle carries the LW band's energy flux $u_{{\rm LW},i}$ while
+\eqref{eq:fuv-kdiss} needs a photon flux, and the table carries no per-mass
+mean LW photon energy to convert with, unlike the ionizing band, whose
+mean excess photon energy above $13.6$\,eV is tabulated. A stellar population whose LW
+spectrum is much harder or softer than Draine's is therefore represented
+only approximately.
+
+The ratio is checked against the free-space photodissociation rate of
+\citet[their Eq.~5]{Sternberg2014},
+$D_0 = 5.8\times10^{-11}\,I_{\rm UV}\,{\rm s^{-1}}$, where $I_{\rm UV}$
+normalises the Draine field integrated over $912$--$1108$\,\AA\ alone.
+$D_0$ is the full-$4\pi$ free-space rate, not their slab-surface
+$D(0) = D_0/2$, whose geometric factor does not apply here. Converting
+conventions with $I_{\rm UV} = G_0/1.7$ on that band, and taking the LW
+band to carry a fraction $0.149$ of the combined $6$--$13.6$\,eV Habing
+flux that \code{RADIATION\_HABING\_FLUX\_CGS} normalises,
+\eqref{eq:fuv-kdiss} gives $k_{\rm diss}/D_0 = 0.898$, within the $\sim
+10\%$ uncertainty of the band integrations entering that comparison. Both
+expressions are linear in the field strength, so agreement is a fixed
+multiplicative offset: the comparison bounds the normalisation and says
+nothing about how either behaves under a different spectral shape. The
+derivation is reproduced by
+\code{theory/GEAR/Radiation/verify\_sigma\_h2\_lw\_sternberg2014.py}, which
+reads the constants out of \code{radiation.h} directly so it cannot drift
+from the code it checks. Grackle adds
 $k_{\rm diss}$ to its background dissociation rate and applies its own
 self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Grackle
 adds no heating for these dissociations by default. The optional switch
