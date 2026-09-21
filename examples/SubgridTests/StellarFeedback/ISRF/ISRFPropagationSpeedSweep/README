@@ -81,7 +81,9 @@ with `--expect-unstable`) whether the run destabilized as predicted.
 `sweep_compare.py` performs the cross-run comparisons: self-similarity and
 retardation collapse across a fixed-Courant sweep (gated, `--mode P`), the
 stability bound's bracketing location across a Courant-number sweep (gated,
-`--mode N`), and reachability reporting for the star-sourced and
+`--mode N`; a sweep in which no group holds both a stable and an unstable
+run never brackets the bound, so it prints `NO VERDICT` and exits 1 instead
+of passing), and reachability reporting for the star-sourced and
 propagation-on/off legs (report only, `--mode RI`). A dt-quantization
 mismatch across a `--mode P` sweep is detected and reported on the
 `M-C1 overall` and `M-C2` lines as the run set being INVALID rather than a

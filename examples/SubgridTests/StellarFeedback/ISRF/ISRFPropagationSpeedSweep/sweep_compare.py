@@ -23,10 +23,11 @@ contain its own sweep_metrics.json (isrf_propagation_speed_sweep_check.py)
 and its last snapshot.
 
 Modes P and N exit 0 only on an unambiguous PASS. INVALID (the M-P6
-precondition not met) and a skipped run both exit non-zero as well: the
-exit code says whether the comparison can be relied on, and the printout
-distinguishes INVALID from FAIL for the reader. Mode RI is report only
-and always exits 0.
+precondition not met), a skipped run, and NO VERDICT (mode N, nu_max never
+bracketed) all exit non-zero as well: the exit code says whether the
+comparison can be relied on, and the printout distinguishes INVALID and
+NO VERDICT from FAIL for the reader. Mode RI is report only and always
+exits 0.
 """
 
 import argparse
@@ -203,6 +204,7 @@ def mode_N(opt):
     for d, s, n, nm in zip(opt.runs, stable, nu_eff, nu_max):
         by_alpha.setdefault(round(nm, 4), []).append((d, s, n))
     overall_pass = True
+    n_bracketed = 0
     for nm, entries in by_alpha.items():
         stable_nu = [n for (_, s, n) in entries if s]
         unstable_nu = [n for (_, s, n) in entries if not s]
@@ -226,6 +228,7 @@ def mode_N(opt):
                 )
                 bracket_ok = False
         if largest_stable is not None and smallest_unstable is not None:
+            n_bracketed += 1
             brackets = largest_stable < nm < smallest_unstable or (
                 largest_stable <= nm and smallest_unstable >= nm
             )
@@ -233,9 +236,20 @@ def mode_N(opt):
                 f"  Bracket [{largest_stable}, {smallest_unstable}] contains nu_max={nm:.4f}: {brackets}"
             )
         overall_pass &= bracket_ok
-    print(f"\nM-C3 overall: {'PASS' if overall_pass else 'FAIL'}")
+
     if not overall_pass:
+        print("\nM-C3 overall: FAIL")
         sys.exit(1)
+    if n_bracketed == 0:
+        # No group held both a stable and an unstable run, so nu_max was never
+        # bracketed. Reporting PASS here would say the bound had been located
+        # when nothing located it.
+        print(
+            "\nM-C3 overall: NO VERDICT -- no group bracketed nu_max; a group "
+            "needs both a stable and an unstable run."
+        )
+        sys.exit(1)
+    print("\nM-C3 overall: PASS")
 
 
 def mode_RI(opt):

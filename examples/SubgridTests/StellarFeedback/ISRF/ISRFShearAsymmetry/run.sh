@@ -32,7 +32,6 @@ time_end=${time_end:=1.0e-3}
 dt_max=${dt_max:=1e-5}
 dt_min=${dt_min:=1e-14}
 delta_time=${delta_time:=1.0e-4}
-expect_stable=${expect_stable:=1}
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -112,10 +111,6 @@ printf "Running simulation..."
 		   params.yml 2>&1 | tee output.log
 
 # Per-run metrics (asymmetry, KH-contamination control); see README.
-stable_flag="--expect-stable"
-if [ "$expect_stable" = "0" ]; then
-    stable_flag="--expect-unstable"
-fi
 python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry \
     --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
 
