@@ -3434,9 +3434,9 @@ void fof_link_foreign_fragments(struct fof_props *props,
   }
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv_sizet(props->group_links, group_link_count, fof_mpi_type,
-                       global_group_links, group_link_counts, displ,
-                       fof_mpi_type, MPI_COMM_WORLD);
+  swift_mpi_allgatherv_sizet(props->group_links, group_link_count, fof_mpi_type,
+                             global_group_links, group_link_counts, displ,
+                             fof_mpi_type, MPI_COMM_WORLD);
 
   /* Clean up memory. */
   free(group_link_counts);
