@@ -50,9 +50,12 @@ make -j
 ```
 ./run.sh
 ```
-Override any parameter via the matching env var: `variant` (`shear` or
-`contrast`), `source_geometry` (`blobs` or `slab`), `v_shear` (km/s, full
-relative velocity between the two streams), `layer_width_h`,
+Override any parameter via the matching env var: gas density
+(`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun),
+resolution level (`level`, N = `(2**level)**3` gas particles), `variant`
+(`shear` or `contrast`), `source_geometry` (`blobs` or `slab`), `v_shear`
+(km/s, full relative velocity between the two streams), `propagation`
+(`ISRF_propagation`), `layer_width_h`,
 `density_ratio` (contrast variant only), `bulk_temperature_K`,
 `pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_pin`
 (`ISRF_c_hyp_pin_for_debugging`), `alpha_max`/`alpha_pin`
@@ -105,7 +108,11 @@ glass-noise scatter between two runs does not trip the gate, narrow enough
 to catch an effect at the percent level. `shear_compare.py --mode gate`
 performs this comparison; a run flagged void, by the KH-contamination
 control or by the negative-weight-share check above, is excluded from the
-gate rather than trusted.
+gate rather than trusted. Two outcomes follow from that exclusion. If every
+sheared run was void, nothing was compared, so the gate prints
+`NO VERDICT` and exits 1 instead of claiming a pass. If the zero-shear
+control itself is void it cannot calibrate anything, so the gate raises a
+`RuntimeError` at once: rerun the control before gating.
 
 `shear_compare_ensemble.py` runs the ensemble, time-averaged version of
 the same gate: each realisation's metric is time-averaged over the

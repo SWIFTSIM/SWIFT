@@ -30,7 +30,7 @@ median smoothing length, via the exact formula radiation_isrf.c uses:
 variant every gas particle shares (to float precision) the same h and dt, so
 one scalar `c_hyp` applies to the whole box; the pinned-neighbour variant
 uses `--hot-particle-id` to exclude that one particle from the "bulk" h/dt
-estimate and checks it separately (see `--hot-particle-id`'s own help).
+estimate and from every metric below (see `--hot-particle-id`'s own help).
 
 Pass criterion (Sec 6.2): for each of epsilon in {0.1, 0.01, 0.001}, the
 outer radius where the radially-binned u(r) last exceeds
@@ -102,7 +102,7 @@ def parse_options():
         default=-1,
         help="Pinned-neighbour variant: ID of the artificially-heated gas "
         "particle (see hot_particle_id.txt), excluded from the bulk h/dt "
-        "estimate and reported on separately.",
+        "estimate and from every metric, including the negativity gate.",
     )
     parser.add_argument("--n-bins", type=int, default=120, help="Radial bins.")
     parser.add_argument(

@@ -60,7 +60,7 @@ Other env vars: `level`, `gas_density`, `gas_mass`, `star_mass`,
 `galilean_compare.py --rest runs/rest --repeat runs/rest_repeat --shifted runs/rest_shifted --boosted runs/boost_*`
 matches particles by `ParticleIDs` and computes, per band and over all
 snapshots, `D_u = max|u_boost - u_rest|/max|u_rest|` and the same for `F`
-(componentwise, untransformed, over particles with `|F|` above `1e-6` of
+(vector norm of the difference, untransformed, over particles with `|F|` above `1e-6` of
 the maximum). The same metrics between the rest run and each rest control
 set the round-off floor per band and metric. PASS: every boost within three
 times that floor.

@@ -64,8 +64,10 @@ def parse_options():
         default=1e-5,
         help="Max allowed relative error (default: %(default)s). This is an "
         "exact identity, so the only expected discrepancy is float32 "
-        "snapshot-storage rounding (measured ~1e-8 for a ~50-particle "
-        "kernel); the default leaves ample margin above that floor.",
+        "snapshot-storage rounding, ~1e-7: the right-hand side reads the "
+        "star's float32 luminosity once, which does not average down the "
+        "way the kernel sum on the left does. The default leaves ample "
+        "margin above that floor.",
     )
     return parser.parse_args()
 

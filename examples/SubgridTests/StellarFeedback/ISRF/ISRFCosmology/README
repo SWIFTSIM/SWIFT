@@ -4,13 +4,17 @@ configuration is run without cosmology (`redshift=0`) and with cosmology from
 `redshift=9`, from the same physical initial state, and the same check is
 applied to both. Where a closed form exists, the check compares against it:
 
-- `free_field`: a uniform seeded field in dust-free gas, no star. The
-  mass-specific field decays as `u0 a0/a` (constant without cosmology), and the
-  H2 abundance follows `ln x_H2 = -k0 int (a0/a)^4 dt` with the rate the module
-  hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
+- `free_field`: a uniform seeded field in dust-free gas, no star. The module
+  dilates the field's Hubble term by the same `c_hyp/c` factor as every other
+  rate, and `c_hyp/c` is of order 1e-5 on this fixture, so the mass-specific
+  field is constant to leading order with and without cosmology. The H2
+  abundance then follows `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone,
+  since the field itself no longer decays) with the rate the module hands to
+  Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
 - `dust_absorption`: the same at solar metallicity, with the propagation speed
   pinned (`c_hyp_pin`, km/s), so the absorption rate is known:
-  `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - ln(a/a0)`.
+  `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
+  carrying the same `c_pin/c` dilation.
 - `photoelectric` and `photoelectric_dark`: a seeded field of `G0 ~ 1` and the
   same box without it. The difference of their internal energies must equal
   the integral of Grackle's heating rate
@@ -21,8 +25,11 @@ applied to both. Where a closed form exists, the check compares against it:
 `h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
 self-shielding) has no closed form. It is compared between `redshift=0` and
 high redshift over 25 yr, where expansion does not change the physical state.
-The check equations and every pass bar are in the docstrings of
-`isrf_cosmology_check.py` and `isrf_cosmology_h2_identity_check.py`.
+The check equations, and the bars each one derives from the run's own
+discretisation, are in the docstrings of `isrf_cosmology_check.py` and
+`isrf_cosmology_h2_identity_check.py`. The `injection` bar is the one
+exception: a fixed relative tolerance of 1e-5, set in
+`isrf_cosmology_check.py` itself.
 
 ## Initial conditions
 `makeIC.py` takes physical values at the starting redshift and writes the
@@ -59,8 +66,9 @@ config=h2_shielded redshift=0 n_threads=3 run_name=h2_z0_replicate ./run.sh
 config=h2_shielded redshift=9 run_name=h2_z9 ./run.sh
 config=h2_shielded redshift=4 run_name=h2_z4 ./run.sh
 ```
-Add `h2_self_shielding=2` for the kernel-length column. See `run.sh` for the
-other overrides (`level`, `gas_density`, `gas_mass`, `duration`, `steps`, ...).
+Add `h2_self_shielding=2` for the kernel-length column, and pass the matching
+`--h2-self-shielding 2` to the identity check below (it defaults to 3). See
+`run.sh` for the other overrides (`level`, `gas_density`, `gas_mass`, `duration`, `steps`, ...).
 At level 5 each run takes a few minutes on 8 threads.
 
 # Checking
@@ -78,5 +86,8 @@ python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.h
     --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
 ```
 Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
-(exit code 0 or 1). With `--reference`, the cosmological bar also includes
-twice the error the non-cosmological run measured.
+(exit code 0 or 1). `--reference` takes the non-cosmological run of the same
+configuration: the cosmological bar then becomes the larger of the a-priori
+budget and twice the error that run measured, plus the cosmological terms.
+With `--config photoelectric` it also needs `--reference-dark`, the
+non-cosmological `photoelectric_dark` run.

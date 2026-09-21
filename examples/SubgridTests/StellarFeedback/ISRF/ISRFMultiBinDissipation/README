@@ -116,4 +116,6 @@ star adjacent to the boundary against its same-phase, no-boundary sibling;
 the total-displacement bound across every star and run; no growth of the
 displacement with resolution; and no excess `sum(m*u)` non-conservation
 relative to the single-bin control. A run flagged void or invalid by its own
-check script is excluded from the gate rather than trusted.
+check script is listed on an `Excluded from the gate (VOID/INVALID)` line,
+but still enters every criterion: read that line before trusting a verdict
+that names such a run.

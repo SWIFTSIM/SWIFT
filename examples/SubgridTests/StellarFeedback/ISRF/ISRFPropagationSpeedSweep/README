@@ -58,7 +58,10 @@ atom/cm^3), gas particle mass (`gas_mass`, Msun), resolution level (`level`),
 (`ISRF_c_hyp_pin_for_debugging`, km/s), `c_hyp_margin`
 (`ISRF_c_hyp_margin`), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`), `propagation`
-(`ISRF_propagation`), `initial_metallicity`, `time_end`, `dt_max`,
+(`ISRF_propagation`), star mass and type (`star_mass`, `star_type`, used
+only when `seed_pulse=0`), `expect_stable` (0 for Leg N's
+deliberately-unstable runs, which passes `--expect-unstable` to the
+per-run check), `initial_metallicity`, `time_end`, `dt_max`,
 `dt_min`, `delta_time`, and thread count (`n_threads`); see `run.sh` for the
 full list and defaults. `run_name=<dir> ./run.sh` moves the run's outputs
 into `<dir>` once done, to keep more than one run's outputs side by side.
@@ -80,6 +83,9 @@ retardation collapse across a fixed-Courant sweep (gated, `--mode P`), the
 stability bound's bracketing location across a Courant-number sweep (gated,
 `--mode N`), and reachability reporting for the star-sourced and
 propagation-on/off legs (report only, `--mode RI`). A dt-quantization
-mismatch across a `--mode P` sweep is detected and reported as the run set
-being INVALID rather than a physics failure; re-run with `time_end` adjusted
-if this happens.
+mismatch across a `--mode P` sweep is detected and reported on the
+`M-C1 overall` and `M-C2` lines as the run set being INVALID rather than a
+physics failure. The individual per-run lines below them still read FAIL in
+that case, since no run can pass a comparison whose precondition is unmet;
+read the overall lines first. Re-run with `time_end` adjusted if this
+happens.

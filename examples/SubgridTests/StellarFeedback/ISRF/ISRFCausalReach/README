@@ -28,8 +28,8 @@ is nonzero) so the per-particle `InternalEnergy` `makeIC.py` writes is not
 overwritten uniformly at start-up. The heated particle's own real pressure
 also perturbs its local SPH density (a genuine hydrodynamic effect, not a
 radiation artifact); `isrf_causal_reach_check.py --hot-particle-id`
-excludes that one particle from the bulk `h`/`dt` estimate and reports it
-separately.
+excludes that one particle from the bulk `h`/`dt` estimate and from every
+metric the check computes. It is not reported on separately.
 
 ## Metallicity, cooling
 Same as `ISRFHyperbolicPropagation`: `initial_metallicity` must stay above
@@ -66,7 +66,9 @@ measured extent of the field against `c_hyp*(t-t0)` at three amplitude
 levels (10%/1%/0.1% of that snapshot's own peak, the most permissive
 "plateau" definition available for a 3-D point source, there is no flat
 plateau to compare against as there would be in a 1-D slab test), and gates
-on both that extent and on negativity anywhere in the box (unlike the
-Tier-1 steady-state check, negativity here is a hard failure: the
-wavefront is exactly where the estimator's known weaknesses are worst).
+on both that extent and on negativity anywhere in the particle set it
+measures, which is the whole box unless `--hot-particle-id` excluded one
+particle (unlike the Tier-1 steady-state check, negativity here is a hard
+failure: the wavefront is exactly where the estimator's known weaknesses
+are worst).
 Produces a comparison plot (`--output`).

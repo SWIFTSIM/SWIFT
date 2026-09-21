@@ -30,9 +30,13 @@ above 0.571 requires lowering them; `alpha_max`, `alpha_floor`, and
 
 ## Pinned-neighbour variant, metallicity, cooling
 Same as `ISRFCausalReach`: see that example's README for the full
-mechanism (`hot_particle_temperature_K`, `SPH:initial_temperature: 0`,
-`isrf_dissipation_check.py --hot-particle-id`, metallicity/cooling
-isolation).
+mechanism (`hot_particle_temperature_K`, metallicity/cooling isolation).
+`run.sh` here always passes `SPH:initial_temperature: 0`, whatever
+`hot_particle_temperature_K` is set to, so the per-particle
+`InternalEnergy` written by `makeIC.py` is never overwritten.
+`isrf_dissipation_check.py --hot-particle-id` drops that one particle from
+the bulk `h`/`dt` estimate and from every metric; it is not reported on
+separately.
 
 # Configure
 ```
