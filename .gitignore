@@ -171,6 +171,7 @@ tests/testSelectOutput.sh
 tests/unused_parser_output.yml
 tests/used_parser_output.yml
 tests/output_list_params.yml
+tests/selectOutputParameters.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
