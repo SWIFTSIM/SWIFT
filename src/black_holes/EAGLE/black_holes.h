@@ -1328,7 +1328,7 @@ INLINE static void black_holes_create_from_gas(
   /* Available mass check */
   if (bp->mass < (props->subgrid_seed_mass + props->nsc_seed_mass)) {
     warning("Gas particle with ID %lld converting to BH seed does not have enough available mass"
-            "for both the black hole subgrid_mass and nsc_mass. Setting nsc_mass = 0");
+            "for both the black hole subgrid_mass and nsc_mass. Setting nsc_mass = 0", bp->id);
     bp->nsc_mass = 0.f;
   } else {
     /* Initial NSC seed mass */
