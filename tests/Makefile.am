@@ -178,7 +178,7 @@ testCustomMPI_SOURCES = testCustomMPI.c
 testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 # The MPI library pulls in the same extra dependencies as the swift_mpi binary
 testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
-testCustomMPI$(EXEEXT): ../src/.libs/libswiftsim_mpi.a
+EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
 
 # Files necessary for distribution
