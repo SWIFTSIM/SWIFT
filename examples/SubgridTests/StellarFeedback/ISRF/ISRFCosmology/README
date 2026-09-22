@@ -28,7 +28,12 @@ applied to both. Where a closed form exists, the check compares against it:
   and the particle mass cancel, and a bracket on the weighted mean of
   `exp(-tau)` between its smallest and largest per-particle value. It gates
   the receiver-side extinction wiring, including the comoving-to-physical
-  scaling of the column, which the `Z = 0` leg cannot see.
+  scaling of the column, which the `Z = 0` leg cannot see. Unlike `injection`
+  it holds the gas state fixed (`disable_cooling`, on by default for this
+  config): metal cooling would otherwise drive the gas onto time-bins below
+  the star's, and the check reads the star's `Delta_t` from the step table,
+  which reports the step's `dt` instead. Override it with `disable_cooling=0`
+  only if the star is known to stay on the shortest bin.
 
 `h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
 self-shielding) has no closed form. It is compared between `redshift=0` and
