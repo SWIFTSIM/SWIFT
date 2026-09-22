@@ -472,8 +472,7 @@ cooling_agora_cmb_floor_internal_energy(
     const struct xpart *xp) {
 
   const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
-  const double T_CMB_agora =
-      CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN * (z + 1.0);
+  const double T_CMB_agora = phys_const->const_T_CMB_0 * (z + 1.0);
 
   return cooling_get_internal_energy_from_temperature(
       phys_const, us, cosmo, hydro_props, cooling, p, xp, T_CMB_agora);
