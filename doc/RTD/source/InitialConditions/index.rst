@@ -153,12 +153,16 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
   velocities**. Note that this is different from GADGET which uses peculiar
   velocities divided by ``sqrt(a)`` (see below for a fix).
 + ``ParticleIDs``, an array of length N that are unique identifying numbers for
-  each particle. Note that these have to be unique to a particle, and cannot be
-  the same even between particle types. The **IDs must be > 0**. Negative
-  IDs will be rejected by the code. The code will run if there is a particle
-  with an ID of 0, but that particle will not be included.
-  Note, however, that if the parameters to remap the IDs upon startup is switched
-  on (see :ref:`Parameters_ICs`), the IDs can be omitted entirely from the ICs.
+  each particle. Note that these should be unique to a particle, and should not be
+  the same even between particle types. The **IDs must be >= 0**. The 
+  code will not crash if you provide negative or non-unique IDs in the ICs. It will 
+  only crash if you provide IDs of 0 or smaller for DM particles while debugging. 
+  Even though the code does not crash if you provide non-unique IDs, it can pose 
+  problems since for example the random number generators rely on the IDs, and 
+  some parts of the code use the IDs to select particles. IDs < 0 are remapped to 
+  non-negative values in the code and its output. Note, however, that if the 
+  parameters to remap the IDs upon startup is switched on (see 
+  :ref:`Parameters_ICs`), the IDs can be omitted entirely from the ICs.
 + ``Masses``, an array of length N that gives the masses of the particles.
 
 For ``PartType0`` (i.e. particles that interact through hydro-dynamics), you will
