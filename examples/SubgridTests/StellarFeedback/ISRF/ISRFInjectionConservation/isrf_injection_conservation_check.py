@@ -59,12 +59,21 @@ are non-negative and sum to 1, the global sum is rigorously bracketed:
 
     min_j exp(-tau_b_j) <= sum_j m_j u_b_j / (Delta_t L_b) <= max_j exp(-tau_b_j)
 
+The path itself comes from the run's own
+`GEARFeedback:ISRF_extinction_path`. Under `constant_kernel_path` it is
+that many kernel support radii of the receiver; under `pair_separation`
+it is the star-to-particle separation, which is a per-particle length
+here only because this fixture has a single star, and the check refuses
+to run otherwise. `temperature_capped_jeans` builds its length from
+`cooling_get_temperature` and is not reconstructible from a snapshot, so
+it is refused.
+
 What this tests, and what it does not
 -------------------------------------
 It tests that the extinction is WIRED per receiving particle with the
 correct band-dependent cross-section ratio: that the call is made at all,
 that the two bands are not swapped, that the column uses the receiver's
-own h and rho with the configured path length and kernel_gamma, that the
+own rho over the configured mechanism's length, that the
 comoving-to-physical scaling is applied once, and that the metallicity is
 read from the array the code reads.
 
@@ -73,11 +82,17 @@ dust-to-gas convention are physically right: the reconstruction reuses
 all three. The formula itself is unit-tested in
 tests/testRadiationISRFFormula.c.
 
-It is also weak on one wiring error: applying the extinction source-side,
-once for the whole star, instead of receiver-side per particle. In a
-uniform glass box the column barely varies between particles, so the two
-give nearly the same answer here. A density-gradient fixture would be
-needed to separate them.
+G2 is the gate with real constraint; G1's strength depends on the
+mechanism. Under `constant_kernel_path` in a uniform glass box the column
+barely varies between particles, so the G1 bracket is tight, but the same
+uniformity makes the check weak on one wiring error: applying the
+extinction source-side, once for the whole star, instead of receiver-side
+per particle. Under `pair_separation` it is the other way round. The
+separation runs from nearly zero to the full kernel support, so the G1
+bracket spans that whole range and is loose enough to admit almost any
+value, while the strong per-particle variation of the column does
+separate source-side from receiver-side wiring. Read a G1 pass on a
+`pair_separation` run accordingly.
 
 Delta_t (the star's own feedback-timestep at the checked snapshot) is read
 from swift's own step-table log, not assumed to equal TimeIntegration:dt_max.
@@ -159,18 +174,19 @@ def parse_options() -> argparse.Namespace:
         type=float,
         default=KERNEL_GAMMA_DEFAULT,
         help="--dusty only: the binary's kernel_gamma, which sets the "
-        "extinction column together with the path length (default: "
-        "%(default)s, Wendland C2 in 3D). A run built with another kernel "
-        "needs the matching value from src/kernel_hydro.h.",
+        "extinction column of the constant_kernel_path mechanism together "
+        "with its path length (default: %(default)s, Wendland C2 in 3D). A "
+        "run built with another kernel needs the matching value from "
+        "src/kernel_hydro.h. The pair_separation mechanism does not use it.",
     )
     parser.add_argument(
         "--extinction-path",
         type=float,
         default=None,
-        help="--dusty only: GEARFeedback:ISRF_extinction_path in kernel "
-        "support radii (constant_kernel_path = its own float, "
-        "kernel support radii). Read from the run's "
-        "used_parameters.yml when omitted.",
+        help="--dusty only: force the constant_kernel_path mirror at this "
+        "many kernel support radii, whatever mechanism the run recorded. "
+        "The mechanism and its length are read from the run's "
+        "used_parameters.yml when this is omitted.",
     )
     parser.add_argument(
         "--dust-to-gas-ratio",
@@ -225,11 +241,27 @@ def read_log_dust_to_gas_ratio(log_path: str) -> Optional[float]:
     return None
 
 
-def read_extinction_path(pattern: str, given: Optional[float]) -> float:
-    """Return the extinction path in kernel radii, from the argument or the
-    run's used_parameters.yml."""
+def read_extinction_path(pattern: str, given: Optional[float]) -> Tuple[str, float]:
+    """Return the extinction path mechanism and its kernel-radii multiple.
+
+    The multiple is meaningful for constant_kernel_path only; the other
+    mechanisms carry their own length and report it as nan.
+
+    Parameters
+    ----------
+    pattern
+        Snapshot glob, used to locate the run's used_parameters.yml.
+    given
+        --extinction-path, which forces the constant_kernel_path mirror at
+        that many kernel support radii whatever the run recorded.
+
+    Returns
+    -------
+    mechanism, path_in_kernel_radii
+        The mechanism name and its kernel-radii multiple.
+    """
     if given is not None:
-        return given
+        return "constant_kernel_path", given
     import yaml
 
     directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
@@ -238,19 +270,39 @@ def read_extinction_path(pattern: str, given: Optional[float]) -> float:
     if "ISRF_extinction_path" not in used:
         # A run archived before the key existed recorded no value at all, and
         # the path then in force was two kernel support radii.
-        return 2.0
+        return "constant_kernel_path", 2.0
     name = used["ISRF_extinction_path"]
     if name == "constant_kernel_path":
-        return float(used["ISRF_extinction_path_in_kernel_radii"])
-    if name in ("pair_separation", "temperature_capped_jeans"):
+        return name, float(used["ISRF_extinction_path_in_kernel_radii"])
+    if name == "pair_separation":
+        return name, float("nan")
+    if name == "temperature_capped_jeans":
         raise RuntimeError(
-            f"GEARFeedback:ISRF_extinction_path {name!r} does not build the "
-            "column from a multiple of the kernel support radius, so the "
-            "closed form this check mirrors does not apply to it. Rerun the "
-            "fixture with a constant_kernel_path mechanism, or extend this "
+            f"GEARFeedback:ISRF_extinction_path {name!r} builds the column "
+            "from the gas state through cooling_get_temperature, which this "
+            "check cannot reconstruct from a snapshot. Rerun the fixture "
+            "with constant_kernel_path or pair_separation, or extend this "
             "check to that mechanism's own length."
         )
     raise RuntimeError(f"Unknown GEARFeedback:ISRF_extinction_path {name!r}")
+
+
+def separations_cgs(
+    pos: np.ndarray,
+    star_pos: np.ndarray,
+    boxsize: np.ndarray,
+    a: float,
+    length_cgs: float,
+) -> np.ndarray:
+    """Return each gas particle's physical separation from the star, cm.
+
+    The minimum image is taken in comoving code units against the header
+    box, then scaled once: coordinates carry an a-scale exponent of 1, so
+    the physical separation is a times the comoving one.
+    """
+    delta = pos - star_pos
+    delta -= boxsize * np.round(delta / boxsize)
+    return np.sqrt((delta * delta).sum(axis=1)) * a * length_cgs
 
 
 def physical(dataset: h5py.Dataset, a: float, unit_cgs: float) -> np.ndarray:
@@ -260,11 +312,9 @@ def physical(dataset: h5py.Dataset, a: float, unit_cgs: float) -> np.ndarray:
 
 
 def optical_depths(
-    h_cgs: np.ndarray,
+    path_cgs: np.ndarray,
     rho_cgs: np.ndarray,
     Z: np.ndarray,
-    path_in_kernel_radii: float,
-    kernel_gamma: float,
     local_dust_to_gas_ratio: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Return the PE and LW dust optical depths of each gas particle.
@@ -276,17 +326,14 @@ def optical_depths(
 
     Parameters
     ----------
-    h_cgs
-        Physical smoothing lengths, cm.
+    path_cgs
+        Physical extinction path of each particle, cm, as the run's own
+        GEARFeedback:ISRF_extinction_path mechanism builds it.
     rho_cgs
         Physical mass densities, g cm^-3.
     Z
         Metal mass fractions, as the code reads them (the smoothed array,
         cast to float32).
-    path_in_kernel_radii
-        GEARFeedback:ISRF_extinction_path, in kernel support radii.
-    kernel_gamma
-        The binary's kernel_gamma.
     local_dust_to_gas_ratio
         The run's resolved Grackle chemistry_data.local_dust_to_gas_ratio.
 
@@ -295,7 +342,7 @@ def optical_depths(
     tau_pe, tau_lw
         Dimensionless optical depths of each particle, in the two bands.
     """
-    sigma_gas = path_in_kernel_radii * kernel_gamma * h_cgs * rho_cgs
+    sigma_gas = path_cgs * rho_cgs
     d_relative = (
         np.maximum(Z, 0.0)
         / GRACKLE_SOLAR_METAL_FRACTION
@@ -458,10 +505,14 @@ def main() -> int:
             Z_used = gas["SmoothedMetalMassFractions"][:, -1].astype(np.float32)
             h_cgs = physical(gas["SmoothingLengths"], a, length_cgs)
             rho_cgs = physical(gas["Densities"], a, mass_cgs / length_cgs**3)
+            pos = gas["Coordinates"][:].astype(np.float64)
+            boxsize = np.atleast_1d(header["BoxSize"]).astype(np.float64)
 
         star = f["/PartType4"]
+        n_stars = int(star["PELuminosities"].shape[0])
         L_PE = float(star["PELuminosities"][0])
         L_LW = float(star["LWLuminosities"][0])
+        star_pos = star["Coordinates"][:][0].astype(np.float64)
 
     if not opt.dusty and np.any(Z != 0.0):
         raise RuntimeError(
@@ -489,7 +540,25 @@ def main() -> int:
             "metal mass fraction is everywhere zero."
         )
 
-    path = read_extinction_path(opt.snapshot, opt.extinction_path)
+    mechanism, path_in_kernel_radii = read_extinction_path(
+        opt.snapshot, opt.extinction_path
+    )
+    if mechanism == "pair_separation":
+        if n_stars != 1:
+            raise RuntimeError(
+                "The pair_separation column is a per-pair length. It is a "
+                "per-particle one, and these identities hold, only while a "
+                f"single star illuminates the box; this snapshot has "
+                f"{n_stars}. Rerun with star_type=single_star."
+            )
+        path_cgs = separations_cgs(pos, star_pos, boxsize, a, length_cgs)
+        column_label = "star-to-particle separation"
+    else:
+        path_cgs = path_in_kernel_radii * opt.kernel_gamma * h_cgs
+        column_label = (
+            f"{path_in_kernel_radii:g} kernel radii, kernel_gamma "
+            f"{opt.kernel_gamma:g}"
+        )
     logged = read_log_dust_to_gas_ratio(opt.log)
     if logged is not None and abs(logged - opt.dust_to_gas_ratio) > 5e-3 * logged:
         raise RuntimeError(
@@ -497,15 +566,17 @@ def main() -> int:
             f"{logged} the run log reports."
         )
     print(
-        f"Extinction column: path {path:g} kernel radii, kernel_gamma "
-        f"{opt.kernel_gamma:g}, local_dust_to_gas_ratio {opt.dust_to_gas_ratio:g}"
+        f"Extinction column: {mechanism} ({column_label}), "
+        f"local_dust_to_gas_ratio {opt.dust_to_gas_ratio:g}"
         f"{'' if logged is None else f' (log reports {logged:g})'}"
+    )
+    print(
+        f"Extinction path: min {np.min(path_cgs):.6e} cm, "
+        f"max {np.max(path_cgs):.6e} cm"
     )
     print(f"Smoothed Z: min {np.min(Z_used):.6e}, max {np.max(Z_used):.6e}")
 
-    tau_pe, tau_lw = optical_depths(
-        h_cgs, rho_cgs, Z_used, path, opt.kernel_gamma, opt.dust_to_gas_ratio
-    )
+    tau_pe, tau_lw = optical_depths(path_cgs, rho_cgs, Z_used, opt.dust_to_gas_ratio)
     ok = check_dusty(opt, mass, u_pe, u_lw, tau_pe, tau_lw, L_PE, L_LW, Delta_t)
     print("RESULT: PASS" if ok else "RESULT: FAIL")
     return 0 if ok else 1

@@ -115,11 +115,23 @@ discrepancy is float32 snapshot-storage rounding, ~1e-7).
 
 At nonzero metallicity `run.sh` passes `--dusty`, which checks the two
 extinction identities instead (`--dust-tol`, default 1e-4 on the band-ratio
-residual, two decades above its measured float32 floor). `--dusty` needs the
-binary's `kernel_gamma` (`--kernel-gamma`, default Wendland C2 in 3D) and the
-run's `GEARFeedback:ISRF_extinction_path`, which it reads from
-`used_parameters.yml` unless `--extinction-path` is given. Without `--dusty` a
-nonzero metallicity is an error, not a silently different check.
+residual, two decades above its measured float32 floor). `--dusty` reads the
+run's `GEARFeedback:ISRF_extinction_path` from `used_parameters.yml` and
+rebuilds that mechanism's own column: the star-to-particle separation for
+`pair_separation` (the shipped default), or a multiple of the receiver's
+kernel support radius for `constant_kernel_path`, which is the only case
+that needs the binary's `kernel_gamma` (`--kernel-gamma`, default Wendland
+C2 in 3D). `--extinction-path <R>` forces the `constant_kernel_path` mirror
+at `R` kernel radii whatever the run recorded. `temperature_capped_jeans`
+builds its length from the gas temperature and cannot be reconstructed from
+a snapshot, so it is refused. Without `--dusty` a nonzero metallicity is an
+error, not a silently different check.
+
+The band-ratio gate G2 is what constrains the column. The G1 bracket is
+only as tight as the spread of `exp(-tau)` over the illuminated set, and
+under `pair_separation` the separation covers the whole kernel support, so
+that bracket is wide by construction and a G1 pass there says little on its
+own.
 
 `isrf_ledger_check.py` ships next to it and checks a different identity,
 the running energy ledger:
