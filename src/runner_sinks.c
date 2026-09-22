@@ -485,6 +485,14 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
      make this brute force search feasible.
    *
    * TODO: In the future, we can optimise by adding a self/pair tasks */
+
+  /* s->nr_sinks also counts inhibited and reserved-but-unformed slots, so
+     skip the O(N) scan below when no real sink exists yet anywhere, using
+     the same real-sink-count formula the I/O backends already rely on. */
+  const size_t real_sink_count =
+      s->nr_sinks - s->nr_inhibited_sinks - s->nr_extra_sinks;
+  if (real_sink_count == 0) return;
+
   const int scount = s->nr_sinks;
   struct sink *restrict sinks = s->sinks;
 
