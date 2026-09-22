@@ -1,0 +1,71 @@
+# Intro
+Several fixed stars in a uniform, static, periodic glass box of gas, with
+the ISRF (photoelectric heating switch on, propagation on or off) and no
+photoionization, winds or supernovae. Tests the injection and propagation
+of the FUV and Lyman-Werner fields with more than one source:
+
+- with propagation off, the field injected by two stars equals, particle
+  by particle, the sum of the fields of each star alone;
+- with propagation on, the steady field of one, two and a lattice of stars
+  satisfies the amplitude identity
+  `sum_i m_i u_i / lambda_i = (1/c) sum_stars sum_j w_j L ext_j`
+  (`lambda = 1/(kappa rho)` the dust absorption length, `w_j` the star's
+  kernel weights, `ext_j` the receiver-side extinction);
+- a dense lattice of stars (spacing `d = L/8`, `d/lambda` 0.13 in FUV and
+  0.21 in LW) drives the M1 closure onto its isotropic branch away from
+  the sources: the reduced flux `f = |F|/(c_hyp u)` stays small there.
+
+The propagated field of two stars is not the sum of the single-star fields
+where their beams overlap, since a two-moment closure merges crossing
+beams; the check prints that difference without a bar.
+
+## Runs
+`run.sh` runs eight configurations into their own directories:
+`injection_A`, `injection_B`, `injection_AB` (propagation off, four
+steps), `A`, `B`, `AB` (propagation on, `Z/Zsun = 0.2`, one star at
+`(3/8, 1/2, 1/2) L`, one at `(5/8, 1/2, 1/2) L`, both), `lattice`
+(`8^3` stars at cell centres, `Z/Zsun = 0.1`) and `lattice_single` (one
+star of that lattice). All stars are 29.7 Msun single stars on the gas
+time step (`dt_max` below the young-star step cap).
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+Environment overrides: `n_threads`, `swift` (binary path), `level`
+(`N = (2**level)**3` gas particles), `gas_density` (atom/cm^3), `gas_mass`
+(Msun), `star_mass`, `n_side`, `Z_pair`, `Z_lattice`, `time_end`, `dt_max`,
+`delta_time` (propagation runs), and `runs` (a subset of the eight names).
+A finer `level` at fixed box needs `gas_mass` divided by 8 per level and
+`dt_max` halved per level (keep it slightly above the wanted power-of-two
+bin, which SWIFT floors to), so that `c_hyp dt/h` and the number of
+relaxation times stay the same.
+
+# Checking
+```
+python3 isrf_multi_source_superposition_check.py [--dir runs_directory]
+```
+`run.sh` runs it at the end. It exits nonzero if any gate fails; a
+non-finite value fails its gate. Gates, per band:
+
+- per-particle superposition with propagation off (stars `L/16` apart,
+  overlapping kernels): `|u_AB - u_A - u_B|` at most `1e-5 (u_A + u_B)`
+  plus four float32 epsilons of the peak field, the float32 error of the
+  kernel polynomial near its support radius;
+- amplitude identity of `A` and `B` within 0.10, and of `AB` within
+  `|e_A - e_B|/2 + 3 sigma` of `(e_A + e_B)/2`, `sigma` the scatter of the
+  single-star errors over the last four snapshots;
+- amplitude identity of `lattice` within `|e| + 3 sigma` of
+  `lattice_single`;
+- median reduced flux outside every star's kernel in `lattice` at most
+  0.18, where the M1 Eddington factor is within 5% of the isotropic 1/3.
+
+It also prints the lattice's spatial scatter of `u` next to the scatter
+of the continuum free-streaming and diffusive lattice sums, and the
+single-star reduced flux at the same distances.
