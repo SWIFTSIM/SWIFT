@@ -833,16 +833,17 @@ GEARFeedback:
                                                            # underlying use_isrf_field/dust_chemistry/photoelectric_heating (and, at COOLING_GRACKLE_MODE > 1, use_radiative_transfer) on internally. 1: on, 0: off. (Default: 0)
   ISRF_propagation:            0                           # Run the hyperbolic P1-relaxation propagation update on top of injection + receiver-side extinction (only meaningful when with_interstellar_radiation_field is on).
                                                            # (Default: 0)
-  ISRF_extinction_path: constant_kernel_path               # (optional) Mechanism that sets the receiver-side dust extinction path l, the length whose product with the receiver's own density is the column
-                                                           # Sigma = rho * l: constant_kernel_path = R * kernel_gamma * h, with R set by ISRF_extinction_path_in_kernel_radii; pair_separation = the actual
-                                                           # star-to-particle separation r of the pair being injected, whose kernel-weighted mean is the exact uniform-limit 5/12 kernel_gamma h;
-                                                           # temperature_capped_jeans = min(Jeans length at min(T, ISRF_extinction_jeans_temperature_cap_K), kernel_gamma h). Only meaningful when
-                                                           # with_interstellar_radiation_field is on. (Default: constant_kernel_path)
-  ISRF_extinction_path_in_kernel_radii: 1.0                # (optional) Path R of the receiver-side dust extinction column, in kernel support radii kernel_gamma h. Read only by ISRF_extinction_path
-                                                           # constant_kernel_path; with any other mechanism it is left unparsed and reported in unused_parameters.yml. 1 is one support radius, the largest path
-                                                           # the geometry admits, since the illuminating star sits inside the receiver's own kernel; 5/12 = 0.4167 is exact in the uniform optically thin limit.
-                                                           # Reproducing a run archived before this parameter existed needs 2: such a run recorded no value for ISRF_extinction_path at all, and two support
-                                                           # radii were then in force. (Default: 1.0)
+  ISRF_extinction_path: pair_separation                    # (optional) Mechanism that sets the receiver-side dust extinction path l, the length whose product with the receiver's own density is the column
+                                                           # Sigma = rho * l: pair_separation = the actual star-to-particle separation r of the pair being injected, whose kernel-weighted mean is the exact
+                                                           # uniform-limit 5/12 kernel_gamma h; constant_kernel_path = R * kernel_gamma * h, with R set by ISRF_extinction_path_in_kernel_radii;
+                                                           # temperature_capped_jeans = min(Jeans length at min(T, ISRF_extinction_jeans_temperature_cap_K), kernel_gamma h). An unrecognised value is a fatal
+                                                           # error, not a fallback. Only meaningful when with_interstellar_radiation_field is on. (Default: pair_separation)
+  ISRF_extinction_path_in_kernel_radii: 1.0                # (optional) Path R of the receiver-side dust extinction column, in kernel support radii kernel_gamma h. Read ONLY by ISRF_extinction_path
+                                                           # constant_kernel_path, which is not the default; under any other mechanism it is left unparsed and reported in unused_parameters.yml. 1 is one support
+                                                           # radius, the largest path the geometry admits, since the illuminating star sits inside the receiver's own kernel; 5/12 = 0.4167 is exact in the uniform
+                                                           # optically thin limit. Two earlier defaults exist and neither is recoverable without setting the mechanism AND this float: a run archived before
+                                                           # ISRF_extinction_path existed recorded no value and ran at two support radii (constant_kernel_path with 2); a run made while constant_kernel_path was
+                                                           # briefly the default ran at one (constant_kernel_path with 1). (Default: 1.0)
   ISRF_extinction_jeans_temperature_cap_K: 40              # (optional) Temperature cap, in Kelvin, on the Jeans length. Read only by ISRF_extinction_path temperature_capped_jeans; with any other mechanism it
                                                            # is left unparsed and reported in unused_parameters.yml. 40 K is the cap Safranek-Shrader et al. (2017), MNRAS 465, 885, Section 3.4 rank best of five
                                                            # local column estimators against a multi-angle ray trace. (Default: 40)

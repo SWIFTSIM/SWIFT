@@ -148,8 +148,7 @@ enum isrf_extinction_path_mechanism {
    * at which the path happens to be right and scales as `n^(-1/3)` at fixed
    * particle mass. `R = 5/12` is exact in the uniform optically thin limit
    * (it is the kernel-weighted mean of `r/(kernel_gamma h)`), `R = 1` is the
-   * largest geometrically admissible value, `R = 2` is the value the legacy
-   * "kernel_diameter" spelling selects. */
+   * largest geometrically admissible value. */
   isrf_extinction_path_constant_kernel_path = 0,
   /*! `l = r`, the actual star-to-particle separation of the pair being
    * injected. The only mechanism here that is right by derivation rather
@@ -238,14 +237,17 @@ struct feedback_props {
   /*! Path of the receiver-side LW/PE dust extinction column, in kernel
    * support radii kernel_gamma * h
    * (GEARFeedback:ISRF_extinction_path_in_kernel_radii, default 1). Read
-   * only by #isrf_extinction_path_constant_kernel_path.
+   * ONLY by #isrf_extinction_path_constant_kernel_path, which is not the
+   * default mechanism: under any other mechanism this key is left unparsed
+   * and SWIFT reports it in unused_parameters.yml.
    *
-   * Reproducing a run archived before this parameter existed needs 2, not
-   * the default: such a run recorded no value for
-   * GEARFeedback:ISRF_extinction_path at all, and the path then in force was
-   * two support radii. The legacy spellings "kernel_diameter" and
-   * "kernel_radius" remain accepted for exactly that purpose and set this to
-   * 2 and 1 respectively. */
+   * Two earlier defaults exist, and neither is recoverable without setting
+   * the mechanism AND this float explicitly. A run archived before
+   * GEARFeedback:ISRF_extinction_path existed recorded no value and ran at
+   * two support radii: reproduce it with
+   * #isrf_extinction_path_constant_kernel_path and 2. A run made while
+   * constant_kernel_path was briefly the default ran at one support radius:
+   * reproduce it with the same mechanism and 1. */
   float ISRF_extinction_path_in_kernel_radii;
 
   /*! Temperature cap, in Kelvin, on the Jeans length of
@@ -807,7 +809,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   char extinction_path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
-                              extinction_path, "constant_kernel_path");
+                              extinction_path, "pair_separation");
 
   if (strcmp(extinction_path, "constant_kernel_path") == 0) {
     fp->ISRF_extinction_path_mechanism =
@@ -834,22 +836,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:ISRF_extinction_jeans_temperature_cap_K must be "
           "positive, got %g.",
           fp->ISRF_extinction_jeans_temperature_cap_K);
-  } else if (strcmp(extinction_path, "kernel_diameter") == 0 ||
-             strcmp(extinction_path, "kernel_radius") == 0) {
-    /* Legacy spellings, kept so an old parameter file still runs and an old
-     * result is still reproducible. Each is one value of
-     * #isrf_extinction_path_constant_kernel_path, fixed here rather than
-     * read from the magnitude key, which is then left unparsed and so shows
-     * up in unused_parameters.yml. */
-    fp->ISRF_extinction_path_mechanism =
-        (char)isrf_extinction_path_constant_kernel_path;
-    fp->ISRF_extinction_path_in_kernel_radii =
-        strcmp(extinction_path, "kernel_diameter") == 0 ? 2.0f : 1.0f;
   } else {
+    /* An unrecognised value must stop the run rather than fall back: the
+     * parser accepts an unknown key silently, so a stale value that mapped
+     * to a default would give a clean-looking run at the wrong column. */
     error(
-        "GEARFeedback:ISRF_extinction_path must be constant_kernel_path, "
-        "pair_separation, temperature_capped_jeans, kernel_diameter or "
-        "kernel_radius, got '%s'.",
+        "GEARFeedback:ISRF_extinction_path must be one of "
+        "constant_kernel_path, pair_separation or temperature_capped_jeans, "
+        "got '%s'. A run archived before this parameter existed recorded no "
+        "value and ran at two kernel support radii: reproduce it with "
+        "constant_kernel_path and "
+        "ISRF_extinction_path_in_kernel_radii: 2.0.",
         extinction_path);
   }
 

@@ -137,7 +137,7 @@ static void check_extinction(const char *name, const struct unit_system *us,
           name, (double)actual_PE, (double)actual_LW);
   }
 
-  /* Halving the path (kernel_radius vs. the kernel_diameter default above)
+  /* Halving the path (R = 1 vs. the R = 2 above)
    * must halve the column, and therefore halve the log-extinction. */
   const float Sigma_gas_c_half =
       radiation_get_comoving_gas_column_density_at_part(

@@ -147,7 +147,20 @@ Two further parameters are worth checking:
 Receiver-side extinction
 ------------------------
 
-``GEARFeedback:ISRF_extinction_path`` (default ``kernel_diameter``) sets the path length of the dust column each gas particle shields itself with, in the same way as ``H2_self_shielding_path``: ``kernel_diameter`` is twice the kernel support radius, ``kernel_radius`` is one. The two are set independently, since they shield different processes.
+``GEARFeedback:ISRF_extinction_path`` (default ``pair_separation``) selects the mechanism that sets the path length :math:`l` of the dust column each gas particle shields itself with. The column is :math:`\Sigma = \rho_j l`, with the receiver's own density.
+
+``constant_kernel_path``
+  :math:`l = R\,\gamma_K h_j`, with :math:`R` set by ``ISRF_extinction_path_in_kernel_radii`` (default ``1.0``). :math:`R = 1` is one kernel support radius, the largest path the geometry admits, since the illuminating star sits inside the receiver's own kernel. :math:`R = 5/12` is exact in the uniform optically thin limit.
+
+``pair_separation``
+  :math:`l = r`, the star-to-particle separation of the pair being injected. Its kernel-weighted mean is exactly the :math:`5/12` above, and it is the only mechanism that varies the attenuation across the kernel instead of applying one flat factor.
+
+``temperature_capped_jeans``
+  :math:`l = \min(\lambda_J(\min(T, T_\mathrm{cap})), \gamma_K h_j)`, with :math:`T_\mathrm{cap}` set by ``ISRF_extinction_jeans_temperature_cap_K`` (default ``40`` K).
+
+An unrecognised value is a fatal error, not a fallback. This parameter is independent of ``GrackleCooling:H2_self_shielding_path``, since the two shield different processes.
+
+Two earlier defaults exist, and neither is recoverable without setting the mechanism and the float explicitly. A run archived before this parameter existed recorded no value for it and ran at two kernel support radii: reproduce it with ``constant_kernel_path`` and ``ISRF_extinction_path_in_kernel_radii: 2.0``. A run made while ``constant_kernel_path`` was briefly the default ran at one support radius: reproduce it with the same mechanism and ``1.0``.
 
 Complete parameter list
 -----------------------
@@ -159,7 +172,9 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
    GEARFeedback:
      with_interstellar_radiation_field: 0                    # Master switch of the ISRF module
      ISRF_propagation: 0                                     # Transport the injected field with the hyperbolic scheme
-     ISRF_extinction_path: kernel_diameter                   # Receiver-side dust column path: kernel_diameter or kernel_radius
+     ISRF_extinction_path: pair_separation                   # Receiver-side dust column path mechanism
+     ISRF_extinction_path_in_kernel_radii: 1.0               # Path R in kernel support radii, constant_kernel_path only
+     ISRF_extinction_jeans_temperature_cap_K: 40             # Jeans-length temperature cap, temperature_capped_jeans only
      ISRF_c_hyp_scheme: 4                                    # Propagation-speed and operator scheme, 0 to 4
      ISRF_c_hyp_margin: 0.5                                  # Stability-margin coefficient C_hyp
      ISRF_c_hyp_fixed_fraction_of_c: 0                       # Reduced speed of light as a fraction of c, scheme 2 only
