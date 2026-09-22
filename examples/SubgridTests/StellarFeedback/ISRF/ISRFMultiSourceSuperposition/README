@@ -65,7 +65,8 @@ non-finite value fails its gate. Gates, per band:
 - amplitude identity of `lattice` within `|e| + 3 sigma` of
   `lattice_single`;
 - median reduced flux outside every star's kernel in `lattice` at most
-  0.18, where the M1 Eddington factor is within 5% of the isotropic 1/3.
+  0.18, where the M1 Eddington factor is within 5% of the isotropic 1/3,
+  with every particle in that median lit.
 
 It also prints the lattice's spatial scatter of `u` next to the scatter
 of the continuum free-streaming and diffusive lattice sums, and the

@@ -39,6 +39,8 @@ L1  Amplitude identity of the source lattice: |e_lat| <= |e_single| +
 L2  Isotropic closure branch in the lattice: median reduced flux
     f = |F| / (c_hyp u) over gas outside every star's kernel <= 0.18,
     where the M1 Eddington factor is 5% above the isotropic value 1/3.
+    Every f entering that median must be finite, so an unlit particle
+    fails the gate instead of being dropped from it.
 
 Reported without a bar: u(AB) - [u(A) + u(B)] with propagation on (the
 M1 closure merges crossing beams, so the propagated field is not
@@ -210,7 +212,22 @@ def identity_error(snap: dict, band: str) -> float:
 
 
 def reduced_flux(snap: dict, band: str, run: str) -> np.ndarray:
-    """Return f = |F| / (c_hyp u), c_hyp = min(C h / dt, c)."""
+    """Return f = |F| / (c_hyp u), c_hyp = min(C h / dt, c).
+
+    Parameters
+    ----------
+    snap : dict
+        Snapshot fields.
+    band : str
+        Band name.
+    run : str
+        Run directory, for the last time step.
+
+    Returns
+    -------
+    np.ndarray
+        f per gas particle; an unlit particle gives NaN.
+    """
     dt = step_table(run)[-1, 1]
     c_hyp = np.minimum(c_hyp_margin(run) * snap["h"] / dt, snap["c"])
     u = snap["u"][band]
@@ -223,6 +240,47 @@ def gate(name: str, value: float, bar: float) -> bool:
     ok = bool(np.isfinite(value) and np.isfinite(bar) and value <= bar)
     print(f"  {name}: {value:.4e} <= {bar:.4e} -> {'PASS' if ok else 'FAIL'}")
     return ok
+
+
+def median_gated(values: np.ndarray) -> float:
+    """Return the median of a gated sample.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Sample to reduce.
+
+    Returns
+    -------
+    float
+        The median, or NaN if the sample is empty or holds a non-finite
+        value, so that the gate fails instead of dropping it.
+    """
+    n_bad = int(np.sum(~np.isfinite(values)))
+    if values.size == 0 or n_bad > 0:
+        print(f"    {n_bad} of {values.size} values non-finite")
+        return float("nan")
+    return float(np.median(values))
+
+
+def median_finite(values: np.ndarray) -> tuple:
+    """Return the median over the finite values and the number of others.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Sample to reduce, for a printed quantity with no gate.
+
+    Returns
+    -------
+    tuple
+        (median over the finite values or NaN, count of non-finite ones).
+    """
+    finite = np.isfinite(values)
+    n_bad = int(np.sum(~finite))
+    if not finite.any():
+        return float("nan"), n_bad
+    return float(np.median(values[finite])), n_bad
 
 
 def check_single_bin(run: str, n_gas: int, n_star: int) -> bool:
@@ -369,11 +427,9 @@ def main() -> None:
                     f"  {band} {label}: {int(sel.sum())} particles, median "
                     f"{np.median(rel[sel]):.4e}, p90 {np.percentile(rel[sel], 90):.4e}"
                 )
-        for name, s in (("A", sA), ("AB", sAB)):
-            print(
-                f"  {band} {name}: median f = "
-                f"{np.nanmedian(reduced_flux(s, band, run(name))):.3f}"
-            )
+        for name, snap in (("A", sA), ("AB", sAB)):
+            med, n_unlit = median_finite(reduced_flux(snap, band, run(name)))
+            print(f"  {band} {name}: median f = {med:.3f}, {n_unlit} unlit")
 
     print("L1, L2: source lattice")
     lat = series["lattice"]["last"]
@@ -403,7 +459,7 @@ def main() -> None:
         f_lat = reduced_flux(lat, band, run("lattice"))
         ok &= gate(
             f"{band} median f outside kernels",
-            float(np.nanmedian(f_lat[outside])),
+            median_gated(f_lat[outside]),
             F_ISOTROPIC_BAR,
         )
 
@@ -420,9 +476,10 @@ def main() -> None:
         lo, hi = np.percentile(r_near[outside], [5, 95])
         band_sel = (r_one > lo) & (r_one < hi)
         f_one = reduced_flux(one, band, run("lattice_single"))
+        med_one, n_unlit = median_finite(f_one[band_sel])
         print(
             f"  {band}: one-star run, median f at the same distances "
-            f"[{lo:.3e}, {hi:.3e}]: {np.nanmedian(f_one[band_sel]):.3f}"
+            f"[{lo:.3e}, {hi:.3e}]: {med_one:.3f}, {n_unlit} unlit"
         )
 
     print("OVERALL:", "PASS" if ok else "FAIL")
