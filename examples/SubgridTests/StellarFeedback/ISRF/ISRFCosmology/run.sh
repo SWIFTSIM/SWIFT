@@ -117,7 +117,7 @@ duration=${duration:=$duration_default} #Proper time, internal units
 snapshots=${snapshots:=$snapshots_default}
 steps=${steps:=$steps_default} #Number of dt_max steps over the run
 max_star_dt_myr=${max_star_dt_myr:=$max_star_dt_myr_default}
-extinction_path=${extinction_path:="constant_kernel_path"}
+extinction_path=${extinction_path:="pair_separation"}
 extinction_path_in_kernel_radii=${extinction_path_in_kernel_radii:=1.0}
 extinction_jeans_temperature_cap_K=${extinction_jeans_temperature_cap_K:=40}
 run_name=${run_name:=""}
