@@ -13,15 +13,13 @@ pinned `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
 `(c/c_hyp) sum m u` tracks `L t` up to the dose still held in the
 reservoirs and in the gas steps in flight.
 
-**This example reports, it does not gate the conservation claim.** The lag
-`L t - (c/c_hyp) sum m u` is bounded, but it is quantised in whole particle
-steps, so it steps between neighbouring integer multiples of the fine step
-instead of varying smoothly. A fitted slope reads that bounded quantised
-offset as a drift and reports a spurious violation even on a single-bin
-control. The check prints the slope and the lag; only the time-bin
-structure and the absorption-free setup are gated. A working gate needs a
-bounded-window metric on the lag, with the window derived from the measured
-bin structure rather than set by hand.
+The gated quantity is that lag itself. It is bounded by the dose the three
+hand-off stages between the star and the gas can hold, one cadence each, so
+the window follows from the cadences the run actually ran at, not from a
+chosen number; `lag_window` in the check states the derivation. The lag is
+quantised in whole particle steps, which a fitted slope reads as a drift
+and reports as a spurious violation even on a single-bin control, so the
+slope is printed as a diagnostic and compared against nothing.
 
 **There is no steady-state comparison, by design.** The box is not
 hydrostatic: the hot phase densifies over the run in any time-step
@@ -63,7 +61,9 @@ steps in the hierarchy run with the cold phase on at least twice the hot
 phase's step, all-gas updates on every step in the single-bin run, the star
 step longer than the shortest gas step in the hierarchy run, pinned
 `c_hyp dt/h` at most `ISRF_c_hyp_margin` in each phase, and zero
-metallicity. Reported without a bar, per band: the fitted slope of
-`(c/c_hyp) sum m u / L` against time with its standard error, and the lag
-`L t - (c/c_hyp) sum m u` in units of each run's own fine step, which is
-not the same step in the two runs.
+metallicity. Gated per run and per band: a finite, positive and constant
+stellar luminosity, and the lag `L t - (c/c_hyp) sum m u` inside its
+derived window at every snapshot after the first. Reported without a bar:
+the fitted slope of `(c/c_hyp) sum m u / L` against time with its standard
+error, and the lag as a fraction of the window and of the run's longest
+all-gas update interval.
