@@ -98,8 +98,8 @@ static void check_extinction(const char *name, const struct unit_system *us,
   struct cooling_function_data cooling;
   make_default_cooling(&cooling);
 
-  const float Sigma_gas_c =
-      radiation_get_comoving_gas_column_density_at_part(&p, 2.0f);
+  const float Sigma_gas_c = radiation_get_comoving_gas_column_density_at_part(
+      &p, 2.0f * (p.h * kernel_gamma));
   const float Sigma_gas_p = Sigma_gas_c * (float)cosmo.a2_inv;
 
   const double expected_PE =
@@ -110,8 +110,8 @@ static void check_extinction(const char *name, const struct unit_system *us,
                           RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
 
   float actual[ISRF_BAND_COUNT];
-  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 2.0f,
-                                             actual);
+  radiation_get_part_ISRF_extinction_factors(
+      us, &cosmo, &p, Z, &cooling, 2.0f * (p.h * kernel_gamma), actual);
   const float actual_PE = actual[ISRF_BAND_PE];
   const float actual_LW = actual[ISRF_BAND_LW];
 
@@ -140,13 +140,14 @@ static void check_extinction(const char *name, const struct unit_system *us,
   /* Halving the path (kernel_radius vs. the kernel_diameter default above)
    * must halve the column, and therefore halve the log-extinction. */
   const float Sigma_gas_c_half =
-      radiation_get_comoving_gas_column_density_at_part(&p, 1.0f);
+      radiation_get_comoving_gas_column_density_at_part(
+          &p, 1.0f * (p.h * kernel_gamma));
   snprintf(buf, sizeof(buf), "%s: path=1.0 halves the column", name);
   assert_close(buf, (double)Sigma_gas_c_half, 0.5 * (double)Sigma_gas_c, 1e-6);
 
   float actual_half[ISRF_BAND_COUNT];
-  radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling, 1.0f,
-                                             actual_half);
+  radiation_get_part_ISRF_extinction_factors(
+      us, &cosmo, &p, Z, &cooling, 1.0f * (p.h * kernel_gamma), actual_half);
   snprintf(buf, sizeof(buf), "%s: path=1.0 halves the PE log-extinction", name);
   assert_close(buf, log((double)actual_half[ISRF_BAND_PE]),
                0.5 * log((double)actual_PE), 1e-4);
@@ -210,7 +211,8 @@ static void check_injection(const struct unit_system *us) {
 
   float extinction[ISRF_BAND_COUNT];
   radiation_get_part_ISRF_extinction_factors(us, &cosmo, &pj, Z_gas, &cooling,
-                                             2.0f, extinction);
+                                             2.0f * (pj.h * kernel_gamma),
+                                             extinction);
   const float extinction_PE = extinction[ISRF_BAND_PE];
   const float extinction_LW = extinction[ISRF_BAND_LW];
 
@@ -759,9 +761,9 @@ static void check_local_dust_to_gas_ratio_scaling(
   cosmo.a = 1.0;
   cosmo.a2_inv = 1.0;
 
-  const float Sigma_gas_p =
-      radiation_get_comoving_gas_column_density_at_part(&p, 2.0f) *
-      (float)cosmo.a2_inv;
+  const float Sigma_gas_p = radiation_get_comoving_gas_column_density_at_part(
+                                &p, 2.0f * (p.h * kernel_gamma)) *
+                            (float)cosmo.a2_inv;
 
   const double ratios[3] = {RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
                             2.0 * RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
@@ -780,8 +782,8 @@ static void check_local_dust_to_gas_ratio_scaling(
     const double expected_LW = expected_extinction(
         us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, ratios[i]);
     float actual[ISRF_BAND_COUNT];
-    radiation_get_part_ISRF_extinction_factors(us, &cosmo, &p, Z, &cooling,
-                                               2.0f, actual);
+    radiation_get_part_ISRF_extinction_factors(
+        us, &cosmo, &p, Z, &cooling, 2.0f * (p.h * kernel_gamma), actual);
     const float actual_PE = actual[ISRF_BAND_PE];
     const float actual_LW = actual[ISRF_BAND_LW];
     char buf[128];

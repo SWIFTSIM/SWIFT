@@ -36,6 +36,11 @@
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
+/* One kernel support radius: the largest path the geometry admits, since the
+ * illuminating star sits inside the receiver's own kernel. */
+#define default_ISRF_extinction_path_in_kernel_radii 1.0
+/* Safranek-Shrader et al. (2017), MNRAS 465, 885, Section 3.4. */
+#define default_ISRF_extinction_jeans_temperature_cap_K 40.0
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -124,6 +129,50 @@ enum isrf_c_hyp_scheme {
 };
 
 /**
+ * @brief Mechanism that sets the receiver-side LW/PE dust extinction path,
+ * the length whose product with the receiver's own comoving density is the
+ * column that attenuates the injected LW and PE bands
+ * (#radiation_get_comoving_extinction_path). Selected by
+ * GEARFeedback:ISRF_extinction_path.
+ *
+ * The mechanism is separated from its magnitude on purpose: a constant
+ * multiple of the kernel support radius is ONE mechanism with a free
+ * number, not one mechanism per number. Ploeckinger et al. (2025),
+ * MNRAS 543, 891, Eq. (13) make the same split, with their `R_sh`
+ * multiplying a reference column.
+ */
+enum isrf_extinction_path_mechanism {
+  /*! `l = R * kernel_gamma * h_j`, with `R` =
+   * #feedback_props.ISRF_extinction_path_in_kernel_radii. The resolution
+   * length stands in for the gas coherence length, so `R` sets the density
+   * at which the path happens to be right and scales as `n^(-1/3)` at fixed
+   * particle mass. `R = 5/12` is exact in the uniform optically thin limit
+   * (it is the kernel-weighted mean of `r/(kernel_gamma h)`), `R = 1` is the
+   * largest geometrically admissible value, `R = 2` is the value the legacy
+   * "kernel_diameter" spelling selects. */
+  isrf_extinction_path_constant_kernel_path = 0,
+  /*! `l = r`, the actual star-to-particle separation of the pair being
+   * injected. The only mechanism here that is right by derivation rather
+   * than by calibration: its kernel-weighted mean is exactly the `5/12`
+   * above, and it is the only one that reproduces the `exp(-kappa rho r)`
+   * variation of the attenuation across the kernel instead of applying one
+   * flat factor to it. Assumes, as every other mechanism here does, that
+   * the intervening medium is at the receiver's own density. */
+  isrf_extinction_path_pair_separation = 1,
+  /*! `l = min(lambda_J(min(T, T_cap)), kernel_gamma * h_j)`, with `T_cap` =
+   * #feedback_props.ISRF_extinction_jeans_temperature_cap_K. Assumes
+   * self-gravitating gas whose coherence scale is the Jeans length.
+   * Safranek-Shrader et al. (2017), MNRAS 465, 885, Section 3.4 rank the
+   * temperature-capped Jeans length best of five local column estimators
+   * against a multi-angle ray trace. The outer cap at one support radius is
+   * not optional: uncapped, the Jeans length is orders of magnitude too
+   * opaque in diffuse gas for this parameter, which attenuates only inside
+   * the illuminating star's own kernel. Capping a shielding length has
+   * published precedent, Ploeckinger et al. (2025) Eqs. (14) to (15). */
+  isrf_extinction_path_temperature_capped_jeans = 2,
+};
+
+/**
  * @brief Properties of the GEAR feedback model.
  */
 struct feedback_props {
@@ -182,10 +231,28 @@ struct feedback_props {
    * radiation_policy_photoelectric_heating is set. */
   char ISRF_propagation;
 
+  /*! Which #isrf_extinction_path_mechanism builds the receiver-side LW/PE
+   * dust extinction path (GEARFeedback:ISRF_extinction_path). */
+  char ISRF_extinction_path_mechanism;
+
   /*! Path of the receiver-side LW/PE dust extinction column, in kernel
-   * support radii kernel_gamma * h: 2 for "kernel_diameter", 1 for
-   * "kernel_radius" (GEARFeedback:ISRF_extinction_path). */
+   * support radii kernel_gamma * h
+   * (GEARFeedback:ISRF_extinction_path_in_kernel_radii, default 1). Read
+   * only by #isrf_extinction_path_constant_kernel_path.
+   *
+   * Reproducing a run archived before this parameter existed needs 2, not
+   * the default: such a run recorded no value for
+   * GEARFeedback:ISRF_extinction_path at all, and the path then in force was
+   * two support radii. The legacy spellings "kernel_diameter" and
+   * "kernel_radius" remain accepted for exactly that purpose and set this to
+   * 2 and 1 respectively. */
   float ISRF_extinction_path_in_kernel_radii;
+
+  /*! Temperature cap, in Kelvin, on the Jeans length of
+   * #isrf_extinction_path_temperature_capped_jeans
+   * (GEARFeedback:ISRF_extinction_jeans_temperature_cap_K). Unused by every
+   * other mechanism. */
+  float ISRF_extinction_jeans_temperature_cap_K;
 
   /*! Stability-margin coefficient in the `c_hyp_i = C_hyp*h_i/dt_max(i)`
    * closure, `dt_max(i)` the longest time step among particle i and every
@@ -732,19 +799,59 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   }
 
   /* Parsed unconditionally, so the LW/PE injection never reads an unset
-   * path. */
+   * path. The magnitude keys below are parsed only by the mechanism that
+   * reads them, so used_parameters.yml records a number only where that
+   * number was actually used. */
+  fp->ISRF_extinction_path_in_kernel_radii = 0.f;
+  fp->ISRF_extinction_jeans_temperature_cap_K = 0.f;
+
   char extinction_path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
-                              extinction_path, "kernel_diameter");
-  if (strcmp(extinction_path, "kernel_diameter") == 0)
-    fp->ISRF_extinction_path_in_kernel_radii = 2.0f;
-  else if (strcmp(extinction_path, "kernel_radius") == 0)
-    fp->ISRF_extinction_path_in_kernel_radii = 1.0f;
-  else
+                              extinction_path, "constant_kernel_path");
+
+  if (strcmp(extinction_path, "constant_kernel_path") == 0) {
+    fp->ISRF_extinction_path_mechanism =
+        (char)isrf_extinction_path_constant_kernel_path;
+    fp->ISRF_extinction_path_in_kernel_radii = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_extinction_path_in_kernel_radii",
+        default_ISRF_extinction_path_in_kernel_radii);
+    if (fp->ISRF_extinction_path_in_kernel_radii <= 0.f)
+      error(
+          "GEARFeedback:ISRF_extinction_path_in_kernel_radii must be "
+          "positive, got %g.",
+          fp->ISRF_extinction_path_in_kernel_radii);
+  } else if (strcmp(extinction_path, "pair_separation") == 0) {
+    fp->ISRF_extinction_path_mechanism =
+        (char)isrf_extinction_path_pair_separation;
+  } else if (strcmp(extinction_path, "temperature_capped_jeans") == 0) {
+    fp->ISRF_extinction_path_mechanism =
+        (char)isrf_extinction_path_temperature_capped_jeans;
+    fp->ISRF_extinction_jeans_temperature_cap_K = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_extinction_jeans_temperature_cap_K",
+        default_ISRF_extinction_jeans_temperature_cap_K);
+    if (fp->ISRF_extinction_jeans_temperature_cap_K <= 0.f)
+      error(
+          "GEARFeedback:ISRF_extinction_jeans_temperature_cap_K must be "
+          "positive, got %g.",
+          fp->ISRF_extinction_jeans_temperature_cap_K);
+  } else if (strcmp(extinction_path, "kernel_diameter") == 0 ||
+             strcmp(extinction_path, "kernel_radius") == 0) {
+    /* Legacy spellings, kept so an old parameter file still runs and an old
+     * result is still reproducible. Each is one value of
+     * #isrf_extinction_path_constant_kernel_path, fixed here rather than
+     * read from the magnitude key, which is then left unparsed and so shows
+     * up in unused_parameters.yml. */
+    fp->ISRF_extinction_path_mechanism =
+        (char)isrf_extinction_path_constant_kernel_path;
+    fp->ISRF_extinction_path_in_kernel_radii =
+        strcmp(extinction_path, "kernel_diameter") == 0 ? 2.0f : 1.0f;
+  } else {
     error(
-        "GEARFeedback:ISRF_extinction_path must be kernel_diameter or "
+        "GEARFeedback:ISRF_extinction_path must be constant_kernel_path, "
+        "pair_separation, temperature_capped_jeans, kernel_diameter or "
         "kernel_radius, got '%s'.",
         extinction_path);
+  }
 
   if (with_interstellar_radiation_field) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;

@@ -28,6 +28,7 @@
 /* Include header */
 #include "active.h"
 #include "chemistry.h"
+#include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "engine.h"
@@ -1037,22 +1038,98 @@ void radiation_end_gradient_propagation(struct part *p,
 }
 
 /**
+ * Comoving path length of the receiver-side LW/PE dust extinction column.
+ * This is the ONLY place a path is chosen: every mechanism of
+ * #isrf_extinction_path_mechanism is one case here, and the column itself
+ * is formed once, in #radiation_get_comoving_gas_column_density_at_part,
+ * with no knowledge of which mechanism produced the length.
+ *
+ * The argument list is the union over every mechanism, so each case uses a
+ * subset and ignores the rest. Adding a mechanism is one enum value, one
+ * case here, one string in feedback_props_init() and one entry in
+ * examples/parameter_example.yml, with no call site re-cut.
+ *
+ * The call stays inside the star-gas pair loop for all mechanisms:
+ * #isrf_extinction_path_pair_separation depends on the pair, so hoisting it
+ * would fork the code path for a handful of flops per neighbour.
+ *
+ * @param fb_props Properties of the feedback scheme.
+ * @param p The receiving #part.
+ * @param xp The receiving #xpart (tracked species, for the temperature).
+ * @param r Comoving separation of the illuminating star and the receiver.
+ * @param cosmo The current cosmological model.
+ * @param phys_const The physical constants.
+ * @param hydro_props The hydro scheme properties.
+ * @param us Unit system.
+ * @param cooling The cooling function properties.
+ * @return Comoving extinction path length.
+ */
+float radiation_get_comoving_extinction_path(
+    const struct feedback_props *fb_props, const struct part *p,
+    const struct xpart *xp, const float r, const struct cosmology *cosmo,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cooling_function_data *cooling) {
+
+  /* One support radius: the longest path the geometry admits, since the
+   * illuminating star sits inside the receiver's own kernel. Also the
+   * fallback for a degenerate gas state below. */
+  const float h_gas = p->h * kernel_gamma;
+
+  switch ((enum isrf_extinction_path_mechanism)
+              fb_props->ISRF_extinction_path_mechanism) {
+
+    case isrf_extinction_path_constant_kernel_path:
+      return fb_props->ISRF_extinction_path_in_kernel_radii * h_gas;
+
+    case isrf_extinction_path_pair_separation:
+      return r;
+
+    case isrf_extinction_path_temperature_capped_jeans: {
+      const float T = cooling_get_temperature(phys_const, hydro_props, us,
+                                              cosmo, cooling, p, xp);
+      const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+      /* Return the cap outright rather than clamping a division: a guarded
+       * denominator is not safe under -ffast-math, where the reciprocal is
+       * reassociated and can underflow before the clamp sees it. */
+      if (T <= 0.f || rho_phys <= 0.f) return h_gas;
+
+      /* c_s^2 = gamma k_B T / (mu m_H), so capping the temperature scales
+       * the squared sound speed by T_cap/T with the scheme's own mu, which
+       * never has to be recovered here. */
+      const float cs = hydro_get_physical_soundspeed(p, cosmo);
+      const float T_ratio =
+          min(1.f, fb_props->ISRF_extinction_jeans_temperature_cap_K / T);
+      const float cs2_capped = cs * cs * T_ratio;
+
+      /* lambda_J = sqrt(pi c_s^2 / (G rho)), physical, then comoving. */
+      const float lambda_J_phys = sqrtf(
+          (float)(M_PI * cs2_capped / (phys_const->const_newton_G * rho_phys)));
+      return min(lambda_J_phys * cosmo->a_inv, h_gas);
+    }
+  }
+
+  error("Unknown GEARFeedback:ISRF_extinction_path mechanism %d.",
+        (int)fb_props->ISRF_extinction_path_mechanism);
+  return 0.f;
+}
+
+/**
  * Comoving gas column density at a gas particle's own location: the
  * receiver-side analogue of the star-side Sobolev column
  * (#radiation_get_comoving_gas_column_density_at_star), used for LW/PE
- * extinction: the local density times a path of path_in_kernel_radii
- * kernel support radii (no resolved density gradient on the gas side).
+ * extinction: the receiver's own local density times the extinction path
+ * (no resolved density gradient on the gas side).
  *
  * @param p The #part.
- * @param path_in_kernel_radii Path length in units of the kernel support
- * radius kernel_gamma * h (GEARFeedback:ISRF_extinction_path).
+ * @param extinction_path Comoving path length, from
+ * #radiation_get_comoving_extinction_path.
  * @return Comoving gas column density at the particle's own location.
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_comoving_gas_column_density_at_part(
-    const struct part *p, const float path_in_kernel_radii) {
-  const float h_gas = p->h * kernel_gamma;
-  return path_in_kernel_radii * h_gas * p->rho;
+radiation_get_comoving_gas_column_density_at_part(const struct part *p,
+                                                  const float extinction_path) {
+  return extinction_path * p->rho;
 }
 
 /**
@@ -1155,8 +1232,8 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * @param Z The receiving particle's own metal mass fraction.
  * @param cooling The cooling function properties (for the resolved
  * chemistry_data.local_dust_to_gas_ratio).
- * @param path_in_kernel_radii Extinction path in kernel support radii, see
- * #radiation_get_comoving_gas_column_density_at_part.
+ * @param extinction_path Comoving extinction path length, from
+ * #radiation_get_comoving_extinction_path.
  * @param extinction (return) Extinction factor of each band, indexed by
  * #radiation_isrf_band.
  */
@@ -1164,11 +1241,11 @@ __attribute__((always_inline)) INLINE void
 radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
-    const float path_in_kernel_radii, float extinction[ISRF_BAND_COUNT]) {
+    const float extinction_path, float extinction[ISRF_BAND_COUNT]) {
 
-  const float Sigma_gas_p = radiation_get_comoving_gas_column_density_at_part(
-                                p, path_in_kernel_radii) *
-                            cosmo->a2_inv;
+  const float Sigma_gas_p =
+      radiation_get_comoving_gas_column_density_at_part(p, extinction_path) *
+      cosmo->a2_inv;
   /* Resolved value, never the raw `-1`-sentinel
    * cooling->local_dust_to_gas_ratio. */
   const float local_dust_to_gas_ratio =
