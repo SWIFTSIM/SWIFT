@@ -94,6 +94,43 @@ def parse_options() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def read_extinction_path(snapshot_path: str) -> tuple:
+    """Return the receiver-side extinction path the run used.
+
+    Parameters
+    ----------
+    snapshot_path : str
+        Any snapshot file of the run, used to locate its run directory.
+
+    Returns
+    -------
+    tuple of (str, float)
+        The mechanism name, and its path R in kernel support radii. R is
+        meaningful only for ``constant_kernel_path``, where the column is
+        ``R * kernel_gamma * h * rho``; it is NaN otherwise.
+    """
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(snapshot_path))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        used = yaml.safe_load(handle)["GEARFeedback"]
+    if "ISRF_extinction_path" not in used:
+        # A run archived before the key existed recorded no value at all, and
+        # the path then in force was two kernel support radii.
+        return "constant_kernel_path", 2.0
+    name = used["ISRF_extinction_path"]
+    if name == "constant_kernel_path":
+        return name, float(used["ISRF_extinction_path_in_kernel_radii"])
+    if name == "pair_separation":
+        return name, float("nan")
+    raise RuntimeError(
+        f"GEARFeedback:ISRF_extinction_path {name!r} is not a length this "
+        "check mirrors. Rerun the fixture with constant_kernel_path or "
+        "pair_separation, or extend this check to that mechanism's own "
+        "length."
+    )
+
+
 def load(path: str) -> dict:
     """Read one snapshot, gas sorted by particle ID.
 
@@ -139,6 +176,7 @@ def load(path: str) -> dict:
             },
         )
     snap["c"] = C_LIGHT_CGS * snap["ut"] / snap["ul"]
+    snap["ext_mechanism"], snap["ext_path_R"] = read_extinction_path(path)
     return snap
 
 
@@ -198,8 +236,17 @@ def periodic_dx(a: np.ndarray, b: np.ndarray, boxsize: float) -> np.ndarray:
 def injected_power(snap: dict, band: str) -> float:
     """Return P = sum_stars sum_j w_j L ext_j, internal units."""
     kappa_cgs = SIGMA_D_CGS[band] * (snap["Z"] / GRACKLE_SOLAR_Z) / (MU_H * M_H_CGS)
-    sigma_cgs = 2.0 * GAMMA_3D * snap["h"] * snap["rho"] * snap["um"] / snap["ul"] ** 2
-    ext = np.exp(-kappa_cgs * sigma_cgs)
+    rho_cgs = snap["rho"] * snap["um"] / snap["ul"] ** 3
+    pair_path = snap["ext_mechanism"] == "pair_separation"
+    if not pair_path:
+        ext = np.exp(
+            -kappa_cgs
+            * rho_cgs
+            * snap["ext_path_R"]
+            * GAMMA_3D
+            * snap["h"]
+            * snap["ul"]
+        )
     tree = cKDTree(snap["pos"], boxsize=snap["boxsize"])
     power = 0.0
     for s in range(len(snap["star_h"])):
@@ -209,7 +256,14 @@ def injected_power(snap: dict, band: str) -> float:
             periodic_dx(snap["pos"][idx], snap["star_pos"][s], snap["boxsize"]), axis=1
         )
         mw = snap["mass"][idx] * wendland_c2(r, support)
-        power += snap["L"][band][s] * np.sum(mw * ext[idx]) / np.sum(mw)
+        # pair_separation shields each pair over its own separation, so the
+        # factor cannot be hoisted out of the star loop.
+        ext_j = (
+            np.exp(-kappa_cgs[idx] * rho_cgs[idx] * r * snap["ul"])
+            if pair_path
+            else ext[idx]
+        )
+        power += snap["L"][band][s] * np.sum(mw * ext_j) / np.sum(mw)
     return power
 
 

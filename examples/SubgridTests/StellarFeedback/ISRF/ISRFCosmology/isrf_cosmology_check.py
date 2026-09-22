@@ -243,7 +243,7 @@ def parse_options() -> argparse.Namespace:
         default=None,
         help="injection_dusty only: GEARFeedback:ISRF_extinction_path in "
         "kernel support radii (constant_kernel_path = its own float, "
-        "kernel_diameter = 2, kernel_radius = 1). Read "
+        "kernel support radii). Read "
         "from the run's used_parameters.yml when omitted.",
     )
     parser.add_argument(
@@ -401,6 +401,19 @@ def read_dt_max(pattern: str, given: Optional[float]) -> float:
 
     directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
     with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        return float(yaml.safe_load(handle)["TimeIntegration"]["dt_max"])
+
+
+def read_extinction_path(pattern: str, given: Optional[float]) -> float:
+    """Return the extinction path in kernel support radii, from the argument
+    or the run's used_parameters.yml."""
+    if given is not None:
+        return given
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
         used = yaml.safe_load(handle)["GEARFeedback"]
     if "ISRF_extinction_path" not in used:
         # A run archived before the key existed recorded no value at all, and
@@ -409,9 +422,6 @@ def read_dt_max(pattern: str, given: Optional[float]) -> float:
     name = used["ISRF_extinction_path"]
     if name == "constant_kernel_path":
         return float(used["ISRF_extinction_path_in_kernel_radii"])
-    paths = {"kernel_diameter": 2.0, "kernel_radius": 1.0}
-    if name in paths:
-        return paths[name]
     if name in ("pair_separation", "temperature_capped_jeans"):
         raise RuntimeError(
             f"GEARFeedback:ISRF_extinction_path {name!r} does not build the "

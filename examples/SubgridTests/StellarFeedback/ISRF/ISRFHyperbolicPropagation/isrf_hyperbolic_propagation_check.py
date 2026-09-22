@@ -103,6 +103,7 @@ question (Tier 2), not a numerics one.
 
 import argparse
 import glob
+import os
 import sys
 
 import h5py
@@ -196,6 +197,41 @@ def parse_options():
     return parser.parse_args()
 
 
+def read_extinction_path(snapshot_path: str) -> float:
+    """Return the receiver-side extinction path in kernel support radii, from
+    the run's own used_parameters.yml.
+
+    Parameters
+    ----------
+    snapshot_path : str
+        Any snapshot file of the run, used to locate its run directory.
+
+    Returns
+    -------
+    float
+        Path R, so that the column is R * kernel_gamma * h * rho.
+    """
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(snapshot_path))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        used = yaml.safe_load(handle)["GEARFeedback"]
+    if "ISRF_extinction_path" not in used:
+        # A run archived before the key existed recorded no value at all, and
+        # the path then in force was two kernel support radii.
+        return 2.0
+    name = used["ISRF_extinction_path"]
+    if name == "constant_kernel_path":
+        return float(used["ISRF_extinction_path_in_kernel_radii"])
+    raise RuntimeError(
+        f"GEARFeedback:ISRF_extinction_path {name!r} does not build the "
+        "column from a multiple of the kernel support radius, so the closed "
+        "form this check mirrors does not apply to it. Rerun the fixture "
+        "with constant_kernel_path, or extend this check to that "
+        "mechanism's own length."
+    )
+
+
 def load_snapshot(path):
     with h5py.File(path, "r") as f:
         header = f["/Header"]
@@ -240,6 +276,7 @@ def load_snapshot(path):
         star_h=star_h,
         L_PE=L_PE,
         L_LW=L_LW,
+        ext_path_R=read_extinction_path(path),
     )
 
 
@@ -269,14 +306,26 @@ def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d
 
 
 def receiver_extinction_factor(
-    Z, rho_internal, h_internal, unit_length_cgs, unit_mass_cgs, sigma_d_cgs
+    Z,
+    rho_internal,
+    h_internal,
+    unit_length_cgs,
+    unit_mass_cgs,
+    sigma_d_cgs,
+    path_in_kernel_radii,
 ):
     """Receiver-side dust extinction exp(-kappa_eff*Sigma_gas); mirrors
     radiation_get_part_ISRF_extinction_factors, with the comoving column
-    density Sigma_gas = 2*kernel_gamma*h*rho (this example is
-    non-cosmological, so comoving equals physical here)."""
+    density Sigma_gas = R*kernel_gamma*h*rho for the run's own path R in
+    kernel support radii (this example is non-cosmological, so comoving
+    equals physical here)."""
     Sigma_gas_cgs = (
-        2.0 * GAMMA_3D * h_internal * rho_internal * unit_mass_cgs / unit_length_cgs**2
+        path_in_kernel_radii
+        * GAMMA_3D
+        * h_internal
+        * rho_internal
+        * unit_mass_cgs
+        / unit_length_cgs**2
     )
     kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)
     return np.exp(-kappa_eff_cgs * Sigma_gas_cgs)
@@ -460,7 +509,13 @@ def injection_source(snap, sigma_d_band_cgs, L_band):
     weight = mass_weighted_kernel / np.sum(mass_weighted_kernel)
 
     extinction = receiver_extinction_factor(
-        Z, rho, h, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma_d_band_cgs
+        Z,
+        rho,
+        h,
+        snap["unit_length_cgs"],
+        snap["unit_mass_cgs"],
+        sigma_d_band_cgs,
+        snap["ext_path_R"],
     )
     injected_power = float(np.sum(weight * L_band * extinction))
     S_true = weight * L_band * extinction / mass

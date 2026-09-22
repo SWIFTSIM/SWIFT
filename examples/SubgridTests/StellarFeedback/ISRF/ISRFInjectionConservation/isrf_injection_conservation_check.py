@@ -169,7 +169,7 @@ def parse_options() -> argparse.Namespace:
         default=None,
         help="--dusty only: GEARFeedback:ISRF_extinction_path in kernel "
         "support radii (constant_kernel_path = its own float, "
-        "kernel_diameter = 2, kernel_radius = 1). Read from the run's "
+        "kernel support radii). Read from the run's "
         "used_parameters.yml when omitted.",
     )
     parser.add_argument(
@@ -242,9 +242,6 @@ def read_extinction_path(pattern: str, given: Optional[float]) -> float:
     name = used["ISRF_extinction_path"]
     if name == "constant_kernel_path":
         return float(used["ISRF_extinction_path_in_kernel_radii"])
-    paths = {"kernel_diameter": 2.0, "kernel_radius": 1.0}
-    if name in paths:
-        return paths[name]
     if name in ("pair_separation", "temperature_capped_jeans"):
         raise RuntimeError(
             f"GEARFeedback:ISRF_extinction_path {name!r} does not build the "
