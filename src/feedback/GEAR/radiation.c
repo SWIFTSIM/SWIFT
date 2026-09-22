@@ -31,6 +31,8 @@
 #include "engine.h"
 #include "interpolation.h"
 
+#include <string.h>
+
 /**
  * @brief Print the radiation model.
  *
@@ -46,8 +48,10 @@ void radiation_print(const struct radiation *rad) {
   message("Angular pixels for HII ionization = %d", rad->n_HII_pixels);
   message("Interpolation table size (mass) = %d", rad->interpolation_size);
   if (rad->is_2d) {
-    message("Interpolation table size (metallicity) = %d",
-            rad->interpolation_size_metallicity);
+    message(
+        "Interpolation table size (metallicity) = %d (the table's own "
+        "native metallicity rows)",
+        rad->raw.luminosities_2d.Nx);
   }
 }
 
@@ -234,67 +238,22 @@ void radiation_clean(struct radiation *rad) {
  */
 void radiation_zero_pointers(struct radiation *rad) {
 
-  /* Read before being overwritten below: dispatches which union member
-     (1D or 2D) gets zero-pointered, matching the INCOMING dimensionality.
-     Both members' `data` pointer sits at offset 0 (verified with
-     offsetof()), so the wrong dispatch would still null the right
-     pointer, just leave the other member's differently-shaped tail
-     fields (xmin/dx/N/... vs xmin/dx/ymin/dy/Nx/Ny/...) only partially
-     cleared.
-
-     stellar_evolution_props_init()'s `!with_radiation` branch calls this
-     on a fresh, never-yet-built #radiation whose is_2d may be garbage
-     (part of a non-zeroed `struct feedback_props` on swift.c's stack):
-     not a memory-safety hazard even then, since either dispatch branch
-     still nulls the one pointer #radiation_clean's later
-     interpolate_*d_free() call can dereference, and the tail fields are
-     inert scalars always overwritten by the next
-     #radiation_build_tables() call before anything reads them. */
-  const char was_2d = rad->is_2d;
-
   rad->is_active = 0;
   rad->is_2d = 0;
   rad->interpolation_size = 0;
-  rad->interpolation_size_metallicity = 0;
   rad->n_HII_pixels = 0;
   rad->age_max_myr = 0.f;
-  rad->ms_lifetime_inverse_log_z_min = 0.f;
-  rad->ms_lifetime_inverse_log_z_step = 0.f;
-  rad->ms_lifetime_inverse_n_metallicity = 0;
   rad->with_ISRF = 0;
   rad->has_teff = 0;
   rad->has_mean_photon_energy_lw = 0;
 
-  if (was_2d) {
-    interpolate_2d_zero_pointers(&rad->raw.luminosities_2d);
-    interpolate_2d_zero_pointers(&rad->raw.dot_N_ion_2d);
-    interpolate_2d_zero_pointers(&rad->raw.dot_E_excess_2d);
-    interpolate_2d_zero_pointers(&rad->raw.teff_2d);
-    interpolate_2d_zero_pointers(&rad->raw.l_pe_2d);
-    interpolate_2d_zero_pointers(&rad->raw.l_lw_2d);
-    interpolate_2d_zero_pointers(&rad->raw.mean_photon_energy_lw_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.luminosities_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.dot_N_ion_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.dot_E_excess_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.l_pe_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.l_lw_2d);
-    interpolate_2d_zero_pointers(&rad->integrated.mean_photon_energy_lw_2d);
-  } else {
-    interpolate_1d_zero_pointers(&rad->raw.luminosities);
-    interpolate_1d_zero_pointers(&rad->raw.dot_N_ion);
-    interpolate_1d_zero_pointers(&rad->raw.dot_E_excess);
-    interpolate_1d_zero_pointers(&rad->raw.teff);
-    interpolate_1d_zero_pointers(&rad->raw.l_pe);
-    interpolate_1d_zero_pointers(&rad->raw.l_lw);
-    interpolate_1d_zero_pointers(&rad->raw.mean_photon_energy_lw);
-    interpolate_1d_zero_pointers(&rad->integrated.luminosities);
-    interpolate_1d_zero_pointers(&rad->integrated.dot_N_ion);
-    interpolate_1d_zero_pointers(&rad->integrated.dot_E_excess);
-    interpolate_1d_zero_pointers(&rad->integrated.l_pe);
-    interpolate_1d_zero_pointers(&rad->integrated.l_lw);
-    interpolate_1d_zero_pointers(&rad->integrated.mean_photon_energy_lw);
-  }
-
-  interpolate_2d_zero_pointers(&rad->raw.main_sequence_lifetime_2d);
-  interpolate_2d_zero_pointers(&rad->raw.main_sequence_lifetime_inverse_2d);
+  /* All-bits-zero nulls every table pointer and zeroes every scalar in
+     both members of every union, whichever one #is_2d selects, and
+     boundary_condition_error is the first enumerator so the boundary
+     policies land on it too. No table is freed here: the bytes may be
+     another process's heap addresses on the restart path (see
+     radiation_restore()), and the live-table case goes through
+     radiation_clean(). */
+  memset(&rad->raw, 0, sizeof(rad->raw));
+  memset(&rad->integrated, 0, sizeof(rad->integrated));
 }

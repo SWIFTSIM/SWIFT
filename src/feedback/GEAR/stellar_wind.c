@@ -117,11 +117,11 @@ void stellar_wind_read_yields_array(
   float log_mass_max = log_mass_min + step_size_m * Nm;
   float log_metallicity_max = log_metallicity_min + step_size_z * Nz;
 
-  interpolate_2d_init(interp, log_metallicity_min, log_metallicity_max,
-                      interpolation_size_z, log_mass_min, log_mass_max,
-                      interpolation_size_m, log_metallicity_min, log_mass_min,
-                      step_size_z, step_size_m, Nz, Nm, data,
-                      boundary_condition_const, boundary_condition_const);
+  interpolate_2d_init_uniform_x(
+      interp, log_metallicity_min, log_metallicity_max, interpolation_size_z,
+      log_mass_min, log_mass_max, interpolation_size_m, log_metallicity_min,
+      log_mass_min, step_size_z, step_size_m, Nz, Nm, data,
+      boundary_condition_const, boundary_condition_const);
 
   /* Cleanup the memory */
   free(data);

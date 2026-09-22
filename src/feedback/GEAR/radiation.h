@@ -199,9 +199,10 @@ struct radiation_grid_metadata {
   int n_metallicity;
 
   /*! Metallicity grid values (mass fraction Z, native units; NULL for a
-      1D table). Not guaranteed log-uniformly spaced by the file. See
-      radiation_read_data()'s own comment on the approximation this forces
-      for interpolate_2d_init(). */
+      1D table). Strictly increasing and strictly positive, but not
+      log-uniformly spaced: every 2D table therefore keeps these values as
+      its own metallicity axis (interpolate_2d_init()) rather
+      than resampling them onto a uniform grid. */
   float *metallicity;
 
   /*! Mass-axis boundary condition for the "Luminosity" dataset (2D tables

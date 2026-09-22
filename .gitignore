@@ -138,6 +138,7 @@ tests/testRadiationISRFFluxUnderflow
 tests/testRadiationISRFGateDegenerate
 tests/testRadiationISRFGradientCache
 tests/testRadiationGridMetadata
+tests/testInterpolationNonuniformX
 tests/testCoolingIonizedTemperatureFloor
 tests/test27cellsStars_subset
 tests/testPeriodicBC

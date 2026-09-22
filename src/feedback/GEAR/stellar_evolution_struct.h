@@ -293,9 +293,9 @@ struct radiation {
         whose PARSEC main-sequence lifetime equals a population's age at a
         given metallicity. Population-feedback cap only (see
         stellar_evolution_compute_preSN_feedback_spart()). Age axis
-        identity-resampled at the table's native resolution (not
-        #interpolation_size_metallicity); Z axis uses that resolution like
-        every other 2D field. Stored log10(Msun); 2D-only. */
+        identity-resampled at the table's native resolution; Z axis keeps
+        the table's own native metallicity nodes, like every other 2D
+        field. Stored log10(Msun); 2D-only. */
     struct interpolation_2d main_sequence_lifetime_inverse_2d;
   } raw;
 
@@ -379,20 +379,17 @@ struct radiation {
   /*! Number of element in the interpolation array (mass axis) */
   int interpolation_size;
 
-  /*! Number of element in the interpolation array (metallicity axis,
-      2D tables only) */
-  int interpolation_size_metallicity;
-
   /*! Number of active angular (HEALPix) pixels the HII ionization budget is
       split across (1 = spherical/HEALPix disabled). Set from
       GEARFeedback:HII_angular_nside in radiation_init(). */
   int n_HII_pixels;
 
   /*! Longest tabulated MS lifetime (Myr) per native metallicity row,
-      indexed by #ms_lifetime_inverse_log_z_min/_step/_n_metallicity below.
-      Reduced at read time from MainSequenceLifetimeInverseExcluded (2D
-      tables only). FLT_MAX (not INFINITY: -ffast-math disallows it) for a
-      row with no excluded cells. */
+      sharing its index space with #main_sequence_lifetime_inverse_2d's own
+      x axis, which holds the same native log10(Z) nodes. Reduced at read
+      time from MainSequenceLifetimeInverseExcluded (2D tables only).
+      FLT_MAX (not INFINITY: -ffast-math disallows it) for a row with no
+      excluded cells. */
   float longest_ms_lifetime_myr[RADIATION_MAX_METALLICITY_ROWS];
 
   /*! Longest tabulated age across every metallicity row (Myr), from the
@@ -402,15 +399,6 @@ struct radiation {
       (which covers ages beyond one row's own tabulated lifetime, still
       in-grid). */
   float age_max_myr;
-
-  /*! Native metallicity-grid parameters (log10(Z)) indexing
-      #longest_ms_lifetime_myr. NOT the same grid as
-      #main_sequence_lifetime_inverse_2d's own output-resampled one
-      (#interpolation_size_metallicity points, generally finer). 0/0/0 for
-      a 1D table. */
-  float ms_lifetime_inverse_log_z_min;
-  float ms_lifetime_inverse_log_z_step;
-  int ms_lifetime_inverse_n_metallicity;
 
   /*! Is a radiation table actually loaded? False when neither
       photoionization nor radiation pressure is enabled: every other field

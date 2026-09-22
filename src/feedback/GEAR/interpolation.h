@@ -24,6 +24,8 @@
 #include "inline.h"
 #include "minmax.h"
 
+#include <stddef.h>
+
 /**
  * @brief Type of boundary condition available.
  */
@@ -259,10 +261,20 @@ struct interpolation_2d {
   /* Data to interpolate */
   float *data;
 
-  /* Minimal x */
+  /* The log-x nodes this table is stored on: #Nx strictly increasing
+     values, owned by this struct. #interpolate_2d brackets these at query
+     time when #is_uniform_x is 0, so nothing there depends on their
+     spacing being regular. When #is_uniform_x is 1 the nodes are a
+     materialised convenience for printing and bracketing helpers: the
+     index arithmetic then uses #xmin and #dx, which differ from
+     differencing two adjacent nodes by of order |xmin| / dx * 2^-24. */
+  float *xvals;
+
+  /* First log-x node. */
   float xmin;
 
-  /* Step size between x points */
+  /* Step between log-x nodes. Meaningful only when #is_uniform_x is 1; 0
+     otherwise, since a node list with irregular spacing has no step. */
   float dx;
 
   /* Minimal y */
@@ -277,12 +289,25 @@ struct interpolation_2d {
   /* Number of element in the y direction of the data */
   int Ny;
 
+  /* Is the x axis exactly #xmin + i * #dx? Selects the index arithmetic. */
+  int is_uniform_x;
+
   /* Type of boundary condition applied when x is out of the data range. */
   enum interpolate_boundary_condition boundary_condition_x;
 
   /* Type of boundary condition applied when y is out of the data range. */
   enum interpolate_boundary_condition boundary_condition_y;
 };
+
+/* #interpolation_2d.xvals falls inside an #interpolation_1d's footprint, so
+   wherever the two share a union #interpolate_2d_free() would free() a
+   pointer synthesised from float bit patterns if it ever ran on a live 1D
+   table: every free site must select the member through its own
+   dimensionality flag (see radiation_clean()). */
+_Static_assert(offsetof(struct interpolation_2d, xvals) <
+                   sizeof(struct interpolation_1d),
+               "interpolation_2d.xvals no longer overlaps interpolation_1d; "
+               "re-derive the free() dispatch rule.");
 
 /**
  * @brief Does this #interpolate_boundary_condition mean "return zero" on the
@@ -364,43 +389,162 @@ interpolate_2d_boundary_is_zero(
 }
 
 /**
- * @brief Initialize the #interpolation_2d.
- * Store the data (with "Data limits" proportion) into a flattened 1D array
- * (with "Interpolation limits" proportion).
+ * @brief Convert a log-x query into the index space of a list of log-x
+ * nodes.
+ *
+ * Brackets the nodes and returns node index + the linear-in-log-x fraction
+ * inside the bracketing interval. A value bit-equal to a node returns that
+ * node's integer index with a zero fraction, which is what makes the
+ * build-time resample copy a source row unchanged. A runtime query only
+ * lands on a node to within the rounding of its own log: the build uses
+ * log10f(Z) and the caller (#radiation_get_log_metallicity) a narrowed
+ * log10((double)Z), which can differ by one ULP, so the query returns that
+ * node's row to within one blend step of a neighbouring row rather than
+ * exactly. The spacing of the nodes is never assumed to be regular.
+ *
+ * Out of range, the returned value stays below 0 or at/above N - 1 so the
+ * caller's boundary branch (see #interpolate_2d_boundary_is_zero) fires.
+ * The end intervals set the scale there; nothing is extrapolated by this
+ * function itself.
+ *
+ * @param xv The log-x nodes, strictly increasing.
+ * @param Nx The number of nodes in @p xv (at least 2).
+ * @param log_x The x value where to interpolate in log.
+ *
+ * @return The (possibly out-of-range) fractional index along x.
+ */
+__attribute__((always_inline)) static INLINE float interpolate_index_in_nodes(
+    const float *xv, int Nx, float log_x) {
+
+  if (log_x < xv[0]) {
+    const float step = xv[1] - xv[0];
+    if (step <= 0.f) return -1.f;
+    return (log_x - xv[0]) / step;
+  }
+
+  if (log_x >= xv[Nx - 1]) {
+    const float step = xv[Nx - 1] - xv[Nx - 2];
+    if (step <= 0.f) return (float)(Nx - 1);
+    return (float)(Nx - 1) + (log_x - xv[Nx - 1]) / step;
+  }
+
+  /* xv[lo] <= log_x < xv[lo + 1], by bisection over the native nodes. */
+  int lo = 0;
+  int hi = Nx - 1;
+  while (hi - lo > 1) {
+    const int mid = (lo + hi) / 2;
+    if (log_x >= xv[mid])
+      lo = mid;
+    else
+      hi = mid;
+  }
+
+  const float step = xv[lo + 1] - xv[lo];
+  if (step <= 0.f) return (float)lo;
+  return (float)lo + (log_x - xv[lo]) / step;
+}
+
+/**
+ * @brief Convert a log-x query into the #interpolation_2d's own x index
+ * space.
+ *
+ * A uniform axis divides by the step the table was built with. Recovering
+ * that step by differencing two adjacent nodes instead would cost a
+ * relative error of order |xmin| / dx * 2^-24, which reaches 9e-06 on the
+ * stellar-wind metallicity axis (|xmin| / dx = 133).
+ *
+ * @param interp The #interpolation_2d.
+ * @param log_x The x value where to interpolate in log.
+ *
+ * @return The (possibly out-of-range) fractional index along x.
+ */
+__attribute__((always_inline)) static INLINE float interpolate_2d_index_x(
+    const struct interpolation_2d *interp, float log_x) {
+
+  if (interp->is_uniform_x) return (log_x - interp->xmin) / interp->dx;
+
+  if (interp->xvals == NULL || interp->Nx < 2)
+    error("Cannot extrapolate: this interpolation table was never built");
+
+  return interpolate_index_in_nodes(interp->xvals, interp->Nx, log_x);
+}
+
+/**
+ * @brief Return the two x indices an #interpolation_2d query at @p log_x
+ * blends between, clamped into the table.
+ *
+ * For a caller that needs the bracketing rows themselves rather than an
+ * interpolated value. Both indices collapse to the nearest end row when the
+ * query falls outside the table.
+ *
+ * @param interp The #interpolation_2d.
+ * @param log_x The x value where to interpolate in log.
+ * @param idx_lo (output) Lower bracketing x index.
+ * @param idx_hi (output) Upper bracketing x index.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_bracket_x(
+    const struct interpolation_2d *interp, float log_x, int *idx_lo,
+    int *idx_hi) {
+
+  /* Nx = 0 would clamp both indices to -1 and hand the caller an
+     out-of-bounds row. */
+  if (interp->Nx < 1)
+    error("Cannot bracket an interpolation table that was never built");
+
+  const float x_raw = interpolate_2d_index_x(interp, log_x);
+  const int clamped_low = max((int)x_raw, 0);
+  const int lo = min(clamped_low, interp->Nx - 1);
+
+  *idx_lo = lo;
+  *idx_hi = min(lo + 1, interp->Nx - 1);
+}
+
+/**
+ * @brief Build an #interpolation_2d from x source indices its caller has
+ * already computed.
+ *
+ * The shared body of #interpolate_2d_init() and
+ * #interpolate_2d_init_uniform_x(). Each of those owns the arithmetic that
+ * turns an output node into a fractional index into @p data, so neither
+ * has to express its x axis in the other's terms.
  *
  * @param interp The #interpolation_2d result, stored in swift.
- * @param log_xmin Minimal value of x to (in log).  Interpolation limits
- * @param log_xmax Maximal value of x (in log).   Interpolation limts
- * @param Nx Requested number of values in x axes.  Interpolation limits
+ * @param x_index Fractional index into the source x axis for each of the
+ * @p Nx output nodes.
+ * @param log_x_out The output log-x nodes, strictly increasing.
+ * @param Nx The number of nodes in @p log_x_out (at least 2).
+ * @param is_uniform_x Are the @p log_x_out nodes exactly @p log_xmin +
+ * i * @p log_dx?
+ * @param log_xmin The first output log-x node.
+ * @param log_dx The output log-x step, 0 when @p is_uniform_x is 0.
  * @param log_ymin Minimal value of y (in log).   Interpolation limits
  * @param log_ymax Maximal value of y (in log).   Interpolation limits
  * @param Ny Requested number of values in y axes.  Interpolation limits
- * @param log_data_xmin The minimal value of the data in x (in log).  Data
- * limits
  * @param log_data_ymin The minimal value of the data in y (in log).  Data
  * limits
- * @param log_step_size_x The size of the x steps (in log).   Data limits
  * @param log_step_size_y The size of the y steps (in log).   Data limits
  * @param N_data_x The number of element in the data x axis. Data limits
  * @param N_data_y The number of element in the data y axis. Data limits
+ * @param data The data coming from hdf5 table to interpolate.
  * @param boundary_condition_x The #interpolate_boundary_condition applied
  * when x is out of the data range.
  * @param boundary_condition_y The #interpolate_boundary_condition applied
  * when y is out of the data range.
- * @param data The data  coming from hdf5 table to interpolate.
  */
-__attribute__((always_inline)) static INLINE void interpolate_2d_init(
-    struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx,
-    float log_ymin, float log_ymax, int Ny, float log_data_xmin,
-    float log_data_ymin, float log_step_size_x, float log_step_size_y,
-    int N_data_x, int N_data_y, const double *data,
+__attribute__((always_inline)) static INLINE void
+interpolate_2d_init_from_x_indices(
+    struct interpolation_2d *interp, const float *x_index,
+    const float *log_x_out, int Nx, int is_uniform_x, float log_xmin,
+    float log_dx, float log_ymin, float log_ymax, int Ny, float log_data_ymin,
+    float log_step_size_y, int N_data_x, int N_data_y, const double *data,
     enum interpolate_boundary_condition boundary_condition_x,
     enum interpolate_boundary_condition boundary_condition_y) {
 
   /* Save the variables */
   interp->Nx = Nx;
+  interp->is_uniform_x = is_uniform_x;
   interp->xmin = log_xmin;
-  interp->dx = (log_xmax - log_xmin) / (Nx - 1.f);
+  interp->dx = log_dx;
   interp->boundary_condition_x = boundary_condition_x;
   interp->boundary_condition_y = boundary_condition_y;
 
@@ -414,10 +558,15 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
     error("Failed to allocate memory for the interpolation");
   }
 
+  interp->xvals = malloc(sizeof(float) * Nx);
+  if (interp->xvals == NULL) {
+    error("Failed to allocate memory for the interpolation x axis");
+  }
+  for (int i = 0; i < Nx; i++) interp->xvals[i] = log_x_out[i];
+
   /* Interpolate the data */
   for (int i = 0; i < Nx; i++) {
-    const float log_x = log_xmin + i * interp->dx;
-    const float x_k = (log_x - log_data_xmin) / log_step_size_x;
+    const float x_k = x_index[i];
 
     for (int j = 0; j < Ny; j++) {
       const float log_y = log_ymin + j * interp->dy;
@@ -469,6 +618,149 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
 }
 
 /**
+ * @brief Initialize the #interpolation_2d.
+ *
+ * Resamples @p data onto the @p Nx output x nodes @p log_x_out and onto
+ * @p Ny points uniform in log-y, and keeps @p log_x_out so #interpolate_2d
+ * brackets it at query time. The x axis is a list of nodes both on input
+ * and on output, so how the source file describes its own x spacing never
+ * enters the arithmetic.
+ *
+ * Passing @p log_data_x itself as @p log_x_out keeps the x axis exact:
+ * every output row then lands on one source row with a zero blend
+ * fraction. That is the only choice available to a source axis whose node
+ * spacings share no common divisor, since the narrowest of them can be
+ * finer than any practical uniform step.
+ *
+ * @param interp The #interpolation_2d result, stored in swift.
+ * @param log_data_x The data's own log-x nodes, strictly increasing.
+ * @param N_data_x The number of nodes in @p log_data_x (at least 2).
+ * @param log_x_out The output log-x nodes, strictly increasing.
+ * @param Nx The number of nodes in @p log_x_out (at least 2).
+ * @param log_ymin Minimal value of y (in log).   Interpolation limits
+ * @param log_ymax Maximal value of y (in log).   Interpolation limits
+ * @param Ny Requested number of values in y axes.  Interpolation limits
+ * @param log_data_ymin The minimal value of the data in y (in log).  Data
+ * limits
+ * @param log_step_size_y The size of the y steps (in log).   Data limits
+ * @param N_data_y The number of element in the data y axis. Data limits
+ * @param data The data coming from hdf5 table to interpolate.
+ * @param boundary_condition_x The #interpolate_boundary_condition applied
+ * when x is out of the data range.
+ * @param boundary_condition_y The #interpolate_boundary_condition applied
+ * when y is out of the data range.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_init(
+    struct interpolation_2d *interp, const float *log_data_x, int N_data_x,
+    const float *log_x_out, int Nx, float log_ymin, float log_ymax, int Ny,
+    float log_data_ymin, float log_step_size_y, int N_data_y,
+    const double *data,
+    enum interpolate_boundary_condition boundary_condition_x,
+    enum interpolate_boundary_condition boundary_condition_y) {
+
+  if (N_data_x < 2)
+    error("An interpolation source x axis needs at least 2 nodes, got %d",
+          N_data_x);
+  if (Nx < 2)
+    error("An interpolation output x axis needs at least 2 nodes, got %d", Nx);
+
+  for (int i = 1; i < N_data_x; i++) {
+    if (!(log_data_x[i] > log_data_x[i - 1]))
+      error(
+          "Interpolation source x nodes are not strictly increasing at "
+          "index %d",
+          i);
+  }
+  /* The query-time bisection depends on this one too. */
+  for (int i = 1; i < Nx; i++) {
+    if (!(log_x_out[i] > log_x_out[i - 1]))
+      error(
+          "Interpolation output x nodes are not strictly increasing at "
+          "index %d",
+          i);
+  }
+
+  float *x_index = (float *)malloc(sizeof(float) * Nx);
+  if (x_index == NULL)
+    error("Failed to allocate memory for the interpolation x indices");
+
+  for (int i = 0; i < Nx; i++)
+    x_index[i] = interpolate_index_in_nodes(log_data_x, N_data_x, log_x_out[i]);
+
+  interpolate_2d_init_from_x_indices(
+      interp, x_index, log_x_out, Nx, /*is_uniform_x=*/0, log_x_out[0],
+      /*log_dx=*/0.f, log_ymin, log_ymax, Ny, log_data_ymin, log_step_size_y,
+      N_data_x, N_data_y, data, boundary_condition_x, boundary_condition_y);
+
+  free(x_index);
+}
+
+/**
+ * @brief Initialize an #interpolation_2d from a source x axis and an output
+ * x axis both described as a minimum/step/count triple.
+ *
+ * Both axes divide by the step they were given, so the resampled table and
+ * every later query reproduce the arithmetic a regularly spaced axis has
+ * always used. Going through the node list instead would recover each step
+ * by differencing two adjacent nodes and lose of order
+ * |log_xmin| / log_step_size_x * 2^-24 of relative precision.
+ *
+ * @param interp The #interpolation_2d result, stored in swift.
+ * @param log_xmin Minimal value of x (in log).  Interpolation limits
+ * @param log_xmax Maximal value of x (in log).  Interpolation limits
+ * @param Nx Requested number of values in x axes.  Interpolation limits
+ * @param log_ymin Minimal value of y (in log).   Interpolation limits
+ * @param log_ymax Maximal value of y (in log).   Interpolation limits
+ * @param Ny Requested number of values in y axes.  Interpolation limits
+ * @param log_data_xmin The minimal value of the data in x (in log).  Data
+ * limits
+ * @param log_data_ymin The minimal value of the data in y (in log).  Data
+ * limits
+ * @param log_step_size_x The size of the x steps (in log).   Data limits
+ * @param log_step_size_y The size of the y steps (in log).   Data limits
+ * @param N_data_x The number of element in the data x axis. Data limits
+ * @param N_data_y The number of element in the data y axis. Data limits
+ * @param data The data coming from hdf5 table to interpolate.
+ * @param boundary_condition_x The #interpolate_boundary_condition applied
+ * when x is out of the data range.
+ * @param boundary_condition_y The #interpolate_boundary_condition applied
+ * when y is out of the data range.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_init_uniform_x(
+    struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx,
+    float log_ymin, float log_ymax, int Ny, float log_data_xmin,
+    float log_data_ymin, float log_step_size_x, float log_step_size_y,
+    int N_data_x, int N_data_y, const double *data,
+    enum interpolate_boundary_condition boundary_condition_x,
+    enum interpolate_boundary_condition boundary_condition_y) {
+
+  if (N_data_x < 2 || Nx < 2)
+    error(
+        "A uniform interpolation x axis needs at least 2 nodes, got %d "
+        "source and %d output",
+        N_data_x, Nx);
+
+  float *log_x_out = (float *)malloc(sizeof(float) * Nx);
+  float *x_index = (float *)malloc(sizeof(float) * Nx);
+  if (log_x_out == NULL || x_index == NULL)
+    error("Failed to allocate memory for the interpolation x axis");
+
+  const float dx = (log_xmax - log_xmin) / (Nx - 1.f);
+  for (int i = 0; i < Nx; i++) {
+    log_x_out[i] = log_xmin + i * dx;
+    x_index[i] = (log_x_out[i] - log_data_xmin) / log_step_size_x;
+  }
+
+  interpolate_2d_init_from_x_indices(
+      interp, x_index, log_x_out, Nx, /*is_uniform_x=*/1, log_xmin, dx,
+      log_ymin, log_ymax, Ny, log_data_ymin, log_step_size_y, N_data_x,
+      N_data_y, data, boundary_condition_x, boundary_condition_y);
+
+  free(log_x_out);
+  free(x_index);
+}
+
+/**
  * @brief Interpolate the data.
  *
  * @param interp The #interpolation_2d.
@@ -481,7 +773,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
     const struct interpolation_2d *interp, float log_x, float log_y) {
 
   /* Find indices */
-  const float i = (log_x - interp->xmin) / interp->dx;
+  const float i = interpolate_2d_index_x(interp, log_x);
   const int idx = i;
   const float dx = i - idx;
 
@@ -566,6 +858,8 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_free(
   /* Free the allocated memory */
   free(interp->data);
   interp->data = NULL;
+  free(interp->xvals);
+  interp->xvals = NULL;
 }
 
 /**
@@ -574,8 +868,10 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_free(
 __attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
     struct interpolation_2d *interp) {
   interp->data = NULL;
+  interp->xvals = NULL;
   interp->Nx = 0;
   interp->Ny = 0;
+  interp->is_uniform_x = 0;
   interp->xmin = 0.0;
   interp->dx = 0.0;
   interp->ymin = 0.0;

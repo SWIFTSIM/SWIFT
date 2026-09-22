@@ -882,7 +882,6 @@ GEARFeedback:
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements to keep in the mass interpolation of the Data/Radiation table. Matches the shipped table's own native grid size (500), avoiding a lossy down-sample: a smaller value costs up to ~17.6% per-
                                             # star error near the source fits' own mass-relation breakpoints. (Default: 500)
-  interpolation_size_metallicity: 110       # Number of elements to keep in the metallicity interpolation of the Data/Radiation table (only used for a mass x metallicity table). (Default: 110)
 
 GEARSupernovaeII:
     interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)

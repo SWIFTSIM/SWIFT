@@ -429,8 +429,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
  * is not a rare corner case: stellar_evolution_compute_preSN_feedback_
  * spart() clamps its upper mass bound to sm->imf.mass_max, and the default
  * mass_sup_scheme_end_step scheme routinely returns exactly that value for
- * an early-age population (before its first star has died); see Decision
- * #1 in design-radiation-integrated-table-migration.md. The nudge is a
+ * an early-age population (before its first star has died). The nudge is a
  * #RADIATION_2D_EDGE_EPS relative fraction of the table's own mass-axis
  * span, physically negligible.
  *
@@ -563,17 +562,13 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
  * bound, at a given metallicity and population age, from a 2D ("M,Z")
  * table's MainSequenceLifetimeInverse dataset.
  *
- * Implements the 4-step query-time algorithm in design-radiation-
- * integrated-table-migration.md's "Data layout" section: brackets the two
+ * Brackets the two
  * native metallicity rows #radiation.longest_ms_lifetime_myr is indexed by
- * (duplicating #interpolate_2d's own index arithmetic against the NATIVE
- * log10(Z) grid stored in #radiation.ms_lifetime_inverse_log_z_min/_step;
- * deliberately not #radiation.raw.main_sequence_lifetime_inverse_2d's own
- * xmin/dx, which describe its OUTPUT-resampled grid, a different, finer
- * index space; see that field's own doxygen), takes the min() of their two
- * longest-tabulated-MS-lifetimes (not a blend: Decision #6 says a blended
- * threshold can admit a query one row's own Excluded mask had already
- * rejected), and gates on both that threshold and #radiation.age_max_myr
+ * (#interpolate_2d_bracket_x() on the table itself, whose x axis is that
+ * same native log10(Z) grid), takes the min() of their two
+ * longest-tabulated-MS-lifetimes (not a blend: a blended threshold can
+ * admit a query one row's own Excluded mask had already rejected), and
+ * gates on both that threshold and #radiation.age_max_myr
  * before trusting the interpolated value.
  *
  * @param rad The #radiation model.
@@ -590,11 +585,9 @@ float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
                                                 float m_min) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
 
-  const float z_idx_f = (log_z - rad->ms_lifetime_inverse_log_z_min) /
-                        rad->ms_lifetime_inverse_log_z_step;
-  const int midx = max((int)z_idx_f, 0);
-  const int z_lo = min(midx, rad->ms_lifetime_inverse_n_metallicity - 1);
-  const int z_hi = min(z_lo + 1, rad->ms_lifetime_inverse_n_metallicity - 1);
+  int z_lo, z_hi;
+  interpolate_2d_bracket_x(&rad->raw.main_sequence_lifetime_inverse_2d, log_z,
+                           &z_lo, &z_hi);
 
   const float threshold_myr = min(rad->longest_ms_lifetime_myr[z_lo],
                                   rad->longest_ms_lifetime_myr[z_hi]);
