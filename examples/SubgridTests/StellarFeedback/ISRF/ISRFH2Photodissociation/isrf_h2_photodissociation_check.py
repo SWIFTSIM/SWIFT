@@ -31,8 +31,8 @@ photon flux,
 
     k_diss,0 = sigma_H2 * c * rho * u_LW / E_LW ,                        (1)
 
-with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS = 2.47e-18 cm^2``,
-``E_LW = RADIATION_LW_PHOTON_ENERGY_EV = 12 eV`` and ``u_LW`` the snapshot's
+with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS = 2.5111667e-18 cm^2``,
+``E_LW = RADIATION_LW_PHOTON_ENERGY_EV = 12.2 eV`` and ``u_LW`` the snapshot's
 ``LWSpecificEnergies`` in CGS. This script takes ``u_LW`` from the snapshots
 rather than predicting it from a transport solution: the field the chemistry
 actually saw is an input to this test, not one of its claims, so a transport
@@ -212,8 +212,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # src/feedback/GEAR/radiation.h
-SIGMA_H2_LW_CGS: float = 2.47e-18
-LW_PHOTON_ENERGY_EV: float = 12.0
+SIGMA_H2_LW_CGS: float = 2.5111667e-18
+LW_PHOTON_ENERGY_EV: float = 12.2
 HABING_FLUX_CGS: float = 1.6e-3
 # Draine and Bertoldi (1996), unshielded free-space rate per Habing field
 DB96_UNSHIELDED_RATE_CGS: float = 3.3e-11

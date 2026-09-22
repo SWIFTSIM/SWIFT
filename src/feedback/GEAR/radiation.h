@@ -123,7 +123,8 @@
     to this flux integrated over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
-/*! Representative Lyman-Werner photon energy, eV.
+/*! Representative Lyman-Werner photon energy, eV: the 11.2-13.6 eV band
+    mean published in Kim et al. (2023), their Table 3.
     radiation_get_part_LW_dissociation_rate_internal() needs a photon flux,
     but a gas particle only carries the LW band's ENERGY flux (u_LW), so it
     divides by this energy to convert.
@@ -146,7 +147,7 @@
     recalibration is not settled. This constant remains the value the
     dissociation rate actually uses, and remains the fallback for any table
     that does not carry the two datasets, so it cannot be removed. */
-#define RADIATION_LW_PHOTON_ENERGY_EV 12.0
+#define RADIATION_LW_PHOTON_ENERGY_EV 12.2
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.
     A fixed, spectrum-averaged approximation (the true cross section
@@ -155,10 +156,13 @@
     runtime parameter because it is not meant to be tuned per run.
     Validated to ~10% against Sternberg et al. (2014, ApJ 790:10); see
     theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
-    derivation. Calibrated with #RADIATION_LW_PHOTON_ENERGY_EV held at
-    12.0 eV; see that macro for why the two cannot be changed
-    independently. */
-#define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
+    derivation. Its value is the quotient sigma_H2/E_LW =
+    1.284711e-07 cm^2 erg^-1, the combination that anchor constrains,
+    multiplied by the adopted #RADIATION_LW_PHOTON_ENERGY_EV of 12.2 eV;
+    the extra digits carry that quotient, they are not a claim of
+    precision on the cross section itself. See that macro for why the two
+    cannot be changed independently. */
+#define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
     the integrated table's own top mass edge before calling interpolate_2d(),
