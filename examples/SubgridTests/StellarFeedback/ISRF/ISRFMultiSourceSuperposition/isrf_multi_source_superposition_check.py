@@ -41,6 +41,11 @@ L2  Isotropic closure branch in the lattice: median reduced flux
     where the M1 Eddington factor is 5% above the isotropic value 1/3.
     Every f entering that median must be finite, so an unlit particle
     fails the gate instead of being dropped from it.
+L3  Sampling of the source lattice: the star kernel support spans at
+    least 0.55 of the source spacing. Below about 0.6 the superposed
+    field keeps its mean but its spatial variance exceeds the continuum
+    lattice sum by an order of magnitude, so L1 and L2 are measured on a
+    field the scheme does not reproduce.
 
 Reported without a bar: u(AB) - [u(A) + u(B)] with propagation on (the
 M1 closure merges crossing beams, so the propagated field is not
@@ -68,6 +73,10 @@ GRACKLE_SOLAR_Z = 0.01295
 GAMMA_3D = 1.936492
 C_LIGHT_CGS = 2.99792458e10
 F_ISOTROPIC_BAR = 0.18
+# Star kernel support over source spacing. The lattice of this example
+# sits at 0.598; below about 0.6 the variance of the superposed field
+# departs from the continuum lattice sum.
+KERNEL_SUPPORT_OVER_SPACING_BAR = 0.55
 # Below this |F|, F.F underflows in float32 and the closure turns isotropic.
 F_UNDERFLOW = 1.08e-19
 
@@ -239,6 +248,13 @@ def gate(name: str, value: float, bar: float) -> bool:
     """Print and return one gate; non-finite values fail."""
     ok = bool(np.isfinite(value) and np.isfinite(bar) and value <= bar)
     print(f"  {name}: {value:.4e} <= {bar:.4e} -> {'PASS' if ok else 'FAIL'}")
+    return ok
+
+
+def gate_at_least(name: str, value: float, bar: float) -> bool:
+    """Print and return one lower-bound gate; non-finite values fail."""
+    ok = bool(np.isfinite(value) and np.isfinite(bar) and value >= bar)
+    print(f"  {name}: {value:.4e} >= {bar:.4e} -> {'PASS' if ok else 'FAIL'}")
     return ok
 
 
@@ -443,6 +459,27 @@ def main() -> None:
     print(
         f"  {n_star} stars, spacing {d:.4e}, {int(outside.sum())} gas outside kernels"
     )
+    support_over_spacing = float(GAMMA_3D * np.median(lat["star_h"]) / d)
+    ok_sampling = gate_at_least(
+        "L3 star kernel support over source spacing",
+        support_over_spacing,
+        KERNEL_SUPPORT_OVER_SPACING_BAR,
+    )
+    if not ok_sampling:
+        print(
+            f"    The star injection kernel spans {support_over_spacing:.3f} of "
+            f"the {d:.4e} source spacing, under the "
+            f"{KERNEL_SUPPORT_OVER_SPACING_BAR:.2f} this gate requires. There "
+            "the superposed field keeps its mean to several significant "
+            "figures while its spatial variance exceeds the continuum lattice "
+            "sum by an order of magnitude. The cause is the kernel-to-spacing "
+            "ratio itself and no fix exists, so the lattice gates below "
+            "measure a field the scheme does not reproduce. Run the lattice "
+            "with a star kernel that reaches the neighbouring sources: a "
+            "coarser gas resolution at this n_side, or more sources per side "
+            "at this resolution."
+        )
+    ok &= ok_sampling
     rng = np.random.default_rng(1)
     sample = rng.choice(
         np.flatnonzero(outside), min(opt.sample, int(outside.sum())), replace=False

@@ -24,6 +24,39 @@ runs=${runs:="injection_A injection_B injection_AB A B AB lattice lattice_single
 
 swift=$(realpath "$swift")
 
+# The lattice run holds its gates only while the star injection kernel
+# reaches the neighbouring sources. Below about 0.6 support radii per
+# source spacing the superposed field keeps its mean and its spatial
+# variance departs from the continuum lattice sum, with no fix available.
+# The support is gamma eta times the gas interparticle spacing, the
+# source spacing is the box over n_side.
+case " $runs " in
+    *" lattice "*)
+        eta=$(sed -n 's/^ *resolution_eta: *\([0-9.eE+-]*\).*/\1/p' params.yml)
+        if [ -z "$eta" ]; then
+            echo "Cannot read SPH:resolution_eta from params.yml" >&2
+            exit 1
+        fi
+        python3 - "$eta" "$n_side" "$level" <<'EOF' || exit 1
+import sys
+
+eta, n_side, level = float(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+ratio = 1.936492 * eta * n_side / 2 ** level
+bar = 0.55
+print(f"Star kernel support over source spacing: {ratio:.3f} (>= {bar:.2f})")
+if not ratio >= bar:
+    sys.exit(
+        f"Refusing to run: at level {level} with n_side {n_side} the star "
+        f"injection kernel spans {ratio:.3f} of the source spacing, under "
+        f"{bar:.2f}. There the superposed field keeps its mean while its "
+        "spatial variance exceeds the continuum lattice sum by an order of "
+        "magnitude, with no fix available. Raise n_side, or lower the "
+        "resolution level, until the kernel reaches the neighbouring sources."
+    )
+EOF
+        ;;
+esac
+
 glass_n=$((2**level))
 if [ ! -e glassCube_${glass_n}.hdf5 ]; then
     ./getGlass.sh $glass_n
