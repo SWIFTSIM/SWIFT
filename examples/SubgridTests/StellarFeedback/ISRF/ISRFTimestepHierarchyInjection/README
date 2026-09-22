@@ -1,0 +1,69 @@
+# Intro
+One fixed star in a static, periodic glass box of gas in two phases in
+pressure balance: `x < L/2` cold (500 K, `n`, particle mass `m`), `x >= L/2`
+hot (8000 K, `n/16`, `m/16`). Both phases share the glass positions and
+hence the smoothing length; the sound speed differs by 4, so the CFL time
+steps of the two phases sit two time bins apart. The star sits two
+interparticle spacings inside the hot phase, its kernel reaching both
+phases, on a step longer than its hot neighbours' step.
+
+The fixture exercises the ISRF dose reservoir and the hyperbolic
+propagation across a real time-bin hierarchy. With no dust (`Z = 0`) and a
+pinned `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
+`(c/c_hyp) sum m u` tracks `L t` up to the dose still held in the
+reservoirs and in the gas steps in flight.
+
+**This example reports, it does not gate the conservation claim.** The lag
+`L t - (c/c_hyp) sum m u` is bounded, but it is quantised in whole particle
+steps, so it steps between neighbouring integer multiples of the fine step
+instead of varying smoothly. A fitted slope reads that bounded quantised
+offset as a drift and reports a spurious violation even on a single-bin
+control. The check prints the slope and the lag; only the time-bin
+structure and the absorption-free setup are gated. A working gate needs a
+bounded-window metric on the lag, with the window derived from the measured
+bin structure rather than set by hand.
+
+**There is no steady-state comparison, by design.** The box is not
+hydrostatic: the hot phase densifies over the run in any time-step
+configuration, so comparing radiation fields between a hierarchy run and a
+single-bin run measures hydrodynamic drift, not the radiation field. Such a
+comparison needs a hydrostatic fixture.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+# Run
+```
+./run.sh
+```
+`run.sh` runs `conservation_hierarchy` and `conservation_single_bin` into
+their own directories. Both set `Z = 0` and pin `c_hyp` to 5 km/s, a debug
+parameter used here only so that `c/c_hyp` is one number for the whole box.
+The single-bin run sets `dt_max` below every CFL step of the box, so all gas
+and the star share one bin.
+
+Environment overrides: `n_threads`, `swift` (binary path), `level`
+(`N = (2**level)**3`), `gas_density` (cold phase, atom/cm^3), `gas_mass`
+(cold phase, Msun), `T_cold` (K, below 625 K so that the hot phase stays
+under 1e4 K), `star_mass`, `c_hyp_pin` (km/s), `dt_fine` (`dt_max` of the
+single-bin run, slightly above the wanted power-of-two bin, which SWIFT
+floors a step to), and `runs`. At a finer `level`, divide `gas_mass` by 8
+and `dt_fine` by 2 per level.
+
+# Checking
+```
+python3 isrf_timestep_hierarchy_injection_check.py [--dir runs_directory]
+```
+`run.sh` runs it at the end. It exits nonzero if any gate fails; a
+non-finite value fails its gate. Gated, per run: partial and all-gas update
+steps in the hierarchy run with the cold phase on at least twice the hot
+phase's step, all-gas updates on every step in the single-bin run, the star
+step longer than the shortest gas step in the hierarchy run, pinned
+`c_hyp dt/h` at most `ISRF_c_hyp_margin` in each phase, and zero
+metallicity. Reported without a bar, per band: the fitted slope of
+`(c/c_hyp) sum m u / L` against time with its standard error, and the lag
+`L t - (c/c_hyp) sum m u` in units of each run's own fine step, which is
+not the same step in the two runs.
