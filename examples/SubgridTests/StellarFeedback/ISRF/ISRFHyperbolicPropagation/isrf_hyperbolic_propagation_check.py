@@ -197,9 +197,8 @@ def parse_options():
     return parser.parse_args()
 
 
-def read_extinction_path(snapshot_path: str) -> float:
-    """Return the receiver-side extinction path in kernel support radii, from
-    the run's own used_parameters.yml.
+def read_extinction_path(snapshot_path: str) -> tuple:
+    """Return the receiver-side extinction path the run used.
 
     Parameters
     ----------
@@ -208,8 +207,10 @@ def read_extinction_path(snapshot_path: str) -> float:
 
     Returns
     -------
-    float
-        Path R, so that the column is R * kernel_gamma * h * rho.
+    tuple of (str, float)
+        The mechanism name, and its path R in kernel support radii. R is
+        meaningful only for ``constant_kernel_path``, where the column is
+        ``R * kernel_gamma * h * rho``; it is NaN otherwise.
     """
     import yaml
 
@@ -219,16 +220,17 @@ def read_extinction_path(snapshot_path: str) -> float:
     if "ISRF_extinction_path" not in used:
         # A run archived before the key existed recorded no value at all, and
         # the path then in force was two kernel support radii.
-        return 2.0
+        return "constant_kernel_path", 2.0
     name = used["ISRF_extinction_path"]
     if name == "constant_kernel_path":
-        return float(used["ISRF_extinction_path_in_kernel_radii"])
+        return name, float(used["ISRF_extinction_path_in_kernel_radii"])
+    if name == "pair_separation":
+        return name, float("nan")
     raise RuntimeError(
-        f"GEARFeedback:ISRF_extinction_path {name!r} does not build the "
-        "column from a multiple of the kernel support radius, so the closed "
-        "form this check mirrors does not apply to it. Rerun the fixture "
-        "with constant_kernel_path, or extend this check to that "
-        "mechanism's own length."
+        f"GEARFeedback:ISRF_extinction_path {name!r} is not a length this "
+        "check mirrors. Rerun the fixture with constant_kernel_path or "
+        "pair_separation, or extend this check to that mechanism's own "
+        "length."
     )
 
 
@@ -276,7 +278,7 @@ def load_snapshot(path):
         star_h=star_h,
         L_PE=L_PE,
         L_LW=L_LW,
-        ext_path_R=read_extinction_path(path),
+        ext_path=read_extinction_path(path),
     )
 
 
@@ -308,25 +310,16 @@ def analytic_lambda_cgs(Z, rho_internal, unit_length_cgs, unit_mass_cgs, sigma_d
 def receiver_extinction_factor(
     Z,
     rho_internal,
-    h_internal,
+    path_internal,
     unit_length_cgs,
     unit_mass_cgs,
     sigma_d_cgs,
-    path_in_kernel_radii,
 ):
     """Receiver-side dust extinction exp(-kappa_eff*Sigma_gas); mirrors
     radiation_get_part_ISRF_extinction_factors, with the comoving column
-    density Sigma_gas = R*kernel_gamma*h*rho for the run's own path R in
-    kernel support radii (this example is non-cosmological, so comoving
-    equals physical here)."""
-    Sigma_gas_cgs = (
-        path_in_kernel_radii
-        * GAMMA_3D
-        * h_internal
-        * rho_internal
-        * unit_mass_cgs
-        / unit_length_cgs**2
-    )
+    density Sigma_gas = path*rho for the run's own extinction path (this
+    example is non-cosmological, so comoving equals physical here)."""
+    Sigma_gas_cgs = path_internal * rho_internal * unit_mass_cgs / unit_length_cgs**2
     kappa_eff_cgs = kappa_eff_mass_opacity_cgs(Z, sigma_d_cgs)
     return np.exp(-kappa_eff_cgs * Sigma_gas_cgs)
 
@@ -508,14 +501,15 @@ def injection_source(snap, sigma_d_band_cgs, L_band):
     mass_weighted_kernel = mass * wc2_3d_w(rs, Hs)
     weight = mass_weighted_kernel / np.sum(mass_weighted_kernel)
 
+    mechanism, path_in_kernel_radii = snap["ext_path"]
+    path = rs if mechanism == "pair_separation" else path_in_kernel_radii * GAMMA_3D * h
     extinction = receiver_extinction_factor(
         Z,
         rho,
-        h,
+        path,
         snap["unit_length_cgs"],
         snap["unit_mass_cgs"],
         sigma_d_band_cgs,
-        snap["ext_path_R"],
     )
     injected_power = float(np.sum(weight * L_band * extinction))
     S_true = weight * L_band * extinction / mass
