@@ -117,6 +117,9 @@ duration=${duration:=$duration_default} #Proper time, internal units
 snapshots=${snapshots:=$snapshots_default}
 steps=${steps:=$steps_default} #Number of dt_max steps over the run
 max_star_dt_myr=${max_star_dt_myr:=$max_star_dt_myr_default}
+extinction_path=${extinction_path:="constant_kernel_path"}
+extinction_path_in_kernel_radii=${extinction_path_in_kernel_radii:=1.0}
+extinction_jeans_temperature_cap_K=${extinction_jeans_temperature_cap_K:=40}
 run_name=${run_name:=""}
 swift=${swift:="../../../../../swift"}
 
@@ -172,6 +175,9 @@ mkdir snap
     -P GrackleCooling:initial_nH2I_to_nH_ratio:$nH2_ratio \
     -P GrackleCooling:H2_self_shielding:$h2_self_shielding \
     -P GEARFeedback:ISRF_propagation:$propagation \
+    -P GEARFeedback:ISRF_extinction_path:$extinction_path \
+    -P GEARFeedback:ISRF_extinction_path_in_kernel_radii:$extinction_path_in_kernel_radii \
+    -P GEARFeedback:ISRF_extinction_jeans_temperature_cap_K:$extinction_jeans_temperature_cap_K \
     -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
     -P Stars:max_timestep_young_Myr:$max_star_dt_myr \
     params.yml 2>&1 | tee output.log

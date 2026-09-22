@@ -106,3 +106,26 @@ configuration: the cosmological bar then becomes the larger of the a-priori
 budget and twice the error that run measured, plus the cosmological terms.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
+
+# Ranking the receiver-side extinction path
+`GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
+column attenuating the injected LW and PE bands. The `injection_dusty` box is
+uniform and its gas state is held fixed, so the attenuation of a particle at
+separation `r` from the star is exactly `exp(-kappa_eff rho r)`, and the
+mechanisms can be ranked against that with no free parameter. Run one leg with
+a negligible path as the unattenuated reference, then one per candidate, all
+at the same metallicity:
+```
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1e-8 run_name=thin ./run.sh
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1.0 run_name=R1 ./run.sh
+config=injection_dusty extinction_path=pair_separation run_name=pairsep ./run.sh
+config=injection_dusty extinction_path=temperature_capped_jeans \
+    extinction_jeans_temperature_cap_K=40 run_name=jeans ./run.sh
+python3 isrf_extinction_path_check.py thin R1 pairsep jeans
+```
+The check prints each leg's injection-weighted optical depth and its distance
+in dex from the exact one, and fails if no candidate reaches the bar. A `Z = 0`
+run is not a valid reference here: the star's band luminosity depends on
+metallicity.
