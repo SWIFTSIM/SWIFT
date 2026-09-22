@@ -699,11 +699,17 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
  * @brief Initialize an #interpolation_2d from a source x axis and an output
  * x axis both described as a minimum/step/count triple.
  *
- * Both axes divide by the step they were given, so the resampled table and
- * every later query reproduce the arithmetic a regularly spaced axis has
- * always used. Going through the node list instead would recover each step
- * by differencing two adjacent nodes and lose of order
+ * Both axes divide by the step they were given, so no step is recovered by
+ * differencing two adjacent nodes, which would cost of order
  * |log_xmin| / log_step_size_x * 2^-24 of relative precision.
+ *
+ * The fractional source index is not bit-reproducible, neither across
+ * builds nor from row to row inside one build. Under -ffast-math the
+ * compiler may reassociate (log_xmin + i * log_dx - log_data_xmin) /
+ * log_step_size_x, and it vectorizes only part of the loop: the vectorized
+ * rows evaluate i * (log_dx / log_step_size_x) while the scalar tail
+ * evaluates (i * log_dx) * (1 / log_step_size_x). The two forms can differ
+ * by one float ULP, which reaches the resampled table.
  *
  * @param interp The #interpolation_2d result, stored in swift.
  * @param log_xmin Minimal value of x (in log).  Interpolation limits
