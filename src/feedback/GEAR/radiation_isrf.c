@@ -1051,7 +1051,12 @@ void radiation_end_gradient_propagation(struct part *p,
  *
  * The call stays inside the star-gas pair loop for all mechanisms:
  * #isrf_extinction_path_pair_separation depends on the pair, so hoisting it
- * would fork the code path for a handful of flops per neighbour.
+ * would fork the code path. For that mechanism and for
+ * #isrf_extinction_path_constant_kernel_path the cost is a handful of flops
+ * per neighbour. #isrf_extinction_path_temperature_capped_jeans is far more
+ * expensive: it calls cooling_get_temperature and a square root on every
+ * star-gas pair, and recomputes the same value for each star illuminating
+ * the same particle.
  *
  * @param fb_props Properties of the feedback scheme.
  * @param p The receiving #part.
