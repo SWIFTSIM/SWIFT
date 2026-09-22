@@ -674,6 +674,123 @@ double radiation_get_star_mean_excess_photon_energy_HI(
 }
 
 /**
+ * @brief Get a single star's photon-number-weighted mean Lyman-Werner
+ * photon energy at a given mass, from a 1D (mass-only) table.
+ *
+ * Only valid when #radiation.has_mean_photon_energy_lw is set; callers
+ * must check that first and fall back to #RADIATION_LW_PHOTON_ENERGY_EV
+ * otherwise (this getter does not check, matching every other raw getter
+ * here).
+ *
+ * Below pychem's own LW mass floor this returns the 11.2-13.6 eV band
+ * midpoint, 12.4 eV in erg, which is a finite in-band placeholder rather
+ * than a measured mean; see #radiation.raw.mean_photon_energy_lw.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @return Mean LW photon energy, cgs erg (NOT internal units, and NOT eV).
+ */
+double radiation_get_mean_photon_energy_lw_from_raw(const struct radiation *rad,
+                                                    float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  return exp10(interpolate_1d(&rad->raw.mean_photon_energy_lw, log_m));
+}
+
+/**
+ * @brief Get a single star's photon-number-weighted mean Lyman-Werner
+ * photon energy at a given mass and metallicity, from a 2D ("M,Z") table.
+ * See #radiation_get_mean_photon_energy_lw_from_raw (identical shape, on
+ * #radiation.raw.mean_photon_energy_lw_2d).
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m The mass in log.
+ * @return Mean LW photon energy, cgs erg.
+ */
+double radiation_get_mean_photon_energy_lw_from_raw_2d(
+    const struct radiation *rad, float log_z, float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  return exp10(
+      interpolate_2d(&rad->raw.mean_photon_energy_lw_2d, log_z, log_m));
+}
+
+/**
+ * @brief Get a single star's photon-number-weighted mean Lyman-Werner
+ * photon energy, dispatching on #radiation.is_2d between the 1D and 2D
+ * raw tables. The individual-star counterpart of
+ * #radiation_get_mean_photon_energy_lw_from_integral, mirroring
+ * #radiation_get_star_mean_excess_photon_energy_HI's own dispatch for the
+ * ionizing band.
+ *
+ * Not capped by main_sequence_lifetime, unlike Q_H/DotEExcess: this is a
+ * ratio describing the shape of a star's LW spectrum, not an emission
+ * rate, so there is nothing for a lifetime cap to switch off. The caller
+ * gates on the star's LW luminosity instead.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
+ * used only if @p rad holds a 2D table.
+ * @return Mean LW photon energy, cgs erg.
+ */
+double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
+                                                float log_m, float log_z) {
+  if (rad->is_2d) {
+    return radiation_get_mean_photon_energy_lw_from_raw_2d(rad, log_z, log_m);
+  }
+  return radiation_get_mean_photon_energy_lw_from_raw(rad, log_m);
+}
+
+/**
+ * @brief Get the photon-number-weighted mean Lyman-Werner photon energy of
+ * the population formed between the IMF's own mass_min and @p log_m, from
+ * a 1D (mass-only) table.
+ *
+ * Takes ONE mass bound, not the (log_m1, log_m2) pair every other
+ * _from_integral getter here takes, and this is not an oversight. The
+ * underlying dataset is the intensive ratio
+ * Integrated_L_LW/Integrated_Q_LW, so a window mean would need
+ * Integrated_Q_LW to re-weight the two endpoints, and pychem does not
+ * export it. Differencing two ratios would be meaningless. A caller
+ * wanting the mean over [mass_min, m_sup] passes m_sup and gets exactly
+ * that; no other window is recoverable from this table.
+ *
+ * Intensive, so unlike #radiation_get_l_lw_from_integral the result must
+ * NOT be rescaled by a star particle's birth mass.
+ *
+ * Only valid when #radiation.has_mean_photon_energy_lw is set; see
+ * #radiation_get_mean_photon_energy_lw_from_raw.
+ *
+ * @param rad The #radiation model.
+ * @param log_m Upper mass bound of the population, in log.
+ * @return Mean LW photon energy, cgs erg.
+ */
+double radiation_get_mean_photon_energy_lw_from_integral(
+    const struct radiation *rad, float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  return exp10(interpolate_1d(&rad->integrated.mean_photon_energy_lw, log_m));
+}
+
+/**
+ * @brief Get the photon-number-weighted mean Lyman-Werner photon energy of
+ * the population formed between the IMF's own mass_min and @p log_m, at a
+ * given metallicity, from a 2D ("M,Z") table. See
+ * #radiation_get_mean_photon_energy_lw_from_integral for why this takes a
+ * single mass bound.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m Upper mass bound of the population, in log.
+ * @return Mean LW photon energy, cgs erg.
+ */
+double radiation_get_mean_photon_energy_lw_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  return exp10(
+      interpolate_2d(&rad->integrated.mean_photon_energy_lw_2d, log_z, log_m));
+}
+
+/**
  * @brief Get the photospheric effective temperature at a given mass, from a
  * 1D (mass-only) table.
  *

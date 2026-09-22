@@ -123,13 +123,29 @@
     to this flux integrated over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
-/*! Representative Lyman-Werner photon energy, eV (~12 eV, the band's own
-    6-11.2/11.2-13.6 eV midpoint region). radiation_get_part_LW_dissociation_
-    rate_internal() needs a photon flux, but a gas particle only carries the
-    LW band's ENERGY flux (u_LW); unlike the ionizing band, whose table
-    carries MeanExcessPhotonEnergyHI for this exact conversion, pychem does
-    not yet export a per-mass mean LW photon energy, so this fixed
-    band-midpoint stands in until it does. */
+/*! Representative Lyman-Werner photon energy, eV.
+    radiation_get_part_LW_dissociation_rate_internal() needs a photon flux,
+    but a gas particle only carries the LW band's ENERGY flux (u_LW), so it
+    divides by this energy to convert.
+
+    This value is jointly calibrated with #RADIATION_SIGMA_H2_LW_CGS, and
+    only their quotient sigma_H2/E_LW is physically constrained: the
+    Sternberg et al. (2014) anchor fixes that quotient, and the pair below
+    reproduces it. Changing either one alone rescales every H2
+    photodissociation rate by the ratio of the change. The two must
+    therefore move together, or not at all.
+
+    pychem now exports a measured, photon-number-weighted mean LW photon
+    energy per mass and per population ("MeanPhotonEnergyLW" and
+    "Integrated_MeanPhotonEnergyLW"), read into
+    #radiation.raw.mean_photon_energy_lw /
+    #radiation.integrated.mean_photon_energy_lw when the table carries them
+    (#radiation.has_mean_photon_energy_lw). Those tables are not yet
+    consumed here: substituting a table value for this constant is a
+    recalibration of the pair above, not a plumbing change, and that
+    recalibration is not settled. This constant remains the value the
+    dissociation rate actually uses, and remains the fallback for any table
+    that does not carry the two datasets, so it cannot be removed. */
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.0
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.
@@ -139,7 +155,9 @@
     runtime parameter because it is not meant to be tuned per run.
     Validated to ~10% against Sternberg et al. (2014, ApJ 790:10); see
     theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
-    derivation. */
+    derivation. Calibrated with #RADIATION_LW_PHOTON_ENERGY_EV held at
+    12.0 eV; see that macro for why the two cannot be changed
+    independently. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.47e-18
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
@@ -374,6 +392,16 @@ float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
 float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m);
 float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
                                      float log_m);
+double radiation_get_mean_photon_energy_lw_from_raw(const struct radiation *rad,
+                                                    float log_m);
+double radiation_get_mean_photon_energy_lw_from_raw_2d(
+    const struct radiation *rad, float log_z, float log_m);
+double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
+                                                float log_m, float log_z);
+double radiation_get_mean_photon_energy_lw_from_integral(
+    const struct radiation *rad, float log_m);
+double radiation_get_mean_photon_energy_lw_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m);
 float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
                               float log_z);
 
@@ -413,6 +441,9 @@ void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,
                                const struct unit_system *us);
+void radiation_read_mean_photon_energy_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
 void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,

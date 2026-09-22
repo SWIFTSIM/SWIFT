@@ -1054,6 +1054,70 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
 }
 
 /**
+ * @brief Read the MeanPhotonEnergyLW / Integrated_MeanPhotonEnergyLW
+ * (photon-number-weighted mean Lyman-Werner photon energy, L_LW/Q_LW over
+ * 11.2-13.6 eV) arrays from the table.
+ *
+ * Only called when the group carries both datasets
+ * (#radiation.has_mean_photon_energy_lw, set in radiation_read_data()).
+ *
+ * Both datasets are stored in cgs erg and are kept in cgs erg here:
+ * conversion_factor and extra_scaling are both 1. This matches the
+ * mixed-unit convention #radiation_get_mean_excess_photon_energy_HI_from_
+ * integral already produces for the ionizing band's mean photon energy,
+ * and it matches the consumer, radiation_get_part_LW_dissociation_rate_
+ * internal(), which works in cgs. A mean photon energy is an intensive
+ * per-photon quantity, not a rate or a power, so neither
+ * #RADIATION_DOT_N_ION_TABLE_SCALING nor a UNIT_CONV_* factor applies to
+ * it.
+ *
+ * Unlike every other Integrated_* dataset, Integrated_MeanPhotonEnergyLW
+ * is NOT per Msun of stars formed and NOT a cumulative integral to be
+ * differenced: it is the intensive ratio Integrated_L_LW/Integrated_Q_LW
+ * of two cumulative integrals. #radiation_build_tables' own integrated
+ * branch would therefore assert the wrong units string ("erg/Msun") and
+ * build a table under difference semantics that do not hold. So the two
+ * datasets are read as two independent raw tables instead, each via its
+ * own #radiation_build_tables call with the integrated arguments NULL.
+ *
+ * Both consequently live in log10 value space and their getters exp10()
+ * the interpolated result, like every other raw table here.
+ *
+ * Mass-axis edge policy: pychem writes no dedicated
+ * edge_policy_mean_photon_energy_lw_* attribute pair, and the dataset's
+ * own description states it follows L_LW's policy. Its fallback value
+ * below the LW mass floor is the 12.4 eV band midpoint, not zero, so
+ * L_LW's own "zero below" policy must NOT be reused: zeroing a photon
+ * energy would make any consumer divide by zero. boundary_condition_const
+ * is used on both axes instead, clamping to the nearest tabulated mean
+ * photon energy, which is the only edge policy a bounded, strictly
+ * positive intensive quantity admits.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ */
+void radiation_read_mean_photon_energy_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid,
+    const struct stellar_model *sm) {
+
+  radiation_build_tables(
+      group_id, "MeanPhotonEnergyLW", grid, sm, rad->interpolation_size,
+      rad->interpolation_size_metallicity, 1., 1., "erg",
+      &rad->raw.mean_photon_energy_lw, NULL, &rad->raw.mean_photon_energy_lw_2d,
+      NULL, boundary_condition_const);
+
+  radiation_build_tables(group_id, "Integrated_MeanPhotonEnergyLW", grid, sm,
+                         rad->interpolation_size,
+                         rad->interpolation_size_metallicity, 1., 1., "erg",
+                         &rad->integrated.mean_photon_energy_lw, NULL,
+                         &rad->integrated.mean_photon_energy_lw_2d, NULL,
+                         boundary_condition_const);
+}
+
+/**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
  *
  * MainSequenceLifetime has no 1D/"M"-table analogue: pychem only writes
@@ -1537,6 +1601,18 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
   }
+
+  /* Mean Lyman-Werner photon energy. Optional, and guarded on dataset
+     presence rather than on with_ISRF: a table generated before pychem
+     exported these two datasets must still load, with every consumer
+     falling back to #RADIATION_LW_PHOTON_ENERGY_EV. Both datasets are
+     required together; pychem always writes them as a pair. */
+  rad->has_mean_photon_energy_lw =
+      (char)(H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0 &&
+             H5Lexists(group_id, "Integrated_MeanPhotonEnergyLW", H5P_DEFAULT) >
+                 0);
+  if (rad->has_mean_photon_energy_lw)
+    radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets
