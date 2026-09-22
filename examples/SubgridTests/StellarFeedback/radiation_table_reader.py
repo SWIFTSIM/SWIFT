@@ -60,7 +60,7 @@ actually runs, not pychem's own generation-time interpolation convention:
   See :func:`_exp10_with_zero_passthrough`'s own docstring.
 * Same two-stage structure as ``radiation_build_tables()``: the native
   table (evenly spaced in log10(mass), ``m0``/``dm``/``nm``) is first
-  resampled onto ``radiation_interpolation_size_mass`` points evenly spaced
+  resampled onto ``interpolation_size_mass`` points evenly spaced
   in log10(mass) between the table's own Data/IMF ``Mmin``/``Mmax`` (NOT
   the native table's own mass range -- this is a deliberate SWIFT design
   choice, see ``radiation_build_tables()``'s doxygen), then a query at an
@@ -90,9 +90,9 @@ import h5py
 import numpy as np
 from astropy import units as u
 
-#: Default for GEARFeedback:radiation_interpolation_size_mass
-#: (src/feedback/GEAR/radiation.c, examples/parameter_example.yml).
-DEFAULT_INTERPOLATION_SIZE_MASS = 200
+#: Default for GEARRadiation:interpolation_size_mass
+#: (src/feedback/GEAR/radiation_table_io.c).
+DEFAULT_INTERPOLATION_SIZE_MASS = 500
 
 #: Floor applied before taking log10() of a native Data/Radiation value, so
 #: a genuinely-zero table entry (Q_H/DotEExcess below the source table's
@@ -320,7 +320,7 @@ def open_radiation_table(
         candidate.
     default_interpolation_size_mass : int, optional
         Used when the snapshot predates
-        ``GEARFeedback:radiation_interpolation_size_mass`` (see
+        ``GEARRadiation:interpolation_size_mass`` (see
         :func:`interpolation_size_mass_from_snapshot`).
 
     Returns
@@ -339,7 +339,7 @@ def open_radiation_table(
 def interpolation_size_mass_from_snapshot(
     snapshot_file: str, default: int = DEFAULT_INTERPOLATION_SIZE_MASS
 ) -> int:
-    """Return the run's radiation_interpolation_size_mass, or a default.
+    """Return the run's GEARRadiation:interpolation_size_mass, or a default.
 
     Parameters
     ----------
@@ -347,19 +347,16 @@ def interpolation_size_mass_from_snapshot(
         One of the run's snapshot files.
     default : int, optional
         Value to return if the snapshot predates
-        ``GEARFeedback:radiation_interpolation_size_mass`` (e.g. an old
-        archived run made before the table migration).
+        ``GEARRadiation:interpolation_size_mass`` (e.g. an old archived run
+        made before the table migration).
 
     Returns
     -------
     int
-        The run's ``GEARFeedback:radiation_interpolation_size_mass``, or
-        `default`.
+        The run's ``GEARRadiation:interpolation_size_mass``, or `default`.
     """
     with h5py.File(snapshot_file, "r") as h:
-        raw = h["Parameters"].attrs.get(
-            "GEARFeedback:radiation_interpolation_size_mass"
-        )
+        raw = h["Parameters"].attrs.get("GEARRadiation:interpolation_size_mass")
     return int(_decode(raw)) if raw is not None else default
 
 
@@ -484,8 +481,8 @@ class RadiationTable:
         :func:`yields_table_path_from_snapshot`.
     interpolation_size_mass : int, optional
         Number of points in the resampled mass grid
-        (``GEARFeedback:radiation_interpolation_size_mass``; default 200,
-        matching radiation.c's own default).
+        (``GEARRadiation:interpolation_size_mass``; default 500, matching
+        radiation_table_io.c's own default).
     """
 
     def __init__(
