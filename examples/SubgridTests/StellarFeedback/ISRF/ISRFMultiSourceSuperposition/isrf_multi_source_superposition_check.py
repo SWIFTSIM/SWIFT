@@ -19,7 +19,7 @@
 """
 Check the ISRF injection and propagation with several sources.
 
-Gates (each per band, FUV and LW):
+Gates (each per band, PE and LW):
 
 E   Exact injection superposition, propagation off: per gas particle,
     |u(AB) - u(A) - u(B)| <= 1e-5 (u(A) + u(B)) + 4 eps (max u(A) +
@@ -58,7 +58,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 # src/feedback/GEAR/radiation.h
-SIGMA_D_CGS = {"FUV": 9e-22, "LW": 1.5e-21}
+SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 MU_H = 1.4
 M_H_CGS = 1.6726219e-24
 GRACKLE_SOLAR_Z = 0.01295
@@ -113,17 +113,17 @@ def load(path: str) -> dict:
             mass=gas["Masses"][:][order].astype(np.float64),
             Z=gas["MetalMassFractions"][:, -1][order].astype(np.float64),
             u={
-                "FUV": gas["FUVSpecificEnergies"][:][order].astype(np.float64),
+                "PE": gas["PESpecificEnergies"][:][order].astype(np.float64),
                 "LW": gas["LWSpecificEnergies"][:][order].astype(np.float64),
             },
             F={
-                "FUV": gas["FUVSpecificFluxes"][:][order].astype(np.float64),
+                "PE": gas["PESpecificFluxes"][:][order].astype(np.float64),
                 "LW": gas["LWSpecificFluxes"][:][order].astype(np.float64),
             },
             star_pos=star["Coordinates"][:].astype(np.float64),
             star_h=star["SmoothingLengths"][:].astype(np.float64),
             L={
-                "FUV": star["FUVLuminosities"][:].astype(np.float64),
+                "PE": star["PELuminosities"][:].astype(np.float64),
                 "LW": star["LWLuminosities"][:].astype(np.float64),
             },
         )
@@ -292,7 +292,7 @@ def main() -> None:
     print("E: exact injection superposition (propagation off, last snapshot)")
     inj = {k: load(snapshots(run("injection_" + k))[-1]) for k in ("A", "B", "AB")}
     eps = float(np.finfo(np.float32).eps)
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         uA, uB, uAB = (inj[k]["u"][band] for k in ("A", "B", "AB"))
         total = uA + uB
         both = (uA > 0.0) & (uB > 0.0)
@@ -329,11 +329,11 @@ def main() -> None:
             e={b: np.array([identity_error(s, b) for s in snaps]) for b in SIGMA_D_CGS},
         )
         print(
-            f"  {name}: t = {snaps[-1]['time']:.4e}, e(FUV) over window = "
-            f"{np.array2string(series[name]['e']['FUV'], precision=4)}, "
+            f"  {name}: t = {snaps[-1]['time']:.4e}, e(PE) over window = "
+            f"{np.array2string(series[name]['e']['PE'], precision=4)}, "
             f"e(LW) = {np.array2string(series[name]['e']['LW'], precision=4)}"
         )
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         eA, eB, eAB = (series[k]["e"][band][-1] for k in ("A", "B", "AB"))
         sigma = max(np.std(series["A"]["e"][band]), np.std(series["B"]["e"][band]))
         ok &= gate(f"{band} |e_A|", abs(eA), 0.10)
@@ -347,7 +347,7 @@ def main() -> None:
     print("Reported: float32 underflow of F.F (closure forced isotropic)")
     for name in ("A", "B", "AB", "lattice", "lattice_single"):
         s = series[name]["last"]
-        for band in ("FUV", "LW"):
+        for band in ("PE", "LW"):
             Fmag = np.linalg.norm(s["F"][band], axis=1)
             print(
                 f"  {name} {band}: min |F| = {Fmag.min():.3e}, below "
@@ -356,7 +356,7 @@ def main() -> None:
 
     print("Reported: propagated field of AB against u_A + u_B (no bar)")
     sA, sB, sAB = (series[k]["last"] for k in ("A", "B", "AB"))
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         total = sA["u"][band] + sB["u"][band]
         share = sA["u"][band] / np.maximum(total, np.finfo(np.float64).tiny)
         rel = np.abs(sAB["u"][band] - total) / np.maximum(
@@ -394,7 +394,7 @@ def main() -> None:
     r_one = np.linalg.norm(
         periodic_dx(one["pos"], one["star_pos"][0], one["boxsize"]), axis=1
     )
-    for band in ("FUV", "LW"):
+    for band in ("PE", "LW"):
         e_lat = series["lattice"]["e"][band]
         e_one = series["lattice_single"]["e"][band]
         ok &= gate(

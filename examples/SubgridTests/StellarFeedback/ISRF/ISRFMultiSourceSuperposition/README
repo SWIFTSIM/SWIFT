@@ -1,8 +1,8 @@
 # Intro
 Several fixed stars in a uniform, static, periodic glass box of gas, with
-the ISRF (photoelectric heating switch on, propagation on or off) and no
+the ISRF (master switch on, propagation on or off) and no
 photoionization, winds or supernovae. Tests the injection and propagation
-of the FUV and Lyman-Werner fields with more than one source:
+of the photoelectric and Lyman-Werner fields with more than one source:
 
 - with propagation off, the field injected by two stars equals, particle
   by particle, the sum of the fields of each star alone;
@@ -11,7 +11,7 @@ of the FUV and Lyman-Werner fields with more than one source:
   `sum_i m_i u_i / lambda_i = (1/c) sum_stars sum_j w_j L ext_j`
   (`lambda = 1/(kappa rho)` the dust absorption length, `w_j` the star's
   kernel weights, `ext_j` the receiver-side extinction);
-- a dense lattice of stars (spacing `d = L/8`, `d/lambda` 0.13 in FUV and
+- a dense lattice of stars (spacing `d = L/8`, `d/lambda` 0.13 in PE and
   0.21 in LW) drives the M1 closure onto its isotropic branch away from
   the sources: the reduced flux `f = |F|/(c_hyp u)` stays small there.
 
