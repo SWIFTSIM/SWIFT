@@ -11,9 +11,10 @@ of the photoelectric and Lyman-Werner fields with more than one source:
   `sum_i m_i u_i / lambda_i = (1/c) sum_stars sum_j w_j L ext_j`
   (`lambda = 1/(kappa rho)` the dust absorption length, `w_j` the star's
   kernel weights, `ext_j` the receiver-side extinction);
-- a dense lattice of stars (spacing `d = L/8`, `d/lambda` 0.13 in PE and
-  0.21 in LW) drives the M1 closure onto its isotropic branch away from
-  the sources: the reduced flux `f = |F|/(c_hyp u)` stays small there.
+- a dense lattice of stars (spacing `d = L/8`, under one absorption
+  length in both bands) drives the M1 closure onto its isotropic branch
+  away from the sources: the reduced flux `f = |F|/(c_hyp u)` stays small
+  there. The check prints `d/lambda` per band.
 
 The propagated field of two stars is not the sum of the single-star fields
 where their beams overlap, since a two-moment closure merges crossing
