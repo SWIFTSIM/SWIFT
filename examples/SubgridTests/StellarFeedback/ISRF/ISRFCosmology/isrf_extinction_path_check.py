@@ -16,16 +16,29 @@ ratio of its injected band energy to that of a leg run with a negligible
 path. The score of a mechanism is log10(tau_code / tau_exact); zero means it
 reproduces the exact uniform-geometry answer.
 
-This RANKS mechanisms; it does not gate the shipped default. It passes when
-the best candidate reaches the bar, so running it on the default alone fails
-by construction: one kernel support radius is not the exact answer and is not
-meant to be.
+What this check is, and what it is not
+-------------------------------------
+It is a regression test on the unit chain and the SPH density estimate. It
+is NOT a ranking gate, and it is NOT evidence for the shipped default.
 
-What this check cannot do: in a uniform box the pair_separation mechanism
-computes exp(-kappa rho_j r) while the reference computes
-exp(-kappa_eff rho r), so the two differ only by the SPH density estimate. A
-good score there is a regression check on the density estimate and the unit
-chain, not evidence that the mechanism wins on real gas.
+The pair_separation row is zero by construction. That mechanism attenuates
+each pair over its own separation, exp(-kappa rho_j r_j), and the reference
+above is exp(-kappa_eff rho_j r_j) on the same per-particle rho_j from the
+same snapshot: the same expression on both sides, so its score is zero to
+float noise whatever the physics. Since the overall verdict is
+min(|score|) over the candidates, the run cannot fail once pair_separation
+is among them. A pass then reports only that the opacity chain, the units
+and the density estimate still line up, which is worth keeping and is all
+it means.
+
+The constant_kernel_path and temperature_capped_jeans rows are genuine
+numbers: their lengths are built from the smoothing length and from the gas
+state, neither of which the reference uses, so their distance in dex from
+the exact uniform-geometry answer is a real measurement of those
+mechanisms. Read the per-row scores, never the aggregate verdict.
+
+Do not cite this check as a reason for any GEARFeedback:ISRF_extinction_path
+default.
 
 Do NOT use the band-ratio residual of the C1 and M4 injection checks to
 discriminate between paths. Both bands attenuate on the same column and
@@ -226,6 +239,14 @@ def main() -> int:
         )
         return 1
     print(f"PASS: best candidate within {best:.4f} dex of the exact answer.")
+    print(
+        "NOTE: this is a regression test on the unit chain and the density "
+        "estimate, not a ranking gate. The pair_separation row is zero by "
+        "construction (same expression on both sides), so the verdict "
+        "cannot fail while that mechanism is a candidate. Read the "
+        "per-candidate scores, and do not cite this line as evidence for a "
+        "default."
+    )
     return 0
 
 

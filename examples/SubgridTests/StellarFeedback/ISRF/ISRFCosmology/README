@@ -107,14 +107,14 @@ budget and twice the error that run measured, plus the cosmological terms.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
 
-# Ranking the receiver-side extinction path
+# Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
 column attenuating the injected LW and PE bands. The `injection_dusty` box is
 uniform and its gas state is held fixed, so the attenuation of a particle at
-separation `r` from the star is exactly `exp(-kappa_eff rho r)`, and the
-mechanisms can be ranked against that with no free parameter. Run one leg with
-a negligible path as the unattenuated reference, then one per candidate, all
-at the same metallicity:
+separation `r` from the star is exactly `exp(-kappa_eff rho r)`, and each
+mechanism's own column can be compared against that with no free parameter.
+Run one leg with a negligible path as the unattenuated reference, then one per
+candidate, all at the same metallicity:
 ```
 config=injection_dusty extinction_path=constant_kernel_path \
     extinction_path_in_kernel_radii=1e-8 run_name=thin ./run.sh
@@ -126,7 +126,18 @@ config=injection_dusty extinction_path=temperature_capped_jeans \
 python3 isrf_extinction_path_check.py thin R1 pairsep jeans
 ```
 The check prints each leg's injection-weighted optical depth and its distance
-in dex from the exact one, and fails if no candidate reaches the bar. It ranks
-mechanisms against each other; it is not a pass/fail gate on any single one,
-so give it more than one candidate. A `Z = 0` run is not a valid reference
-here: the star's band luminosity depends on metallicity.
+in dex from the exact one. A `Z = 0` run is not a valid reference here: the
+star's band luminosity depends on metallicity.
+
+Read the per-candidate scores, not the overall verdict. The `pair_separation`
+row scores zero by construction: that mechanism attenuates each pair over its
+own separation and the reference is the same expression on the same
+per-particle density, so the two agree to float noise whatever the physics.
+The verdict is the best candidate's score, so it cannot fail while
+`pair_separation` is in the list. What the check therefore tests is the
+opacity chain, the units and the SPH density estimate, as a regression. It is
+not a ranking gate and it is not evidence for the shipped default. The
+`constant_kernel_path` and `temperature_capped_jeans` rows are genuine
+measurements against the uniform-geometry answer, because their lengths come
+from the smoothing length and from the gas state, which the reference does not
+use.
