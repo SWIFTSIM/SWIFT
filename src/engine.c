@@ -2318,6 +2318,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
+  fflush(stdout);
   engine_first_init_particles(e);
 
   /* Initialise the particle splitting mechanism */
@@ -2326,6 +2327,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
+  fflush(stdout);
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
@@ -2406,6 +2408,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (!flag_entropy_ICs) {
 
     if (e->nodeID == 0) message("Converting internal energy variable.");
+    fflush(stdout);
 
     space_convert_quantities(e->s, e->verbose);
 
@@ -2444,6 +2447,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
+  fflush(stdout);
 
   /* Update the MAC strategy if necessary */
   if (e->policy & engine_policy_self_gravity)
