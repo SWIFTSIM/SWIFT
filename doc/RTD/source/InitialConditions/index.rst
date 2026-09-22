@@ -154,8 +154,9 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
   velocities divided by ``sqrt(a)`` (see below for a fix).
 + ``ParticleIDs``, an array of length N that are unique identifying numbers for
   each particle. Note that these have to be unique to a particle, and cannot be
-  the same even between particle types. The **IDs must be >= 0**. Negative
-  IDs will be rejected by the code.
+  the same even between particle types. The **IDs must be > 0**. Negative
+  IDs will be rejected by the code. The code will run if there is a particle
+  with an ID of 0, but that particle will not be included.
   Note, however, that if the parameters to remap the IDs upon startup is switched
   on (see :ref:`Parameters_ICs`), the IDs can be omitted entirely from the ICs.
 + ``Masses``, an array of length N that gives the masses of the particles.
