@@ -19,7 +19,20 @@ level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 time_end=${time_end:=3e-5} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
+metallicity=${metallicity:=0} #Gas metal mass fraction, absolute (not solar)
 run_name=${run_name:=""}
+
+# Nonzero metallicity switches the check to the dust-extinction identities
+# (README). The absolute mass fraction is passed straight through, so
+# scale_initial_metallicity is turned off with it; at metallicity=0 nothing
+# is overridden and the run is the shipped Z=0 one.
+metallicity_args=()
+check_args=()
+if [ "$(python3 -c "print(int(float('$metallicity') != 0))")" = "1" ]; then
+    metallicity_args=(-P GEARChemistry:initial_metallicity:$metallicity
+		      -P GEARChemistry:scale_initial_metallicity:0)
+    check_args=(--dusty)
+fi
 
 # Remove the ICs
 if [ -e ICs_isrf_injection_conservation.hdf5 ]
@@ -83,11 +96,12 @@ printf "Running simulation..."
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
+		   "${metallicity_args[@]}" \
 		   params.yml 2>&1 | tee output.log
 
 # Check that the injected PE/LW energy sums to Delta_t * L_band per star
 # feedback pass (see README).
-python3 isrf_injection_conservation_check.py
+python3 isrf_injection_conservation_check.py "${check_args[@]}"
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

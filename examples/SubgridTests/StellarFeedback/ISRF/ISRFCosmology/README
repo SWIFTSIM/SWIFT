@@ -19,16 +19,24 @@ applied to both. Where a closed form exists, the check compares against it:
   same box without it. The difference of their internal energies must equal
   the integral of Grackle's heating rate
   `1e-24 * 0.05 * G0 * n_H * Z/0.01295 erg cm^-3 s^-1`.
-- `injection`: a star with propagation off. The injected energy
-  `sum m u` equals `Delta_t L` in each band.
+- `injection`: a star with propagation off, at zero metallicity, so the dust
+  extinction factor is 1 everywhere. The injected energy `sum m u` equals
+  `Delta_t L` in each band.
+- `injection_dusty`: the same star at `Z = 0.01295`, where extinction is not
+  1 and that identity no longer holds. Two exact statements replace it: the
+  per-particle ratio of the two bands, in which the kernel weight, `Delta_t`
+  and the particle mass cancel, and a bracket on the weighted mean of
+  `exp(-tau)` between its smallest and largest per-particle value. It gates
+  the receiver-side extinction wiring, including the comoving-to-physical
+  scaling of the column, which the `Z = 0` leg cannot see.
 
 `h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
 self-shielding) has no closed form. It is compared between `redshift=0` and
 high redshift over 25 yr, where expansion does not change the physical state.
 The check equations, and the bars each one derives from the run's own
 discretisation, are in the docstrings of `isrf_cosmology_check.py` and
-`isrf_cosmology_h2_identity_check.py`. The `injection` bar is the one
-exception: a fixed relative tolerance of 1e-5, set in
+`isrf_cosmology_h2_identity_check.py`. The two injection bars are the
+exception: fixed relative tolerances of 1e-5 and 1e-4 respectively, set in
 `isrf_cosmology_check.py` itself.
 
 ## Initial conditions
@@ -81,6 +89,8 @@ python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*
     --dark "pe_dark_z9/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config injection -s "inj_z9/snap/snapshot_*.hdf5" \
     --log inj_z9/output.log
+python3 isrf_cosmology_check.py --config injection_dusty \
+    -s "inj_dusty_z9/snap/snapshot_*.hdf5" --log inj_dusty_z9/output.log
 python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.hdf5" \
     --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
     --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"

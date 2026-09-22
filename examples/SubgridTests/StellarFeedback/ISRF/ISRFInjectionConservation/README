@@ -18,9 +18,46 @@ physics comparison like `ISRFHyperbolicPropagation`'s profile fit. The
 check tolerance is correspondingly tight.
 
 ## Metallicity
-`initial_metallicity: 0` in `params.yml` is required, not incidental: it is
-what makes the receiver-side dust extinction factor exactly 1, isolating
-the injection term from the (separately validated) extinction physics.
+`initial_metallicity: 0` in `params.yml` is what makes the receiver-side dust
+extinction factor exactly 1, isolating the injection term from the extinction
+physics. This is the default leg.
+
+`metallicity=<Z> ./run.sh` runs the same box at a nonzero metal mass fraction
+(absolute, not solar: `run.sh` turns `scale_initial_metallicity` off with it)
+and switches the check to the extinction identities. With dust the sum above
+is no longer `Delta_t * L_band`, because the kernel-weighted mean of
+`exp(-tau)` does not factor out of it. Two exact statements replace it:
+
+- the per-particle ratio of the two bands, in which the kernel weight,
+  `Delta_t`, the particle mass, `Z_j`, the dust-to-gas ratio and every unit
+  conversion cancel, leaving
+
+  ```
+  ln(PESpecificEnergies_j / LWSpecificEnergies_j)
+      - ln(PELuminosities / LWLuminosities) - 0.4 * tau_LW_j == 0
+  ```
+
+  where `0.4 = 1 - sigma_PE/sigma_LW` is fixed by the two bands' dust
+  cross-sections per hydrogen nucleon;
+- a bracket on the weighted mean of `exp(-tau)`, which must lie between its
+  smallest and largest per-particle value, since the kernel weights are
+  non-negative and sum to 1. This covers the errors the band ratio cancels.
+
+`metallicity=0.01295` is Grackle's own solar metal mass fraction, which makes
+the dust-to-gas ratio relative to the Milky Way exactly 1 and leaves both
+bands strongly and differently attenuated (`tau_LW` about 2.5, `tau_PE` about
+1.5, at this example's default density and particle mass). The check prints
+`tau_LW`, so a run configured into a regime where the two bands are barely
+distinguishable is visible in the output.
+
+The reconstruction reuses the code's own column model, cross-sections and
+dust-to-gas convention. It therefore checks that the extinction is applied per
+receiving particle with the correct band-dependent cross-section ratio, not
+that any of those three is physically right; the formula itself is unit-tested
+in `tests/testRadiationISRFFormula.c`. In a uniform glass box the column
+barely varies between particles, so this leg is also weak on one wiring error
+specifically: applying the extinction once at the source instead of per
+receiver.
 
 ## Propagation
 `ISRF_propagation: 0` isolates the injection step itself: with
@@ -75,6 +112,14 @@ snapshot. It sums `PESpecificEnergies * mass` (and the LW equivalent)
 over all illuminated gas particles and compares against `Delta_t *
 PELuminosities` (`--tol`, default relative error 1e-5: the measured
 discrepancy is float32 snapshot-storage rounding, ~1e-7).
+
+At nonzero metallicity `run.sh` passes `--dusty`, which checks the two
+extinction identities instead (`--dust-tol`, default 1e-4 on the band-ratio
+residual, two decades above its measured float32 floor). `--dusty` needs the
+binary's `kernel_gamma` (`--kernel-gamma`, default Wendland C2 in 3D) and the
+run's `GEARFeedback:ISRF_extinction_path`, which it reads from
+`used_parameters.yml` unless `--extinction-path` is given. Without `--dusty` a
+nonzero metallicity is an error, not a silently different check.
 
 `isrf_ledger_check.py` ships next to it and checks a different identity,
 the running energy ledger:

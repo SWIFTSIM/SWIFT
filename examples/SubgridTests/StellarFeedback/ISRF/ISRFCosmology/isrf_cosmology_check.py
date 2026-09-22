@@ -165,6 +165,11 @@ SIGMA_H2_LW_CGS = 2.47e-18
 LW_PHOTON_ENERGY_CGS = 12.0 * 1.602176634e-12
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
+GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387
+# radiation.h's own RADIATION_HYDROGEN_MASS_CGS, which the extinction chain
+# uses; M_H_CGS below is the physical constant the photoelectric rate uses.
+RADIATION_HYDROGEN_MASS_CGS = 1.6726219e-24
+KERNEL_GAMMA_DEFAULT = 1.936492
 MU_H = 1.4
 GRACKLE_SOLAR_METAL_FRACTION = 0.01295
 C_LIGHT_CGS = 2.99792458e10
@@ -185,7 +190,13 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--config",
         required=True,
-        choices=["free_field", "dust_absorption", "photoelectric", "injection"],
+        choices=[
+            "free_field",
+            "dust_absorption",
+            "photoelectric",
+            "injection",
+            "injection_dusty",
+        ],
     )
     parser.add_argument("-s", "--snapshots", required=True, help="Snapshot glob")
     parser.add_argument(
@@ -210,6 +221,38 @@ def parse_options() -> argparse.Namespace:
         "read from used_parameters.yml next to snap/ when omitted",
     )
     parser.add_argument("--c-hyp-pin", type=float, default=None, help="km/s")
+    parser.add_argument(
+        "--dust-tol",
+        type=float,
+        default=1e-4,
+        help="injection_dusty only: max allowed max_j |R_j| on the band-ratio "
+        "gate (default: %(default)s), two decades above this reconstruction's "
+        "measured float32 floor. Pass a negative value to report the residual "
+        "without gating on it.",
+    )
+    parser.add_argument(
+        "--kernel-gamma",
+        type=float,
+        default=KERNEL_GAMMA_DEFAULT,
+        help="injection_dusty only: the binary's kernel_gamma (default: "
+        "%(default)s, Wendland C2 in 3D).",
+    )
+    parser.add_argument(
+        "--extinction-path",
+        type=float,
+        default=None,
+        help="injection_dusty only: GEARFeedback:ISRF_extinction_path in "
+        "kernel support radii (kernel_diameter = 2, kernel_radius = 1). Read "
+        "from the run's used_parameters.yml when omitted.",
+    )
+    parser.add_argument(
+        "--dust-to-gas-ratio",
+        type=float,
+        default=GRACKLE_DEFAULT_DUST_TO_GAS_RATIO,
+        help="injection_dusty only: the run's resolved Grackle "
+        "chemistry_data.local_dust_to_gas_ratio (default: %(default)s, "
+        "Grackle's own compiled default).",
+    )
     return parser.parse_args()
 
 
@@ -270,6 +313,14 @@ def read_snapshot(filename: str) -> Dict:
         }
         metals = gas["MetalMassFractions"][:].astype(np.float64)
         out["Z"] = (metals[:, -1] if metals.ndim == 2 else metals)[order]
+        # The extinction chain reads the SMOOTHED metal mass fraction
+        # (chemistry_get_total_metal_mass_fraction_for_cooling), as a float32.
+        # It coincides with the unsmoothed array only at Z = 0.
+        if "SmoothedMetalMassFractions" in gas:
+            smoothed = gas["SmoothedMetalMassFractions"][:]
+            out["Z_smoothed"] = (smoothed[:, -1] if smoothed.ndim == 2 else smoothed)[
+                order
+            ].astype(np.float32)
         if "/PartType4" in handle and handle["/PartType4/Masses"].shape[0] > 0:
             out["L_PE"] = float(handle["/PartType4/PELuminosities"][0])
             out["L_LW"] = float(handle["/PartType4/LWLuminosities"][0])
@@ -350,6 +401,60 @@ def read_dt_max(pattern: str, given: Optional[float]) -> float:
     directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
     with open(os.path.join(directory, "used_parameters.yml")) as handle:
         return float(yaml.safe_load(handle)["TimeIntegration"]["dt_max"])
+
+
+def read_extinction_path(pattern: str, given: Optional[float]) -> float:
+    """Return the extinction path in kernel radii, from the argument or the
+    run's used_parameters.yml."""
+    if given is not None:
+        return given
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    with open(os.path.join(directory, "used_parameters.yml")) as handle:
+        name = yaml.safe_load(handle)["GEARFeedback"]["ISRF_extinction_path"]
+    paths = {"kernel_diameter": 2.0, "kernel_radius": 1.0}
+    if name not in paths:
+        raise RuntimeError(f"Unknown GEARFeedback:ISRF_extinction_path {name!r}")
+    return paths[name]
+
+
+def optical_depths(
+    snap: Dict, path_in_kernel_radii: float, kernel_gamma: float, dust_to_gas: float
+) -> Dict[str, np.ndarray]:
+    """Return each gas particle's PE and LW dust optical depth.
+
+    Mirrors radiation_get_part_ISRF_extinction_factors and the chain below
+    it in radiation_isrf.c, entirely in physical CGS: converting the
+    comoving column to a physical one is exactly what the code's a^-2 does,
+    so no scale factor appears here beyond the per-dataset ones read_snapshot
+    already applied.
+
+    Parameters
+    ----------
+    snap
+        One snapshot as returned by read_snapshot.
+    path_in_kernel_radii
+        GEARFeedback:ISRF_extinction_path, in kernel support radii.
+    kernel_gamma
+        The binary's kernel_gamma.
+    dust_to_gas
+        The run's resolved Grackle chemistry_data.local_dust_to_gas_ratio.
+
+    Returns
+    -------
+    dict
+        The dimensionless optical depth of each particle, keyed by band.
+    """
+    column = path_in_kernel_radii * kernel_gamma * snap["h"] * snap["density"]
+    d_relative = (
+        np.maximum(snap["Z_smoothed"].astype(np.float64), 0.0)
+        / GRACKLE_SOLAR_METAL_FRACTION
+        * (dust_to_gas / GRACKLE_DEFAULT_DUST_TO_GAS_RATIO)
+    )
+    prefactor = d_relative / (MU_H * RADIATION_HYDROGEN_MASS_CGS) * column
+    return {band: SIGMA_D_CGS[band] * prefactor for band in ("PE", "LW")}
 
 
 def read_c_hyp_margin(pattern: str) -> float:
@@ -829,13 +934,32 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
 
 
 def check_injection(opt: argparse.Namespace) -> bool:
-    """Check sum_j m_j u_j = Delta_t L on the last snapshot."""
+    """Check one injection pass on the last snapshot.
+
+    At zero metallicity the extinction factor is 1 on every particle, so
+    sum_j m_j u_j = Delta_t L exactly. With dust that identity is false, and
+    config=injection_dusty gates the two weaker exact statements instead:
+    the per-particle band ratio, and the bracket on the weighted mean of
+    exp(-tau). See the ISRFInjectionConservation check, which carries the
+    same metric and the full derivation, for what they do and do not test.
+    """
     if opt.log is None:
         raise RuntimeError("--log is required for injection")
+    dusty = opt.config == "injection_dusty"
     run = load_run(opt.snapshots)
     last = run[-1]
-    if np.any(last["Z"] != 0.0):
-        raise RuntimeError("injection needs zero metallicity")
+    if not dusty and np.any(last["Z"] != 0.0):
+        raise RuntimeError(
+            "injection needs zero metallicity; use config=injection_dusty to "
+            "check the extinction identities at nonzero metallicity instead"
+        )
+    if dusty and "Z_smoothed" not in last:
+        raise RuntimeError(
+            "injection_dusty needs the SmoothedMetalMassFractions snapshot "
+            "field, which is the array the extinction chain reads"
+        )
+    if dusty and not np.any(last["Z_smoothed"] > 0.0):
+        raise RuntimeError("injection_dusty needs a nonzero metallicity")
     # The log prints Time with 7 significant digits, so take the step row
     # closest to the snapshot time and require it to lie within half a step.
     delta_t = None
@@ -862,12 +986,89 @@ def check_injection(opt: argparse.Namespace) -> bool:
         f"injection: cosmological={last['cosmological']}, a {last['a']:.6g}, "
         f"Delta_t {delta_t:.6e} internal"
     )
-    for band in ["PE", "LW"]:
-        lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
-            last["mass_unit"] * last["energy_unit"]
+    if not dusty:
+        for band in ["PE", "LW"]:
+            lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
+                last["mass_unit"] * last["energy_unit"]
+            )
+            rhs = delta_t * last[f"L_{band}"]
+            ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
+        return ok
+
+    path = read_extinction_path(opt.snapshots, opt.extinction_path)
+    tau = optical_depths(last, path, opt.kernel_gamma, opt.dust_to_gas_ratio)
+    print(
+        f"  column: path {path:g} kernel radii, kernel_gamma "
+        f"{opt.kernel_gamma:g}, local_dust_to_gas_ratio "
+        f"{opt.dust_to_gas_ratio:g}; smoothed Z max "
+        f"{np.max(last['Z_smoothed']):.6e}"
+    )
+
+    # A NaN compares false against every bound, so it would drop out of the
+    # `u > 0` selection below unnoticed rather than fail the gate.
+    for name, array in (
+        ("u_PE", last["u_PE"]),
+        ("u_LW", last["u_LW"]),
+        ("tau_PE", tau["PE"]),
+        ("tau_LW", tau["LW"]),
+        ("masses", last["mass"]),
+    ):
+        bad = int(np.sum(~np.isfinite(array)))
+        if bad:
+            print(f"  FAIL: {bad} non-finite {name} value(s) in the snapshot")
+            return False
+
+    for name in ("L_PE", "L_LW"):
+        if not np.isfinite(last[name]) or last[name] <= 0.0:
+            print(f"  FAIL: {name} must be finite and positive, got {last[name]}")
+            return False
+
+    lit_pe, lit_lw = last["u_PE"] > 0.0, last["u_LW"] > 0.0
+    if int(np.sum(lit_pe)) != int(np.sum(lit_lw)):
+        print(
+            f"  FAIL: the bands illuminate different particle counts, "
+            f"{int(np.sum(lit_pe))} PE against {int(np.sum(lit_lw))} LW"
         )
-        rhs = delta_t * last[f"L_{band}"]
-        ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
+        return False
+    if not np.any(lit_pe):
+        print("  FAIL: no illuminated gas particle")
+        return False
+
+    sigma_ratio = SIGMA_D_CGS["PE"] / SIGMA_D_CGS["LW"]
+    residual = (
+        np.log(last["u_PE"][lit_pe] / last["u_LW"][lit_pe])
+        - np.log(last["L_PE"] / last["L_LW"])
+        - (1.0 - sigma_ratio) * tau["LW"][lit_pe]
+    )
+    signal = abs((1.0 - sigma_ratio) * float(np.max(tau["LW"][lit_pe])))
+    print(
+        f"  tau_LW {np.min(tau['LW'][lit_pe]):.4f} to "
+        f"{np.max(tau['LW'][lit_pe]):.4f}, band-ratio signal {signal:.4f}, "
+        f"float32 budget {4.0 * FLOAT32_EPS / 2.0 + 3.0 * FLOAT32_EPS * signal:.2e}"
+    )
+    worst = float(np.max(np.abs(residual)))
+    if opt.dust_tol < 0.0:
+        print(f"  REPORT (no bar given): band-ratio residual max_j |R_j| = {worst:.3e}")
+        ok &= bool(np.isfinite(worst))
+    else:
+        ok &= gate("band-ratio residual (G2), max_j |R_j|", worst, opt.dust_tol)
+
+    for band in ("PE", "LW"):
+        measured = float(
+            np.sum(last["mass"] * last[f"u_{band}"])
+            / (last["mass_unit"] * last["energy_unit"])
+            / (delta_t * last[f"L_{band}"])
+        )
+        low = float(np.min(np.exp(-tau[band][lit_pe])))
+        high = float(np.max(np.exp(-tau[band][lit_pe])))
+        inside = bool(np.isfinite(measured)) and low * (
+            1.0 - 1e-5
+        ) <= measured <= high * (1.0 + 1e-5)
+        print(
+            f"  {'PASS' if inside else 'FAIL'}: weighted-mean extinction "
+            f"bracket (G1) {band}: {measured:.8f} in [{low:.8f}, {high:.8f}]"
+        )
+        ok &= inside
     return ok
 
 
@@ -879,6 +1080,7 @@ def main() -> int:
         "dust_absorption": check_dust_absorption,
         "photoelectric": check_photoelectric,
         "injection": check_injection,
+        "injection_dusty": check_injection,
     }
     ok = checks[opt.config](opt)
     print("RESULT: PASS" if ok else "RESULT: FAIL")

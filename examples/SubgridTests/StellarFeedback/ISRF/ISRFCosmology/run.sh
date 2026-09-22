@@ -6,7 +6,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # pipefail: swift is piped into tee, whose exit code would hide a crash.
 set -eo pipefail
 
-config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection or h2_shielded
+config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
 redshift=${redshift:=0}         #Starting redshift, 0 runs without cosmology
 
 # Physical inputs at the starting redshift, see README.
@@ -14,13 +14,15 @@ level_default=5
 gas_density_default=1        # atom/cm^3
 gas_mass_default=1           # Msun
 temperature_default=100      # K
-metallicity_default=0        # Z/Zsun
+metallicity_default=0        # Z/Zsun, or an absolute mass fraction when scale_metallicity=0
+scale_metallicity_default=1  # GEARChemistry:scale_initial_metallicity
 u_pe_default=0              # erg/g
 u_lw_default=0               # erg/g
 nH2_ratio_default=1e-8
 h2_self_shielding_default=3
 propagation_default=1
 c_hyp_pin_default=0          # km/s, 0 = off
+disable_cooling_default=0    # GrackleCooling:disable_cooling_for_debugging
 star_mass_default=0          # Msun, 0 = no star
 duration_default=0.22283119056961848  # internal time (218 Myr, z = 9 to a = 0.125)
 snapshots_default=40
@@ -52,7 +54,7 @@ case "$config" in
 	    u_lw_default=1.6e9
 	fi
 	;;
-    injection)
+    injection|injection_dusty)
 	gas_density_default=1e3
 	gas_mass_default=0.1
 	temperature_default=50
@@ -63,6 +65,19 @@ case "$config" in
 	steps_default=3
 	star_age_default=1e-6
 	max_star_dt_myr_default=10  # the star steps at dt_max
+	if [ "$config" = "injection_dusty" ]; then
+	    # Grackle's own solar metal mass fraction, absolute, so the
+	    # dust-to-gas ratio relative to the Milky Way is exactly 1 and both
+	    # bands are strongly and differently attenuated (see the README).
+	    metallicity_default=0.01295
+	    scale_metallicity_default=0
+	    # Metal cooling would otherwise drive the gas onto time-bins below
+	    # the star's, and the check reads the star's Delta_t from the step
+	    # table, which then reports the step's dt instead. The gas state is
+	    # held fixed so the snapshot's h and rho are the ones the injection
+	    # actually used.
+	    disable_cooling_default=1
+	fi
 	;;
     h2_shielded)
 	gas_density_default=1e3
@@ -88,6 +103,8 @@ gas_density=${gas_density:=$gas_density_default}
 gas_mass=${gas_mass:=$gas_mass_default}
 temperature=${temperature:=$temperature_default}
 metallicity=${metallicity:=$metallicity_default}
+scale_metallicity=${scale_metallicity:=$scale_metallicity_default}
+disable_cooling=${disable_cooling:=$disable_cooling_default}
 u_pe=${u_pe:=$u_pe_default}
 u_lw=${u_lw:=$u_lw_default}
 nH2_ratio=${nH2_ratio:=$nH2_ratio_default}
@@ -150,6 +167,8 @@ mkdir snap
 "$swift" --hydro --stars --external-gravity --feedback --cooling \
     --sync --limiter --verbose=0 --threads=$n_threads "${time_args[@]}" \
     -P GEARChemistry:initial_metallicity:$metallicity \
+    -P GEARChemistry:scale_initial_metallicity:$scale_metallicity \
+    -P GrackleCooling:disable_cooling_for_debugging:$disable_cooling \
     -P GrackleCooling:initial_nH2I_to_nH_ratio:$nH2_ratio \
     -P GrackleCooling:H2_self_shielding:$h2_self_shielding \
     -P GEARFeedback:ISRF_propagation:$propagation \
