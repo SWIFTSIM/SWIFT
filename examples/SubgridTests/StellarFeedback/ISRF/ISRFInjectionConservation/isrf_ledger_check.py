@@ -53,6 +53,17 @@ exactly 0, which this script reports as a hard error, not a silent 0/0.
 
 Fails on any non-finite E, Inj or Abs (never lets a NaN/Inf compare false
 against the bar and pass silently).
+
+Fails on a run that measured nothing: a snapshot with no gas, or a final
+snapshot whose |Inj| is still under --inj-floor, which would otherwise let
+every snapshot take the pre-injection branch and report a green ledger on a
+run in which the star never became a source.
+
+--require-live-absorption additionally fails a snapshot whose Abs is zero
+on every particle. On a fixture with dust or a Hubble term that state is
+unreachable, so it is the signal of a broken opacity rather than a property
+of the run; without the flag such a snapshot only prints a note, since a
+Z = 0 non-cosmological run reaches it legitimately.
 """
 
 import argparse
@@ -65,7 +76,8 @@ import numpy as np
 BANDS = ("PE", "LW")
 
 
-def parse_options():
+def parse_options() -> argparse.Namespace:
+    """Parse the command line."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "-s",
@@ -92,16 +104,50 @@ def parse_options():
         "PASS iff |E + Abs| is also below this floor, FAIL otherwise "
         "(default: %(default)s).",
     )
+    parser.add_argument(
+        "--require-live-absorption",
+        action="store_true",
+        help="Fail a snapshot whose Abs is zero on every particle. Set this "
+        "on a fixture that carries dust or runs with cosmology, where that "
+        "state cannot be reached and so reports a broken opacity.",
+    )
     return parser.parse_args()
 
 
-def check_snapshot(path, tol, inj_floor):
-    """Return True iff every band at this snapshot passes the ledger gate."""
+def check_snapshot(
+    path: str, tol: float, inj_floor: float, require_live_absorption: bool
+) -> tuple:
+    """Check the ledger of one snapshot, band by band.
+
+    Parameters
+    ----------
+    path : str
+        Snapshot file.
+    tol : float
+        Max allowed |E + Abs - Inj| / |Inj| per band.
+    inj_floor : float
+        |Inj| below which the snapshot is treated as pre-injection.
+    require_live_absorption : bool
+        Fail a band whose Abs is zero on every particle.
+
+    Returns
+    -------
+    tuple
+        (ok, n_gas, {band: Inj}), where ok is True iff every band passed.
+    """
     all_ok = True
+    injected = {}
     with h5py.File(path, "r") as f:
         time = float(np.asarray(f["/Header"].attrs["Time"]).flat[0])
         gas = f["/PartType0"]
         mass = gas["Masses"][:].astype(np.float64)
+
+        n_gas = int(mass.size)
+        if n_gas == 0:
+            # Every sum below would read 0.0 and every gate would pass on a
+            # snapshot that holds no measurement at all.
+            print(f"{path} t={time:.6e}: no gas particles -> FAIL")
+            return False, 0, {band: 0.0 for band in BANDS}
 
         for band in BANDS:
             # Per-band: one band's failure must never suppress the other's check.
@@ -138,7 +184,32 @@ def check_snapshot(path, tol, inj_floor):
                 all_ok = False
                 continue
 
+            injected[band] = Inj
             residual = E + Abs - Inj
+
+            # Abs is `(u_prev + dt*phi*dissipation_u)*(1-exp(-a)) +
+            # (...)*dt*(1-phi)` with `a = (c_hyp*kappa + H)*dt_prev`, so both
+            # of its terms vanish identically at `a = 0`. The gate then
+            # reduces to |E - Inj|/|Inj| and constrains nothing about the
+            # absorption accumulator. A run with dust or a Hubble term cannot
+            # reach that state, so there it means the opacity is broken, which
+            # is what --require-live-absorption gates on.
+            if abs(Inj) >= inj_floor and not np.any(absorbed):
+                if require_live_absorption:
+                    print(
+                        f"{path} t={time:.6e} {band}: Abs is identically 0 on "
+                        "every particle, which this fixture requires to be "
+                        "live -> FAIL"
+                    )
+                    all_ok = False
+                else:
+                    print(
+                        f"{path} t={time:.6e} {band}: Abs is identically 0 on "
+                        "every particle. The result below constrains "
+                        "|E - Inj| only, NOT the absorption accumulator. "
+                        "Expected at Z = 0 without cosmology; anywhere else "
+                        "it points at the dust opacity or the Hubble term."
+                    )
 
             if abs(Inj) < inj_floor:
                 # Pre-injection (or a run built without --enable-debugging-
@@ -147,6 +218,14 @@ def check_snapshot(path, tol, inj_floor):
                 passed = abs(residual) < inj_floor
                 metric = abs(residual)
                 note = " (|Inj| below floor: checked |E+Abs-Inj| directly)"
+                if Inj == 0.0 and not passed:
+                    note += (
+                        "; Inj is exactly 0, so either the binary was built "
+                        "without --enable-debugging-checks or the run set "
+                        "GEARFeedback:ISRF_propagation: 0. Only the "
+                        "propagation update writes these two fields, and only "
+                        "under that build flag"
+                    )
             else:
                 metric = abs(residual) / abs(Inj)
                 passed = metric <= tol
@@ -160,18 +239,39 @@ def check_snapshot(path, tol, inj_floor):
             )
             all_ok = all_ok and passed
 
-    return all_ok
+    return all_ok, n_gas, injected
 
 
-def main():
+def main() -> None:
+    """Check every matching snapshot and exit nonzero on any failure."""
     opt = parse_options()
     files = sorted(glob.glob(opt.snapshot))
     if not files:
         raise RuntimeError(f"No snapshots match {opt.snapshot}")
 
     all_ok = True
+    injected = {}
     for path in files:
-        all_ok = check_snapshot(path, opt.tol, opt.inj_floor) and all_ok
+        ok, _, injected = check_snapshot(
+            path, opt.tol, opt.inj_floor, opt.require_live_absorption
+        )
+        all_ok = ok and all_ok
+
+    # Every snapshot of a run that injected nothing takes the pre-injection
+    # branch and passes, so the ledger closes on a run it never constrained.
+    for band in BANDS:
+        if band not in injected:
+            # The band failed at the final snapshot before Inj could be
+            # summed, and is already reported there.
+            continue
+        Inj = injected[band]
+        if not (abs(Inj) > opt.inj_floor):
+            print(
+                f"{files[-1]} {band}: |Inj|={abs(Inj):.6e} is not above the "
+                f"floor {opt.inj_floor:.3e} at the final snapshot, so nothing "
+                "was injected over the whole run -> FAIL"
+            )
+            all_ok = False
 
     if not all_ok:
         sys.exit(1)

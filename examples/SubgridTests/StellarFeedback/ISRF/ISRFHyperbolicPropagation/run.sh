@@ -92,6 +92,30 @@ printf "Running simulation..."
 # prediction, not against a continuum profile (see README).
 python3 isrf_hyperbolic_propagation_check.py
 
+# The running energy ledger, |E + Abs - Inj|/|Inj| per band per snapshot.
+# The two cumulative fields it reads are written only by the propagation
+# update and only under --enable-debugging-checks, so on any other build
+# they read exactly 0 and the check has nothing to measure; skip it there
+# rather than report a meaningless failure (see README).
+# `swift --version` exits nonzero (it is not a real option, it just prints
+# the banner), so the build flag is matched on a captured string.
+# --require-live-absorption: this example runs at Z > 0, where the dust
+# opacity makes the absorption accumulator a live term, so an all-zero Abs
+# is a broken opacity rather than a property of the fixture (see README).
+swift_banner=$(../../../../../swift --version 2>&1 || true)
+case "$swift_banner" in
+    *enable-debugging-checks=no*|*disable-debugging-checks*)
+	echo "Skipping isrf_ledger_check.py: swift was not built with --enable-debugging-checks."
+	;;
+    *enable-debugging-checks*)
+	python3 ../ISRFInjectionConservation/isrf_ledger_check.py \
+		-s 'snap/snapshot_*.hdf5' --require-live-absorption
+	;;
+    *)
+	echo "Skipping isrf_ledger_check.py: swift was not built with --enable-debugging-checks."
+	;;
+esac
+
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
 else

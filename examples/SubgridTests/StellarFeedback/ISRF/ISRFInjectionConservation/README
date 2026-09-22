@@ -133,6 +133,13 @@ and absorbed specific energies. It needs a run with
 `GEARFeedback:ISRF_propagation: 1`, since only the propagation update
 writes those two fields, and a binary configured with
 `--enable-debugging-checks`, which is what makes them anything but zero.
-This example runs with propagation off, so `run.sh` does not invoke it;
-point it at the run directory of a propagation example such as
-`ISRFHyperbolicPropagation` instead.
+Both configurations of this example run with propagation off, so `run.sh`
+does not invoke it; pointed here it fails on `Inj = 0`, which is the same
+signal it gives on a run whose star never became a source. Its home is
+`ISRFHyperbolicPropagation`, whose `run.sh` runs it on a
+`--enable-debugging-checks` build; point it at any other propagation run's
+snapshots with `-s` as above.
+
+Add `--require-live-absorption` on a run that carries dust or runs with
+cosmology, where `Abs` cannot legitimately be zero on every particle and
+so reports a broken opacity.

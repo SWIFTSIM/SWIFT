@@ -45,6 +45,10 @@ themselves live on `struct part`'s `feedback_data`). The Grackle cooling
 mode is not critical here (only `chemistry_data` needs resolving, not any
 mode-gated species network).
 
+Add `--enable-debugging-checks` to also run the energy-ledger check
+described under `Checking`. Without it the two cumulative fields that check
+reads are not carried on the particle and the check is skipped.
+
 # Run
 ```
 ./run.sh
@@ -87,3 +91,24 @@ realized in the compared range is printed too, so a reader can see whether
 the run sits on the free-streaming or the diffusive branch. Produces a
 comparison plot (`--output`, default
 `isrf_hyperbolic_propagation_check.png`).
+
+```
+python3 ../ISRFInjectionConservation/isrf_ledger_check.py -s 'snap/snapshot_*.hdf5'
+```
+The running energy ledger, checked at every snapshot rather than only the
+last one. Per band it sums the carried field `E`, the cumulative injected
+dose `Inj` and the cumulative absorbed/relaxed energy `Abs` over every gas
+particle and gates `|E + Abs - Inj| / |Inj|` (`--tol`, default 1e-3); see
+the script's own docstring for what that residual isolates. It also fails
+a snapshot holding no gas, a run whose final `|Inj|` is still under
+`--inj-floor`, and any non-finite entry.
+
+`run.sh` runs it only on a binary built with `--enable-debugging-checks`,
+which is what makes `Inj` and `Abs` nonzero, and prints a skip line
+otherwise. It also needs `ISRF_propagation: 1`, since only the propagation
+update writes those two fields; this example has it on by default.
+
+`run.sh` passes `--require-live-absorption`, which fails a snapshot whose
+`Abs` is zero on every particle. At this example's `initial_metallicity: 1`
+the dust opacity keeps `Abs` live, so that state is unreachable here and
+reports a broken opacity.
