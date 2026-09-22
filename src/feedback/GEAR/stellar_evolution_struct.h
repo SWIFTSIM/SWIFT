@@ -260,6 +260,26 @@ struct radiation {
       struct interpolation_2d l_lw_2d;
     };
 
+    union {
+      /*! Photon-number-weighted mean Lyman-Werner photon energy of a
+          single star, L_LW/Q_LW over 11.2-13.6 eV, from pychem's
+          "MeanPhotonEnergyLW" dataset when present
+          (#has_mean_photon_energy_lw). Held in cgs erg, NOT internal
+          energy units, matching the same mixed-unit convention
+          #dot_E_excess/#dot_N_ion's ratio already produces for
+          mean_excess_photon_energy_HI. Same log-log storage as
+          #luminosities.
+
+          Below pychem's own LW mass floor, where L_LW is forced to zero
+          and Q_LW with it, the table holds the 11.2-13.6 eV band
+          midpoint (12.4 eV in erg) rather than a measured mean: a
+          finite, in-band placeholder, not a stellar-atmosphere result. */
+      struct interpolation_1d mean_photon_energy_lw;
+
+      /*! #mean_photon_energy_lw, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_lw_2d;
+    };
+
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
         metallicity, 2D-only. Stored as log10(Myr), NOT log10(internal
         units) like the fields above: it is only ever compared against a
@@ -327,6 +347,29 @@ struct radiation {
       /*! #l_lw, mass x metallicity variant. */
       struct interpolation_2d l_lw_2d;
     };
+
+    union {
+      /*! Photon-number-weighted mean Lyman-Werner photon energy of the
+          whole population formed between the IMF's own mass_min and each
+          tabulated mass, from pychem's "Integrated_MeanPhotonEnergyLW"
+          dataset. In cgs erg, like #raw.mean_photon_energy_lw.
+
+          Unlike every other "Integrated_*" dataset this is INTENSIVE, not
+          per Msun of stars formed: it is the ratio
+          Integrated_L_LW/Integrated_Q_LW of two cumulative integrals, so
+          it must not be rescaled by a star particle's birth mass. It is
+          also not a cumulative quantity a consumer may difference across
+          a mass window: a difference of two ratios is not the ratio over
+          the window, and pychem does not export Integrated_Q_LW, so no
+          window mean is recoverable. Only the [mass_min, m] value the
+          dataset itself tabulates is meaningful. Stored logged, unlike
+          the linear "Integrated_*" fields above, because it is read as a
+          value at a single mass rather than as a difference. */
+      struct interpolation_1d mean_photon_energy_lw;
+
+      /*! #mean_photon_energy_lw, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_lw_2d;
+    };
   } integrated;
 
   /*! Is this a mass x metallicity ("M,Z") table rather than mass-only
@@ -392,6 +435,14 @@ struct radiation {
       none, and must still load: every read of #raw.teff is gated on this
       flag. */
   char has_teff;
+
+  /*! Does this table carry pychem's "MeanPhotonEnergyLW" and
+      "Integrated_MeanPhotonEnergyLW" datasets? Both are optional: a table
+      generated before pychem exported them leaves
+      #raw.mean_photon_energy_lw / #integrated.mean_photon_energy_lw
+      unbuilt, and every consumer must fall back to
+      #RADIATION_LW_PHOTON_ENERGY_EV instead of reading them. */
+  char has_mean_photon_energy_lw;
 };
 
 /**
