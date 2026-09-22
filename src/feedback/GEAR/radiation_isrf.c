@@ -1064,7 +1064,8 @@ void radiation_end_gradient_propagation(struct part *p,
  * @param cooling The cooling function properties.
  * @return Comoving extinction path length.
  */
-float radiation_get_comoving_extinction_path(
+__attribute__((always_inline)) INLINE float
+radiation_get_comoving_extinction_path(
     const struct feedback_props *fb_props, const struct part *p,
     const struct xpart *xp, const float r, const struct cosmology *cosmo,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,

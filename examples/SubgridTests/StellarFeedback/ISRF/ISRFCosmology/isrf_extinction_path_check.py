@@ -16,6 +16,11 @@ ratio of its injected band energy to that of a leg run with a negligible
 path. The score of a mechanism is log10(tau_code / tau_exact); zero means it
 reproduces the exact uniform-geometry answer.
 
+This RANKS mechanisms; it does not gate the shipped default. It passes when
+the best candidate reaches the bar, so running it on the default alone fails
+by construction: one kernel support radius is not the exact answer and is not
+meant to be.
+
 What this check cannot do: in a uniform box the pair_separation mechanism
 computes exp(-kappa rho_j r) while the reference computes
 exp(-kappa_eff rho r), so the two differ only by the SPH density estimate. A

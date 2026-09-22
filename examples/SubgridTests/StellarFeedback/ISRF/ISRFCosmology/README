@@ -126,6 +126,7 @@ config=injection_dusty extinction_path=temperature_capped_jeans \
 python3 isrf_extinction_path_check.py thin R1 pairsep jeans
 ```
 The check prints each leg's injection-weighted optical depth and its distance
-in dex from the exact one, and fails if no candidate reaches the bar. A `Z = 0`
-run is not a valid reference here: the star's band luminosity depends on
-metallicity.
+in dex from the exact one, and fails if no candidate reaches the bar. It ranks
+mechanisms against each other; it is not a pass/fail gate on any single one,
+so give it more than one candidate. A `Z = 0` run is not a valid reference
+here: the star's band luminosity depends on metallicity.
