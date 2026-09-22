@@ -73,7 +73,7 @@ INLINE static void set_Til_iron(struct Til_params *Til,
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
 #ifdef MATERIAL_STRENGTH
-  Til->P_min = -FLT_MIN;
+  Til->P_min = -FLT_MAX;
 #else
   Til->P_min = 0.01f;
 #endif /* MATERIAL_STRENGTH */
@@ -99,7 +99,7 @@ INLINE static void set_Til_granite(struct Til_params *Til,
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
 #ifdef MATERIAL_STRENGTH
-  Til->P_min = -FLT_MIN;
+  Til->P_min = -FLT_MAX;
 #else
   Til->P_min = 0.01f;
 #endif /* MATERIAL_STRENGTH */
@@ -125,7 +125,7 @@ INLINE static void set_Til_basalt(struct Til_params *Til,
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
 #ifdef MATERIAL_STRENGTH
-  Til->P_min = -FLT_MIN;
+  Til->P_min = -FLT_MAX;
 #else
   Til->P_min = 0.01f;
 #endif /* MATERIAL_STRENGTH */
@@ -151,7 +151,7 @@ INLINE static void set_Til_water(struct Til_params *Til,
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
 #ifdef MATERIAL_STRENGTH
-  Til->P_min = -FLT_MIN;
+  Til->P_min = -FLT_MAX;
 #else
   Til->P_min = 0.01f;
 #endif /* MATERIAL_STRENGTH */
@@ -177,7 +177,7 @@ INLINE static void set_Til_ice(struct Til_params *Til,
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
 #ifdef MATERIAL_STRENGTH
-  Til->P_min = -FLT_MIN;
+  Til->P_min = -FLT_MAX;
 #else
   Til->P_min = 0.0f;
 #endif /* MATERIAL_STRENGTH */
