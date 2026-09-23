@@ -145,12 +145,15 @@ def mode_P(opt):
             np.max(np.abs(ref_u_lw)), 1e-300
         )
         excluded = bool(drift_void[i])
+        # One verdict drives both the printed status and `all_pass`: as two
+        # comparisons they negated each other only for finite values, so a
+        # non-finite D printed FAIL, kept `all_pass` and exited 0.
+        worst = max(d_pe, d_lw)
+        run_pass = bool(valid and np.isfinite(worst) and worst <= opt.tol_d)
         status = (
-            "EXCLUDED (drift > 0.1h)"
-            if excluded
-            else ("PASS" if valid and max(d_pe, d_lw) <= opt.tol_d else "FAIL")
+            "EXCLUDED (drift > 0.1h)" if excluded else ("PASS" if run_pass else "FAIL")
         )
-        if not excluded and valid and max(d_pe, d_lw) > opt.tol_d:
+        if not excluded and not run_pass:
             all_pass = False
         print(f"{d}: D_PE={d_pe:.3e}  D_LW={d_lw:.3e}  -> {status}")
     print(
