@@ -34,6 +34,16 @@ is marked void, folded into the same top-level `void` flag the
 KH-contamination check uses, so `shear_compare.py`'s existing gate skips
 it without further changes. A_energy keeps the raw weight: it is what
 conservation acts on.
+
+Exit codes. This script sets no bar of its own, by design, so it never
+returns a pass/fail on the physics. It does refuse to hand a bad number to
+`shear_compare.py`:
+
+  0  metrics written, every one of them finite;
+  1  a non-finite specific energy in a snapshot, or a non-finite metric
+     (the degenerate branches below emit NaN when a denominator vanishes);
+  2  metrics written and finite, but the run is VOID, so `shear_compare.py`
+     must not gate on it.
 """
 
 import argparse
@@ -55,6 +65,36 @@ KH_VOID_THRESHOLD = (
 DRHO_VOID_THRESHOLD = (
     0.10  # max relative density drift above which the layer voids the run
 )
+
+
+def check_finite(name, arr, where):
+    """Raise if `arr` holds a NaN or an infinite value.
+
+    A NaN compares False against every bar, and a nan-ignoring reduction
+    drops it silently, so a non-finite value must stop the reduction rather
+    than reach it.
+
+    Parameters
+    ----------
+    name : str
+        Human-readable name of the quantity.
+    arr : array_like
+        Values to test.
+    where : str
+        Where the values came from, for the message.
+
+    Raises
+    ------
+    RuntimeError
+        If any element is not finite.
+    """
+    a = np.asarray(arr)
+    n_bad = int(np.sum(~np.isfinite(a)))
+    if n_bad > 0:
+        raise RuntimeError(
+            f"{where}: {n_bad}/{a.size} non-finite value(s) in {name} -- "
+            f"refusing to reduce a corrupted field."
+        )
 
 
 def parse_options():
@@ -322,6 +362,10 @@ def main():
         f"Validity: {'VOID' if void else 'OK'} (kh>0.05 or drho>0.10 at last snapshot)"
     )
 
+    for band, key in (("PE", "u_pe"), ("LW", "u_lw")):
+        check_finite(f"{band} specific energy, first snapshot", snap0[key], "snap 0")
+        check_finite(f"{band} specific energy, last snapshot", snap_last[key], "snap N")
+
     # M-S0: population imbalance (report; gate applied once at the smoke-test stage).
     metrics = dict(
         h_med=h_med_last,
@@ -454,14 +498,23 @@ def main():
                     np.digitize(pos_last[sel, 0], x_edges) - 1, 0, opt.n_x_bins - 1
                 )
                 means = np.full(opt.n_x_bins, np.nan)
+                populated = np.zeros(opt.n_x_bins, dtype=bool)
                 for ix in range(opt.n_x_bins):
                     m = x_idx == ix
                     if m.sum() > 0:
                         means[ix] = u_last[sel][m].mean()
-                valid = ~np.isnan(means)
-                if valid.sum() > 1 and np.mean(means[valid]) != 0:
-                    ratio = np.std(means[valid]) / abs(np.mean(means[valid]))
-                    worst = max(worst, ratio)
+                        populated[ix] = True
+                # `populated` drops EMPTY bins only. A non-finite mean in a
+                # populated bin is evidence, not missing data, and u_last was
+                # already checked, so it cannot arise silently here.
+                check_finite(
+                    f"{band} x-bin means, y slab {iy}", means[populated], "snap N"
+                )
+                if populated.sum() > 1 and np.mean(means[populated]) != 0:
+                    ratio = np.std(means[populated]) / abs(np.mean(means[populated]))
+                    # np.fmax would return the finite operand; np.maximum
+                    # propagates a NaN, which is what a gate must do.
+                    worst = float(np.maximum(worst, ratio))
             print(f"{band}: A_xstructure = {worst:.4e}")
             results[band] = dict(A_xstructure=worst)
         metrics["bands"] = results
@@ -469,6 +522,27 @@ def main():
     with open(opt.json_out, "w") as f:
         json.dump(metrics, f, indent=2)
     print(f"\nMetrics written to {opt.json_out}")
+
+    # A metric reached shear_compare.py as a NaN sentinel whenever one of the
+    # degenerate branches above fired. Name it and exit non-zero instead.
+    bad = sorted(
+        f"{band}.{name}"
+        for band, row in metrics.get("bands", {}).items()
+        for name, value in row.items()
+        if isinstance(value, float) and not np.isfinite(value)
+    )
+    bad += sorted(
+        name
+        for name, value in metrics.items()
+        if isinstance(value, float) and not np.isfinite(value)
+    )
+    if bad:
+        print(
+            "\nFAIL: non-finite metric(s) " + ", ".join(bad) + ". A vanishing "
+            "denominator or an empty blob produced them; shear_compare.py must "
+            "not gate on this run."
+        )
+        sys.exit(1)
 
     if void:
         reasons = []
@@ -482,6 +556,7 @@ def main():
             f"\nVALIDITY WARNING: this run is VOID ({', '.join(reasons)}) -- "
             "M-S1/S2/S3 results above should not be trusted."
         )
+        sys.exit(2)
 
 
 if __name__ == "__main__":

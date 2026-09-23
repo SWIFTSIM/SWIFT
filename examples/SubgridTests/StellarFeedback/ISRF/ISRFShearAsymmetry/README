@@ -99,6 +99,12 @@ it, so an existing run directory from before this weighting change must
 have its `isrf_shear_asymmetry_check.py` rerun before it can be gated
 against a freshly-generated one.
 
+The per-run check sets no bar of its own: the pass/fail comparison lives in
+`shear_compare.py` and `shear_compare_ensemble.py`. It exits 0 when every
+metric is finite, 1 when a snapshot holds a non-finite specific energy or a
+metric comes out non-finite, and 2 when the metrics are sound but the run is
+VOID. `run.sh` keeps a VOID run's outputs and passes the 2 on.
+
 The gate is self-calibrating, not an absolute threshold: a sheared run
 passes a given metric if `|A_k| <= max(3*|A_k(0)|, floor)`, where `A_k(0)`
 is the same metric measured in the matching zero-shear control run in the

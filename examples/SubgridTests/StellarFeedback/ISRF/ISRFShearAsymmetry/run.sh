@@ -107,8 +107,14 @@ printf "Running simulation..."
 		   params.yml 2>&1 | tee output.log
 
 # Per-run metrics (asymmetry, KH-contamination control); see README.
+# Exit 2 means the metrics are sound but the run is VOID. Its outputs are
+# still worth keeping, so move them first and report the status at the end.
+check_status=0
 python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry \
-    --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
+    --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin || check_status=$?
+if [ "$check_status" != "0" ] && [ "$check_status" != "2" ]; then
+    exit "$check_status"
+fi
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
@@ -127,3 +133,5 @@ else
 	mv shear_metrics.json $run_name
     fi
 fi
+
+exit $check_status
