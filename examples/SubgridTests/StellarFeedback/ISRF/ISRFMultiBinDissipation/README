@@ -18,8 +18,9 @@ is what makes the timestep-bin split possible at equal particle spacing --
 and which degrades the SPH density estimate within about one kernel radius
 of the phase plane, since particles on either side of that layer have very
 different masses. `isrf_multibin_dissipation_check.py` reports `rho_match`
-(the kernel-mean density at each moving-source position) as a control on how
-well the two same-phase sources are actually matched.
+(the kernel-mean density at each moving-source position, at that source's own
+position in the snapshot being read) as a control on how well the two
+same-phase sources are actually matched.
 
 ## Sources and geometry
 `--variant twophase` (default) places three stars at `x = L/4` (star B, deep
@@ -93,10 +94,13 @@ python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-
 python3 multibin_compare.py --mode gate --s0 s0_dir --m0 m0_dir --m1 m1_dir --m2 m2_dir --m4 m4_dir --m5 m5_dir [--m3 m3_dir]
 python3 multibin_compare.py --mode report --runs dir1 dir2 ...
 ```
-`run.sh` runs the per-run check automatically (report-only, never exits
-nonzero) and writes `multibin_metrics.json`. It reconstructs the force
-loop's dissipation accumulator from snapshot fields (not itself a snapshot
-field): the transverse dipole `d_x` (bin-boundary normal) and total
+`run.sh` runs the per-run check automatically and writes
+`multibin_metrics.json`. The dipole metrics are report-only; the check exits
+nonzero only when the metrics file itself cannot be trusted, namely when its
+time-step reconstruction is not the power-of-two floor of the analytic step or
+when any reduction the cross-run gate reads is non-finite. It reconstructs the
+force loop's dissipation accumulator from snapshot fields (not itself a
+snapshot field): the transverse dipole `d_x` (bin-boundary normal) and total
 displacement `|d|`, both in units of `h`, per star, per band, per snapshot;
 the negative-weight share and `void` flag on the underlying `sum(m*u)`
 moment (the same discipline as `ISRFShearAsymmetry`'s shear metric); the

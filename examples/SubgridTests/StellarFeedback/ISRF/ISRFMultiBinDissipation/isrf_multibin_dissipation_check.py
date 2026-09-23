@@ -148,6 +148,7 @@ def load_snapshot(path):
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][:, :]
+        star_ids = star["ParticleIDs"][:]
     return dict(
         time=time,
         boxsize=boxsize,
@@ -164,7 +165,32 @@ def load_snapshot(path):
         alpha_lw=alpha_lw,
         Z=Z,
         star_pos=star_pos,
+        star_ids=star_ids,
     )
+
+
+def star_id_by_name(star_names, n_gas):
+    """Map each star's name to its ParticleID.
+
+    makeIC.py writes the star IDs as `N + 1 .. N + N_star` in the same order
+    as `star_names`, so the name-to-ID map is fixed by the IC.
+    """
+    return {name: n_gas + 1 + k for k, name in enumerate(star_names)}
+
+
+def star_position(snap, star_id):
+    """The star's coordinates in THIS snapshot.
+
+    The stars move (makeIC.py gives them a velocity along +y), so every
+    moment origin, window centre and sample point must follow them. Taking
+    the IC position instead measures the field about a place the star has
+    left, which at the shipped `time_end` is several smoothing lengths
+    inside a window only `--r-cut-h` wide.
+    """
+    match = np.where(snap["star_ids"] == star_id)[0]
+    if len(match) != 1:
+        raise RuntimeError(f"star ParticleID {star_id} is not unique in the snapshot")
+    return np.asarray(snap["star_pos"][match[0]], dtype=np.float64)
 
 
 def radial_distance(pos, ref, boxsize):
@@ -303,7 +329,6 @@ def main():
     m_hot = ic["m_hot"]
     bin_delta = ic["bin_delta"]
     variant = ic["variant"]
-    star_positions = ic["star_positions"]  # name -> [x, y, z]
     star_names = ic["star_names"]
 
     used_params = {}
@@ -313,6 +338,8 @@ def main():
 
     with h5py.File(files[0], "r") as f:
         n_gas = f["/PartType0/Coordinates"].shape[0]
+
+    star_ids = star_id_by_name(star_names, n_gas)
 
     # --- bin reconstruction from timesteps.txt ---
     # dt_cold_realized: the coarse phase's own real period, from the modal
@@ -398,6 +425,26 @@ def main():
     snaps = [load_snapshot(fn) for fn in files]
     first, last = snaps[0], snaps[-1]
 
+    for snap in snaps:
+        if set(snap["star_ids"].tolist()) != set(star_ids.values()):
+            raise RuntimeError(
+                "the snapshot's star ParticleIDs do not match the IC's "
+                f"{sorted(star_ids.values())}; the name-to-star map is "
+                "unusable, so no dipole can be attributed to a named star"
+            )
+
+    star_travel_h = {
+        name: float(
+            np.linalg.norm(star_position(last, sid) - star_position(first, sid))
+        )
+        / h_median
+        for name, sid in star_ids.items()
+    }
+    print(
+        "star travel over the run (/h): "
+        + "  ".join(f"{n}={v:.4f}" for n, v in star_travel_h.items())
+    )
+
     # SWIFT's particle array order is NOT stable across snapshots (confirmed:
     # cell-based spatial sorting reorders the array, especially with two
     # very different particle masses in the same box); any first-vs-last
@@ -423,14 +470,22 @@ def main():
         rho0 = np.median(first["rho"][sel])
         rho1 = np.median(last_rho_aligned[sel])
         drho_by_phase[label] = abs(rho1 - rho0) / rho0 if rho0 > 0 else np.nan
-    drho_max = max(drho_by_phase.values()) if drho_by_phase else 0.0
+    # np.max, not the builtin: `max(a, nan)` returns `a`, so a phase whose
+    # density reduction is non-finite would be dropped instead of reported.
+    drho_max = (
+        float(np.max(np.array(list(drho_by_phase.values()), dtype=np.float64)))
+        if drho_by_phase
+        else 0.0
+    )
 
     last_pos_aligned = last["pos"][align]
     dx, dr = radial_distance(last_pos_aligned, first["pos"], L)
     dx_gas_h = float(np.median(dr)) / h_median
 
-    void_drho = drho_max > DRHO_VOID_THRESHOLD
-    void_dx_gas = dx_gas_h > DX_GAS_VOID_THRESHOLD_H
+    # `nan > threshold` is False, so the comparison alone reads a non-finite
+    # contamination control as clean. Test finiteness first.
+    void_drho = not np.isfinite(drho_max) or drho_max > DRHO_VOID_THRESHOLD
+    void_dx_gas = not np.isfinite(dx_gas_h) or dx_gas_h > DX_GAS_VOID_THRESHOLD_H
     print(
         f"drho (max over phases)  = {drho_max*100:.3f}%  -> {'VOID' if void_drho else 'ok'}"
     )
@@ -441,12 +496,12 @@ def main():
     # rho_match, A vs B (twophase only)
     rho_match = None
     ab_matched = True
-    if variant == "twophase" and "A" in star_positions and "B" in star_positions:
+    if variant == "twophase" and "A" in star_ids and "B" in star_ids:
         rho_A = kernel_mean_at_point(
-            np.array(star_positions["A"]), last["pos"], last["h"], last["rho"], L
+            star_position(last, star_ids["A"]), last["pos"], last["h"], last["rho"], L
         )
         rho_B = kernel_mean_at_point(
-            np.array(star_positions["B"]), last["pos"], last["h"], last["rho"], L
+            star_position(last, star_ids["B"]), last["pos"], last["h"], last["rho"], L
         )
         rho_match = abs(rho_A / rho_B - 1.0) if rho_B else np.nan
         ab_matched = rho_match <= RHO_MATCH_THRESHOLD
@@ -492,7 +547,7 @@ def main():
             conservation[band].append((snap["time"], float(np.sum(mass * u))))
 
             for name in star_names:
-                star_pos = np.array(star_positions[name])
+                star_pos = star_position(snap, star_ids[name])
                 dxs, rs = radial_distance(pos, star_pos, L)
                 window = rs < (R_cut + 2.0) * h_median
                 if window.sum() < 10:
@@ -523,12 +578,19 @@ def main():
                 c_hyp_t = c_hyp_w[tight]
                 kappa_t = kappa[band][w_idx][tight]
 
-                neg_share = (
-                    np.sum(mt * np.maximum(-ut, 0.0)) / np.sum(mt * np.abs(ut))
-                    if np.sum(mt * np.abs(ut)) > 0
-                    else 0.0
+                # A non-finite u makes both sums non-finite, and `nan > 0` is
+                # False, so the plain guard would report a clean 0.0 share.
+                # Carry the non-finite value into the void flag instead.
+                weight = float(np.sum(mt * np.abs(ut)))
+                if not np.isfinite(weight):
+                    neg_share = float("nan")
+                elif weight > 0:
+                    neg_share = float(np.sum(mt * np.maximum(-ut, 0.0)) / weight)
+                else:
+                    neg_share = 0.0
+                is_void = not np.isfinite(neg_share) or (
+                    neg_share > NEG_WEIGHT_VOID_THRESHOLD
                 )
-                is_void = neg_share > NEG_WEIGHT_VOID_THRESHOLD
 
                 M0_pos = np.sum(mt * np.maximum(ut, 0.0))
                 M0_signed = np.sum(mt * ut)
@@ -584,7 +646,7 @@ def main():
 
     # --- M3 mechanism diagnostic at star A, last snapshot ---
     m3 = {}
-    if "A" in star_positions:
+    if "A" in star_ids:
         snap = last
         pos, h, mass, rho = snap["pos"], snap["h"], snap["mass"], snap["rho"]
         is_hot = (
@@ -598,7 +660,7 @@ def main():
             if c_pin > 0.0
             else np.minimum(C_hyp * h / dt_i, SPEED_OF_LIGHT_KM_S)
         )
-        star_pos = np.array(star_positions["A"])
+        star_pos = star_position(snap, star_ids["A"])
         _, rs = radial_distance(pos, star_pos, L)
         window = rs < (R_cut + 2.0) * h_median
         w_idx = np.where(window)[0]
@@ -727,8 +789,34 @@ def main():
         json.dump(out, f, indent=2, default=lambda o: None)
     print(f"\n{opt.json_out} saved.")
 
-    # Never exits nonzero: report-only, per the family's run.sh convention.
-    sys.exit(0)
+    # The dipole metrics are report-only by design; the cross-run gate lives
+    # in multibin_compare.py. Two things are NOT report-only and exit
+    # nonzero here, because they say the metrics file itself cannot be
+    # trusted: a time-step reconstruction that is not the power-of-two floor
+    # of the analytic step, and a non-finite value in any reduction the
+    # cross-run gate reads.
+    non_finite = [
+        label
+        for label, value in (
+            ("dt_cold_realized", dt_cold_realized),
+            ("dt_hot_realized", dt_hot_realized),
+            ("drho_max", drho_max),
+            ("dx_gas_h", dx_gas_h),
+            ("v_over_c_hyp_realized", v_over_c_hyp_realized),
+        )
+        if not np.isfinite(value)
+    ]
+    for name in star_names:
+        for band in ("PE", "LW"):
+            for point in per_star_series[name][band]:
+                if not np.isfinite(point["neg_weight_share"]):
+                    non_finite.append(f"neg_weight_share[{name}][{band}]")
+                    break
+    if non_finite:
+        print(f"FAIL: non-finite metrics: {sorted(set(non_finite))}")
+    if invalid_bin_dt:
+        print("FAIL: the time-step reconstruction is INVALID, see above.")
+    sys.exit(1 if (invalid_bin_dt or non_finite) else 0)
 
 
 if __name__ == "__main__":

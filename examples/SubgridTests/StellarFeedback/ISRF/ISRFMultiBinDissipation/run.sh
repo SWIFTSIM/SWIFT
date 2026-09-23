@@ -106,8 +106,13 @@ printf "Running simulation..."
 		   -P SPH:initial_temperature:0 \
 		   params.yml 2>&1 | tee output.log
 
-# Per-run metrics (report-only, never exits nonzero); see README.
-python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-pin $c_hyp_pin
+# Per-run metrics; see README. The dipoles are report-only, but the check
+# exits nonzero if its own time-step reconstruction is invalid or any
+# reduction is non-finite. Capture that status instead of letting `set -e`
+# abort before the outputs are moved: the next run removes snap/.
+check_status=0
+python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin \
+	--c-hyp-pin $c_hyp_pin || check_status=$?
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
@@ -127,3 +132,5 @@ else
 	mv multibin_ic.json $run_name
     fi
 fi
+
+exit $check_status
