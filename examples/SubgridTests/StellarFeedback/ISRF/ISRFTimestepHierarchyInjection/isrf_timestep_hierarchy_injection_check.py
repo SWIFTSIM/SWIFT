@@ -37,6 +37,12 @@ the lag's step quantisation as a drift and reports a spurious violation
 even on a single-bin control, so the slope is printed as a diagnostic and
 compared against nothing.
 
+The single-bin control attains the window's upper edge exactly, by
+construction: every cadence in it is equal, so each hand-off stage is
+always either exactly full or exactly empty. The window is not widened to
+leave that leg any headroom, so a failure there reports that the step
+alignment changed, not that energy conservation broke.
+
 Every gated value is tested for finiteness before it is compared, and the
 script exits nonzero on any failure.
 """
@@ -252,6 +258,12 @@ def lag_window(dt_gas: float, dt_star: float) -> tuple[float, float]:
 
     The window is therefore `[-dt_star, dt_star + dt_gas + max(dt_gas,
     dt_star)]`, in units of the luminosity, that is, a time.
+
+    When every cadence is equal, as in the single-bin control, each stage
+    is always either exactly full or exactly empty and the upper edge is
+    attained rather than approached. That leg is expected to sit on the
+    edge to within the float32 rounding of the energy sum, so a failure
+    there means the step alignment changed, not that conservation broke.
 
     Parameters
     ----------

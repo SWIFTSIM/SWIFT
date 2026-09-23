@@ -21,6 +21,15 @@ quantised in whole particle steps, which a fitted slope reads as a drift
 and reports as a spurious violation even on a single-bin control, so the
 slope is printed as a diagnostic and compared against nothing.
 
+The single-bin control attains that upper edge exactly, by construction.
+Every cadence in it is equal, so each of the three hand-off stages is
+always either exactly full or exactly empty, and the measured lag sits on
+the window's upper edge to within the float32 rounding of the energy sum.
+The window is therefore not widened to leave the control any headroom: a
+failure on the single-bin leg reports that the step alignment changed, not
+that energy conservation broke. The hierarchy run, whose cadences differ
+between the stages, sits well inside the same window.
+
 **There is no steady-state comparison, by design.** The box is not
 hydrostatic: the hot phase densifies over the run in any time-step
 configuration, so comparing radiation fields between a hierarchy run and a
