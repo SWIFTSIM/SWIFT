@@ -35,11 +35,14 @@ then
     ./getGlass.sh $glass_n
 fi
 
-"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+"$scripts_location"/getRadiationTable.sh POPIIsw.h5 || exit 1
 
 # Stop here on a table the radiation reader cannot use, rather than
-# aborting at start-up once the initial conditions are built.
-"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+# aborting at start-up once the initial conditions are built. --require-1d:
+# radiation_pressure_shell_expansion_check.py imports
+# radiation_table_reader.py, which only understands a mass-only ('M')
+# table.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --require-1d || exit 1
 
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \

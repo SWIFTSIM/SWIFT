@@ -50,11 +50,13 @@ if [ ! -e CloudyData_UVB=HM2012.h5 ]; then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
-"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+"$scripts_location"/getRadiationTable.sh POPIIsw.h5 || exit 1
 
 # Stop here on a table the radiation reader cannot use, rather than
-# aborting at start-up once the initial conditions are built.
-"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+# aborting at start-up once the initial conditions are built. --require-1d:
+# cosmo_stromgren_analytic_check.py imports radiation_table_reader.py,
+# which only understands a mass-only ('M') table.
+"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --require-1d || exit 1
 
 DIR=snap
 if [ -d "$DIR" ]; then
