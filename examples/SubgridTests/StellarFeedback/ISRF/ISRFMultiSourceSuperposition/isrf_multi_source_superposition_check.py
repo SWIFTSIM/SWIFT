@@ -709,14 +709,24 @@ def main() -> None:
         )
 
         lam = 1.0 / np.median(kappa_rho(lat, band))
+        u_sample = lat["u"][band][sample]
         u_mean = np.sum(lat["mass"] * lat["u"][band]) / np.sum(lat["mass"])
-        scatter = np.sqrt(np.mean((lat["u"][band][sample] / u_mean - 1.0) ** 2))
         fs, dif = lattice_sums(lat["pos"][sample], d, lam)
+        # Scatter and its two continuum references are all taken about the
+        # mean over the SAME sample, so the three are one statistic. The
+        # sample sits outside every kernel and is therefore colder than the
+        # box, and that offset is a separate quantity: folding it into the
+        # scatter inflates it by the gas the mask removed, not by any
+        # departure from the lattice sums.
+        scatter = np.sqrt(np.mean((u_sample / np.mean(u_sample) - 1.0) ** 2))
+        offset = np.mean(u_sample) / u_mean - 1.0
         print(
-            f"  {band}: d/lambda = {d / lam:.3f}; rms(u/u_mean - 1) outside "
-            f"kernels: simulation {scatter:.4e}, continuum free streaming "
-            f"{np.sqrt(np.mean((fs / np.mean(fs) - 1.0) ** 2)):.4e}, continuum "
-            f"diffusive {np.sqrt(np.mean((dif / np.mean(dif) - 1.0) ** 2)):.4e}"
+            f"  {band}: d/lambda = {d / lam:.3f}; rms(u/u_sample_mean - 1) "
+            f"outside kernels: simulation {scatter:.4e}, continuum free "
+            f"streaming {np.sqrt(np.mean((fs / np.mean(fs) - 1.0) ** 2)):.4e}, "
+            f"continuum diffusive "
+            f"{np.sqrt(np.mean((dif / np.mean(dif) - 1.0) ** 2)):.4e}; "
+            f"outside-kernel mean over box mean - 1: {offset:+.4e}"
         )
         lo, hi = np.percentile(r_near[outside], [5, 95])
         band_sel = (r_one > lo) & (r_one < hi)
