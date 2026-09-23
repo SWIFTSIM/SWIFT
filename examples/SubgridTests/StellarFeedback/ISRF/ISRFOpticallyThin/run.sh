@@ -16,7 +16,7 @@ gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
 level=${level:=6} #Resolution level: N = (2**level)**3 gas particles
-time_end=${time_end:=1.6e-3} #TimeIntegration:time_end override (internal units): long enough that the fitted snapshots sample the field past its initial transient, before the front's approach to the box narrows the window again
+time_end=${time_end:=6e-4} #TimeIntegration:time_end override (internal units): the causal front passes the box around t=6.6e-4, and the measurement window's own geometry (see README) has already closed a little before that, so running further adds no usable snapshot
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1e-2} #GEARChemistry:initial_metallicity override (Z/Zsun)

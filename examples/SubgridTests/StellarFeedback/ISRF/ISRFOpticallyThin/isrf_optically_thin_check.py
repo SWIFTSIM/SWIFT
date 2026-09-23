@@ -64,6 +64,22 @@ Reported, not gated:
     `theory/GEAR/Radiation/02_fuv_isrf.tex`, "Limitations and open items".
     The check still fails on a non-finite amplitude or radial spread.
 
+Precondition, applied to the gated snapshots only, never used to pick a
+different window:
+
+  * RADIAL COHERENCE: free streaming means the flux points along `r_hat`,
+    `F.r_hat/|F| = 1`. If the flux carried no radial information at all
+    (a direction isotropic relative to `r_hat`), the expectation over a
+    uniform sphere is 0. `ALIGNMENT_MIN = 0.5` requires the per-snapshot
+    median to sit in the upper half of that range, closer to a radial field
+    than to directionless noise. A gated snapshot below the floor makes the
+    band's verdict INVALID rather than PASS or FAIL: the fit may still
+    converge on such a snapshot, but a converged fit to a field that is not
+    radially coherent is not a free-streaming measurement. This check can
+    only remove a window this way, never select a better one: the gated
+    snapshots are still chosen on window geometry alone (see below), and
+    the coherence precondition is evaluated only after that selection.
+
 Measurement window, per snapshot: `[3*h_star, min(R_f - 2*H, L_box - R_f)]`.
   * `3*h_star` excludes the star's own injection footprint, which is not
     propagated field.
@@ -80,11 +96,13 @@ propagation-speed closure `c_hyp = C_hyp*h/dt` makes `c_hyp*dt == C_hyp*h`
 identically, whatever `dt` the run actually took. No reconstruction of
 `c_hyp` from the timestep record is needed or wanted here.
 
-`run.sh`'s `time_end` is set long enough that the fitted snapshots sample
-the field well past its initial transient, before the causal front's own
-approach to the periodic box edge narrows the window again: a window
-taken too early measures a transient, not the settled field, and reads a
-steeper slope than the settled one.
+`run.sh`'s `time_end` is set to where this window itself closes: the causal
+front passes the box (`R_f = L_box`) at `t ~ 6.6e-4` for the shipped
+defaults, and the eligibility geometry above (`r_max > 1.5*r_min`) already
+fails a couple of snapshots before that. Running further adds no further
+usable snapshot, only cost. A window taken too early instead measures a
+transient, not the settled field, and reads a steeper slope than the
+settled one.
 
 Tolerances are derived from measurement, not tuned to pass. A failure at
 these tolerances is a real regression, not a case for loosening them.
@@ -113,6 +131,15 @@ GRACKLE_SOLAR_Z = 0.01295
 GAMMA_3D = 1.936492
 C_LIGHT_CGS = 2.99792458e10
 PC_CGS = 3.0856775814913673e18
+
+# Radial-coherence precondition floor. A perfectly radial flux gives
+# F.r_hat/|F| = 1; a flux with no radial preference at all averages to 0
+# over a uniform sphere. 0.5 is the midpoint of that range (equivalently
+# the cos(60 deg) boundary): below it, the median is statistically closer
+# to directionless noise than to a radial field, so the snapshot cannot be
+# reported as a free-streaming measurement regardless of how the fitted
+# slope or amplitude come out. Not fitted to any particular run's numbers.
+ALIGNMENT_MIN = 0.5
 
 
 def parse_options() -> argparse.Namespace:
@@ -246,12 +273,36 @@ def load_snapshot(path: str) -> dict:
             mass=gas["Masses"][:].astype(np.float64),
             u_PE=gas["PESpecificEnergies"][:].astype(np.float64),
             u_LW=gas["LWSpecificEnergies"][:].astype(np.float64),
+            F_PE=gas["PESpecificFluxes"][:, :].astype(np.float64),
+            F_LW=gas["LWSpecificFluxes"][:, :].astype(np.float64),
             Z=gas["MetalMassFractions"][:, -1],
             star_pos=star["Coordinates"][0, :],
             star_h=float(star["SmoothingLengths"][0]),
             L_PE=float(star["PELuminosities"][0]),
             L_LW=float(star["LWLuminosities"][0]),
         )
+
+
+def radial_vector(pos: np.ndarray, star_pos: np.ndarray, boxsize: float) -> np.ndarray:
+    """Compute the minimum-image displacement vector from the star.
+
+    Parameters
+    ----------
+    pos : numpy.ndarray
+        Gas coordinates, shape (N, 3).
+    star_pos : numpy.ndarray
+        Star coordinates, shape (3,).
+    boxsize : float
+        Periodic box side length.
+
+    Returns
+    -------
+    numpy.ndarray
+        Displacement of every gas particle from the star, shape (N, 3).
+    """
+    dx = pos - star_pos
+    dx -= boxsize * np.round(dx / boxsize)
+    return dx
 
 
 def radial_distance(
@@ -273,9 +324,30 @@ def radial_distance(
     numpy.ndarray
         Distance of every gas particle from the star.
     """
-    dx = pos - star_pos
-    dx -= boxsize * np.round(dx / boxsize)
-    return np.sqrt(np.sum(dx**2, axis=1))
+    return np.sqrt(np.sum(radial_vector(pos, star_pos, boxsize) ** 2, axis=1))
+
+
+def radial_alignment(flux: np.ndarray, rhat: np.ndarray) -> np.ndarray:
+    """Compute the per-particle flux/radial-direction alignment.
+
+    Parameters
+    ----------
+    flux : numpy.ndarray
+        Band specific flux vectors, shape (N, 3), any consistent unit
+        (the ratio below is unit-free).
+    rhat : numpy.ndarray
+        Unit radial direction from the star, shape (N, 3).
+
+    Returns
+    -------
+    numpy.ndarray
+        ``F.r_hat/|F|`` per particle; NaN where `|F| = 0`.
+    """
+    magnitude = np.sqrt(np.sum(flux**2, axis=1))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        alignment = np.sum(flux * rhat, axis=1) / magnitude
+    alignment[magnitude <= 0.0] = np.nan
+    return alignment
 
 
 def dust_mass_opacity_cgs(Z: np.ndarray, sigma_d_cgs: float) -> np.ndarray:
@@ -329,9 +401,15 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
     unit_time = snapshot["unit_time_cgs"]
     sigma_d = SIGMA_D_PE_CGS if band == "PE" else SIGMA_D_LW_CGS
 
-    r = radial_distance(snapshot["pos"], snapshot["star_pos"], snapshot["boxsize"])
-    r *= unit_length
+    dx = radial_vector(snapshot["pos"], snapshot["star_pos"], snapshot["boxsize"])
+    r_raw = np.sqrt(np.sum(dx**2, axis=1))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        rhat = dx / r_raw[:, None]
+    r = r_raw * unit_length
     u = snapshot["u_" + band] * (unit_length / unit_time) ** 2
+    # The alignment ratio F.r_hat/|F| is unit-free, so the raw snapshot flux
+    # needs no cgs conversion.
+    alignment = radial_alignment(snapshot["F_" + band], rhat)
     mass = snapshot["mass"] * unit_mass
     luminosity = snapshot["L_" + band] * unit_mass * unit_length**2 / unit_time**3
 
@@ -365,6 +443,8 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
         amplitude=np.nan,
         flatness=np.nan,
         comment="",
+        alignment=np.nan,
+        coherence_ok=False,
         r_bin=np.array([]),
         u_bin=np.array([]),
         u_diffusion=np.array([]),
@@ -389,6 +469,19 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
             "yet or has approached the box edge"
         )
         return out
+
+    # Radial-coherence precondition (see module docstring), evaluated over
+    # the same window as the fit, on the raw particle population so it does
+    # not depend on the binning or on the fit succeeding.
+    window = (r >= r_min) & (r < r_max)
+    window_alignment = alignment[window]
+    window_alignment = window_alignment[np.isfinite(window_alignment)]
+    out["alignment"] = (
+        float(np.median(window_alignment)) if window_alignment.size else np.nan
+    )
+    out["coherence_ok"] = bool(
+        np.isfinite(out["alignment"]) and out["alignment"] > ALIGNMENT_MIN
+    )
 
     edges = np.logspace(np.log10(r_min), np.log10(r_max), n_bins + 1)
     r_bin, u_bin, n_dropped, n_sparse = [], [], 0, 0
@@ -518,6 +611,7 @@ def main() -> int:
             )
 
     failures = []
+    invalid = []
     final = {}
     for band in ("PE", "LW"):
         items = per_band[band]
@@ -534,7 +628,7 @@ def main() -> int:
         )
         print(
             f"{'t':>10} {'R_f/pc':>7} {'window/pc':>14} {'dex':>5} "
-            f"{'E_neg/E':>8} {'slope':>16} {'meas/FS':>10}"
+            f"{'E_neg/E':>8} {'slope':>16} {'meas/FS':>10} {'align':>7}"
         )
         # Show the tail of the ELIGIBLE set: on a run whose front has run
         # past the box, the last snapshots carry no window at all and would
@@ -556,9 +650,15 @@ def main() -> int:
                 if not np.isnan(item["amplitude"])
                 else "        --"
             )
+            align = (
+                f"{item['alignment']:7.3f}"
+                if np.isfinite(item["alignment"])
+                else "     --"
+            )
             print(
                 f"{item['time']:10.2e} {item['front'] / PC_CGS:7.2f} {window:>14} "
-                f"{dex:5.2f} {item['negative_fraction']:8.3f} {slope:>16} {amplitude}"
+                f"{dex:5.2f} {item['negative_fraction']:8.3f} {slope:>16} "
+                f"{amplitude} {align}"
             )
 
         if len(eligible) < options.n_late:
@@ -574,6 +674,29 @@ def main() -> int:
 
         late = eligible[-options.n_late :]
         final[band] = late[-1]
+
+        # Radial-coherence precondition (see module docstring). Applied
+        # after the geometry-only selection above, never used to pick a
+        # different snapshot: a gated snapshot below the floor makes the
+        # band INVALID, not a reason to fall back to an earlier one.
+        incoherent = [item for item in late if not item["coherence_ok"]]
+        if incoherent:
+            print(
+                f"  INVALID: {len(incoherent)} of the {len(late)} gated "
+                f"snapshots have lost radial flux coherence (median "
+                f"F.r_hat/|F| <= {ALIGNMENT_MIN}); no free-streaming "
+                "measurement can be reported for this band."
+            )
+            for item in incoherent:
+                align = (
+                    f"{item['alignment']:.3f}"
+                    if np.isfinite(item["alignment"])
+                    else "no valid particle"
+                )
+                print(f"      t = {item['time']:.3e}: alignment = {align}")
+            invalid.append(band)
+            continue
+
         # A snapshot inside the gated window that could not be fitted is
         # evidence, not a reason to look elsewhere.
         unfitted = [item for item in late if not np.isfinite(item["slope"])]
@@ -629,6 +752,13 @@ def main() -> int:
 
     if failures:
         print(f"\nCHECK FAILED for: {', '.join(sorted(set(failures)))}")
+        return 1
+    if invalid:
+        print(
+            f"\nCHECK INVALID for: {', '.join(sorted(set(invalid)))} -- the "
+            "radial-coherence precondition failed in the gated window. No "
+            "free-streaming verdict for this band; this is not a PASS."
+        )
         return 1
     print(
         "\nCHECK PASSED: the propagated field's radial slope matches the "

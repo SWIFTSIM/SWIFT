@@ -34,9 +34,10 @@ the front radius and `H` the kernel support. The first term excludes the
 star's injection footprint, the second the front itself (which the
 estimator smears over a couple of supports), and the third every periodic
 image, which cannot have reached radius `r` before `c_hyp*t = L_box - r`.
-`time_end` is set long enough that the fitted snapshots sample the field
-well past its initial transient, before the causal front's own approach to
-the periodic box edge narrows the window again.
+`time_end` is set to where this window itself closes: the causal front
+passes the box around `t ~ 6.6e-4` for the shipped defaults, and the window
+geometry above already fails a little before that. Running further adds no
+usable snapshot.
 
 ## Metallicity, cooling
 `initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
@@ -89,10 +90,16 @@ log-log slope against the free-streaming prediction, averaging over the last
 few snapshots that carry a measurement window (`--n-late`). Which snapshots
 those are is decided on the window's geometry alone, never on whether the fit
 succeeded, so a snapshot the fit could not use fails the check instead of
-being replaced by an earlier one. It fails if the slope is more than
-`--slope-tol` from the prediction, if a gated snapshot could not be fitted, or
-if any fitted quantity is not finite. `--slope-tol` should not be loosened to
-make a run pass. The absolute amplitude ratio
+being replaced by an earlier one. Once selected, those gated snapshots must
+also pass a radial-coherence precondition (median `F.r_hat/|F| > 0.5` in the
+fitted window): a gated snapshot that fails it reports the band INVALID
+rather than PASS or FAIL, again without falling back to an earlier snapshot.
+With `run.sh`'s shipped defaults this check currently reports INVALID: the
+gated window sits where the near-source flux has lost radial coherence. It
+fails if the slope is more than `--slope-tol` from the prediction, if a
+gated snapshot could not be fitted, or if any fitted quantity is not finite.
+`--slope-tol` should not be loosened to make a run pass. The absolute
+amplitude ratio
 (measured field over the free-streaming prediction) and its radial spread are
 reported but not gated on: the flux limiter pins particles near the source
 before they reach the unlimited fixed point, biasing the settled amplitude
