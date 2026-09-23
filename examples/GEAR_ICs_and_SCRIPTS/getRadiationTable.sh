@@ -96,10 +96,12 @@ Looked for:
   $source_file
 
 '$table' is not one of the published tables, so it cannot be downloaded.
-Generate it with pychem's pychem_generate_hdf5_parameters, using a
-spectral parameter file (the table's Data/Radiation group then carries
-qh_source='spectral'), then either copy it here under the name above or
-point GEAR_RADIATION_TABLE at it:
+Generate it with pychem's pychem_generate_hdf5_parameters, using the
+parameter file this example's table was generated from (a piecewise-fits
+parameter file gives a mass-only 'M' table; a spectral one gives a mass x
+metallicity 'M,Z' table -- match whichever this example's yields_table
+name expects), then either copy it here under the name above or point
+GEAR_RADIATION_TABLE at it:
 
   GEAR_RADIATION_TABLE=/path/to/table.hdf5 ./run.sh
 

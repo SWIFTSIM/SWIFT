@@ -2,7 +2,7 @@
 #
 # Check that a GEAR yields table can drive the radiation feedback.
 #
-# Usage: checkRadiationTable.sh <table.h5> [--with-isrf]
+# Usage: checkRadiationTable.sh <table.h5> [--with-isrf] [--require-1d]
 #
 # Any example running with photoionization, radiation pressure or the
 # interstellar radiation field needs a table carrying a "Data/Radiation"
@@ -11,6 +11,14 @@
 # the radiation tables and carry neither, so this check stops the example
 # before it spends time on the glass file, the Cloudy tables and the
 # initial conditions.
+#
+# --require-1d additionally fails on a mass x metallicity ("M,Z") table.
+# SWIFT itself reads either dimensionality, but the example-side Python
+# analysis (radiation_table_reader.py, used by the Starbench, Hu2017,
+# StromgrenSphere(Cosmo) and RadiationPressureShellExpansion check
+# scripts) only understands a mass-only ("M") table and raises
+# NotImplementedError on the other. Pass this flag from an example whose
+# own check script imports that module.
 #
 # SWIFT itself logs the table's identity when it reads the table, so a
 # normal run's log already records which table drove it. This check prints
@@ -21,9 +29,10 @@ set -u
 
 table="${1:-}"
 with_isrf=0
+require_1d=0
 
 if [ -z "$table" ]; then
-    echo "Usage: $0 <table.h5> [--with-isrf]" >&2
+    echo "Usage: $0 <table.h5> [--with-isrf] [--require-1d]" >&2
     exit 2
 fi
 shift
@@ -32,6 +41,10 @@ while [ $# -gt 0 ]; do
     case "$1" in
 	--with-isrf)
 	    with_isrf=1
+	    shift
+	    ;;
+	--require-1d)
+	    require_1d=1
 	    shift
 	    ;;
 	*)
@@ -52,12 +65,14 @@ if ! python3 -c "import h5py" > /dev/null 2>&1; then
     exit 0
 fi
 
-python3 - "$table" "$with_isrf" <<'EOF'
+python3 - "$table" "$with_isrf" "$require_1d" <<'EOF'
 import sys
 
 import h5py
 
-table, with_isrf = sys.argv[1], sys.argv[2] == "1"
+table = sys.argv[1]
+with_isrf = sys.argv[2] == "1"
+require_1d = sys.argv[3] == "1"
 isrf_fields = ("L_PE", "L_LW", "Integrated_L_PE", "Integrated_L_LW")
 
 # Attributes that identify the table itself. GEARFeedback:yields_table only
@@ -86,6 +101,7 @@ def as_text(value):
 
 
 identity = None
+dimensionality = None
 
 # A file that is not HDF5 at all reaches here: getRadiationTable.sh copies
 # whatever GEAR_RADIATION_TABLE names, and takes an existing file in the
@@ -114,6 +130,8 @@ with handle as f:
             for key in identity_keys
             if key in group.attrs
         ]
+        if "dimensionality" in group.attrs:
+            dimensionality = as_text(group.attrs["dimensionality"])
         absent = [d for d in isrf_fields if d not in group]
         missing = None
         if with_isrf and absent:
@@ -136,6 +154,20 @@ if identity is not None:
             "'Data/Radiation' group.\n" % table
         )
     sys.stdout.flush()
+
+if missing is None and require_1d and dimensionality not in (None, "M"):
+    sys.stderr.write(
+        "\n"
+        "ERROR: '%s' is a '%s' (mass x metallicity) table.\n"
+        "\n"
+        "This example's own check script imports radiation_table_reader.py,\n"
+        "which only understands a mass-only ('M') table and raises\n"
+        "NotImplementedError on any other dimensionality. SWIFT itself reads\n"
+        "either table fine; this is a check-script limitation, not a SWIFT\n"
+        "one. Point GEARFeedback:yields_table at a mass-only table instead.\n"
+        "\n" % (table, dimensionality)
+    )
+    sys.exit(1)
 
 if missing is None:
     sys.exit(0)
