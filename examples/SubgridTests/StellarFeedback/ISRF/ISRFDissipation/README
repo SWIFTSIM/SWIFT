@@ -31,8 +31,11 @@ mechanism (`hot_particle_temperature_K`, metallicity/cooling isolation).
 `hot_particle_temperature_K` is set to, so the per-particle
 `InternalEnergy` written by `makeIC.py` is never overwritten.
 `isrf_dissipation_check.py --hot-particle-id` drops that one particle from
-the bulk `h`/`dt` estimate and from every metric; it is not reported on
-separately.
+the bulk `h`/`dt` estimate and from the bulk metrics: `u_plateau`, the
+energy-weighted sign-closure statistic `|E_neg|/E_bulk`, `R50`/`R90` and
+the causal-reach edge. It is kept in `n_neg` and `u_min`, which are taken
+over every gas particle, so a negative band energy at the heated particle
+itself still shows up there. It is not reported on separately.
 
 # Configure
 ```

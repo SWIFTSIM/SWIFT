@@ -68,8 +68,9 @@ real failure.
 `--hot-particle-id` (see `hot_particle_id.txt`, written by `makeIC.py`)
 excludes the artificially-heated particle from the bulk h/dt estimate and
 from `u_plateau`/`E_bulk` (its own field value is naturally far above the
-rest of the box and would otherwise swamp all three), and reports it
-separately.
+rest of the box and would otherwise swamp all three). It is not reported on
+separately; it stays inside `n_neg`/`u_min`, which are taken over every gas
+particle.
 """
 
 import argparse
@@ -113,7 +114,7 @@ def parse_options():
         default=-1,
         help="Pinned-neighbour variant: ID of the artificially-heated gas "
         "particle (see hot_particle_id.txt), excluded from the bulk h/dt "
-        "and u_plateau estimates and reported on separately.",
+        "and u_plateau estimates but still counted in n_neg/u_min.",
     )
     parser.add_argument("--n-bins", type=int, default=120, help="Radial bins.")
     parser.add_argument(
