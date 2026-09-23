@@ -190,17 +190,24 @@ static void zoom_make_proxy_for_pair(struct engine *e, struct cell *ci,
  * level, i.e. #cell_type_zoom if we are descending inside a void cell.
  * @param type_j As type_i, for the second region.
  * @param depth Current recursion depth below the void cells.
+ * @param proxy_loc_i Initial geometry for side i, used for mixed pairs.
+ * @param proxy_loc_j Initial geometry for side j, used for mixed pairs.
+ * @param proxy_width Initial width, used for mixed pairs.
  */
 static void zoom_make_proxies_pair_recursive(
     struct engine *e, const struct space *s, const double loc_i[3],
     const double loc_j[3], const double width[3], const int type_i,
-    const int type_j, const int depth) {
+    const int type_j, const int depth, const double proxy_loc_i[3],
+    const double proxy_loc_j[3], const double proxy_width[3]) {
 
   const int zoom_depth = e->s->zoom_props->zoom_cell_depth;
 
   /* Out of range? Then so is everything below us. */
-  const int proxy_type =
-      zoom_get_proxy_type(e, loc_i, loc_j, width, type_i, type_j);
+  const int mixed_pair =
+      (type_i == cell_type_zoom) != (type_j == cell_type_zoom);
+  const int proxy_type = zoom_get_proxy_type(
+      e, mixed_pair ? proxy_loc_i : loc_i, mixed_pair ? proxy_loc_j : loc_j,
+      mixed_pair ? proxy_width : width, type_i, type_j);
   if (proxy_type == proxy_cell_type_none) return;
 
   /* At the zoom level we make the proxy (if necessary) */
@@ -232,7 +239,8 @@ static void zoom_make_proxies_pair_recursive(
                              loc_j[1] + ((j & 2) ? sub_width[1] : 0.0),
                              loc_j[2] + ((j & 1) ? sub_width[2] : 0.0)};
       zoom_make_proxies_pair_recursive(e, s, sub_loc_i, sub_loc_j, sub_width,
-                                       type_i, type_j, depth + 1);
+                                       type_i, type_j, depth + 1, proxy_loc_i,
+                                       proxy_loc_j, proxy_width);
     }
   }
 }
@@ -279,7 +287,8 @@ static void zoom_make_proxies_self_recursive(struct engine *e,
     for (int b = a + 1; b < 8; b++) {
       zoom_make_proxies_pair_recursive(e, s, sub_loc[a], sub_loc[b], sub_width,
                                        cell_type_zoom, cell_type_zoom,
-                                       depth + 1);
+                                       depth + 1, sub_loc[a], sub_loc[b],
+                                       sub_width);
     }
   }
 }
@@ -431,7 +440,8 @@ void zoom_engine_makeproxies(struct engine *e) {
                 zoom_make_proxies_pair_recursive(
                     e, s, ci->loc, cj->loc, ci->width,
                     ci_is_void ? cell_type_zoom : ci->type,
-                    cj_is_void ? cell_type_zoom : cj->type, /*depth=*/0);
+                    cj_is_void ? cell_type_zoom : cj->type, /*depth=*/0,
+                    ci->loc, cj->loc, ci->width);
               }
             }
           }
