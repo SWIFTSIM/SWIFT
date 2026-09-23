@@ -86,6 +86,8 @@ class Cadences(NamedTuple):
         Shortest interval between two updates of every gas particle.
     dt_star : float
         Shortest interval between two star updates.
+    dt_fine_longest : float
+        Longest interval between two updates of the fine slab.
     dt_gas_longest : float
         Longest interval between two updates of every gas particle.
     dt_star_longest : float
@@ -96,6 +98,7 @@ class Cadences(NamedTuple):
     dt_fine: float
     dt_coarse: float
     dt_star: float
+    dt_fine_longest: float
     dt_gas_longest: float
     dt_star_longest: float
 
@@ -308,12 +311,21 @@ def preconditions(run: str, snap: dict[str, Any], hierarchy: bool) -> Cadences:
     dt_fine = steps_of(table[most_fine, 0])
     dt_coarse = steps_of(table[all_gas, 0])
     dt_star = steps_of(table[star_on, 0])
+    dt_fine_longest = steps_of(table[most_fine, 0], longest=True)
     dt_gas_longest = steps_of(table[all_gas, 0], longest=True)
     dt_star_longest = steps_of(table[star_on, 0], longest=True)
     finite = bool(
         np.all(
             np.isfinite(
-                [dt_min, dt_fine, dt_coarse, dt_star, dt_gas_longest, dt_star_longest]
+                [
+                    dt_min,
+                    dt_fine,
+                    dt_coarse,
+                    dt_star,
+                    dt_fine_longest,
+                    dt_gas_longest,
+                    dt_star_longest,
+                ]
             )
         )
     )
@@ -330,11 +342,20 @@ def preconditions(run: str, snap: dict[str, Any], hierarchy: bool) -> Cadences:
         f"  {run}: steps {len(table)}, partial-update steps "
         f"{(~all_gas).mean():.2f}, shortest step {dt_min:.4e}, fine slab step "
         f"{dt_fine:.4e}, coarse slab step {dt_coarse:.4e}, star step "
-        f"{dt_star:.4e}, longest all-gas interval {dt_gas_longest:.4e}, "
+        f"{dt_star:.4e}, longest fine slab interval {dt_fine_longest:.4e}, "
+        f"longest all-gas interval {dt_gas_longest:.4e}, "
         f"longest star interval {dt_star_longest:.4e} -> "
         f"{'PASS' if ok else 'FAIL'}"
     )
-    return Cadences(ok, dt_fine, dt_coarse, dt_star, dt_gas_longest, dt_star_longest)
+    return Cadences(
+        ok,
+        dt_fine,
+        dt_coarse,
+        dt_star,
+        dt_fine_longest,
+        dt_gas_longest,
+        dt_star_longest,
+    )
 
 
 def main() -> None:
@@ -352,9 +373,15 @@ def main() -> None:
         info[name] = r
         pin = parameter(run(name), "ISRF_c_hyp_pin_for_debugging")
         margin = parameter(run(name), "ISRF_c_hyp_margin")
-        courant = max(
-            pin * r.dt_fine / snap["h"][snap["fine"]].min(),
-            pin * r.dt_coarse / snap["h"][~snap["fine"]].min(),
+        # c_hyp dt / h <= margin is an upper bound on dt, so each slab
+        # contributes its LONGEST interval and its smallest h. np.maximum,
+        # not the builtin max: the builtin returns its first argument
+        # against a NaN and would drop a slab with no recorded interval.
+        courant = float(
+            np.maximum(
+                pin * r.dt_fine_longest / snap["h"][snap["fine"]].min(),
+                pin * r.dt_gas_longest / snap["h"][~snap["fine"]].min(),
+            )
         )
         ok &= gate(f"{name} pinned c_hyp dt / h", courant, margin)
         ok &= gate(f"{name} max metallicity", float(snap["Z"].max()), 0.0)
