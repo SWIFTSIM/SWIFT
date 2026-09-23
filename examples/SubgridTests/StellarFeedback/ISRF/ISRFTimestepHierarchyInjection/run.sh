@@ -16,6 +16,7 @@ star_mass=${star_mass:=29.7}                # Msun
 c_hyp_pin=${c_hyp_pin:=5}                   # km/s
 dt_fine=${dt_fine:=1.3e-6}                  # dt_max of the single-bin run; floored to the 1.25e-6 bin
 runs=${runs:="conservation_hierarchy conservation_single_bin"}
+# The cadence sweep: runs="cadence_base cadence_half cadence_quarter".
 
 swift=$(realpath "$swift")
 
@@ -31,10 +32,16 @@ if [ ! -e POPIIsw.h5 ]; then
 fi
 
 for run in $runs; do
-    # dt_max 2e-5 leaves both phases on their CFL bins; dt_fine forces one bin.
+    # dt_max 2e-5 leaves both phases on their CFL bins; dt_fine forces one
+    # bin. The cadence sweep halves dt_fine twice, so every gas particle and
+    # the star share one bin in all three and the bin itself is the only
+    # thing that moves.
     case $run in
         conservation_hierarchy)    dt=2e-5 ;;
         conservation_single_bin)   dt=$dt_fine ;;
+        cadence_base)              dt=$dt_fine ;;
+        cadence_half)              dt=$(python3 -c "print(0.5*$dt_fine)") ;;
+        cadence_quarter)           dt=$(python3 -c "print(0.25*$dt_fine)") ;;
         *) echo "Unknown run $run"; exit 1 ;;
     esac
 
@@ -60,5 +67,10 @@ for run in $runs; do
 done
 
 if [ "$run_check" = 1 ]; then
-    python3 isrf_timestep_hierarchy_injection_check.py
+    case " $runs " in
+        *" conservation_"*) python3 isrf_timestep_hierarchy_injection_check.py ;;
+    esac
+    case " $runs " in
+        *" cadence_"*) python3 isrf_injection_cadence_independence_check.py ;;
+    esac
 fi

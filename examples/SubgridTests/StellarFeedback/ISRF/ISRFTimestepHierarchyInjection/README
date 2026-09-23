@@ -33,6 +33,16 @@ comparison needs a hydrostatic fixture.
 make -j
 ```
 
+The same fixture also carries a cadence sweep,
+`runs="cadence_base cadence_half cadence_quarter"`. The three share an end
+time and differ only in `dt_max`, which halves twice, so every gas
+particle and the star sit on one shared bin of `dt`, `dt/2` and `dt/4` and
+the number of injection events over the run changes by a factor four while
+nothing else does. The lag is then read in units of the run's own step.
+The hand-off pipeline is a fixed number of steps deep, so that number must
+come out the same at every cadence; a dose lost per lump or per event
+would not.
+
 # Run
 ```
 ./run.sh
@@ -55,15 +65,29 @@ and `dt_fine` by 2 per level.
 ```
 python3 isrf_timestep_hierarchy_injection_check.py [--dir runs_directory]
 ```
-`run.sh` runs it at the end. It exits nonzero if any gate fails; a
-non-finite value fails its gate. Gated, per run: partial and all-gas update
-steps in the hierarchy run with the cold phase on at least twice the hot
-phase's step, all-gas updates on every step in the single-bin run, the star
-step longer than the shortest gas step in the hierarchy run, pinned
-`c_hyp dt/h` at most `ISRF_c_hyp_margin` in each phase, and zero
-metallicity. Gated per run and per band: a finite, positive and constant
-stellar luminosity, and the lag `L t - (c/c_hyp) sum m u` inside its
-derived window at every snapshot after the first. Reported without a bar:
-the fitted slope of `(c/c_hyp) sum m u / L` against time with its standard
-error, and the lag as a fraction of the window and of the run's longest
-all-gas update interval.
+`run.sh` runs it at the end of a `conservation_*` sweep. Both checks exit
+nonzero if any gate fails, and a non-finite value fails its gate. Gated,
+per run: partial and all-gas update steps in the hierarchy run with the
+cold phase on at least twice the hot phase's step, all-gas updates on
+every step in the single-bin run, the star step longer than the shortest
+gas step in the hierarchy run, pinned `c_hyp dt/h` at most
+`ISRF_c_hyp_margin` in each phase, and zero metallicity. Gated per run and
+per band: a finite, positive and constant stellar luminosity, and the lag
+`L t - (c/c_hyp) sum m u` inside its derived window at every snapshot
+after the first. Reported without a bar: the fitted slope of
+`(c/c_hyp) sum m u / L` against time with its standard error, and the lag
+as a fraction of the window and of the run's longest all-gas update
+interval.
+
+```
+python3 isrf_injection_cadence_independence_check.py [--dir runs_directory]
+```
+`run.sh` runs it at the end of a `cadence_*` sweep. Gated, per run: one
+shared time bin on every step, zero metallicity, a finite positive and
+constant stellar luminosity, a `used_parameters.yml` matching the
+reference run outside `dt_max`, and the lag inside `[-1, 3]` of the run's
+own steps. Gated across the sweep: each run's lag floor and ceiling
+against the coarsest run's, within the two runs' float32 allowances.
+Reported without a bar: the budget still in flight when the run stops, and
+the bounds the sweep puts on a dropped fraction per lump and on a fixed
+loss per event.
