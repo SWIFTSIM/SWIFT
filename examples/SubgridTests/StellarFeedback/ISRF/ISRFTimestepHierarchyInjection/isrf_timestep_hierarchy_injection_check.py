@@ -47,6 +47,8 @@ import os
 import re
 import sys
 
+from typing import Any, NamedTuple
+
 import h5py
 import numpy as np
 
@@ -65,7 +67,34 @@ def parse_options() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def snapshots(run: str) -> list:
+class Cadences(NamedTuple):
+    """The step cadences a run ran at, and whether its structure is sound.
+
+    Attributes
+    ----------
+    ok : bool
+        True if the run's time-bin structure met its preconditions.
+    dt_fine : float
+        Shortest interval between two updates of the fine slab.
+    dt_coarse : float
+        Shortest interval between two updates of every gas particle.
+    dt_star : float
+        Shortest interval between two star updates.
+    dt_gas_longest : float
+        Longest interval between two updates of every gas particle.
+    dt_star_longest : float
+        Longest interval between two star updates.
+    """
+
+    ok: bool
+    dt_fine: float
+    dt_coarse: float
+    dt_star: float
+    dt_gas_longest: float
+    dt_star_longest: float
+
+
+def snapshots(run: str) -> list[str]:
     """Return the sorted snapshot files of a run, one per output time."""
     files, times = [], set()
     for path in sorted(glob.glob(os.path.join(run, "snap", "snapshot_*.hdf5"))):
@@ -79,7 +108,7 @@ def snapshots(run: str) -> list:
     return files
 
 
-def load(path: str) -> dict:
+def load(path: str) -> dict[str, Any]:
     """Read one snapshot, gas sorted by particle ID.
 
     Parameters
@@ -89,7 +118,7 @@ def load(path: str) -> dict:
 
     Returns
     -------
-    dict
+    dict of str to Any
         Snapshot fields in internal units.
     """
     with h5py.File(path, "r") as f:
@@ -192,7 +221,7 @@ def steps_of(times: np.ndarray, longest: bool = False) -> float:
     return float(np.max(gaps) if longest else np.min(gaps))
 
 
-def lag_window(dt_gas: float, dt_star: float) -> tuple:
+def lag_window(dt_gas: float, dt_star: float) -> tuple[float, float]:
     """Return the window the in-flight injection budget must stay inside.
 
     The emitted energy L t reaches the gas through three stages, each of
@@ -234,13 +263,13 @@ def lag_window(dt_gas: float, dt_star: float) -> tuple:
 
     Returns
     -------
-    tuple
+    tuple of float
         (lower edge, upper edge), both times.
     """
     return -dt_star, dt_star + dt_gas + max(dt_gas, dt_star)
 
 
-def preconditions(run: str, snap: dict, hierarchy: bool) -> tuple:
+def preconditions(run: str, snap: dict[str, Any], hierarchy: bool) -> Cadences:
     """Check the time-bin structure of a run and measure its cadences.
 
     Parameters
@@ -254,9 +283,8 @@ def preconditions(run: str, snap: dict, hierarchy: bool) -> tuple:
 
     Returns
     -------
-    tuple
-        (ok, fine step, coarse step, star step, longest all-gas interval,
-        longest star interval).
+    Cadences
+        The run's step cadences, with `ok` False if its structure failed.
     """
     table = step_table(run)[1:]
     n_gas = len(snap["mass"])
@@ -294,7 +322,7 @@ def preconditions(run: str, snap: dict, hierarchy: bool) -> tuple:
         f"longest star interval {dt_star_longest:.4e} -> "
         f"{'PASS' if ok else 'FAIL'}"
     )
-    return ok, dt_fine, dt_coarse, dt_star, dt_gas_longest, dt_star_longest
+    return Cadences(ok, dt_fine, dt_coarse, dt_star, dt_gas_longest, dt_star_longest)
 
 
 def main() -> None:
@@ -308,13 +336,13 @@ def main() -> None:
     for name in ("conservation_single_bin", "conservation_hierarchy"):
         snap = load(snapshots(run(name))[-1])
         r = preconditions(run(name), snap, "hierarchy" in name)
-        ok &= r[0]
+        ok &= r.ok
         info[name] = r
         pin = parameter(run(name), "ISRF_c_hyp_pin_for_debugging")
         margin = parameter(run(name), "ISRF_c_hyp_margin")
         courant = max(
-            pin * r[1] / snap["h"][snap["fine"]].min(),
-            pin * r[2] / snap["h"][~snap["fine"]].min(),
+            pin * r.dt_fine / snap["h"][snap["fine"]].min(),
+            pin * r.dt_coarse / snap["h"][~snap["fine"]].min(),
         )
         ok &= gate(f"{name} pinned c_hyp dt / h", courant, margin)
         ok &= gate(f"{name} max metallicity", float(snap["Z"].max()), 0.0)
@@ -323,13 +351,13 @@ def main() -> None:
     for name in ("conservation_single_bin", "conservation_hierarchy"):
         snaps = [load(f) for f in snapshots(run(name))[1:]]
         pin = parameter(run(name), "ISRF_c_hyp_pin_for_debugging")
-        low, high = lag_window(info[name][4], info[name][5])
+        low, high = lag_window(info[name].dt_gas_longest, info[name].dt_star_longest)
         n_gas = len(snaps[0]["mass"])
         t = np.array([s["time"] for s in snaps])
         print(
             f"  {name}: window [{low:.4e}, {high:.4e}] from a longest all-gas "
-            f"interval of {info[name][4]:.4e} and a longest star interval of "
-            f"{info[name][5]:.4e}"
+            f"interval of {info[name].dt_gas_longest:.4e} and a longest star "
+            f"interval of {info[name].dt_star_longest:.4e}"
         )
         for band in ("PE", "LW"):
             L = np.array([s["L"][band] for s in snaps])
@@ -366,8 +394,9 @@ def main() -> None:
             print(
                 f"  {name} {band}: {len(t)} snapshots, lag / window "
                 f"{np.min(lag) / high:.3f} to {np.max(lag) / high:.3f}, lag / "
-                f"longest all-gas interval {np.min(lag) / info[name][4]:.3f} to "
-                f"{np.max(lag) / info[name][4]:.3f}"
+                f"longest all-gas interval "
+                f"{np.min(lag) / info[name].dt_gas_longest:.3f} to "
+                f"{np.max(lag) / info[name].dt_gas_longest:.3f}"
             )
             print(
                 f"  {name} {band}: diagnostic fit, s - 1 = {slope - 1.0:.3e}, "
