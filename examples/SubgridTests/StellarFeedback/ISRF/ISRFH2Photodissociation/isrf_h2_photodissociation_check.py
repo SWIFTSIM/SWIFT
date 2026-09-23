@@ -313,7 +313,9 @@ def _repeat_lw_calibration_notes() -> None:
 atexit.register(_repeat_lw_calibration_notes)
 
 
-def find_run_logs(*hints: "Optional[str]") -> "List[Path]":
+def find_run_logs(
+    *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
+) -> "List[Path]":
     """Find the ``output.log`` of every run this check was pointed at.
 
     The example ``run.sh`` scripts move the log into the per-run directory
@@ -323,25 +325,31 @@ def find_run_logs(*hints: "Optional[str]") -> "List[Path]":
 
     Parameters
     ----------
-    hints : str, optional
-        A run log's path, or a snapshot glob of a run. None entries are
-        ignored, so an unset option can be passed straight through.
+    snapshot_globs : str, optional
+        Snapshot globs of the runs being checked. None entries are ignored,
+        so an unset option can be passed straight through.
+    log : str, optional
+        A run log named explicitly on the command line. Taken as given,
+        whatever it is called.
 
     Returns
     -------
     list of pathlib.Path
-        Existing logs, deduplicated, in the order the hints named them.
+        Existing logs, deduplicated, in the order they were named. The
+        working directory is consulted only when nothing else named a log,
+        so checking one run from inside another run's directory cannot
+        report the wrong run.
     """
     candidates: "List[Path]" = []
-    for hint in hints:
+    if log is not None:
+        candidates.append(Path(log))
+    for hint in snapshot_globs:
         if hint is None:
             continue
         given = Path(hint)
-        if given.is_file() and given.suffix == ".log":
-            candidates.append(given)
-            continue
         candidates += [given.parent / "output.log", given.parent.parent / "output.log"]
-    candidates.append(Path.cwd() / "output.log")
+    if not candidates:
+        candidates.append(Path.cwd() / "output.log")
     logs: "List[Path]" = []
     seen = set()
     for candidate in candidates:
@@ -355,7 +363,9 @@ def find_run_logs(*hints: "Optional[str]") -> "List[Path]":
     return logs
 
 
-def check_run_lw_calibration(*hints: "Optional[str]") -> None:
+def check_run_lw_calibration(
+    *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
+) -> None:
     """Report which H2 calibration each run's own binary used, from its log.
 
     ``radiation_set_lw_photon_energy_cgs`` announces the coefficient in force
@@ -379,10 +389,12 @@ def check_run_lw_calibration(*hints: "Optional[str]") -> None:
 
     Parameters
     ----------
-    hints : str, optional
-        Run logs or snapshot globs, passed on to `find_run_logs`.
+    snapshot_globs : str, optional
+        Snapshot globs of the runs being checked.
+    log : str, optional
+        A run log named explicitly on the command line.
     """
-    logs = find_run_logs(*hints)
+    logs = find_run_logs(*snapshot_globs, log=log)
     if not logs:
         _note_lw_calibration(
             "no output.log was found beside the runs being checked, so the H2 "
