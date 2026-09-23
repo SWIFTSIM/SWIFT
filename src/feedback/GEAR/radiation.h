@@ -146,8 +146,7 @@
     Sternberg-anchored rate. On the table path it is not:
     #RADIATION_SIGMA_H2_LW_CGS stays pinned to the 12.2 eV of this
     constant while the divisor comes from the table, so k_diss scales by
-    12.2 eV / E_LW_table. For the shipped PopII spectral table that factor
-    is 12.2 / 12.254224 = 0.9956, i.e. -0.44%. */
+    12.2 eV / E_LW_table. */
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.2
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.

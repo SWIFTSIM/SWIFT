@@ -232,7 +232,7 @@ RADIATION_H_FALLBACK = {
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
     "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY": 0.014,
 }
-RADIATION_H_FALLBACK_SOURCE = "radiation.h at bc9f7dca5, copied 2026-09-23"
+RADIATION_H_FALLBACK_SOURCE = "radiation.h at 05fe1c636, copied 2026-09-23"
 RADIATION_H_FALLBACK_USED: List[str] = []
 
 
@@ -286,6 +286,56 @@ def read_radiation_h_constant(name: str) -> float:
     return float(match.group(1))
 
 
+LW_PHOTON_ENERGY_NOTE: "List[str]" = []
+
+
+def _announce_lw_photon_energy(
+    value: float, reason: "Optional[str]" = None, table: "Optional[Path]" = None
+) -> float:
+    """Say where the Lyman-Werner photon energy came from, and remember it.
+
+    A run whose table carries the dataset divided by the table value; a run
+    whose table does not divided by the header constant. Silently picking
+    either one would bias every rate below by the ratio of the two, so the
+    choice is printed, and a fallback is repeated next to the verdict.
+
+    Parameters
+    ----------
+    value : float
+        The photon energy, erg.
+    reason : str, optional
+        Why the header constant was used, or None on the table path.
+    table : pathlib.Path, optional
+        The table the value came from, on the table path.
+
+    Returns
+    -------
+    float
+        `value`, unchanged.
+    """
+    if reason is None:
+        print(f"E_LW = {value:.6e} erg, read from {table}")
+    else:
+        message = (
+            f"E_LW = {value:.6e} erg, from RADIATION_LW_PHOTON_ENERGY_EV "
+            f"because {reason}. A run made against a table that DOES carry "
+            f"the dataset divided by a different value, and every rate "
+            f"below would then be biased by the ratio of the two."
+        )
+        print("NOTE: " + message)
+        LW_PHOTON_ENERGY_NOTE.append(message)
+    return value
+
+
+def _warn_lw_photon_energy_fallback() -> None:
+    """Repeat the photon-energy fallback note next to the verdict."""
+    for message in LW_PHOTON_ENERGY_NOTE:
+        print("NOTE: " + message)
+
+
+atexit.register(_warn_lw_photon_energy_fallback)
+
+
 def read_lw_photon_energy_cgs() -> float:
     """Read the mean Lyman-Werner photon energy the run divided by, in erg.
 
@@ -324,14 +374,18 @@ def read_lw_photon_energy_cgs() -> float:
             with h5py.File(table, "r") as handle:
                 group = handle.get("Data/Radiation")
                 if group is None or "Integrated_MeanPhotonEnergyLW" not in group:
-                    return fallback
+                    return _announce_lw_photon_energy(
+                        fallback, f"{table} carries no Integrated_MeanPhotonEnergyLW"
+                    )
                 energies = group["Integrated_MeanPhotonEnergyLW"]
                 if energies.ndim == 1:
-                    return float(energies[-1])
+                    return _announce_lw_photon_energy(float(energies[-1]), None, table)
                 metallicity = group["Metallicity"][:]
                 row = int(np.argmin(np.abs(metallicity - reference_metallicity)))
-                return float(energies[row, -1])
-    return fallback
+                return _announce_lw_photon_energy(float(energies[row, -1]), None, table)
+    return _announce_lw_photon_energy(
+        fallback, "no parameter file naming a reachable yields_table was found"
+    )
 
 
 # The cross-section is a compile-time constant; the photon energy comes from

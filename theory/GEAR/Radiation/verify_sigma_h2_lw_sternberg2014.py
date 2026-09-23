@@ -133,6 +133,9 @@ def sternberg_D0_cgs(G0_LW: float) -> float:
 
 def main() -> None:
     sigma_h2_lw_cgs = _read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
+    # The fallback path's calibration. A run whose radiation table carries
+    # Integrated_MeanPhotonEnergyLW divides by that instead, which moves the
+    # ratio below by 12.2 eV / E_LW_table.
     E_LW_photon_ev = _read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
     habing_flux_cgs = _read_radiation_h_constant("RADIATION_HABING_FLUX_CGS")
 
