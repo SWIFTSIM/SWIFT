@@ -712,12 +712,9 @@ def main() -> None:
         u_sample = lat["u"][band][sample]
         u_mean = np.sum(lat["mass"] * lat["u"][band]) / np.sum(lat["mass"])
         fs, dif = lattice_sums(lat["pos"][sample], d, lam)
-        # Scatter and its two continuum references are all taken about the
-        # mean over the SAME sample, so the three are one statistic. The
-        # sample sits outside every kernel and is therefore colder than the
-        # box, and that offset is a separate quantity: folding it into the
-        # scatter inflates it by the gas the mask removed, not by any
-        # departure from the lattice sums.
+        # The scatter and both continuum references are taken about the mean
+        # of the SAME sample, so they are one statistic. The sample's offset
+        # from the box mean is a separate quantity and is printed as one.
         scatter = np.sqrt(np.mean((u_sample / np.mean(u_sample) - 1.0) ** 2))
         offset = np.mean(u_sample) / u_mean - 1.0
         print(
