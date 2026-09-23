@@ -346,17 +346,24 @@ def interpolation_size_mass_from_snapshot(
     snapshot_file : str
         One of the run's snapshot files.
     default : int, optional
-        Value to return if the snapshot predates
-        ``GEARRadiation:interpolation_size_mass`` (e.g. an old archived run
-        made before the table migration).
+        Value to return if the snapshot carries neither the current key nor
+        its legacy spelling (e.g. an old archived run made before the table
+        migration).
 
     Returns
     -------
     int
-        The run's ``GEARRadiation:interpolation_size_mass``, or `default`.
+        The run's ``GEARRadiation:interpolation_size_mass``, its legacy
+        ``GEARFeedback:radiation_interpolation_size_mass``, or `default`.
     """
     with h5py.File(snapshot_file, "r") as h:
-        raw = h["Parameters"].attrs.get("GEARRadiation:interpolation_size_mass")
+        attrs = h["Parameters"].attrs
+        raw = attrs.get("GEARRadiation:interpolation_size_mass")
+        if raw is None:
+            # The parameter moved out of the GEARFeedback section; a run
+            # archived before the move that set it away from the default
+            # would otherwise be read at the default.
+            raw = attrs.get("GEARFeedback:radiation_interpolation_size_mass")
     return int(_decode(raw)) if raw is not None else default
 
 
