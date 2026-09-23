@@ -579,9 +579,7 @@ def main():
             Inj = float(np.sum(mass * snap[inj_field]))
             Abs = float(np.sum(mass * snap[abs_field]))
             R = abs(E + Abs - Inj) / abs(Inj) if Inj != 0.0 else np.nan
-            ledger[band].append(
-                dict(time=snap["time"], E=E, Inj=Inj, Abs=Abs, R=R)
-            )
+            ledger[band].append(dict(time=snap["time"], E=E, Inj=Inj, Abs=Abs, R=R))
 
             for name in star_names:
                 star_pos = star_position(snap, star_ids[name])

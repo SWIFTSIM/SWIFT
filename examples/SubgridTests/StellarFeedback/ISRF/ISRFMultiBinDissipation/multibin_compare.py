@@ -351,9 +351,7 @@ def mode_gate(opt):
         # run.sh detects this from the binary's own --version banner and
         # passes it through as ledger_valid. A production-build campaign
         # SKIPs crit4 rather than gating on all-zero data.
-        ledger_ok = all(
-            m.get("ledger_valid") for m in (m0, m1, m2) if m is not None
-        )
+        ledger_ok = all(m.get("ledger_valid") for m in (m0, m1, m2) if m is not None)
         if not ledger_ok:
             print(
                 "  crit4 (ledger residual, M1 vs M0): SKIPPED, not a "
