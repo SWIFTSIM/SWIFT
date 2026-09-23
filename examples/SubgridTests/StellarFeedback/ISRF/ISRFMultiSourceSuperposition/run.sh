@@ -25,11 +25,9 @@ runs=${runs:="injection_A injection_B injection_AB A B AB lattice lattice_single
 swift=$(realpath "$swift")
 
 # The lattice run holds its gates only while the star injection kernel
-# reaches the neighbouring sources. Below about 0.6 support radii per
-# source spacing the superposed field keeps its mean and its spatial
-# variance departs from the continuum lattice sum, with no fix available.
-# The support is gamma eta times the gas interparticle spacing, the
-# source spacing is the box over n_side.
+# reaches the neighbouring sources without covering the lattice. The
+# support is gamma eta times the gas interparticle spacing, the source
+# spacing is the box over n_side. Both bounds come from the check itself.
 case " $runs " in
     *" lattice "*)
         eta=$(sed -n 's/^ *resolution_eta: *\([0-9.eE+-]*\).*/\1/p' params.yml)
@@ -40,18 +38,38 @@ case " $runs " in
         python3 - "$eta" "$n_side" "$level" <<'EOF' || exit 1
 import sys
 
+sys.path.insert(0, ".")
+from isrf_multi_source_superposition_check import (
+    GAMMA_3D,
+    KERNEL_SUPPORT_OVER_SPACING_BAR as bar,
+    KERNEL_SUPPORT_OVER_SPACING_COVERED as covered,
+)
+
 eta, n_side, level = float(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
-ratio = 1.936492 * eta * n_side / 2 ** level
-bar = 0.55
-print(f"Star kernel support over source spacing: {ratio:.3f} (>= {bar:.2f})")
+ratio = GAMMA_3D * eta * n_side / 2 ** level
+print(
+    f"Star kernel support over source spacing: {ratio:.3f} "
+    f"(>= {bar:.2f}, < {covered:.3f})"
+)
 if not ratio >= bar:
     sys.exit(
         f"Refusing to run: at level {level} with n_side {n_side} the star "
         f"injection kernel spans {ratio:.3f} of the source spacing, under "
-        f"{bar:.2f}. There the superposed field keeps its mean while its "
-        "spatial variance exceeds the continuum lattice sum by an order of "
-        "magnitude, with no fix available. Raise n_side, or lower the "
-        "resolution level, until the kernel reaches the neighbouring sources."
+        f"{bar:.2f}, a guard under the 0.598 this example is measured good "
+        "at. At 0.299 the superposed field keeps its mean while its spatial "
+        "variance exceeds the continuum lattice sum by an order of "
+        "magnitude, with no fix available; the ratio at which that turns "
+        "over has not been measured. Raise n_side, or lower the resolution "
+        "level, until the kernel reaches the neighbouring sources."
+    )
+if not ratio < covered:
+    sys.exit(
+        f"Refusing to run: at level {level} with n_side {n_side} the star "
+        f"injection kernel spans {ratio:.3f} of the source spacing, at or "
+        f"above the {covered:.3f} that covers a cubic lattice. Every "
+        "particle then sits inside a kernel and the isotropic-closure gate "
+        "has no gas to measure. Lower n_side, or raise the resolution "
+        "level."
     )
 EOF
         ;;
