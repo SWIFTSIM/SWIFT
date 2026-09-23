@@ -980,12 +980,26 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 "the reference run's H2 errors or times are not all finite -- "
                 "refusing to build a bar from a corrupted reference."
             )
-        if elapsed[-1] > ref_times[-1] or elapsed[0] < ref_times[0]:
+        # A run spaced uniformly in ln a always starts inside the reference's
+        # first proper-time interval, so np.interp clamps the earliest
+        # snapshots to the reference's first error. That is the strict
+        # direction for a lag-dominated reference, whose true error grows
+        # towards t = 0, and the run's own dt/elapsed term in `budget`
+        # already covers its own early-time lag. It is reported, not fatal.
+        below = int(np.sum(elapsed < ref_times[0]))
+        if below:
+            print(
+                f"  {below} snapshot(s) start before the reference's first "
+                f"output ({ref_times[0]:.4e} s); their reference term is "
+                f"clamped to {ref_error[0]:.3e}, which understates it."
+            )
+        # Beyond the reference's last output there is no such argument, and
+        # the clamp would understate an error that is still evolving.
+        if elapsed[-1] > ref_times[-1] * (1.0 + 1e-6):
             raise RuntimeError(
-                f"the reference run spans {ref_times[0]:.4e} to "
-                f"{ref_times[-1]:.4e} s but this run spans {elapsed[0]:.4e} to "
-                f"{elapsed[-1]:.4e} s; np.interp would silently clamp outside "
-                "that range. Extend the reference run's time_end."
+                f"the reference run ends at {ref_times[-1]:.4e} s but this "
+                f"run reaches {elapsed[-1]:.4e} s; np.interp would silently "
+                "clamp there. Extend the reference run's time_end."
             )
         measured_nc = np.interp(elapsed, ref_times, ref_error)
     bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
