@@ -123,55 +123,58 @@
     to this flux integrated over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
+/*! Sternberg-anchored H2 Lyman-Werner photodissociation coefficient,
+    cm^2 erg^-1: the quotient sigma_H2/E_LW of an effective cross section
+    and a mean photon energy.
+
+    radiation_get_part_LW_dissociation_rate_internal() needs a photon flux
+    to multiply a cross section by, but a gas particle only carries the LW
+    band's ENERGY flux, so the rate is sigma_H2 * (F_LW / E_LW) and depends
+    on this quotient alone. The Sternberg et al. (2014, ApJ 790:10) anchor
+    constrains exactly that combination and neither factor separately, so
+    the quotient is the primary constant here and #RADIATION_SIGMA_H2_LW_CGS
+    and #RADIATION_LW_PHOTON_ENERGY_EV are the pair it is quoted through.
+    See theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
+    derivation; the agreement there is at the 10% level, and the digits
+    below carry the quotient of the quoted pair, not a claim of precision.
+
+    No table value enters the rate. A table carrying pychem's
+    "MeanPhotonEnergyLW" and "Integrated_MeanPhotonEnergyLW" datasets
+    (#radiation.has_mean_photon_energy_lw) still yields a population mean
+    photon energy in #radiation_lw_photon_energy_cgs, but that is reported
+    as a DIAGNOSTIC only: using it as the divisor while the cross section
+    stayed pinned would break the quotient and rescale every rate. A
+    per-star photon-number moment, transported alongside the energy, is the
+    way to make a spectrum's own E_LW change the rate. */
+#define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.2847106348798106e-07
+
 /*! Representative Lyman-Werner photon energy, eV: the 11.2-13.6 eV band
-    mean published in Kim et al. (2023), their Table 3.
-    radiation_get_part_LW_dissociation_rate_internal() needs a photon flux,
-    but a gas particle only carries the LW band's ENERGY flux (u_LW), so it
-    divides by this energy to convert.
-
-    This value is jointly calibrated with #RADIATION_SIGMA_H2_LW_CGS, and
-    only their quotient sigma_H2/E_LW is physically constrained: the
-    Sternberg et al. (2014) anchor fixes that quotient, and the pair below
-    reproduces it. Changing either one alone rescales every H2
-    photodissociation rate by the ratio of the change, so the two move
-    together or not at all.
-
-    FALLBACK ONLY. A table carrying pychem's "MeanPhotonEnergyLW" and
-    "Integrated_MeanPhotonEnergyLW" datasets
-    (#radiation.has_mean_photon_energy_lw) supplies the divisor instead,
-    through #radiation_lw_photon_energy_cgs. A table without them falls
-    back to this constant, so it cannot be removed.
-
-    On the fallback path the quotient above is held and k_diss is the
-    Sternberg-anchored rate. On the table path it is not:
-    #RADIATION_SIGMA_H2_LW_CGS stays pinned to the 12.2 eV of this
-    constant while the divisor comes from the table, so k_diss scales by
-    12.2 eV / E_LW_table. */
+    mean published in Kim et al. (2023), their Table 3. The photon energy
+    #RADIATION_SIGMA_H2_OVER_E_LW_CGS and #RADIATION_SIGMA_H2_LW_CGS are
+    quoted at. Not used by the dissociation rate, which reads the quotient
+    directly. */
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.2
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.
-    A fixed, spectrum-averaged approximation (the true cross section
-    depends on the spectral shape within 11.2-13.6 eV, not a single
-    atomic-physics constant), a compile-time constant rather than a
-    runtime parameter because it is not meant to be tuned per run.
-    Validated to ~10% against Sternberg et al. (2014, ApJ 790:10); see
-    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
-    derivation. Its value is the quotient sigma_H2/E_LW =
-    1.284711e-07 cm^2 erg^-1, the combination that anchor constrains,
-    multiplied by the adopted #RADIATION_LW_PHOTON_ENERGY_EV of 12.2 eV;
-    the extra digits carry that quotient, they are not a claim of
-    precision on the cross section itself. See that macro for how the
-    quotient behaves on the fallback and table paths. */
+    A DERIVED value, #RADIATION_SIGMA_H2_OVER_E_LW_CGS times
+    #RADIATION_LW_PHOTON_ENERGY_EV in erg, kept because a cross section is
+    the readable form of the calibration and the verification script in
+    theory/GEAR/Radiation/ reports it. The dissociation rate does not read
+    it. A fixed, spectrum-averaged approximation: the true cross section
+    depends on the spectral shape within 11.2-13.6 eV and is not a single
+    atomic-physics constant, so it is a compile-time constant rather than a
+    per-run parameter. Held as a literal so the header stays parseable by
+    the check scripts; tests/testRadiationISRFFormula.c asserts it still
+    equals the quotient times the photon energy. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Metallicity mass fraction at which the population mean Lyman-Werner
     photon energy is read off a 2D table, for
-    #radiation_lw_photon_energy_cgs. The gas particle that consumes the
-    dissociation rate is source-anonymous: its LW band sums emission from
-    many stars of different mass and metallicity and keeps no record of
-    which contributed what, so one representative rung is read rather than
-    a per-particle value. This is the rung the cross-section calibration is
-    anchored at. */
+    #radiation_lw_photon_energy_cgs. That mean is a reported diagnostic and
+    does not enter the dissociation rate; one representative rung is read
+    because the gas particle is source-anonymous, its LW band summing
+    emission from many stars of different mass and metallicity. This is the
+    rung the cross-section calibration is quoted at. */
 #define RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY 0.014
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below

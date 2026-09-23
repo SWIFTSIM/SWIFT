@@ -658,12 +658,18 @@ static void check_grackle_coupling(const struct unit_system *us) {
         "off at with_ISRF=0 (got %.6e).",
         ungated_G0);
 
-  /* --- LW dissociation rate: formula-identity check --- */
-  const double E_LW_photon_cgs =
-      RADIATION_LW_PHOTON_ENERGY_EV * test_electron_volt_cgs;
+  /* --- LW dissociation rate: formula-identity check ---
+   *
+   * The reference is built from the cross section and photon energy the
+   * calibration is quoted at, written out here rather than read back off
+   * RADIATION_SIGMA_H2_OVER_E_LW_CGS: a reference assembled from the macro
+   * under test is an identity and cannot fail. These two literals are the
+   * Sternberg-anchored pair, and the rate must reproduce their quotient. */
+  const double reference_sigma_h2_cgs = 2.5111667e-18;
+  const double reference_E_LW_cgs = 12.2 * test_electron_volt_cgs;
   const double flux_LW_cgs = c_cgs * rho_cgs * u_band_cgs;
   const double expected_k_diss_cgs =
-      RADIATION_SIGMA_H2_LW_CGS * (flux_LW_cgs / E_LW_photon_cgs);
+      reference_sigma_h2_cgs * (flux_LW_cgs / reference_E_LW_cgs);
 
   const double actual_k_diss_internal =
       radiation_get_part_LW_dissociation_rate_internal(&phys_const, us, &cosmo,
@@ -672,7 +678,15 @@ static void check_grackle_coupling(const struct unit_system *us) {
       actual_k_diss_internal *
       units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
   assert_close("Grackle coupling: LW dissociation rate", actual_k_diss_cgs,
-               expected_k_diss_cgs, 1e-3);
+               expected_k_diss_cgs, 1e-6);
+
+  /* The quotient is the primary constant and the cross section is quoted
+   * from it, so the header pair must still agree with the header quotient. */
+  assert_close("Grackle coupling: sigma_H2 is the quotient times E_LW",
+               RADIATION_SIGMA_H2_LW_CGS,
+               RADIATION_SIGMA_H2_OVER_E_LW_CGS *
+                   (RADIATION_LW_PHOTON_ENERGY_EV * test_electron_volt_cgs),
+               1e-9);
 
   /* Zero LW field -> zero k_diss, exactly (independent of u_PE: k_diss
    * only ever reads u_LW). */
@@ -695,27 +709,37 @@ static void check_grackle_coupling(const struct unit_system *us) {
   assert_close("Grackle coupling: LW dissociation rate linearity in u_LW",
                k_diss_double, 2.0 * actual_k_diss_internal, 1e-6);
 
-  /* Table path: a run whose radiation table carries pychem's
-   * Integrated_MeanPhotonEnergyLW divides by that value instead of
-   * RADIATION_LW_PHOTON_ENERGY_EV, so the rate scales by the inverse ratio
-   * of the two energies. The cross-section stays pinned, so this is the
-   * whole of the change the table makes. Every check above runs on the
-   * fallback path, which is what radiation_lw_photon_energy_cgs = 0
-   * selects. */
+  /* The invariant the calibration rests on: the table's mean LW photon
+   * energy is a reported diagnostic and the rate must be BIT-identical
+   * whatever it holds. A rate that divided by it would move by the ratio of
+   * the two energies, 0.44 per cent for the shipped PopII spectral table. */
   const double E_LW_table_cgs = 1.9633431393546273e-11;
-  radiation_lw_photon_energy_cgs = E_LW_table_cgs;
-  const double k_diss_table = radiation_get_part_LW_dissociation_rate_internal(
-      &phys_const, us, &cosmo, &p);
-  assert_close("Grackle coupling: LW dissociation rate on the table path",
-               k_diss_table,
-               actual_k_diss_internal * E_LW_photon_cgs / E_LW_table_cgs, 1e-6);
+  const double table_values[3] = {E_LW_table_cgs, 2. * E_LW_table_cgs,
+                                  0.5 * E_LW_table_cgs};
+  for (int i = 0; i < 3; ++i) {
+    radiation_lw_photon_energy_cgs = table_values[i];
+    const double k_diss_table =
+        radiation_get_part_LW_dissociation_rate_internal(&phys_const, us,
+                                                         &cosmo, &p);
+    if (k_diss_table != actual_k_diss_internal) {
+      radiation_lw_photon_energy_cgs = 0.;
+      error(
+          "Grackle coupling: LW dissociation rate moved with the table's "
+          "mean photon energy (%.17e erg): got %.17e, expected %.17e. The "
+          "rate must read RADIATION_SIGMA_H2_OVER_E_LW_CGS alone.",
+          table_values[i], k_diss_table, actual_k_diss_internal);
+    }
+  }
   radiation_lw_photon_energy_cgs = 0.;
 
   const double k_diss_fallback_restored =
       radiation_get_part_LW_dissociation_rate_internal(&phys_const, us, &cosmo,
                                                        &p);
-  assert_close("Grackle coupling: LW dissociation rate back on the fallback",
-               k_diss_fallback_restored, actual_k_diss_internal, 1e-12);
+  if (k_diss_fallback_restored != actual_k_diss_internal)
+    error(
+        "Grackle coupling: LW dissociation rate is not reproducible at a "
+        "zeroed diagnostic photon energy (%.17e vs %.17e).",
+        k_diss_fallback_restored, actual_k_diss_internal);
 
   /* Order of magnitude against Draine & Bertoldi's k_LW ~ 1e-10*chi s^-1
    * at a comparable G0 ~ 1 (chi and G0 use slightly different

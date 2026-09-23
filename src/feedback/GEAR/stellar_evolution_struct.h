@@ -467,8 +467,9 @@ struct radiation {
       "Integrated_MeanPhotonEnergyLW" datasets? Both are optional: a table
       generated before pychem exported them leaves
       #raw.mean_photon_energy_lw / #integrated.mean_photon_energy_lw
-      unbuilt, and every consumer must fall back to
-      #RADIATION_LW_PHOTON_ENERGY_EV instead of reading them. */
+      unbuilt, and the mean photon energy is then simply not reported. It
+      is a diagnostic either way: the H2 photodissociation rate reads
+      #RADIATION_SIGMA_H2_OVER_E_LW_CGS. */
   char has_mean_photon_energy_lw;
 };
 

@@ -1156,8 +1156,8 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * conversion_factor and extra_scaling are both 1. This matches the
  * mixed-unit convention #radiation_get_mean_excess_photon_energy_HI_from_
  * integral already produces for the ionizing band's mean photon energy,
- * and it matches the consumer, radiation_get_part_LW_dissociation_rate_
- * internal(), which works in cgs. A mean photon energy is an intensive
+ * and it matches radiation_set_lw_photon_energy_cgs(), which reports the
+ * population value in cgs. A mean photon energy is an intensive
  * per-photon quantity, not a rate or a power, so neither
  * #RADIATION_DOT_N_ION_TABLE_SCALING nor a UNIT_CONV_* factor applies to
  * it.
@@ -1675,11 +1675,10 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
   }
 
-  /* Mean Lyman-Werner photon energy. Optional, and guarded on dataset
-     presence rather than on with_ISRF: a table generated before pychem
-     exported these two datasets must still load, with every consumer
-     falling back to #RADIATION_LW_PHOTON_ENERGY_EV. Both datasets are
-     required together; pychem always writes them as a pair. */
+  /* Mean Lyman-Werner photon energy, a reported diagnostic. Optional, and
+     guarded on dataset presence rather than on with_ISRF: a table generated
+     before pychem exported these two datasets must still load. Both
+     datasets are required together; pychem always writes them as a pair. */
   rad->has_mean_photon_energy_lw =
       (char)(H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0 &&
              H5Lexists(group_id, "Integrated_MeanPhotonEnergyLW", H5P_DEFAULT) >

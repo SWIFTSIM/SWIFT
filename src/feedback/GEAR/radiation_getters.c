@@ -671,9 +671,9 @@ double radiation_get_star_mean_excess_photon_energy_HI(
  * photon energy at a given mass, from a 1D (mass-only) table.
  *
  * Only valid when #radiation.has_mean_photon_energy_lw is set; callers
- * must check that first and fall back to #RADIATION_LW_PHOTON_ENERGY_EV
- * otherwise (this getter does not check, matching every other raw getter
- * here).
+ * must check that first (this getter does not check, matching every other
+ * raw getter here). Reported as a diagnostic: no rate reads it, see
+ * #RADIATION_SIGMA_H2_OVER_E_LW_CGS.
  *
  * Below pychem's own LW mass floor this returns the 11.2-13.6 eV band
  * midpoint, 12.4 eV in erg, which is a finite in-band placeholder rather

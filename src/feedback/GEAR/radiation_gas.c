@@ -762,15 +762,20 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 
 /**
  * H2 Lyman-Werner photodissociation rate from this #part's own LW-band
- * specific-energy field: k_diss = sigma_H2 * F_LW, a direct
- * cross-section-times-flux conversion. F_LW is a PHOTON flux (not the
- * energy flux #radiation_get_part_isrf_habing uses): dividing the
- * LW-band energy flux by a representative
- * photon energy converts it. That energy is the table's own population
- * mean where the table carries it (#radiation_lw_photon_energy_cgs) and
- * #RADIATION_LW_PHOTON_ENERGY_EV otherwise, mirroring
- * this codebase's own existing energy-vs-photon-count distinction for the
- * ionizing channel (Q_H tracked separately from L_bol/DotEExcess).
+ * specific-energy field: k_diss = sigma_H2 * F_LW with F_LW a PHOTON flux,
+ * which a particle does not carry. It carries the LW band's ENERGY flux,
+ * so the photon flux is that divided by a mean photon energy E_LW and the
+ * rate is (sigma_H2 / E_LW) times the energy flux. Only that quotient is
+ * physically constrained, by the Sternberg et al. (2014) anchor, so it is
+ * read straight off #RADIATION_SIGMA_H2_OVER_E_LW_CGS and no separate
+ * cross section or photon energy appears below.
+ *
+ * #radiation_lw_photon_energy_cgs, the population mean LW photon energy a
+ * table can supply, is therefore a reported DIAGNOSTIC and has no effect
+ * here: dividing by it while the cross section stayed pinned would break
+ * the calibrated quotient and rescale every rate. Making a spectrum's own
+ * E_LW change the rate needs a transported per-star photon-number moment,
+ * the way the ionizing channel already separates Q_H from L_bol.
  * Feeds Grackle's per-particle RT_H2_dissociation_rate (COOLING_GRACKLE_
  * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
  * only forced on for this feature at that mode, see cooling_io.h).
@@ -800,20 +805,7 @@ double radiation_get_part_LW_dissociation_rate_internal(
       flux_LW *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
 
-  /* The table-borne divisor is already in cgs erg and is used as it
-     stands. The fallback constant is in eV, and
-     phys_const->const_electron_volt is in this run's internal units, so it
-     is converted here to match flux_LW_cgs above rather than hand-rolling a
-     separate eV-to-erg cgs constant (physical_constants_cgs.h already
-     defines one, and every other radiation getter in this codebase reads
-     constants off phys_const rather than duplicating them). */
-  const double E_LW_photon_cgs =
-      radiation_lw_photon_energy_cgs > 0.
-          ? radiation_lw_photon_energy_cgs
-          : RADIATION_LW_PHOTON_ENERGY_EV * phys_const->const_electron_volt *
-                units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  const double photon_flux_LW_cgs = flux_LW_cgs / E_LW_photon_cgs;
-  const double k_diss_cgs = RADIATION_SIGMA_H2_LW_CGS * photon_flux_LW_cgs;
+  const double k_diss_cgs = RADIATION_SIGMA_H2_OVER_E_LW_CGS * flux_LW_cgs;
   const double k_diss =
       k_diss_cgs / units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
 

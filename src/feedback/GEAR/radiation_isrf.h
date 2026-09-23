@@ -40,17 +40,15 @@ struct phys_const;
 struct radiation;
 struct stellar_model;
 
-/*! Photon-number-weighted mean Lyman-Werner photon energy the H2
- * photodissociation rate divides by, in cgs erg, or 0 when the radiation
- * table carries no such measurement and the rate must fall back to
- * #RADIATION_LW_PHOTON_ENERGY_EV. A global for the same reason as
- * #isrf_c_hyp_consistent_variable_c above: the value is identical for
- * every particle in a run, and its consumer
- * (radiation_get_part_LW_dissociation_rate_internal(), reached from the
- * Grackle field copy in cooling.c) has no #feedback_props in scope.
- * Set once by #radiation_set_lw_photon_energy_cgs at start-up and on
- * restart, then read-only for the remainder of the run. Defined in
- * radiation.c, beside the table lifecycle it is derived from. */
+/*! Population photon-number-weighted mean Lyman-Werner photon energy the
+ * radiation table reports, in cgs erg, or 0 when the table carries no such
+ * measurement. A DIAGNOSTIC: the H2 photodissociation rate reads the
+ * calibrated quotient #RADIATION_SIGMA_H2_OVER_E_LW_CGS and nothing here.
+ * A global because the value is identical for every particle in a run and
+ * is announced where no #feedback_props is in scope. Set once by
+ * #radiation_set_lw_photon_energy_cgs at start-up and on restart, then
+ * read-only for the remainder of the run. Defined in radiation.c, beside
+ * the table lifecycle it is derived from. */
 extern double radiation_lw_photon_energy_cgs;
 
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,

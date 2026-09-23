@@ -704,9 +704,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                cosmo, fp->with_stellar_wind_feedback,
                                with_radiation);
 
-  /* The H2 photodissociation rate's divisor, taken from the main model's
-     table. Deliberately not repeated for the first-stars model below:
-     the gas-side consumer is source-anonymous and has one divisor. */
+  /* Announce the H2 photodissociation coefficient and report the main
+     model's own mean LW photon energy beside it. Deliberately not repeated
+     for the first-stars model below: one line per run. */
   radiation_set_lw_photon_energy_cgs(&fp->stellar_model.rad,
                                      &fp->stellar_model);
 

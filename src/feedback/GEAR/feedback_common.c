@@ -1532,9 +1532,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                             feedback->with_stellar_wind_feedback,
                             with_radiation, us, phys_const);
 
-  /* radiation_lw_photon_energy_cgs is a run-level value derived from the
-     table, not part of the dumped struct, so it is re-derived here exactly
-     as feedback_props_init() sets it. */
+  /* radiation_lw_photon_energy_cgs is a run-level diagnostic derived from
+     the table, not part of the dumped struct, so it is re-derived here
+     exactly as feedback_props_init() sets it. */
   radiation_set_lw_photon_energy_cgs(&feedback->stellar_model.rad,
                                      &feedback->stellar_model);
 

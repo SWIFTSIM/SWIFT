@@ -37,21 +37,23 @@
 double radiation_lw_photon_energy_cgs = 0.;
 
 /**
- * @brief Set #radiation_lw_photon_energy_cgs from the radiation table.
+ * @brief Report the H2 photodissociation coefficient and set
+ * #radiation_lw_photon_energy_cgs from the radiation table.
  *
- * radiation_get_part_LW_dissociation_rate_internal() divides a gas
- * particle's LW energy flux by a photon energy, but that particle's LW band
- * sums emission from many stars and keeps no record of which star
- * contributed what, so no emitter's own mean photon energy is recoverable
- * there. One representative population value is read here instead:
- * pychem's "Integrated_MeanPhotonEnergyLW" over the IMF's whole mass range,
- * at #RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY for a 2D table.
+ * The rate itself reads #RADIATION_SIGMA_H2_OVER_E_LW_CGS and nothing else,
+ * so the coefficient in force is announced here unconditionally: a run's own
+ * log is then the record of which calibration it used.
  *
- * Left at 0 for a table without the two datasets, which is what makes the
- * consumer fall back to #RADIATION_LW_PHOTON_ENERGY_EV.
+ * The population mean LW photon energy is a diagnostic beside it. A gas
+ * particle's LW band sums emission from many stars and keeps no record of
+ * which star contributed what, so no emitter's own mean photon energy is
+ * recoverable at the consumer; one representative population value is read
+ * instead, pychem's "Integrated_MeanPhotonEnergyLW" over the IMF's whole
+ * mass range, at #RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY for a 2D
+ * table. Left at 0 for a table without the two datasets.
  *
  * Call this for the main stellar model only. A run with a first-stars table
- * reads two models, and the consumer has one divisor.
+ * reads two models, and the gas-side consumer is source-anonymous.
  *
  * @param rad The main stellar model's #radiation.
  * @param sm The main #stellar_model, for its IMF mass range.
@@ -61,7 +63,15 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
 
   radiation_lw_photon_energy_cgs = 0.;
 
-  if (!rad->is_active || !rad->has_mean_photon_energy_lw) return;
+  if (!rad->is_active) return;
+
+  if (engine_rank == 0)
+    message(
+        "H2 photodissociation sigma_H2/E_LW = %g cm^2 erg^-1, the "
+        "Sternberg-anchored constant the rate uses",
+        RADIATION_SIGMA_H2_OVER_E_LW_CGS);
+
+  if (!rad->has_mean_photon_energy_lw) return;
 
   /* The population getters take a single upper mass bound and average from
      the IMF's own mass_min up to it; see
@@ -76,15 +86,15 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                 log_m)
           : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m);
 
-  /* A non-positive divisor would make every dissociation rate non-finite.
-     Keep the constant fallback rather than dividing by it. */
   if (E_LW_cgs <= 0.) return;
 
   radiation_lw_photon_energy_cgs = E_LW_cgs;
 
   if (engine_rank == 0)
-    message("Mean Lyman-Werner photon energy from the table = %g erg",
-            radiation_lw_photon_energy_cgs);
+    message(
+        "Mean Lyman-Werner photon energy from the table = %g erg, reported "
+        "only: no rate reads it",
+        radiation_lw_photon_energy_cgs);
 }
 
 /**
