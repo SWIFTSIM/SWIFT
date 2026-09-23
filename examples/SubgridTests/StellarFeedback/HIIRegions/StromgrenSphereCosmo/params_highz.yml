@@ -121,8 +121,8 @@ GEARFeedback:
   with_stellar_wind_feedback: 0
   stellar_winds_efficiency: 1.0                 # Stellar winds energy efficiency. (Default: 1.0)
   discrete_star_minimal_gravity_mass_Msun: 0.1  # Minimal gravity mass after a discrete star completely explodes, in Msun. (Default: 0.1)
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
+  yields_table: PopII_parsec_spectral.hdf5                  # Stellar yields table, with the Data/Radiation group
+  yields_table_first_stars: PopII_parsec_spectral.hdf5      # First-star table; the same file, so the ionizing source is Pop II either side of the transition
   discrete_yields: 1
   imf_transition_metallicity: -5
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]

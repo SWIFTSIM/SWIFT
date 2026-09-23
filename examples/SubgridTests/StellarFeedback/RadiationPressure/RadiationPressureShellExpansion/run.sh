@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Shared GEAR example scripts (tables, plotting)
+scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
+
 # make run.sh fail if a subcommand fails. pipefail matters here specifically:
 # swift's own exit code is piped into `tee output.log`, and without it a
 # crashed/errored swift run still lets the pipeline "succeed" (tee's own
@@ -31,6 +34,12 @@ then
     echo "Fetching initial glass file (${glass_file})..."
     ./getGlass.sh $glass_n
 fi
+
+"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 
 echo "Generating initial conditions to run the example..."
 ic_output=$(python3 makeIC.py --level $level --rho $gas_density \
