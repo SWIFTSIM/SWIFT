@@ -793,8 +793,8 @@ def main():
     # in multibin_compare.py. Two things are NOT report-only and exit
     # nonzero here, because they say the metrics file itself cannot be
     # trusted: a time-step reconstruction that is not the power-of-two floor
-    # of the analytic step, and a non-finite value in any reduction the
-    # cross-run gate reads.
+    # of the analytic step, and a non-finite contamination control, dipole or
+    # negative-weight share.
     non_finite = [
         label
         for label, value in (
@@ -811,6 +811,22 @@ def main():
             for point in per_star_series[name][band]:
                 if not np.isfinite(point["neg_weight_share"]):
                     non_finite.append(f"neg_weight_share[{name}][{band}]")
+                    break
+                # A non-finite h, rho or dissipation coefficient leaves u
+                # finite but makes the accumulator, and with it the dipole,
+                # non-finite. The dipole is then recorded as None with the
+                # void flag clear, so the neg-weight test above does not see
+                # it. A None where M0_pos is zero is ordinary: the field is
+                # not seeded in the IC, so every star's first snapshots have
+                # no moment to form.
+                if not np.isfinite(point["M0_pos"]):
+                    non_finite.append(f"M0_pos[{name}][{band}]")
+                    break
+                if point["M0_pos"] > 0 and any(
+                    point[component] is None
+                    for component in ("d_x_h", "d_y_h", "d_z_h", "d_total_h")
+                ):
+                    non_finite.append(f"dipole[{name}][{band}]")
                     break
     if non_finite:
         print(f"FAIL: non-finite metrics: {sorted(set(non_finite))}")

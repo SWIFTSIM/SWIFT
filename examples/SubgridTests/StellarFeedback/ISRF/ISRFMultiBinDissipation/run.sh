@@ -107,8 +107,9 @@ printf "Running simulation..."
 		   params.yml 2>&1 | tee output.log
 
 # Per-run metrics; see README. The dipoles are report-only, but the check
-# exits nonzero if its own time-step reconstruction is invalid or any
-# reduction is non-finite. Capture that status instead of letting `set -e`
+# exits nonzero if its own time-step reconstruction is invalid or a
+# contamination control, dipole or negative-weight share is non-finite.
+# Capture that status instead of letting `set -e`
 # abort before the outputs are moved: the next run removes snap/.
 check_status=0
 python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin \

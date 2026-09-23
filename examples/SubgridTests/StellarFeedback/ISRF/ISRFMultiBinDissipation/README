@@ -97,8 +97,9 @@ python3 multibin_compare.py --mode report --runs dir1 dir2 ...
 `run.sh` runs the per-run check automatically and writes
 `multibin_metrics.json`. The dipole metrics are report-only; the check exits
 nonzero only when the metrics file itself cannot be trusted, namely when its
-time-step reconstruction is not the power-of-two floor of the analytic step or
-when any reduction the cross-run gate reads is non-finite. It reconstructs the
+time-step reconstruction is not the power-of-two floor of the analytic step,
+or when a contamination control, a dipole or a negative-weight share is
+non-finite. It reconstructs the
 force loop's dissipation accumulator from snapshot fields (not itself a
 snapshot field): the transverse dipole `d_x` (bin-boundary normal) and total
 displacement `|d|`, both in units of `h`, per star, per band, per snapshot;
@@ -118,10 +119,10 @@ under discussion against the M0 control's own noise floor, and did S0 show a
 real bin split), then gates: the within-run matched-pair criterion at the
 star adjacent to the boundary against its same-phase, no-boundary sibling;
 the total-displacement bound across every star and run; and no growth of the
-displacement with resolution. Every dipole component that enters a
-comparison, on either side, is reduced by the same call: absolute value, over
-the last third of the series, void points dropped, and a non-finite component
-fails the criterion instead of shrinking the sample.
+displacement with resolution. The resolving-power precondition and the
+`sigma` it is measured against are reduced by the same call: absolute value,
+over the last third of the series, void points dropped, and a non-finite
+component fails the precondition instead of shrinking the sample.
 
 The fourth criterion, no excess `sum(m*u)` non-conservation relative to the
 single-bin control, is reported as **BLOCKED and fails the gate**. The
