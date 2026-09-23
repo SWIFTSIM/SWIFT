@@ -59,8 +59,10 @@
  * @param out Output buffer, NUL-terminated on return.
  * @param out_size Size of out, including the terminating NUL.
  */
-static void radiation_read_string_attribute(hid_t group_id, const char *name,
-                                            char *out, size_t out_size) {
+static void radiation_read_string_attribute_impl(hid_t group_id,
+                                                 const char *name, char *out,
+                                                 size_t out_size,
+                                                 const int truncate) {
 
   const hid_t h_attr = H5Aopen(group_id, name, H5P_DEFAULT);
   if (h_attr < 0) error("Error while opening attribute '%s'", name);
@@ -82,7 +84,7 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
       error("Error while reading string attribute '%s'", name);
 
     const size_t len = strlen(tmp);
-    if (len >= out_size) {
+    if (len >= out_size && !truncate) {
       error(
           "String attribute '%s' (%zu bytes) does not fit in the %zu-byte "
           "buffer.",
@@ -97,7 +99,7 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
     H5Sclose(h_space);
   } else {
     const size_t fixed_size = H5Tget_size(h_type);
-    if (fixed_size >= out_size)
+    if (fixed_size >= out_size && !truncate)
       error(
           "String attribute '%s' (%zu bytes) does not fit in the %zu-byte "
           "buffer.",
@@ -107,13 +109,50 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
     if (tmp == NULL) error("Failed to allocate string attribute buffer.");
     if (H5Aread(h_attr, h_type, tmp) < 0)
       error("Error while reading string attribute '%s'", name);
-    memcpy(out, tmp, fixed_size);
-    out[fixed_size] = '\0';
+    const size_t kept = min(fixed_size, out_size - 1);
+    memcpy(out, tmp, kept);
+    out[kept] = '\0';
     free(tmp);
   }
 
   H5Tclose(h_type);
   H5Aclose(h_attr);
+}
+
+/**
+ * @brief Read a string attribute, failing if it does not fit.
+ *
+ * The caller parses the result, so a truncated value would be parsed as a
+ * different value. Every such reader uses this one.
+ *
+ * @param group_id Open HDF5 group id.
+ * @param name The attribute's name.
+ * @param out (output) The buffer to fill.
+ * @param out_size The size of @p out, in bytes.
+ */
+static void radiation_read_string_attribute(hid_t group_id, const char *name,
+                                            char *out, size_t out_size) {
+  radiation_read_string_attribute_impl(group_id, name, out, out_size,
+                                       /*truncate=*/0);
+}
+
+/**
+ * @brief Read a string attribute, truncating it if it does not fit.
+ *
+ * For values that are only reported, never parsed: a table must not fail to
+ * load because a provenance string is long.
+ *
+ * @param group_id Open HDF5 group id.
+ * @param name The attribute's name.
+ * @param out (output) The buffer to fill.
+ * @param out_size The size of @p out, in bytes.
+ */
+static void radiation_read_string_attribute_truncating(hid_t group_id,
+                                                       const char *name,
+                                                       char *out,
+                                                       size_t out_size) {
+  radiation_read_string_attribute_impl(group_id, name, out, out_size,
+                                       /*truncate=*/1);
 }
 
 /**
@@ -145,9 +184,9 @@ static void radiation_message_table_identity(
   for (size_t i = 0; i < sizeof(source_keys) / sizeof(source_keys[0]); i++) {
     if (H5Aexists(group_id, source_keys[i]) <= 0) continue;
 
-    char value[64];
-    radiation_read_string_attribute(group_id, source_keys[i], value,
-                                    sizeof(value));
+    char value[128];
+    radiation_read_string_attribute_truncating(group_id, source_keys[i], value,
+                                               sizeof(value));
 
     const int written =
         snprintf(sources + used, sizeof(sources) - used, "%s%s=%s",

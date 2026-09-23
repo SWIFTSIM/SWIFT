@@ -12,10 +12,10 @@
 # before it spends time on the glass file, the Cloudy tables and the
 # initial conditions.
 #
-# The check also prints the table's own provenance attributes, so the run
-# log records which table drove the run. The file name does not: a Pop II
-# and a Pop III table can each be staged under any name, and the choice
-# moves Q_H.
+# SWIFT itself logs the table's identity when it reads the table, so a
+# normal run's log already records which table drove it. This check prints
+# the same attributes for the case SWIFT never reaches: a table that fails
+# below, where the identity is what says why.
 
 set -u
 
