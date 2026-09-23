@@ -34,10 +34,13 @@
     #radiation itself is declared. */
 #define RADIATION_MAX_METALLICITY_ROWS 64
 
-/*! Size of #radiation.table_sources, the buffer holding the radiation
-    table's concatenated provenance attributes. Reported only, never
-    parsed: a longer value is truncated, never an error. */
-#define RADIATION_TABLE_SOURCES_SIZE 256
+/*! Number of provenance attributes #radiation.table_source can hold, one
+    per key in #radiation_table_source_keys. */
+#define RADIATION_TABLE_SOURCE_COUNT 4
+
+/*! Size of one #radiation.table_source entry. Reported only, never parsed:
+    a longer value is truncated, never an error. */
+#define RADIATION_TABLE_SOURCE_SIZE 128
 
 /**
  * @brief Model for the initial mass function.
@@ -429,15 +432,14 @@ struct radiation {
       flag. */
   char has_teff;
 
-  /*! The radiation table's own provenance attributes ("qh_source",
-      "lwpe_source", "stellar_evolution_source", "source"), concatenated as
-      "key=value" pairs. GEARFeedback:yields_table names a file, and the
-      name says nothing about which photon budget the run used: a Pop II
-      and a Pop III table can each be staged under any name, and the choice
-      moves Q_H. Empty for a table carrying none of the attributes, all of
-      which are optional. File-derived, re-read on every read including
-      restart. */
-  char table_sources[RADIATION_TABLE_SOURCES_SIZE];
+  /*! The radiation table's own provenance attributes, one entry per key in
+      #radiation_table_source_keys and in that order. GEARFeedback:yields_table
+      names a file, and the name says nothing about which photon budget the run
+      used: a Pop II and a Pop III table can each be staged under any name, and
+      the choice moves Q_H. An entry is empty when the table does not carry
+      that attribute; all of them are optional. File-derived, re-read on every
+      read including restart. */
+  char table_source[RADIATION_TABLE_SOURCE_COUNT][RADIATION_TABLE_SOURCE_SIZE];
 
   /*! Lowest mass the table tabulates (Msun), as read from the file,
       before the resampling onto #interpolation_size points. */

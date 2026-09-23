@@ -327,6 +327,12 @@ float radiation_get_star_physical_radiation_pressure(
 /* Functions to deal with integrated data over an IMF. These functions read,
    interpolate and integrate. */
 /******************************************************************************/
+/*! Names of the radiation table's optional provenance attributes, in the
+    order #radiation.table_source stores them. Defined in
+    radiation_table_io.c, which reads them. */
+extern const char
+    *const radiation_table_source_keys[RADIATION_TABLE_SOURCE_COUNT];
+
 void radiation_print(const struct radiation *rad);
 void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct stellar_model *sm,

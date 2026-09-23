@@ -46,25 +46,34 @@ void radiation_print(const struct radiation *rad) {
   }
 
   message("Angular pixels for HII ionization = %d", rad->n_HII_pixels);
-  message("Interpolation table size (mass) = %d", rad->interpolation_size);
+  message("Number of masses interpolated onto = %d", rad->interpolation_size);
 
   /* Every field below is read from the table itself, so it is meaningless
      for a run that never opened one. */
   if (!rad->is_active) return;
 
-  message("Table provenance = %s", rad->table_sources[0] != '\0'
-                                       ? rad->table_sources
-                                       : "no source attribute");
-  message("Table mass range (Msun) = [%g, %g] over %i points",
-          (double)rad->table_mass_min, (double)rad->table_mass_max,
-          rad->table_n_mass);
+  int n_sources = 0;
+  for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++) {
+    if (rad->table_source[i][0] == '\0') continue;
+    message("Table %s = %s", radiation_table_source_keys[i],
+            rad->table_source[i]);
+    n_sources++;
+  }
+  if (n_sources == 0)
+    message("Table sources = none (no provenance attribute in the table)");
+
+  message("Number of masses in the table = %i", rad->table_n_mass);
+  message("Mass range of the table (Msun) = [%g, %g]",
+          (double)rad->table_mass_min, (double)rad->table_mass_max);
+
+  message("Metallicity dependent table? %i", rad->is_2d);
 
   if (rad->is_2d) {
-    message("Table metallicity range (mass fraction) = [%g, %g] over %i points",
+    message("Number of metallicities in the table = %i",
+            rad->table_n_metallicity);
+    message("Metallicity range of the table (mass fraction) = [%g, %g]",
             (double)rad->table_metallicity_min,
-            (double)rad->table_metallicity_max, rad->table_n_metallicity);
-  } else {
-    message("Table metallicity range (mass fraction) = none (mass-only table)");
+            (double)rad->table_metallicity_max);
   }
 }
 
@@ -259,7 +268,8 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->with_ISRF = 0;
   rad->has_teff = 0;
   rad->has_mean_photon_energy_lw = 0;
-  rad->table_sources[0] = '\0';
+  for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++)
+    rad->table_source[i][0] = '\0';
   rad->table_mass_min = 0.f;
   rad->table_mass_max = 0.f;
   rad->table_n_mass = 0;

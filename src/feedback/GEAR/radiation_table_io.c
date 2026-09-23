@@ -155,6 +155,9 @@ static void radiation_read_string_attribute_truncating(hid_t group_id,
                                        /*truncate=*/1);
 }
 
+const char *const radiation_table_source_keys[RADIATION_TABLE_SOURCE_COUNT] = {
+    "qh_source", "lwpe_source", "stellar_evolution_source", "source"};
+
 /**
  * @brief Read the table's own provenance into the #radiation model.
  *
@@ -163,9 +166,9 @@ static void radiation_read_string_attribute_truncating(hid_t group_id,
  * a file, and the name says nothing about which photon budget the run
  * used, while the choice moves Q_H.
  *
- * Every attribute here is optional. A table that carries none leaves
- * #radiation.table_sources empty and still loads: this is provenance, not
- * something the reader needs.
+ * Every attribute here is optional. A table that carries none leaves every
+ * #radiation.table_source entry empty and still loads: this is provenance,
+ * not something the reader needs.
  *
  * @param rad (output) The #radiation model to fill.
  * @param group_id Open HDF5 "Data/Radiation" group id.
@@ -175,24 +178,14 @@ static void radiation_read_table_identity(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid) {
 
-  static const char *const source_keys[] = {
-      "qh_source", "lwpe_source", "stellar_evolution_source", "source"};
-  size_t used = 0;
-  rad->table_sources[0] = '\0';
+  for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++) {
+    rad->table_source[i][0] = '\0';
 
-  for (size_t i = 0; i < sizeof(source_keys) / sizeof(source_keys[0]); i++) {
-    if (H5Aexists(group_id, source_keys[i]) <= 0) continue;
+    if (H5Aexists(group_id, radiation_table_source_keys[i]) <= 0) continue;
 
-    char value[128];
-    radiation_read_string_attribute_truncating(group_id, source_keys[i], value,
-                                               sizeof(value));
-
-    const int written =
-        snprintf(rad->table_sources + used, sizeof(rad->table_sources) - used,
-                 "%s%s=%s", used > 0 ? ", " : "", source_keys[i], value);
-    if (written < 0 || (size_t)written >= sizeof(rad->table_sources) - used)
-      break;
-    used += (size_t)written;
+    radiation_read_string_attribute_truncating(
+        group_id, radiation_table_source_keys[i], rad->table_source[i],
+        RADIATION_TABLE_SOURCE_SIZE);
   }
 
   rad->table_n_mass = grid->n_mass;
