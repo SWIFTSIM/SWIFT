@@ -88,8 +88,8 @@ if not ratio >= bar:
         f.write(
             "WARNING: ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR is "
             "set, so this run is OUTSIDE the regime this example is "
-            f"validated in: {refusal} Its gates do not hold here, and the "
-            "check's L3 gate fails on the same bound.\n"
+            f"validated in: {refusal} Its gates are not validated here, "
+            "and the check's L3 gate fails on the same bound.\n"
         )
 EOF
         kernel_support_warning=$(cat "$warning_file")

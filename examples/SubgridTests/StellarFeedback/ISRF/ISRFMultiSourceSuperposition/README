@@ -61,8 +61,8 @@ under the 0.598 the example is measured good at. At 0.866 the kernels
 cover a cubic lattice and the reduced-flux gate is left with no gas
 outside them. Raise `n_side` together with `level`.
 
-Set `ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR=1` to measure that
-regime on purpose. The 0.55 refusal then becomes a warning, repeated as the
+Set `ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR=1` to run the lattice
+below 0.55 on purpose. The 0.55 refusal then becomes a warning, repeated as the
 first line of every lattice run's `output.log`, and the check still fails its
 kernel-support gate after printing the lattice diagnostics, so pass
 `run_check=0` to keep `run.sh` itself at exit 0. The 0.866 bound stays a
