@@ -201,6 +201,7 @@ self-shielded configuration, and is not printed for mode 0.
 """
 
 import argparse
+import atexit
 import glob
 import re
 import sys
@@ -222,11 +223,30 @@ RADIATION_H = (
 # Values of the macros below, for the case where the header is out of reach.
 # This script is normally copied out of the source tree to run beside a run
 # directory, where there is nothing to parse; in the tree the parse is what
-# catches a copy that has drifted from the header.
+# catches a copy that has drifted from the header. Falling back is announced
+# on stdout, since a stale copy would otherwise print a confident number.
 RADIATION_H_FALLBACK = {
     "RADIATION_SIGMA_H2_LW_CGS": 2.5111667e-18,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
 }
+RADIATION_H_FALLBACK_SOURCE = "radiation.h at bc9f7dca5, copied 2026-09-23"
+RADIATION_H_FALLBACK_USED: List[str] = []
+
+
+def _warn_fallback_used() -> None:
+    """Repeat the unverified-constant note next to the verdict."""
+    if RADIATION_H_FALLBACK_USED:
+        print(
+            "NOTE: "
+            + ", ".join(RADIATION_H_FALLBACK_USED)
+            + f" came from this script's own copy of {RADIATION_H_FALLBACK_SOURCE}, "
+            "not from the header, and were not verified against the source. "
+            "Do not cite the numbers above as checked against the code "
+            "without confirming the header still carries these values."
+        )
+
+
+atexit.register(_warn_fallback_used)
 
 
 def read_radiation_h_constant(name: str) -> float:
@@ -241,12 +261,22 @@ def read_radiation_h_constant(name: str) -> float:
     -------
     float
         The macro's value, or its entry in `RADIATION_H_FALLBACK` when the
-        header is not reachable from this file.
+        header is not reachable from this file. The fallback prints a note
+        on stdout naming the constant and the unverified value it used.
     """
     try:
         text = RADIATION_H.read_text()
     except OSError:
-        return RADIATION_H_FALLBACK[name]
+        value = RADIATION_H_FALLBACK[name]
+        RADIATION_H_FALLBACK_USED.append(name)
+        print(
+            f"NOTE: {RADIATION_H} is not readable from this copy of the "
+            f"script, so {name} = {value!r} is taken from the script's own "
+            f"copy of the header value ({RADIATION_H_FALLBACK_SOURCE}) and "
+            f"was NOT verified against the source. If the header has "
+            f"changed since, every number below is stale."
+        )
+        return value
     match = re.search(rf"^#define\s+{re.escape(name)}\s+([0-9.eE+-]+)", text, re.M)
     if match is None:
         raise ValueError(f"Could not find #define {name} in {RADIATION_H}")
