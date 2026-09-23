@@ -30,7 +30,8 @@ unrelated purpose (photoelectric heating) and would double-count non-LW
 flux here.
 
 Result is informational only (used to judge whether
-RADIATION_SIGMA_H2_LW_CGS is plausible), not a pass/fail gate. RESOLVED:
+RADIATION_SIGMA_H2_OVER_E_LW_CGS, and so the cross section it is quoted
+through, is plausible), not a pass/fail gate. RESOLVED:
 with the LW-fraction-of-Habing correction below applied, k_diss/D0 =
 0.898, within the ~10% expected uncertainty, see radiation.h's own
 doxygen on that constant, updated to record this verification.
@@ -68,7 +69,7 @@ def _read_radiation_h_constant(name: str) -> float:
     Parameters
     ----------
     name : str
-        The macro name, e.g. "RADIATION_SIGMA_H2_LW_CGS".
+        The macro name, e.g. "RADIATION_SIGMA_H2_OVER_E_LW_CGS".
 
     Returns
     -------
@@ -87,9 +88,10 @@ def our_k_diss_cgs(
 ) -> float:
     """Reproduce radiation_get_part_LW_dissociation_rate_internal()'s formula.
 
-    Mirrors the production function line-for-line (radiation_gas.c:580-604),
-    starting from a Habing-convention LW-band flux instead of a particle's
-    stored u_LW field.
+    Mirrors the production function, starting from a Habing-convention
+    LW-band flux instead of a particle's stored u_LW field. The production
+    code multiplies by the quotient sigma_H2/E_LW directly; the two factors
+    are kept apart here so the cross section can be reported on its own.
 
     Parameters
     ----------
@@ -132,10 +134,10 @@ def sternberg_D0_cgs(G0_LW: float) -> float:
 
 
 def main() -> None:
+    # The rate reads the quotient sigma_H2/E_LW and nothing else, so that is
+    # what this verification anchors; the pair below is how it is quoted.
+    sigma_over_E_LW_cgs = _read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
     sigma_h2_lw_cgs = _read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
-    # The fallback path's calibration. A run whose radiation table carries
-    # Integrated_MeanPhotonEnergyLW divides by that instead, which moves the
-    # ratio below by 12.2 eV / E_LW_table.
     E_LW_photon_ev = _read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
     habing_flux_cgs = _read_radiation_h_constant("RADIATION_HABING_FLUX_CGS")
 
@@ -144,6 +146,10 @@ def main() -> None:
     habing_flux_LW_only_cgs = habing_flux_cgs * LW_FRACTION_OF_HABING
 
     print(f"Read from {RADIATION_H}:")
+    print(
+        f"  RADIATION_SIGMA_H2_OVER_E_LW_CGS = {sigma_over_E_LW_cgs:.6e} "
+        "cm^2 erg^-1 (the constrained quotient)"
+    )
     print(f"  RADIATION_SIGMA_H2_LW_CGS   = {sigma_h2_lw_cgs:.4e} cm^2")
     print(f"  RADIATION_LW_PHOTON_ENERGY_EV = {E_LW_photon_ev:.3f} eV")
     print(
@@ -186,7 +192,8 @@ def main() -> None:
         f"k_diss/D0 = {ratios[0]:.3f} (LW-fraction-corrected; informational, "
         "see module docstring; not a pass/fail gate). Within ~10% of "
         "1.0 given the ~5-10% band-integration uncertainty above, "
-        "RADIATION_SIGMA_H2_LW_CGS looks plausible, not in need of a "
+        "RADIATION_SIGMA_H2_OVER_E_LW_CGS looks plausible, not in need of "
+        "a "
         "fresh re-derivation."
     )
 

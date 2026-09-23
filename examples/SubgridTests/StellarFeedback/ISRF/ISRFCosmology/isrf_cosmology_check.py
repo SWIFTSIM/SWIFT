@@ -82,7 +82,7 @@ free_field
     0.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
-    ``k = sigma_H2 c rho u_LW / E_LW``, with rho = rho0 (a0/a)^3 and, to the
+    ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
     same leading order as A1 (u_LW ~= u_LW,0, not u_LW,0 a0/a as an undilated
     Hubble term would give), so
 
@@ -177,11 +177,10 @@ ELECTRON_VOLT_CGS = 1.602176634e-12
 # catches a copy that has drifted from the header. Falling back is announced
 # on stdout, since a stale copy would otherwise print a confident number.
 RADIATION_H_FALLBACK = {
-    "RADIATION_SIGMA_H2_LW_CGS": 2.5111667e-18,
+    "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.2847106348798106e-07,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
-    "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY": 0.014,
 }
-RADIATION_H_FALLBACK_SOURCE = "radiation.h at 05fe1c636, copied 2026-09-23"
+RADIATION_H_FALLBACK_SOURCE = "radiation.h at 0f640d706, copied 2026-09-23"
 RADIATION_H_FALLBACK_USED: List[str] = []
 
 
@@ -207,7 +206,7 @@ def read_radiation_h_constant(name: str) -> float:
     Parameters
     ----------
     name : str
-        The macro name, e.g. ``"RADIATION_SIGMA_H2_LW_CGS"``.
+        The macro name, e.g. ``"RADIATION_SIGMA_H2_OVER_E_LW_CGS"``.
 
     Returns
     -------
@@ -235,113 +234,98 @@ def read_radiation_h_constant(name: str) -> float:
     return float(match.group(1))
 
 
-LW_PHOTON_ENERGY_NOTE: "List[str]" = []
+LW_CALIBRATION_NOTE: "List[str]" = []
 
 
-def _announce_lw_photon_energy(
-    value: float, reason: "Optional[str]" = None, table: "Optional[Path]" = None
-) -> float:
-    """Say where the Lyman-Werner photon energy came from, and remember it.
+def _note_lw_calibration(message: str) -> None:
+    """Print a calibration note now, and again next to the verdict."""
+    print("NOTE: " + message)
+    LW_CALIBRATION_NOTE.append(message)
 
-    A run whose table carries the dataset divided by the table value; a run
-    whose table does not divided by the header constant. Silently picking
-    either one would bias every rate below by the ratio of the two, so the
-    choice is printed, and a fallback is repeated next to the verdict.
 
-    Parameters
-    ----------
-    value : float
-        The photon energy, erg.
-    reason : str, optional
-        Why the header constant was used, or None on the table path.
-    table : pathlib.Path, optional
-        The table the value came from, on the table path.
+def _repeat_lw_calibration_notes() -> None:
+    """Repeat the calibration notes next to the verdict."""
+    for message in LW_CALIBRATION_NOTE:
+        print("NOTE: " + message)
 
-    Returns
-    -------
-    float
-        `value`, unchanged.
+
+atexit.register(_repeat_lw_calibration_notes)
+
+
+def check_run_lw_calibration() -> None:
+    """Report which H2 calibration the run's own binary used, from its log.
+
+    ``radiation_set_lw_photon_energy_cgs`` announces the coefficient in force
+    on every run whose radiation model is active, so the run's log is the
+    witness, not this source tree and not the radiation table. Three binaries
+    exist and the log tells them apart:
+
+    * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
+      Sternberg-anchored quotient, which is what `unshielded_rate` reproduces.
+      No bias is possible;
+    * one printing only ``Mean Lyman-Werner photon energy from the table``: it
+      divided the flux by that table value while the cross section stayed
+      pinned to 12.2 eV, so its rates sit below this script's by the ratio of
+      the two energies. The offset is quantified here from the logged value;
+    * one printing neither: it divided by the header constant, which is the
+      same rate the quotient gives.
+
+    A missing log leaves the question open and is reported as such. The table
+    is deliberately not consulted: it says what a binary COULD have read, not
+    what it did.
     """
-    if reason is None:
-        print(f"E_LW = {value:.6e} erg, read from {table}")
-    else:
-        message = (
-            f"E_LW = {value:.6e} erg, from RADIATION_LW_PHOTON_ENERGY_EV "
-            f"because {reason}. A run made against a table that DOES carry "
-            f"the dataset divided by a different value, and every rate "
-            f"below would then be biased by the ratio of the two."
+    log = None
+    for directory in (Path.cwd(), Path(__file__).resolve().parent):
+        candidate = directory / "output.log"
+        if candidate.is_file():
+            log = candidate
+            break
+    if log is None:
+        _note_lw_calibration(
+            "no output.log was found beside this run, so the H2 calibration "
+            "its binary used is UNKNOWN. A binary that divided the LW flux by "
+            "the radiation table's mean photon energy produces rates about "
+            "0.4 per cent below the ones predicted below, which an identity "
+            "check on this fixture would report as a residual of that size."
         )
-        print("NOTE: " + message)
-        LW_PHOTON_ENERGY_NOTE.append(message)
-    return value
-
-
-def _warn_lw_photon_energy_fallback() -> None:
-    """Repeat the photon-energy fallback note next to the verdict."""
-    for message in LW_PHOTON_ENERGY_NOTE:
-        print("NOTE: " + message)
-
-
-atexit.register(_warn_lw_photon_energy_fallback)
-
-
-def read_lw_photon_energy_cgs() -> float:
-    """Read the mean Lyman-Werner photon energy the run divided by, in erg.
-
-    SWIFT takes it from the radiation table when that table carries
-    ``Data/Radiation/Integrated_MeanPhotonEnergyLW``, at the reference
-    metallicity and over the whole IMF mass range
-    (``radiation_set_lw_photon_energy_cgs``), and falls back to
-    ``RADIATION_LW_PHOTON_ENERGY_EV`` otherwise. The table is located through
-    the parameter file of the run being checked, so this reproduces the
-    divisor that run actually used.
-
-    Returns
-    -------
-    float
-        Photon energy in erg.
-    """
-    fallback = (
+        return
+    text = log.read_text(errors="replace")
+    if "sigma_H2/E_LW" in text:
+        print(
+            f"H2 calibration: {log} reports sigma_H2/E_LW, so the run used the "
+            "same Sternberg-anchored quotient as this script."
+        )
+        return
+    match = re.search(
+        r"Mean Lyman-Werner photon energy from the table = (\S+) erg", text
+    )
+    if match is None:
+        print(
+            f"H2 calibration: {log} reports no photon-energy line, so the run "
+            "divided by RADIATION_LW_PHOTON_ENERGY_EV, which gives the same "
+            "rate as the quotient this script uses."
+        )
+        return
+    energy_logged = float(match.group(1))
+    energy_header = (
         read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
     )
-    reference_metallicity = read_radiation_h_constant(
-        "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY"
-    )
-    for directory in (Path.cwd(), Path(__file__).resolve().parent):
-        for name in ("used_parameters.yml", "params.yml"):
-            parameters = directory / name
-            if not parameters.is_file():
-                continue
-            match = re.search(
-                r"^\s*yields_table:\s*(\S+)", parameters.read_text(), re.M
-            )
-            if match is None:
-                continue
-            table = directory / match.group(1).strip("\"'")
-            if not table.is_file():
-                continue
-            with h5py.File(table, "r") as handle:
-                group = handle.get("Data/Radiation")
-                if group is None or "Integrated_MeanPhotonEnergyLW" not in group:
-                    return _announce_lw_photon_energy(
-                        fallback, f"{table} carries no Integrated_MeanPhotonEnergyLW"
-                    )
-                energies = group["Integrated_MeanPhotonEnergyLW"]
-                if energies.ndim == 1:
-                    return _announce_lw_photon_energy(float(energies[-1]), None, table)
-                metallicity = group["Metallicity"][:]
-                row = int(np.argmin(np.abs(metallicity - reference_metallicity)))
-                return _announce_lw_photon_energy(float(energies[row, -1]), None, table)
-    return _announce_lw_photon_energy(
-        fallback, "no parameter file naming a reachable yields_table was found"
+    offset = energy_header / energy_logged - 1.0
+    _note_lw_calibration(
+        f"{log} reports a table mean LW photon energy of {energy_logged:.6e} erg "
+        "and no sigma_H2/E_LW line, so this run's binary DIVIDED the LW flux by "
+        "that energy against a cross section pinned at "
+        f"{read_radiation_h_constant('RADIATION_LW_PHOTON_ENERGY_EV'):.1f} eV. "
+        "Its H2 photodissociation rates differ from the ones predicted below "
+        f"by {offset * 100.0:+.2f} per cent, and a residual of that size here "
+        "is the expected symptom, not a physics result."
     )
 
 
-# The cross-section is a compile-time constant; the photon energy comes from
-# the radiation table when that table carries it, so read the cross-section
-# from the header and the photon energy the same way the run resolved it.
-SIGMA_H2_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
-LW_PHOTON_ENERGY_CGS = read_lw_photon_energy_cgs()
+# The H2 photodissociation rate is the LW energy flux times this one
+# Sternberg-anchored quotient; no cross section or photon energy enters it.
+SIGMA_H2_OVER_E_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
+check_run_lw_calibration()
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387
@@ -857,7 +841,7 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     # Box-mean density and field: the closed form is for the uniform state.
     rho0 = np.sum(mass) / np.sum(mass / first["density"])
     u_lw0 = np.sum(mass * first["u_LW"]) / np.sum(mass)
-    k0 = SIGMA_H2_LW_CGS * C_LIGHT_CGS * rho0 * u_lw0 / LW_PHOTON_ENERGY_CGS
+    k0 = SIGMA_H2_OVER_E_LW_CGS * C_LIGHT_CGS * rho0 * u_lw0
     # Power 3, not 4: rho ~ (a0/a)^3 alone now (A2, this module's docstring).
     # u_LW no longer contributes an (a0/a)^1 factor once the Hubble term is
     # correctly dilated by c_hyp/c.
