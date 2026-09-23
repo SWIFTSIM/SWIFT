@@ -517,8 +517,9 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     /* Get a hold of the ith sinks in ci. */
     struct sink *restrict sj = &sinks[j];
 
-    /* Ignore inhibited particles */
-    if (sink_is_inhibited(sj, e)) continue;
+    /* Ignore inhibited and reserved-but-unformed particles */
+    if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
+      continue;
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(
