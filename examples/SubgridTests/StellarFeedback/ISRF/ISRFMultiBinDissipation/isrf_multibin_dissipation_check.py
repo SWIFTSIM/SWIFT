@@ -51,6 +51,14 @@ DX_GAS_VOID_THRESHOLD_H = 0.10
 RHO_MATCH_THRESHOLD = 0.15
 BIN_DT_DISAGREEMENT_THRESHOLD = 0.20
 
+# crit4's ledger bar, ISRFInjectionConservation/isrf_ledger_check.py's own
+# default --tol. Derivation (see REVIEW_multibin_crit4...): Inj and Abs are
+# float32 running totals over ~128 active steps per particle, eps=1.19e-7,
+# giving ~1.19e-7*sqrt(128)/sqrt(262144) = 2.6e-9 statistically and
+# ~1.19e-7*128 = 1.5e-5 if per-particle rounding is fully correlated; 1e-3
+# sits about two decades above the correlated worst case.
+LEDGER_BAR = 1e-3
+
 # Wendland C2, 3D coefficients (0 < x < 1 branch); src/kernel_hydro.h.
 WENDLAND_C2_3D_COEFFS = [4.0, -15.0, 20.0, -10.0, 0.0, 1.0]
 KERNEL_CONSTANT_3D = 21.0 * np.pi**-1 / 2.0
@@ -73,6 +81,16 @@ def parse_options():
         "c_hyp a global constant, matching radiation_isrf.c's own closure.",
     )
     parser.add_argument("--r-cut-h", type=float, default=6.0)
+    parser.add_argument(
+        "--ledger-valid",
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help="1 if swift was built with --enable-debugging-checks (run.sh "
+        "detects this from the binary's own --version banner), so the "
+        "m4_ledger residual below is a real measurement and not 0/0 on an "
+        "all-zero accumulator.",
+    )
     parser.add_argument("--json-out", default="multibin_metrics.json")
     parser.add_argument("--output", default="isrf_multibin_dissipation_check.png")
     return parser.parse_args()
@@ -145,6 +163,10 @@ def load_snapshot(path):
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
         alpha_pe = gas["PEArtificialDissipationCoefficients"][:].astype(np.float64)
         alpha_lw = gas["LWArtificialDissipationCoefficients"][:].astype(np.float64)
+        inj_pe = gas["PECumulativeInjectedSpecificEnergies"][:].astype(np.float64)
+        inj_lw = gas["LWCumulativeInjectedSpecificEnergies"][:].astype(np.float64)
+        abs_pe = gas["PECumulativeAbsorbedSpecificEnergies"][:].astype(np.float64)
+        abs_lw = gas["LWCumulativeAbsorbedSpecificEnergies"][:].astype(np.float64)
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][:, :]
@@ -163,6 +185,10 @@ def load_snapshot(path):
         u_lw=u_lw,
         alpha_pe=alpha_pe,
         alpha_lw=alpha_lw,
+        inj_pe=inj_pe,
+        inj_lw=inj_lw,
+        abs_pe=abs_pe,
+        abs_lw=abs_lw,
         Z=Z,
         star_pos=star_pos,
         star_ids=star_ids,
@@ -518,6 +544,9 @@ def main():
 
     # M4 conservation trace (global sum(m*u)), per band.
     conservation = {"PE": [], "LW": []}
+    # crit4's ledger trace, |E + Abs - Inj| / |Inj| per snapshot; see
+    # LEDGER_BAR above. Only meaningful when --ledger-valid.
+    ledger = {"PE": [], "LW": []}
 
     for snap in snaps:
         pos, h, mass, rho = snap["pos"], snap["h"], snap["mass"], snap["rho"]
@@ -538,13 +567,21 @@ def main():
                 snap["Z"], rho, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma
             )
 
-        for band, u_field, alpha_field in (
-            ("PE", "u_pe", "alpha_pe"),
-            ("LW", "u_lw", "alpha_lw"),
+        for band, u_field, alpha_field, inj_field, abs_field in (
+            ("PE", "u_pe", "alpha_pe", "inj_pe", "abs_pe"),
+            ("LW", "u_lw", "alpha_lw", "inj_lw", "abs_lw"),
         ):
             u = snap[u_field]
             alpha = snap[alpha_field]
             conservation[band].append((snap["time"], float(np.sum(mass * u))))
+
+            E = float(np.sum(mass * u))
+            Inj = float(np.sum(mass * snap[inj_field]))
+            Abs = float(np.sum(mass * snap[abs_field]))
+            R = abs(E + Abs - Inj) / abs(Inj) if Inj != 0.0 else np.nan
+            ledger[band].append(
+                dict(time=snap["time"], E=E, Inj=Inj, Abs=Abs, R=R)
+            )
 
             for name in star_names:
                 star_pos = star_position(snap, star_ids[name])
@@ -724,6 +761,18 @@ def main():
             full_trace=series,
         )
 
+    # crit4's ledger residual, max over every finite R in the trace (the
+    # pre-injection snapshots correctly give Inj=0 -> R=NaN and are
+    # dropped, not a violation).
+    m4_ledger = {}
+    for band in ("PE", "LW"):
+        finite_R = [p["R"] for p in ledger[band] if np.isfinite(p["R"])]
+        m4_ledger[band] = dict(
+            max_R=(float(np.max(finite_R)) if finite_R else np.nan),
+            n_finite=len(finite_R),
+            trace=ledger[band],
+        )
+
     print("\n--- M1/M2 summary (last snapshot) ---")
     for name in star_names:
         for band in ("PE", "LW"):
@@ -746,6 +795,19 @@ def main():
         print(
             f"{band}: first={res['first']:.6e}  last={res['last']:.6e}  "
             f"frac_change={res['fractional_change']*100:.4f}%"
+        )
+
+    if opt.ledger_valid:
+        print("\n--- M4 ledger residual (crit4's reference) ---")
+        for band, res in m4_ledger.items():
+            print(
+                f"{band}: max_R={res['max_R']:.3e} over {res['n_finite']} "
+                f"snapshots  (bar {LEDGER_BAR:g})"
+            )
+    else:
+        print(
+            "\n--- M4 ledger residual: SKIPPED, not a debugging build "
+            "(--ledger-valid 0); Inj/Abs accumulators read as 0 ---"
         )
 
     status = (
@@ -778,6 +840,8 @@ def main():
         per_star_series=per_star_series,
         m3_mechanism_diagnostic=m3,
         m4_conservation=m4,
+        m4_ledger=m4_ledger,
+        ledger_valid=bool(opt.ledger_valid),
         used_parameters=used_params,
         ic=ic,
         c_hyp_margin=opt.c_hyp_margin,

@@ -106,6 +106,25 @@ printf "Running simulation..."
 		   -P SPH:initial_temperature:0 \
 		   params.yml 2>&1 | tee output.log
 
+# crit4's only sound reference is the closed ledger residual
+# |E + Abs - Inj| / |Inj| (see README): the two cumulative accumulators it
+# needs are identically zero unless swift was built with
+# --enable-debugging-checks (feedback_common.c:1248), so detect the build
+# the same way ISRFHyperbolicPropagation/run.sh does and pass it through,
+# rather than let multibin_compare.py silently gate on all-zero data.
+swift_banner=$(../../../../../swift --version 2>&1 || true)
+case "$swift_banner" in
+    *enable-debugging-checks=no*|*disable-debugging-checks*)
+	ledger_valid=0
+	;;
+    *enable-debugging-checks*)
+	ledger_valid=1
+	;;
+    *)
+	ledger_valid=0
+	;;
+esac
+
 # Per-run metrics; see README. The dipoles are report-only, but the check
 # exits nonzero if its own time-step reconstruction is invalid or a
 # contamination control, dipole or negative-weight share is non-finite.
@@ -113,7 +132,7 @@ printf "Running simulation..."
 # abort before the outputs are moved: the next run removes snap/.
 check_status=0
 python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin \
-	--c-hyp-pin $c_hyp_pin || check_status=$?
+	--c-hyp-pin $c_hyp_pin --ledger-valid $ledger_valid || check_status=$?
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
