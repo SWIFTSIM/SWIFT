@@ -620,6 +620,15 @@ LambdaCooling:
   cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
   rapid_cooling:               0     # (Optional) Apply the cooling directly to the internal energy (1) rather than via the internal energy time derivative (0, default).
 
+# Katz, Weinberg & Hernquist (1996) primordial cooling function
+TREECOOLCooling:
+  TREECOOL_file:                ./TREECOOL_fg_dec11 # Location of the TREECOOL table giving the UV background photo-ionization and photo-heating rates as a function of redshift
+  rapid_cooling_threshold:      0.333333            # (Optional) Switch to the rapid cooling regime for dt / t_cool above this threshold. Use a negative value to always use the slow-cooling regime.
+  UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off. Defaults to no limit beyond the range of the TREECOOL table itself.
+  with_Compton_cooling:         1                   # (Optional) Include the inverse Compton cooling off the CMB (1, default) or not (0).
+  log10_T_min:                  1.0                 # (Optional) log10 of the lowest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully neutral below this.
+  log10_T_max:                  9.0                 # (Optional) log10 of the highest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully ionized above this.
+
 # Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
 EAGLECooling:
   dir_name:                  ./coolingtables/  # Location of the Wiersma+08 cooling tables
