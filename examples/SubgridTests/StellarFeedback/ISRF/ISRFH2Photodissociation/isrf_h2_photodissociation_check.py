@@ -31,8 +31,9 @@ photon flux,
 
     k_diss,0 = sigma_H2 * c * rho * u_LW / E_LW ,                        (1)
 
-with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS = 2.5111667e-18 cm^2``,
-``E_LW = RADIATION_LW_PHOTON_ENERGY_EV = 12.2 eV`` and ``u_LW`` the snapshot's
+with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS``,
+``E_LW = RADIATION_LW_PHOTON_ENERGY_EV`` (both read from that header at run
+time, since only their quotient is calibrated) and ``u_LW`` the snapshot's
 ``LWSpecificEnergies`` in CGS. This script takes ``u_LW`` from the snapshots
 rather than predicting it from a transport solution: the field the chemistry
 actually saw is an input to this test, not one of its claims, so a transport
@@ -201,7 +202,9 @@ self-shielded configuration, and is not printed for mode 0.
 
 import argparse
 import glob
+import re
 import sys
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import h5py
@@ -211,9 +214,36 @@ import numpy as np
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# src/feedback/GEAR/radiation.h
-SIGMA_H2_LW_CGS: float = 2.5111667e-18
-LW_PHOTON_ENERGY_EV: float = 12.2
+RADIATION_H = (
+    Path(__file__).resolve().parents[5] / "src" / "feedback" / "GEAR" / "radiation.h"
+)
+
+
+def read_radiation_h_constant(name: str) -> float:
+    """Read a #define'd float constant's value out of radiation.h.
+
+    Parameters
+    ----------
+    name : str
+        The macro name, e.g. ``"RADIATION_SIGMA_H2_LW_CGS"``.
+
+    Returns
+    -------
+    float
+        The macro's value.
+    """
+    text = RADIATION_H.read_text()
+    match = re.search(rf"^#define\s+{re.escape(name)}\s+([0-9.eE+-]+)", text, re.M)
+    if match is None:
+        raise ValueError(f"Could not find #define {name} in {RADIATION_H}")
+    return float(match.group(1))
+
+
+# The cross-section and the photon energy are calibrated together: only their
+# quotient is constrained, so a copy of one that drifts from the other
+# rescales every dissociation rate. Read both from the header instead.
+SIGMA_H2_LW_CGS: float = read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
+LW_PHOTON_ENERGY_EV: float = read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
 HABING_FLUX_CGS: float = 1.6e-3
 # Draine and Bertoldi (1996), unshielded free-space rate per Habing field
 DB96_UNSHIELDED_RATE_CGS: float = 3.3e-11

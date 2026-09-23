@@ -154,15 +154,49 @@ that measured error, plus the cosmological terms:
 
 import argparse
 import glob
+import re
 import sys
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import h5py
 import numpy as np
 from scipy.integrate import quad
 
-SIGMA_H2_LW_CGS = 2.5111667e-18
-LW_PHOTON_ENERGY_CGS = 12.2 * 1.602176634e-12
+RADIATION_H = (
+    Path(__file__).resolve().parents[5] / "src" / "feedback" / "GEAR" / "radiation.h"
+)
+
+ELECTRON_VOLT_CGS = 1.602176634e-12
+
+
+def read_radiation_h_constant(name: str) -> float:
+    """Read a #define'd float constant's value out of radiation.h.
+
+    Parameters
+    ----------
+    name : str
+        The macro name, e.g. ``"RADIATION_SIGMA_H2_LW_CGS"``.
+
+    Returns
+    -------
+    float
+        The macro's value.
+    """
+    text = RADIATION_H.read_text()
+    match = re.search(rf"^#define\s+{re.escape(name)}\s+([0-9.eE+-]+)", text, re.M)
+    if match is None:
+        raise ValueError(f"Could not find #define {name} in {RADIATION_H}")
+    return float(match.group(1))
+
+
+# The cross-section and the photon energy are calibrated together: only their
+# quotient is constrained, so a copy of one that drifts from the other
+# rescales every dissociation rate. Read both from the header instead.
+SIGMA_H2_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
+LW_PHOTON_ENERGY_CGS = (
+    read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
+)
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387
