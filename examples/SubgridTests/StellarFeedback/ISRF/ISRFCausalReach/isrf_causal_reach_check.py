@@ -116,7 +116,14 @@ def parse_options():
         "particle (see hot_particle_id.txt), excluded from the bulk h/dt "
         "estimate and from every metric, including the negativity gate.",
     )
-    parser.add_argument("--n-bins", type=int, default=120, help="Radial bins.")
+    parser.add_argument(
+        "--n-bins",
+        type=int,
+        default=231,
+        help="Radial bins over the full periodic reach sqrt(3)/2 L. The "
+        "default keeps the same bin WIDTH as 120 bins over 0.45 L did, so "
+        "the front position is quantised as before (default: %(default)s).",
+    )
     parser.add_argument(
         "--near-source-h",
         type=float,

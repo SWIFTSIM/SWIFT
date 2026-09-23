@@ -89,7 +89,15 @@ def parse_options():
         default=0.5,
         help="GEARFeedback:ISRF_c_hyp_margin used by the run (default: %(default)s).",
     )
-    parser.add_argument("--n-bins", type=int, default=60, help="Radial bins.")
+    parser.add_argument(
+        "--n-bins",
+        type=int,
+        default=116,
+        help="Radial bins over the full periodic reach sqrt(3)/2 L. The "
+        "default keeps the same bin WIDTH as 60 bins over 0.45 L did, so "
+        "r_edge_norm is quantised as before and M-C2 keeps the meaning of "
+        "its 10 per cent tolerance (default: %(default)s).",
+    )
     parser.add_argument(
         "--expect-stable",
         dest="expect_stable",
