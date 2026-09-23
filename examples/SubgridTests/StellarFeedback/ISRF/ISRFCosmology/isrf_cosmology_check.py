@@ -868,6 +868,9 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     out["exponent"] = float(-predicted[-1])
     out["rate"] = k0
     out["integral"] = integral
+    # Elapsed physical time of every snapshot, seconds, so a reference run on
+    # its own time grid can be paired with this one by TIME.
+    out["times"] = np.array([s["time"] - first["time"] for s in run])
     return out
 
 
@@ -965,12 +968,26 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     cosmo = 1.5 * dt_max if cosmological else 0.0
     measured_nc = np.zeros_like(budget)
     if reference is not None:
-        # Snapshot by snapshot when both runs have the same output count: the
-        # lag term is largest at the first snapshots in both runs.
-        if reference["H2"].size == budget.size:
-            measured_nc = np.abs(reference["H2"])
-        else:
-            measured_nc = np.full_like(budget, np.max(np.abs(reference["H2"])))
+        # By ELAPSED TIME, never by snapshot index: cosmo_timeline.py spaces a
+        # non-cosmological run uniformly in t and a cosmological one uniformly
+        # in ln a, so equal snapshot counts do not mean equal elapsed times.
+        # The lag term is largest at the earliest times, so pairing by index
+        # would mix an early reference error into a late cosmological bar.
+        ref_times = reference["times"][1:]
+        ref_error = np.abs(reference["H2"])
+        if not np.all(np.isfinite(ref_error)) or not np.all(np.isfinite(ref_times)):
+            raise RuntimeError(
+                "the reference run's H2 errors or times are not all finite -- "
+                "refusing to build a bar from a corrupted reference."
+            )
+        if elapsed[-1] > ref_times[-1] or elapsed[0] < ref_times[0]:
+            raise RuntimeError(
+                f"the reference run spans {ref_times[0]:.4e} to "
+                f"{ref_times[-1]:.4e} s but this run spans {elapsed[0]:.4e} to "
+                f"{elapsed[-1]:.4e} s; np.interp would silently clamp outside "
+                "that range. Extend the reference run's time_end."
+            )
+        measured_nc = np.interp(elapsed, ref_times, ref_error)
     bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
     ratio = np.abs(errors["H2"]) / bar
     k = int(np.argmax(ratio))
