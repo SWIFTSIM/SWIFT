@@ -148,7 +148,10 @@ def mode_P(opt):
         # One verdict drives both the printed status and `all_pass`: as two
         # comparisons they negated each other only for finite values, so a
         # non-finite D printed FAIL, kept `all_pass` and exited 0.
-        worst = max(d_pe, d_lw)
+        # np.max, not the builtin: `max(1e-4, nan)` returns 1e-4, because
+        # `nan > x` is False, so a non-finite LW would survive as a finite
+        # worst case. np.max propagates the nan to both bands.
+        worst = float(np.max([d_pe, d_lw]))
         run_pass = bool(valid and np.isfinite(worst) and worst <= opt.tol_d)
         status = (
             "EXCLUDED (drift > 0.1h)" if excluded else ("PASS" if run_pass else "FAIL")
