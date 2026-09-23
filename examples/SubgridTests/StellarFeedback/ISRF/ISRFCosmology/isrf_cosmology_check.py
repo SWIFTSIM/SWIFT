@@ -180,7 +180,7 @@ RADIATION_H_FALLBACK = {
     "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.2847106348798106e-07,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
 }
-RADIATION_H_FALLBACK_SOURCE = "radiation.h at 0f640d706, copied 2026-09-23"
+RADIATION_H_FALLBACK_SOURCE = "radiation.h at 18bcf76cb, copied 2026-09-24"
 RADIATION_H_FALLBACK_USED: List[str] = []
 
 
@@ -236,6 +236,18 @@ def read_radiation_h_constant(name: str) -> float:
 
 LW_CALIBRATION_NOTE: "List[str]" = []
 
+# The two lines radiation_set_lw_photon_energy_cgs() prints, anchored on the
+# function name error.h's message() macro prefixes them with. A bare
+# "sigma_H2/E_LW" would also match this script's own note below, so a log
+# holding an earlier run of this script would classify itself as clean.
+LW_QUOTIENT_LOG_RE = re.compile(
+    r"radiation_set_lw_photon_energy_cgs: H2 photodissociation sigma_H2/E_LW ="
+)
+LW_TABLE_ENERGY_LOG_RE = re.compile(
+    r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
+    r"from the table = (\S+) erg"
+)
+
 
 def _note_lw_calibration(message: str) -> None:
     """Print a calibration note now, and again next to the verdict."""
@@ -252,8 +264,50 @@ def _repeat_lw_calibration_notes() -> None:
 atexit.register(_repeat_lw_calibration_notes)
 
 
-def check_run_lw_calibration() -> None:
-    """Report which H2 calibration the run's own binary used, from its log.
+def find_run_logs(*hints: "Optional[str]") -> "List[Path]":
+    """Find the ``output.log`` of every run this check was pointed at.
+
+    The example ``run.sh`` scripts move the log into the per-run directory
+    beside ``snap``, and the READMEs then call this script from the example
+    directory with a snapshot glob, so the log sits one level above the
+    snapshots rather than in the working directory.
+
+    Parameters
+    ----------
+    hints : str, optional
+        A run log's path, or a snapshot glob of a run. None entries are
+        ignored, so an unset option can be passed straight through.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Existing logs, deduplicated, in the order the hints named them.
+    """
+    candidates: "List[Path]" = []
+    for hint in hints:
+        if hint is None:
+            continue
+        given = Path(hint)
+        if given.is_file() and given.suffix == ".log":
+            candidates.append(given)
+            continue
+        candidates += [given.parent / "output.log", given.parent.parent / "output.log"]
+    candidates.append(Path.cwd() / "output.log")
+    logs: "List[Path]" = []
+    seen = set()
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        key = candidate.resolve()
+        if key in seen:
+            continue
+        seen.add(key)
+        logs.append(candidate)
+    return logs
+
+
+def check_run_lw_calibration(*hints: "Optional[str]") -> None:
+    """Report which H2 calibration each run's own binary used, from its log.
 
     ``radiation_set_lw_photon_energy_cgs`` announces the coefficient in force
     on every run whose radiation model is active, so the run's log is the
@@ -263,69 +317,65 @@ def check_run_lw_calibration() -> None:
     * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
       Sternberg-anchored quotient, which is what `unshielded_rate` reproduces.
       No bias is possible;
-    * one printing only ``Mean Lyman-Werner photon energy from the table``: it
-      divided the flux by that table value while the cross section stayed
-      pinned to 12.2 eV, so its rates sit below this script's by the ratio of
-      the two energies. The offset is quantified here from the logged value;
+    * one printing only the table's mean LW photon energy: it divided the flux
+      by that value while the cross section stayed pinned to 12.2 eV, so its
+      rates sit below this script's by the ratio of the two energies. The
+      offset is quantified here from the logged value;
     * one printing neither: it divided by the header constant, which is the
       same rate the quotient gives.
 
     A missing log leaves the question open and is reported as such. The table
     is deliberately not consulted: it says what a binary COULD have read, not
     what it did.
+
+    Parameters
+    ----------
+    hints : str, optional
+        Run logs or snapshot globs, passed on to `find_run_logs`.
     """
-    log = None
-    for directory in (Path.cwd(), Path(__file__).resolve().parent):
-        candidate = directory / "output.log"
-        if candidate.is_file():
-            log = candidate
-            break
-    if log is None:
+    logs = find_run_logs(*hints)
+    if not logs:
         _note_lw_calibration(
-            "no output.log was found beside this run, so the H2 calibration "
-            "its binary used is UNKNOWN. A binary that divided the LW flux by "
-            "the radiation table's mean photon energy produces rates about "
-            "0.4 per cent below the ones predicted below, which an identity "
-            "check on this fixture would report as a residual of that size."
+            "no output.log was found beside the runs being checked, so the H2 "
+            "calibration their binaries used is UNKNOWN. A binary that divided "
+            "the LW flux by the radiation table's mean photon energy produces "
+            "rates about 0.4 per cent below the ones predicted here, which "
+            "shows up as a residual of that size."
         )
         return
-    text = log.read_text(errors="replace")
-    if "sigma_H2/E_LW" in text:
-        print(
-            f"H2 calibration: {log} reports sigma_H2/E_LW, so the run used the "
-            "same Sternberg-anchored quotient as this script."
+    for log in logs:
+        text = log.read_text(errors="replace")
+        if LW_QUOTIENT_LOG_RE.search(text):
+            print(
+                f"H2 calibration: {log} reports sigma_H2/E_LW, so that run used "
+                "the same Sternberg-anchored quotient as this script."
+            )
+            continue
+        match = LW_TABLE_ENERGY_LOG_RE.search(text)
+        if match is None:
+            print(
+                f"H2 calibration: {log} reports no photon-energy line, so that "
+                "run divided by RADIATION_LW_PHOTON_ENERGY_EV, which gives the "
+                "same rate as the quotient this script uses."
+            )
+            continue
+        energy_logged = float(match.group(1))
+        energy_ev = read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
+        offset = energy_ev * ELECTRON_VOLT_CGS / energy_logged - 1.0
+        _note_lw_calibration(
+            f"{log} reports a table mean LW photon energy of "
+            f"{energy_logged:.6e} erg and no sigma_H2/E_LW line, so that run's "
+            "binary DIVIDED the LW flux by that energy against a cross section "
+            f"pinned at {energy_ev:.1f} eV. Its H2 photodissociation rates "
+            f"differ from the ones predicted here by {offset * 100.0:+.2f} per "
+            "cent, and a residual of that size is the expected symptom, not a "
+            "physics result."
         )
-        return
-    match = re.search(
-        r"Mean Lyman-Werner photon energy from the table = (\S+) erg", text
-    )
-    if match is None:
-        print(
-            f"H2 calibration: {log} reports no photon-energy line, so the run "
-            "divided by RADIATION_LW_PHOTON_ENERGY_EV, which gives the same "
-            "rate as the quotient this script uses."
-        )
-        return
-    energy_logged = float(match.group(1))
-    energy_header = (
-        read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
-    )
-    offset = energy_header / energy_logged - 1.0
-    _note_lw_calibration(
-        f"{log} reports a table mean LW photon energy of {energy_logged:.6e} erg "
-        "and no sigma_H2/E_LW line, so this run's binary DIVIDED the LW flux by "
-        "that energy against a cross section pinned at "
-        f"{read_radiation_h_constant('RADIATION_LW_PHOTON_ENERGY_EV'):.1f} eV. "
-        "Its H2 photodissociation rates differ from the ones predicted below "
-        f"by {offset * 100.0:+.2f} per cent, and a residual of that size here "
-        "is the expected symptom, not a physics result."
-    )
 
 
 # The H2 photodissociation rate is the LW energy flux times this one
 # Sternberg-anchored quotient; no cross section or photon energy enters it.
 SIGMA_H2_OVER_E_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
-check_run_lw_calibration()
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387
@@ -1358,6 +1408,9 @@ def check_injection(opt: argparse.Namespace) -> bool:
 def main() -> int:
     """Run the requested check."""
     opt = parse_options()
+    check_run_lw_calibration(
+        opt.log, opt.snapshots, opt.reference, opt.dark, opt.reference_dark
+    )
     checks = {
         "free_field": check_free_field,
         "dust_absorption": check_dust_absorption,

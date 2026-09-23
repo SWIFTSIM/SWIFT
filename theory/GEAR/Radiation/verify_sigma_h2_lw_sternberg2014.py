@@ -84,24 +84,24 @@ def _read_radiation_h_constant(name: str) -> float:
 
 
 def our_k_diss_cgs(
-    G0_LW: float, sigma_h2_lw_cgs: float, E_LW_photon_ev: float, habing_flux_cgs: float
+    G0_LW: float,
+    sigma_over_E_LW_cgs: float,
+    habing_flux_cgs: float,
 ) -> float:
-    """Reproduce radiation_get_part_LW_dissociation_rate_internal()'s formula.
+    """Compute this module's H2 photodissociation rate at a given LW field.
 
     Mirrors the production function, starting from a Habing-convention
-    LW-band flux instead of a particle's stored u_LW field. The production
-    code multiplies by the quotient sigma_H2/E_LW directly; the two factors
-    are kept apart here so the cross section can be reported on its own.
+    LW-band flux instead of a particle's stored u_LW field: the rate is the
+    LW energy flux times the one constrained quotient, with no separate
+    cross section or photon energy.
 
     Parameters
     ----------
     G0_LW : float
         LW-band flux in Habing units (see module docstring for why this is
         LW-only, not this codebase's combined-band G0 getter).
-    sigma_h2_lw_cgs : float
-        RADIATION_SIGMA_H2_LW_CGS, cm^2.
-    E_LW_photon_ev : float
-        RADIATION_LW_PHOTON_ENERGY_EV, eV.
+    sigma_over_E_LW_cgs : float
+        RADIATION_SIGMA_H2_OVER_E_LW_CGS, cm^2 erg^-1.
     habing_flux_cgs : float
         RADIATION_HABING_FLUX_CGS, erg/s/cm^2.
 
@@ -110,10 +110,7 @@ def our_k_diss_cgs(
     float
         k_diss, s^-1.
     """
-    flux_LW_cgs = G0_LW * habing_flux_cgs
-    E_LW_photon_cgs = E_LW_photon_ev * ELECTRON_VOLT_CGS
-    photon_flux_LW_cgs = flux_LW_cgs / E_LW_photon_cgs
-    return sigma_h2_lw_cgs * photon_flux_LW_cgs
+    return sigma_over_E_LW_cgs * G0_LW * habing_flux_cgs
 
 
 def sternberg_D0_cgs(G0_LW: float) -> float:
@@ -150,8 +147,19 @@ def main() -> None:
         f"  RADIATION_SIGMA_H2_OVER_E_LW_CGS = {sigma_over_E_LW_cgs:.6e} "
         "cm^2 erg^-1 (the constrained quotient)"
     )
-    print(f"  RADIATION_SIGMA_H2_LW_CGS   = {sigma_h2_lw_cgs:.4e} cm^2")
+    print(
+        f"  RADIATION_SIGMA_H2_LW_CGS   = {sigma_h2_lw_cgs:.4e} cm^2 "
+        "(derived, reported only)"
+    )
     print(f"  RADIATION_LW_PHOTON_ENERGY_EV = {E_LW_photon_ev:.3f} eV")
+    quoted_quotient = sigma_h2_lw_cgs / (E_LW_photon_ev * ELECTRON_VOLT_CGS)
+    drift = quoted_quotient / sigma_over_E_LW_cgs - 1.0
+    if abs(drift) > 1e-9:
+        print(
+            f"  WARNING: the quoted pair gives {quoted_quotient:.6e} cm^2 "
+            f"erg^-1, {drift * 100.0:+.4f} per cent off the quotient the rate "
+            "uses. One of the three was changed without the others."
+        )
     print(
         f"  RADIATION_HABING_FLUX_CGS   = {habing_flux_cgs:.4e} erg/s/cm^2 (combined PE+LW)"
     )
@@ -168,9 +176,7 @@ def main() -> None:
     )
     ratios = []
     for G0_LW in G0_sweep:
-        k_diss = our_k_diss_cgs(
-            G0_LW, sigma_h2_lw_cgs, E_LW_photon_ev, habing_flux_LW_only_cgs
-        )
+        k_diss = our_k_diss_cgs(G0_LW, sigma_over_E_LW_cgs, habing_flux_LW_only_cgs)
         D0 = sternberg_D0_cgs(G0_LW)
         ratio = k_diss / D0
         ratios.append(ratio)
@@ -192,8 +198,7 @@ def main() -> None:
         f"k_diss/D0 = {ratios[0]:.3f} (LW-fraction-corrected; informational, "
         "see module docstring; not a pass/fail gate). Within ~10% of "
         "1.0 given the ~5-10% band-integration uncertainty above, "
-        "RADIATION_SIGMA_H2_OVER_E_LW_CGS looks plausible, not in need of "
-        "a "
+        "RADIATION_SIGMA_H2_OVER_E_LW_CGS looks plausible, not in need of a "
         "fresh re-derivation."
     )
 
