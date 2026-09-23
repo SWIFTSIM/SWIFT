@@ -22,12 +22,18 @@ sep_injection=${sep_injection:=0.0625}      # A to B distance over L, propagatio
 sep_propagation=${sep_propagation:=0.25}    # A to B distance over L, propagation on
 runs=${runs:="injection_A injection_B injection_AB A B AB lattice lattice_single"}
 
+# Set to 1 to run the lattice below the kernel-support bar on purpose. The
+# pre-flight then warns instead of refusing, and every lattice run's
+# output.log opens with that warning. The upper bound is not overridable.
+study_below_bar=${ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR:=0}
+
 swift=$(realpath "$swift")
 
 # The lattice run holds its gates only while the star injection kernel
 # reaches the neighbouring sources without covering the lattice. The
 # support is gamma eta times the gas interparticle spacing, the source
 # spacing is the box over n_side. Both bounds come from the check itself.
+kernel_support_warning=""
 case " $runs " in
     *" lattice "*)
         eta=$(sed -n 's/^ *resolution_eta: *\([0-9.eE+-]*\).*/\1/p' params.yml)
@@ -35,7 +41,10 @@ case " $runs " in
             echo "Cannot read SPH:resolution_eta from params.yml" >&2
             exit 1
         fi
-        python3 - "$eta" "$n_side" "$level" <<'EOF' || exit 1
+        warning_file=$(mktemp)
+        status=0
+        python3 - "$eta" "$n_side" "$level" "$study_below_bar" \
+                "$warning_file" <<'EOF' || status=$?
 import sys
 
 sys.path.insert(0, ".")
@@ -46,22 +55,12 @@ from isrf_multi_source_superposition_check import (
 )
 
 eta, n_side, level = float(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+study_below_bar, warning_file = sys.argv[4] == "1", sys.argv[5]
 ratio = GAMMA_3D * eta * n_side / 2 ** level
 print(
     f"Star kernel support over source spacing: {ratio:.3f} "
     f"(>= {bar:.2f}, < {covered:.3f})"
 )
-if not ratio >= bar:
-    sys.exit(
-        f"Refusing to run: at level {level} with n_side {n_side} the star "
-        f"injection kernel spans {ratio:.3f} of the source spacing, under "
-        f"{bar:.2f}, a guard under the 0.598 this example is measured good "
-        "at. At 0.299 the superposed field keeps its mean while its spatial "
-        "variance exceeds the continuum lattice sum by an order of "
-        "magnitude, with no fix available; the ratio at which that turns "
-        "over has not been measured. Raise n_side, or lower the resolution "
-        "level, until the kernel reaches the neighbouring sources."
-    )
 if not ratio < covered:
     sys.exit(
         f"Refusing to run: at level {level} with n_side {n_side} the star "
@@ -71,7 +70,34 @@ if not ratio < covered:
         "has no gas to measure. Lower n_side, or raise the resolution "
         "level."
     )
+if not ratio >= bar:
+    refusal = (
+        f"at level {level} with n_side {n_side} the star injection kernel "
+        f"spans {ratio:.3f} of the source spacing, under {bar:.2f}, a guard "
+        "under the 0.598 this example is measured good at. At 0.299 the "
+        "superposed field keeps its mean while its spatial variance exceeds "
+        "the continuum lattice sum by an order of magnitude, with no fix "
+        "available; the ratio at which that turns over has not been "
+        "measured. Raise n_side, or lower the resolution level, until the "
+        "kernel reaches the neighbouring sources."
+    )
+    if not study_below_bar:
+        sys.exit(f"Refusing to run: {refusal}")
+    # run.sh repeats this in every lattice run's own log.
+    with open(warning_file, "w") as f:
+        f.write(
+            "WARNING: ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR is "
+            "set, so this run is OUTSIDE the regime this example is "
+            f"validated in: {refusal} Its gates do not hold here, and the "
+            "check's L3 gate fails on the same bound.\n"
+        )
 EOF
+        kernel_support_warning=$(cat "$warning_file")
+        rm -f "$warning_file"
+        [ $status -eq 0 ] || exit 1
+        if [ -n "$kernel_support_warning" ]; then
+            printf '%s\n' "$kernel_support_warning" >&2
+        fi
         ;;
 esac
 
@@ -106,7 +132,14 @@ for run in $runs; do
         --star_mass $star_mass --sources $sources --n_side $n_side --separation $sep \
         -o "$run/ICs_isrf_multi_source.hdf5"
 
-    (cd "$run" && "$swift" --hydro --stars --external-gravity --feedback \
+    (cd "$run" && {
+        case $run in
+            lattice*)
+                if [ -n "$kernel_support_warning" ]; then
+                    printf '%s\n' "$kernel_support_warning"
+                fi ;;
+        esac
+        "$swift" --hydro --stars --external-gravity --feedback \
         --cooling --sync --limiter --verbose=0 --threads=$n_threads \
         -P InitialConditions:file_name:ICs_isrf_multi_source.hdf5 \
         -P GrackleCooling:cloudy_table:../CloudyData_UVB=HM2012.h5 \
@@ -118,7 +151,8 @@ for run in $runs; do
         -P Statistics:delta_time:$dsnap \
         -P GEARChemistry:initial_metallicity:$Z \
         -P GEARFeedback:ISRF_propagation:$prop \
-        ../params.yml 2>&1 | tee output.log)
+        ../params.yml
+     } 2>&1 | tee output.log)
     grep -q "main: done. Bye." "$run/output.log"
 done
 

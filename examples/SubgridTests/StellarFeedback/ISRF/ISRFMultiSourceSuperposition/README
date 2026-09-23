@@ -42,7 +42,8 @@ make -j
 Environment overrides: `n_threads`, `swift` (binary path), `level`
 (`N = (2**level)**3` gas particles), `gas_density` (atom/cm^3), `gas_mass`
 (Msun), `star_mass`, `n_side`, `Z_pair`, `Z_lattice`, `time_end`, `dt_max`,
-`delta_time` (propagation runs), and `runs` (a subset of the eight names).
+`delta_time` (propagation runs), `runs` (a subset of the eight names) and
+`ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR` (see below).
 A finer `level` at fixed box needs `gas_mass` divided by 8 per level and
 `dt_max` halved per level (keep it slightly above the wanted power-of-two
 bin, which SWIFT floors to), so that `c_hyp dt/h` and the number of
@@ -59,6 +60,14 @@ ratio at which that turns over has not been measured, so 0.55 is a guard
 under the 0.598 the example is measured good at. At 0.866 the kernels
 cover a cubic lattice and the reduced-flux gate is left with no gas
 outside them. Raise `n_side` together with `level`.
+
+Set `ISRF_SUPERPOSITION_STUDY_BELOW_KERNEL_SUPPORT_BAR=1` to measure that
+regime on purpose. The 0.55 refusal then becomes a warning, repeated as the
+first line of every lattice run's `output.log`, and the check still fails its
+kernel-support gate after printing the lattice diagnostics, so pass
+`run_check=0` to keep `run.sh` itself at exit 0. The 0.866 bound stays a
+refusal: above it no gas is left outside the kernels, so there is nothing to
+measure either way.
 
 # Checking
 ```
