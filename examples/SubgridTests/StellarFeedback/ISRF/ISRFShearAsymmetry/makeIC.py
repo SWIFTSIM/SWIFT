@@ -283,7 +283,9 @@ if opt.variant == "shear":
     print(f"stream mass (code)                    : {m} (uniform)")
 else:
     R = opt.density_ratio
-    s = 0.5 * (np.tanh((y - 0.25) / d) - np.tanh((y - 0.75) / d) + 1.0)  # 0 -> 1
+    # 0 in the bulk, 1 in the +V/2 stream. The +1.0 that belongs on the
+    # velocity line above (where it centres vx on zero) does not belong here.
+    s = 0.5 * (np.tanh((y - 0.25) / d) - np.tanh((y - 0.75) / d))
     mass = m * (1.0 + (R - 1.0) * s)
     T = opt.bulk_temperature_K * (1.0 + (R - 1.0) * s) ** -1.0
     print(
