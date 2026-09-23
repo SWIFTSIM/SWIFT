@@ -34,6 +34,11 @@
     #radiation itself is declared. */
 #define RADIATION_MAX_METALLICITY_ROWS 64
 
+/*! Size of #radiation.table_sources, the buffer holding the radiation
+    table's concatenated provenance attributes. Reported only, never
+    parsed: a longer value is truncated, never an error. */
+#define RADIATION_TABLE_SOURCES_SIZE 256
+
 /**
  * @brief Model for the initial mass function.
  *
@@ -423,6 +428,38 @@ struct radiation {
       none, and must still load: every read of #raw.teff is gated on this
       flag. */
   char has_teff;
+
+  /*! The radiation table's own provenance attributes ("qh_source",
+      "lwpe_source", "stellar_evolution_source", "source"), concatenated as
+      "key=value" pairs. GEARFeedback:yields_table names a file, and the
+      name says nothing about which photon budget the run used: a Pop II
+      and a Pop III table can each be staged under any name, and the choice
+      moves Q_H. Empty for a table carrying none of the attributes, all of
+      which are optional. File-derived, re-read on every read including
+      restart. */
+  char table_sources[RADIATION_TABLE_SOURCES_SIZE];
+
+  /*! Lowest mass the table tabulates (Msun), as read from the file,
+      before the resampling onto #interpolation_size points. */
+  float table_mass_min;
+
+  /*! Highest mass the table tabulates (Msun). See #table_mass_min. */
+  float table_mass_max;
+
+  /*! Number of native mass points the table carries, i.e. the file's own
+      "nm" attribute, not the resampled #interpolation_size. */
+  int table_n_mass;
+
+  /*! Number of native metallicity rows (2D tables only, 0 otherwise). */
+  int table_n_metallicity;
+
+  /*! Lowest tabulated metallicity, in mass fraction (2D tables only, 0
+      otherwise). */
+  float table_metallicity_min;
+
+  /*! Highest tabulated metallicity, in mass fraction. See
+      #table_metallicity_min. */
+  float table_metallicity_max;
 
   /*! Does this table carry pychem's "MeanPhotonEnergyLW" and
       "Integrated_MeanPhotonEnergyLW" datasets? Both are optional: a table

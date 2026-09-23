@@ -47,11 +47,24 @@ void radiation_print(const struct radiation *rad) {
 
   message("Angular pixels for HII ionization = %d", rad->n_HII_pixels);
   message("Interpolation table size (mass) = %d", rad->interpolation_size);
+
+  /* Every field below is read from the table itself, so it is meaningless
+     for a run that never opened one. */
+  if (!rad->is_active) return;
+
+  message("Table provenance = %s", rad->table_sources[0] != '\0'
+                                       ? rad->table_sources
+                                       : "no source attribute");
+  message("Table mass range (Msun) = [%g, %g] over %i points",
+          (double)rad->table_mass_min, (double)rad->table_mass_max,
+          rad->table_n_mass);
+
   if (rad->is_2d) {
-    message(
-        "Interpolation table size (metallicity) = %d (the table's own "
-        "native metallicity rows)",
-        rad->raw.luminosities_2d.Nx);
+    message("Table metallicity range (mass fraction) = [%g, %g] over %i points",
+            (double)rad->table_metallicity_min,
+            (double)rad->table_metallicity_max, rad->table_n_metallicity);
+  } else {
+    message("Table metallicity range (mass fraction) = none (mass-only table)");
   }
 }
 
@@ -246,6 +259,13 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->with_ISRF = 0;
   rad->has_teff = 0;
   rad->has_mean_photon_energy_lw = 0;
+  rad->table_sources[0] = '\0';
+  rad->table_mass_min = 0.f;
+  rad->table_mass_max = 0.f;
+  rad->table_n_mass = 0;
+  rad->table_n_metallicity = 0;
+  rad->table_metallicity_min = 0.f;
+  rad->table_metallicity_max = 0.f;
 
   /* All-bits-zero nulls every table pointer and zeroes every scalar in
      both members of every union, whichever one #is_2d selects, and

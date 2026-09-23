@@ -156,30 +156,29 @@ static void radiation_read_string_attribute_truncating(hid_t group_id,
 }
 
 /**
- * @brief Write the table's own provenance to the run log.
+ * @brief Read the table's own provenance into the #radiation model.
  *
- * GEARFeedback:yields_table names a file, and the name says nothing about
- * which photon budget the run used: a Pop II and a Pop III table can each
- * be staged under any name, and the choice moves Q_H. The grid shape is
- * what separates them, so it is reported next to the source attributes.
+ * Reported by #radiation_print next to the grid shape, which is what
+ * separates a Pop II from a Pop III table: GEARFeedback:yields_table names
+ * a file, and the name says nothing about which photon budget the run
+ * used, while the choice moves Q_H.
  *
- * Every attribute here is optional. A table that carries none is reported
- * as such and still loads: this is provenance, not something the reader
- * needs.
+ * Every attribute here is optional. A table that carries none leaves
+ * #radiation.table_sources empty and still loads: this is provenance, not
+ * something the reader needs.
  *
+ * @param rad (output) The #radiation model to fill.
  * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param filename The table's path, as GEARFeedback:yields_table names it.
  * @param grid The #radiation_grid_metadata already read from @p group_id.
  */
-static void radiation_message_table_identity(
-    hid_t group_id, const char *filename,
+static void radiation_read_table_identity(
+    struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid) {
 
   static const char *const source_keys[] = {
       "qh_source", "lwpe_source", "stellar_evolution_source", "source"};
-  char sources[256];
   size_t used = 0;
-  sources[0] = '\0';
+  rad->table_sources[0] = '\0';
 
   for (size_t i = 0; i < sizeof(source_keys) / sizeof(source_keys[0]); i++) {
     if (H5Aexists(group_id, source_keys[i]) <= 0) continue;
@@ -189,24 +188,28 @@ static void radiation_message_table_identity(
                                                sizeof(value));
 
     const int written =
-        snprintf(sources + used, sizeof(sources) - used, "%s%s=%s",
-                 used > 0 ? ", " : "", source_keys[i], value);
-    if (written < 0 || (size_t)written >= sizeof(sources) - used) break;
+        snprintf(rad->table_sources + used, sizeof(rad->table_sources) - used,
+                 "%s%s=%s", used > 0 ? ", " : "", source_keys[i], value);
+    if (written < 0 || (size_t)written >= sizeof(rad->table_sources) - used)
+      break;
     used += (size_t)written;
   }
 
-  const double mass_min = exp10((double)grid->log_mass_min);
-  const double mass_max = exp10((double)grid->log_mass_min +
-                                (grid->n_mass - 1) * (double)grid->mass_step);
+  rad->table_n_mass = grid->n_mass;
+  rad->table_mass_min = (float)exp10((double)grid->log_mass_min);
+  rad->table_mass_max =
+      (float)exp10((double)grid->log_mass_min +
+                   (grid->n_mass - 1) * (double)grid->mass_step);
 
-  message("Radiation table '%s': %s, mass %.4g to %.4g Msun over %d points%s.",
-          filename, used > 0 ? sources : "no source attribute", mass_min,
-          mass_max, grid->n_mass, grid->is_2d ? "" : " (1D)");
-
-  if (grid->is_2d)
-    message("Radiation table '%s': %d metallicity points, %.4g to %.4g.",
-            filename, grid->n_metallicity, (double)grid->metallicity[0],
-            (double)grid->metallicity[grid->n_metallicity - 1]);
+  if (grid->is_2d) {
+    rad->table_n_metallicity = grid->n_metallicity;
+    rad->table_metallicity_min = grid->metallicity[0];
+    rad->table_metallicity_max = grid->metallicity[grid->n_metallicity - 1];
+  } else {
+    rad->table_n_metallicity = 0;
+    rad->table_metallicity_min = 0.f;
+    rad->table_metallicity_max = 0.f;
+  }
 }
 
 /**
@@ -1578,8 +1581,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
 
-  if (engine_rank == 0)
-    radiation_message_table_identity(group_id, sm->yields_table, &grid);
+  radiation_read_table_identity(rad, group_id, &grid);
 
   /* GEARFeedback:with_interstellar_radiation_field requires all four ISRF-band
      datasets: pychem always writes L_PE/L_LW/Integrated_L_PE/
