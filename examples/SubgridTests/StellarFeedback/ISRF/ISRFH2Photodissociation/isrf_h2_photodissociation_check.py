@@ -219,6 +219,16 @@ RADIATION_H = (
 )
 
 
+# Values of the macros below, for the case where the header is out of reach.
+# This script is normally copied out of the source tree to run beside a run
+# directory, where there is nothing to parse; in the tree the parse is what
+# catches a copy that has drifted from the header.
+RADIATION_H_FALLBACK = {
+    "RADIATION_SIGMA_H2_LW_CGS": 2.5111667e-18,
+    "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
+}
+
+
 def read_radiation_h_constant(name: str) -> float:
     """Read a #define'd float constant's value out of radiation.h.
 
@@ -230,9 +240,13 @@ def read_radiation_h_constant(name: str) -> float:
     Returns
     -------
     float
-        The macro's value.
+        The macro's value, or its entry in `RADIATION_H_FALLBACK` when the
+        header is not reachable from this file.
     """
-    text = RADIATION_H.read_text()
+    try:
+        text = RADIATION_H.read_text()
+    except OSError:
+        return RADIATION_H_FALLBACK[name]
     match = re.search(rf"^#define\s+{re.escape(name)}\s+([0-9.eE+-]+)", text, re.M)
     if match is None:
         raise ValueError(f"Could not find #define {name} in {RADIATION_H}")
