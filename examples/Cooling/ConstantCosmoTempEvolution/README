@@ -26,17 +26,18 @@ The example can be run with two of the cooling models:
  * TREECOOL (Katz, Weinberg & Hernquist 1996 primordial cooling with a
    tabulated UV background), configure with
      ./configure --with-cooling=TREECOOL
-   The UV background is read from the TREECOOL_fg_dec11 file shipped with
-   this example (Faucher-Giguere et al. 2009, December 2011 update). It
-   switches on at z ~ 10.6, the highest redshift of the table, and the gas
-   then heats up sharply from the temperature floor to ~10^4 K before
-   settling on the photo-heating equilibrium temperature. The bump around
-   z ~ 3.5 is the HeII reionization built into the table. As expected for
-   an optically thin UV background without any additional heating, the
-   temperature stays below the Schaye et al. (2000) measurements around
-   z ~ 3 and matches the Walther et al. (2019) ones at z ~ 2-4. Note that
-   the SPH minimal temperature of 100 K is ten times the lowest temperature
-   of the rate tables, as recommended in the documentation of the model.
+   The UV background is read from the TREECOOL_UV_background.txt file
+   shipped with this example (Faucher-Giguere et al. 2009, December 2011
+   update). It switches on at z ~ 10.6, the highest redshift of the table,
+   and the gas then heats up sharply from the temperature floor to ~10^4 K
+   before settling on the photo-heating equilibrium temperature. The bump
+   around z ~ 3.5 is the HeII reionization built into the table. As
+   expected for an optically thin UV background without any additional
+   heating, the temperature stays below the Schaye et al. (2000)
+   measurements around z ~ 3 and matches the Walther et al. (2019) ones at
+   z ~ 2-4. Note that the SPH minimal temperature of 100 K is ten times the
+   lowest temperature of the rate tables, as recommended in the
+   documentation of the model.
 
 The plotting script compares the temperature evolution to observational
 constraints in both cases.

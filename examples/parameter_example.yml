@@ -622,7 +622,7 @@ LambdaCooling:
 
 # Katz, Weinberg & Hernquist (1996) primordial cooling function
 TREECOOLCooling:
-  TREECOOL_file:                ./TREECOOL_fg_dec11 # Location of the TREECOOL table giving the UV background photo-ionization and photo-heating rates as a function of redshift
+  TREECOOL_file:                ./TREECOOL_UV_background.txt # Location of the TREECOOL table giving the UV background photo-ionization and photo-heating rates as a function of redshift
   rapid_cooling_threshold:      0.333333            # (Optional) Switch to the rapid cooling regime for dt / t_cool above this threshold. Use a negative value to always use the slow-cooling regime.
   UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off. Defaults to no limit beyond the range of the TREECOOL table itself.
   with_Compton_cooling:         1                   # (Optional) Include the inverse Compton cooling off the CMB (1, default) or not (0).

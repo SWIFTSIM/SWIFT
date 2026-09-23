@@ -105,10 +105,11 @@ where the :math:`\Gamma` are photo-ionization rates in
 rates are interpolated logarithmically in :math:`\log_{10}(1+z)` once per
 time-step. Above the highest redshift covered by the file the UV background is
 switched off entirely, and the gas cools by collisional processes alone. An
-example file, ``TREECOOL_fg_dec11`` (Faucher-Giguère et al. 2009, December
-2011 update), is provided with the ``examples/Cooling/ConstantCosmoTempEvolution``
-example, which runs a uniform cosmological box with this model and compares
-the resulting thermal history of the IGM to observations. Files in this format for the commonly used UV
+example file, ``TREECOOL_UV_background.txt`` (Faucher-Giguère et al. 2009,
+December 2011 update), is provided with the
+``examples/Cooling/ConstantCosmoTempEvolution`` example, which runs a uniform
+cosmological box with this model and compares the resulting thermal history of
+the IGM to observations. Files in this format for the commonly used UV
 background models (Faucher-Giguère et al., Haardt & Madau, Puchwein et al.)
 are distributed with Gadget-4 and Arepo and by the authors of the models. The
 rows must be in increasing order of redshift; many files are padded with rows
@@ -147,7 +148,7 @@ following parameters:
 .. code-block:: yaml
 
    TREECOOLCooling:
-     TREECOOL_file:                ./TREECOOL_fg_dec11
+     TREECOOL_file:                ./TREECOOL_UV_background.txt
      rapid_cooling_threshold:      0.333333   # (Optional)
      UV_background_start_redshift: 1e30       # (Optional)
      with_Compton_cooling:         1          # (Optional)

@@ -67,7 +67,7 @@ EAGLECooling:
   
 # Parameters for the TREECOOL (Katz et al. 1996) cooling
 TREECOOLCooling:
-  TREECOOL_file:  ./TREECOOL_fg_dec11  # Faucher-Giguere et al. (2009) UV background, Dec. 2011 update
+  TREECOOL_file:  ./TREECOOL_UV_background.txt  # Faucher-Giguere et al. (2009) UV background, Dec. 2011 update
   log10_T_min:    1.0                  # Tabulate the rates down to 10 K, i.e. a tenth of the minimal gas temperature
 
 # Parameters for the EAGLE "equation of state"
