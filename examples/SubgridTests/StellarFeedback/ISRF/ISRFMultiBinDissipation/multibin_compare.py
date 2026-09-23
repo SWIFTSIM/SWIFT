@@ -71,25 +71,64 @@ def load(run_dir):
 
 
 def last_third_points(series, t_max, t0=0.0):
+    """Every point in the series' last third, with no filter of any kind."""
     cutoff = t0 + (2.0 / 3.0) * (t_max - t0)
-    return [p for p in series if p["time"] >= cutoff and p["d_x_h"] is not None]
+    return [p for p in series if p["time"] >= cutoff]
+
+
+def reduce_component(metrics, band, component, names=None):
+    """Reduce one dipole component the single way every side of every
+    comparison in this file uses: absolute value, over the last third of the
+    series, void points dropped.
+
+    A component recorded as None is a dipole the per-run check could not
+    form, i.e. a non-finite moment. It is COUNTED, never filtered away, so
+    the caller fails on it instead of quietly reducing a smaller sample.
+
+    Parameters
+    ----------
+    metrics : dict
+        One run's `multibin_metrics.json`.
+    band : str
+        "PE" or "LW".
+    component : str
+        Key of the component to reduce, e.g. "d_x_h".
+    names : list of str, optional
+        Restrict to these stars; every star by default.
+
+    Returns
+    -------
+    values : list of float
+    n_non_finite : int
+    """
+    values, n_non_finite = [], 0
+    for name, per_band in metrics["per_star_series"].items():
+        if names is not None and name not in names:
+            continue
+        series = per_band.get(band, [])
+        if not series:
+            continue
+        t_max = max(p["time"] for p in series)
+        for p in last_third_points(series, t_max):
+            if p.get("void"):
+                continue
+            value = p.get(component)
+            if value is None or not np.isfinite(value):
+                n_non_finite += 1
+                continue
+            values.append(abs(float(value)))
+    return values, n_non_finite
 
 
 def compute_sigma(m0):
     """M0's own spread of |d_x|/h across its stars and last-third snapshots,
     per band: the honest within-family noise floor Sec 6 defines."""
-    sigma = {}
+    sigma, non_finite = {}, {}
     for band in BANDS:
-        vals = []
-        for name, per_band in m0["per_star_series"].items():
-            series = per_band.get(band, [])
-            if not series:
-                continue
-            t_max = max(p["time"] for p in series)
-            pts = last_third_points(series, t_max)
-            vals += [abs(p["d_x_h"]) for p in pts if not p.get("void")]
+        vals, n_bad = reduce_component(m0, band, "d_x_h")
+        non_finite[band] = n_bad
         sigma[band] = float(np.std(vals)) if len(vals) > 1 else float("nan")
-    return sigma
+    return sigma, non_finite
 
 
 def star_last(metrics, name, band):
@@ -105,7 +144,7 @@ def all_points(metrics, band):
     return out
 
 
-def check_preconditions(s0, m0, sigma):
+def check_preconditions(s0, m0, sigma, sigma_non_finite):
     # Resolving power is checked PER BAND: PE and LW have genuinely
     # different physics (kappa, lambda, predicted dipole magnitude per
     # Sec 1.3), so one band failing does not make the other band's result
@@ -114,8 +153,21 @@ def check_preconditions(s0, m0, sigma):
     band_ok = {}
     print("=== Sec 6.1 resolving-power precondition ===")
     for band in BANDS:
-        seriesB = m0["per_star_series"].get("B", {}).get(band, [])
-        d_y = [abs(p["d_y_h"]) for p in seriesB if p.get("d_y_h") is not None]
+        # Both sides of `med_dy >= 5*sigma` are reduced by the SAME call:
+        # absolute value, last third of the series, void points dropped. The
+        # left side used to keep void points and every snapshot while the
+        # right side dropped void points and kept only the last third, which
+        # biased the precondition towards PASS, void points being the
+        # ill-conditioned ones by definition.
+        d_y, n_bad_dy = reduce_component(m0, band, "d_y_h", names=["B"])
+        n_bad = n_bad_dy + sigma_non_finite[band]
+        if n_bad:
+            print(
+                f"{band}: {n_bad} non-finite dipole components inside the "
+                "reduced window -> FAIL"
+            )
+            band_ok[band] = False
+            continue
         if not d_y or not np.isfinite(sigma[band]):
             print(f"{band}: insufficient data for precondition 1 -> FAIL")
             band_ok[band] = False
@@ -170,10 +222,10 @@ def mode_gate(opt):
     if excluded:
         print(f"Excluded from the gate (VOID/INVALID): {excluded}")
 
-    sigma = compute_sigma(m0)
+    sigma, sigma_non_finite = compute_sigma(m0)
     print(f"sigma (M0 |d_x|/h spread): {sigma}")
 
-    band_ok = check_preconditions(s0, m0, sigma)
+    band_ok = check_preconditions(s0, m0, sigma, sigma_non_finite)
     if not any(band_ok.values()):
         print(
             "\nOverall gate: INVALID -- resolving-power precondition failed for every band. No verdict."
@@ -204,11 +256,20 @@ def mode_gate(opt):
             print("  missing A/B data in M1 -> FAIL")
             overall_ok = False
             continue
-        limit1 = max(abs(B1["d_x_h"]), 3.0 * sigma[band])
-        crit1 = abs(A1["d_x_h"]) <= limit1
+        # np.maximum, not the builtin: `max(a, nan)` returns `a`, so a
+        # non-finite sibling dipole would set the limit to 3*sigma and the
+        # criterion would pass on evidence it never saw.
+        a_dx = A1["d_x_h"]
+        b_dx = B1["d_x_h"]
+        if a_dx is None or b_dx is None:
+            print("  crit1: a non-finite dipole at A or B -> FAIL")
+            overall_ok = False
+            continue
+        limit1 = float(np.maximum(abs(b_dx), 3.0 * sigma[band]))
+        crit1 = bool(np.isfinite(limit1) and abs(a_dx) <= limit1)
         print(
-            f"  crit1 (matched pair): |d_x/h|@A={abs(A1['d_x_h']):.5f}  "
-            f"limit=max(|d_x/h|@B={abs(B1['d_x_h']):.5f}, 3*sigma={3*sigma[band]:.5f})="
+            f"  crit1 (matched pair): |d_x/h|@A={abs(a_dx):.5f}  "
+            f"limit=max(|d_x/h|@B={abs(b_dx):.5f}, 3*sigma={3*sigma[band]:.5f})="
             f"{limit1:.5f}  -> {'PASS' if crit1 else 'FAIL'}"
         )
         overall_ok &= crit1
@@ -220,7 +281,15 @@ def mode_gate(opt):
         crit2 = True
         for tag, m in (("M0", m0), ("M1", m1), ("M2", m2), ("M4", m4), ("M5", m5)):
             for p in all_points(m, band):
-                if p.get("d_total_h") is None or p["d_total_h"] <= 0.1:
+                if p.get("d_total_h") is None:
+                    if not p.get("void"):
+                        crit2 = False
+                        print(
+                            f"  crit2 VIOLATED in {tag}: non-finite |d|/h at "
+                            f"t={p['time']}"
+                        )
+                    continue
+                if p["d_total_h"] <= 0.1:
                     continue
                 if p.get("void"):
                     print(
@@ -245,7 +314,11 @@ def mode_gate(opt):
             and A5.get("d_total_h") is not None
         ):
             growth = A5["d_total_h"] - A1["d_total_h"]
-            crit3 = growth <= 3.0 * sigma[band]
+            crit3 = bool(
+                np.isfinite(growth)
+                and np.isfinite(sigma[band])
+                and growth <= 3.0 * sigma[band]
+            )
             print(
                 f"  crit3 (no growth with resolution): |d|/h@A M1={A1['d_total_h']:.5f} "
                 f"M5={A5['d_total_h']:.5f}  growth={growth:.5f}  3*sigma={3*sigma[band]:.5f}  "
@@ -256,13 +329,35 @@ def mode_gate(opt):
             crit3 = False
         overall_ok &= crit3
 
+        # crit4 is UNEVALUATED, and an unevaluated criterion fails.
+        #
+        # Sec 6.2 asks for no excess sum(m*u) non-conservation relative to the
+        # single-bin control. `fractional_change` cannot answer that: it is
+        # (E_last - E_first_nonzero)/E_first_nonzero under continuous
+        # injection, i.e. the field's GROWTH (335 per cent PE and 211 per cent
+        # LW on the shipped fixture), and M0 and M1 differ in density
+        # structure, so their growth curves differ for reasons that have
+        # nothing to do with conservation. It was also compared against
+        # 3*sigma, a dispersion of |d_x|/h, a displacement over a smoothing
+        # length: the two sides are not the same kind of quantity.
+        #
+        # The quantity that DOES answer it is the closed ledger residual
+        # |E + Abs - Inj| / |Inj|, the reduction ISRFInjectionConservation's
+        # own isrf_ledger_check.py already gates. Its two inputs,
+        # {band}CumulativeInjectedSpecificEnergies and
+        # {band}CumulativeAbsorbedSpecificEnergies, are written as identically
+        # zero unless SWIFT is built with SWIFT_DEBUG_CHECKS
+        # (feedback_common.c:1248), which this fixture's runs are not. Moving
+        # the campaign to a debugging build is a fixture decision, so the
+        # criterion is reported as blocked rather than replaced by a bar that
+        # would have to be invented.
         drift0 = m0["m4_conservation"][band]["fractional_change"]
         drift1 = m1["m4_conservation"][band]["fractional_change"]
-        crit4 = abs(drift1 - drift0) <= 3.0 * sigma[band]
+        crit4 = False
         print(
-            f"  crit4 (conservation drift, M1 vs M0): M0={drift0:.6f}  M1={drift1:.6f}  "
-            f"|diff|={abs(drift1-drift0):.6f}  3*sigma={3*sigma[band]:.5f}  "
-            f"-> {'PASS' if crit4 else 'FAIL'}"
+            f"  crit4 (conservation, M1 vs M0): BLOCKED, no conservation "
+            f"residual is available from these runs -> FAIL. Reported only: "
+            f"sum(m*u) growth M0={drift0:.6f}  M1={drift1:.6f}"
         )
         overall_ok &= crit4
 

@@ -117,9 +117,21 @@ resolving-power precondition first (can the metric resolve the dipole size
 under discussion against the M0 control's own noise floor, and did S0 show a
 real bin split), then gates: the within-run matched-pair criterion at the
 star adjacent to the boundary against its same-phase, no-boundary sibling;
-the total-displacement bound across every star and run; no growth of the
-displacement with resolution; and no excess `sum(m*u)` non-conservation
-relative to the single-bin control. A run flagged void or invalid by its own
-check script is listed on an `Excluded from the gate (VOID/INVALID)` line,
-but still enters every criterion: read that line before trusting a verdict
-that names such a run.
+the total-displacement bound across every star and run; and no growth of the
+displacement with resolution. Every dipole component that enters a
+comparison, on either side, is reduced by the same call: absolute value, over
+the last third of the series, void points dropped, and a non-finite component
+fails the criterion instead of shrinking the sample.
+
+The fourth criterion, no excess `sum(m*u)` non-conservation relative to the
+single-bin control, is reported as **BLOCKED and fails the gate**. The
+per-run `fractional_change` is the field's growth under continuous injection,
+not a conservation residual, so it cannot answer the question. The quantity
+that can is the closed ledger residual `|E + Abs - Inj| / |Inj|` that
+`ISRFInjectionConservation` gates, and its two accumulators are written as
+identically zero unless SWIFT is built with `SWIFT_DEBUG_CHECKS`. Until this
+example's runs are made on such a build, the gate cannot return a PASS.
+
+A run flagged void or invalid by its own check script is listed on an
+`Excluded from the gate (VOID/INVALID)` line, but still enters every
+criterion: read that line before trusting a verdict that names such a run.
