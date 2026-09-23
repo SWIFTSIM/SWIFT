@@ -29,6 +29,10 @@ if [ ! -e CloudyData_UVB=HM2012.h5 ]; then
 fi
 "$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 
+# Stop here on a table the radiation reader cannot use, rather than
+# aborting at start-up once the initial conditions are built.
+"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
+
 for run in $runs; do
     # dt_max 2e-5 leaves both phases on their CFL bins; dt_fine forces one
     # bin. The cadence sweep halves dt_fine twice, so every gas particle and
