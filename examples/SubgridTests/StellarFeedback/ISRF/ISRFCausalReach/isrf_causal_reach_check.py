@@ -48,9 +48,21 @@ recorded, not assumed universally correct.
 Negativity is GATED for this leg (unlike the Tier-1 steady-state check's
 "informational only"): Sec 6.2 explicitly names the wavefront region as
 where Sec 2.3's estimator weakness is most likely to actually show up.
-Also checks u(r) is monotonically non-increasing behind the front, outside
-a near-injection-kernel exclusion zone (Sec 6.2's own carve-out for
-ordinary SPH discreteness ripples close to the star).
+
+`worst_bump`, the largest bin-to-bin relative rise of u(r) outside a
+near-injection-kernel exclusion zone, is REPORTED ONLY and gates nothing.
+It is a ratio of consecutive tail-bin means, and those means fall towards
+zero away from the source, so its own noise is unbounded and no mechanism
+supplies a bar for it. A bar taken from its observed spread would be a bar
+fitted to the measurement.
+
+Radial binning EXCLUDES particles outside the binned range rather than
+folding them into the outermost bin. The range is the full periodic
+minimum-image reach, `sqrt(3)/2 * L`, so no part of the box is outside it
+and the causal-reach gate is never blind to a far-field violation. Folding
+the box corners into the outermost bin would drag that bin's mean down with
+their near-zero u and make the gate harder to trip the further out the
+violation sits, which is the opposite of what this check is for.
 
 Every field a gate reads (each band's specific energy, smoothing lengths,
 positions, box size, time, the bulk time-step) is checked for finiteness
@@ -221,23 +233,55 @@ def radial_distance(pos, star_pos, boxsize):
     return np.sqrt(np.sum(dx**2, axis=1))
 
 
-def outer_edge_above_threshold(r, u, threshold, n_bins, r_max):
-    """Largest bin-centre radius where the radially-binned mean u still
-    exceeds `threshold`; 0 if no bin exceeds it."""
-    edges = np.linspace(0, r_max, n_bins + 1)
+def bin_radially(r, u, n_bins, r_max, empty=0.0):
+    """Mean of `u` in `n_bins` equal radial bins spanning `0 .. r_max`.
+
+    Particles outside the range are EXCLUDED, never clipped into the end
+    bins: clipping mixes the far field into the outermost bin and biases
+    its mean towards the far field's near-zero u.
+
+    Parameters
+    ----------
+    r : numpy.ndarray
+        Radius of each particle.
+    u : numpy.ndarray
+        Value to average, one per particle.
+    n_bins : int
+        Number of radial bins.
+    r_max : float
+        Outer edge of the binned range.
+    empty : float, optional
+        Value given to a bin holding no particle.
+
+    Returns
+    -------
+    centres : numpy.ndarray
+        Bin-centre radii.
+    means : numpy.ndarray
+        Per-bin mean of `u`, `empty` where the bin is unpopulated.
+    """
+    edges = np.linspace(0.0, r_max, n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
     idx = np.digitize(r, edges) - 1
-    idx = np.clip(idx, 0, n_bins - 1)
-    means = np.full(n_bins, 0.0)
+    keep = (idx >= 0) & (idx < n_bins)
+    idx, u_keep = idx[keep], u[keep]
+    means = np.full(n_bins, empty)
     for i in range(n_bins):
         sel = idx == i
         if sel.sum() > 0:
-            means[i] = u[sel].mean()
+            means[i] = u_keep[sel].mean()
+    return centres, means
+
+
+def outer_edge_above_threshold(r, u, threshold, n_bins, r_max):
+    """Largest bin-centre radius where the radially-binned mean u still
+    exceeds `threshold`; 0 if no bin exceeds it."""
+    centres, means = bin_radially(r, u, n_bins, r_max, empty=0.0)
     above = means > threshold
     return float(centres[above].max()) if above.any() else 0.0, centres, means
 
 
-def check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot):
+def check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max):
     u_plateau = float(u.max())
     ok = True
     findings = []
@@ -256,7 +300,7 @@ def check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot):
     results = {}
     for eps in (0.1, 0.01, 0.001):
         r_edge, centres, means = outer_edge_above_threshold(
-            r, u, eps * u_plateau, opt.n_bins, r_max_plot
+            r, u, eps * u_plateau, opt.n_bins, r_max
         )
         C_h = (r_edge - r_front) / h_med if h_med > 0 else np.inf
         results[eps] = (r_edge, C_h)
@@ -269,18 +313,16 @@ def check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot):
                 f"({r_front + opt.fail_margin_h * h_med:.4e})"
             )
 
-    # Monotonicity behind the front, outside the near-source exclusion zone.
-    edges = np.linspace(0, r_max_plot, opt.n_bins + 1)
-    centres = 0.5 * (edges[:-1] + edges[1:])
-    idx = np.clip(np.digitize(r, edges) - 1, 0, opt.n_bins - 1)
-    means = np.full(opt.n_bins, np.nan)
-    for i in range(opt.n_bins):
-        sel = idx == i
-        if sel.sum() > 0:
-            means[i] = u[sel].mean()
+    # Bin-to-bin rise of u(r) behind the front, outside the near-source
+    # exclusion zone. Reported only, never gated: see this module's
+    # docstring. Bins below the smallest gated level carry no signal and
+    # their ratio is noise over roughly zero, so they are left out.
+    centres, means = bin_radially(r, u, opt.n_bins, r_max, empty=np.nan)
     exclude = centres < opt.near_source_h * h_med
-    keep = ~np.isnan(means) & ~exclude
-    worst_bump = 0.0
+    with np.errstate(invalid="ignore"):
+        lit = means > 0.001 * u_plateau
+    keep = ~np.isnan(means) & ~exclude & lit
+    worst_bump = None
     worst_bump_r = None
     if keep.sum() > 1:
         vals = means[keep]
@@ -343,18 +385,28 @@ def main():
         check_finite("c_hyp", np.atleast_1d(c_hyp), fn)
 
         r_all = radial_distance(pos, snap["star_pos"], snap["boxsize"])
-        r_max_plot = 0.45 * snap["boxsize"]
+        # Full periodic minimum-image reach: no particle lies outside it, so
+        # the gate can see a violation anywhere in the box.
+        r_max = 0.5 * np.sqrt(3.0) * snap["boxsize"]
 
+        fail_radius = c_hyp * max(t - t0, 0.0) + opt.fail_margin_h * h_med
         print(
             f"\n--- t={t:.4e}  h_med={h_med:.4e}  c_hyp={c_hyp:.4f}  "
             f"r_front={c_hyp * (t - t0):.4e} ({c_hyp * (t - t0) / h_med:.2f} h) ---"
         )
+        if fail_radius >= r_max:
+            all_ok = False
+            print(
+                f"  NOT EVALUABLE: the fail radius {fail_radius:.4e} is outside "
+                f"the box's own reach {r_max:.4e}, so the causal-reach gate "
+                f"cannot fire at this time. Shorten the run or enlarge the box."
+            )
 
         for band, u_field in (("PE", "u_pe"), ("LW", "u_lw")):
             u_all = snap[u_field]
             check_finite(u_field, u_all, fn, band=band)
             r, u = r_all[gas_mask], u_all[gas_mask]
-            res = check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max_plot)
+            res = check_band(band, r, u, h_med, c_hyp, t, t0, opt, r_max)
             all_ok &= res["ok"]
             status = "PASS" if res["ok"] else "FAIL"
             eps_str = ", ".join(
@@ -362,16 +414,20 @@ def main():
                 f"(C={res['results'][e][1]:.2f})"
                 for e in (0.1, 0.01, 0.001)
             )
+            bump = (
+                "n/a (no lit bin outside the near-source zone)"
+                if res["worst_bump"] is None
+                else f"{res['worst_bump']:.3f} at r={res['worst_bump_r']:.4e}"
+            )
             print(
                 f"{band}: u_plateau={res['u_plateau']:.4e}  {eps_str}  "
-                f"worst_bump={res['worst_bump']:.3f} at "
-                f"r={res['worst_bump_r']}  -> {status}"
+                f"worst_bump (report only) = {bump}  -> {status}"
             )
             for finding in res["findings"]:
                 print("  " + finding)
 
             ax = axes[0] if band == "PE" else axes[1]
-            valid = res["means"] > 0
+            valid = np.isfinite(res["means"]) & (res["means"] > 0)
             ax.semilogy(
                 res["centres"][valid] / h_med,
                 res["means"][valid],
