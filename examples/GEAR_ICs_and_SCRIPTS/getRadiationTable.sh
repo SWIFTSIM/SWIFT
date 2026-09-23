@@ -7,20 +7,38 @@
 #
 # Photoionization, radiation pressure and the interstellar radiation field
 # read the stellar photon rates and luminosities from a "Data/Radiation"
-# group. No public host serves such a table yet: the files
-# getChemistryTable.sh downloads predate it and carry no radiation data at
-# all, so that script cannot supply one. The table is generated locally
-# with pychem instead, and this script only resolves it into the example
-# directory.
+# group. The tables getChemistryTable.sh downloads from the public hosts
+# predate that group and carry no radiation data at all.
 #
 # Resolution order:
-#   1. $GEAR_RADIATION_TABLE, if set, is the source file.
-#   2. $HOME/programs/pychem/<name>, the default pychem output location.
+#   1. the file already in this directory, if present;
+#   2. $GEAR_RADIATION_TABLE, if set;
+#   3. $HOME/programs/pychem/<name>, the default pychem output location;
+#   4. the SWITCHdrive share below, whose content is verified against the
+#      SHA-256 recorded here.
 # Otherwise the script explains how to generate one and fails.
 
 set -eu
 
 table="${1:-PopII_parsec_spectral.hdf5}"
+
+# Published spectral tables: pychem, PARSEC stellar evolution, spectral
+# Q_H and L_PE/L_LW. The checksum is what makes a truncated download or a
+# silently replaced share fail loudly instead of running.
+case "$table" in
+    PopII_parsec_spectral.hdf5)
+	share_id="ydicQptiff7WspX"
+	sha256="72f4447ad454525ce7035d312a9bb400a049d3b8b455ec9dadc9c1e84742e5fc"
+	;;
+    PopIII_parsec_spectral.hdf5)
+	share_id="9D5yQEAa3NNg4F8"
+	sha256="de2c8f28cb8f596796ca93cad2694e5c04eb6a19bb638ffed418a7f3859404ff"
+	;;
+    *)
+	share_id=""
+	sha256=""
+	;;
+esac
 
 if [ -e "$table" ]; then
     exit 0
@@ -34,6 +52,41 @@ if [ -e "$source_file" ]; then
     exit 0
 fi
 
+if [ -n "$share_id" ]; then
+    url="https://drive.switch.ch/index.php/s/$share_id/download"
+    echo "Downloading the radiation yields table '$table'."
+    tmp="$table.part"
+    rm -f "$tmp"
+    if command -v curl > /dev/null 2>&1; then
+	curl -fsSL -o "$tmp" "$url" || true
+    else
+	wget -q -O "$tmp" "$url" || true
+    fi
+
+    if [ ! -s "$tmp" ]; then
+	rm -f "$tmp"
+	echo "$0: could not download '$table' from $url." >&2
+	exit 1
+    fi
+
+    # A share that serves an HTML page instead of the file, or a file that
+    # was replaced, fails here rather than at the first physics result.
+    if command -v sha256sum > /dev/null 2>&1; then
+	got=$(sha256sum "$tmp" | cut -d' ' -f1)
+	if [ "$got" != "$sha256" ]; then
+	    rm -f "$tmp"
+	    echo "$0: '$table' downloaded from $url has SHA-256 $got," >&2
+	    echo "     but $sha256 was expected. Refusing to use it." >&2
+	    exit 1
+	fi
+    else
+	echo "$0: sha256sum is not available; the download is unverified."
+    fi
+
+    mv "$tmp" "$table"
+    exit 0
+fi
+
 cat >&2 <<EOF
 
 ERROR: no radiation yields table found for this example.
@@ -42,15 +95,18 @@ Looked for:
   ./$table
   $source_file
 
-Generate one with pychem's pychem_generate_hdf5_parameters, using a
+'$table' is not one of the published tables, so it cannot be downloaded.
+Generate it with pychem's pychem_generate_hdf5_parameters, using a
 spectral parameter file (the table's Data/Radiation group then carries
 qh_source='spectral'), then either copy it here under the name above or
 point GEAR_RADIATION_TABLE at it:
 
   GEAR_RADIATION_TABLE=/path/to/table.hdf5 ./run.sh
 
-The tables served by the public hosts (see getChemistryTable.sh) carry no
-Data/Radiation group and cannot drive this example.
+The published tables are PopII_parsec_spectral.hdf5 and
+PopIII_parsec_spectral.hdf5. The tables served by the public hosts (see
+getChemistryTable.sh) carry no Data/Radiation group and cannot drive this
+example.
 
 EOF
 exit 1
