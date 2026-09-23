@@ -357,6 +357,7 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
         front=front,
         r_min=r_min,
         r_max=r_max,
+        window_ok=False,
         slope=np.nan,
         slope_err=np.nan,
         slope_freestream=np.nan,
@@ -377,15 +378,24 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
         np.abs(energy[energy < 0]).sum() / total if total > 0 else np.nan
     )
 
-    if r_max <= 1.5 * r_min:
-        out["comment"] = "window too narrow (front has not cleared the star yet)"
+    # Eligibility is geometry alone: the front radius, the box size, the
+    # kernel support and the star's own footprint. It never looks at the
+    # field, so the gate's snapshot set cannot be steered by the quantity
+    # under test.
+    out["window_ok"] = bool(r_max > 1.5 * r_min)
+    if not out["window_ok"]:
+        out["comment"] = (
+            "window too narrow: the front has either not cleared the star "
+            "yet or has approached the box edge"
+        )
         return out
 
     edges = np.logspace(np.log10(r_min), np.log10(r_max), n_bins + 1)
-    r_bin, u_bin, n_dropped = [], [], 0
+    r_bin, u_bin, n_dropped, n_sparse = [], [], 0, 0
     for low, high in zip(edges[:-1], edges[1:]):
         selection = (r >= low) & (r < high)
         if selection.sum() < 25:
+            n_sparse += 1
             continue
         median = np.median(u[selection])
         if median <= 0.0:
@@ -400,12 +410,16 @@ def measure(snapshot: dict, record: list, c_hyp_margin: float, band: str, n_bins
     out["slope_freestream"] = -2.0 - mid / lam
     out["slope_diffusion"] = -1.0 - mid / lam
 
+    # The two ways a bin is lost say different things, so they are reported
+    # separately: a sparse bin is a sampling statement about the window, a
+    # dropped bin is a statement about the field itself.
     if len(r_bin) < 5 or n_dropped > 0.3 * n_bins:
         out["comment"] = (
             f"cannot fit: {n_dropped} of {n_bins} bins dropped for a "
-            "non-positive median field. The propagated field is ringing in "
-            "sign, so it has no radial profile to measure. This is what an "
-            "insufficient ISRF_dissipation_alpha_max looks like at this "
+            f"non-positive median field and {n_sparse} held fewer than 25 "
+            "particles. A dropped bin means the propagated field is ringing "
+            "in sign, so it has no radial profile to measure, which is what "
+            "an insufficient ISRF_dissipation_alpha_max looks like at this "
             "screening length; see the README."
         )
         return out
@@ -507,13 +521,25 @@ def main() -> int:
     final = {}
     for band in ("PE", "LW"):
         items = per_band[band]
-        usable = [item for item in items if not np.isnan(item["slope"])]
+        # The gate's snapshots are chosen on the measurement window's
+        # geometry alone, never on whether the fit succeeded. Selecting the
+        # last fittable snapshots instead let a run whose late snapshots
+        # ring in sign fall back to earlier, transient ones, and a
+        # sign-ringing field is the very defect this check exists to catch.
+        eligible = [item for item in items if item["window_ok"]]
         print(f"\n=== {band} band ===")
+        print(
+            f"{len(eligible)} of {len(items)} snapshots have a usable "
+            "measurement window (geometry only)"
+        )
         print(
             f"{'t':>10} {'R_f/pc':>7} {'window/pc':>14} {'dex':>5} "
             f"{'E_neg/E':>8} {'slope':>16} {'meas/FS':>10}"
         )
-        for item in items[-options.n_late * 3 :]:
+        # Show the tail of the ELIGIBLE set: on a run whose front has run
+        # past the box, the last snapshots carry no window at all and would
+        # hide the rows the verdict is actually built from.
+        for item in (eligible or items)[-options.n_late * 3 :]:
             window = f"[{item['r_min'] / PC_CGS:4.2f},{item['r_max'] / PC_CGS:5.2f}]"
             dex = (
                 np.log10(item["r_max"] / item["r_min"])
@@ -535,18 +561,30 @@ def main() -> int:
                 f"{dex:5.2f} {item['negative_fraction']:8.3f} {slope:>16} {amplitude}"
             )
 
-        if len(usable) < options.n_late:
+        if len(eligible) < options.n_late:
             comment = items[-1]["comment"] if items else "no snapshots"
             print(
-                f"FAIL [{band}]: fewer than {options.n_late} snapshots could be fitted."
+                f"FAIL [{band}]: fewer than {options.n_late} snapshots have a "
+                "usable measurement window."
             )
             print(f"      last reason: {comment}")
             failures.append(band)
             final[band] = items[-1] if items else None
             continue
 
-        late = usable[-options.n_late :]
+        late = eligible[-options.n_late :]
         final[band] = late[-1]
+        # A snapshot inside the gated window that could not be fitted is
+        # evidence, not a reason to look elsewhere.
+        unfitted = [item for item in late if not np.isfinite(item["slope"])]
+        if unfitted:
+            print(
+                f"  FAIL: {len(unfitted)} of the {len(late)} gated snapshots "
+                "could not be fitted."
+            )
+            for item in unfitted:
+                print(f"      t = {item['time']:.3e}: {item['comment']}")
+            failures.append(band)
         slope = float(np.mean([item["slope"] for item in late]))
         slope_err = float(np.std([item["slope"] for item in late]) / np.sqrt(len(late)))
         predicted = float(np.mean([item["slope_freestream"] for item in late]))
@@ -558,7 +596,7 @@ def main() -> int:
 
         print(
             f"\n  lambda = {lam:.1f} pc, h/lambda = {h_over_lam:.2e}, "
-            f"averaged over the last {len(late)} fitted snapshots:"
+            f"averaged over the last {len(late)} snapshots with a usable window:"
         )
         print(
             f"  slope             = {slope:+.3f} +- {slope_err:.3f}  "

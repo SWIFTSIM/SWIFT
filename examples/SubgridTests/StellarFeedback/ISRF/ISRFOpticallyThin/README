@@ -86,9 +86,13 @@ python3 isrf_optically_thin_check.py
 `run.sh` runs this automatically against its own `output.log` and snapshots.
 For each band it bins the field radially inside the causal front and fits the
 log-log slope against the free-streaming prediction, averaging over the last
-few snapshots (`--n-late`). It fails if the slope is more than `--slope-tol`
-from the prediction, or if any fitted quantity is not finite; `--slope-tol`
-should not be loosened to make a run pass. The absolute amplitude ratio
+few snapshots that carry a measurement window (`--n-late`). Which snapshots
+those are is decided on the window's geometry alone, never on whether the fit
+succeeded, so a snapshot the fit could not use fails the check instead of
+being replaced by an earlier one. It fails if the slope is more than
+`--slope-tol` from the prediction, if a gated snapshot could not be fitted, or
+if any fitted quantity is not finite. `--slope-tol` should not be loosened to
+make a run pass. The absolute amplitude ratio
 (measured field over the free-streaming prediction) and its radial spread are
 reported but not gated on: the flux limiter pins particles near the source
 before they reach the unlimited fixed point, biasing the settled amplitude
