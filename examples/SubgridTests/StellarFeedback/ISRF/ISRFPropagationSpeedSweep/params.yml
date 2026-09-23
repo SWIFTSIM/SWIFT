@@ -100,8 +100,8 @@ GrackleCooling:
 
 GEARFeedback:
   # Stellar evolution
-  yields_table: POPIIsw.h5                                  # Stellar yields table filename
-  yields_table_first_stars: POPIIsw.h5                      # First-star (Pop III) yields table
+  yields_table: PopII_parsec_spectral.hdf5                  # Stellar yields table, with the Data/Radiation group
+  yields_table_first_stars: PopII_parsec_spectral.hdf5      # First-star table; the same file, so the ISRF source is Pop II either side of the transition
   imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
   discrete_yields: 1                                        # Use discrete stellar yields
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
