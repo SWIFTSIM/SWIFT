@@ -132,7 +132,7 @@ def parse_options():
     parser.add_argument(
         "--yields_table_for_slab",
         type=str,
-        default="POPIIsw.h5",
+        default="PopII_parsec_spectral.hdf5",
         help="Yields table read for --metallicity-slab's SolarMassAbundances "
         "(must match GEARFeedback:yields_table in params.yml).",
     )

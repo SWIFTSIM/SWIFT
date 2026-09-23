@@ -82,9 +82,7 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]; then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
-if [ ! -e POPIIsw.h5 ]; then
-    "$scripts_location"/getChemistryTable.sh
-fi
+"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 
 for run in $runs; do
     # injection_*: propagation off, four steps; others: propagation on.
@@ -108,8 +106,8 @@ for run in $runs; do
         --cooling --sync --limiter --verbose=0 --threads=$n_threads \
         -P InitialConditions:file_name:ICs_isrf_multi_source.hdf5 \
         -P GrackleCooling:cloudy_table:../CloudyData_UVB=HM2012.h5 \
-        -P GEARFeedback:yields_table:../POPIIsw.h5 \
-        -P GEARFeedback:yields_table_first_stars:../POPIIsw.h5 \
+        -P GEARFeedback:yields_table:../PopII_parsec_spectral.hdf5 \
+        -P GEARFeedback:yields_table_first_stars:../PopII_parsec_spectral.hdf5 \
         -P TimeIntegration:time_end:$t_end \
         -P TimeIntegration:dt_max:$dt \
         -P Snapshots:delta_time:$dsnap \

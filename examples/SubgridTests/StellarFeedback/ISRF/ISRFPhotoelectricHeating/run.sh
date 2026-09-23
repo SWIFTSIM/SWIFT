@@ -44,11 +44,7 @@ then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPIIsw.h5 ]
-then
-    echo "Fetching the chemistry tables..."
-    "$scripts_location"/getChemistryTable.sh
-fi
+"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 
 # Stop here on a table the radiation reader cannot use, rather than
 # aborting at start-up once the initial conditions are built.
@@ -57,7 +53,7 @@ isrf_table_check_flags=""
 if [ "$with_pe_heating" != "0" ]; then
     isrf_table_check_flags="--with-isrf"
 fi
-"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 \
+"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 \
     $isrf_table_check_flags || exit 1
 
 echo "Generating initial conditions to run the example..."

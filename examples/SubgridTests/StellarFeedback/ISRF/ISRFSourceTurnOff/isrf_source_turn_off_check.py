@@ -97,7 +97,7 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--yields-table",
-        default="POPIIsw.h5",
+        default="PopII_parsec_spectral.hdf5",
         help="Yields table to read the lifetime fit from (default: %(default)s)",
     )
     parser.add_argument(
@@ -330,7 +330,7 @@ def lifetime_coefficients(
     Parameters
     ----------
     yields_table : str
-        Path to the yields table (e.g. ``POPIIsw.h5``).
+        Path to the yields table (e.g. ``PopII_parsec_spectral.hdf5``).
 
     Returns
     -------

@@ -130,13 +130,11 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]; then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
-if [ ! -e POPIIsw.h5 ]; then
-    "$scripts_location"/getChemistryTable.sh
-fi
+"$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 
 # Stop here on a table the radiation reader cannot use, rather than
 # aborting at start-up once the initial conditions are built.
-"$scripts_location"/checkRadiationTable.sh POPIIsw.h5 --with-isrf || exit 1
+"$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
 python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass \
     --temperature $temperature --redshift $redshift --u-pe $u_pe \
