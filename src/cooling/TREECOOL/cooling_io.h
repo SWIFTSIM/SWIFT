@@ -48,6 +48,9 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   io_write_attribute_s(h_grp, "Cooling Model", "TREECOOL");
   io_write_attribute_s(h_grp, "UV background table", cooling->TREECOOL_file);
+  io_write_attribute_d(
+      h_grp, "UV background table max redshift",
+      exp10(cooling->TREECOOL_log10_1_plus_z[cooling->N_redshifts - 1]) - 1.);
   io_write_attribute_d(h_grp, "Hydrogen mass fraction", cooling->X_H);
   io_write_attribute_d(h_grp, "Helium mass fraction", cooling->Y_He);
   io_write_attribute_d(h_grp, "log10(T_min) [K]", cooling->log10_T_min);
