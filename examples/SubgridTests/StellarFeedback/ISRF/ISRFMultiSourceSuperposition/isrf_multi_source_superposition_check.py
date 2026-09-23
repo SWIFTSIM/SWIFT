@@ -49,9 +49,11 @@ E   Exact injection superposition, propagation off. Each illuminated gas
     only a few dozen particles are illuminated, so a maximum is decided by
     whether one of them lands in the cancellation region, and three
     identical runs of this fixture put the largest single-particle
-    residual at 0.17, 1.7e-3 and 1.7e-3 of its allowance. A sum is
-    bounded by the summed allowance by construction. The maximum is
-    printed as a diagnostic.
+    residual at 0.17, 1.7e-3 and 1.7e-3 of its allowance. Gated against
+    an earlier floor of 4 eps of the peak field, those same three runs
+    read 1.52, -9.2e-6 and -9.2e-6 against a bar of 1, so the second of
+    them failed and the other two passed. A sum is bounded by the summed
+    allowance by construction. The maximum is printed as a diagnostic.
     Gated with it: the number of particles reached by both stars, against
     half the lens volume of the two kernels times the gas number density,
     so that the sums above measure superposition and not two disjoint
