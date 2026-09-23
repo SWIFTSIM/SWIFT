@@ -695,6 +695,28 @@ static void check_grackle_coupling(const struct unit_system *us) {
   assert_close("Grackle coupling: LW dissociation rate linearity in u_LW",
                k_diss_double, 2.0 * actual_k_diss_internal, 1e-6);
 
+  /* Table path: a run whose radiation table carries pychem's
+   * Integrated_MeanPhotonEnergyLW divides by that value instead of
+   * RADIATION_LW_PHOTON_ENERGY_EV, so the rate scales by the inverse ratio
+   * of the two energies. The cross-section stays pinned, so this is the
+   * whole of the change the table makes. Every check above runs on the
+   * fallback path, which is what radiation_lw_photon_energy_cgs = 0
+   * selects. */
+  const double E_LW_table_cgs = 1.9633431393546273e-11;
+  radiation_lw_photon_energy_cgs = E_LW_table_cgs;
+  const double k_diss_table = radiation_get_part_LW_dissociation_rate_internal(
+      &phys_const, us, &cosmo, &p);
+  assert_close("Grackle coupling: LW dissociation rate on the table path",
+               k_diss_table,
+               actual_k_diss_internal * E_LW_photon_cgs / E_LW_table_cgs, 1e-6);
+  radiation_lw_photon_energy_cgs = 0.;
+
+  const double k_diss_fallback_restored =
+      radiation_get_part_LW_dissociation_rate_internal(&phys_const, us, &cosmo,
+                                                       &p);
+  assert_close("Grackle coupling: LW dissociation rate back on the fallback",
+               k_diss_fallback_restored, actual_k_diss_internal, 1e-12);
+
   /* Order of magnitude against Draine & Bertoldi's k_LW ~ 1e-10*chi s^-1
    * at a comparable G0 ~ 1 (chi and G0 use slightly different
    * normalizations of the same local PE/LW field, so this is an

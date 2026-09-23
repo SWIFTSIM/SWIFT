@@ -704,6 +704,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                cosmo, fp->with_stellar_wind_feedback,
                                with_radiation);
 
+  /* The H2 photodissociation rate's divisor, taken from the main model's
+     table. Deliberately not repeated for the first-stars model below:
+     the gas-side consumer is source-anonymous and has one divisor. */
+  radiation_set_lw_photon_energy_cgs(&fp->stellar_model.rad,
+                                     &fp->stellar_model);
+
   /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
       params, "GEARFeedback:imf_transition_metallicity", 0);

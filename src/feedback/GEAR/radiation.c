@@ -31,7 +31,61 @@
 #include "engine.h"
 #include "interpolation.h"
 
+#include <math.h>
 #include <string.h>
+
+double radiation_lw_photon_energy_cgs = 0.;
+
+/**
+ * @brief Set #radiation_lw_photon_energy_cgs from the radiation table.
+ *
+ * radiation_get_part_LW_dissociation_rate_internal() divides a gas
+ * particle's LW energy flux by a photon energy, but that particle's LW band
+ * sums emission from many stars and keeps no record of which star
+ * contributed what, so no emitter's own mean photon energy is recoverable
+ * there. One representative population value is read here instead:
+ * pychem's "Integrated_MeanPhotonEnergyLW" over the IMF's whole mass range,
+ * at #RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY for a 2D table.
+ *
+ * Left at 0 for a table without the two datasets, which is what makes the
+ * consumer fall back to #RADIATION_LW_PHOTON_ENERGY_EV.
+ *
+ * Call this for the main stellar model only. A run with a first-stars table
+ * reads two models, and the consumer has one divisor.
+ *
+ * @param rad The main stellar model's #radiation.
+ * @param sm The main #stellar_model, for its IMF mass range.
+ */
+void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
+                                        const struct stellar_model *sm) {
+
+  radiation_lw_photon_energy_cgs = 0.;
+
+  if (!rad->is_active || !rad->has_mean_photon_energy_lw) return;
+
+  /* The population getters take a single upper mass bound and average from
+     the IMF's own mass_min up to it; see
+     radiation_get_mean_photon_energy_lw_from_integral(). */
+  const float log_m = log10f(sm->imf.mass_max);
+  const double E_LW_cgs =
+      rad->is_2d
+          ? radiation_get_mean_photon_energy_lw_from_integral_2d(
+                rad,
+                radiation_get_log_metallicity(
+                    RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY),
+                log_m)
+          : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m);
+
+  /* A non-positive divisor would make every dissociation rate non-finite.
+     Keep the constant fallback rather than dividing by it. */
+  if (E_LW_cgs <= 0.) return;
+
+  radiation_lw_photon_energy_cgs = E_LW_cgs;
+
+  if (engine_rank == 0)
+    message("Mean Lyman-Werner photon energy from the table = %g erg",
+            radiation_lw_photon_energy_cgs);
+}
 
 /**
  * @brief Print the radiation model.

@@ -179,6 +179,7 @@ ELECTRON_VOLT_CGS = 1.602176634e-12
 RADIATION_H_FALLBACK = {
     "RADIATION_SIGMA_H2_LW_CGS": 2.5111667e-18,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
+    "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY": 0.014,
 }
 RADIATION_H_FALLBACK_SOURCE = "radiation.h at bc9f7dca5, copied 2026-09-23"
 RADIATION_H_FALLBACK_USED: List[str] = []
@@ -234,13 +235,59 @@ def read_radiation_h_constant(name: str) -> float:
     return float(match.group(1))
 
 
-# The cross-section and the photon energy are calibrated together: only their
-# quotient is constrained, so a copy of one that drifts from the other
-# rescales every dissociation rate. Read both from the header instead.
+def read_lw_photon_energy_cgs() -> float:
+    """Read the mean Lyman-Werner photon energy the run divided by, in erg.
+
+    SWIFT takes it from the radiation table when that table carries
+    ``Data/Radiation/Integrated_MeanPhotonEnergyLW``, at the reference
+    metallicity and over the whole IMF mass range
+    (``radiation_set_lw_photon_energy_cgs``), and falls back to
+    ``RADIATION_LW_PHOTON_ENERGY_EV`` otherwise. The table is located through
+    the parameter file of the run being checked, so this reproduces the
+    divisor that run actually used.
+
+    Returns
+    -------
+    float
+        Photon energy in erg.
+    """
+    fallback = (
+        read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
+    )
+    reference_metallicity = read_radiation_h_constant(
+        "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY"
+    )
+    for directory in (Path.cwd(), Path(__file__).resolve().parent):
+        for name in ("used_parameters.yml", "params.yml"):
+            parameters = directory / name
+            if not parameters.is_file():
+                continue
+            match = re.search(
+                r"^\s*yields_table:\s*(\S+)", parameters.read_text(), re.M
+            )
+            if match is None:
+                continue
+            table = directory / match.group(1).strip("\"'")
+            if not table.is_file():
+                continue
+            with h5py.File(table, "r") as handle:
+                group = handle.get("Data/Radiation")
+                if group is None or "Integrated_MeanPhotonEnergyLW" not in group:
+                    return fallback
+                energies = group["Integrated_MeanPhotonEnergyLW"]
+                if energies.ndim == 1:
+                    return float(energies[-1])
+                metallicity = group["Metallicity"][:]
+                row = int(np.argmin(np.abs(metallicity - reference_metallicity)))
+                return float(energies[row, -1])
+    return fallback
+
+
+# The cross-section is a compile-time constant; the photon energy comes from
+# the radiation table when that table carries it, so read the cross-section
+# from the header and the photon energy the same way the run resolved it.
 SIGMA_H2_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
-LW_PHOTON_ENERGY_CGS = (
-    read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
-)
+LW_PHOTON_ENERGY_CGS = read_lw_photon_energy_cgs()
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387

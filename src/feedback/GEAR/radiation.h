@@ -133,20 +133,21 @@
     only their quotient sigma_H2/E_LW is physically constrained: the
     Sternberg et al. (2014) anchor fixes that quotient, and the pair below
     reproduces it. Changing either one alone rescales every H2
-    photodissociation rate by the ratio of the change. The two must
-    therefore move together, or not at all.
+    photodissociation rate by the ratio of the change, so the two move
+    together or not at all.
 
-    pychem now exports a measured, photon-number-weighted mean LW photon
-    energy per mass and per population ("MeanPhotonEnergyLW" and
-    "Integrated_MeanPhotonEnergyLW"), read into
-    #radiation.raw.mean_photon_energy_lw /
-    #radiation.integrated.mean_photon_energy_lw when the table carries them
-    (#radiation.has_mean_photon_energy_lw). Those tables are not yet
-    consumed here: substituting a table value for this constant is a
-    recalibration of the pair above, not a plumbing change, and that
-    recalibration is not settled. This constant remains the value the
-    dissociation rate actually uses, and remains the fallback for any table
-    that does not carry the two datasets, so it cannot be removed. */
+    FALLBACK ONLY. A table carrying pychem's "MeanPhotonEnergyLW" and
+    "Integrated_MeanPhotonEnergyLW" datasets
+    (#radiation.has_mean_photon_energy_lw) supplies the divisor instead,
+    through #radiation_lw_photon_energy_cgs. A table without them falls
+    back to this constant, so it cannot be removed.
+
+    On the fallback path the quotient above is held and k_diss is the
+    Sternberg-anchored rate. On the table path it is not:
+    #RADIATION_SIGMA_H2_LW_CGS stays pinned to the 12.2 eV of this
+    constant while the divisor comes from the table, so k_diss scales by
+    12.2 eV / E_LW_table. For the shipped PopII spectral table that factor
+    is 12.2 / 12.254224 = 0.9956, i.e. -0.44%. */
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.2
 
 /*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.
@@ -160,9 +161,19 @@
     1.284711e-07 cm^2 erg^-1, the combination that anchor constrains,
     multiplied by the adopted #RADIATION_LW_PHOTON_ENERGY_EV of 12.2 eV;
     the extra digits carry that quotient, they are not a claim of
-    precision on the cross section itself. See that macro for why the two
-    cannot be changed independently. */
+    precision on the cross section itself. See that macro for how the
+    quotient behaves on the fallback and table paths. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
+
+/*! Metallicity mass fraction at which the population mean Lyman-Werner
+    photon energy is read off a 2D table, for
+    #radiation_lw_photon_energy_cgs. The gas particle that consumes the
+    dissociation rate is source-anonymous: its LW band sums emission from
+    many stars of different mass and metallicity and keeps no record of
+    which contributed what, so one representative rung is read rather than
+    a per-particle value. This is the rung the cross-section calibration is
+    anchored at. */
+#define RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY 0.014
 
 /*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
     the integrated table's own top mass edge before calling interpolate_2d(),

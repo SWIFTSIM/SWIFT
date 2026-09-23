@@ -31,9 +31,11 @@ photon flux,
 
     k_diss,0 = sigma_H2 * c * rho * u_LW / E_LW ,                        (1)
 
-with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS``,
-``E_LW = RADIATION_LW_PHOTON_ENERGY_EV`` (both read from that header at run
-time, since only their quotient is calibrated) and ``u_LW`` the snapshot's
+with ``sigma_H2 = RADIATION_SIGMA_H2_LW_CGS`` (read from that header at run
+time), ``E_LW`` the mean LW photon energy the run divided by, taken from the
+radiation table's ``Integrated_MeanPhotonEnergyLW`` where the table carries
+it and from ``RADIATION_LW_PHOTON_ENERGY_EV`` where it does not, and ``u_LW``
+the snapshot's
 ``LWSpecificEnergies`` in CGS. This script takes ``u_LW`` from the snapshots
 rather than predicting it from a transport solution: the field the chemistry
 actually saw is an input to this test, not one of its claims, so a transport
@@ -228,6 +230,7 @@ RADIATION_H = (
 RADIATION_H_FALLBACK = {
     "RADIATION_SIGMA_H2_LW_CGS": 2.5111667e-18,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
+    "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY": 0.014,
 }
 RADIATION_H_FALLBACK_SOURCE = "radiation.h at bc9f7dca5, copied 2026-09-23"
 RADIATION_H_FALLBACK_USED: List[str] = []
@@ -283,11 +286,58 @@ def read_radiation_h_constant(name: str) -> float:
     return float(match.group(1))
 
 
-# The cross-section and the photon energy are calibrated together: only their
-# quotient is constrained, so a copy of one that drifts from the other
-# rescales every dissociation rate. Read both from the header instead.
+def read_lw_photon_energy_cgs() -> float:
+    """Read the mean Lyman-Werner photon energy the run divided by, in erg.
+
+    SWIFT takes it from the radiation table when that table carries
+    ``Data/Radiation/Integrated_MeanPhotonEnergyLW``, at the reference
+    metallicity and over the whole IMF mass range
+    (``radiation_set_lw_photon_energy_cgs``), and falls back to
+    ``RADIATION_LW_PHOTON_ENERGY_EV`` otherwise. The table is located through
+    the parameter file of the run being checked, so this reproduces the
+    divisor that run actually used.
+
+    Returns
+    -------
+    float
+        Photon energy in erg.
+    """
+    fallback = (
+        read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV") * ELECTRON_VOLT_CGS
+    )
+    reference_metallicity = read_radiation_h_constant(
+        "RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY"
+    )
+    for directory in (Path.cwd(), Path(__file__).resolve().parent):
+        for name in ("used_parameters.yml", "params.yml"):
+            parameters = directory / name
+            if not parameters.is_file():
+                continue
+            match = re.search(
+                r"^\s*yields_table:\s*(\S+)", parameters.read_text(), re.M
+            )
+            if match is None:
+                continue
+            table = directory / match.group(1).strip("\"'")
+            if not table.is_file():
+                continue
+            with h5py.File(table, "r") as handle:
+                group = handle.get("Data/Radiation")
+                if group is None or "Integrated_MeanPhotonEnergyLW" not in group:
+                    return fallback
+                energies = group["Integrated_MeanPhotonEnergyLW"]
+                if energies.ndim == 1:
+                    return float(energies[-1])
+                metallicity = group["Metallicity"][:]
+                row = int(np.argmin(np.abs(metallicity - reference_metallicity)))
+                return float(energies[row, -1])
+    return fallback
+
+
+# The cross-section is a compile-time constant; the photon energy comes from
+# the radiation table when that table carries it, so read the cross-section
+# from the header and the photon energy the same way the run resolved it.
 SIGMA_H2_LW_CGS: float = read_radiation_h_constant("RADIATION_SIGMA_H2_LW_CGS")
-LW_PHOTON_ENERGY_EV: float = read_radiation_h_constant("RADIATION_LW_PHOTON_ENERGY_EV")
 HABING_FLUX_CGS: float = 1.6e-3
 # Draine and Bertoldi (1996), unshielded free-space rate per Habing field
 DB96_UNSHIELDED_RATE_CGS: float = 3.3e-11
@@ -302,11 +352,12 @@ PARSEC_CGS: float = 3.0856775814913673e18
 N_H2_NORM_CGS: float = 5.0e14
 # Wendland C2 support-to-smoothing ratio in 3D, src/kernel_hydro.h
 KERNEL_GAMMA_WENDLAND_C2: float = 1.936492
+LW_PHOTON_ENERGY_CGS: float = read_lw_photon_energy_cgs()
 # Eq. (1) over 3.3e-11 G_0, per unit LW fraction
 RATE_RATIO_PER_LW_FRACTION: float = (
     SIGMA_H2_LW_CGS
     * HABING_FLUX_CGS
-    / (LW_PHOTON_ENERGY_EV * ELECTRON_VOLT_CGS * DB96_UNSHIELDED_RATE_CGS)
+    / (LW_PHOTON_ENERGY_CGS * DB96_UNSHIELDED_RATE_CGS)
 )
 # Mean atomic weight Grackle assigns to the metal field, cool1d_multi_g.F
 MU_METAL: float = 16.0
@@ -531,8 +582,7 @@ def unshielded_rate(density: np.ndarray, u_LW: np.ndarray) -> np.ndarray:
     numpy.ndarray
         Rate in s^-1.
     """
-    photon_energy = LW_PHOTON_ENERGY_EV * ELECTRON_VOLT_CGS
-    return SIGMA_H2_LW_CGS * C_LIGHT_CGS * density * u_LW / photon_energy
+    return SIGMA_H2_LW_CGS * C_LIGHT_CGS * density * u_LW / LW_PHOTON_ENERGY_CGS
 
 
 def habing_field(density: np.ndarray, u_PE: np.ndarray, u_LW: np.ndarray) -> np.ndarray:

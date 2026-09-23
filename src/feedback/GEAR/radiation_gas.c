@@ -766,7 +766,9 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
  * cross-section-times-flux conversion. F_LW is a PHOTON flux (not the
  * energy flux #radiation_get_part_isrf_habing uses): dividing the
  * LW-band energy flux by a representative
- * photon energy (#RADIATION_LW_PHOTON_ENERGY_EV) converts it, mirroring
+ * photon energy converts it. That energy is the table's own population
+ * mean where the table carries it (#radiation_lw_photon_energy_cgs) and
+ * #RADIATION_LW_PHOTON_ENERGY_EV otherwise, mirroring
  * this codebase's own existing energy-vs-photon-count distinction for the
  * ionizing channel (Q_H tracked separately from L_bol/DotEExcess).
  * Feeds Grackle's per-particle RT_H2_dissociation_rate (COOLING_GRACKLE_
@@ -798,15 +800,18 @@ double radiation_get_part_LW_dissociation_rate_internal(
       flux_LW *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
 
-  /* phys_const->const_electron_volt is already in this run's internal
-     units; convert the internal-unit photon energy to cgs to match
-     flux_LW_cgs above, rather than hand-rolling a separate eV-to-erg cgs
-     constant (physical_constants_cgs.h already defines one, and every
-     other radiation getter in this codebase reads constants off
-     phys_const rather than duplicating them). */
+  /* The table-borne divisor is already in cgs erg and is used as it
+     stands. The fallback constant is in eV, and
+     phys_const->const_electron_volt is in this run's internal units, so it
+     is converted here to match flux_LW_cgs above rather than hand-rolling a
+     separate eV-to-erg cgs constant (physical_constants_cgs.h already
+     defines one, and every other radiation getter in this codebase reads
+     constants off phys_const rather than duplicating them). */
   const double E_LW_photon_cgs =
-      RADIATION_LW_PHOTON_ENERGY_EV * phys_const->const_electron_volt *
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+      radiation_lw_photon_energy_cgs > 0.
+          ? radiation_lw_photon_energy_cgs
+          : RADIATION_LW_PHOTON_ENERGY_EV * phys_const->const_electron_volt *
+                units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   const double photon_flux_LW_cgs = flux_LW_cgs / E_LW_photon_cgs;
   const double k_diss_cgs = RADIATION_SIGMA_H2_LW_CGS * photon_flux_LW_cgs;
   const double k_diss =
