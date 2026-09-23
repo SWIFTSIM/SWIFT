@@ -206,7 +206,11 @@ def metrics(run: Dict, ref: Dict, times: np.ndarray) -> Dict[str, float]:
             if not np.any(mask):
                 continue
             rel = np.median(np.abs(other[key][mask] / base[key][mask] - 1.0))
-            worst[key] = max(worst[key], float(rel))
+            # np.maximum, not the builtin: `max(0.0, nan)` returns 0.0, so a
+            # non-finite value was dropped and the finiteness guard below
+            # could never fire. The bars come from this same function, so a
+            # non-finite reference shrank a bar instead of failing.
+            worst[key] = float(np.maximum(worst[key], rel))
     return worst
 
 
