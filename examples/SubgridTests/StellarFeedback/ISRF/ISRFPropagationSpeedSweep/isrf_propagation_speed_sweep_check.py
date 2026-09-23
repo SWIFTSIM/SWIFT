@@ -18,12 +18,21 @@
 ################################################################################
 """
 Per-run metrics for the ISRFPropagationSpeedSweep example (c_hyp sweep, Legs
-P/N/R/I: see README). Computes the effective Courant number nu_eff from the
-run's own measured h and dt (never assumed), the stability bound nu_max at
-the run's own alpha, the pulse front position, and the realized-timestep
-validity precondition Leg P's cross-run comparison depends on. Writes all of
-it to --json-out; cross-run comparisons (self-similarity, retardation
-collapse, the stability bracket) are done separately by sweep_compare.py.
+P/N/R/I: see README): the effective Courant number nu_eff, the stability
+bound nu_max at the run's own alpha, the pulse front position, and the
+realized-timestep validity precondition Leg P's cross-run comparison depends
+on. Writes all of it to --json-out; cross-run comparisons (self-similarity,
+retardation collapse, the stability bracket) are done separately by
+sweep_compare.py.
+
+nu_eff = c_hyp*dt_bulk/h_med IS A MEASUREMENT ONLY WHEN c_hyp IS PINNED.
+Without a pin, c_hyp comes from the closure min(margin*h_med/dt_bulk, c),
+built from the same h_med and dt_bulk, so nu_eff returns the margin
+parameter exactly and measures nothing at all (it still measures something
+when the light-speed clamp binds, which is reported separately). The run's
+provenance is written to --json-out as `nu_eff_source`, and sweep_compare.py
+refuses to certify its Leg P precondition from a set of closure runs, whose
+nu_eff spread is zero by construction rather than by agreement.
 """
 
 import argparse
@@ -148,14 +157,24 @@ def load_used_parameters(path):
 
 
 def outer_edge_above_threshold(r, u, threshold, n_bins, r_max):
-    edges = np.linspace(0, r_max, n_bins + 1)
+    """Largest bin-centre radius whose binned mean u exceeds `threshold`.
+
+    Particles outside `0 .. r_max` are EXCLUDED, never clipped into the end
+    bins: clipping folds the far field into the outermost bin and drags its
+    mean down with the far field's near-zero u, which makes the front
+    position saturate and any far-field signal harder to see the further
+    out it sits.
+    """
+    edges = np.linspace(0.0, r_max, n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    idx = np.clip(np.digitize(r, edges) - 1, 0, n_bins - 1)
+    idx = np.digitize(r, edges) - 1
+    keep = (idx >= 0) & (idx < n_bins)
+    idx, u_keep = idx[keep], u[keep]
     means = np.full(n_bins, 0.0)
     for i in range(n_bins):
         sel = idx == i
         if sel.sum() > 0:
-            means[i] = u[sel].mean()
+            means[i] = u_keep[sel].mean()
     above = means > threshold
     return (float(centres[above].max()) if above.any() else 0.0), centres, means
 
@@ -215,13 +234,22 @@ def main():
 
     nu_eff = c_hyp * dt_bulk / h_med_last if h_med_last > 0 else 0.0
     nu_max = nu_max_of(alpha_eff)
+    # Provenance of nu_eff. Without a pin, c_hyp is the closure evaluated on
+    # the same h_med and dt_bulk, so nu_eff is the margin parameter itself
+    # unless the light-speed clamp binds.
+    if opt.c_hyp_pin > 0.0:
+        nu_eff_source = "measured (c_hyp pinned)"
+    elif c_hyp >= SPEED_OF_LIGHT_KM_S:
+        nu_eff_source = "measured (light-speed clamp binding)"
+    else:
+        nu_eff_source = "closure identity (equals ISRF_c_hyp_margin, measures nothing)"
 
     print(f"--- M-P1: nu_eff / stability bound ---")
     print(f"h_med (last snapshot) = {h_med_last:.6e}")
     print(f"dt_bulk (timesteps.txt, modal) = {dt_bulk:.6e}")
     print(f"c_hyp = {c_hyp:.6e} km/s")
     print(f"alpha_eff (pin if >0 else alpha_max) = {alpha_eff:.4f}")
-    print(f"nu_eff = {nu_eff:.6f}")
+    print(f"nu_eff = {nu_eff:.6f}  [{nu_eff_source}]")
     print(f"nu_max (bound at alpha_eff) = {nu_max:.6f}")
     print(f"nu_eff / nu_max = {nu_eff / nu_max if nu_max > 0 else float('nan'):.4f}")
 
@@ -232,7 +260,7 @@ def main():
     print(
         f"dt_bulk / dt_max = {dt_bulk / dt_max_param if dt_max_param > 0 else float('nan'):.6f}"
     )
-    print(f"nu_eff = {nu_eff:.6f}")
+    print(f"nu_eff = {nu_eff:.6f}  [{nu_eff_source}]")
 
     # M-P5: pin assertion.
     all_ok = True
@@ -308,7 +336,9 @@ def main():
     dxc = last["pos"] - centre
     dxc -= last["boxsize"] * np.round(dxc / last["boxsize"])
     r = np.sqrt(np.sum(dxc**2, axis=1))
-    r_max_plot = 0.45 * last["boxsize"]
+    # Full periodic minimum-image reach: no particle lies outside it, so the
+    # front position is never capped by the binned range.
+    r_max = 0.5 * np.sqrt(3.0) * last["boxsize"]
     front_results = {}
     fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
     colors = plt.cm.viridis(np.linspace(0, 0.9, len(snaps)))
@@ -318,7 +348,7 @@ def main():
         band_results = {}
         for eps in (0.1, 0.01, 0.001):
             r_edge, centres, means = outer_edge_above_threshold(
-                r, u, eps * u_max, opt.n_bins, r_max_plot
+                r, u, eps * u_max, opt.n_bins, r_max
             )
             r_edge_h = r_edge / h_med_last if h_med_last > 0 else float("nan")
             denom = c_hyp * last["time"]
@@ -338,7 +368,7 @@ def main():
             dxi -= s["boxsize"] * np.round(dxi / s["boxsize"])
             ri = np.sqrt(np.sum(dxi**2, axis=1))
             _, c_i, m_i = outer_edge_above_threshold(
-                ri, s[key], 0.0, opt.n_bins, 0.45 * s["boxsize"]
+                ri, s[key], 0.0, opt.n_bins, 0.5 * np.sqrt(3.0) * s["boxsize"]
             )
             valid = m_i > 0
             ax.semilogy(
@@ -369,6 +399,7 @@ def main():
         alpha_pin=alpha_pin,
         alpha_eff=alpha_eff,
         nu_eff=nu_eff,
+        nu_eff_source=nu_eff_source,
         nu_max=nu_max,
         max_disp_h=max_disp_h,
         max_drho=max_drho,

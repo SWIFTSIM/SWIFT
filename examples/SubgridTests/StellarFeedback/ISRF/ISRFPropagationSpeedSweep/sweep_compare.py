@@ -100,21 +100,42 @@ def mode_P(opt):
     # M-P6 validity precondition: nu_eff spread and step-count agreement.
     nu_effs = np.array([m["nu_eff"] for m in metrics])
     n_steps = np.array([m["n_steps"] for m in metrics])
+    # A run whose c_hyp comes from the closure has nu_eff identically equal
+    # to its own ISRF_c_hyp_margin, built from the same h and dt. Its spread
+    # against another such run is zero by construction, not by agreement, so
+    # it certifies nothing and this precondition must not rest on it.
+    sources = [
+        m.get("nu_eff_source", "unknown (metrics predate nu_eff_source)")
+        for m in metrics
+    ]
+    identity_runs = [
+        (d, src) for d, src in zip(opt.runs, sources) if not src.startswith("measured")
+    ]
+    nu_finite = bool(np.all(np.isfinite(nu_effs)))
     nu_spread = (
         (nu_effs.max() - nu_effs.min()) / np.mean(nu_effs)
-        if np.mean(nu_effs)
+        if nu_finite and np.mean(nu_effs)
         else np.inf
     )
     steps_agree = len(set(n_steps.tolist())) == 1
-    valid = (nu_spread <= 0.01) and steps_agree
+    valid = nu_finite and (nu_spread <= 0.01) and steps_agree and not identity_runs
 
     print("=== Leg P: M-P6 validity precondition ===")
     print(f"nu_eff per run: {nu_effs}")
+    print(f"nu_eff provenance per run: {sources}")
     print(f"step counts per run: {n_steps}")
+    print(f"nu_eff all finite: {nu_finite}")
     print(f"nu_eff spread: {nu_spread:.4%}  (limit 1%)")
     print(f"step counts agree: {steps_agree}")
     print(f"=> {'VALID' if valid else 'INVALID'}")
 
+    if identity_runs:
+        print(
+            "\nM-P6 cannot be certified: nu_eff is not a measurement in "
+            + ", ".join(f"{d} ({src})" for d, src in identity_runs)
+            + ". Pin c_hyp with ISRF_c_hyp_pin_for_debugging in every run of "
+            "a Leg P sweep, so nu_eff is set independently of the closure."
+        )
     if not valid:
         print(
             "\nM-C1 and M-C2: INVALID (not FAILED) -- the dt-quantization "
