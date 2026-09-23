@@ -49,9 +49,18 @@
 #include "inline.h"
 #include "minmax.h"
 
-/*! Maximal number of iterations of the ionization equilibrium and
- * temperature solvers. */
+/*! Maximal number of iterations of the ionization equilibrium solver. */
 #define treecool_max_iterations 150
+
+/*! Number of iterations of the damped fixed-point temperature solver after
+ * which we give up and fall back to bisection. The scheme converges in fewer
+ * than 15 iterations in the overwhelming majority of cases. */
+#define treecool_temperature_max_fixed_point_iterations 30
+
+/*! Maximal number of iterations of the bisection fallback of the temperature
+ * solver. The bracket only spans the ratio of the neutral to the fully ionized
+ * mean molecular weight, so ~12 iterations are enough in practice. */
+#define treecool_temperature_max_bisection_iterations 100
 
 /*! Convergence criterion of the ionization equilibrium solver, expressed as an
  * absolute change in the electron fraction n_e / n_H. */
@@ -406,6 +415,17 @@ treecool_mean_molecular_weight(const struct cooling_function_data *cooling,
  * therefore iterate, using the damping scheme of Katz et al. (1996), until the
  * temperature and the abundances are mutually consistent.
  *
+ * The relation u(T) is discontinuous at T_min: the gas is assumed to be
+ * entirely neutral below it but can be highly ionized (by the UV background)
+ * just above it, so mu jumps by a factor of ~2 there. For internal energies
+ * falling in the gap there is no self-consistent temperature and the damped
+ * iteration oscillates for ever around T_min. If the iteration has not
+ * converged after a fixed number of steps we therefore fall back to a
+ * bisection of g(T) = T - T(mu(T)), which is bracketed by the temperatures
+ * obtained with the fully ionized and with the neutral mean molecular
+ * weights. Where a solution exists, g is monotonic and the bisection finds the
+ * same root as the fixed-point scheme; in the gap it returns T_min.
+ *
  * @param cooling The #cooling_function_data used in the run.
  * @param u_cgs The internal energy per unit mass in physical cgs units
  * [erg * g^-1].
@@ -451,11 +471,45 @@ __attribute__((always_inline)) INLINE static double treecool_temperature_from_u(
     ++iter;
 
   } while (fabs(T - T_old) > treecool_temperature_tolerance * T &&
-           iter < treecool_max_iterations);
+           iter < treecool_temperature_max_fixed_point_iterations);
 
-  if (iter >= treecool_max_iterations)
-    error("Temperature failed to converge: u=%e n_H=%e T=%e", u_cgs, n_H_cgs,
-          T);
+  if (iter < treecool_temperature_max_fixed_point_iterations) return T;
+
+  /* The fixed-point iteration did not converge: bisect instead. The
+   * temperature is bracketed by the fully ionized (smallest mu) and the
+   * neutral (largest mu) solutions. */
+  double T_lo = T_over_mu * treecool_mean_molecular_weight(
+                                cooling, /*n_e=*/1. + 2. * cooling->y_He);
+  double T_hi = T_over_mu * treecool_mean_molecular_weight(cooling, /*n_e=*/0.);
+
+  iter = 0;
+  do {
+
+    T = 0.5 * (T_lo + T_hi);
+
+    treecool_abundances(cooling, log10(T), n_H_cgs, gas);
+    const double T_new =
+        T_over_mu * treecool_mean_molecular_weight(cooling, gas->n_e);
+
+    /* g(T) = T - T_new is increasing in T: a negative value means that the
+     * root lies above the current guess */
+    if (T_new > T)
+      T_lo = T;
+    else
+      T_hi = T;
+
+    ++iter;
+
+  } while (T_hi - T_lo > treecool_temperature_tolerance * T_lo &&
+           iter < treecool_temperature_max_bisection_iterations);
+
+  if (iter >= treecool_temperature_max_bisection_iterations)
+    error("Temperature failed to converge: u=%e n_H=%e T_lo=%e T_hi=%e", u_cgs,
+          n_H_cgs, T_lo, T_hi);
+
+  /* Leave the abundances consistent with the temperature we return */
+  T = 0.5 * (T_lo + T_hi);
+  treecool_abundances(cooling, log10(T), n_H_cgs, gas);
 
   return T;
 }
@@ -478,8 +532,10 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
     const double n_H_cgs, struct treecool_gas_state *gas) {
 
   /* Never evaluate the rates below the table: the gas would be entirely
-   * neutral and the cooling rate exactly zero. */
-  log10_T = max(log10_T, cooling->log10_T_min + 0.5 * cooling->delta_log10_T);
+   * neutral and the cooling rate exactly zero. Instead, as in KWH96's
+   * implementation, evaluate them in the middle of the first bin. */
+  if (log10_T <= cooling->log10_T_min)
+    log10_T = cooling->log10_T_min + 0.5 * cooling->delta_log10_T;
 
   const double T = exp10(log10_T);
 

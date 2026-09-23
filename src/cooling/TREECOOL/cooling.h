@@ -145,6 +145,11 @@ __attribute__((always_inline)) INLINE static double treecool_bisection_iter(
                0. &&
            i < treecool_bisection_max_iterations) {
 
+      /* The implicit solution lies below the energy floor: stop there. (If
+       * it lies between the floor and u_upper, the condition above fails once
+       * u_lower reaches the floor and we proceed to the bisection.) */
+      if (u_lower_cgs <= cooling->u_min_cgs) return cooling->u_min_cgs;
+
       u_lower_cgs =
           max(u_lower_cgs / treecool_bracket_factor, cooling->u_min_cgs);
       u_upper_cgs =
@@ -152,10 +157,6 @@ __attribute__((always_inline)) INLINE static double treecool_bisection_iter(
 
       LambdaNet_cgs =
           treecool_cooling_rate_from_u(cooling, u_lower_cgs, n_H_cgs, gas);
-
-      /* We have hit the energy floor and are still cooling: stop there */
-      if (u_lower_cgs <= cooling->u_min_cgs && LambdaNet_cgs < 0.)
-        return cooling->u_min_cgs;
 
       ++i;
     }
@@ -479,8 +480,8 @@ __attribute__((always_inline)) INLINE static double cooling_get_ycompton(
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
- * We start from a fully neutral gas. The first call to the cooling function
- * will replace this by the equilibrium value.
+ * The electron fraction is set to its equilibrium value later on, in
+ * cooling_post_init_part(), once the densities are known.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -506,7 +507,10 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
  * @brief Perform additional init on the cooling properties of the
  * (x-)particles that requires the density to be known.
  *
- * Nothing to do here.
+ * We compute the equilibrium electron fraction so that the initial snapshot
+ * and the first cooling step start from a meaningful value. Note that
+ * cooling_update() has already been called at this point, so the UV
+ * background is the one of the starting redshift.
  *
  * @param phys_const The physical constant in internal units.
  * @param us The unit system.
@@ -522,7 +526,21 @@ __attribute__((always_inline)) INLINE static void cooling_post_init_part(
     const struct hydro_props *hydro_props,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *cooling, const struct part *restrict p,
-    struct xpart *restrict xp) {}
+    struct xpart *restrict xp) {
+
+  const double u_cgs = hydro_get_physical_internal_energy(p, xp, cosmo) *
+                       cooling->internal_energy_to_cgs;
+
+  const double rho_cgs =
+      hydro_get_physical_density(p, cosmo) * cooling->density_to_cgs;
+  const double n_H_cgs = rho_cgs * cooling->X_H * cooling->inv_proton_mass_cgs;
+
+  struct treecool_gas_state gas;
+  gas.n_e = 1.;
+  treecool_temperature_from_u(cooling, u_cgs, n_H_cgs, &gas);
+
+  xp->cooling_data.electron_fraction = gas.n_e;
+}
 
 /**
  * @brief Returns the subgrid temperature of a particle.
@@ -645,8 +663,8 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   treecool_make_rate_table(cooling);
   treecool_read_table(cooling);
 
-  /* Until cooling_update() is called for the first time we have no UV
-   * background and no CMB. */
+  /* Provide sensible z = 0 values until cooling_update() is called for the
+   * first time at the start of the run. */
   treecool_set_UV_background(cooling, /*redshift=*/0.);
   cooling->T_CMB = cooling->T_CMB_0;
   cooling->one_plus_z_to_the_4 = 1.;

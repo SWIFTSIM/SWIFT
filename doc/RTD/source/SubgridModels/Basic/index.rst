@@ -83,6 +83,14 @@ rates is needed. Outside the tabulated range the gas is assumed to be entirely
 neutral (below :math:`T_{\rm min}`) or entirely ionized (above
 :math:`T_{\rm max}`, where only free-free and Compton cooling remain).
 
+This is deliberately the basic model of KWH96 and of the ``COOLING`` option of
+Gadget/Arepo. It does **not** include metal-line cooling, molecular cooling,
+self-shielding of the UV background, the HeII reionization heating boost, or
+any local radiation sources. The composition is fixed for the whole run: the
+Hydrogen and Helium mass fractions are derived from the primordial Helium
+fraction of the physical constants, and the element abundances tracked by the
+chemistry module, if any, are ignored.
+
 The UV background is read from a ``TREECOOL`` file, the plain-text format used
 by most of the widely distributed UV background models. It has one row per
 redshift and seven columns:
@@ -98,13 +106,38 @@ rates are interpolated logarithmically in :math:`\log_{10}(1+z)` once per
 time-step. Above the highest redshift covered by the file the UV background is
 switched off entirely, and the gas cools by collisional processes alone. An
 example file, ``TREECOOL_fg_dec11``, is provided in
-``examples/Cooling/TREECOOL/``.
+``examples/Cooling/TREECOOL/``. Files in this format for the commonly used UV
+background models (Faucher-Giguère et al., Haardt & Madau, Puchwein et al.)
+are distributed with Gadget-4 and Arepo and by the authors of the models. The
+rows must be in increasing order of redshift; many files are padded with rows
+of zeros beyond the end of the model, and reading stops at the first such row.
+At least two usable rows are required.
+
+Note that the UV background is switched on instantaneously when the redshift
+first drops below the end of the table (or below
+``UV_background_start_redshift``), which produces a sudden jump in the
+photo-heating rate at that time.
 
 The energy is integrated implicitly: if the change in energy over the
 time-step is small the explicit solution is used, and otherwise the equation
 :math:`u_{\rm new} = u_{\rm old} + \Lambda(u_{\rm new})\,\mathrm{d}t` is
 solved by bisection. The model therefore imposes no cooling time-step
 criterion of its own.
+
+Two limitations of the model are worth keeping in mind. First, the gas is
+assumed to be entirely neutral below :math:`T_{\rm min}` while, in the
+presence of the UV background, low-density gas just above :math:`T_{\rm min}`
+is highly ionized. The mean molecular weight, and hence the relation between
+internal energy and temperature, is therefore discontinuous at
+:math:`T_{\rm min}`, and gas whose internal energy falls in the gap is
+assigned :math:`T = T_{\rm min}`. To stay clear of this regime,
+``log10_T_min`` should be set well below the lowest temperature the gas can
+reach in the run (the reference implementation in Arepo uses one tenth of the
+minimal gas temperature). Second, in non-cosmological runs the redshift is
+zero, so the :math:`z = 0` entry of the ``TREECOOL`` table is used and the
+Compton term cools the gas towards the present-day CMB temperature. The Arepo
+implementation switches Compton cooling off in that case; set
+``with_Compton_cooling: 0`` to reproduce this behaviour.
 
 To use this model, configure with ``--with-cooling=TREECOOL`` and give the
 following parameters:
@@ -129,9 +162,15 @@ switches the inverse Compton cooling off the CMB on (default) or off. Finally,
 ``log10_T_min`` and ``log10_T_max`` set the range over which the rate
 coefficients are tabulated.
 
-In addition to the temperatures and the radiated energies, this model writes
-the electron number densities in units of the Hydrogen number densities to the
-snapshots as the ``ElectronFractions`` field.
+In addition to the radiated energies, this model writes two fields per gas
+particle to the snapshots. ``Temperatures`` are computed from the internal
+energies using the mean molecular weight of the equilibrium ionization state,
+so they differ from a conversion at a fixed mean molecular weight, in
+particular for partially ionized gas. ``ElectronFractions`` are the electron
+number densities in units of the Hydrogen number densities, again assuming
+ionization equilibrium; they are set for all particles at the start of the run
+and updated each time a particle is cooled. The parameters of the model are
+recorded in the ``Cooling`` group of the snapshots.
 
 How to Implement a New Cooling
 ------------------------------
