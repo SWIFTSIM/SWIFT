@@ -48,14 +48,17 @@ A finer `level` at fixed box needs `gas_mass` divided by 8 per level and
 bin, which SWIFT floors to), so that `c_hyp dt/h` and the number of
 relaxation times stay the same.
 
-The star kernel support must reach the neighbouring sources: it spans
-`gamma eta n_side / 2**level` of the source spacing, 0.598 at the default
-`level` 5 and `n_side` 8. `run.sh` refuses to start the lattice runs
-below 0.55, and the check repeats the gate on the measured star smoothing
-lengths. Below that the lattice field keeps its mean to several
-significant figures while its spatial variance exceeds the continuum
-lattice sum by an order of magnitude, so raise `n_side` together with
-`level`.
+The star kernel support must reach the neighbouring sources without
+covering them: it spans `gamma eta n_side / 2**level` of the source
+spacing, 0.598 at the default `level` 5 and `n_side` 8. `run.sh` refuses
+to start the lattice runs outside `[0.55, 0.866)`, and the check repeats
+both bounds on the measured star smoothing lengths. At 0.299 the lattice
+field keeps its mean to several significant figures while its spatial
+variance exceeds the continuum lattice sum by an order of magnitude; the
+ratio at which that turns over has not been measured, so 0.55 is a guard
+under the 0.598 the example is measured good at. At 0.866 the kernels
+cover a cubic lattice and the reduced-flux gate is left with no gas
+outside them. Raise `n_side` together with `level`.
 
 # Checking
 ```
@@ -64,10 +67,14 @@ python3 isrf_multi_source_superposition_check.py [--dir runs_directory]
 `run.sh` runs it at the end. It exits nonzero if any gate fails; a
 non-finite value fails its gate. Gates, per band:
 
-- per-particle superposition with propagation off (stars `L/16` apart,
-  overlapping kernels): `|u_AB - u_A - u_B|` at most `1e-5 (u_A + u_B)`
-  plus four float32 epsilons of the peak field, the float32 error of the
-  kernel polynomial near its support radius;
+- superposition with propagation off (stars `L/16` apart, overlapping
+  kernels): the mass-weighted `|u_AB - u_A - u_B|` over the mass-weighted
+  allowance `1e-5 (u_A + u_B) + 24 eps (u0_A + u0_B)`, at most 1, with
+  `eps` the float32 machine epsilon and `u0` a star's deposit at the
+  centre of its own kernel. The second term is the float32 Horner error
+  of the kernel polynomial, twice per star; the first covers the three
+  runs drifting apart over their four steps. The gate also requires the
+  two kernels to overlap over at least half their lens volume of gas;
 - amplitude identity of `A` and `B` within 0.10, and of `AB` within
   `|e_A - e_B|/2 + 3 sigma` of `(e_A + e_B)/2`, `sigma` the scatter of the
   single-star errors over the last four snapshots;
@@ -76,7 +83,14 @@ non-finite value fails its gate. Gates, per band:
 - median reduced flux outside every star's kernel in `lattice` at most
   0.18, where the M1 Eddington factor is within 5% of the isotropic 1/3,
   with every particle in that median lit;
-- star kernel support at least 0.55 of the `lattice` source spacing.
+- star kernel support at least 0.55 of the `lattice` source spacing, and
+  gas left outside the kernels for the reduced-flux gate to measure.
+
+The reduced-flux gate is an upper bound, so it also passes on a field
+that is absent rather than isotropic: below `|F| = 1.08e-19` the float32
+`F.F` underflows and the closure reads isotropic whatever the field is.
+The check prints the count under that threshold; it is zero at the
+shipped resolution.
 
 It also prints the lattice's spatial scatter of `u` next to the scatter
 of the continuum free-streaming and diffusive lattice sums, and the

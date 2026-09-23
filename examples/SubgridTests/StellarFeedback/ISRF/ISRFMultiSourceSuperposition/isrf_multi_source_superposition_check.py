@@ -21,14 +21,43 @@ Check the ISRF injection and propagation with several sources.
 
 Gates (each per band, PE and LW):
 
-E   Exact injection superposition, propagation off: per gas particle,
-    |u(AB) - u(A) - u(B)| <= 1e-5 (u(A) + u(B)) + 4 eps (max u(A) +
-    max u(B)), eps the float32 machine epsilon. The first term is float32
-    storage; the second is the float32 evaluation of the kernel polynomial,
-    whose absolute error near the support radius is a few eps of the
-    central value (clamped at zero when negative), so a particle at
-    r/H > 0.98 can receive a noise-level deposit in one run and none in
-    another.
+E   Exact injection superposition, propagation off. Each illuminated gas
+    particle gets an allowance
+    a_i = 1e-5 (u(A)_i + u(B)_i) + 24 eps (u0(A) + u0(B)), eps the float32
+    machine epsilon and u0 the deposit a star makes at the centre of its
+    own kernel. The gate is the mass-weighted residual over the
+    mass-weighted allowance,
+    sum_i m_i |u(AB)_i - u(A)_i - u(B)_i| / sum_i m_i a_i, and the bar
+    is 1.
+    Second term: SWIFT evaluates the Wendland C2 polynomial
+    (1 - x)^4 (1 + 4x) as 4x^5 - 15x^4 + 20x^3 - 10x^2 + 1 by Horner in
+    float32 and clamps the result at zero. The last addition cancels two
+    numbers of order ten, so the absolute error reaches 12 eps of the
+    central value, measured over x in [0, 1] with this build's own flags
+    (11.5 eps without FMA contraction, 8.1 eps with it). Each star's
+    kernel is evaluated twice, once in the pair run and once in its own
+    run, so the residual carries up to 24 eps of each star's central
+    deposit. The error is absolute, so at the support radius, where the
+    deposit is 1e-7 of the central value, it exceeds the deposit itself.
+    First term: the three runs do not hold the same gas state after four
+    steps, because the photoelectric heating of the field they differ in
+    feeds back on the temperature and so on the positions and smoothing
+    lengths. This term is an allowance, not a bound; a failure of this
+    gate means a superposition defect, or that the drift grew past 1e-5
+    relative.
+    The statistic sums over particles instead of taking their maximum:
+    only a few dozen particles are illuminated, so a maximum is decided by
+    whether one of them lands in the cancellation region, and three
+    identical runs of this fixture put the largest single-particle
+    residual at 0.17, 1.7e-3 and 1.7e-3 of its allowance. Gated against
+    an earlier floor of 4 eps of the peak field, those same three runs
+    read 1.52, -9.2e-6 and -9.2e-6 against a bar of 1, so the second of
+    them failed and the other two passed. A sum is bounded by the summed
+    allowance by construction. The maximum is printed as a diagnostic.
+    Gated with it: the number of particles reached by both stars, against
+    half the lens volume of the two kernels times the gas number density,
+    so that the sums above measure superposition and not two disjoint
+    deposits.
 G1  Amplitude identity, propagation on, last snapshot:
     e = (sum_i m_i u_i / lambda_i - P / c) / (P / c), with
     P = sum_stars sum_j w_j L ext_j. Single sources: |e| <= 0.10.
@@ -42,10 +71,16 @@ L2  Isotropic closure branch in the lattice: median reduced flux
     Every f entering that median must be finite, so an unlit particle
     fails the gate instead of being dropped from it.
 L3  Sampling of the source lattice: the star kernel support spans at
-    least 0.55 of the source spacing. Below about 0.6 the superposed
-    field keeps its mean but its spatial variance exceeds the continuum
-    lattice sum by an order of magnitude, so L1 and L2 are measured on a
-    field the scheme does not reproduce.
+    least 0.55 of the source spacing. At 0.299 (level 6 at n_side 8) the
+    superposed field keeps its mean while its spatial variance exceeds
+    the continuum lattice sum by an order of magnitude, so L1 and L2 are
+    then measured on a field the scheme does not reproduce; at 0.598 (the
+    shipped level 5 at n_side 8) they hold. The ratio at which that turns
+    over has not been measured, and the bar is a guard placed just under
+    the known-good point, not that onset. The kernels of a cubic lattice
+    first overlap at (4 pi / 3) (H/d)^3 = 1, H/d = 0.620, which is where
+    the ratio stops being a geometric statement about isolated sources;
+    that is a derivation, not a measurement.
 
 Reported without a bar: u(AB) - [u(A) + u(B)] with propagation on (the
 M1 closure merges crossing beams, so the propagated field is not
@@ -70,15 +105,32 @@ MU_H = 1.4
 M_H_CGS = 1.6726219e-24
 GRACKLE_SOLAR_Z = 0.01295
 # Wendland C2 kernel support over smoothing length, 3D
+KERNEL_NAME = "Wendland C2"
 GAMMA_3D = 1.936492
 C_LIGHT_CGS = 2.99792458e10
 F_ISOTROPIC_BAR = 0.18
-# Star kernel support over source spacing. The lattice of this example
-# sits at 0.598; below about 0.6 the variance of the superposed field
-# departs from the continuum lattice sum.
+# Star kernel support over source spacing: known bad at 0.299, known good
+# at the 0.598 of this example, turnover between them unmeasured, so the
+# bar is a guard just under the known-good point.
 KERNEL_SUPPORT_OVER_SPACING_BAR = 0.55
+# Above this ratio the kernels cover the cubic lattice, the corner of a
+# cell being sqrt(3)/2 of the spacing from the nearest source, and L2 is
+# left with no gas outside them.
+KERNEL_SUPPORT_OVER_SPACING_COVERED = 0.866
 # Below this |F|, F.F underflows in float32 and the closure turns isotropic.
 F_UNDERFLOW = 1.08e-19
+# Absolute error of the float32 Horner evaluation of the Wendland C2
+# polynomial, in machine epsilons of its central value, and the number of
+# evaluations the injection superposition residual carries (see gate E).
+KERNEL_HORNER_EPS = 12.0
+KERNEL_EVALUATIONS_PER_STAR = 2
+# Relative allowance for the gas states of the A, B and AB runs drifting
+# apart over the four injection steps.
+GAS_STATE_DRIFT = 1e-5
+# Fraction of the continuum two-kernel lens count gate E requires, leaving
+# room for the discreteness of the glass and for the two stars carrying
+# slightly different smoothing lengths.
+KERNEL_OVERLAP_FRACTION = 0.5
 
 
 def parse_options() -> argparse.Namespace:
@@ -145,6 +197,17 @@ def load(path: str) -> dict:
         Snapshot fields in internal units.
     """
     with h5py.File(path, "r") as f:
+        scheme = f["/HydroScheme"].attrs
+        name = scheme["Kernel function"]
+        name = name.decode() if isinstance(name, bytes) else str(name)
+        gamma = float(np.asarray(scheme["Kernel gamma"]).flat[0])
+        if name != KERNEL_NAME or abs(gamma - GAMMA_3D) > 1e-5 * GAMMA_3D:
+            raise RuntimeError(
+                f"{path} was written by a {name} build of support over "
+                f"smoothing length {gamma}. Every kernel weight and every "
+                f"support radius here is the {KERNEL_NAME} one, so rebuild "
+                f"with --with-kernel=wendland-C2."
+            )
         units = f["/Units"].attrs
         gas = f["/PartType0"]
         order = np.argsort(gas["ParticleIDs"][:])
@@ -220,11 +283,76 @@ def kappa_rho(snap: dict, band: str) -> np.ndarray:
     return kappa_cgs * rho_cgs * snap["ul"]
 
 
+def wendland_c2_polynomial(x: np.ndarray) -> np.ndarray:
+    """Return the Wendland C2 polynomial (1 - x)^4 (1 + 4x), x = r / H."""
+    return (1.0 - x) ** 4 * (1.0 + 4.0 * x)
+
+
 def wendland_c2(r: np.ndarray, support: float) -> np.ndarray:
     """Return the 3D Wendland C2 kernel value for a support radius."""
     q = r / support
-    w = 21.0 / (2.0 * np.pi * support**3) * (1.0 - q) ** 4 * (4.0 * q + 1.0)
+    w = 21.0 / (2.0 * np.pi * support**3) * wendland_c2_polynomial(q)
     return np.where(q < 1.0, w, 0.0)
+
+
+def central_deposit(snap: dict, band: str) -> float:
+    """Return the deposit a single star makes at the centre of its kernel.
+
+    Parameters
+    ----------
+    snap : dict
+        Snapshot of a run holding exactly one star, propagation off.
+    band : str
+        Band name.
+
+    Returns
+    -------
+    float
+        The largest u_i / W(x_i) over the particles inside 0.9 support
+        radii, W the Wendland C2 polynomial and x_i = r_i / H. Outside
+        that radius the polynomial itself is float32 noise, so those
+        particles cannot report the central value. NaN if no particle sits
+        inside it.
+    """
+    r = np.linalg.norm(
+        periodic_dx(snap["pos"], snap["star_pos"][0], snap["boxsize"]), axis=1
+    )
+    x = r / (GAMMA_3D * snap["star_h"][0])
+    inner = x < 0.9
+    if not inner.any():
+        return float("nan")
+    return float(np.max(snap["u"][band][inner] / wendland_c2_polynomial(x[inner])))
+
+
+def kernel_overlap_count(snap: dict) -> float:
+    """Return the continuum count of gas inside both star kernels.
+
+    Parameters
+    ----------
+    snap : dict
+        Snapshot of the pair run, holding exactly two stars.
+
+    Returns
+    -------
+    float
+        The lens volume of the two kernel spheres times the mean gas
+        number density, or 0 if the kernels do not overlap.
+    """
+    r1, r2 = GAMMA_3D * snap["star_h"][0], GAMMA_3D * snap["star_h"][1]
+    d = float(
+        np.linalg.norm(
+            periodic_dx(snap["star_pos"][0], snap["star_pos"][1], snap["boxsize"])
+        )
+    )
+    if d >= r1 + r2:
+        return 0.0
+    lens = (
+        np.pi
+        * (r1 + r2 - d) ** 2
+        * (d**2 + 2.0 * d * (r1 + r2) - 3.0 * (r1 - r2) ** 2)
+        / (12.0 * d)
+    )
+    return float(lens * len(snap["mass"]) / snap["boxsize"] ** 3)
 
 
 def periodic_dx(a: np.ndarray, b: np.ndarray, boxsize: float) -> np.ndarray:
@@ -425,27 +553,35 @@ def main() -> None:
         total = uA + uB
         both = (uA > 0.0) & (uB > 0.0)
         lit = (total > 0.0) | (uAB > 0.0)
-        floor = 4.0 * eps * (uA.max() + uB.max())
-        excess = np.abs(uAB[lit] - total[lit]) - 1e-5 * total[lit]
+        mass = inj["AB"]["mass"]
         print(
             f"  {band}: {int(lit.sum())} illuminated, {int(both.sum())} reached "
             f"by both stars, {int(np.sum(lit & ((total == 0.0) | (uAB == 0.0))))} "
             f"lit in only one of AB and A+B"
         )
-        worst = float(np.max(excess) / floor) if excess.size else np.nan
+        central = central_deposit(inj["A"], band) + central_deposit(inj["B"], band)
+        allowance = (
+            GAS_STATE_DRIFT * total[lit]
+            + KERNEL_EVALUATIONS_PER_STAR * KERNEL_HORNER_EPS * eps * central
+        )
+        residual = np.abs(uAB[lit] - total[lit])
+        budget = float(np.sum(mass[lit] * allowance))
         ok &= gate(
-            f"{band} max excess over 1e-5 relative, in float32 kernel floors",
-            worst,
+            f"{band} mass-weighted residual over its allowance",
+            float(np.sum(mass[lit] * residual) / budget) if budget > 0.0 else np.nan,
             1.0,
         )
-        ok &= gate(
+        ok &= gate_at_least(
             f"{band} particles reached by both stars",
-            1.0 / max(both.sum(), 1e-300),
-            1.0,
+            float(both.sum()),
+            KERNEL_OVERLAP_FRACTION * kernel_overlap_count(inj["AB"]),
         )
-        mass = inj["AB"]["mass"]
         l1 = float(np.sum(mass * np.abs(uAB - total)) / np.sum(mass * total))
-        print(f"  {band}: mass-weighted |u_AB - u_A - u_B| / (u_A + u_B) = {l1:.3e}")
+        worst = float(np.max(residual / allowance)) if residual.size else np.nan
+        print(
+            f"  {band}: mass-weighted |u_AB - u_A - u_B| / (u_A + u_B) = {l1:.3e}, "
+            f"largest single-particle residual over its allowance = {worst:.3e}"
+        )
 
     print("G1: amplitude identity with propagation on")
     series = {}
@@ -510,9 +646,8 @@ def main() -> None:
     tree = cKDTree(lat["star_pos"], boxsize=lat["boxsize"])
     r_near, _ = tree.query(lat["pos"])
     outside = r_near > GAMMA_3D * np.max(lat["star_h"])
-    print(
-        f"  {n_star} stars, spacing {d:.4e}, {int(outside.sum())} gas outside kernels"
-    )
+    n_outside = float(outside.sum())
+    print(f"  {n_star} stars, spacing {d:.4e}, {int(n_outside)} gas outside kernels")
     support_over_spacing = float(GAMMA_3D * np.median(lat["star_h"]) / d)
     ok_sampling = gate_at_least(
         "L3 star kernel support over source spacing",
@@ -523,17 +658,36 @@ def main() -> None:
         print(
             f"    The star injection kernel spans {support_over_spacing:.3f} of "
             f"the {d:.4e} source spacing, under the "
-            f"{KERNEL_SUPPORT_OVER_SPACING_BAR:.2f} this gate requires. There "
-            "the superposed field keeps its mean to several significant "
-            "figures while its spatial variance exceeds the continuum lattice "
-            "sum by an order of magnitude. The cause is the kernel-to-spacing "
-            "ratio itself and no fix exists, so the lattice gates below "
-            "measure a field the scheme does not reproduce. Run the lattice "
+            f"{KERNEL_SUPPORT_OVER_SPACING_BAR:.2f} this gate requires, a "
+            "guard under the 0.598 this example is measured good at. At "
+            "0.299 the superposed field keeps its mean to several "
+            "significant figures while its spatial variance exceeds the "
+            "continuum lattice sum by an order of magnitude; the ratio at "
+            "which that turns over has not been measured. The cause is the "
+            "kernel-to-spacing ratio itself and no fix exists, so the "
+            "lattice gates below may measure a field the scheme does not "
+            "reproduce. Run the lattice "
             "with a star kernel that reaches the neighbouring sources: a "
             "coarser gas resolution at this n_side, or more sources per side "
-            "at this resolution."
+            f"at this resolution. Keep the ratio under "
+            f"{KERNEL_SUPPORT_OVER_SPACING_COVERED:.3f}, above which the "
+            "kernels cover the lattice and L2 is left with no gas outside "
+            "them."
         )
     ok &= ok_sampling
+    ok_outside = gate_at_least("L2 gas outside every star's kernel", n_outside, 1.0)
+    if not ok_outside:
+        print(
+            "    Every particle sits inside a star kernel, so L2 has nothing "
+            f"to measure. The support spans {support_over_spacing:.3f} of the "
+            f"source spacing, at or above the "
+            f"{KERNEL_SUPPORT_OVER_SPACING_COVERED:.3f} that covers a cubic "
+            "lattice. Lower n_side, or raise the resolution level, until it "
+            "stays under that."
+        )
+        print("OVERALL: FAIL")
+        sys.exit(1)
+    ok &= ok_outside
     rng = np.random.default_rng(1)
     sample = rng.choice(
         np.flatnonzero(outside), min(opt.sample, int(outside.sum())), replace=False
