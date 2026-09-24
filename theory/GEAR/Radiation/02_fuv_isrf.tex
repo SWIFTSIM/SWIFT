@@ -624,8 +624,7 @@ built for. Verified by a cosmological run of \code{ISRFCosmology}'s
 passes (mass-weighted $u_{\rm FUV}/u_0-1$ and $u_{\rm LW}/u_0-1$ both
 $2.2\times10^{-8}$, $900\times$ below their bar), while the bare-$H$
 form's own prediction for that run, a decay of order $20\%$, would have
-failed catastrophically against it
-(\code{.claude/dev/logs/2026-09-18\_1349\_cosmo-hubble-rescale.md}).
+failed catastrophically against it.
 
 The relaxation time is $\tau = \lambda/c_{\rm hyp}$, and the flux equation
 is a Cattaneo-type relaxation equation \citep{Cattaneo1958}: in the
@@ -1113,8 +1112,7 @@ $c_{\rm hyp}$ this construction is exactly self-consistent: the source
 rescale and the rate getters in \code{radiation\_gas.c} (which read the
 true $c$, never $c_{\rm hyp}$) form a matched pair whose propagation
 fixed point cancels the speed identically, with or without transport
-(same-day adversarial check, \code{.claude/dev/ISRF\_HISTORY.md},
-2026-09-18 $\sim$11:55). The defect is specific to $c_{\rm hyp}$
+The defect is specific to $c_{\rm hyp}$
 \emph{varying between neighbours}: a particle's divergence sums fluxes
 carrying each sender's own $c_{{\rm hyp},j}$ while its own terms carry
 $c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
@@ -1207,13 +1205,9 @@ lowering a uniform $c_{\rm hyp}$ would not reduce it. Both arms have
 settled by $t_{\rm end}$ on this fixture, so neither ratio is a
 transient. Scheme $0$ remains reachable by setting
 \code{ISRF\_c\_hyp\_scheme} explicitly. \textbf{This ranking rests on
-three fixtures only}, which the operator's own acceptance criterion for
-a default does not by itself consider sufficient
-(\code{.claude/dev/ISRF\_MASTER.md}); a validation campaign across every
-ISRF example, at several resolutions and including a cosmological run,
-is prepared and partly submitted as of this writing but not complete.
-\textbf{The default may yet be reverted to scheme $0$} if that campaign
-fails; this section reports the current shipped choice and its
+three fixtures only}, which is not by itself sufficient to fix a
+default. \textbf{The default may yet be reverted to scheme $0$}; this
+section reports the current shipped choice and its
 measured justification, not a closed validation.
 
 \paragraph{Open question: is pathway 1 the whole story?} A same-day
@@ -1233,8 +1227,7 @@ a second candidate fix alongside the three above.
 \subsubsection{Literature position on a variable propagation speed}
 \label{sec:fuv-chyp-literature}
 
-A literature review conducted 2026-09-18
-(\code{.claude/dev/design-isrf-rsla-literature.md} in this checkout)
+A literature review
 answered whether any published radiation-transport scheme varies its
 reduced speed of light the way Eq.~\ref{eq:fuv-chyp} does. Citations
 below are separated as the review itself separates them: \textbf{verified}
