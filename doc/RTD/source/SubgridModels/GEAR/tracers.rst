@@ -13,7 +13,7 @@ Currently, GEAR tracers are implemented for gas, star, sink and black hole parti
 Gas tracers
 -----------
 
-The gas particles record the stellar feedback they receive over their lifetime, separately for supernovae and stellar winds. The gas, and some star, fields the radiation model registers here (HII photoionization, radiation pressure, the interstellar radiation field) are documented on the :ref:`gear_radiation` pages instead of repeated below.
+The gas particles record the stellar feedback they receive over their lifetime, separately for supernovae and stellar winds. The gas, and some star, fields the radiation model registers here (HII photoionization, radiation pressure, the interstellar radiation field) are documented on the :ref:`gear_output_fields` page instead of repeated below.
 
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
 | Name                                  | Description                                 | Units                       | Comments                                          |
