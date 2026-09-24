@@ -55,7 +55,7 @@ static INLINE void runner_iact_hydro_sink_aperture_prep_sink_formation_sink(
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const float r_acc_p) {
 
-  /* Most gas cannot form a sink. Skip the loop over the sinks for it. */
+  /* No overlap test is needed if sink formation is disabled. */
   if (!pi->sink_data.can_form_sink) return;
 
   /* Box size, or 0 if the box is not periodic */

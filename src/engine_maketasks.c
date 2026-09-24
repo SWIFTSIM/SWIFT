@@ -1908,13 +1908,15 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
               /* implicit = */ 1, c, NULL);
         }
 
-        /* Link to the main tasks. When the fixed-aperture gas-gas
-           preparation loop is active, kick2 unlocks prep_ghost_in and
-           prep_ghost_in_sink (the formation_gas and formation_sink tasks
-           run in their own, independently-bracketed windows), and
-           sink_formation waits for both prep_ghost_out and
-           prep_ghost_out_sink; otherwise restore the original direct
-           kick2 -> sink_in edge. */
+        /* Link to the main tasks. When the fixed-aperture gas-gas loop is
+           active, kick2 unlocks prep_ghost_in and prep_ghost_in_sink. The two
+           loops run in separate windows. sink_formation waits for both
+           prep_ghost_out and prep_ghost_out_sink. Otherwise, we keep the
+           direct kick2 -> sink_in edge.
+           Note: there is no edge from prep_ghost_in_sink to
+           prep_ghost_out_sink. If a super cell has no active gas-sink task,
+           prep_ghost_out_sink can run early. Then only prep_ghost_out keeps
+           sink_formation after kick2. */
         if (with_sink_formation_gas) {
           scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in);
           scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in_sink);
