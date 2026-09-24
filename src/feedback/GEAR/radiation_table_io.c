@@ -1149,8 +1149,8 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * (photon-number-weighted mean Lyman-Werner photon energy, L_LW/Q_LW over
  * 11.2-13.6 eV) arrays from the table.
  *
- * Only called when the group carries both datasets
- * (#radiation.has_mean_photon_energy_lw, set in radiation_read_data()).
+ * Called unconditionally: radiation_read_data() has already required both
+ * datasets to exist before reaching this call.
  *
  * Both datasets are stored in cgs erg and are kept in cgs erg here:
  * conversion_factor and extra_scaling are both 1. This matches the
@@ -1601,6 +1601,28 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     }
   }
 
+  /* Required whatever with_ISRF says or which stellar model reads the
+     table: pychem writes both datasets for every table it generates, 1D
+     and 2D alike, so a table missing either predates that and needs
+     regenerating. */
+  {
+    const int has_mean_photon_energy_lw =
+        H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
+    const int has_integrated_mean_photon_energy_lw =
+        H5Lexists(group_id, "Integrated_MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
+    if (!(has_mean_photon_energy_lw && has_integrated_mean_photon_energy_lw)) {
+      error(
+          "'%s': Data/Radiation group is missing%s%s. Regenerate the table "
+          "with pychem's pychem_generate_hdf5_parameters on its own "
+          "chimieparam file.",
+          sm->yields_table,
+          has_mean_photon_energy_lw ? "" : " 'MeanPhotonEnergyLW'",
+          has_integrated_mean_photon_energy_lw
+              ? ""
+              : " 'Integrated_MeanPhotonEnergyLW'");
+    }
+  }
+
   /* A no-op on a table without pychem's precomputed IMF-integrated
      datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
      for both 1D and 2D tables. */
@@ -1675,16 +1697,9 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
   }
 
-  /* Mean Lyman-Werner photon energy, a reported diagnostic. Optional, and
-     guarded on dataset presence rather than on with_ISRF: a table generated
-     before pychem exported these two datasets must still load. Both
-     datasets are required together; pychem always writes them as a pair. */
-  rad->has_mean_photon_energy_lw =
-      (char)(H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0 &&
-             H5Lexists(group_id, "Integrated_MeanPhotonEnergyLW", H5P_DEFAULT) >
-                 0);
-  if (rad->has_mean_photon_energy_lw)
-    radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
+  /* Mean Lyman-Werner photon energy, a reported diagnostic; validated
+     above to exist unconditionally. */
+  radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets

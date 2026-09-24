@@ -50,7 +50,7 @@ double radiation_lw_photon_energy_cgs = 0.;
  * recoverable at the consumer; one representative population value is read
  * instead, pychem's "Integrated_MeanPhotonEnergyLW" over the IMF's whole
  * mass range, at #RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY for a 2D
- * table. Left at 0 for a table without the two datasets.
+ * table. Left at 0 while radiation is inactive.
  *
  * Call this for the main stellar model only. A run with a first-stars table
  * reads two models, and the gas-side consumer is source-anonymous.
@@ -70,8 +70,6 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
         "H2 photodissociation sigma_H2/E_LW = %g cm^2 erg^-1, the "
         "Sternberg-anchored constant the rate uses",
         RADIATION_SIGMA_H2_OVER_E_LW_CGS);
-
-  if (!rad->has_mean_photon_energy_lw) return;
 
   /* The population getters take a single upper mass bound and average from
      the IMF's own mass_min up to it; see
@@ -331,7 +329,6 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->age_max_myr = 0.f;
   rad->with_ISRF = 0;
   rad->has_teff = 0;
-  rad->has_mean_photon_energy_lw = 0;
   for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++)
     rad->table_source[i][0] = '\0';
   rad->table_mass_min = 0.f;

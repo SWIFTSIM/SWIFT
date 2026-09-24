@@ -41,8 +41,8 @@ struct radiation;
 struct stellar_model;
 
 /*! Population photon-number-weighted mean Lyman-Werner photon energy the
- * radiation table reports, in cgs erg, or 0 when the table carries no such
- * measurement. A DIAGNOSTIC: the H2 photodissociation rate reads the
+ * radiation table reports, in cgs erg, or 0 while radiation is inactive.
+ * A DIAGNOSTIC: the H2 photodissociation rate reads the
  * calibrated quotient #RADIATION_SIGMA_H2_OVER_E_LW_CGS and nothing here.
  * A global because the value is identical for every particle in a run and
  * is announced where no #feedback_props is in scope. Set once by

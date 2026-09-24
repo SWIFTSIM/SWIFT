@@ -670,9 +670,9 @@ double radiation_get_star_mean_excess_photon_energy_HI(
  * @brief Get a single star's photon-number-weighted mean Lyman-Werner
  * photon energy at a given mass, from a 1D (mass-only) table.
  *
- * Only valid when #radiation.has_mean_photon_energy_lw is set; callers
- * must check that first (this getter does not check, matching every other
- * raw getter here). Reported as a diagnostic: no rate reads it, see
+ * radiation_read_data() requires the underlying "MeanPhotonEnergyLW"
+ * dataset unconditionally, so this is valid whenever #radiation.is_active
+ * is set. Reported as a diagnostic: no rate reads it, see
  * #RADIATION_SIGMA_H2_OVER_E_LW_CGS.
  *
  * Below pychem's own LW mass floor this returns the 11.2-13.6 eV band
@@ -751,7 +751,7 @@ double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
  * Intensive, so unlike #radiation_get_l_lw_from_integral the result must
  * NOT be rescaled by a star particle's birth mass.
  *
- * Only valid when #radiation.has_mean_photon_energy_lw is set; see
+ * Valid whenever #radiation.is_active is set; see
  * #radiation_get_mean_photon_energy_lw_from_raw.
  *
  * @param rad The #radiation model.
