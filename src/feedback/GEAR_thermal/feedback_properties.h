@@ -644,6 +644,20 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * with_sinks after this function returns, not before. */
   bzero(fp, sizeof(struct feedback_props));
 
+  /* The owner map is the one every operator-state writer trusts to find its
+   * moment; a hand-edit that desyncs it from the forward map would corrupt
+   * every ISRF run silently, so check the round trip once at start-up
+   * rather than trusting the two maps stay consistent by inspection. */
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    if ((int)radiation_isrf_moment_to_operator
+            [radiation_isrf_operator_owner[o]] != o)
+      error(
+          "radiation_isrf_operator_owner[%d] does not map back to operator "
+          "%d through radiation_isrf_moment_to_operator: the two maps are "
+          "inconsistent.",
+          o, o);
+  }
+
   /* Supernovae energy efficiency */
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");

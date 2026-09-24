@@ -874,6 +874,23 @@ static void check_local_dust_to_gas_ratio_scaling(
 }
 
 /* ---------------------------------------------------------------------
+ * Operator/moment map round trip: #radiation_isrf_operator_owner must map
+ * every operator back to a moment that itself maps back to that same
+ * operator through #radiation_isrf_moment_to_operator. This is the
+ * identity a compile-time round-trip assert used to check; GCC rejects
+ * indexing one file-scope array by a value read from another inside a
+ * _Static_assert, so it is checked here instead.
+ * ------------------------------------------------------------------- */
+static void check_operator_owner_round_trip(void) {
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    if ((int)radiation_isrf_moment_to_operator
+            [radiation_isrf_operator_owner[o]] != o)
+      error("operator %d's owner does not map back to it", o);
+  }
+  message("operator/moment map round trip OK");
+}
+
+/* ---------------------------------------------------------------------
  * Energy-ledger accumulation (#feedback_isrf_moment_data.cumulative_injected/
  * cumulative_absorbed, SWIFT_DEBUG_CHECKS only): #radiation_end_force_
  * propagation's own I/A split, driven for two steps and checked against a
@@ -993,6 +1010,8 @@ int main(int argc, char *argv[]) {
   check_grackle_coupling(&us);
 
   check_local_dust_to_gas_ratio_scaling(&us);
+
+  check_operator_owner_round_trip();
 
 #ifdef SWIFT_DEBUG_CHECKS
   check_energy_ledger_accumulation();
