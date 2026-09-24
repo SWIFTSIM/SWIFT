@@ -46,11 +46,45 @@
 #define NODE_ID 0
 #define CELL_N 6
 
-/* A lost mirrored side at a factor-two h step leaves an imbalance of order
- * 0.1 of sum m |term|, and a lost pair an error of order 1e-2 of a
- * particle's summed absolute pair terms. */
-#define SUM_BAR 1e-5
+/* PHYSICS/NUMERICS: the conservation gate's residual, sum_i m_i x_i, is a
+ * sum over pair interactions that cancel EXACTLY in real-number arithmetic:
+ * radiation_divergence_accumulate_band and radiation_dissipation_force_
+ * accumulate_band write m_j*Phi_ij to one side and -m_i*Phi_ij to the
+ * other, from a single shared Phi_ij, so m_i*x_i(pair) + m_j*x_j(pair) = 0
+ * identically. What survives is float32 round-off: each side's product is
+ * rounded independently, and each particle's own accumulator sums its ~K
+ * neighbour contributions in sequence with no compensation, so the
+ * residual is a sum of P ~ N_tot*K/2 effectively-independent, random-sign
+ * round-off terms of scale eps_f32 (K is fixed by #make_cell's target
+ * neighbour count regardless of CELL_N). That is a random walk, which
+ * grows as sqrt(P) ~ sqrt(N_tot), not as N_tot (there is no summation
+ * order here that would make the errors add coherently). sum_i m_i |x_i|
+ * instead grows as N_tot, a genuine per-particle quantity, not a round-off
+ * one, so the ratio this file checks falls as 1/sqrt(N_tot): a bar fixed
+ * at one particle count silently stops meaning anything if CELL_N changes.
+ *
+ * Measured directly (CELL_N = 3, 4, 5, 6, 8, 10, i.e. N_tot = 54 to 2000):
+ * ratio*sqrt(N_tot)/eps_f32 stayed in 7-12 across that whole range,
+ * confirming the sqrt(N_tot) law and ruling out worst-case linear growth.
+ * #SUM_BAR_SAFETY_FACTOR sits ~100x above that measured natural constant:
+ * room for a different compiler's rounding/FMA choices, while staying
+ * many orders of magnitude below the O(0.1-1) ratio a genuinely lost
+ * dispatch side produces (see the "parent level dropped" sweep below). */
+#define SUM_BAR_SAFETY_FACTOR 1000.
 #define PER_PART_BAR 1e-5
+
+/**
+ * @brief The conservation gate's bar, scaled to the fixture actually run:
+ * see the derivation above #SUM_BAR_SAFETY_FACTOR. A bar fixed at one
+ * particle count cannot tell a real conservation violation from ordinary
+ * float32 round-off once the fixture size changes.
+ *
+ * @param n_tot Total particle count summed over (both cells).
+ * @return The bar, in the same units as #check_sum's ratio.
+ */
+static double sum_bar_for_count(long long n_tot) {
+  return SUM_BAR_SAFETY_FACTOR * (double)FLT_EPSILON / sqrt((double)n_tot);
+}
 
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj, int limit_h_min,
@@ -669,20 +703,23 @@ static int is_finite_bits(double x) {
  * @param name The quantity, for messages.
  * @param sum sum_i m_i x_i.
  * @param abs_sum sum_i m_i |x_i|.
- * @param expect_zero 1 to require the ratio below #SUM_BAR, 0 to require it
- * above ten times #SUM_BAR (a sweep that drops one depth level on purpose).
+ * @param expect_zero 1 to require the ratio below @p sum_bar, 0 to require
+ * it above ten times @p sum_bar (a sweep that drops one depth level on
+ * purpose).
+ * @param sum_bar #sum_bar_for_count for the particle count this call sums
+ * over.
  */
 static void check_sum(const char *name, double sum, double abs_sum,
-                      int expect_zero) {
+                      int expect_zero, double sum_bar) {
   if (!is_finite_bits(sum) || !is_finite_bits(abs_sum) || !(abs_sum > 0.))
     error("%s: degenerate sums %e / %e", name, sum, abs_sum);
   const double ratio = fabs(sum) / abs_sum;
-  if (expect_zero && !(ratio <= SUM_BAR))
-    error("%s: sum m x / sum m |x| = %e above %e", name, ratio, SUM_BAR);
-  if (!expect_zero && !(ratio > 10. * SUM_BAR))
+  if (expect_zero && !(ratio <= sum_bar))
+    error("%s: sum m x / sum m |x| = %e above %e", name, ratio, sum_bar);
+  if (!expect_zero && !(ratio > 10. * sum_bar))
     error("%s: a one-sided sweep gives %e, the metric cannot see a lost side",
           name, ratio);
-  message("%s: sum m x / sum m |x| = %.3e", name, ratio);
+  message("%s: sum m x / sum m |x| = %.3e (bar %.3e)", name, ratio, sum_bar);
 }
 
 /**
@@ -695,6 +732,10 @@ static void check_sum(const char *name, double sum, double abs_sum,
  */
 static void check_cells(struct cell *cells[2], const char *label,
                         int expect_zero) {
+
+  const long long n_tot =
+      (long long)cells[0]->hydro.count + (long long)cells[1]->hydro.count;
+  const double sum_bar = sum_bar_for_count(n_tot);
 
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
     double sum_div = 0., abs_div = 0., sum_diss = 0., abs_diss = 0.;
@@ -778,9 +819,9 @@ static void check_cells(struct cell *cells[2], const char *label,
 
     char name[64];
     sprintf(name, "%s band %d div(F)", label, b);
-    check_sum(name, sum_div, abs_div, expect_zero);
+    check_sum(name, sum_div, abs_div, expect_zero, sum_bar);
     sprintf(name, "%s band %d dissipation", label, b);
-    check_sum(name, sum_diss, abs_diss, expect_zero);
+    check_sum(name, sum_diss, abs_diss, expect_zero, sum_bar);
 
     if (expect_zero) {
       if (!(max_ref_div > 0.) || !(max_ref_diss > 0.))
