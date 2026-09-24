@@ -184,9 +184,12 @@ feedback_prepare_radiation_feedback(
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
+ * @param phys_const The physical constants (in internal units).
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time
- * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_apply(
@@ -195,8 +198,7 @@ radiation_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const integertime_t ti_current, const double time_base,
-    const int with_cosmology) {
+    const integertime_t ti_current) {
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);

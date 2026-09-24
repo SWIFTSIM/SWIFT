@@ -247,11 +247,9 @@ static void check_injection(const struct unit_system *us) {
   si.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 5.0e4;
   prime_star_timestep(&si, /*ti_current=*/0, time_base);
 
-  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj,
-                                       &cosmo, /*hydro_props=*/NULL,
-                                       /*fb_props=*/&fb_props, &phys_const, us,
-                                       &cooling, /*ti_current=*/0, time_base,
-                                       /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
+      /*fb_props=*/&fb_props, &phys_const, us, &cooling, /*ti_current=*/0);
 
   const double expected_u_PE_1 =
       Delta_t * weight * si.feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
@@ -287,11 +285,9 @@ static void check_injection(const struct unit_system *us) {
   si2.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 1.0e5;
   prime_star_timestep(&si2, /*ti_current=*/0, time_base);
 
-  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj,
-                                       &cosmo, /*hydro_props=*/NULL,
-                                       /*fb_props=*/&fb_props, &phys_const, us,
-                                       &cooling, /*ti_current=*/0, time_base,
-                                       /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
+      /*fb_props=*/&fb_props, &phys_const, us, &cooling, /*ti_current=*/0);
 
   const double expected_u_PE_2 =
       Delta_t * weight * si2.feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
@@ -324,11 +320,9 @@ static void check_injection(const struct unit_system *us) {
   si3.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 3.0e4;
   prime_star_timestep(&si3, /*ti_current=*/1, time_base);
 
-  radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj,
-                                       &cosmo, /*hydro_props=*/NULL,
-                                       /*fb_props=*/&fb_props, &phys_const, us,
-                                       &cooling, /*ti_current=*/1, time_base,
-                                       /*with_cosmology=*/0);
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
+      /*fb_props=*/&fb_props, &phys_const, us, &cooling, /*ti_current=*/1);
 
   const double expected_u_PE_3 =
       Delta_t * weight * si3.feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
@@ -421,8 +415,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
-      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
-      /*with_cosmology=*/0);
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0);
 
   struct spart siB;
   bzero(&siB, sizeof(struct spart));
@@ -434,8 +427,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siB, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
-      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0, time_base,
-      /*with_cosmology=*/0);
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/0);
 
   const double Delta_A = get_timestep(bin_A, time_base);
   const double Delta_B = get_timestep(bin_B, time_base);
@@ -488,8 +480,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   prime_star_timestep(&siA, /*ti_current=*/T, time_base);
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pk, &xpj, &cosmo, /*hydro_props=*/NULL,
-      &fb_props, &phys_const, us, &cooling, /*ti_current=*/T, time_base,
-      /*with_cosmology=*/0);
+      &fb_props, &phys_const, us, &cooling, /*ti_current=*/T);
 
   const double D0_PE =
       (double)pk.feedback_data.isrf_moment[ISRF_MOMENT_PE].u_dose_reservoir;
