@@ -13,4 +13,3 @@ Radiation feedback in GEAR
    photoionization
    radiation_pressure
    isrf
-   tables

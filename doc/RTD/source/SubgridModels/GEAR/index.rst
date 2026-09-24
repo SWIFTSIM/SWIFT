@@ -16,6 +16,7 @@ and run with the option ``--gear``. A few examples exist and can be found in ``e
    gear_model
    chemistry
    feedback
+   stellar_evolution_table
    supernova_feedback
    radiation/index
    sinks/index
