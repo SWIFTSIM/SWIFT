@@ -482,8 +482,10 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
   p->feedback_data.is_ionized = 1;
   p->feedback_data.star_id = star_id;
   p->feedback_data.end_time = end_time;
-  xp->tracers_data.HII_region.excess_photon_energy_HI = excess_photon_energy_HI;
-  xp->tracers_data.HII_region.photoionization_rate_HI = photoionization_rate_HI;
+  xp->feedback_data.HII_region.excess_photon_energy_HI =
+      excess_photon_energy_HI;
+  xp->feedback_data.HII_region.photoionization_rate_HI =
+      photoionization_rate_HI;
   return;
 }
 
@@ -581,7 +583,7 @@ radiation_get_part_ionized_star_id(const struct part *p,
 __attribute__((always_inline)) INLINE float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                            const struct xpart *xp) {
-  return xp->tracers_data.HII_region.excess_photon_energy_HI;
+  return xp->feedback_data.HII_region.excess_photon_energy_HI;
 }
 
 /**
@@ -595,7 +597,7 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
 __attribute__((always_inline)) INLINE float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
                                                     const struct xpart *xp) {
-  return xp->tracers_data.HII_region.photoionization_rate_HI;
+  return xp->feedback_data.HII_region.photoionization_rate_HI;
 }
 
 /**

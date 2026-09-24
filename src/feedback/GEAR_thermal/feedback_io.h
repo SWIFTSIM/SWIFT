@@ -19,7 +19,28 @@
 #ifndef SWIFT_FEEDBACK_IO_GEAR_H
 #define SWIFT_FEEDBACK_IO_GEAR_H
 
+#include "feedback.h"
 #include "io_properties.h"
+
+/**
+ * @brief Snapshot converter for #IsIonizedFlags, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_is_ionized(const struct engine *e,
+                                           const struct part *p,
+                                           const struct xpart *xp, char *ret) {
+  ret[0] = feedback_is_part_tagged_as_ionized(p, xp);
+}
+
+/**
+ * @brief Snapshot converter for #HIIStarIDs, see #feedback_write_particles.
+ */
+INLINE static void convert_part_HII_star_id(const struct engine *e,
+                                            const struct part *p,
+                                            const struct xpart *xp,
+                                            long long *ret) {
+  ret[0] = feedback_get_part_ionized_star_id(p, xp);
+}
 
 /**
  * @brief Specifies which particle fields to read from the ICs.
@@ -96,7 +117,20 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
     const struct part *parts, const struct xpart *xparts,
     struct io_props *list, const int with_cosmology) {
 
-  return 0;
+  int num = 2;
+
+  list[0] = io_make_output_field_convert_part(
+      "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_is_ionized,
+      "Were the particles flagged as ionized by HII ionzation subgrid model?");
+
+  list[1] = io_make_output_field_convert_part(
+      "HIIStarIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_HII_star_id,
+      "Star particle IDs that ionized these gas particles due to HII ionzation "
+      "subgrid model?");
+
+  return num;
 }
 
 /**
@@ -112,7 +146,23 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  int num = 2;
+
+  list[0] = io_make_output_field(
+      "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
+      feedback_data.radiation.final_HII_radius,
+      "Co-moving HII region radius of the star particles before they die or "
+      "were not eligible to form HII regions anymore. Same algorithm's "
+      "bookkeeping caveat as the live HIIRegionRadii it is retired from.");
+
+  list[1] = io_make_output_field(
+      "FinalHIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      feedback_data.radiation.final_HII_mass,
+      "Ionized gas mass of the star particles' HII region before they die or "
+      "were not eligible to form HII regions anymore. Same algorithm's "
+      "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
+
+  return num;
 }
 
 /**
