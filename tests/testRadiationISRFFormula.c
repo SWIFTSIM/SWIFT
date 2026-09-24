@@ -43,6 +43,19 @@ static void make_test_units(struct unit_system *us) {
              /*U_T_in_cgs=*/1.0);
 }
 
+/* radiation_iact_nonsym_feedback_apply() reads Delta_t from a cache that
+ * feedback_prepare_radiation_feedback() normally fills once per star per
+ * step; these direct-call tests stand in for that ghost-task step. */
+static void set_star_delta_t(struct spart *sp, const integertime_t ti_current,
+                             const double time_base) {
+  sp->feedback_data.radiation.Delta_t =
+      (float)get_timestep(sp->time_bin, time_base);
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->feedback_data.radiation.Delta_t_cached_ti_begin =
+      get_integer_time_begin(ti_current, sp->time_bin);
+#endif
+}
+
 static void assert_close(const char *name, double actual, double expected,
                          double rel_tol) {
   if (expected == 0.0) {
@@ -233,6 +246,7 @@ static void check_injection(const struct unit_system *us) {
   si.feedback_data.enrichment_weight = rho_star;
   si.feedback_data.radiation.L_band[ISRF_BAND_PE] = 1.0e5;
   si.feedback_data.radiation.L_band[ISRF_BAND_LW] = 5.0e4;
+  set_star_delta_t(&si, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -272,6 +286,7 @@ static void check_injection(const struct unit_system *us) {
   si2.feedback_data.enrichment_weight = rho_star;
   si2.feedback_data.radiation.L_band[ISRF_BAND_PE] = 2.0e5;
   si2.feedback_data.radiation.L_band[ISRF_BAND_LW] = 1.0e5;
+  set_star_delta_t(&si2, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -308,6 +323,7 @@ static void check_injection(const struct unit_system *us) {
   si3.feedback_data.enrichment_weight = rho_star;
   si3.feedback_data.radiation.L_band[ISRF_BAND_PE] = 4.0e5;
   si3.feedback_data.radiation.L_band[ISRF_BAND_LW] = 3.0e4;
+  set_star_delta_t(&si3, /*ti_current=*/1, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -402,6 +418,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   siA.feedback_data.enrichment_weight = rho_star;
   siA.feedback_data.radiation.L_band[ISRF_BAND_PE] = 1.0e5;
   siA.feedback_data.radiation.L_band[ISRF_BAND_LW] = 5.0e4;
+  set_star_delta_t(&siA, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
@@ -414,6 +431,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   siB.feedback_data.enrichment_weight = rho_star;
   siB.feedback_data.radiation.L_band[ISRF_BAND_PE] = 2.0e5;
   siB.feedback_data.radiation.L_band[ISRF_BAND_LW] = 1.0e5;
+  set_star_delta_t(&siB, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siB, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
@@ -468,6 +486,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   pk.time_bin = bin_B;
 
   const integertime_t T = 16; /* a boundary of the coarse star's own bin */
+  set_star_delta_t(&siA, /*ti_current=*/T, time_base);
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pk, &xpj, &cosmo, /*hydro_props=*/NULL,
       &fb_props, &phys_const, us, &cooling, /*ti_current=*/T, time_base,
