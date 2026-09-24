@@ -976,7 +976,9 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
            * multipole interactions will not.
            * TODO: [Will] This can be fixed by removing the particles leaving
            * the volume only at rebuild but we need to check that won't
-           * negatively impact anyone. */
+           * negatively impact anyone. This removal at rebuild will also remove
+           * the technically incorrect issue that multipole interactions can
+           * account for a particle the simulation has "removed" */
           int interaction_check = 0;
           if (e->s->periodic) {
 
