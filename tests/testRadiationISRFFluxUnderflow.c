@@ -136,15 +136,17 @@ static void set_part(struct part *p, float u, const float F[3],
   fd->dt_prev = 0.5f;
   fd->c_hyp = c_hyp;
   fd->rho_prev = 1.f;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    band->kappa = kappa;
-    band->u = u;
-    band->u_prev = u;
-    band->ngb_mean_abs_u_V = 1.f;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    struct feedback_isrf_operator_data *op =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    op->kappa = kappa;
+    moment->u = u;
+    moment->u_prev = u;
+    op->ngb_mean_abs_u_V = 1.f;
     for (int k = 0; k < 3; k++) {
-      band->specific_flux[k] = F[k];
-      band->grad_u[k] = grad_u[k];
+      moment->specific_flux[k] = F[k];
+      moment->grad_u[k] = grad_u[k];
     }
   }
 }
@@ -202,10 +204,10 @@ static void test_limiter(float F_mag) {
   set_part(&p, u, F, zero, /*kappa=*/0.f);
   radiation_end_gradient_propagation(&p, &e);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
     for (int k = 0; k < 3; k++)
       check_close("limited flux", ratio * F[k],
-                  p.feedback_data.isrf_band[b].specific_flux[k], 1e-5f,
+                  p.feedback_data.isrf_moment[m].specific_flux[k], 1e-5f,
                   1e-3f * F_mag);
 
   message("|F| = %.2e: limiter clamps |F| to c_hyp*u", F_mag);
@@ -237,17 +239,21 @@ static void test_gate(float F_mag) {
   struct part p;
   set_part(&p, u, V, zero, kappa);
   radiation_end_gradient_propagation(&p, &e);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    check_close("floor, tiny flux", expected,
-                p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-                1e-3f);
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    check_close(
+        "floor, tiny flux", expected,
+        p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]]
+            .dissipation_alpha_floor,
+        1e-5f, 1e-3f);
 
   set_part(&p, u, zero, V, kappa);
   radiation_end_gradient_propagation(&p, &e);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    check_close("floor, tiny gradient", expected,
-                p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-                1e-3f);
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    check_close(
+        "floor, tiny gradient", expected,
+        p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]]
+            .dissipation_alpha_floor,
+        1e-5f, 1e-3f);
 
   message("|F| = %.2e: gate keeps the full floor", F_mag);
 }
@@ -276,17 +282,20 @@ static void test_zero_flux(void) {
   struct part p;
   set_part(&p, /*u=*/1e-20f, zero, zero, /*kappa=*/1.f);
   radiation_end_gradient_propagation(&p, &e);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    const struct feedback_isrf_band_data *band = &p.feedback_data.isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const struct feedback_isrf_moment_data *moment =
+        &p.feedback_data.isrf_moment[m];
+    const struct feedback_isrf_operator_data *op =
+        &p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]];
     for (int k = 0; k < 3; k++) {
-      check_finite("zero flux", band->specific_flux[k]);
-      if (band->specific_flux[k] != 0.f)
-        error("zero flux did not stay zero: %.9e", band->specific_flux[k]);
+      check_finite("zero flux", moment->specific_flux[k]);
+      if (moment->specific_flux[k] != 0.f)
+        error("zero flux did not stay zero: %.9e", moment->specific_flux[k]);
     }
-    check_finite("quiescent floor", band->dissipation_alpha_floor);
-    if (band->dissipation_alpha_floor != 0.f)
+    check_finite("quiescent floor", op->dissipation_alpha_floor);
+    if (op->dissipation_alpha_floor != 0.f)
       error("quiescent gate did not return 0: floor %.9e",
-            band->dissipation_alpha_floor);
+            op->dissipation_alpha_floor);
   }
 
   message("zero flux: isotropic closure, limiter no-op, quiescent gate 0");

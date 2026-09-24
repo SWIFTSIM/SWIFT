@@ -1391,9 +1391,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        L_PE/L_LW: radiation_read_data() requires these whenever with_ISRF
        is on, so no fallback branch is needed here. */
     if (sm->rad.with_ISRF) {
-      sp->feedback_data.radiation.L_band[ISRF_BAND_PE] =
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
           radiation_get_star_l_pe(&sm->rad, log_m, log_z);
-      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] =
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
     }
 
@@ -1659,8 +1659,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
          1e2-1e4x too large across GEAR's stated production mass range and
          would still run to completion with finite, positive,
          plausible-looking numbers). */
-      sp->feedback_data.radiation.L_band[ISRF_BAND_PE] = L_PE_per_msun * m_init;
-      sp->feedback_data.radiation.L_band[ISRF_BAND_LW] = L_LW_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
+          L_PE_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
+          L_LW_per_msun * m_init;
     }
 
     /* Population counterpart of the individual-star effective temperature

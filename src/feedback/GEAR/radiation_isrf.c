@@ -54,7 +54,7 @@ int isrf_c_hyp_consistent_variable_c = 0;
  * @brief First-init of a #part's LW/PE radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
  *
- * Deliberately does NOT zero #feedback_isrf_band_data.u: this
+ * Deliberately does NOT zero #feedback_isrf_moment_data.u: this
  * runs (space_first_init.c) after the IC file has been read into #part
  * (single_io.c/parallel_io.c/serial_io.c), and an IC may supply them via
  * the optional "PESpecificEnergy"/"LWSpecificEnergy" fields (see
@@ -65,17 +65,17 @@ int isrf_c_hyp_consistent_variable_c = 0;
  * already 0.f by the time this function is reached, identical to the
  * previous unconditional assignment.
  *
- * #feedback_isrf_band_data.u_prev is seeded from #feedback_isrf_band_data.u
+ * #feedback_isrf_moment_data.u_prev is seeded from #feedback_isrf_moment_data.u
  * rather than left at 0.f, for the same reason: with `ISRF_propagation` on, the
  * engine's initial pass (before the first real step's
  * #radiation_snapshot_part_propagation call has ever run) reaches
  * #radiation_end_force_propagation directly off this first-init state, and
  * that update rebuilds `u` from `u_prev`. A 0.f seed there would wipe an
  * IC-supplied field to (near) 0 before it is ever seen. Seeding from
- * #feedback_isrf_band_data.u reduces to today's behaviour when the IC does not
- * supply them (both already 0.f from the bzero above).
+ * #feedback_isrf_moment_data.u reduces to today's behaviour when the IC does
+ * not supply them (both already 0.f from the bzero above).
  *
- * #feedback_isrf_band_data.specific_flux are zeroed unconditionally: no IC
+ * #feedback_isrf_moment_data.specific_flux are zeroed unconditionally: no IC
  * field is proposed for them, so the "don't stomp an IC value" concern above
  * does not apply.
  *
@@ -83,24 +83,27 @@ int isrf_c_hyp_consistent_variable_c = 0;
  */
 void radiation_first_init_part(struct part *restrict p) {
   struct feedback_part_data *fd = &p->feedback_data;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    band->u_prev = band->u;
-    band->kappa = 0.f;
-    band->specific_flux[0] = 0.f;
-    band->specific_flux[1] = 0.f;
-    band->specific_flux[2] = 0.f;
-    band->u_dose_reservoir = 0.f;
-    band->u_source_rate = 0.f;
-    band->dissipation_alpha_trigger = 0.f;
-    band->dissipation_alpha_floor = 0.f;
-    band->dissipation_u = 0.f;
-    band->div_specific_flux = 0.f;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    moment->u_prev = moment->u;
+    moment->specific_flux[0] = 0.f;
+    moment->specific_flux[1] = 0.f;
+    moment->specific_flux[2] = 0.f;
+    moment->u_dose_reservoir = 0.f;
+    moment->u_source_rate = 0.f;
+    moment->dissipation_u = 0.f;
+    moment->div_specific_flux = 0.f;
 #ifdef SWIFT_DEBUG_CHECKS
-    band->u_min_since_snapshot = 0.f;
-    band->cumulative_injected = 0.f;
-    band->cumulative_absorbed = 0.f;
+    moment->u_min_since_snapshot = 0.f;
+    moment->cumulative_injected = 0.f;
+    moment->cumulative_absorbed = 0.f;
 #endif
+  }
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
+    op->kappa = 0.f;
+    op->dissipation_alpha_trigger = 0.f;
+    op->dissipation_alpha_floor = 0.f;
   }
 #ifdef SWIFT_DEBUG_CHECKS
   fd->u_min_snapshot_index = 0;
@@ -130,20 +133,19 @@ void radiation_first_init_part(struct part *restrict p) {
 }
 
 /**
- * @brief Snapshot #feedback_isrf_band_data.u once per step, before the density
- * loop's h-iterations begin (see
- * #feedback_isrf_band_data.u_prev), cache this step's
- * per-band absorption rate, cache a stable comoving-density snapshot the
- * propagation loops need (see #feedback_part_data.rho_prev's own doxygen for
- * why), cache this step's own physical timestep #feedback_part_data.dt_prev
- * and, for #feedback_props.ISRF_c_hyp_scheme 0 (shipped) or 2
- * (fixed-fraction), #feedback_part_data.c_hyp itself (scheme 1,
+ * @brief Snapshot #feedback_isrf_moment_data.u once per step, before the
+ * density loop's h-iterations begin (see #feedback_isrf_moment_data.u_prev),
+ * cache this step's per-band absorption rate, cache a stable comoving-density
+ * snapshot the propagation loops need (see #feedback_part_data.rho_prev's own
+ * doxygen for why), cache this step's own physical timestep
+ * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 0
+ * (shipped) or 2 (fixed-fraction), #feedback_part_data.c_hyp itself (scheme 1,
  * kernel-local, defers c_hyp to radiation_end_density_propagation, once the
  * density loop's neighbour-bin maximum is known), zero every per-step
  * gradient-loop accumulator, and, for active particles only, draw down this
  * step's
- * #feedback_isrf_band_data.u_source_rate from
- * #feedback_isrf_band_data.u_dose_reservoir.
+ * #feedback_isrf_moment_data.u_source_rate from
+ * #feedback_isrf_moment_data.u_dose_reservoir.
  *
  * Must run here, not in #radiation_init_part_propagation: this call site
  * (cell_drift.c) precedes chemistry_init_part's per-step reset of
@@ -156,18 +158,18 @@ void radiation_first_init_part(struct part *restrict p) {
  */
 void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e) {
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &p->feedback_data.isrf_band[b];
-    band->u_prev = band->u;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &p->feedback_data.isrf_moment[m];
+    moment->u_prev = moment->u;
 
-    band->grad_u[0] = 0.f;
-    band->grad_u[1] = 0.f;
-    band->grad_u[2] = 0.f;
+    moment->grad_u[0] = 0.f;
+    moment->grad_u[1] = 0.f;
+    moment->grad_u[2] = 0.f;
 
     /* Force-loop accumulator, zeroed here for the same reason as grad_u
      * above: that loop, like the gradient loop, runs exactly once per step,
      * with no h-iteration redo. */
-    band->dissipation_u = 0.f;
+    moment->dissipation_u = 0.f;
   }
 
   /* Stable comoving density snapshot, cached unconditionally (not gated on
@@ -180,8 +182,8 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
 
   if (!e->feedback_props->ISRF_propagation) {
-    p->feedback_data.isrf_band[ISRF_BAND_PE].kappa = 0.f;
-    p->feedback_data.isrf_band[ISRF_BAND_LW].kappa = 0.f;
+    p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa = 0.f;
+    p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].kappa = 0.f;
     return;
   }
 
@@ -191,11 +193,11 @@ void radiation_snapshot_part_propagation(struct part *p,
    * cooling->local_dust_to_gas_ratio. */
   const float local_dust_to_gas_ratio =
       (float)e->cooling_func->chemistry_data.local_dust_to_gas_ratio;
-  p->feedback_data.isrf_band[ISRF_BAND_PE].kappa =
+  p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa =
       radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
                                                 RADIATION_SIGMA_D_PE_CGS,
                                                 local_dust_to_gas_ratio);
-  p->feedback_data.isrf_band[ISRF_BAND_LW].kappa =
+  p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].kappa =
       radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
                                                 RADIATION_SIGMA_D_LW_CGS,
                                                 local_dust_to_gas_ratio);
@@ -264,8 +266,8 @@ void radiation_snapshot_part_propagation(struct part *p,
    * for it (as active) and overwrites it. */
   struct feedback_part_data *fd = &p->feedback_data;
   if (part_is_active(p, e) &&
-      (fd->isrf_band[ISRF_BAND_PE].u_dose_reservoir > 0.f ||
-       fd->isrf_band[ISRF_BAND_LW].u_dose_reservoir > 0.f)) {
+      (fd->isrf_moment[ISRF_MOMENT_PE].u_dose_reservoir > 0.f ||
+       fd->isrf_moment[ISRF_MOMENT_LW].u_dose_reservoir > 0.f)) {
     double t_rem;
     if (fd->ISRF_reservoir_end_ti <= ti_begin) {
       t_rem = 0.0;
@@ -277,14 +279,14 @@ void radiation_snapshot_part_propagation(struct part *p,
     }
     const float f =
         (t_rem <= (double)dt_phys) ? 1.f : (float)((double)dt_phys / t_rem);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-      band->u_source_rate = f * band->u_dose_reservoir / dt_phys;
-      band->u_dose_reservoir -= f * band->u_dose_reservoir;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+      moment->u_source_rate = f * moment->u_dose_reservoir / dt_phys;
+      moment->u_dose_reservoir -= f * moment->u_dose_reservoir;
     }
   } else if (part_is_active(p, e)) {
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
-      fd->isrf_band[b].u_source_rate = 0.f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      fd->isrf_moment[m].u_source_rate = 0.f;
   }
 }
 
@@ -309,11 +311,11 @@ void radiation_snapshot_part_propagation(struct part *p,
  *
  * Eligible set (narrowest defensible, not "every particle"): this
  * particle's own field is live (#feedback_part_data.is_illuminated_ISRF,
- * or, since that tag lapses while #feedback_isrf_band_data.u itself is
+ * or, since that tag lapses while #feedback_isrf_moment_data.u itself is
  * held indefinitely -- "never cleared by cooling", see that field's own
  * doxygen -- any band's u != 0), OR a neighbour inside this particle's own
  * kernel carries field this step (any band's
- * #feedback_isrf_band_data.ngb_mean_abs_u_V > 0, the same kernel-mean the
+ * #feedback_isrf_operator_data.ngb_mean_abs_u_V > 0, the same kernel-mean the
  * negativity trigger reads, giving one kernel of margin before the front
  * itself arrives). A particle with neither can only start receiving flux
  * next step via a neighbour that is itself constrained, or via direct
@@ -340,11 +342,11 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
     return FLT_MAX;
 
   const struct feedback_part_data *fd = &p->feedback_data;
-  const int near_field = fd->is_illuminated_ISRF ||
-                         fd->isrf_band[ISRF_BAND_PE].u != 0.f ||
-                         fd->isrf_band[ISRF_BAND_LW].u != 0.f ||
-                         fd->isrf_band[ISRF_BAND_PE].ngb_mean_abs_u_V > 0.f ||
-                         fd->isrf_band[ISRF_BAND_LW].ngb_mean_abs_u_V > 0.f;
+  const int near_field =
+      fd->is_illuminated_ISRF || fd->isrf_moment[ISRF_MOMENT_PE].u != 0.f ||
+      fd->isrf_moment[ISRF_MOMENT_LW].u != 0.f ||
+      fd->isrf_operator[ISRF_OPERATOR_PE].ngb_mean_abs_u_V > 0.f ||
+      fd->isrf_operator[ISRF_OPERATOR_LW].ngb_mean_abs_u_V > 0.f;
   if (!near_field) return FLT_MAX;
 
   const float h_phys = (float)e->cosmology->a * p->h;
@@ -370,17 +372,17 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
  * own per-iteration reset (called from the same sites: part_init.h and the
  * ghost h-iteration redo path), so it is safe to call once or several times
  * per step. The force-loop accumulators are zeroed once per step elsewhere:
- * #feedback_isrf_band_data.dissipation_u by
+ * #feedback_isrf_moment_data.dissipation_u by
  * #radiation_snapshot_part_propagation, and
- * #feedback_isrf_band_data.div_specific_flux by
+ * #feedback_isrf_moment_data.div_specific_flux by
  * #radiation_end_gradient_propagation.
  *
  * @param p The #part to reset.
  */
 void radiation_init_part_propagation(struct part *p) {
   p->feedback_data.max_ngb_time_bin = p->time_bin;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    p->feedback_data.isrf_band[b].ngb_mean_abs_u_V = 0.f;
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    p->feedback_data.isrf_operator[o].ngb_mean_abs_u_V = 0.f;
 }
 
 /**
@@ -528,10 +530,10 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
 }
 
 /**
- * @brief Exact-relaxation update of #feedback_isrf_band_data.u, from the
+ * @brief Exact-relaxation update of #feedback_isrf_moment_data.u, from the
  * `div(F)` and negativity-triggered dissipation accumulators
  * radiation_propagation_iact.h filled during the force loop, and this step's
- * own #feedback_isrf_band_data.u_source_rate (drawn down from the dose
+ * own #feedback_isrf_moment_data.u_source_rate (drawn down from the dose
  * reservoir by #radiation_snapshot_part_propagation).
  *
  * `u^{n+1} = e*(u_prev + dt*phi*diss) + dt*phi*((c_hyp/c)*source_rate -
@@ -618,7 +620,7 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * step's accumulators, never incremented, so a repeated call gives the same
  * state. The M1 flux limiter is not applied here: the extra ghost already
  * limited this step's flux against `u^n`, the `u` its closure was built from.
- * The debug-only energy-ledger counters below (#feedback_isrf_band_data.
+ * The debug-only energy-ledger counters below (#feedback_isrf_moment_data.
  * cumulative_injected/cumulative_absorbed) are the one exception: they ARE
  * incremented, relying on the task graph calling this exactly once per
  * active particle per step (no h-iteration-style redo exists for the force
@@ -627,7 +629,7 @@ radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
  * Reads #dt_prev (cached earlier this step by
  * #radiation_snapshot_part_propagation), #c_hyp (cached later, once the
  * density loop's neighbour-bin maximum is known, by
- * #radiation_end_density_propagation) and #feedback_isrf_band_data.kappa,
+ * #radiation_end_density_propagation) and #feedback_isrf_operator_data.kappa,
  * and deliberately takes no `dt` of its own: the call site computes its local
  * `dt` from a different timestep-begin convention (`ti_current - 1`), and using
  * it here would make this update's `dt*phi` inconsistent with the flux
@@ -655,15 +657,20 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (fd->u_min_snapshot_index != e->snapshot_output_count) {
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
-      fd->isrf_band[b].u_min_since_snapshot = 0.f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      fd->isrf_moment[m].u_min_since_snapshot = 0.f;
     fd->u_min_snapshot_index = e->snapshot_output_count;
   }
 #endif
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    const float a = (c_hyp * band->kappa + H_dilated) * dt;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    const struct feedback_isrf_operator_data *op =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    /* H_dilated is this particle's own scalar, not looked up per operator:
+     * every moment applies its own residual against it here, so two
+     * moments sharing one operator can still carry different residuals. */
+    const float a = (c_hyp * op->kappa + H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
 
@@ -674,20 +681,21 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * `u_prev` and the frozen source/transport terms into the fraction
      * that decayed/never-arrived this step, using the SAME `decay`/`phi`
      * #u's update uses. */
-    band->cumulative_injected += dt * rescale * band->u_source_rate;
-    band->cumulative_absorbed +=
-        (band->u_prev + dt * phi * band->dissipation_u) * (1.f - decay) +
-        (rescale * band->u_source_rate - band->div_specific_flux) * dt *
+    moment->cumulative_injected += dt * rescale * moment->u_source_rate;
+    moment->cumulative_absorbed +=
+        (moment->u_prev + dt * phi * moment->dissipation_u) * (1.f - decay) +
+        (rescale * moment->u_source_rate - moment->div_specific_flux) * dt *
             (1.f - phi);
 #endif
 
-    band->u =
-        decay * (band->u_prev + dt * phi * band->dissipation_u) +
-        dt * phi * (rescale * band->u_source_rate - band->div_specific_flux);
+    moment->u =
+        decay * (moment->u_prev + dt * phi * moment->dissipation_u) +
+        dt * phi *
+            (rescale * moment->u_source_rate - moment->div_specific_flux);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (band->u < band->u_min_since_snapshot)
-      band->u_min_since_snapshot = band->u;
+    if (moment->u < moment->u_min_since_snapshot)
+      moment->u_min_since_snapshot = moment->u;
 #endif
   }
 }
@@ -699,7 +707,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
  * reaches #radiation_end_force_propagation, so the drawn rate would otherwise
  * be applied on a step whose kernel sums are meaningless; the dose is kept for
  * a later step instead. Restores it into
- * #feedback_isrf_band_data.u_dose_reservoir exactly (the drawn amount is
+ * #feedback_isrf_moment_data.u_dose_reservoir exactly (the drawn amount is
  * `source_rate*dt_prev`) and zeroes the rates, so that update then carries
  * only the decay of `u_prev` and whatever the force loop accumulated.
  * No-op when propagation is off.
@@ -712,10 +720,10 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    band->u_dose_reservoir += band->u_source_rate * fd->dt_prev;
-    band->u_source_rate = 0.f;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    moment->u_dose_reservoir += moment->u_source_rate * fd->dt_prev;
+    moment->u_source_rate = 0.f;
   }
 }
 
@@ -732,12 +740,13 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
  * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
  * accumulator (radiation_propagation_iact.h).
  * @param alpha_prev This band's
- * #feedback_isrf_band_data.dissipation_alpha_trigger from the previous step,
- * i.e. the trigger's own previous output, never the floor-combined coefficient.
+ * #feedback_isrf_operator_data.dissipation_alpha_trigger from the previous
+ * step, i.e. the trigger's own previous output, never the floor-combined
+ * coefficient.
  * @param alpha_max #feedback_props.ISRF_dissipation_alpha_max.
  * @param eps_1 #feedback_props.ISRF_dissipation_negativity_threshold.
  * @param c_hyp The particle's own #c_hyp.
- * @param kappa This band's #feedback_isrf_band_data.kappa.
+ * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param dt The particle's own #dt_prev.
  * @param h_phys The particle's own physical smoothing length.
  * @return This step's updated dissipation coefficient for this band.
@@ -783,7 +792,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * This is the floor's only gating: the force loop applies it to a pair
  * unconditionally, as `max(trigger_i, trigger_j, floor_i, floor_j)`.
  *
- * @param kappa This band's #feedback_isrf_band_data.kappa.
+ * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param h_phys The particle's own physical smoothing length.
  * @param alpha_floor #feedback_props.ISRF_dissipation_alpha_floor.
  * @param eps_lambda #feedback_props.ISRF_dissipation_floor_h_over_lambda.
@@ -836,12 +845,12 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * under this build's fast-math folding of the ratio and its square into one
  * division.
  *
- * @param F This band's #feedback_isrf_band_data.specific_flux, from BEFORE this
- * step's own update (the flux `u^n` was produced from, as left by the previous
- * step's #radiation_apply_flux_limiter_band, already post-limiter).
- * @param grad_u This band's #feedback_isrf_band_data.grad_u accumulator.
+ * @param F This band's #feedback_isrf_moment_data.specific_flux, from BEFORE
+ * this step's own update (the flux `u^n` was produced from, as left by the
+ * previous step's #radiation_apply_flux_limiter_band, already post-limiter).
+ * @param grad_u This band's #feedback_isrf_moment_data.grad_u accumulator.
  * @param c_hyp The particle's own #c_hyp.
- * @param kappa This band's #feedback_isrf_band_data.kappa.
+ * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param H The Hubble rate, #cosmology.H.
  * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
  * `c_hyp`: see this function's own doxygen for why `w` uses the true speed).
@@ -907,19 +916,19 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
 }
 
 /**
- * @brief Exact-relaxation update of #feedback_isrf_band_data.specific_flux,
+ * @brief Exact-relaxation update of #feedback_isrf_moment_data.specific_flux,
  * from the `grad(u)` accumulators radiation_propagation_iact.h filled during
  * the gradient loop from `u^n`, followed by the M1 flux limiter
  * (#radiation_apply_flux_limiter_band) against `u^n`, the same `u` the
  * gradient loop's closure tensor was built from. Runs once per step in the
  * extra ghost, never re-run: the gradient loop itself only runs once per
  * step. Also updates the two negativity-triggered dissipation components,
- * #feedback_isrf_band_data.dissipation_alpha_trigger
+ * #feedback_isrf_operator_data.dissipation_alpha_trigger
  * (see #radiation_update_dissipation_alpha_band) and
- * #feedback_isrf_band_data.dissipation_alpha_floor (see
+ * #feedback_isrf_operator_data.dissipation_alpha_floor (see
  * #radiation_dissipation_alpha_floor_band), once per step and separately,
  * for THIS step's force loop to combine, and zeroes
- * #feedback_isrf_band_data.div_specific_flux for that loop to accumulate
+ * #feedback_isrf_moment_data.div_specific_flux for that loop to accumulate
  * `div(F^{n+1})` into.
  *
  * `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact solution of
@@ -931,7 +940,7 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * same way, inside the relaxation depth `a = c_hyp*(kappa + H/c)*dt`.
  * No-op when propagation is off.
  *
- * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_band_data.
+ * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_moment_data.
  * specific_flux stores the reduced flux `Ft = F_true/c_hyp` instead of
  * `F_true` (see radiation_propagation_iact.h's file header): substituting
  * `F = c_hyp*Ft` into the recurrence above and dividing through by the
@@ -974,10 +983,14 @@ void radiation_end_gradient_propagation(struct part *p,
   const float eps_R =
       e->feedback_props->ISRF_dissipation_floor_relaxation_residual;
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    struct feedback_isrf_operator_data *op =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
 
-    const float a = (c_hyp * band->kappa + H_dilated) * dt;
+    /* H_dilated is this particle's own scalar, not looked up per operator:
+     * see #radiation_end_force_propagation's matching comment. */
+    const float a = (c_hyp * op->kappa + H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
     /* One power of c_hyp under the consistent-variable-c scheme: see this
@@ -988,22 +1001,22 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Snapshot for the floor's relaxation-residual gate below: `u^n` was
      * produced from THIS flux, not the one about to be computed. */
-    const float F_old[3] = {band->specific_flux[0], band->specific_flux[1],
-                            band->specific_flux[2]};
+    const float F_old[3] = {moment->specific_flux[0], moment->specific_flux[1],
+                            moment->specific_flux[2]};
 
     for (int k = 0; k < 3; k++) {
-      band->specific_flux[k] =
-          decay * band->specific_flux[k] - coeff * band->grad_u[k];
+      moment->specific_flux[k] =
+          decay * moment->specific_flux[k] - coeff * moment->grad_u[k];
     }
 
-    radiation_apply_flux_limiter_band(band->u, c_M, band->specific_flux);
+    radiation_apply_flux_limiter_band(moment->u, c_M, moment->specific_flux);
 
     /* Zeroed here rather than in the drift snapshot, unlike dissipation_u:
      * every drift, including the one before a snapshot dump, would otherwise
      * blank the PE/LWSpecificFluxDivergences output field. */
-    band->div_specific_flux = 0.f;
+    moment->div_specific_flux = 0.f;
 
-    const float u_V = fd->rho_prev * band->u;
+    const float u_V = fd->rho_prev * moment->u;
 
     if (alpha_pin > 0.f) {
       /* Bypass the trigger entirely: every particle's coefficient is held at
@@ -1013,15 +1026,15 @@ void radiation_end_gradient_propagation(struct part *p,
        * a spatially uniform coefficient: routing it through the floor would
        * subject it to the floor's own `h/lambda` roll-off and make it a
        * different quantity from the one the A/B reference arms measure. */
-      band->dissipation_alpha_trigger = alpha_pin;
-      band->dissipation_alpha_floor = 0.f;
+      op->dissipation_alpha_trigger = alpha_pin;
+      op->dissipation_alpha_floor = 0.f;
     } else {
       /* The trigger's decay memory is its OWN previous value, not the
        * previous combined coefficient: a high floor must not hold up the
        * trigger's decay tail. */
-      band->dissipation_alpha_trigger = radiation_update_dissipation_alpha_band(
-          u_V, band->ngb_mean_abs_u_V, band->dissipation_alpha_trigger,
-          alpha_max, eps_1, c_hyp, band->kappa, dt, h_phys);
+      op->dissipation_alpha_trigger = radiation_update_dissipation_alpha_band(
+          u_V, op->ngb_mean_abs_u_V, op->dissipation_alpha_trigger, alpha_max,
+          eps_1, c_hyp, op->kappa, dt, h_phys);
 
       /* Stored separately from the trigger rather than combined here, so
        * the two mechanisms stay separately readable; the force loop
@@ -1029,9 +1042,9 @@ void radiation_end_gradient_propagation(struct part *p,
        * value (`s <= 1`), computed from the incoming flux snapshotted
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
-          F_old, band->grad_u, c_hyp, band->kappa, H, c, eps_R);
-      band->dissipation_alpha_floor =
-          s * radiation_dissipation_alpha_floor_band(band->kappa, h_phys,
+          F_old, moment->grad_u, c_hyp, op->kappa, H, c, eps_R);
+      op->dissipation_alpha_floor =
+          s * radiation_dissipation_alpha_floor_band(op->kappa, h_phys,
                                                      alpha_floor, eps_lambda);
     }
   }
@@ -1240,14 +1253,14 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * chemistry_data.local_dust_to_gas_ratio).
  * @param extinction_path Comoving extinction path length, from
  * #radiation_get_comoving_extinction_path.
- * @param extinction (return) Extinction factor of each band, indexed by
- * #radiation_isrf_band.
+ * @param extinction (return) Extinction factor of each operator, indexed by
+ * #radiation_isrf_operator.
  */
 __attribute__((always_inline)) INLINE void
 radiation_get_part_ISRF_extinction_factors(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct part *p, float Z, const struct cooling_function_data *cooling,
-    const float extinction_path, float extinction[ISRF_BAND_COUNT]) {
+    const float extinction_path, float extinction[ISRF_OPERATOR_COUNT]) {
 
   const float Sigma_gas_p =
       radiation_get_comoving_gas_column_density_at_part(p, extinction_path) *
@@ -1257,8 +1270,8 @@ radiation_get_part_ISRF_extinction_factors(
   const float local_dust_to_gas_ratio =
       (float)cooling->chemistry_data.local_dust_to_gas_ratio;
 
-  extinction[ISRF_BAND_PE] = radiation_get_dust_extinction_factor(
+  extinction[ISRF_OPERATOR_PE] = radiation_get_dust_extinction_factor(
       us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
-  extinction[ISRF_BAND_LW] = radiation_get_dust_extinction_factor(
+  extinction[ISRF_OPERATOR_LW] = radiation_get_dust_extinction_factor(
       us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
 }

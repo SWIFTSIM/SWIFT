@@ -38,7 +38,7 @@
  * declared in radiation_isrf.h), so they are exercised the same way
  * testRadiationISRFFluxUnderflow.c does: through
  * #radiation_end_gradient_propagation, reading back
- * #feedback_isrf_band_data.dissipation_alpha_trigger/dissipation_alpha_floor.
+ * #feedback_isrf_operator_data.dissipation_alpha_trigger/dissipation_alpha_floor.
  */
 #if defined(FEEDBACK_GEAR)
 
@@ -127,8 +127,8 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
  * @brief Set one band's full pre-step state.
  *
  * @param p (in/out) The particle (already zeroed by the caller).
- * @param b Band index.
- * @param u This band's #feedback_isrf_band_data.u (and u_prev).
+ * @param m Moment index.
+ * @param u This band's #feedback_isrf_moment_data.u (and u_prev).
  * @param ngb_mean_abs_u_V This band's kernel-mean scratch.
  * @param kappa This band's absorption rate.
  * @param F This band's specific_flux, BEFORE this step's update.
@@ -136,19 +136,21 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
  * @param alpha_trigger This band's incoming dissipation_alpha_trigger
  * (the trigger's own memory of its previous output).
  */
-static void set_band(struct part *p, int b, float u, float ngb_mean_abs_u_V,
+static void set_band(struct part *p, int m, float u, float ngb_mean_abs_u_V,
                      float kappa, const float F[3], const float grad_u[3],
                      float alpha_trigger) {
 
-  struct feedback_isrf_band_data *band = &p->feedback_data.isrf_band[b];
-  band->u = u;
-  band->u_prev = u;
-  band->ngb_mean_abs_u_V = ngb_mean_abs_u_V;
-  band->kappa = kappa;
-  band->dissipation_alpha_trigger = alpha_trigger;
+  struct feedback_isrf_moment_data *moment = &p->feedback_data.isrf_moment[m];
+  struct feedback_isrf_operator_data *op =
+      &p->feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]];
+  moment->u = u;
+  moment->u_prev = u;
+  op->ngb_mean_abs_u_V = ngb_mean_abs_u_V;
+  op->kappa = kappa;
+  op->dissipation_alpha_trigger = alpha_trigger;
   for (int k = 0; k < 3; k++) {
-    band->specific_flux[k] = F[k];
-    band->grad_u[k] = grad_u[k];
+    moment->specific_flux[k] = F[k];
+    moment->grad_u[k] = grad_u[k];
   }
 }
 
@@ -173,7 +175,7 @@ static void init_part(struct part *p, float h, float c_hyp, float dt) {
  * nonzero, non-quiescent energy (so "zero energy" is never conflated with
  * "zero flux"), and a trigger memory that does not itself perturb the
  * floor's own value (the trigger and floor components are independent
- * fields, see feedback_isrf_band_data's own doxygen). */
+ * fields, see feedback_isrf_operator_data's own doxygen). */
 static const float u_default = 1.f;
 static const float alpha_trigger_default = 0.f;
 
@@ -195,23 +197,25 @@ static void test_eps_R_zero_disables_gate(void) {
   make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., alpha_floor, /*eps_R=*/0.f);
 
   const float zero[3] = {0.f, 0.f, 0.f};
-  const float kappa[ISRF_BAND_COUNT] = {1.f, 0.f};
+  const float kappa[ISRF_MOMENT_COUNT] = {1.f, 0.f};
   /* h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4).
    */
-  const float expected[ISRF_BAND_COUNT] = {alpha_floor / 17.f, alpha_floor};
+  const float expected[ISRF_MOMENT_COUNT] = {alpha_floor / 17.f, alpha_floor};
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
     set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, kappa[b], zero, zero,
              alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    check_close("eps_R=0, quiescent F/grad_u", expected[b],
-                p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-                1e-3f);
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
+    check_close(
+        "eps_R=0, quiescent F/grad_u", expected[b],
+        p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]]
+            .dissipation_alpha_floor,
+        1e-5f, 1e-3f);
 
   message("eps_R = 0: gate returns 1 even for a fully quiescent particle");
 }
@@ -243,23 +247,26 @@ static void test_c_hyp_zero(void) {
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/0.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, F,
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    set_band(&p, m, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, F,
              grad_u, alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
   /* h = 1, kappa = 1, eps_lambda = 0.5: floor_band = alpha_floor/(1+2^4). */
   const float expected_floor = alpha_floor / 17.f;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    const struct feedback_isrf_band_data *band = &p.feedback_data.isrf_band[b];
-    check_close("c_hyp=0 floor", expected_floor, band->dissipation_alpha_floor,
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const struct feedback_isrf_moment_data *moment =
+        &p.feedback_data.isrf_moment[m];
+    const struct feedback_isrf_operator_data *op =
+        &p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]];
+    check_close("c_hyp=0 floor", expected_floor, op->dissipation_alpha_floor,
                 1e-5f, 1e-3f);
     for (int k = 0; k < 3; k++) {
-      check_finite("c_hyp=0 flux", band->specific_flux[k]);
-      if (band->specific_flux[k] != 0.f)
+      check_finite("c_hyp=0 flux", moment->specific_flux[k]);
+      if (moment->specific_flux[k] != 0.f)
         error("c_hyp=0 flux did not collapse to 0: got %.9e",
-              band->specific_flux[k]);
+              moment->specific_flux[k]);
     }
   }
 
@@ -288,17 +295,19 @@ static void test_w_zero_kappa_and_H_zero(void) {
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
     set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f, F,
              grad_u, alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
   /* kappa = 0: x = 0, floor_band = alpha_floor exactly. */
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    check_close("kappa=H=0 floor", alpha_floor,
-                p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-                1e-3f);
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
+    check_close(
+        "kappa=H=0 floor", alpha_floor,
+        p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]]
+            .dissipation_alpha_floor,
+        1e-5f, 1e-3f);
 
   message("kappa = H = 0: gate returns 1 (no relaxation timescale)");
 }
@@ -330,17 +339,19 @@ static void test_w_positive_via_hubble_term(void) {
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
     set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f, F,
              grad_u, alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
   const float expected = alpha_floor * (4.f / 9.f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    check_close("kappa=0, H>0 floor", expected,
-                p.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-4f,
-                1e-3f);
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
+    check_close(
+        "kappa=0, H>0 floor", expected,
+        p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]]
+            .dissipation_alpha_floor,
+        1e-4f, 1e-3f);
 
   message(
       "kappa = 0, H > 0: gate uses the Hubble term as the relaxation "
@@ -369,18 +380,19 @@ static void test_den_zero_quiescent(void) {
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
     set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, zero,
              zero, alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    const struct feedback_isrf_band_data *band = &p.feedback_data.isrf_band[b];
-    check_finite("quiescent floor", band->dissipation_alpha_floor);
-    if (band->dissipation_alpha_floor != 0.f)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+    const struct feedback_isrf_operator_data *op =
+        &p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]];
+    check_finite("quiescent floor", op->dissipation_alpha_floor);
+    if (op->dissipation_alpha_floor != 0.f)
       error("quiescent gate did not return 0: floor %.9e",
-            band->dissipation_alpha_floor);
+            op->dissipation_alpha_floor);
   }
 
   message(
@@ -417,7 +429,7 @@ static void test_exact_R_equals_one(void) {
     struct part p_zero_flux, p_zero_grad;
     init_part(&p_zero_flux, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
     init_part(&p_zero_grad, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
       set_band(&p_zero_flux, b, u_default, /*ngb_mean_abs_u_V=*/1.f,
                /*kappa=*/1.f, zero, V, alpha_trigger_default);
       set_band(&p_zero_grad, b, u_default, /*ngb_mean_abs_u_V=*/1.f,
@@ -427,15 +439,17 @@ static void test_exact_R_equals_one(void) {
     radiation_end_gradient_propagation(&p_zero_flux, &e);
     radiation_end_gradient_propagation(&p_zero_grad, &e);
 
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      check_close(
-          "R=1, zero flux", expected,
-          p_zero_flux.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-          1e-3f);
-      check_close(
-          "R=1, zero grad_u", expected,
-          p_zero_grad.feedback_data.isrf_band[b].dissipation_alpha_floor, 1e-5f,
-          1e-3f);
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+      check_close("R=1, zero flux", expected,
+                  p_zero_flux.feedback_data
+                      .isrf_operator[radiation_isrf_moment_to_operator[b]]
+                      .dissipation_alpha_floor,
+                  1e-5f, 1e-3f);
+      check_close("R=1, zero grad_u", expected,
+                  p_zero_grad.feedback_data
+                      .isrf_operator[radiation_isrf_moment_to_operator[b]]
+                      .dissipation_alpha_floor,
+                  1e-5f, 1e-3f);
     }
   }
 
@@ -470,18 +484,19 @@ static void test_exact_R_equals_zero(void) {
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
     set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, F,
              grad_u, alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    const struct feedback_isrf_band_data *band = &p.feedback_data.isrf_band[b];
-    check_finite("R=0 floor", band->dissipation_alpha_floor);
-    if (band->dissipation_alpha_floor != 0.f)
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+    const struct feedback_isrf_operator_data *op =
+        &p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]];
+    check_finite("R=0 floor", op->dissipation_alpha_floor);
+    if (op->dissipation_alpha_floor != 0.f)
       error("R=0 gate did not return 0: floor %.9e",
-            band->dissipation_alpha_floor);
+            op->dissipation_alpha_floor);
   }
 
   message(
@@ -529,16 +544,18 @@ static void test_alpha_trigger_boundaries(void) {
   for (int i = 0; i < 4; i++) {
     struct part p;
     init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
       set_band(&p, b, cases[i].u_V, cases[i].ngb_mean_abs_u_V, /*kappa=*/0.f,
                zero, zero, cases[i].alpha_prev);
 
     radiation_end_gradient_propagation(&p, &e);
 
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
-      check_close(cases[i].label, cases[i].expected,
-                  p.feedback_data.isrf_band[b].dissipation_alpha_trigger, 1e-5f,
-                  1e-3f);
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
+      check_close(
+          cases[i].label, cases[i].expected,
+          p.feedback_data.isrf_operator[radiation_isrf_moment_to_operator[b]]
+              .dissipation_alpha_trigger,
+          1e-5f, 1e-3f);
   }
 
   message(

@@ -29,7 +29,7 @@
 #include "swift.h"
 
 /* The gradient loop's real dispatch, `runner_iact_[nonsym_]isrf_gradient`,
- * reads its M1 closure tensor from #feedback_isrf_band_data's per-particle
+ * reads its M1 closure tensor from #feedback_isrf_moment_data's per-particle
  * cache (#radiation_cache_m1_closure_part), not from the from-scratch
  * #radiation_get_m1_closure_tensor_band every other ISRF test exercises. A
  * test that only ever calls the from-scratch path would keep passing even if
@@ -135,8 +135,8 @@ static void set_part(struct part *p, float u, const float F[3], float rho_prev,
   struct feedback_part_data *fd = &p->feedback_data;
   fd->rho_prev = rho_prev;
   fd->c_hyp = c_hyp;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+    struct feedback_isrf_moment_data *band = &fd->isrf_moment[b];
     band->u = u;
     for (int k = 0; k < 3; k++) band->specific_flux[k] = F[k];
   }
@@ -211,26 +211,26 @@ int main(int argc, char *argv[]) {
     /* Symmetric dispatch, from the cached closure tensor on both sides. */
     struct part p_i = p_i0, p_j = p_j0;
     runner_iact_isrf_gradient(r2, dx, hi, hj, &p_i, &p_j, a, H);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
       for (int k = 0; k < 3; k++) {
         check_close("symmetric grad_u_i", ref_grad_u_i[k],
-                    p_i.feedback_data.isrf_band[b].grad_u[k]);
+                    p_i.feedback_data.isrf_moment[b].grad_u[k]);
         check_close("symmetric grad_u_j", ref_grad_u_j[k],
-                    p_j.feedback_data.isrf_band[b].grad_u[k]);
+                    p_j.feedback_data.isrf_moment[b].grad_u[k]);
       }
     }
 
     /* Non-symmetric dispatch: only i's accumulator is written. */
     struct part p_i2 = p_i0, p_j2 = p_j0;
     runner_iact_nonsym_isrf_gradient(r2, dx, hi, hj, &p_i2, &p_j2, a, H);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
       for (int k = 0; k < 3; k++) {
         check_close("non-symmetric grad_u_i", ref_grad_u_i[k],
-                    p_i2.feedback_data.isrf_band[b].grad_u[k]);
+                    p_i2.feedback_data.isrf_moment[b].grad_u[k]);
         /* j is not the writable side of this dispatch: its accumulator must
          * stay at its zero seed. */
         check_close("non-symmetric grad_u_j (must stay zero)", 0.f,
-                    p_j2.feedback_data.isrf_band[b].grad_u[k]);
+                    p_j2.feedback_data.isrf_moment[b].grad_u[k]);
       }
     }
 

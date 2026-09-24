@@ -27,7 +27,7 @@
  * Reads "PESpecificEnergy"/"LWSpecificEnergy" (singular: the codebase's
  * own IC-read convention, e.g. hydro's "Density"/"SmoothingLength", vs. the
  * plural "Densities"/"SmoothingLengths" used for the matching snapshot
- * output) as OPTIONAL fields into #feedback_isrf_band_data.u.
+ * output) as OPTIONAL fields into #feedback_isrf_moment_data.u.
  * The snapshot output for the same quantity
  * (#convert_part_u_PE/convert_part_u_LW, src/tracers/GEAR/tracers_io.h)
  * deliberately uses the plural "PESpecificEnergies"/"LWSpecificEnergies"
@@ -41,8 +41,8 @@
  * though this reader does not itself enforce that.
  *
  * An IC without these fields is unaffected: #radiation_first_init_part no
- * longer zeroes #feedback_isrf_band_data.u (and seeds
- * #feedback_isrf_band_data.u_prev from it, not from 0.f, so a supplied value
+ * longer zeroes #feedback_isrf_moment_data.u (and seeds
+ * #feedback_isrf_moment_data.u_prev from it, not from 0.f, so a supplied value
  * also survives the very first propagation update when
  * `GEARFeedback:ISRF_propagation` is on) so that a supplied value survives
  * first-init, but every #part is bzero'd before this read runs
@@ -63,10 +63,10 @@ INLINE static int feedback_read_particles(struct part *parts,
 
   list[0] = io_make_input_field("PESpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                feedback_data.isrf_band[ISRF_BAND_PE].u);
+                                feedback_data.isrf_moment[ISRF_MOMENT_PE].u);
   list[1] = io_make_input_field("LWSpecificEnergy", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                feedback_data.isrf_band[ISRF_BAND_LW].u);
+                                feedback_data.isrf_moment[ISRF_MOMENT_LW].u);
 
   return 2;
 }

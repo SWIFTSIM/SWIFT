@@ -357,8 +357,8 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   sp->feedback_data.radiation.L_bol = 0.f;
   sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++)
-    sp->feedback_data.radiation.L_band[b] = 0.;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    sp->feedback_data.radiation.L_band[m] = 0.;
   sp->feedback_data.radiation.teff = 0.f;
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
@@ -552,8 +552,8 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
   p->feedback_data.is_illuminated_ISRF = 0;
 
   if (!e->feedback_props->ISRF_propagation) {
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
-      p->feedback_data.isrf_band[b].u = 0.f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      p->feedback_data.isrf_moment[m].u = 0.f;
   }
 }
 
@@ -677,10 +677,15 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
   return 0.;
 }
 
-/*! Human-readable band names for #radiation_get_band_u_nonnegative's
-    clamp warnings, indexed by #radiation_isrf_band. */
-static const char *const radiation_isrf_band_clamp_name[ISRF_BAND_COUNT] = {
+/*! Human-readable moment names for #radiation_get_band_u_nonnegative's
+    clamp warnings, indexed by #radiation_isrf_moment. */
+static const char *const radiation_isrf_moment_clamp_name[] = {
     "PE-band specific energy", "LW-band specific energy"};
+_Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
+                       sizeof(radiation_isrf_moment_clamp_name[0]) ==
+                   ISRF_MOMENT_COUNT,
+               "radiation_isrf_moment_clamp_name needs one initialiser per "
+               "ISRF_MOMENT_COUNT entry.");
 
 /**
  * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
@@ -701,19 +706,19 @@ static const char *const radiation_isrf_band_clamp_name[ISRF_BAND_COUNT] = {
  * diagnostic stay intact.
  *
  * @param p The particle.
- * @param b The band to read (#radiation_isrf_band).
+ * @param m The moment to read (#radiation_isrf_moment).
  * @return The band's specific energy, or 0 if it was negative.
  */
 static double radiation_get_band_u_nonnegative(const struct part *p,
-                                               const int b) {
+                                               const int m) {
 
-  static volatile long long band_clamp_count[ISRF_BAND_COUNT] = {0};
-  static volatile double band_clamp_worst[ISRF_BAND_COUNT] = {0.};
+  static volatile long long band_clamp_count[ISRF_MOMENT_COUNT] = {0};
+  static volatile double band_clamp_worst[ISRF_MOMENT_COUNT] = {0.};
 
   return radiation_clamp_nonnegative_for_grackle(
-      radiation_isrf_band_clamp_name[b],
-      (double)p->feedback_data.isrf_band[b].u, &band_clamp_count[b],
-      &band_clamp_worst[b]);
+      radiation_isrf_moment_clamp_name[m],
+      (double)p->feedback_data.isrf_moment[m].u, &band_clamp_count[m],
+      &band_clamp_worst[m]);
 }
 
 /**
@@ -745,8 +750,8 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_BAND_PE) +
-                       radiation_get_band_u_nonnegative(p, ISRF_BAND_LW);
+  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_MOMENT_PE) +
+                       radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
   const double flux = phys_const->const_speed_light_c * rho * u_sum;
   const double flux_cgs =
       flux *
@@ -799,7 +804,7 @@ double radiation_get_part_LW_dissociation_rate_internal(
     const struct cosmology *cosmo, const struct part *p) {
 
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_LW = radiation_get_band_u_nonnegative(p, ISRF_BAND_LW);
+  const double u_LW = radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
   const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
   const double flux_LW_cgs =
       flux_LW *
