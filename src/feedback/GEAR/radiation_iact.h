@@ -21,11 +21,9 @@
 
 /**
  * @file src/feedback/GEAR/radiation_iact.h
- * @brief Subgrid radiation feedback for GEAR. This file contains the generic
- * functions to be called in feedback_iact.h or
- * feedback_prepare_feedback(). The radiation model is split into this
- * functions so that they can be called by the mechanical feedback without code
- * duplication.
+ * @brief Subgrid radiation feedback for GEAR: functions called from
+ * feedback_iact.h and feedback_prepare_feedback(), split out so the
+ * mechanical feedback module does not duplicate them.
  */
 
 #include "chemistry.h"
@@ -70,7 +68,6 @@ radiation_iact_nonsym_feedback_density(
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
 
-  /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
   float wi, wi_dx;
@@ -82,27 +79,24 @@ radiation_iact_nonsym_feedback_density(
     dx_unit[k] = dx[k] / r;
   }
 
-  /* Gradient of the kernel */
   float gradW[3];
   for (int k = 0; k < 3; ++k) {
     gradW[k] = wi_dx * dx_unit[k];
   }
 
-  /* Gradient of the density */
   for (int k = 0; k < 3; ++k) {
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Metallicity at the star location, mass-weighted like enrichment_weight
-     (feedback_iact.h's enrichment_weight += mj * wi) so the two finish with
-     matching kernel normalizations in feedback_prepare_radiation_feedback(). */
+  /* Weighted like enrichment_weight (feedback_iact.h) so both share the
+     same kernel normalization in feedback_prepare_radiation_feedback(). */
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
 
 /**
- * @brief Prepare a #spart for the radiation feedback task. Here we perform the
- * photoionization of HII regions.
+ * @brief Finalize a #spart's radiation-feedback inputs (density gradient,
+ * metallicity) and cache its feedback timestep, once per star per step.
  *
  * This is called in the feedback_prepare_feedback(), which is called in the
  * stars ghost task.
@@ -135,24 +129,18 @@ feedback_prepare_radiation_feedback(
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  /* enrichment_weight is 0 for a star with no gas neighbours this step
-     (e.g. freshly formed in a very sparse region); Z_star's own
-     accumulation is weighted identically, so it is still exactly 0 in
-     that case and the multiply can simply be skipped. Divide by the
-     already-hi_inv_dim-normalized enrichment_weight (set just above, by
-     feedback_prepare_feedback() before this call) using the matching
-     hi_inv_dim, not hi_inv: Z_star's own raw sum needs the same 1/h^d the
-     density estimate got, not an extra stray 1/h. */
+  /* enrichment_weight is 0 only when Z_star's own sum is too (same
+     weighting), so skipping is exact, not an approximation. Uses
+     hi_inv_dim, not hi_inv_dim_plus_one: Z_star needs the density
+     estimate's 1/h^d, not the gradient's extra 1/h. */
   if (sp->feedback_data.enrichment_weight > 0.0f) {
     sp->feedback_data.Z_star *=
         hi_inv_dim / sp->feedback_data.enrichment_weight;
   }
 
-  /* Cache once per star: with_cosmology's get_timestep(sp->time_bin,
-     time_base) is d(ln a), not proper time, so dt (computed by the caller
-     the same way compute_time() does) must be used as-is rather than
-     recomputed from time_bin downstream. Read back in
-     radiation_iact_nonsym_feedback_apply, once per gas neighbour. */
+  /* dt already accounts for the d(ln a) vs proper-time distinction under
+     cosmology (mirrors compute_time(), feedback_common.c); cache it here
+     instead of recomputing it per neighbour below. */
   sp->feedback_data.radiation.Delta_t = (float)dt;
 #ifdef SWIFT_DEBUG_CHECKS
   sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
@@ -164,7 +152,7 @@ feedback_prepare_radiation_feedback(
  * (non-symmetric). Used for updating properties of gas particles neighbouring
  * a star particle.
  *
- * Here we tag particles within HII regions and apply radiation pressure.
+ * Applies radiation pressure and injects the local Lyman-Werner/PE field.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -175,8 +163,7 @@ feedback_prepare_radiation_feedback(
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
- * @param ti_current Current integer time used value for seeding random number
- * generator
+ * @param ti_current Current integer time
  * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
@@ -192,7 +179,6 @@ radiation_iact_nonsym_feedback_apply(
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
 
-  /* Get the kernel for hi. */
   float hi_inv = 1.0f / hi;
   float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   float xi = r * hi_inv;
@@ -200,14 +186,13 @@ radiation_iact_nonsym_feedback_apply(
   kernel_deval(xi, &wi, &wi_dx);
   wi *= hi_inv_dim;
 
-  /* Compute inverse enrichment weight */
   const double si_inv_weight = si->feedback_data.enrichment_weight == 0
                                    ? 0.
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
-  /* Cosmology-independent: also reused below to renew the LW/PE
-   * illumination window (radiation_reset_part_ISRF_illumination_tag). */
+  /* Also reused below to renew the LW/PE illumination window
+   * (radiation_reset_part_ISRF_illumination_tag). */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
   /* Cached once per star by feedback_prepare_radiation_feedback, not
@@ -223,52 +208,45 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
-  /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
-    /* Add the radiation pressure radially outwards from the star. Notice the
-       conversion to comoving units. */
+    /* Radially outwards from the star; * cosmo->a converts to comoving
+       units. */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.radiation.delta_p[i] -=
           delta_p_rad * dx[i] / r * cosmo->a;
     }
 
-    /* Lifetime-cumulative tracer. delta_p_rad is already the physical
-       momentum magnitude for this star-gas pair, before it gets projected
-       onto the radial direction above. No separate energy channel (see
-       tracers_struct.h). */
+    /* Lifetime-cumulative tracer. delta_p_rad is the physical momentum
+       magnitude for this pair, before it is projected onto the radial
+       direction above; no separate energy channel (tracers_struct.h). */
     tracers_after_radiation_pressure_feedback_part(xpj, delta_p_rad,
                                                    delta_p_rad / mj);
 
-    /* Set the indication of a radiation-pressure event, matching
-       hit_by_SN/hit_by_winds. Without this, feedback_update_part_radiation()
-       never applies the momentum just accumulated above. */
+    /* Matches hit_by_SN/hit_by_winds: without it,
+       feedback_update_part_radiation() never applies this momentum. */
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /* Local Lyman-Werner/PE injection: always additive, since multiple
-     simultaneously-illuminating stars must superpose on the same particle
-     (a dose reservoir with propagation on, an instantaneous field with it
-     off). u_inject is an energy, so dividing by mj converts it
-     to the specific energy u of each band (or the dose reservoir) actually
-     stores. Zero unless GEARFeedback:with_interstellar_radiation_field is on
-     (L_band is then computed by stellar_evolution.c; 0 otherwise). Dust
-     extinction is applied receiver-side, using pj's own local column density,
-     rather than at the source (see radiation_get_part_ISRF_extinction_factors
-     for the extinction formula itself). */
+  /* Zero unless GEARFeedback:with_interstellar_radiation_field is on
+     (L_band is then computed by stellar_evolution.c). */
   if (si->feedback_data.radiation.L_band[ISRF_BAND_PE] != 0.0 ||
       si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction[ISRF_BAND_COUNT];
+    /* Receiver-side, using pj's own column density, not the source; see
+       radiation_get_part_ISRF_extinction_factors for the formula. */
     const float extinction_path = radiation_get_comoving_extinction_path(
         fb_props, pj, xpj, r, cosmo, phys_const, hydro_props, us, cooling);
     radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
                                                extinction_path, extinction);
 
+    /* u_inject is an energy; dividing by mj below converts it to the
+       specific energy each band (or the dose reservoir) stores. */
     double u_inject[ISRF_BAND_COUNT];
     for (int b = 0; b < ISRF_BAND_COUNT; b++) {
       u_inject[b] = (double)Delta_t * weight *
@@ -340,16 +318,14 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
                                const struct engine *e,
                                const float initial_mass) {
 
-  /* Here, wo only update radiation pressure. The gas cooling state is updated
-     before cooling */
+  /* Momentum only; internal energy is handled elsewhere, before cooling. */
   if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
-      /* We use the initial mass of the gas, i.e. before any winds or SN */
+      /* Initial mass of the gas, i.e. before any winds or SN. */
       const float dv = xp->feedback_data.radiation.delta_p[i] / initial_mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;
 
-      /* Reset */
       xp->feedback_data.radiation.delta_p[i] = 0;
     }
     xp->feedback_data.hit_by_radiation = 0;
