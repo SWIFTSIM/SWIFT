@@ -887,11 +887,141 @@ separate radiation time step. In order:
     (Eq.~\ref{eq:fuv-u-update}). This is the state cooling reads.
   \item Stars active this step deposit their band luminosities into
     the dose reservoirs of their kernel neighbours
-    (Eq.~\ref{eq:fuv-inject}).
+    (Eq.~\ref{eq:fuv-inject}, Section~\ref{sec:fuv-injection}).
 \end{enumerate}
 Steps 2 to 7 run inside the existing SPH density, gradient and force
 loops; the scheme adds pairwise operators to those loops and no new
 tasks.
+
+\subsubsection{Injection: kernel deposit, extinction and dose reservoir}
+\label{sec:fuv-injection}
+
+A star $\star$ active on a step of length $\Delta t_\star$ deposits, on
+each gas particle $j$ inside its kernel, the band energy
+\begin{equation}
+  \Delta E_{b,j} = \Delta t_\star\, w_{j\star}\, L_{b,\star}\,
+    \zeta_{b,j\star} , \qquad
+  w_{j\star} = \frac{m_j\,W(r_{j\star}, h_\star)}
+                    {\sum_k m_k\,W(r_{k\star}, h_\star)} ,
+  \label{eq:fuv-inject}
+\end{equation}
+with weights that sum to one over the kernel. $\Delta t_\star$ is the
+star's proper-time feedback window; under cosmology it is not the
+value \code{get\_timestep()} returns
+(Section~\ref{sec:fuv-cosmo} states the size of the error).
+$\zeta_{b,j\star}\in(0,1]$ is
+a dust extinction that attenuates the deposit,
+\begin{equation}
+  \zeta_{b,j\star} = \exp\!\big(-\kappa_b(Z_j)\,\Sigma_{j\star}\big) , \qquad
+  \Sigma_{j\star} = \rho_j\,\ell_{j\star} ,
+  \label{eq:fuv-extinction}
+\end{equation}
+the column formed once, from the receiver's own density and a path
+length $\ell_{j\star}$, with no knowledge of which mechanism built the
+length (\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part()}).
+It represents dust local to the illuminating star-receiver pair and is
+distinct from the absorption along the path at large, which the
+propagation handles. Extinction applies in both run modes; under
+cosmology both $\rho_j$ and $\ell_{j\star}$ above are comoving
+(Section~\ref{sec:fuv-cosmo}).
+
+\texttt{GEARFeedback:ISRF\_extinction\_path} selects the mechanism that
+builds $\ell_{j\star}$, dispatched once per star-gas pair by
+\code{radiation\_get\_comoving\_extinction\_path()}:
+\begin{itemize}
+  \item \texttt{pair\_separation} (\textbf{the shipped default}):
+    $\ell_{j\star} = r_{j\star}$, the star-gas separation itself. The only
+    mechanism derived rather than calibrated: in the uniform,
+    optically-thin limit its own kernel-weighted mean equals exactly
+    $5/12\,\gamma_K h_\star$, the value \texttt{constant\_kernel\_path}
+    below needs a free parameter to reach, and away from that limit it is
+    also the only mechanism that reproduces the exponential's own
+    variation, $\exp(-\kappa\rho r)$, across the star's kernel, rather
+    than applying one flat factor to every neighbour a star illuminates.
+  \item \texttt{constant\_kernel\_path}: $\ell_j = R\,H_j$, with $H_j =
+    \gamma_K h_j$ the receiver's own kernel support radius and $R$ =
+    \texttt{ISRF\_extinction\_path\_in\_kernel\_radii} (default $1$, the
+    largest path the geometry admits since the receiver sits inside the
+    illuminating star's kernel). $R=5/12$ recovers, in the uniform
+    optically-thin limit only, the injection-kernel-weighted mean of
+    \texttt{pair\_separation}'s own path; away from that limit the two
+    mechanisms diverge, since \texttt{pair\_separation} varies per pair
+    while $R$ is fixed.
+  \item \texttt{temperature\_capped\_jeans}: $\ell_j = \min\!\big(
+    \lambda_J(\min(T_j, T_{\rm cap})),\, H_j\big)$, the Jeans length at a
+    temperature capped at $T_{\rm cap}$ =
+    \texttt{ISRF\_extinction\_jeans\_temperature\_cap\_K} (default
+    $40$\,K), itself capped at one support radius since the receiver sits
+    inside the illuminating star's kernel. \citet[their
+    Section~3.4]{SafranekShrader2017} rank the temperature-capped Jeans
+    length best of five local column estimators against a multi-angle ray
+    trace, at the same $40$\,K cap.
+\end{itemize}
+Only \texttt{pair\_separation}'s length depends on the illuminating star
+as well as the receiver; the other two mechanisms are receiver-only. All
+three are nonetheless evaluated inside the star-gas pair loop, since
+hoisting the call out of it would fork the code path for
+\texttt{pair\_separation} alone
+(\code{radiation\_get\_comoving\_extinction\_path()}). An unrecognised
+value of \texttt{ISRF\_extinction\_path} is a fatal error, not a silent
+fallback: \texttt{kernel\_diameter} and \texttt{kernel\_radius} named two
+now-unsupported earlier defaults, from before the mechanism was a runtime
+choice (Section~\ref{sec:fuv-parameters} gives the parameters each
+mechanism reads).
+
+At \texttt{COOLING\_GRACKLE\_MODE} $>1$, Grackle's own H2
+self-shielding needs a separate column length, set independently via
+\texttt{GrackleCooling:H2\_self\_shielding\_path}. At mode 2
+(\texttt{H2\_self\_shielding} = 2, kernel support radius), Grackle forms
+$N_{\rm H2} = 2 n_{\rm H2} l$, so the length passed is
+$l = {\rm path}/2$ with ${\rm path} = {\rm path\_in\_kernel\_radii}\,
+\gamma_K h$ (physical); at mode 3 the length is Grackle's own local
+Jeans length instead. Dust extinction and H2 self-shielding use
+different lengths on purpose: the dust column reflects the illuminating
+pair's own local geometry, while H2 self-shielding needs the scale over
+which the H2 column actually forms (the Jeans length at mode 3);
+collapsing both onto one common length would cost accuracy in whichever
+regime it is not tuned for.
+
+\textbf{Dose reservoir.} A gas particle usually sits on a finer time
+bin than its star. Depositing the whole star-step energy in one lump
+would produce a sawtooth in $u_j$ between star visits, with cooling
+reading the trough. Instead the deposit goes into a per-particle,
+per-band reservoir $R_{b,j}$ (an energy per unit gas mass), and the star's visit
+extends the reservoir's drain horizon $t_{{\rm end},j}$ to at least one
+star step past the visit:
+\begin{equation}
+  R_{b,j} \mathrel{+}= \frac{\Delta E_{b,j}}{m_j} , \qquad
+  t_{{\rm end},j} \leftarrow \max\!\big(t_{{\rm end},j},\; t + \Delta t_\star\big) .
+  \label{eq:fuv-reservoir}
+\end{equation}
+Any number of stars on any time bins add into the same reservoir. At
+the start of each of its own steps the particle drains a fraction of
+the reservoir into a source rate that is constant over the step,
+\begin{equation}
+  \phi_j = \min\!\left(1,\;\frac{\Delta t_j}{t_{{\rm end},j} - t}\right) ,
+  \qquad
+  \dot s_{b,j} = \frac{\phi_j\,R_{b,j}}{\Delta t_j} , \qquad
+  R_{b,j} \leftarrow (1-\phi_j)\,R_{b,j} ,
+  \label{eq:fuv-drain}
+\end{equation}
+which empties the reservoir exactly at the horizon and keeps the rate
+constant across the particle's sub-steps between visits. The rate
+enters the relaxation update of $u$ as a frozen source, rescaled by
+$c_{\rm hyp}/c$ there (Eq.~\ref{eq:fuv-u-update}); the reservoir itself
+holds the unrescaled physical dose. If a particle's neighbour search
+fails on a step, the drawn amount is returned to the reservoir. The
+reservoir is specific to the particle mass at deposit time and is not
+rescaled if that mass later changes. Both $t$ and $t_{{\rm end},j}$ here
+are proper time; Section~\ref{sec:fuv-cosmo} gives how their
+difference is formed under cosmology and why it must be.
+
+\textbf{Illumination window.} A visit also marks the particle as
+illuminated for two star steps and, on the first visit only,
+synchronises the particle's time step so that it integrates the deposit
+promptly. The mark expires once no star has renewed it for two star
+steps; with propagation on the expiry has no effect on the field, which
+decays through its own equations.
 
 \subsubsection{The signal speed and the stability bound}
 \label{sec:fuv-chyp}
@@ -1193,86 +1323,6 @@ schemes that never couple a per-element time step to the propagation
 speed the way this scheme does, or it may mean it is undocumented; the
 review could not distinguish the two, and the unread Commer\c{c}on et
 al. (2014) source above is the most promising remaining lead.
-
-\subsubsection{Injection: kernel deposit, extinction and dose reservoir}
-\label{sec:fuv-injection}
-
-A star $\star$ active on a step of length $\Delta t_\star$ deposits, on
-each gas particle $j$ inside its kernel, the band energy
-\begin{equation}
-  \Delta E_{b,j} = \Delta t_\star\, w_{j\star}\, L_{b,\star}\,
-    \zeta_{b,j} , \qquad
-  w_{j\star} = \frac{m_j\,W(r_{j\star}, h_\star)}
-                    {\sum_k m_k\,W(r_{k\star}, h_\star)} ,
-  \label{eq:fuv-inject}
-\end{equation}
-with weights that sum to one over the kernel. $\zeta_{b,j}\in(0,1]$ is
-a receiver-side dust extinction,
-\begin{equation}
-  \zeta_{b,j} = \exp\!\big(-\kappa_b(Z_j)\,\Sigma_j\big) , \qquad
-  \Sigma_j = 2\,H_j\,\rho_j ,
-  \label{eq:fuv-extinction}
-\end{equation}
-where $H_j$ is the kernel support radius of particle $j$: the column
-through the receiving particle's own resolution element. It represents
-dust immediately local to the receiver (a particle inside its own dense
-clump) and is distinct from the absorption along the path, which the
-propagation handles. Extinction applies in both run modes.
-$\Sigma_j = 2\,H_j\,\rho_j$ is the default (\texttt{GEARFeedback:%
-ISRF\_extinction\_path} = \texttt{kernel\_diameter}); setting it to
-\texttt{kernel\_radius} instead uses $H_j\,\rho_j$.
-
-At \texttt{COOLING\_GRACKLE\_MODE} $>1$, Grackle's own H2
-self-shielding needs a separate column length, set independently via
-\texttt{GrackleCooling:H2\_self\_shielding\_path}. At mode 2
-(\texttt{H2\_self\_shielding} = 2, kernel support radius), Grackle forms
-$N_{\rm H2} = 2 n_{\rm H2} l$, so the length passed is
-$l = {\rm path}/2$ with ${\rm path} = {\rm path\_in\_kernel\_radii}\,
-\gamma_K h$ (physical); at mode 3 the length is Grackle's own local
-Jeans length instead. Dust extinction and H2 self-shielding use
-different lengths on purpose: the dust column is local to the
-receiver's own resolution element, while H2 self-shielding needs the
-scale over which the H2 column actually forms (the Jeans length at mode
-3); collapsing both onto one common length would cost accuracy in
-whichever regime it is not tuned for.
-
-\textbf{Dose reservoir.} A gas particle usually sits on a finer time
-bin than its star. Depositing the whole star-step energy in one lump
-would produce a sawtooth in $u_j$ between star visits, with cooling
-reading the trough. Instead the deposit goes into a per-particle,
-per-band reservoir $R_{b,j}$ (an energy per unit gas mass), and the star's visit
-extends the reservoir's drain horizon $t_{{\rm end},j}$ to at least one
-star step past the visit:
-\begin{equation}
-  R_{b,j} \mathrel{+}= \frac{\Delta E_{b,j}}{m_j} , \qquad
-  t_{{\rm end},j} \leftarrow \max\!\big(t_{{\rm end},j},\; t + \Delta t_\star\big) .
-  \label{eq:fuv-reservoir}
-\end{equation}
-Any number of stars on any time bins add into the same reservoir. At
-the start of each of its own steps the particle drains a fraction of
-the reservoir into a source rate that is constant over the step,
-\begin{equation}
-  \phi_j = \min\!\left(1,\;\frac{\Delta t_j}{t_{{\rm end},j} - t}\right) ,
-  \qquad
-  \dot s_{b,j} = \frac{\phi_j\,R_{b,j}}{\Delta t_j} , \qquad
-  R_{b,j} \leftarrow (1-\phi_j)\,R_{b,j} ,
-  \label{eq:fuv-drain}
-\end{equation}
-which empties the reservoir exactly at the horizon and keeps the rate
-constant across the particle's sub-steps between visits. The rate
-enters the relaxation update of $u$ as a frozen source, rescaled by
-$c_{\rm hyp}/c$ there (Eq.~\ref{eq:fuv-u-update}); the reservoir itself
-holds the unrescaled physical dose. If a particle's neighbour search
-fails on a step, the drawn amount is returned to the reservoir. The
-reservoir is specific to the particle mass at deposit time and is not
-rescaled if that mass later changes.
-
-\textbf{Illumination window.} A visit also marks the particle as
-illuminated for two star steps and, on the first visit only,
-synchronises the particle's time step so that it integrates the deposit
-promptly. The mark expires once no star has renewed it for two star
-steps; with propagation on the expiry has no effect on the field, which
-decays through its own equations.
 
 \subsubsection{Spatial operators}
 \label{sec:fuv-operators}
@@ -1776,12 +1826,126 @@ against $U_i$, which carries the same weight, so converting it would
 introduce a bias rather than remove one.
 
 The smoothing length in Eq.~\ref{eq:fuv-chyp} and in the dissipation
-formulas is the physical one, $a\,h$; $\Delta t$ is proper time; the
-expansion enters only through the $H$ terms derived in
-Section~\ref{sec:fuv-lagrangian}, folded into the relaxation depth of
-Eq.~\ref{eq:fuv-phi} so that the homogeneous decay stays exact at any
-$H\Delta t$. The injection column of Eq.~\ref{eq:fuv-extinction} is
-converted to physical units before the exponential.
+formulas is the physical one, $a\,h$; $\Delta t$ is proper time.
+
+\textbf{The star's feedback window.} $\Delta t_\star$ in
+Eq.~\ref{eq:fuv-inject} is proper time, but a star's own integer
+timestep is stored as a time-bin width in $\ln a$ under cosmology, not
+in $t$: \code{get\_timestep()} returns $\Delta(\ln a)$, not $\Delta t$.
+\code{radiation\_iact\_nonsym\_feedback\_apply()}
+(\code{radiation\_iact.h}) therefore branches on \code{with\_cosmology}
+and calls \code{cosmology\_get\_delta\_time()} on the star's own
+$[t_{\rm begin}, t_{\rm begin}+\delta t)$ interval instead, the same
+branch \code{feedback\_common.c}'s \code{compute\_time()} takes for
+every other star-feedback channel this module shares a time step with.
+Over one step $d(\ln a)/dt = H$, so using $\Delta(\ln a)$ in place of
+$\Delta t_\star$ would scale every deposited dose (Eq.~\ref{eq:fuv-inject})
+by
+\begin{equation}
+  \frac{\Delta(\ln a)}{\Delta t_\star} \to H(a) \quad (\Delta t_\star\to0) ,
+  \label{eq:fuv-cosmo-window}
+\end{equation}
+instead of leaving it at $1$: at $z=9$ ($a=0.1$), $H(z=9) = 1.18872$ in
+the code's internal unit system, an order-unity bias on every deposit
+over the redshift range this module targets, not a rounding error.
+
+\textbf{The dose reservoir.} Both the particle's own step, $\Delta t_j$
+in Eq.~\ref{eq:fuv-drain}, and the reservoir's remaining drain horizon,
+$t_{{\rm end},j}-t$ in Eqs.~\ref{eq:fuv-reservoir}--\ref{eq:fuv-drain},
+are proper-time differences under cosmology and plain code-time
+differences otherwise; both branches sit in
+\code{radiation\_snapshot\_part\_propagation()}
+(\code{radiation\_isrf.c}), which forms $\Delta t_j$ from
+\code{cosmology\_get\_delta\_time()} on the particle's own step and the
+drain horizon's remaining time the same way, from the step's start to
+\code{ISRF\_reservoir\_end\_ti}. A drain horizon has to be proper time
+because it marks a physical duration: the reservoir must empty over the
+same number of seconds the deposited energy represents, so that
+$\dot s_{b,j} = \phi_j R_{b,j}/\Delta t_j$ (Eq.~\ref{eq:fuv-drain}) stays
+an energy per unit proper time, the quantity the relaxation update
+(Eq.~\ref{eq:fuv-u-update}) integrates against. A $\ln a$ interval used
+for either difference would silently change how fast the reservoir
+drains without changing how much energy it holds, over- or
+under-draining it relative to the number of physical star and gas steps
+that actually elapsed.
+
+\textbf{The extinction path is comoving.} $\ell_{j\star}$
+(Section~\ref{sec:fuv-injection}) is returned comoving by every branch
+of \code{radiation\_get\_comoving\_extinction\_path()}: a kernel support
+radius, a pair separation or a temperature-capped Jeans length, all
+built from comoving inputs.
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part()} forms
+the comoving product $\ell_{j\star}\,\rho_j$ from this length and the
+comoving density with no conversion of either;
+\code{radiation\_get\_part\_ISRF\_extinction\_factors()} then converts
+that product to the physical column density Eq.~\ref{eq:fuv-extinction}
+needs,
+\begin{equation}
+  \Sigma_{j\star} = a^{-2}\,\big(\ell_{j\star}\,\rho_j\big)_{\rm comoving} ,
+  \label{eq:fuv-cosmo-extinction}
+\end{equation}
+one power of $a$ from the comoving-to-physical length and $a^{-3}$ from
+the comoving-to-physical density
+(Eq.~\ref{eq:fuv-cosmo-conventions}), applied once, to the product,
+rather than to each factor separately.
+
+\textbf{Expansion enters the transport, not the injection.} The single
+power of $H$ derived in Section~\ref{sec:fuv-lagrangian} is dilated by
+$c_{\rm hyp}/c$ and folded into the relaxation depth,
+\begin{equation}
+  a_i = \big(c_{{\rm hyp},i}\,\kappa\rho_i + H_{\rm dilated}\big)\,\Delta t_i ,
+  \qquad H_{\rm dilated} = \frac{c_{{\rm hyp},i}}{c}\,H ,
+  \label{eq:fuv-cosmo-relax-depth}
+\end{equation}
+the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
+\code{radiation\_end\_gradient\_propagation()} (the flux update,
+Eq.~\ref{eq:fuv-F-update}) and \code{radiation\_end\_force\_propagation()}
+(the energy update, Eq.~\ref{eq:fuv-u-update}). $H$ enters
+\emph{only} through $a_i$: it changes the decay $e^{-a_i}$ and the
+weight $\varphi(a_i) = (1-e^{-a_i})/a_i$
+(\code{radiation\_relaxation\_phi\_factor()}) that both the transport
+divergence and the rescaled source rate are multiplied by in
+Eq.~\ref{eq:fuv-u-update}, and it changes nothing else: the deposited
+dose (Eq.~\ref{eq:fuv-inject}) and the reservoir drawdown
+(Eq.~\ref{eq:fuv-drain}) carry no $H$ anywhere in their own definitions.
+This is the only place expansion touches the band energy, so injection
+cannot test it: with propagation off (Section~\ref{sec:fuv-instantaneous})
+$a_i$ is never formed at all, and with propagation on but
+$\kappa\rho \gg (c_{\rm hyp}/c)H$ -- true for any gas above the most
+diffuse, metal-poor tail this module targets -- the $H$ term is a small
+correction to an absorption rate that already dominates $a_i$; isolating
+it needs the opposite limit, $\kappa\to0$, specifically (the
+"Consequence of the undilated form" paragraph of
+Section~\ref{sec:fuv-lagrangian} uses exactly that limit).
+
+\textbf{A grey approximation.} Eq.~\ref{eq:fuv-cosmo-relax-depth}
+applies one expansion term, $H$, to the whole $6$--$13.6$\,eV PE band
+and the whole $11.2$--$13.6$\,eV LW band alike: it is the transport a
+comoving-frequency treatment would give if each band's edges redshifted
+along with the photons inside it. The rest of the model assumes
+physical, fixed band edges instead: the PE and LW dust cross-sections
+of Section~\ref{sec:fuv-opacity}, the split at $11.2$\,eV, and the fixed
+reference photon energy $E_{\rm LW}=12$\,eV of Eq.~\ref{eq:fuv-kdiss} are
+all evaluated at fixed physical photon energies, not comoving ones. The
+two are therefore inconsistent with each other, and this is a different
+regime from the single-photon-lifetime migration bounded and neglected
+in Section~\ref{sec:fuv-assumptions} ("Spectral migration across the
+band edges from expansion"): that bound covers one photon's frequency
+drift before its own absorption, short against a Hubble time; here the
+relevant interval is the whole run, over which the same band-wide $H$
+is applied by construction at every step through
+Eq.~\ref{eq:fuv-cosmo-relax-depth}. The cumulative size of that
+inconsistency is bounded by the relaxation depth's own cosmological
+contribution integrated over the run,
+$(c_{\rm hyp}/c)\ln(a_f/a_i)$, small under any reduced speed of light far
+below $c$ for the same reason every other cosmological transient the
+reduced speed slows down is small, but the bound is on the size of the
+term being applied grey, not a measurement of the resulting band-energy
+error, and no specific correction factor is established here. A
+per-band or spectrally resolved treatment, carrying an explicit transfer
+across each band edge as photons redshift through it, is the physically
+correct form; it is not implemented, and this is a known approximation
+of the shipped scheme, not an oversight.
 
 \subsubsection{Runtime parameters}
 \label{sec:fuv-parameters}
