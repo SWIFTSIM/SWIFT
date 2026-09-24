@@ -38,13 +38,20 @@
 #endif
 
 /**
- * @brief The two non-ionizing radiation moments the ISRF module transports:
- * PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV) specific energy. Indexes
- * #feedback_part_data.isrf_moment and #feedback_spart_data.radiation.L_band.
+ * @brief The three moments the ISRF module transports: PE (6-11.2 eV) and
+ * Lyman-Werner (11.2-13.6 eV) specific energy, and the Lyman-Werner band's
+ * photon-number moment. Indexes #feedback_part_data.isrf_moment and
+ * #feedback_spart_data.radiation.L_band.
+ *
+ * #ISRF_MOMENT_LW_PHOTON shares #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW
+ * (#radiation_isrf_moment_to_operator below): it carries the same field as
+ * #ISRF_MOMENT_LW, at a fixed reference photon energy, so its own opacity,
+ * M1 closure and dissipation state are never independent of LW's.
  */
 enum radiation_isrf_moment {
   ISRF_MOMENT_PE = 0,
   ISRF_MOMENT_LW,
+  ISRF_MOMENT_LW_PHOTON,
   ISRF_MOMENT_COUNT
 };
 
@@ -76,7 +83,7 @@ enum radiation_isrf_operator {
  * compile error rather than a silent zero-fill.
  */
 static const enum radiation_isrf_operator radiation_isrf_moment_to_operator[] =
-    {ISRF_OPERATOR_PE, ISRF_OPERATOR_LW};
+    {ISRF_OPERATOR_PE, ISRF_OPERATOR_LW, ISRF_OPERATOR_LW};
 
 _Static_assert(sizeof(radiation_isrf_moment_to_operator) /
                        sizeof(radiation_isrf_moment_to_operator[0]) ==
@@ -668,7 +675,9 @@ struct feedback_spart_data {
         L_PE/L_LW (or Integrated_L_PE/Integrated_L_LW) datasets, which
         carry the band split directly. Feeds the injection term; only
         computed when GEARFeedback:with_interstellar_radiation_field is on, 0
-        otherwise. */
+        otherwise. #ISRF_MOMENT_LW_PHOTON is set equal to #ISRF_MOMENT_LW: it
+        is energy-equivalent in erg/s like every other entry, not a photon
+        rate, so no new unit handling applies to it. */
     double L_band[ISRF_MOMENT_COUNT];
 
     /*! Photospheric effective temperature (internal units), a
