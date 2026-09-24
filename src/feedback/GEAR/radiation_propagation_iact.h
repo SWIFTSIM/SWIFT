@@ -321,10 +321,10 @@ radiation_cache_m1_closure_part(struct part *p) {
 
   struct feedback_part_data *fd = &p->feedback_data;
   const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : fd->c_hyp;
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    const int m = radiation_isrf_operator_owner[o];
     const struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
-    struct feedback_isrf_operator_data *op =
-        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
     radiation_get_m1_closure_tensor_band(moment->u, moment->specific_flux, c_M,
                                          op->m1_closure_D);
   }
@@ -430,10 +430,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
   fdj->max_ngb_time_bin = max(fdj->max_ngb_time_bin, pi->time_bin);
 
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    const int m = radiation_isrf_operator_owner[o];
     const struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
     const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
-    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
     struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
     struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
@@ -485,11 +485,11 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
 
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
 
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    const int m = radiation_isrf_operator_owner[o];
     const struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
     const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
-    struct feedback_isrf_operator_data *op_i =
-        &fdi->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
 
     /* Particle j is not written here, so discard its side of the pair. */
     float unused_ngb_mean_abs_u_V = 0.f;

@@ -490,11 +490,26 @@ float radiation_relaxation_phi_factor(float a) {
 }
 
 /**
- * @brief M1 flux limiter for one particle, one band:
- * `F <- F*min(1, c_M*u/|F|)` for `u > 0`,
- * `F <- 0` for `u <= 0`. Enforces the reduced-flux closure's guarantee
- * (the interior field is
- * `|F|/c_M`, not more) against whatever `u` this call is given.
+ * @brief The three mutually exclusive outcomes of the M1 flux limiter,
+ * split out so the operator that shares a limiter decision across several
+ * moments (#radiation_end_gradient_propagation) applies the exact same
+ * branch to each of them, rather than a value that happens to be
+ * algebraically equivalent.
+ */
+enum radiation_isrf_flux_limiter_state {
+  ISRF_LIMITER_ZERO, /*!< `u <= 0`: every flux component is zeroed. */
+  ISRF_LIMITER_SKIP, /*!< `|F|^2 <= 0`: left untouched, no multiply. */
+  ISRF_LIMITER_SCALE /*!< Scaled by #scale below. */
+};
+
+/**
+ * @brief M1 flux limiter decision for one particle, one band:
+ * `F <- F*min(1, c_M*u/|F|)` for `u > 0`, `F <- 0` for `u <= 0`. Enforces
+ * the reduced-flux closure's guarantee (the interior field is `|F|/c_M`,
+ * not more) against whatever `u` this call is given. Split from the apply
+ * half (#radiation_apply_flux_limiter_band) so a scale computed once, from
+ * one band, can be applied identically to another band that shares this
+ * band's operator.
  *
  * Guarded rather than relying on algebraic cancellation: `F = 0` under
  * `u > 0` needs no division at all (scaling the zero vector is still
@@ -507,26 +522,57 @@ float radiation_relaxation_phi_factor(float a) {
  * @param c_M This particle's own #feedback_part_data.c_hyp, or 1 under
  * #isrf_c_hyp_consistent_variable_c (`F` is then already the reduced flux
  * `Ft = F_true/c_hyp`, whose own bound is `|Ft| <= u`).
- * @param F (in/out) This particle's tracked flux (this band).
+ * @param F This particle's tracked flux (this band), unmodified.
+ * @param scale (return) The multiplier to apply, valid only when the
+ * return value is #ISRF_LIMITER_SCALE.
+ * @return Which of the three outcomes applies.
  */
-__attribute__((always_inline)) INLINE static void
-radiation_apply_flux_limiter_band(float u, float c_M, float F[3]) {
+__attribute__((
+    always_inline)) INLINE static enum radiation_isrf_flux_limiter_state
+radiation_compute_flux_limiter_scale_band(float u, float c_M, const float F[3],
+                                          float *scale) {
 
-  if (u <= 0.f) {
-    F[0] = 0.f;
-    F[1] = 0.f;
-    F[2] = 0.f;
-    return;
-  }
+  if (u <= 0.f) return ISRF_LIMITER_ZERO;
 
   const double F2 = (double)F[0] * (double)F[0] + (double)F[1] * (double)F[1] +
                     (double)F[2] * (double)F[2];
-  if (F2 <= 0.) return;
+  if (F2 <= 0.) return ISRF_LIMITER_SKIP;
 
-  const float limiter = (float)min(1., (double)c_M * (double)u / sqrt(F2));
-  F[0] *= limiter;
-  F[1] *= limiter;
-  F[2] *= limiter;
+  *scale = (float)min(1., (double)c_M * (double)u / sqrt(F2));
+  return ISRF_LIMITER_SCALE;
+}
+
+/**
+ * @brief Apply a flux-limiter decision
+ * (#radiation_compute_flux_limiter_scale_band) to one band's flux. A `switch`
+ * on the three states rather than a single scale value, so the
+ * `ISRF_LIMITER_SKIP` case takes no multiply at all, exactly like the unsplit
+ * function this replaces: "scale by 1.0" is the same value but not necessarily
+ * the same instruction sequence under
+ * `-ffast-math`.
+ *
+ * @param state The decision, from #radiation_compute_flux_limiter_scale_band.
+ * @param scale The multiplier, meaningful only under #ISRF_LIMITER_SCALE.
+ * @param F (in/out) This particle's tracked flux (this band).
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
+                                  float scale, float F[3]) {
+
+  switch (state) {
+    case ISRF_LIMITER_ZERO:
+      F[0] = 0.f;
+      F[1] = 0.f;
+      F[2] = 0.f;
+      break;
+    case ISRF_LIMITER_SKIP:
+      break;
+    case ISRF_LIMITER_SCALE:
+      F[0] *= scale;
+      F[1] *= scale;
+      F[2] *= scale;
+      break;
+  }
 }
 
 /**
@@ -919,10 +965,15 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * @brief Exact-relaxation update of #feedback_isrf_moment_data.specific_flux,
  * from the `grad(u)` accumulators radiation_propagation_iact.h filled during
  * the gradient loop from `u^n`, followed by the M1 flux limiter
- * (#radiation_apply_flux_limiter_band) against `u^n`, the same `u` the
- * gradient loop's closure tensor was built from. Runs once per step in the
- * extra ghost, never re-run: the gradient loop itself only runs once per
- * step. Also updates the two negativity-triggered dissipation components,
+ * (#radiation_compute_flux_limiter_scale_band /
+ * #radiation_apply_flux_limiter_band) against `u^n`, the same `u` the
+ * gradient loop's closure tensor was built from. The limiter's scale is
+ * decided once per operator, from its one owning moment
+ * (#radiation_isrf_operator_owner), and applied identically to every moment
+ * that shares that operator, so two such moments cannot be limited by
+ * different factors. Runs once per step in the extra ghost, never re-run:
+ * the gradient loop itself only runs once per step. Also updates the two
+ * negativity-triggered dissipation components,
  * #feedback_isrf_operator_data.dissipation_alpha_trigger
  * (see #radiation_update_dissipation_alpha_band) and
  * #feedback_isrf_operator_data.dissipation_alpha_floor (see
@@ -946,9 +997,9 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * `F = c_hyp*Ft` into the recurrence above and dividing through by the
  * (this-step-constant) `c_hyp` removes exactly one power of it, giving
  * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)`, and the M1 limiter's own bound
- * becomes `|Ft| <= u` (#radiation_apply_flux_limiter_band with `c_M = 1`,
- * matching #radiation_cache_m1_closure_part's own selection for the same
- * scheme).
+ * becomes `|Ft| <= u` (#radiation_compute_flux_limiter_scale_band with
+ * `c_M = 1`, matching #radiation_cache_m1_closure_part's own selection for
+ * the same scheme).
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -983,10 +1034,17 @@ void radiation_end_gradient_propagation(struct part *p,
   const float eps_R =
       e->feedback_props->ISRF_dissipation_floor_relaxation_residual;
 
+  /* Pre-update flux, kept per OPERATOR (not per moment): the floor's
+   * relaxation-residual gate below is evaluated once per operator, from
+   * its one owning moment, so only the owner's snapshot is ever read back.
+   * Written from the moment loop below, guarded to the owner so a moment
+   * that merely shares an operator cannot overwrite its owner's value. */
+  float F_old_stash[ISRF_OPERATOR_COUNT][3];
+
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
-    struct feedback_isrf_operator_data *op =
-        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    const int o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
 
     /* H_dilated is this particle's own scalar, not looked up per operator:
      * see #radiation_end_force_propagation's matching comment. */
@@ -1001,20 +1059,43 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Snapshot for the floor's relaxation-residual gate below: `u^n` was
      * produced from THIS flux, not the one about to be computed. */
-    const float F_old[3] = {moment->specific_flux[0], moment->specific_flux[1],
-                            moment->specific_flux[2]};
+    if (m == (int)radiation_isrf_operator_owner[o]) {
+      F_old_stash[o][0] = moment->specific_flux[0];
+      F_old_stash[o][1] = moment->specific_flux[1];
+      F_old_stash[o][2] = moment->specific_flux[2];
+    }
 
     for (int k = 0; k < 3; k++) {
       moment->specific_flux[k] =
           decay * moment->specific_flux[k] - coeff * moment->grad_u[k];
     }
 
-    radiation_apply_flux_limiter_band(moment->u, c_M, moment->specific_flux);
-
     /* Zeroed here rather than in the drift snapshot, unlike dissipation_u:
      * every drift, including the one before a snapshot dump, would otherwise
      * blank the PE/LWSpecificFluxDivergences output field. */
     moment->div_specific_flux = 0.f;
+  }
+
+  /* The flux-limiter decision and the two dissipation coefficients are
+   * OPERATOR state: computed once per operator, from its one owning
+   * moment, then applied to every moment that shares it (the moment loop
+   * below). An operator-bounded loop can only run #ISRF_OPERATOR_COUNT
+   * times per particle, so this cannot turn into a last-writer-wins or a
+   * self-referential re-entry the way a moment-bounded loop over the same
+   * writes would once a second moment shares an operator. */
+  enum radiation_isrf_flux_limiter_state limiter_state[ISRF_OPERATOR_COUNT];
+  float limiter_scale[ISRF_OPERATOR_COUNT];
+
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+    const int m = radiation_isrf_operator_owner[o];
+    const struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
+
+    /* The just-updated, still-unlimited flux: the moment loop above has
+     * already run to completion, so #radiation_apply_flux_limiter_band has
+     * not yet touched this moment's flux. */
+    limiter_state[o] = radiation_compute_flux_limiter_scale_band(
+        moment->u, c_M, moment->specific_flux, &limiter_scale[o]);
 
     const float u_V = fd->rho_prev * moment->u;
 
@@ -1042,11 +1123,20 @@ void radiation_end_gradient_propagation(struct part *p,
        * value (`s <= 1`), computed from the incoming flux snapshotted
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
-          F_old, moment->grad_u, c_hyp, op->kappa, H, c, eps_R);
+          F_old_stash[o], moment->grad_u, c_hyp, op->kappa, H, c, eps_R);
       op->dissipation_alpha_floor =
           s * radiation_dissipation_alpha_floor_band(op->kappa, h_phys,
                                                      alpha_floor, eps_lambda);
     }
+  }
+
+  /* Apply each operator's shared limiter decision to every moment that
+   * reads it, including a non-owner moment: the decision was computed
+   * once above, from the owner alone. */
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const int o = radiation_isrf_moment_to_operator[m];
+    radiation_apply_flux_limiter_band(limiter_state[o], limiter_scale[o],
+                                      fd->isrf_moment[m].specific_flux);
   }
 }
 

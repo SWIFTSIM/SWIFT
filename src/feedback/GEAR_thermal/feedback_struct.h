@@ -60,25 +60,59 @@ enum radiation_isrf_operator {
   ISRF_OPERATOR_COUNT
 };
 
-_Static_assert((int)ISRF_MOMENT_COUNT == (int)ISRF_OPERATOR_COUNT,
-               "radiation_isrf_moment_to_operator below is hand-written for "
-               "this identity case only; extend it before raising either "
-               "count.");
-
 /**
  * @brief Compile-time moment -> operator map: which #radiation_isrf_operator
  * each #radiation_isrf_moment reads its opacity/closure/dissipation
- * coefficients from. Identity today (#ISRF_MOMENT_COUNT ==
- * #ISRF_OPERATOR_COUNT); a later moment can point at an operator an earlier
- * moment already owns instead of getting its own. The cosmological
- * redshift residual is NOT looked up through this map: every consumer
- * evaluates it once per particle, not per operator, at each moment's own
- * update site, so two moments sharing one operator can still carry
- * different residuals.
+ * coefficients from. A moment can point at an operator an earlier moment
+ * already owns instead of getting its own. The cosmological redshift
+ * residual is NOT looked up through this map: every consumer evaluates it
+ * once per particle, not per operator, at each moment's own update site,
+ * so two moments sharing one operator can still carry different residuals.
+ *
+ * Declared unsized: for a sized array, sizeof(a)/sizeof(a[0]) equals the
+ * declared count regardless of how many initialisers were written, so a
+ * length assert against a sized array is vacuous. Unsized, the array's
+ * size comes from the initialiser list itself, so a missing entry is a
+ * compile error rather than a silent zero-fill.
  */
-static const enum radiation_isrf_operator
-    radiation_isrf_moment_to_operator[ISRF_MOMENT_COUNT] = {ISRF_OPERATOR_PE,
-                                                            ISRF_OPERATOR_LW};
+static const enum radiation_isrf_operator radiation_isrf_moment_to_operator[] =
+    {ISRF_OPERATOR_PE, ISRF_OPERATOR_LW};
+
+_Static_assert(sizeof(radiation_isrf_moment_to_operator) /
+                       sizeof(radiation_isrf_moment_to_operator[0]) ==
+                   ISRF_MOMENT_COUNT,
+               "radiation_isrf_moment_to_operator needs one entry per "
+               "ISRF_MOMENT_COUNT.");
+
+/**
+ * @brief Compile-time operator -> owning-moment map, the reverse of
+ * #radiation_isrf_moment_to_operator: which moment's state a WRITER to an
+ * operator field must read, when several moments share that operator.
+ *
+ * Every site that writes an #feedback_isrf_operator_data field must loop
+ * over operators and fetch its one owning moment's data through this map,
+ * rather than looping over moments and writing through the forward map: a
+ * loop bounded by #ISRF_OPERATOR_COUNT can physically only touch each
+ * operator once per particle, so a later moment sharing an operator cannot
+ * turn an assignment into last-writer-wins or an accumulation into a
+ * double count.
+ *
+ * Each entry MUST be the FIRST (lowest-index) moment that maps to that
+ * operator: a bare round trip through the forward map accepts any sharer,
+ * not only the first, so it cannot tell a correct entry from a wrong one
+ * when two moments share an operator. #feedback_check_isrf_operator_owner_map()
+ * checks the stronger property this map actually needs.
+ *
+ * Declared unsized for the same reason as the forward map above.
+ */
+static const enum radiation_isrf_moment radiation_isrf_operator_owner[] = {
+    ISRF_MOMENT_PE, ISRF_MOMENT_LW};
+
+_Static_assert(sizeof(radiation_isrf_operator_owner) /
+                       sizeof(radiation_isrf_operator_owner[0]) ==
+                   ISRF_OPERATOR_COUNT,
+               "radiation_isrf_operator_owner needs one entry per "
+               "ISRF_OPERATOR_COUNT.");
 
 /**
  * @brief Per-moment ISRF transport state carried by each hydro particle,
@@ -257,11 +291,12 @@ struct feedback_isrf_operator_data {
       (#radiation_get_part_ISRF_extinction_factors). */
   float kappa;
 
-  /*! M1 closure tensor `D(f)` from the moment's own
-     #feedback_isrf_moment_data.u, #feedback_isrf_moment_data.specific_flux and
-     #feedback_part_data.c_hyp, cached by #radiation_cache_m1_closure_part
-     (drift-time reset and, once #c_hyp itself is known, the density ghost) so
-     the gradient loop reads it per pair without rebuilding it. */
+  /*! M1 closure tensor `D(f)` from the owning moment's own
+     #feedback_isrf_moment_data.u, #feedback_isrf_moment_data.specific_flux
+     (#radiation_isrf_operator_owner) and #feedback_part_data.c_hyp, cached
+     by #radiation_cache_m1_closure_part (drift-time reset and, once #c_hyp
+     itself is known, the density ghost) so the gradient loop reads it per
+     pair without rebuilding it. */
   float m1_closure_D[3][3];
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop

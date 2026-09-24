@@ -1510,6 +1510,13 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
+  /* The two ISRF operator/moment maps are compile-time constants, so
+   * feedback_props_init()'s own check of them applies unchanged here; it
+   * does not run on a restart, so its call is mirrored explicitly. */
+  feedback_check_isrf_operator_owner_map(
+      radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
+      radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
+
   /* #isrf_c_hyp_consistent_variable_c is a process-global, not a
    * feedback_props field, so the flat block read above does not touch it;
    * it stays at its zero-initialized value unless re-derived here from the

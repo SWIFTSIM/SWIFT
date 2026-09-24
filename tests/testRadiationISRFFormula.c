@@ -21,6 +21,8 @@
 /* Some standard headers. */
 #include <math.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* Local headers. */
 #include "feedback/GEAR/radiation_iact.h"
@@ -874,6 +876,115 @@ static void check_local_dust_to_gas_ratio_scaling(
 }
 
 /* ---------------------------------------------------------------------
+ * Operator/moment owner map: #feedback_check_isrf_operator_owner_map()'s
+ * range and ownership checks. GCC rejects indexing one file-scope array by
+ * a value read from another inside a _Static_assert, so this is a runtime
+ * check, exercised both on the real maps and, via fork(), on synthetic
+ * maps a bare round trip would accept but the ownership check must not.
+ * ------------------------------------------------------------------- */
+
+/**
+ * @brief Run @p forward / @p owner through
+ * #feedback_check_isrf_operator_owner_map() in a forked child, so a
+ * rejection (error(), exit 1 or SIGABRT under SWIFT_DEVELOP_MODE) can be
+ * observed without aborting the whole test binary, per the
+ * #testRadiationISRFForceDispatchConservation.c:945 pattern.
+ *
+ * @param label Message label for a failure report.
+ * @param forward Moment->operator map to feed the check.
+ * @param n_moments Number of entries in @p forward.
+ * @param owner Operator->owner map to feed the check.
+ * @param n_operators Number of entries in @p owner.
+ * @param expect_reject 1 if this map pair must be rejected, 0 if it must
+ * be accepted.
+ */
+static void assert_operator_owner_map_check(
+    const char *label, const enum radiation_isrf_operator *forward,
+    int n_moments, const enum radiation_isrf_moment *owner, int n_operators,
+    int expect_reject) {
+
+  const pid_t pid = fork();
+  if (pid == 0) {
+    /* Child process: silence stderr (the error() message is expected
+     * output for a reject case, not a test failure), then run the check. */
+    if (freopen("/dev/null", "w", stderr) == NULL) _exit(43);
+    feedback_check_isrf_operator_owner_map(forward, n_moments, owner,
+                                           n_operators);
+    _exit(0);
+  } else if (pid > 0) {
+    int status;
+    waitpid(pid, &status, 0);
+    const int exited_clean = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    const int exited_with_error = WIFEXITED(status) && WEXITSTATUS(status) == 1;
+    const int aborted = WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT;
+    const int rejected = exited_with_error || aborted;
+    message("%s: child WIFEXITED=%d WEXITSTATUS=%d WIFSIGNALED=%d WTERMSIG=%d",
+            label, WIFEXITED(status),
+            WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status),
+            WIFSIGNALED(status) ? WTERMSIG(status) : -1);
+    if (expect_reject && !rejected)
+      error("%s: expected the check to reject this map pair, it did not.",
+            label);
+    if (!expect_reject && !exited_clean)
+      error("%s: expected the check to accept this map pair, it rejected.",
+            label);
+  } else {
+    error("fork() failed in the operator/owner map check test.");
+  }
+}
+
+static void check_operator_owner_map(void) {
+
+  /* The real maps must pass, in-process (no fork needed: nothing here is
+   * expected to reject). */
+  feedback_check_isrf_operator_owner_map(
+      radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
+      radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
+  message("operator/moment owner map OK on the real (two-entry) maps");
+
+  /* Non-owning sharer: three moments, PE and two moments sharing LW ({PE,
+   * LW, LW}), with the owner map naming moment 2, the NON-owning sharer, as
+   * LW's owner. A bare round trip (forward[owner[LW]] == LW) PASSES this,
+   * since forward[2] is also LW; only the first-moment invariant catches
+   * it. This is the exact configuration a third moment sharing an
+   * existing operator introduces. */
+  const enum radiation_isrf_operator forward_shared[] = {
+      ISRF_OPERATOR_PE, ISRF_OPERATOR_LW, ISRF_OPERATOR_LW};
+  const enum radiation_isrf_moment owner_non_owning_sharer[] = {
+      ISRF_MOMENT_PE, (enum radiation_isrf_moment)2};
+  assert_operator_owner_map_check("owner names a non-owning sharer (rejected)",
+                                  forward_shared, 3, owner_non_owning_sharer, 2,
+                                  /*expect_reject=*/1);
+
+  /* Same forward map, owner correctly naming moment 1, the FIRST moment
+   * mapping to LW: must be accepted. */
+  const enum radiation_isrf_moment owner_first_sharer[] = {ISRF_MOMENT_PE,
+                                                           ISRF_MOMENT_LW};
+  assert_operator_owner_map_check(
+      "owner names the first-owning sharer (accepted)", forward_shared, 3,
+      owner_first_sharer, 2, /*expect_reject=*/0);
+
+  /* Out-of-range forward entry (7, no such operator for n_operators=2).
+   * The ownership check does not index forward by owner, so only the
+   * forward range check can catch this. */
+  const enum radiation_isrf_operator forward_out_of_range[] = {
+      ISRF_OPERATOR_PE, ISRF_OPERATOR_LW, (enum radiation_isrf_operator)7};
+  assert_operator_owner_map_check(
+      "out-of-range moment->operator entry (rejected)", forward_out_of_range, 3,
+      owner_first_sharer, 2, /*expect_reject=*/1);
+
+  /* Out-of-range owner entry (5, no such moment for n_moments=3). The
+   * range checks run to completion before the ownership check even
+   * starts, so this is caught before any read of forward indexed by
+   * owner. */
+  const enum radiation_isrf_moment owner_out_of_range[] = {
+      ISRF_MOMENT_PE, (enum radiation_isrf_moment)5};
+  assert_operator_owner_map_check(
+      "out-of-range operator->owner entry (rejected)", forward_shared, 3,
+      owner_out_of_range, 2, /*expect_reject=*/1);
+}
+
+/* ---------------------------------------------------------------------
  * Energy-ledger accumulation (#feedback_isrf_moment_data.cumulative_injected/
  * cumulative_absorbed, SWIFT_DEBUG_CHECKS only): #radiation_end_force_
  * propagation's own I/A split, driven for two steps and checked against a
@@ -993,6 +1104,8 @@ int main(int argc, char *argv[]) {
   check_grackle_coupling(&us);
 
   check_local_dust_to_gas_ratio_scaling(&us);
+
+  check_operator_owner_map();
 
 #ifdef SWIFT_DEBUG_CHECKS
   check_energy_ledger_accumulation();

@@ -197,10 +197,19 @@ static void test_eps_R_zero_disables_gate(void) {
   make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., alpha_floor, /*eps_R=*/0.f);
 
   const float zero[3] = {0.f, 0.f, 0.f};
-  const float kappa[ISRF_MOMENT_COUNT] = {1.f, 0.f};
+  /* Indexed by moment (the loop below is `b < ISRF_MOMENT_COUNT`, and
+   * set_band() takes a moment index), not by operator: unsized, so a
+   * missing entry at a higher ISRF_MOMENT_COUNT is a compile error rather
+   * than a silent zero-fill, per the pattern already used for the two
+   * operator/moment maps (feedback_struct.h). */
+  const float kappa[] = {1.f, 0.f};
+  _Static_assert(sizeof(kappa) / sizeof(kappa[0]) == ISRF_MOMENT_COUNT,
+                 "kappa needs one entry per ISRF_MOMENT_COUNT.");
   /* h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4).
    */
-  const float expected[ISRF_MOMENT_COUNT] = {alpha_floor / 17.f, alpha_floor};
+  const float expected[] = {alpha_floor / 17.f, alpha_floor};
+  _Static_assert(sizeof(expected) / sizeof(expected[0]) == ISRF_MOMENT_COUNT,
+                 "expected needs one entry per ISRF_MOMENT_COUNT.");
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
