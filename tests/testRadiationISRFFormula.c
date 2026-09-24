@@ -43,17 +43,16 @@ static void make_test_units(struct unit_system *us) {
              /*U_T_in_cgs=*/1.0);
 }
 
-/* radiation_iact_nonsym_feedback_apply() reads Delta_t from a cache that
+/* radiation_iact_nonsym_feedback_apply() reads the cache that
  * feedback_prepare_radiation_feedback() normally fills once per star per
- * step; these direct-call tests stand in for that ghost-task step. */
-static void feedback_star_store_timestep(struct spart *sp, const integertime_t ti_current,
-                             const double time_base) {
-  sp->feedback_data.radiation.Delta_t =
-      (float)get_timestep(sp->time_bin, time_base);
-#ifdef SWIFT_DEBUG_CHECKS
-  sp->feedback_data.radiation.Delta_t_cached_ti_begin =
-      get_integer_time_begin(ti_current, sp->time_bin);
-#endif
+ * step. These direct-call tests stand in for that ghost-task step, calling
+ * the production store so a change to it cannot silently bypass them. */
+static void prime_star_timestep(struct spart *sp,
+                                const integertime_t ti_current,
+                                const double time_base) {
+  feedback_star_store_timestep(
+      sp, get_timestep(sp->time_bin, time_base),
+      get_integer_time_begin(ti_current, sp->time_bin));
 }
 
 static void assert_close(const char *name, double actual, double expected,
@@ -246,7 +245,7 @@ static void check_injection(const struct unit_system *us) {
   si.feedback_data.enrichment_weight = rho_star;
   si.feedback_data.radiation.L_band[ISRF_MOMENT_PE] = 1.0e5;
   si.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 5.0e4;
-  feedback_star_store_timestep(&si, /*ti_current=*/0, time_base);
+  prime_star_timestep(&si, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -286,7 +285,7 @@ static void check_injection(const struct unit_system *us) {
   si2.feedback_data.enrichment_weight = rho_star;
   si2.feedback_data.radiation.L_band[ISRF_MOMENT_PE] = 2.0e5;
   si2.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 1.0e5;
-  feedback_star_store_timestep(&si2, /*ti_current=*/0, time_base);
+  prime_star_timestep(&si2, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si2, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -323,7 +322,7 @@ static void check_injection(const struct unit_system *us) {
   si3.feedback_data.enrichment_weight = rho_star;
   si3.feedback_data.radiation.L_band[ISRF_MOMENT_PE] = 4.0e5;
   si3.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 3.0e4;
-  feedback_star_store_timestep(&si3, /*ti_current=*/1, time_base);
+  prime_star_timestep(&si3, /*ti_current=*/1, time_base);
 
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, /*hj=*/hi, &si3, &pj, &xpj,
                                        &cosmo, /*hydro_props=*/NULL,
@@ -418,7 +417,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   siA.feedback_data.enrichment_weight = rho_star;
   siA.feedback_data.radiation.L_band[ISRF_MOMENT_PE] = 1.0e5;
   siA.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 5.0e4;
-  feedback_star_store_timestep(&siA, /*ti_current=*/0, time_base);
+  prime_star_timestep(&siA, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
@@ -431,7 +430,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   siB.feedback_data.enrichment_weight = rho_star;
   siB.feedback_data.radiation.L_band[ISRF_MOMENT_PE] = 2.0e5;
   siB.feedback_data.radiation.L_band[ISRF_MOMENT_LW] = 1.0e5;
-  feedback_star_store_timestep(&siB, /*ti_current=*/0, time_base);
+  prime_star_timestep(&siB, /*ti_current=*/0, time_base);
 
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siB, &pj, &xpj, &cosmo, /*hydro_props=*/NULL,
@@ -486,7 +485,7 @@ static void check_dose_reservoir(const struct unit_system *us) {
   pk.time_bin = bin_B;
 
   const integertime_t T = 16; /* a boundary of the coarse star's own bin */
-  feedback_star_store_timestep(&siA, /*ti_current=*/T, time_base);
+  prime_star_timestep(&siA, /*ti_current=*/T, time_base);
   radiation_iact_nonsym_feedback_apply(
       r2, dx, hi, /*hj=*/hi, &siA, &pk, &xpj, &cosmo, /*hydro_props=*/NULL,
       &fb_props, &phys_const, us, &cooling, /*ti_current=*/T, time_base,
