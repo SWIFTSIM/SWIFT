@@ -52,7 +52,7 @@ RHO_MATCH_THRESHOLD = 0.15
 BIN_DT_DISAGREEMENT_THRESHOLD = 0.20
 
 # crit4's ledger bar, ISRFInjectionConservation/isrf_ledger_check.py's own
-# default --tol. Derivation (see REVIEW_multibin_crit4...): Inj and Abs are
+# default --tol. Derivation: Inj and Abs are
 # float32 running totals over ~128 active steps per particle, eps=1.19e-7,
 # giving ~1.19e-7*sqrt(128)/sqrt(262144) = 2.6e-9 statistically and
 # ~1.19e-7*128 = 1.5e-5 if per-particle rounding is fully correlated; 1e-3

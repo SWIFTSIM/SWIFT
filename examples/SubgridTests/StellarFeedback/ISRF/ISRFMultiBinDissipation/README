@@ -90,7 +90,7 @@ accordingly for a finer one.
 
 # Checking
 ```
-python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-pin $c_hyp_pin
+python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-pin $c_hyp_pin --ledger-valid 0|1
 python3 multibin_compare.py --mode gate --s0 s0_dir --m0 m0_dir --m1 m1_dir --m2 m2_dir --m4 m4_dir --m5 m5_dir [--m3 m3_dir]
 python3 multibin_compare.py --mode report --runs dir1 dir2 ...
 ```
@@ -125,13 +125,16 @@ over the last third of the series, void points dropped, and a non-finite
 component fails the precondition instead of shrinking the sample.
 
 The fourth criterion, no excess `sum(m*u)` non-conservation relative to the
-single-bin control, is reported as **BLOCKED and fails the gate**. The
-per-run `fractional_change` is the field's growth under continuous injection,
-not a conservation residual, so it cannot answer the question. The quantity
-that can is the closed ledger residual `|E + Abs - Inj| / |Inj|` that
-`ISRFInjectionConservation` gates, and its two accumulators are written as
-identically zero unless SWIFT is built with `SWIFT_DEBUG_CHECKS`. Until this
-example's runs are made on such a build, the gate cannot return a PASS.
+uniform control, gates the closed ledger residual
+`|E + Abs - Inj| / |Inj|` (the same reduction `ISRFInjectionConservation`
+gates: `R(M1) <= max(R(M0), 1e-3)`, with M2 reported alongside as the
+attribution half), NOT the per-run `fractional_change` field (the field's
+growth under continuous injection, not a conservation residual). This
+needs SWIFT built with `--enable-debugging-checks`: the two accumulators
+it reads are written as identically zero otherwise. `run.sh` detects the
+build from the binary's own `--version` banner and passes
+`--ledger-valid` through automatically; on any other build crit4 is
+skipped, not failed.
 
 A run flagged void or invalid by its own check script is listed on an
 `Excluded from the gate (VOID/INVALID)` line, but still enters every

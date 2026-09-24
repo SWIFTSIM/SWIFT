@@ -337,8 +337,7 @@ def mode_gate(opt):
         # crit4: the closed ledger residual |E + Abs - Inj| / |Inj|, the same
         # reduction ISRFInjectionConservation/isrf_ledger_check.py gates.
         # This is the only sound reference for Sec 6.2's non-conservation
-        # question (see REVIEW_multibin_crit4_and_opticallythin_window):
-        # `fractional_change`, compared previously, is the field's GROWTH
+        # question: `fractional_change`, compared previously, is the field's GROWTH
         # under continuous injection, not a conservation residual, and M0/M1
         # differ in density structure so their growth curves differ for
         # reasons unrelated to conservation. The residual is absolute and
