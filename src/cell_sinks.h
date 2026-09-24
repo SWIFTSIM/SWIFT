@@ -82,8 +82,17 @@ struct cell_sinks {
     /*! Implicit barrier after the gas-gas formation preparation loop */
     struct task *prep_ghost_out;
 
+    /*! Implicit barrier before the gas-vs-existing-sink overlap loop */
+    struct task *prep_ghost_in_sink;
+
+    /*! Implicit barrier after the gas-vs-existing-sink overlap loop */
+    struct task *prep_ghost_out_sink;
+
     /*! Linked list of gas-gas formation preparation tasks (self & pair) */
     struct link *formation_gas;
+
+    /*! Linked list of gas-sink formation preparation tasks (self & pair) */
+    struct link *formation_sink;
 
     /*! Task for star formation from sink particles */
     struct task *star_formation_sink;

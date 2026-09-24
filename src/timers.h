@@ -153,6 +153,10 @@ enum {
   timer_dopair_hydro_aperture_prep_sink_formation,
   timer_dosub_self_hydro_aperture_prep_sink_formation,
   timer_dosub_pair_hydro_aperture_prep_sink_formation,
+  timer_doself_hydro_sink_aperture_prep_sink_formation_sink,
+  timer_dopair_hydro_sink_aperture_prep_sink_formation_sink,
+  timer_dosub_self_hydro_sink_aperture_prep_sink_formation_sink,
+  timer_dosub_pair_hydro_sink_aperture_prep_sink_formation_sink,
   timer_count,
 };
 

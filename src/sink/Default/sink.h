@@ -458,11 +458,12 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param sj A neighbouring #sink of #p.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
+ * @param r_acc_p Accretion radius of #pi if it forms a sink.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const double time) {}
+    const double time, const float r_acc_p) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */

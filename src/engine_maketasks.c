@@ -1894,16 +1894,33 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           c->sinks.prep_ghost_out = scheduler_addtask(
               s, task_type_sink_prep_ghost_out, task_subtype_none, 0,
               /* implicit = */ 1, c, NULL);
+
+          /* The gas-vs-existing-sink overlap loop gets its own dedicated
+             barrier pair rather than sharing prep_ghost_in/out: it is a
+             structurally different (mixed-type) search, so its window is
+             bracketed independently instead of relying on it being safe to
+             interleave with the gas-gas loop's tasks. */
+          c->sinks.prep_ghost_in_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_in_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+          c->sinks.prep_ghost_out_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_out_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
         }
 
         /* Link to the main tasks. When the fixed-aperture gas-gas
            preparation loop is active, kick2 unlocks prep_ghost_in and
-           prep_ghost_out unlocks sink_formation (the formation_gas tasks
-           run in between); otherwise restore the original direct
+           prep_ghost_in_sink (the formation_gas and formation_sink tasks
+           run in their own, independently-bracketed windows), and
+           sink_formation waits for both prep_ghost_out and
+           prep_ghost_out_sink; otherwise restore the original direct
            kick2 -> sink_in edge. */
         if (with_sink_formation_gas) {
           scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in);
+          scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in_sink);
           scheduler_addunlock(s, c->sinks.prep_ghost_out,
+                              c->top->sinks.sink_formation);
+          scheduler_addunlock(s, c->sinks.prep_ghost_out_sink,
                               c->top->sinks.sink_formation);
         } else {
           scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
@@ -2659,6 +2676,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_sink_density = NULL;
   struct task *t_sink_swallow = NULL;
   struct task *t_sink_formation_gas = NULL;
+  struct task *t_sink_formation_sink = NULL;
   struct task *t_rt_gradient = NULL;
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
@@ -2750,6 +2768,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           t_sink_formation_gas = scheduler_addtask(
               sched, task_type_self, task_subtype_sink_formation_gas, flags, 0,
               ci, NULL);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_formation_sink, flags, 0,
+              ci, NULL);
         }
       }
 
@@ -2804,6 +2825,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
         if (with_sink_formation_gas) {
           engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
         }
       }
       if (with_black_holes && bcount_i > 0) {
@@ -2931,6 +2953,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_sink_formation_gas);
           scheduler_addunlock(sched, t_sink_formation_gas,
                               ci->hydro.super->sinks.prep_ghost_out);
+
+          /* Sink formation sink preparation (gas-vs-existing-sink overlap
+             loop). Uses its own dedicated prep_ghost_in_sink/prep_ghost_out_
+             sink barrier pair, not the gas-gas loop's prep_ghost_in/out:
+             the two loops are structurally different (mixed-type search),
+             so each gets an independently-bracketed window. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_formation_sink);
+          /* This search is naive (no sorted scan bounds), so the sort task
+             is not actually needed here; kept only because it is already
+             required by the density loop on any active hydro cell, so it
+             adds no extra serialization. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in_sink,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, t_sink_formation_sink,
+                              ci->hydro.super->sinks.prep_ghost_out_sink);
         }
       }
 
@@ -3081,6 +3123,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           t_sink_formation_gas = scheduler_addtask(
               sched, task_type_pair, task_subtype_sink_formation_gas, flags, 0,
               ci, cj);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_formation_sink, flags, 0,
+              ci, cj);
         }
       }
 
@@ -3163,6 +3208,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_sink_formation_gas) {
           engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
           engine_addlink(e, &cj->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
+          engine_addlink(e, &cj->sinks.formation_sink, t_sink_formation_sink);
         }
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -3311,7 +3358,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, t_sink_do_sink_swallow,
                               ci->hydro.super->sinks.sink_out);
 
-          /* Sink formation gas preparation (gas-gas loop) — ci side */
+          /* Sink formation gas preparation (gas-gas loop), ci side. */
           if (with_sink_formation_gas) {
             scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                                 t_sink_formation_gas);
@@ -3321,6 +3368,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_sink_formation_gas);
             scheduler_addunlock(sched, t_sink_formation_gas,
                                 ci->hydro.super->sinks.prep_ghost_out);
+
+            /* Sink formation sink preparation, ci side. Own dedicated
+               barrier pair, see the self-task block above. Sorts unlock kept
+               only for parity with the density loop's requirement, not
+               needed by this naive (unsorted) search itself. */
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched,
+                                ci->hydro.super->sinks.prep_ghost_in_sink,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, t_sink_formation_sink,
+                                ci->hydro.super->sinks.prep_ghost_out_sink);
           }
         }
 
@@ -3490,7 +3553,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_sink_do_sink_swallow,
                                 cj->hydro.super->sinks.sink_out);
 
-            /* Sink formation gas preparation (gas-gas loop) — cj side */
+            /* Sink formation gas preparation (gas-gas loop), cj side. */
             if (with_sink_formation_gas) {
               scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                                   t_sink_formation_gas);
@@ -3500,6 +3563,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                   t_sink_formation_gas);
               scheduler_addunlock(sched, t_sink_formation_gas,
                                   cj->hydro.super->sinks.prep_ghost_out);
+
+              /* Sink formation sink preparation, cj side. Own dedicated
+                 barrier pair, see the self-task block above. Sorts unlock
+                 kept only for parity with the density loop's requirement,
+                 not needed by this naive (unsorted) search itself. */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->sinks.prep_ghost_in_sink,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, t_sink_formation_sink,
+                                  cj->hydro.super->sinks.prep_ghost_out_sink);
             }
           }
 

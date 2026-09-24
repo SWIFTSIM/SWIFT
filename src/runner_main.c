@@ -131,6 +131,9 @@
 #include "runner_doiact_hydro_aperture.h"
 #include "runner_doiact_undef.h"
 
+/* Import the sink formation sink (overlap) loop function declarations. */
+#include "runner_doiact_hydro_sink_aperture.h"
+
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
@@ -290,6 +293,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_formation_gas)
             runner_dosub_self1_hydro_aperture_prep_sink_formation(
                 r, ci, sink_cut_off_radius, /*gettimer=*/1);
+          else if (t->subtype == task_subtype_sink_formation_sink)
+            runner_dosub_self1_hydro_sink_aperture_prep_sink_formation_sink(
+                r, ci, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -351,6 +357,9 @@ void *runner_main(void *data) {
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_formation_gas)
             runner_dosub_pair1_hydro_aperture_prep_sink_formation(
+                r, ci, cj, sink_cut_off_radius, /*gettimer=*/1);
+          else if (t->subtype == task_subtype_sink_formation_sink)
+            runner_dosub_pair1_hydro_sink_aperture_prep_sink_formation_sink(
                 r, ci, cj, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",

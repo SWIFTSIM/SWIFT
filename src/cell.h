@@ -663,6 +663,8 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        const int with_timestep_sync);
 void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
     struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut);
+void cell_activate_subcell_hydro_sink_aperture_sink_formation_tasks(
+    struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);

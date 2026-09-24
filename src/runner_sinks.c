@@ -480,6 +480,13 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
 
+  /* The fixed-aperture gas-vs-existing-sink loop (task subtype
+     sink_formation_sink, runner_do{self,pair}1_hydro_sink_aperture_prep_
+     sink_formation_sink) is the sole authority for pi->sink_data.
+     is_overlapping_sink when it is active, mirroring runner_iact_sink()'s
+     own use_fixed_r_cut guard. */
+  if (sink_props->use_fixed_r_cut) return;
+
   /* For the sinks, we can loop over all sinks in the space. This is an
      O(N_part_eligible*N_sink) search. We assume that N_sink < N_part, which
      make this brute force search feasible.
@@ -487,6 +494,13 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
    * TODO: In the future, we can optimise by adding a self/pair tasks */
   const int scount = s->nr_sinks;
   struct sink *restrict sinks = s->sinks;
+
+  /* Accretion radius of pi if it forms a sink. It does not depend on sj,
+     so compute it once here and not for each sj. */
+  const float r_acc_p =
+      (sink_props->use_fixed_r_cut ? sink_props->cut_off_radius
+                                   : kernel_gamma * pi->h) *
+      cosmo->a;
 
   for (int j = 0; j < scount; j++) {
 
@@ -498,7 +512,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(
-        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time);
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p);
 
   } /* End of sink neighbour loop */
 }
