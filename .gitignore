@@ -109,6 +109,7 @@ examples/**/CloudyData_UVB=HM2012_shielded.h5
 examples/**/CloudyData_UVB=HM2012_high_density.h5
 examples/**/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
 examples/**/POPIIsw.h5
+examples/**/radiation_fits_popII.hdf5
 examples/**/GRACKLE_INFO
 examples/**/snap/
 examples/SinkParticles/HomogeneousBox/snapshot_0003restart.hdf5
