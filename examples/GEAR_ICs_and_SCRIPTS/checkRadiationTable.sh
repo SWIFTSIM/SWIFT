@@ -161,9 +161,8 @@ if identity is not None:
         )
     sys.stdout.flush()
 
-# Both checks below are independent (a missing dataset says nothing about
-# dimensionality, and vice versa), so both are reported when both apply
-# instead of the first one masking the second.
+# Independent checks: a missing dataset says nothing about dimensionality
+# and vice versa, so both are reported when both apply.
 dimensionality_fails = require_1d and dimensionality not in (None, "M")
 failed = False
 

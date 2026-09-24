@@ -1601,11 +1601,10 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     }
   }
 
-  /* MeanPhotonEnergyLW/Integrated_MeanPhotonEnergyLW are required
-     unconditionally, not only when with_ISRF is on: this is a table-schema
-     requirement, since pychem writes both datasets for every table it
-     generates, in both the 1D and the 2D layout. A table missing either
-     predates that and needs regenerating. */
+  /* Required whatever with_ISRF says or which stellar model reads the
+     table: pychem writes both datasets for every table it generates, 1D
+     and 2D alike, so a table missing either predates that and needs
+     regenerating. */
   {
     const int has_mean_photon_energy_lw =
         H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
