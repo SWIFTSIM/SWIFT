@@ -39,7 +39,7 @@ case "$table" in
     # table's own Q_H (e.g. Starbench's 26.75 Msun reproduces Bisbas et
     # al. 2015's 1e49 photons/s), so those examples require this exact
     # file, not the spectral one above.
-    POPIIsw.h5)
+    radiation_fits_popII.hdf5)
 	share_id="2bdJyajQjwHnEeB"
 	sha256="3bddd6d06feefdd6efa4d6b65b61631b96ccf0817f145dfa8523a5c63f5772e5"
 	;;
@@ -115,8 +115,9 @@ GEAR_RADIATION_TABLE at it:
   GEAR_RADIATION_TABLE=/path/to/table.hdf5 ./run.sh
 
 The published tables are PopII_parsec_spectral.hdf5, PopIII_parsec_spectral.hdf5
-and POPIIsw.h5. The tables served by the public hosts (see getChemistryTable.sh)
-carry no Data/Radiation group and cannot drive this example.
+and radiation_fits_popII.hdf5. The tables served by the public hosts (see
+getChemistryTable.sh) carry no Data/Radiation group and cannot drive this
+example.
 
 EOF
 exit 1

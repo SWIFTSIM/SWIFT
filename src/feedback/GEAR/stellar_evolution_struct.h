@@ -270,11 +270,10 @@ struct radiation {
 
     union {
       /*! Photon-number-weighted mean Lyman-Werner photon energy of a
-          single star, L_LW/Q_LW over 11.2-13.6 eV, from pychem's
-          "MeanPhotonEnergyLW" dataset when present
-          (#has_mean_photon_energy_lw). Held in cgs erg, NOT internal
-          energy units, matching the same mixed-unit convention
-          #dot_E_excess/#dot_N_ion's ratio already produces for
+          single star, L_LW/Q_LW over 11.2-13.6 eV, read directly from
+          pychem's "MeanPhotonEnergyLW" dataset (required). Held in cgs
+          erg, NOT internal energy units, matching the same mixed-unit
+          convention #dot_E_excess/#dot_N_ion's ratio already produces for
           mean_excess_photon_energy_HI. Same log-log storage as
           #luminosities.
 
@@ -462,15 +461,6 @@ struct radiation {
   /*! Highest tabulated metallicity, in mass fraction. See
       #table_metallicity_min. */
   float table_metallicity_max;
-
-  /*! Does this table carry pychem's "MeanPhotonEnergyLW" and
-      "Integrated_MeanPhotonEnergyLW" datasets? Both are optional: a table
-      generated before pychem exported them leaves
-      #raw.mean_photon_energy_lw / #integrated.mean_photon_energy_lw
-      unbuilt, and the mean photon energy is then simply not reported. It
-      is a diagnostic either way: the H2 photodissociation rate reads
-      #RADIATION_SIGMA_H2_OVER_E_LW_CGS. */
-  char has_mean_photon_energy_lw;
 };
 
 /**
