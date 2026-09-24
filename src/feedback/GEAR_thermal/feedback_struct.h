@@ -594,6 +594,19 @@ struct feedback_spart_data {
         table carries no "Teff" dataset. */
     float teff;
 
+    /*! This star's feedback timestep (proper time, internal units),
+        cached once per step by feedback_prepare_radiation_feedback so
+        radiation_iact_nonsym_feedback_apply does not repeat the
+        cosmology table lookup for every gas neighbour. */
+    float Delta_t;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Integer time at the start of the step #Delta_t was cached for.
+        radiation_iact_nonsym_feedback_apply recomputes it and asserts a
+        match before trusting the cached value. */
+    integertime_t Delta_t_cached_ti_begin;
+#endif
+
   } radiation;
 };
 

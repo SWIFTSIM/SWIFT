@@ -147,6 +147,16 @@ feedback_prepare_radiation_feedback(
     sp->feedback_data.Z_star *=
         hi_inv_dim / sp->feedback_data.enrichment_weight;
   }
+
+  /* Cache once per star: with_cosmology's get_timestep(sp->time_bin,
+     time_base) is d(ln a), not proper time, so dt (computed by the caller
+     the same way compute_time() does) must be used as-is rather than
+     recomputed from time_bin downstream. Read back in
+     radiation_iact_nonsym_feedback_apply, once per gas neighbour. */
+  sp->feedback_data.radiation.Delta_t = (float)dt;
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
+#endif
 }
 
 /**
@@ -200,19 +210,18 @@ radiation_iact_nonsym_feedback_apply(
    * illumination window (radiation_reset_part_ISRF_illumination_tag). */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
-  /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
-   * cosmological runs: mirror compute_time()'s branch (feedback_common.c)
-   * rather than use it directly. Shared by radiation pressure and LW/PE
-   * injection below: both use the star's own feedback timestep. */
-  float Delta_t;
-  if (with_cosmology) {
-    const integertime_t ti_begin =
-        get_integer_time_begin(ti_current, si->time_bin);
-    Delta_t =
-        (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-  } else {
-    Delta_t = get_timestep(si->time_bin, time_base);
-  }
+  /* Cached once per star by feedback_prepare_radiation_feedback, not
+     recomputed per neighbour: shared by radiation pressure and LW/PE
+     injection below. */
+  const float Delta_t = si->feedback_data.radiation.Delta_t;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (get_integer_time_begin(ti_current, si->time_bin) !=
+      si->feedback_data.radiation.Delta_t_cached_ti_begin)
+    error(
+        "Stale cached Delta_t: star %lld's step boundary moved since it "
+        "was cached.",
+        si->id);
+#endif
 
   /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {
