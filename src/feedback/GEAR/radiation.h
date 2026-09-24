@@ -138,12 +138,11 @@
     derivation; the agreement there is at the 10% level, and the digits
     below carry the quotient of the quoted pair, not a claim of precision.
 
-    No table value enters the rate. A table carrying pychem's
-    "MeanPhotonEnergyLW" and "Integrated_MeanPhotonEnergyLW" datasets
-    (#radiation.has_mean_photon_energy_lw) still yields a population mean
-    photon energy in #radiation_lw_photon_energy_cgs, but that is reported
-    as a DIAGNOSTIC only: using it as the divisor while the cross section
-    stayed pinned would break the quotient and rescale every rate. A
+    No table value enters the rate. pychem's required "MeanPhotonEnergyLW"
+    and "Integrated_MeanPhotonEnergyLW" datasets still yield a population
+    mean photon energy in #radiation_lw_photon_energy_cgs, but that is
+    reported as a DIAGNOSTIC only: using it as the divisor while the cross
+    section stayed pinned would break the quotient and rescale every rate. A
     per-star photon-number moment, transported alongside the energy, is the
     way to make a spectrum's own E_LW change the rate. */
 #define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.2847106348798106e-07
