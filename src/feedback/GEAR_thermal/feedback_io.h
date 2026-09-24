@@ -82,4 +82,52 @@ INLINE static int feedback_read_particles(struct part *parts,
   return 3;
 }
 
+/**
+ * @brief Specifies which particle fields to write to a dataset.
+ *
+ * @param parts The particle array.
+ * @param xparts The extended data particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+__attribute__((always_inline)) INLINE static int feedback_write_particles(
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list, const int with_cosmology) {
+
+  return 0;
+}
+
+/**
+ * @brief Specifies which star particle fields to write to a dataset.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+__attribute__((always_inline)) INLINE static int feedback_write_sparticles(
+    const struct spart *sparts, struct io_props *list,
+    const int with_cosmology) {
+
+  return 0;
+}
+
+/**
+ * @brief Specifies which star particle fields to read from the ICs or a
+ * restart file. Empty by design, not by omission: no feedback-owned #spart
+ * field is currently read from either source (see #stars_read_particles).
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to read.
+ *
+ * @return Returns the number of fields to read.
+ */
+INLINE static int feedback_read_sparticles(struct spart *sparts,
+                                           struct io_props *list) {
+  return 0;
+}
+
 #endif /* SWIFT_FEEDBACK_IO_GEAR_H */

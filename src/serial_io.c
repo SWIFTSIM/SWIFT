@@ -879,6 +879,8 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
               Nparticles = *Nstars;
               stars_read_particles(*sparts, list, &num_fields);
               num_fields +=
+                  feedback_read_sparticles(*sparts, list + num_fields);
+              num_fields +=
                   star_formation_read_particles(*sparts, list + num_fields);
               num_fields += rt_read_stars(*sparts, list + num_fields);
             }
