@@ -95,6 +95,34 @@ radiation_iact_nonsym_feedback_density(
 }
 
 /**
+ * @brief Store the star's feedback time-step for this step.
+ *
+ * The pairwise injection loop needs it once per neighbour; caching it here
+ * keeps the cosmological lookup off the per-pair path.
+ *
+ * @p dt already carries the d(ln a) versus proper-time distinction under
+ * cosmology, mirroring compute_time() in feedback_common.c. It is the star's
+ * own step only because GEAR's feedback_get_enrichment_timestep() returns
+ * dt_star unchanged; were that ever to differ, this would silently cache the
+ * wrong quantity and the staleness check below would not catch it, because
+ * the value would be fresh rather than stale.
+ *
+ * @param sp The #spart to update.
+ * @param dt Length of the star's feedback step, in internal units.
+ * @param ti_begin Integer time at the start of that step.
+ */
+__attribute__((always_inline)) INLINE static void feedback_star_store_timestep(
+    struct spart *restrict sp, const double dt, const integertime_t ti_begin) {
+
+  sp->feedback_data.radiation.Delta_t = (float)dt;
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
+#else
+  (void)ti_begin;
+#endif
+}
+
+/**
  * @brief Finalize a #spart's radiation-feedback inputs (density gradient,
  * metallicity) and cache its feedback timestep, once per star per step.
  *
@@ -138,13 +166,7 @@ feedback_prepare_radiation_feedback(
         hi_inv_dim / sp->feedback_data.enrichment_weight;
   }
 
-  /* dt already accounts for the d(ln a) vs proper-time distinction under
-     cosmology (mirrors compute_time(), feedback_common.c); cache it here
-     instead of recomputing it per neighbour below. */
-  sp->feedback_data.radiation.Delta_t = (float)dt;
-#ifdef SWIFT_DEBUG_CHECKS
-  sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
-#endif
+  feedback_star_store_timestep(sp, dt, ti_begin);
 }
 
 /**
