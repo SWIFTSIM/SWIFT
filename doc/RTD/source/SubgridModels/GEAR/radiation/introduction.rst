@@ -16,6 +16,9 @@ This is a sub-grid coupling built into the GEAR feedback module. It is a differe
 
 Every channel reads the star's photon output (an ionizing photon rate, a bolometric luminosity, band luminosities) from the ``Data/Radiation`` group of the stellar evolution table (``GEARFeedback:yields_table``), as a function of the star's mass, metallicity and age. See :ref:`gear_radiation_tables` for what this group must contain and how to get one. The three channels are otherwise independent: each is switched on by its own parameter, and you can run any combination of them.
 
+.. warning::
+   MPI support for this radiation model is work in progress. Test carefully before relying on a multi-rank run.
+
 .. list-table:: Switching a channel on
    :header-rows: 1
    :widths: 30 40 30
@@ -33,6 +36,15 @@ Every channel reads the star's photon output (an ionizing photon rate, a bolomet
      - ``GEARFeedback:with_interstellar_radiation_field``
      - :ref:`gear_isrf`
 
+Limitations
+-------------
+
+- **No sub-cycling.** Radiation rides the star's or gas particle's own timestep; there is no separate, finer radiation clock. See "Timestep criteria" below.
+- **Two ISRF bands only.** The ISRF module transports the PE (6.0 to 11.2 eV) and Lyman-Werner (11.2 to 13.6 eV) bands. Radiation pressure and HII photoionization instead use the star's bolometric luminosity and ionizing photon rate as single lumped quantities, not a spectrum: no channel resolves the field by wavelength outside the two ISRF bands.
+- **H2 photodissociation needs Grackle mode 2 or 3.** Below that, the Lyman-Werner band is still computed, transported and written to snapshots, and it still contributes to photoelectric heating, but it does not dissociate :math:`\mathrm{H}_2`. See the Grackle cooling mode paragraph below.
+- **HII rate-coupling is H-only.** ``GEARFeedback:HII_couple_ionization_rate`` derives a per-particle HI photoionization rate; the HeI/HeII ionization rates Grackle also accepts stay at their separate, spatially-uniform ``GrackleCooling`` scalars.
+- **No ray tracing or shadowing.** HII photoionization spends a star's photon budget on gas by distance (or, with ``HII_angular_nside``, by angular sector), not along a traced sightline: intervening dense gas does not shield a farther particle. Without ``ISRF_propagation``, the injected ISRF field only reaches gas inside the illuminating star's own SPH kernel; with it on, the field is transported by a hyperbolic moment (M1) scheme at a reduced speed of light, not a ray trace.
+
 Configuring and compiling
 --------------------------
 
@@ -45,13 +57,16 @@ The radiation model is part of the GEAR feedback module, so it is built whenever
                --with-star-formation=GEAR --with-tracers=GEAR \
                --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 
-**The convenience option** ``--with-subgrid=GEAR`` **builds this too, but it silently pins the cooling mode to** ``grackle_0``, **which drops the Lyman-Werner band** (see the Grackle cooling mode paragraph below). If you want the Lyman-Werner channel without configuring every option by hand, use ``--with-subgrid=GEAR-G3`` instead: it selects ``grackle_3``. Configuring the options individually, as in the command above, lets you pick any Grackle mode directly.
-
 Radiation itself only needs ``--with-feedback=GEAR``, its matching ``--with-stars=GEAR`` (the mandatory ``Stars:HII_max_search_radius`` parameter and the HII search-radius machinery exist only in the GEAR stars particle, so no other stars module will compile against it), ``--with-tracers=GEAR``, and a Grackle cooling mode (``--with-cooling=grackle_N``, ``N`` chosen per the requirements below and in :ref:`gear_isrf`). ``--with-chemistry=GEAR_10`` is not itself required to build the model, but every metallicity-dependent term on this page (the HII temperature floor, the radiation-pressure opacities, the ISRF dust extinction) reads the particle's metallicity, so a non-GEAR chemistry model gives every particle ``Z=0`` and silently disables those terms. ``--with-sink=GEAR``, ``--with-star-formation=GEAR`` and ``--with-kernel=wendland-C2`` are not read by the radiation code at all: they come from the shipped examples' own full-simulation configure line, needed to form and evolve the stars that radiation then acts on, not required by the radiation channels themselves. This is why :ref:`gear_isrf`'s own configure line lists only six options, marked "at least": it is the radiation-only minimum, not a full production build.
 
 **The GEAR tracers module is required, not optional.** The HII ionization tag a gas particle carries lives in the GEAR tracers module's own per-particle data. SWIFT will not compile ``--with-feedback=GEAR`` without ``--with-tracers=GEAR`` alongside it, whatever radiation channel you actually intend to use, and every GEAR feedback build also requires the mandatory ``Stars:HII_max_search_radius`` parameter in the YAML file (see :ref:`gear_radiation_hii`), even for a run with photoionization switched off.
 
-**The Grackle cooling mode limits what you get.** ``--with-cooling=grackle_N`` sets how many chemical species Grackle tracks (0: none, 1: H/He, 2: + :math:`\mathrm{H}_2`, 3: + D). HII photoionization and radiation pressure work at any mode. The ISRF's Lyman-Werner channel needs :math:`\mathrm{H}_2` to dissociate, so it requires ``grackle_2`` or ``grackle_3``; at a lower mode the photoelectric-heating half of the ISRF still runs. Rate-coupling the HII ionizing rate into Grackle (``GEARFeedback:HII_couple_ionization_rate``) requires ``grackle_1`` or higher.
+**The Grackle cooling mode gates the ISRF bands separately.** ``--with-cooling=grackle_N`` sets how many chemical species Grackle tracks (0: none, 1: H/He, 2: + :math:`\mathrm{H}_2`, 3: + D). HII photoionization and radiation pressure work at any mode. For the ISRF, the two bands are coupled into Grackle independently:
+
+- the PE band always feeds Grackle's per-particle ISRF strength (photoelectric heating and dust chemistry), at any Grackle mode, ``grackle_0`` included;
+- the Lyman-Werner band only feeds Grackle's :math:`\mathrm{H}_2` photodissociation rate at ``grackle_2`` or ``grackle_3``, since :math:`\mathrm{H}_2` is untracked below that.
+
+At ``grackle_0`` or ``grackle_1``, the Lyman-Werner band is still computed, transported and written to snapshots, and its energy still counts towards the star's non-ionizing UV output that drives photoelectric heating (the photoelectric heating field sums both bands). What is inert is the band's own dedicated effect: it never dissociates :math:`\mathrm{H}_2`, and SWIFT gives no start-up warning for this case. Rate-coupling the HII ionizing rate into Grackle (``GEARFeedback:HII_couple_ionization_rate``) requires ``grackle_1`` or higher.
 
 Running an example
 -------------------
@@ -64,13 +79,20 @@ Each channel has its own worked examples under ``examples/SubgridTests/StellarFe
 
 The ``--gear`` shortcut expands to exactly ``--hydro --limiter --sync --self-gravity --stars --star-formation --cooling --feedback``; note that it does not add ``--sinks``, so a run that also wants sink particles needs that flag on top. Each shipped example's own ``run.sh`` adjusts the flag set to its own setup (some also drop gravity in favour of ``--external-gravity``, or leave out cooling to isolate one channel); see the example's README for the exact flags it uses.
 
-- ``HIIRegions/Starbench`` is a validated place to start with photoionization: a single ionizing source, checked against the STARBENCH D-type expansion solution of Bisbas et al. (2015). ``HIIRegions/StromgrenSphere`` is a simpler setup with the same geometry, but its own README states that it exists to exercise the search-radius/rebuild-cadence machinery rather than to reproduce a published result.
+- ``HIIRegions/Starbench`` is a good place to start with photoionization: a single ionizing source, checked against the STARBENCH D-type expansion solution of Bisbas et al. (2015). ``HIIRegions/StromgrenSphere`` is a simpler setup with the same geometry, but its own README states that it exists to exercise the search-radius/rebuild-cadence machinery rather than to reproduce a published result.
 - ``RadiationPressure/RadiationPressureShellExpansion`` exercises the radiation-pressure channel on an expanding shell, checked against the analytic solution of Krumholz and Matzner (2009).
 - ``ISRF/ISRFPhotoelectricHeating`` is the simplest ISRF setup: photoelectric heating from a single star, no propagation. If you specifically want to check :math:`\mathrm{H}_2` photodissociation, use ``ISRF/ISRFH2Photodissociation`` instead.
 
 The full set under ``HIIRegions/`` and ``ISRF/`` covers more specific behaviour (cosmology, propagation schemes, dissipation), one aspect per directory.
 
+Timestep criteria
+--------------------
+
+A star still young enough to do photoionization (below ``HII_max_age_Myr``) has its timestep bounded by ``GEARFeedback:HII_rebuild_time_Myr``, so it rebuilds its HII region on schedule; see :ref:`gear_radiation_hii`. Every star, whatever channel it runs, also has its event-anchored timestep terms floored by ``GEARFeedback:event_dt_floor_Myr``, and a Single Stellar Population or continuous-IMF star additionally has its own timestep tightened while young by ``GEARFeedback:dt_evolution_factor_max``; see :ref:`gear_stellar_evolution_and_feedback`.
+
+On the gas side, a particle generally rides its own hydrodynamic timestep: no radiation channel adds a general CFL-like bound to it. The one exception is the ISRF's fixed-fraction-of-c propagation scheme (``ISRF_c_hyp_scheme: 2``), where ``GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`` adds a receiver-side stability bound to a particle carrying or near the field; see :ref:`gear_isrf`. A gas particle freshly ionized or freshly illuminated is synced onto a shorter time bin on the step it is first touched, but this is a one-off wake-up, not sub-cycling: it then rides its own step like any other particle.
+
 Checking a run
 ----------------
 
-At start-up SWIFT logs each channel's on/off state, and, when a channel is on, its main efficiency or margin value (grep the log for ``Photoionization``, ``Radiation pressure`` or ``Photo-electric heating``), so a switch left off by mistake shows up before the run gets far. To stop a production snapshot from carrying every radiation diagnostic field, select the fields you actually want with an output-selection file; see :ref:`Output_selection_label`.
+At start-up SWIFT logs each channel's on/off state, and, when a channel is on, its main efficiency or margin value (grep the log for ``Photoionization``, ``Radiation pressure`` or ``Photo-electric heating``), so a switch left off by mistake shows up before the run gets far. To stop a production snapshot from carrying every radiation diagnostic field, select the fields you actually want with an output-selection file; see :ref:`Output_selection_label`. The full list of radiation snapshot fields is on the :ref:`gear_output_fields` page.

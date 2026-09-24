@@ -64,48 +64,21 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
      HII_max_radius_expansion_tries: 5               # (Optional) Search-radius expansion tries per pass (Default: 5)
      HII_radius_expansion_factor: 1.1                # (Optional) Growth factor per expansion try (Default: 1.1)
 
+Compile-time constants
+------------------------
+
+``--with-number-of-hii-angular-pixels`` (default 12) caps the HEALPix pixel count ``HII_angular_nside`` may request; see above.
+
+Three ``-D`` flags, set via ``CFLAGS+="..." ./configure``, are for test and diagnostic setups, not production runs. The shipped ``Starbench``, ``ClumpSmith2021``, ``Hu2017`` and ``StromgrenSphereCosmo`` examples use them to build the idealised, two-state configuration their check scripts compare against:
+
+* ``-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING``: tagged gas never cools, so a tag never expires.
+* ``-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<K>``: holds every ionized particle at a fixed temperature regardless of metallicity, instead of the metallicity-dependent floor above.
+* ``-DIONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K=<K>``: also pins neutral gas to a fixed temperature. Combined with the previous flag, this gives an idealised two-temperature medium.
+
 Snapshot outputs
 ------------------
 
-Two star fields are always written for a GEAR run with feedback, whether or not ``--with-tracers=GEAR`` is used:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 55 20
-
-   * - Name
-     - Description
-     - Units
-   * - ``HIIRegionRadii``
-     - Comoving radius the star's HII region reached at its last budget rebuild
-     - [U_L]
-   * - ``HIIRegionMasses``
-     - Gas mass the star currently holds ionized
-     - [U_M]
-
-These are the search algorithm's own bookkeeping, not a direct measurement of the gas's thermal state: previously-tagged gas can stay warm well past its tag's expiry without being re-tagged.
-
-The following fields need ``--with-tracers=GEAR``:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 50 20
-
-   * - Name
-     - Description
-     - Units
-   * - ``IsIonizedFlags`` (gas)
-     - Is this gas particle currently flagged as ionized?
-     - [-]
-   * - ``HIIStarIDs`` (gas)
-     - ID of the star that ionized this particle
-     - [-]
-   * - ``FinalHIIRegionRadii`` (star)
-     - ``HIIRegionRadii`` retired at the star's death or ineligibility
-     - [U_L]
-   * - ``FinalHIIRegionMasses`` (star)
-     - ``HIIRegionMasses`` retired the same way
-     - [U_M]
+The gas and star fields this channel writes are documented on the :ref:`gear_output_hii` section of the :ref:`gear_output_fields` page.
 
 References
 -----------
