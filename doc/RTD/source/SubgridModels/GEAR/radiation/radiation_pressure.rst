@@ -39,10 +39,10 @@ These gas fields need ``--with-tracers=GEAR``:
      - Units
    * - ``CumulativeMomentumFromRadiationPressure``
      - Norm of the momentum received from radiation pressure, summed over events (scalar sum of the norms, so isotropic kicks do not cancel)
-     - [U_M U_L U_T\ :sup:`-1`\ ]
+     - [U_M U_L U_T^{-1}]
    * - ``MaxKickVelocityFromRadiationPressure``
      - Largest single-event velocity kick this particle received from radiation pressure
-     - [U_L U_T\ :sup:`-1`\ ]
+     - [U_L U_T^{-1}]
 
 References
 -----------

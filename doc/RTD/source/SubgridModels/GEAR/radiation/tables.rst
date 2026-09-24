@@ -16,7 +16,7 @@ Whenever any radiation channel is switched on, the group must carry:
 * ``Luminosity`` and ``Integrated_Luminosity``: bolometric luminosity, used by radiation pressure.
 * ``Q_H`` and ``Integrated_Q_H``: ionizing photon rate, used by HII photoionization.
 * ``DotEExcess`` and ``Integrated_DotEExcess``: excess-photon-energy emission rate above the HI ionization threshold.
-* ``MeanPhotonEnergyLW`` and ``Integrated_MeanPhotonEnergyLW``: required unconditionally, even for a photoionization-only or radiation-pressure-only run, since SWIFT reports the population's mean Lyman-Werner photon energy at start-up regardless of which channel is active.
+* ``MeanPhotonEnergyLW`` and ``Integrated_MeanPhotonEnergyLW``: required unconditionally, even for a photoionization-only or radiation-pressure-only run that never touches the ISRF.
 
 If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``), the group must also carry ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW``, the photoelectric and Lyman-Werner band luminosities.
 

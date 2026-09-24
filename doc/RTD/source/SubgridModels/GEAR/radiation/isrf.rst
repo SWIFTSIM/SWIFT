@@ -208,10 +208,10 @@ Two optional gas fields let an initial-conditions file seed the radiation field 
      - Units
    * - ``PESpecificEnergy``
      - Initial specific PE-band energy
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+     - [U_L^2 U_T^{-2}]
    * - ``LWSpecificEnergy``
      - Initial specific Lyman-Werner-band energy
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+     - [U_L^2 U_T^{-2}]
 
 An initial-conditions file without them is unaffected: the field starts at zero.
 
@@ -229,22 +229,22 @@ These gas fields are written by the GEAR tracers module, so they need ``--with-t
      - Units
    * - ``PESpecificEnergies``
      - Local specific PE-band field
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+     - [U_L^2 U_T^{-2}]
    * - ``LWSpecificEnergies``
      - Local specific Lyman-Werner-band field
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+     - [U_L^2 U_T^{-2}]
    * - ``PESpecificFluxes``
      - Tracked specific flux moment, PE band
-     - [U_L\ :sup:`3`\  U_T\ :sup:`-3`\ ]
+     - [U_L^3 U_T^{-3}]
    * - ``LWSpecificFluxes``
      - Tracked specific flux moment, LW band
-     - [U_L\ :sup:`3`\  U_T\ :sup:`-3`\ ]
+     - [U_L^3 U_T^{-3}]
    * - ``PESpecificFluxDivergences``
      - Flux-divergence term of the PE update
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-3`\ ]
+     - [U_L^2 U_T^{-3}]
    * - ``LWSpecificFluxDivergences``
      - Flux-divergence term of the LW update
-     - [U_L\ :sup:`2`\  U_T\ :sup:`-3`\ ]
+     - [U_L^2 U_T^{-3}]
    * - ``PEArtificialDissipationCoefficients``
      - Dissipation coefficient, PE band
      - [-]
@@ -253,7 +253,7 @@ These gas fields are written by the GEAR tracers module, so they need ``--with-t
      - [-]
    * - ``HyperbolicPropagationSpeeds``
      - Kernel-local hyperbolic propagation speed the band updates ran with, shared by both bands
-     - [U_L U_T\ :sup:`-1`\ ]
+     - [U_L U_T^{-1}]
 
 The flux, flux-divergence, dissipation and propagation-speed fields are only meaningful when ``ISRF_propagation`` is on; they stay at zero otherwise.
 

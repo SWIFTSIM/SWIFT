@@ -31,7 +31,7 @@ The radiation model is part of the GEAR feedback module, so it is built whenever
                --with-star-formation=GEAR --with-tracers=GEAR \
                --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 
-**--with-tracers=GEAR is required, not optional.** The HII ionization tag a gas particle carries lives in the GEAR tracers module's own per-particle data. SWIFT will not compile ``--with-feedback=GEAR`` without ``--with-tracers=GEAR`` alongside it, whatever radiation channel you actually intend to use.
+**The GEAR tracers module is required, not optional.** The HII ionization tag a gas particle carries lives in the GEAR tracers module's own per-particle data. SWIFT will not compile ``--with-feedback=GEAR`` without ``--with-tracers=GEAR`` alongside it, whatever radiation channel you actually intend to use, and every GEAR feedback build also requires the mandatory ``Stars:HII_max_search_radius`` parameter in the YAML file (see :ref:`gear_radiation_hii`), even for a run with photoionization switched off.
 
 **The Grackle cooling mode limits what you get.** ``--with-cooling=grackle_N`` sets how many chemical species Grackle tracks (0: none, 1: H/He, 2: + :math:`\mathrm{H}_2`, 3: + D). HII photoionization and radiation pressure work at any mode. The ISRF's Lyman-Werner channel needs :math:`\mathrm{H}_2` to dissociate, so it requires ``grackle_2`` or ``grackle_3``; at a lower mode the photoelectric-heating half of the ISRF still runs. Rate-coupling the HII ionizing rate into Grackle (``GEARFeedback:HII_couple_ionization_rate``) requires ``grackle_1`` or higher.
 
