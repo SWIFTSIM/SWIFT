@@ -267,8 +267,8 @@ void runner_dosub_self1_hydro_sink_aperture_prep_sink_formation_sink(
 /**
  * @brief Recursively compute pair interactions for sub-cells.
  *
- * Recursion threshold is 2 * r_cut < 0.5 * dmin (see the self variant
- * above for why).
+ * We stop splitting when 2 * r_cut plus the particle movement is not smaller
+ * than 0.5 * dmin. See cell_can_recurse_in_pair_sink_aperture_task().
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -298,7 +298,7 @@ void runner_dosub_pair1_hydro_sink_aperture_prep_sink_formation_sink(
 
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro ||
-      2.f * r_cut >= 0.5f * ci->dmin) {
+      !cell_can_recurse_in_pair_sink_aperture_task(ci, cj, r_cut)) {
 
     runner_dopair1_hydro_sink_aperture_prep_sink_formation_sink(r, ci, cj);
 

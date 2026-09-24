@@ -946,6 +946,46 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a fixed-radius gas-gas pair task go down to the sub-cells?
+ *
+ * Gas moves after the last rebuild. Two gas particles in sub-cells that do
+ * not touch can then be closer than 0.5 * dmin. So the radius plus the
+ * movement of the gas in both cells must be smaller than the sub-cell size.
+ * We use the _old values, as they do not change during the drift.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param r_cut The fixed radius.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_aperture_task(const struct cell *ci,
+                                       const struct cell *cj,
+                                       const float r_cut) {
+  const float dx = ci->hydro.dx_max_part_old + cj->hydro.dx_max_part_old;
+  return (r_cut + dx) < 0.5f * ci->dmin;
+}
+
+/**
+ * @brief Can a fixed-radius gas-sink pair task go down to the sub-cells?
+ *
+ * Same as cell_can_recurse_in_pair_aperture_task(), but the two particles
+ * are a gas particle and a sink in the other cell, and the reach is
+ * 2 * r_cut. We take the worse of the two directions.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param r_cut The fixed radius of the sinks.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_sink_aperture_task(const struct cell *ci,
+                                            const struct cell *cj,
+                                            const float r_cut) {
+  const float dx_i = ci->hydro.dx_max_part_old + cj->sinks.dx_max_part_old;
+  const float dx_j = cj->hydro.dx_max_part_old + ci->sinks.dx_max_part_old;
+  return (2.f * r_cut + max(dx_i, dx_j)) < 0.5f * ci->dmin;
+}
+
+/**
  * @brief Can a sub-pair hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *

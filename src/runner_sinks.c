@@ -457,6 +457,68 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @param p The #part.
  * @param xp The #xpart data of the particle p.
  */
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Compare the overlap flag from the gas-sink loop with a scan over all
+ * the sinks of the space. Print a warning if they differ.
+ *
+ * Sinks formed in this step are not in the loop, so the scan ignores them.
+ *
+ * @param e The #engine.
+ * @param pi The gas particle.
+ * @param xpi Its #xpart.
+ */
+static void runner_check_sink_overlap_brute_force(struct engine *e,
+                                                  struct part *restrict pi,
+                                                  struct xpart *restrict xpi) {
+  static int n_checked = 0;
+  static int n_missed = 0;
+  static int n_extra = 0;
+
+  const struct space *s = e->s;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
+
+  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+  const double dim[3] = {s->periodic ? s->dim[0] : 0.,
+                         s->periodic ? s->dim[1] : 0.,
+                         s->periodic ? s->dim[2] : 0.};
+
+  /* Keep the result of the loop and scan again with a clean flag */
+  const char loop_flag = pi->sink_data.is_overlapping_sink;
+  pi->sink_data.is_overlapping_sink = 0;
+
+  for (size_t j = 0; j < s->nr_sinks; j++) {
+    struct sink *restrict sj = &s->sinks[j];
+    if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
+      continue;
+    if (sink_get_sink_age(sj, with_cosmology, cosmo, e->time) <= 0.) continue;
+    sink_prepare_part_sink_formation_sink_criteria(
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p,
+        dim);
+  }
+
+  const char scan_flag = pi->sink_data.is_overlapping_sink;
+  pi->sink_data.is_overlapping_sink = loop_flag;
+
+  const int checked = atomic_inc(&n_checked) + 1;
+  if (scan_flag && !loop_flag) {
+    const int missed = atomic_inc(&n_missed) + 1;
+    warning(
+        "Gas-sink loop missed an overlapping sink for gas particle %lld "
+        "(%d missed in %d checked).",
+        pi->id, missed, checked);
+  } else if (!scan_flag && loop_flag) {
+    const int extra = atomic_inc(&n_extra) + 1;
+    warning(
+        "Gas-sink loop found an overlap that the scan does not find for gas "
+        "particle %lld (%d in %d checked).",
+        pi->id, extra, checked);
+  }
+}
+#endif /* SWIFT_DEBUG_CHECKS */
+
 void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct part *restrict pi,
                                            struct xpart *restrict xpi) {
@@ -485,7 +547,12 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
      sink_formation_sink) is the sole authority for pi->sink_data.
      is_overlapping_sink when it is active, mirroring runner_iact_sink()'s
      own use_fixed_r_cut guard. */
-  if (sink_props->use_fixed_r_cut) return;
+  if (sink_props->use_fixed_r_cut) {
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_check_sink_overlap_brute_force(e, pi, xpi);
+#endif
+    return;
+  }
 
   /* For the sinks, we can loop over all sinks in the space. This is an
      O(N_part_eligible*N_sink) search. We assume that N_sink < N_part, which

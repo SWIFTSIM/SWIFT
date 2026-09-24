@@ -2913,11 +2913,12 @@ void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
     double shift[3];
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
-    /* Recurse while both cells are split, large enough, and r_cut < 0.5 *
-       dmin (matches DOSUB_PAIR1_HYDRO_APERTURE). */
+    /* Go down while both cells are split, large enough, and the radius plus
+       the gas movement fits in a sub-cell (same test as
+       DOSUB_PAIR1_HYDRO_APERTURE). */
     if (ci->split && (ci->hydro.count >= space_recurse_size_pair_hydro) &&
         cj->split && (cj->hydro.count >= space_recurse_size_pair_hydro) &&
-        (r_cut < 0.5f * ci->dmin)) {
+        cell_can_recurse_in_pair_aperture_task(ci, cj, r_cut)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -3005,7 +3006,7 @@ void cell_activate_subcell_hydro_sink_aperture_sink_formation_tasks(
 
     if (ci->split && (ci->hydro.count >= space_recurse_size_pair_hydro) &&
         cj->split && (cj->hydro.count >= space_recurse_size_pair_hydro) &&
-        (2.f * r_cut < 0.5f * ci->dmin)) {
+        cell_can_recurse_in_pair_sink_aperture_task(ci, cj, r_cut)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
