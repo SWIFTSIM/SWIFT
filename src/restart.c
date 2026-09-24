@@ -343,8 +343,8 @@ void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
 int restart_stop_now(const char *dir, int cleanup) {
   struct stat buf;
   char filename[FNAMELEN];
-  strcpy(filename, dir);
-  strcat(filename, "/stop");
+  if (snprintf(filename, FNAMELEN, "%s/stop", dir) >= FNAMELEN)
+    error("Restart directory name too long (max %d characters).", FNAMELEN - 6);
   if (stat(filename, &buf) == 0) {
     if (cleanup && unlink(filename) != 0) {
       /* May not be fatal, so press on. */
@@ -367,8 +367,8 @@ void restart_save_previous(const char *filename) {
   struct stat buf;
   if (stat(filename, &buf) == 0) {
     char newname[FNAMELEN];
-    strcpy(newname, filename);
-    strcat(newname, ".prev");
+    if (snprintf(newname, FNAMELEN, "%s.prev", filename) >= FNAMELEN)
+      error("Restart file name too long (max %d characters).", FNAMELEN - 6);
     if (rename(filename, newname) != 0) {
       /* Worth a complaint, this should not happen. */
       message("Failed to rename file '%s' to '%s' (%s)", filename, newname,
@@ -389,8 +389,8 @@ void restart_save_previous(const char *filename) {
 void restart_remove_previous(const char *filename) {
   struct stat buf;
   char newname[FNAMELEN];
-  strcpy(newname, filename);
-  strcat(newname, ".prev");
+  if (snprintf(newname, FNAMELEN, "%s.prev", filename) >= FNAMELEN)
+    error("Restart file name too long (max %d characters).", FNAMELEN - 6);
   if (stat(newname, &buf) == 0) {
     if (unlink(newname) != 0) {
       /* Worth a complaint, this should not happen. */
