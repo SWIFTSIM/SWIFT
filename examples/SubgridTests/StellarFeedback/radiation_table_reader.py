@@ -21,8 +21,9 @@
 Shared by the StellarFeedback examples' ``*_analytic_check.py`` scripts to
 look up the ionizing photon rate Q_H(mass), the bolometric luminosity
 L(mass), and the mean excess photon energy above 13.6 eV, from the actual
-pychem-generated table (e.g. ``POPIIsw.h5``) -- instead of the standalone
-piecewise-fit Python ports these scripts used before the table migration.
+pychem-generated table (e.g. ``radiation_fits_popII.hdf5``) -- instead of
+the standalone piecewise-fit Python ports these scripts used before the
+table migration.
 
 Replicates the read/interpolate chain ``src/feedback/GEAR/radiation.c``
 actually runs, not pychem's own generation-time interpolation convention:
@@ -483,8 +484,8 @@ class RadiationTable:
     Parameters
     ----------
     h5_path : str
-        Path to the yields_table HDF5 file (e.g. ``POPIIsw.h5``), resolved
-        relative to the current working directory -- see
+        Path to the yields_table HDF5 file (e.g. ``radiation_fits_popII.hdf5``),
+        resolved relative to the current working directory -- see
         :func:`yields_table_path_from_snapshot`.
     interpolation_size_mass : int, optional
         Number of points in the resampled mass grid
