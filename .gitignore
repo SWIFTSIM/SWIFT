@@ -100,6 +100,7 @@ tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/test27cells
 tests/test27cells_subset
+tests/test27cellsHydroSinks
 tests/test27cellsStars
 tests/test27cellsStars_subset
 tests/testPeriodicBC

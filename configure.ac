@@ -474,6 +474,21 @@ elif test "$sink_formation_checks" != "no"; then
                       [Enable brute-force sink formation neighbour-count checks])
 fi
 
+# Check if sink formation overlap checks are enabled.
+AC_ARG_ENABLE([sink-formation-overlap-checks],
+   [AS_HELP_STRING([--enable-sink-formation-overlap-checks],
+     [Activate brute-force checks of the gas-sink overlap loop of sink formation for a fraction 1/N of all gas particles @<:@N@:>@]
+   )],
+   [sink_formation_overlap_checks="$enableval"],
+   [sink_formation_overlap_checks="no"]
+)
+if test "$sink_formation_overlap_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-formation-overlap-checks!)
+elif test "$sink_formation_overlap_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_FORMATION_OVERLAP_CHECKS], [$enableval],
+                      [Enable brute-force checks of the sink formation overlap loop])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],

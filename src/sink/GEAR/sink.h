@@ -33,6 +33,7 @@
 #include "cooling.h"
 #include "feedback.h"
 #include "minmax.h"
+#include "periodic.h"
 #include "random.h"
 #include "sink_getters.h"
 #include "sink_part.h"
@@ -1397,12 +1398,15 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param si A neighbouring #sink of #p.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
+ * @param r_acc_p Accretion radius of #p if it forms a sink. Same for all #si,
+ * so the caller computes it once.
+ * @param dim Box size in each direction. 0 if the box is not periodic.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const double time) {
+    const double time, const float r_acc_p, const double dim[3]) {
 
   /* Do not continue if the gas cannot form sink for any reason */
   if (!pi->sink_data.can_form_sink) {
@@ -1411,7 +1415,7 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
-  const int sink_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
+  const double sink_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
   char is_dead = sink_age > sink_props->age_threshold_unlimited;
 
   /* If the sink is dead, do not check the criteria for the si - p pair. */
@@ -1419,30 +1423,22 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     return;
   }
 
-  /* Physical accretion radius of part p. In the fixed-r_cut case this is the
-     configured cut_off_radius; in the adaptive case there is no such global
-     value (sink_props->cut_off_radius is a -1 sentinel), so use what pi's
-     own accretion radius would become upon formation instead. */
-  const float r_acc_p =
-      (sink_props->use_fixed_r_cut ? sink_props->cut_off_radius
-                                   : kernel_gamma * pi->h) *
-      cosmo->a;
-
   /* Physical accretion radius of sink si */
   const float rmax = sj->h * kernel_gamma;
   const float r_acc_sj = rmax * cosmo->a;
 
-  /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
+  /* Comoving distance between p and the sink. In a periodic box, use the
+     nearest periodic image. */
+  double dx_com[3] = {pi->x[0] - sj->x[0], pi->x[1] - sj->x[1],
+                      pi->x[2] - sj->x[2]};
+  for (int k = 0; k < 3; k++) {
+    if (dim[k] > 0.) dx_com[k] = nearest(dx_com[k], dim[k]);
+  }
 
-  /* Compute the pairwise physical distance */
-  const float six[3] = {(float)(sj->x[0]), (float)(sj->x[1]),
-                        (float)(sj->x[2])};
-
-  const float dx[3] = {(pix[0] - six[0]) * cosmo->a,
-                       (pix[1] - six[1]) * cosmo->a,
-                       (pix[2] - six[2]) * cosmo->a};
+  /* Physical distance */
+  const float dx[3] = {(float)(dx_com[0] * cosmo->a),
+                       (float)(dx_com[1] * cosmo->a),
+                       (float)(dx_com[2] * cosmo->a)};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* If forming a sink from this particle will create a sink overlapping an

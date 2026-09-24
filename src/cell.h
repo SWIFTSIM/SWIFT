@@ -663,6 +663,8 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        const int with_timestep_sync);
 void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
     struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut);
+void cell_activate_subcell_hydro_sink_aperture_sink_formation_tasks(
+    struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
@@ -941,6 +943,46 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
   /* Note: We use the _old values as these might have been updated by a drift */
   return c->split && ((kernel_gamma * c->hydro.h_max_old +
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a fixed-radius gas-gas pair task go down to the sub-cells?
+ *
+ * Gas moves after the last rebuild. Two gas particles in sub-cells that do
+ * not touch can then be closer than 0.5 * dmin. So the radius plus the
+ * movement of the gas in both cells must be smaller than the sub-cell size.
+ * We use the _old values, as they do not change during the drift.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param r_cut The fixed radius.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_aperture_task(const struct cell *ci,
+                                       const struct cell *cj,
+                                       const float r_cut) {
+  const float dx = ci->hydro.dx_max_part_old + cj->hydro.dx_max_part_old;
+  return (r_cut + dx) < 0.5f * ci->dmin;
+}
+
+/**
+ * @brief Can a fixed-radius gas-sink pair task go down to the sub-cells?
+ *
+ * Same as cell_can_recurse_in_pair_aperture_task(), but the two particles
+ * are a gas particle and a sink in the other cell, and the reach is
+ * 2 * r_cut. We take the worse of the two directions.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param r_cut The fixed radius of the sinks.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_sink_aperture_task(const struct cell *ci,
+                                            const struct cell *cj,
+                                            const float r_cut) {
+  const float dx_i = ci->hydro.dx_max_part_old + cj->sinks.dx_max_part_old;
+  const float dx_j = cj->hydro.dx_max_part_old + ci->sinks.dx_max_part_old;
+  return (2.f * r_cut + max(dx_i, dx_j)) < 0.5f * ci->dmin;
 }
 
 /**
