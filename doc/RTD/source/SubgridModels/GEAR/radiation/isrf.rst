@@ -11,13 +11,13 @@ Young stars produce a local, non-ionizing ultraviolet radiation field that heats
 - **PE**, 6 to 11.2 eV, which drives photoelectric heating on dust,
 - **LW** (Lyman-Werner), 11.2 to 13.6 eV, which drives :math:`\mathrm{H}_2` photodissociation.
 
-Each star carries a band luminosity interpolated from the radiation datasets of its yields table (``GEARFeedback:yields_table``), as a function of its mass, metallicity and age. The luminosity is deposited on the gas particles inside the star's SPH kernel. Every receiving gas particle then attenuates the field it sees by a dust extinction factor :math:`\exp(-\kappa_\mathrm{eff} \Sigma)`, with the column :math:`\Sigma = \rho \, \ell` built from the particle's own density and a path :math:`\ell` set by its smoothing length. The dust opacity scales with the particle's metallicity, so a metal-free gas particle is not shielded.
+Each star carries a band luminosity interpolated from the radiation datasets of its yields table (``GEARFeedback:yields_table``), as a function of its mass, metallicity and age. The luminosity is deposited on the gas particles inside the star's SPH kernel. Every receiving gas particle then attenuates the field it sees by a dust extinction factor :math:`\exp(-\kappa_\mathrm{eff} \Sigma)`, with the column :math:`\Sigma = \rho \, \ell` built from the particle's own density and a path :math:`\ell` set by the receiver-side extinction mechanism (see below; by default, the star-to-particle separation). The dust opacity scales with the particle's metallicity, so a metal-free gas particle is not shielded.
 
 Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the deposited field is then transported with a hyperbolic flux-relaxation (M1 moment) scheme under a reduced speed of light, so that the radiation reaches gas beyond the source kernels at a finite, controllable propagation speed instead of instantaneously.
 
 The resulting per-particle field is handed to Grackle every step: the PE band sets the photoelectric heating rate, and the LW band sets the :math:`\mathrm{H}_2` photodissociation rate.
 
-The derivations behind the injection, the extinction and the propagation scheme are given in ``theory/GEAR/Radiation/02_fuv_isrf.tex``. Working configurations are shipped in ``examples/SubgridTests/StellarFeedback/ISRF/``; each example directory carries its own README with its configure line, run command and check script.
+Working configurations are shipped in ``examples/SubgridTests/StellarFeedback/ISRF/``; each example directory carries its own README with its configure line, run command and check script.
 
 Configuring and compiling
 -------------------------
@@ -30,13 +30,11 @@ The module is part of the GEAR feedback model and is coupled to Grackle, so a ru
                --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT \
                --with-tracers=GEAR
 
-Two configuration choices matter for this module in particular.
+See :ref:`gear_radiation` for the ``--with-tracers=GEAR`` requirement shared by every radiation channel, and :ref:`gear_grackle_cooling` for the cooling module itself.
 
-**The Grackle mode decides which of the two channels you get.** Photoelectric heating works in every Grackle mode, ``grackle_0`` included. :math:`\mathrm{H}_2` is only followed by the 9-species and 12-species networks, so :math:`\mathrm{H}_2` photodissociation requires ``--with-cooling=grackle_2`` or ``--with-cooling=grackle_3``. A run configured with ``grackle_0`` or ``grackle_1`` silently gets photoelectric heating only, because there is no :math:`\mathrm{H}_2` abundance to dissociate. See :ref:`gear_grackle_cooling` for the cooling module itself.
+**The Grackle mode decides which of the two ISRF bands you get.** Photoelectric heating works in every Grackle mode, ``grackle_0`` included. :math:`\mathrm{H}_2` is only followed by the 9-species and 12-species networks, so :math:`\mathrm{H}_2` photodissociation requires ``--with-cooling=grackle_2`` or ``--with-cooling=grackle_3``. A run configured with ``grackle_0`` or ``grackle_1`` silently gets photoelectric heating only, because there is no :math:`\mathrm{H}_2` abundance to dissociate.
 
-**The snapshot fields need the GEAR tracers.** The radiation field itself lives on the gas particles whatever the tracers choice, but the snapshot outputs listed below are registered by the GEAR tracers module, so ``--with-tracers=GEAR`` is required to see them. See :ref:`gear_tracers`.
-
-**The yields table must carry the radiation datasets.** The band luminosities are read from the ``Data/Radiation`` group of ``GEARFeedback:yields_table``, and this module needs its ``L_PE``, ``L_LW``, ``Integrated_L_PE`` and ``Integrated_L_LW`` datasets. SWIFT stops at start-up on a table without them. The tables fetched by ``examples/GEAR_ICs_and_SCRIPTS/getChemistryTable.sh`` predate that group, so generate a table with pychem's ``pychem_generate_hdf5_parameters`` instead. The same group must also carry ``MeanPhotonEnergyLW`` and ``Integrated_MeanPhotonEnergyLW``; SWIFT requires these two regardless of whether this module is on, so a photoionization-only or radiation-pressure-only run needs them too. Check any table with ``examples/GEAR_ICs_and_SCRIPTS/checkRadiationTable.sh <table.h5>``, adding ``--with-isrf`` to also check the four band datasets above.
+**The yields table must carry the ISRF datasets.** This module additionally needs the ``L_PE``, ``L_LW``, ``Integrated_L_PE`` and ``Integrated_L_LW`` datasets in the table's ``Data/Radiation`` group, on top of the datasets every radiation channel needs. See :ref:`gear_radiation_tables` for the full requirement and how to get and check a table.
 
 Switching the module on
 -----------------------
@@ -160,8 +158,6 @@ Receiver-side extinction
 
 An unrecognised value is a fatal error, not a fallback. This parameter is independent of ``GrackleCooling:H2_self_shielding_path``, since the two shield different processes.
 
-Two earlier defaults exist, and neither is recoverable without setting the mechanism and the float explicitly. A run archived before this parameter existed recorded no value for it and ran at two kernel support radii: reproduce it with ``constant_kernel_path`` and ``ISRF_extinction_path_in_kernel_radii: 2.0``. A run made while ``constant_kernel_path`` was briefly the default ran at one support radius: reproduce it with the same mechanism and ``1.0``.
-
 Complete parameter list
 -----------------------
 
@@ -203,13 +199,19 @@ Initial conditions
 
 Two optional gas fields let an initial-conditions file seed the radiation field directly, for a setup that starts with a field already in place rather than with a star that produces one. Both are singular, following SWIFT's convention that distinguishes input from output fields.
 
-+---------------------------+---------------------------------------------+---------------------+
-| Name                      | Description                                 | Units               |
-+===========================+=============================================+=====================+
-| ``PESpecificEnergy``      | | Initial specific PE-band energy           | [U_L^2 U_T^{-2}]    |
-+---------------------------+---------------------------------------------+---------------------+
-| ``LWSpecificEnergy``      | | Initial specific Lyman-Werner-band energy | [U_L^2 U_T^{-2}]    |
-+---------------------------+---------------------------------------------+---------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 45 25
+
+   * - Name
+     - Description
+     - Units
+   * - ``PESpecificEnergy``
+     - Initial specific PE-band energy
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+   * - ``LWSpecificEnergy``
+     - Initial specific Lyman-Werner-band energy
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
 
 An initial-conditions file without them is unaffected: the field starts at zero.
 
@@ -218,41 +220,56 @@ Snapshot outputs
 
 These gas fields are written by the GEAR tracers module, so they need ``--with-tracers=GEAR``. All of them are physical quantities with no scale-factor exponent of their own.
 
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| Name                                          | Description                                 | Units                          |
-+===============================================+=============================================+================================+
-| ``PESpecificEnergies``                        | | Local specific PE-band field              | [U_L^2 U_T^{-2}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``LWSpecificEnergies``                        | | Local specific Lyman-Werner-band field    | [U_L^2 U_T^{-2}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``PESpecificFluxes``                          | | Tracked specific flux moment, PE band     | [U_L^3 U_T^{-3}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``LWSpecificFluxes``                          | | Tracked specific flux moment, LW band     | [U_L^3 U_T^{-3}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``PESpecificFluxDivergences``                 | | Flux-divergence term of the PE update     | [U_L^2 U_T^{-3}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``LWSpecificFluxDivergences``                 | | Flux-divergence term of the LW update     | [U_L^2 U_T^{-3}]               |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``PEArtificialDissipationCoefficients``       | | Dissipation coefficient, PE band          | [-]                            |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
-| ``LWArtificialDissipationCoefficients``       | | Dissipation coefficient, LW band          | [-]                            |
-+-----------------------------------------------+---------------------------------------------+--------------------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 40 25
 
-The flux, flux-divergence and dissipation fields are only meaningful when ``ISRF_propagation`` is on; they stay at zero otherwise.
+   * - Name
+     - Description
+     - Units
+   * - ``PESpecificEnergies``
+     - Local specific PE-band field
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+   * - ``LWSpecificEnergies``
+     - Local specific Lyman-Werner-band field
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-2`\ ]
+   * - ``PESpecificFluxes``
+     - Tracked specific flux moment, PE band
+     - [U_L\ :sup:`3`\  U_T\ :sup:`-3`\ ]
+   * - ``LWSpecificFluxes``
+     - Tracked specific flux moment, LW band
+     - [U_L\ :sup:`3`\  U_T\ :sup:`-3`\ ]
+   * - ``PESpecificFluxDivergences``
+     - Flux-divergence term of the PE update
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-3`\ ]
+   * - ``LWSpecificFluxDivergences``
+     - Flux-divergence term of the LW update
+     - [U_L\ :sup:`2`\  U_T\ :sup:`-3`\ ]
+   * - ``PEArtificialDissipationCoefficients``
+     - Dissipation coefficient, PE band
+     - [-]
+   * - ``LWArtificialDissipationCoefficients``
+     - Dissipation coefficient, LW band
+     - [-]
+   * - ``HyperbolicPropagationSpeeds``
+     - Kernel-local hyperbolic propagation speed the band updates ran with, shared by both bands
+     - [U_L U_T\ :sup:`-1`\ ]
+
+The flux, flux-divergence, dissipation and propagation-speed fields are only meaningful when ``ISRF_propagation`` is on; they stay at zero otherwise.
 
 Six further fields are energy-conservation and undershoot diagnostics. They stay at zero unless SWIFT is configured with ``--enable-debugging-checks``:
 
-+---------------------------------------------+---------------------------------------------------+
-| Name                                        | Description                                       |
-+=============================================+===================================================+
-| ``PEMinimumSpecificEnergies``               | | Most negative PE-band value written since the   |
-| ``LWMinimumSpecificEnergies``               | | previous snapshot, 0 if none was negative       |
-+---------------------------------------------+---------------------------------------------------+
-| ``PECumulativeInjectedSpecificEnergies``    | | Cumulative dose drawn from the source reservoir |
-| ``LWCumulativeInjectedSpecificEnergies``    | | since first init                                |
-+---------------------------------------------+---------------------------------------------------+
-| ``PECumulativeAbsorbedSpecificEnergies``    | | Cumulative energy attributed to dust absorption |
-| ``LWCumulativeAbsorbedSpecificEnergies``    | | and to the cosmological redshift term           |
-+---------------------------------------------+---------------------------------------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Name
+     - Description
+   * - ``PEMinimumSpecificEnergies`` / ``LWMinimumSpecificEnergies``
+     - Most negative band value written since the previous snapshot, 0 if none was negative
+   * - ``PECumulativeInjectedSpecificEnergies`` / ``LWCumulativeInjectedSpecificEnergies``
+     - Cumulative dose drawn from the source reservoir since first init
+   * - ``PECumulativeAbsorbedSpecificEnergies`` / ``LWCumulativeAbsorbedSpecificEnergies``
+     - Cumulative energy attributed to dust absorption and to the cosmological redshift term
 
 The field plus the absorbed total minus the injected total isolates the transport and dissipation residual, which sums towards zero over the whole particle set.
