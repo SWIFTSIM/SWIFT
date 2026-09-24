@@ -243,8 +243,8 @@ static void test_density_loop_max_ngb_time_bin(void) {
     struct part *p = triplet[t];
     p->mass = 1.f;
     p->feedback_data.rho_prev = 1.f;
-    for (int b = 0; b < ISRF_BAND_COUNT; b++)
-      p->feedback_data.isrf_band[b].u_prev = 0.1f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      p->feedback_data.isrf_moment[m].u_prev = 0.1f;
   }
 
   const float dx[3] = {0.01f, 0.f, 0.f};
@@ -404,13 +404,15 @@ static struct cell *make_cell(const double offset[3], double h_spacing,
         struct feedback_part_data *fd = &p->feedback_data;
         fd->rho_prev = random_uniform(0.5, 2.);
         fd->c_hyp = random_uniform(0.5, 1.5);
-        for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-          struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-          band->u = random_uniform(-0.2, 1.);
+        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+          struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+          struct feedback_isrf_operator_data *op =
+              &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+          moment->u = random_uniform(-0.2, 1.);
           for (int k = 0; k < 3; k++)
-            band->specific_flux[k] = random_uniform(-1., 1.);
-          band->dissipation_alpha_trigger = random_uniform(0., 0.5);
-          band->dissipation_alpha_floor = random_uniform(0., 0.5);
+            moment->specific_flux[k] = random_uniform(-1., 1.);
+          op->dissipation_alpha_trigger = random_uniform(0., 0.5);
+          op->dissipation_alpha_floor = random_uniform(0., 0.5);
         }
         p++;
       }
@@ -467,9 +469,9 @@ static void prepare_force(struct cell *c, const struct engine *e) {
     hydro_prepare_force(p, &c->hydro.xparts[i], e->cosmology,
                         e->hydro_properties, e->pressure_floor_props, 0., 0.);
     hydro_reset_acceleration(p);
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      p->feedback_data.isrf_band[b].div_specific_flux = 0.f;
-      p->feedback_data.isrf_band[b].dissipation_u = 0.f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      p->feedback_data.isrf_moment[m].div_specific_flux = 0.f;
+      p->feedback_data.isrf_moment[m].dissipation_u = 0.f;
     }
   }
 }
@@ -537,7 +539,7 @@ static void check_sum(const char *name, double sum, double abs_sum,
 static void check_cells(struct cell *cells[2], const char *label,
                         int expect_zero) {
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
     double sum_div = 0., abs_div = 0., sum_diss = 0., abs_diss = 0.;
     double max_ref_div = 0., max_ref_diss = 0., max_err_div = 0.,
            max_err_diss = 0., min_cancel_div = 1.;
@@ -546,8 +548,8 @@ static void check_cells(struct cell *cells[2], const char *label,
     for (int ci = 0; ci < 2; ci++) {
       for (int i = 0; i < cells[ci]->hydro.count; i++) {
         const struct part *pi = &cells[ci]->hydro.parts[i];
-        const struct feedback_isrf_band_data *bi =
-            &pi->feedback_data.isrf_band[b];
+        const struct feedback_isrf_moment_data *bi =
+            &pi->feedback_data.isrf_moment[b];
         sum_div += pi->mass * (double)bi->div_specific_flux;
         abs_div += pi->mass * fabs((double)bi->div_specific_flux);
         sum_diss += pi->mass * (double)bi->dissipation_u;
@@ -578,13 +580,14 @@ static void check_cells(struct cell *cells[2], const char *label,
             const float H = kernel_gamma * max(pi->h, pj->h);
             if (!(r2 < H * H)) continue;
             struct part tmp = *pi;
-            tmp.feedback_data.isrf_band[b].div_specific_flux = 0.f;
-            tmp.feedback_data.isrf_band[b].dissipation_u = 0.f;
+            tmp.feedback_data.isrf_moment[b].div_specific_flux = 0.f;
+            tmp.feedback_data.isrf_moment[b].dissipation_u = 0.f;
             runner_iact_nonsym_isrf_dissipation(r2, dx, pi->h, pj->h, &tmp, pj,
                                                 1.f, 0.f);
             const double d_div =
-                tmp.feedback_data.isrf_band[b].div_specific_flux;
-            const double d_diss = tmp.feedback_data.isrf_band[b].dissipation_u;
+                tmp.feedback_data.isrf_moment[b].div_specific_flux;
+            const double d_diss =
+                tmp.feedback_data.isrf_moment[b].dissipation_u;
             ref_div += d_div;
             ref_diss += d_diss;
             abs_terms_div += fabs(d_div);
@@ -1097,18 +1100,18 @@ static void test_c_hyp_end_density_no_clobber_for_other_schemes(void) {
  * be exact (see #test_consistent_variable_c_uniform_c_bit_identical's own
  * doxygen for why that matters).
  *
- * @param band (return) The band to write.
+ * @param moment (return) The moment to write.
  * @param F_true The physical flux vector.
  * @param c_hyp The particle's own #feedback_part_data.c_hyp.
  * @param reduced 0 to store F_true directly, 1 to store F_true/c_hyp.
  */
-static void set_consistent_c_test_band(struct feedback_isrf_band_data *band,
+static void set_consistent_c_test_band(struct feedback_isrf_moment_data *moment,
                                        const float F_true[3], float c_hyp,
                                        int reduced) {
   const float scale = reduced ? 1.f / c_hyp : 1.f;
-  band->specific_flux[0] = F_true[0] * scale;
-  band->specific_flux[1] = F_true[1] * scale;
-  band->specific_flux[2] = F_true[2] * scale;
+  moment->specific_flux[0] = F_true[0] * scale;
+  moment->specific_flux[1] = F_true[1] * scale;
+  moment->specific_flux[2] = F_true[2] * scale;
 }
 
 /**
@@ -1119,7 +1122,7 @@ static void set_consistent_c_test_band(struct feedback_isrf_band_data *band,
  * float bits (#bits_equal_f), not a tolerance.
  *
  * c_hyp is chosen as an exact power of two (8.0): under this scheme,
- * #feedback_isrf_band_data.specific_flux stores Ft = F_true/c_hyp instead
+ * #feedback_isrf_moment_data.specific_flux stores Ft = F_true/c_hyp instead
  * of F_true, and IEEE-754 multiplication/division by an exact power of two
  * moves only the exponent field, leaving the significand untouched; a
  * later multiplication by the same power of two therefore reproduces the
@@ -1142,9 +1145,10 @@ static void test_consistent_variable_c_uniform_c_bit_identical(void) {
   const float dx[3] = {0.31f, -0.12f, 0.05f};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-  const float F_true[ISRF_BAND_COUNT][2][3] = {
-      {{0.4f, -0.2f, 0.1f}, {-0.15f, 0.25f, -0.05f}},
-      {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}}};
+  const float F_true[][2][3] = {{{0.4f, -0.2f, 0.1f}, {-0.15f, 0.25f, -0.05f}},
+                                {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}}};
+  _Static_assert(sizeof(F_true) / sizeof(F_true[0]) == ISRF_MOMENT_COUNT,
+                 "F_true needs one initialiser per ISRF_MOMENT_COUNT entry.");
 
   struct part pi_A, pj_A, pi_B, pj_B;
   bzero(&pi_A, sizeof(struct part));
@@ -1165,21 +1169,25 @@ static void test_consistent_variable_c_uniform_c_bit_identical(void) {
     parts_A[s]->feedback_data.c_hyp = c_hyp;
     parts_B[s]->feedback_data.rho_prev = rhos[s];
     parts_B[s]->feedback_data.c_hyp = c_hyp;
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      const float u = 0.5f + 0.1f * s + 0.2f * b;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      const float u = 0.5f + 0.1f * s + 0.2f * m;
       const float alpha_trigger = 0.1f + 0.05f * s;
-      parts_A[s]->feedback_data.isrf_band[b].u = u;
-      parts_B[s]->feedback_data.isrf_band[b].u = u;
-      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+      const enum radiation_isrf_operator o =
+          radiation_isrf_moment_to_operator[m];
+      parts_A[s]->feedback_data.isrf_moment[m].u = u;
+      parts_B[s]->feedback_data.isrf_moment[m].u = u;
+      parts_A[s]->feedback_data.isrf_operator[o].dissipation_alpha_trigger =
           alpha_trigger;
-      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_trigger =
+      parts_B[s]->feedback_data.isrf_operator[o].dissipation_alpha_trigger =
           alpha_trigger;
-      parts_A[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
-      parts_B[s]->feedback_data.isrf_band[b].dissipation_alpha_floor = 0.05f;
-      set_consistent_c_test_band(&parts_A[s]->feedback_data.isrf_band[b],
-                                 F_true[b][s], c_hyp, /*reduced=*/0);
-      set_consistent_c_test_band(&parts_B[s]->feedback_data.isrf_band[b],
-                                 F_true[b][s], c_hyp, /*reduced=*/1);
+      parts_A[s]->feedback_data.isrf_operator[o].dissipation_alpha_floor =
+          0.05f;
+      parts_B[s]->feedback_data.isrf_operator[o].dissipation_alpha_floor =
+          0.05f;
+      set_consistent_c_test_band(&parts_A[s]->feedback_data.isrf_moment[m],
+                                 F_true[m][s], c_hyp, /*reduced=*/0);
+      set_consistent_c_test_band(&parts_B[s]->feedback_data.isrf_moment[m],
+                                 F_true[m][s], c_hyp, /*reduced=*/1);
     }
   }
 
@@ -1190,11 +1198,15 @@ static void test_consistent_variable_c_uniform_c_bit_identical(void) {
   runner_iact_isrf_dissipation(r2, dx, hi, hj, &pi_B, &pj_B, 1.f, 0.f);
   isrf_c_hyp_consistent_variable_c = 0; /* restore the default */
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    const struct feedback_isrf_band_data *ai = &pi_A.feedback_data.isrf_band[b];
-    const struct feedback_isrf_band_data *aj = &pj_A.feedback_data.isrf_band[b];
-    const struct feedback_isrf_band_data *bi = &pi_B.feedback_data.isrf_band[b];
-    const struct feedback_isrf_band_data *bj = &pj_B.feedback_data.isrf_band[b];
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+    const struct feedback_isrf_moment_data *ai =
+        &pi_A.feedback_data.isrf_moment[b];
+    const struct feedback_isrf_moment_data *aj =
+        &pj_A.feedback_data.isrf_moment[b];
+    const struct feedback_isrf_moment_data *bi =
+        &pi_B.feedback_data.isrf_moment[b];
+    const struct feedback_isrf_moment_data *bj =
+        &pj_B.feedback_data.isrf_moment[b];
 
     if (!bits_equal_f(ai->div_specific_flux, bi->div_specific_flux))
       error(
@@ -1339,21 +1351,29 @@ static void test_consistent_variable_c_conservation(void) {
     pi.feedback_data.c_hyp = ci_values[t];
     pj.feedback_data.c_hyp = cj_values[t];
 
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
-      struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
-      bi->specific_flux[0] = 0.3f + 0.05f * t + 0.1f * b;
-      bi->specific_flux[1] = -0.2f + 0.02f * t;
-      bi->specific_flux[2] = 0.15f;
-      bj->specific_flux[0] = -0.1f + 0.03f * t;
-      bj->specific_flux[1] = 0.25f - 0.01f * b;
-      bj->specific_flux[2] = -0.05f;
-      bi->u = 0.6f + 0.1f * t;
-      bj->u = 0.4f + 0.05f * b;
-      bi->dissipation_alpha_trigger = 0.2f;
-      bj->dissipation_alpha_trigger = 0.15f;
-      bi->dissipation_alpha_floor = 0.05f;
-      bj->dissipation_alpha_floor = 0.05f;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      struct feedback_isrf_moment_data *moment_i =
+          &pi.feedback_data.isrf_moment[m];
+      struct feedback_isrf_moment_data *moment_j =
+          &pj.feedback_data.isrf_moment[m];
+      const enum radiation_isrf_operator o =
+          radiation_isrf_moment_to_operator[m];
+      struct feedback_isrf_operator_data *op_i =
+          &pi.feedback_data.isrf_operator[o];
+      struct feedback_isrf_operator_data *op_j =
+          &pj.feedback_data.isrf_operator[o];
+      moment_i->specific_flux[0] = 0.3f + 0.05f * t + 0.1f * m;
+      moment_i->specific_flux[1] = -0.2f + 0.02f * t;
+      moment_i->specific_flux[2] = 0.15f;
+      moment_j->specific_flux[0] = -0.1f + 0.03f * t;
+      moment_j->specific_flux[1] = 0.25f - 0.01f * m;
+      moment_j->specific_flux[2] = -0.05f;
+      moment_i->u = 0.6f + 0.1f * t;
+      moment_j->u = 0.4f + 0.05f * m;
+      op_i->dissipation_alpha_trigger = 0.2f;
+      op_j->dissipation_alpha_trigger = 0.15f;
+      op_i->dissipation_alpha_floor = 0.05f;
+      op_j->dissipation_alpha_floor = 0.05f;
     }
 
     const float dx[3] = {0.2f + 0.05f * t, -0.1f, 0.05f};
@@ -1361,9 +1381,11 @@ static void test_consistent_variable_c_conservation(void) {
 
     runner_iact_isrf_dissipation(r2, dx, pi.h, pj.h, &pi, &pj, 1.f, 0.f);
 
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      const struct feedback_isrf_band_data *bi = &pi.feedback_data.isrf_band[b];
-      const struct feedback_isrf_band_data *bj = &pj.feedback_data.isrf_band[b];
+    for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
+      const struct feedback_isrf_moment_data *bi =
+          &pi.feedback_data.isrf_moment[b];
+      const struct feedback_isrf_moment_data *bj =
+          &pj.feedback_data.isrf_moment[b];
 
       const double div_i = (double)pi.mass * (double)bi->div_specific_flux /
                            (double)pi.feedback_data.c_hyp;
@@ -1468,11 +1490,11 @@ static void test_kernel_local_plus_variable_c_composition(void) {
   p.feedback_data.max_ngb_time_bin = p.time_bin + 4;
   const float sentinel_c_hyp = 42.f;
   p.feedback_data.c_hyp = sentinel_c_hyp;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    p.feedback_data.isrf_band[b].u = 0.6f + 0.1f * b;
-    p.feedback_data.isrf_band[b].specific_flux[0] = 0.2f + 0.05f * b;
-    p.feedback_data.isrf_band[b].specific_flux[1] = -0.1f;
-    p.feedback_data.isrf_band[b].specific_flux[2] = 0.05f;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    p.feedback_data.isrf_moment[m].u = 0.6f + 0.1f * m;
+    p.feedback_data.isrf_moment[m].specific_flux[0] = 0.2f + 0.05f * m;
+    p.feedback_data.isrf_moment[m].specific_flux[1] = -0.1f;
+    p.feedback_data.isrf_moment[m].specific_flux[2] = 0.05f;
   }
 
   radiation_end_density_propagation(&p, &e);
@@ -1515,22 +1537,24 @@ static void test_kernel_local_plus_variable_c_composition(void) {
    * would slip through the tolerance gate silently. */
   const double closure_rel_bar = 1e-5;
   const double closure_abs_bar = 1e-8;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     float expected_D[3][3];
     radiation_get_m1_closure_tensor_band(
-        p.feedback_data.isrf_band[b].u,
-        p.feedback_data.isrf_band[b].specific_flux,
+        p.feedback_data.isrf_moment[m].u,
+        p.feedback_data.isrf_moment[m].specific_flux,
         /*c_M=*/1.f, expected_D);
     for (int r = 0; r < 3; r++)
       for (int c = 0; c < 3; c++) {
         const double got =
-            (double)p.feedback_data.isrf_band[b].m1_closure_D[r][c];
+            (double)p.feedback_data
+                .isrf_operator[radiation_isrf_moment_to_operator[m]]
+                .m1_closure_D[r][c];
         const double ref = (double)expected_D[r][c];
         if (!is_finite_bits(got) || !is_finite_bits(ref))
           error(
               "composition: band %d m1_closure_D[%d][%d] = %.9g against the "
               "c_M=1 closure %.9g: a non-finite closure component.",
-              b, r, c, got, ref);
+              m, r, c, got, ref);
         const double dev = fabs(got - ref);
         const double bar = closure_rel_bar * fabs(ref) + closure_abs_bar;
         if (!(dev <= bar))
@@ -1539,7 +1563,7 @@ static void test_kernel_local_plus_variable_c_composition(void) {
               "c_M=1 closure %.9g (deviation %.3e above %.3e) -- the "
               "operator axis picked up the NEW c_hyp instead of staying "
               "pinned at c_M=1.",
-              b, r, c, got, ref, dev, bar);
+              m, r, c, got, ref, dev, bar);
       }
   }
 

@@ -163,10 +163,10 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @param c_i Particle i's #feedback_part_data.c_hyp.
  * @param c_j Particle j's #feedback_part_data.c_hyp.
  * @param alpha_trigger_i Particle i's
- * #feedback_isrf_band_data.dissipation_alpha_trigger (this band).
+ * #feedback_isrf_operator_data.dissipation_alpha_trigger (this band).
  * @param alpha_trigger_j Particle j's, same field.
  * @param alpha_floor_i Particle i's
- * #feedback_isrf_band_data.dissipation_alpha_floor (this band).
+ * #feedback_isrf_operator_data.dissipation_alpha_floor (this band).
  * @param alpha_floor_j Particle j's, same field.
  * @param u_i Particle i's live specific field `u^n` (this band).
  * @param u_j Particle j's live specific field `u^n` (this band).
@@ -321,10 +321,12 @@ radiation_cache_m1_closure_part(struct part *p) {
 
   struct feedback_part_data *fd = &p->feedback_data;
   const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : fd->c_hyp;
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *band = &fd->isrf_band[b];
-    radiation_get_m1_closure_tensor_band(band->u, band->specific_flux, c_M,
-                                         band->m1_closure_D);
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    struct feedback_isrf_operator_data *op =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    radiation_get_m1_closure_tensor_band(moment->u, moment->specific_flux, c_M,
+                                         op->m1_closure_D);
   }
 }
 
@@ -428,13 +430,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
   fdj->max_ngb_time_bin = max(fdj->max_ngb_time_bin, pi->time_bin);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
     radiation_dissipation_reference_accumulate_band(
-        wi, wj, mi, mj, rho_i, rho_j, bi->u_prev, bj->u_prev,
-        &bi->ngb_mean_abs_u_V, &bj->ngb_mean_abs_u_V);
+        wi, wj, mi, mj, rho_i, rho_j, moment_i->u_prev, moment_j->u_prev,
+        &op_i->ngb_mean_abs_u_V, &op_j->ngb_mean_abs_u_V);
   }
 }
 
@@ -480,16 +485,18 @@ runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
 
   fdi->max_ngb_time_bin = max(fdi->max_ngb_time_bin, pj->time_bin);
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    struct feedback_isrf_operator_data *op_i =
+        &fdi->isrf_operator[radiation_isrf_moment_to_operator[m]];
 
     /* Particle j is not written here, so discard its side of the pair. */
     float unused_ngb_mean_abs_u_V = 0.f;
 
     radiation_dissipation_reference_accumulate_band(
-        wi, wj, mi, mj, rho_i, rho_j, bi->u_prev, bj->u_prev,
-        &bi->ngb_mean_abs_u_V, &unused_ngb_mean_abs_u_V);
+        wi, wj, mi, mj, rho_i, rho_j, moment_i->u_prev, moment_j->u_prev,
+        &op_i->ngb_mean_abs_u_V, &unused_ngb_mean_abs_u_V);
   }
 }
 
@@ -533,14 +540,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
 
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    const struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
     radiation_gradient_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u,
-        bi->m1_closure_D, bj->m1_closure_D, a_factor_comoving_to_physical,
-        bi->grad_u, bj->grad_u);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, moment_i->u, moment_j->u,
+        op_i->m1_closure_D, op_j->m1_closure_D, a_factor_comoving_to_physical,
+        moment_i->grad_u, moment_j->grad_u);
   }
 }
 
@@ -586,17 +596,20 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    const struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
     /* Particle j is not written here, so discard its side of the pair. */
     float unused_grad_u[3] = {0.f, 0.f, 0.f};
 
     radiation_gradient_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->u, bj->u,
-        bi->m1_closure_D, bj->m1_closure_D, a_factor_comoving_to_physical,
-        bi->grad_u, unused_grad_u);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, moment_i->u, moment_j->u,
+        op_i->m1_closure_D, op_j->m1_closure_D, a_factor_comoving_to_physical,
+        moment_i->grad_u, unused_grad_u);
   }
 }
 
@@ -650,20 +663,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    const struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
     radiation_divergence_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->specific_flux,
-        bj->specific_flux, c_i, c_j, a_factor_comoving_to_physical,
-        &bi->div_specific_flux, &bj->div_specific_flux);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, moment_i->specific_flux,
+        moment_j->specific_flux, c_i, c_j, a_factor_comoving_to_physical,
+        &moment_i->div_specific_flux, &moment_j->div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
         wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_i, c_j,
-        bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
-        bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
-        a_factor_comoving_to_physical, &bi->dissipation_u, &bj->dissipation_u);
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->u, moment_j->u, a_factor_comoving_to_physical,
+        &moment_i->dissipation_u, &moment_j->dissipation_u);
   }
 }
 
@@ -716,25 +733,28 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
 
   const float a_factor_comoving_to_physical = 1.f / a;
 
-  for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-    struct feedback_isrf_band_data *bi = &fdi->isrf_band[b];
-    const struct feedback_isrf_band_data *bj = &fdj->isrf_band[b];
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    const struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    const struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
 
     /* Particle j is not written here, so discard its side of the pair. */
     float unused_div_specific_flux = 0.f;
     float unused_dissipation_u = 0.f;
 
     radiation_divergence_accumulate_band(
-        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, bi->specific_flux,
-        bj->specific_flux, c_i, c_j, a_factor_comoving_to_physical,
-        &bi->div_specific_flux, &unused_div_specific_flux);
+        dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, moment_i->specific_flux,
+        moment_j->specific_flux, c_i, c_j, a_factor_comoving_to_physical,
+        &moment_i->div_specific_flux, &unused_div_specific_flux);
 
     radiation_dissipation_force_accumulate_band(
         wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_i, c_j,
-        bi->dissipation_alpha_trigger, bj->dissipation_alpha_trigger,
-        bi->dissipation_alpha_floor, bj->dissipation_alpha_floor, bi->u, bj->u,
-        a_factor_comoving_to_physical, &bi->dissipation_u,
-        &unused_dissipation_u);
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->u, moment_j->u, a_factor_comoving_to_physical,
+        &moment_i->dissipation_u, &unused_dissipation_u);
   }
 }
 

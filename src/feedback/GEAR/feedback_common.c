@@ -1095,14 +1095,14 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
 
 /**
  * @brief Local specific PE-band radiation field, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].u. Thin dispatch wrapper, same
- * reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].u. Thin dispatch wrapper,
+ * same reasoning as #feedback_is_part_tagged_as_ionized: every feedback model
  * provides this function, returning 0 everywhere except here for GEAR.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_u_PE(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_PE].u;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].u;
 }
 
 /**
@@ -1112,14 +1112,15 @@ float feedback_get_part_u_PE(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_u_LW(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_LW].u;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u;
 }
 
 /**
  * @brief Negativity-triggered artificial-dissipation coefficient, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger and
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor. Thin
- * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
+ * #feedback_part_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_trigger
+ * and
+ * #feedback_part_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_floor.
+ * Thin dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
  * the per-pair `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`,
@@ -1129,8 +1130,10 @@ float feedback_get_part_u_LW(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
-  return max(p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_trigger,
-             p->feedback_data.isrf_band[ISRF_BAND_PE].dissipation_alpha_floor);
+  return max(
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_PE]
+          .dissipation_alpha_trigger,
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_floor);
 }
 
 /**
@@ -1139,19 +1142,21 @@ float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
-  return max(p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_trigger,
-             p->feedback_data.isrf_band[ISRF_BAND_LW].dissipation_alpha_floor);
+  return max(
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW]
+          .dissipation_alpha_trigger,
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].dissipation_alpha_floor);
 }
 
 /**
  * @brief `(1/rho) div(rho F)` accumulator, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].div_specific_flux. Thin dispatch
- * wrapper, same reasoning as #feedback_get_part_u_PE.
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_div_specific_flux_PE(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_PE].div_specific_flux;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux;
 }
 
 /**
@@ -1160,12 +1165,12 @@ float feedback_get_part_div_specific_flux_PE(const struct part *p) {
  * @param p The #part to query.
  */
 float feedback_get_part_div_specific_flux_LW(const struct part *p) {
-  return p->feedback_data.isrf_band[ISRF_BAND_LW].div_specific_flux;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].div_specific_flux;
 }
 
 /**
  * @brief Tracked specific flux moment, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].specific_flux, ALWAYS
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].specific_flux, ALWAYS
  * returned as the true physical flux `F_true`, regardless of which ISRF
  * scheme is active. Under #isrf_c_hyp_consistent_variable_c the stored
  * field is instead the reduced flux `Ft = F_true/c_hyp`
@@ -1183,9 +1188,12 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
 void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
   const float rescale =
       isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
-  ret[0] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[0];
-  ret[1] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[1];
-  ret[2] = rescale * p->feedback_data.isrf_band[ISRF_BAND_PE].specific_flux[2];
+  ret[0] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[0];
+  ret[1] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[1];
+  ret[2] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[2];
 }
 
 /**
@@ -1197,15 +1205,18 @@ void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
   const float rescale =
       isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
-  ret[0] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[0];
-  ret[1] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[1];
-  ret[2] = rescale * p->feedback_data.isrf_band[ISRF_BAND_LW].specific_flux[2];
+  ret[0] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[0];
+  ret[1] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[1];
+  ret[2] =
+      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[2];
 }
 
 /**
  * @brief Most negative PE-band specific energy written since the previous
  * snapshot, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot.
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].u_min_since_snapshot.
  *
  * Values stamped with an older snapshot index belong to an interval that
  * saw no update of this particle, so they read as 0. Always 0 without
@@ -1218,7 +1229,7 @@ float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
                                                 const struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_band[ISRF_BAND_PE].u_min_since_snapshot;
+    return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].u_min_since_snapshot;
 #endif
   return 0.f;
 }
@@ -1233,21 +1244,21 @@ float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
                                                 const struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_band[ISRF_BAND_LW].u_min_since_snapshot;
+    return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u_min_since_snapshot;
 #endif
   return 0.f;
 }
 
 /**
  * @brief Cumulative PE-band raw injected dose since first init, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_injected. Always 0
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected. Always 0
  * without SWIFT_DEBUG_CHECKS.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_cumulative_injected_PE(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_band[ISRF_BAND_PE].cumulative_injected;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected;
 #else
   return 0.f;
 #endif
@@ -1260,7 +1271,7 @@ float feedback_get_part_cumulative_injected_PE(const struct part *p) {
  */
 float feedback_get_part_cumulative_injected_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_band[ISRF_BAND_LW].cumulative_injected;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_injected;
 #else
   return 0.f;
 #endif
@@ -1269,14 +1280,14 @@ float feedback_get_part_cumulative_injected_LW(const struct part *p) {
 /**
  * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
  * specific energy since first init, see
- * #feedback_part_data.isrf_band[ISRF_BAND_PE].cumulative_absorbed. Always 0
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].cumulative_absorbed. Always 0
  * without SWIFT_DEBUG_CHECKS.
  *
  * @param p The #part to query.
  */
 float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_band[ISRF_BAND_PE].cumulative_absorbed;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].cumulative_absorbed;
 #else
   return 0.f;
 #endif
@@ -1289,7 +1300,7 @@ float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
  */
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_band[ISRF_BAND_LW].cumulative_absorbed;
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_absorbed;
 #else
   return 0.f;
 #endif
@@ -1334,7 +1345,7 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
  * @param sp The #spart to query.
  */
 double feedback_get_star_L_PE(const struct spart *sp) {
-  return sp->feedback_data.radiation.L_band[ISRF_BAND_PE];
+  return sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE];
 }
 
 /**
@@ -1344,7 +1355,7 @@ double feedback_get_star_L_PE(const struct spart *sp) {
  * @param sp The #spart to query.
  */
 double feedback_get_star_L_LW(const struct spart *sp) {
-  return sp->feedback_data.radiation.L_band[ISRF_BAND_LW];
+  return sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
 }
 
 /**

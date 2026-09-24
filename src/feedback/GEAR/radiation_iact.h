@@ -233,11 +233,11 @@ radiation_iact_nonsym_feedback_apply(
 
   /* Zero unless GEARFeedback:with_interstellar_radiation_field is on
      (L_band is then computed by stellar_evolution.c). */
-  if (si->feedback_data.radiation.L_band[ISRF_BAND_PE] != 0.0 ||
-      si->feedback_data.radiation.L_band[ISRF_BAND_LW] != 0.0) {
+  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
+      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
-    float extinction[ISRF_BAND_COUNT];
+    float extinction[ISRF_OPERATOR_COUNT];
     /* Receiver-side, using pj's own column density, not the source; see
        radiation_get_part_ISRF_extinction_factors for the formula. */
     const float extinction_path = radiation_get_comoving_extinction_path(
@@ -246,12 +246,13 @@ radiation_iact_nonsym_feedback_apply(
                                                extinction_path, extinction);
 
     /* u_inject is an energy; dividing by mj below converts it to the
-       specific energy each band (or the dose reservoir) stores. */
-    double u_inject[ISRF_BAND_COUNT];
-    for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-      u_inject[b] = (double)Delta_t * weight *
-                    si->feedback_data.radiation.L_band[b] *
-                    (double)extinction[b];
+       specific energy each moment (or the dose reservoir) stores. Each
+       moment takes its operator's extinction through the map. */
+    double u_inject[ISRF_MOMENT_COUNT];
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      u_inject[m] = (double)Delta_t * weight *
+                    si->feedback_data.radiation.L_band[m] *
+                    (double)extinction[radiation_isrf_moment_to_operator[m]];
     }
 
     if (fb_props->ISRF_propagation) {
@@ -261,9 +262,9 @@ radiation_iact_nonsym_feedback_apply(
          double-counting emission. The rescale/phi fold-in happens once, at
          the receiving particle's own cadence, in
          radiation_end_force_propagation. */
-      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-        pj->feedback_data.isrf_band[b].u_dose_reservoir +=
-            (float)(u_inject[b] / (double)mj);
+      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+        pj->feedback_data.isrf_moment[m].u_dose_reservoir +=
+            (float)(u_inject[m] / (double)mj);
       }
       pj->feedback_data.ISRF_reservoir_end_ti =
           max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
@@ -275,13 +276,13 @@ radiation_iact_nonsym_feedback_apply(
          since the last cooling call. A later touch this same step (a
          second illuminating star) sums into what the first just wrote. */
       if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        for (int b = 0; b < ISRF_BAND_COUNT; b++)
-          pj->feedback_data.isrf_band[b].u = 0.f;
+        for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+          pj->feedback_data.isrf_moment[m].u = 0.f;
         pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
-      for (int b = 0; b < ISRF_BAND_COUNT; b++) {
-        pj->feedback_data.isrf_band[b].u += (float)(u_inject[b] / (double)mj);
+      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+        pj->feedback_data.isrf_moment[m].u += (float)(u_inject[m] / (double)mj);
       }
     }
 
