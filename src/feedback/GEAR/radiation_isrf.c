@@ -18,8 +18,10 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_isrf.c
- * @brief Receiver-side LW/PE dust extinction and hyperbolic
- * P1-relaxation propagation physics for GEAR.
+ * @brief Receiver-side LW/PE dust extinction and hyperbolic M1
+ * propagation physics for GEAR: closed by a variable Eddington tensor
+ * (not a fixed E/3) that adapts between the free-streaming and diffusive
+ * limits.
  */
 
 /* Config parameters. */
@@ -856,7 +858,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
  * @brief The `h/lambda`-gated floor under
  * #radiation_update_dissipation_alpha_band's trigger: the trigger
  * fires only on negativity and is exactly zero on the positive delta-shell
- * front of an optically-thin P1 pulse, so a purely reactive coefficient
+ * front of an optically-thin M1 pulse, so a purely reactive coefficient
  * cannot damp the resulting dispersive wake there. This floor supplies
  * dissipation the trigger structurally cannot, rolling off as
  * `(eps_lambda/(h*kappa))^4` once `h/lambda` exceeds #ISRF_dissipation_
