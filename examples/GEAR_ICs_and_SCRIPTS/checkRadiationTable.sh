@@ -6,7 +6,10 @@
 #
 # Any example running with photoionization, radiation pressure or the
 # interstellar radiation field needs a table carrying a "Data/Radiation"
-# group. With --with-isrf it must also carry the four ISRF band datasets.
+# group, and that group must carry "MeanPhotonEnergyLW"/
+# "Integrated_MeanPhotonEnergyLW": SWIFT requires both unconditionally,
+# not only under with_interstellar_radiation_field. With --with-isrf it
+# must also carry the four ISRF band datasets.
 # The tables served by the public hosts (see getChemistryTable.sh) predate
 # the radiation tables and carry neither, so this check stops the example
 # before it spends time on the glass file, the Cloudy tables and the
@@ -74,6 +77,7 @@ table = sys.argv[1]
 with_isrf = sys.argv[2] == "1"
 require_1d = sys.argv[3] == "1"
 isrf_fields = ("L_PE", "L_LW", "Integrated_L_PE", "Integrated_L_LW")
+required_fields = ("MeanPhotonEnergyLW", "Integrated_MeanPhotonEnergyLW")
 
 # Attributes that identify the table itself. GEARFeedback:yields_table only
 # names a file, and the name says nothing about which Q_H the run used, so
@@ -132,9 +136,11 @@ with handle as f:
         ]
         if "dimensionality" in group.attrs:
             dimensionality = as_text(group.attrs["dimensionality"])
-        absent = [d for d in isrf_fields if d not in group]
+        absent = [d for d in required_fields if d not in group]
+        if with_isrf:
+            absent += [d for d in isrf_fields if d not in group]
         missing = None
-        if with_isrf and absent:
+        if absent:
             missing = "the dataset(s) " + ", ".join(
                 "'Data/Radiation/%s'" % d for d in absent
             )
