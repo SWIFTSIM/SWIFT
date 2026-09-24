@@ -80,9 +80,12 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
         (s->space->e->policy & engine_policy_star_formation);
     const int with_star_formation_sink = with_sinks && with_stars;
 
-    if ((c->hydro.count > 0 && with_star_formation) ||
-        ((c->hydro.count > 0 || c->sinks.count > 0) &&
-         with_star_formation_sink)) {
+    const int resort_for_star_formation =
+        with_star_formation && (c->hydro.count > 0);
+    const int resort_for_star_formation_sink =
+        with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0);
+
+    if (resort_for_star_formation || resort_for_star_formation_sink) {
       scheduler_activate(s, c->hydro.stars_resort);
     }
   } else {
