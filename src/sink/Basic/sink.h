@@ -661,12 +661,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  * @param r_acc_p Accretion radius of #pi if it forms a sink.
+ * @param dim Box size in each direction. 0 if the box is not periodic.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const double time, const float r_acc_p) {}
+    const double time, const float r_acc_p, const double dim[3]) {}
 
 /**
  * @brief Returns the current co-moving softening of a sink particle

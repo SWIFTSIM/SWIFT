@@ -33,6 +33,7 @@
 #include "cooling.h"
 #include "feedback.h"
 #include "minmax.h"
+#include "periodic.h"
 #include "random.h"
 #include "sink_getters.h"
 #include "sink_part.h"
@@ -1399,12 +1400,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param sink_props The sink properties to use.
  * @param r_acc_p Accretion radius of #p if it forms a sink. Same for all #si,
  * so the caller computes it once.
+ * @param dim Box size in each direction. 0 if the box is not periodic.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const double time, const float r_acc_p) {
+    const double time, const float r_acc_p, const double dim[3]) {
 
   /* Do not continue if the gas cannot form sink for any reason */
   if (!pi->sink_data.can_form_sink) {
@@ -1425,17 +1427,18 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float rmax = sj->h * kernel_gamma;
   const float r_acc_sj = rmax * cosmo->a;
 
-  /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
+  /* Comoving distance between p and the sink. In a periodic box, use the
+     nearest periodic image. */
+  double dx_com[3] = {pi->x[0] - sj->x[0], pi->x[1] - sj->x[1],
+                      pi->x[2] - sj->x[2]};
+  for (int k = 0; k < 3; k++) {
+    if (dim[k] > 0.) dx_com[k] = nearest(dx_com[k], dim[k]);
+  }
 
-  /* Compute the pairwise physical distance */
-  const float six[3] = {(float)(sj->x[0]), (float)(sj->x[1]),
-                        (float)(sj->x[2])};
-
-  const float dx[3] = {(pix[0] - six[0]) * cosmo->a,
-                       (pix[1] - six[1]) * cosmo->a,
-                       (pix[2] - six[2]) * cosmo->a};
+  /* Physical distance */
+  const float dx[3] = {(float)(dx_com[0] * cosmo->a),
+                       (float)(dx_com[1] * cosmo->a),
+                       (float)(dx_com[2] * cosmo->a)};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* If forming a sink from this particle will create a sink overlapping an

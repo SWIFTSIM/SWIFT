@@ -3280,6 +3280,15 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       const int ci_active = cell_is_active_hydro(ci, e);
       const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
 
+      /* No gas-sink pair to test here: do not run the task. Same test as in
+         the runner. */
+      if (t->type == task_type_self) {
+        if (ci->hydro.count == 0 || ci->sinks.count == 0) continue;
+      } else if ((ci->hydro.count == 0 || cj->sinks.count == 0) &&
+                 (cj->hydro.count == 0 || ci->sinks.count == 0)) {
+        continue;
+      }
+
       /* Only activate tasks that involve a local active cell. */
       if ((ci_active || cj_active) &&
           (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -3302,9 +3311,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
             cell_activate_drift_sink(cj, s);
           }
 
-          /* Activate this loop's own prep_ghost_in_sink/prep_ghost_out_sink
-             for each super-cell in the pair (not the gas-gas loop's
-             prep_ghost_in/out -- see engine_maketasks.c). */
+          /* Activate the ghost tasks of this loop for each super-cell in the
+             pair. They are not the ghost tasks of the gas-gas loop. */
           if (ci_nodeID == nodeID) {
             scheduler_activate(s, ci->hydro.super->sinks.prep_ghost_in_sink);
             scheduler_activate(s, ci->hydro.super->sinks.prep_ghost_out_sink);

@@ -2954,19 +2954,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, t_sink_formation_gas,
                               ci->hydro.super->sinks.prep_ghost_out);
 
-          /* Sink formation sink preparation (gas-vs-existing-sink overlap
-             loop). Uses its own dedicated prep_ghost_in_sink/prep_ghost_out_
-             sink barrier pair, not the gas-gas loop's prep_ghost_in/out:
-             the two loops are structurally different (mixed-type search),
-             so each gets an independently-bracketed window. */
+          /* Gas-sink overlap loop for sink formation. It has its own ghost
+             tasks (prep_ghost_in_sink and prep_ghost_out_sink), so it does not
+             wait for the gas-gas loop. */
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_sink_formation_sink);
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
                               t_sink_formation_sink);
-          /* This search is naive (no sorted scan bounds), so the sort task
-             is not actually needed here; kept only because it is already
-             required by the density loop on any active hydro cell, so it
-             adds no extra serialization. */
+          /* This loop does not use the sorted indices yet. We keep the
+             dependency for a later version that will. */
           scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_sink_formation_sink);
           scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in_sink,
@@ -3369,10 +3365,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_sink_formation_gas,
                                 ci->hydro.super->sinks.prep_ghost_out);
 
-            /* Sink formation sink preparation, ci side. Own dedicated
-               barrier pair, see the self-task block above. Sorts unlock kept
-               only for parity with the density loop's requirement, not
-               needed by this naive (unsorted) search itself. */
+            /* Gas-sink overlap loop, ci side. Own ghost tasks, see the self
+               task above. The sort dependency is not needed by this loop
+               for now. */
             scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                                 t_sink_formation_sink);
             scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
@@ -3564,10 +3559,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
               scheduler_addunlock(sched, t_sink_formation_gas,
                                   cj->hydro.super->sinks.prep_ghost_out);
 
-              /* Sink formation sink preparation, cj side. Own dedicated
-                 barrier pair, see the self-task block above. Sorts unlock
-                 kept only for parity with the density loop's requirement,
-                 not needed by this naive (unsorted) search itself. */
+              /* Gas-sink overlap loop, cj side. Own ghost tasks, see the self
+                 task above. The sort dependency is not needed by this loop
+                 for now. */
               scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                                   t_sink_formation_sink);
               scheduler_addunlock(sched, cj->hydro.super->sinks.drift,

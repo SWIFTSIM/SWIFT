@@ -1840,6 +1840,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_sink_formation_gas ||
+        t->subtype == task_subtype_sink_formation_sink ||
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||

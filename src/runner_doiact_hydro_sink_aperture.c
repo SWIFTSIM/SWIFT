@@ -46,7 +46,8 @@
  * @param with_cosmology Whether we are running with cosmology.
  * @param cosmo The #cosmology.
  * @param sink_props The #sink_props of this run.
- * @param r_acc_p Accretion radius of #pi if it forms a sink. Same for all sinks, so the caller computes it once.
+ * @param r_acc_p Accretion radius of #pi if it forms a sink. Same for all
+ * sinks, so the caller computes it once.
  */
 static INLINE void runner_iact_hydro_sink_aperture_prep_sink_formation_sink(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
@@ -54,18 +55,26 @@ static INLINE void runner_iact_hydro_sink_aperture_prep_sink_formation_sink(
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const float r_acc_p) {
 
+  /* Most gas cannot form a sink. Skip the loop over the sinks for it. */
+  if (!pi->sink_data.can_form_sink) return;
+
+  /* Box size, or 0 if the box is not periodic */
+  const struct space *s = e->s;
+  const double dim[3] = {s->periodic ? s->dim[0] : 0.,
+                         s->periodic ? s->dim[1] : 0.,
+                         s->periodic ? s->dim[2] : 0.};
+
   for (int sjd = 0; sjd < scount; sjd++) {
 
     struct sink *restrict sj = &sinks[sjd];
 
-    /* Ignore inhibited and reserved-but-unformed sink slots (mirrors the
-       filter runner_do_prepare_part_sink_formation() applies to its own
-       brute-force fallback in runner_sinks.c). */
+    /* Ignore inhibited sinks and empty slots reserved for new sinks */
     if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
       continue;
 
     sink_prepare_part_sink_formation_sink_criteria(
-        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p);
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p,
+        dim);
   }
 }
 
@@ -94,8 +103,10 @@ void runner_doself1_hydro_sink_aperture_prep_sink_formation_sink(
   if (!cell_is_active_hydro(c, e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell (parts).");
-  if (!cell_are_sink_drifted(c, e)) error("Interacting undrifted cell (sinks).");
+  if (!cell_are_part_drifted(c, e))
+    error("Interacting undrifted cell (parts).");
+  if (!cell_are_sink_drifted(c, e))
+    error("Interacting undrifted cell (sinks).");
 #endif
 
   const int count = c->hydro.count;
@@ -119,8 +130,7 @@ void runner_doself1_hydro_sink_aperture_prep_sink_formation_sink(
         cosmo->a;
 
     runner_iact_hydro_sink_aperture_prep_sink_formation_sink(
-        e, pi, xpi, sinks, scount, with_cosmology, cosmo, sink_props,
-        r_acc_p);
+        e, pi, xpi, sinks, scount, with_cosmology, cosmo, sink_props, r_acc_p);
   }
 
   TIMER_TOC(timer_doself_hydro_sink_aperture_prep_sink_formation_sink);
@@ -130,8 +140,7 @@ void runner_doself1_hydro_sink_aperture_prep_sink_formation_sink(
  * @brief Non-symmetric half of the pair interaction: every active gas
  * particle in @p c_gas against every sink in @p c_sink.
  */
-static void
-do_nonsym_pair1_hydro_sink_aperture_prep_sink_formation_sink(
+static void do_nonsym_pair1_hydro_sink_aperture_prep_sink_formation_sink(
     struct runner *r, const struct cell *restrict c_gas,
     const struct cell *restrict c_sink) {
 
@@ -141,6 +150,7 @@ do_nonsym_pair1_hydro_sink_aperture_prep_sink_formation_sink(
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   if (c_sink->sinks.count == 0 || c_gas->hydro.count == 0) return;
+  if (c_gas->nodeID != e->nodeID) return;
   if (!cell_is_active_hydro(c_gas, e)) return;
 
   const int count = c_gas->hydro.count;
@@ -164,8 +174,7 @@ do_nonsym_pair1_hydro_sink_aperture_prep_sink_formation_sink(
         cosmo->a;
 
     runner_iact_hydro_sink_aperture_prep_sink_formation_sink(
-        e, pi, xpi, sinks, scount, with_cosmology, cosmo, sink_props,
-        r_acc_p);
+        e, pi, xpi, sinks, scount, with_cosmology, cosmo, sink_props, r_acc_p);
   }
 }
 
@@ -209,13 +218,8 @@ void runner_dopair1_hydro_sink_aperture_prep_sink_formation_sink(
 /**
  * @brief Recursively compute self interactions for sub-cells.
  *
- * Recursion threshold is 2 * r_cut < 0.5 * dmin, NOT the gas-gas loop's
- * r_cut < 0.5 * dmin: the true search reach here is a SUM of two radii (see
- * the file header), so recursing on the single-radius threshold could prune
- * away a sub-cell pair still within the true reach. Since the leaf is a
- * plain double loop with no further geometric pruning, stopping the
- * recursion earlier than the gas-gas loop costs some efficiency but drops
- * nothing.
+ * We stop splitting when 2 * r_cut >= 0.5 * dmin. The gas-gas loop uses
+ * r_cut here. We need 2 * r_cut because the overlap test adds two radii.
  *
  * @param r The #runner.
  * @param c The #cell.
@@ -281,16 +285,14 @@ void runner_dosub_pair1_hydro_sink_aperture_prep_sink_formation_sink(
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Anything to do here? Direction-aware: a pair only has work if active gas
-     in one cell can see sinks in the other, in either direction -- unlike
-     the gas-gas loop, ci or cj having zero gas does not rule out the other
-     direction. */
+  /* Nothing to do if no active gas can see a sink in the other cell. Check
+     both directions. */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
   if ((ci->hydro.count == 0 || cj->sinks.count == 0) &&
       (cj->hydro.count == 0 || ci->sinks.count == 0))
     return;
 
-  /* Get the pair direction and apply the canonical cell ordering. */
+  /* Get the pair direction and put the two cells in the standard order. */
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 

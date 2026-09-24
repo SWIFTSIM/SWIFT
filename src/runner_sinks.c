@@ -497,22 +497,26 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
   /* Accretion radius of pi if it forms a sink. It does not depend on sj,
      so compute it once here and not for each sj. */
-  const float r_acc_p =
-      (sink_props->use_fixed_r_cut ? sink_props->cut_off_radius
-                                   : kernel_gamma * pi->h) *
-      cosmo->a;
+  const float r_acc_p = kernel_gamma * pi->h * cosmo->a;
+
+  /* Box size, or 0 if the box is not periodic */
+  const double dim[3] = {s->periodic ? s->dim[0] : 0.,
+                         s->periodic ? s->dim[1] : 0.,
+                         s->periodic ? s->dim[2] : 0.};
 
   for (int j = 0; j < scount; j++) {
 
     /* Get a hold of the ith sinks in ci. */
     struct sink *restrict sj = &sinks[j];
 
-    /* Ignore inhibited particles */
-    if (sink_is_inhibited(sj, e)) continue;
+    /* Ignore inhibited and reserved-but-unformed particles */
+    if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
+      continue;
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(
-        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p);
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p,
+        dim);
 
   } /* End of sink neighbour loop */
 }
