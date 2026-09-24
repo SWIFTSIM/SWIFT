@@ -197,6 +197,16 @@ __attribute__((always_inline)) INLINE static float feedback_get_part_u_LW(
 }
 
 /**
+ * @brief Local Lyman-Werner-band photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_LW_PHOTON(const struct part *p) {
+  return 0.f;
+}
+
+/**
  * @brief Negativity-triggered artificial-dissipation coefficient. Nothing to do
  * here.
  *
@@ -214,6 +224,17 @@ feedback_get_part_dissipation_alpha_PE(const struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float
 feedback_get_part_dissipation_alpha_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
   return 0.f;
 }
 
@@ -238,6 +259,17 @@ feedback_get_part_div_specific_flux_LW(const struct part *p) {
 }
 
 /**
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
+  return 0.f;
+}
+
+/**
  * @brief Tracked specific flux moment. Nothing to do here.
  *
  * @param p The #part to query.
@@ -258,6 +290,20 @@ feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
  */
 __attribute__((always_inline)) INLINE static void
 feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components, zeroed.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_get_part_specific_flux_LW_PHOTON(const struct part *p, float *ret) {
   ret[0] = 0.f;
   ret[1] = 0.f;
   ret[2] = 0.f;
@@ -289,6 +335,19 @@ feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
+                                                 const struct engine *e) {
+  return 0.f;
+}
+
+/**
  * @brief Cumulative PE-band raw injected dose since first init. Nothing to
  * do here.
  *
@@ -310,6 +369,17 @@ feedback_get_part_cumulative_injected_LW(const struct part *p) {
 }
 
 /**
+ * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
+  return 0.f;
+}
+
+/**
  * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
  * specific energy since first init. Nothing to do here.
  *
@@ -327,6 +397,17 @@ feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float
 feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
+  return 0.f;
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner-band
+ * photon-number moment. Nothing to do here.
+ *
+ * @param p The #part to query.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
   return 0.f;
 }
 

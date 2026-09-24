@@ -1116,6 +1116,16 @@ float feedback_get_part_u_LW(const struct part *p) {
 }
 
 /**
+ * @brief Local Lyman-Werner-band photon-number moment, energy-equivalent
+ * at a fixed reference photon energy, see #feedback_get_part_u_PE.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_u_LW_PHOTON(const struct part *p) {
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
+}
+
+/**
  * @brief Negativity-triggered artificial-dissipation coefficient, see
  * #feedback_part_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_trigger
  * and
@@ -1149,6 +1159,21 @@ float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
 }
 
 /**
+ * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner-band
+ * photon-number moment. Decorative: this moment shares #ISRF_OPERATOR_LW
+ * with #ISRF_MOMENT_LW, so it reads the identical operator state as
+ * #feedback_get_part_dissipation_alpha_LW.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
+  return max(
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW]
+          .dissipation_alpha_trigger,
+      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].dissipation_alpha_floor);
+}
+
+/**
  * @brief `(1/rho) div(rho F)` accumulator, see
  * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux. Thin
  * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
@@ -1166,6 +1191,16 @@ float feedback_get_part_div_specific_flux_PE(const struct part *p) {
  */
 float feedback_get_part_div_specific_flux_LW(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].div_specific_flux;
+}
+
+/**
+ * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner-band
+ * photon-number moment.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].div_specific_flux;
 }
 
 /**
@@ -1214,6 +1249,25 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
 }
 
 /**
+ * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner-band
+ * photon-number moment.
+ *
+ * @param p The #part to query.
+ * @param ret (return) The three components.
+ */
+void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
+                                               float *ret) {
+  const float rescale =
+      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  ret[0] = rescale *
+           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[0];
+  ret[1] = rescale *
+           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[1];
+  ret[2] = rescale *
+           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[2];
+}
+
+/**
  * @brief Most negative PE-band specific energy written since the previous
  * snapshot, see
  * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].u_min_since_snapshot.
@@ -1250,6 +1304,23 @@ float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
 }
 
 /**
+ * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner-band
+ * photon-number moment.
+ *
+ * @param p The #part to query.
+ * @param e The #engine.
+ */
+float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
+                                                       const struct engine *e) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
+    return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
+        .u_min_since_snapshot;
+#endif
+  return 0.f;
+}
+
+/**
  * @brief Cumulative PE-band raw injected dose since first init, see
  * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected. Always 0
  * without SWIFT_DEBUG_CHECKS.
@@ -1272,6 +1343,21 @@ float feedback_get_part_cumulative_injected_PE(const struct part *p) {
 float feedback_get_part_cumulative_injected_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_injected;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner-band
+ * photon-number moment.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
+      .cumulative_injected;
 #else
   return 0.f;
 #endif
@@ -1301,6 +1387,21 @@ float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_absorbed;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner-band
+ * photon-number moment.
+ *
+ * @param p The #part to query.
+ */
+float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
+      .cumulative_absorbed;
 #else
   return 0.f;
 #endif
