@@ -969,23 +969,36 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;
 
-          /* Number of g-particles removed since the last rebuild. */
-          const long long n_removed = (long long)e->s->nr_inhibited_gparts;
+          /* We need 2 different checks depending on whether we are in a
+           * periodic or non-periodic run. In the latter we can have gparts
+           * removed at if they leave the box and in that case P2P interactions
+           * will ignore the inhibited particles that have left the box and
+           * multipole interactions will not.
+           * TODO: [Will] This can be fixed by removing the particles leaving
+           * the volume only at rebuild but we need to check that won't
+           * negatively impact anyone. */
+          int interaction_check = 0;
+          if (e->s->periodic) {
 
-          /* Define the range of acceptable interaction counts, accounting for
-           * newly inhibited particles. In rare instance g-particles can be
-           * removed during a step (i.e. in non-periodic runs when the
-           * drift inhibits any particle that has left the box, see
-           * cell_drift_gpart()) and the order relative to this check matters.
-           * When the order is just right (i.e. wrong) it can cause a failure
-           * here if we do a simple inequality. */
-          const long long min_interactions = e->total_nr_gparts - n_removed;
-          const long long max_interactions = e->total_nr_gparts;
+            /* In periodic runs we expect all g-particles to have interacted
+             * with all particles. */
+            interaction_check = (gp->num_interacted != e->total_nr_gparts);
+
+          } else {
+
+            /* In non-periodic runs we need to use an acceptable range between
+             * all particles and all particles minus the number of inhibited
+             * particles. */
+            const int n_removed = e->s->nr_inhibited_gparts;
+            const int min_interactions = e->total_nr_gparts - n_removed;
+            const int max_interactions = e->total_nr_gparts;
+            interaction_check = (gp->num_interacted < min_interactions ||
+                                 gp->num_interacted > max_interactions);
+          }
 
           /* Check that this gpart has interacted with all the other particles
            * (via direct or multipoles) in the box.*/
-          if (gp->num_interacted < min_interactions ||
-              gp->num_interacted > max_interactions) {
+          if (interaction_check) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
             /* If we have the gravity force checks enabled, we print more
