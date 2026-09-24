@@ -93,7 +93,12 @@ static void cell_update_hydro_h_max_active(struct cell *c,
             parts[i].limiter_data.min_ngb_time_bin, e->ti_current,
             e->max_active_bin);
 #endif
-      if (part_is_active(&parts[i], e))
+      /* Compare bins directly: the limiter pack copies time_bin without the
+       * cell lock, so a bin can be the transient negative value written by
+       * timestep_sync_part() mid-sync. A bin <= 0 is a particle being
+       * re-timestepped this step, i.e. active; part_is_active() would
+       * assert on it. */
+      if (parts[i].time_bin <= e->max_active_bin)
         h_max_active = max(h_max_active, parts[i].h);
     }
   }
