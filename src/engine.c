@@ -1235,9 +1235,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
        ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
        implicit: prep_ghost_in/out, prep_ghost_in/out_sink,
                  sink_in, sink_out                         | 6
-       All above are super-cell tasks; n2 covers sub-cells */
+       All above are super-cell tasks; n2 covers sub-cells. The formation_sink
+       tasks add 1 to n2. */
     n1 += 98;
-    n2 += 3;
+    n2 += 4;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;

@@ -101,6 +101,9 @@ tests/swift_dopair_perturbed.dat
 tests/test27cells
 tests/test27cells_subset
 tests/test27cellsHydroSinks
+tests/testSinkApertureRebuild
+tests/testSinkFormationGasCompleteness
+tests/testSinkOverlapCriteria
 tests/test27cellsStars
 tests/test27cellsStars_subset
 tests/testPeriodicBC
