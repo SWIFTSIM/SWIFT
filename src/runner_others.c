@@ -971,7 +971,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
           /* We need 2 different checks depending on whether we are in a
            * periodic or non-periodic run. In the latter we can have gparts
-           * removed at if they leave the box and in that case P2P interactions
+           * removed if they leave the box and in that case P2P interactions
            * will ignore the inhibited particles that have left the box and
            * multipole interactions will not.
            * TODO: [Will] This can be fixed by removing the particles leaving
@@ -1018,13 +1018,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
-                "gp->num_interacted=%lld, expected in [%lld, %lld] "
-                "(total_gparts=%lld removed_since_rebuild=%lld) "
-                "(local num_gparts=%zd) "
+                "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
+                "(local num_gparts=%zd inhibited_gparts=%zd) "
                 "(cell info: c->depth=%d c->grav.super->depth=%d)",
                 id, part_type_names[gp->type], gp->num_interacted,
-                min_interactions, max_interactions, e->total_nr_gparts,
-                n_removed, e->s->nr_gparts, c->depth, c->grav.super->depth);
+                e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
+                e->s->nr_gparts, e->s->nr_inhibited_gparts, c->depth,
+                c->grav.super->depth);
           }
         }
 #endif
