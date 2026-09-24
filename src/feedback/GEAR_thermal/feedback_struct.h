@@ -97,6 +97,12 @@ _Static_assert(sizeof(radiation_isrf_moment_to_operator) /
  * turn an assignment into last-writer-wins or an accumulation into a
  * double count.
  *
+ * Each entry MUST be the FIRST (lowest-index) moment that maps to that
+ * operator: a bare round trip through the forward map accepts any sharer,
+ * not only the first, so it cannot tell a correct entry from a wrong one
+ * when two moments share an operator. #feedback_check_isrf_operator_owner_map()
+ * checks the stronger property this map actually needs.
+ *
  * Declared unsized for the same reason as the forward map above.
  */
 static const enum radiation_isrf_moment radiation_isrf_operator_owner[] = {

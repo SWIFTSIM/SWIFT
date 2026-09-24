@@ -623,6 +623,79 @@ feedback_props_check_c_hyp_scheme(int scheme, float fixed_fraction) {
 }
 
 /**
+ * @brief Enforce that an operator -> owning-moment map and its reverse,
+ * moment -> operator, map are mutually consistent.
+ *
+ * The invariant is stronger than a round trip
+ * (`forward[owner[o]] == o`): a round trip alone accepts any moment that
+ * maps to operator @p o, not only the first, so it would pass a map that
+ * names a non-owning sharer as the owner while every writer reading
+ * through @p owner still computes from the wrong moment. This checks the
+ * property #radiation_isrf_operator_owner's own doxygen requires: @p
+ * owner[o] must be the FIRST (lowest-index) entry of @p forward equal to
+ * @p o. Every operator must also own at least one moment, since "first"
+ * is undefined over an empty set. Both maps are range-checked first, since
+ * an out-of-range @p owner entry would otherwise be read unchecked by the
+ * ownership check itself, and an out-of-range @p forward entry would index
+ * #feedback_part_data.isrf_operator out of bounds wherever a writer uses
+ * it.
+ *
+ * Takes the maps and their lengths as parameters, rather than reading
+ * #radiation_isrf_moment_to_operator/#radiation_isrf_operator_owner and
+ * #ISRF_MOMENT_COUNT/#ISRF_OPERATOR_COUNT directly, so a unit test can
+ * exercise it against synthetic maps of a different length than the real,
+ * currently two-entry, maps.
+ *
+ * @param forward Moment -> operator map (#radiation_isrf_moment_to_operator
+ * or a test stand-in).
+ * @param n_moments Number of entries in @p forward.
+ * @param owner Operator -> owning-moment map (#radiation_isrf_operator_owner
+ * or a test stand-in).
+ * @param n_operators Number of entries in @p owner.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_check_isrf_operator_owner_map(
+    const enum radiation_isrf_operator *forward, int n_moments,
+    const enum radiation_isrf_moment *owner, int n_operators) {
+
+  for (int m = 0; m < n_moments; m++)
+    if ((int)forward[m] < 0 || (int)forward[m] >= n_operators)
+      error(
+          "the moment->operator map's entry %d is %d, out of range "
+          "[0, %d): would index feedback_part_data.isrf_operator out of "
+          "bounds.",
+          m, (int)forward[m], n_operators);
+
+  for (int o = 0; o < n_operators; o++)
+    if ((int)owner[o] < 0 || (int)owner[o] >= n_moments)
+      error(
+          "the operator->owner map's entry %d is %d, out of range "
+          "[0, %d): would index moment-keyed state out of bounds.",
+          o, (int)owner[o], n_moments);
+
+  for (int o = 0; o < n_operators; o++) {
+    int first = -1;
+    for (int m = 0; m < n_moments; m++)
+      if ((int)forward[m] == o) {
+        first = m;
+        break;
+      }
+    if (first == -1)
+      error(
+          "no moment maps to operator %d through the moment->operator "
+          "map: every operator must own at least one moment.",
+          o);
+    if ((int)owner[o] != first)
+      error(
+          "the operator->owner map's entry %d is %d, but the first moment "
+          "mapping to operator %d is %d: the owner must be the first "
+          "moment that maps to the operator, not merely any moment that "
+          "does.",
+          o, (int)owner[o], o, first);
+  }
+}
+
+/**
  * @brief Initialize the global properties of the feedback scheme.
  *
  * @param fp The #feedback_props.
@@ -646,17 +719,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* The owner map is the one every operator-state writer trusts to find its
    * moment; a hand-edit that desyncs it from the forward map would corrupt
-   * every ISRF run silently, so check the round trip once at start-up
-   * rather than trusting the two maps stay consistent by inspection. */
-  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
-    if ((int)radiation_isrf_moment_to_operator
-            [radiation_isrf_operator_owner[o]] != o)
-      error(
-          "radiation_isrf_operator_owner[%d] does not map back to operator "
-          "%d through radiation_isrf_moment_to_operator: the two maps are "
-          "inconsistent.",
-          o, o);
-  }
+   * every ISRF run silently, so check it once at start-up rather than
+   * trusting the two maps stay consistent by inspection. Mirrored on
+   * restart by feedback_struct_restore(), since this function does not run
+   * then. */
+  feedback_check_isrf_operator_owner_map(
+      radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
+      radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
   /* Supernovae energy efficiency */
   double e_efficiency =
