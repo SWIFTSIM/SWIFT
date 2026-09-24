@@ -27,8 +27,10 @@
 #include <config.h>
 
 /* Include header */
+#include "atomic.h"
 #include "chemistry.h"
 #include "cooling.h"
+#include "engine.h"
 #include "error.h"
 #include "inline.h"
 #include "minmax.h"
@@ -95,9 +97,9 @@ radiation_get_part_number_hydrogen_atoms(
  * Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
  * fractions rather than total composition. Used only to price the one-off
  * cost of claiming a fresh candidate (feedback_iact_HII_ionization): a
- * particle whose species are already partly or fully ionized -- re-tagged
- * after its previous tag lapsed on a marginal budget shortfall, or
- * pre-ionized by a UV background -- does not need to pay to strip
+ * particle whose species are already partly or fully ionized, whether
+ * re-tagged after its previous tag lapsed on a marginal budget shortfall
+ * or pre-ionized by a UV background, does not need to pay to strip
  * electrons it has already lost. The maintenance cost
  * (radiation_get_part_rate_to_fully_ionize) keeps using the total, since
  * upkeep of a fully-ionized particle scales with its full electron/proton
@@ -105,7 +107,7 @@ radiation_get_part_number_hydrogen_atoms(
  *
  * At COOLING_GRACKLE_MODE == 0 (no species tracking) there is nothing to
  * distinguish neutral from ionized, so this falls back to the total N_H
- * (radiation_get_part_number_hydrogen_atoms) -- the pre-existing,
+ * (radiation_get_part_number_hydrogen_atoms), the pre-existing,
  * conservative behaviour.
  *
  * @param phys_const Physical constants.
@@ -182,7 +184,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
  * only on Z (used by radiation_get_part_ionized_internal_energy).
  *
  * Compile with -DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<value>
- * to force this to a fixed value regardless of Z -- e.g. to reproduce a paper's
+ * to force this to a fixed value regardless of Z, e.g. to reproduce a paper's
  * own flat T_i=1e4 K convention at Z=0 (pure hydrogen, no metal-line
  * cooling), decoupling the ionized-gas temperature from the metallicity
  * this fit would otherwise require to hit that value (Z/Zsun~0.231 for
@@ -274,7 +276,7 @@ radiation_get_part_mean_molecular_weight(
  * ionized: the minimum of the energy needed to fully ionize it and the
  * metallicity-dependent collisional-equilibrium energy (see
  * cooling_ionize_part_subgrid in cooling_gear_subgrid.h). Pure
- * computation, no side effects -- shared by cooling_ionize_part_subgrid
+ * computation, no side effects: shared by cooling_ionize_part_subgrid
  * (which actually floors the particle's temperature) and
  * radiation_get_part_rate_to_fully_ionize (which evaluates the case-B
  * recombination coefficient at the temperature the gas is actually held
@@ -435,6 +437,9 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   sp->feedback_data.radiation.L_bol = 0.f;
   sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    sp->feedback_data.radiation.L_band[m] = 0.;
+  sp->feedback_data.radiation.teff = 0.f;
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
 
@@ -467,7 +472,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
     /* A pass overdraws its pixel by up to one particle's cost, since the
        boundary particle is claimed in full. Carry that debt forward instead of
        forgiving it: forgiven once per pass, it would over-issue photons in
-       proportion to the number of passes, i.e. as 1/dt_back -- a cadence
+       proportion to the number of passes, i.e. as 1/dt_back, a cadence
        dependence. Unspent *positive* budget is not carried, those photons
        reached no gas and escaped. */
     const double debt =
@@ -550,7 +555,7 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * above are always written, since @p p is never NULL.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which this particle should
- * stay flagged as ionized (the ionizing star's next HII rebuild) -- cooling
+ * stay flagged as ionized (the ionizing star's next HII rebuild). Cooling
  * keeps re-flooring its temperature until then instead of undoing the
  * ionization on the very next step.
  */
@@ -608,6 +613,38 @@ __attribute__((always_inline)) INLINE double
 radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xp) {
   return p->feedback_data.end_time;
+}
+
+/**
+ * Clear #part::feedback_data.is_illuminated_ISRF once its illumination
+ * window has lapsed. Mirrors cooling_ionize_part_subgrid's own
+ * `time >= end_time` expiry of #is_ionized: called once per step, per
+ * particle (feedback_reset_part), regardless of whether a star touches
+ * this particle this step, so a gap in illumination is detected even
+ * though nothing in the injection pass itself runs for an un-illuminated
+ * particle.
+ *
+ * With LW/PE propagation off, an expiring particle also has every band's u
+ * zeroed here: nothing else decays that stale value once the particle
+ * stops being illuminated (propagation ON already handles this via its own
+ * per-step decay/mixing update, so it is deliberately left untouched
+ * here).
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                           const struct engine *e) {
+  if (!p->feedback_data.is_illuminated_ISRF) return;
+  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
+
+  p->feedback_data.is_illuminated_ISRF = 0;
+
+  if (!e->feedback_props->ISRF_propagation) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      p->feedback_data.isrf_moment[m].u = 0.f;
+  }
 }
 
 /**
@@ -674,8 +711,8 @@ radiation_get_part_photoionization_rate_coefficient(const struct part *p,
  * Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
  * flux (photons / area / time, internal units), via the standard hydrogen
  * photoionization cross-section at the Lyman limit (sigma_HI = 6.3e-18
- * cm^2, Osterbrock & Ferland 2006 -- a physical constant, not a tunable
- * parameter). Called once at tag time (feedback_iact_HII_ionization): the
+ * cm^2, Osterbrock & Ferland 2006), a physical constant, not a tunable
+ * parameter. Called once at tag time (feedback_iact_HII_ionization): the
  * raw flux is too large for float32 in this unit system, but the product
  * with the tiny cross-section is safely representable, so only that
  * product is stored.
@@ -694,4 +731,202 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
       sigma_HI_cgs / units_general_cgs_conversion_factor(us, dimension_area);
 
   return sigma_HI * ionizing_flux_HI;
+}
+
+/* Throttling for #radiation_clamp_nonnegative_for_grackle's warning below:
+   report the first this-many clamp events individually, then only a
+   running summary every this-many further events, so a run with a
+   persistent undershoot does not go silent about it without flooding the
+   log under a threaded per-particle loop. */
+#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
+#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
+
+/**
+ * @brief Clamp a radiation quantity about to reach Grackle to be
+ * non-negative, warning (throttled) whenever a negative value is caught.
+ *
+ * The propagated PE/LW specific energy can undershoot below zero at an
+ * unresolved jump in the propagation scheme's non-dissipative central
+ * difference. A negative flux is unphysical on its face: unclamped, it
+ * turns into spurious cooling (or dissociation) inside Grackle instead of
+ * simply reading as zero illumination. This is the last line of defence
+ * at the Grackle interface, not a fix for the underlying undershoot.
+ *
+ * @param name Human-readable name of the quantity, for the warning message.
+ * @param value The value about to be sent to Grackle.
+ * @param count Running clamp-event count for this quantity (updated).
+ * @param worst Most negative value seen for this quantity so far (updated).
+ * @return value, or 0 if value was negative.
+ */
+static double radiation_clamp_nonnegative_for_grackle(const char *name,
+                                                      double value,
+                                                      volatile long long *count,
+                                                      volatile double *worst) {
+
+  if (value >= 0.) return value;
+
+  atomic_min_d(worst, value);
+  const long long n = atomic_add(count, 1LL) + 1LL;
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  message("Clamped negative %s = %g to 0 before passing it to Grackle.", name,
+          value);
+#endif
+
+  if (n <= RADIATION_NEGATIVE_CLAMP_WARN_LIMIT ||
+      n % RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL == 0) {
+    warning(
+        "Clamped %lld negative %s value(s) reaching Grackle to zero so far "
+        "this run (this occurrence: %g, worst seen: %g). A negative flux is "
+        "unphysical; it indicates an undershoot in the LW/PE propagation "
+        "scheme that this clamp only masks at the Grackle interface.",
+        n, name, value, *worst);
+  }
+
+  return 0.;
+}
+
+/*! Human-readable moment names for #radiation_get_band_u_nonnegative's
+    clamp warnings, indexed by #radiation_isrf_moment. */
+static const char *const radiation_isrf_moment_clamp_name[] = {
+    "PE-band specific energy", "LW-band specific energy"};
+_Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
+                       sizeof(radiation_isrf_moment_clamp_name[0]) ==
+                   ISRF_MOMENT_COUNT,
+               "radiation_isrf_moment_clamp_name needs one initialiser per "
+               "ISRF_MOMENT_COUNT entry.");
+
+/**
+ * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
+ *
+ * Every quantity handed to Grackle is built from the bands through this
+ * fetch, so that a band which has undershot below zero contributes
+ * nothing instead of cancelling part of another band's real signal.
+ * Clamping only the summed result would let a negative LW energy be
+ * subtracted from a positive PE energy, suppressing the field Grackle
+ * receives with no clamp event and no warning.
+ *
+ * The clamp count is per band, not per particle: a particle whose LW band
+ * is negative passes through here once for the LW photodissociation rate
+ * and once more for the Habing sum.
+ *
+ * Read-only on the particle. The stored band energy keeps its negative
+ * value, so the propagation state and the u_min_since_snapshot
+ * diagnostic stay intact.
+ *
+ * @param p The particle.
+ * @param m The moment to read (#radiation_isrf_moment).
+ * @return The band's specific energy, or 0 if it was negative.
+ */
+static double radiation_get_band_u_nonnegative(const struct part *p,
+                                               const int m) {
+
+  static volatile long long band_clamp_count[ISRF_MOMENT_COUNT] = {0};
+  static volatile double band_clamp_worst[ISRF_MOMENT_COUNT] = {0.};
+
+  return radiation_clamp_nonnegative_for_grackle(
+      radiation_isrf_moment_clamp_name[m],
+      (double)p->feedback_data.isrf_moment[m].u, &band_clamp_count[m],
+      &band_clamp_worst[m]);
+}
+
+/**
+ * Local ISRF strength in Habing units, from this #part's own PE+LW
+ * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
+ * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
+ * per-particle isrf_habing array (GrackleCooling chemistry_data.
+ * use_isrf_field, forced on by GEARFeedback:with_interstellar_radiation_field).
+ * Zero for a particle no star has ever illuminated and whose IC did not
+ * supply "PESpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
+ * before the IC read; #radiation_first_init_part leaves the band fields
+ * untouched either way).
+ *
+ * Each band is clamped to be non-negative as it is read, BEFORE the two
+ * are summed (#radiation_get_band_u_nonnegative), so a band that has
+ * undershot reads as zero illumination rather than cancelling part of the
+ * other band. The summed result passes through the same clamp again; see
+ * #radiation_clamp_nonnegative_for_grackle.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @return G0, dimensionless (Habing units), never negative.
+ */
+double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct cosmology *cosmo,
+                                      const struct part *p) {
+
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double u_sum = radiation_get_band_u_nonnegative(p, ISRF_MOMENT_PE) +
+                       radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
+  const double flux = phys_const->const_speed_light_c * rho * u_sum;
+  const double flux_cgs =
+      flux *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
+
+  static volatile long long isrf_habing_clamp_count = 0;
+  static volatile double isrf_habing_clamp_worst = 0.;
+
+  return radiation_clamp_nonnegative_for_grackle(
+      "ISRF Habing flux", flux_cgs / RADIATION_HABING_FLUX_CGS,
+      &isrf_habing_clamp_count, &isrf_habing_clamp_worst);
+}
+
+/**
+ * H2 Lyman-Werner photodissociation rate from this #part's own LW-band
+ * specific-energy field: k_diss = sigma_H2 * F_LW with F_LW a PHOTON flux,
+ * which a particle does not carry. It carries the LW band's ENERGY flux,
+ * so the photon flux is that divided by a mean photon energy E_LW and the
+ * rate is (sigma_H2 / E_LW) times the energy flux. Only that quotient is
+ * physically constrained, by the Sternberg et al. (2014) anchor, so it is
+ * read straight off #RADIATION_SIGMA_H2_OVER_E_LW_CGS and no separate
+ * cross section or photon energy appears below.
+ *
+ * #radiation_lw_photon_energy_cgs, the population mean LW photon energy a
+ * table can supply, is therefore a reported DIAGNOSTIC and has no effect
+ * here: dividing by it while the cross section stayed pinned would break
+ * the calibrated quotient and rescale every rate. Making a spectrum's own
+ * E_LW change the rate needs a transported per-star photon-number moment,
+ * the way the ionizing channel already separates Q_H from L_bol.
+ * Feeds Grackle's per-particle RT_H2_dissociation_rate (COOLING_GRACKLE_
+ * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
+ * only forced on for this feature at that mode, see cooling_io.h).
+ *
+ * The LW band is clamped to be non-negative as it is read
+ * (#radiation_get_band_u_nonnegative), and the resulting rate passes
+ * through the same clamp again; see
+ * #radiation_clamp_nonnegative_for_grackle.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param p The particle.
+ * @return H2 photodissociation rate, internal 1/time (Grackle's own
+ * expected unit for a per-particle rate-coupled RT field, matching
+ * radiation_get_part_photoionization_rate_coefficient's convention),
+ * never negative.
+ */
+double radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double u_LW = radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
+  const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
+  const double flux_LW_cgs =
+      flux_LW *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE);
+
+  const double k_diss_cgs = RADIATION_SIGMA_H2_OVER_E_LW_CGS * flux_LW_cgs;
+  const double k_diss =
+      k_diss_cgs / units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
+
+  static volatile long long lw_dissociation_clamp_count = 0;
+  static volatile double lw_dissociation_clamp_worst = 0.;
+
+  return radiation_clamp_nonnegative_for_grackle(
+      "LW photodissociation rate", k_diss, &lw_dissociation_clamp_count,
+      &lw_dissociation_clamp_worst);
 }

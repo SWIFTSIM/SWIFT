@@ -59,8 +59,10 @@
  * @param out Output buffer, NUL-terminated on return.
  * @param out_size Size of out, including the terminating NUL.
  */
-static void radiation_read_string_attribute(hid_t group_id, const char *name,
-                                            char *out, size_t out_size) {
+static void radiation_read_string_attribute_impl(hid_t group_id,
+                                                 const char *name, char *out,
+                                                 size_t out_size,
+                                                 const int truncate) {
 
   const hid_t h_attr = H5Aopen(group_id, name, H5P_DEFAULT);
   if (h_attr < 0) error("Error while opening attribute '%s'", name);
@@ -82,7 +84,7 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
       error("Error while reading string attribute '%s'", name);
 
     const size_t len = strlen(tmp);
-    if (len >= out_size) {
+    if (len >= out_size && !truncate) {
       error(
           "String attribute '%s' (%zu bytes) does not fit in the %zu-byte "
           "buffer.",
@@ -97,7 +99,7 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
     H5Sclose(h_space);
   } else {
     const size_t fixed_size = H5Tget_size(h_type);
-    if (fixed_size >= out_size)
+    if (fixed_size >= out_size && !truncate)
       error(
           "String attribute '%s' (%zu bytes) does not fit in the %zu-byte "
           "buffer.",
@@ -107,13 +109,100 @@ static void radiation_read_string_attribute(hid_t group_id, const char *name,
     if (tmp == NULL) error("Failed to allocate string attribute buffer.");
     if (H5Aread(h_attr, h_type, tmp) < 0)
       error("Error while reading string attribute '%s'", name);
-    memcpy(out, tmp, fixed_size);
-    out[fixed_size] = '\0';
+    const size_t kept = min(fixed_size, out_size - 1);
+    memcpy(out, tmp, kept);
+    out[kept] = '\0';
     free(tmp);
   }
 
   H5Tclose(h_type);
   H5Aclose(h_attr);
+}
+
+/**
+ * @brief Read a string attribute, failing if it does not fit.
+ *
+ * The caller parses the result, so a truncated value would be parsed as a
+ * different value. Every such reader uses this one.
+ *
+ * @param group_id Open HDF5 group id.
+ * @param name The attribute's name.
+ * @param out (output) The buffer to fill.
+ * @param out_size The size of @p out, in bytes.
+ */
+static void radiation_read_string_attribute(hid_t group_id, const char *name,
+                                            char *out, size_t out_size) {
+  radiation_read_string_attribute_impl(group_id, name, out, out_size,
+                                       /*truncate=*/0);
+}
+
+/**
+ * @brief Read a string attribute, truncating it if it does not fit.
+ *
+ * For values that are only reported, never parsed: a table must not fail to
+ * load because a provenance string is long.
+ *
+ * @param group_id Open HDF5 group id.
+ * @param name The attribute's name.
+ * @param out (output) The buffer to fill.
+ * @param out_size The size of @p out, in bytes.
+ */
+static void radiation_read_string_attribute_truncating(hid_t group_id,
+                                                       const char *name,
+                                                       char *out,
+                                                       size_t out_size) {
+  radiation_read_string_attribute_impl(group_id, name, out, out_size,
+                                       /*truncate=*/1);
+}
+
+const char *const radiation_table_source_keys[RADIATION_TABLE_SOURCE_COUNT] = {
+    "qh_source", "lwpe_source", "stellar_evolution_source", "source"};
+
+/**
+ * @brief Read the table's own provenance into the #radiation model.
+ *
+ * Reported by #radiation_print next to the grid shape, which is what
+ * separates a Pop II from a Pop III table: GEARFeedback:yields_table names
+ * a file, and the name says nothing about which photon budget the run
+ * used, while the choice moves Q_H.
+ *
+ * Every attribute here is optional. A table that carries none leaves every
+ * #radiation.table_source entry empty and still loads: this is provenance,
+ * not something the reader needs.
+ *
+ * @param rad (output) The #radiation model to fill.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The #radiation_grid_metadata already read from @p group_id.
+ */
+static void radiation_read_table_identity(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid) {
+
+  for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++) {
+    rad->table_source[i][0] = '\0';
+
+    if (H5Aexists(group_id, radiation_table_source_keys[i]) <= 0) continue;
+
+    radiation_read_string_attribute_truncating(
+        group_id, radiation_table_source_keys[i], rad->table_source[i],
+        RADIATION_TABLE_SOURCE_SIZE);
+  }
+
+  rad->table_n_mass = grid->n_mass;
+  rad->table_mass_min = (float)exp10((double)grid->log_mass_min);
+  rad->table_mass_max =
+      (float)exp10((double)grid->log_mass_min +
+                   (grid->n_mass - 1) * (double)grid->mass_step);
+
+  if (grid->is_2d) {
+    rad->table_n_metallicity = grid->n_metallicity;
+    rad->table_metallicity_min = grid->metallicity[0];
+    rad->table_metallicity_max = grid->metallicity[grid->n_metallicity - 1];
+  } else {
+    rad->table_n_metallicity = 0;
+    rad->table_metallicity_min = 0.f;
+    rad->table_metallicity_max = 0.f;
+  }
 }
 
 /**
@@ -230,7 +319,12 @@ static enum interpolate_boundary_condition radiation_parse_edge_policy(
  * radiation_parse_edge_policy()). This function never inspects the
  * group's "source" attribute: it only requires the specific attributes
  * it needs to be present, so a new pychem source mode works without a
- * companion SWIFT change.
+ * companion SWIFT change. edge_policy_l_pe/edge_policy_l_lw are the one
+ * exception to "requires the specific attributes to be present": they are
+ * only read (and only required) when the group's own "L_PE"/"L_LW"
+ * datasets exist, since those datasets (and their edge-policy attributes)
+ * are only required when #radiation.with_ISRF is on. edge_policy_teff is
+ * guarded the same way, on the group's own "Teff" dataset.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param grid (output) The #radiation_grid_metadata to fill in.
@@ -286,6 +380,12 @@ void radiation_read_grid_metadata(hid_t group_id,
             "(<= 0): the metallicity axis is interpolated in log10(Z), "
             "which requires every entry to be strictly positive.",
             i, (double)grid->metallicity[i]);
+      if (i > 0 && !(grid->metallicity[i] > grid->metallicity[i - 1]))
+        error(
+            "Data/Radiation's 'Metallicity' dataset is not strictly "
+            "increasing at entry %d (%.4g after %.4g): the metallicity axis "
+            "is bracketed node by node, which requires a sorted grid.",
+            i, (double)grid->metallicity[i], (double)grid->metallicity[i - 1]);
     }
 
     char luminosity_below[16], luminosity_above[16];
@@ -313,11 +413,58 @@ void radiation_read_grid_metadata(hid_t group_id,
     grid->edge_policy_dot_e_excess = radiation_parse_edge_policy(
         mean_excess_energy_below, mean_excess_energy_above,
         "mean_excess_energy");
+
+    /* Teff is optional, and guarded on its own dataset for the same
+       reason as L_PE/L_LW below: a table generated before pychem
+       exported it carries neither the dataset nor the matching
+       attributes. */
+    grid->edge_policy_teff = boundary_condition_error;
+    if (H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0) {
+      char teff_below[16], teff_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_teff_below",
+                                      teff_below, sizeof(teff_below));
+      radiation_read_string_attribute(group_id, "edge_policy_teff_above",
+                                      teff_above, sizeof(teff_above));
+      grid->edge_policy_teff =
+          radiation_parse_edge_policy(teff_below, teff_above, "teff");
+    }
+
+    /* L_PE/L_LW are optional (see radiation.h's own doxygen on
+       #with_ISRF): a table generated before pychem added them has
+       neither dataset, and hence no matching edge_policy_l_pe_ or
+       edge_policy_l_lw_ attributes either. Guard on dataset presence
+       first, unlike every field above (which pychem has always required),
+       so an old-format 2D table still loads instead of erroring on a
+       missing attribute it never had a reason to write. */
+    grid->edge_policy_l_pe = boundary_condition_error;
+    if (H5Lexists(group_id, "L_PE", H5P_DEFAULT) > 0) {
+      char l_pe_below[16], l_pe_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_pe_below",
+                                      l_pe_below, sizeof(l_pe_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_pe_above",
+                                      l_pe_above, sizeof(l_pe_above));
+      grid->edge_policy_l_pe =
+          radiation_parse_edge_policy(l_pe_below, l_pe_above, "l_pe");
+    }
+
+    grid->edge_policy_l_lw = boundary_condition_error;
+    if (H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0) {
+      char l_lw_below[16], l_lw_above[16];
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_below",
+                                      l_lw_below, sizeof(l_lw_below));
+      radiation_read_string_attribute(group_id, "edge_policy_l_lw_above",
+                                      l_lw_above, sizeof(l_lw_above));
+      grid->edge_policy_l_lw =
+          radiation_parse_edge_policy(l_lw_below, l_lw_above, "l_lw");
+    }
   } else if (strcmp(grid->dimensionality, "M") == 0) {
     grid->is_2d = 0;
     grid->edge_policy_luminosity = boundary_condition_error;
     grid->edge_policy_q_h = boundary_condition_error;
     grid->edge_policy_dot_e_excess = boundary_condition_error;
+    grid->edge_policy_teff = boundary_condition_error;
+    grid->edge_policy_l_pe = boundary_condition_error;
+    grid->edge_policy_l_lw = boundary_condition_error;
   } else {
     error(
         "Data/Radiation has an unrecognised 'dimensionality' attribute "
@@ -605,16 +752,17 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * bounds as @p raw_2d. That bound-sharing is load-bearing, not incidental:
  * it is what guarantees a two-point-subtraction query
  * (radiation_get_luminosities_from_integral_2d() and friends) never sees a
- * Z-axis mismatch between its two interpolate_2d() calls; see Decision #1
- * in design-radiation-integrated-table-migration.md for the full argument.
+ * Z-axis mismatch between its two interpolate_2d() calls.
  * @p integrated_2d stays untouched (NULL) for a dataset with no IMF-
  * integrated concept (MainSequenceLifetime); radiation_read_data() zeroes
  * it beforehand so radiation_clean() stays safe either way. This branch
- * also approximates the metallicity axis as log-uniformly spaced from the
- * "Metallicity" dataset's first/last values: pychem does not guarantee
- * this (it is the curated set of PARSEC metallicities actually collapsed
- * into the table, not a synthetic grid), but interpolate_2d_init()
- * requires a uniform grid.
+ * keeps the metallicity axis on the "Metallicity" dataset's own nodes
+ * (interpolate_2d_init()'s own x nodes): pychem does not space them
+ * log-uniformly (they are the curated set of PARSEC metallicities actually
+ * collapsed into the table, not a synthetic grid), and their narrowest gap
+ * is finer than any practical uniform step, so a query is linear in
+ * log10(Z) between two tabulated metallicities and returns a tabulated
+ * metallicity's row exactly.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param dataset_name Name of the dataset to read.
@@ -623,16 +771,15 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * @param sm The #stellar_model (for the output mass-grid bounds).
  * @param interpolation_size_mass Number of points in the mass
  * interpolation output grid.
- * @param interpolation_size_metallicity Number of points in the
- * metallicity interpolation output grid (2D tables only).
  * @param conversion_factor See radiation_read_cgs_array().
  * @param extra_scaling See radiation_read_cgs_array().
  * @param expected_units See radiation_read_cgs_array().
  * @param raw_1d (output) Raw 1D interpolation table (1D tables only),
  * holding log10(value in internal units), pychem-floored.
- * @param integrated_1d (output) IMF-integrated 1D interpolation table (1D
- * tables only), holding the linear (un-logged) cumulative value; see
- * this function's own doxygen for why.
+ * @param integrated_1d (output, optional) IMF-integrated 1D interpolation
+ * table (1D tables only), holding the linear (un-logged) cumulative value;
+ * see this function's own doxygen for why. Pass NULL for a dataset with no
+ * IMF-integrated concept; left untouched then, mirroring @p integrated_2d.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
@@ -653,10 +800,10 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
 static void radiation_build_tables(
     hid_t group_id, const char *dataset_name,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    int interpolation_size_mass, int interpolation_size_metallicity,
-    double conversion_factor, double extra_scaling, const char *expected_units,
-    struct interpolation_1d *raw_1d, struct interpolation_1d *integrated_1d,
-    struct interpolation_2d *raw_2d, struct interpolation_2d *integrated_2d,
+    int interpolation_size_mass, double conversion_factor, double extra_scaling,
+    const char *expected_units, struct interpolation_1d *raw_1d,
+    struct interpolation_1d *integrated_1d, struct interpolation_2d *raw_2d,
+    struct interpolation_2d *integrated_2d,
     enum interpolate_boundary_condition boundary_condition_mass) {
 
   const float log_mass_min_out = log10f(sm->imf.mass_min);
@@ -673,15 +820,15 @@ static void radiation_build_tables(
                                            conversion_factor, extra_scaling,
                                            expected_units, log_data);
 
-    const float log_z_min = log10f(grid->metallicity[0]);
-    const float log_z_max = log10f(grid->metallicity[grid->n_metallicity - 1]);
-    const float log_z_step =
-        grid->n_metallicity > 1
-            ? (log_z_max - log_z_min) / (grid->n_metallicity - 1)
-            : 0.f;
+    float *log_z_nodes = (float *)malloc(sizeof(float) * grid->n_metallicity);
+    if (log_z_nodes == NULL)
+      error("Failed to allocate the RAD 2D log10(Z) axis for %s.",
+            dataset_name);
+    for (int i = 0; i < grid->n_metallicity; i++)
+      log_z_nodes[i] = log10f(grid->metallicity[i]);
 
-    /* interpolate_2d_init() takes a double source array (its internal
-       storage is float; see interpolation.h); re-widen the already
+    /* interpolate_2d_init() takes a double source array (its
+       internal storage is float; see interpolation.h); re-widen the already
        guarded/narrowed/logged float data rather than duplicating the guard
        for a double codepath. */
     double *log_data_double = (double *)malloc(sizeof(double) * count);
@@ -691,18 +838,20 @@ static void radiation_build_tables(
     for (hsize_t i = 0; i < count; i++)
       log_data_double[i] = (double)log_data[i];
 
-    interpolate_2d_init(raw_2d, log_z_min, log_z_max,
-                        interpolation_size_metallicity, log_mass_min_out,
-                        log_mass_max_out, interpolation_size_mass, log_z_min,
-                        grid->log_mass_min, log_z_step, grid->mass_step,
-                        grid->n_metallicity, grid->n_mass, log_data_double,
+    interpolate_2d_init(raw_2d, log_z_nodes, grid->n_metallicity, log_z_nodes,
+                        grid->n_metallicity, log_mass_min_out, log_mass_max_out,
+                        interpolation_size_mass, grid->log_mass_min,
+                        grid->mass_step, grid->n_mass, log_data_double,
                         boundary_condition_const, boundary_condition_mass);
 
     free(log_data_double);
     free(log_data);
     free(data);
 
-    if (integrated_2d == NULL) return;
+    if (integrated_2d == NULL) {
+      free(log_z_nodes);
+      return;
+    }
 
     /* integrated_2d is built from pychem's own precomputed, number-weighted,
        cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
@@ -753,15 +902,16 @@ static void radiation_build_tables(
 
     /* Both axes clamp (boundary_condition_const), regardless of @p
        boundary_condition_mass; see this function's own doxygen. */
-    interpolate_2d_init(
-        integrated_2d, log_z_min, log_z_max, interpolation_size_metallicity,
-        log_mass_min_out, log_mass_max_out, interpolation_size_mass, log_z_min,
-        grid->log_mass_min, log_z_step, grid->mass_step, grid->n_metallicity,
-        grid->n_mass, integrated_data_double, boundary_condition_const,
-        boundary_condition_const);
+    interpolate_2d_init(integrated_2d, log_z_nodes, grid->n_metallicity,
+                        log_z_nodes, grid->n_metallicity, log_mass_min_out,
+                        log_mass_max_out, interpolation_size_mass,
+                        grid->log_mass_min, grid->mass_step, grid->n_mass,
+                        integrated_data_double, boundary_condition_const,
+                        boundary_condition_const);
 
     free(integrated_data_double);
     free(integrated_data);
+    free(log_z_nodes);
     return;
   }
 
@@ -778,6 +928,9 @@ static void radiation_build_tables(
                       boundary_condition_const);
   free(data);
   free(log_data);
+
+  /* Mirrors the 2D branch's own integrated_2d == NULL early return above. */
+  if (integrated_1d == NULL) return;
 
   /* integrated_1d is built from pychem's own precomputed, number-weighted,
      cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
@@ -846,7 +999,6 @@ void radiation_read_luminosities_array(
 
   radiation_build_tables(
       group_id, "Luminosity", grid, sm, rad->interpolation_size,
-      rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
       &rad->raw.luminosities, &rad->integrated.luminosities,
       &rad->raw.luminosities_2d, &rad->integrated.luminosities_2d,
@@ -869,7 +1021,6 @@ void radiation_read_ionization_rate_array(
 
   radiation_build_tables(
       group_id, "Q_H", grid, sm, rad->interpolation_size,
-      rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "1/s", &rad->raw.dot_N_ion,
       &rad->integrated.dot_N_ion, &rad->raw.dot_N_ion_2d,
@@ -911,11 +1062,148 @@ void radiation_read_mean_excess_photon_energy_array(
 
   radiation_build_tables(
       group_id, "DotEExcess", grid, sm, rad->interpolation_size,
-      rad->interpolation_size_metallicity,
       units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
       RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
       &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
       &rad->integrated.dot_E_excess_2d, grid->edge_policy_dot_e_excess);
+}
+
+/**
+ * @brief Read the Teff (photospheric effective temperature) array from the
+ * table.
+ *
+ * Only called when the group carries a "Teff" dataset (#radiation.has_teff,
+ * set in radiation_read_data()). Raw-only, both dimensionalities: neither a
+ * 1D ("M") nor a 2D ("M,Z") table has an "Integrated_Teff" dataset, so @p
+ * integrated_1d/@p integrated_2d are passed NULL to #radiation_build_tables,
+ * which then skips requiring or building them.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(group_id, "Teff", grid, sm, rad->interpolation_size,
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE),
+                         1., "K", &rad->raw.teff, NULL, &rad->raw.teff_2d, NULL,
+                         grid->edge_policy_teff);
+}
+
+/**
+ * @brief Read the L_PE (non-ionizing PE band emission rate) array from the
+ * table.
+ *
+ * Only called when #radiation.with_ISRF is set (radiation_read_data()),
+ * which by then has already required both the raw and IMF-integrated
+ * datasets to exist.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(group_id, "L_PE", grid, sm, rad->interpolation_size,
+                         units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
+                         "erg/s", &rad->raw.l_pe, &rad->integrated.l_pe,
+                         &rad->raw.l_pe_2d, &rad->integrated.l_pe_2d,
+                         grid->edge_policy_l_pe);
+}
+
+/**
+ * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
+ * table, if present. See #radiation_read_l_pe_array's own doxygen
+ * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
+                               const struct radiation_grid_metadata *grid,
+                               const struct stellar_model *sm,
+                               const struct unit_system *us) {
+
+  radiation_build_tables(group_id, "L_LW", grid, sm, rad->interpolation_size,
+                         units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
+                         "erg/s", &rad->raw.l_lw, &rad->integrated.l_lw,
+                         &rad->raw.l_lw_2d, &rad->integrated.l_lw_2d,
+                         grid->edge_policy_l_lw);
+}
+
+/**
+ * @brief Read the MeanPhotonEnergyLW / Integrated_MeanPhotonEnergyLW
+ * (photon-number-weighted mean Lyman-Werner photon energy, L_LW/Q_LW over
+ * 11.2-13.6 eV) arrays from the table.
+ *
+ * Called unconditionally: radiation_read_data() has already required both
+ * datasets to exist before reaching this call.
+ *
+ * Both datasets are stored in cgs erg and are kept in cgs erg here:
+ * conversion_factor and extra_scaling are both 1. This matches the
+ * mixed-unit convention #radiation_get_mean_excess_photon_energy_HI_from_
+ * integral already produces for the ionizing band's mean photon energy,
+ * and it matches radiation_set_lw_photon_energy_cgs(), which reports the
+ * population value in cgs. A mean photon energy is an intensive
+ * per-photon quantity, not a rate or a power, so neither
+ * #RADIATION_DOT_N_ION_TABLE_SCALING nor a UNIT_CONV_* factor applies to
+ * it.
+ *
+ * Unlike every other Integrated_* dataset, Integrated_MeanPhotonEnergyLW
+ * is NOT per Msun of stars formed and NOT a cumulative integral to be
+ * differenced: it is the intensive ratio Integrated_L_LW/Integrated_Q_LW
+ * of two cumulative integrals. #radiation_build_tables' own integrated
+ * branch would therefore assert the wrong units string ("erg/Msun") and
+ * build a table under difference semantics that do not hold. So the two
+ * datasets are read as two independent raw tables instead, each via its
+ * own #radiation_build_tables call with the integrated arguments NULL.
+ *
+ * Both consequently live in log10 value space and their getters exp10()
+ * the interpolated result, like every other raw table here.
+ *
+ * Mass-axis edge policy: pychem writes no dedicated
+ * edge_policy_mean_photon_energy_lw_* attribute pair, and the dataset's
+ * own description states it follows L_LW's policy. Its fallback value
+ * below the LW mass floor is the 12.4 eV band midpoint, not zero, so
+ * L_LW's own "zero below" policy must NOT be reused: zeroing a photon
+ * energy would make any consumer divide by zero. boundary_condition_const
+ * is used on both axes instead, clamping to the nearest tabulated mean
+ * photon energy, which is the only edge policy a bounded, strictly
+ * positive intensive quantity admits.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ */
+void radiation_read_mean_photon_energy_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid,
+    const struct stellar_model *sm) {
+
+  radiation_build_tables(
+      group_id, "MeanPhotonEnergyLW", grid, sm, rad->interpolation_size, 1., 1.,
+      "erg", &rad->raw.mean_photon_energy_lw, NULL,
+      &rad->raw.mean_photon_energy_lw_2d, NULL, boundary_condition_const);
+
+  radiation_build_tables(group_id, "Integrated_MeanPhotonEnergyLW", grid, sm,
+                         rad->interpolation_size, 1., 1., "erg",
+                         &rad->integrated.mean_photon_energy_lw, NULL,
+                         &rad->integrated.mean_photon_energy_lw_2d, NULL,
+                         boundary_condition_const);
 }
 
 /**
@@ -973,10 +1261,10 @@ void radiation_read_main_sequence_lifetime_array(
         "PopIII model) at the regenerated file.");
   }
 
-  radiation_build_tables(
-      group_id, "MainSequenceLifetime", grid, sm, rad->interpolation_size,
-      rad->interpolation_size_metallicity, 1., 1., "Myr", NULL, NULL,
-      &rad->raw.main_sequence_lifetime_2d, NULL, boundary_condition_const);
+  radiation_build_tables(group_id, "MainSequenceLifetime", grid, sm,
+                         rad->interpolation_size, 1., 1., "Myr", NULL, NULL,
+                         &rad->raw.main_sequence_lifetime_2d, NULL,
+                         boundary_condition_const);
 }
 
 /**
@@ -988,9 +1276,9 @@ void radiation_read_main_sequence_lifetime_array(
  * Does NOT reuse #radiation_build_tables(): that helper's mass-axis output
  * bounds (sm->imf.mass_min/mass_max) do not apply to an age axis, and a
  * bool mask cannot go through #interpolate_2d_init() meaningfully. Instead:
- * - #radiation.raw.main_sequence_lifetime_inverse_2d's Z axis is built from
- *   the same native log10(Z) grid every other 2D field here uses, output-
- *   resampled to @p rad's own interpolation_size_metallicity, exactly like
+ * - #radiation.raw.main_sequence_lifetime_inverse_2d's Z axis is the same
+ *   native log10(Z) grid every other 2D field here uses, kept node for node
+ *   (#interpolate_2d_init's own x nodes), exactly like
  *   #radiation_build_tables()'s 2D branch.
  * - Its age axis is an IDENTITY resample of the native "Age"/a0/da/na grid
  *   (Ny = na, exact native bounds), not independently resampled to some
@@ -1007,18 +1295,14 @@ void radiation_read_main_sequence_lifetime_array(
  *   with no Excluded cells at all (this build's -ffast-math disallows the
  *   IEEE INFINITY macro; #radiation.age_max_myr already gates every real
  *   query well below FLT_MAX, so the two sentinels are equivalent in
- *   practice; see design-radiation-integrated-table-migration.md's Data
- *   layout section, which explicitly allows either). The scan asserts each
+ *   practice). The scan asserts each
  *   row's Excluded cells are contiguous-from-that-age-to-the-end, since
  *   #radiation_get_ms_lifetime_inverse_mass_2d()'s min()-gate safety proof
  *   depends on this shape.
- * - #radiation.ms_lifetime_inverse_log_z_min/_log_z_step/_n_metallicity
- *   record the same native Z grid (log10(Z) space, native row count) so a
- *   query can bracket the two native rows #longest_ms_lifetime_myr is
- *   indexed by. Deliberately not the same as #raw.main_sequence_lifetime_
- *   inverse_2d's own xmin/dx/Nx, which describe the OUTPUT-resampled grid
- *   (interpolation_size_metallicity points, generally finer than the
- *   native nz-row grid).
+ * - #radiation.longest_ms_lifetime_myr is indexed by that same native Z
+ *   row, so a query brackets its two rows through
+ *   #interpolate_2d_bracket_x() on the table itself; the table's x axis and
+ *   that array now share one index space.
  *
  * @param rad The #radiation model.
  * @param group_id Open HDF5 "Data/Radiation" group id.
@@ -1085,19 +1369,16 @@ void radiation_read_main_sequence_lifetime_inverse_array(
   rad->age_max_myr = (float)age_max_myr;
 
   /* Same native log10(Z) axis every other 2D field in this file uses
-     (radiation_build_tables()), stored on #rad so a query can bracket the
-     two native rows #longest_ms_lifetime_myr is indexed by. See this
-     function's own doxygen for why that differs from the interpolation_2d
-     struct's own (output-resampled) xmin/dx. */
-  const float log_z_min = log10f(grid->metallicity[0]);
-  const float log_z_max = log10f(grid->metallicity[grid->n_metallicity - 1]);
-  const float log_z_step =
-      grid->n_metallicity > 1
-          ? (log_z_max - log_z_min) / (grid->n_metallicity - 1)
-          : 0.f;
-  rad->ms_lifetime_inverse_log_z_min = log_z_min;
-  rad->ms_lifetime_inverse_log_z_step = log_z_step;
-  rad->ms_lifetime_inverse_n_metallicity = grid->n_metallicity;
+     (radiation_build_tables()). The built table keeps those nodes, so a
+     query brackets the two native rows #longest_ms_lifetime_myr is indexed
+     by through the table itself. */
+  float *log_z_nodes = (float *)malloc(sizeof(float) * grid->n_metallicity);
+  if (log_z_nodes == NULL)
+    error(
+        "Failed to allocate the RAD MainSequenceLifetimeInverse log10(Z) "
+        "axis.");
+  for (int i = 0; i < grid->n_metallicity; i++)
+    log_z_nodes[i] = log10f(grid->metallicity[i]);
 
   /* Identity resample of the native age grid: Ny = na, exact native bounds.
      See this function's own doxygen. */
@@ -1121,12 +1402,13 @@ void radiation_read_main_sequence_lifetime_inverse_array(
         "double buffer.");
   for (hsize_t i = 0; i < count; i++) log_data_double[i] = (double)log_data[i];
 
-  interpolate_2d_init(
-      &rad->raw.main_sequence_lifetime_inverse_2d, log_z_min, log_z_max,
-      rad->interpolation_size_metallicity, log_age_min, log_age_max, na,
-      log_z_min, log_age_min, log_z_step, (float)da, grid->n_metallicity, na,
-      log_data_double, boundary_condition_const, boundary_condition_const);
+  interpolate_2d_init(&rad->raw.main_sequence_lifetime_inverse_2d, log_z_nodes,
+                      grid->n_metallicity, log_z_nodes, grid->n_metallicity,
+                      log_age_min, log_age_max, na, log_age_min, (float)da, na,
+                      log_data_double, boundary_condition_const,
+                      boundary_condition_const);
 
+  free(log_z_nodes);
   free(log_data_double);
   free(log_data);
   free(data);
@@ -1249,33 +1531,30 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   if (!restart) {
     rad->interpolation_size = parser_get_opt_param_int(
         params, "GEARRadiation:interpolation_size_mass", 500);
-    rad->interpolation_size_metallicity = parser_get_opt_param_int(
-        params, "GEARRadiation:interpolation_size_metallicity", 110);
     if (rad->interpolation_size < 2) {
       error(
           "GEARRadiation:interpolation_size_mass must be >= 2; got "
           "%d.",
           rad->interpolation_size);
     }
-    if (rad->interpolation_size_metallicity < 2) {
-      error(
-          "GEARRadiation:interpolation_size_metallicity must be >= "
-          "2; got %d.",
-          rad->interpolation_size_metallicity);
-    }
   }
 
-  /* radiation_zero_pointers() below also clears interpolation_size(_
-     metallicity) and n_HII_pixels, so callers with radiation disabled
-     don't inherit uninitialized garbage in them. On this call path,
-     those three either were just set above (!restart) or hold the values
-     radiation_restore() flat-restored moments ago (restart), and
-     radiation_build_tables() below needs them either way. Round-trip them
-     around the call. */
+  /* radiation_zero_pointers() below also clears interpolation_size and
+     n_HII_pixels, so callers with radiation disabled don't inherit
+     uninitialized garbage in them. On this call path, both either were
+     just set above (!restart) or hold the values radiation_restore()
+     flat-restored moments ago (restart), and radiation_build_tables()
+     below needs them either way. Round-trip them around the call. */
   const int interpolation_size_before = rad->interpolation_size;
-  const int interpolation_size_metallicity_before =
-      rad->interpolation_size_metallicity;
   const int n_HII_pixels_before = rad->n_HII_pixels;
+  /* with_ISRF round-trips for the same reason: radiation_zero_pointers()
+     below clears it (see its own doxygen), but it was already set moments
+     ago, by radiation_init() (fresh start) or by the flat restore in
+     radiation_restore() (restart), which both run before this function is
+     called and before the L_PE/L_LW check below needs to read it. Without
+     this round-trip L_PE/L_LW are silently never read, on both the
+     fresh-start and restart paths. */
+  const char with_ISRF_before = rad->with_ISRF;
 
   /* Zero every table up front: radiation_build_tables() only populates the
      _1d or _2d variant matching this table's dimensionality, and only the
@@ -1285,8 +1564,8 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_zero_pointers(rad);
 
   rad->interpolation_size = interpolation_size_before;
-  rad->interpolation_size_metallicity = interpolation_size_metallicity_before;
   rad->n_HII_pixels = n_HII_pixels_before;
+  rad->with_ISRF = with_ISRF_before;
 
   hid_t file_id, group_id;
   radiation_open_data_group(sm->yields_table, &file_id, &group_id);
@@ -1294,6 +1573,55 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   struct radiation_grid_metadata grid;
   radiation_read_grid_metadata(group_id, &grid);
   rad->is_2d = grid.is_2d;
+
+  radiation_read_table_identity(rad, group_id, &grid);
+
+  /* GEARFeedback:with_interstellar_radiation_field requires all four ISRF-band
+     datasets: pychem always writes L_PE/L_LW/Integrated_L_PE/
+     Integrated_L_LW together, so a table missing one of them was
+     generated before pychem added ISRF support and needs regenerating.
+     No Teff-based fallback exists for a table missing them. */
+  if (rad->with_ISRF) {
+    const int has_l_pe = H5Lexists(group_id, "L_PE", H5P_DEFAULT) > 0;
+    const int has_l_lw = H5Lexists(group_id, "L_LW", H5P_DEFAULT) > 0;
+    const int has_integrated_l_pe =
+        H5Lexists(group_id, "Integrated_L_PE", H5P_DEFAULT) > 0;
+    const int has_integrated_l_lw =
+        H5Lexists(group_id, "Integrated_L_LW", H5P_DEFAULT) > 0;
+    if (!(has_l_pe && has_l_lw && has_integrated_l_pe && has_integrated_l_lw)) {
+      error(
+          "'%s': GEARFeedback:with_interstellar_radiation_field is on but this "
+          "Data/Radiation group is missing%s%s%s%s. Regenerate the table "
+          "with pychem's pychem_generate_hdf5_parameters on its own "
+          "chimieparam file.",
+          sm->yields_table, has_l_pe ? "" : " 'L_PE'",
+          has_l_lw ? "" : " 'L_LW'",
+          has_integrated_l_pe ? "" : " 'Integrated_L_PE'",
+          has_integrated_l_lw ? "" : " 'Integrated_L_LW'");
+    }
+  }
+
+  /* Required whatever with_ISRF says or which stellar model reads the
+     table: pychem writes both datasets for every table it generates, 1D
+     and 2D alike, so a table missing either predates that and needs
+     regenerating. */
+  {
+    const int has_mean_photon_energy_lw =
+        H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
+    const int has_integrated_mean_photon_energy_lw =
+        H5Lexists(group_id, "Integrated_MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
+    if (!(has_mean_photon_energy_lw && has_integrated_mean_photon_energy_lw)) {
+      error(
+          "'%s': Data/Radiation group is missing%s%s. Regenerate the table "
+          "with pychem's pychem_generate_hdf5_parameters on its own "
+          "chimieparam file.",
+          sm->yields_table,
+          has_mean_photon_energy_lw ? "" : " 'MeanPhotonEnergyLW'",
+          has_integrated_mean_photon_energy_lw
+              ? ""
+              : " 'Integrated_MeanPhotonEnergyLW'");
+    }
+  }
 
   /* A no-op on a table without pychem's precomputed IMF-integrated
      datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
@@ -1355,6 +1683,23 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
+
+  /* Read L_PE/L_LW directly from the table: validated above to exist
+     whenever GEARFeedback:with_interstellar_radiation_field is on. */
+  /* Effective temperature, a stellar-evolution diagnostic written to the
+     snapshot's star particles. Optional: a table generated before pychem
+     exported it simply reports 0 for every star. */
+  rad->has_teff = (char)(H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0);
+  if (rad->has_teff) radiation_read_teff_array(rad, group_id, &grid, sm, us);
+
+  if (rad->with_ISRF) {
+    radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
+  }
+
+  /* Mean Lyman-Werner photon energy, a reported diagnostic; validated
+     above to exist unconditionally. */
+  radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
 
   /* MainSequenceLifetime/MainSequenceLifetimeInverse have no 1D ("M") table
      analogue: only read them for a 2D table, where the HDF5 datasets

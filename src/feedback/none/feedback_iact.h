@@ -85,4 +85,123 @@ runner_iact_nonsym_feedback_apply(
     const integertime_t ti_current, const double time_base,
     const int with_cosmology) {}
 
+/**
+ * @brief ISRF propagation (symmetric): no-op, this feedback model
+ * does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param us Unit system.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct unit_system *us) {}
+
+/**
+ * @brief ISRF propagation (non-symmetric): no-op, this feedback
+ * model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param us Unit system.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    const struct part *restrict pj,
+                                    const float a, const float H,
+                                    const struct unit_system *us) {}
+
+/**
+ * @brief `grad(u)` interaction (symmetric): no-op, this
+ * feedback model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief `grad(u)` interaction (non-symmetric): no-op, this
+ * feedback model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct part *restrict pi,
+                                 struct part *restrict pj, const float a,
+                                 const float H) {}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
+ * no-op, this feedback model does not track
+ * the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation interaction
+ * (non-symmetric): no-op, this feedback model does not track
+ * the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    const struct part *restrict pj,
+                                    const float a, const float H) {}
+
 #endif /* SWIFT_NONE_FEEDBACK_IACT_H */

@@ -120,7 +120,7 @@ Parameters
 ++++++++++
 
 When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
-The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
+``GrackleCooling:max_steps`` also caps the number of sub-cycle iterations Grackle is allowed per particle solve; a solve that exceeds it fails and is counted.
 
 In the parameters file, a few different parameters are available.
 
@@ -167,8 +167,7 @@ Here is the complete section in the parameter file:
     with_metal_cooling: 1                        # Enable or not the metal cooling
     provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
     provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
-    max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-    convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+    max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve
     thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding

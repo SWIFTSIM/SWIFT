@@ -224,9 +224,9 @@ The first two parameters relate to the quantity of energy injected and are avail
 
 * ``GEARSupernovaeII:interpolation_size`` is the number of elements to keep in the interpolation of the data.
 
-* ``GEARStellar_wind:interpolation_size_mass``  Size of the mass array of the grid used in stellar winds yields.
+* ``GEARStellarWind:interpolation_size_mass``  Size of the mass array of the grid used in stellar winds yields.
 
-* ``GEARStellar_wind:interpolation_size_metallicity`` Size of the metallicity array of the grid used in stellar winds yields.
+* ``GEARStellarWind:interpolation_size_metallicity`` Size of the metallicity array of the grid used in stellar winds yields.
 
 Here is the whole feedback section:
 
@@ -245,7 +245,7 @@ Here is the whole feedback section:
 	  GEARSupernovaeII:
 	    interpolation_size:  200                                 # Number of elements to keep in the interpolation of the data. (Default: 200)
 
-    GEARStellar_wind:
+    GEARStellarWind:
       interpolation_size_mass:        200                      # Number of elements to keep in the mass interpolation of the data. (Default: 200)
       interpolation_size_metallicity: 110                      # Number of elements to keep in the metallicity interpolation of the data. (Default: 110)
 

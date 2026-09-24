@@ -252,12 +252,12 @@ static INLINE void tracers_first_init_xpart(
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
-  xp->tracers_data.feedback_cumulative.momentum_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
-  xp->tracers_data.feedback_cumulative.energy_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.max_kick_velocity_SN = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
 }
@@ -274,25 +274,25 @@ static INLINE void tracers_first_init_xpart(
  * otherwise be inseparable.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
- * field (feedback_cumulative.momentum_SN/winds/radiation).
+ * field (feedback_cumulative.momentum_supernovae/winds/radiation).
  * @param energy_channel Pointer to this channel's cumulative-energy field,
- * or NULL (radiation pressure has no separate thermal channel).
- * @param max_kick_velocity_channel Pointer to this channel's max-kick
- * -velocity field.
- * @param delta_p_magnitude Momentum magnitude received this event (physical
- * internal units).
- * @param delta_energy Specific internal energy received this event
+ * or NULL if this channel has no separate thermal contribution to track.
+ * @param max_kick_velocity_channel Pointer to this channel's maximal kick
+ * velocity field.
+ * @param delta_p_magnitude Momentum magnitude received this event
+ * (physical internal units).
+ * @param delta_u Specific internal energy received this event
  * (physical internal units), ignored if energy_channel is NULL.
  * @param kick_velocity Velocity magnitude of this event's kick (same
  * frame as delta_p_magnitude).
  */
-static INLINE void tracers_gear_accumulate_feedback(
+static INLINE void tracers_gear_accumulate_feedback_part(
     float *momentum_channel, float *energy_channel,
     float *max_kick_velocity_channel, const float delta_p_magnitude,
-    const float delta_energy, const float kick_velocity) {
+    const float delta_u, const float kick_velocity) {
 
   *momentum_channel += delta_p_magnitude;
-  if (energy_channel != NULL) *energy_channel += delta_energy;
+  if (energy_channel != NULL) *energy_channel += delta_u;
   if (kick_velocity > *max_kick_velocity_channel) {
     *max_kick_velocity_channel = kick_velocity;
   }
@@ -317,6 +317,46 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 
   sp->tracers_data.snii_events = (struct tracers_sn_event_data){0};
   sp->tracers_data.snia_events = (struct tracers_sn_event_data){0};
+  sp->tracers_data.winds = (struct tracers_winds_data){0};
+}
+
+/**
+ * @brief Accumulate one stellar-wind injection step into a star's record.
+ *
+ * Counts the step only under the same condition as the gas-side injection in
+ * runner_iact_nonsym_feedback_apply(): a positive wind energy and gas
+ * neighbours. The energy must already include the winds efficiency factor;
+ * the mass is not scaled by it.
+ *
+ * The momentum is the star-frame ejecta budget sqrt(2 m_ej E_ej), the same
+ * p_ej the gas-side injection distributes. It excludes the change-of-frame
+ * term m_ej v_star that the gas-side CumulativeMomentumFromWinds includes, so
+ * the two agree exactly only for a star at rest. The gas receives the budget
+ * in the step after this call, so a snapshot can see the star-side totals
+ * lead the gas-side totals by one step.
+ *
+ * @param w The star's #tracers_winds_data to update.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, after the winds
+ * efficiency factor (physical internal units).
+ * @param enrichment_weight The star's SPH-averaged local gas density from the
+ * preceding step; used only to detect that the star had gas neighbours.
+ */
+static INLINE void tracers_gear_record_winds_event(
+    struct tracers_winds_data *w, const double mass_ejected,
+    const double energy_ejected, const float enrichment_weight) {
+
+  /* Both budgets must be non-negative: a negative pair still yields a
+     positive sqrt(2 m E). */
+  if (energy_ejected <= 0. || mass_ejected < 0. || enrichment_weight <= 0.f)
+    return;
+
+  /* Same once-per-active-star-per-step assumption as
+     tracers_gear_update_sn_event(). */
+  w->mass_ejected += mass_ejected;
+  w->energy_ejected += energy_ejected;
+  const double p2 = 2. * mass_ejected * energy_ejected;
+  if (p2 > 0.) w->momentum_ejected += sqrt(p2);
 }
 
 /**
@@ -338,7 +378,7 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  * @param time The current simulation time (internal units, only used if
  * !with_cosmology).
  */
-static INLINE void tracers_gear_update_sn_event(
+static INLINE void tracers_gear_record_sn_event(
     struct tracers_sn_event_data *ev, const float number_events,
     const float comoving_density, const int with_cosmology,
     const struct cosmology *cosmo, const double time) {
@@ -400,14 +440,132 @@ static INLINE void tracers_first_init_sink(struct sink *sink,
 }
 
 /**
- * @brief Update the particles' tracer data after a stellar feedback
- * event.
- *
- * Nothing to do here.
+ * @brief Update the gas particle tracer data after it received stellar winds
+ * feedback.
  *
  * @param xp The extended particle data.
+ * @param delta_p_magnitude Norm of the momentum received (internal physical
+ * units).
+ * @param delta_u Specific internal energy received (internal physical units).
+ * @param kick_velocity Norm of the velocity kick, in the same frame as
+ * delta_p_magnitude (internal physical units).
  */
-static INLINE void tracers_after_feedback(struct xpart *xp) {}
+static INLINE void tracers_after_stellar_winds_feedback_part(
+    struct xpart *xp, const float delta_p_magnitude, const float delta_u,
+    const float kick_velocity) {
+
+  tracers_gear_accumulate_feedback_part(
+      &xp->tracers_data.feedback_cumulative.momentum_winds,
+      &xp->tracers_data.feedback_cumulative.energy_winds,
+      &xp->tracers_data.feedback_cumulative.max_kick_velocity_winds,
+      delta_p_magnitude, delta_u, kick_velocity);
+}
+
+/**
+ * @brief Update the gas particle tracer data after it received radiation
+ * feedback.
+ *
+ * @param xp The extended particle data.
+ * @param delta_p_magnitude Norm of the momentum received (internal physical
+ * units).
+ * @param kick_velocity Norm of the velocity kick, in the same frame as
+ * delta_p_magnitude (internal physical units).
+ */
+static INLINE void tracers_after_radiation_pressure_feedback_part(
+    struct xpart *xp, const float delta_p_magnitude,
+    const float kick_velocity) {
+
+  tracers_gear_accumulate_feedback_part(
+      &xp->tracers_data.feedback_cumulative.momentum_radiation,
+      /* Radiation pressure only deposits momentum */ NULL,
+      &xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
+      delta_p_magnitude, 0.f, kick_velocity);
+}
+
+/**
+ * @brief Update the gas particle tracer data after it received supernovae
+ * feedback.
+ *
+ * @param xp The extended particle data.
+ * @param delta_p_magnitude Norm of the momentum received (internal physical
+ * units).
+ * @param delta_u Specific internal energy received (internal physical units).
+ * @param kick_velocity Norm of the velocity kick, in the same frame as
+ * delta_p_magnitude (internal physical units).
+ */
+static INLINE void tracers_after_supernovae_feedback_part(
+    struct xpart *xp, const float delta_p_magnitude, const float delta_u,
+    const float kick_velocity) {
+
+  tracers_gear_accumulate_feedback_part(
+      &xp->tracers_data.feedback_cumulative.momentum_supernovae,
+      &xp->tracers_data.feedback_cumulative.energy_supernovae,
+      &xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+      delta_p_magnitude, delta_u, kick_velocity);
+}
+
+/**
+ * @brief Update the star particle tracer data after it exploded as type II
+ * supernovae.
+ *
+ * @param sp The star particle.
+ * @param number_events Number of SNII in this step (may be fractional).
+ * @param comoving_density Gas density around the star (comoving).
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current time (used only without cosmology).
+ */
+static INLINE void tracers_after_snii_event_spart(struct spart *sp,
+                                                  const float number_events,
+                                                  const float comoving_density,
+                                                  const int with_cosmology,
+                                                  const struct cosmology *cosmo,
+                                                  const double time) {
+
+  tracers_gear_record_sn_event(&sp->tracers_data.snii_events, number_events,
+                               comoving_density, with_cosmology, cosmo, time);
+}
+
+/**
+ * @brief Update the star particle tracer data after it exploded as type Ia
+ * supernovae.
+ *
+ * @param sp The star particle.
+ * @param number_events Number of SNIa in this step (may be fractional).
+ * @param comoving_density Gas density around the star (comoving).
+ * @param with_cosmology Are we running with cosmology?
+ * @param cosmo The current cosmological model.
+ * @param time The current time (used only without cosmology).
+ */
+static INLINE void tracers_after_snia_event_spart(struct spart *sp,
+                                                  const float number_events,
+                                                  const float comoving_density,
+                                                  const int with_cosmology,
+                                                  const struct cosmology *cosmo,
+                                                  const double time) {
+
+  tracers_gear_record_sn_event(&sp->tracers_data.snia_events, number_events,
+                               comoving_density, with_cosmology, cosmo, time);
+}
+
+/**
+ * @brief Update the star particle tracer data after it released stellar wind
+ * feedback.
+ *
+ * @param sp The star particle.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, after the winds
+ * efficiency factor (physical internal units).
+ * @param enrichment_weight The star's SPH-averaged local gas density from the
+ * preceding step.
+ */
+static INLINE void tracers_after_winds_event_spart(
+    struct spart *sp, const double mass_ejected, const double energy_ejected,
+    const float enrichment_weight) {
+
+  tracers_gear_record_winds_event(&sp->tracers_data.winds, mass_ejected,
+                                  energy_ejected, enrichment_weight);
+}
 
 /**
  * @brief Update the particles' tracer data with values before an AGN feedback

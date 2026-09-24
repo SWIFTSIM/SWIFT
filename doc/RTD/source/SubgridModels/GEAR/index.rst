@@ -17,6 +17,7 @@ and run with the option ``--gear``. A few examples exist and can be found in ``e
    chemistry
    feedback
    supernova_feedback
+   isrf
    sinks/index
    black_holes
    output

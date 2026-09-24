@@ -231,8 +231,8 @@ struct stars_props {
 
   /*! Maximal number of search-radius expansions per HII search pass. Once
    * a pass finds every not-yet-ionized particle within the current radius
-   * (buffer not full) and photons still remain, the radius itself -- not
-   * the buffer -- is the bottleneck: growing it (up to this many times,
+   * (buffer not full) and photons still remain, the radius itself, not
+   * the buffer, is the bottleneck: growing it (up to this many times,
    * see HII_radius_expansion_factor) lets the star claim its full reach
    * within one pass, instead of waiting on the unrelated h_max term to
    * drift the next rebuild's radius outward over many cycles. */

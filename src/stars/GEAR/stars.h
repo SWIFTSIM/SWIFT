@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_dt_cfl(
 
   const float CFL_condition = stars_properties->CFL_condition;
 
-  /* Conversion to physical units -- to_collect_gas is comoving-normalized
+  /* Conversion to physical units: to_collect_gas is comoving-normalized
      by stars_end_density(), so this conversion must happen here, not
      there. */
   const double gas_v_phys[3] = {

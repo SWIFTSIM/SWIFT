@@ -113,6 +113,168 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #PESpecificEnergy, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_PE(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_u_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWSpecificEnergy, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_LW(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_u_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #PEArtificialDissipationCoefficients, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_dissipation_alpha_PE(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWArtificialDissipationCoefficients, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #PESpecificFluxDivergences, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_div_specific_flux_PE(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWSpecificFluxDivergences, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #PESpecificFluxes, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_specific_flux_PE(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  feedback_get_part_specific_flux_PE(p, ret);
+}
+
+/**
+ * @brief Snapshot converter for #LWSpecificFluxes, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_specific_flux_LW(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  feedback_get_part_specific_flux_LW(p, ret);
+}
+
+/**
+ * @brief Snapshot converter for #PEMinimumSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_min_since_snapshot_PE(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_PE(p, e);
+}
+
+/**
+ * @brief Snapshot converter for #LWMinimumSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_LW(p, e);
+}
+
+/**
+ * @brief Snapshot converter for #PECumulativeInjectedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_injected_PE(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_injected_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWCumulativeInjectedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_injected_LW(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_injected_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #PECumulativeAbsorbedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_absorbed_PE(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_absorbed_PE(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWCumulativeAbsorbedSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_absorbed_LW(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  ret[0] = feedback_get_part_cumulative_absorbed_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #HyperbolicPropagationSpeeds, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_c_hyp(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_c_hyp(p);
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -125,7 +287,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 10;
+  int num = 25;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -142,61 +304,189 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Star particle IDs that ionized these gas particles due to HII ionzation "
       "subgrid model?");
 
-  list[2] = io_make_output_field(
-      "CumulativeMomentumFromSN", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
-      tracers_data.feedback_cumulative.momentum_SN,
-      "Cumulative momentum magnitude received from SN over this particle's "
-      "lifetime (scalar sum of |delta_p| per event, not a vector sum: "
-      "isotropic kicks would otherwise cancel out).");
+  list[2] = io_make_physical_output_field(
+      "CumulativeMomentumFromSupernovae", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f,
+      xparts, tracers_data.feedback_cumulative.momentum_supernovae,
+      /*can convert to comoving=*/0,
+      "Cumulative |delta_p| per event from supernovae over this particle's "
+      "lifetime (scalar sum, not vector: isotropic kicks would else "
+      "cancel).");
 
-  list[3] = io_make_output_field(
+  list[3] = io_make_physical_output_field(
       "CumulativeMomentumFromWinds", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
       tracers_data.feedback_cumulative.momentum_winds,
-      "Cumulative momentum magnitude received from stellar winds over this "
-      "particle's lifetime. Same scalar-sum convention as "
-      "CumulativeMomentumFromSN.");
+      /*can convert to comoving=*/0,
+      "Same convention as CumulativeMomentumFromSupernovae, for stellar "
+      "winds.");
 
-  list[4] = io_make_output_field(
+  list[4] = io_make_physical_output_field(
       "CumulativeMomentumFromRadiationPressure", FLOAT, 1, UNIT_CONV_MOMENTUM,
       0.f, xparts, tracers_data.feedback_cumulative.momentum_radiation,
-      "Cumulative momentum magnitude received from radiation pressure over "
-      "this particle's lifetime. Same scalar-sum convention as "
-      "CumulativeMomentumFromSN.");
+      /*can convert to comoving=*/0,
+      "Same convention as CumulativeMomentumFromSupernovae, for radiation "
+      "pressure.");
 
-  list[5] = io_make_output_field(
-      "CumulativeEnergyFromSN", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
-      xparts, tracers_data.feedback_cumulative.energy_SN,
-      "Cumulative specific internal energy received from SN over this "
-      "particle's lifetime.");
+  list[5] = io_make_physical_output_field(
+      "CumulativeEnergyFromSupernovae", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, xparts,
+      tracers_data.feedback_cumulative.energy_supernovae,
+      /*can convert to comoving=*/0,
+      "Cumulative specific internal energy received from supernovae over "
+      "this particle's lifetime.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "CumulativeEnergyFromWinds", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
-      "Cumulative specific internal energy received from stellar winds over "
-      "this particle's lifetime. Unlike CumulativeEnergyFromSN this is a "
-      "conservation residual (budgeted energy minus the actual kinetic "
-      "energy change from the kick), not a strictly positive injected "
-      "quantity: known to go negative when the gas was already moving "
-      "towards the star before the kick.");
+      /*can convert to comoving=*/0,
+      "Cumulative specific internal energy received from stellar winds. "
+      "A conservation residual, not strictly positive: can go negative "
+      "when the gas was already moving towards the star before the kick.");
 
-  list[7] = io_make_output_field(
-      "MaxKickVelocityFromSN", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
-      tracers_data.feedback_cumulative.max_kick_velocity_SN,
-      "Largest single-event kick velocity this particle received from SN "
-      "(outflow diagnostic: peak coupling speed near the source, before "
-      "deceleration).");
+  list[7] = io_make_physical_output_field(
+      "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
+      tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
+      /*can convert to comoving=*/0,
+      "Largest single-event kick velocity this particle received from "
+      "supernovae (outflow diagnostic).");
 
-  list[8] = io_make_output_field(
+  list[8] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_winds,
-      "Largest single-event kick velocity this particle received from "
-      "stellar winds. Same convention as MaxKickVelocityFromSN.");
+      /*can convert to comoving=*/0,
+      "Same convention as MaxKickVelocityFromSupernovae, for stellar "
+      "winds.");
 
-  list[9] = io_make_output_field(
+  list[9] = io_make_physical_output_field(
       "MaxKickVelocityFromRadiationPressure", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
       xparts, tracers_data.feedback_cumulative.max_kick_velocity_radiation,
-      "Largest single-event kick velocity this particle received from "
-      "radiation pressure. Same convention as MaxKickVelocityFromSN.");
+      /*can convert to comoving=*/0,
+      "Same convention as MaxKickVelocityFromSupernovae, for radiation "
+      "pressure.");
+
+  /* Same feedback-model dispatch reasoning as IsIonizedFlags above: must
+     compile under any --with-feedback choice paired with
+     --with-tracers=GEAR. */
+  list[10] = io_make_output_field_convert_part(
+      "PESpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      parts, xparts, convert_part_u_PE,
+      "Local specific PE-band (6-11.2 eV) interstellar radiation field. "
+      "Physical, mass-specific: no scale-factor exponent of its own.");
+
+  list[11] = io_make_output_field_convert_part(
+      "LWSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      parts, xparts, convert_part_u_LW,
+      "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
+      "radiation field.");
+
+  list[12] = io_make_output_field_convert_part(
+      "PEArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, xparts, convert_part_dissipation_alpha_PE,
+      "Negativity-triggered artificial-dissipation coefficient of the "
+      "PE-band hyperbolic propagation, in "
+      "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
+      "Only meaningful when ISRF_propagation is on.");
+
+  list[13] = io_make_output_field_convert_part(
+      "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, xparts, convert_part_dissipation_alpha_LW,
+      "Same as PEArtificialDissipationCoefficients, Lyman-Werner band.");
+
+  list[14] = io_make_output_field_convert_part(
+      "PESpecificFluxDivergences", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      convert_part_div_specific_flux_PE,
+      "`(1/rho) div(rho F)` accumulator of the PE-band hyperbolic "
+      "propagation, accumulated in the force loop from the step's relaxed "
+      "flux. Physical, like the "
+      "specific energy it is a rate of change of. Only meaningful when "
+      "ISRF_propagation is on.");
+
+  list[15] = io_make_output_field_convert_part(
+      "LWSpecificFluxDivergences", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      convert_part_div_specific_flux_LW,
+      "Same as PESpecificFluxDivergences, Lyman-Werner band.");
+
+  list[16] = io_make_output_field_convert_part(
+      "PESpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
+      0.f, parts, xparts, convert_part_specific_flux_PE,
+      "Tracked specific flux moment of the PE-band hyperbolic propagation, "
+      "mass-specific like PESpecificEnergies. Physical: no scale-factor "
+      "exponent of its own. Only meaningful when ISRF_propagation is on.");
+
+  list[17] = io_make_output_field_convert_part(
+      "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
+      0.f, parts, xparts, convert_part_specific_flux_LW,
+      "Same as PESpecificFluxes, Lyman-Werner band.");
+
+  list[18] = io_make_output_field_convert_part(
+      "PEMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_u_min_since_snapshot_PE,
+      "Most negative PESpecificEnergies value the propagation update wrote "
+      "since the previous snapshot, 0 if none was negative. The number of "
+      "nonzero entries is the count of particles that undershot. The "
+      "interval is since the last increment of engine.snapshot_output_count, "
+      "which also happens when a FOF seeding catalogue is dumped "
+      "(FOF:dump_catalogue_when_seeding), not only at a real snapshot. "
+      "Always 0 unless the code is configured with --enable-debugging-checks.");
+
+  list[19] = io_make_output_field_convert_part(
+      "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
+      "Same as PEMinimumSpecificEnergies, Lyman-Werner band.");
+
+  list[20] = io_make_output_field_convert_part(
+      "PECumulativeInjectedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_injected_PE,
+      "Cumulative mass-specific PE-band dose this particle has drawn from "
+      "the dose reservoir since first init, rescaled by c_hyp/c exactly as "
+      "PESpecificEnergies' own update rescales it, but not relaxed by the "
+      "per-step phi factor: the raw amount attempted every step, summed. "
+      "Energy-conservation diagnostic (with "
+      "PECumulativeAbsorbedSpecificEnergies and PESpecificEnergies); "
+      "always 0 unless the code is configured with "
+      "--enable-debugging-checks.");
+
+  list[21] = io_make_output_field_convert_part(
+      "LWCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_injected_LW,
+      "Same as PECumulativeInjectedSpecificEnergies, Lyman-Werner band.");
+
+  list[22] = io_make_output_field_convert_part(
+      "PECumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_absorbed_PE,
+      "Cumulative mass-specific PE-band energy PESpecificEnergies' own "
+      "exact-relaxation update has attributed to decay (dust absorption "
+      "and the cosmological redshift term) plus the fraction of each "
+      "step's source and transport terms that never reached the field "
+      "because the step was optically thick, summed since first init. "
+      "Energy-conservation diagnostic: PESpecificEnergies plus this field "
+      "minus PECumulativeInjectedSpecificEnergies isolates the transport "
+      "and artificial-dissipation residual the closed-form split does not "
+      "attribute to either term, which the SPH divergence's kernel-sum "
+      "identity and the dissipation's pairwise antisymmetry drive towards "
+      "0 when summed over every particle. Always 0 unless the code is "
+      "configured with --enable-debugging-checks.");
+
+  list[23] = io_make_output_field_convert_part(
+      "LWCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_absorbed_LW,
+      "Same as PECumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
+
+  list[24] = io_make_output_field_convert_part(
+      "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,
+      xparts, convert_part_c_hyp,
+      "Kernel-local hyperbolic propagation speed the band updates and the "
+      "pairwise transport operators ran with, shared by both bands. "
+      "Physical: built from the physical smoothing length and a physical "
+      "timestep, so no scale-factor exponent of its own. The conserved "
+      "ledger of the consistent-variable-c schemes is `sum m u / c_hyp` "
+      "rather than `sum m u`, which is what this field makes measurable "
+      "from a snapshot. Only meaningful when ISRF_propagation is on.");
 
   return num;
 }
@@ -205,7 +495,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 8;
+  int num = 11;
 
   list[0] = io_make_output_field(
       "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
@@ -228,19 +518,18 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "(fractional for a continuously-sampled population particle; always "
       "0 or 1 for a discrete star).");
 
-  list[3] = io_make_output_field(
+  list[3] = io_make_physical_output_field(
       "DensityAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.snii_events.density_at_last_event,
-      "Physical gas density at the star's own location (kernel-averaged, "
-      "same value the enrichment loop already computes) at its most recent "
-      "SNII event. 0 if it has never had one. Compare NumberOfSNIIEvents "
-      "between two snapshots to see if any events were missed between "
-      "them.");
+      /*can convert to comoving=*/0,
+      "Gas density at the star's location at its most recent SNII event. "
+      "0 if it has never had one.");
 
   if (with_cosmology) {
-    list[4] = io_make_output_field(
+    list[4] = io_make_physical_output_field(
         "ScaleFactorAtLastSNIIEvent", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         tracers_data.snii_events.last_event_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factor at this star's most recent SNII event. 0 if it has "
         "never had one.");
   } else {
@@ -258,15 +547,17 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "Always 0 for a discrete (single_star) particle: SNIa is a "
       "population-level channel in this model.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "DensityAtLastSNIaEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.snia_events.density_at_last_event,
+      /*can convert to comoving=*/0,
       "Same as DensityAtLastSNIIEvent, for the SNIa channel.");
 
   if (with_cosmology) {
-    list[7] = io_make_output_field(
+    list[7] = io_make_physical_output_field(
         "ScaleFactorAtLastSNIaEvent", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         tracers_data.snia_events.last_event_scale_factor,
+        /*can convert to comoving=*/0,
         "Same as ScaleFactorAtLastSNIIEvent, for the SNIa channel.");
   } else {
     list[7] = io_make_output_field(
@@ -274,6 +565,32 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
         tracers_data.snia_events.last_event_time,
         "Same as TimeAtLastSNIIEvent, for the SNIa channel.");
   }
+
+  list[8] = io_make_output_field(
+      "CumulativeWindsMassEjected", DOUBLE, 1, UNIT_CONV_MASS, 0.f, sparts,
+      tracers_data.winds.mass_ejected,
+      "Mass this star ejected by stellar winds over its lifetime so far, "
+      "counted once per injection step from the star's own budget, but only "
+      "for a step whose preceding step left the star with gas neighbours; "
+      "the star's mass budget is spent regardless, so this undercounts the "
+      "star's true total wind mass loss whenever a step had none.");
+
+  list[9] = io_make_physical_output_field(
+      "CumulativeWindsEnergyEjected", DOUBLE, 1, UNIT_CONV_ENERGY, 0.f, sparts,
+      tracers_data.winds.energy_ejected,
+      /*can convert to comoving=*/0,
+      "Total (not specific) stellar-wind energy this star ejected over its "
+      "lifetime so far, after the winds efficiency factor.");
+
+  list[10] = io_make_physical_output_field(
+      "CumulativeWindsMomentumEjected", DOUBLE, 1, UNIT_CONV_MOMENTUM, 0.f,
+      sparts, tracers_data.winds.momentum_ejected,
+      /*can convert to comoving=*/0,
+      "Sum over injection steps of the wind momentum budget sqrt(2 m_ej E_ej), "
+      "in the star's rest frame (scalar sum, not vector: isotropic ejecta "
+      "would else cancel). Excludes the m_ej v_star term that the gas "
+      "CumulativeMomentumFromWinds includes, which is why the received/ejected "
+      "ratio is not 1 for a moving star.");
 
   return num;
 }

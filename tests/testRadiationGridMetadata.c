@@ -41,11 +41,13 @@ void radiation_read_grid_metadata(hid_t group_id,
 
 /**
  * @brief Build a minimal, synthetic 2D ("M,Z") Data/Radiation group with
- * every attribute radiation_read_grid_metadata() requires, plus the two new
- * generic edge_policy_q_h_below/above and
- * edge_policy_mean_excess_energy_below/above attributes
- * pychem's write_h5_table_v2() always writes alongside the existing
- * per-variant ones.
+ * every attribute radiation_read_grid_metadata() requires: the two generic
+ * edge_policy_q_h_below/above and
+ * edge_policy_mean_excess_energy_below/above attributes pychem's
+ * write_h5_table_v2() always writes alongside the per-variant ones. The
+ * A minimal "Teff" dataset is written alongside its own
+ * edge_policy_teff_below/above pair, since that pair is only read when the
+ * dataset itself is present.
  *
  * @param file_id Open HDF5 file id to create the group in.
  * @param source_value The group's "source" attribute value: an
@@ -88,6 +90,21 @@ static hid_t build_radiation_group(hid_t file_id, const char *source_value,
   H5Dclose(h_dset);
   H5Sclose(h_space);
 
+  /* Contents are never read here, only the dataset's presence: it is what
+     gates the edge_policy_teff_below/above read below. */
+  const hsize_t teff_dims[2] = {3, 5};
+  const float teff[15] = {0.f};
+  const hid_t h_teff_space = H5Screate_simple(2, teff_dims, NULL);
+  if (h_teff_space < 0) error("Failed to create the test 'Teff' dataspace.");
+  const hid_t h_teff = H5Dcreate(grp, "Teff", H5T_NATIVE_FLOAT, h_teff_space,
+                                 H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_teff < 0) error("Failed to create the test 'Teff' dataset.");
+  if (H5Dwrite(h_teff, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, teff) <
+      0)
+    error("Failed to write the test 'Teff' dataset.");
+  H5Dclose(h_teff);
+  H5Sclose(h_teff_space);
+
   /* below="zero"/above="constant" so the positive-case assertions below can
    * tell the luminosity/Q_H/mean-excess-energy edge policies apart from one
    * another and from a boundary_condition_const default. */
@@ -97,6 +114,8 @@ static hid_t build_radiation_group(hid_t file_id, const char *source_value,
   WRITE_STR("edge_policy_q_h_above", "constant");
   WRITE_STR("edge_policy_mean_excess_energy_below", "constant");
   WRITE_STR("edge_policy_mean_excess_energy_above", "constant");
+  WRITE_STR("edge_policy_teff_below", "constant");
+  WRITE_STR("edge_policy_teff_above", "constant");
 
   WRITE_STR("source", source_value);
 
@@ -107,9 +126,7 @@ static hid_t build_radiation_group(hid_t file_id, const char *source_value,
 
 /**
  * @brief Confirm radiation_read_grid_metadata() still error()s when one of
- * the two new generic required attributes is missing -- mandatory-attribute
- * enforcement must survive the removal of the "source"-keyed dispatch, just
- * no longer keyed on "source" itself.
+ * the required edge_policy_* attributes is missing.
  *
  * Runs the read in a forked child (mirroring testRadiationRebuildCheck.c's
  * own orphaned-link regression test) since error() aborts the process.
@@ -172,8 +189,8 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-  /* Positive case: a full, valid 2D group carrying the two new generic
-   * edge_policy_* attributes and an arbitrary/unknown "source" string (a
+  /* Positive case: a full, valid 2D group carrying every required
+   * edge_policy_* attribute and an arbitrary/unknown "source" string (a
    * stand-in for a future pychem mode like "parsec_spectral"). Must load
    * successfully and must never dispatch behaviour on "source". */
   {
@@ -209,6 +226,12 @@ int main(int argc, char *argv[]) {
           "boundary_condition_const (from the generic "
           "edge_policy_mean_excess_energy_below/above attributes), got %d.",
           grid.edge_policy_dot_e_excess);
+    if (grid.edge_policy_teff != boundary_condition_const)
+      error(
+          "edge_policy_teff mismatch: expected boundary_condition_const, "
+          "got %d. The pair must be read whenever the group carries a "
+          "'Teff' dataset.",
+          grid.edge_policy_teff);
 
     free(grid.metallicity);
     H5Gclose(grp);
@@ -216,14 +239,14 @@ int main(int argc, char *argv[]) {
     unlink(filename);
   }
 
-  /* Negative cases: each of the two new generic required attributes must
-   * still be enforced -- just no longer keyed on "source". io_read_attribute
-   * ()/radiation_read_string_attribute() already error() loudly on a missing
-   * attribute, so this only needs to confirm that behaviour still fires for
-   * these two specific names now that the "source" strcmp/error dispatch is
-   * gone. */
+  /* Negative cases: each required edge_policy_* attribute must be
+   * enforced. io_read_attribute()/radiation_read_string_attribute() already
+   * error() loudly on a missing attribute; this confirms that fires for
+   * each of these names. */
+  run_negative_case("edge_policy_luminosity_below");
   run_negative_case("edge_policy_q_h_below");
   run_negative_case("edge_policy_mean_excess_energy_below");
+  run_negative_case("edge_policy_teff_below");
 
   return 0;
 }

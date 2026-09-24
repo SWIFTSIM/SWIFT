@@ -154,7 +154,7 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   return mu;
 
 #elif COOLING_GRACKLE_MODE >= 1
-  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1 -- shared by
+  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1: shared by
      modes 1-3 instead of re-declared (and, for modes 2-3, previously
      forgotten) in each one. */
   const struct cooling_xpart_data *cool_data = &xp->cooling_data;

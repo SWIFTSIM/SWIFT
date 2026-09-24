@@ -485,6 +485,16 @@ struct engine {
   /* Force the engine to rebuild? */
   int forcerebuild;
 
+  /*! Criterion and cell that last demanded a rebuild during engine_unskip(),
+   * reported if that demand survives the rebuild it asked for. Written
+   * without synchronisation from the unskip threadpool: the demand is only
+   * read on an already-fatal path, where any one of the demanding cells is
+   * equally diagnostic. NULL when no instrumented criterion recorded one. */
+  const char *rebuild_demand_criterion;
+  double rebuild_demand_loc[3];
+  double rebuild_demand_width;
+  int rebuild_demand_depth;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Cumulative HII search-radius expansions clamped at the reachable
    * radiation_in stencil bound. A persistently growing count means a star's

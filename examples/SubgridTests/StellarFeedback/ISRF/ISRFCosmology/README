@@ -1,0 +1,143 @@
+# Intro
+Tests the ISRF module and its Grackle coupling in an expanding box. Each
+configuration is run without cosmology (`redshift=0`) and with cosmology from
+`redshift=9`, from the same physical initial state, and the same check is
+applied to both. Where a closed form exists, the check compares against it:
+
+- `free_field`: a uniform seeded field in dust-free gas, no star. The module
+  dilates the field's Hubble term by the same `c_hyp/c` factor as every other
+  rate, and `c_hyp/c` is of order 1e-5 on this fixture, so the mass-specific
+  field is constant to leading order with and without cosmology. The H2
+  abundance then follows `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone,
+  since the field itself no longer decays) with the rate the module hands to
+  Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
+- `dust_absorption`: the same at solar metallicity, with the propagation speed
+  pinned (`c_hyp_pin`, km/s), so the absorption rate is known:
+  `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
+  carrying the same `c_pin/c` dilation.
+- `photoelectric` and `photoelectric_dark`: a seeded field of `G0 ~ 1` and the
+  same box without it. The difference of their internal energies must equal
+  the integral of Grackle's heating rate
+  `1e-24 * 0.05 * G0 * n_H * Z/0.01295 erg cm^-3 s^-1`.
+- `injection`: a star with propagation off, at zero metallicity, so the dust
+  extinction factor is 1 everywhere. The injected energy `sum m u` equals
+  `Delta_t L` in each band.
+- `injection_dusty`: the same star at `Z = 0.01295`, where extinction is not
+  1 and that identity no longer holds. Two exact statements replace it: the
+  per-particle ratio of the two bands, in which the kernel weight, `Delta_t`
+  and the particle mass cancel, and a bracket on the weighted mean of
+  `exp(-tau)` between its smallest and largest per-particle value. It gates
+  the receiver-side extinction wiring, including the comoving-to-physical
+  scaling of the column, which the `Z = 0` leg cannot see. Unlike `injection`
+  it holds the gas state fixed (`disable_cooling`, on by default for this
+  config): metal cooling would otherwise drive the gas onto time-bins below
+  the star's, and the check reads the star's `Delta_t` from the step table,
+  which reports the step's `dt` instead. Override it with `disable_cooling=0`
+  only if the star is known to stay on the shortest bin.
+
+`h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
+self-shielding) has no closed form. It is compared between `redshift=0` and
+high redshift over 25 yr, where expansion does not change the physical state.
+The check equations, and the bars each one derives from the run's own
+discretisation, are in the docstrings of `isrf_cosmology_check.py` and
+`isrf_cosmology_h2_identity_check.py`. The two injection bars are the
+exception: fixed relative tolerances of 1e-5 and 1e-4 respectively, set in
+`isrf_cosmology_check.py` itself.
+
+## Initial conditions
+`makeIC.py` takes physical values at the starting redshift and writes the
+comoving box and density SWIFT expects; the internal energy stays physical,
+as SWIFT converts it at start-up. SWIFT stores the star's birth scale factor in
+single precision, so `makeIC.py` rounds it down: otherwise the star would be
+born after the start of the 25 yr runs. `GrackleCooling:cmb_temperature_floor`
+is 0 because the floor, `2.73(1+z)` K, differs between the two runs by more
+than the gas temperature. `cosmo_timeline.py` converts the proper-time
+duration of each configuration into `a_end`, a `dt_max` in `ln a` and the
+snapshot ratio.
+The star starts with the same age in both runs (`star_age`, internal units):
+a star of age 0 skips its first injection. Without cosmology the run starts at
+that time, because GEAR gives no feedback for a negative birth time.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`grackle_2` also works. H2 is only tracked in these two modes.
+
+# Run
+```
+config=free_field redshift=0 run_name=free_field_z0 ./run.sh
+config=free_field redshift=9 run_name=free_field_z9 ./run.sh
+```
+and likewise for the other configurations. `h2_shielded` also needs a
+reference rerun with another thread count, which sets its pass bar, and
+optionally a second redshift:
+```
+config=h2_shielded redshift=0 run_name=h2_z0 ./run.sh
+config=h2_shielded redshift=0 n_threads=3 run_name=h2_z0_replicate ./run.sh
+config=h2_shielded redshift=9 run_name=h2_z9 ./run.sh
+config=h2_shielded redshift=4 run_name=h2_z4 ./run.sh
+```
+Add `h2_self_shielding=2` for the kernel-length column, and pass the matching
+`--h2-self-shielding 2` to the identity check below (it defaults to 3). See
+`run.sh` for the other overrides (`level`, `gas_density`, `gas_mass`, `duration`, `steps`, ...).
+At level 5 each run takes a few minutes on 8 threads.
+
+# Checking
+```
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z9/snap/snapshot_*.hdf5" \
+    --reference "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config dust_absorption --c-hyp-pin 4 -s ...
+python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*.hdf5" \
+    --dark "pe_dark_z9/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config injection -s "inj_z9/snap/snapshot_*.hdf5" \
+    --log inj_z9/output.log
+python3 isrf_cosmology_check.py --config injection_dusty \
+    -s "inj_dusty_z9/snap/snapshot_*.hdf5" --log inj_dusty_z9/output.log
+python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.hdf5" \
+    --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
+    --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
+```
+Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
+(exit code 0 or 1). `--reference` takes the non-cosmological run of the same
+configuration: the cosmological bar then becomes the larger of the a-priori
+budget and twice the error that run measured, plus the cosmological terms.
+With `--config photoelectric` it also needs `--reference-dark`, the
+non-cosmological `photoelectric_dark` run.
+
+# Regression-testing the receiver-side extinction path
+`GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
+column attenuating the injected LW and PE bands. The `injection_dusty` box is
+uniform and its gas state is held fixed, so the attenuation of a particle at
+separation `r` from the star is exactly `exp(-kappa_eff rho r)`, and each
+mechanism's own column can be compared against that with no free parameter.
+Run one leg with a negligible path as the unattenuated reference, then one per
+candidate, all at the same metallicity:
+```
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1e-8 run_name=thin ./run.sh
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1.0 run_name=R1 ./run.sh
+config=injection_dusty extinction_path=pair_separation run_name=pairsep ./run.sh
+config=injection_dusty extinction_path=temperature_capped_jeans \
+    extinction_jeans_temperature_cap_K=40 run_name=jeans ./run.sh
+python3 isrf_extinction_path_check.py thin R1 pairsep jeans
+```
+The check prints each leg's injection-weighted optical depth and its distance
+in dex from the exact one. A `Z = 0` run is not a valid reference here: the
+star's band luminosity depends on metallicity.
+
+Read the per-candidate scores, not the overall verdict. The `pair_separation`
+row scores zero by construction: that mechanism attenuates each pair over its
+own separation and the reference is the same expression on the same
+per-particle density, so the two agree to float noise whatever the physics.
+The verdict is the best candidate's score, so it cannot fail while
+`pair_separation` is in the list. What the check therefore tests is the
+opacity chain, the units and the SPH density estimate, as a regression. It is
+not a ranking gate and it is not evidence for the shipped default. The
+`constant_kernel_path` and `temperature_capped_jeans` rows are genuine
+measurements against the uniform-geometry answer, because their lengths come
+from the smoothing length and from the gas state, which the reference does not
+use.

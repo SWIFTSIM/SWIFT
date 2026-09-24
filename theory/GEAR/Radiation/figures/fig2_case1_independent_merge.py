@@ -120,7 +120,7 @@ def make_figure(output_path: str) -> None:
     ax_top.set_aspect("equal")
     ax_top.axis("off")
     ax_top.set_title(
-        "Fig. 2 -- Case 1: both B and C wired, tested independently\n"
+        "Fig. 2, Case 1: both B and C wired, tested independently\n"
         "search radius overlaps B and C; neither test depends on the other's outcome",
         fontsize=10.2,
     )
@@ -173,7 +173,7 @@ def make_figure(output_path: str) -> None:
     ax_bot.text(
         len(entries) / 2,
         -0.32,
-        "increasing r2 -- one global buffer, sorted across the B/C union",
+        "increasing r2, one global buffer, sorted across the B/C union",
         ha="center",
         fontsize=8.5,
     )

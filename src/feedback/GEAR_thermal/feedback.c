@@ -23,7 +23,9 @@
 /* Local includes */
 #include "../GEAR/radiation.h"
 #include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
 #include "../GEAR/stellar_evolution.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -31,10 +33,13 @@
 #include "feedback_properties.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "minmax.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
 
+#include <float.h>
+#include <math.h>
 #include <strings.h>
 
 /**
@@ -107,26 +112,149 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation.
- *
- * Nothing to do here.
+ * @brief Finishes the #part density calculation: caches this step's
+ * kernel-local LW/PE propagation speed, now that the density loop's
+ * neighbour-bin maximum is known, see #radiation_end_density_propagation.
+ * The field `u` itself is still updated in #feedback_end_force, after the
+ * flux-divergence has been accumulated in the force loop.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
+ * @param e The #engine.
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part *p, struct xpart *xp) {}
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e) {
+  radiation_end_density_propagation(p, e);
+}
 
 /**
- * @brief Reset the gas particle-carried fields related to feedback at the
- * start of a step.
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours: LW/PE dose-reservoir recovery is shared GEAR physics, see
+ * #radiation_part_has_no_neighbours.
  *
- * Nothing to do here in the GEAR model.
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e) {
+  radiation_part_has_no_neighbours(p, e);
+}
+
+/**
+ * @brief Finishes the #part gradient calculation: LW/PE propagation's
+ * `F` relaxation is shared GEAR physics, see
+ * #radiation_end_gradient_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_gradient(struct part *p, const struct engine *e) {
+  radiation_end_gradient_propagation(p, e);
+}
+
+/**
+ * @brief Finishes the #part force calculation: LW/PE propagation's `u`
+ * update is shared GEAR physics, see #radiation_end_force_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_force(struct part *p, const struct engine *e) {
+  radiation_end_force_propagation(p, e);
+}
+
+/**
+ * @brief Radiation timestep contribution: the uniform reduced light-speed
+ * candidate's own stability term is shared GEAR physics, see
+ * #radiation_isrf_part_timestep.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ */
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e) {
+  return radiation_isrf_part_timestep(p, e);
+}
+
+/**
+ * @brief Reset the gas particle-carried fields related to feedback once
+ * per step, before the density loop's h-iterations begin: snapshots
+ * every band's u and caches this step's absorption rate (shared GEAR
+ * physics), see #radiation_snapshot_part_propagation, and expires a
+ * lapsed LW/PE illumination tag, see
+ * #radiation_reset_part_ISRF_illumination_tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e) {
+  radiation_snapshot_part_propagation(p, e);
+  radiation_reset_part_ISRF_illumination_tag(p, e);
+  /* Must stay after the tag reset: expiring an ISRF tag can zero `u`, and the
+   * cache below must read that post-expiry value. */
+  radiation_cache_m1_closure_part(p);
+}
+
+/**
+ * @brief Re-initialise the gas particle-carried fields related to
+ * feedback at the start of each density h-iteration: LW/PE propagation
+ * accumulators are shared GEAR physics, see
+ * #radiation_init_part_propagation.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+void feedback_init_part(struct part *p, const struct engine *e) {
+  radiation_init_part_propagation(p);
+}
+
+/**
+ * @brief First-init of a #part's feedback-model state: LW/PE init is
+ * shared GEAR physics, see #radiation_first_init_part.
+ *
+ * Also sets @p mu_eligibility and @p neutral_H_frac to a negative
+ * sentinel instead of leaving them at struct part's zero-init default
+ * (S3.3/F3). 0.0f reads as a genuine physical value for both fields
+ * (fully ionized / massless mean molecular weight), so it cannot
+ * distinguish "not yet primed" from "really measured", which let an MPI
+ * foreign copy's very first HII pass price a genuinely-neutral particle
+ * at ~zero photons before its owner's first cooling call ever wrote a
+ * real value. Neither field is ever physically negative, so a negative
+ * value is unambiguous. Only mu_eligibility is WITH_MPI-only
+ * (feedback_part_data's own gating); neutral_H_frac is always
+ * initialised, matching its unconditional presence on that struct.
+ * feedback_part_can_be_ionized checks for the sentinel before pricing; a
+ * caller reading either cache directly through
+ * radiation_get_part_mean_molecular_weight /
+ * radiation_get_part_number_neutral_hydrogen_atoms without going through
+ * that gate first hits a SWIFT_DEBUG_CHECKS assert instead of silently
+ * pricing on the sentinel.
+ *
+ * feedback_part_can_be_ionized's check is xp == NULL only: the owning
+ * rank's own local claim never reads these caches (it uses real
+ * species/temperature data) and can legitimately stamp is_ionized on
+ * local gas whose caches are still -1.f. That state rides the ordinary
+ * whole-part exchange to every foreign mirror, but is never priced there
+ * either: runner_radiation_feedback.c's gather already excludes an
+ * already-tagged particle from fresh pricing, and its maintenance path
+ * only re-prices gas tagged by the LOCAL star (star_id match), never a
+ * mirror of some other rank's claim. The gate plus these two
+ * gather-side filters together are what keep a sentinel from ever
+ * reaching pricing; a future change to either filter must preserve
+ * this.
+ *
+ * @param p The #part to initialise.
+ */
+void feedback_first_init_part(struct part *restrict p) {
+  radiation_first_init_part(p);
+#ifdef WITH_MPI
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+  p->feedback_data.neutral_H_frac = -1.f;
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?

@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "feedback.h"
 #include "forcing.h"
 #include "potential.h"
 #include "rt.h"
@@ -183,9 +184,26 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
+  /* Compute the next timestep (radiation condition, e.g. the uniform
+   * reduced light-speed c_hyp candidate's own receiver-side CFL term).
+   * FLT_MAX for every feedback model but GEAR_thermal's, and FLT_MAX there
+   * too unless GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is set: see
+   * feedback_compute_part_timestep()/radiation_isrf_part_timestep(). */
+  const float new_dt_isrf = feedback_compute_part_timestep(p, e);
+  if (new_dt_isrf < e->dt_min)
+    error(
+        "part (id=%lld) wants an ISRF radiation time-step (%e) below "
+        "TimeIntegration:dt_min (%e): GEARFeedback:"
+        "ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = C_hyp*h/(f*c) "
+        "below dt_min for this particle's h. Raise the fraction "
+        "(dt_rad grows as 1/f) or raise dt_min.",
+        p->id, new_dt_isrf, e->dt_min,
+        e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+
   /* Take the minimum of all */
   float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
   new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_forcing);
+  new_dt = min(new_dt, new_dt_isrf);
 
   /* Limit change in smoothing length */
   const float dt_h_change =

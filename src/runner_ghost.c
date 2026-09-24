@@ -1051,6 +1051,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Finish the gradient calculation */
         hydro_end_gradient(p);
         chemistry_end_gradient(p, e->chemistry);
+        feedback_end_gradient(p, e);
         mhd_end_gradient(p);
 
         /* As of here, particle force variables will be set. */
@@ -1232,6 +1233,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
           mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           star_formation_end_density(p, xp, star_formation, cosmo);
+          feedback_end_density(p, xp, e);
 
           /* Are we using the alternative definition of the
              number of neighbours? */
@@ -1418,6 +1420,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
             adaptive_softening_init_part(p);
             mhd_init_part(p);
             chemistry_init_part(p, chemistry);
+            feedback_init_part(p, e);
             star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
@@ -1446,6 +1449,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
               rt_part_has_no_neighbours(p);
+              feedback_part_has_no_neighbours(p, xp, e);
             }
 
           } else {

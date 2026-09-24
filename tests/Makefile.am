@@ -35,7 +35,15 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPressureFormula \
-        testRadiationGridMetadata testStellarEvolutionSNOnce \
+        testRadiationISRFFormula \
+        testRadiationISRFDissipationConservation \
+        testRadiationISRFComovingFactors \
+        testRadiationISRFExpansionTerm \
+        testRadiationISRFForceDispatchConservation \
+        testRadiationISRFFluxUnderflow \
+        testRadiationISRFGateDegenerate \
+        testRadiationISRFGradientCache \
+        testRadiationGridMetadata testInterpolationNonuniformX \
         testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline  # testMatrixInversion
@@ -52,7 +60,15 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPressureFormula \
-		 testRadiationGridMetadata testStellarEvolutionSNOnce \
+		 testRadiationISRFFormula \
+		 testRadiationISRFDissipationConservation \
+		 testRadiationISRFComovingFactors \
+		 testRadiationISRFExpansionTerm \
+		 testRadiationISRFForceDispatchConservation \
+		 testRadiationISRFFluxUnderflow \
+		 testRadiationISRFGateDegenerate \
+		 testRadiationISRFGradientCache \
+		 testRadiationGridMetadata testInterpolationNonuniformX \
 		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
@@ -68,8 +84,17 @@ testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
+testRadiationISRFFormula_SOURCES = testRadiationISRFFormula.c
+testRadiationISRFDissipationConservation_SOURCES = testRadiationISRFDissipationConservation.c
+testRadiationISRFComovingFactors_SOURCES = testRadiationISRFComovingFactors.c
+testRadiationISRFExpansionTerm_SOURCES = testRadiationISRFExpansionTerm.c
+testRadiationISRFForceDispatchConservation_SOURCES = testRadiationISRFForceDispatchConservation.c
+testRadiationISRFFluxUnderflow_SOURCES = testRadiationISRFFluxUnderflow.c
+testRadiationISRFGateDegenerate_SOURCES = testRadiationISRFGateDegenerate.c
+testRadiationISRFGradientCache_SOURCES = testRadiationISRFGradientCache.c
 testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
-testStellarEvolutionSNOnce_SOURCES = testStellarEvolutionSNOnce.c
+
+testInterpolationNonuniformX_SOURCES = testInterpolationNonuniformX.c
 
 testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c
 

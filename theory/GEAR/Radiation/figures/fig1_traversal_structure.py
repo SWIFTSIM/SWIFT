@@ -134,7 +134,7 @@ def make_figure(output_path: str) -> None:
             marker=">",
             linestyle="-",
             lw=1.4,
-            label="self link -- descends own subtree",
+            label="self link: descends own subtree",
         ),
         mlines.Line2D(
             [],
@@ -143,7 +143,7 @@ def make_figure(output_path: str) -> None:
             marker=">",
             linestyle="-",
             lw=1.4,
-            label="pair link -- visits neighbour, recurses independently",
+            label="pair link: visits neighbour, recurses independently",
         ),
     ]
     ax.legend(
@@ -160,7 +160,7 @@ def make_figure(output_path: str) -> None:
     ax.set_aspect("equal")
     ax.axis("off")
     ax.set_title(
-        "Fig. 1 -- Traversal structure\n"
+        "Fig. 1: Traversal structure\n"
         "no neighbour-of-neighbour hops: visits follow region wiring only",
         fontsize=10.5,
         pad=10,
