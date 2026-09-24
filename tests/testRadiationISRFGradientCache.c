@@ -111,6 +111,27 @@ static void check_close(const char *name, float expected, float value) {
 }
 
 /**
+ * @brief Fail unless two floats are bitwise identical, on their raw bit
+ * patterns (not `==`, which -ffast-math is free to fold differently). Both
+ * are checked finite first.
+ *
+ * @param name Name of the quantity, for the failure message.
+ * @param a First value.
+ * @param b Second value.
+ */
+static void check_bits_equal(const char *name, float a, float b) {
+
+  check_finite(name, a);
+  check_finite(name, b);
+  uint32_t bits_a, bits_b;
+  memcpy(&bits_a, &a, sizeof(bits_a));
+  memcpy(&bits_b, &b, sizeof(bits_b));
+  if (bits_a != bits_b)
+    error("%s: not bitwise identical (0x%08x vs 0x%08x, %.9e vs %.9e)", name,
+          bits_a, bits_b, (double)a, (double)b);
+}
+
+/**
  * @brief Set both ISRF bands of a particle to the same `(u, F, c_hyp)`.
  *
  * @param p (return) The particle.
@@ -219,6 +240,23 @@ int main(int argc, char *argv[]) {
                     p_j.feedback_data.isrf_moment[b].grad_u[k]);
       }
     }
+    /* grad_u has no snapshot field in any build (Gate 1a's within-run
+     * identity leg cannot observe it there), so this C unit test is the
+     * only place ISRF_MOMENT_LW and ISRF_MOMENT_LW_PHOTON's grad_u are
+     * checked bitwise identical against EACH OTHER, not merely against the
+     * same tolerance-bound reference: set_part() above gives every moment
+     * the identical (u, F), matching Stage 1's direct-assignment
+     * injection guarantee. */
+    for (int k = 0; k < 3; k++) {
+      check_bits_equal(
+          "symmetric grad_u_i, LW vs LW_PHOTON",
+          p_i.feedback_data.isrf_moment[ISRF_MOMENT_LW].grad_u[k],
+          p_i.feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].grad_u[k]);
+      check_bits_equal(
+          "symmetric grad_u_j, LW vs LW_PHOTON",
+          p_j.feedback_data.isrf_moment[ISRF_MOMENT_LW].grad_u[k],
+          p_j.feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].grad_u[k]);
+    }
 
     /* Non-symmetric dispatch: only i's accumulator is written. */
     struct part p_i2 = p_i0, p_j2 = p_j0;
@@ -233,6 +271,11 @@ int main(int argc, char *argv[]) {
                     p_j2.feedback_data.isrf_moment[b].grad_u[k]);
       }
     }
+    for (int k = 0; k < 3; k++)
+      check_bits_equal(
+          "non-symmetric grad_u_i, LW vs LW_PHOTON",
+          p_i2.feedback_data.isrf_moment[ISRF_MOMENT_LW].grad_u[k],
+          p_i2.feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].grad_u[k]);
 
     message("cached gradient IACT matches the from-scratch closure: %s",
             sc->name);

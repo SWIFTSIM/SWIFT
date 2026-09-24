@@ -124,34 +124,48 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
 }
 
 /**
- * @brief Set one band's full pre-step state.
+ * @brief Set one moment's own state: u, u_prev, specific_flux, grad_u.
+ * Moment-level fields only; see #set_band_operator for the shared
+ * operator-level fields, split out because #ISRF_MOMENT_LW_PHOTON shares
+ * #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW, so a caller that wants "both
+ * moments read the same operator state" must set that state once per
+ * OPERATOR, not once per moment.
  *
  * @param p (in/out) The particle (already zeroed by the caller).
  * @param m Moment index.
- * @param u This band's #feedback_isrf_moment_data.u (and u_prev).
- * @param ngb_mean_abs_u_V This band's kernel-mean scratch.
- * @param kappa This band's absorption rate.
- * @param F This band's specific_flux, BEFORE this step's update.
- * @param grad_u This band's grad_u accumulator.
- * @param alpha_trigger This band's incoming dissipation_alpha_trigger
- * (the trigger's own memory of its previous output).
+ * @param u This moment's #feedback_isrf_moment_data.u (and u_prev).
+ * @param F This moment's specific_flux, BEFORE this step's update.
+ * @param grad_u This moment's grad_u accumulator.
  */
-static void set_band(struct part *p, int m, float u, float ngb_mean_abs_u_V,
-                     float kappa, const float F[3], const float grad_u[3],
-                     float alpha_trigger) {
+static void set_band_moment(struct part *p, int m, float u, const float F[3],
+                            const float grad_u[3]) {
 
   struct feedback_isrf_moment_data *moment = &p->feedback_data.isrf_moment[m];
-  struct feedback_isrf_operator_data *op =
-      &p->feedback_data.isrf_operator[radiation_isrf_moment_to_operator[m]];
   moment->u = u;
   moment->u_prev = u;
-  op->ngb_mean_abs_u_V = ngb_mean_abs_u_V;
-  op->kappa = kappa;
-  op->dissipation_alpha_trigger = alpha_trigger;
   for (int k = 0; k < 3; k++) {
     moment->specific_flux[k] = F[k];
     moment->grad_u[k] = grad_u[k];
   }
+}
+
+/**
+ * @brief Set one operator's shared state, see #set_band_moment.
+ *
+ * @param p (in/out) The particle (already zeroed by the caller).
+ * @param o Operator index.
+ * @param ngb_mean_abs_u_V This operator's kernel-mean scratch.
+ * @param kappa This operator's absorption rate.
+ * @param alpha_trigger This operator's incoming dissipation_alpha_trigger
+ * (the trigger's own memory of its previous output).
+ */
+static void set_band_operator(struct part *p, int o, float ngb_mean_abs_u_V,
+                              float kappa, float alpha_trigger) {
+
+  struct feedback_isrf_operator_data *op = &p->feedback_data.isrf_operator[o];
+  op->ngb_mean_abs_u_V = ngb_mean_abs_u_V;
+  op->kappa = kappa;
+  op->dissipation_alpha_trigger = alpha_trigger;
 }
 
 /**
@@ -197,25 +211,32 @@ static void test_eps_R_zero_disables_gate(void) {
   make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., alpha_floor, /*eps_R=*/0.f);
 
   const float zero[3] = {0.f, 0.f, 0.f};
-  /* Indexed by moment (the loop below is `b < ISRF_MOMENT_COUNT`, and
-   * set_band() takes a moment index), not by operator: unsized, so a
-   * missing entry at a higher ISRF_MOMENT_COUNT is a compile error rather
-   * than a silent zero-fill, per the pattern already used for the two
+  /* kappa[] feeds ONLY set_band_operator, which takes an OPERATOR index
+   * after the split above: sized by ISRF_OPERATOR_COUNT, not
+   * ISRF_MOMENT_COUNT, since nothing calls the per-operator setter with an
+   * operator index ISRF_OPERATOR_COUNT never reaches. Unsized so a missing
+   * entry is a compile error, per the pattern already used for the two
    * operator/moment maps (feedback_struct.h). */
   const float kappa[] = {1.f, 0.f};
-  _Static_assert(sizeof(kappa) / sizeof(kappa[0]) == ISRF_MOMENT_COUNT,
-                 "kappa needs one entry per ISRF_MOMENT_COUNT.");
-  /* h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4).
+  _Static_assert(sizeof(kappa) / sizeof(kappa[0]) == ISRF_OPERATOR_COUNT,
+                 "kappa needs one entry per ISRF_OPERATOR_COUNT.");
+  /* expected[] is read back PER MOMENT below, so it stays sized by
+   * ISRF_MOMENT_COUNT: ISRF_MOMENT_LW_PHOTON shares ISRF_OPERATOR_LW with
+   * ISRF_MOMENT_LW, so its own expected floor equals LW's, set explicitly
+   * rather than left to zero-fill.
+   * h = 1, eps_lambda = 0.5: x = kappa/0.5, floor_band = alpha_floor/(1+x^4).
    */
-  const float expected[] = {alpha_floor / 17.f, alpha_floor};
+  const float expected[] = {alpha_floor / 17.f, alpha_floor, alpha_floor};
   _Static_assert(sizeof(expected) / sizeof(expected[0]) == ISRF_MOMENT_COUNT,
                  "expected needs one entry per ISRF_MOMENT_COUNT.");
 
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, kappa[b], zero, zero,
-             alpha_trigger_default);
+    set_band_moment(&p, b, u_default, zero, zero);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, kappa[o],
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -257,8 +278,10 @@ static void test_c_hyp_zero(void) {
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/0.f, /*dt=*/0.5f);
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    set_band(&p, m, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, F,
-             grad_u, alpha_trigger_default);
+    set_band_moment(&p, m, u_default, F, grad_u);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f,
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -305,8 +328,10 @@ static void test_w_zero_kappa_and_H_zero(void) {
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f, F,
-             grad_u, alpha_trigger_default);
+    set_band_moment(&p, b, u_default, F, grad_u);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f,
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -349,8 +374,10 @@ static void test_w_positive_via_hubble_term(void) {
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f, F,
-             grad_u, alpha_trigger_default);
+    set_band_moment(&p, b, u_default, F, grad_u);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/0.f,
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -390,8 +417,10 @@ static void test_den_zero_quiescent(void) {
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, zero,
-             zero, alpha_trigger_default);
+    set_band_moment(&p, b, u_default, zero, zero);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f,
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -439,10 +468,14 @@ static void test_exact_R_equals_one(void) {
     init_part(&p_zero_flux, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
     init_part(&p_zero_grad, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
     for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
-      set_band(&p_zero_flux, b, u_default, /*ngb_mean_abs_u_V=*/1.f,
-               /*kappa=*/1.f, zero, V, alpha_trigger_default);
-      set_band(&p_zero_grad, b, u_default, /*ngb_mean_abs_u_V=*/1.f,
-               /*kappa=*/1.f, V, zero, alpha_trigger_default);
+      set_band_moment(&p_zero_flux, b, u_default, zero, V);
+      set_band_moment(&p_zero_grad, b, u_default, V, zero);
+    }
+    for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+      set_band_operator(&p_zero_flux, o, /*ngb_mean_abs_u_V=*/1.f,
+                        /*kappa=*/1.f, alpha_trigger_default);
+      set_band_operator(&p_zero_grad, o, /*ngb_mean_abs_u_V=*/1.f,
+                        /*kappa=*/1.f, alpha_trigger_default);
     }
 
     radiation_end_gradient_propagation(&p_zero_flux, &e);
@@ -494,8 +527,10 @@ static void test_exact_R_equals_zero(void) {
   struct part p;
   init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-    set_band(&p, b, u_default, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f, F,
-             grad_u, alpha_trigger_default);
+    set_band_moment(&p, b, u_default, F, grad_u);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, /*kappa=*/1.f,
+                      alpha_trigger_default);
 
   radiation_end_gradient_propagation(&p, &e);
 
@@ -554,8 +589,10 @@ static void test_alpha_trigger_boundaries(void) {
     struct part p;
     init_part(&p, /*h=*/1.f, /*c_hyp=*/2.f, /*dt=*/0.5f);
     for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
-      set_band(&p, b, cases[i].u_V, cases[i].ngb_mean_abs_u_V, /*kappa=*/0.f,
-               zero, zero, cases[i].alpha_prev);
+      set_band_moment(&p, b, cases[i].u_V, zero, zero);
+    for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+      set_band_operator(&p, o, cases[i].ngb_mean_abs_u_V, /*kappa=*/0.f,
+                        cases[i].alpha_prev);
 
     radiation_end_gradient_propagation(&p, &e);
 
@@ -572,6 +609,69 @@ static void test_alpha_trigger_boundaries(void) {
       "negativity: all four finite and match the closed form");
 }
 
+/**
+ * @brief #radiation_end_gradient_propagation's Pass 2 must update each
+ * operator's dissipation_alpha_trigger from its OWN previous value exactly
+ * once per step, not re-read a value another moment sharing the same
+ * operator already wrote THIS step. A moment-bound loop through the
+ * (unmodified) forward map lets ISRF_MOMENT_LW_PHOTON's iteration re-read
+ * ISRF_MOMENT_LW's freshly-written trigger as alpha_prev, decaying it by
+ * decay^2 instead of decay in one step: the trigger's decay time constant
+ * is silently halved in log space, purely because a second moment shares
+ * the operator.
+ *
+ * u_V = 0 for every operator (moment->u = 0, rho_prev = 1) gives
+ * alpha_aim = 0 (radiation_update_dissipation_alpha_band's own eps
+ * ternary), so the decay branch runs unconditionally for any alpha_prev >
+ * 0. c_hyp = kappa = dt = h_phys = 1 gives decay = exp(-1.2) = 0.301,
+ * comfortably at or below the 0.5 margin needed to distinguish decay from
+ * decay^2 (0.0906) under this file's own check_close tolerance (1e-5
+ * relative, 1e-3 absolute floor). ISRF_dissipation_alpha_pin_for_debugging
+ * is set to 0 explicitly: a nonzero pin bypasses this whole branch.
+ */
+static void test_alpha_trigger_no_self_reference_across_shared_operator(void) {
+
+  struct engine e;
+  struct cosmology cosmo;
+  struct feedback_props fp;
+  struct phys_const pc;
+  make_engine(&e, &cosmo, &fp, &pc, /*H=*/0., /*alpha_floor=*/0.f,
+              /*eps_R=*/0.1f);
+  fp.ISRF_dissipation_alpha_pin_for_debugging = 0.f;
+
+  const float zero[3] = {0.f, 0.f, 0.f};
+  const float alpha_prev = 0.4f;
+  const float kappa = 1.f;
+
+  struct part p;
+  init_part(&p, /*h=*/1.f, /*c_hyp=*/1.f, /*dt=*/1.f);
+  for (int b = 0; b < ISRF_MOMENT_COUNT; b++)
+    set_band_moment(&p, b, /*u=*/0.f, zero, zero);
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    set_band_operator(&p, o, /*ngb_mean_abs_u_V=*/1.f, kappa, alpha_prev);
+
+  radiation_end_gradient_propagation(&p, &e);
+
+  /* decay = exp(-c_hyp*dt/(DECAY_LENGTH*h_phys) - c_hyp*kappa*dt), from
+   * radiation_update_dissipation_alpha_band's own decay branch, computed
+   * independently of the code under test (DECAY_LENGTH = 5, radiation.h). */
+  const float decay = expf(-1.f / 5.f - 1.f);
+  const float expected = alpha_prev * decay;
+
+  check_close(
+      "alpha_trigger, no self-reference (LW)", expected,
+      p.feedback_data.isrf_operator[ISRF_OPERATOR_LW].dissipation_alpha_trigger,
+      1e-5f, 1e-3f);
+  check_close(
+      "alpha_trigger, PE unaffected", expected,
+      p.feedback_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_trigger,
+      1e-5f, 1e-3f);
+
+  message(
+      "alpha_trigger decays by decay, not decay^2, even though "
+      "ISRF_MOMENT_LW_PHOTON shares ISRF_OPERATOR_LW with ISRF_MOMENT_LW");
+}
+
 int main(int argc, char *argv[]) {
 
   test_eps_R_zero_disables_gate();
@@ -582,6 +682,7 @@ int main(int argc, char *argv[]) {
   test_exact_R_equals_one();
   test_exact_R_equals_zero();
   test_alpha_trigger_boundaries();
+  test_alpha_trigger_no_self_reference_across_shared_operator();
 
   return 0;
 }
