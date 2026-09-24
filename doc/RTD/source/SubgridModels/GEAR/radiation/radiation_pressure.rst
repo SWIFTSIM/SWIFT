@@ -33,21 +33,7 @@ Model parameters
 Snapshot outputs
 ------------------
 
-These gas fields need ``--with-tracers=GEAR``:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 35 45 20
-
-   * - Name
-     - Description
-     - Units
-   * - ``CumulativeMomentumFromRadiationPressure``
-     - Norm of the momentum received from radiation pressure, summed over events (scalar sum of the norms, so isotropic kicks do not cancel)
-     - [U_M U_L U_T^{-1}]
-   * - ``MaxKickVelocityFromRadiationPressure``
-     - Largest single-event velocity kick this particle received from radiation pressure
-     - [U_L U_T^{-1}]
+The gas fields this channel writes are documented on the :ref:`gear_output_radiation_pressure` section of the :ref:`gear_output_fields` page.
 
 References
 -----------
