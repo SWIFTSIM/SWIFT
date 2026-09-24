@@ -1395,6 +1395,11 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
           radiation_get_star_l_pe(&sm->rad, log_m, log_z);
       sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
           radiation_get_star_l_lw(&sm->rad, log_m, log_z);
+      /* Direct assignment, no multiply: the mean photon energy is forced to
+         the reference energy at this stage, so a computed ratio of 1 is not
+         trusted to compile to exactly 1.0f under -ffast-math. */
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
+          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
     }
 
     /* Photospheric effective temperature, a diagnostic of the star's
@@ -1663,6 +1668,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
           L_PE_per_msun * m_init;
       sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
           L_LW_per_msun * m_init;
+      /* Direct assignment from the just-set LW entry, not a recomputed
+         L_LW_per_msun * m_init: same reasoning as the discrete path above. */
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
+          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
     }
 
     /* Population counterpart of the individual-star effective temperature
