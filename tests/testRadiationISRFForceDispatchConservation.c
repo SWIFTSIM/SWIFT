@@ -361,8 +361,8 @@ static void test_ngb_mean_abs_u_V_accumulated_once_per_operator(void) {
   wi *= pow_dimension(hi_inv);
   wj *= pow_dimension(hj_inv);
 
-  /* i, j values, PE and LW: LW_PHOTON mirrors LW's own u_prev, matching
-   * Stage 1's direct-assignment injection guarantee. */
+  /* i, j values, PE and LW: LW_PHOTON mirrors LW's own u_prev, because the
+   * injection assigns it directly from the LW energy moment. */
   const float u_pe[2] = {0.2f, 0.5f};
   const float u_lw[2] = {0.3f, 0.8f};
 
@@ -480,6 +480,31 @@ static void test_kernel_local_c_hyp(void) {
 }
 
 /**
+ * @brief Draw one moment's own random state: u and specific_flux. Moment-
+ * level fields only; see #make_cell_set_operator for the shared
+ * operator-level fields, split out because #ISRF_MOMENT_LW_PHOTON shares
+ * #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW.
+ *
+ * @param moment (out) The moment to fill.
+ */
+static void make_cell_set_moment(struct feedback_isrf_moment_data *moment) {
+  moment->u = random_uniform(-0.2, 1.);
+  for (int k = 0; k < 3; k++)
+    moment->specific_flux[k] = random_uniform(-1., 1.);
+}
+
+/**
+ * @brief Draw one operator's own random state: dissipation_alpha_trigger and
+ * dissipation_alpha_floor. See #make_cell_set_moment.
+ *
+ * @param op (out) The operator to fill.
+ */
+static void make_cell_set_operator(struct feedback_isrf_operator_data *op) {
+  op->dissipation_alpha_trigger = random_uniform(0., 0.5);
+  op->dissipation_alpha_floor = random_uniform(0., 0.5);
+}
+
+/**
  * @brief Build a cell of CELL_N^3 perturbed-lattice gas particles, all
  * active, with random ISRF state.
  *
@@ -530,16 +555,22 @@ static struct cell *make_cell(const double offset[3], double h_spacing,
         struct feedback_part_data *fd = &p->feedback_data;
         fd->rho_prev = random_uniform(0.5, 2.);
         fd->c_hyp = random_uniform(0.5, 1.5);
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-          struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
-          struct feedback_isrf_operator_data *op =
-              &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
-          moment->u = random_uniform(-0.2, 1.);
-          for (int k = 0; k < 3; k++)
-            moment->specific_flux[k] = random_uniform(-1., 1.);
-          op->dissipation_alpha_trigger = random_uniform(0., 0.5);
-          op->dissipation_alpha_floor = random_uniform(0., 0.5);
+        /* One draw per operator, not per moment: ISRF_MOMENT_LW_PHOTON
+         * shares ISRF_OPERATOR_LW with ISRF_MOMENT_LW, so a loop bounded by
+         * ISRF_OPERATOR_COUNT touches each operator exactly once. */
+        for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+          const int m = radiation_isrf_operator_owner[o];
+          make_cell_set_moment(&fd->isrf_moment[m]);
+          make_cell_set_operator(&fd->isrf_operator[o]);
         }
+        /* LW_PHOTON mirrors LW's own moment state by direct assignment, the
+         * same mechanism the injection path uses; it draws no random state
+         * of its own and shares LW's operator already set above. */
+        fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+            fd->isrf_moment[ISRF_MOMENT_LW].u;
+        for (int k = 0; k < 3; k++)
+          fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[k] =
+              fd->isrf_moment[ISRF_MOMENT_LW].specific_flux[k];
         p++;
       }
     }
