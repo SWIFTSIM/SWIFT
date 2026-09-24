@@ -41,6 +41,7 @@ silently pass rather than fail.
 
 import argparse
 import glob
+import os
 import sys
 
 import h5py
@@ -62,18 +63,25 @@ def parse_options():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
+        "--dir",
+        default="AB",
+        help="One of run.sh's run directories, propagation on so both bands "
+        "are illuminated (default: %(default)s)",
+    )
+    parser.add_argument(
         "-s",
         "--snapshot",
-        default="snap/snapshot_*.hdf5",
-        help="Glob pattern for snapshots to consider (default: %(default)s)",
+        default="snapshot_*.hdf5",
+        help="Glob pattern for snapshots inside --dir/snap (default: %(default)s)",
     )
     return parser.parse_args()
 
 
 def bits_equal(a, b):
     """Compare two float32 arrays on their raw bit patterns."""
-    return np.array_equal(a.astype(np.float32).view(np.uint32),
-                          b.astype(np.float32).view(np.uint32))
+    return np.array_equal(
+        a.astype(np.float32).view(np.uint32), b.astype(np.float32).view(np.uint32)
+    )
 
 
 def check_snapshot(path, gate_pairs):
@@ -108,9 +116,10 @@ def check_snapshot(path, gate_pairs):
 
 def main():
     opt = parse_options()
-    snapshots = sorted(glob.glob(opt.snapshot))
+    pattern = os.path.join(opt.dir, "snap", opt.snapshot)
+    snapshots = sorted(glob.glob(pattern))
     if not snapshots:
-        sys.exit(f"No snapshots matched {opt.snapshot!r}")
+        sys.exit(f"No snapshots matched {pattern!r}")
 
     all_ok = True
     any_nonzero = False
@@ -131,8 +140,10 @@ def main():
 
     if not all_ok:
         sys.exit("RESULT: FAIL")
-    print(f"RESULT: PASS ({len(snapshots)} snapshots, {len(FIELD_PAIRS)} gated "
-          "field pairs, bitwise)")
+    print(
+        f"RESULT: PASS ({len(snapshots)} snapshots, {len(FIELD_PAIRS)} gated "
+        "field pairs, bitwise)"
+    )
 
 
 if __name__ == "__main__":
