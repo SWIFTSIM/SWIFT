@@ -144,7 +144,7 @@ void queue_get_incoming(struct queue *q) {
     /* Re-heap by bubbling up the new (last) element. */
     queue_bubble_up(q, q->count - 1);
 
-#ifdef SWIFT_DEBUG_CHECK
+#ifdef SWIFT_DEBUG_CHECKS
     /* Check the queue's consistency. */
     for (int k = 1; k < q->count; k++)
       if (entries[(k - 1) / 2].weight < entries[k].weight)

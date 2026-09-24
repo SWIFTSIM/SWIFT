@@ -2621,8 +2621,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                 MPI_MIN, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_positions, 3 * props->num_groups, MPI_DOUBLE,
                 MPI_MAX, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_CHAR,
-                MPI_MAX, MPI_COMM_WORLD);
+  /* Note: 0/1 flags, so a byte-wise OR (MPI_CHAR is not a valid type for
+   * MPI_MAX). */
+  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT,
                 MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, gas_mass, props->num_groups, MPI_FLOAT, MPI_SUM,

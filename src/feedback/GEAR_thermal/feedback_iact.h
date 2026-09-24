@@ -140,15 +140,16 @@ runner_iact_nonsym_feedback_apply(
       const float H = cosmo->H;
       const float a_dot = a * H;
 
-      /* physical velocities of the star particle i */
-      const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
-                              a_dot * si->x[1] + si->v[1] * a_inv,
-                              a_dot * si->x[2] + si->v[2] * a_inv};
+      /* Physical velocities of the star particle i. The Hubble flow term is
+         relative wrt the star particle. Hence, for the star, dx = 0 ; for the
+         gas, we use -dx = pj - si. */
+      const float v_i_p[3] = {si->v[0] * a_inv, si->v[1] * a_inv,
+                              si->v[2] * a_inv};
 
-      /* physical velocities of the gas particle j */
-      const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
-                              a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
-                              a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
+      /* Physical velocities of the gas particle j. */
+      const float v_j_p[3] = {-a_dot * dx[0] + xpj->v_full[0] * a_inv,
+                              -a_dot * dx[1] + xpj->v_full[1] * a_inv,
+                              -a_dot * dx[2] + xpj->v_full[2] * a_inv};
 
       const float r_p = sqrtf(r2) * a;
       const float dx_p[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
@@ -257,11 +258,9 @@ runner_iact_nonsym_feedback_apply(
          momentum/energy (not the shared feedback_data.delta_p/delta_u,
          which the SN branch below can also add to this same step). */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
-      tracers_gear_accumulate_feedback(
-          &xpj->tracers_data.feedback_cumulative.momentum_winds,
-          &xpj->tracers_data.feedback_cumulative.energy_winds,
-          &xpj->tracers_data.feedback_cumulative.max_kick_velocity_winds,
-          delta_p_mag_winds, (float)du, delta_p_mag_winds / (float)new_mass);
+      tracers_after_stellar_winds_feedback_part(
+          xpj, delta_p_mag_winds, (float)du,
+          delta_p_mag_winds / (float)new_mass);
 
       xpj->feedback_data.hit_by_winds = 1;
     }
@@ -310,11 +309,8 @@ runner_iact_nonsym_feedback_apply(
               delta_p_supernovae[2] * delta_p_supernovae[2]);
     const float delta_p_mag_supernovae =
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
-    tracers_gear_accumulate_feedback(
-        &xpj->tracers_data.feedback_cumulative.momentum_supernovae,
-        &xpj->tracers_data.feedback_cumulative.energy_supernovae,
-        &xpj->tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
-        delta_p_mag_supernovae, (float)du,
+    tracers_after_supernovae_feedback_part(
+        xpj, delta_p_mag_supernovae, (float)du,
         new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
