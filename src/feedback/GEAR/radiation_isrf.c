@@ -99,6 +99,23 @@ void radiation_first_init_part(struct part *restrict p) {
     moment->cumulative_absorbed = 0.f;
 #endif
   }
+  /* The photon-number moment has no IC field of its own attribution: a
+   * seeded LW value with no accompanying photon moment is, by definition
+   * of the reference photon energy, a field at that reference energy.
+   * Value-based, not "was the field present", so it is correct whether an
+   * absent OPTIONAL IC field left memory zeroed or untouched; and for
+   * either sign of the LW value, since the reference energy is a unit
+   * convention, not a physical divisor. Runs after the u_prev-seeding loop
+   * above (overriding its 0.f default for this one moment) and before
+   * #radiation_cache_m1_closure_part below, so the closure cache is built
+   * from the corrected value on this first pass. */
+  if (fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u == 0.f &&
+      fd->isrf_moment[ISRF_MOMENT_LW].u != 0.f) {
+    fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+        fd->isrf_moment[ISRF_MOMENT_LW].u;
+    fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u_prev =
+        fd->isrf_moment[ISRF_MOMENT_LW].u;
+  }
   for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
     struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
     op->kappa = 0.f;
@@ -342,6 +359,9 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
     return FLT_MAX;
 
   const struct feedback_part_data *fd = &p->feedback_data;
+  /* ISRF_MOMENT_LW_PHOTON is deliberately not named here: it is a positive
+   * multiple of ISRF_MOMENT_LW at all times, so the LW disjunct below
+   * already covers it; a third disjunct would be redundant. */
   const int near_field =
       fd->is_illuminated_ISRF || fd->isrf_moment[ISRF_MOMENT_PE].u != 0.f ||
       fd->isrf_moment[ISRF_MOMENT_LW].u != 0.f ||
