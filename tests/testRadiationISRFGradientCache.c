@@ -245,8 +245,8 @@ int main(int argc, char *argv[]) {
      * only place ISRF_MOMENT_LW and ISRF_MOMENT_LW_PHOTON's grad_u are
      * checked bitwise identical against EACH OTHER, not merely against the
      * same tolerance-bound reference: set_part() above gives every moment
-     * the identical (u, F), matching Stage 1's direct-assignment
-     * injection guarantee. */
+     * the identical (u, F), because the injection assigns LW_PHOTON
+     * directly from the LW energy moment. */
     for (int k = 0; k < 3; k++) {
       check_bits_equal(
           "symmetric grad_u_i, LW vs LW_PHOTON",
