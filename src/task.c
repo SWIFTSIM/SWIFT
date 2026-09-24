@@ -120,6 +120,8 @@ const char *taskID_names[task_type_count] = {
     "sink_out",
     "sink_prep_ghost_in",
     "sink_prep_ghost_out",
+    "sink_prep_ghost_in_sink",
+    "sink_prep_ghost_out_sink",
     "rt_in",
     "rt_out",
     "sink_formation",
@@ -174,6 +176,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_swallow",
     "sink_do_gas_swallow",
     "sink_formation_gas",
+    "sink_formation_sink",
     "rt_gradient",
     "rt_transport",
     "chemistry_fct_prep",
@@ -263,6 +266,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sink_density_ghost:
     case task_type_sink_prep_ghost_in:
     case task_type_sink_prep_ghost_out:
+    case task_type_sink_prep_ghost_in_sink:
+    case task_type_sink_prep_ghost_out_sink:
       return task_action_sink;
       break;
 
@@ -311,6 +316,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_sink_do_gas_swallow:
         case task_subtype_sink_do_sink_swallow:
         case task_subtype_sink_swallow:
+        case task_subtype_sink_formation_sink:
           return task_action_all;
 
         case task_subtype_sink_formation_gas:
@@ -597,7 +603,8 @@ void task_unlock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_sink_density) ||
                  (subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
+                 (subtype == task_subtype_sink_do_gas_swallow) ||
+                 (subtype == task_subtype_sink_formation_sink)) {
         cell_sink_unlocktree(ci);
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
@@ -639,7 +646,8 @@ void task_unlock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_sink_density) ||
                  (subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
+                 (subtype == task_subtype_sink_do_gas_swallow) ||
+                 (subtype == task_subtype_sink_formation_sink)) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
         cell_unlocktree(ci);
@@ -837,7 +845,8 @@ int task_lock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_sink_density) ||
                  (subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
+                 (subtype == task_subtype_sink_do_gas_swallow) ||
+                 (subtype == task_subtype_sink_formation_sink)) {
         if (ci->sinks.hold) return 0;
         if (ci->hydro.hold) return 0;
         if (cell_sink_locktree(ci) != 0) return 0;
@@ -918,7 +927,8 @@ int task_lock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_sink_density) ||
                  (subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
+                 (subtype == task_subtype_sink_do_gas_swallow) ||
+                 (subtype == task_subtype_sink_formation_sink)) {
         if (ci->sinks.hold || cj->sinks.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_sink_locktree(ci) != 0) return 0;
@@ -1264,6 +1274,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sink_formation_gas:
       strcpy(cluster, "SinkFormationGas");
+      break;
+    case task_subtype_sink_formation_sink:
+      strcpy(cluster, "SinkFormationSink");
       break;
     default:
       strcpy(cluster, "None");
@@ -1737,6 +1750,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_sink_formation:
     case task_type_sink_prep_ghost_in:
     case task_type_sink_prep_ghost_out:
+    case task_type_sink_prep_ghost_in_sink:
+    case task_type_sink_prep_ghost_out_sink:
       return task_category_sink;
 
     case task_type_drift_part:
@@ -1854,6 +1869,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_sink_do_sink_swallow:
         case task_subtype_sink_do_gas_swallow:
         case task_subtype_sink_formation_gas:
+        case task_subtype_sink_formation_sink:
           return task_category_sink;
 
         case task_subtype_rt_gradient:

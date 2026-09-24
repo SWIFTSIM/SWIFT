@@ -1265,14 +1265,16 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
        formation_gas: 1 self + 13 pairs                    | 14
+       formation_sink: 1 self + 13 pairs                   | 14
        density: 1 self + 13 pairs                          | 14
        swallow: 1 self + 13 pairs                          | 14
        do_gas_swallow: 1 self + 13 pairs                   | 14
        do_sink_swallow: 1 self + 13 pairs                  | 14
        ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
-       implicit: prep_ghost_in/out, sink_in, sink_out      | 4
+       implicit: prep_ghost_in/out, prep_ghost_in/out_sink,
+                 sink_in, sink_out                         | 6
        All above are super-cell tasks; n2 covers sub-cells */
-    n1 += 82;
+    n1 += 98;
     n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
@@ -1849,6 +1851,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_sink_formation || t->type == task_type_sink_out ||
         t->type == task_type_sink_prep_ghost_in ||
         t->type == task_type_sink_prep_ghost_out ||
+        t->type == task_type_sink_prep_ghost_in_sink ||
+        t->type == task_type_sink_prep_ghost_out_sink ||
         t->type == task_type_stars_prep_ghost1 ||
         t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
@@ -1880,6 +1884,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_sink_formation_gas ||
+        t->subtype == task_subtype_sink_formation_sink ||
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||

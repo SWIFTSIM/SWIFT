@@ -738,14 +738,11 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-  /* We reached a leaf OR the aperture is larger than a sub-cell: no benefit
-   * in recursing further since all sub-cell pairs would interact anyway.
-   * For the fixed r_cut loop the threshold is r_cut >= 0.5 * ci->dmin, which
-   * mirrors the cell_can_recurse_in_subpair_hydro_task condition that uses
-   * h_max * kernel_gamma < 0.5 * dmin. */
+  /* We reached a leaf, or the radius plus the gas movement is larger than a
+   * sub-cell. Then all sub-cell pairs can interact, so we do not go deeper. */
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro ||
-      r_cut >= 0.5f * ci->dmin) {
+      !cell_can_recurse_in_pair_aperture_task(ci, cj, r_cut)) {
 
     /* Ensure cells are sorted before calling the branch function. */
     if (!(ci->hydro.sorted & (1 << sid)) ||
