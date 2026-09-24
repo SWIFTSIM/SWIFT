@@ -1602,11 +1602,10 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   }
 
   /* MeanPhotonEnergyLW/Integrated_MeanPhotonEnergyLW are required
-     unconditionally, not only when with_ISRF is on: pychem always writes
-     them, and radiation_set_lw_photon_energy_cgs() (radiation.c) reads
-     them for every active radiation table to report the diagnostic mean
-     LW photon energy, regardless of with_ISRF. A table missing either was
-     generated before pychem added them and needs regenerating. */
+     unconditionally, not only when with_ISRF is on: this is a table-schema
+     requirement, since pychem writes both datasets for every table it
+     generates, in both the 1D and the 2D layout. A table missing either
+     predates that and needs regenerating. */
   {
     const int has_mean_photon_energy_lw =
         H5Lexists(group_id, "MeanPhotonEnergyLW", H5P_DEFAULT) > 0;
