@@ -161,7 +161,31 @@ if identity is not None:
         )
     sys.stdout.flush()
 
-if missing is None and require_1d and dimensionality not in (None, "M"):
+# Both checks below are independent (a missing dataset says nothing about
+# dimensionality, and vice versa), so both are reported when both apply
+# instead of the first one masking the second.
+dimensionality_fails = require_1d and dimensionality not in (None, "M")
+failed = False
+
+if missing is not None:
+    failed = True
+    sys.stderr.write(
+        "\n"
+        "ERROR: '%s' is missing %s.\n"
+        "\n"
+        "This example runs GEAR radiation feedback, which reads the stellar\n"
+        "photon rates and luminosities from that group. SWIFT aborts at\n"
+        "start-up on a table without it.\n"
+        "\n"
+        "The tables on the public hosts predate the GEAR radiation tables and\n"
+        "do not carry this data. Generate a table with pychem's\n"
+        "pychem_generate_hdf5_parameters, or ask the GEAR maintainers for one,\n"
+        "then point GEARFeedback:yields_table in params.yml at it.\n"
+        "\n" % (table, missing)
+    )
+
+if dimensionality_fails:
+    failed = True
     sys.stderr.write(
         "\n"
         "ERROR: '%s' is a '%s' (mass x metallicity) table.\n"
@@ -173,24 +197,6 @@ if missing is None and require_1d and dimensionality not in (None, "M"):
         "one. Point GEARFeedback:yields_table at a mass-only table instead.\n"
         "\n" % (table, dimensionality)
     )
-    sys.exit(1)
 
-if missing is None:
-    sys.exit(0)
-
-sys.stderr.write(
-    "\n"
-    "ERROR: '%s' is missing %s.\n"
-    "\n"
-    "This example runs GEAR radiation feedback, which reads the stellar\n"
-    "photon rates and luminosities from that group. SWIFT aborts at\n"
-    "start-up on a table without it.\n"
-    "\n"
-    "The tables on the public hosts predate the GEAR radiation tables and\n"
-    "do not carry this data. Generate a table with pychem's\n"
-    "pychem_generate_hdf5_parameters, or ask the GEAR maintainers for one,\n"
-    "then point GEARFeedback:yields_table in params.yml at it.\n"
-    "\n" % (table, missing)
-)
-sys.exit(1)
+sys.exit(1 if failed else 0)
 EOF
