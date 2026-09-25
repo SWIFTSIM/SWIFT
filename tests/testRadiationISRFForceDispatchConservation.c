@@ -313,6 +313,132 @@ static void test_density_loop_max_ngb_time_bin(void) {
 }
 
 /**
+ * @brief Relative-tolerance assertion shared by the two accumulator tests
+ * below. Not a hard `==`: -ffast-math/-freciprocal-math may pick a
+ * different reciprocal instruction across translation units for a
+ * bit-for-bit identical source expression (swift-knowledge.md).
+ *
+ * @param name Message label.
+ * @param actual The value read back from the code under test.
+ * @param expected This test's own independently-computed value.
+ */
+static void assert_close_ngb_mean_abs_u_V(const char *name, float actual,
+                                          float expected) {
+  const float rel_err = fabsf(actual - expected) / fabsf(expected);
+  if (!(rel_err <= 1e-6f))
+    error("%s: got %.8e, expected %.8e (rel_err=%.3e).", name, (double)actual,
+          (double)expected, (double)rel_err);
+}
+
+/**
+ * @brief #feedback_isrf_operator_data.ngb_mean_abs_u_V accumulates exactly
+ * once per operator per pair, through both density-loop hooks
+ * (#runner_iact_nonsym_isrf_propagation and #runner_iact_isrf_propagation),
+ * despite #ISRF_MOMENT_LW and #ISRF_MOMENT_LW_PHOTON sharing
+ * #ISRF_OPERATOR_LW. A moment-bound loop through the (unmodified) forward
+ * map would add each shared operator's contribution once per sharing
+ * moment, doubling it once the photon moment exists; this test's own
+ * reference is the accumulator's defining formula
+ * (#radiation_dissipation_reference_accumulate_band), independent of the
+ * loop bound under test.
+ *
+ * `mi != mj`, `rho_i != rho_j`, `hi != hj` and distinct per-particle
+ * `u_prev` values on PE and LW so a swapped index or a wrong owner cannot
+ * hide behind a coincidental symmetry.
+ */
+static void test_ngb_mean_abs_u_V_accumulated_once_per_operator(void) {
+
+  const float hi = 0.6f, hj = 0.9f;
+  const float mi = 1.3f, mj = 0.7f;
+  const float rho_i = 1.1f, rho_j = 0.6f;
+  const float dx[3] = {0.31f, -0.12f, 0.05f};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.f / hi, hj_inv = 1.f / hj;
+  float wi, wj;
+  kernel_eval(r * hi_inv, &wi);
+  kernel_eval(r * hj_inv, &wj);
+  wi *= pow_dimension(hi_inv);
+  wj *= pow_dimension(hj_inv);
+
+  /* i, j values, PE and LW: LW_PHOTON mirrors LW's own u_prev, because the
+   * injection assigns it directly from the LW energy moment. */
+  const float u_pe[2] = {0.2f, 0.5f};
+  const float u_lw[2] = {0.3f, 0.8f};
+
+  struct part pi, pj;
+
+  /* Part 1: the non-symmetric hook, only i's accumulator is touched. */
+  bzero(&pi, sizeof(struct part));
+  bzero(&pj, sizeof(struct part));
+  pi.h = hi;
+  pj.h = hj;
+  pi.mass = mi;
+  pj.mass = mj;
+  pi.feedback_data.rho_prev = rho_i;
+  pj.feedback_data.rho_prev = rho_j;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const int is_pe = (m == ISRF_MOMENT_PE);
+    pi.feedback_data.isrf_moment[m].u_prev = is_pe ? u_pe[0] : u_lw[0];
+    pj.feedback_data.isrf_moment[m].u_prev = is_pe ? u_pe[1] : u_lw[1];
+  }
+
+  runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, &pi, &pj, 1.f, 0.f, NULL);
+
+  assert_close_ngb_mean_abs_u_V(
+      "nonsym ngb_mean_abs_u_V PE",
+      pi.feedback_data.isrf_operator[ISRF_OPERATOR_PE].ngb_mean_abs_u_V,
+      (mj / rho_j) * wi * fabsf(rho_j * u_pe[1]));
+  assert_close_ngb_mean_abs_u_V(
+      "nonsym ngb_mean_abs_u_V LW",
+      pi.feedback_data.isrf_operator[ISRF_OPERATOR_LW].ngb_mean_abs_u_V,
+      (mj / rho_j) * wi * fabsf(rho_j * u_lw[1]));
+  if (pj.feedback_data.isrf_operator[ISRF_OPERATOR_PE].ngb_mean_abs_u_V !=
+          0.f ||
+      pj.feedback_data.isrf_operator[ISRF_OPERATOR_LW].ngb_mean_abs_u_V != 0.f)
+    error("nonsym hook: wrote to j's own accumulator");
+
+  /* Part 2: the symmetric hook, THE MAIN PAIR PATH, both accumulators. */
+  bzero(&pi, sizeof(struct part));
+  bzero(&pj, sizeof(struct part));
+  pi.h = hi;
+  pj.h = hj;
+  pi.mass = mi;
+  pj.mass = mj;
+  pi.feedback_data.rho_prev = rho_i;
+  pj.feedback_data.rho_prev = rho_j;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const int is_pe = (m == ISRF_MOMENT_PE);
+    pi.feedback_data.isrf_moment[m].u_prev = is_pe ? u_pe[0] : u_lw[0];
+    pj.feedback_data.isrf_moment[m].u_prev = is_pe ? u_pe[1] : u_lw[1];
+  }
+
+  runner_iact_isrf_propagation(r2, dx, hi, hj, &pi, &pj, 1.f, 0.f, NULL);
+
+  assert_close_ngb_mean_abs_u_V(
+      "sym ngb_mean_abs_u_V PE (i)",
+      pi.feedback_data.isrf_operator[ISRF_OPERATOR_PE].ngb_mean_abs_u_V,
+      (mj / rho_j) * wi * fabsf(rho_j * u_pe[1]));
+  assert_close_ngb_mean_abs_u_V(
+      "sym ngb_mean_abs_u_V LW (i)",
+      pi.feedback_data.isrf_operator[ISRF_OPERATOR_LW].ngb_mean_abs_u_V,
+      (mj / rho_j) * wi * fabsf(rho_j * u_lw[1]));
+  assert_close_ngb_mean_abs_u_V(
+      "sym ngb_mean_abs_u_V PE (j)",
+      pj.feedback_data.isrf_operator[ISRF_OPERATOR_PE].ngb_mean_abs_u_V,
+      (mi / rho_i) * wj * fabsf(rho_i * u_pe[0]));
+  assert_close_ngb_mean_abs_u_V(
+      "sym ngb_mean_abs_u_V LW (j)",
+      pj.feedback_data.isrf_operator[ISRF_OPERATOR_LW].ngb_mean_abs_u_V,
+      (mi / rho_i) * wj * fabsf(rho_i * u_lw[0]));
+
+  message(
+      "ngb_mean_abs_u_V: accumulated exactly once per operator per pair, "
+      "both density-loop hooks, with ISRF_MOMENT_LW_PHOTON sharing "
+      "ISRF_OPERATOR_LW");
+}
+
+/**
  * @brief Run the kernel-local #feedback_part_data.c_hyp unit tests: same-bin
  * identity, the light-speed cap, the debug pin, the receiver bound, and the
  * density-loop maximum/reset. Independent of the force-dispatch conservation
@@ -351,6 +477,31 @@ static void test_kernel_local_c_hyp(void) {
   test_c_hyp_same_bin_cap_and_pin(&e);
   test_c_hyp_receiver_bound(&e);
   test_density_loop_max_ngb_time_bin();
+}
+
+/**
+ * @brief Draw one moment's own random state: u and specific_flux. Moment-
+ * level fields only; see #make_cell_set_operator for the shared
+ * operator-level fields, split out because #ISRF_MOMENT_LW_PHOTON shares
+ * #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW.
+ *
+ * @param moment (out) The moment to fill.
+ */
+static void make_cell_set_moment(struct feedback_isrf_moment_data *moment) {
+  moment->u = random_uniform(-0.2, 1.);
+  for (int k = 0; k < 3; k++)
+    moment->specific_flux[k] = random_uniform(-1., 1.);
+}
+
+/**
+ * @brief Draw one operator's own random state: dissipation_alpha_trigger and
+ * dissipation_alpha_floor. See #make_cell_set_moment.
+ *
+ * @param op (out) The operator to fill.
+ */
+static void make_cell_set_operator(struct feedback_isrf_operator_data *op) {
+  op->dissipation_alpha_trigger = random_uniform(0., 0.5);
+  op->dissipation_alpha_floor = random_uniform(0., 0.5);
 }
 
 /**
@@ -404,16 +555,22 @@ static struct cell *make_cell(const double offset[3], double h_spacing,
         struct feedback_part_data *fd = &p->feedback_data;
         fd->rho_prev = random_uniform(0.5, 2.);
         fd->c_hyp = random_uniform(0.5, 1.5);
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-          struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
-          struct feedback_isrf_operator_data *op =
-              &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
-          moment->u = random_uniform(-0.2, 1.);
-          for (int k = 0; k < 3; k++)
-            moment->specific_flux[k] = random_uniform(-1., 1.);
-          op->dissipation_alpha_trigger = random_uniform(0., 0.5);
-          op->dissipation_alpha_floor = random_uniform(0., 0.5);
+        /* One draw per operator, not per moment: ISRF_MOMENT_LW_PHOTON
+         * shares ISRF_OPERATOR_LW with ISRF_MOMENT_LW, so a loop bounded by
+         * ISRF_OPERATOR_COUNT touches each operator exactly once. */
+        for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
+          const int m = radiation_isrf_operator_owner[o];
+          make_cell_set_moment(&fd->isrf_moment[m]);
+          make_cell_set_operator(&fd->isrf_operator[o]);
         }
+        /* LW_PHOTON mirrors LW's own moment state by direct assignment, the
+         * same mechanism the injection path uses; it draws no random state
+         * of its own and shares LW's operator already set above. */
+        fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+            fd->isrf_moment[ISRF_MOMENT_LW].u;
+        for (int k = 0; k < 3; k++)
+          fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[k] =
+              fd->isrf_moment[ISRF_MOMENT_LW].specific_flux[k];
         p++;
       }
     }
@@ -1146,7 +1303,8 @@ static void test_consistent_variable_c_uniform_c_bit_identical(void) {
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   const float F_true[][2][3] = {{{0.4f, -0.2f, 0.1f}, {-0.15f, 0.25f, -0.05f}},
-                                {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}}};
+                                {{0.05f, 0.6f, -0.3f}, {0.2f, -0.1f, 0.4f}},
+                                {{0.3f, 0.1f, -0.2f}, {-0.25f, 0.05f, 0.15f}}};
   _Static_assert(sizeof(F_true) / sizeof(F_true[0]) == ISRF_MOMENT_COUNT,
                  "F_true needs one initialiser per ISRF_MOMENT_COUNT entry.");
 
@@ -1538,17 +1696,23 @@ static void test_kernel_local_plus_variable_c_composition(void) {
   const double closure_rel_bar = 1e-5;
   const double closure_abs_bar = 1e-8;
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    /* radiation_cache_m1_closure_part (site the call above exercises)
+     * builds each operator's m1_closure_D from its OWNER moment's u/flux,
+     * not from every sharing moment's own: with ISRF_MOMENT_LW_PHOTON
+     * sharing ISRF_OPERATOR_LW, the reference here must follow the same
+     * map, or a per-moment-varying setup (as above) compares the operator's
+     * stored tensor against the wrong moment's own values. */
+    const int o = radiation_isrf_moment_to_operator[m];
+    const int owner_m = (int)radiation_isrf_operator_owner[o];
     float expected_D[3][3];
     radiation_get_m1_closure_tensor_band(
-        p.feedback_data.isrf_moment[m].u,
-        p.feedback_data.isrf_moment[m].specific_flux,
+        p.feedback_data.isrf_moment[owner_m].u,
+        p.feedback_data.isrf_moment[owner_m].specific_flux,
         /*c_M=*/1.f, expected_D);
     for (int r = 0; r < 3; r++)
       for (int c = 0; c < 3; c++) {
         const double got =
-            (double)p.feedback_data
-                .isrf_operator[radiation_isrf_moment_to_operator[m]]
-                .m1_closure_D[r][c];
+            (double)p.feedback_data.isrf_operator[o].m1_closure_D[r][c];
         const double ref = (double)expected_D[r][c];
         if (!is_finite_bits(got) || !is_finite_bits(ref))
           error(
@@ -1705,6 +1869,7 @@ int main(int argc, char *argv[]) {
   test_consistent_variable_c_conservation();
   test_kernel_local_plus_variable_c_composition();
   test_default_scheme_unchanged();
+  test_ngb_mean_abs_u_V_accumulated_once_per_operator();
 
   struct space space;
   struct engine engine;

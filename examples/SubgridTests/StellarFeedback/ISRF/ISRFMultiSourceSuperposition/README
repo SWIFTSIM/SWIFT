@@ -104,3 +104,13 @@ shipped resolution.
 It also prints the lattice's spatial scatter of `u` next to the scatter
 of the continuum free-streaming and diffusive lattice sums, and the
 single-star reduced flux at the same distances.
+
+```
+python3 isrf_photon_moment_identity_check.py [--dir run_directory] [-s pattern]
+```
+Bitwise identity, every gas particle, every snapshot in `--dir/snap`
+(default `AB`), between the Lyman-Werner energy moment and its
+photon-number moment: the two are injected by direct assignment from the
+same source, so they must read bitwise identical wherever propagation is
+on. Exits nonzero on a mismatch, a non-finite value, or if the run's
+`LWSpecificEnergies` never lit up (a vacuous pass).

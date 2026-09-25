@@ -68,7 +68,18 @@ INLINE static int feedback_read_particles(struct part *parts,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_LW].u);
 
-  return 2;
+  /* LWPhotonSpecificEnergy = 0 together with a nonzero LWSpecificEnergy is
+     not representable after first-init: radiation_first_init_part()
+     overwrites it with the LW value, for either sign, since a seeded LW
+     field with no attribution is a field at the reference photon energy by
+     definition. An IC author who wants no photon moment carried must also
+     zero LWSpecificEnergy. */
+  list[2] =
+      io_make_input_field("LWPhotonSpecificEnergy", FLOAT, 1, OPTIONAL,
+                          UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+                          feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
+
+  return 3;
 }
 
 #endif /* SWIFT_FEEDBACK_IO_GEAR_H */
