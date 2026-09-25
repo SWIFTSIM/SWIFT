@@ -143,7 +143,7 @@ and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\
 Initial conditions
 ------------------
 
-Two optional gas fields let an initial-conditions file seed the radiation field directly, for a test setup that starts with a field already in place rather than with a star that produces one. Both are singular, following SWIFT's convention that distinguishes input from output fields, and both are for test and diagnostic use, not a normal production IC.
+Three optional gas fields let an initial-conditions file seed the radiation field directly, for a test setup that starts with a field already in place rather than with a star that produces one. All three are singular, following SWIFT's convention that distinguishes input from output fields, and all three are for test and diagnostic use, not a normal production IC.
 
 .. list-table::
    :header-rows: 1
@@ -158,8 +158,11 @@ Two optional gas fields let an initial-conditions file seed the radiation field 
    * - ``LWSpecificEnergy``
      - Initial specific Lyman-Werner-band energy
      - [U_L^2 U_T^{-2}]
+   * - ``LWPhotonSpecificEnergy``
+     - Initial Lyman-Werner-band photon-number moment, energy-equivalent at the same reference photon energy as ``LWSpecificEnergies``
+     - [U_L^2 U_T^{-2}]
 
-An initial-conditions file without them is unaffected: the field starts at zero.
+An initial-conditions file without any of them is unaffected: every field starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init: if only one of the two is supplied, SWIFT sets the other equal to it, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. To start with no Lyman-Werner field at all, set both to zero.
 
 Snapshot outputs
 ------------------

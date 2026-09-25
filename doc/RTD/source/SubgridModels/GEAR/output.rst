@@ -399,6 +399,10 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - Local specific Lyman-Werner-band field
      - [U_L^2 U_T^{-2}]
      -
+   * - ``LWPhotonSpecificEnergies``
+     - Local Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy of 12.2 eV, not a photon count
+     - [U_L^2 U_T^{-2}]
+     - Diagnostic only: the H2 photodissociation rate does not read it.
    * - ``PEArtificialDissipationCoefficients``
      - Negativity-triggered dissipation coefficient, PE band
      - [-]
@@ -407,6 +411,10 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - Same, Lyman-Werner band
      - [-]
      - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonArtificialDissipationCoefficients``
+     - Same, Lyman-Werner-band photon-number moment
+     - [-]
+     - Only meaningful when ``ISRF_propagation`` is on. Always equal to ``LWArtificialDissipationCoefficients``: the photon moment shares the Lyman-Werner operator.
    * - ``PESpecificFluxDivergences``
      - Flux-divergence term of the PE-band propagation update
      - [U_L^2 U_T^{-3}]
@@ -415,12 +423,20 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - Same, Lyman-Werner band
      - [U_L^2 U_T^{-3}]
      - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonSpecificFluxDivergences``
+     - Same, Lyman-Werner-band photon-number moment
+     - [U_L^2 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
    * - ``PESpecificFluxes``
      - Tracked specific flux moment, PE band
      - [U_L^3 U_T^{-3}]
      - Only meaningful when ``ISRF_propagation`` is on.
    * - ``LWSpecificFluxes``
      - Same, Lyman-Werner band
+     - [U_L^3 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonSpecificFluxes``
+     - Tracked specific flux moment, Lyman-Werner-band photon-number moment
      - [U_L^3 U_T^{-3}]
      - Only meaningful when ``ISRF_propagation`` is on.
    * - ``HyperbolicPropagationSpeeds``
@@ -435,12 +451,20 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - Same, Lyman-Werner band
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonMinimumSpecificEnergies``
+     - Most negative ``LWPhotonSpecificEnergies`` value written since the previous snapshot, 0 if none was negative
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``PECumulativeInjectedSpecificEnergies``
      - Cumulative mass-specific PE-band dose this particle has drawn from the source reservoir since first init
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``LWCumulativeInjectedSpecificEnergies``
      - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonCumulativeInjectedSpecificEnergies``
+     - Cumulative mass-specific Lyman-Werner-band photon-number-moment dose this particle has drawn from the source reservoir since first init
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``PECumulativeAbsorbedSpecificEnergies``
@@ -451,5 +475,9 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - Same, Lyman-Werner band
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonCumulativeAbsorbedSpecificEnergies``
+     - Cumulative mass-specific Lyman-Werner-band photon-number-moment energy attributed to dust absorption and the cosmological redshift term
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
 
-Two optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.
+Three optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.
