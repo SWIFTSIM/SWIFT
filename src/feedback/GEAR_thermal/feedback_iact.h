@@ -288,8 +288,11 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* Distribute SN */
-  if (e_sn != 0.0) {
+  /* Distribute SN. The mass is a condition in its own right: a zero SN
+     energy (supernovae_efficiency = 0) does not mean there is nothing to
+     distribute, because the stellar evolution has already subtracted
+     mass_ejected from the star, and that mass must reach the gas. */
+  if (e_sn != 0.0 || si->feedback_data.supernovae.mass_ejected != 0.0) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
@@ -335,14 +338,16 @@ runner_iact_nonsym_feedback_apply(
         xpj, delta_p_mag_supernovae, (float)du,
         new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
-    /* Set the indication of SN event for cooling*/
-    xpj->feedback_data.hit_by_SN = 1;
+    /* Set the indication of SN event for cooling. This flags the thermal
+       event (delayed cooling, maximal viscosity), so it tracks the injected
+       energy and not the injected mass. */
+    if (e_sn != 0.0) xpj->feedback_data.hit_by_SN = 1;
   }
 
-  if (xpj->feedback_data.hit_by_winds || xpj->feedback_data.hit_by_SN) {
-    /* Update the mass of the gas particle */
-    xpj->feedback_data.delta_mass += dm_SW + dm_SN;
-  }
+  /* Both terms are 0 when nothing was distributed, so this needs no
+     condition, and it must not depend on hit_by_SN: mass can be delivered
+     with no accompanying energy. */
+  xpj->feedback_data.delta_mass += dm_SW + dm_SN;
 
   /* Impose maximal viscosity (only for SN) */
   if (xpj->feedback_data.hit_by_SN) {
