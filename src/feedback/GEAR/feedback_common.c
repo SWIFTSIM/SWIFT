@@ -463,13 +463,11 @@ void feedback_will_do_HII_ionization(
   }
 
   /* This star stopped doing HII for the rest of its life. Its region is no
-     longer maintained and will lapse, so retire both of its extent measures
-     to the tracers rather than leave snapshots reporting a region that no
-     longer exists. */
+     longer maintained and will lapse, so freeze both of its extent measures
+     rather than leave snapshots reporting a region that no longer exists. */
   if ((sp->feedback_data.is_dead || !is_HII_eligible) && sp->h_hii != 0.0) {
-    /* Store the values in the tracers */
-    sp->tracers_data.final_HII_radius = sp->h_hii * kernel_gamma;
-    sp->tracers_data.final_HII_mass =
+    sp->feedback_data.radiation.final_HII_radius = sp->h_hii * kernel_gamma;
+    sp->feedback_data.radiation.final_HII_mass =
         sp->feedback_data.radiation.mass_HII_region;
 
     /* Reset to 0. This prevents dead particles with large h_hii to force the

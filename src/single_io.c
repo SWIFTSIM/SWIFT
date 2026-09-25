@@ -731,6 +731,7 @@ void read_ic_single(
         if (with_stars) {
           Nparticles = *Nstars;
           stars_read_particles(*sparts, list, &num_fields);
+          num_fields += feedback_read_sparticles(*sparts, list + num_fields);
           num_fields +=
               star_formation_read_particles(*sparts, list + num_fields);
           num_fields += rt_read_stars(*sparts, list + num_fields);

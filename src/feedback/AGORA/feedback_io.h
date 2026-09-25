@@ -35,4 +35,52 @@ INLINE static int feedback_read_particles(struct part *parts,
   return 0;
 }
 
+/**
+ * @brief Specifies which particle fields to write to a dataset. Nothing to
+ * do here.
+ *
+ * @param parts The particle array.
+ * @param xparts The extended data particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_particles(const struct part *parts,
+                                           const struct xpart *xparts,
+                                           struct io_props *list,
+                                           const int with_cosmology) {
+  return 0;
+}
+
+/**
+ * @brief Specifies which star particle fields to write to a dataset.
+ * Nothing to do here.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_sparticles(const struct spart *sparts,
+                                            struct io_props *list,
+                                            const int with_cosmology) {
+  return 0;
+}
+
+/**
+ * @brief Specifies which star particle fields to read from the ICs or a
+ * restart file. Nothing to do here.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to read.
+ *
+ * @return Returns the number of fields to read.
+ */
+INLINE static int feedback_read_sparticles(struct spart *sparts,
+                                           struct io_props *list) {
+  return 0;
+}
+
 #endif /* SWIFT_FEEDBACK_IO_AGORA_H */
