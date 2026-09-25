@@ -67,15 +67,30 @@
  * ratio*sqrt(N_tot)/eps_f32 stayed in 5.8-11.2 across that whole range,
  * confirming the sqrt(N_tot) law and ruling out worst-case linear growth.
  * #SUM_BAR_SAFETY_FACTOR sits ~100x above that measured natural constant:
- * room for a different compiler's rounding/FMA choices, while staying
- * many orders of magnitude below the O(0.1-1) ratio a genuinely lost
- * dispatch side produces (see the "parent level dropped" sweep below). */
+ * room for a different compiler's rounding/FMA choices, while the
+ * round-off side of the check keeps ~100x of headroom (worst measured
+ * ratio 1.5% of the bar over 20 fixture seeds at each CELL_N above). */
 #define SUM_BAR_SAFETY_FACTOR 1000.
 
-/* A one-sided dispatch loss (a mirrored side, or a whole depth level)
- * unbalances the global signed sum above and is caught by the derived sum
- * bar; a lost whole pair cancels in that sum instead, and is caught only
- * by the per-particle brute-force comparison below against this bar. */
+/* Which metric sees which dispatch-coverage loss, measured over the same
+ * 20 seeds per CELL_N by injecting each loss into the fixture:
+ *
+ *  - a whole cross-cell pair never dispatched: its two exactly cancelling
+ *    contributions go together, so the signed sum above stays at
+ *    round-off (1e-11 to 6e-8, i.e. under its own bar in every sample)
+ *    and only the per-particle comparison against this bar sees it;
+ *  - one side of every cross pair discarded, or a whole depth level
+ *    dropped (the "parent level dropped" sweep below): the signed sum is
+ *    unbalanced, but only by a net of random-sign terms, so its ratio
+ *    spans 1e-7 to 3e-1 and lands under ten times the bar on 1 to 13% of
+ *    draws depending on CELL_N;
+ *  - the per-particle comparison gives 0.04 to 1 for all three losses,
+ *    460x this bar or more in every sample.
+ *
+ * So the per-particle comparison is the discriminating detector. The
+ * signed sum is kept because it is the only one of the two that tests the
+ * pair antisymmetry independently of the shared accumulate_band formula
+ * the reference itself calls, not for its sensitivity. */
 #define PER_PART_BAR 1e-5
 
 /**
@@ -710,7 +725,10 @@ static int is_finite_bits(double x) {
  * @param abs_sum sum_i m_i |x_i|.
  * @param expect_zero 1 to require the ratio below @p sum_bar, 0 to require
  * it above ten times @p sum_bar (a sweep that drops one depth level on
- * purpose).
+ * purpose). The margin in that second case comes from sign cancellation
+ * in the fixture draw, not from how much was dropped: it is 2.2x at the
+ * shipped CELL_N and seeds. Read the metric mapping above #PER_PART_BAR
+ * before changing either.
  * @param sum_bar #sum_bar_for_count for the particle count this call sums
  * over.
  */
