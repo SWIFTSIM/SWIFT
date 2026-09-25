@@ -370,8 +370,9 @@ struct feedback_part_data {
       the start of each h-iteration by radiation_init_part_propagation.
       Drives #c_hyp: the propagation speed is set from the SLOWEST
       particle in the kernel, not this particle's own step, so that the
-      receiver's CFL condition holds for every pair by construction (see
-      radiation_end_density_propagation). Placed here, right after
+      receiver's CFL condition holds for every neighbour this loop
+      reaches, i.e. every neighbour inside `H_i` (see #c_hyp for the pairs
+      it does NOT cover). Placed here, right after
       #is_ionized, to land in that field's own compiler padding rather
       than growing #part (verified by a standalone sizeof/offsetof
       probe, not by inspection: `struct part` stays 640 bytes). */
@@ -433,9 +434,24 @@ struct feedback_part_data {
       timestep among this particle and every neighbour in its kernel,
       #max_ngb_time_bin), cached for active particles by
       radiation_end_density_propagation (the density ghost, after the
-      h-iteration converges), so every receiver's CFL condition
-      `c_i*dt_j <= C_hyp*h_i` holds by construction for the pairs the
-      force loop reaches. An inactive particle's value is simply last
+      h-iteration converges). The receiver's CFL condition
+      `c_i*dt_j <= C_hyp*h_i` holds by construction for every neighbour j
+      that entered #max_ngb_time_bin, which is every j inside `H_i`.
+
+      ONE PAIR CLASS IS NOT COVERED: `H_i <= r < H_j`. The force loop
+      fires a side whenever EITHER kernel reaches (see
+      runner_iact_isrf_dissipation), and
+      radiation_divergence_accumulate_band's shared `Phi_ij` carries a
+      nonzero `wj_dr` term into particle i's `div(F)` even where
+      `wi_dr == 0`, so i does receive such a pair; the density loop never
+      saw j, so `dt_j` never entered `dt_max(i)`. The overshoot factor is
+      `dt_j/dt_max(i)`, at worst `2^time_bin_neighbour_max_delta_bin`
+      while j's own step is on the time line the limiter allows (i lies
+      inside `H_j`, so the force loop's runner_iact_nonsym_timebin does
+      feed i's bin into j's #timestep_limiter_data.min_ngb_time_bin), and
+      unbounded with the timestep limiter off. Closing it would need
+      `dt_max(i)` to be built over the force loop's neighbour set rather
+      than the density loop's. An inactive particle's value is simply last
       active step's, like #time_bin itself. Shared by both bands (unlike
       #feedback_isrf_operator_data.kappa): the propagation speed is a
       property of the particle's resolution and its kernel's slowest
