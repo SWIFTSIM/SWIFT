@@ -254,12 +254,10 @@ static INLINE void tracers_first_init_xpart(
 
   xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
   xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
-  xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
 }
 
 /**
@@ -267,14 +265,14 @@ static INLINE void tracers_first_init_xpart(
  * lifetime-cumulative feedback tracers.
  *
  * Called once per channel per feedback event, from inside that channel's
- * own branch in the SN/winds/radiation-pressure interaction code, using
- * that branch's own locally-computed momentum/energy, not read back from
- * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
- * winds can both fire on the same gas particle in the same step and would
- * otherwise be inseparable.
+ * own branch in the SN/winds interaction code, using that branch's own
+ * locally-computed momentum/energy, not read back from the shared
+ * feedback_xpart_data.delta_p/delta_u afterwards, since SN and winds can
+ * both fire on the same gas particle in the same step and would otherwise
+ * be inseparable.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
- * field (feedback_cumulative.momentum_supernovae/winds/radiation).
+ * field (feedback_cumulative.momentum_supernovae/winds).
  * @param energy_channel Pointer to this channel's cumulative-energy field,
  * or NULL if this channel has no separate thermal contribution to track.
  * @param max_kick_velocity_channel Pointer to this channel's maximal kick
@@ -459,27 +457,6 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
       &xp->tracers_data.feedback_cumulative.energy_winds,
       &xp->tracers_data.feedback_cumulative.max_kick_velocity_winds,
       delta_p_magnitude, delta_u, kick_velocity);
-}
-
-/**
- * @brief Update the gas particle tracer data after it received radiation
- * feedback.
- *
- * @param xp The extended particle data.
- * @param delta_p_magnitude Norm of the momentum received (internal physical
- * units).
- * @param kick_velocity Norm of the velocity kick, in the same frame as
- * delta_p_magnitude (internal physical units).
- */
-static INLINE void tracers_after_radiation_pressure_feedback_part(
-    struct xpart *xp, const float delta_p_magnitude,
-    const float kick_velocity) {
-
-  tracers_gear_accumulate_feedback_part(
-      &xp->tracers_data.feedback_cumulative.momentum_radiation,
-      /* Radiation pressure only deposits momentum */ NULL,
-      &xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
-      delta_p_magnitude, 0.f, kick_velocity);
 }
 
 /**

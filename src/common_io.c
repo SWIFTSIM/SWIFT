@@ -40,6 +40,7 @@
 #include "cooling_io.h"
 #include "extra_io.h"
 #include "feedback.h"
+#include "feedback_io.h"
 #include "fof_io.h"
 #include "forcing_io.h"
 #include "gravity_io.h"
@@ -1769,6 +1770,8 @@ void io_select_hydro_fields(const struct part *const parts,
   }
   *num_fields += tracers_write_particles(parts, xparts, list + *num_fields,
                                          with_cosmology);
+  *num_fields += feedback_write_particles(parts, xparts, list + *num_fields,
+                                          with_cosmology);
   *num_fields +=
       star_formation_write_particles(parts, xparts, list + *num_fields);
   if (with_rt) {
@@ -1875,6 +1878,8 @@ void io_select_star_fields(const struct spart *const sparts,
   *num_fields += chemistry_write_sparticles(sparts, list + *num_fields);
   *num_fields +=
       tracers_write_sparticles(sparts, list + *num_fields, with_cosmology);
+  *num_fields +=
+      feedback_write_sparticles(sparts, list + *num_fields, with_cosmology);
   *num_fields += star_formation_write_sparticles(sparts, list + *num_fields);
   if (with_fof) {
     *num_fields += fof_write_sparts(sparts, list + *num_fields);

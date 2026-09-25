@@ -27,29 +27,6 @@
  */
 struct tracers_xpart_data {
 
-  /*! Radiation struct. The tag core (is_ionized/star_id/end_time) lives on
-      struct part's feedback_data instead (see
-      src/feedback/GEAR_thermal/feedback_struct.h) for automatic
-      MPI/restart coverage; only the owner-computed payload below stays
-      here. */
-  struct {
-
-    /*! Mean photon energy above the 13.6 eV HI ionization threshold for
-        the tagging star, frozen at tag time (only set when
-        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). Stored
-        in cgs (erg), not internal units, since the absolute per-particle
-        value underflows float precision in this project's internal unit
-        system. */
-    float excess_photon_energy_HI;
-
-    /*! Photoionization rate coefficient Gamma_HI from the tagging star at
-        this particle's location, frozen at tag time (internal 1/time;
-        only set when GEARFeedback:HII_couple_ionization_rate is on, 0
-        otherwise). */
-    float photoionization_rate_HI;
-
-  } HII_region;
-
   /*! Feedback received over this particle's whole lifetime, physical internal
    * units. */
   struct {
@@ -58,17 +35,14 @@ struct tracers_xpart_data {
         kicks would else cancel), physical. */
     float momentum_supernovae;
     float momentum_winds;
-    float momentum_radiation;
 
-    /*! Cumulative specific internal energy received (radiation pressure has
-        no separate thermal channel). */
+    /*! Cumulative specific internal energy received. */
     float energy_supernovae;
     float energy_winds;
 
     /*! Largest single-event kick velocity received (outflow diagnostic). */
     float max_kick_velocity_supernovae;
     float max_kick_velocity_winds;
-    float max_kick_velocity_radiation;
 
   } feedback_cumulative;
 };
@@ -128,13 +102,6 @@ struct tracers_winds_data {
  *
  */
 struct tracers_spart_data {
-  /*! Radius of the HII region before the star died or was not HII eligible
-      for the rest of its lifetime */
-  float final_HII_radius;
-
-  /*! Ionized gas mass of that same final HII region */
-  float final_HII_mass;
-
   /*! SN event tracers, one per channel */
   struct tracers_sn_event_data snii_events;
   struct tracers_sn_event_data snia_events;
@@ -142,12 +109,11 @@ struct tracers_spart_data {
   /*! Stellar-wind ejecta budget */
   struct tracers_winds_data winds;
 
-  /* Two of the three radiation channels already have a tracer elsewhere, so
-     only ISRF (photoelectric heating/LW dissociation) is untracked: HII has
-     final_HII_radius/final_HII_mass above (star-side); radiation pressure
-     has feedback_cumulative.momentum_radiation/max_kick_velocity_radiation
-     in tracers_xpart_data above (gas-side, via
-     tracers_after_radiation_pressure_feedback_part()). */
+  /* None of the three radiation channels is tracked here: HII's final
+     extent lives in feedback_spart_data.radiation (star-side), radiation
+     pressure's cumulative momentum/kick velocity live in
+     feedback_xpart_data.radiation (gas-side, feedback_struct.h), and ISRF
+     (photoelectric heating/LW dissociation) has no tracer at all. */
 };
 
 /**
