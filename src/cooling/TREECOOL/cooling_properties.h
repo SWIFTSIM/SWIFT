@@ -198,6 +198,9 @@ struct cooling_function_data {
   /*! Conversion factor from internal units to cgs for time */
   double time_to_cgs;
 
+  /*! Conversion factor from internal units to cgs for temperature */
+  double temperature_to_cgs;
+
   /*! Proton mass in cgs units [g] */
   double proton_mass_cgs;
 
@@ -206,9 +209,6 @@ struct cooling_function_data {
 
   /*! Boltzmann constant in cgs units [erg * K^-1] */
   double boltzmann_k_cgs;
-
-  /*! Temperature of the CMB at redshift zero [K] */
-  double T_CMB_0;
 
   /*! Minimal internal energy per unit mass in physical cgs units
    * [erg * g^-1] */

@@ -91,7 +91,8 @@ INLINE static void cooling_update(
   treecool_set_UV_background(cooling, redshift);
 
   /* Properties of the CMB the gas is Compton-cooling against */
-  cooling->T_CMB = cooling->T_CMB_0 * (1. + redshift);
+  cooling->T_CMB =
+      phys_const->const_T_CMB_0 * cooling->temperature_to_cgs * (1. + redshift);
   cooling->one_plus_z_to_the_4 =
       (1. + redshift) * (1. + redshift) * (1. + redshift) * (1. + redshift);
 }
@@ -642,6 +643,8 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   cooling->internal_energy_from_cgs = 1. / cooling->internal_energy_to_cgs;
   cooling->density_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   cooling->time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  cooling->temperature_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Useful constants in cgs units */
   cooling->proton_mass_cgs = phys_const->const_proton_mass *
@@ -653,9 +656,6 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
       phys_const->const_boltzmann_k *
       units_general_cgs_conversion_factor(us, dimension_k);
 
-  cooling->T_CMB_0 = phys_const->const_T_CMB_0 *
-                     units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-
   cooling->u_min_cgs =
       hydro_props->minimal_internal_energy * cooling->internal_energy_to_cgs;
 
@@ -666,7 +666,7 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   /* Provide sensible z = 0 values until cooling_update() is called for the
    * first time at the start of the run. */
   treecool_set_UV_background(cooling, /*redshift=*/0.);
-  cooling->T_CMB = cooling->T_CMB_0;
+  cooling->T_CMB = phys_const->const_T_CMB_0 * cooling->temperature_to_cgs;
   cooling->one_plus_z_to_the_4 = 1.;
 }
 
