@@ -633,9 +633,9 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   if (cooling->log10_T_max_cgs <= cooling->log10_T_min_cgs)
     error("TREECOOLCooling:log10_T_max must be larger than log10_T_min");
 
-  /* Composition of the primordial gas */
-  cooling->Y_He = phys_const->const_primordial_He_fraction;
-  cooling->X_H = 1. - cooling->Y_He;
+  /* Composition of the primordial gas, consistent with the hydro scheme */
+  cooling->X_H = hydro_props->hydrogen_mass_fraction;
+  cooling->Y_He = 1. - cooling->X_H;
   cooling->y_He = 0.25 * cooling->Y_He / cooling->X_H;
 
   /* Conversion factors to and from cgs */

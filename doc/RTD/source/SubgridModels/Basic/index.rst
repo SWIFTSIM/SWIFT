@@ -59,10 +59,10 @@ Cooling: TREECOOL
 The ``TREECOOL`` model implements the primordial cooling function of `Katz,
 Weinberg & Hernquist (1996)
 <https://ui.adsabs.harvard.edu/abs/1996ApJS..105...19K>`_ (hereafter KWH96).
-The gas is assumed to be primordial (Hydrogen and Helium only, with the mass
-fractions taken from the primordial Helium fraction in the physical constants)
-and to be in ionization equilibrium with both the collisional processes and an
-optically thin, spatially uniform UV background.
+The gas is assumed to be primordial (Hydrogen and Helium only, with the Hydrogen
+mass fraction of the hydro scheme, ``SPH:H_mass_fraction``) and to be in
+ionization equilibrium with both the collisional processes and an optically
+thin, spatially uniform UV background.
 
 The abundances of HI, HII, HeI, HeII, HeIII and of the electrons are obtained
 by solving eq. 33-38 of KWH96, and the following processes contribute to the
@@ -87,9 +87,10 @@ This is deliberately the basic model of KWH96 and of the ``COOLING`` option of
 Gadget/Arepo. It does **not** include metal-line cooling, molecular cooling,
 self-shielding of the UV background, the HeII reionization heating boost, or
 any local radiation sources. The composition is fixed for the whole run: the
-Hydrogen and Helium mass fractions are derived from the primordial Helium
-fraction of the physical constants, and the element abundances tracked by the
-chemistry module, if any, are ignored.
+Hydrogen mass fraction is the one used by the hydro scheme
+(``SPH:H_mass_fraction``, which defaults to one minus the primordial Helium
+fraction of the physical constants), the Helium mass fraction is the rest, and
+the element abundances tracked by the chemistry module, if any, are ignored.
 
 The UV background is read from a ``TREECOOL`` file, the plain-text format used
 by most of the widely distributed UV background models. It has one row per

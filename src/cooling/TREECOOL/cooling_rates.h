@@ -482,9 +482,11 @@ __attribute__((always_inline)) INLINE static double treecool_temperature_from_u(
 
     /* Estimate how strongly the temperature reacts to a change in n_e and damp
      * the update accordingly (Katz et al. 1996). */
-    damping =
-        max(damping, T_new / (1. + cooling->y_He + gas->n_e) *
-                         fabs((gas->n_e - n_e_old) / (T_new - T_old + 1.)));
+    const double new_damping =
+        T_new / (1. + cooling->y_He + gas->n_e) *
+        fabs((gas->n_e - n_e_old) / (T_new - T_old + 1.));
+
+    damping = max(damping, new_damping);
 
     T = T_old + (T_new - T_old) / (1. + damping);
 
