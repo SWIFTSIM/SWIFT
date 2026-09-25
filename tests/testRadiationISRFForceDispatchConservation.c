@@ -1018,8 +1018,9 @@ static void check_cells(struct cell *cells[2], const char *label,
        * against every bar. */
       if (!(max_util_div <= 1.) || !(max_util_diss <= 1.))
         error(
-            "%s band %d: per-particle mismatch above the derived "
-            "summation bar: worst utilisation div %.3f diss %.3f (max "
+            "%s band %d: per-particle mismatch above its derived "
+            "round-off bar (float32 summation plus the kernel gradient's "
+            "conditioning): worst utilisation div %.3f diss %.3f (max "
             "error div %e diss %e)",
             label, b, max_util_div, max_util_diss, max_err_div, max_err_diss);
       message(
