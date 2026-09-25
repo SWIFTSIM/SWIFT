@@ -445,11 +445,14 @@ struct feedback_part_data {
       nonzero `wj_dr` term into particle i's `div(F)` even where
       `wi_dr == 0`, so i does receive such a pair; the density loop never
       saw j, so `dt_j` never entered `dt_max(i)`. The overshoot factor is
-      `dt_j/dt_max(i)`, at worst `2^time_bin_neighbour_max_delta_bin`
-      while j's own step is on the time line the limiter allows (i lies
-      inside `H_j`, so the force loop's runner_iact_nonsym_timebin does
-      feed i's bin into j's #timestep_limiter_data.min_ngb_time_bin), and
-      unbounded with the timestep limiter off. Closing it would need
+      `dt_j/dt_max(i)`, at most `2^time_bin_neighbour_max_delta_bin` = 4
+      once j has recomputed its own step: i lies inside `H_j`, so the
+      force loop's runner_iact_nonsym_timebin feeds i's bin into j's
+      #timestep_limiter_data.min_ngb_time_bin, which make_integer_timestep
+      caps j against in every configuration, limiter policy or not. It can
+      exceed 4 until then, if i drops bins partway through j's step: the
+      limiter's own wakeup loop only reaches neighbours inside the waking
+      particle's `H_i`, so it never sees this pair. Closing the gap needs
       `dt_max(i)` to be built over the force loop's neighbour set rather
       than the density loop's. An inactive particle's value is simply last
       active step's, like #time_bin itself. Shared by both bands (unlike
