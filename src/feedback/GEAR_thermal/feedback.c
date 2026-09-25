@@ -169,12 +169,29 @@ void feedback_end_force(struct part *p, const struct engine *e) {
  * candidate's own stability term is shared GEAR physics, see
  * #radiation_isrf_part_timestep.
  *
+ * Also enforces that this bound never falls below TimeIntegration:dt_min.
+ * A fixed light-speed fraction small enough to do so makes the requested
+ * c_hyp unusable for this particle's smoothing length, so the run stops
+ * here rather than silently clamping the timestep back up past the CFL
+ * bound the fraction was meant to enforce.
+ *
  * @param p The particle to consider.
  * @param e The #engine.
+ * @return The radiation timestep bound, or FLT_MAX if none applies.
  */
 float feedback_compute_part_timestep(const struct part *restrict p,
                                      const struct engine *e) {
-  return radiation_isrf_part_timestep(p, e);
+  const float dt_isrf = radiation_isrf_part_timestep(p, e);
+  if (dt_isrf < e->dt_min)
+    error(
+        "part (id=%lld) wants an ISRF radiation time-step (%e) below "
+        "TimeIntegration:dt_min (%e): GEARFeedback:"
+        "ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = C_hyp*h/(f*c) "
+        "below dt_min for this particle's h. Raise the fraction "
+        "(dt_rad grows as 1/f) or raise dt_min.",
+        p->id, dt_isrf, e->dt_min,
+        e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+  return dt_isrf;
 }
 
 /**
