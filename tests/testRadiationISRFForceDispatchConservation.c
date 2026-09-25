@@ -136,34 +136,42 @@
  *    small: measured on a one-neighbour fixture (CELL_N = 1, K = 1, no
  *    summation at all) the per-pair disagreement already reaches 15 u.
  *
- * Source 2 is weighted per pair by 1/|dw/dx|, so #check_cells measures it
- * on the fixture it actually ran, as the |term|-weighted mean of
- * 1/|dw/dx| over the particle's own neighbours, and the bar is
+ * Source 2 enters each pair weighted by 1/|dw/dx|, so the bar carries that
+ * factor, measured on the fixture actually run as the |term|-weighted mean
+ * of 1/|dw/dx| over the particle's own neighbours:
  *
- *   u * [ (K_i - 1) + C_Horner * amp_i ]   (dimensionless)
+ *   bar_i = S * u * [ (K_i - 1) + C_Horner * amp_i ],  capped
  *
- * which the measured error satisfies with 2.6x to 5.3x to spare over 20
- * fixture seeds at each of CELL_N = 3, 4, 5, 6, 8, 10 (5.6e06 samples,
- * worst utilisation 0.39 at CELL_N = 3).
+ * dimensionless throughout. What this expression is, and is not: the
+ * conditioning explains the SCALE of the disagreement, tens to about a
+ * hundred ulps rather than one, which is what closes the 500x gap against
+ * the summation-only estimate. It does NOT predict it particle by
+ * particle: over 5.6e06 samples the measured error is flat in amp_i
+ * (median 1.0 u at amp < 2 rising only to 2.3 u at amp > 100, worst 41 u
+ * to 100 u across the same range) and flat in K_i (16 <= K_i <= 362). So
+ * the amp term is a conservative allowance, not a tight model, and it
+ * leaves 96.6% of particles sitting at #PER_PART_BAR_CEILING, which is the
+ * bar that actually gates them; the remaining, best-conditioned particles
+ * get a tighter bar, down to 4.2e-05.
  *
- * #PER_PART_BAR_SAFETY_FACTOR is applied on top of that bound, for the
- * i-side/j-side cancellation inside one pair term (the bound charges the
- * summed |term|, not the two pieces separately: measured at most 5.7x at
- * the pair level) and for another compiler's association of the same
- * Horner loop. It leaves 10.4x of should-pass headroom over the same
- * sweep.
- *
- * amp_i diverges for a particle with a neighbour at the kernel cutoff,
- * where the gradient has no correct significant digits in either path, so
- * the bar is capped: see #PER_PART_BAR_CEILING. */
+ * #PER_PART_BAR_SAFETY_FACTOR covers the i-side/j-side cancellation inside
+ * one pair term (the bound charges the summed |term|, not the two pieces
+ * separately: measured at most 5.7x at the pair level) and another
+ * compiler's association of the same Horner loop. Worst should-pass
+ * utilisation over 20 fixture seeds at each of CELL_N = 3, 4, 5, 6, 8, 10
+ * is 0.060, i.e. 16.7x of headroom. */
 #define PER_PART_BAR_SAFETY_FACTOR 4.
 
-/* Cap on the derived bar, so an ill-conditioned neighbour cannot push it
- * up into the range where a real coverage loss lives. Placed two decades
- * below 0.04, the weakest per-particle signal any of the three injected
- * dispatch losses produces at any CELL_N, and still 67x above the worst
- * round-off error measured over the sweep above. */
-#define PER_PART_BAR_CEILING 4e-4
+/* Cap on the derived bar. amp_i below diverges for a particle with a
+ * neighbour at the kernel cutoff, where the gradient has no correct
+ * significant digits in either path, and an uncapped bar would grow past
+ * the range a real coverage loss lives in. The cap is the negative
+ * controls' own threshold, so "masked error > 10 * PER_PART_BAR" implies
+ * "above every per-particle bar" by construction, and the controls keep
+ * proving exactly the gate that runs. It is also 16.7x above the worst
+ * round-off error measured over the sweep above and at least 2000x below
+ * the weakest per-particle signal any injected dispatch loss produces. */
+#define PER_PART_BAR_CEILING (10. * PER_PART_BAR)
 
 /**
  * @brief The conservation gate's bar, scaled to the fixture actually run:
@@ -193,13 +201,22 @@ static double per_part_bar_for_terms(int n_terms, double amp) {
   const double u = 0.5 * (double)FLT_EPSILON;
   const int n_add = n_terms > 1 ? n_terms - 1 : 1;
 
-  /* Horner condition constant of the kernel in use, summed over every
-   * branch of #kernel_coeffs: conservative for a multi-branch kernel,
-   * exact for the single-branch Wendland family, and it follows the
-   * kernel the build actually selected. */
+  /* Horner condition constant of the polynomial the force loop actually
+   * evaluates, which is the kernel's DERIVATIVE: #kernel_coeffs holds the
+   * kernel itself, highest power first, so the derivative's coefficient
+   * magnitudes are (kernel_degree - j) * |coeffs[j]| (160 for Wendland C2
+   * in 3D). Summed over every branch, which is conservative for a
+   * multi-branch kernel and exact for the single-branch Wendland family,
+   * and it follows the kernel the build selected. Note Higham's Horner
+   * bound carries a further gamma_{2*kernel_degree} ~ 10*u prefactor; it is
+   * left out here because including it would put every particle at
+   * #PER_PART_BAR_CEILING, which is where all but the best-conditioned
+   * ones already sit. */
   double c_horner = 0.;
-  for (int k = 0; k < (kernel_degree + 1) * (kernel_ivals + 1); k++)
-    c_horner += fabs((double)kernel_coeffs[k]);
+  for (int i = 0; i <= kernel_ivals; i++)
+    for (int j = 0; j <= kernel_degree; j++)
+      c_horner += (double)(kernel_degree - j) *
+                  fabs((double)kernel_coeffs[i * (kernel_degree + 1) + j]);
 
   const double bar =
       PER_PART_BAR_SAFETY_FACTOR * u * ((double)n_add + c_horner * amp);
