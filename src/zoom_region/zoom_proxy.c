@@ -285,10 +285,9 @@ static void zoom_make_proxies_self_recursive(struct engine *e,
   /* Recurse into every pair of cells. */
   for (int a = 0; a < 8; a++) {
     for (int b = a + 1; b < 8; b++) {
-      zoom_make_proxies_pair_recursive(e, s, sub_loc[a], sub_loc[b], sub_width,
-                                       cell_type_zoom, cell_type_zoom,
-                                       depth + 1, sub_loc[a], sub_loc[b],
-                                       sub_width);
+      zoom_make_proxies_pair_recursive(
+          e, s, sub_loc[a], sub_loc[b], sub_width, cell_type_zoom,
+          cell_type_zoom, depth + 1, sub_loc[a], sub_loc[b], sub_width);
     }
   }
 }
