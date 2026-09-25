@@ -90,7 +90,7 @@
  * So the per-particle comparison is the discriminating detector for a
  * coverage loss. The signed sum covers the complementary bug class the
  * per-particle metric cannot see at all, because the reference calls the
- * same accumulate_band primitive: an mi/mj swap inside that primitive,
+ * same accumulate_band primitive: an mi/mj swap inside the divergence one,
  * injected here, moves the sum ratio to 6e-2 to 4e-1 (2e4x its bar) on
  * every div(F) sample while the per-particle error stays under its own
  * bar. Both checks are needed. */
