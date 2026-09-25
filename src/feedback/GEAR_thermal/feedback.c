@@ -169,27 +169,40 @@ void feedback_end_force(struct part *p, const struct engine *e) {
  * candidate's own stability term is shared GEAR physics, see
  * #radiation_isrf_part_timestep.
  *
- * Also enforces that this bound never falls below TimeIntegration:dt_min.
- * A fixed light-speed fraction small enough to do so makes the requested
- * c_hyp unusable for this particle's smoothing length, so the run stops
- * here rather than silently clamping the timestep back up past the CFL
- * bound the fraction was meant to enforce.
+ * Also enforces that this bound never falls below TimeIntegration:dt_min,
+ * after applying the same cosmology factor #get_part_timestep applies to
+ * every other candidate before its own dt_min check (1 for a
+ * non-cosmological run). A fixed light-speed fraction large enough to do
+ * so drives dt_rad below dt_min for this particle's h, so the run stops
+ * here with a message naming the offending parameter and its remedy; the
+ * generic dt_min check in timestep.h would otherwise catch the same
+ * condition once this candidate is combined into the overall minimum, but
+ * with no indication that ISRF was the cause.
  *
  * @param p The particle to consider.
  * @param e The #engine.
- * @return The radiation timestep bound, or FLT_MAX if none applies.
+ * @return The radiation timestep bound (before the cosmology factor,
+ *     matching what #get_part_timestep expects to scale itself), or
+ *     FLT_MAX if none applies.
  */
 float feedback_compute_part_timestep(const struct part *restrict p,
                                      const struct engine *e) {
   const float dt_isrf = radiation_isrf_part_timestep(p, e);
-  if (dt_isrf < e->dt_min)
+  /* dt_isrf, like every other candidate combined into get_part_timestep's
+   * new_dt, is a pre-cosmology-factor quantity: for a cosmological run
+   * TimeIntegration:dt_min bounds Delta ln(a), not a physical time, and
+   * only the multiplication by time_step_factor (1 for a non-cosmological
+   * run) converts between the two. This mirrors that multiplication, in
+   * float, so the two abort conditions agree exactly. */
+  const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
+  if (dt_isrf_scaled < e->dt_min)
     error(
-        "part (id=%lld) wants an ISRF radiation time-step (%e) below "
-        "TimeIntegration:dt_min (%e): GEARFeedback:"
-        "ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = C_hyp*h/(f*c) "
-        "below dt_min for this particle's h. Raise the fraction "
-        "(dt_rad grows as 1/f) or raise dt_min.",
-        p->id, dt_isrf, e->dt_min,
+        "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
+        "the cosmology factor) below TimeIntegration:dt_min (%e): "
+        "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = "
+        "C_hyp*h/(f*c) below dt_min for this particle's h. Lower the "
+        "fraction (dt_rad grows as 1/f), or lower dt_min.",
+        p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
         e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
   return dt_isrf;
 }
