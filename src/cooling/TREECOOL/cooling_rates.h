@@ -139,6 +139,26 @@ struct treecool_gas_state {
 };
 
 /**
+ * @brief Free-free (Bremsstrahlung) cooling coefficient (Cen 1992).
+ *
+ * This is used both to build the table and above its upper end. Note that we
+ * use the same 1.43e-27 normalisation in both places, whereas Arepo switches
+ * to 1.42e-27 above T_max; keeping a single value avoids a jump in the cooling
+ * rate at T_max.
+ *
+ * @param T The temperature [K].
+ * @param log10_T The log10 of the temperature (in K).
+ *
+ * @return The free-free cooling coefficient [erg * cm^3 * s^-1].
+ */
+__attribute__((always_inline)) INLINE static double
+treecool_free_free_coefficient(const double T, const double log10_T) {
+
+  return 1.43e-27 * sqrt(T) *
+         (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
+}
+
+/**
  * @brief Construct the tables of rate coefficients.
  *
  * The tables are built on a regular grid in log10(T) running from
@@ -177,9 +197,7 @@ __attribute__((always_inline)) INLINE static void treecool_make_rate_table(
             : 0.;
 
     /* Free-free (Bremsstrahlung) cooling (Cen 1992) */
-    cooling->table_Beta_ff_cgs[i] =
-        1.43e-27 * sqrt_T *
-        (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
+    cooling->table_Beta_ff_cgs[i] = treecool_free_free_coefficient(T, log10_T);
 
     /* Radiative recombination (Cen 1992) */
     cooling->table_Alpha_Hp_cgs[i] =
@@ -552,7 +570,9 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
     const double Lambda_exc_H0 = gas->beta_H0_cgs * gas->n_e * gas->n_H0;
     const double Lambda_exc_Hep = gas->beta_Hep_cgs * gas->n_e * gas->n_Hep;
 
-    /* Collisional ionization */
+    /* Collisional ionization. Each ionization removes the ionization
+     * potential of the species: 13.6 eV (HI), 24.6 eV (HeI) and 54.4 eV
+     * (HeII), i.e. 2.18e-11, 3.94e-11 and 8.72e-11 erg. */
     const double Lambda_ion_H0 =
         2.18e-11 * gas->gamma_eH0_cgs * gas->n_e * gas->n_H0;
     const double Lambda_ion_He0 =
@@ -560,7 +580,10 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
     const double Lambda_ion_Hep =
         8.72e-11 * gas->gamma_eHep_cgs * gas->n_e * gas->n_Hep;
 
-    /* Recombination */
+    /* Recombination. Each radiative recombination removes ~0.75 k_B T
+     * (1.036e-16 erg/K * T). The dielectronic term uses the ratio of the
+     * cooling and rate fits of Cen (1992), 1.24e-13 / 1.90e-3 = 6.526e-11 erg,
+     * i.e. ~40.7 eV per recombination. */
     const double Lambda_rec_Hp =
         1.036e-16 * T * gas->n_e * gas->alpha_Hp_cgs * gas->n_Hp;
     const double Lambda_rec_Hep =
@@ -604,15 +627,16 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
 
     treecool_zero_rate_coefficients(gas);
 
-    gas->beta_ff_cgs =
-        1.43e-27 * sqrt(T) *
-        (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
+    gas->beta_ff_cgs = treecool_free_free_coefficient(T, log10_T);
 
     Lambda = gas->beta_ff_cgs * gas->n_e * (gas->n_Hp + 4. * gas->n_Hepp);
     Heat = 0.;
   }
 
-  /* Inverse Compton cooling off the CMB */
+  /* Inverse Compton cooling off the CMB. The coefficient is
+   * 4 sigma_T a_rad k_B T_CMB,0^4 / (m_e c) [erg * s^-1 * K^-1] evaluated
+   * with T_CMB,0 = 2.73 K, as in Arepo; the (1 + z)^4 factor then
+   * scales the CMB energy density to the current redshift. */
   if (cooling->with_Compton_cooling) {
 
     Lambda_Compton = 5.65e-36 * gas->n_e * (T - cooling->T_CMB_cgs) *

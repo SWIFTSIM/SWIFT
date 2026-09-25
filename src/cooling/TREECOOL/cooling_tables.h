@@ -33,8 +33,9 @@
  *
  * where the Gamma are the photo-ionization rates and the eps the photo-heating
  * rates per ion of the corresponding species. Such tables are distributed with
- * most of the widely used UV background models; an example file is provided in
- * examples/Cooling/TREECOOL/.
+ * most of the widely used UV background models; an example file,
+ * TREECOOL_UV_background.txt, is provided in
+ * examples/Cooling/ConstantCosmoTempEvolution/.
  */
 
 /* Config parameters. */

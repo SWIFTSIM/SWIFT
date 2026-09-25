@@ -173,7 +173,7 @@ particular for partially ionized gas. ``ElectronFractions`` are the electron
 number densities in units of the Hydrogen number densities, again assuming
 ionization equilibrium; they are set for all particles at the start of the run
 and updated each time a particle is cooled. The parameters of the model are
-recorded in the ``Cooling`` group of the snapshots.
+recorded in the ``SubgridScheme`` group of the snapshots.
 
 How to Implement a New Cooling
 ------------------------------
