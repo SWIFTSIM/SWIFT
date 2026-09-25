@@ -400,9 +400,9 @@ The remaining fields are gas fields written by the GEAR tracers module, so they 
      - [U_L^2 U_T^{-2}]
      -
    * - ``LWPhotonSpecificEnergies``
-     - Local Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy of 12.2 eV, not a photon count
+     - Local Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy, not a photon count
      - [U_L^2 U_T^{-2}]
-     - Diagnostic only: the H2 photodissociation rate does not read it.
+     - Diagnostic only: no heating or dissociation rate reads it.
    * - ``PEArtificialDissipationCoefficients``
      - Negativity-triggered dissipation coefficient, PE band
      - [-]

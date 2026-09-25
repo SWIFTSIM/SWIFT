@@ -159,10 +159,10 @@ Three optional gas fields let an initial-conditions file seed the radiation fiel
      - Initial specific Lyman-Werner-band energy
      - [U_L^2 U_T^{-2}]
    * - ``LWPhotonSpecificEnergy``
-     - Initial Lyman-Werner-band photon-number moment, energy-equivalent at the same reference photon energy as ``LWSpecificEnergies``
+     - Initial Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy, not a photon count
      - [U_L^2 U_T^{-2}]
 
-An initial-conditions file without any of them is unaffected: every field starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init: if only one of the two is supplied, SWIFT sets the other equal to it, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. To start with no Lyman-Werner field at all, set both to zero.
+An initial-conditions file without any of them is unaffected: every field starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init, per particle: on any particle where one of the two is zero and the other is not, SWIFT sets the zero one equal to the other, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. A particle with a nonzero ``LWSpecificEnergy`` therefore always carries a photon moment.
 
 Snapshot outputs
 ------------------
