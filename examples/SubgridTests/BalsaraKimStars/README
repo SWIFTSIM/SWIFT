@@ -6,6 +6,8 @@ It consists of a series of energetic supernova events in a patch of ISM. These i
 interacting shock shells driving turbulence (and magnetic field amplification), and in turn result in a 
 filamentary structure.
 
+Note: there is a typo in Price+ (2018). The correct physical density is 2.3e-24 g/cm^3. (Private communication) The units here have been set to the correct values.
+
 Running the test
 ________________
 
