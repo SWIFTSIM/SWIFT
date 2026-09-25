@@ -254,10 +254,12 @@ static INLINE void tracers_first_init_xpart(
 
   xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
   xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
+  xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
 }
 
 /**
@@ -265,31 +267,31 @@ static INLINE void tracers_first_init_xpart(
  * lifetime-cumulative feedback tracers.
  *
  * Called once per channel per feedback event, from inside that channel's
- * own branch in the SN/winds interaction code, using that branch's own
- * locally-computed momentum/energy, not read back from the shared
- * feedback_xpart_data.delta_p/delta_u afterwards, since SN and winds can
- * both fire on the same gas particle in the same step and would otherwise
- * be inseparable.
+ * own branch in the SN/winds/radiation-pressure interaction code, using
+ * that branch's own locally-computed momentum/energy, not read back from
+ * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
+ * winds can both fire on the same gas particle in the same step and would
+ * otherwise be inseparable.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
- * field (feedback_cumulative.momentum_supernovae/winds).
+ * field (feedback_cumulative.momentum_supernovae/winds/radiation).
  * @param energy_channel Pointer to this channel's cumulative-energy field,
  * or NULL if this channel has no separate thermal contribution to track.
  * @param max_kick_velocity_channel Pointer to this channel's maximal kick
  * velocity field.
- * @param delta_p_magnitude Momentum magnitude received this event
- * (physical internal units).
+ * @param delta_p Momentum received this event (physical internal units):
+ * a norm for supernovae and winds, signed for radiation pressure.
  * @param delta_u Specific internal energy received this event
  * (physical internal units), ignored if energy_channel is NULL.
  * @param kick_velocity Velocity magnitude of this event's kick (same
- * frame as delta_p_magnitude).
+ * frame as delta_p).
  */
 static INLINE void tracers_gear_accumulate_feedback_part(
     float *momentum_channel, float *energy_channel,
-    float *max_kick_velocity_channel, const float delta_p_magnitude,
-    const float delta_u, const float kick_velocity) {
+    float *max_kick_velocity_channel, const float delta_p, const float delta_u,
+    const float kick_velocity) {
 
-  *momentum_channel += delta_p_magnitude;
+  *momentum_channel += delta_p;
   if (energy_channel != NULL) *energy_channel += delta_u;
   if (kick_velocity > *max_kick_velocity_channel) {
     *max_kick_velocity_channel = kick_velocity;
@@ -457,6 +459,26 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
       &xp->tracers_data.feedback_cumulative.energy_winds,
       &xp->tracers_data.feedback_cumulative.max_kick_velocity_winds,
       delta_p_magnitude, delta_u, kick_velocity);
+}
+
+/**
+ * @brief Update the gas particle tracer data after it received radiation
+ * pressure feedback.
+ *
+ * @param xp The extended particle data.
+ * @param delta_p Signed momentum received (internal physical units): signed
+ * on purpose, it is the only diagnostic that can reveal an inverted kick.
+ * @param kick_velocity Magnitude of the velocity kick, in the same frame as
+ * delta_p (internal physical units).
+ */
+static INLINE void tracers_after_radiation_pressure_feedback_part(
+    struct xpart *xp, const float delta_p, const float kick_velocity) {
+
+  tracers_gear_accumulate_feedback_part(
+      &xp->tracers_data.feedback_cumulative.momentum_radiation,
+      /* Radiation pressure only deposits momentum */ NULL,
+      &xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
+      delta_p, 0.f, kick_velocity);
 }
 
 /**

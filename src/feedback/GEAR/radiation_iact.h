@@ -34,6 +34,7 @@
 #include "minmax.h"
 #include "radiation.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Radiation density interaction between two particles (non-symmetric).
@@ -242,15 +243,15 @@ radiation_iact_nonsym_feedback_apply(
           delta_p_rad * dx[i] / r * cosmo->a;
     }
 
-    /* Lifetime-cumulative diagnostic. delta_p_rad is the physical momentum
-       magnitude for this pair, before it is projected onto the radial
-       direction above; no separate energy channel (radiation pressure only
-       deposits momentum). */
-    xpj->feedback_data.radiation.cumulative_momentum += delta_p_rad;
-    const float kick_velocity_rad = delta_p_rad / mj;
-    if (kick_velocity_rad > xpj->feedback_data.radiation.max_kick_velocity) {
-      xpj->feedback_data.radiation.max_kick_velocity = kick_velocity_rad;
-    }
+    /* Lifetime-cumulative tracer. delta_p_rad is the physical momentum for
+       this pair, before it is projected onto the radial direction above; no
+       separate energy channel (tracers_struct.h). The kick velocity goes in
+       as a magnitude: MaxKickVelocityFromRadiationPressure is a running
+       maximum starting at 0, so a signed value could never overtake 0 on a
+       negative event and would report 0 for a kicked particle;
+       CumulativeMomentumFromRadiationPressure carries the sign instead. */
+    tracers_after_radiation_pressure_feedback_part(xpj, delta_p_rad,
+                                                   fabsf(delta_p_rad / mj));
 
     /* Matches hit_by_SN/hit_by_winds: without it,
        feedback_update_part_radiation() never applies this momentum. */
