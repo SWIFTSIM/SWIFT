@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
   treecool_interpolate_rate_table(cooling, log10_T, gas);
 
   /* Make sure we start from a sensible guess */
-  if (gas->n_e <= 0.) gas->n_e = 1.;
+  if (gas->n_e * n_H_cgs <= treecool_min_electron_density) gas->n_e = 1.;
 
   int iter = 0;
   while (1) {
