@@ -33,6 +33,8 @@
 /**
  * Compute gas mean molecular weight.
  *
+ * @TODO: This function may be moved into a future improved Grackle version.
+ *
  * @param u Internal energy in physical units
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
@@ -76,6 +78,8 @@ cooling_get_equilibrium_mean_molecular_weight(
 
 /**
  * Compute gas mean molecular weight.
+ *
+ * @TODO: This function may be moved into a future improved Grackle version.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -229,6 +233,8 @@ struct cooling_h2_species_densities {
  * calculate_temperature.c/calculate_pressure.c: a particle with every
  * species fraction at zero must not turn mu or Gamma1 into a 0/0 NaN.
  *
+ * @TODO: This function will be moved into a future improved Grackle version.
+ *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
  * @param p The particle.
@@ -293,6 +299,8 @@ cooling_get_h2_species_densities(const struct phys_const *phys_const,
  * Shared by the forward and inverse conversions so they stay exact
  * inverses of each other instead of drifting apart if edited separately.
  *
+ * @TODO: This function will be moved into a future improved Grackle version.
+ *
  * @param nH2 Number density of H2 (H2I + H2II).
  * @param number_density_noH2 Number density of everything except H2 that
  *   enters Grackle's own Gamma correction (see calculate_pressure.c).
@@ -337,6 +345,8 @@ __attribute__((always_inline)) INLINE static double cooling_h2_effective_gamma(
  * the seed for Grackle's own iteration, then gets rescaled by
  * (Gamma1-1)/(gamma-1) exactly as Grackle rescales its pressure array.
  *
+ * @TODO: This function will be moved into a future improved Grackle version.
+ *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
  * @param p The particle.
@@ -376,6 +386,8 @@ cooling_get_temperature_h2_gamma_corrected(const struct phys_const *phys_const,
  * would under-shoot the floor for H2-rich gas: cooling_get_temperature()
  * would then report a lower, Gamma1-corrected value for that same energy
  * instead of T_target.
+ *
+ * @TODO: This function will be moved into a future improved Grackle version.
  *
  * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
