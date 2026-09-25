@@ -45,10 +45,11 @@
 #   warranty.
 
 #   SWIFT modifications: none beyond upstream. SIMD_FLAGS and CPUEXT_FLAGS
-#   accumulate every accepted flag, matching the documented behaviour above;
-#   a prior local change here made each detected flag replace the previous
-#   one, which silently dropped -mfma whenever -mavx2 was detected after it
-#   (both are in the same detection loop, and AVX2 does not imply FMA3).
+#   must accumulate every accepted flag: AVX2 does not imply FMA3, and both
+#   are enumerated in the same detection loop, so assigning instead of
+#   appending would drop whichever flag was found first. A dropped flag
+#   leaves config.h defining a feature the compiler was never told to
+#   enable.
 
 #serial 18
 
