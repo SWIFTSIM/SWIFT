@@ -113,9 +113,12 @@ cosmological box with this model and compares the resulting thermal history of
 the IGM to observations. Files in this format for the commonly used UV
 background models (Faucher-Giguère et al., Haardt & Madau, Puchwein et al.)
 are distributed with Gadget-4 and Arepo and by the authors of the models. The
-rows must be in increasing order of redshift; many files are padded with rows
-of zeros beyond the end of the model, and reading stops at the first such row.
-At least two usable rows are required.
+file must contain numbers only: every non-blank line must hold exactly seven
+values, and header or comment lines are not allowed (SWIFT stops at start-up
+with an error giving the offending line number). The rows must be in
+increasing order of redshift; many files are padded with rows of zeros beyond
+the end of the model, and reading stops at the first such row. At least two
+usable rows are required.
 
 Note that the UV background is switched on instantaneously when the redshift
 first drops below the end of the table (or below
@@ -134,10 +137,10 @@ presence of the UV background, low-density gas just above :math:`T_{\rm min}`
 is highly ionized. The mean molecular weight, and hence the relation between
 internal energy and temperature, is therefore discontinuous at
 :math:`T_{\rm min}`, and gas whose internal energy falls in the gap is
-assigned :math:`T = T_{\rm min}`. To stay clear of this regime,
-``log10_T_min`` should be set well below the lowest temperature the gas can
-reach in the run (the reference implementation in Arepo uses one tenth of the
-minimal gas temperature). Second, in non-cosmological runs the redshift is
+assigned :math:`T = T_{\rm min}`. To stay clear of this regime, set
+``log10_T_min`` at least one below ``log10(SPH:minimal_temperature)``, i.e.
+tabulate the rates down to a tenth of the minimal gas temperature, as the
+reference implementation in Arepo does. Second, in non-cosmological runs the redshift is
 zero, so the :math:`z = 0` entry of the ``TREECOOL`` table is used and the
 Compton term cools the gas towards the present-day CMB temperature. The Arepo
 implementation switches Compton cooling off in that case; set
@@ -150,21 +153,32 @@ following parameters:
 
    TREECOOLCooling:
      TREECOOL_file:                ./TREECOOL_UV_background.txt
-     rapid_cooling_threshold:      0.333333   # (Optional)
-     UV_background_start_redshift: 1e30       # (Optional)
-     with_Compton_cooling:         1          # (Optional)
-     log10_T_min:                  1.0        # (Optional)
-     log10_T_max:                  9.0        # (Optional)
+     rapid_cooling_threshold:      0.333333   # (Optional) Default: 0.333333
+     UV_background_start_redshift: 1e30       # (Optional) Default: no limit
+     with_Compton_cooling:         1          # (Optional) Default: 1
+     log10_T_min:                  1.0        # (Optional) Default: 1.0
+     log10_T_max:                  9.0        # (Optional) Default: 9.0
 
-Only ``TREECOOL_file`` is compulsory. ``rapid_cooling_threshold`` sets the
-value of :math:`\mathrm{d}t / t_{\rm cool}` above which the new energy is
-applied directly rather than through the time derivative of the internal
-energy; a negative value always uses the latter.
-``UV_background_start_redshift`` can be used to delay the onset of the UV
-background beyond the range of the table itself, and ``with_Compton_cooling``
-switches the inverse Compton cooling off the CMB on (default) or off. Finally,
-``log10_T_min`` and ``log10_T_max`` set the range over which the rate
-coefficients are tabulated.
+Only ``TREECOOL_file`` is compulsory; the defaults of the other parameters are
+listed above.
+
+* ``rapid_cooling_threshold`` sets the value of
+  :math:`\mathrm{d}t / t_{\rm cool}` above which the new energy is applied
+  directly rather than through the time derivative of the internal energy. A
+  negative value always uses the latter.
+* ``UV_background_start_redshift`` switches the UV background on at a lower
+  redshift than the highest one in the table: above this redshift the rates
+  are zero, below it the table is used. It cannot switch the background on
+  earlier than the table allows. If it is not given, the UV background starts
+  at the highest redshift of the table.
+* ``with_Compton_cooling`` switches the inverse Compton cooling off the CMB on
+  (1) or off (0).
+* ``log10_T_min`` and ``log10_T_max`` set the range over which the rate
+  coefficients are tabulated. ``log10_T_min`` should be at least one below
+  ``log10(SPH:minimal_temperature)``, i.e. a tenth of the minimal gas
+  temperature or less (see the limitations above). For instance, with
+  ``SPH:minimal_temperature: 100`` use ``log10_T_min: 1.0`` or lower. This
+  is not checked by the code.
 
 In addition to the radiated energies, this model writes two fields per gas
 particle to the snapshots. ``Temperatures`` are computed from the internal
@@ -176,8 +190,9 @@ ionization equilibrium; they are set for all particles at the start of the run
 and updated each time a particle is cooled. The parameters of the model are
 recorded in the ``SubgridScheme`` group of the snapshots.
 
-How to Implement a New Cooling
-------------------------------
+
+How to Implement a New Cooling Model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The developer should provide at least one function for:
  * writing the cooling name in HDF5
