@@ -54,7 +54,7 @@ The reconstruction reuses the code's own column model, cross-sections and
 dust-to-gas convention. It therefore checks that the extinction is applied per
 receiving particle with the correct band-dependent cross-section ratio, not
 that any of those three is physically right; the formula itself is unit-tested
-in `tests/testRadiationISRFFormula.c`. In a uniform glass box the column
+in `testRadiationISRFFormula` (swift-gear's GEAR test suite). In a uniform glass box the column
 barely varies between particles, so this leg is also weak on one wiring error
 specifically: applying the extinction once at the source instead of per
 receiver.

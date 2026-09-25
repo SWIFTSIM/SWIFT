@@ -79,8 +79,8 @@ read from the array the code reads.
 
 It does NOT test whether the column model, the cross-sections or the
 dust-to-gas convention are physically right: the reconstruction reuses
-all three. The formula itself is unit-tested in
-tests/testRadiationISRFFormula.c.
+all three. The formula itself is unit-tested in testRadiationISRFFormula
+(swift-gear's GEAR test suite).
 
 G2 is the gate with real constraint; G1's strength depends on the
 mechanism. Under `constant_kernel_path` in a uniform glass box the column
