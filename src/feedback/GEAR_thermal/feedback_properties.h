@@ -915,9 +915,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * unconditionally in feedback_common.c, not gated on this bit: the two
    * validation errors above already refuse switch-on-with-nothing-to-inject
    * and switch-off-with-a-positive-efficiency, and radiation_iact.h's own
-   * L_bol > 0 injection gate independently keeps a non-positive product
-   * (including a negative efficiency with the switch off, which is legal
-   * here) from injecting, so gating the multiply too would be redundant. */
+   * injection gate checks this same policy bit directly (not just
+   * L_bol > 0, since the population path's L_bol is a difference of
+   * integrals that a negative efficiency can flip positive), so gating
+   * the multiply too would be redundant. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
   if (with_radiation_pressure) {

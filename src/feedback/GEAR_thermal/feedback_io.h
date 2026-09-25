@@ -548,18 +548,20 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "CumulativeMomentumFromRadiationPressure", FLOAT, 1, UNIT_CONV_MOMENTUM,
       0.f, xparts, feedback_data.radiation.cumulative_momentum,
       /*can convert to comoving=*/0,
-      "Cumulative |delta_p| per event from radiation pressure over this "
-      "particle's lifetime (scalar sum, not vector: isotropic kicks would "
-      "else cancel). Always 0 when GEARFeedback:with_radiation_pressure is "
-      "off.");
+      "Cumulative signed delta_p per event from radiation pressure over "
+      "this particle's lifetime (scalar sum, not vector: isotropic kicks "
+      "would else cancel). Signed on purpose: a negative value flags a "
+      "sign-inverted kick that MaxKickVelocityFromRadiationPressure cannot "
+      "show. Exactly 0 when GEARFeedback:with_radiation_pressure is off.");
 
   list[25] = io_make_physical_output_field(
       "MaxKickVelocityFromRadiationPressure", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
       xparts, feedback_data.radiation.max_kick_velocity,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from "
-      "radiation pressure (outflow diagnostic). Always 0 when "
-      "GEARFeedback:with_radiation_pressure is off.");
+      "Largest single-event kick velocity magnitude this particle received "
+      "from radiation pressure (outflow diagnostic; cannot show a "
+      "sign-inverted kick, see CumulativeMomentumFromRadiationPressure for "
+      "that). Exactly 0 when GEARFeedback:with_radiation_pressure is off.");
 
   return num;
 }

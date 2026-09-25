@@ -230,10 +230,12 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
-  /* Strictly positive: L_bol carries radiation_pressure_efficiency's sign,
-     so a nonzero test alone would let a negative efficiency invert the
-     kick direction. */
-  if (si->feedback_data.radiation.L_bol > 0.0) {
+  /* Policy bit first: on the population path L_bol can be positive from two
+     negative factors (radiation_get_luminosities_from_integral times a
+     negative efficiency) even with the switch off, so L_bol > 0 alone is
+     not sufficient. */
+  if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
+      si->feedback_data.radiation.L_bol > 0.0) {
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
@@ -250,7 +252,11 @@ radiation_iact_nonsym_feedback_apply(
        direction above; no separate energy channel (radiation pressure only
        deposits momentum). */
     xpj->feedback_data.radiation.cumulative_momentum += delta_p_rad;
-    const float kick_velocity_rad = delta_p_rad / mj;
+    /* fabsf: this field is a running maximum starting at 0, so a signed
+       value could never overtake 0 on a negative event and would report
+       0 for a kicked particle; see cumulative_momentum above for the
+       signed diagnostic. */
+    const float kick_velocity_rad = fabsf(delta_p_rad / mj);
     if (kick_velocity_rad > xpj->feedback_data.radiation.max_kick_velocity) {
       xpj->feedback_data.radiation.max_kick_velocity = kick_velocity_rad;
     }
