@@ -152,8 +152,7 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
  * @brief Is this star particle done evolving, i.e. finished with its
  * feedback-relevant lifetime?
  *
- * This model has no such concept; a star keeps enriching every step it is
- * active, so it is never considered dead.
+ * This model has no star-evolution-finished state.
  *
  * @param sp The #spart to query.
  * @return 0, always.
