@@ -54,16 +54,16 @@
 #include "units.h"
 
 /*! Maximal number of iterations of the bisection scheme */
-static const int treecool_bisection_max_iterations = 150;
+#define treecool_bisection_max_iterations 150
 
 /*! Relative tolerance of the bisection scheme */
-static const float treecool_bisection_tolerance = 1.e-6f;
+#define treecool_bisection_tolerance 1.e-6f
 
 /*! Factor by which the bracket is widened at each attempt */
-static const double treecool_bracket_factor = 1.5;
+#define treecool_bracket_factor 1.5
 
 /*! Relative change in energy below which the explicit solution is used */
-static const float treecool_explicit_tolerance = 0.05f;
+#define treecool_explicit_tolerance 0.05f
 
 /**
  * @brief Common operations performed on the cooling function at a
