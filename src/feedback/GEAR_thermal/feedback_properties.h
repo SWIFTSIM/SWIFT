@@ -749,6 +749,49 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const float radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
+  /* Checked ahead of with_radiation_pressure below, so this is the message
+   * a negative value gets in every switch state: L_bol is multiplied by
+   * this value unconditionally in feedback_common.c, so a negative value
+   * inverts the sign of the radiation-pressure kick and pulls gas toward
+   * the star instead of away from it. 0 is legal: it is the documented way
+   * to leave the channel off. */
+  if (radiation_pressure_efficiency < 0.0f)
+    error(
+        "GEARFeedback:radiation_pressure_efficiency is %g (< 0): a negative "
+        "efficiency inverts the sign of the radiation-pressure kick, "
+        "pulling gas toward the star instead of away from it. Use 0 to "
+        "leave the channel off, or a positive value to inject it.",
+        radiation_pressure_efficiency);
+
+  /* Are we running with radiation pressure? Unlike with_photoionization
+   * above, the default is not a bare 0: an absent key defaults to
+   * (radiation_pressure_efficiency > 0), so the efficiency alone selects
+   * the channel; an explicit value is cross-checked against it below. */
+  const char with_radiation_pressure = (char)parser_get_opt_param_int(
+      params, "GEARFeedback:with_radiation_pressure",
+      radiation_pressure_efficiency > 0.0f);
+
+  /* Loud, not silent: a parameter file that names a channel the switch
+   * disables, or a switch with nothing for it to inject, is almost always
+   * a mistake. Neither branch can trigger from an old file that omits
+   * with_radiation_pressure, since the default above is exactly
+   * (radiation_pressure_efficiency > 0.0f): only an EXPLICIT value that
+   * contradicts the efficiency reaches here. */
+  if (with_radiation_pressure && radiation_pressure_efficiency <= 0.0f)
+    error(
+        "GEARFeedback:with_radiation_pressure is on but "
+        "GEARFeedback:radiation_pressure_efficiency is %g (<= 0): there is "
+        "nothing to inject. Set radiation_pressure_efficiency to a "
+        "positive value (1 reproduces the table's own unboosted L_bol).",
+        radiation_pressure_efficiency);
+  if (!with_radiation_pressure && radiation_pressure_efficiency > 0.0f)
+    error(
+        "GEARFeedback:radiation_pressure_efficiency is %g (> 0) but "
+        "GEARFeedback:with_radiation_pressure is explicitly off: this "
+        "efficiency would be silently ignored. Set with_radiation_pressure "
+        "to 1, or set radiation_pressure_efficiency to 0.",
+        radiation_pressure_efficiency);
+
   /* Are we running with the local Lyman-Werner/PE feedback (photoelectric
    * heating + H2 photodissociation)? Read early, for the same reason as
    * with_photoionization: it needs the radiation table, which carries the
@@ -765,8 +808,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * for a with_interstellar_radiation_field-only run, and desync from
    * feedback_struct_restore()'s own copy of this same condition on restart
    * (see that function's matching comment). */
-  const char with_radiation = with_photoionization ||
-                              (radiation_pressure_efficiency > 0.0f) ||
+  const char with_radiation = with_photoionization || with_radiation_pressure ||
                               with_interstellar_radiation_field;
 
   /* Pre-Supernovae energy efficiency */
@@ -882,10 +924,15 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* TODO: For the future, enforce these to have a non-zero value */
 
-  /* Radiation pressure */
+  /* Radiation pressure. L_bol is multiplied by radiation_pressure_efficiency
+   * unconditionally in feedback_common.c, not gated on this bit: the three
+   * validation errors above already refuse every combination where that
+   * would matter (switch on with nothing to inject, switch off with a
+   * nonzero efficiency, or a negative efficiency), so gating the multiply
+   * too would be redundant, not safer. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
-  if (fp->radiation_pressure_efficiency > 0.0) {
+  if (with_radiation_pressure) {
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 

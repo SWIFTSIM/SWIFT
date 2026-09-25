@@ -355,7 +355,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 24;
+  int num = 26;
 
   list[0] = io_make_output_field_convert_part(
       "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
@@ -543,6 +543,23 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Same as LWCumulativeAbsorbedSpecificEnergies, Lyman-Werner-band "
       "photon-number moment. Always 0 unless the code is configured with "
       "--enable-debugging-checks.");
+
+  list[24] = io_make_physical_output_field(
+      "CumulativeMomentumFromRadiationPressure", FLOAT, 1, UNIT_CONV_MOMENTUM,
+      0.f, xparts, feedback_data.radiation.cumulative_momentum,
+      /*can convert to comoving=*/0,
+      "Cumulative |delta_p| per event from radiation pressure over this "
+      "particle's lifetime (scalar sum, not vector: isotropic kicks would "
+      "else cancel). Always 0 when GEARFeedback:with_radiation_pressure is "
+      "off.");
+
+  list[25] = io_make_physical_output_field(
+      "MaxKickVelocityFromRadiationPressure", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
+      xparts, feedback_data.radiation.max_kick_velocity,
+      /*can convert to comoving=*/0,
+      "Largest single-event kick velocity this particle received from "
+      "radiation pressure (outflow diagnostic). Always 0 when "
+      "GEARFeedback:with_radiation_pressure is off.");
 
   return num;
 }

@@ -35,17 +35,14 @@ struct tracers_xpart_data {
         kicks would else cancel), physical. */
     float momentum_supernovae;
     float momentum_winds;
-    float momentum_radiation;
 
-    /*! Cumulative specific internal energy received (radiation pressure has
-        no separate thermal channel). */
+    /*! Cumulative specific internal energy received. */
     float energy_supernovae;
     float energy_winds;
 
     /*! Largest single-event kick velocity received (outflow diagnostic). */
     float max_kick_velocity_supernovae;
     float max_kick_velocity_winds;
-    float max_kick_velocity_radiation;
 
   } feedback_cumulative;
 };
@@ -112,12 +109,11 @@ struct tracers_spart_data {
   /*! Stellar-wind ejecta budget */
   struct tracers_winds_data winds;
 
-  /* Two of the three radiation channels have a tracer elsewhere, so only
-     ISRF (photoelectric heating/LW dissociation) is untracked here: HII's
-     final extent lives in feedback_spart_data.radiation (star-side);
-     radiation pressure has feedback_cumulative.momentum_radiation/
-     max_kick_velocity_radiation in tracers_xpart_data above (gas-side, via
-     tracers_after_radiation_pressure_feedback_part()). */
+  /* None of the three radiation channels is tracked here: HII's final
+     extent lives in feedback_spart_data.radiation (star-side), radiation
+     pressure's cumulative momentum/kick velocity live in
+     feedback_xpart_data.radiation (gas-side, feedback_struct.h), and ISRF
+     (photoelectric heating/LW dissociation) has no tracer at all. */
 };
 
 /**

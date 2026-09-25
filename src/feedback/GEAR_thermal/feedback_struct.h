@@ -539,6 +539,17 @@ struct feedback_xpart_data {
 
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
+
+    /*! Lifetime-cumulative |delta_p| from radiation pressure: owner-local,
+        physical units, scalar sum (not vector: isotropic kicks would else
+        cancel). Snapshot field CumulativeMomentumFromRadiationPressure
+        (feedback_io.h). */
+    float cumulative_momentum;
+
+    /*! Largest single-event radiation-pressure kick velocity (outflow
+        diagnostic): owner-local, physical units. Snapshot field
+        MaxKickVelocityFromRadiationPressure (feedback_io.h). */
+    float max_kick_velocity;
   } radiation;
 
   /*! HII ionization owner-computed payload, local to the owning rank (the
