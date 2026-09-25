@@ -453,6 +453,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
   message("Maximal density = %e", cooling->cooling_density_max);
+  message("AGORA CMB temperature floor = %d",
+          cooling->agora_cmb_temperature_floor);
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
@@ -1101,6 +1103,18 @@ void cooling_cool_part(const struct phys_const *phys_const,
   float u_ad_before =
       u_old + dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
+  double u_CMB_agora = 0.0;
+  if (cooling->agora_cmb_temperature_floor) {
+    u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp);
+
+    if (u_ad_before < u_CMB_agora) {
+      u_ad_before = u_CMB_agora;
+      const float du_dt = (u_ad_before - u_old) / dt_therm;
+      hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
+    }
+  }
+
   /* We now need to check that we are not going to go below any of the limits */
   const double u_minimal = hydro_props->minimal_internal_energy;
   if (u_ad_before < u_minimal) {
@@ -1118,16 +1132,30 @@ void cooling_cool_part(const struct phys_const *phys_const,
   } else {
     u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props, cooling, p,
                                xp, dt, dt_therm);
+
+    /* Grackle's solve evolves the ion/molecule fractions that set mu;
+       recompute the floor from the post-solve composition. */
+    if (cooling->agora_cmb_temperature_floor) {
+      u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp);
+    }
   }
 
   /* Get the change in internal energy due to hydro forces */
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
-  /* We now need to check that we are not going to go below any of the limits */
-  u_new = max(u_new, u_minimal);
+  /* We now need to check that we are not going to go below any of the limits.
+     Any energy this adds is a floor, not radiative cooling/heating: fold it
+     into hydro_du_dt (excluded from radiated_energy below) instead of
+     cool_du_dt, matching the pre-solve floor clamp above, so both book the
+     floor the same way regardless of when it triggers. */
+  const gr_float u_new_solved = u_new;
+  u_new = max3(u_new, u_minimal, u_CMB_agora);
+  const float floor_injection = u_new - u_new_solved;
+  if (floor_injection > 0.f) hydro_du_dt += floor_injection / dt_therm;
 
   /* Calculate the cooling rate */
-  float cool_du_dt = (u_new - u_ad_before) / dt_therm;
+  float cool_du_dt = (u_new_solved - u_ad_before) / dt_therm;
   float du_dt = cool_du_dt + hydro_du_dt;
 
   /* Update the internal energy time derivative */
@@ -1154,21 +1182,14 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cosmology *cosmo,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp) {
-  // TODO use the grackle library
-
-  /* Physical constants */
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-
-  /* Gas properties */
-  const double T_transition = hydro_props->hydrogen_ionization_temperature;
-  const double mu_neutral = hydro_props->mu_neutral;
-  const double mu_ionised = hydro_props->mu_ionised;
-
-  /* Particle temperature */
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
 
-  /* Temperature over mean molecular weight */
+#if COOLING_GRACKLE_MODE == 0
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
   const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
 
   /* Are we above or below the HII -> HI transition? */
@@ -1178,6 +1199,18 @@ float cooling_get_temperature(const struct phys_const *phys_const,
     return T_over_mu * mu_neutral;
   else
     return T_transition;
+
+#elif COOLING_GRACKLE_MODE == 1
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  return cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
+
+#else /* COOLING_GRACKLE_MODE >= 2 */
+  return cooling_get_temperature_h2_gamma_corrected(phys_const, cosmo, p, xp,
+                                                    u);
+#endif
 }
 
 /**
