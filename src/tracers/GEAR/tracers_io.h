@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 8;
+  int num = 6;
 
   list[0] = io_make_physical_output_field(
       "CumulativeMomentumFromSupernovae", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f,
@@ -122,13 +122,6 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "winds.");
 
   list[2] = io_make_physical_output_field(
-      "CumulativeMomentumFromRadiationPressure", FLOAT, 1, UNIT_CONV_MOMENTUM,
-      0.f, xparts, tracers_data.feedback_cumulative.momentum_radiation,
-      /*can convert to comoving=*/0,
-      "Same convention as CumulativeMomentumFromSupernovae, for radiation "
-      "pressure.");
-
-  list[3] = io_make_physical_output_field(
       "CumulativeEnergyFromSupernovae", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, xparts,
       tracers_data.feedback_cumulative.energy_supernovae,
@@ -136,7 +129,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Cumulative specific internal energy received from supernovae over "
       "this particle's lifetime.");
 
-  list[4] = io_make_physical_output_field(
+  list[3] = io_make_physical_output_field(
       "CumulativeEnergyFromWinds", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
       /*can convert to comoving=*/0,
@@ -144,26 +137,19 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "A conservation residual, not strictly positive: can go negative "
       "when the gas was already moving towards the star before the kick.");
 
-  list[5] = io_make_physical_output_field(
+  list[4] = io_make_physical_output_field(
       "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
       /*can convert to comoving=*/0,
       "Largest single-event kick velocity this particle received from "
       "supernovae (outflow diagnostic).");
 
-  list[6] = io_make_physical_output_field(
+  list[5] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_winds,
       /*can convert to comoving=*/0,
       "Same convention as MaxKickVelocityFromSupernovae, for stellar "
       "winds.");
-
-  list[7] = io_make_physical_output_field(
-      "MaxKickVelocityFromRadiationPressure", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
-      xparts, tracers_data.feedback_cumulative.max_kick_velocity_radiation,
-      /*can convert to comoving=*/0,
-      "Same convention as MaxKickVelocityFromSupernovae, for radiation "
-      "pressure.");
 
   return num;
 }
