@@ -34,6 +34,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
+        testRadiationRebuildCheck \
         testRadiationISRFForceDispatchConservation \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -50,6 +51,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testRadiationRebuildCheck \
 		 testRadiationISRFForceDispatchConservation \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -63,6 +65,8 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
+
+testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 
 testRadiationISRFForceDispatchConservation_SOURCES = testRadiationISRFForceDispatchConservation.c
 
