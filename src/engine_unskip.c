@@ -245,7 +245,9 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   }
 
   /* Recurse */
-  if (cell_is_split_or_void(c) && cell_is_above_diff_grav_depth(c)) {
+  if (cell_is_split_or_void(c) && (cell_is_above_diff_grav_depth(c) ||
+                                   c->grav.tasks_below_diff_grav_depth ||
+                                   c->subtype == cell_subtype_void)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
