@@ -414,7 +414,8 @@ INLINE static float cooling_get_temperature(
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  *
- * @return The electron number density in physical cgs units [cm^-3].
+ * @return The physical electron number density in internal units
+ * [U_L^-3].
  */
 INLINE static double cooling_get_electron_density(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -422,11 +423,11 @@ INLINE static double cooling_get_electron_density(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  const double rho_cgs =
-      hydro_get_physical_density(p, cosmo) * cooling->density_to_cgs;
-  const double n_H_cgs = rho_cgs * cooling->X_H * cooling->inv_proton_mass_cgs;
+  /* Physical Hydrogen number density in internal units */
+  const double n_H = hydro_get_physical_density(p, cosmo) * cooling->X_H /
+                     phys_const->const_proton_mass;
 
-  return xp->cooling_data.electron_fraction * n_H_cgs;
+  return xp->cooling_data.electron_fraction * n_H;
 }
 
 /**
