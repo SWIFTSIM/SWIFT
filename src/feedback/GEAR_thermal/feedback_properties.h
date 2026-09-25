@@ -749,14 +749,24 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const float radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
-  /* Are we running with radiation pressure? Same style as
-   * with_photoionization above, but the default is NOT a bare 0: before
-   * this switch existed, the channel was enabled purely by
-   * radiation_pressure_efficiency > 0, and a parameter file written then
-   * never sets this key. Defaulting to that same condition reproduces such
-   * a file's behaviour exactly; a bare 0 default would instead silently
-   * turn the channel off for every pre-existing radiation-pressure run. A
-   * file that DOES set this key explicitly gets the validation below. */
+  /* Checked ahead of with_radiation_pressure below, so this is the message
+   * a negative value gets in every switch state: L_bol is multiplied by
+   * this value unconditionally in feedback_common.c, so a negative value
+   * inverts the sign of the radiation-pressure kick and pulls gas toward
+   * the star instead of away from it. 0 is legal: it is the documented way
+   * to leave the channel off. */
+  if (radiation_pressure_efficiency < 0.0f)
+    error(
+        "GEARFeedback:radiation_pressure_efficiency is %g (< 0): a negative "
+        "efficiency inverts the sign of the radiation-pressure kick, "
+        "pulling gas toward the star instead of away from it. Use 0 to "
+        "leave the channel off, or a positive value to inject it.",
+        radiation_pressure_efficiency);
+
+  /* Are we running with radiation pressure? Unlike with_photoionization
+   * above, the default is not a bare 0: an absent key defaults to
+   * (radiation_pressure_efficiency > 0), so the efficiency alone selects
+   * the channel; an explicit value is cross-checked against it below. */
   const char with_radiation_pressure = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_radiation_pressure",
       radiation_pressure_efficiency > 0.0f);
@@ -915,11 +925,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* TODO: For the future, enforce these to have a non-zero value */
 
   /* Radiation pressure. L_bol is multiplied by radiation_pressure_efficiency
-   * unconditionally in feedback_common.c, not gated on this bit: the two
+   * unconditionally in feedback_common.c, not gated on this bit: the three
    * validation errors above already refuse every combination where that
-   * would matter (switch on with nothing to inject, or switch off with a
-   * nonzero efficiency), so gating the multiply too would be redundant, not
-   * safer. */
+   * would matter (switch on with nothing to inject, switch off with a
+   * nonzero efficiency, or a negative efficiency), so gating the multiply
+   * too would be redundant, not safer. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
   if (with_radiation_pressure) {

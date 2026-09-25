@@ -540,15 +540,15 @@ struct feedback_xpart_data {
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
 
-    /*! Lifetime-cumulative |delta_p| from radiation pressure (scalar sum,
-        not vector: isotropic kicks would else cancel). Snapshot field
-        CumulativeMomentumFromRadiationPressure (feedback_io.h); moved here
-        from tracers_xpart_data so it no longer needs --with-tracers=GEAR. */
+    /*! Lifetime-cumulative |delta_p| from radiation pressure: owner-local,
+        physical units, scalar sum (not vector: isotropic kicks would else
+        cancel). Snapshot field CumulativeMomentumFromRadiationPressure
+        (feedback_io.h). */
     float cumulative_momentum;
 
     /*! Largest single-event radiation-pressure kick velocity (outflow
-        diagnostic). Snapshot field MaxKickVelocityFromRadiationPressure;
-        same relocation as #cumulative_momentum above. */
+        diagnostic): owner-local, physical units. Snapshot field
+        MaxKickVelocityFromRadiationPressure (feedback_io.h). */
     float max_kick_velocity;
   } radiation;
 
