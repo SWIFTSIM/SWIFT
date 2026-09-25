@@ -230,7 +230,10 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
-  if (si->feedback_data.radiation.L_bol != 0.0) {
+  /* Strictly positive: L_bol carries radiation_pressure_efficiency's sign,
+     so a nonzero test alone would let a negative efficiency invert the
+     kick direction. */
+  if (si->feedback_data.radiation.L_bol > 0.0) {
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
