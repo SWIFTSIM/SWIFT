@@ -750,12 +750,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const float radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
-  /* Checked ahead of with_radiation_pressure below, so this is the message
-   * a negative value gets in every switch state: L_bol is multiplied by
-   * this value unconditionally in feedback_common.c, so a negative value
-   * inverts the sign of the radiation-pressure kick and pulls gas toward
-   * the star instead of away from it. 0 is legal: it is the documented way
-   * to leave the channel off. */
+  /* Checked before with_radiation_pressure below, so a negative value is
+   * rejected regardless of that switch: L_bol is multiplied by this value
+   * unconditionally in feedback_common.c, so a negative value would invert
+   * the radiation-pressure kick and pull gas toward the star instead of
+   * away from it. 0 is legal: it is how the channel is left off. */
   if (radiation_pressure_efficiency < 0.0f)
     error(
         "GEARFeedback:radiation_pressure_efficiency is %g (< 0): a negative "
@@ -926,11 +925,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* TODO: For the future, enforce these to have a non-zero value */
 
   /* Radiation pressure. L_bol is multiplied by radiation_pressure_efficiency
-   * unconditionally in feedback_common.c, not gated on this bit: the three
-   * validation errors above already refuse every combination where that
-   * would matter (switch on with nothing to inject, switch off with a
-   * nonzero efficiency, or a negative efficiency), so gating the multiply
-   * too would be redundant, not safer. */
+   * unconditionally in feedback_common.c: the validation above already
+   * rules out every case where gating this bit too would matter, so it
+   * would be redundant, not safer. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
   if (with_radiation_pressure) {

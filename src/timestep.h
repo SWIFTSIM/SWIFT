@@ -186,8 +186,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Compute the next timestep (radiation condition, e.g. a receiver-side
    * CFL term on a reduced light-speed). FLT_MAX unless the active
-   * feedback model imposes one; a model that does is also responsible for
-   * enforcing that bound against dt_min and erroring out itself. */
+   * feedback model imposes one. The generic dt_min check below aborts a
+   * run whose radiation bound is too small either way; a model may also
+   * check it directly for a more specific error message. */
   const float new_dt_isrf = feedback_compute_part_timestep(p, e);
 
   /* Take the minimum of all */

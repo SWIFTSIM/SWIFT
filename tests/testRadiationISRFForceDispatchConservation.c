@@ -46,8 +46,8 @@
 #define NODE_ID 0
 #define CELL_N 6
 
-/* PHYSICS/NUMERICS: the conservation gate's residual, sum_i m_i x_i, is a
- * sum over pair interactions that cancel EXACTLY in real-number arithmetic:
+/* The conservation gate's residual, sum_i m_i x_i, is a sum over pair
+ * interactions that cancel EXACTLY in real-number arithmetic:
  * radiation_divergence_accumulate_band and radiation_dissipation_force_
  * accumulate_band write m_j*Phi_ij to one side and -m_i*Phi_ij to the
  * other, from a single shared Phi_ij, so m_i*x_i(pair) + m_j*x_j(pair) = 0
@@ -64,13 +64,18 @@
  * at one particle count silently stops meaning anything if CELL_N changes.
  *
  * Measured directly (CELL_N = 3, 4, 5, 6, 8, 10, i.e. N_tot = 54 to 2000):
- * ratio*sqrt(N_tot)/eps_f32 stayed in 7-12 across that whole range,
+ * ratio*sqrt(N_tot)/eps_f32 stayed in 5.8-11.2 across that whole range,
  * confirming the sqrt(N_tot) law and ruling out worst-case linear growth.
  * #SUM_BAR_SAFETY_FACTOR sits ~100x above that measured natural constant:
  * room for a different compiler's rounding/FMA choices, while staying
  * many orders of magnitude below the O(0.1-1) ratio a genuinely lost
  * dispatch side produces (see the "parent level dropped" sweep below). */
 #define SUM_BAR_SAFETY_FACTOR 1000.
+
+/* A one-sided dispatch loss (a mirrored side, or a whole depth level)
+ * unbalances the global signed sum above and is caught by the derived sum
+ * bar; a lost whole pair cancels in that sum instead, and is caught only
+ * by the per-particle brute-force comparison below against this bar. */
 #define PER_PART_BAR 1e-5
 
 /**
