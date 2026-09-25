@@ -80,7 +80,7 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 
   /* Wait for all writes to the old buffer to complete. */
   while (s->completed_unlock_writes < s->size_unlocks) {
-    /* Nothing to do here. */
+    cpu_relax();
   }
 
   /* Copy the buffers. */
@@ -123,7 +123,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
   /* Wait for there to actually be space at my index. */
   while (ind > s->size_unlocks) {
-    /* Nothing to do here. */
+    cpu_relax();
   }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
