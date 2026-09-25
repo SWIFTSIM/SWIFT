@@ -53,8 +53,8 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
       exp10(cooling->TREECOOL_log10_1_plus_z[cooling->N_redshifts - 1]) - 1.);
   io_write_attribute_d(h_grp, "Hydrogen mass fraction", cooling->X_H);
   io_write_attribute_d(h_grp, "Helium mass fraction", cooling->Y_He);
-  io_write_attribute_d(h_grp, "log10(T_min) [K]", cooling->log10_T_min);
-  io_write_attribute_d(h_grp, "log10(T_max) [K]", cooling->log10_T_max);
+  io_write_attribute_d(h_grp, "log10(T_min) [K]", cooling->log10_T_min_cgs);
+  io_write_attribute_d(h_grp, "log10(T_max) [K]", cooling->log10_T_max_cgs);
   io_write_attribute_i(h_grp, "Compton cooling", cooling->with_Compton_cooling);
   io_write_attribute_f(h_grp, "Rapid cooling threshold",
                        cooling->rapid_cooling_threshold);

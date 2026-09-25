@@ -51,40 +51,40 @@ struct cooling_function_data {
   /* ------------------------------------------------------------------ */
 
   /*! Collisional excitation cooling of HI [erg * cm^3 * s^-1] */
-  double table_Beta_H0[treecool_cooling_N_temperature];
+  double table_Beta_H0_cgs[treecool_cooling_N_temperature];
 
   /*! Collisional excitation cooling of HeII [erg * cm^3 * s^-1] */
-  double table_Beta_Hep[treecool_cooling_N_temperature];
+  double table_Beta_Hep_cgs[treecool_cooling_N_temperature];
 
   /*! Free-free (Bremsstrahlung) cooling [erg * cm^3 * s^-1] */
-  double table_Beta_ff[treecool_cooling_N_temperature];
+  double table_Beta_ff_cgs[treecool_cooling_N_temperature];
 
   /*! Recombination rate of HII [cm^3 * s^-1] */
-  double table_Alpha_Hp[treecool_cooling_N_temperature];
+  double table_Alpha_Hp_cgs[treecool_cooling_N_temperature];
 
   /*! Recombination rate of HeII [cm^3 * s^-1] */
-  double table_Alpha_Hep[treecool_cooling_N_temperature];
+  double table_Alpha_Hep_cgs[treecool_cooling_N_temperature];
 
   /*! Recombination rate of HeIII [cm^3 * s^-1] */
-  double table_Alpha_Hepp[treecool_cooling_N_temperature];
+  double table_Alpha_Hepp_cgs[treecool_cooling_N_temperature];
 
   /*! Dielectronic recombination rate of HeII [cm^3 * s^-1] */
-  double table_Alpha_d[treecool_cooling_N_temperature];
+  double table_Alpha_d_cgs[treecool_cooling_N_temperature];
 
   /*! Collisional ionization rate of HI [cm^3 * s^-1] */
-  double table_Gamma_eH0[treecool_cooling_N_temperature];
+  double table_Gamma_eH0_cgs[treecool_cooling_N_temperature];
 
   /*! Collisional ionization rate of HeI [cm^3 * s^-1] */
-  double table_Gamma_eHe0[treecool_cooling_N_temperature];
+  double table_Gamma_eHe0_cgs[treecool_cooling_N_temperature];
 
   /*! Collisional ionization rate of HeII [cm^3 * s^-1] */
-  double table_Gamma_eHep[treecool_cooling_N_temperature];
+  double table_Gamma_eHep_cgs[treecool_cooling_N_temperature];
 
   /*! Lowest log10(T / K) in the tables of rate coefficients */
-  double log10_T_min;
+  double log10_T_min_cgs;
 
   /*! Highest log10(T / K) in the tables of rate coefficients */
-  double log10_T_max;
+  double log10_T_max_cgs;
 
   /*! Spacing of the tables of rate coefficients in log10(T / K) */
   double delta_log10_T;
@@ -106,22 +106,22 @@ struct cooling_function_data {
   double TREECOOL_log10_1_plus_z[treecool_cooling_max_N_redshifts];
 
   /*! Photo-ionization rate of HI in the TREECOOL table [s^-1] */
-  double TREECOOL_gamma_H0[treecool_cooling_max_N_redshifts];
+  double TREECOOL_gamma_H0_cgs[treecool_cooling_max_N_redshifts];
 
   /*! Photo-ionization rate of HeI in the TREECOOL table [s^-1] */
-  double TREECOOL_gamma_He0[treecool_cooling_max_N_redshifts];
+  double TREECOOL_gamma_He0_cgs[treecool_cooling_max_N_redshifts];
 
   /*! Photo-ionization rate of HeII in the TREECOOL table [s^-1] */
-  double TREECOOL_gamma_Hep[treecool_cooling_max_N_redshifts];
+  double TREECOOL_gamma_Hep_cgs[treecool_cooling_max_N_redshifts];
 
   /*! Photo-heating rate of HI in the TREECOOL table [erg * s^-1] */
-  double TREECOOL_epsilon_H0[treecool_cooling_max_N_redshifts];
+  double TREECOOL_epsilon_H0_cgs[treecool_cooling_max_N_redshifts];
 
   /*! Photo-heating rate of HeI in the TREECOOL table [erg * s^-1] */
-  double TREECOOL_epsilon_He0[treecool_cooling_max_N_redshifts];
+  double TREECOOL_epsilon_He0_cgs[treecool_cooling_max_N_redshifts];
 
   /*! Photo-heating rate of HeII in the TREECOOL table [erg * s^-1] */
-  double TREECOOL_epsilon_Hep[treecool_cooling_max_N_redshifts];
+  double TREECOOL_epsilon_Hep_cgs[treecool_cooling_max_N_redshifts];
 
   /* ------------------------------------------------------------------ */
   /* UV background interpolated to the current redshift.                */
@@ -132,25 +132,25 @@ struct cooling_function_data {
   int UV_background_on;
 
   /*! Photo-ionization rate of HI at the current redshift [s^-1] */
-  double gamma_H0;
+  double gamma_H0_cgs;
 
   /*! Photo-ionization rate of HeI at the current redshift [s^-1] */
-  double gamma_He0;
+  double gamma_He0_cgs;
 
   /*! Photo-ionization rate of HeII at the current redshift [s^-1] */
-  double gamma_Hep;
+  double gamma_Hep_cgs;
 
   /*! Photo-heating rate of HI at the current redshift [erg * s^-1] */
-  double epsilon_H0;
+  double epsilon_H0_cgs;
 
   /*! Photo-heating rate of HeI at the current redshift [erg * s^-1] */
-  double epsilon_He0;
+  double epsilon_He0_cgs;
 
   /*! Photo-heating rate of HeII at the current redshift [erg * s^-1] */
-  double epsilon_Hep;
+  double epsilon_Hep_cgs;
 
   /*! Temperature of the CMB at the current redshift [K] */
-  double T_CMB;
+  double T_CMB_cgs;
 
   /*! (1 + z)^4 at the current redshift */
   double one_plus_z_to_the_4;

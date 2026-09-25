@@ -107,57 +107,58 @@ struct treecool_gas_state {
   double n_e;
 
   /*! Recombination rate of HII [cm^3 * s^-1] */
-  double alpha_Hp;
+  double alpha_Hp_cgs;
 
   /*! Recombination rate of HeII [cm^3 * s^-1] */
-  double alpha_Hep;
+  double alpha_Hep_cgs;
 
   /*! Recombination rate of HeIII [cm^3 * s^-1] */
-  double alpha_Hepp;
+  double alpha_Hepp_cgs;
 
   /*! Dielectronic recombination rate of HeII [cm^3 * s^-1] */
-  double alpha_d;
+  double alpha_d_cgs;
 
   /*! Collisional ionization rate of HI [cm^3 * s^-1] */
-  double gamma_eH0;
+  double gamma_eH0_cgs;
 
   /*! Collisional ionization rate of HeI [cm^3 * s^-1] */
-  double gamma_eHe0;
+  double gamma_eHe0_cgs;
 
   /*! Collisional ionization rate of HeII [cm^3 * s^-1] */
-  double gamma_eHep;
+  double gamma_eHep_cgs;
 
   /*! Collisional excitation cooling coefficient of HI [erg * cm^3 * s^-1] */
-  double beta_H0;
+  double beta_H0_cgs;
 
   /*! Collisional excitation cooling coefficient of HeII
    * [erg * cm^3 * s^-1] */
-  double beta_Hep;
+  double beta_Hep_cgs;
 
   /*! Free-free cooling coefficient [erg * cm^3 * s^-1] */
-  double beta_ff;
+  double beta_ff_cgs;
 };
 
 /**
  * @brief Construct the tables of rate coefficients.
  *
  * The tables are built on a regular grid in log10(T) running from
- * cooling->log10_T_min to cooling->log10_T_max. The fits are the ones of
- * KWH96, Table 2.
+ * cooling->log10_T_min_cgs to cooling->log10_T_max_cgs. The fits are the ones
+ * of KWH96, Table 2.
  *
  * @param cooling The #cooling_function_data to fill in.
  */
 __attribute__((always_inline)) INLINE static void treecool_make_rate_table(
     struct cooling_function_data *cooling) {
 
-  cooling->delta_log10_T = (cooling->log10_T_max - cooling->log10_T_min) /
-                           (double)(treecool_cooling_N_temperature - 1);
+  cooling->delta_log10_T =
+      (cooling->log10_T_max_cgs - cooling->log10_T_min_cgs) /
+      (double)(treecool_cooling_N_temperature - 1);
   cooling->inv_delta_log10_T = 1. / cooling->delta_log10_T;
 
   for (int i = 0; i < treecool_cooling_N_temperature; ++i) {
 
     const double T =
-        exp10(cooling->log10_T_min + cooling->delta_log10_T * (double)i);
+        exp10(cooling->log10_T_min_cgs + cooling->delta_log10_T * (double)i);
     const double inv_T = 1. / T;
     const double sqrt_T = sqrt(T);
     const double log10_T = log10(T);
@@ -166,42 +167,43 @@ __attribute__((always_inline)) INLINE static void treecool_make_rate_table(
     const double T_fact = 1. / (1. + sqrt(T * 1.e-5));
 
     /* Collisional excitation cooling (Cen 1992) */
-    cooling->table_Beta_H0[i] = (118348. * inv_T < treecool_max_exponent)
-                                    ? 7.50e-19 * exp(-118348. * inv_T) * T_fact
-                                    : 0.;
-    cooling->table_Beta_Hep[i] =
+    cooling->table_Beta_H0_cgs[i] =
+        (118348. * inv_T < treecool_max_exponent)
+            ? 7.50e-19 * exp(-118348. * inv_T) * T_fact
+            : 0.;
+    cooling->table_Beta_Hep_cgs[i] =
         (473638. * inv_T < treecool_max_exponent)
             ? 5.54e-17 * pow(T, -0.397) * exp(-473638. * inv_T) * T_fact
             : 0.;
 
     /* Free-free (Bremsstrahlung) cooling (Cen 1992) */
-    cooling->table_Beta_ff[i] =
+    cooling->table_Beta_ff_cgs[i] =
         1.43e-27 * sqrt_T *
         (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
 
     /* Radiative recombination (Cen 1992) */
-    cooling->table_Alpha_Hp[i] =
+    cooling->table_Alpha_Hp_cgs[i] =
         8.40e-11 * pow(T * 1.e-3, -0.2) / (1. + pow(T * 1.e-6, 0.7)) / sqrt_T;
-    cooling->table_Alpha_Hep[i] = 1.50e-10 * pow(T, -0.6353);
-    cooling->table_Alpha_Hepp[i] = 4. * cooling->table_Alpha_Hp[i];
+    cooling->table_Alpha_Hep_cgs[i] = 1.50e-10 * pow(T, -0.6353);
+    cooling->table_Alpha_Hepp_cgs[i] = 4. * cooling->table_Alpha_Hp_cgs[i];
 
     /* Dielectronic recombination of HeII (Cen 1992) */
-    cooling->table_Alpha_d[i] = (470000. * inv_T < treecool_max_exponent)
-                                    ? 1.90e-3 * pow(T, -1.5) *
-                                          exp(-470000. * inv_T) *
-                                          (1. + 0.3 * exp(-94000. * inv_T))
-                                    : 0.;
+    cooling->table_Alpha_d_cgs[i] = (470000. * inv_T < treecool_max_exponent)
+                                        ? 1.90e-3 * pow(T, -1.5) *
+                                              exp(-470000. * inv_T) *
+                                              (1. + 0.3 * exp(-94000. * inv_T))
+                                        : 0.;
 
     /* Collisional ionization (Cen 1992) */
-    cooling->table_Gamma_eH0[i] =
+    cooling->table_Gamma_eH0_cgs[i] =
         (157809.1 * inv_T < treecool_max_exponent)
             ? 5.85e-11 * sqrt_T * exp(-157809.1 * inv_T) * T_fact
             : 0.;
-    cooling->table_Gamma_eHe0[i] =
+    cooling->table_Gamma_eHe0_cgs[i] =
         (285335.4 * inv_T < treecool_max_exponent)
             ? 2.38e-11 * sqrt_T * exp(-285335.4 * inv_T) * T_fact
             : 0.;
-    cooling->table_Gamma_eHep[i] =
+    cooling->table_Gamma_eHep_cgs[i] =
         (631515.0 * inv_T < treecool_max_exponent)
             ? 5.68e-12 * sqrt_T * exp(-631515.0 * inv_T) * T_fact
             : 0.;
@@ -220,16 +222,16 @@ __attribute__((always_inline)) INLINE static void treecool_make_rate_table(
 __attribute__((always_inline)) INLINE static void
 treecool_zero_rate_coefficients(struct treecool_gas_state *gas) {
 
-  gas->alpha_Hp = 0.;
-  gas->alpha_Hep = 0.;
-  gas->alpha_Hepp = 0.;
-  gas->alpha_d = 0.;
-  gas->gamma_eH0 = 0.;
-  gas->gamma_eHe0 = 0.;
-  gas->gamma_eHep = 0.;
-  gas->beta_H0 = 0.;
-  gas->beta_Hep = 0.;
-  gas->beta_ff = 0.;
+  gas->alpha_Hp_cgs = 0.;
+  gas->alpha_Hep_cgs = 0.;
+  gas->alpha_Hepp_cgs = 0.;
+  gas->alpha_d_cgs = 0.;
+  gas->gamma_eH0_cgs = 0.;
+  gas->gamma_eHe0_cgs = 0.;
+  gas->gamma_eHep_cgs = 0.;
+  gas->beta_H0_cgs = 0.;
+  gas->beta_Hep_cgs = 0.;
+  gas->beta_ff_cgs = 0.;
 }
 
 /**
@@ -248,7 +250,7 @@ treecool_interpolate_rate_table(const struct cooling_function_data *cooling,
                                 struct treecool_gas_state *gas) {
 
   const double t =
-      (log10_T - cooling->log10_T_min) * cooling->inv_delta_log10_T;
+      (log10_T - cooling->log10_T_min_cgs) * cooling->inv_delta_log10_T;
 
   int index = (int)t;
   index = max(index, 0);
@@ -260,16 +262,16 @@ treecool_interpolate_rate_table(const struct cooling_function_data *cooling,
 #define treecool_interpolate(table) \
   (f_lo * cooling->table[index] + f_hi * cooling->table[index + 1])
 
-  gas->alpha_Hp = treecool_interpolate(table_Alpha_Hp);
-  gas->alpha_Hep = treecool_interpolate(table_Alpha_Hep);
-  gas->alpha_Hepp = treecool_interpolate(table_Alpha_Hepp);
-  gas->alpha_d = treecool_interpolate(table_Alpha_d);
-  gas->gamma_eH0 = treecool_interpolate(table_Gamma_eH0);
-  gas->gamma_eHe0 = treecool_interpolate(table_Gamma_eHe0);
-  gas->gamma_eHep = treecool_interpolate(table_Gamma_eHep);
-  gas->beta_H0 = treecool_interpolate(table_Beta_H0);
-  gas->beta_Hep = treecool_interpolate(table_Beta_Hep);
-  gas->beta_ff = treecool_interpolate(table_Beta_ff);
+  gas->alpha_Hp_cgs = treecool_interpolate(table_Alpha_Hp_cgs);
+  gas->alpha_Hep_cgs = treecool_interpolate(table_Alpha_Hep_cgs);
+  gas->alpha_Hepp_cgs = treecool_interpolate(table_Alpha_Hepp_cgs);
+  gas->alpha_d_cgs = treecool_interpolate(table_Alpha_d_cgs);
+  gas->gamma_eH0_cgs = treecool_interpolate(table_Gamma_eH0_cgs);
+  gas->gamma_eHe0_cgs = treecool_interpolate(table_Gamma_eHe0_cgs);
+  gas->gamma_eHep_cgs = treecool_interpolate(table_Gamma_eHep_cgs);
+  gas->beta_H0_cgs = treecool_interpolate(table_Beta_H0_cgs);
+  gas->beta_Hep_cgs = treecool_interpolate(table_Beta_Hep_cgs);
+  gas->beta_ff_cgs = treecool_interpolate(table_Beta_ff_cgs);
 
 #undef treecool_interpolate
 }
@@ -297,7 +299,7 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
     const double n_H_cgs, struct treecool_gas_state *gas) {
 
   /* Everything neutral below the table */
-  if (log10_T <= cooling->log10_T_min) {
+  if (log10_T <= cooling->log10_T_min_cgs) {
 
     gas->n_H0 = 1.;
     gas->n_Hp = 0.;
@@ -310,7 +312,7 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
   }
 
   /* Everything ionized above the table */
-  if (log10_T >= cooling->log10_T_max) {
+  if (log10_T >= cooling->log10_T_max_cgs) {
 
     gas->n_H0 = 0.;
     gas->n_Hp = 1.;
@@ -342,18 +344,18 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
 
     if (cooling->UV_background_on && n_e_cgs > treecool_min_electron_density) {
 
-      gamma_H0_over_ne = cooling->gamma_H0 / n_e_cgs;
-      gamma_He0_over_ne = cooling->gamma_He0 / n_e_cgs;
-      gamma_Hep_over_ne = cooling->gamma_Hep / n_e_cgs;
+      gamma_H0_over_ne = cooling->gamma_H0_cgs / n_e_cgs;
+      gamma_He0_over_ne = cooling->gamma_He0_cgs / n_e_cgs;
+      gamma_Hep_over_ne = cooling->gamma_Hep_cgs / n_e_cgs;
     }
 
     /* Hydrogen (KWH96, eq. 33 and 34) */
-    gas->n_H0 =
-        gas->alpha_Hp / (gas->alpha_Hp + gas->gamma_eH0 + gamma_H0_over_ne);
+    gas->n_H0 = gas->alpha_Hp_cgs /
+                (gas->alpha_Hp_cgs + gas->gamma_eH0_cgs + gamma_H0_over_ne);
     gas->n_Hp = 1. - gas->n_H0;
 
     /* Helium (KWH96, eq. 35, 36 and 37) */
-    const double ionization_He0 = gas->gamma_eHe0 + gamma_He0_over_ne;
+    const double ionization_He0 = gas->gamma_eHe0_cgs + gamma_He0_over_ne;
 
     if (ionization_He0 <= treecool_small_number) {
 
@@ -364,13 +366,13 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
 
     } else {
 
-      const double recombination_Hep = gas->alpha_Hep + gas->alpha_d;
-      const double ionization_Hep = gas->gamma_eHep + gamma_Hep_over_ne;
+      const double recombination_Hep = gas->alpha_Hep_cgs + gas->alpha_d_cgs;
+      const double ionization_Hep = gas->gamma_eHep_cgs + gamma_Hep_over_ne;
 
       gas->n_Hep = cooling->y_He / (1. + recombination_Hep / ionization_He0 +
-                                    ionization_Hep / gas->alpha_Hepp);
+                                    ionization_Hep / gas->alpha_Hepp_cgs);
       gas->n_He0 = gas->n_Hep * recombination_Hep / ionization_He0;
-      gas->n_Hepp = gas->n_Hep * ionization_Hep / gas->alpha_Hepp;
+      gas->n_Hepp = gas->n_Hep * ionization_Hep / gas->alpha_Hepp_cgs;
     }
 
     /* Electrons (KWH96, eq. 38) */
@@ -534,43 +536,43 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
   /* Never evaluate the rates below the table: the gas would be entirely
    * neutral and the cooling rate exactly zero. Instead, as in KWH96's
    * implementation, evaluate them in the middle of the first bin. */
-  if (log10_T <= cooling->log10_T_min)
-    log10_T = cooling->log10_T_min + 0.5 * cooling->delta_log10_T;
+  if (log10_T <= cooling->log10_T_min_cgs)
+    log10_T = cooling->log10_T_min_cgs + 0.5 * cooling->delta_log10_T;
 
   const double T = exp10(log10_T);
 
   double Lambda_Compton = 0.;
   double Lambda, Heat;
 
-  if (log10_T < cooling->log10_T_max) {
+  if (log10_T < cooling->log10_T_max_cgs) {
 
     treecool_abundances(cooling, log10_T, n_H_cgs, gas);
 
     /* Collisional excitation */
-    const double Lambda_exc_H0 = gas->beta_H0 * gas->n_e * gas->n_H0;
-    const double Lambda_exc_Hep = gas->beta_Hep * gas->n_e * gas->n_Hep;
+    const double Lambda_exc_H0 = gas->beta_H0_cgs * gas->n_e * gas->n_H0;
+    const double Lambda_exc_Hep = gas->beta_Hep_cgs * gas->n_e * gas->n_Hep;
 
     /* Collisional ionization */
     const double Lambda_ion_H0 =
-        2.18e-11 * gas->gamma_eH0 * gas->n_e * gas->n_H0;
+        2.18e-11 * gas->gamma_eH0_cgs * gas->n_e * gas->n_H0;
     const double Lambda_ion_He0 =
-        3.94e-11 * gas->gamma_eHe0 * gas->n_e * gas->n_He0;
+        3.94e-11 * gas->gamma_eHe0_cgs * gas->n_e * gas->n_He0;
     const double Lambda_ion_Hep =
-        8.72e-11 * gas->gamma_eHep * gas->n_e * gas->n_Hep;
+        8.72e-11 * gas->gamma_eHep_cgs * gas->n_e * gas->n_Hep;
 
     /* Recombination */
     const double Lambda_rec_Hp =
-        1.036e-16 * T * gas->n_e * gas->alpha_Hp * gas->n_Hp;
+        1.036e-16 * T * gas->n_e * gas->alpha_Hp_cgs * gas->n_Hp;
     const double Lambda_rec_Hep =
-        1.036e-16 * T * gas->n_e * gas->alpha_Hep * gas->n_Hep;
+        1.036e-16 * T * gas->n_e * gas->alpha_Hep_cgs * gas->n_Hep;
     const double Lambda_rec_Hepp =
-        1.036e-16 * T * gas->n_e * gas->alpha_Hepp * gas->n_Hepp;
+        1.036e-16 * T * gas->n_e * gas->alpha_Hepp_cgs * gas->n_Hepp;
     const double Lambda_rec_Hep_d =
-        6.526e-11 * gas->alpha_d * gas->n_e * gas->n_Hep;
+        6.526e-11 * gas->alpha_d_cgs * gas->n_e * gas->n_Hep;
 
     /* Free-free (Bremsstrahlung) */
-    const double Lambda_ff =
-        gas->beta_ff * gas->n_e * (gas->n_Hp + gas->n_Hep + 4. * gas->n_Hepp);
+    const double Lambda_ff = gas->beta_ff_cgs * gas->n_e *
+                             (gas->n_Hp + gas->n_Hep + 4. * gas->n_Hepp);
 
     Lambda = Lambda_exc_H0 + Lambda_exc_Hep + Lambda_ion_H0 + Lambda_ion_He0 +
              Lambda_ion_Hep + Lambda_rec_Hp + Lambda_rec_Hep + Lambda_rec_Hepp +
@@ -579,10 +581,10 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
     /* Photo-heating by the UV background */
     if (cooling->UV_background_on) {
 
-      Heat =
-          (gas->n_H0 * cooling->epsilon_H0 + gas->n_He0 * cooling->epsilon_He0 +
-           gas->n_Hep * cooling->epsilon_Hep) /
-          n_H_cgs;
+      Heat = (gas->n_H0 * cooling->epsilon_H0_cgs +
+              gas->n_He0 * cooling->epsilon_He0_cgs +
+              gas->n_Hep * cooling->epsilon_Hep_cgs) /
+             n_H_cgs;
     } else {
 
       Heat = 0.;
@@ -602,17 +604,18 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
 
     treecool_zero_rate_coefficients(gas);
 
-    gas->beta_ff = 1.43e-27 * sqrt(T) *
-                   (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
+    gas->beta_ff_cgs =
+        1.43e-27 * sqrt(T) *
+        (1.1 + 0.34 * exp(-(5.5 - log10_T) * (5.5 - log10_T) / 3.));
 
-    Lambda = gas->beta_ff * gas->n_e * (gas->n_Hp + 4. * gas->n_Hepp);
+    Lambda = gas->beta_ff_cgs * gas->n_e * (gas->n_Hp + 4. * gas->n_Hepp);
     Heat = 0.;
   }
 
   /* Inverse Compton cooling off the CMB */
   if (cooling->with_Compton_cooling) {
 
-    Lambda_Compton = 5.65e-36 * gas->n_e * (T - cooling->T_CMB) *
+    Lambda_Compton = 5.65e-36 * gas->n_e * (T - cooling->T_CMB_cgs) *
                      cooling->one_plus_z_to_the_4 / n_H_cgs;
   }
 

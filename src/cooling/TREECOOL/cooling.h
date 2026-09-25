@@ -91,7 +91,7 @@ INLINE static void cooling_update(
   treecool_set_UV_background(cooling, redshift);
 
   /* Properties of the CMB the gas is Compton-cooling against */
-  cooling->T_CMB =
+  cooling->T_CMB_cgs =
       phys_const->const_T_CMB_0 * cooling->temperature_to_cgs * (1. + redshift);
   cooling->one_plus_z_to_the_4 =
       (1. + redshift) * (1. + redshift) * (1. + redshift) * (1. + redshift);
@@ -624,13 +624,13 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   cooling->with_Compton_cooling = parser_get_opt_param_int(
       parameter_file, "TREECOOLCooling:with_Compton_cooling", 1);
 
-  cooling->log10_T_min = parser_get_opt_param_double(
+  cooling->log10_T_min_cgs = parser_get_opt_param_double(
       parameter_file, "TREECOOLCooling:log10_T_min", 1.);
 
-  cooling->log10_T_max = parser_get_opt_param_double(
+  cooling->log10_T_max_cgs = parser_get_opt_param_double(
       parameter_file, "TREECOOLCooling:log10_T_max", 9.);
 
-  if (cooling->log10_T_max <= cooling->log10_T_min)
+  if (cooling->log10_T_max_cgs <= cooling->log10_T_min_cgs)
     error("TREECOOLCooling:log10_T_max must be larger than log10_T_min");
 
   /* Composition of the primordial gas */
@@ -667,7 +667,7 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   /* Provide sensible z = 0 values until cooling_update() is called for the
    * first time at the start of the run. */
   treecool_set_UV_background(cooling, /*redshift=*/0.);
-  cooling->T_CMB = phys_const->const_T_CMB_0 * cooling->temperature_to_cgs;
+  cooling->T_CMB_cgs = phys_const->const_T_CMB_0 * cooling->temperature_to_cgs;
   cooling->one_plus_z_to_the_4 = 1.;
 }
 
@@ -701,7 +701,7 @@ INLINE static void cooling_print_backend(
       exp10(cooling->TREECOOL_log10_1_plus_z[cooling->N_redshifts - 1]) - 1.);
 
   message("Rate coefficients tabulated for %g < log10(T/K) < %g in %d bins",
-          cooling->log10_T_min, cooling->log10_T_max,
+          cooling->log10_T_min_cgs, cooling->log10_T_max_cgs,
           treecool_cooling_N_temperature);
 
   message("Gas composition: X_H = %g, Y_He = %g (n_He / n_H = %g)",

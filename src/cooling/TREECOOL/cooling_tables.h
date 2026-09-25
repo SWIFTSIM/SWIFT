@@ -90,12 +90,12 @@ INLINE static void treecool_read_table(struct cooling_function_data *cooling) {
           cooling->TREECOOL_file, count);
 
     cooling->TREECOOL_log10_1_plus_z[count] = log10_1_plus_z;
-    cooling->TREECOOL_gamma_H0[count] = gamma_H0;
-    cooling->TREECOOL_gamma_He0[count] = gamma_He0;
-    cooling->TREECOOL_gamma_Hep[count] = gamma_Hep;
-    cooling->TREECOOL_epsilon_H0[count] = epsilon_H0;
-    cooling->TREECOOL_epsilon_He0[count] = epsilon_He0;
-    cooling->TREECOOL_epsilon_Hep[count] = epsilon_Hep;
+    cooling->TREECOOL_gamma_H0_cgs[count] = gamma_H0;
+    cooling->TREECOOL_gamma_He0_cgs[count] = gamma_He0;
+    cooling->TREECOOL_gamma_Hep_cgs[count] = gamma_Hep;
+    cooling->TREECOOL_epsilon_H0_cgs[count] = epsilon_H0;
+    cooling->TREECOOL_epsilon_He0_cgs[count] = epsilon_He0;
+    cooling->TREECOOL_epsilon_Hep_cgs[count] = epsilon_Hep;
 
     ++count;
   }
@@ -147,12 +147,12 @@ INLINE static void treecool_set_UV_background(
 
   /* Start from no UV background at all */
   cooling->UV_background_on = 0;
-  cooling->gamma_H0 = 0.;
-  cooling->gamma_He0 = 0.;
-  cooling->gamma_Hep = 0.;
-  cooling->epsilon_H0 = 0.;
-  cooling->epsilon_He0 = 0.;
-  cooling->epsilon_Hep = 0.;
+  cooling->gamma_H0_cgs = 0.;
+  cooling->gamma_He0_cgs = 0.;
+  cooling->gamma_Hep_cgs = 0.;
+  cooling->epsilon_H0_cgs = 0.;
+  cooling->epsilon_He0_cgs = 0.;
+  cooling->epsilon_Hep_cgs = 0.;
 
   /* Have the sources switched on yet? */
   if (redshift > cooling->UV_background_start_redshift) return;
@@ -184,18 +184,18 @@ INLINE static void treecool_set_UV_background(
   const double f_lo = d_hi * inv_d;
   const double f_hi = d_lo * inv_d;
 
-  cooling->gamma_H0 =
-      treecool_interpolate_table(cooling->TREECOOL_gamma_H0, index, f_lo, f_hi);
-  cooling->gamma_He0 = treecool_interpolate_table(cooling->TREECOOL_gamma_He0,
-                                                  index, f_lo, f_hi);
-  cooling->gamma_Hep = treecool_interpolate_table(cooling->TREECOOL_gamma_Hep,
-                                                  index, f_lo, f_hi);
-  cooling->epsilon_H0 = treecool_interpolate_table(cooling->TREECOOL_epsilon_H0,
-                                                   index, f_lo, f_hi);
-  cooling->epsilon_He0 = treecool_interpolate_table(
-      cooling->TREECOOL_epsilon_He0, index, f_lo, f_hi);
-  cooling->epsilon_Hep = treecool_interpolate_table(
-      cooling->TREECOOL_epsilon_Hep, index, f_lo, f_hi);
+  cooling->gamma_H0_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_gamma_H0_cgs, index, f_lo, f_hi);
+  cooling->gamma_He0_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_gamma_He0_cgs, index, f_lo, f_hi);
+  cooling->gamma_Hep_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_gamma_Hep_cgs, index, f_lo, f_hi);
+  cooling->epsilon_H0_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_epsilon_H0_cgs, index, f_lo, f_hi);
+  cooling->epsilon_He0_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_epsilon_He0_cgs, index, f_lo, f_hi);
+  cooling->epsilon_Hep_cgs = treecool_interpolate_table(
+      cooling->TREECOOL_epsilon_Hep_cgs, index, f_lo, f_hi);
 
   cooling->UV_background_on = 1;
 }
