@@ -198,10 +198,10 @@ static void test_c_hyp_same_bin_cap_and_pin(struct engine *e) {
  * smoothing-length ratios 0.5, 1, 2 (h_j plays no role in #c_hyp's own
  * formula: only h_i and dt_max(i) do; the ratio is swept to document that
  * explicitly, not because the bound depends on it). Restricted to
- * neighbours that actually reached the kernel sum, as the design's own
- * "one coverage gap" note requires (a neighbour with `H_j > r >= H_i`
- * reads #c_hyp in the force loop without ever contributing to
- * #max_ngb_time_bin, and is not covered by this bound).
+ * neighbours that actually reached the kernel sum, which is the only set
+ * the bound covers: a neighbour with `H_i <= r < H_j` reads #c_hyp in the
+ * force loop without ever contributing to #max_ngb_time_bin, and is
+ * outside this bound (see #feedback_part_data.c_hyp).
  *
  * @param e The #engine (feedback_props, cosmology, physical_constants set,
  * debug pin OFF).
@@ -249,6 +249,129 @@ static void test_c_hyp_receiver_bound(struct engine *e) {
   message(
       "receiver bound: c_i*dt_j/h_i <= C_hyp holds for bin differences "
       "1..3 and h ratios 0.5/1/2");
+}
+
+/**
+ * @brief Cross-bin #feedback_part_data.c_hyp under a real cosmology: the
+ * branch that calls cosmology_get_delta_time() rather than get_timestep(),
+ * which every other case here leaves untested (they all run at
+ * `e.policy = 0`). Checks two neighbour bins against hand-written integer
+ * endpoints, NOT against a second get_integer_time_begin() call, so the
+ * reference is independent of the convention under test:
+ *
+ *  - one bin up, whose step is still aligned on `ti_current` and therefore
+ *    ends there (interval wholly in the past);
+ *  - two bins up, whose step straddles `ti_current` (interval partly in the
+ *    future, that neighbour's own in-progress step).
+ *
+ * Also asserts that the straddling interval and the same-length interval
+ * ending at `ti_current` give measurably different durations at this scale
+ * factor, so the check can actually discriminate between the two
+ * conventions instead of passing on a degenerate cosmology.
+ *
+ * Only #radiation_end_density_propagation's own cosmology branch is covered:
+ * the drift-side `dt_i` in radiation_snapshot_part_propagation is not
+ * reached from here.
+ */
+static void test_c_hyp_cross_bin_cosmology(void) {
+
+  struct swift_params params;
+  parser_init("", &params);
+  parser_set_param(&params, "Cosmology:Omega_cdm:0.2589");
+  parser_set_param(&params, "Cosmology:Omega_lambda:0.6910");
+  parser_set_param(&params, "Cosmology:Omega_b:0.0486");
+  parser_set_param(&params, "Cosmology:h:0.6774");
+  parser_set_param(&params, "Cosmology:a_begin:0.1");
+  parser_set_param(&params, "Cosmology:a_end:1.0");
+
+  struct unit_system us;
+  units_init_cgs(&us);
+
+  struct phys_const phys_const;
+  phys_const_init(&us, &params, &phys_const);
+
+  struct cosmology cosmo;
+  cosmology_init(&params, &us, &phys_const, &cosmo);
+
+  struct feedback_props fb_props;
+  bzero(&fb_props, sizeof(struct feedback_props));
+  fb_props.ISRF_propagation = 1;
+  fb_props.ISRF_c_hyp_scheme = isrf_c_hyp_scheme_kernel_local;
+  fb_props.ISRF_c_hyp_margin = 0.5f;
+  fb_props.ISRF_c_hyp_pin_for_debugging = 0.f;
+
+  /* Coarse enough that one step spans a few percent in log(a): the two
+   * conventions then differ by far more than the tolerance below. */
+  const timebin_t bin_i = 50;
+  const integertime_t dti_i = get_integer_timestep(bin_i);
+
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
+  e.feedback_props = &fb_props;
+  e.cosmology = &cosmo;
+  e.physical_constants = &phys_const;
+  e.time_base = cosmo.time_base;
+  /* Aligned on bin_i and on bin_i+1, unaligned on bin_i+2. */
+  e.ti_current = 6 * dti_i;
+  e.policy = engine_policy_cosmology;
+
+  const float h_i = 0.42f;
+  const float C_hyp = fb_props.ISRF_c_hyp_margin;
+  const float h_phys = (float)cosmo.a * h_i;
+
+  /* Hand-written endpoints for the two neighbour bins, in units of dti_i:
+   * bin_i+1 runs [4, 6] and ends at ti_current; bin_i+2 runs [4, 8] and
+   * straddles it. */
+  const integertime_t endpoints[2][2] = {{4 * dti_i, 6 * dti_i},
+                                         {4 * dti_i, 8 * dti_i}};
+
+  for (int k = 0; k < 2; k++) {
+    struct part p;
+    bzero(&p, sizeof(struct part));
+    p.h = h_i;
+    p.time_bin = bin_i;
+    p.feedback_data.dt_prev = 1.f; /* unused: the cross-bin branch is taken */
+    p.feedback_data.max_ngb_time_bin = bin_i + 1 + k;
+
+    radiation_end_density_propagation(&p, &e);
+
+    const double dt_ref =
+        cosmology_get_delta_time(&cosmo, endpoints[k][0], endpoints[k][1]);
+    if (!(dt_ref > 0.))
+      error("cross-bin cosmology: reference dt = %.9e is not positive", dt_ref);
+    double c_ref = (double)C_hyp * (double)h_phys / dt_ref;
+    c_ref = min(c_ref, (double)phys_const.const_speed_light_c);
+
+    const double got = (double)p.feedback_data.c_hyp;
+    if (!(fabs(got - c_ref) <= 1e-5 * c_ref))
+      error(
+          "cross-bin cosmology: bin_i+%d: c_hyp = %.9e, expected %.9e from "
+          "the hand-written interval [%lld, %lld]",
+          1 + k, got, c_ref, (long long)endpoints[k][0],
+          (long long)endpoints[k][1]);
+  }
+
+  /* Discrimination: the straddling interval [4, 8] must differ from the
+   * backward one of the same length, [2, 6], or the check above would pass
+   * under either convention. */
+  const double dt_straddle =
+      cosmology_get_delta_time(&cosmo, 4 * dti_i, 8 * dti_i);
+  const double dt_backward =
+      cosmology_get_delta_time(&cosmo, 2 * dti_i, 6 * dti_i);
+  const double split = fabs(dt_straddle - dt_backward) / dt_backward;
+  if (!(split > 1e-3))
+    error(
+        "cross-bin cosmology: the two conventions differ by only %.3e "
+        "relative; this fixture cannot discriminate between them",
+        split);
+
+  message(
+      "cross-bin cosmology: c_hyp matches cosmology_get_delta_time over the "
+      "neighbour bin's own step for an aligned and a straddling interval "
+      "(the two conventions differ by %.2f%% here)",
+      100. * split);
+
+  cosmology_clean(&cosmo);
 }
 
 /**
@@ -510,6 +633,7 @@ static void test_kernel_local_c_hyp(void) {
 
   test_c_hyp_same_bin_cap_and_pin(&e);
   test_c_hyp_receiver_bound(&e);
+  test_c_hyp_cross_bin_cosmology();
   test_density_loop_max_ngb_time_bin();
 }
 
