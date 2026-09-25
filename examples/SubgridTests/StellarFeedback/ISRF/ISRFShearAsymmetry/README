@@ -85,7 +85,7 @@ python3 shear_compare_ensemble.py --shear-runs dir1 dir2 ... --control-runs zero
 variant only) plus the KH-contamination and configuration-echo metrics.
 `A_centroid` and `A_spread` are evaluated on the positive part of the
 field (`w = m*max(u, 0)`), not the raw `m*u`: late in a run a sizeable
-fraction of the blob's mass-weighted field can be negative from the P1
+fraction of the blob's mass-weighted field can be negative from the M1
 system's own ringing, which makes the raw second moment an
 ill-conditioned difference; the raw weighting is still reported alongside
 for comparison. A run whose negative-weight share exceeds 10% in either

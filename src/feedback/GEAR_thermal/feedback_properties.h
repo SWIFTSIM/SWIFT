@@ -225,8 +225,9 @@ struct feedback_props {
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /*! Run the hyperbolic P1-relaxation propagation update on top of
-   * injection + receiver-side extinction? Only meaningful when
+  /*! Run the hyperbolic M1 propagation update (closed by a variable
+   * Eddington tensor, not a fixed E/3) on top of injection +
+   * receiver-side extinction? Only meaningful when
    * radiation_policy_photoelectric_heating is set. */
   char ISRF_propagation;
 
@@ -338,7 +339,7 @@ struct feedback_props {
 
   /*! Floor under the negativity trigger, `h/lambda`-gated: the trigger fires
    * only on negativity and is exactly zero on the positive delta-shell
-   * front of an optically-thin P1 pulse, so a purely reactive coefficient
+   * front of an optically-thin M1 pulse, so a purely reactive coefficient
    * cannot damp the resulting dispersive wake there. This floor supplies
    * dissipation the trigger structurally cannot. Combined
    * with #ISRF_dissipation_floor_h_over_lambda as
