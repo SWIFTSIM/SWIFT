@@ -44,6 +44,7 @@
 /* Some standard headers. */
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 /* Local includes. */
 #include "cooling_properties.h"
@@ -58,6 +59,11 @@
  * which the UV background model stops. We stop reading at the first such row
  * and treat everything above that redshift as having no UV background.
  *
+ * Every other non-blank line must contain exactly seven numbers. Anything else,
+ * such as a header or a comment line, is an error: stopping there instead
+ * would silently truncate the table and switch the UV background off above
+ * that redshift.
+ *
  * @param cooling The #cooling_function_data to fill in.
  */
 INLINE static void treecool_read_table(struct cooling_function_data *cooling) {
@@ -67,12 +73,28 @@ INLINE static void treecool_read_table(struct cooling_function_data *cooling) {
     error("Cannot open the TREECOOL file '%s'", cooling->TREECOOL_file);
 
   int count = 0;
-  double log10_1_plus_z, gamma_H0, gamma_He0, gamma_Hep;
-  double epsilon_H0, epsilon_He0, epsilon_Hep;
+  int line_number = 0;
+  char line[1024];
 
-  while (fscanf(file, "%lg %lg %lg %lg %lg %lg %lg", &log10_1_plus_z, &gamma_H0,
-                &gamma_He0, &gamma_Hep, &epsilon_H0, &epsilon_He0,
-                &epsilon_Hep) == 7) {
+  while (fgets(line, sizeof(line), file) != NULL) {
+
+    ++line_number;
+
+    /* Skip blank lines */
+    if (strspn(line, " \t\r\n") == strlen(line)) continue;
+
+    double log10_1_plus_z, gamma_H0, gamma_He0, gamma_Hep;
+    double epsilon_H0, epsilon_He0, epsilon_Hep;
+    char extra;
+
+    /* Exactly seven numbers, and nothing after them */
+    if (sscanf(line, "%lg %lg %lg %lg %lg %lg %lg %c", &log10_1_plus_z,
+               &gamma_H0, &gamma_He0, &gamma_Hep, &epsilon_H0, &epsilon_He0,
+               &epsilon_Hep, &extra) != 7)
+      error(
+          "Line %d of the TREECOOL file '%s' does not contain exactly 7 "
+          "numbers. Header or comment lines are not supported.",
+          line_number, cooling->TREECOOL_file);
 
     /* Ignore the padding at the end of the table */
     if (gamma_H0 <= 0.) break;
