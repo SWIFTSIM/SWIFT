@@ -117,21 +117,30 @@ double feedback_get_star_L_LW(const struct spart *sp);
 float feedback_get_star_teff(const struct spart *sp);
 float feedback_get_part_u_PE(const struct part *p);
 float feedback_get_part_u_LW(const struct part *p);
+float feedback_get_part_u_LW_PHOTON(const struct part *p);
 float feedback_get_part_dissipation_alpha_PE(const struct part *p);
 float feedback_get_part_dissipation_alpha_LW(const struct part *p);
+float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p);
 float feedback_get_part_div_specific_flux_PE(const struct part *p);
 float feedback_get_part_div_specific_flux_LW(const struct part *p);
+float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p);
 void feedback_get_part_specific_flux_PE(const struct part *p, float *ret);
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
+void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
+                                               float *ret);
 struct engine;
 float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
                                                 const struct engine *e);
 float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
                                                 const struct engine *e);
+float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
+                                                       const struct engine *e);
 float feedback_get_part_cumulative_injected_PE(const struct part *p);
 float feedback_get_part_cumulative_injected_LW(const struct part *p);
+float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p);
 float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
+float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
 float feedback_get_part_c_hyp(const struct part *p);
 
 void feedback_init_after_star_formation(

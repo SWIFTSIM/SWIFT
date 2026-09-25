@@ -133,6 +133,19 @@ INLINE static void convert_part_u_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #LWPhotonSpecificEnergies, see
+ * #tracers_write_particles. Distinct from the RT schemes' PhotonEnergies
+ * (src/rt/GEAR/rt_io.h, src/rt/SPHM1RT/rt_io.h): those are raw per-group
+ * energies, not mass-specific and not band-prefixed.
+ */
+INLINE static void convert_part_u_LW_PHOTON(const struct engine *e,
+                                            const struct part *p,
+                                            const struct xpart *xp,
+                                            float *ret) {
+  ret[0] = feedback_get_part_u_LW_PHOTON(p);
+}
+
+/**
  * @brief Snapshot converter for #PEArtificialDissipationCoefficients, see
  * #tracers_write_particles.
  */
@@ -152,6 +165,18 @@ INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
                                                      const struct xpart *xp,
                                                      float *ret) {
   ret[0] = feedback_get_part_dissipation_alpha_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients,
+ * see #tracers_write_particles. Decorative: #ISRF_MOMENT_LW_PHOTON shares
+ * #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW, so this reads the identical
+ * operator field as #convert_part_dissipation_alpha_LW.
+ */
+INLINE static void convert_part_dissipation_alpha_LW_PHOTON(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  ret[0] = feedback_get_part_dissipation_alpha_LW_PHOTON(p);
 }
 
 /**
@@ -177,6 +202,16 @@ INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #LWPhotonSpecificFluxDivergences, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_div_specific_flux_LW_PHOTON(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  ret[0] = feedback_get_part_div_specific_flux_LW_PHOTON(p);
+}
+
+/**
  * @brief Snapshot converter for #PESpecificFluxes, see
  * #tracers_write_particles.
  */
@@ -196,6 +231,17 @@ INLINE static void convert_part_specific_flux_LW(const struct engine *e,
                                                  const struct xpart *xp,
                                                  float *ret) {
   feedback_get_part_specific_flux_LW(p, ret);
+}
+
+/**
+ * @brief Snapshot converter for #LWPhotonSpecificFluxes, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_specific_flux_LW_PHOTON(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  feedback_get_part_specific_flux_LW_PHOTON(p, ret);
 }
 
 /**
@@ -221,6 +267,16 @@ INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #LWPhotonMinimumSpecificEnergies, see
+ * #tracers_write_particles.
+ */
+INLINE static void convert_part_u_min_since_snapshot_LW_PHOTON(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  ret[0] = feedback_get_part_u_min_since_snapshot_LW_PHOTON(p, e);
+}
+
+/**
  * @brief Snapshot converter for #PECumulativeInjectedSpecificEnergies, see
  * #tracers_write_particles.
  */
@@ -240,6 +296,16 @@ INLINE static void convert_part_cumulative_injected_LW(const struct engine *e,
                                                        const struct xpart *xp,
                                                        float *ret) {
   ret[0] = feedback_get_part_cumulative_injected_LW(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWPhotonCumulativeInjectedSpecificEnergies,
+ * see #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_injected_LW_PHOTON(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  ret[0] = feedback_get_part_cumulative_injected_LW_PHOTON(p);
 }
 
 /**
@@ -265,6 +331,16 @@ INLINE static void convert_part_cumulative_absorbed_LW(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #LWPhotonCumulativeAbsorbedSpecificEnergies,
+ * see #tracers_write_particles.
+ */
+INLINE static void convert_part_cumulative_absorbed_LW_PHOTON(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  ret[0] = feedback_get_part_cumulative_absorbed_LW_PHOTON(p);
+}
+
+/**
  * @brief Snapshot converter for #HyperbolicPropagationSpeeds, see
  * #tracers_write_particles.
  */
@@ -287,7 +363,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 25;
+  int num = 32;
 
   /* The tag core (is_ionized/star_id) lives on struct part's feedback_data,
      not tracers_xpart_data, so read it through the feedback-model dispatch
@@ -487,6 +563,60 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "ledger of the consistent-variable-c schemes is `sum m u / c_hyp` "
       "rather than `sum m u`, which is what this field makes measurable "
       "from a snapshot. Only meaningful when ISRF_propagation is on.");
+
+  list[25] = io_make_output_field_convert_part(
+      "LWPhotonSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      parts, xparts, convert_part_u_LW_PHOTON,
+      "Lyman-Werner-band photon-number moment, energy-equivalent at a fixed "
+      "reference photon energy: see LWSpecificEnergies. Distinct from the "
+      "RT schemes' PhotonEnergies, which are raw per-group energies, not "
+      "mass-specific and not band-prefixed.");
+
+  list[26] = io_make_output_field_convert_part(
+      "LWPhotonArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0.f, parts, xparts, convert_part_dissipation_alpha_LW_PHOTON,
+      "Same as LWArtificialDissipationCoefficients: the photon-number "
+      "moment shares the Lyman-Werner operator, so these two fields always "
+      "read numerically identical.");
+
+  list[27] = io_make_output_field_convert_part(
+      "LWPhotonSpecificFluxDivergences", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      convert_part_div_specific_flux_LW_PHOTON,
+      "Same as LWSpecificFluxDivergences, Lyman-Werner-band photon-number "
+      "moment.");
+
+  list[28] = io_make_output_field_convert_part(
+      "LWPhotonSpecificFluxes", FLOAT, 3,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
+      convert_part_specific_flux_LW_PHOTON,
+      "Same as LWSpecificFluxes, Lyman-Werner-band photon-number moment. "
+      "Distinct from the RT schemes' PhotonFluxes, which are raw per-group "
+      "fluxes, not mass-specific and not band-prefixed.");
+
+  list[29] = io_make_output_field_convert_part(
+      "LWPhotonMinimumSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_u_min_since_snapshot_LW_PHOTON,
+      "Same as LWMinimumSpecificEnergies, Lyman-Werner-band photon-number "
+      "moment. Always 0 unless the code is configured with "
+      "--enable-debugging-checks.");
+
+  list[30] = io_make_output_field_convert_part(
+      "LWPhotonCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_injected_LW_PHOTON,
+      "Same as LWCumulativeInjectedSpecificEnergies, Lyman-Werner-band "
+      "photon-number moment. Always 0 unless the code is configured with "
+      "--enable-debugging-checks.");
+
+  list[31] = io_make_output_field_convert_part(
+      "LWPhotonCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_cumulative_absorbed_LW_PHOTON,
+      "Same as LWCumulativeAbsorbedSpecificEnergies, Lyman-Werner-band "
+      "photon-number moment. Always 0 unless the code is configured with "
+      "--enable-debugging-checks.");
 
   return num;
 }

@@ -680,7 +680,8 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
 /*! Human-readable moment names for #radiation_get_band_u_nonnegative's
     clamp warnings, indexed by #radiation_isrf_moment. */
 static const char *const radiation_isrf_moment_clamp_name[] = {
-    "PE-band specific energy", "LW-band specific energy"};
+    "PE-band specific energy", "LW-band specific energy",
+    "LW-band photon-number specific energy"};
 _Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
                        sizeof(radiation_isrf_moment_clamp_name[0]) ==
                    ISRF_MOMENT_COUNT,

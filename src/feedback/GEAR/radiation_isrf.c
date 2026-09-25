@@ -99,6 +99,35 @@ void radiation_first_init_part(struct part *restrict p) {
     moment->cumulative_absorbed = 0.f;
 #endif
   }
+  /* LWSpecificEnergy and LWPhotonSpecificEnergy are both optional IC
+   * fields (feedback_io.h) that can be supplied independently, so an IC can
+   * seed either one alone. By definition of the reference photon energy, a
+   * seeded LW value with no accompanying photon moment (or vice versa) is a
+   * field at that reference energy, so whichever of the two is left at 0.f
+   * is forced equal to the other, in EITHER direction: this keeps the
+   * moments nonzero-iff-nonzero of each other unconditionally, which is the
+   * invariant #radiation_isrf_part_timestep relies on to detect a near-field
+   * particle through the LW moment alone (see that function's own comment).
+   * Value-based, not "was the field present", so it is correct whether an
+   * absent OPTIONAL IC field left memory zeroed or untouched; and for
+   * either sign of the seeded value, since the reference energy is a unit
+   * convention, not a physical divisor. Runs after the u_prev-seeding loop
+   * above (overriding its 0.f default for the moment it corrects) and
+   * before #radiation_cache_m1_closure_part below, so the closure cache is
+   * built from the corrected value on this first pass. */
+  if (fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u == 0.f &&
+      fd->isrf_moment[ISRF_MOMENT_LW].u != 0.f) {
+    fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+        fd->isrf_moment[ISRF_MOMENT_LW].u;
+    fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u_prev =
+        fd->isrf_moment[ISRF_MOMENT_LW].u;
+  } else if (fd->isrf_moment[ISRF_MOMENT_LW].u == 0.f &&
+             fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u != 0.f) {
+    fd->isrf_moment[ISRF_MOMENT_LW].u =
+        fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
+    fd->isrf_moment[ISRF_MOMENT_LW].u_prev =
+        fd->isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
+  }
   for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
     struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
     op->kappa = 0.f;
@@ -342,6 +371,11 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
     return FLT_MAX;
 
   const struct feedback_part_data *fd = &p->feedback_data;
+  /* ISRF_MOMENT_LW_PHOTON is deliberately not named here:
+   * #radiation_first_init_part forces the two moments' u equal, in either
+   * direction, whenever exactly one of them is 0.f, so ISRF_MOMENT_LW_PHOTON.u
+   * is nonzero if and only if ISRF_MOMENT_LW.u is; the LW disjunct below
+   * already covers it, and a third disjunct would be redundant. */
   const int near_field =
       fd->is_illuminated_ISRF || fd->isrf_moment[ISRF_MOMENT_PE].u != 0.f ||
       fd->isrf_moment[ISRF_MOMENT_LW].u != 0.f ||
