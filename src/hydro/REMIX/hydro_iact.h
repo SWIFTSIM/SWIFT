@@ -307,8 +307,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
 
   /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
-  float Gj[3], Gi[3], G_mean[3];
-  hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  float Gj[3], Gi[3], G_mean[3], Gi_linear[3], Gj_linear[3];
+  hydro_set_Gi_Gj_forceloop(Gi, Gj, Gi_linear, Gj_linear, pi, pj, dx, wi, wj,
+                            wi_dx, wj_dx);
 
   /* Antisymmetric kernel grad term for conservation of momentum and energy */
   G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
@@ -486,7 +487,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->drho_dt += drho_dt_norm_and_difn_i;
   pj->drho_dt += drho_dt_norm_and_difn_j;
 
-  hydro_runner_iact_force_strength(pi, pj, dx, Gi, Gj);
+  hydro_runner_iact_force_strength(pi, pj, dx, Gi_linear, Gj_linear);
 }
 
 /**
@@ -545,8 +546,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
 
   /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
-  float Gj[3], Gi[3], G_mean[3];
-  hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  float Gj[3], Gi[3], G_mean[3], Gi_linear[3], Gj_linear[3];
+  hydro_set_Gi_Gj_forceloop(Gi, Gj, Gi_linear, Gj_linear, pi, pj, dx, wi, wj,
+                            wi_dx, wj_dx);
 
   /* Antisymmetric kernel grad term for conservation of momentum and energy */
   G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
@@ -694,7 +696,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Add normalising term and artificial diffusion to evolution of density */
   pi->drho_dt += drho_dt_norm_and_difn_i;
 
-  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi);
+  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi_linear);
 }
 
 #endif /* SWIFT_REMIX_HYDRO_IACT_H */

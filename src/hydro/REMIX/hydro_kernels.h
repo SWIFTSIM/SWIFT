@@ -532,6 +532,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
  * particle.
  * @param Gj (return) Gradient of linear-order reproducing kernel for second
  * particle.
+ * @param Gi_linear (return) Gi before the vacuum boundary switch is applied.
+ * @param Gj_linear (return) Gj before the vacuum boundary switch is applied.
  * @param pi First particle.
  * @param pj Second particle.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -541,7 +543,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
-    float Gi[3], float Gj[3], const struct part *restrict pi,
+    float Gi[3], float Gj[3], float Gi_linear[3], float Gj_linear[3],
+    const struct part *restrict pi,
     const struct part *restrict pj, const float dx[3], const float wi,
     const float wj, const float wi_dx, const float wj_dx) {
 
@@ -572,6 +575,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     Gj[0] = -wj_dr * dx[0] * r_inv;
     Gj[1] = -wj_dr * dx[1] * r_inv;
     Gj[2] = -wj_dr * dx[2] * r_inv;
+
+    memcpy(Gi_linear, Gi, 3 * sizeof(float));
+    memcpy(Gj_linear, Gj, 3 * sizeof(float));
 
     return;
   }
@@ -633,6 +639,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     wj_dx_term_vac[i] += -(hydro_dimension * wj + (r * hj_inv) * wj_dx) *
                          hj_inv_dim_plus_one * pj->dh_norm_kernel[i];
   }
+
+  /* Store the linear-order reproducing kernel gradients before vacuum switch. */
+  memcpy(Gi_linear, Gi, 3 * sizeof(float));
+  memcpy(Gj_linear, Gj, 3 * sizeof(float));
 
   /* Gradients, including vacuum boundary switch (Sandnes+2025 Eqn. 32) */
   for (int i = 0; i < 3; i++) {
