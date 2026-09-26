@@ -117,7 +117,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
  *
  * The stress tensors used for the force interaction between a specific pair of
  * particles. These differ from the particle's own stress tensor, since they
- * factor in the phases of the two particles as well as the contribution of
+ * factor in e.g. the phases of the two particles as well as the contribution of
  * artificial stress for the pairwise interaction.
  *
  * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
@@ -133,9 +133,8 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
                                      const struct part *restrict pj,
                                      const float r) {
 
-  /* Only overwrite the fluid pairwise stress tensors if both particles are solid. */
-  if ((pi->phase == mat_phase_solid) &&
-      (pj->phase == mat_phase_solid)) {
+  /* Only overwrite the fluid pairwise stress tensors for interactions with strength. */
+  if (!strength_is_strengthless_interaction(pi, pj)) {
 
     /* Get stress tensors. */
     get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->strength_data.stress_tensor);

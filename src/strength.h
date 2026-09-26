@@ -27,6 +27,7 @@
 #ifdef MATERIAL_STRENGTH
 // Utilities
 #include "./strength/strength_utilities.h"
+#include "./strength/strength_interaction.h"
 
 // Strength models
 #include "./strength/strength_artificial_stress.h"

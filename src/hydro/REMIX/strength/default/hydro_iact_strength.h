@@ -141,9 +141,8 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
                                        const float dx[3], const float Gi[3],
                                        const float Gj[3]) {
 
-  /* Add contribution to dv/dr if both particles are solid. */
-  if ((pi->phase == mat_phase_solid) &&
-      (pj->phase == mat_phase_solid)) {
+  /* Add contribution to dv/dr for interactions with strength. */
+  if (!strength_is_strengthless_interaction(pi, pj)) {
     strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
                                         pj->v, Gi, pj->mass / pj->rho_evol);
     strength_add_velocity_gradient_contribution(pj->strength_data.dv_force_loop, pj->v,
@@ -165,9 +164,8 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
                                               const float dx[3],
                                               const float Gi[3]) {
 
-  /* Add contribution to dv/dr if both particles are solid. */
-  if ((pi->phase == mat_phase_solid) &&
-      (pj->phase == mat_phase_solid)) {
+  /* Add contribution to dv/dr for interactions with strength. */
+  if (!strength_is_strengthless_interaction(pi, pj)) {
     strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
                                         pj->v, Gi, pj->mass / pj->rho_evol);
   }

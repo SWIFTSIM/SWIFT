@@ -53,6 +53,20 @@ __attribute__((always_inline)) INLINE static void
 hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {}
 
 /**
+ * @brief Whether material strength adds a condition for artificial viscosity
+ * velocity reconstruction between a pair of particles.
+ *
+ * @param pi First particle.
+ * @param pj Second particle.
+ */
+__attribute__((always_inline)) INLINE static int
+hydro_visc_no_reconstruction_strength(const struct part *restrict pi,
+                                      const struct part *restrict pj) {
+
+  return 0;
+}
+
+/**
  * @brief Prepares extra strength parameters for a particle for the density
  * calculation.
  *
