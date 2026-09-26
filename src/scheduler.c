@@ -531,6 +531,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          cost = 1.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_sink_formation_sink) {
+          cost = 1.f * (wscale * count_i) * sink_count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -603,6 +607,24 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           } else {
             cost = 2.f * wscale *
                    (sink_count_i * sink_count_j + sink_count_j * sink_count_i) *
+                   sid_scale[t->flags];
+          }
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          }
+        } else if (t->subtype == task_subtype_sink_formation_sink) {
+          if (t->ci->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * count_i) * sink_count_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * sink_count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale *
+                   (count_i * sink_count_j + sink_count_i * count_j) *
                    sid_scale[t->flags];
           }
         } else if (t->subtype == task_subtype_bh_density ||
@@ -966,17 +988,23 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(count);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
           count = size =
               t->ci->hydro.count * sizeof(struct black_holes_part_data);
           buff = t->buff = malloc(count);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
 
         } else if (t->subtype == task_subtype_bpart_merger) {
           count = size =
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
@@ -1035,11 +1063,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(count);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
 
         } else if (t->subtype == task_subtype_grav_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(count);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
 
         } else {
           error("Unknown communication sub-type");
@@ -1074,6 +1106,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(size);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
           cell_pack_end_step(t->ci, (struct pcell_step *)buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
@@ -1081,6 +1115,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count =
               t->ci->hydro.count * sizeof(struct black_holes_part_data);
           buff = t->buff = malloc(size);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
           cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
@@ -1088,6 +1124,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count =
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(size);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
@@ -1145,12 +1183,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(size);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
           cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
+          if (buff == NULL)
+            error("Failed to allocate an MPI communication buffer.");
           cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
 
         } else {

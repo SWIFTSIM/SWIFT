@@ -54,6 +54,7 @@
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
+#include "sink_properties.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -519,7 +520,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* The last active send unlocks the end of the star block */
       scheduler_addunlock(s, last_send, ci->hydro.super->stars.stars_out);
 
-      if (with_star_formation && ci->hydro.count > 0) {
+      /* t_sf_counts covers the whole subtree, so gate on its existence. */
+      if (t_sf_counts != NULL) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS_2
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -543,7 +545,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS_4
     engine_addlink(e, &ci->mpi.send, t_prep4);
 #endif
-    if (with_star_formation && ci->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -1114,7 +1116,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep4 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep4,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    /* t_sf_counts covers the whole subtree, so gate on its existence. */
+    if (t_sf_counts != NULL) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
@@ -1142,7 +1145,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS_4
     engine_addlink(e, &c->mpi.recv, t_prep4);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1486,6 +1489,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active?
+     When it is, sink_formation is unlocked via prep_ghost_out instead (see
+     engine_make_hierarchical_tasks_hydro), not directly from kick2. */
+  const int with_sink_formation_gas =
+      with_sinks && sink_formation_gas_loop_is_active(e->sink_properties);
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
@@ -1584,8 +1592,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);
       }
 
-      /* Subgrid tasks: sinks formation */
-      if (with_sinks) {
+      /* Subgrid tasks: sinks formation. When the fixed-aperture gas-gas
+         preparation loop is active, sink_formation is unlocked via
+         prep_ghost_out instead (see engine_make_hierarchical_tasks_hydro). */
+      if (with_sinks && !with_sink_formation_gas) {
         scheduler_addunlock(s, c->kick2, c->top->sinks.sink_formation);
       }
 
@@ -1860,6 +1870,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_star_formation_sink = (with_sinks && with_stars);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active? */
+  const int with_sink_formation_gas =
+      with_sinks && sink_formation_gas_loop_is_active(e->sink_properties);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
 #ifdef WITH_CSDS
@@ -1979,8 +1992,46 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_sink_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        /* Link to the main tasks */
-        scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
+        if (with_sink_formation_gas) {
+          c->sinks.prep_ghost_in = scheduler_addtask(
+              s, task_type_sink_prep_ghost_in, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+          c->sinks.prep_ghost_out = scheduler_addtask(
+              s, task_type_sink_prep_ghost_out, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+
+          /* The gas-vs-existing-sink overlap loop gets its own dedicated
+             barrier pair rather than sharing prep_ghost_in/out: it is a
+             structurally different (mixed-type) search, so its window is
+             bracketed independently instead of relying on it being safe to
+             interleave with the gas-gas loop's tasks. */
+          c->sinks.prep_ghost_in_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_in_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+          c->sinks.prep_ghost_out_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_out_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+        }
+
+        /* Link to the main tasks. When the fixed-aperture gas-gas loop is
+           active, kick2 unlocks prep_ghost_in and prep_ghost_in_sink. The two
+           loops run in separate windows. sink_formation waits for both
+           prep_ghost_out and prep_ghost_out_sink. Otherwise, we keep the
+           direct kick2 -> sink_in edge.
+           Note: there is no edge from prep_ghost_in_sink to
+           prep_ghost_out_sink. If a super cell has no active gas-sink task,
+           prep_ghost_out_sink can run early. Then only prep_ghost_out keeps
+           sink_formation after kick2. */
+        if (with_sink_formation_gas) {
+          scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in);
+          scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in_sink);
+          scheduler_addunlock(s, c->sinks.prep_ghost_out,
+                              c->top->sinks.sink_formation);
+          scheduler_addunlock(s, c->sinks.prep_ghost_out_sink,
+                              c->top->sinks.sink_formation);
+        } else {
+          scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
+        }
         scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
         scheduler_addunlock(s, c->top->sinks.sink_formation, c->sinks.sink_in);
 
@@ -2228,6 +2279,70 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Compute the search range for gravity pair task loops.
+ *
+ * Gravity task creation and mesh checks run during engine unskip both search a
+ * number of cell shells around each cell. The latter of these is done per cell
+ * in the cell tree and thus can be computed many times.
+ *
+ * This search is bounded by the transition from long range to short range
+ * gravity. This can either be the multipole acceptance criterion (given by
+ * gravity_M2L_min_accept_distance) or the mesh cut-off radius.
+ *
+ * The search range is computed in units of cell widths and stored in the space
+ * structure for later use.
+ *
+ * @param e The #engine.
+ */
+static void engine_gravity_get_P2P_search_delta(struct engine *e) {
+
+  struct space *s = e->s;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+
+  /* Compute the maximal distance where a direct interaction may be needed. */
+  float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * s->width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, s->periodic);
+
+  /* Beyond the mesh cut-off the truncated forces are zero. */
+  if (s->periodic) {
+    distance = min(distance, (float)e->mesh->r_cut_max);
+  }
+
+  /* Convert the distance to a number of cells. We add 1 to ensure that we
+   * always search at least one cell beyond the cut-off, and use a minimum of 2
+   * to ensure that we always search at least one cell in each direction. */
+  const int delta = max((int)(sqrt(3) * distance / s->width[0]) + 1, 2);
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Clamp periodic searches so that each cell is visited exactly once. */
+  if (s->periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Store the search range in the space structure for later use. */
+  s->grav_P2P_search_delta_m = delta_m;
+  s->grav_P2P_search_delta_p = delta_p;
+
+  if (e->verbose) {
+    message("P2P search range: distance=%.2e delta_m=%d delta_p=%d", distance,
+            delta_m, delta_p);
+  }
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
@@ -2246,34 +2361,15 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
+  const int delta_m = s->grav_P2P_search_delta_m;
+  const int delta_p = s->grav_P2P_search_delta_p;
 
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the deltas are non-zero */
+  if (delta_m <= 0 || delta_p <= 0) {
+    error("Invalid P2P search range: delta_m=%d delta_p=%d", delta_m, delta_p);
   }
+#endif
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2790,6 +2886,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
   const int with_sink = (e->policy & engine_policy_sinks);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active for
+     this run? Gates every formation_gas-related task/dependency below. */
+  const int with_sink_formation_gas =
+      with_sink && sink_formation_gas_loop_is_active(e->sink_properties);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -2817,6 +2917,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_bh_feedback = NULL;
   struct task *t_sink_density = NULL;
   struct task *t_sink_swallow = NULL;
+  struct task *t_sink_formation_gas = NULL;
+  struct task *t_sink_formation_sink = NULL;
   struct task *t_rt_gradient = NULL;
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
@@ -2916,6 +3018,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_gas_swallow = scheduler_addtask(
             sched, task_type_self, task_subtype_sink_do_gas_swallow, flags, 0,
             ci, NULL);
+        if (with_sink_formation_gas) {
+          t_sink_formation_gas = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_formation_gas, flags, 0,
+              ci, NULL);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_formation_sink, flags, 0,
+              ci, NULL);
+        }
       }
 
       /* The black hole feedback tasks */
@@ -2975,6 +3085,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
         engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
         engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        if (with_sink_formation_gas) {
+          engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
+        }
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -3081,6 +3195,36 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_sink_do_sink_swallow);
         scheduler_addunlock(sched, t_sink_do_sink_swallow,
                             ci->hydro.super->sinks.sink_out);
+
+        /* Sink formation gas preparation (gas-gas loop) */
+        if (with_sink_formation_gas) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation_gas);
+          /* Self recursion produces sub-pairs (cross-progeny) that use the
+             sorted pair branch, exactly like the density self task. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_formation_gas);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in,
+                              t_sink_formation_gas);
+          scheduler_addunlock(sched, t_sink_formation_gas,
+                              ci->hydro.super->sinks.prep_ghost_out);
+
+          /* Gas-sink overlap loop for sink formation. It has its own ghost
+             tasks (prep_ghost_in_sink and prep_ghost_out_sink), so it does not
+             wait for the gas-gas loop. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_formation_sink);
+          /* This loop does not use the sorted indices yet. We keep the
+             dependency for a later version that will. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in_sink,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, t_sink_formation_sink,
+                              ci->hydro.super->sinks.prep_ghost_out_sink);
+        }
       }
 
       if (with_black_holes && bcount_i > 0) {
@@ -3236,6 +3380,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_gas_swallow = scheduler_addtask(
             sched, task_type_pair, task_subtype_sink_do_gas_swallow, flags, 0,
             ci, cj);
+        if (with_sink_formation_gas) {
+          t_sink_formation_gas = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_formation_gas, flags, 0,
+              ci, cj);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_formation_sink, flags, 0,
+              ci, cj);
+        }
       }
 
       /* The black hole feedback tasks */
@@ -3324,6 +3476,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
         engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
         engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        if (with_sink_formation_gas) {
+          engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &cj->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
+          engine_addlink(e, &cj->sinks.formation_sink, t_sink_formation_sink);
+        }
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -3464,6 +3622,33 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_sink_do_sink_swallow);
           scheduler_addunlock(sched, t_sink_do_sink_swallow,
                               ci->hydro.super->sinks.sink_out);
+
+          /* Sink formation gas preparation (gas-gas loop), ci side. */
+          if (with_sink_formation_gas) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, t_sink_formation_gas,
+                                ci->hydro.super->sinks.prep_ghost_out);
+
+            /* Gas-sink overlap loop, ci side. Own ghost tasks, see the self
+               task above. The sort dependency is not needed by this loop
+               for now. */
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched,
+                                ci->hydro.super->sinks.prep_ghost_in_sink,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, t_sink_formation_sink,
+                                ci->hydro.super->sinks.prep_ghost_out_sink);
+          }
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -3639,6 +3824,33 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_sink_do_sink_swallow);
             scheduler_addunlock(sched, t_sink_do_sink_swallow,
                                 cj->hydro.super->sinks.sink_out);
+
+            /* Sink formation gas preparation (gas-gas loop), cj side. */
+            if (with_sink_formation_gas) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.prep_ghost_in,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, t_sink_formation_gas,
+                                  cj->hydro.super->sinks.prep_ghost_out);
+
+              /* Gas-sink overlap loop, cj side. Own ghost tasks, see the self
+                 task above. The sort dependency is not needed by this loop
+                 for now. */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->sinks.prep_ghost_in_sink,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, t_sink_formation_sink,
+                                  cj->hydro.super->sinks.prep_ghost_out_sink);
+            }
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -4318,6 +4530,13 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
+
+  /* When running with self gravity we need to compute the P2P search delta.
+   * This will be used to determine the search radius for the P2P until the next
+   * rebuild. */
+  if (e->policy & engine_policy_self_gravity) {
+    engine_gravity_get_P2P_search_delta(e);
+  }
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {

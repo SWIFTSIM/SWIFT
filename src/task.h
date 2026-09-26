@@ -108,11 +108,19 @@ enum task_types {
   task_type_neutrino_weight,
   task_type_sink_in, /* Implicit */
   task_type_sink_density_ghost,
-  task_type_sink_ghost1, /* Implicit */
-  task_type_sink_ghost2, /* Implicit */
-  task_type_sink_out,    /* Implicit */
-  task_type_rt_in,       /* Implicit */
-  task_type_rt_out,      /* Implicit */
+  task_type_sink_ghost1,         /* Implicit */
+  task_type_sink_ghost2,         /* Implicit */
+  task_type_sink_out,            /* Implicit */
+  task_type_sink_prep_ghost_in,  /* Implicit — barrier before gas-gas formation
+                                    loop */
+  task_type_sink_prep_ghost_out, /* Implicit — barrier after  gas-gas formation
+                                    loop */
+  task_type_sink_prep_ghost_in_sink,  /* Implicit, barrier before gas-vs-
+                                          existing-sink overlap loop */
+  task_type_sink_prep_ghost_out_sink, /* Implicit, barrier after  gas-vs-
+                                          existing-sink overlap loop */
+  task_type_rt_in,                    /* Implicit */
+  task_type_rt_out,                   /* Implicit */
   task_type_sink_formation,
   task_type_rt_ghost1,
   task_type_rt_ghost2,
@@ -166,6 +174,8 @@ enum task_subtypes {
   task_subtype_sink_do_sink_swallow,
   task_subtype_sink_swallow,
   task_subtype_sink_do_gas_swallow,
+  task_subtype_sink_formation_gas,
+  task_subtype_sink_formation_sink,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_count

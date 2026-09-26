@@ -54,6 +54,7 @@
 #include "proxy.h"
 #include "restart.h"
 #include "rt.h"
+#include "sink_properties.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
@@ -1135,7 +1136,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  */
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
+                const struct hydro_props *hydro_properties,
+                const struct sink_props *sink_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
@@ -1270,6 +1272,21 @@ void space_init(struct space *s, struct swift_params *params,
   /* But also ensure it's not so small that we round in the other direction */
   const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
   s->cell_min = tol * dmax / maxtcells;
+
+  /* If the sink model uses a fixed, global aperture radius for the gas-gas
+     sink-formation preparation loop, the top-level cells must be at least as
+     large as that aperture (with the same safety margin space_stretch gives
+     the h_max-based terms elsewhere) so that the immediate-neighbour task
+     stencil is guaranteed complete -- independent of whether any sink
+     particle currently exists. This must be folded in here (once, before the
+     first space_regrid() call below) rather than inside space_regrid()
+     itself: the first regrid happens before the #engine (and hence
+     e->sink_properties) exists. */
+  if (sink_formation_gas_loop_is_active(sink_properties)) {
+    s->cell_min = max(s->cell_min,
+                      (double)(space_stretch *
+                               sink_formation_gas_loop_r_cut(sink_properties)));
+  }
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);

@@ -74,7 +74,9 @@ void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
   struct lightcone_io_field *r =
       (struct lightcone_io_field *)malloc(sizeof(struct lightcone_io_field));
   bzero(r, sizeof(struct lightcone_io_field));
-  strcpy(r->name, name);
+  if (snprintf(r->name, FIELD_BUFFER_SIZE, "%s", name) >= FIELD_BUFFER_SIZE)
+    error("Lightcone field name '%s' is too long (max %d characters).", name,
+          FIELD_BUFFER_SIZE - 1);
   r->type = type;
   r->dimension = dimension;
   r->offset = offset;

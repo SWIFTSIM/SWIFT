@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,32 +18,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_H
-#define SWIFT_SINK_H
 
 /* Config parameters. */
 #include <config.h>
 
-/* Select the correct sink model */
-#if defined(SINK_NONE)
-#include "./sink/Default/sink.h"
-#elif defined(SINK_BASIC)
-#include "./sink/Basic/sink.h"
-#elif defined(SINK_GEAR)
-#include "./sink/GEAR/sink.h"
-#else
-#error "Invalid choice of sink model"
-#endif
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "runner.h"
+#include "runner_doiact_hydro_aperture.h"
+#include "sink_iact.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-struct engine;
-struct space;
-
-void sink_exact_density_compute(struct space *s, const struct engine *e);
-void sink_exact_density_check(struct space *s, const struct engine *e,
-                              const double rel_tol);
-
-void sink_exact_formation_count_compute(struct space *s,
-                                        const struct engine *e);
-void sink_exact_formation_count_check(struct space *s, const struct engine *e);
-
-#endif /* SWIFT_SINK_H */
+/* Import the sink formation loop functions. */
+#define FUNCTION prep_sink_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
+#include "runner_doiact_functions_hydro_aperture.h"
+#include "runner_doiact_undef.h"
