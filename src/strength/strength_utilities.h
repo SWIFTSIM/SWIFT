@@ -62,6 +62,29 @@ __attribute__((always_inline)) INLINE static float strength_compute_sym_matrix_J
 }
 
 /**
+ * @brief Adds the contribution of a neighbour to a particle's velocity gradient.
+ *
+ * Used in the force loop to build dv_force_loop, with dv[i][j] = dv_j/dx_i.
+ *
+ * @param dv The velocity gradient contribution to add to dv/dr.
+ * @param vi Velocity of the particle.
+ * @param vj Velocity of the neighbour.
+ * @param G Kernel gradient for the particle pair.
+ * @param volume_j Volume of the neighbour.
+ */
+__attribute__((always_inline)) INLINE static void
+strength_add_velocity_gradient_contribution(float dv[3][3], const float vi[3],
+                                    const float vj[3], const float G[3],
+                                    const float volume_j) {
+
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      dv[i][j] += (vj[j] - vi[j]) * G[i] * volume_j;
+    }
+  }
+}
+
+/**
  * @brief Computes the strain rate tensor.
  *
  * @param strain_rate_tensor The strain rate tensor to be computed.
@@ -85,8 +108,10 @@ strength_compute_strain_rate_tensor(float strain_rate_tensor[3][3], const float 
 /**
  * @brief Computes the rotation rate tensor.
  *
+ * The rotation rate tensor is R_ij = 0.5 * (dv_i/dx_j - dv_j/dx_i).
+ *
  * @param rotation_rate_tensor The rotation rate tensor to be computed.
- * @param dv The velocity gradient dv/dr.
+ * @param dv The velocity gradient dv/dr, with dv[i][j] = dv_j/dx_i
  */
 __attribute__((always_inline)) INLINE static void
 strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const float dv[3][3]) {
@@ -106,9 +131,10 @@ strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const fl
 /**
  * @brief Computes the rotation contribution for transforming a tensor into the co-rotating frame.
  *
- * This function calculates the term M*R - R*M, where R is the rotation rate tensor,
- * and M is the tensor being rotated. This term accounts for the apparent change
- * of the tensor due to rotation of the reference frame.
+ * This function calculates the term R*M - M*R, where R is the rotation rate tensor,
+ * R_ij = 0.5 * (dv_i/dx_j - dv_j/dx_i), and M is the tensor being rotated. This
+ * term accounts for the apparent change of the tensor due to rotation of the
+ * reference frame.
  *
  * Note: Papers often make errors in the signs in this equation. For the correct
  *       equation, see Dienes 1979 for a detailed derivation, which leads to
@@ -126,8 +152,8 @@ const float rotation_rate_tensor[3][3], const float M[3][3]) {
     for (int j = 0; j < 3; j++) {
       rotation_term[i][j] = 0.f;
       for (int k = 0; k < 3; k++) {
-        rotation_term[i][j] += M[i][k] * rotation_rate_tensor[k][j] -
-                               rotation_rate_tensor[i][k] * M[k][j];
+        rotation_term[i][j] += rotation_rate_tensor[i][k] * M[k][j] -
+                               M[i][k] * rotation_rate_tensor[k][j];
       }
     }
   }

@@ -165,7 +165,7 @@ static void test_rotation_rate_tensor_symmetric_input(void) {
 }
 
 
-/* Test rotation term M*R - R*M for identity M gives zero. */
+/* Test rotation term R*M - M*R for identity M gives zero. */
 static void test_rotation_term_identity_M(void) {
   float R[3][3] = {
     { 0.f, -1.f,  0.f},
@@ -190,94 +190,51 @@ static void test_rotation_term_identity_M(void) {
   }
 }
 
-/* Test that rigid-body rotation generates no new stress. */
-static void test_rigid_body_rotation_no_stress_generation(void) {
-    /* Initial stress set to zero everywhere */
-    float S[3][3] = {
-        {0.f, 0.f, 0.f},
-        {0.f, 0.f, 0.f},
-        {0.f, 0.f, 0.f}
-    };
+/* Test that the stress in a spinning solid turns with the solid. */
+static void test_spinning_solid(void) {
+  const float omega = 0.1f;
 
-    /* Rigid rotation around z-axis */
-    const float omega = 1.0f;
-    float dv[3][3] = {
-        { 0.f, -omega, 0.f },
-        { omega,  0.f, 0.f },
-        { 0.f,    0.f, 0.f }
-    };
+  /* Velocities of the particle at the origin and of neighbours a unit distance along
+   * x and y, all spinning anticlockwise about z: v = (-omega * y, omega * x, 0) */
+  const float v_origin[3] = {0.f, 0.f, 0.f};
+  const float v_x_neighbour[3] = {0.f, omega, 0.f};
+  const float v_y_neighbour[3] = {-omega, 0.f, 0.f};
 
-    const float mu = 100.f;
-    float strain_rate[3][3];
-    float rotation_rate[3][3];
-    float rotation_term[3][3];
-    float dS_dt[3][3];
+  /* Kernel gradients, pointing from the particle towards each neighbour as in
+   * the force loops. With unit distances, gradient magnitudes and volumes, the
+   * velocity gradient comes out exactly: dv_y/dx = omega, dv_x/dy = -omega */
+  const float G_x_neighbour[3] = {1.f, 0.f, 0.f};
+  const float G_y_neighbour[3] = {0.f, 1.f, 0.f};
 
-    strength_compute_strain_rate_tensor(strain_rate, dv);
-    strength_compute_rotation_rate_tensor(rotation_rate, dv);
-    strength_compute_rotation_term(rotation_term, rotation_rate, S);
+  float dv[3][3] = {{0.f}};
+  strength_add_velocity_gradient_contribution(dv, v_origin, v_x_neighbour, G_x_neighbour, 1.f);
+  strength_add_velocity_gradient_contribution(dv, v_origin, v_y_neighbour, G_y_neighbour, 1.f);
 
-    /* Calculate dS/dt */
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            dS_dt[i][j] = 2.f * mu * strain_rate[i][j] + rotation_term[i][j];
-        }
+  /* Deviatoric stress stretched along x and squashed along y */
+  float S[3][3] = {
+    {1.f,  0.f, 0.f},
+    {0.f, -1.f, 0.f},
+    {0.f,  0.f, 0.f}
+  };
+
+  float strain_rate[3][3], rotation_rate[3][3], rotation_term[3][3];
+  strength_compute_strain_rate_tensor(strain_rate, dv);
+  strength_compute_rotation_rate_tensor(rotation_rate, dv);
+  strength_compute_rotation_term(rotation_term, rotation_rate, S);
+
+  /* No strain, and rotation_term = omega * (S_xx - S_yy) in the xy components */
+  const float expected[3][3] = {
+    {0.f,         2.f * omega, 0.f},
+    {2.f * omega, 0.f,         0.f},
+    {0.f,         0.f,         0.f}
+  };
+  const float tol = 1e-6f;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      assert(fabsf(strain_rate[i][j]) <= tol);
+      assert(fabsf(rotation_term[i][j] - expected[i][j]) <= tol);
     }
-
-    /* Verify that rigid rotation does not generate stress */
-    const float tol = 1e-6f;
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            assert(fabsf(dS_dt[i][j]) <= tol);
-        }
-    }
-}
-
-/* Test stress rotation to detect sign errors */
-static void test_stress_rotation_45deg(void) {
-    /* Initial stress */
-    float S[3][3] = {
-        {1.f, 0.f, 0.f},
-        {0.f, 0.f, 0.f},
-        {0.f, 0.f, 0.f}
-    };
-
-    /* Rigid rotation around z-axis */
-    const float omega = 0.5f;
-    float dv[3][3] = {
-        { 0.f, -omega, 0.f },
-        { omega,  0.f, 0.f },
-        { 0.f,    0.f, 0.f }
-    };
-
-    /* Multi-step integration */
-    const int nsteps = 1000000;
-    const float dt_total = (M_PI / 4.f) / omega;
-    const float dt_step = dt_total / nsteps;
-
-    float rotation_rate[3][3];
-    float rotation_term[3][3];
-    float S_rot[3][3];
-    memcpy(S_rot, S, sizeof(S));
-    for (int step = 0; step < nsteps; step++) {
-        /* Compute tensors */
-        strength_compute_rotation_rate_tensor(rotation_rate, dv);
-        strength_compute_rotation_term(rotation_term, rotation_rate, S_rot);
-
-        /* Update stress */
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                S_rot[i][j] += rotation_term[i][j] * dt_step;
-            }
-        }
-    }
-
-    /* Check final values after pi/4 rotation */
-    const float tol = 1e-3f;
-    assert(fabsf(S_rot[0][0] - 0.5f) <= tol);
-    assert(fabsf(S_rot[1][1] - 0.5f) <= tol);
-    assert(fabsf(S_rot[0][1] - 0.5f) <= tol);
-    assert(fabsf(S_rot[1][0] - 0.5f) <= tol);
+  }
 }
 
 /* Test that rotating stress by 2*pi returns to the original. */
@@ -332,8 +289,7 @@ int main(void) {
   test_rotation_rate_tensor();
   test_rotation_rate_tensor_symmetric_input();
   test_rotation_term_identity_M();
-  test_rigid_body_rotation_no_stress_generation();
-  test_stress_rotation_45deg();
+  test_spinning_solid();
   test_stress_rotation_full_circle();
 
   return 0;

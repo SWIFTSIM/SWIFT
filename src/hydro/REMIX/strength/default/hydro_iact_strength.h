@@ -144,14 +144,10 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
   /* Add contribution to dv/dr if both particles are solid. */
   if ((pi->phase == mat_phase_solid) &&
       (pj->phase == mat_phase_solid)) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        pi->strength_data.dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-        pj->strength_data.dv_force_loop[i][j] +=
-            (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
-      }
-    }
+    strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
+                                        pj->v, Gi, pj->mass / pj->rho_evol);
+    strength_add_velocity_gradient_contribution(pj->strength_data.dv_force_loop, pj->v,
+                                        pi->v, Gj, pi->mass / pi->rho_evol);
   }
 }
 
@@ -172,12 +168,8 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
   /* Add contribution to dv/dr if both particles are solid. */
   if ((pi->phase == mat_phase_solid) &&
       (pj->phase == mat_phase_solid)) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        pi->strength_data.dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-      }
-    }
+    strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
+                                        pj->v, Gi, pj->mass / pj->rho_evol);
   }
 }
 
