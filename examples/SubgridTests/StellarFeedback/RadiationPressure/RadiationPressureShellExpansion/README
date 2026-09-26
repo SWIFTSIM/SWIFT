@@ -9,7 +9,7 @@ L_bol t^2 / (2 pi rho_0 c)]^(1/4)`, with `f_trap` this code's own
 
 Formula-level correctness of the momentum-injection rate itself (Eq.
 rp-momentum-rate in `theory/GEAR/Radiation/01_radiation_pressure.tex`) is
-covered separately by `tests/testRadiationPressureFormula.c`, with no hydro
+covered separately by `testRadiationPressureFormula` (swift-gear's GEAR test suite), with no hydro
 involved: a gas-kinematics comparison cannot isolate the formula from the
 gas's own hydrodynamical response to the kick, which is exactly what this
 example measures instead.

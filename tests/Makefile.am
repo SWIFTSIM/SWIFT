@@ -34,17 +34,9 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
-        testRadiationRebuildCheck testRadiationPressureFormula \
-        testRadiationISRFFormula \
-        testRadiationISRFDissipationConservation \
-        testRadiationISRFComovingFactors \
-        testRadiationISRFExpansionTerm \
+        testRadiationRebuildCheck \
         testRadiationISRFForceDispatchConservation \
-        testRadiationISRFFluxUnderflow \
-        testRadiationISRFGateDegenerate \
-        testRadiationISRFGradientCache \
-        testRadiationGridMetadata testInterpolationNonuniformX \
-        testCoolingIonizedTemperatureFloor testNeutrinoCosmology.sh \
+        testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline  # testMatrixInversion
 
@@ -59,17 +51,9 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testRadiationRebuildCheck testRadiationPressureFormula \
-		 testRadiationISRFFormula \
-		 testRadiationISRFDissipationConservation \
-		 testRadiationISRFComovingFactors \
-		 testRadiationISRFExpansionTerm \
+		 testRadiationRebuildCheck \
 		 testRadiationISRFForceDispatchConservation \
-		 testRadiationISRFFluxUnderflow \
-		 testRadiationISRFGateDegenerate \
-		 testRadiationISRFGradientCache \
-		 testRadiationGridMetadata testInterpolationNonuniformX \
-		 testCoolingIonizedTemperatureFloor testNeutrinoCosmology \
+		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
@@ -83,20 +67,8 @@ testMaths_SOURCES = testMaths.c
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
-testRadiationPressureFormula_SOURCES = testRadiationPressureFormula.c
-testRadiationISRFFormula_SOURCES = testRadiationISRFFormula.c
-testRadiationISRFDissipationConservation_SOURCES = testRadiationISRFDissipationConservation.c
-testRadiationISRFComovingFactors_SOURCES = testRadiationISRFComovingFactors.c
-testRadiationISRFExpansionTerm_SOURCES = testRadiationISRFExpansionTerm.c
+
 testRadiationISRFForceDispatchConservation_SOURCES = testRadiationISRFForceDispatchConservation.c
-testRadiationISRFFluxUnderflow_SOURCES = testRadiationISRFFluxUnderflow.c
-testRadiationISRFGateDegenerate_SOURCES = testRadiationISRFGateDegenerate.c
-testRadiationISRFGradientCache_SOURCES = testRadiationISRFGradientCache.c
-testRadiationGridMetadata_SOURCES = testRadiationGridMetadata.c
-
-testInterpolationNonuniformX_SOURCES = testInterpolationNonuniformX.c
-
-testCoolingIonizedTemperatureFloor_SOURCES = testCoolingIonizedTemperatureFloor.c
 
 testAtomic_SOURCES = testAtomic.c
 
