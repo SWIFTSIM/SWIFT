@@ -52,10 +52,14 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* Did the particle receive an event? */
+  /* Did the particle receive an event? delta_mass is tested on its own
+     because ejecta can arrive with no accompanying energy, hence with none
+     of the hit flags set, and the mass still has to be applied here or it
+     is lost from the simulation. */
   /* TODO: Remove the ionization part from here and move it to cooling */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
       !xp->feedback_data.hit_by_radiation &&
+      xp->feedback_data.delta_mass == 0.f &&
       !radiation_is_part_tagged_as_ionized(p, xp))
     return;
 
