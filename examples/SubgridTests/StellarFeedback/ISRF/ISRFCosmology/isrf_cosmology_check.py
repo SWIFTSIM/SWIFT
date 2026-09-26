@@ -247,6 +247,14 @@ LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
 )
+# radiation_set_band_edge_coefficients()'s own start-up announcement
+# (radiation.c): the table-derived lambda_E(PE)/lambda_E(LW)/lambda_N(LW)
+# this run actually propagated with.
+BAND_EDGE_WEIGHTS_LOG_RE = re.compile(
+    r"radiation_set_band_edge_coefficients: Band-edge weights .*"
+    r"lambda_E\(PE\)=([-+0-9.eE]+), lambda_E\(LW\)=([-+0-9.eE]+), "
+    r"lambda_N\(LW\)=([-+0-9.eE]+)"
+)
 
 
 def _note_lw_calibration(message: str) -> None:
@@ -312,6 +320,42 @@ def find_run_logs(
         seen.add(key)
         logs.append(candidate)
     return logs
+
+
+def read_band_edge_weights(
+    *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
+) -> "Optional[Dict[str, float]]":
+    """Return this run's own table-derived band-edge weights, from its log.
+
+    ``radiation_set_band_edge_coefficients()`` announces
+    ``lambda_E(PE)``/``lambda_E(LW)``/``lambda_N(LW)`` once at start-up,
+    computed from the same radiation table the run propagated with
+    (``radiation.c``). Reading them here, rather than hardcoding a number,
+    keeps the cosmological allowance in `check_free_field` correct when the
+    table changes; the run's own log is the record of what it actually used.
+
+    Parameters
+    ----------
+    snapshot_globs : str, optional
+        Snapshot globs of the run being checked.
+    log : str, optional
+        A run log named explicitly on the command line.
+
+    Returns
+    -------
+    dict or None
+        ``{"PE": lambda_E(PE), "LW": lambda_E(LW), "N_LW": lambda_N(LW)}``,
+        or None if no log announced them.
+    """
+    for path in find_run_logs(*snapshot_globs, log=log):
+        match = BAND_EDGE_WEIGHTS_LOG_RE.search(path.read_text(errors="replace"))
+        if match:
+            return {
+                "PE": float(match.group(1)),
+                "LW": float(match.group(2)),
+                "N_LW": float(match.group(3)),
+            }
+    return None
 
 
 def check_run_lw_calibration(
@@ -982,6 +1026,48 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  c_hyp/c upper bound: {c_hyp_ratio:.3e} (margin {margin:g}, "
             f"median h {h_phys_cgs:.3e} cm, dt_step {dt_step:.3e} s)"
         )
+    # Per-band redshift depth is lambda_E(band)*H_dilated, not H_dilated
+    # alone (radiation_end_force_propagation): read the run's own
+    # table-derived lambda_E(PE)/lambda_E(LW) from its log rather than
+    # hardcoding a number here, so this bar tracks the radiation table
+    # instead of one measurement of it.
+    band_edge_weights = None
+    if cosmological:
+        band_edge_weights = read_band_edge_weights(opt.snapshots, log=opt.log)
+        if band_edge_weights is None:
+            raise RuntimeError(
+                "cosmological free_field run but no output.log announced "
+                "radiation_set_band_edge_coefficients()'s lambda_E(PE)/"
+                "lambda_E(LW): this gate's cosmological allowance needs "
+                "them to size the un-modelled decay correctly, and cannot "
+                "default to lambda=1 without silently reintroducing the "
+                "gate this file's own history already flagged as too "
+                "tight. Pass --log or run beside the log this fixture "
+                "wrote."
+            )
+        print(
+            f"  band-edge weights from the log: lambda_E(PE)="
+            f"{band_edge_weights['PE']:.5g}, lambda_E(LW)="
+            f"{band_edge_weights['LW']:.5g}"
+        )
+    # The LW-to-PE band-edge transfer (radiation_end_force_propagation) adds
+    # (lambda_E(LW) - 1)*H_dilated*u_LW into PE's own `u` every step, on top
+    # of PE's own -lambda_E(PE)*H_dilated*u_PE decay: to first order in the
+    # (small) cosmological perturbation, PE's own relative drift coefficient
+    # is therefore [lambda_E(LW) - 1]*r - lambda_E(PE), not lambda_E(PE)
+    # alone, with r the box-mean u_LW0/u_PE0 this run actually started at
+    # (not assumed to be 1, though this fixture's own IC sets u_pe = u_lw).
+    # LW receives no such term, so its own coefficient is unchanged.
+    r_lw_over_pe = None
+    if cosmological:
+        r_lw_over_pe = float(
+            np.sum(run[0]["mass"] * run[0]["u_LW"])
+            / np.sum(run[0]["mass"] * run[0]["u_PE"])
+        )
+        print(
+            f"  box-mean u_LW0/u_PE0 (r, the LW-to-PE transfer's own scale "
+            f"factor): {r_lw_over_pe:.5g}"
+        )
     for band in ["PE", "LW"]:
         # Float32 round-off of each update, averaged over the particles.
         budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
@@ -990,9 +1076,22 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
         # The un-modelled dilated decay itself (span), plus its own step-end
         # H ((3/4) dlna_step per unit ln a) and one-step lag discretisation,
-        # all dilated by the same c_hyp/c factor as the term itself.
+        # all dilated by the same c_hyp/c factor as the term itself, AND by
+        # this band's own drift coefficient: lambda_E(band)*H_dilated for
+        # LW, but [lambda_E(LW) - 1]*r - lambda_E(PE), in magnitude, for PE
+        # (see the comment above the r_lw_over_pe computation).
+        if cosmological:
+            if band == "PE":
+                drift_coeff = abs(
+                    band_edge_weights["PE"]
+                    - (band_edge_weights["LW"] - 1.0) * r_lw_over_pe
+                )
+            else:
+                drift_coeff = band_edge_weights["LW"]
+        else:
+            drift_coeff = 0.0
         cosmo = (
-            c_hyp_ratio * (span + 0.75 * dt_max * span + dt_max)
+            c_hyp_ratio * drift_coeff * (span + 0.75 * dt_max * span + dt_max)
             if cosmological
             else 0.0
         )
