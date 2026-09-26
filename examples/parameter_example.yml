@@ -20,7 +20,7 @@ Cosmology:
   h:              0.6777        # Reduced Hubble constant
   a_begin:        0.0078125     # Initial scale-factor of the simulation
   a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
+  Omega_cdm:      0.2587481     # Cold dark matter density parameter (Omega_m - Omega_b for a run without massive neutrinos)
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0482519     # Baryon density parameter
   Omega_r:        0.            # (Optional) Radiation density parameter
@@ -45,7 +45,7 @@ SPH:
   particle_splitting:                  1        # (Optional) Are we splitting particles that are too massive (default: 0)
   particle_splitting_mass_threshold:   7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
   particle_splitting_log_extra_splits: 0        # (Optional) Are we logging the splits beyond the maximal allowed into files? (default: 0)
-  generate_random_ids:                 0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
+  particle_splitting_generate_random_ids: 0     # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
   initial_temperature:                 0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:                 0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                     0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
@@ -58,6 +58,7 @@ SPH:
   diffusion_beta:                      0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
   diffusion_alpha_max:                 1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
   diffusion_alpha_min:                 0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+  diffusion_coefficient:               0.03     # (Optional) Thermal diffusion coefficient in the Gasoline-2 scheme (default: 0.03).
 
 # Parameters of the stars
 Stars:
@@ -76,6 +77,13 @@ Stars:
   max_timestep_young_Myr:               0.1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
+
+# Parameters of the black holes' neighbour search
+BlackHoles:
+  resolution_eta:                      1.2348        # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
+  h_tolerance:                          1e-4         # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations:                 30           # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:                     1.4         # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
   
 # Parameters for the self-gravity scheme
 Gravity:
@@ -141,9 +149,19 @@ Scheduler:
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
   grid_split_threshold:      400       # (Optional) Maximal number of particles per cell at construction level of Voronoi grid (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
+  cell_recurse_size_self_hydro: 100    # (Optional) Below this number of particles, a hydro self task is run without further recursion (this is the default value).
+  cell_recurse_size_pair_hydro: 100    # (Optional) Below this number of particles, a hydro pair task is run without further recursion (this is the default value).
+  cell_recurse_size_self_stars: 100    # (Optional) Below this number of particles, a stars self task is run without further recursion (this is the default value).
+  cell_recurse_size_pair_stars: 100    # (Optional) Below this number of particles, a stars pair task is run without further recursion (this is the default value).
+  cell_recurse_size_self_black_holes: 100 # (Optional) Below this number of particles, a black holes self task is run without further recursion (this is the default value).
+  cell_recurse_size_pair_black_holes: 100 # (Optional) Below this number of particles, a black holes pair task is run without further recursion (this is the default value).
+  cell_recurse_size_self_sinks: 100    # (Optional) Below this number of particles, a sinks self task is run without further recursion (this is the default value).
+  cell_recurse_size_pair_sinks: 100    # (Optional) Below this number of particles, a sinks pair task is run without further recursion (this is the default value).
   cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_bparts:         0         # (Optional) Number of spare bparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:          0         # (Optional) Number of spare sinks per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
@@ -182,6 +200,8 @@ Snapshots:
   invoke_ps:  0           # (Optional) Call a power-spectrum calculation every time a snapshot is written
   compression: 0          # (Optional) Set the level of GZIP compression of the HDF5 datasets [0-9]. 0 does no compression. The lossless compression is applied to *all* the fields.
   distributed: 0          # (Optional) When running over MPI, should each rank write a partial snapshot or do we want a single file? 1 implies one file per MPI rank.
+  subsample:           [0, 0, 0, 0, 0, 0, 0]  # (Optional) Sub-sample the particles written to the snapshots, one flag per particle type (gas, DM, DM background, sinks, stars, BHs, neutrinos). 0 writes all the particles of that type.
+  subsample_fraction:  [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]  # (Optional) Fraction of the particles of each type to keep when sub-sampling is switched on for that type.
   lustre_OST_checks: 0    # (Optional) Perform OST selection checks
   lustre_OST_free: 0      # (Optional) OST free space requirement, -1 for guess.
   lustre_OST_test: 0      # (Optional) Check that OSTs are writable.
@@ -313,6 +333,7 @@ EoS:
   isothermal_internal_energy: 20.26784      # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
   barotropic_vacuum_sound_speed: 2e4        # Vacuum sound speed (in internal units)
   barotropic_core_density:       1e-13      # Core density (in internal units)
+  external_pressure:             0.         # External pressure added to the continuous barotropic equation of state (in internal units)
   # Select which planetary EoS material(s) to enable for use.
   planetary_use_idg_def:    0               # Default ideal gas, material ID 0
   planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
@@ -372,6 +393,10 @@ EoS:
   planetary_SESAME_basalt_table_file:   ./EoSTables/SESAME_basalt_7530.txt
   planetary_SESAME_water_table_file:    ./EoSTables/SESAME_water_7154.txt
   planetary_SS08_water_table_file:      ./EoSTables/SS08_water.txt
+  planetary_AQUA_table_file:            ./EoSTables/AQUA_H20.txt
+  planetary_CMS19_H_table_file:         ./EoSTables/CMS19_H.txt
+  planetary_CMS19_He_table_file:        ./EoSTables/CMS19_He.txt
+  planetary_CD21_HHe_table_file:        ./EoSTables/CD21_HHe.txt
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
@@ -504,6 +529,10 @@ MWPotential2014Potential:
   df_polyfit_coeffs16:  1.85478908e+02     # Polynomial fit coefficient for the velocity dispersion model (order 0)
   df_timestep_mult : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
 
+# Constant acceleration external potential
+ConstantPotential:
+  g_cgs:           [0., 0., -981.]  # Acceleration vector applied to all the particles (in cgs units, i.e. cm/s^2)
+
 # AGAMA potential
 AGAMAPotential:
   filename:        potential.txt    # file name of an AGAMA potential
@@ -518,17 +547,30 @@ BoundaryParticles:
     enable_fixed_position:           0     # (optional) Whether or not boundary particles are fixed in place.
     enable_hydro_acceleration:       0     # (optional) Whether or not boundary particles have hydrodynamic accelerations enabled.
     enable_grav_acceleration:        0     # (optional) Whether or not boundary particles have gravitational accelerations enabled.
+    jet_power:                       1.    # (idealized AGN jet forcing only) Power of the jet injected through the boundary particles (internal units)
+    jet_velocity:                    1.    # (idealized AGN jet forcing only) Kick velocity of the jet (internal units)
+    jet_duration:                    1.    # (idealized AGN jet forcing only) Time during which the jet is switched on (internal units)
 
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
 RobertsFlowForcing:
   u0:              1.5      # Forcing velocity (internal units)
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
+  Flow_kind:       1        # Which of the four Roberts flows to use (integer in [1, 4])
+  kv:              1.0      # Wavenumber of the flow (in units of 2*pi / box size)
 
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the forcing is an acceleration
 RobertsFlowAccelerationForcing:
   u0:              1.5      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
+
+ABC_Flow_Forcing:
+  u0:              1.5      # Forcing velocity (internal units)
+  Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
+  kv:              1.0      # Wavenumber of the flow (in units of 2*pi / box size)
+  A:               1.0      # Coefficient A of the Arnold-Beltrami-Childress flow
+  B:               1.0      # Coefficient B of the Arnold-Beltrami-Childress flow
+  C:               1.0      # Coefficient C of the Arnold-Beltrami-Childress flow
 
 # Balsara-Kim energy injections 
 BalsaraKimForcing:
@@ -576,6 +618,7 @@ ConstCooling:
 LambdaCooling:
   lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
+  rapid_cooling:               0     # (Optional) Apply the cooling directly to the internal energy (1) rather than via the internal energy time derivative (0, default).
 
 # Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
 EAGLECooling:
@@ -608,10 +651,13 @@ PS2020Cooling:
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
   delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
+  Ca_over_Si_in_solar:     1.0               # (Optional) Ratio of the Ca abundance to the Si abundance in units of the solar ratio (default: 1)
+  S_over_Si_in_solar:      1.0               # (Optional) Ratio of the S abundance to the Si abundance in units of the solar ratio (default: 1)
 
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  primordial_chemistry: 0                      # (optional) Grackle primordial chemistry network (0 to 3). Defaults to the mode selected at configure time.
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
@@ -882,11 +928,12 @@ SPINJETAGN:
   use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
   min_gas_mass_for_nibbling_Msun:     9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_heating_temperature_model:      Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
+  AGN_delta_T_model:                  Constant   # How the AGN heating temperature is set. If 'Constant', the value of AGN_delta_T_K is used. If 'Local', the heating temperature follows the Dalla Vecchia & Schaye (2012) condition scaled by delta_T_xi and bounded by delta_T_min_K and delta_T_max_K.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, if 'AGN_heating_temperature_model' is 'Constant'.
   delta_T_xi:                         1.         # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
   delta_T_min_K:                      1e8        # The minimal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
   delta_T_max_K:                      1e11       # The maximal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
+  temperature_hot_gas_min_K:          1e5        # Minimal temperature of the hot gas in Kelvin, used to define the minimal sound speed entering the heating temperature and jet velocity models.
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
   with_potential_correction:          1          # Subtract BH's own contribution to the potential of neighbours when determining repositioning targets.
   max_reposition_mass_Msun:           2e8        # Maximal BH mass considered for BH repositioning in solar masses.
@@ -915,6 +962,8 @@ SPINJETAGN:
   v_jet_BH_mass_scaling_slope:        0.5        # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_min_km_p_s:                   500        # The minimal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
   v_jet_max_km_p_s:                   1e4        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
+  v_jet_mass_loading:                 10.        # Jet mass loading factor used to set the jet velocity if 'AGN_jet_velocity_model' is 'MassLoading'.
+  v_jet_xi:                           1.         # Numerical multiplier by which the local jet velocity formula is scaled if 'AGN_jet_velocity_model' is 'Local'. A value of 1 uses the formula as derived.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
   AGN_jet_feedback_model:             MinimumDistance # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
@@ -1018,6 +1067,13 @@ XrayEmissivity:
   
 # Parameters related to the sink particles ---------------------------------------
 
+# Parameters of the sink particles' neighbour search (Default and GEAR models)
+Sinks:
+  resolution_eta:                      1.2348        # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
+  h_tolerance:                          1e-4         # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations:                 30           # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:                     1.4         # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
+
 # Default sink particles
 DefaultSink:
   cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
@@ -1025,10 +1081,15 @@ DefaultSink:
 BasicSink:
   use_nibbling: 1                             # Use nibbling to accrete gas? If zero, do swallowing instead.
   min_gas_mass_for_nibbling_Msun: 5e4         # The mass in Msun that particles cannot be nibbled below. A good default is half the initial mass.
+  resolution_eta:        1.2348               # (Optional) Target smoothing length in units of the mean inter-particle separation. Defaults to the SPH value.
+  h_tolerance:           1e-4                 # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations:  30                   # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:     1.4                  # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
 
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). In GEAR, if this is specified, the cutoff radius is fixed, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  use_fixed_cut_off_radius: 1                 # Use a fixed cut-off radius (1) or let it vary with the sink smoothing length as r_cut = h*kernel_gamma (0).
+  cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). Only read if use_fixed_cut_off_radius is 1; the sink smoothing length is then fixed at this value divided by kernel_gamma.
   f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
   temperature_threshold_K:        100         # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 1e3                # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
@@ -1104,7 +1165,7 @@ SPHM1RT:
   init_species_abundance_HeIII:    1e-5               # (Conditional) (if useabundances==1) HeIII abundances (in unit hydrogen number density:nH)
   relativeTolerance:          1e-3                    # (Optional) Relative tolerance for SPHM1RT thermo-chemistry intergration
   absoluteTolerance:          1e-10                   # (Optional) Absolute tolerance for SPHM1RT thermo-chemistry integration
-  explicitTolerance:          0.1                     # (Optional) Tolerance below which we use the explicit solution in SPHM1RT thermo-chemistry
+  explicitRelTolerance:       0.1                     # (Optional) Tolerance below which we use the explicit solution in SPHM1RT thermo-chemistry
   ionizing_photon_energy_erg: [3.0208e-11, 5.61973e-11, 1.05154e-10]  # (Optional) ionizing photon energy in erg averaged within frequency bins #note that we start from frequency bin 1 (instead of 0).
   coolingon:              1                           # (Optional) switch for cooling (and photoheating), but photo-ionization will be ongoing even if coolingon==0 
   useparams:              0                           # (Optional) switch to use thermo-chemistry parameters from the parameter file
@@ -1122,6 +1183,9 @@ SPHM1RT:
 PowerSpectrum:
   grid_side_length:  256                  # Size of the grid used in power spectrum calculation.
   num_folds:         6                    # Number of foldings (1 means no foldings), determines the max k
+  scale_factor_first: 0.1                 # (Optional) Scale-factor of the first power spectrum output if cosmological time-integration (default: 0.1).
+  time_first:        0.                   # (Optional) Time of the first power spectrum output if non-cosmological time-integration (in internal units).
+  delta_time:        1.1                  # (Optional) Time difference between consecutive power spectrum outputs (in internal units). Ignored if an output list is used.
   fold_factor:       4                    # (Optional) factor by which to reduce the box along each side each folding (default: 4)
   window_order:      3                    # (Optional) order of the mass assignment scheme (default: 3, TSC)
   shift_centre_small_k_bins: 1            # (Optional) Correct the centre of the bins with a small k to account for the small number of modes entering the bin.
