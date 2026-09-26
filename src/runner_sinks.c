@@ -30,6 +30,7 @@
 #include "engine.h"
 #include "sink.h"
 #include "sink_iact.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 #include "timers.h"
 
@@ -564,7 +565,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
      sink_formation_sink) is the sole authority for pi->sink_data.
      is_overlapping_sink when it is active, mirroring runner_iact_sink()'s
      own use_fixed_r_cut guard. */
-  if (sink_props->use_fixed_r_cut) {
+  if (sink_formation_gas_loop_is_active(sink_props)) {
 #ifdef SWIFT_SINK_FORMATION_OVERLAP_CHECKS
     if (pi->id % SWIFT_SINK_FORMATION_OVERLAP_CHECKS == 0)
       runner_check_sink_overlap_brute_force(e, c, pi, xpi);

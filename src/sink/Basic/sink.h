@@ -649,6 +649,19 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     const struct cosmology *cosmo, const struct sink_props *sink_props) {}
 
 /**
+ * @brief Can the gas particle form a sink?
+ *
+ * Used to skip the overlap test of the gas-sink formation loop for gas that
+ * cannot form a sink.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static int sink_part_can_form_sink(
+    const struct part *restrict p) {
+  return 0;
+}
+
+/**
  * @brief Compute all quantities required for the formation of a sink. This
  * function works on the neighbouring sink particles.
  *
