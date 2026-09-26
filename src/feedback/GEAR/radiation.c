@@ -49,8 +49,7 @@ double radiation_lw_photon_energy_cgs = 0.;
     land around 1.7e-21, strictly positive so it passes the exact "<= 0"
     no-table-coverage guard in radiation_set_band_edge_coefficients(), but
     nowhere near a genuine value. Set well below the smallest genuine value
-    measured so far (lambda_E(PE) - 1 = 0.66, a different IMF/metallicity
-    combination from that function's own worked example): a real table
+    measured so far (lambda_E(PE) - 1 = 0.66): a real table
     should clear it by a wide margin, so tripping it means a units bug, not
     a legitimate table, and it is therefore fatal.
 
@@ -223,9 +222,10 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                            RADIATION_LW_BAND_LOWER_EDGE_CGS;
 
   /* lambda_N(LW) has no "+1" floor the way lambda_E(b) does: it IS
-   * lambda_e_lw_minus_one rescaled by <E>_LW/E_lo(LW), an O(1) factor
-   * (5.934/5.424 ~ 1.09 in this function's own worked example above), so
-   * the tripwires apply to the value itself rather than to "value - 1". */
+   * lambda_e_lw_minus_one rescaled by <E>_LW/E_lo(LW) (RADIATION_LW_BAND_
+   * LOWER_EDGE_CGS, ~11.2 eV, against a mean LW photon energy of the same
+   * order), an O(1) factor, so the tripwires apply to the value itself
+   * rather than to "value - 1". */
   if (fb_props->band_edge_photon_weight_lw > 0. &&
       fb_props->band_edge_photon_weight_lw <
           RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
