@@ -17,7 +17,9 @@
  *
  ******************************************************************************/
 
-/* Test for the gas-gas neighbour loop used in sink particle formation.
+/* Test for the fixed-aperture gas-gas neighbour loop (see
+ * runner_doiact_functions_hydro_aperture.h), whose first use is GEAR's sink
+ * formation criterion.
  *
  * Generates 27 cells arranged in a 3x3x3 grid, fills them with gas particles,
  * and verifies that the optimised pair and self interaction functions
@@ -29,11 +31,11 @@
  *
  * The loop template is instantiated locally in this translation unit with a
  * model-agnostic test iact that counts each pair found within r_cut by
- * incrementing density.wcount.  This makes the test independent of any
+ * incrementing density.wcount. This makes the test independent of any
  * particular sink model and sensitive to any error in the geometric
  * neighbour-finding logic (wrong pairs included or excluded).
  *
- * Gas particles may have any smoothing length — the loop's sole cutoff
+ * Gas particles may have any smoothing length: the loop's sole cutoff
  * criterion is the fixed geometric aperture r_cut, so no h-based constraint
  * is needed.
  *
@@ -62,19 +64,11 @@
 #define R_CUT_FRACTION 0.25f
 
 /* Smoothing length in units of inter-particle spacing.  The loop uses a fixed
- * geometric r_cut, so h may be anything — use a value similar to standard
+ * geometric r_cut, so h may be anything. Use a value similar to standard
  * hydro tests. */
 #define H_FRAC 1.2348f
 
 #define NODE_ID 0
-
-/* ============================================================
- * Test-local iact: count neighbours within r_cut.
- *
- * These functions are model-agnostic — they accumulate density.wcount so
- * that both the optimised loop and the brute-force reference produce an
- * integer neighbour count per particle, making disagreements detectable.
- * ============================================================ */
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_hydro_aperture_test_formation(
@@ -95,8 +89,7 @@ runner_iact_hydro_aperture_test_formation(
   pj->density.wcount += 1.0f;
 }
 
-/* ============================================================
- * Instantiate the loop template with the test iact.
+/* Instantiate the loop template with the test iact.
  *
  * IACT_NONSYM_HYDRO_APERTURE / IACT_HYDRO_APERTURE are defined in
  * runner_doiact_hydro_aperture.h (included by
@@ -106,8 +99,7 @@ runner_iact_hydro_aperture_test_formation(
  * resolve to the test functions above, so the generated loops count neighbours.
  *
  * space_getsid_and_swap_cells is used internally by the pair functions; pull
- * in its declaration here just as runner_doiact_hydro_aperture.c does.
- * ============================================================ */
+ * in its declaration here just as runner_doiact_hydro_aperture.c does. */
 #include "space_getsid.h"
 #define FUNCTION test_formation
 #define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
@@ -117,10 +109,6 @@ runner_iact_hydro_aperture_test_formation(
 /* The locally instantiated function names (used directly below). */
 #define DOSELF1_NAME "runner_doself1_branch_hydro_aperture_test_formation"
 #define DOPAIR1_NAME "runner_dopair1_branch_hydro_aperture_test_formation"
-
-/* ============================================================
- * Cell construction helper.
- * ============================================================ */
 
 /**
  * @brief Construct a cell and all of its particles in a valid state.
@@ -189,7 +177,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h_frac,
     }
   }
 
-  /* Cell metadata. */
+  /* Cell properties */
   cell->split = 0;
   cell->hydro.h_max = h_max;
   cell->hydro.h_max_active = h_max;
@@ -311,10 +299,6 @@ void free_split_cell(struct cell *top) {
   free(top);
 }
 
-/* ============================================================
- * Field reset and dump helpers.
- * ============================================================ */
-
 /**
  * @brief Reset density.wcount to zero for all particles in a cell.
  */
@@ -371,14 +355,6 @@ void dump_particle_fields(const char *fileName, struct cell *main_cell,
   }
   fclose(file);
 }
-
-/* ============================================================
- * Brute-force reference implementations.
- *
- * These O(N²) functions are guaranteed correct by construction and serve as
- * the ground truth against which the optimised loops are verified.  They call
- * the same test iact as the loop template, so the comparison is exact.
- * ============================================================ */
 
 /**
  * @brief Brute-force pair interaction between all gas particles in @p ci and
@@ -519,10 +495,6 @@ void self_all_hydro_sinks(struct runner *r, struct cell *c, const float r_cut) {
   }
 }
 
-/* ============================================================
- * Main test driver.
- * ============================================================ */
-
 int main(int argc, char *argv[]) {
 
 #ifdef HAVE_SETAFFINITY
@@ -634,7 +606,6 @@ int main(int argc, char *argv[]) {
 
   struct sink_props sink_props;
   bzero(&sink_props, sizeof(struct sink_props));
-  sink_props.cut_off_radius = r_cut;
   engine.sink_properties = &sink_props;
 
   struct pressure_floor_props pressure_floor;

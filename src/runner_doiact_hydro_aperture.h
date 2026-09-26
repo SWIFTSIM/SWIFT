@@ -96,9 +96,6 @@
 #define CELL_IS_ACTIVE cell_is_active_hydro
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted
 #define DO_DRIFT_DEBUG_CHECKS 1
-#define GET_MU0() \
-  {               \
-  }
 
 void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
                                    const float r_cut);
