@@ -1677,8 +1677,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
      #feedback_props.band_edge_weight_pe's own doxygen,
      feedback_properties.h). Announcing the restored value (not
      re-deriving it) still lets a restarted run's log be checked against
-     its own start-up announcement, DoD item 6 (restart works for any
-     change to the radiation sub-struct). */
+     its own start-up announcement, confirming the restart path preserves
+     this value across a change to the radiation sub-struct. */
   if (engine_rank == 0 && feedback->radiation_policy != 0)
     message(
         "Band-edge weights restored from the restart file: lambda_E(PE)=%.5g, "

@@ -1900,10 +1900,11 @@ $c_{\rm hyp}/c$ and folded into the relaxation depth,
 \end{equation}
 $\lambda(m)$ is the transported moment $m$'s own band-edge weight
 (the PE and LW energy moments' $\lambda_E({\rm PE})$/$\lambda_E({\rm LW})$,
-the LW photon-number moment's $\lambda_N({\rm LW})$), $\lambda(m) = 1$
-recovering the grey, comoving-band-edge result this section originally
-described; see the "band-edge transfer" paragraph below.
-the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
+the LW photon-number moment's $\lambda_N({\rm LW})$); $\lambda(m) = 1$
+recovers the grey, comoving-band-edge result the "band-edge transfer"
+paragraph below replaces.
+
+Here $a_i$ is the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
 \code{radiation\_end\_gradient\_propagation()} (the flux update,
 Eq.~\ref{eq:fuv-F-update}) and \code{radiation\_end\_force\_propagation()}
 (the energy update, Eq.~\ref{eq:fuv-u-update}). $H$ enters
@@ -1943,9 +1944,9 @@ against a Hubble time; here the relevant interval is the whole run.
 $\lambda(m)$ in Eq.~\ref{eq:fuv-cosmo-relax-depth} closes that
 inconsistency. Each band's own lower-edge loss rate is
 $(\lambda_E(b)-1)\,H_{\rm dilated}\,u_b$, with $\lambda_E(b)\geq1$ a
-table-borne coefficient (the IMF-integrated ratio of the band's
-lower-edge spectral photon rate to its own luminosity, evaluated once
-per run at the stellar population's own upper mass bound); $\lambda_E=1$
+table-borne coefficient (the ratio of the band's lower-edge spectral
+photon rate to its own luminosity, both IMF-integrated over the stellar
+population's own mass range, evaluated once per run); $\lambda_E=1$
 recovers the grey result above. Because the PE and LW bands are
 CONTIGUOUS at $11.2$\,eV, the LW band's lower-edge loss is EXACTLY the
 PE band's upper-edge gain: that energy is transferred from the LW

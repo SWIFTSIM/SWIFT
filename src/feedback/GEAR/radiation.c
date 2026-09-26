@@ -36,14 +36,30 @@
 
 double radiation_lw_photon_energy_cgs = 0.;
 
-/*! Loosest sanity bound on a table-borne lambda_E(b)/lambda_N(LW): flagged
-    (not fatal) outside this range. Derived from the observed grid range
-    (band-edge transfer derivation, section 4.3: lambda_E(LW) - 1 up to 237
-    over the PARSEC grid); 1 is the physical floor (a band-edge weight below
-    1 would mean the band GAINS at its own lower edge, which the derivation
-    rules out). */
-#define RADIATION_BAND_EDGE_WEIGHT_SANITY_MIN 1.0
-#define RADIATION_BAND_EDGE_WEIGHT_SANITY_MAX 250.0
+/*! Tripwires on the table-borne lambda(b) - 1 (the redshift term added to
+    the grey lambda(b) = 1): applied uniformly to lambda_E(PE) - 1,
+    lambda_E(LW) - 1, and lambda_N(LW) (which has no "+1" floor of its own,
+    see radiation_set_band_edge_coefficients()). Neither bound is a
+    physical limit on the quantity itself -- a different or future table
+    could legitimately sit outside either one -- they are sanity checks on
+    THIS run's own numbers before trusting them.
+
+    The FLOOR catches COLLAPSE TO GREY from a units bug: folding
+    E_lo(b)^2 into the ratio twice instead of once makes lambda(LW) - 1
+    land around 1.7e-21, strictly positive so it passes the exact "<= 0"
+    no-table-coverage guard in radiation_set_band_edge_coefficients(), but
+    nowhere near a genuine value. Set well below the smallest genuine value
+    measured so far (lambda_E(PE) - 1 = 0.66, a different IMF/metallicity
+    combination from that function's own worked example): a real table
+    should clear it by a wide margin, so tripping it means a units bug, not
+    a legitimate table, and it is therefore fatal.
+
+    The CEILING is the largest value measured over the PARSEC grid so far
+    (237, for lambda_E(LW) - 1), rounded up: it is a sanity tripwire, not a
+    derived physical bound, so exceeding it is a warning, not a refusal --
+    a future table legitimately could. */
+#define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR 0.05
+#define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX 250.0
 
 /**
  * @brief Set #feedback_props.band_edge_weight_pe/lw/photon_weight_lw from
@@ -63,10 +79,10 @@ double radiation_lw_photon_energy_cgs = 0.;
  *
  * lambda_E(b) - 1 = E_lo(b)^2 * Integrated_SpectralPhotonRateAtEdge(b) /
  * Integrated_L_b, both terms differenced over [mass_min, mass_max] the same
- * way #radiation_get_l_lw_from_integral already differences Integrated_L_LW
- * (band-edge transfer derivation, section 4.3): the two getters this
- * function calls for each band share the SAME difference pattern, so the
- * ratio is never one-sided. #radiation_get_l_edge_pe_from_integral/
+ * way #radiation_get_l_lw_from_integral already differences Integrated_L_LW:
+ * the two getters this function calls for each band share the SAME
+ * difference pattern, so the ratio is never one-sided.
+ * #radiation_get_l_edge_pe_from_integral/
  * #radiation_get_l_edge_lw_from_integral already fold E_lo(b)^2 and the
  * cgs-to-internal power conversion into the stored value at read time
  * (radiation_read_l_edge_pe_array()/_lw_array()), so both numerator and
@@ -133,11 +149,10 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                                                  log_m2)
           : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m2);
 
-  /* Denominator guard (band-edge transfer derivation, section 4.2a hazard
-   * 2): an IMF whose whole mass range sits at or below the table's own
-   * native mass floor has L_PE = L_LW = 0 there, a degenerate case the
-   * fallback above already covers. Exact comparison, no epsilon: the
-   * numerator can be legitimately zero too (see the warning below), so
+  /* Denominator guard: an IMF whose whole mass range sits at or below the
+   * table's own native mass floor has L_PE = L_LW = 0 there, a degenerate
+   * case the fallback above already covers. Exact comparison, no epsilon:
+   * the numerator can be legitimately zero too (see the warning below), so
    * an epsilon-guarded denominator would mask that case instead of
    * reporting it. */
   if (l_pe <= 0. || l_lw <= 0.) return;
@@ -149,14 +164,14 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
   const double lambda_e_pe_minus_one = l_edge_pe / l_pe;
   const double lambda_e_lw_minus_one = l_edge_lw / l_lw;
 
-  /* Numerator guard (section 4.2a hazard 2, the SEPARATE case from the
-   * denominator guard above): a nonzero L_b with a zero edge term means the
-   * vendored spectral library's own wavelength coverage does not reach this
-   * band's edge energy, even though it covers enough of the band to give a
-   * nonzero total. The ratio is then silently 0 (grey), which is the
-   * correct arithmetic result, not a bug to correct here -- but it should
-   * be observable, since it is exactly the state this whole feature exists
-   * to remove. */
+  /* Numerator guard, the SEPARATE case from the denominator guard above: a
+   * nonzero L_b with a zero edge term means the vendored spectral
+   * library's own wavelength coverage does not reach this band's edge
+   * energy, even though it covers enough of the band to give a nonzero
+   * total. The ratio is then silently 0 (grey), which is the correct
+   * arithmetic result, not a bug to correct here -- but it should be
+   * observable, since it is exactly the state this whole feature exists to
+   * remove. */
   if (engine_rank == 0 && lambda_e_pe_minus_one <= 0.)
     message(
         "WARNING: Data/Radiation's SpectralPhotonRateAtPEEdge integrates to "
@@ -172,12 +187,32 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
         (double)sm->imf.mass_min, (double)sm->imf.mass_max,
         (double)exp10(log_z));
 
+  /* Fatal tripwire (see this macro's own doxygen above): a POSITIVE but
+   * implausibly tiny lambda(b) - 1 is a units-bug signature, not a
+   * legitimate table. Deliberately excludes the exact "<= 0" case above,
+   * which is the separate, legitimate no-coverage state. Not gated on
+   * engine_rank: every rank computes the same value from the same table,
+   * so all of them must abort together, not just rank 0. */
+  if (lambda_e_pe_minus_one > 0. &&
+      lambda_e_pe_minus_one < RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_E(PE) - 1 = %.6g is below the sanity floor %.3g: this "
+        "looks like a units bug (e.g. E_lo^2 folded in twice), not a "
+        "genuine table value.",
+        lambda_e_pe_minus_one, RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+  if (lambda_e_lw_minus_one > 0. &&
+      lambda_e_lw_minus_one < RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_E(LW) - 1 = %.6g is below the sanity floor %.3g: this "
+        "looks like a units bug (e.g. E_lo^2 folded in twice), not a "
+        "genuine table value.",
+        lambda_e_lw_minus_one, RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+
   fb_props->band_edge_weight_pe = 1. + lambda_e_pe_minus_one;
   fb_props->band_edge_weight_lw = 1. + lambda_e_lw_minus_one;
 
-  /* Lambda_LW = (lambda_E(LW) - 1) * <E>_LW / E1 (band-edge transfer
-   * derivation, section 4.3's chain form), guarded the same way: a zero
-   * mean photon energy would only occur if Integrated_MeanPhotonEnergyLW's
+  /* Lambda_LW = (lambda_E(LW) - 1) * <E>_LW / E1, guarded the same way: a
+   * zero mean photon energy would only occur if Integrated_MeanPhotonEnergyLW's
    * own denominator-guard (radiation_get_mean_photon_energy_lw_from_
    * integral()'s underlying table) had already returned its 12.4 eV
    * placeholder, which is strictly positive, so this guard should never
@@ -187,30 +222,50 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                            mean_e_lw_cgs /
                                            RADIATION_LW_BAND_LOWER_EDGE_CGS;
 
+  /* lambda_N(LW) has no "+1" floor the way lambda_E(b) does: it IS
+   * lambda_e_lw_minus_one rescaled by <E>_LW/E_lo(LW), an O(1) factor
+   * (5.934/5.424 ~ 1.09 in this function's own worked example above), so
+   * the tripwires apply to the value itself rather than to "value - 1". */
+  if (fb_props->band_edge_photon_weight_lw > 0. &&
+      fb_props->band_edge_photon_weight_lw <
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR)
+    error(
+        "lambda_N(LW) = %.6g is below the sanity floor %.3g: this looks "
+        "like a units bug (e.g. E_lo^2 folded in twice), not a genuine "
+        "table value.",
+        fb_props->band_edge_photon_weight_lw,
+        RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR);
+
   if (engine_rank == 0) {
     message(
         "Band-edge weights (redshift transfer across the 6/11.2/13.6 eV "
-        "band edges) at mass_max=%.4g Msun, Z=%.4g: lambda_E(PE)=%.5g, "
-        "lambda_E(LW)=%.5g, lambda_N(LW)=%.5g",
-        (double)sm->imf.mass_max, (double)exp10(log_z),
-        fb_props->band_edge_weight_pe, fb_props->band_edge_weight_lw,
-        fb_props->band_edge_photon_weight_lw);
-    if (fb_props->band_edge_weight_pe < RADIATION_BAND_EDGE_WEIGHT_SANITY_MIN ||
-        fb_props->band_edge_weight_pe > RADIATION_BAND_EDGE_WEIGHT_SANITY_MAX)
+        "band edges), IMF-integrated over [%.4g, %.4g] Msun at Z=%.4g: "
+        "lambda_E(PE)=%.5g, lambda_E(LW)=%.5g, lambda_N(LW)=%.5g",
+        (double)sm->imf.mass_min, (double)sm->imf.mass_max,
+        (double)exp10(log_z), fb_props->band_edge_weight_pe,
+        fb_props->band_edge_weight_lw, fb_props->band_edge_photon_weight_lw);
+    if (lambda_e_pe_minus_one > RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
       message(
-          "WARNING: lambda_E(PE)=%.5g is outside the observed grid range "
-          "[%.1f, %.1f]; check the table and its unit conversion before "
+          "WARNING: lambda_E(PE) - 1 = %.5g exceeds the observed grid "
+          "maximum %.1f; check the table and its unit conversion before "
           "trusting this run's PE band-edge physics.",
-          fb_props->band_edge_weight_pe, RADIATION_BAND_EDGE_WEIGHT_SANITY_MIN,
-          RADIATION_BAND_EDGE_WEIGHT_SANITY_MAX);
-    if (fb_props->band_edge_weight_lw < RADIATION_BAND_EDGE_WEIGHT_SANITY_MIN ||
-        fb_props->band_edge_weight_lw > RADIATION_BAND_EDGE_WEIGHT_SANITY_MAX)
+          lambda_e_pe_minus_one,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
+    if (lambda_e_lw_minus_one > RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
       message(
-          "WARNING: lambda_E(LW)=%.5g is outside the observed grid range "
-          "[%.1f, %.1f]; check the table and its unit conversion before "
+          "WARNING: lambda_E(LW) - 1 = %.5g exceeds the observed grid "
+          "maximum %.1f; check the table and its unit conversion before "
           "trusting this run's LW band-edge physics.",
-          fb_props->band_edge_weight_lw, RADIATION_BAND_EDGE_WEIGHT_SANITY_MIN,
-          RADIATION_BAND_EDGE_WEIGHT_SANITY_MAX);
+          lambda_e_lw_minus_one,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
+    if (fb_props->band_edge_photon_weight_lw >
+        RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX)
+      message(
+          "WARNING: lambda_N(LW) = %.5g exceeds the observed grid maximum "
+          "%.1f; check the table and its unit conversion before trusting "
+          "this run's LW photon-number band-edge physics.",
+          fb_props->band_edge_photon_weight_lw,
+          RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX);
   }
 }
 

@@ -213,7 +213,7 @@
     when the table's own denominator (Integrated_L_PE or Integrated_L_LW)
     vanishes -- a documented degenerate case (an IMF whose whole mass range
     sits at or below the table's own native mass floor), not the table-
-    absence case: radiation_read_data() REQUIRES the section-4.3 datasets
+    absence case: radiation_read_data() REQUIRES the band-edge datasets
     whenever #radiation.with_ISRF is on and refuses to load a table lacking
     them (radiation_table_io.c), matching the branch's own precedent for
     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa).
@@ -222,18 +222,19 @@
     non-fatal instead, which would make these three constants the live
     fallback for a table generated before pychem exported the new datasets.
 
-    lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (band-edge transfer
-    derivation, section 2). Values below are the YOUNG-POPULATION end of a
-    one-parameter spectral family fit (an AGED population's Lambda_LW
-    reaches about 18.3, i.e. lambda_E(LW) about 17.8, roughly 3x higher):
-    the young end is shipped because a young population dominates the LW
-    luminosity of an actively star-forming region (under 0.3% of
-    time-integrated L_LW comes from a population whose upper mass bound has
-    already dropped to 4 Msun). The shipped run-wide scalar is a
-    single-mass-point evaluation at the IMF's own upper mass bound, not a
-    population average; its bias against a population average is not sized.
-    See radiation_set_band_edge_coefficients() for the table-borne
-    quantity these approximate. */
+    lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (see
+    theory/GEAR/Radiation/02_fuv_isrf.tex for the derivation). Values below
+    are the YOUNG-POPULATION end of a one-parameter spectral family fit (an
+    AGED population's Lambda_LW reaches about 18.3, i.e. lambda_E(LW) about
+    17.8, roughly 3x higher): the young end is shipped because a young
+    population dominates the LW luminosity of an actively star-forming
+    region (under 0.3% of time-integrated L_LW comes from a population
+    whose upper mass bound has already dropped to 4 Msun). The shipped
+    run-wide scalar approximates the IMF-integrated quantity
+    radiation_set_band_edge_coefficients() computes over the IMF's own
+    [mass_min, mass_max], not a population average; its bias against a
+    population average is not sized. See radiation_set_band_edge_
+    coefficients() for the table-borne quantity these approximate. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0

@@ -273,10 +273,9 @@ struct radiation {
           by #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and unit-converted the same
           way #l_pe is (see radiation_read_l_edge_pe_array()), so it is
           directly comparable to #l_pe: their ratio (after the same
-          Mmin-to-m difference both are read with) is lambda_E(PE) - 1
-          (band-edge transfer derivation, section 2/4.3). Read from
-          pychem's "SpectralPhotonRateAtPEEdge" dataset (required whenever
-          #with_ISRF is on). */
+          Mmin-to-m difference both are read with) is lambda_E(PE) - 1.
+          Read from pychem's "SpectralPhotonRateAtPEEdge" dataset (required
+          whenever #with_ISRF is on). */
       struct interpolation_1d l_edge_pe;
 
       /*! #l_edge_pe, mass x metallicity variant. */

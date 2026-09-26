@@ -1100,11 +1100,11 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
  * "lower_edge_energy"/"lower_edge_energy_units" attributes agree with the
  * band edge SWIFT's own #RADIATION_PE_BAND_LOWER_EDGE_EV/
  * #RADIATION_LW_BAND_LOWER_EDGE_EV compile-time constants assume, and its
- * "native_grid_spacing_dlnE" attribute is present (band-edge transfer
- * derivation, section 4.3: refuse a table that lacks it, rather than
- * silently trusting a point value with unknown provenance; a value of
- * exactly 0.0 is legitimate there -- the analytic-blackbody/v1-table case --
- * so presence, not a value comparison, is the refuse condition).
+ * "native_grid_spacing_dlnE" attribute is present: refuse a table that
+ * lacks it, rather than silently trusting a point value with unknown
+ * provenance; a value of exactly 0.0 is legitimate there -- the
+ * analytic-blackbody/v1-table case -- so presence, not a value comparison,
+ * is the refuse condition.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param dataset_name Name of the raw (non-"Integrated_") dataset to check.
@@ -1216,10 +1216,9 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * conversion_factor folds in both #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and
  * the cgs-to-internal power conversion #radiation_read_l_pe_array itself
  * uses, so the built table is directly comparable to #rad->raw.l_pe/
- * #rad->integrated.l_pe in the SAME (internal power) units -- band-edge
- * transfer derivation, section 4.3's unit-conversion requirement: this is
- * the "convert both sides to the same system" it asks for, done once at
- * read time rather than at every use of the ratio. @p expected_units stays
+ * #rad->integrated.l_pe in the SAME (internal power) units: both sides of
+ * the ratio land on that one system once, here at read time, rather than
+ * at every use of the ratio. @p expected_units stays
  * the dataset's OWN "1/s/erg" (radiation_check_dataset_units() asserts the
  * unconverted attribute string, unrelated to @p conversion_factor).
  *
@@ -1742,8 +1741,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
      and to L_PE/L_LW above: this is the ONE place to flip that policy for
      the band-edge datasets specifically, to a has_teff-style optional read
      with the compile-time RADIATION_BAND_EDGE_WEIGHT_*_DEFAULT fallback
-     (radiation.h), if a non-fatal table-absence path is wanted instead
-     (band-edge transfer derivation, section 4.2). */
+     (radiation.h), if a non-fatal table-absence path is wanted instead. */
   if (rad->with_ISRF) {
     const int has_l_edge_pe =
         H5Lexists(group_id, "SpectralPhotonRateAtPEEdge", H5P_DEFAULT) > 0;

@@ -699,11 +699,10 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * receiving band's own state. `ISRF_MOMENT_LW_PHOTON` loses at its own
  * lower edge the same way (its own `lambda(m) = lambda_N(LW)` below), but
  * has no PE-side photon-number moment to transfer into: only the two
- * energy moments are contiguous bands sharing a physical edge (band-edge
- * transfer derivation, section 2.5/2.8). See that derivation for the full
- * result, including the PE band's own 6 eV sink
- * (kept, not compensated: a photon below 6 eV stops doing photoelectric
- * work, and Grackle's own G0 calibration is defined over 6-13.6 eV).
+ * energy moments are contiguous bands sharing a physical edge. The PE
+ * band's own 6 eV lower-edge loss is kept, not compensated: a photon
+ * below 6 eV stops doing photoelectric work, and Grackle's own G0
+ * calibration is defined over 6-13.6 eV.
  *
  * Runs in the `end_force` task, after the force loop and before cooling
  * (engine_maketasks.c). The negativity trigger that set this step's
@@ -762,18 +761,18 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   /* Per-moment band-edge weight, read PER MOMENT and never through
    * #radiation_isrf_moment_to_operator/#radiation_isrf_operator_owner:
    * #ISRF_MOMENT_LW and #ISRF_MOMENT_LW_PHOTON share ISRF_OPERATOR_LW's
-   * `kappa`, but NOT this coefficient (band-edge transfer derivation,
-   * section 1.5/2.8: the photon-number moment carries `lambda_N(LW)`, the
-   * energy moment `lambda_E(LW)`, or the diagnostic `d ln(U/N)/dt` identity
-   * the photon moment exists for collapses to zero). */
+   * `kappa`, but NOT this coefficient: the photon-number moment carries
+   * `lambda_N(LW)`, the energy moment `lambda_E(LW)`, or the diagnostic
+   * `d ln(U/N)/dt` identity the photon moment exists for collapses to
+   * zero. */
   const float lambda[ISRF_MOMENT_COUNT] = {
       (float)e->feedback_props->band_edge_weight_pe,
       (float)e->feedback_props->band_edge_weight_lw,
       (float)e->feedback_props->band_edge_photon_weight_lw};
 
-  /* The LW-to-PE band-edge transfer (band-edge transfer derivation, section
-   * 2.9): computed BEFORE the moment loop below, from LW's OWN relaxation
-   * depth, frozen `u_prev` and this step's accumulators, so the loop stays
+  /* The LW-to-PE band-edge transfer is computed BEFORE the moment loop
+   * below, from LW's OWN relaxation depth, frozen `u_prev` and this step's
+   * accumulators, so the loop stays
    * generic and the result does not depend on moment ordering (the
    * function's own idempotence property, doxygen above). `f_edge` is
    * derived from the SAME `a_lw` LW's own decay/phi use below, not a
@@ -785,22 +784,15 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
    * GATED ON `H_dilated != 0.f`, NOT JUST ON `a_lw > 0.f` BELOW: every
    * non-cosmological run (`cosmology_init_no_cosmo` sets `cosmo->H = 0`)
    * then skips this block's flops entirely, `transfer` staying the literal
-   * initialiser `0.f`. THIS DOES NOT, ON ITS OWN, GUARANTEE PRODUCTION-BUILD
-   * (`-flto -O3 -ffast-math`) BIT-IDENTITY WITH THE PRE-CHANGE BINARY:
-   * measured on ISRFOpticallyThin (metallicity 1e-2, kappa_LW > 0, so the
-   * `a_lw > 0.f` branch also runs) with this gate in place, PE/LW energies
-   * and fluxes still differ from the pre-change binary at the ~1e-7
-   * relative (few-ULP) level. A no-op control change of equivalent size to
-   * the SAME function on the UNCHANGED code reproduces an identical
-   * pattern of differences, and a `-O0 -disable-vec` debug build of both
-   * binaries (no -ffast-math reassociation) gives EXACT bit-identity: the
-   * drift is `-ffast-math`/`-flto` codegen noise from restructuring this
-   * hot function, not a logic error, and is not fully preventable by
-   * source-level gating alone. This `H_dilated != 0.f` gate is kept because
-   * it is still the physically correct statement (no cosmological term
-   * exists to evaluate) and the cheaper path for a non-cosmological run;
-   * do not read its presence as a bit-identity guarantee under the
-   * production build flags without re-checking on the compiled binary. */
+   * initialiser `0.f`. This is the physically correct statement (no
+   * cosmological term exists to evaluate) and the cheaper path for a
+   * non-cosmological run, but it is not a bit-identity guarantee against
+   * the pre-change binary under production build flags
+   * (`-flto -O3 -ffast-math`): restructuring this hot function can shift
+   * `-ffast-math` reassociation even on a path this gate skips, so a
+   * production-build comparison against the pre-change binary should be
+   * checked on the compiled result, not assumed from this gate's
+   * presence. */
   float transfer = 0.f;
   if (H_dilated != 0.f) {
     const struct feedback_isrf_operator_data *op_lw =
@@ -831,14 +823,18 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     if (a_lw > 0.f) {
       const float f_edge =
           (lambda[ISRF_MOMENT_LW] - 1.f) * H_dilated * dt / a_lw;
-      /* The SIGNED amount (operator ruling): keeps the 11.2 eV cancellation
-       * in G0 exact and the per-band ledger closed. A negative `transfer`
-       * (LW has undershot) reduces PE's own `u` on the same step; see
-       * radiation_get_part_isrf_habing()'s own doxygen (radiation_gas.c)
-       * for why the two do not cancel after the read-side non-negative
-       * clamp, and this file's own doxygen above for the corresponding
-       * ISRF_LIMITER_ZERO consequence on the PE flux. Not clamped at zero:
-       * clamping would break both the exact cancellation and the ledger. */
+      /* Kept SIGNED, not clamped at zero: clamping would break both the
+       * exact 11.2 eV cancellation in G0 and the per-band ledger. A
+       * negative `transfer` (LW has undershot this step) reduces PE's own
+       * `u` on the same step. This can still change the post-clamp Habing
+       * G0 (#radiation_get_part_isrf_habing): that sum clamps each band to
+       * non-negative AT READ TIME, so if the reduction drives PE's `u`
+       * through zero, the read-side clamp reads it as zero illumination
+       * instead of the negative value that would otherwise cancel LW's
+       * loss exactly. Driving PE's `u` negative this way also zeroes PE's
+       * own flux on the NEXT step's M1 limiter (`ISRF_LIMITER_ZERO`,
+       * `u <= 0`, above): a genuine physical consequence of a large
+       * transfer, not a bug. */
       transfer = f_edge * absorbed_lw;
     }
   }
@@ -872,8 +868,8 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * above ALREADY contains it (the transfer is carved out of LW's own
      * relaxation depth, not added on top), so only PE's `cumulative_
      * injected` needs the explicit booking, or the per-moment ledger
-     * identity `E + Abs - Inj = 0` (isrf_ledger_check.py) goes red by
-     * exactly the transferred amount. */
+     * identity `E + Abs - Inj = 0` goes red by exactly the transferred
+     * amount. */
     if (m == ISRF_MOMENT_PE) moment->cumulative_injected += transfer;
 #endif
 
@@ -883,11 +879,10 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
             (rescale * moment->u_source_rate - moment->div_specific_flux);
 
     /* Added as a separate statement, not folded into the expression above:
-     * a RAW ADD onto PE's already-relaxed `u` (band-edge transfer
-     * derivation, section 2.9's variant A), not subject to PE's own
+     * a RAW ADD onto PE's already-relaxed `u`, not subject to PE's own
      * absorption during its arrival step. Kept apart from the update
      * expression so -ffast-math's reassociation cannot merge it into a
-     * form that no longer vanishes exactly at `H = 0` (Gate 1). */
+     * form that no longer vanishes exactly at `H = 0`. */
     if (m == ISRF_MOMENT_PE) moment->u += transfer;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1052,10 +1047,10 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
  * `c_hyp`: see this function's own doxygen for why `w` uses the true speed).
  * @param lambda The OWNING moment's own band-edge weight
- * (#feedback_props.band_edge_weight_pe/lw; band-edge transfer derivation,
- * section 2.8), NOT looked up through #radiation_isrf_moment_to_operator: the
- * caller passes its one owning moment's coefficient, exactly as it already
- * passes that moment's `kappa` via @p kappa.
+ * (#feedback_props.band_edge_weight_pe/lw), NOT looked up through
+ * #radiation_isrf_moment_to_operator: the caller passes its one owning
+ * moment's coefficient, exactly as it already passes that moment's `kappa`
+ * via @p kappa.
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
@@ -1192,11 +1187,10 @@ void radiation_end_gradient_propagation(struct part *p,
 
   /* Per-moment band-edge weight: see #radiation_end_force_propagation's
    * matching array and doxygen. The flux relaxes at the SAME rate as its
-   * own moment's energy (both dilute like `E`, band-edge transfer
-   * derivation, section 2.8): using a different moment's or the operator's
-   * owning-moment's lambda here would relax `F` and `u` at different rates
-   * for the same moment and corrupt the reduced flux `f = |F|/(c_hyp*u)`
-   * the M1 closure reads. */
+   * own moment's energy (both dilute like `E`): using a different moment's
+   * or the operator's owning-moment's lambda here would relax `F` and `u`
+   * at different rates for the same moment and corrupt the reduced flux
+   * `f = |F|/(c_hyp*u)` the M1 closure reads. */
   const float lambda[ISRF_MOMENT_COUNT] = {
       (float)e->feedback_props->band_edge_weight_pe,
       (float)e->feedback_props->band_edge_weight_lw,
