@@ -1670,6 +1670,22 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   radiation_set_lw_photon_energy_cgs(&feedback->stellar_model.rad,
                                      &feedback->stellar_model);
 
+  /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
+     here, unlike radiation_lw_photon_energy_cgs above: they are plain
+     fields of *feedback, already restored verbatim by the flat
+     restart_read_blocks() call at the top of this function (see
+     #feedback_props.band_edge_weight_pe's own doxygen,
+     feedback_properties.h). Announcing the restored value (not
+     re-deriving it) still lets a restarted run's log be checked against
+     its own start-up announcement, DoD item 6 (restart works for any
+     change to the radiation sub-struct). */
+  if (engine_rank == 0 && feedback->radiation_policy != 0)
+    message(
+        "Band-edge weights restored from the restart file: lambda_E(PE)=%.5g, "
+        "lambda_E(LW)=%.5g, lambda_N(LW)=%.5g",
+        feedback->band_edge_weight_pe, feedback->band_edge_weight_lw,
+        feedback->band_edge_photon_weight_lw);
+
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
                               feedback->with_stellar_wind_feedback,

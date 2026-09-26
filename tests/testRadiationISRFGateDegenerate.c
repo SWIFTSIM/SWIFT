@@ -117,6 +117,17 @@ static void make_engine(struct engine *e, struct cosmology *cosmo,
   fp->ISRF_dissipation_alpha_floor = alpha_floor;
   fp->ISRF_dissipation_floor_h_over_lambda = 0.5f;
   fp->ISRF_dissipation_floor_relaxation_residual = eps_R;
+  /* Grey (band-edge transfer derivation, section 2.6's lambda = 1): this
+   * file's own reference arithmetic (e.g. test_w_positive_via_hubble_term's
+   * "w = H/c = 1") is written against the gate's PRE-band-edge-transfer
+   * formula, `w = kappa + H/c`. #radiation_dissipation_floor_relaxation_
+   * gate() now takes the owning moment's own #feedback_props.band_edge_
+   * weight_pe/lw as an explicit `lambda` factor on `H/c`; leaving this
+   * struct's own bzero() default of `0.` would silence the Hubble term
+   * entirely (`w = kappa` instead of `kappa + H/c`), not recover it. */
+  fp->band_edge_weight_pe = 1.;
+  fp->band_edge_weight_lw = 1.;
+  fp->band_edge_photon_weight_lw = 1.;
 
   e->cosmology = cosmo;
   e->feedback_props = fp;

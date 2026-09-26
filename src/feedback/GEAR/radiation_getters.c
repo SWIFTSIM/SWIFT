@@ -1019,3 +1019,97 @@ float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
       interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
   return l_lw_2 - l_lw_1;
 }
+
+/**
+ * @brief Get the IMF-averaged PE band lower-edge spectral photon rate
+ * (pre-multiplied by E_lo^2 and unit-converted like #l_pe; see
+ * #radiation.raw.l_edge_pe's own doxygen), from a 1D (mass-only) table. See
+ * #radiation_get_l_pe_from_integral (identical shape, on
+ * #rad->integrated.l_edge_pe): the SAME difference pattern, so a caller
+ * forming lambda_E(PE) - 1 from this getter's result and
+ * #radiation_get_l_pe_from_integral's, both over the same (log_m1, log_m2),
+ * never mixes a windowed numerator with a whole-population denominator or
+ * the reverse.
+ *
+ * @param rad The #radiation model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(PE)^2 * (IMF-averaged dQ/dE at the PE edge), internal power
+ * units.
+ */
+float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
+                                            float log_m1, float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  const float l_edge_pe_1 = interpolate_1d(&rad->integrated.l_edge_pe, log_m1);
+  const float l_edge_pe_2 = interpolate_1d(&rad->integrated.l_edge_pe, log_m2);
+  return l_edge_pe_2 - l_edge_pe_1;
+}
+
+/**
+ * @brief Get the IMF-averaged PE band lower-edge spectral photon rate, at a
+ * given metallicity, from a 2D ("M,Z") table. See
+ * #radiation_get_l_pe_from_integral_2d (identical shape, including the
+ * top-edge nudge), on #rad->integrated.l_edge_pe_2d.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(PE)^2 * (IMF-averaged dQ/dE at the PE edge), internal power
+ * units.
+ */
+float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
+                                               float log_z, float log_m1,
+                                               float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  const struct interpolation_2d *interp = &rad->integrated.l_edge_pe_2d;
+  const float l_edge_pe_1 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+  const float l_edge_pe_2 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+  return l_edge_pe_2 - l_edge_pe_1;
+}
+
+/**
+ * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, from
+ * a 1D (mass-only) table. See #radiation_get_l_edge_pe_from_integral
+ * (identical shape, on #rad->integrated.l_edge_lw).
+ *
+ * @param rad The #radiation model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(LW)^2 * (IMF-averaged dQ/dE at the LW edge), internal power
+ * units.
+ */
+float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
+                                            float log_m1, float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
+  const float l_edge_lw_1 = interpolate_1d(&rad->integrated.l_edge_lw, log_m1);
+  const float l_edge_lw_2 = interpolate_1d(&rad->integrated.l_edge_lw, log_m2);
+  return l_edge_lw_2 - l_edge_lw_1;
+}
+
+/**
+ * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, at a
+ * given metallicity, from a 2D ("M,Z") table. See
+ * #radiation_get_l_edge_pe_from_integral_2d (identical shape, on
+ * #rad->integrated.l_edge_lw_2d).
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return E_lo(LW)^2 * (IMF-averaged dQ/dE at the LW edge), internal power
+ * units.
+ */
+float radiation_get_l_edge_lw_from_integral_2d(const struct radiation *rad,
+                                               float log_z, float log_m1,
+                                               float log_m2) {
+  radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
+  const struct interpolation_2d *interp = &rad->integrated.l_edge_lw_2d;
+  const float l_edge_lw_1 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+  const float l_edge_lw_2 = interpolate_2d(
+      interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+  return l_edge_lw_2 - l_edge_lw_1;
+}

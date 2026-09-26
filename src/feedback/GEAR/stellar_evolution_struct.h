@@ -269,6 +269,32 @@ struct radiation {
     };
 
     union {
+      /*! PE band lower-edge (6 eV) spectral photon rate dQ/dE, PRE-MULTIPLIED
+          by #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and unit-converted the same
+          way #l_pe is (see radiation_read_l_edge_pe_array()), so it is
+          directly comparable to #l_pe: their ratio (after the same
+          Mmin-to-m difference both are read with) is lambda_E(PE) - 1
+          (band-edge transfer derivation, section 2/4.3). Read from
+          pychem's "SpectralPhotonRateAtPEEdge" dataset (required whenever
+          #with_ISRF is on). */
+      struct interpolation_1d l_edge_pe;
+
+      /*! #l_edge_pe, mass x metallicity variant. */
+      struct interpolation_2d l_edge_pe_2d;
+    };
+
+    union {
+      /*! LW band lower-edge (11.2 eV) spectral photon rate dQ/dE, PRE-
+          MULTIPLIED by #RADIATION_LW_BAND_LOWER_EDGE_CGS^2 and unit-
+          converted like #l_lw. See #l_edge_pe; read from pychem's
+          "SpectralPhotonRateAtLWEdge" dataset. */
+      struct interpolation_1d l_edge_lw;
+
+      /*! #l_edge_lw, mass x metallicity variant. */
+      struct interpolation_2d l_edge_lw_2d;
+    };
+
+    union {
       /*! Photon-number-weighted mean Lyman-Werner photon energy of a
           single star, L_LW/Q_LW over 11.2-13.6 eV, read directly from
           pychem's "MeanPhotonEnergyLW" dataset (required). Held in cgs
@@ -353,6 +379,28 @@ struct radiation {
 
       /*! #l_lw, mass x metallicity variant. */
       struct interpolation_2d l_lw_2d;
+    };
+
+    union {
+      /*! IMF-integrated PE band lower-edge spectral photon rate, from
+          pychem's "Integrated_SpectralPhotonRateAtPEEdge" dataset,
+          pre-multiplied/unit-converted like #raw.l_edge_pe. Linear
+          (un-logged), like #l_pe above: zero at Mmin by construction, so a
+          consumer reads any window as a difference, exactly like #l_pe. */
+      struct interpolation_1d l_edge_pe;
+
+      /*! #l_edge_pe, mass x metallicity variant. */
+      struct interpolation_2d l_edge_pe_2d;
+    };
+
+    union {
+      /*! IMF-integrated LW band lower-edge spectral photon rate, from
+          pychem's "Integrated_SpectralPhotonRateAtLWEdge" dataset. See
+          #l_edge_pe. */
+      struct interpolation_1d l_edge_lw;
+
+      /*! #l_edge_lw, mass x metallicity variant. */
+      struct interpolation_2d l_edge_lw_2d;
     };
 
     union {

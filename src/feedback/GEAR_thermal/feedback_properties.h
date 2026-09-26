@@ -231,6 +231,30 @@ struct feedback_props {
    * radiation_policy_photoelectric_heating is set. */
   char ISRF_propagation;
 
+  /*! lambda_E(PE), lambda_E(LW) and lambda_N(LW) (band-edge transfer
+   * derivation): the coefficients photons redshifting downward through the
+   * 6/11.2/13.6 eV band edges lose or gain per e-fold of expansion, indexed
+   * by #radiation_isrf_moment (#ISRF_MOMENT_PE, #ISRF_MOMENT_LW,
+   * #ISRF_MOMENT_LW_PHOTON respectively) at
+   * radiation_end_force_propagation()/radiation_end_gradient_propagation()'s
+   * per-moment relaxation depth, and by the LW-to-PE transfer term computed
+   * there. Set once by radiation_set_band_edge_coefficients() at start-up;
+   * restart re-derives nothing extra for these, since #feedback_props is
+   * dumped/restored as one flat block (feedback_struct_dump()/
+   * feedback_struct_restore()) and these are plain scalars in it, unlike
+   * #radiation_lw_photon_energy_cgs, a process-global outside this struct
+   * that restart must re-derive explicitly. Initialised by
+   * radiation_set_band_edge_coefficients() to
+   * #RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT/LW_DEFAULT/
+   * #RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT, never 0 or 1: unlike
+   * #radiation_lw_photon_energy_cgs (a pure diagnostic, where 0 means
+   * "inactive"), these three multiply the Hubble term directly, so 0 or the
+   * grey value 1 would be a silently wrong physical value rather than a
+   * visible sentinel. */
+  double band_edge_weight_pe;
+  double band_edge_weight_lw;
+  double band_edge_photon_weight_lw;
+
   /*! Which #isrf_extinction_path_mechanism builds the receiver-side LW/PE
    * dust extinction path (GEARFeedback:ISRF_extinction_path). */
   char ISRF_extinction_path_mechanism;
@@ -861,6 +885,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      for the first-stars model below: one line per run. */
   radiation_set_lw_photon_energy_cgs(&fp->stellar_model.rad,
                                      &fp->stellar_model);
+
+  /* Announce the band-edge weights (redshift transfer across the
+     6/11.2/13.6 eV band edges); see #feedback_props.band_edge_weight_pe's
+     own doxygen for why this is fields of fp, not a process global like
+     the LW photon energy above. */
+  radiation_set_band_edge_coefficients(fp, &fp->stellar_model.rad,
+                                       &fp->stellar_model);
 
   /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
