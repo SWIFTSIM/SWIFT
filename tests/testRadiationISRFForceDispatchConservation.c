@@ -46,8 +46,8 @@
 #define NODE_ID 0
 #define CELL_N 6
 
-/* PHYSICS/NUMERICS: the conservation gate's residual, sum_i m_i x_i, is a
- * sum over pair interactions that cancel EXACTLY in real-number arithmetic:
+/* The conservation gate's residual, sum_i m_i x_i, is a sum over pair
+ * interactions that cancel EXACTLY in real-number arithmetic:
  * radiation_divergence_accumulate_band and radiation_dissipation_force_
  * accumulate_band write m_j*Phi_ij to one side and -m_i*Phi_ij to the
  * other, from a single shared Phi_ij, so m_i*x_i(pair) + m_j*x_j(pair) = 0
@@ -64,14 +64,114 @@
  * at one particle count silently stops meaning anything if CELL_N changes.
  *
  * Measured directly (CELL_N = 3, 4, 5, 6, 8, 10, i.e. N_tot = 54 to 2000):
- * ratio*sqrt(N_tot)/eps_f32 stayed in 7-12 across that whole range,
+ * ratio*sqrt(N_tot)/eps_f32 stayed in 5.8-11.2 across that whole range,
  * confirming the sqrt(N_tot) law and ruling out worst-case linear growth.
  * #SUM_BAR_SAFETY_FACTOR sits ~100x above that measured natural constant:
- * room for a different compiler's rounding/FMA choices, while staying
- * many orders of magnitude below the O(0.1-1) ratio a genuinely lost
- * dispatch side produces (see the "parent level dropped" sweep below). */
+ * room for a different compiler's rounding/FMA choices, while the
+ * round-off side of the check keeps ~100x of headroom (worst measured
+ * ratio 1.5% of the bar over 20 fixture seeds at each CELL_N above). */
 #define SUM_BAR_SAFETY_FACTOR 1000.
+
+/* Which metric sees which dispatch-coverage loss, measured over the same
+ * 20 seeds per CELL_N by injecting each loss into the fixture:
+ *
+ *  - a whole cross-cell pair never dispatched: its two exactly cancelling
+ *    contributions go together, so the signed sum above stays at
+ *    round-off (1e-11 to 6e-8, i.e. under its own bar in every sample)
+ *    and only the per-particle comparison against this bar sees it;
+ *  - one side of every cross pair discarded, or a whole depth level
+ *    dropped (the "parent level dropped" sweep below): the signed sum is
+ *    unbalanced, but only by a net of random-sign terms, so its ratio
+ *    spans 1e-7 to 3e-1 and lands under ten times the bar on 1 to 13% of
+ *    draws depending on CELL_N;
+ *  - the per-particle comparison gives 0.04 to 1 for all three losses,
+ *    460x this bar or more in every sample.
+ *
+ * So the per-particle comparison is the discriminating detector for a
+ * coverage loss. The signed sum covers the complementary bug class the
+ * per-particle metric cannot see at all, because the reference calls the
+ * same accumulate_band primitive: an mi/mj swap inside the divergence one,
+ * injected here, moves the sum ratio to 6e-2 to 4e-1 (2e4x its bar) on
+ * every div(F) sample while the per-particle error stays under its own
+ * bar. Both checks are needed.
+ *
+ * This constant is the negative CONTROLS' fixed reference scale only: it
+ * sits far above any round-off and far below the 0.04-to-1 signal a real
+ * coverage loss gives, so ten times it separates the two by orders of
+ * magnitude at any fixture size. The should-PASS side of the same metric
+ * is gated per particle by #per_part_bar_for_terms instead, which is
+ * derived rather than fixed. */
 #define PER_PART_BAR 1e-5
+
+/* Should-PASS side of the per-particle comparison. Its two paths run the
+ * SAME primitive on the same pair set from bit-identical inputs (see
+ * #make_cell's position grid and the reach test in #check_cells), so the
+ * error has exactly two sources, and the SECOND one dominates by two
+ * orders of magnitude.
+ *
+ * 1. The float32 summation. The dispatch accumulates into the particle's
+ *    own float32 field across the self, pair and per-depth-level sweeps
+ *    while the reference sums the same terms exactly, in double. The
+ *    classical forward bound for a float32 summation of K terms (Higham,
+ *    Accuracy and Stability of Numerical Algorithms, 2nd ed., Thm 4.1) is
+ *    |fl(sum t_k) - sum t_k| <= gamma_{K-1} * sum |t_k| with
+ *    gamma_n = n*u/(1 - n*u) and u = FLT_EPSILON/2 the binary32 unit
+ *    round-off. This file's metric is that left-hand side divided by
+ *    sum |t_k|, so the term is (K_i - 1) * u, dimensionless, and it holds
+ *    for ANY order or grouping: vectorised partial sums and FMA
+ *    contraction both give a smaller bound than the sequential one.
+ *
+ * 2. The kernel gradient's own conditioning, which dominates.
+ *    #kernel_deval evaluates the EXPANDED kernel polynomial by Horner
+ *    (#kernel_coeffs, {4, -15, 20, -10, 0, 1} for Wendland C2 in 3D),
+ *    whose value cancels to (1-x)^4*(1+4x) and whose gradient cancels to
+ *    -20x*(1-x)^3. The relative round-off of that evaluation is therefore
+ *    not u but about C_Horner * u / |dw/dx|, with C_Horner the sum of the
+ *    coefficient magnitudes: tens of ulps at x = 0.5, hundreds as x
+ *    approaches the cutoff. The dispatch and the reference compile that
+ *    same Horner loop in two different translation units under
+ *    -ffast-math, which may associate and contract it differently, so
+ *    each pair term can differ between the two paths by that much. This
+ *    is why a bar derived from the summation alone is roughly 500x too
+ *    small: measured on a one-neighbour fixture (CELL_N = 1, K = 1, no
+ *    summation at all) the per-pair disagreement already reaches 15 u.
+ *
+ * Source 2 enters each pair weighted by 1/|dw/dx|, so the bar carries that
+ * factor, measured on the fixture actually run as the |term|-weighted mean
+ * of 1/|dw/dx| over the particle's own neighbours:
+ *
+ *   bar_i = S * u * [ (K_i - 1) + C_Horner * amp_i ],  capped
+ *
+ * dimensionless throughout. What this expression is, and is not: the
+ * conditioning explains the SCALE of the disagreement, tens to about a
+ * hundred ulps rather than one, which is what closes the 500x gap against
+ * the summation-only estimate. It does NOT predict it particle by
+ * particle: over 5.6e06 samples the measured error is flat in amp_i
+ * (median 1.0 u at amp < 2 rising only to 2.3 u at amp > 100, worst 41 u
+ * to 100 u across the same range) and flat in K_i (16 <= K_i <= 362). So
+ * the amp term is a conservative allowance, not a tight model, and it
+ * leaves 96.6% of particles sitting at #PER_PART_BAR_CEILING, which is the
+ * bar that actually gates them; the remaining, best-conditioned particles
+ * get a tighter bar, down to 4.2e-05.
+ *
+ * #PER_PART_BAR_SAFETY_FACTOR covers the i-side/j-side cancellation inside
+ * one pair term (the bound charges the summed |term|, not the two pieces
+ * separately: measured at most 5.7x at the pair level) and another
+ * compiler's association of the same Horner loop. Worst should-pass
+ * utilisation over 20 fixture seeds at each of CELL_N = 3, 4, 5, 6, 8, 10
+ * is 0.060, i.e. 16.7x of headroom. */
+#define PER_PART_BAR_SAFETY_FACTOR 4.
+
+/* Cap on the derived bar. amp_i below diverges for a particle with a
+ * neighbour at the kernel cutoff, where the gradient has no correct
+ * significant digits in either path, and an uncapped bar would grow past
+ * the range a real coverage loss lives in. The cap is the negative
+ * controls' own threshold, so "masked error > 10 * PER_PART_BAR" implies
+ * "above every per-particle bar" by construction, and the controls keep
+ * proving exactly the gate that runs. It is also 16.7x above the worst
+ * round-off error measured over the sweep above and at least 2000x below
+ * the weakest per-particle signal any injected dispatch loss produces. */
+#define PER_PART_BAR_CEILING (10. * PER_PART_BAR)
 
 /**
  * @brief The conservation gate's bar, scaled to the fixture actually run:
@@ -84,6 +184,43 @@
  */
 static double sum_bar_for_count(long long n_tot) {
   return SUM_BAR_SAFETY_FACTOR * (double)FLT_EPSILON / sqrt((double)n_tot);
+}
+
+/**
+ * @brief The per-particle comparison's should-pass bar, for one particle's
+ * own number of pair terms: see the derivation above
+ * #PER_PART_BAR_SAFETY_FACTOR.
+ *
+ * @param n_terms The particle's pair-term count, K_i.
+ * @param amp The particle's |term|-weighted mean of 1/|dw/dx|, the kernel
+ * gradient's conditioning over its own neighbours.
+ * @return The bar, in the same units as #check_cells' per-particle error
+ * (dimensionless: an error divided by the sum of the absolute pair terms).
+ */
+static double per_part_bar_for_terms(int n_terms, double amp) {
+  const double u = 0.5 * (double)FLT_EPSILON;
+  const int n_add = n_terms > 1 ? n_terms - 1 : 1;
+
+  /* Horner condition constant of the polynomial the force loop actually
+   * evaluates, which is the kernel's DERIVATIVE: #kernel_coeffs holds the
+   * kernel itself, highest power first, so the derivative's coefficient
+   * magnitudes are (kernel_degree - j) * |coeffs[j]| (160 for Wendland C2
+   * in 3D). Summed over every branch, which is conservative for a
+   * multi-branch kernel and exact for the single-branch Wendland family,
+   * and it follows the kernel the build selected. Note Higham's Horner
+   * bound carries a further gamma_{2*kernel_degree} ~ 10*u prefactor; it is
+   * left out here because including it would put every particle at
+   * #PER_PART_BAR_CEILING, which is where all but the best-conditioned
+   * ones already sit. */
+  double c_horner = 0.;
+  for (int i = 0; i <= kernel_ivals; i++)
+    for (int j = 0; j <= kernel_degree; j++)
+      c_horner += (double)(kernel_degree - j) *
+                  fabs((double)kernel_coeffs[i * (kernel_degree + 1) + j]);
+
+  const double bar =
+      PER_PART_BAR_SAFETY_FACTOR * u * ((double)n_add + c_horner * amp);
+  return min(bar, (double)PER_PART_BAR_CEILING);
 }
 
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
@@ -571,9 +708,22 @@ static struct cell *make_cell(const double offset[3], double h_spacing,
     for (int y = 0; y < CELL_N; y++) {
       for (int z = 0; z < CELL_N; z++) {
         const int idx[3] = {x, y, z};
-        for (int k = 0; k < 3; k++)
-          p->x[k] =
+        for (int k = 0; k < 3; k++) {
+          /* Snapped to a 2^-20 grid. The dispatch builds dx as a float
+           * difference of cell-relative floats, (float)(x_i - loc) -
+           * (float)(x_j - loc), and the reference below as (float)(x_i -
+           * x_j); on a general position those two round differently, and
+           * the resulting 1-ulp-of-coordinate disagreement in dx enters
+           * every pair term of a given particle with the same sign, so it
+           * does not average down over neighbours. On this grid both are
+           * exact for any |x| < 4, dx is bit-identical, and the
+           * per-particle comparison measures only what it is meant to:
+           * the float32 summation. The grid step is 5e-05 of the smallest
+           * position jitter, so the geometry is unchanged. */
+          const double x_exact =
               offset[k] + (idx[k] + 0.5 + random_uniform(-0.2, 0.2)) / CELL_N;
+          p->x[k] = round(x_exact * 1048576.) / 1048576.;
+        }
         p->h = h_spacing * random_uniform(1., 1.2) / CELL_N;
         h_max = max(h_max, p->h);
         p->id = ++(*part_id);
@@ -705,7 +855,10 @@ static int is_finite_bits(double x) {
  * @param abs_sum sum_i m_i |x_i|.
  * @param expect_zero 1 to require the ratio below @p sum_bar, 0 to require
  * it above ten times @p sum_bar (a sweep that drops one depth level on
- * purpose).
+ * purpose). The margin in that second case comes from sign cancellation
+ * in the fixture draw, not from how much was dropped: it is 2.2x at the
+ * shipped CELL_N and seeds. Read the metric mapping above #PER_PART_BAR
+ * before changing either.
  * @param sum_bar #sum_bar_for_count for the particle count this call sums
  * over.
  */
@@ -740,7 +893,8 @@ static void check_cells(struct cell *cells[2], const char *label,
   for (int b = 0; b < ISRF_MOMENT_COUNT; b++) {
     double sum_div = 0., abs_div = 0., sum_diss = 0., abs_diss = 0.;
     double max_ref_div = 0., max_ref_diss = 0., max_err_div = 0.,
-           max_err_diss = 0., min_cancel_div = 1.;
+           max_err_diss = 0., min_cancel_div = 1., max_util_div = 0.,
+           max_util_diss = 0.;
 
     double max_masked_err_div = 0., max_masked_err_diss = 0.;
     for (int ci = 0; ci < 2; ci++) {
@@ -761,11 +915,13 @@ static void check_cells(struct cell *cells[2], const char *label,
          * rounding relative to the net alone is not a coverage signal. */
         double ref_div = 0., ref_diss = 0., abs_terms_div = 0.,
                abs_terms_diss = 0.;
+        int n_terms = 0;
+        double amp_div = 0., amp_diss = 0.;
         /* Negative control: a reference that masks every pair with
          * r >= H_i, as a dispatch that only ever visited i's own kernel
          * (missing the H_i <= r < H_j reach extension) would. Proves the
          * per-particle metric below is sensitive to that specific bug. */
-        const float Hi = kernel_gamma * pi->h;
+        const float Hi2 = pi->h * pi->h * kernel_gamma2;
         double masked_ref_div = 0., masked_ref_diss = 0.;
         for (int cj = 0; cj < 2; cj++) {
           for (int j = 0; j < cells[cj]->hydro.count; j++) {
@@ -775,8 +931,13 @@ static void check_cells(struct cell *cells[2], const char *label,
                                  (float)(pi->x[1] - pj->x[1]),
                                  (float)(pi->x[2] - pj->x[2])};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-            const float H = kernel_gamma * max(pi->h, pj->h);
-            if (!(r2 < H * H)) continue;
+            /* The same two expressions the force loops gate on, not an
+             * algebraically equal rearrangement of them: (kernel_gamma*h)^2
+             * and h*h*kernel_gamma2 differ in the last bit, which would put
+             * a pair at the cutoff in one path's list and not the other's. */
+            const float hig2 = pi->h * pi->h * kernel_gamma2;
+            const float hjg2 = pj->h * pj->h * kernel_gamma2;
+            if (!(r2 < hig2) && !(r2 < hjg2)) continue;
             struct part tmp = *pi;
             tmp.feedback_data.isrf_moment[b].div_specific_flux = 0.f;
             tmp.feedback_data.isrf_moment[b].dissipation_u = 0.f;
@@ -788,9 +949,28 @@ static void check_cells(struct cell *cells[2], const char *label,
                 tmp.feedback_data.isrf_moment[b].dissipation_u;
             ref_div += d_div;
             ref_diss += d_diss;
+            n_terms++;
+
+            /* Conditioning of this pair's kernel gradient, for the bar:
+             * see #PER_PART_BAR_SAFETY_FACTOR. Only a side whose kernel
+             * reaches contributes to the term, so the amplification is set
+             * by the smallest NON-ZERO of the two dimensionless gradients.
+             */
+            float w_unused, dwi, dwj;
+            kernel_deval(sqrtf(r2) / pi->h, &w_unused, &dwi);
+            kernel_deval(sqrtf(r2) / pj->h, &w_unused, &dwj);
+            const double dw_norm =
+                (double)kernel_constant * (double)kernel_gamma_inv_dim_plus_one;
+            const double gi = fabs((double)dwi) / dw_norm;
+            const double gj = fabs((double)dwj) / dw_norm;
+            const double g = (gi > 0. && gj > 0.) ? min(gi, gj) : max(gi, gj);
+            if (g > 0.) {
+              amp_div += fabs(d_div) / g;
+              amp_diss += fabs(d_diss) / g;
+            }
             abs_terms_div += fabs(d_div);
             abs_terms_diss += fabs(d_diss);
-            if (r2 < Hi * Hi) {
+            if (r2 < Hi2) {
               masked_ref_div += d_div;
               masked_ref_diss += d_diss;
             }
@@ -806,6 +986,12 @@ static void check_cells(struct cell *cells[2], const char *label,
             fabs((double)bi->dissipation_u - ref_diss) / scale_diss;
         max_err_div = max(max_err_div, err_div);
         max_err_diss = max(max_err_diss, err_diss);
+        max_util_div =
+            max(max_util_div,
+                err_div / per_part_bar_for_terms(n_terms, amp_div / scale_div));
+        max_util_diss = max(
+            max_util_diss,
+            err_diss / per_part_bar_for_terms(n_terms, amp_diss / scale_diss));
         const double cancel_div = fabs(ref_div) / scale_div;
         min_cancel_div = min(min_cancel_div, cancel_div);
         const double masked_err_div =
@@ -826,13 +1012,23 @@ static void check_cells(struct cell *cells[2], const char *label,
     if (expect_zero) {
       if (!(max_ref_div > 0.) || !(max_ref_diss > 0.))
         error("%s band %d: brute-force reference is zero", label, b);
-      if (!(max_err_div <= PER_PART_BAR) || !(max_err_diss <= PER_PART_BAR))
-        error("%s band %d: per-particle mismatch div %e diss %e above %e",
-              label, b, max_err_div, max_err_diss, PER_PART_BAR);
+      /* Gated per particle on its own term count, not on a fixed number:
+       * see #per_part_bar_for_terms. Written as a utilisation so a
+       * non-finite error fails the check instead of comparing false
+       * against every bar. */
+      if (!(max_util_div <= 1.) || !(max_util_diss <= 1.))
+        error(
+            "%s band %d: per-particle mismatch above its derived "
+            "round-off bar (float32 summation plus the kernel gradient's "
+            "conditioning): worst utilisation div %.3f diss %.3f (max "
+            "error div %e diss %e)",
+            label, b, max_util_div, max_util_diss, max_err_div, max_err_diss);
       message(
           "%s band %d: per-particle max error / sum |pair terms| div %.2e "
-          "diss %.2e (smallest |net| / sum |terms| for div %.2e)",
-          label, b, max_err_div, max_err_diss, min_cancel_div);
+          "diss %.2e, worst bar utilisation div %.3f diss %.3f (smallest "
+          "|net| / sum |terms| for div %.2e)",
+          label, b, max_err_div, max_err_diss, max_util_div, max_util_diss,
+          min_cancel_div);
 
       /* r >= H_i masked negative control: proves the per-particle metric
          above would have caught a dispatch that dropped the H_i <= r < H_j
