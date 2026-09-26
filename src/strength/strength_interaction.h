@@ -43,6 +43,13 @@ strength_is_strengthless_interaction(const struct part *restrict pi,
     return 1;
   }
 
+#ifdef STRENGTH_OBJECT_IDS
+  /* Interactions between particles in different objects */
+  if (pi->strength_data.object_id != pj->strength_data.object_id) {
+    return 1;
+  }
+#endif
+
   return 0;
 }
 

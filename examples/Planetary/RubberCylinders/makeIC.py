@@ -79,6 +79,7 @@ vel = vel[select_both, :]
 numPart = np.size(h)
 ids = np.linspace(1, numPart, numPart)
 mat = 500 * np.ones(numPart)
+object_ids = np.where(select_cylinderA[select_both], 0, 1)
 rho = np.ones(numPart)
 u = np.zeros(numPart)
 
@@ -112,3 +113,4 @@ with h5py.File(fileOutputName, "w") as f:
     part.create_dataset("InternalEnergy", data=u.reshape(-1, 1).astype(np.float32))
     part.create_dataset("ParticleIDs", data=ids.reshape(-1, 1))
     part.create_dataset("MaterialIDs", data=mat.reshape(-1, 1))
+    part.create_dataset("ObjectIDs", data=object_ids.reshape(-1, 1).astype(np.int32))

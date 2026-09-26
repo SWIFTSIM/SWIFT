@@ -607,6 +607,18 @@ if test "$with_damage" != "none"; then
 
    AC_DEFINE([STRENGTH_DAMAGE], [1], [Any damage model])
 fi
+
+#  Strength: object IDs
+AC_ARG_ENABLE([strength-object-ids],
+   [AS_HELP_STRING([--enable-strength-object-ids],
+     [Enable object IDs, read from the ICs, so that solid particles in different objects interact without strength @<:@yes/no@:>@]
+   )],
+   [strength_object_ids="$enableval"],
+   [strength_object_ids="no"]
+)
+if test "$strength_object_ids" = "yes"; then
+   AC_DEFINE([STRENGTH_OBJECT_IDS],1,[Enable object IDs for material strength])
+fi
 #
 # End of material strength and related options
 #

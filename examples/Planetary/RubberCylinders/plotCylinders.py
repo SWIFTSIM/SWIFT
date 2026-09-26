@@ -28,6 +28,7 @@ snap = int(sys.argv[1])
 with h5py.File(f"cylinders_{snap:04d}.hdf5", "r") as f:
     coords = f["/PartType0/Coordinates"][:]
     rho = f["/PartType0/Densities"][:]
+    object_ids = f["/PartType0/ObjectIDs"][:]
 x = coords[:, 0]
 y = coords[:, 1]
 

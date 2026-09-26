@@ -121,6 +121,10 @@ struct strength_part_data {
   float shear_damage;
 #endif
 
+#ifdef STRENGTH_OBJECT_IDS
+  // ID of the object that the particle belongs to
+  int object_id;
+#endif
 };
 
 #endif /* SWIFT_PLANETARY_STRENGTH_PART_DEFAULT_H */
