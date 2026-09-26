@@ -34,10 +34,10 @@ struct feedback_xpart_data {};
 /**
  * @brief Feedback fields carried by each star particles
  *
- * is_dead is read unconditionally by src/stars/GEAR/stars.h's dt_cfl gate
- * whenever --with-stars=GEAR, regardless of feedback module; always 0 here,
- * since this no-feedback model has no equivalent star-evolution-finished
- * state.
+ * is_dead backs feedback_is_star_dead(), read by src/stars/GEAR/stars.h's
+ * dt_cfl gate whenever --with-stars=GEAR, regardless of feedback module;
+ * always 0 here, since this no-feedback model has no equivalent
+ * star-evolution-finished state.
  */
 struct feedback_spart_data {
   int is_dead;

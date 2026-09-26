@@ -539,21 +539,6 @@ struct feedback_xpart_data {
 
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
-
-    /*! Lifetime-cumulative delta_p from radiation pressure: owner-local,
-        physical units, scalar sum (not vector: isotropic kicks would else
-        cancel). Signed on purpose, not |delta_p|: max_kick_velocity below
-        is a magnitude and cannot show a sign inversion, so this running
-        sum going negative is the only diagnostic that still can. Snapshot
-        field CumulativeMomentumFromRadiationPressure (feedback_io.h). */
-    float cumulative_momentum;
-
-    /*! Largest single-event radiation-pressure kick velocity magnitude
-        (outflow diagnostic): owner-local, physical units, fabsf of the
-        signed value, so it cannot reveal a sign-inverted kick; see
-        cumulative_momentum above for that. Snapshot field
-        MaxKickVelocityFromRadiationPressure (feedback_io.h). */
-    float max_kick_velocity;
   } radiation;
 
   /*! HII ionization owner-computed payload, local to the owning rank (the

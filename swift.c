@@ -1239,8 +1239,8 @@ int main(int argc, char *argv[]) {
         !(with_cooling || with_temperature)) {
       error(
           "A feedback channel that needs Grackle's chemistry_data "
-          "resolved (e.g. GEARFeedback:with_photoelectric_heating) is "
-          "enabled, but neither --cooling nor --temperature was passed: "
+          "resolved (e.g. GEARFeedback:with_interstellar_radiation_field) "
+          "is enabled, but neither --cooling nor --temperature was passed: "
           "chemistry_data (including local_dust_to_gas_ratio) is never "
           "resolved, silently zeroing that channel's dust opacity. Pass "
           "--cooling or --temperature (with a working GrackleCooling: "

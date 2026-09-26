@@ -46,7 +46,7 @@ still computed and reported alongside it, purely as an audit of how much the
 refinement moves the result.
 
 Formula-level correctness of radiation_get_star_physical_radiation_pressure
-is NOT this script's job: that's tests/testRadiationPressureFormula.c (no
+is NOT this script's job: that's testRadiationPressureFormula, in swift-gear's GEAR test suite (no
 hydro, no snapshots). This script validates the DYNAMICAL response -- the
 sweep-up physics that made a static gas-kinematics comparison meaningless
 (see the retired radiation_pressure_momentum_check.py, commit bfd339cc1) is

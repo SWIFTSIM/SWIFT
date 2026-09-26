@@ -728,9 +728,80 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
+  /* A retired key must stop the run instead of vanishing into
+   * unused_parameters.yml, since the parser accepts an unknown key silently
+   * and would otherwise leave the renamed feature at its replacement's
+   * default. Add a pair here whenever a GEARFeedback/GEARRadiation key is
+   * renamed; a key that was removed outright, with no successor, does not
+   * belong in this table. */
+  const struct {
+    const char *retired;
+    const char *replacement;
+  } feedback_retired_keys[] = {
+      {"GEARFeedback:with_photoelectric_heating",
+       "GEARFeedback:with_interstellar_radiation_field"},
+      {"GEARFeedback:do_photoionization", "GEARFeedback:with_photoionization"},
+      {"GEARFeedback:LW_FUV_propagation", "GEARFeedback:ISRF_propagation"},
+      {"GEARFeedback:LW_FUV_c_hyp_margin", "GEARFeedback:ISRF_c_hyp_margin"},
+      {"GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
+       "GEARFeedback:ISRF_c_hyp_pin_for_debugging"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_max",
+       "GEARFeedback:ISRF_dissipation_alpha_max"},
+      {"GEARFeedback:LW_FUV_dissipation_negativity_threshold",
+       "GEARFeedback:ISRF_dissipation_negativity_threshold"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_floor",
+       "GEARFeedback:ISRF_dissipation_alpha_floor"},
+      {"GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
+       "GEARFeedback:ISRF_dissipation_floor_h_over_lambda"},
+      {"GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
+       "GEARFeedback:ISRF_dissipation_floor_relaxation_residual"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
+       "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"},
+      {"GEARFeedback:radiation_interpolation_size_mass",
+       "GEARRadiation:interpolation_size_mass"},
+      {"GEARFeedback:minimal_HII_ionization_density_Hpcm3",
+       "GEARFeedback:HII_min_density_Hpcm3"},
+      {"GEARFeedback:HII_region_min_density_Hpcm3",
+       "GEARFeedback:HII_min_density_Hpcm3"},
+      {"GEARFeedback:HII_region_max_age_Myr", "GEARFeedback:HII_max_age_Myr"},
+      {"GEARFeedback:HII_region_rebuild_time_Myr",
+       "GEARFeedback:HII_rebuild_time_Myr"},
+      {"GEARFeedback:HII_region_rebuild_floor_Myr",
+       "GEARFeedback:HII_rebuild_floor_Myr"},
+      {"GEARFeedback:photoelectric_heating_grackle_option",
+       "GrackleCooling:photoelectric_heating_efficiency"},
+      {"GEARFeedback:min_star_timestep_Myr", "Stars:min_star_timestep_Myr"},
+  };
+  const int n_feedback_retired_keys =
+      sizeof(feedback_retired_keys) / sizeof(feedback_retired_keys[0]);
+  for (int i = 0; i < n_feedback_retired_keys; ++i) {
+    if (parser_does_param_exist(params, feedback_retired_keys[i].retired))
+      error(
+          "%s was retired and renamed to %s. Stopping here: the parser "
+          "ignores an unrecognised key, so this run would otherwise carry "
+          "on with the feature silently off (or at its replacement's "
+          "default). Update the parameter file to set %s.",
+          feedback_retired_keys[i].retired,
+          feedback_retired_keys[i].replacement,
+          feedback_retired_keys[i].replacement);
+  }
+
   /* Supernovae energy efficiency */
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
+
+  /* The efficiency multiplies supernovae.energy_ejected unconditionally in
+   * feedback_common.c, so a negative value makes a supernova remove thermal
+   * energy from its gas neighbours. 0 is legal: it is the documented way to
+   * run the enrichment channel without the thermal one. */
+  if (e_efficiency < 0.0)
+    error(
+        "GEARFeedback:supernovae_efficiency is %g (< 0): a negative "
+        "efficiency makes a supernova take thermal energy out of its gas "
+        "neighbours instead of injecting it. Use 0 to inject no energy, or "
+        "a positive value.",
+        e_efficiency);
+
   fp->supernovae_efficiency = e_efficiency;
 
   /* Activate the stellar wind feedback */
@@ -804,6 +875,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     w_efficiency = parser_get_param_double(
         params, "GEARFeedback:stellar_winds_efficiency");
   }
+
+  /* The wind momentum is sqrt(2 * mass_ejected * energy_ejected), so a
+   * negative efficiency takes the square root of a negative number and
+   * seeds a NaN into the gas momentum and internal energy. Under
+   * -ffast-math that NaN cannot be caught downstream, so it has to be
+   * refused here. */
+  if (w_efficiency < 0.0)
+    error(
+        "GEARFeedback:stellar_winds_efficiency is %g (< 0): the wind "
+        "momentum is a square root of the ejected energy, so a negative "
+        "efficiency produces NaN momentum and internal energy. Use 0 to "
+        "inject no wind energy, or a positive value.",
+        w_efficiency);
 
   fp->winds_efficiency = w_efficiency;
 

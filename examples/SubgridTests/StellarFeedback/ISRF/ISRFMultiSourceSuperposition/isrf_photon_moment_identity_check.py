@@ -31,8 +31,8 @@ raw bit patterns (not float `==`): `LWSpecificEnergies` vs
 decorative: both getters index the same shared operator field by a literal
 constant, so this pair cannot fail for any bug this check's sibling fields
 would not already catch. The `grad_u` accumulator has no snapshot field in
-any build; its own identity is checked in
-`tests/testRadiationISRFGradientCache.c`, not here.
+any build; its own identity is checked in testRadiationISRFGradientCache
+(swift-gear's GEAR test suite), not here.
 
 Every array is tested for finiteness before the bitwise comparison: a NaN
 compares False against every equality test, so an undetected one would

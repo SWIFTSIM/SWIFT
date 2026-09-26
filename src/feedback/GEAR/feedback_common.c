@@ -276,6 +276,16 @@ void feedback_will_do_feedback(
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
   sp->feedback_data.winds.energy_ejected = 0;
+
+  /* The ejected masses are a per-step budget, exactly like the energies
+     above: whatever is left here is what the next step's feedback loops
+     hand to the gas. The stellar evolution below only ever writes them on a
+     step that actually ejects, and it returns early for a star that is
+     already dead, so without this reset a dead star would keep offering its
+     last ejection to the gas on every later step. */
+  sp->feedback_data.supernovae.mass_ejected = 0;
+  sp->feedback_data.winds.mass_ejected = 0;
+
   sp->feedback_data.will_do_feedback = 0;
   sp->feedback_data.will_do_HII_ionization = 0;
 
@@ -377,10 +387,15 @@ void feedback_will_do_feedback(
   sp->feedback_data.radiation.L_bol *=
       feedback_props->radiation_pressure_efficiency;
 
-  /* Set the particle as doing some feedback */
+  /* Set the particle as doing some feedback. The ejected mass is a gate in
+     its own right and not implied by the energy: the efficiency factors
+     applied just above can zero the energy of an ejection whose mass has
+     already been subtracted from sp->mass by the stellar evolution, and that
+     mass has to reach the gas or it is lost from the simulation. */
   sp->feedback_data.will_do_feedback =
       sp->feedback_data.supernovae.energy_ejected != 0. ||
       sp->feedback_data.winds.energy_ejected != 0. ||
+      sp->feedback_data.supernovae.mass_ejected != 0. ||
       !sp->feedback_data.is_dead;
 
   feedback_will_do_HII_ionization(sp, feedback_props, star_age_beg_step,

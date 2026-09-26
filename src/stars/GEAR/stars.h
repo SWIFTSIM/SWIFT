@@ -129,7 +129,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
 
   /* Dead star: skip the gas CFL bound too, like feedback's own dead-star
      early return above. */
-  const float dt_cfl = sp->feedback_data.is_dead
+  const float dt_cfl = feedback_is_star_dead(sp)
                            ? FLT_MAX
                            : stars_compute_dt_cfl(sp, stars_properties, cosmo);
 

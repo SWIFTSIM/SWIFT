@@ -149,6 +149,21 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Is this star particle done evolving, i.e. finished with its
+ * feedback-relevant lifetime?
+ *
+ * This model has no star-evolution-finished state.
+ *
+ * @param sp The #spart to query.
+ * @return 0, always.
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_star_dead(
+    const struct spart *sp) {
+
+  return 0;
+}
+
+/**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
  * This model does not implement HII photoionization feedback.
