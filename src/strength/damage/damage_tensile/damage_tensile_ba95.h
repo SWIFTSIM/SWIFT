@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
   }
 
   /* Update tensile damage. */
-  const float evolved_D_cbrt = cbrtf(*tensile_damage) + Delta_cbrtD;
+  const float evolved_D_cbrt = fmaxf(cbrtf(*tensile_damage) + Delta_cbrtD, 0.f);
   *tensile_damage = fminf(powf(evolved_D_cbrt, 3.f), 1.f);
 }
 

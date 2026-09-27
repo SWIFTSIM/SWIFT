@@ -444,6 +444,15 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
 #ifdef MATERIAL_STRENGTH
   if (mat_params->state_type == mat_state_type_fluid) return;
 
+  if (mat_params->shear_mod <= 0.f)
+    error("Material %d: a solid or variable state_type needs "
+          "Strength:shear_mod > 0", mat_id);
+
+  if ((mat_params->state_type == mat_state_type_variable) &&
+      (mat_params->T_melt <= 0.f))
+    error("Material %d: a variable state_type needs Strength:T_melt > 0",
+          mat_id);
+
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
     if ((mat_params->T_melt <= 0.f) ||
         (mat_params->yield_weakening_thermal_xi <= 0.f))
@@ -458,9 +467,8 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    if ((mat_params->bulk_mod <= 0.f) || (mat_params->shear_mod <= 0.f))
-      error("Material %d: tensile damage needs Strength:bulk_mod > 0 and "
-            "Strength:shear_mod > 0", mat_id);
+    if (mat_params->bulk_mod <= 0.f)
+      error("Material %d: tensile damage needs Strength:bulk_mod > 0", mat_id);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)

@@ -176,6 +176,11 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     const int mat_id, const float mass, const float density, const float pressure,
     const float dt_therm) {
 
+  /* Only solid particles accumulate damage. */
+  if (p->phase != mat_phase_solid) {
+    return;
+  }
+
   /* Damage parameters set to values at drift time. */
   float damage = strength_get_damage(p);
   float tensile_damage = damage_get_tensile_damage(p);
@@ -211,6 +216,11 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
     const int mat_id, const float mass, const float density, const float pressure,
     const float dt_therm) {
+
+  /* Only solid particles accumulate damage. */
+  if (xp->phase_full != mat_phase_solid) {
+    return;
+  }
 
   /* Damage parameters set to values at kick time. */
   float damage = strength_get_damage_full(xp);
@@ -257,8 +267,8 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
 
   float dt_damage = FLT_MAX;
 
-  /* Further damage accumulation has no effect on fully damaged material. */
-  if (damage >= 1.f) {
+  /* Only solid particles that are not fully damaged can accumulate damage. */
+  if ((p->phase != mat_phase_solid) || (damage >= 1.f)) {
     p->strength_data.dt_damage = dt_damage;
     return;
   }
@@ -296,6 +306,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
 
   p->strength_data.dt_damage = dt_damage;
 }
+
 /**
  * @brief Initialises the damage properties for the first time
  *

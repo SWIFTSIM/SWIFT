@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
   }
 
   /* Update shear damage. */
-  *shear_damage = fminf(*shear_damage + shear_dD_dt * dt_therm, 1.f);
+  *shear_damage = fminf(fmaxf(*shear_damage + shear_dD_dt * dt_therm, 0.f), 1.f);
 }
 
 /**
