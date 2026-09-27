@@ -317,8 +317,8 @@ static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
       "%e, spectrum: %d, energy: %e, decay time: %e, update interval: %e, "
       "solenoidal weight: %e.",
       terms->num_modes, terms->k_min, terms->k_max, (int)terms->shape,
-      terms->variance * terms->variance * terms->decay_time,
-      terms->decay_time, terms->time_frequency, terms->solenoid_weight);
+      terms->variance * terms->variance * terms->decay_time, terms->decay_time,
+      terms->time_frequency, terms->solenoid_weight);
 }
 
 /**
@@ -482,8 +482,7 @@ static INLINE void forcing_terms_init(struct swift_params *params,
               amplitude = pow(k_min / k, 2.);
               break;
             default:
-              error("Unknown turbulence driving spectrum shape %d",
-                    (int)shape);
+              error("Unknown turbulence driving spectrum shape %d", (int)shape);
           }
 
           terms->amplitudes[num_modes] = amplitude;
