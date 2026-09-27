@@ -24,7 +24,7 @@ from timeline_helpers import (
 
 n_bins = 8
 # Every time a step can end at is a multiple of the shortest step (4 ticks).
-times = np.arange(4, 4 * 65, 4)
+times = np.arange(4, 520, 4)
 
 active = np.zeros((n_bins, len(times)), dtype=bool)
 for j, t in enumerate(times):
@@ -53,7 +53,7 @@ for b in range(1, n_bins + 1):
                 plt.Rectangle((t - 2, b - 0.4), 4, 0.8, color="0.92", lw=0)
             )
 ax[0].set_xlim(0, times[-1] + 2)
-ax[0].set_ylim(0.4, n_bins + 0.6)
+ax[0].set_ylim(0.4, n_bins + 1.0)
 ax[0].set_yticks(range(1, n_bins + 1))
 ax[0].set_yticklabels(
     ["bin %d (%d ticks)" % (b, get_integer_timestep(b)) for b in range(1, n_bins + 1)]

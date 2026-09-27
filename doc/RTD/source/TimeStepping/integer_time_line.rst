@@ -33,21 +33,25 @@ whole simulation, from the start to the end time, is divided into
 The total number of ticks is the constant ``max_nr_timesteps``, which is
 ``1 << (num_time_bins + 1)`` with ``num_time_bins = 56``.
 
-For a non-cosmological run, the length of one tick is
+For a **non-cosmological** run, the length of one tick is:
 
 .. math::
 
-   \Delta t_{\rm tick} = \frac{t_{\rm end} - t_{\rm begin}}{2^{57}}
+   \Delta t_{\rm tick} = \frac{t_{\rm end} - t_{\rm begin}}{2^{57}} \, ,
 
 and this value is stored in ``time_base`` (``engine_init()``). The physical
 time of the integer time :math:`t_{\rm int}` is
 :math:`t_{\rm begin} + t_{\rm int}\,\Delta t_{\rm tick}` (see
 ``engine_step()``).
 
-For a cosmological run, the variable that is divided into ticks is the
-logarithm of the scale-factor. The value of ``time_base`` is
-:math:`(\log a_{\rm end} - \log a_{\rm begin}) / 2^{57}` (``cosmology_init()``
-in ``cosmology.c``). The physical time and the scale-factor of every step are
+For a **cosmological** run, the variable that is divided into ticks is the
+logarithm of the scale-factor. The value of ``time_base`` is:
+
+.. math::
+
+   \Delta t_{\rm tick} = \frac{\log (a_{\rm end}) - \log (a_{\rm begin})}{2^{57}} \, ,
+
+(see ``cosmology_init()`` in ``cosmology.c``). The physical time and the scale-factor of every step are
 computed from the integer time by ``cosmology_update()``. As a consequence,
 ``dt_min`` and ``dt_max`` are then intervals of :math:`\log a` (see
 :ref:`Parameters_time_integration`). The time-step criteria of the particles
@@ -61,19 +65,24 @@ The simulation is finished when the integer time reaches :math:`2^{57}`
 Time-bins
 ---------
 
-Each particle carries a *time-bin*, the field ``time_bin``. A particle in the
+Each particle carries a *time-bin*, stored in ``time_bin``. A particle in the
 time-bin :math:`b \geq 1` uses time-steps that are
 
 .. math::
 
-   \Delta t_{\rm int}(b) = 2^{b+1}\ {\rm ticks}
-   = \left(t_{\rm end} - t_{\rm begin}\right) \times 2^{\,b-56}
+   \Delta t_{\rm int}(b) = 2^{b+1}\ {\rm ticks} = \left(t_{\rm end} - t_{\rm begin}\right) \times 2^{\,b-56}
 
 long. This is the function ``get_integer_timestep()``. It returns 0 for a
 bin :math:`b \leq 0`, which is not a valid step length. The shortest possible
 time-step is the one of the bin 1 and has 4 ticks. The longest one is the one
-of the bin 56 and is the whole time-line. The function ``get_time_bin()`` goes
-the other way. It returns :math:`\lfloor\log_2 \Delta t_{\rm int}\rfloor - 1`,
+of the bin 56 and is the whole time-line.
+
+The function ``get_time_bin()`` goes the other way. It returns
+
+.. math::
+
+   b(\Delta t_{\rm int}) = \lfloor\log_2 \Delta t_{\rm int}\rfloor - 1 \, ,
+  
 so a time-step that is not a power of two is *rounded down* to the bin below.
 The ``+ 1`` in the exponent of the length exists to keep the *half* of the
 shortest step an integer. The kick-drift-kick integrator (see
@@ -113,7 +122,7 @@ multiples of :math:`\Delta t_{\rm int}(b)`. Every length is a power of two.
 Hence a multiple of a long step is also a multiple of all the shorter ones. At
 the end of a step of the bin :math:`b`, all the particles in the bins
 :math:`1,\ldots,b` are also ending a step. This is why SWIFT never needs a
-list of the active particles. It only needs the highest active bin at the
+list of the active particles. It only needs the **highest active bin** at the
 current time. A particle is active when
 
 .. code-block:: c
