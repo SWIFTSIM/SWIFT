@@ -41,8 +41,8 @@
  *
  * Method parameters needed in material parameter file:
  * ArtificialStress:
- *     n: Kernel exponent in particle separation factor.
- *     epsilon: Artificial stress multiplication factor.
+ *     n: Kernel exponent in particle separation factor (default 4).
+ *     epsilon: Artificial stress multiplication factor (default 0.2).
  *
  * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
  * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
@@ -55,9 +55,11 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
     const struct part *restrict pi, const struct part *restrict pj,
     const float r) {
 
-  /* Method parameters. */
-  const float artif_stress_n = method_artif_stress_n();
-  const float artif_stress_epsilon = method_artif_stress_epsilon();
+  /* Material parameters of each particle. */
+  const float artif_stress_n_i = material_artif_stress_n(pi->mat_id);
+  const float artif_stress_n_j = material_artif_stress_n(pj->mat_id);
+  const float artif_stress_epsilon_i = material_artif_stress_epsilon(pi->mat_id);
+  const float artif_stress_epsilon_j = material_artif_stress_epsilon(pj->mat_id);
 
   /* Calculate the expected separation of closest neighbour, delta_p.
    * Note that the expression for delta_p differs from the one used in other
@@ -69,16 +71,17 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   float wij_delta_p, wij_r;
   kernel_eval(delta_p / max_h, &wij_delta_p);
   kernel_eval(r / max_h, &wij_r);
-  const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
+  const float artif_stress_f_i = powf(wij_r / wij_delta_p, artif_stress_n_i);
+  const float artif_stress_f_j = powf(wij_r / wij_delta_p, artif_stress_n_j);
 
   /* Apply artificial stress. */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       if (pairwise_stress_tensor_i[i][j] > 0.f) {
-        pairwise_stress_tensor_i[i][j] -= artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_i[i][j];
+        pairwise_stress_tensor_i[i][j] -= artif_stress_f_i * artif_stress_epsilon_i * pairwise_stress_tensor_i[i][j];
       }
       if (pairwise_stress_tensor_j[i][j] > 0.f) {
-        pairwise_stress_tensor_j[i][j] -= artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
+        pairwise_stress_tensor_j[i][j] -= artif_stress_f_j * artif_stress_epsilon_j * pairwise_stress_tensor_j[i][j];
       }
     }
   }

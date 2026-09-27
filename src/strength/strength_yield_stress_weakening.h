@@ -38,7 +38,7 @@
  * Strength:
  *     T_melt: Melting temperature (K).
  * YieldStress:
- *     yield_weakening_thermal_xi: Thermal weakening xi factor.
+ *     yield_weakening_thermal_xi: Thermal weakening xi factor (default 1.2).
  *
  * @param Y The yield stress to be weakened.
  * @param mat_id The material ID.
@@ -49,7 +49,7 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
                                    const float density, const float u) {
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
   /* Method parameters. */
-  const float xi = method_yield_weakening_thermal_xi();
+  const float xi = material_yield_weakening_thermal_xi(mat_id);
   const float T_melt = material_T_melt(mat_id);
   const float temperature = gas_temperature_from_internal_energy(density, u, mat_id);
 
@@ -73,8 +73,8 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
  * Strength:
  *     rho_0: Material rho_0 (kg m^-3).
  * YieldStress:
- *     method_yield_weakening_density_mult_param: Density weakening muliplication factor.
- *     method_yield_weakening_density_pow_param: Density weakening power factor.
+ *     yield_weakening_density_mult_param: Density weakening muliplication factor (default 0.85).
+ *     yield_weakening_density_pow_param: Density weakening power factor (default 4).
  *
  * @param Y The yield stress to be weakened.
  * @param mat_id The material ID.
@@ -86,12 +86,12 @@ yield_weakening_apply_density_to_yield_stress(float *Y, const int mat_id,
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_DENSITY
   /* Method parameters. */
   const float rho_0 = material_rho_0(mat_id);
-  const float a = method_yield_weakening_density_mult_param();
+  const float a = material_yield_weakening_density_mult_param(mat_id);
   const float rho_weak = a * rho_0;
 
   /* Only apply weakening below a density threshold. */
   if (density < rho_weak) {
-    const float b = method_yield_weakening_density_pow_param();
+    const float b = material_yield_weakening_density_pow_param(mat_id);
 
     /* Apply weakening. */
     *Y *= powf(density / rho_weak, b);

@@ -271,24 +271,6 @@ struct mat_params {
     float mu_d;
   #endif
 
-  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    float brittle_to_ductile_pressure;
-    float brittle_to_plastic_pressure;
-  #endif
-#endif /* MATERIAL_STRENGTH */
-};
-
-/**
- * @brief Struct of method parameters that are independent of EoS.
- */
-struct method_params {
-
-#ifdef MATERIAL_STRENGTH
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    float artif_stress_n;
-    float artif_stress_epsilon;
-  #endif
-
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
     float yield_weakening_thermal_xi;
   #endif
@@ -296,6 +278,16 @@ struct method_params {
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
     float yield_weakening_density_mult_param;
     float yield_weakening_density_pow_param;
+  #endif
+
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    float brittle_to_ductile_pressure;
+    float brittle_to_plastic_pressure;
+  #endif
+
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+    float artif_stress_n;
+    float artif_stress_epsilon;
   #endif
 #endif /* MATERIAL_STRENGTH */
 };
