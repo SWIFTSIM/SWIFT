@@ -44,9 +44,9 @@ j = np.arange(N_l)
 k = np.arange(N_depth)
 ii, jj, kk = np.meshgrid(i, j, k, indexing="ij")
 coords = np.empty((num_part, 3))
-coords[:, 0] = (jj.ravel() / N_l + 1.0 / (2.0 * N_l)) * boxsize_l
-coords[:, 1] = (kk.ravel() / N_l + 1.0 / (2.0 * N_l)) * boxsize_l
-coords[:, 2] = (ii.ravel() / N_depth + 1.0 / (2.0 * N_depth)) * boxsize_depth
+coords[:, 0] = (ii.ravel() / N_l + 1.0 / (2.0 * N_l)) * boxsize_l
+coords[:, 1] = (jj.ravel() / N_l + 1.0 / (2.0 * N_l)) * boxsize_l
+coords[:, 2] = (kk.ravel() / N_depth + 1.0 / (2.0 * N_depth)) * boxsize_depth
 
 # Set up other arrays
 vel = np.zeros((num_part, 3))
