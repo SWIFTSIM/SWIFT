@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2023 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2026 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,6 +24,7 @@
 
 /* Standard includes. */
 #include <float.h>
+#include <string.h>
 
 /* Library includes */
 #include <gsl/gsl_rng.h>
@@ -298,7 +299,7 @@ INLINE static void forcing_update(struct forcing_terms *terms,
     forcing_terms_update_random_sequence(terms);
     forcing_terms_calculate_phases(terms);
 
-    terms->previous_update_time = time;
+    terms->previous_update_time += terms->time_frequency;
 
     message("Updated the driving fields at t=%e", time);
   }
@@ -349,6 +350,9 @@ static INLINE void forcing_terms_init(struct swift_params *params,
   terms->k_min = parser_get_param_double(params, "TurbulenceDriving:k_min");
   terms->k_max = parser_get_param_double(params, "TurbulenceDriving:k_max");
   terms->shape = parser_get_param_int(params, "TurbulenceDriving:shape");
+  if (terms->shape < constant || terms->shape > quadratic)
+    error("Invalid TurbulenceDriving:shape %d (must be 0-3)",
+          (int)terms->shape);
   terms->amplitude_factor =
       parser_get_param_double(params, "TurbulenceDriving:amplitude_factor");
   terms->solenoid_weight = weight;
@@ -441,6 +445,11 @@ static INLINE void forcing_terms_init(struct swift_params *params,
   if (terms->A_k_b == NULL)
     error("Error allocating forcing complex amplitude array");
 
+  /* The components beyond hydro_dimension are never set by
+   * forcing_terms_calculate_phases() and must not contribute to the force */
+  memset(terms->A_k_a, 0, num_modes * 3 * sizeof(double));
+  memset(terms->A_k_b, 0, num_modes * 3 * sizeof(double));
+
   /* Compute modes ------------------------------------------ */
 
   num_modes = 0;
@@ -472,6 +481,9 @@ static INLINE void forcing_terms_init(struct swift_params *params,
             case quadratic:
               amplitude = pow(k_min / k, 2.);
               break;
+            default:
+              error("Unknown turbulence driving spectrum shape %d",
+                    (int)shape);
           }
 
           terms->amplitudes[num_modes] = amplitude;
