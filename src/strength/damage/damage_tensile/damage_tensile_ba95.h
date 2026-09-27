@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
 
   /* Particle flaws and their thresholds. */
   const int number_of_flaws = p->strength_data.number_of_flaws;
-  float activation_thresholds[100]; // ### hardcoded length
+  float activation_thresholds[64]; // ### hardcoded length
   memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
 
   /* Tensile damage will only accumulate if a particle has flaws. */

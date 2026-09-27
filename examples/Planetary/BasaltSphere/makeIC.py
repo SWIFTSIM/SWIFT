@@ -282,7 +282,7 @@ if __name__ == "__main__":
     k_flaw_target = 5e28 * 100**3  # cm^-3 => m^-3
     seed = 12345
     chunk_size = 100000  # to avoid memory issues with large arrays
-    hardcoded_max_flaws = 40
+    hardcoded_max_flaws = 64 # ### Currently must match hardcoded max flaws in code
 
     # Impactor
     rho_impactor = 1180
