@@ -114,7 +114,7 @@ INLINE static double feedback_get_enrichment_timestep(
 
   if (with_cosmology) {
     return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->last_enrichment_time, cosmo->a);
+        cosmo, sp->last_enrichment_time, cosmo->a);
   } else {
     return time - sp->last_enrichment_time;
   }
@@ -265,7 +265,7 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
 
   /* Special case for new-born stars */
   if (with_cosmology) {
-    if (sp->birth_scale_factor == (float)cosmo->a) {
+    if (sp->birth_scale_factor == cosmo->a) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
@@ -274,7 +274,7 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
       return;
     }
   } else {
-    if (sp->birth_time == (float)time) {
+    if (sp->birth_time == time) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
@@ -288,9 +288,9 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
   double age_of_star;
   if (with_cosmology) {
     age_of_star = cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+        cosmo, sp->birth_scale_factor, cosmo->a);
   } else {
-    age_of_star = time - (double)sp->birth_time;
+    age_of_star = time - sp->birth_time;
   }
 
   /* Is the star still young? */

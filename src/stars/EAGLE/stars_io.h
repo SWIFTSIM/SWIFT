@@ -53,8 +53,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
 
   /* For the birth time, -1 means the stars remain inactive feedback-wise
      througout the run */
-  const float default_birth_time = -1.f;
-  list[6] = io_make_input_field_default("StellarFormationTime", FLOAT, 1,
+  const double default_birth_time = -1.;
+  list[6] = io_make_input_field_default("StellarFormationTime", DOUBLE, 1,
                                         OPTIONAL, UNIT_CONV_NO_UNITS, sparts,
                                         birth_time, default_birth_time);
   list[7] = io_make_input_field("BirthDensities", FLOAT, 1, OPTIONAL,
@@ -178,11 +178,11 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 
   if (with_cosmology) {
     list[6] = io_make_physical_output_field(
-        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        "BirthScaleFactors", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         birth_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the stars were born");
   } else {
-    list[6] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
+    list[6] = io_make_output_field("BirthTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
                                    "Times at which the stars were born");
   }
