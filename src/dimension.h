@@ -381,11 +381,116 @@ invert_dimension_by_dimension_matrix(
 }
 
 /**
- * @brief Computes the 2-norm condition number of a 3x3
+ * @brief Eigenvalues of a symmetric 3x3 matrix using cyclic Jacobi rotations.
+ *
+ * Each rotation annihilates one off-diagonal element; the method converges
+ * quadratically and delivers eigenvalues with an absolute error ~eps * |A|
+ * without the loss of accuracy of the closed-form (Cardano) solution for
+ * (near-)degenerate spectra. Only the upper triangle of A is read.
+ *
+ * @param A The symmetric matrix.
+ * @param ev (return) The three (unsorted) eigenvalues.
+ */
+__attribute__((always_inline)) INLINE static void
+matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
+
+  double a[3][3];
+  for (int i = 0; i < 3; ++i) {
+    for (int j = i; j < 3; ++j) {
+      a[i][j] = A[i][j];
+      a[j][i] = A[i][j];
+    }
+  }
+
+  /* Rotations in the (0,1), (0,2) and (1,2) planes */
+  static const int P[3] = {0, 0, 1};
+  static const int Q[3] = {1, 2, 2};
+
+  /* 3x3 matrices converge in ~4 sweeps; the cap is a safety net. */
+  for (int sweep = 0; sweep < 32; ++sweep) {
+
+    int rotated = 0;
+
+    for (int k = 0; k < 3; ++k) {
+      const int p = P[k];
+      const int q = Q[k];
+      const double apq = a[p][q];
+
+      /* Negligible w.r.t. the diagonal: treat as zero (relative criterion,
+       * so the result does not depend on the scale of A). */
+      if (fabs(apq) <= 1e-18 * sqrt(fabs(a[p][p] * a[q][q]))) {
+        a[p][q] = a[q][p] = 0.;
+        continue;
+      }
+
+      /* Rotation angle (Golub & Van Loan, Alg. 8.4.1) */
+      const double tau = (a[q][q] - a[p][p]) / (2. * apq);
+      const double t = (tau >= 0. ? 1. : -1.) / (fabs(tau) + hypot(1., tau));
+      const double c = 1. / sqrt(1. + t * t);
+      const double s = t * c;
+
+      /* A <- J^T A J */
+      for (int r = 0; r < 3; ++r) {
+        const double arp = a[r][p];
+        const double arq = a[r][q];
+        a[r][p] = c * arp - s * arq;
+        a[r][q] = s * arp + c * arq;
+      }
+      for (int r = 0; r < 3; ++r) {
+        const double apr = a[p][r];
+        const double aqr = a[q][r];
+        a[p][r] = c * apr - s * aqr;
+        a[q][r] = s * apr + c * aqr;
+      }
+      a[p][q] = a[q][p] = 0.;
+      rotated = 1;
+    }
+
+    if (!rotated) break;
+  }
+
+  ev[0] = a[0][0];
+  ev[1] = a[1][1];
+  ev[2] = a[2][2];
+}
+
+/**
+ * @brief Computes the 2-norm condition number of a symmetric 3x3 matrix.
+ *
+ * For a symmetric matrix, the singular values are the absolute values of the
+ * eigenvalues, so cond = max|lambda| / min|lambda|. Working with the matrix
+ * itself (rather than m^T * m) gives a relative error ~eps * cond. Matches the
+ * result of a GSL call to gsl_linalg_SV_decomp() and taking the max/min ratio
+ * of the sigma values. Only the upper triangle of m is read.
+ *
+ * @param m The symmetric matrix.
+ * @return The condition number, or INFINITY for a (numerically) singular
+ * matrix.
+ */
+__attribute__((always_inline)) INLINE static double
+matrix_3x3_symmetric_2norm_condition_number(const double m[3][3]) {
+
+  double ev[3];
+  matrix_3x3_symmetric_eigenvalues(m, ev);
+
+  const double ev_max = fmax(fabs(ev[0]), fmax(fabs(ev[1]), fabs(ev[2])));
+  const double ev_min = fmin(fabs(ev[0]), fmin(fabs(ev[1]), fabs(ev[2])));
+
+  /* Eigenvalues below ~eps * ev_max are indistinguishable from zero */
+  if (ev_max <= 0. || ev_min <= 1e-15 * ev_max) return INFINITY;
+
+  return ev_max / ev_min;
+}
+
+/**
+ * @brief Computes the 2-norm condition number of a general 3x3
  * row-major matrix.
  *
- * Textbook implementation matching the result of a GSL call to
- * gsl_linalg_SV_decomp() and taking the max/min ratio of the sigma values.
+ * Uses the eigenvalues of m^T * m (the squared singular values), hence a
+ * relative error ~eps * cond^2. Prefer
+ * matrix_3x3_symmetric_2norm_condition_number() for symmetric matrices.
+ * Matches the result of a GSL call to gsl_linalg_SV_decomp() and taking the
+ * max/min ratio of the sigma values.
  *
  * The singularity test is relative to the largest eigenvalue of m^T * m such
  * that the result is independent of the overall scale of the matrix.
@@ -398,52 +503,20 @@ __attribute__((always_inline)) INLINE static double
 matrix_3x3_2norm_condition_number(const double m[3][3]) {
 
   /* Form the symmetric matrix S = m^T * m */
-  const double s0 = m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0];
-  const double s1 = m[0][0] * m[0][1] + m[1][0] * m[1][1] + m[2][0] * m[2][1];
-  const double s2 = m[0][0] * m[0][2] + m[1][0] * m[1][2] + m[2][0] * m[2][2];
-  const double s4 = m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1];
-  const double s5 = m[0][1] * m[0][2] + m[1][1] * m[1][2] + m[2][1] * m[2][2];
-  const double s8 = m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2];
-
-  /* Compute invariants of S (coefficients of characteristic polynomial) */
-  const double c2 = s0 + s4 + s8;
-  const double c1 =
-      (s0 * s4 - s1 * s1) + (s0 * s8 - s2 * s2) + (s4 * s8 - s5 * s5);
-  const double c0 = s0 * (s4 * s8 - s5 * s5) - s1 * (s1 * s8 - s2 * s5) +
-                    s2 * (s1 * s5 - s2 * s4);
-
-  /* Solve the cubic equation analytically using Cardano's formulation */
-  const double p = c1 - (c2 * c2) / 3.0;
-  const double q = c0 - (c2 * c1) / 3.0 + (2.0 * c2 * c2 * c2) / 27.0;
-
-  double ev_max, ev_min;
-
-  if (p >= 0.0) {
-    ev_max = c2 / 3.0;
-    ev_min = c2 / 3.0;
-  } else {
-    const double r = sqrt(-p / 3.0);
-    double val = q / (2.0 * r * r * r);
-
-    /* Clamp to prevent out-of-bounds inputs to acos due to numerical drift */
-    if (val > 1.0) val = 1.0;
-    if (val < -1.0) val = -1.0;
-
-    const double phi = acos(val);
-
-    /* Find the three roots (eigenvalues of m^T*m) */
-    const double r1 = c2 / 3.0 + 2.0 * r * cos(phi / 3.0);
-    const double r2 = c2 / 3.0 + 2.0 * r * cos((phi + 2.0 * M_PI) / 3.0);
-    const double r3 = c2 / 3.0 + 2.0 * r * cos((phi + 4.0 * M_PI) / 3.0);
-
-    /* Sort to isolate max and min eigenvalues */
-    ev_max = r1;
-    if (r2 > ev_max) ev_max = r2;
-    if (r3 > ev_max) ev_max = r3;
-    ev_min = r1;
-    if (r2 < ev_min) ev_min = r2;
-    if (r3 < ev_min) ev_min = r3;
+  double S[3][3];
+  for (int i = 0; i < 3; ++i) {
+    for (int j = i; j < 3; ++j) {
+      S[i][j] = m[0][i] * m[0][j] + m[1][i] * m[1][j] + m[2][i] * m[2][j];
+      S[j][i] = S[i][j];
+    }
   }
+
+  double ev[3];
+  matrix_3x3_symmetric_eigenvalues(S, ev);
+
+  /* S is positive semi-definite; negative values are round-off */
+  const double ev_max = fmax(ev[0], fmax(ev[1], ev[2]));
+  const double ev_min = fmin(ev[0], fmin(ev[1], ev[2]));
 
   /* Return condition number (sigma_max / sigma_min) */
   if (ev_max <= 0. || ev_min <= 1e-15 * ev_max) return INFINITY;

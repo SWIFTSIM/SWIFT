@@ -23,6 +23,9 @@
 #include "dimension.h"
 #include "error.h"
 
+/* Standard headers */
+#include <stdint.h>
+
 #if defined(HYDRO_DIMENSION_3D)
 
 #define sym_matrix_num_elements 6
@@ -270,7 +273,7 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
   }
 
   /* Abort if the condition number is bad */
-  const double cond_number = matrix_3x3_2norm_condition_number(A_d);
+  const double cond_number = matrix_3x3_symmetric_2norm_condition_number(A_d);
   if (!(cond_number <= max_cond_num)) {
     zero_sym_matrix(M_inv);
     return 1;
@@ -333,8 +336,16 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
 
 #elif defined(HYDRO_DIMENSION_1D)
 
+  /* Detect inf/NaN from the exponent bits, as isfinite() is folded away
+   * under -ffast-math */
+  union {
+    float f;
+    uint32_t i;
+  } bits = {M->xx};
+  const int not_finite = (bits.i & 0x7f800000u) == 0x7f800000u;
+
   /* The condition number of a non-zero 1x1 matrix is 1 */
-  if (M->xx == 0.f || !isfinite(M->xx) || max_cond_num < 1.) {
+  if (M->xx == 0.f || not_finite || max_cond_num < 1.) {
     zero_sym_matrix(M_inv);
     return 1;
   }
