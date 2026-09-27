@@ -73,7 +73,7 @@ N_boundary_particles_print = N_L_boundary * N_H * N_depth
 print(f"Boundary particles:{N_boundary_particles_print}")
 
 # Offset to exclude boundary particles for setting velocity
-x_0 = (N_L_boundary + 0.5) * L / N_L
+x_0 = (N_L_boundary - 0.5) * L / N_L
 vel = np.zeros((numPart, 3))
 mask = pos[:, 0] > x_0
 vel[mask, 1] = v_y(pos[mask, 0] - x_0)

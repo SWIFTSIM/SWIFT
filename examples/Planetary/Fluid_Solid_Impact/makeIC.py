@@ -218,13 +218,13 @@ class ImpactICs:
         )
 
         # Shift cube so it is centred at the origin in z (already is in x, y)
-        cube["pos"][:, 2] += 1.5 * r
+        cube["pos"][:, 2] += 0.5 * cube_width
 
         # Make impactor symmetric if BCC
         if cfg.lattice_type == "bcc":
             cube["pos"] += 0.25 * delta
 
-        inside_sphere = np.linalg.norm(cube["pos"], axis=1) <= r
+        inside_sphere = np.linalg.norm(cube["pos"], axis=1) <= r + 1e-6 * delta
         self.impactor = {k: v[inside_sphere] for k, v in cube.items()}
 
         # Place impactor with offset
