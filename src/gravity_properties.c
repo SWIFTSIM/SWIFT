@@ -119,6 +119,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
+  if (p->eta <= 0.f) error("Gravity:eta must be > 0, got %e.", p->eta);
 
   /* Read the choice of multipole acceptance criterion */
   char buffer[32] = {0};
@@ -150,6 +151,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   if (p->use_adaptive_tolerance)
     p->adaptive_tolerance =
         parser_get_param_float(params, "Gravity:epsilon_fmm");
+  if (p->adaptive_tolerance <= 0.f)
+    error("Gravity:epsilon_fmm must be > 0, got %e.", p->adaptive_tolerance);
 
   /* Consider truncated forces in the MAC? */
   if (p->use_adaptive_tolerance)
