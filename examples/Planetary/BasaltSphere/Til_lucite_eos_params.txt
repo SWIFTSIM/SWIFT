@@ -1,4 +1,4 @@
-# Tillotson aluminium EoS
+# Tillotson lucite EoS
 # rho_0 (kg/m3)  a (-)  b (-)  A (Pa)  B (Pa)
 # u_0 (J)  u_iv (J)  u_cv (J)  alpha (-)  beta (-)
 # eta_min (-)  eta_zero (-)  P_min (Pa)  C_V (J kg^-1 K^-1)

@@ -20,6 +20,7 @@
 import h5py
 import numpy as np
 import matplotlib
+import os
 
 matplotlib.use("Agg")
 
@@ -27,6 +28,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+os.makedirs("images", exist_ok=True)
 
 for snap in range(400):
     # Load snapshot
