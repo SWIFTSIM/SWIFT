@@ -31,9 +31,9 @@
 /**
  * @brief Computes the stress tensor time-step of a given particle.
  *
- * Calculates a time-step based on the particle's rate of elastic stress
- * accumulation. If this time-step is smaller than dt_cfl, dt_cfl gets
- * overwritten to this damage time-step.
+ * Limits the time-step based on an invariant measure of the strain rate tensor.
+ * Stress accumulates based on the strain rate tensor, so this limits how much
+ * the stress can change in one time-step.
  *
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
@@ -41,31 +41,19 @@
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
     float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
 
-  const float shear_mod = material_shear_mod(p->mat_id);
-  const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
-  const float floor_factor = 1e-2f; // Arbitrary factor to set the floor for S relative to mu.
-
-  /* Find element with max |S| / |dS/dt| */
-  float ratio_max = 0.f;
-  for (int i = 0; i < 6; i++) {
-    const float S  = fabsf(p->strength_data.deviatoric_stress_tensor.elements[i]);
-    const float dS_dt = fabsf(p->strength_data.dS_dt.elements[i]);
-
-    /*Apply floor to S to avoid zero timesteps when S is small */
-    const float S_floored = fmaxf(S, floor_factor * shear_mod);
-
-    if (dS_dt > 0.f) {
-      const float ratio = S_floored / dS_dt;
-      if (ratio > ratio_max) {
-        ratio_max = ratio;
-      }
-    }
+  /* Only solid particles accumulate deviatoric stress. */
+  if (p->phase != mat_phase_solid) {
+    return;
   }
 
-  if (ratio_max > 0.f) {
-    const float dt_elastic = elastic_timestep_factor * ratio_max;
-    if (dt_elastic < *dt_cfl) {
-      *dt_cfl = dt_elastic;
+  /* Measure of strain rate. */
+  const float strain_rate_invariant =
+      sqrtf(strength_compute_sym_matrix_J_2(p->strength_data.strain_rate_tensor));
+
+  if (strain_rate_invariant > 0.f) {
+    const float dt_strain = hydro_properties->CFL_condition / strain_rate_invariant;
+    if (dt_strain < *dt_cfl) {
+      *dt_cfl = dt_strain;
     }
   }
 }
