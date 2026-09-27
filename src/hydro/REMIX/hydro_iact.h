@@ -416,6 +416,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
+  /* Strength. */
+  hydro_runner_iact_force_strength(pi, pj, dx, Gi_linear, Gj_linear);
+  
   if ((pi->is_h_max) || (pj->is_h_max)) {
     /* Do not add diffusion or normalising terms if either particle has h=h_max
      */
@@ -486,8 +489,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Add normalising term and artificial diffusion to evolution of density */
   pi->drho_dt += drho_dt_norm_and_difn_i;
   pj->drho_dt += drho_dt_norm_and_difn_j;
-
-  hydro_runner_iact_force_strength(pi, pj, dx, Gi_linear, Gj_linear);
 }
 
 /**
@@ -638,6 +639,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
+  /* Strength. */
+  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi_linear);
+
   if ((pi->is_h_max) || (pj->is_h_max)) {
     /* Do not add diffusion or normalising terms if either particle has h=h_max
      */
@@ -695,8 +699,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Add normalising term and artificial diffusion to evolution of density */
   pi->drho_dt += drho_dt_norm_and_difn_i;
-
-  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi_linear);
 }
 
 #endif /* SWIFT_REMIX_HYDRO_IACT_H */
