@@ -670,7 +670,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
 
   hydro_prepare_force_extra_kernel(p);
-  hydro_prepare_force_strength(p, p->rho_evol, p->u);
+  hydro_prepare_force_strength(p, xp, p->rho_evol, p->u);
 
   /* Compute the sound speed */
   const float soundspeed =

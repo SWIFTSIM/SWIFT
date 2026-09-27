@@ -77,6 +77,20 @@ hydro_visc_no_reconstruction_strength(const struct part *restrict pi,
 }
 
 /**
+ * @brief Whether material strength excludes a pair of particles from the 
+ * artificial diffusion of u and rho.
+ *
+ * @param pi First particle.
+ * @param pj Second particle.
+ */
+__attribute__((always_inline)) INLINE static int
+hydro_difn_exclude_pair_strength(const struct part *restrict pi,
+                                 const struct part *restrict pj) {
+
+  return strength_is_solid_interface(pi, pj);
+}
+
+/**
  * @brief Prepares extra strength parameters for a particle for the density
  * calculation.
  *
@@ -115,11 +129,12 @@ hydro_end_gradient_strength(struct part *restrict p) {}
  * calculation.
  *
  * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
  * @param density The density
  * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p,
+hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
                                    const float density, const float u) {
 
   const float pressure =
@@ -268,6 +283,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
 
   /* Compute updated stress tensor. */
   strength_compute_stress_tensor(p, pressure);
+
+  /* Compute updated principal stresses. */
+  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
 }
 
 /**

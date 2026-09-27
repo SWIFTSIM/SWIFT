@@ -49,6 +49,19 @@ __attribute__((always_inline)) INLINE static int hydro_visc_no_reconstruction(
 }
 
 /**
+ * @brief Whether a pair of particles contributes to the artificial diffusion
+ * of internal energy and density, and to the gradients used for it.
+ *
+ * @param pi First particle.
+ * @param pj Second particle.
+ */
+__attribute__((always_inline)) INLINE static int hydro_difn_include_pair(
+    const struct part *restrict pi, const struct part *restrict pj) {
+
+  return (pi->mat_id == pj->mat_id) && !hydro_difn_exclude_pair_strength(pi, pj);
+}
+
+/**
  * @brief Prepares extra artificial viscosity and artificial diffusion
  * parameters for a particle for the gradient calculation.
  *
@@ -121,7 +134,7 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
 
     /* Contributions only from same-material particles for u and rho diffusion
      */
-    if (pi->mat_id == pj->mat_id) {
+    if (hydro_difn_include_pair(pi, pj)) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
 
@@ -191,7 +204,7 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
 
     /* Contributions only from same-material particles for u and rho diffusion
      */
-    if (pi->mat_id == pj->mat_id) {
+    if (hydro_difn_include_pair(pi, pj)) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pi->drho_norm_kernel[i] +=
           (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;

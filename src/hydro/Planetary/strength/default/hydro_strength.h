@@ -84,11 +84,12 @@ hydro_end_density_strength(struct part *restrict p) {}
  * calculation.
  *
  * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
  * @param density The density
  * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p,
+hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
                                    const float density, const float u) {
 
   /* Set the density to be used in the force loop to be the evolved density. */
@@ -269,6 +270,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
 
   /* Compute updated stress tensor. */
   strength_compute_stress_tensor(p, pressure);
+  
+  /* Compute updated principal stresses. */
+  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
 }
 
 /**

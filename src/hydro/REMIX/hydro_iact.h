@@ -452,7 +452,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   }
 
   /* Only include diffusion for same-material particle pair */
-  if (pi->mat_id == pj->mat_id) {
+  if (hydro_difn_include_pair(pi, pj)) {
     /* Diffusion parameters */
     const float a_difn_rho = const_remix_difn_a_rho;
     const float b_difn_rho = const_remix_difn_b_rho;
@@ -670,7 +670,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Only include diffusion for same-material particle pair */
-  if (pi->mat_id == pj->mat_id) {
+  if (hydro_difn_include_pair(pi, pj)) {
     /* Diffusion parameters */
     const float a_difn_rho = const_remix_difn_a_rho;
     const float b_difn_rho = const_remix_difn_b_rho;

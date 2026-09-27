@@ -708,7 +708,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   xp->u_full = p->u;
 #endif
 
-  hydro_prepare_force_strength(p, p->rho, p->u);
+  hydro_prepare_force_strength(p, xp, p->rho, p->u);
 
   p->phase =
     (enum mat_phase)material_phase_from_internal_energy(
