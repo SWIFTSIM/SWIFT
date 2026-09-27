@@ -117,7 +117,7 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
 
   float condition_number = 0.0f;
   if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E,
-                                           /*min_cond_num=*/1e-8) != 0) {
+                                           /*singular_threshold=*/1e-8) != 0) {
     /* something went wrong in the inversion; force bad condition number */
     condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {

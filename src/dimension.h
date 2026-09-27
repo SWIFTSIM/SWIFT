@@ -181,14 +181,15 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
  * @param A 3x3 matrix of which we want to invert the top left dxd part
- * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
- * values will trigger the singular matrix case.
+ * @param singular_threshold Threshold below which the matrix is considered
+ * singular. It is applied to the largest pivot (3D) or to the determinant (2D)
+ * of the matrix after normalisation by the rms of its elements. Unused in 1D.
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
 invert_dimension_by_dimension_matrix(
     float A[hydro_dimension_integer][hydro_dimension_integer],
-    const float min_cond_num) {
+    const float singular_threshold) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -225,7 +226,7 @@ invert_dimension_by_dimension_matrix(
       }
     }
 
-    if (Smax < min_cond_num) {
+    if (Smax < singular_threshold) {
       /* singular matrix. Early abort */
       for (int j = 0; j < 3; j++) {
         for (int k = 0; k < 3; k++) {
@@ -334,7 +335,7 @@ invert_dimension_by_dimension_matrix(
 
   const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  if (fabsf(detA) < min_cond_num) {
+  if (fabsf(detA) < singular_threshold) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < 2; k++) {
         A[j][k] = 0.0f;
@@ -383,10 +384,15 @@ invert_dimension_by_dimension_matrix(
  * @brief Computes the 2-norm condition number of a 3x3
  * row-major matrix.
  *
- * Textbook implementation matchin the result of a GSL call to
+ * Textbook implementation matching the result of a GSL call to
  * gsl_linalg_SV_decomp() and taking the max/min ratio of the sigma values.
  *
+ * The singularity test is relative to the largest eigenvalue of m^T * m such
+ * that the result is independent of the overall scale of the matrix.
+ *
  * @param m The matrix.
+ * @return The condition number, or INFINITY for a (numerically) singular
+ * matrix.
  */
 __attribute__((always_inline)) INLINE static double
 matrix_3x3_2norm_condition_number(const double m[3][3]) {
@@ -440,7 +446,7 @@ matrix_3x3_2norm_condition_number(const double m[3][3]) {
   }
 
   /* Return condition number (sigma_max / sigma_min) */
-  if (ev_min <= 1e-15) return INFINITY;
+  if (ev_max <= 0. || ev_min <= 1e-15 * ev_max) return INFINITY;
 
   return sqrt(ev_max / ev_min);
 }
@@ -460,6 +466,12 @@ __attribute__((always_inline)) INLINE static int invert3x3_matrix_LU(
   double mat[3][3];
   double scale_factors[3];
 
+  /* Largest element, used to make the singular-row test scale-free */
+  double max_abs = 0.0;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j) max_abs = fmax(max_abs, fabs(A[i][j]));
+  if (max_abs == 0.0) return 1;
+
   /* Initialize identity matrix and compute row scale factors */
   for (int i = 0; i < 3; ++i) {
     double max_val = 0.0;
@@ -471,8 +483,8 @@ __attribute__((always_inline)) INLINE static int invert3x3_matrix_LU(
       if (abs_val > max_val) max_val = abs_val;
     }
 
-    /* If an entire row is 0, the matrix is singular */
-    if (max_val < 1e-15) return 1;
+    /* If an entire row is (relatively) 0, the matrix is singular */
+    if (max_val < 1e-15 * max_abs) return 1;
     scale_factors[i] = 1.0 / max_val;
   }
 

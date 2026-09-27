@@ -23,10 +23,6 @@
 #include "dimension.h"
 #include "error.h"
 
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_permutation.h>
-
 #if defined(HYDRO_DIMENSION_3D)
 
 #define sym_matrix_num_elements 6
@@ -150,7 +146,6 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
 #endif
 #if defined(HYDRO_DIMENSION_3D)
   out->zz = in[2][2];
-  out->xy = in[0][1];
   out->xz = in[0][2];
   out->yz = in[1][2];
 #endif
@@ -246,54 +241,111 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 /**
  * @brief Compute the inverse of a symmetric matrix.
  *
- * @brief M The symmetric matrix to invert.
- * @brief M_inv (return) the inverse of M.
- * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
- * values will trigger the singular matrix case.
+ * The inversion is performed in double precision. The singularity and
+ * condition number checks are independent of the overall scale of M.
+ *
+ * @param M_inv (return) The inverse of M.
+ * @param M The symmetric matrix to invert.
+ * @param max_cond_num Maximal 2-norm condition number to attempt an inversion.
+ * Larger values will trigger the singular matrix case.
  * @return 1 if the inversion has failed. The matrix M_inv is then the null
- * matrix.
+ * matrix. 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
     const double max_cond_num) {
 
-  /* Turn the matrix into a 3x3 array */
-  float A[hydro_dimension_integer][hydro_dimension_integer];
+#if defined(HYDRO_DIMENSION_3D)
+
+  /* Turn the matrix into a (double) 3x3 array */
+  float A[3][3];
   get_matrix_from_sym_matrix(A, M);
 
-  /* Go to double precision for the inversion */
-  double A_d[hydro_dimension_integer][hydro_dimension_integer];
-  double M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
-
+  double A_d[3][3];
+  double M_inv_matrix[3][3];
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       A_d[i][j] = A[i][j];
-      M_inv_matrix[i][j] = 0.;
     }
   }
 
-  /* Compute the condition number */
-  const double cond_number = matrix_3x3_2norm_condition_number(A_d);
-
   /* Abort if the condition number is bad */
-  if (cond_number > max_cond_num) return 1;
+  const double cond_number = matrix_3x3_2norm_condition_number(A_d);
+  if (!(cond_number <= max_cond_num)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
 
   /* Invert */
-  const int res = invert3x3_matrix_LU(A_d, M_inv_matrix);
+  if (invert3x3_matrix_LU(A_d, M_inv_matrix)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
 
   /* Save the resulting matrix back into a (float) sym_matrix object */
   M_inv->xx = M_inv_matrix[0][0];
-#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
   M_inv->yy = M_inv_matrix[1][1];
-  M_inv->xy = M_inv_matrix[0][1];
-#endif
-#if defined(HYDRO_DIMENSION_3D)
   M_inv->zz = M_inv_matrix[2][2];
+  M_inv->xy = M_inv_matrix[0][1];
   M_inv->xz = M_inv_matrix[0][2];
   M_inv->yz = M_inv_matrix[1][2];
-#endif
 
-  return res;
+  return 0;
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  const double a = M->xx;
+  const double b = M->xy;
+  const double c = M->yy;
+
+  /* Eigenvalues of the symmetric matrix. The small one is obtained from the
+   * determinant to avoid cancellation. For a symmetric matrix, the singular
+   * values are the absolute values of the eigenvalues. */
+  const double mean = 0.5 * (a + c);
+  const double half_diff = 0.5 * (a - c);
+  const double disc = sqrt(half_diff * half_diff + b * b);
+  const double ev_big = mean + copysign(disc, mean);
+  const double det = a * c - b * b;
+
+  if (ev_big == 0.) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  const double ev_small = det / ev_big;
+
+  /* Abort if the condition number is bad */
+  const double cond_number = fabs(ev_small) > 1e-15 * fabs(ev_big)
+                                 ? fabs(ev_big / ev_small)
+                                 : INFINITY;
+  if (!(cond_number <= max_cond_num)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  /* Invert */
+  const double det_inv = 1. / det;
+  M_inv->xx = c * det_inv;
+  M_inv->yy = a * det_inv;
+  M_inv->xy = -b * det_inv;
+
+  return 0;
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  /* The condition number of a non-zero 1x1 matrix is 1 */
+  if (M->xx == 0.f || !isfinite(M->xx) || max_cond_num < 1.) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  M_inv->xx = 1.f / M->xx;
+
+  return 0;
+
+#else
+#error "A problem dimensionality must be chosen in config.h !"
+#endif
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */
