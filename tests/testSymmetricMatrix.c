@@ -706,7 +706,8 @@ static void test_invert_dimension_by_dimension(void) {
         double M[3][3] = {{0.}}, inv[3][3] = {{0.}};
         random_general_matrix(DIM, conds[c], scales[s], /*round=*/1, M);
 
-        float A[DIM][DIM];
+        /* The top-left DIM x DIM part of a 3x3 array is inverted */
+        float A[3][3] = {{0.f}};
         for (int i = 0; i < DIM; ++i)
           for (int j = 0; j < DIM; ++j) A[i][j] = (float)M[i][j];
 

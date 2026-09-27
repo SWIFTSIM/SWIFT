@@ -187,9 +187,8 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
-invert_dimension_by_dimension_matrix(
-    float A[hydro_dimension_integer][hydro_dimension_integer],
-    const float singular_threshold) {
+invert_dimension_by_dimension_matrix(float A[3][3],
+                                     const float singular_threshold) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
