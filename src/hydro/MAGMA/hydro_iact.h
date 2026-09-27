@@ -511,23 +511,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 #else /* Gasoline-like mixing */
 
-  const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]), 0.5f * (G_i[1] + G_j[1]),
-                         0.5f * (G_i[2] + G_j[2])};
+  /* Average of the (possibly replaced) gradient functions */
+  const float G_avg[3] = {0.5f * (G_i[0] + G_j[0]), 0.5f * (G_i[1] + G_j[1]),
+                          0.5f * (G_i[2] + G_j[2])};
 
   const float acc_term = (pressurei + pressurej + Qi + Qj) / (rhoi * rhoj);
   const float du_term = (pressurei + Qi) / (rhoi * rhoj);
 
   /* Raw fluid acceleration (eq. 10) */
-  pi->a_hydro[0] -= mj * acc_term * G_ij[0];
-  pi->a_hydro[1] -= mj * acc_term * G_ij[1];
-  pi->a_hydro[2] -= mj * acc_term * G_ij[2];
+  pi->a_hydro[0] -= mj * acc_term * G_avg[0];
+  pi->a_hydro[1] -= mj * acc_term * G_avg[1];
+  pi->a_hydro[2] -= mj * acc_term * G_avg[2];
 
   /* Equivalent of div v */
-  const float v_ij_dot_G_ij =
-      v_ij[0] * G_ij[0] + v_ij[1] * G_ij[1] + v_ij[2] * G_ij[2];
+  const float v_ij_dot_G_avg =
+      v_ij[0] * G_avg[0] + v_ij[1] * G_avg[1] + v_ij[2] * G_avg[2];
 
   /* Raw change in internal energy (eq. 11) */
-  pi->u_dt += du_term * mj * v_ij_dot_G_ij;
+  pi->u_dt += du_term * mj * v_ij_dot_G_avg;
 
 #endif
 
