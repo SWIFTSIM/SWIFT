@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_NONE_IO_H
-#define SWIFT_FORCING_NONE_IO_H
+#ifndef SWIFT_FORCING_DRIVEN_TURBULENCE_IO_H
+#define SWIFT_FORCING_DRIVEN_TURBULENCE_IO_H
 
 /* Config parameters. */
 #include <config.h>
@@ -41,4 +41,4 @@ __attribute__((always_inline)) INLINE static int forcing_write_particles(
   return 0;
 }
 
-#endif /* SWIFT_FORCING_NONE_IO_H */
+#endif /* SWIFT_FORCING_DRIVEN_TURBULENCE_IO_H */
