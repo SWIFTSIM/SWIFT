@@ -513,7 +513,7 @@ int lightcone_store_stars(const struct engine *e, struct lightcone_props *props,
 
 #ifdef STARS_EAGLE
   data->mass_init = sp->mass_init;
-  data->birth_scale_factor = sp->birth_scale_factor;
+  data->birth_scale_factor = (float)sp->birth_scale_factor;
   data->birth_density = sp->birth_density;
   stars_get_luminosities(sp, e->policy & engine_policy_cosmology, e->cosmology,
                          e->time, e->physical_constants, e->stars_properties,
