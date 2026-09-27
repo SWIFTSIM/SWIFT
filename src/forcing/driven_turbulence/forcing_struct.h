@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_NONE_STRUCT_H
-#define SWIFT_FORCING_NONE_STRUCT_H
+#ifndef SWIFT_FORCING_DRIVEN_TURBULENCE_STRUCT_H
+#define SWIFT_FORCING_DRIVEN_TURBULENCE_STRUCT_H
 
 /**
  * @brief Properties of the forcing stored in the extended particle data.
  */
 struct forcing_xpart_data {};
 
-#endif /* SWIFT_FORCING_NONE_STRUCT_H */
+#endif /* SWIFT_FORCING_DRIVEN_TURBULENCE_STRUCT_H */

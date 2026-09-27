@@ -49,7 +49,6 @@
 #endif
 
 void forcing_terms_struct_dump(const struct forcing_terms *terms, FILE *stream);
-void forcing_terms_struct_restore(const struct forcing_terms *terms,
-                                  FILE *stream);
+void forcing_terms_struct_restore(struct forcing_terms *terms, FILE *stream);
 
 #endif /* SWIFT_FORCING_H */

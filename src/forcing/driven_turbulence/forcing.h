@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_NONE_H
-#define SWIFT_FORCING_NONE_H
+#ifndef SWIFT_FORCING_DRIVEN_TURBULENCE_H
+#define SWIFT_FORCING_DRIVEN_TURBULENCE_H
 
 /* Config parameters. */
 #include <config.h>
@@ -35,6 +35,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "restart.h"
 #include "space.h"
 #include "units.h"
 
@@ -97,7 +98,8 @@ struct forcing_terms {
 /**
  * @brief Computes the hydrodynamic forcing terms.
  *
- * We do nothing in this 'none' scheme.
+ * Adds the acceleration due to the stochastic driving field evaluated at
+ * the particle's position.
  *
  * @param time The current time.
  * @param terms The properties of the forcing terms.
@@ -124,8 +126,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
     const double A = terms->amplitudes[m];
 
+    /* Note: sincos() returns the sine first */
     double real, imag;
-    sincos(k_dot_x, &real, &imag);
+    sincos(k_dot_x, &imag, &real);
 
     fx += A * (terms->A_k_a[3 * m + 0] * real - terms->A_k_b[3 * m + 0] * imag);
     fy += A * (terms->A_k_a[3 * m + 1] * real - terms->A_k_b[3 * m + 1] * imag);
@@ -145,7 +148,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 /**
  * @brief Computes the gravitational forcing terms.
  *
- * We do nothing in this 'none' scheme.
+ * Nothing to do here: the driving only acts on the gas.
  *
  * @param id The particle ID.
  * @param terms The properties of the forcing terms.
@@ -268,7 +271,7 @@ static INLINE void forcing_terms_calculate_phases(struct forcing_terms *terms) {
       const double div_a = terms->modes[3 * i + j] * k_a / k_k;
       const double div_b = terms->modes[3 * i + j] * k_b / k_k;
       const double curl_a = terms->phases[6 * i + 2 * j + 0] - div_b;
-      const double curl_b = terms->phases[6 * i + 2 * j + 0] - div_a;
+      const double curl_b = terms->phases[6 * i + 2 * j + 1] - div_a;
 
       terms->A_k_a[3 * i + j] =
           solenoid_weight * curl_a + (1. - solenoid_weight) * div_b;
@@ -282,22 +285,23 @@ static INLINE void forcing_terms_calculate_phases(struct forcing_terms *terms) {
  * @brief updates the forcing terms
  *
  * @param terms The #forcing_terms properties of the run
- * @param time The current time
+ * @param time_old The previous system time
+ * @param time The current system time
  */
 INLINE static void forcing_update(struct forcing_terms *terms,
-                                  const double time) {
+                                  const double time_old, const double time) {
 
   const double delta_time = time - terms->previous_update_time;
 
   if (delta_time >= terms->time_frequency) {
 
-    forcing_terms_init_random_sequence(terms);
+    forcing_terms_update_random_sequence(terms);
     forcing_terms_calculate_phases(terms);
 
     terms->previous_update_time = time;
-  }
 
-  message("Updated the driving fields");
+    message("Updated the driving fields at t=%e", time);
+  }
 }
 
 /**
@@ -307,7 +311,13 @@ INLINE static void forcing_update(struct forcing_terms *terms,
  */
 static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 
-  message("Forcing terms is 'No forcing terms'.");
+  message(
+      "Forcing terms is 'Driven turbulence'. Modes: %d, k_min: %e, k_max: "
+      "%e, spectrum: %d, energy: %e, decay time: %e, update interval: %e, "
+      "solenoidal weight: %e.",
+      terms->num_modes, terms->k_min, terms->k_max, (int)terms->shape,
+      terms->variance * terms->variance * terms->decay_time,
+      terms->decay_time, terms->time_frequency, terms->solenoid_weight);
 }
 
 /**
@@ -345,6 +355,7 @@ static INLINE void forcing_terms_init(struct swift_params *params,
   terms->time_frequency =
       parser_get_param_double(params, "TurbulenceDriving:frequency");
 
+  terms->decay_time = decay_time;
   terms->previous_update_time = 0.;
   terms->variance = sqrt(energy / decay_time);
   terms->solenoid_weight_norm =
@@ -516,6 +527,78 @@ static INLINE void forcing_terms_clean(struct forcing_terms *terms) {
   swift_free("forcing_phases", terms->phases);
   swift_free("forcing_Aka", terms->A_k_a);
   swift_free("forcing_Akb", terms->A_k_b);
+  gsl_rng_free(terms->rng);
 }
 
-#endif /* SWIFT_FORCING_NONE_H */
+/**
+ * @brief Write the arrays and random number generator state of the forcing
+ * terms to a restart file.
+ *
+ * The #forcing_terms struct itself has already been written.
+ *
+ * @param terms The forcing term properties
+ * @param stream The file stream
+ */
+static INLINE void forcing_terms_dump_arrays(const struct forcing_terms *terms,
+                                             FILE *stream) {
+
+  const int n = terms->num_modes;
+
+  restart_write_blocks(terms->modes, sizeof(double), 3 * n, stream,
+                       "forcing_modes", "forcing modes");
+  restart_write_blocks(terms->amplitudes, sizeof(double), n, stream,
+                       "forcing_amplitudes", "forcing amplitudes");
+  restart_write_blocks(terms->phases, sizeof(double), 6 * n, stream,
+                       "forcing_phases", "forcing phases");
+  restart_write_blocks(terms->A_k_a, sizeof(double), 3 * n, stream,
+                       "forcing_Aka", "forcing complex amplitudes");
+  restart_write_blocks(terms->A_k_b, sizeof(double), 3 * n, stream,
+                       "forcing_Akb", "forcing complex amplitudes");
+  restart_write_blocks(gsl_rng_state(terms->rng), gsl_rng_size(terms->rng), 1,
+                       stream, "forcing_rng", "forcing random number state");
+}
+
+/**
+ * @brief Restore the arrays and random number generator state of the
+ * forcing terms from a restart file.
+ *
+ * The #forcing_terms struct itself has already been read, so the pointers
+ * it contains are stale and get replaced here.
+ *
+ * @param terms The forcing term properties
+ * @param stream The file stream
+ */
+static INLINE void forcing_terms_restore_arrays(struct forcing_terms *terms,
+                                                FILE *stream) {
+
+  const int n = terms->num_modes;
+
+  terms->modes =
+      (double *)swift_malloc("forcing_modes", n * 3 * sizeof(double));
+  terms->amplitudes =
+      (double *)swift_malloc("forcing_amplitudes", n * sizeof(double));
+  terms->phases =
+      (double *)swift_malloc("forcing_phases", n * 6 * sizeof(double));
+  terms->A_k_a = (double *)swift_malloc("forcing_Aka", n * 3 * sizeof(double));
+  terms->A_k_b = (double *)swift_malloc("forcing_Akb", n * 3 * sizeof(double));
+  if (terms->modes == NULL || terms->amplitudes == NULL ||
+      terms->phases == NULL || terms->A_k_a == NULL || terms->A_k_b == NULL)
+    error("Error allocating forcing arrays");
+
+  restart_read_blocks(terms->modes, sizeof(double), 3 * n, stream, NULL,
+                      "forcing modes");
+  restart_read_blocks(terms->amplitudes, sizeof(double), n, stream, NULL,
+                      "forcing amplitudes");
+  restart_read_blocks(terms->phases, sizeof(double), 6 * n, stream, NULL,
+                      "forcing phases");
+  restart_read_blocks(terms->A_k_a, sizeof(double), 3 * n, stream, NULL,
+                      "forcing complex amplitudes");
+  restart_read_blocks(terms->A_k_b, sizeof(double), 3 * n, stream, NULL,
+                      "forcing complex amplitudes");
+
+  terms->rng = gsl_rng_alloc(gsl_rng_ranlxd1);
+  restart_read_blocks(gsl_rng_state(terms->rng), gsl_rng_size(terms->rng), 1,
+                      stream, NULL, "forcing random number state");
+}
+
+#endif /* SWIFT_FORCING_DRIVEN_TURBULENCE_H */

@@ -227,9 +227,10 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  *
  * @param terms The #forcing_terms properties of the run
  * @param time_old The previous system time
+ * @param time The current system time
  */
 INLINE static void forcing_update(struct forcing_terms *terms,
-                                  const double time_old) {}
+                                  const double time_old, const double time) {}
 
 /**
  * @brief Prints the properties of the forcing terms to stdout.
