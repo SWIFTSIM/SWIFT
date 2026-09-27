@@ -46,21 +46,22 @@ k = np.arange(L_depth)
 ii, jj, kk = np.meshgrid(i, j, k, indexing="ij")
 
 pos_grid = np.empty((numPart_grid, 3), dtype=np.float64)
-pos_grid[:, 0] = (ii.ravel() / L) * boxsize
-pos_grid[:, 1] = (jj.ravel() / L) * boxsize
-pos_grid[:, 2] = (kk.ravel() / L) * boxsize
+pos_grid[:, 0] = ((ii.ravel() + 0.5) / L) * boxsize
+pos_grid[:, 1] = ((jj.ravel() + 0.5) / L) * boxsize
+pos_grid[:, 2] = ((kk.ravel() + 0.5) / L) * boxsize
 
 h_grid = np.full(numPart_grid, (boxsize / L) * 1.2348)
 m_grid = np.full(numPart_grid, density * (boxsize / L)**3)
 
 # Cylinder masks 
+tol = 1e-9  # treat grid points exactly on the ring edges the same in both rings
 select_cylinderA = np.logical_and(
-    (pos_grid[:, 0] - initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 <= outer_r**2,
-    (pos_grid[:, 0] - initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 >= inner_r**2,
+    (pos_grid[:, 0] - initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 <= outer_r**2 * (1 + tol),
+    (pos_grid[:, 0] - initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 >= inner_r**2 * (1 - tol),
 )
 select_cylinderB = np.logical_and(
-    (pos_grid[:, 0] + initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 <= outer_r**2,
-    (pos_grid[:, 0] + initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 >= inner_r**2,
+    (pos_grid[:, 0] + initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 <= outer_r**2 * (1 + tol),
+    (pos_grid[:, 0] + initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 >= inner_r**2 * (1 - tol),
 )
 
 # Set up velocities
