@@ -42,12 +42,13 @@
 #include "./forcing/BalsaraKim/forcing.h"
 #elif defined(FORCING_IDEALIZED_AGN_JET)
 #include "./forcing/idealized_agn_jet/forcing.h"
+#elif defined(FORCING_DRIVEN_TURBULENCE)
+#include "./forcing/driven_turbulence/forcing.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
 
 void forcing_terms_struct_dump(const struct forcing_terms *terms, FILE *stream);
-void forcing_terms_struct_restore(const struct forcing_terms *terms,
-                                  FILE *stream);
+void forcing_terms_struct_restore(struct forcing_terms *terms, FILE *stream);
 
 #endif /* SWIFT_FORCING_H */

@@ -533,6 +533,18 @@ BalsaraKimForcing:
   u_inj_cgs:     3.0298e15               # (required if inj_model=set_const_u) Specific energy to inject in the particles (physical)
   v_inj_kms:     200.                    # (required if inj_model=set_const_v) Injection velocity in km/s (physical)
 
+# Driven turbulence using an Ornstein-Uhlenbeck stirring field (Arepo's TURB_DRIVING, Pakmor et al. 2026)
+TurbulenceDriving:
+  random_seed:      42          # Seed of the random number generator used for the stirring phases
+  energy:           0.0002      # Energy normalisation of the driving (internal units). The Ornstein-Uhlenbeck variance is sqrt(energy / decay_time).
+  decay_time:       0.0625      # Auto-correlation time of the Ornstein-Uhlenbeck process (internal units)
+  frequency:        0.0078125   # Time between updates of the stirring field (internal units)
+  weight:           1.0         # Solenoidal weight: 1 for purely solenoidal, 0 for purely compressive driving
+  k_min:            6.27        # Minimal wavenumber of the driven modes (internal units, including the 2pi factor)
+  k_max:            12.57       # Maximal wavenumber of the driven modes (internal units, including the 2pi factor)
+  shape:            1           # Shape of the amplitude spectrum: 0 constant, 1 parabolic, 2 Kolmogorov (k^-5/3), 3 k^-2
+  amplitude_factor: 1.0         # Global multiplicative factor applied to the driving force
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:

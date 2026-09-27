@@ -2309,7 +2309,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                    e->cooling_func, e->s, e->time);
 
   /* Update the forcing terms */
-  forcing_update(e->forcing_terms, e->time_old);
+  forcing_update(e->forcing_terms, e->time_old, e->time);
 
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);
@@ -2774,7 +2774,7 @@ int engine_step(struct engine *e) {
                        e->cosmology);
 
   /* Update the forcing terms */
-  forcing_update(e->forcing_terms, e->time_old);
+  forcing_update(e->forcing_terms, e->time_old, e->time);
 
   /* Update the rt properties */
   if (e->policy & engine_policy_rt)
