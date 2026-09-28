@@ -10,7 +10,7 @@ Snapshots ouputs
 
 Here, we provide a summary of the quantities written in the snapshots, in addition to positions, velocities, masses, smoothing lengths and particle IDs.
 
-Most tracer outputs are summarised on the :ref:`gear_tracers` page. The gas and star fields the radiation model registers are grouped by channel below instead, whether they come from the tracers module (radiation pressure's own diagnostics) or from the GEAR feedback module's own I/O code (HII photoionization, the interstellar radiation field).
+Most tracer outputs are summarised on the :ref:`gear_tracers` page. The gas and star fields the radiation model registers are grouped by channel below instead: radiation pressure's own diagnostics are tracers-module fields; HII photoionization's and the interstellar radiation field's are not.
 
 Sink particles
 ~~~~~~~~~~~~~~
@@ -283,7 +283,7 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
 HII photoionization
 ~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`gear_radiation_hii` for the physics. All six fields below are registered by the GEAR feedback module's own I/O code, not the tracers module, so they do not need ``--with-tracers=GEAR``:
+See :ref:`gear_radiation_hii` for the physics. None of the six fields below are tracers-module fields, so none need ``--with-tracers=GEAR``:
 
 .. list-table::
    :header-rows: 1
