@@ -56,15 +56,17 @@ struct scheduler;
 struct replication_list;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
- * that use 2^31 as the upper bound on MPI tags and the fact that
- * cell_next_tag is multiplied by 2 when passed to an MPI function.
- * The maximum was lowered by a further factor of 2 to be on the safe side.*/
-#define cell_max_tag (1 << 29)
+ * that use 2^31 as the upper bound on MPI tags, lowered by a factor of 4
+ * to be on the safe side.
+ * This is only a starting point: engine_config() lowers cell_max_tag to
+ * MPI_TAG_UB when the MPI implementation reports it. */
+#define cell_max_tag_default (1 << 29)
 
 #define cell_align 128
 
 /* Global variables. */
 extern int cell_next_tag;
+extern int cell_max_tag;
 
 /*! Counter for cell IDs (when exceeding max values for uniqueness) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
