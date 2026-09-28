@@ -650,13 +650,15 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * div_F)`, with `e = exp(-a)`, `phi = (1-e)/a`,
  * `a = (c_hyp*kappa + lambda(m)*H_dilated)*dt`, `H_dilated = (c_hyp/c)*H`
  * (#radiation_relaxation_phi_factor; `lambda(m) = 1` is the grey special
- * case `a = c_hyp*(kappa + H/c)*dt`). `H` is dilated by the SAME `c_hyp/c`
- * factor as absorption and injection: unlike `kappa`, it does not pick that
- * factor up "for free", and leaving it bare instead suppresses the
- * true-speed fixed point of the homogeneous equation and stops `c_hyp`
- * cancelling out of it. Full derivation and the resulting spurious-sink
- * consequence: theory/GEAR/Radiation/02_fuv_isrf.tex, "From the Eulerian
- * moments to the system we integrate".
+ * case `a = c_hyp*(kappa + H/c)*dt`). Without the dissipation this is
+ * exact, under the SAME CHANGE OF VARIABLE the reduced-speed method
+ * applies to every other rate (#isrf_c_hyp_consistent_variable_c). `H` is
+ * dilated by the SAME `c_hyp/c` factor as absorption and injection: unlike
+ * `kappa`, it does not pick that factor up "for free", and leaving it bare
+ * instead suppresses the true-speed fixed point of the homogeneous
+ * equation and stops `c_hyp` cancelling out of it. Full derivation and the
+ * resulting spurious-sink consequence: theory/GEAR/Radiation/
+ * 02_fuv_isrf.tex, "From the Eulerian moments to the system we integrate".
  *
  * `div_F` is the divergence of this step's already-relaxed flux `F^{n+1}`
  * (#radiation_end_gradient_propagation): the flux is advanced first, then
@@ -710,22 +712,21 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * Idempotent: `u` is rebuilt from the stable `u_prev` snapshot and this
  * step's accumulators, never incremented, so a repeated call gives the same
  * state. The M1 flux limiter is not applied here: the extra ghost already
- * limited this step's flux against `u^n`, the `u` its closure was built
- * from. The debug-only energy-ledger counters below
- * (#feedback_isrf_moment_data.cumulative_injected/cumulative_absorbed) are
- * the one exception: they ARE incremented, relying on the task graph
- * calling this exactly once per active particle per step (no
- * h-iteration-style redo exists for the force ghost, unlike the density
- * loop).
+ * limited this step's flux against `u^n`. The debug-only energy-ledger
+ * counters below (#feedback_isrf_moment_data.
+ * cumulative_injected/cumulative_absorbed) are the one exception: they ARE
+ * incremented, relying on the task graph calling this exactly once per
+ * active particle per step (no h-iteration-style redo exists for the force
+ * ghost, unlike the density loop).
  *
- * Reads #dt_prev (cached earlier this step by
- * #radiation_snapshot_part_propagation), #c_hyp (cached later, once the
- * density loop's neighbour-bin maximum is known, by
- * #radiation_end_density_propagation) and #feedback_isrf_operator_data.kappa,
- * and deliberately takes no `dt` of its own: the call site computes its
- * local `dt` from a different timestep-begin convention (`ti_current - 1`),
- * and using it here would make this update's `dt*phi` inconsistent with the
- * flux update's. The thin `(p, e)` signature exists to make that mistake
+ * Reads #dt_prev and #c_hyp (cached respectively by
+ * #radiation_snapshot_part_propagation, and by
+ * #radiation_end_density_propagation once the density loop's neighbour-bin
+ * maximum is known) and #feedback_isrf_operator_data.kappa, and
+ * deliberately takes no `dt` of its own: the call site's local `dt` uses a
+ * different timestep-begin convention (`ti_current - 1`), and using it
+ * here would make this update's `dt*phi` inconsistent with the flux
+ * update's. The thin `(p, e)` signature exists to make that mistake
  * structurally impossible. No-op when propagation is off.
  *
  * @param p The particle to act upon.
@@ -1030,10 +1031,10 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * #radiation_dissipation_alpha_floor_band's aim on a particle whose flux is
  * already at the discrete fixed point of
  * #radiation_end_gradient_propagation's own UNLIMITED flux-update recurrence
- * (`F ~= -C*grad_u`, `C = c_hyp/(kappa+H/c)`, i.e. before
+ * (`F ~= -C*grad_u`, `C = c_hyp/w`, `w = kappa+lambda*H/c`, i.e. before
  * #radiation_apply_flux_limiter_band clamps it), where the floor buys no
  * protection and only costs accuracy; never raises it on a fresh front or an
- * unsettled particle (`tau = 1/(c_hyp*(kappa+H/c)) >> dt`). Full derivation:
+ * unsettled particle (`tau = 1/(c_hyp*w) >> dt`). Full derivation:
  * theory/GEAR/Radiation/02_fuv_isrf.tex, "The flux-relaxation-residual
  * gate".
  *
@@ -1049,16 +1050,16 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  *
  * Degenerate returns, each checked before the `R` formula: `eps_R<=0` or
  * `c_hyp<=0` return `1` (gate disabled, or no timescale to settle against);
- * `w = kappa+lambda*H/c <= 0` also returns `1` rather than falling through,
- * since at `w=0` `F` drops out of both the numerator and denominator, which
- * would otherwise break the `s=1` guarantee above whenever `F` alone is
- * nonzero; a quiescent particle (`F=grad_u=0`, zero denominator) returns
- * `0` instead, trivially at the fixed point. `w` divides `H` by the TRUE
- * speed `c`, not `c_hyp` (it is `a/(c_hyp*dt)` for this function's own
- * fixed-point `a`, so `c_hyp` cancels out of `w` itself, unlike `a`). `R`
- * and `(R/eps_R)^2` are formed in double so the squared denominator cannot
- * underflow to zero under this build's fast-math folding of the ratio and
- * its square into one division.
+ * `w<=0` also returns `1` rather than falling through, since at `w=0` `F`
+ * drops out of both the numerator and denominator, which would otherwise
+ * break the `s=1` guarantee above whenever `F` alone is nonzero; a
+ * quiescent particle (`F=grad_u=0`, zero denominator) returns `0` instead,
+ * trivially at the fixed point. `w` divides `H` by the TRUE speed `c`, not
+ * `c_hyp`: `w = a/(c_hyp*dt)` for #radiation_end_gradient_propagation's own
+ * relaxation depth `a`, so `c_hyp` cancels out of `w` itself, unlike `a`.
+ * `R` and `(R/eps_R)^2` are formed in double so the squared denominator
+ * cannot underflow to zero under this build's fast-math folding of the
+ * ratio and its square into one division.
  *
  * @param F This band's #feedback_isrf_moment_data.specific_flux, from BEFORE
  * this step's own update (already post-limiter).
