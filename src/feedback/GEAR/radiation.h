@@ -216,8 +216,8 @@
     absence case: radiation_read_data() REQUIRES the band-edge datasets
     whenever #radiation.with_ISRF is on and refuses to load a table lacking
     them (radiation_table_io.c), matching the branch's own precedent for
-    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa).
-    That policy is intentionally the ONE place this can be flipped: see the
+    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW". That policy is
+    intentionally the ONE place this can be flipped: see the
     presence-gate block in radiation_read_data() for how to make it
     non-fatal instead, which would make these three constants the live
     fallback for a table generated before pychem exported the new datasets.

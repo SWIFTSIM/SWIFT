@@ -660,8 +660,8 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * scale with `c_hyp` (it is a property of the expanding background, not of
  * the radiation transport), so it must be dilated explicitly here rather
  * than picking it up "for free" the way `c_hyp*kappa` does. Leaving `H`
- * undilated (as this file did until this fix) makes the fixed point of the
- * homogeneous (`div_F = 0`) equation `u* = (source_rate/c)/(kappa +
+ * undilated makes the fixed point of the homogeneous (`div_F = 0`)
+ * equation `u* = (source_rate/c)/(kappa +
  * H/c_hyp)` instead of the true-speed `u*_true = (source_rate/c)/(kappa +
  * H/c)`: since `c_hyp << c`, `H/c_hyp >> H/c`, suppressing `u*` by the
  * factor `x/(1+x)`, `x = c_hyp*kappa/H`, a spurious sink strongest exactly
@@ -711,9 +711,9 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * so the term vanishes there by construction (multiplying it by `c_hyp/c`
  * first does not change this: `(c_hyp/c)*0 = 0` exactly), exactly as for
  * `hydro.h`'s own `div_v + hydro_dimension*cosmo->H`. `c_hyp` here plays the
- * role of the M1 reduced light speed `c_M`: the `c_M/c` rescale (replacing
- * the old, P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively here;
- * injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ * role of the M1 reduced light speed `c_M`: the `c_M/c` rescale is applied
+ * exclusively here; injection (`radiation_iact.h`) deposits the raw,
+ * unrescaled dose.
  *
  * PHOTONS ALSO REDSHIFT ACROSS THE PE/LW BAND EDGES (fixed in physical, not
  * comoving, energy), which a per-moment `-H*u` alone does not model: each

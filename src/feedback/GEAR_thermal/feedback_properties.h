@@ -85,8 +85,7 @@ enum radiation_policy {
  */
 enum isrf_c_hyp_scheme {
   /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, `dt_i` this particle's own
-   * timestep. Operators: shipped. Bit-identical to the scheme this
-   * comparison branch was built from; no longer the default (see
+   * timestep. Operators: shipped. Not the default (see
    * #isrf_c_hyp_scheme_kernel_local_plus_variable_c), still reachable by
    * setting #feedback_props.ISRF_c_hyp_scheme explicitly. */
   isrf_c_hyp_scheme_shipped = 0,
@@ -884,12 +883,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* The radiation table backs the HII photoionization band, the bolometric
    * radiation-pressure band, and the Lyman-Werner/PE bands (see
    * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
-   * Previously omitted radiation_policy_photoelectric_heating here because
-   * "photoelectric heating has no downstream consumer yet". Now that it
-   * does, leaving it out would silently skip opening the radiation table
-   * for a with_interstellar_radiation_field-only run, and desync from
-   * feedback_struct_restore()'s own copy of this same condition on restart
-   * (see that function's matching comment). */
+   * with_interstellar_radiation_field must stay in this OR: omitting it
+   * would silently skip opening the radiation table for a
+   * with_interstellar_radiation_field-only run. Keep in sync with
+   * feedback_struct_restore()'s matching condition on restart. */
   const char with_radiation = with_photoionization || with_radiation_pressure ||
                               with_interstellar_radiation_field;
 
@@ -1099,9 +1096,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's own doxygen.
      * Parsed unconditionally, like the pin/fraction below, so a validation
      * run can set it even with ISRF_propagation off in the base config.
-     * Default is scheme 4: best measured negativity and amplitude of the
-     * five; the previously shipped scheme 0 stays reachable by setting this
-     * parameter explicitly. */
+     * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+     * scheme 0 stays reachable by setting this parameter explicitly. */
     fp->ISRF_c_hyp_scheme = parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_c_hyp_scheme",
         isrf_c_hyp_scheme_kernel_local_plus_variable_c);
@@ -1180,10 +1176,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * giving C_hyp <= sqrt(2/0.70) ~ 1.6903. Increasing alpha only
      * tightens the bound further (enforced separately below, once
      * alpha_max/alpha_floor are known), so alpha = 0 is the loosest case
-     * and no configuration can ever exceed this value. The previous 1.7
-     * ceiling admitted C_hyp values in (1.6903, 1.7] that are unstable
-     * even with dissipation off, since the joint check below only fires
-     * when alpha_max or alpha_floor is nonzero. */
+     * and no configuration can ever exceed this value. */
     const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
 
     if (fp->ISRF_c_hyp_margin <= 0.f ||
@@ -1223,10 +1216,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->ISRF_dissipation_negativity_threshold);
 
     /* Diffuse-phase floor under the trigger: shipped defaults 0.5/0.5. The
-     * eps_lambda default moved 0.05 -> 0.5 together with the roll-off
-     * exponent 2 -> 4: the quartic tail is what keeps the thick regime
-     * negligible, so the knee itself no longer has to sit an order of
-     * magnitude below the regimes that need the floor. */
+     * quartic roll-off keeps the thick regime negligible, so the knee does
+     * not need to sit an order of magnitude below the regimes that need the
+     * floor. */
     fp->ISRF_dissipation_alpha_floor = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_alpha_floor", 0.5f);
     fp->ISRF_dissipation_floor_h_over_lambda = parser_get_opt_param_float(

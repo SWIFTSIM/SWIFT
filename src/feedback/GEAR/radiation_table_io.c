@@ -1737,8 +1737,8 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   }
 
   /* FATAL-IF-ABSENT is the policy this branch already applies to
-     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa)
-     and to L_PE/L_LW above: this is the ONE place to flip that policy for
+     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" and to L_PE/L_LW
+     above: this is the ONE place to flip that policy for
      the band-edge datasets specifically, to a has_teff-style optional read
      with the compile-time RADIATION_BAND_EDGE_WEIGHT_*_DEFAULT fallback
      (radiation.h), if a non-fatal table-absence path is wanted instead. */
