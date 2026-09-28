@@ -306,9 +306,7 @@ def same_configuration(base: str, other: str) -> bool:
         with open(os.path.join(run, "used_parameters.yml")) as f:
             # The file opens with a run-time stamp comment, which differs
             # between any two runs and says nothing about their physics.
-            lines.append(
-                [ln.rstrip() for ln in f if not ln.lstrip().startswith("#")]
-            )
+            lines.append([ln.rstrip() for ln in f if not ln.lstrip().startswith("#")])
     ok = len(lines[0]) == len(lines[1])
     offenders = []
     if ok:
