@@ -1,4 +1,5 @@
 .. Reading the table of the steps and tuning the time-steps
+   Darwin Roduit, 2026
 
 .. _time_step_tuning:
 
@@ -57,43 +58,51 @@ The columns
 How to read it
 --------------
 
+To understand how SWIFT manages variable time-steps in practice, we can examine
+the telemetry from the Sedov blast test case plotted below.
+
 .. figure:: figures/sedov_steps.png
    :width: 100%
-   :alt: Length of the step, fraction of updated particles and active bins
-         of the Sedov blast run
+   :alt: Length of the step, fraction of updated particles and active bins of
+         the Sedov blast run
 
    The steps of the Sedov blast run. **Top:** the time between steps. It grows
    from :math:`2.4\times 10^{-5}` to :math:`3.9\times 10^{-4}` as the blast
    spreads and the particles slow down. **Middle:** the fraction of the
-   particles that are updated. Most steps update a small fraction. The curves are
-   the steps that end the same bin: a longer bin activates more
+   particles that are updated. Most steps update a small fraction. The curves
+   are the steps that end the same bin: a longer bin activates more
    particles. The diamonds are the *synchronised* steps, where all the
    particles are active. **Bottom:** the lowest and highest active bins. The
    highest active bin sets how many particles are updated: the peaks are the
    steps where a long bin ends.
 
-The run has 386 steps after the initialisation and 8 synchronised steps, and
-uses the bins 45 to 56. Some numbers that the table gives:
+As shown across the three panels of the figure above, the run completes 386
+steps after initialization alongside 8 synchronised steps, utilizing time-bins
+45 through 56. The telemetry reveals several key operational insights:
 
-* **The gain of individual time-steps.** The shortest step is
-  :math:`2.44\times 10^{-5}` and the run is :math:`0.05` long. A code with a
-  single global step of that length would need 2048 steps and 2048 updates of
-  every particle. In the run, the sum of the updates is 19.2 times the number
-  of particles, that is about 107 times fewer.
-* **A step costs something even with few active particles.** 238 of the 386
-  steps update less than 1% of the particles, and together they take 11% of the
-  wall-clock time. The 146 steps that update fewer than 100 particles, when they
-  have no rebuild and no output, take 3.2 ms each (median).
-* **The dead time is large in these steps.** The median ratio of dead time to
-  wall-clock time is 33% for the steps that update fewer than 100 particles,
-  and 2% for the steps that update more than :math:`10^4`. A step with few
-  active particles cannot keep all the threads busy.
-* **Rebuilds and outputs are expensive.** The 33 steps with a rebuild (``Props``
-  contains 1) are 18% of the wall-clock time. A step with a rebuild and fewer
-  than 1000 updates costs about 60 ms (median). The 4 steps that write a snapshot
-  cost about 0.9 s.
-* **The full steps.** The 8 synchronised steps update all the particles and take
-  24% of the time.
+* **The gain of individual time-steps (Top panel):** The shortest step is
+  :math:`2.44\times 10^{-5}` and the total run length is :math:`0.05`. A single
+  global step of that size would require 2048 steps with full particle
+  updates. Instead, the sum of updates across all steps is only 19.2 times the
+  particle count—roughly **107 times fewer particle updates overall**.
+* **A step costs something even with few active particles (Middle panel):** 238
+  of the 386 steps update less than 1% of the particles, yet together they
+  consume 11% of the total wall-clock time. The 146 steps updating fewer than
+  100 particles (free of rebuilds or outputs) take a median of 3.2 ms each.
+* **Dead time dominates small steps:** As seen in the low-update steps, the
+  median ratio of dead time to wall-clock time is 33% for steps updating fewer
+  than 100 particles, dropping to just 2% for steps with over :math:`10^4`
+  updates. Small steps simply cannot keep all threads busy.
+* **Rebuilds and outputs are expensive:** The 33 steps involving a tree rebuild
+  (flag ``Props`` containing 1) account for 18% of the total wall-clock time,
+  costing a median of ~60 ms for fewer than 1000 updates. The 4 snapshot output
+  steps cost roughly 0.9 s each.
+* **The cost of full synchronization:** The 8 fully synchronised steps update
+  every particle in the simulation and consume 24% of the total runtime.
+
+Beyond tracking individual step types, plotting wall-clock time against the
+number of updated particles exposes the core scaling limits of the engine, as
+illustrated below.
 
 .. figure:: figures/sedov_step_cost.png
    :width: 75%
@@ -102,10 +111,10 @@ uses the bins 45 to 56. Some numbers that the table gives:
    The cost of the steps of the same run. Above about :math:`10^3` updated
    particles, the cost grows roughly in proportion to the number of updates
    (about 6 ms per :math:`10^3` particles for the regular steps of more than
-   :math:`10^4` updates). Below that, the cost is a floor of a few
-   milliseconds. Steps with a
-   tree rebuild (squares) and steps that write a snapshot (diamonds) are far
-   above the trend.
+   :math:`10^4` updates). Below that, the cost hits a flat floor of a few
+   milliseconds due to fixed overheads and thread synchronization. Steps with a
+   tree rebuild (squares) and steps that write a snapshot (diamonds) tower far
+   above this baseline trend.
 
 What the parameters do to the cost
 ----------------------------------
