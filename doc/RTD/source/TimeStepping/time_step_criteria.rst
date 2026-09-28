@@ -1,4 +1,5 @@
 .. How the time-step of a particle is chosen
+   Darwin Roduit, 2026
 
 .. _time_step_criteria:
 
@@ -56,10 +57,15 @@ Two further limits are applied to that minimum.
   ``TimeIntegration:max_dt_RMS_factor`` and ``TimeIntegration:dt_RMS_use_gas_only``.
 
 In a cosmological run, the result is then multiplied by the Hubble rate
-(``cosmology->time_step_factor``), so that it is an interval of :math:`\log a`.
+(``cosmology->time_step_factor``), so that it is an interval of :math:`\log(a)`.
 Finally it is limited by ``dt_max``. If the result is below ``dt_min``, SWIFT
-stops with the error "part (id=...) wants a time-step (...) below dt_min
-(...)". This protects against a run that could never finish.
+stops with the error
+
+.. code::
+
+   "part (id=...) wants a time-step (...) below dt_min (...)".
+
+This protects against a run that could never finish.
 
 Other particles
 ~~~~~~~~~~~~~~~
@@ -86,58 +92,47 @@ Stage 2: the rules of the time-line
 The function ``make_integer_timestep()`` turns the physical time-step into a
 valid number of ticks. It applies these rules in this order.
 
-1. **Conversion and rounding.** The time-step is converted to ticks and
-   rounded down to a time-bin (``get_time_bin()``).
-2. **Neighbours.** For gas particles, the bin cannot be more than
-   ``time_bin_neighbour_max_delta_bin`` (that is, 2) bins above the smallest
-   time-bin of the neighbours of the particle. In other words, a particle
-   cannot have a step more than four times longer than any of its neighbours.
-   The smallest bin of the neighbours is collected in the density loop
-   (``runner_iact_timebin()``, field ``limiter_data.min_ngb_time_bin``). Other
-   particle types have no such limit.
-3. **Growth.** If the old bin is positive, the new step cannot be longer than
-   twice the old step. A step can thus grow by one bin at a time, but it can
-   shrink by any amount.
-4. **Alignment.** A step can only be *longer* than the previous one if it
-   starts on a multiple of its own length. If it does not, the particle keeps its
-   previous step for one more step. (A shorter step always fits, because every
-   multiple of a long step is a multiple of the short ones.)
+1. **Conversion and rounding.** The time-step is converted to ticks and rounded down to a time-bin (``get_time_bin()``).
+
+2. **Neighbours.** For gas particles, the bin cannot be more than ``time_bin_neighbour_max_delta_bin`` (that is, 2 by default) bins above the smallest time-bin of the neighbours of the particle. In other words, a particle cannot have a step more than four times longer than any of its neighbours. The smallest bin of the neighbours is collected in the density loop (``runner_iact_timebin()``, field ``limiter_data.min_ngb_time_bin``). Other particle types have no such limit.
+
+3. **Growth.** If the old bin is positive, the new step cannot be longer than twice the old step. A step can thus grow by one bin at a time, but it can shrink by any amount.
+
+4. **Alignment.** A step of length :math:`T` can only be *longer* than the previous one if the current time :math:`t` is an absolute multiple of :math:`T` from the start of the simulation (:math:`t=0`). If it is not, the particle keeps its previous step for one more step. (A shorter step always fits, because every multiple of a long step is a multiple of the short ones.)
 
 When the radiative transfer with sub-cycling is used, the step of a gas
 particle is finally limited to ``max_nr_rt_subcycles`` times its radiative
 transfer step (see the pages on radiative transfer).
 
-.. list-table:: A worked example. A particle ends a step of 16 ticks
-   (bin 3). Its criteria ask for 100 ticks. The smallest bin of its
-   neighbours is 2.
+Worked Example
+~~~~~~~~~~~~~~
+
+To see how these rules interact sequentially, consider a particle currently on **bin 3 (16 ticks)** whose physical criteria request **100 ticks**, with the smallest neighbour bin set to **2**. 
+
+The table below traces how this request is progressively constrained depending on whether the step happens to end at :math:`t = 48` or :math:`t = 64`.
+
+.. list-table::
    :header-rows: 1
-   :widths: 40 30 30
+   :widths: 35 32 33
 
-   * - Rule
-     - Result when the step ends at t = 48
-     - Result when the step ends at t = 64
-   * - Request: 100 ticks
-     - bin 5 (64 ticks)
-     - bin 5 (64 ticks)
-   * - Neighbours: at most bin 2 + 2
-     - bin 4 (32 ticks)
-     - bin 4 (32 ticks)
-   * - Growth: at most twice 16 ticks
-     - bin 4 (32 ticks)
-     - bin 4 (32 ticks)
-   * - Alignment: 32 must divide t
-     - 48 is not a multiple of 32: bin 3 (16 ticks)
-     - 64 is a multiple of 32: bin 4 (32 ticks)
+   * - Constraint Rule
+     - Evaluation at :math:`t = 48`
+     - Evaluation at :math:`t = 64`
+   * - **1. Request** (100 ticks)
+     - **Bin 5** (64 ticks)
+     - **Bin 5** (64 ticks)
+   * - **2. Neighbours** (:math:`\le \text{min\_ngb} + 2`)
+     - Capped at :math:`2 + 2` :math:`\rightarrow` **Bin 4** (32 ticks)
+     - Capped at :math:`2 + 2` :math:`\rightarrow` **Bin 4** (32 ticks)
+   * - **3. Growth** (:math:`\le 2 \times \text{old bin}`)
+     - Allowed (32 :math:`\le 2 \times 16`) :math:`\rightarrow` **Bin 4**
+     - Allowed (32 :math:`\le 2 \times 16`) :math:`\rightarrow` **Bin 4**
+   * - **4. Alignment** (:math:`T` must divide :math:`t`)
+     - 32 does not divide 48 :math:`\rightarrow` **Reverts to Bin 3** (16 ticks)
+     - 32 divides 64 cleanly :math:`\rightarrow` **Accepts Bin 4** (32 ticks)
 
-The particle in the example takes a step of 16 ticks at :math:`t=48` and a step
-of 32 ticks at :math:`t=64`. The rules explain why the particles of a real run
-do not follow their criteria exactly. They are always at most as long as
-the criteria ask for, and they reach a long step only step by step, at the
-right times.
+As this example demonstrates, particles do not instantly jump to their requested criteria. They are strictly bounded by their neighbours, growth limits, and global timeline alignment, ensuring system-wide synchronization.
 
 The time-step limiter and the synchronisation (see :ref:`time_step_limiter`
 and :ref:`time_step_sync`) can shorten the step of a particle in the middle of
 its step, whatever the rules above have decided.
-
-The Python scripts that draw the figures of this section are in the directory
-``TimeStepping/figures``.

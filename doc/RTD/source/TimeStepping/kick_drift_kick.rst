@@ -1,4 +1,5 @@
 .. The time integration scheme and the time-line of a step
+   Darwin Roduit, 2026
 
 .. _kick_drift_kick:
 
@@ -10,6 +11,8 @@ which every particle has its own time-step (see :ref:`integer_time_line` and
 :ref:`time_step_criteria`). This page describes what the scheme does to a
 particle, which tasks do it, and how the code decides when the next step
 happens.
+
+.. _scheme_for_one_particle:
 
 The scheme for one particle
 ---------------------------
@@ -69,23 +72,27 @@ the same in comoving coordinates.
 A particle is *active* at the integer time :math:`t` when it ends a step at
 :math:`t`. It is *starting* when it begins a step at :math:`t`. At the moment
 that it takes its new step, it is both. The two tests are
-``part_is_active()`` and ``part_is_starting()``. They give the same answer
-(``time_bin <= max_active_bin``), because the particles that end a step are
-the ones that start a new one. They are used at different moments of the step
-and check different things in the debug builds (the end of the step is not in
-the past for "active", the start is not in the future for "starting").
+``part_is_active()`` and ``part_is_starting()``. They evaluate the same underlying
+condition (``time_bin <= max_active_bin``), because the particles that end a step
+are precisely the ones that start a new one.
 
-* The loops over the particles that run before the new time-bin is chosen use
-  "active": the neighbour loops, *kick2* and the ``timestep`` task.
-* *kick1* runs after the ``timestep`` task and uses "starting" with the
-  *new* time-bin.
+However, they are invoked at different phases of the step execution and serve
+distinct validation purposes in debug check builds:
 
-For a cell, ``cell_is_active_hydro()`` is true when the earliest end of a step
-in the cell is the current time (``hydro.ti_end_min == ti_current``), and
-``cell_is_starting_hydro()`` when the latest start of a step in the cell is
-the current time (``hydro.ti_beg_max == ti_current``). The other particle
-types have the same functions. A particle that was removed from the
-simulation (``time_bin_inhibited``) is neither.
+* **Active** checks are used by tasks running before the new time-bin is chosen, such
+  as the neighbour loops, *kick2*, and the ``timestep`` task—to verify that the
+  particle's current step correctly terminates at the present time.
+* **Starting** checks are used by *kick1*, which runs after the ``timestep`` task,
+  to verify that the particle's newly assigned time-bin correctly governs its
+  upcoming step beginning at the present time.
+
+For a cell, similar notions apply. For instance, ``cell_is_active_hydro()`` is true when
+the earliest end of a step in the cell is the current time
+(``hydro.ti_end_min == ti_current``), and ``cell_is_starting_hydro()`` when the
+latest start of a step in the cell is the current time
+(``hydro.ti_beg_max == ti_current``). The other particle types have the same
+functions. Note that a particle that was removed from the simulation
+(``time_bin_inhibited``) is neither.
 
 The tasks of a step
 -------------------
@@ -122,6 +129,27 @@ Note that the first half-kick of a step is done at the *end of the previous
 step*, in the same call of ``engine_step()``. Only the *drift* and the force
 belong to the following call.
 
+.. note::
+
+   Although the conceptual sequence for an individual particle begins with
+   *kick1* (as described in :ref:`scheme_for_one_particle`), SWIFT's actual task graph
+   is reordered so that every simulation step begins with a ``drift``
+   operation.
+
+   This is possible because drift operations are linear with respect to
+   velocity (:math:`x \leftarrow x + v_{\rm full}\,\Delta t`), allowing them to
+   be flexibly composed. Once a particle has undergone *kick1*, which advances
+   its velocity to the midpoint value (:math:`v_{\rm full}`), it can be drifted
+   to any arbitrary time, even if the particle is inactive on the current step
+   (see :ref:`drifts_are_lazy`). This ensures that inactive neighbours can
+   always access up-to-date positions. At the very beginning of the run, a
+   preliminary *kick1* is applied to all particles, which explains why the task
+   dependency graphs always begin with drift operations (see
+   :ref:`current_dependencies`).
+
+
+.. _drifts_are_lazy:
+
 Drifts are lazy
 ~~~~~~~~~~~~~~~
 
@@ -132,6 +160,12 @@ task moves all of them from ``ti_old_part`` to the current time
 (``cell_drift_part()``). The cells that no task needs stay behind and are moved
 later, over a longer interval. All the cells are drifted at once
 (``engine_drift_all()``) when the tree is rebuilt and to write an output.
+
+.. note::
+
+   SWIFT can be run to drift all particles at all timestep. This emulates
+   Gadget-2 and 3 as well as GIZMO's default behaviours. See
+   :ref:`cmdline-options` for the required command-line option
 
 The times of the cells and the next step
 ----------------------------------------

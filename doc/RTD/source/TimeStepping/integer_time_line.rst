@@ -1,5 +1,6 @@
 .. Integer time-line
    Matthieu Schaller 9th November 2019
+   Darwin Roduit, 2026
 
 .. _integer_time_line:
 
@@ -81,7 +82,7 @@ The function ``get_time_bin()`` goes the other way. It returns
 
 .. math::
 
-   b(\Delta t_{\rm int}) = \lfloor\log_2 \Delta t_{\rm int}\rfloor - 1 \, ,
+   b(\Delta t_{\rm int}) = \lfloor\log_2 (\Delta t_{\rm int})\rfloor - 1 \, ,
   
 so a time-step that is not a power of two is *rounded down* to the bin below.
 The ``+ 1`` in the exponent of the length exists to keep the *half* of the
