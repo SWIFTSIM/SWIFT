@@ -15,7 +15,7 @@ Each star carries a band luminosity interpolated from the radiation datasets of 
 
 Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the deposited field is then transported away from the sources with a hyperbolic moment (M1) scheme under a reduced speed of light, so that the radiation reaches gas beyond the source kernels at a finite, controllable propagation speed instead of instantaneously.
 
-The resulting per-particle field is handed to Grackle every step. The Lyman-Werner band alone sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph). The photoelectric heating rate is driven by the Habing field :math:`G_0`, the SUM of the PE and Lyman-Werner band energies (the Habing band is defined 6 to 13.6 eV, exactly PE plus Lyman-Werner): at every Grackle mode, including below mode 2, both bands' energy still feeds heating even though only the PE band's own name suggests it.
+The resulting per-particle field is handed to Grackle every step. The Lyman-Werner band alone sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph). Photoelectric heating uses a different field, the Habing field :math:`G_0`. The Habing band spans 6 to 13.6 eV, so :math:`G_0` sums the PE and Lyman-Werner band energies. Lyman-Werner energy therefore still feeds photoelectric heating at every Grackle mode, including below mode 2.
 
 Working configurations are shipped in ``examples/SubgridTests/StellarFeedback/ISRF/``; each example directory carries its own README with its configure line, run command and check script.
 

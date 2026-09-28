@@ -38,7 +38,12 @@ Whenever any radiation channel is switched on, the group must carry:
 * ``DotEExcess`` and ``Integrated_DotEExcess`` (erg/s and erg/s/Msun): excess-photon-energy emission rate above the HI ionization threshold.
 * ``MeanPhotonEnergyLW`` and ``Integrated_MeanPhotonEnergyLW`` (both erg): photon-number-weighted mean Lyman-Werner photon energy. Required unconditionally, even for a photoionization-only or radiation-pressure-only run that never touches the ISRF. Unlike the other ``Integrated_`` datasets, this one is not a per-Msun rate: it is an intensive per-photon quantity (:math:`L_\mathrm{LW}/Q_\mathrm{LW}`), so it does not scale with the mass formed.
 
-If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``), the group must also carry ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW`` (erg/s and erg/s/Msun), the photoelectric and Lyman-Werner band luminosities.
+If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``), the group must also carry:
+
+* ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW`` (erg/s and erg/s/Msun): the photoelectric and Lyman-Werner band luminosities.
+* ``SpectralPhotonRateAtPEEdge``/``Integrated_SpectralPhotonRateAtPEEdge`` and ``SpectralPhotonRateAtLWEdge``/``Integrated_SpectralPhotonRateAtLWEdge`` (1/s/erg): the spectral photon rate density at each band's lower edge (6 eV for PE, 11.2 eV for LW), used to transfer the Lyman-Werner energy that redshifts across the shared 11.2 eV edge into the PE band.
+
+``examples/GEAR_ICs_and_SCRIPTS/checkRadiationTable.sh --with-isrf`` currently checks only the ``L_PE``/``L_LW`` pair, not the band-edge datasets above; a table that passes the script's ``--with-isrf`` check can still be rejected by SWIFT itself at start-up over a missing band-edge dataset.
 
 ``Teff`` (photospheric effective temperature, K) is optional and has no ``Integrated_`` counterpart; it is read if present and otherwise simply unavailable.
 
