@@ -603,16 +603,15 @@ static void radiation_check_imf_consistency(hid_t group_id,
  *
  * Shared by radiation_read_luminosities_array(),
  * radiation_read_ionization_rate_array() and
- * radiation_read_mean_excess_photon_energy_array() to avoid tripling the
- * read/convert/guard boilerplate.
+ * radiation_read_mean_excess_photon_energy_array().
  *
- * Guards against float overflow by aborting rather than capping:
- * error() aborts (MPI_Abort/swift_abort, src/error.h). A units/scaling
- * bug should stop the run, not silently corrupt the physics. Also flags
- * (debug-checks only) an implausible collapse to
- * exactly zero for a CGS input that was not itself zero: pychem bakes a
- * literal 0 into Q_H/DotEExcess below its own ionization threshold, so an
- * exact-zero result is only suspicious when the source value was nonzero.
+ * Guards against float overflow by aborting rather than capping: a
+ * units/scaling bug should stop the run, not silently corrupt the physics
+ * (error() aborts via MPI_Abort/swift_abort, src/error.h). Also flags
+ * (debug-checks only) an implausible collapse to exactly zero for a CGS
+ * input that was not itself zero: pychem bakes a literal 0 into
+ * Q_H/DotEExcess below its own ionization threshold, so an exact-zero
+ * result is only suspicious when the source value was nonzero.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param dataset_name Name of the dataset to read.
@@ -629,17 +628,16 @@ static void radiation_check_imf_consistency(hid_t group_id,
  * radiation_check_dataset_units()).
  * @param log_data_internal (output, optional) If not NULL, a caller-owned
  * float array of length @p count filled with log10 of the same
- * internal-unit value #RADIATION_LOG_FLOOR_CGS-floored on the CGS side
- * before conversion (see that macro's doxygen), exactly pychem's
- * log-log convention, used to build a raw table's #interpolation_1d /
- * #interpolation_2d in log-value space instead of raw-value space. Left
- * untouched if NULL (the integrated-table caller has no use for it: see
- * radiation_build_tables()'s doxygen for why the IMF-integrated table
- * stays in linear space).
+ * internal-unit value, #RADIATION_LOG_FLOOR_CGS-floored on the CGS side
+ * before conversion (see that macro's doxygen): pychem's log-log
+ * convention, used to build a raw table's #interpolation_1d /
+ * #interpolation_2d in log-value space. Left untouched if NULL (the
+ * integrated-table caller has no use for it; see radiation_build_tables()
+ * for why the IMF-integrated table stays in linear space).
  * @return Newly malloc'd float array of length count, in internal
- * (optionally rescaled) units, NOT logged. This is the value a raw
- * dataset read needs (@p log_data_internal built alongside it) or, with
- * @p log_data_internal NULL, the linear-space value an "Integrated_*"
+ * (optionally rescaled) units, NOT logged: the value a raw dataset read
+ * needs (@p log_data_internal built alongside it), or, with @p
+ * log_data_internal NULL, the linear-space value an "Integrated_*"
  * cumulative-table read needs. Caller must free().
  */
 static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
@@ -732,37 +730,31 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * radiation_read_cgs_array()): #interpolate_1d_init()/#interpolate_2d_init()
  * are otherwise-unmodified generic linear interpolators, so feeding them
  * already-logged data makes their existing linear interpolation a log-log
- * interpolation for free. Every raw getter (radiation_get_*_from_raw())
- * must exponentiate the result back; see their doxygen.
+ * one for free. Every raw getter (radiation_get_*_from_raw()) must
+ * exponentiate the result back; see their doxygen.
  *
- * The IMF-integrated table (1D only) is deliberately left in linear
- * (un-logged) value space, unlike the raw table above: it is not the same
- * kind of quantity pychem's log-log scheme governs. It is read directly
- * from the table's own "Integrated_<dataset_name>" dataset: pychem's
- * precomputed, number-weighted (n(m), not #initial_mass_function_integrate()'s
- * mass-weighted m*n(m)), cumulative-from-Mmin integral, rather than
- * integrated on the SWIFT side, so no logged/un-logged ordering constraint
- * applies to it the way it does to the raw table above.
- *
- * The 2D ("M,Z") branch builds the raw table always, and, when @p
- * integrated_2d is not NULL, also builds an IMF-integrated 2D table,
- * mirroring the 1D integrated table above, read directly from the table's
- * own "Integrated_<dataset_name>" dataset rather than integrated on the
- * SWIFT side, with the SAME log_mass_min_out/log_mass_max_out output-grid
- * bounds as @p raw_2d. That bound-sharing is load-bearing, not incidental:
+ * The IMF-integrated table (1D, and 2D when @p integrated_2d is not NULL)
+ * is deliberately left in linear (un-logged) value space: it is pychem's
+ * precomputed, number-weighted (n(m), not
+ * #initial_mass_function_integrate()'s mass-weighted m*n(m)),
+ * cumulative-from-Mmin integral, read directly from the table's own
+ * "Integrated_<dataset_name>" dataset rather than integrated on the SWIFT
+ * side, so no logged/un-logged ordering constraint applies to it. The 2D
+ * integrated table shares its log_mass_min_out/log_mass_max_out
+ * output-grid bounds with @p raw_2d: load-bearing, not incidental, since
  * it is what guarantees a two-point-subtraction query
  * (radiation_get_luminosities_from_integral_2d() and friends) never sees a
- * Z-axis mismatch between its two interpolate_2d() calls.
- * @p integrated_2d stays untouched (NULL) for a dataset with no IMF-
- * integrated concept (MainSequenceLifetime); radiation_read_data() zeroes
- * it beforehand so radiation_clean() stays safe either way. This branch
- * keeps the metallicity axis on the "Metallicity" dataset's own nodes
- * (interpolate_2d_init()'s own x nodes): pychem does not space them
- * log-uniformly (they are the curated set of PARSEC metallicities actually
- * collapsed into the table, not a synthetic grid), and their narrowest gap
- * is finer than any practical uniform step, so a query is linear in
- * log10(Z) between two tabulated metallicities and returns a tabulated
- * metallicity's row exactly.
+ * Z-axis mismatch between its two interpolate_2d() calls. @p integrated_2d
+ * stays untouched (NULL) for a dataset with no IMF-integrated concept
+ * (MainSequenceLifetime); radiation_read_data() zeroes it beforehand so
+ * radiation_clean() stays safe either way.
+ *
+ * The 2D ("M,Z") branch keeps the metallicity axis on the "Metallicity"
+ * dataset's own nodes (interpolate_2d_init()'s own x nodes), not a
+ * log-uniform grid: pychem's curated PARSEC metallicities are not evenly
+ * spaced, and their narrowest gap is finer than any practical uniform
+ * step, so a query is linear in log10(Z) between two tabulated
+ * metallicities and returns a tabulated metallicity's row exactly.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
  * @param dataset_name Name of the dataset to read.

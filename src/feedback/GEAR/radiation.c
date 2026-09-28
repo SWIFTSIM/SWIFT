@@ -64,29 +64,29 @@ double radiation_lw_photon_energy_cgs = 0.;
  * @brief Set #feedback_props.band_edge_weight_pe/lw/photon_weight_lw from
  * the radiation table: the coefficients photons redshifting downward
  * through the 6/11.2/13.6 eV band edges (fixed in physical, not comoving,
- * energy) lose or gain per e-fold of expansion, the band-edge transfer
- * derivation applied to radiation_end_force_propagation() and
- * radiation_end_gradient_propagation()'s relaxation depth (`lambda(m) *
- * H_dilated`) and to the LW-to-PE transfer term computed there.
+ * energy) lose or gain per e-fold of expansion, consumed by
+ * radiation_end_force_propagation()/radiation_end_gradient_propagation()'s
+ * relaxation depth (`lambda(m)*H_dilated`) and the LW-to-PE transfer term
+ * computed there.
  *
  * Evaluates ONCE, over the whole IMF (#sm->imf.mass_min to #sm->imf.
- * mass_max) at one reference metallicity for a 2D table, exactly the
+ * mass_max) at one reference metallicity for a 2D table, the same
  * run-wide-scalar approximation #radiation_set_lw_photon_energy_cgs already
- * makes: the gas-side consumer is source-anonymous (radiation.c's own
- * doxygen there), so no finer-grained value is recoverable without a
- * per-particle closure (not yet implemented; see radiation_isrf.h).
+ * makes: the gas-side consumer is source-anonymous
+ * (#radiation_set_lw_photon_energy_cgs's own doxygen), so no finer-grained
+ * value is recoverable without a per-particle closure (not yet
+ * implemented; see radiation_isrf.h).
  *
  * lambda_E(b) - 1 = E_lo(b)^2 * Integrated_SpectralPhotonRateAtEdge(b) /
- * Integrated_L_b, both terms differenced over [mass_min, mass_max] the same
- * way #radiation_get_luminosity_lw_from_integral already differences
- * Integrated_L_LW: the two getters this function calls for each band share the
- * SAME difference pattern, so the ratio is never one-sided.
+ * Integrated_L_b, both terms differenced over [mass_min, mass_max] the
+ * same way #radiation_get_luminosity_lw_from_integral already differences
+ * Integrated_L_LW, so the ratio is never one-sided.
  * #radiation_get_luminosity_edge_pe_from_integral/
- * #radiation_get_luminosity_edge_lw_from_integral already fold E_lo(b)^2 and
- * the cgs-to-internal power conversion into the stored value at read time
- * (radiation_read_luminosity_edge_pe_array()/_lw_array()), so both numerator
- * and denominator here are the SAME internal power units and the ratio needs no
- * further conversion.
+ * #radiation_get_luminosity_edge_lw_from_integral already fold E_lo(b)^2
+ * and the cgs-to-internal power conversion into the stored value at read
+ * time (radiation_read_luminosity_edge_pe_array()/_lw_array()), so
+ * numerator and denominator here are the SAME internal power units and
+ * need no further conversion.
  *
  * lambda_N(LW) = Lambda_LW = (lambda_E(LW) - 1) * <E>_LW / E1, with <E>_LW
  * the population's own Integrated_MeanPhotonEnergyLW at mass_max (an
@@ -94,9 +94,9 @@ double radiation_lw_photon_energy_cgs = 0.;
  * #radiation_get_mean_photon_energy_lw_from_integral's doxygen).
  *
  * Left at the compile-time fallback (#RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT
- * etc.; see #feedback_props.band_edge_weight_pe's doxygen) while
- * radiation is inactive, or if a denominator vanishes (an IMF whose whole
- * mass range sits at or below the table's own native mass floor).
+ * etc.; see #feedback_props.band_edge_weight_pe's doxygen) while radiation
+ * is inactive, or if a denominator vanishes (an IMF whose whole mass range
+ * sits at or below the table's own native mass floor).
  *
  * Call this for the main stellar model only, alongside
  * #radiation_set_lw_photon_energy_cgs, at start-up ONLY: unlike that
