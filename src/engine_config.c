@@ -33,6 +33,7 @@
 #endif
 
 /* This object's header. */
+#include "cell.h"
 #include "engine.h"
 
 /* Local headers. */
@@ -417,6 +418,28 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Use synchronous MPI sends and receives when redistributing. */
     e->syncredist =
         parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
+
+    /* Cell tags used to send comms between ranks cannot exceed MPI_TAG_UB.
+     * Print this for clarity and set cell_max_tag for later bounding. */
+    int *tag_ub = NULL;
+    int tag_ub_set = 0;
+    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub, &tag_ub_set);
+    if (tag_ub_set && tag_ub != NULL) {
+
+      /* We have found MPI_TAG_UB, so we can use it to bound the cell tags. */
+      if (cell_max_tag > *tag_ub) cell_max_tag = *tag_ub;
+
+      /* Report regardless of verbosity setting */
+      if (nodeID == 0) {
+        message("MPI_TAG_UB is %d, cell tags capped at %d", *tag_ub,
+                cell_max_tag);
+      }
+
+    } else if (nodeID == 0) {
+
+      /* Report that MPI_TAG_UB is not available, but don't error out. */
+      message("MPI_TAG_UB is not available from this MPI implementation");
+    }
 
     /* Collect the hostname of each rank into a file */
 
