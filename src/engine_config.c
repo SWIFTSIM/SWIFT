@@ -438,7 +438,10 @@ void engine_config(int restart, int fof, struct engine *e,
     } else if (nodeID == 0) {
 
       /* Report that MPI_TAG_UB is not available, but don't error out. */
-      message("MPI_TAG_UB is not available from this MPI implementation");
+      message(
+          "MPI_TAG_UB is not available from this MPI implementation, maximum "
+          "possible cell tag is %d",
+          cell_max_tag);
     }
 
     /* Collect the hostname of each rank into a file */
