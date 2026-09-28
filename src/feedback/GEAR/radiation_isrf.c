@@ -526,6 +526,24 @@ float radiation_relaxation_phi_factor(float a) {
 }
 
 /**
+ * @brief Double-precision #radiation_relaxation_phi_factor, for
+ * #radiation_end_force_propagation's `u`-update only: that update's own
+ * relaxation depth `a` can be a few 1e-8 (see #feedback_isrf_moment_data.u's
+ * own doxygen), a regime float32's 24-bit mantissa cannot resolve either
+ * side of the `1e-6` branch above. The flux update
+ * (#radiation_end_gradient_propagation) keeps the float version: `F` itself
+ * stays float, so a double `phi` there would not change what gets stored.
+ *
+ * @param a Dimensionless relaxation depth, see
+ * #radiation_relaxation_phi_factor. Always `>= 0`.
+ * @return phi(a), in double precision.
+ */
+static double radiation_relaxation_phi_factor_double(double a) {
+  if (a < 1e-6) return 1.0 - 0.5 * a + (1.0 / 6.0) * a * a;
+  return -expm1(-a) / a;
+}
+
+/**
  * @brief The three mutually exclusive outcomes of the M1 flux limiter,
  * split out so the operator that shares a limiter decision across several
  * moments (#radiation_end_gradient_propagation) applies the exact same
@@ -739,16 +757,23 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
-  const float dt = fd->dt_prev;
-  const float c_hyp = fd->c_hyp;
-  const float rescale =
-      c_hyp / (float)e->physical_constants->const_speed_light_c;
-  const float H = (float)e->cosmology->H;
+  const double dt = (double)fd->dt_prev;
+  const double c_hyp = (double)fd->c_hyp;
+  const double rescale = c_hyp / e->physical_constants->const_speed_light_c;
+  const double H = e->cosmology->H;
   /* Dilated by the same c_hyp/c factor as the absorption term: see this
-   * function's own doxygen. Bit-identical to the plain H when H = 0.f
+   * function's own doxygen. Bit-identical to the plain H when H = 0
    * (SWIFT's non-cosmological cosmology_init_no_cosmo sets cosmo->H = 0):
-   * rescale * 0.f is exactly 0.f for any finite rescale, no rounding. */
-  const float H_dilated = rescale * H;
+   * rescale * 0 is exactly 0 for any finite rescale, no rounding.
+   *
+   * DOUBLE below, unlike #radiation_end_gradient_propagation's own copy of
+   * this quantity: this function's relaxation depth `a` can be a few 1e-8
+   * (#feedback_isrf_moment_data.u's own doxygen), which float32 cannot
+   * resolve against a neighbouring band's own depth. #cosmology.H and the
+   * three #feedback_props band-edge weights are already double at the
+   * source (cosmology.h, feedback_properties.h), so this keeps their
+   * precision rather than rounding it away on entry. */
+  const double H_dilated = rescale * H;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (fd->u_min_snapshot_index != e->snapshot_output_count) {
@@ -764,11 +789,12 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
    * `kappa`, but NOT this coefficient: the photon-number moment carries
    * `lambda_N(LW)`, the energy moment `lambda_E(LW)`, or the diagnostic
    * `d ln(U/N)/dt` identity the photon moment exists for collapses to
-   * zero. */
-  const float lambda[ISRF_MOMENT_COUNT] = {
-      (float)e->feedback_props->band_edge_weight_pe,
-      (float)e->feedback_props->band_edge_weight_lw,
-      (float)e->feedback_props->band_edge_photon_weight_lw};
+   * zero. DOUBLE, kept at its own source precision: see #H_dilated's own
+   * doxygen above for why. */
+  const double lambda[ISRF_MOMENT_COUNT] = {
+      e->feedback_props->band_edge_weight_pe,
+      e->feedback_props->band_edge_weight_lw,
+      e->feedback_props->band_edge_photon_weight_lw};
 
   /* The LW-to-PE band-edge transfer is computed BEFORE the moment loop
    * below, from LW's OWN relaxation depth, frozen `u_prev` and this step's
@@ -781,10 +807,10 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
    * `lambda`, which would let the LW loss apply while the PE gain silently
    * does not (or the reverse).
    *
-   * GATED ON `H_dilated != 0.f`, NOT JUST ON `a_lw > 0.f` BELOW: every
+   * GATED ON `H_dilated != 0.`, NOT JUST ON `a_lw > 0.` BELOW: every
    * non-cosmological run (`cosmology_init_no_cosmo` sets `cosmo->H = 0`)
    * then skips this block's flops entirely, `transfer` staying the literal
-   * initialiser `0.f`. This is the physically correct statement (no
+   * initialiser `0.`. This is the physically correct statement (no
    * cosmological term exists to evaluate) and the cheaper path for a
    * non-cosmological run, but it is not a bit-identity guarantee against
    * the pre-change binary under production build flags
@@ -793,36 +819,44 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
    * production-build comparison against the pre-change binary should be
    * checked on the compiled result, not assumed from this gate's
    * presence. */
-  float transfer = 0.f;
-  if (H_dilated != 0.f) {
+  double transfer = 0.;
+  if (H_dilated != 0.) {
     const struct feedback_isrf_operator_data *op_lw =
         &fd->isrf_operator[radiation_isrf_moment_to_operator[ISRF_MOMENT_LW]];
     const struct feedback_isrf_moment_data *moment_lw =
         &fd->isrf_moment[ISRF_MOMENT_LW];
-    const float a_lw =
-        (c_hyp * op_lw->kappa + lambda[ISRF_MOMENT_LW] * H_dilated) * dt;
-    const float decay_lw = expf(-a_lw);
-    const float phi_lw = radiation_relaxation_phi_factor(a_lw);
+    const double a_lw =
+        (c_hyp * (double)op_lw->kappa + lambda[ISRF_MOMENT_LW] * H_dilated) *
+        dt;
+    /* `-expm1(-a_lw)`, not `1. - exp(-a_lw)`: at the few-1e-8 relaxation
+     * depths this function's own doxygen describes, `exp(-a_lw)` itself is
+     * already the well-conditioned quantity, but subtracting it from 1
+     * loses relative precision exactly where #radiation_relaxation_phi_
+     * factor_double's own Taylor branch avoids that cancellation; expm1
+     * sidesteps it here too, at the source. */
+    const double one_minus_decay_lw = -expm1(-a_lw);
+    const double phi_lw = radiation_relaxation_phi_factor_double(a_lw);
     /* The exact-relaxation update's own split of `u_prev` and the frozen
      * source/transport terms into the fraction LW's depth absorbed this
      * step (same shape as the debug-only ledger line below, but computed
      * UNCONDITIONALLY within this branch: this is now a live physics
      * input, not a diagnostic, and a build without SWIFT_DEBUG_CHECKS must
      * still transfer it). */
-    const float absorbed_lw =
-        (moment_lw->u_prev + dt * phi_lw * moment_lw->dissipation_u) *
-            (1.f - decay_lw) +
-        (rescale * moment_lw->u_source_rate - moment_lw->div_specific_flux) *
-            dt * (1.f - phi_lw);
+    const double absorbed_lw =
+        (moment_lw->u_prev + dt * phi_lw * (double)moment_lw->dissipation_u) *
+            one_minus_decay_lw +
+        (rescale * (double)moment_lw->u_source_rate -
+         (double)moment_lw->div_specific_flux) *
+            dt * (1. - phi_lw);
     /* Guard against the exact `0/0` at `a_lw = 0` (a metal-free particle,
      * `kappa_LW = 0`, even with `H_dilated != 0`): a NaN cannot be caught in
      * source under -ffast-math, so this is an exact comparison before the
      * division, in the style of
      * #radiation_dissipation_floor_relaxation_gate's own `if (w <= 0.f)
      * return 1.f;`. */
-    if (a_lw > 0.f) {
-      const float f_edge =
-          (lambda[ISRF_MOMENT_LW] - 1.f) * H_dilated * dt / a_lw;
+    if (a_lw > 0.) {
+      const double f_edge =
+          (lambda[ISRF_MOMENT_LW] - 1.) * H_dilated * dt / a_lw;
       /* Kept SIGNED, not clamped at zero: clamping would break both the
        * exact 11.2 eV cancellation in G0 and the per-band ledger. A
        * negative `transfer` (LW has undershot this step) reduces PE's own
@@ -848,9 +882,9 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * moments sharing one operator can still carry different residuals.
      * lambda[m] is the moment's OWN band-edge weight (see above): 1 would
      * recover the grey, comoving-edge result this replaces. */
-    const float a = (c_hyp * op->kappa + lambda[m] * H_dilated) * dt;
-    const float decay = expf(-a);
-    const float phi = radiation_relaxation_phi_factor(a);
+    const double a = (c_hyp * (double)op->kappa + lambda[m] * H_dilated) * dt;
+    const double decay = exp(-a);
+    const double phi = radiation_relaxation_phi_factor_double(a);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Energy-ledger accumulation, read from this step's own inputs before
@@ -858,25 +892,37 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * step attempted, and the exact-relaxation update's own split of
      * `u_prev` and the frozen source/transport terms into the fraction
      * that decayed/never-arrived this step, using the SAME `decay`/`phi`
-     * #u's update uses. */
-    moment->cumulative_injected += dt * rescale * moment->u_source_rate;
+     * #u's update uses. Narrowed to float on assignment: #cumulative_
+     * injected/#cumulative_absorbed stay float diagnostics (see
+     * #feedback_isrf_moment_data.u's own doxygen for what stays float and
+     * why), so this is the one place their own precision, not #u's, is
+     * what matters.
+     *
+     * `-expm1(-a)`, not `1. - decay`: see #one_minus_decay_lw's own comment
+     * above for why. */
+    const double one_minus_decay = -expm1(-a);
+    moment->cumulative_injected +=
+        (float)(dt * rescale * (double)moment->u_source_rate);
     moment->cumulative_absorbed +=
-        (moment->u_prev + dt * phi * moment->dissipation_u) * (1.f - decay) +
-        (rescale * moment->u_source_rate - moment->div_specific_flux) * dt *
-            (1.f - phi);
+        (float)((moment->u_prev + dt * phi * (double)moment->dissipation_u) *
+                    one_minus_decay +
+                (rescale * (double)moment->u_source_rate -
+                 (double)moment->div_specific_flux) *
+                    dt * (1. - phi));
     /* PE's own share of the LW-to-PE transfer: LW's `cumulative_absorbed`
      * above ALREADY contains it (the transfer is carved out of LW's own
      * relaxation depth, not added on top), so only PE's `cumulative_
      * injected` needs the explicit booking, or the per-moment ledger
      * identity `E + Abs - Inj = 0` goes red by exactly the transferred
      * amount. */
-    if (m == ISRF_MOMENT_PE) moment->cumulative_injected += transfer;
+    if (m == ISRF_MOMENT_PE) moment->cumulative_injected += (float)transfer;
 #endif
 
     moment->u =
-        decay * (moment->u_prev + dt * phi * moment->dissipation_u) +
+        decay * (moment->u_prev + dt * phi * (double)moment->dissipation_u) +
         dt * phi *
-            (rescale * moment->u_source_rate - moment->div_specific_flux);
+            (rescale * (double)moment->u_source_rate -
+             (double)moment->div_specific_flux);
 
     /* Added as a separate statement, not folded into the expression above:
      * a RAW ADD onto PE's already-relaxed `u`, not subject to PE's own
@@ -886,8 +932,8 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     if (m == ISRF_MOMENT_PE) moment->u += transfer;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (moment->u < moment->u_min_since_snapshot)
-      moment->u_min_since_snapshot = moment->u;
+    if (moment->u < (double)moment->u_min_since_snapshot)
+      moment->u_min_since_snapshot = (float)moment->u;
 #endif
   }
 }

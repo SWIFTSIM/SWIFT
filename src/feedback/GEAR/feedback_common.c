@@ -1114,7 +1114,7 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
  *
  * @param p The #part to query.
  */
-float feedback_get_part_u_PE(const struct part *p) {
+double feedback_get_part_u_PE(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].u;
 }
 
@@ -1124,7 +1124,7 @@ float feedback_get_part_u_PE(const struct part *p) {
  *
  * @param p The #part to query.
  */
-float feedback_get_part_u_LW(const struct part *p) {
+double feedback_get_part_u_LW(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u;
 }
 
@@ -1134,7 +1134,7 @@ float feedback_get_part_u_LW(const struct part *p) {
  *
  * @param p The #part to query.
  */
-float feedback_get_part_u_LW_PHOTON(const struct part *p) {
+double feedback_get_part_u_LW_PHOTON(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
 }
 

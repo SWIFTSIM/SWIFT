@@ -150,15 +150,27 @@ struct feedback_isrf_moment_data {
       radiation_isrf.c's #radiation_end_force_propagation. Every field
       feeding it is physical too: the pairwise operators in
       radiation_propagation_iact.h convert their comoving-coordinate
-      estimates before accumulating. */
-  float u;
+      estimates before accumulating.
+
+      DOUBLE, not float: the per-step relaxation depth `a` this field's own
+      decay uses can be as small as a few 1e-8 (a weak absorber under a slow
+      cosmological redshift term), and `1 - a` at that scale needs more
+      mantissa than float32's 24 bits to stay distinguishable from `1 -
+      a'` for a nearby but distinct `a'`; #radiation_end_force_propagation's
+      own update is evaluated in double for the same reason. Every other
+      per-step accumulator this moment carries (#specific_flux,
+      #div_specific_flux, #dissipation_u, #u_dose_reservoir,
+      #u_source_rate) stays float: none of them carries a multi-step decay
+      at this depth. */
+  double u;
 
   /*! Snapshot of #u taken once per step (feedback_reset_part,
       cell_drift.c), before the density loop's h-iterations begin. The
       density loop's kernel mean reads it, so that value does not drift
       across h-iterations, and the end-force update rebuilds #u from it, so
-      that update is idempotent. Until that update, #u still equals it. */
-  float u_prev;
+      that update is idempotent. Until that update, #u still equals it.
+      DOUBLE, matching #u: see #u's own doxygen. */
+  double u_prev;
 
   /*! Hyperbolic propagation state: the tracked specific flux moment,
       mass-specific like #u. Zeroed unconditionally at

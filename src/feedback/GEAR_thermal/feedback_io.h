@@ -48,7 +48,7 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
  */
 INLINE static void convert_part_u_PE(const struct engine *e,
                                      const struct part *p,
-                                     const struct xpart *xp, float *ret) {
+                                     const struct xpart *xp, double *ret) {
   ret[0] = feedback_get_part_u_PE(p);
 }
 
@@ -58,7 +58,7 @@ INLINE static void convert_part_u_PE(const struct engine *e,
  */
 INLINE static void convert_part_u_LW(const struct engine *e,
                                      const struct part *p,
-                                     const struct xpart *xp, float *ret) {
+                                     const struct xpart *xp, double *ret) {
   ret[0] = feedback_get_part_u_LW(p);
 }
 
@@ -71,7 +71,7 @@ INLINE static void convert_part_u_LW(const struct engine *e,
 INLINE static void convert_part_u_LW_PHOTON(const struct engine *e,
                                             const struct part *p,
                                             const struct xpart *xp,
-                                            float *ret) {
+                                            double *ret) {
   ret[0] = feedback_get_part_u_LW_PHOTON(p);
 }
 
@@ -320,10 +320,14 @@ INLINE static int feedback_read_particles(struct part *parts,
      beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS implies, and an input field
      carries no a-exponent slot at all, so an IC value is taken verbatim. */
 
-  list[0] = io_make_input_field("PESpecificEnergy", FLOAT, 1, OPTIONAL,
+  /* DOUBLE, not FLOAT: this macro points directly at the struct field
+     (feedback_isrf_moment_data.u is double, see its own doxygen), not
+     through a converter, so this type must match the field's own C type
+     or the reader copies the wrong byte width into it. */
+  list[0] = io_make_input_field("PESpecificEnergy", DOUBLE, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_PE].u);
-  list[1] = io_make_input_field("LWSpecificEnergy", FLOAT, 1, OPTIONAL,
+  list[1] = io_make_input_field("LWSpecificEnergy", DOUBLE, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_LW].u);
 
@@ -334,7 +338,7 @@ INLINE static int feedback_read_particles(struct part *parts,
      definition. An IC author who wants no photon moment carried must also
      zero LWSpecificEnergy. */
   list[2] =
-      io_make_input_field("LWPhotonSpecificEnergy", FLOAT, 1, OPTIONAL,
+      io_make_input_field("LWPhotonSpecificEnergy", DOUBLE, 1, OPTIONAL,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                           feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
 
@@ -369,16 +373,17 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "subgrid model?");
 
   list[2] = io_make_output_field_convert_part(
-      "PESpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      "PESpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_PE,
       "Local specific PE-band (6-11.2 eV) interstellar radiation field. "
-      "Physical, mass-specific: no scale-factor exponent of its own.");
+      "Physical, mass-specific: no scale-factor exponent of its own. "
+      "DOUBLE: see feedback_isrf_moment_data.u's own doxygen.");
 
   list[3] = io_make_output_field_convert_part(
-      "LWSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+      "LWSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_LW,
       "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
-      "radiation field.");
+      "radiation field. DOUBLE: see PESpecificEnergies.");
 
   list[4] = io_make_output_field_convert_part(
       "PEArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
@@ -491,12 +496,12 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "from a snapshot. Only meaningful when ISRF_propagation is on.");
 
   list[17] = io_make_output_field_convert_part(
-      "LWPhotonSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
-      parts, xparts, convert_part_u_LW_PHOTON,
+      "LWPhotonSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_u_LW_PHOTON,
       "Lyman-Werner-band photon-number moment, energy-equivalent at a fixed "
       "reference photon energy: see LWSpecificEnergies. Distinct from the "
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
-      "mass-specific and not band-prefixed.");
+      "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
   list[18] = io_make_output_field_convert_part(
       "LWPhotonArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS,
