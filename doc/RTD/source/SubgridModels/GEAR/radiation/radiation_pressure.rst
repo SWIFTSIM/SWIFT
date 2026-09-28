@@ -18,7 +18,7 @@ The resulting momentum is deposited on the star's SPH gas neighbours, kernel-wei
 Configuring and compiling
 --------------------------
 
-See :ref:`gear_radiation` for how to configure and build this channel, including the ``--with-tracers=GEAR`` requirement shared by every radiation channel.
+See :ref:`gear_radiation` for how to configure and build this channel. Its own snapshot diagnostics need ``--with-tracers=GEAR``; see :ref:`gear_output_radiation_pressure`.
 
 Model parameters
 ------------------

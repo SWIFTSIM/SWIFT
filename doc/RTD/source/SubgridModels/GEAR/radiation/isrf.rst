@@ -27,10 +27,9 @@ The module is part of the GEAR feedback model and is coupled to Grackle, so a ru
 .. code:: bash
 
    ./configure --with-feedback=GEAR --with-chemistry=GEAR_10 --with-stars=GEAR \
-               --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT \
-               --with-tracers=GEAR
+               --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT
 
-See :ref:`gear_radiation` for the ``--with-tracers=GEAR`` requirement and the per-band Grackle mode gating shared by every radiation channel, and :ref:`gear_grackle_cooling` for the cooling module itself.
+See :ref:`gear_radiation` for the per-band Grackle mode gating shared by every radiation channel (and why ``--with-subgrid=GEAR`` is the wrong shortcut here), and :ref:`gear_grackle_cooling` for the cooling module itself.
 
 **The yields table must carry the ISRF datasets.** This module additionally needs the ``L_PE``, ``L_LW``, ``Integrated_L_PE`` and ``Integrated_L_LW`` datasets in the table's ``Data/Radiation`` group, on top of the datasets every radiation channel needs. See :ref:`gear_radiation_tables` for the full requirement and how to get and check a table.
 

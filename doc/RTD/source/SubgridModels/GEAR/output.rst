@@ -283,7 +283,7 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
 HII photoionization
 ~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`gear_radiation_hii` for the physics. Two star fields are always written for a GEAR run with feedback, whether or not ``--with-tracers=GEAR`` is used:
+See :ref:`gear_radiation_hii` for the physics. All six fields below are always written for a GEAR run with feedback, whatever radiation channel is switched on and whether or not ``--with-tracers=GEAR`` is used:
 
 .. list-table::
    :header-rows: 1
@@ -301,17 +301,6 @@ See :ref:`gear_radiation_hii` for the physics. Two star fields are always writte
      - Gas mass the star currently holds ionized
      - [U_M]
      - Star. Same caveat as ``HIIRegionRadii``.
-
-The following fields need ``--with-tracers=GEAR``:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 45 15 30
-
-   * - Name
-     - Description
-     - Units
-     - Comments
    * - ``IsIonizedFlags``
      - Is this gas particle currently flagged as ionized?
      - [-]
@@ -381,7 +370,7 @@ See :ref:`gear_isrf` for the physics. ``PELuminosities``, ``LWLuminosities`` and
      - [U_K]
      - Star. Diagnostic only: no feedback channel uses it. 0 with no radiation table, or a table with no ``Teff`` dataset.
 
-The remaining fields are gas fields written by the GEAR tracers module, so they need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
+The remaining fields are gas fields written by the GEAR feedback module, so, like ``PELuminosities`` above, they are always written for a GEAR run with feedback, whether or not ``--with-tracers=GEAR`` is used. All are physical quantities with no scale-factor exponent of their own.
 
 .. list-table::
    :header-rows: 1
