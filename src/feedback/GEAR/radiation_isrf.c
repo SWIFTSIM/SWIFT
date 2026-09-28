@@ -651,8 +651,9 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * `a = (c_hyp*kappa + lambda(m)*H_dilated)*dt`, `H_dilated = (c_hyp/c)*H`
  * (#radiation_relaxation_phi_factor; `lambda(m) = 1` is the grey special
  * case `a = c_hyp*(kappa + H/c)*dt`). Without the dissipation this is
- * exact, under the SAME CHANGE OF VARIABLE the reduced-speed method
- * applies to every other rate (#isrf_c_hyp_consistent_variable_c). `H` is
+ * exact over one step with `source_rate` and `div_F` frozen, under the
+ * SAME CHANGE OF VARIABLE the reduced-speed method applies to every
+ * other rate (#isrf_c_hyp_consistent_variable_c). `H` is
  * dilated by the SAME `c_hyp/c` factor as absorption and injection: unlike
  * `kappa`, it does not pick that factor up "for free", and leaving it bare
  * instead suppresses the true-speed fixed point of the homogeneous
@@ -662,15 +663,17 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  *
  * `div_F` is the divergence of this step's already-relaxed flux `F^{n+1}`
  * (#radiation_end_gradient_propagation): the flux is advanced first, then
- * `u` from the new flux, and the dissipation (built from `u^n`) is decayed
- * together with `u_prev` rather than added undamped, for the stability
- * margin this ordering buys (same doc, "Time integration: exact
- * relaxation, staggered" and "Artificial dissipation").
+ * `u` from the new flux (same linear stability as advancing `u` first;
+ * the order is forced by conservation, same doc "Time integration: exact
+ * relaxation, staggered"). The dissipation (built from `u^n`) is decayed
+ * together with `u_prev` rather than added undamped, for the LARGER
+ * stability margin this placement buys (same doc, "Artificial
+ * dissipation").
  *
  * `-H*u` is one power of the Hubble rate, not three: `u` is MASS-SPECIFIC
  * (energy per unit gas mass), so the volume dilution is already carried by
- * the gas density it is measured against, and the specific flux loses the
- * same single power (same doc, Steps 1-3 of the section above).
+ * the physical gas density it is measured against, and the specific flux
+ * loses the same single power (same doc, Steps 1-3 of the section above).
  *
  * The dilated `H` is folded into the relaxation depth `a` rather than
  * subtracted as a separate explicit decrement: `exp(-a)` is then exact for
@@ -682,7 +685,8 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * than the true `H`, like every other transient the reduced speed of light
  * slows down. Ungated: SWIFT sets `cosmo->H = 0` for a non-cosmological
  * run (`cosmology_init_no_cosmo`), so the term vanishes there by
- * construction. `c_hyp` here plays the role of the M1 reduced light speed
+ * construction (`(c_hyp/c)*0 = 0` exactly, regardless of multiplication
+ * order). `c_hyp` here plays the role of the M1 reduced light speed
  * `c_M`: the `c_M/c` rescale is applied exclusively here; injection
  * (`radiation_iact.h`) deposits the raw, unrescaled dose.
  *
@@ -1033,8 +1037,10 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * #radiation_end_gradient_propagation's own UNLIMITED flux-update recurrence
  * (`F ~= -C*grad_u`, `C = c_hyp/w`, `w = kappa+lambda*H/c`, i.e. before
  * #radiation_apply_flux_limiter_band clamps it), where the floor buys no
- * protection and only costs accuracy; never raises it on a fresh front or an
- * unsettled particle (`tau = 1/(c_hyp*w) >> dt`). Full derivation:
+ * protection and only costs accuracy; on a fresh front or an unsettled
+ * particle (`tau = 1/(c_hyp*w) >> dt`) it keeps the full floor instead
+ * (`s=1`). The `min(1, ...)` clamp on `s` (below) means this gate can
+ * only ever LOWER the floor's aim, never raise it. Full derivation:
  * theory/GEAR/Radiation/02_fuv_isrf.tex, "The flux-relaxation-residual
  * gate".
  *
