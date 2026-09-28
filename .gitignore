@@ -129,6 +129,7 @@ tests/test27cells
 tests/test27cells_subset
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
+tests/testIOOptionalFieldDefaultWidth
 tests/test27cellsStars_subset
 tests/testPeriodicBC
 tests/test125cells
