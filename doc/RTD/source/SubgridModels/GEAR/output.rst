@@ -3,12 +3,14 @@
 
 .. sink_GEAR_model:
 
+.. _gear_output_fields:
+
 Snapshots ouputs
 ----------------
 
 Here, we provide a summary of the quantities written in the snapshots, in addition to positions, velocities, masses, smoothing lengths and particle IDs.
 
-The tracer outputs are summarised on the :ref:`gear_tracers` page.
+Most tracer outputs are summarised on the :ref:`gear_tracers` page. The gas and star fields the radiation model registers (HII photoionization, radiation pressure, the interstellar radiation field) are the exception: they are grouped by channel below instead.
 
 Sink particles
 ~~~~~~~~~~~~~~
@@ -275,3 +277,207 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
      - Gravitational potential of the black hole
      - [U_L^2 U_T^{-2}]
      -
+
+.. _gear_output_hii:
+
+HII photoionization
+~~~~~~~~~~~~~~~~~~~~
+
+See :ref:`gear_radiation_hii` for the physics. Two star fields are always written for a GEAR run with feedback, whether or not ``--with-tracers=GEAR`` is used:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``HIIRegionRadii``
+     - Comoving radius the star's HII region reached at its last budget rebuild
+     - [U_L]
+     - Star. The search algorithm's own bookkeeping, not a direct measurement of the gas's thermal state.
+   * - ``HIIRegionMasses``
+     - Gas mass the star currently holds ionized
+     - [U_M]
+     - Star. Same caveat as ``HIIRegionRadii``.
+
+The following fields need ``--with-tracers=GEAR``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``IsIonizedFlags``
+     - Is this gas particle currently flagged as ionized?
+     - [-]
+     - Gas.
+   * - ``HIIStarIDs``
+     - ID of the star that ionized this particle
+     - [-]
+     - Gas.
+   * - ``FinalHIIRegionRadii``
+     - ``HIIRegionRadii`` retired at the star's death or ineligibility
+     - [U_L]
+     - Star.
+   * - ``FinalHIIRegionMasses``
+     - ``HIIRegionMasses`` retired the same way
+     - [U_M]
+     - Star.
+
+.. _gear_output_radiation_pressure:
+
+Radiation pressure
+~~~~~~~~~~~~~~~~~~~~
+
+See :ref:`gear_radiation_pressure` for the physics. These gas fields need ``--with-tracers=GEAR``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``CumulativeMomentumFromRadiationPressure``
+     - Norm of the momentum received from radiation pressure, summed over events (scalar sum of the norms, so isotropic kicks do not cancel)
+     - [U_M U_L U_T^{-1}]
+     - Gas.
+   * - ``MaxKickVelocityFromRadiationPressure``
+     - Largest single-event velocity kick this particle received from radiation pressure
+     - [U_L U_T^{-1}]
+     - Gas.
+
+.. _gear_output_isrf:
+
+Interstellar radiation field
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See :ref:`gear_isrf` for the physics. ``PELuminosities``, ``LWLuminosities`` and ``EffectiveTemperatures`` are always written for a GEAR run with feedback, whether or not the ISRF module or ``--with-tracers=GEAR`` are used; the first two read 0 unless ``with_interstellar_radiation_field`` is on.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``PELuminosities``
+     - Star's current non-ionizing PE-band (6-11.2 eV) luminosity, physical
+     - [U_M U_L^2 U_T^{-3}]
+     - Star.
+   * - ``LWLuminosities``
+     - Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, physical
+     - [U_M U_L^2 U_T^{-3}]
+     - Star.
+   * - ``EffectiveTemperatures``
+     - Photospheric effective temperature of the star, from the radiation table. For a population particle, the value at the upper mass bound of the stars still alive (the hottest surviving star), not an IMF average
+     - [U_K]
+     - Star. Diagnostic only: no feedback channel uses it. 0 with no radiation table, or a table with no ``Teff`` dataset.
+
+The remaining fields are gas fields written by the GEAR tracers module, so they need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 45 15 30
+
+   * - Name
+     - Description
+     - Units
+     - Comments
+   * - ``PESpecificEnergies``
+     - Local specific PE-band field
+     - [U_L^2 U_T^{-2}]
+     -
+   * - ``LWSpecificEnergies``
+     - Local specific Lyman-Werner-band field
+     - [U_L^2 U_T^{-2}]
+     -
+   * - ``LWPhotonSpecificEnergies``
+     - Local Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy, not a photon count
+     - [U_L^2 U_T^{-2}]
+     - Diagnostic only: no heating or dissociation rate reads it.
+   * - ``PEArtificialDissipationCoefficients``
+     - Negativity-triggered dissipation coefficient, PE band
+     - [-]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWArtificialDissipationCoefficients``
+     - Same, Lyman-Werner band
+     - [-]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonArtificialDissipationCoefficients``
+     - Same, Lyman-Werner-band photon-number moment
+     - [-]
+     - Only meaningful when ``ISRF_propagation`` is on. Always equal to ``LWArtificialDissipationCoefficients``: the photon moment shares the Lyman-Werner operator.
+   * - ``PESpecificFluxDivergences``
+     - Flux-divergence term of the PE-band propagation update
+     - [U_L^2 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWSpecificFluxDivergences``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonSpecificFluxDivergences``
+     - Same, Lyman-Werner-band photon-number moment
+     - [U_L^2 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``PESpecificFluxes``
+     - Tracked specific flux moment, PE band
+     - [U_L^3 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWSpecificFluxes``
+     - Same, Lyman-Werner band
+     - [U_L^3 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``LWPhotonSpecificFluxes``
+     - Tracked specific flux moment, Lyman-Werner-band photon-number moment
+     - [U_L^3 U_T^{-3}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``HyperbolicPropagationSpeeds``
+     - Kernel-local hyperbolic propagation speed the band updates ran with, shared by both bands
+     - [U_L U_T^{-1}]
+     - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``PEMinimumSpecificEnergies``
+     - Most negative ``PESpecificEnergies`` value written since the previous snapshot, 0 if none was negative
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWMinimumSpecificEnergies``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonMinimumSpecificEnergies``
+     - Most negative ``LWPhotonSpecificEnergies`` value written since the previous snapshot, 0 if none was negative
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``PECumulativeInjectedSpecificEnergies``
+     - Cumulative mass-specific PE-band dose this particle has drawn from the source reservoir since first init
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWCumulativeInjectedSpecificEnergies``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonCumulativeInjectedSpecificEnergies``
+     - Cumulative mass-specific Lyman-Werner-band photon-number-moment dose this particle has drawn from the source reservoir since first init
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``PECumulativeAbsorbedSpecificEnergies``
+     - Cumulative mass-specific PE-band energy attributed to dust absorption and the cosmological redshift term
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWCumulativeAbsorbedSpecificEnergies``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+   * - ``LWPhotonCumulativeAbsorbedSpecificEnergies``
+     - Cumulative mass-specific Lyman-Werner-band photon-number-moment energy attributed to dust absorption and the cosmological redshift term
+     - [U_L^2 U_T^{-2}]
+     - Value only with ``--enable-debugging-checks``, else always 0.
+
+Three optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.

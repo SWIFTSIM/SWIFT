@@ -65,9 +65,9 @@ struct feedback_spart_data {
   /*! Set the stellar particle to idle regarding the feedback */
   char idle;
 
-  /*! Unused; read unconditionally by src/stars/GEAR/stars.h's dt_cfl gate
-   * whenever --with-stars=GEAR, regardless of feedback module. Always 0:
-   * AGORA has no equivalent star-evolution-finished state. */
+  /*! Unused; backs feedback_is_star_dead(), read by src/stars/GEAR/stars.h's
+   * dt_cfl gate whenever --with-stars=GEAR, regardless of feedback module.
+   * Always 0: AGORA has no equivalent star-evolution-finished state. */
   int is_dead;
 };
 

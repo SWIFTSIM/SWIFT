@@ -163,8 +163,8 @@
     depends on the spectral shape within 11.2-13.6 eV and is not a single
     atomic-physics constant, so it is a compile-time constant rather than a
     per-run parameter. Held as a literal so the header stays parseable by
-    the check scripts; tests/testRadiationISRFFormula.c asserts it still
-    equals the quotient times the photon energy. */
+    the check scripts; testRadiationISRFFormula (swift-gear's GEAR test
+    suite) asserts it still equals the quotient times the photon energy. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Metallicity mass fraction at which the population mean Lyman-Werner

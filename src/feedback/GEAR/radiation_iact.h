@@ -231,7 +231,12 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
-  if (si->feedback_data.radiation.L_bol != 0.0) {
+  /* Policy bit first: on the population path L_bol can be positive from two
+     negative factors (radiation_get_luminosities_from_integral times a
+     negative efficiency) even with the switch off, so L_bol > 0 alone is
+     not sufficient. */
+  if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
+      si->feedback_data.radiation.L_bol > 0.0) {
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
