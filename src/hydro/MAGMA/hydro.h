@@ -431,15 +431,18 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float norm_a = p->a_hydro[0] * p->a_hydro[0] +
                        p->a_hydro[1] * p->a_hydro[1] +
                        p->a_hydro[2] * p->a_hydro[2];
-  // MATTHIEU: CHECK acceleration a-factor.
+  /* Physical length / physical acceleration (as in the gravity time-step) */
   const float dt_acc =
-      norm_a ? sqrtf(cosmo->a * p->h / sqrtf(norm_a)) : FLT_MAX;
+      norm_a ? sqrtf(cosmo->a * p->h /
+                     (cosmo->a_factor_hydro_accel * sqrtf(norm_a)))
+             : FLT_MAX;
 
-  /* Criterion based on acceleration (eq. 35) */
+  /* Courant criterion (eq. 36) */
   const float c = p->force.soundspeed;
   const float dt_Courant =
       cosmo->a * p->h /
-      (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+      (cosmo->a_factor_sound_speed *
+       (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde)));
 
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }
