@@ -13,7 +13,7 @@ Currently, GEAR tracers are implemented for gas, star, sink and black hole parti
 Gas tracers
 -----------
 
-The gas particles record the stellar feedback they receive over their lifetime, separately for supernovae and stellar winds. Radiation pressure's own momentum/kick diagnostics are also tracers module fields. The HII photoionization and interstellar radiation field fields, by contrast, are not tracers module fields and do not need ``--with-tracers=GEAR``. All of them are documented together on the :ref:`gear_output_fields` page instead of repeated below.
+The gas particles record the stellar feedback they receive over their lifetime, separately for supernovae and stellar winds. Radiation pressure's own momentum/kick diagnostics are also tracers module fields. The HII photoionization and interstellar radiation field snapshot fields, by contrast, are not tracers module fields and do not need ``--with-tracers=GEAR``. All of them are documented together on the :ref:`gear_output_fields` page instead of repeated below.
 
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
 | Name                                  | Description                                 | Units                       | Comments                                          |

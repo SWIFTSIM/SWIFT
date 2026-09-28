@@ -370,7 +370,7 @@ See :ref:`gear_isrf` for the physics. ``PELuminosities``, ``LWLuminosities`` and
      - [U_K]
      - Star. Diagnostic only: no feedback channel uses it. 0 with no radiation table, or a table with no ``Teff`` dataset.
 
-The remaining fields are gas fields registered by the GEAR feedback module's own I/O code, not the tracers module, so, like ``PELuminosities`` above, they do not need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
+The remaining fields are gas fields registered by the GEAR feedback module's own I/O code, not the tracers module, so they do not need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
 
 .. list-table::
    :header-rows: 1
