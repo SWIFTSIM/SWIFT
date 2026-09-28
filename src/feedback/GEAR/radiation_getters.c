@@ -580,9 +580,8 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
  * lifetime equals @p star_age_myr at @p log_z, or @p m_min if none of the
  * table's masses are still on the main sequence at that age.
  */
-float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
-                                                float log_z, float star_age_myr,
-                                                float m_min) {
+float radiation_get_main_sequence_lifetime_inverse_mass_2d(
+    const struct radiation *rad, float log_z, float star_age_myr, float m_min) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
 
   int z_lo, z_hi;
@@ -748,7 +747,7 @@ double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
  * wanting the mean over [mass_min, m_sup] passes m_sup and gets exactly
  * that; no other window is recoverable from this table.
  *
- * Intensive, so unlike #radiation_get_l_lw_from_integral the result
+ * Intensive, so unlike #radiation_get_luminosity_lw_from_integral the result
  * must NOT be rescaled by a star particle's birth mass.
  *
  * Valid whenever #radiation.is_active is set; see
@@ -843,7 +842,8 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
  * @param log_m The mass in log.
  * @return PE band emission rate, internal units.
  */
-float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m) {
+float radiation_get_luminosity_pe_from_raw(const struct radiation *rad,
+                                           float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   return (float)exp10(interpolate_1d(&rad->raw.l_pe, log_m));
 }
@@ -858,8 +858,8 @@ float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m) {
  * @param log_m The mass in log.
  * @return PE band emission rate, internal units.
  */
-float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
-                                     float log_m) {
+float radiation_get_luminosity_pe_from_raw_2d(const struct radiation *rad,
+                                              float log_z, float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   return (float)exp10(interpolate_2d(&rad->raw.l_pe_2d, log_z, log_m));
 }
@@ -876,24 +876,25 @@ float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
  * table.
  * @return PE band emission rate, internal units.
  */
-float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
-                              float log_z) {
+float radiation_get_star_luminosity_pe(const struct radiation *rad, float log_m,
+                                       float log_z) {
   if (rad->is_2d) {
-    return radiation_get_l_pe_from_raw_2d(rad, log_z, log_m);
+    return radiation_get_luminosity_pe_from_raw_2d(rad, log_z, log_m);
   }
-  return radiation_get_l_pe_from_raw(rad, log_m);
+  return radiation_get_luminosity_pe_from_raw(rad, log_m);
 }
 
 /**
  * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
  * given mass, from a 1D (mass-only) table. See
- * #radiation_get_l_pe_from_raw (identical shape, on #rad->raw.l_lw).
+ * #radiation_get_luminosity_pe_from_raw (identical shape, on #rad->raw.l_lw).
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
  * @return Lyman-Werner band emission rate, internal units.
  */
-float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m) {
+float radiation_get_luminosity_lw_from_raw(const struct radiation *rad,
+                                           float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   return (float)exp10(interpolate_1d(&rad->raw.l_lw, log_m));
 }
@@ -901,7 +902,7 @@ float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m) {
 /**
  * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
  * given mass and metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_pe_from_raw_2d (identical shape, on
+ * #radiation_get_luminosity_pe_from_raw_2d (identical shape, on
  * #rad->raw.l_lw_2d).
  *
  * @param rad The #radiation model.
@@ -909,15 +910,15 @@ float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m) {
  * @param log_m The mass in log.
  * @return Lyman-Werner band emission rate, internal units.
  */
-float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
-                                     float log_m) {
+float radiation_get_luminosity_lw_from_raw_2d(const struct radiation *rad,
+                                              float log_z, float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   return (float)exp10(interpolate_2d(&rad->raw.l_lw_2d, log_z, log_m));
 }
 
 /**
  * @brief Get a single star's Lyman-Werner band emission rate at a given
- * mass, dispatching on #rad->is_2d. See #radiation_get_star_l_pe
+ * mass, dispatching on #rad->is_2d. See #radiation_get_star_luminosity_pe
  * (identical shape); only valid when #radiation.with_ISRF is set.
  *
  * @param rad The #radiation model.
@@ -926,12 +927,12 @@ float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
  * table.
  * @return Lyman-Werner band emission rate, internal units.
  */
-float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
-                              float log_z) {
+float radiation_get_star_luminosity_lw(const struct radiation *rad, float log_m,
+                                       float log_z) {
   if (rad->is_2d) {
-    return radiation_get_l_lw_from_raw_2d(rad, log_z, log_m);
+    return radiation_get_luminosity_lw_from_raw_2d(rad, log_z, log_m);
   }
-  return radiation_get_l_lw_from_raw(rad, log_m);
+  return radiation_get_luminosity_lw_from_raw(rad, log_m);
 }
 
 /**
@@ -945,8 +946,8 @@ float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
  * @param log_m2 The upper mass in log.
  * @return PE band emission rate per Msun of stars formed, internal units.
  */
-float radiation_get_l_pe_from_integral(const struct radiation *rad,
-                                       float log_m1, float log_m2) {
+float radiation_get_luminosity_pe_from_integral(const struct radiation *rad,
+                                                float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const float l_pe_1 = interpolate_1d(&rad->integrated.l_pe, log_m1);
   const float l_pe_2 = interpolate_1d(&rad->integrated.l_pe, log_m2);
@@ -965,9 +966,9 @@ float radiation_get_l_pe_from_integral(const struct radiation *rad,
  * @param log_m2 The upper mass in log.
  * @return PE band emission rate per Msun of stars formed, internal units.
  */
-float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
-                                          float log_z, float log_m1,
-                                          float log_m2) {
+float radiation_get_luminosity_pe_from_integral_2d(const struct radiation *rad,
+                                                   float log_z, float log_m1,
+                                                   float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   const struct interpolation_2d *interp = &rad->integrated.l_pe_2d;
   const float l_pe_1 = interpolate_2d(
@@ -979,7 +980,7 @@ float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
 
 /**
  * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass,
- * from a 1D (mass-only) table. See #radiation_get_l_pe_from_integral
+ * from a 1D (mass-only) table. See #radiation_get_luminosity_pe_from_integral
  * (identical shape, on #rad->integrated.l_lw).
  *
  * @param rad The #radiation model.
@@ -988,8 +989,8 @@ float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
  * @return Lyman-Werner band emission rate per Msun of stars formed,
  * internal units.
  */
-float radiation_get_l_lw_from_integral(const struct radiation *rad,
-                                       float log_m1, float log_m2) {
+float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
+                                                float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const float l_lw_1 = interpolate_1d(&rad->integrated.l_lw, log_m1);
   const float l_lw_2 = interpolate_1d(&rad->integrated.l_lw, log_m2);
@@ -999,7 +1000,7 @@ float radiation_get_l_lw_from_integral(const struct radiation *rad,
 /**
  * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass, at
  * a given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_pe_from_integral_2d (identical shape, on
+ * #radiation_get_luminosity_pe_from_integral_2d (identical shape, on
  * #rad->integrated.l_lw_2d).
  *
  * @param rad The #radiation model.
@@ -1009,9 +1010,9 @@ float radiation_get_l_lw_from_integral(const struct radiation *rad,
  * @return Lyman-Werner band emission rate per Msun of stars formed,
  * internal units.
  */
-float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
-                                          float log_z, float log_m1,
-                                          float log_m2) {
+float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
+                                                   float log_z, float log_m1,
+                                                   float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   const struct interpolation_2d *interp = &rad->integrated.l_lw_2d;
   const float l_lw_1 = interpolate_2d(
@@ -1025,10 +1026,10 @@ float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
  * @brief Get the IMF-averaged PE band lower-edge spectral photon rate
  * (pre-multiplied by E_lo^2 and unit-converted like #l_pe; see
  * #radiation.raw.l_edge_pe's doxygen), from a 1D (mass-only) table. See
- * #radiation_get_l_pe_from_integral (identical shape, on
+ * #radiation_get_luminosity_pe_from_integral (identical shape, on
  * #rad->integrated.l_edge_pe): the SAME difference pattern, so a caller
  * forming lambda_E(PE) - 1 from this getter's result and
- * #radiation_get_l_pe_from_integral's, both over the same (log_m1,
+ * #radiation_get_luminosity_pe_from_integral's, both over the same (log_m1,
  * log_m2), never mixes a windowed numerator with a whole-population denominator
  * or the reverse.
  *
@@ -1038,8 +1039,8 @@ float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
  * @return E_lo(PE)^2 * (IMF-averaged dQ/dE at the PE edge), internal power
  * units.
  */
-float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
-                                            float log_m1, float log_m2) {
+float radiation_get_luminosity_edge_pe_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const float l_edge_pe_1 = interpolate_1d(&rad->integrated.l_edge_pe, log_m1);
   const float l_edge_pe_2 = interpolate_1d(&rad->integrated.l_edge_pe, log_m2);
@@ -1049,7 +1050,7 @@ float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
 /**
  * @brief Get the IMF-averaged PE band lower-edge spectral photon rate, at a
  * given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_pe_from_integral_2d (identical shape, including the
+ * #radiation_get_luminosity_pe_from_integral_2d (identical shape, including the
  * top-edge nudge), on #rad->integrated.l_edge_pe_2d.
  *
  * @param rad The #radiation model.
@@ -1059,9 +1060,8 @@ float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
  * @return E_lo(PE)^2 * (IMF-averaged dQ/dE at the PE edge), internal power
  * units.
  */
-float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
-                                               float log_z, float log_m1,
-                                               float log_m2) {
+float radiation_get_luminosity_edge_pe_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   const struct interpolation_2d *interp = &rad->integrated.l_edge_pe_2d;
   const float l_edge_pe_1 = interpolate_2d(
@@ -1073,7 +1073,7 @@ float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
 
 /**
  * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, from
- * a 1D (mass-only) table. See #radiation_get_l_edge_pe_from_integral
+ * a 1D (mass-only) table. See #radiation_get_luminosity_edge_pe_from_integral
  * (identical shape, on #rad->integrated.l_edge_lw).
  *
  * @param rad The #radiation model.
@@ -1082,8 +1082,8 @@ float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
  * @return E_lo(LW)^2 * (IMF-averaged dQ/dE at the LW edge), internal power
  * units.
  */
-float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
-                                            float log_m1, float log_m2) {
+float radiation_get_luminosity_edge_lw_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   const float l_edge_lw_1 = interpolate_1d(&rad->integrated.l_edge_lw, log_m1);
   const float l_edge_lw_2 = interpolate_1d(&rad->integrated.l_edge_lw, log_m2);
@@ -1093,7 +1093,7 @@ float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
 /**
  * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, at a
  * given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_l_edge_pe_from_integral_2d (identical shape, on
+ * #radiation_get_luminosity_edge_pe_from_integral_2d (identical shape, on
  * #rad->integrated.l_edge_lw_2d).
  *
  * @param rad The #radiation model.
@@ -1103,9 +1103,8 @@ float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
  * @return E_lo(LW)^2 * (IMF-averaged dQ/dE at the LW edge), internal power
  * units.
  */
-float radiation_get_l_edge_lw_from_integral_2d(const struct radiation *rad,
-                                               float log_z, float log_m1,
-                                               float log_m2) {
+float radiation_get_luminosity_edge_lw_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   const struct interpolation_2d *interp = &rad->integrated.l_edge_lw_2d;
   const float l_edge_lw_1 = interpolate_2d(

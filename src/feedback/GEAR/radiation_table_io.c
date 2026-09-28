@@ -1169,10 +1169,10 @@ static void radiation_check_band_edge_provenance(
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us) {
+void radiation_read_luminosity_pe_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
 
   radiation_build_tables(group_id, "L_PE", grid, sm, rad->interpolation_size,
                          units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
@@ -1183,7 +1183,7 @@ void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
 
 /**
  * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
- * table, if present. See #radiation_read_l_pe_array's doxygen
+ * table, if present. See #radiation_read_luminosity_pe_array's doxygen
  * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
  *
  * @param rad The #radiation model.
@@ -1192,10 +1192,10 @@ void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us) {
+void radiation_read_luminosity_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
 
   radiation_build_tables(group_id, "L_LW", grid, sm, rad->interpolation_size,
                          units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
@@ -1209,12 +1209,12 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * photon rate dQ/dE) array from the table.
  *
  * Only called when #radiation.with_ISRF is set, mirroring
- * #radiation_read_l_pe_array; radiation_read_data() has already
+ * #radiation_read_luminosity_pe_array; radiation_read_data() has already
  * required both the raw and IMF-integrated datasets to exist.
  *
  * The stored value is E_lo(PE)^2 * dQ/dE, NOT the bare dataset value: @p
  * conversion_factor folds in both #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and
- * the cgs-to-internal power conversion #radiation_read_l_pe_array
+ * the cgs-to-internal power conversion #radiation_read_luminosity_pe_array
  * itself uses, so the built table is directly comparable to #rad->raw.l_pe/
  * #rad->integrated.l_pe in the SAME (internal power) units: both sides of
  * the ratio land on that one system once, here at read time, rather than
@@ -1228,10 +1228,10 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
-                                    const struct radiation_grid_metadata *grid,
-                                    const struct stellar_model *sm,
-                                    const struct unit_system *us) {
+void radiation_read_luminosity_edge_pe_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
 
   radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtPEEdge",
                                        RADIATION_PE_BAND_LOWER_EDGE_EV);
@@ -1250,7 +1250,7 @@ void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
 /**
  * @brief Read the SpectralPhotonRateAtLWEdge (LW band lower-edge spectral
  * photon rate dQ/dE) array from the table. See
- * #radiation_read_l_edge_pe_array (identical shape, on
+ * #radiation_read_luminosity_edge_pe_array (identical shape, on
  * "SpectralPhotonRateAtLWEdge"/#RADIATION_LW_BAND_LOWER_EDGE_CGS/
  * #rad->raw.l_edge_lw/#integrated.l_edge_lw).
  *
@@ -1260,10 +1260,10 @@ void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_read_l_edge_lw_array(struct radiation *rad, hid_t group_id,
-                                    const struct radiation_grid_metadata *grid,
-                                    const struct stellar_model *sm,
-                                    const struct unit_system *us) {
+void radiation_read_luminosity_edge_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
 
   radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtLWEdge",
                                        RADIATION_LW_BAND_LOWER_EDGE_EV);
@@ -1421,7 +1421,7 @@ void radiation_read_main_sequence_lifetime_array(
  *   Excluded cell is a finite, non-NaN sentinel, so a differently-resampled
  *   output grid could blend a real value with that sentinel near a row's
  *   own Excluded transition, exactly the age range the min()-gate in
- *   #radiation_get_ms_lifetime_inverse_mass_2d() exists to protect.
+ *   #radiation_get_main_sequence_lifetime_inverse_mass_2d() exists to protect.
  * An identity resample maps every output age node 1:1 onto one native age cell,
  * closing this off structurally.
  * - "MainSequenceLifetimeInverseExcluded" is reduced, in the same pass, to
@@ -1432,7 +1432,7 @@ void radiation_read_main_sequence_lifetime_array(
  *   query well below FLT_MAX, so the two sentinels are equivalent in
  *   practice). The scan asserts each
  *   row's Excluded cells are contiguous-from-that-age-to-the-end, since
- *   #radiation_get_ms_lifetime_inverse_mass_2d()'s min()-gate safety
+ *   #radiation_get_main_sequence_lifetime_inverse_mass_2d()'s min()-gate safety
  * proof depends on this shape.
  * - #radiation.longest_ms_lifetime_myr is indexed by that same native Z
  *   row, so a query brackets its two rows through
@@ -1863,10 +1863,10 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   if (rad->has_teff) radiation_read_teff_array(rad, group_id, &grid, sm, us);
 
   if (rad->with_ISRF) {
-    radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
-    radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
-    radiation_read_l_edge_pe_array(rad, group_id, &grid, sm, us);
-    radiation_read_l_edge_lw_array(rad, group_id, &grid, sm, us);
+    radiation_read_luminosity_pe_array(rad, group_id, &grid, sm, us);
+    radiation_read_luminosity_lw_array(rad, group_id, &grid, sm, us);
+    radiation_read_luminosity_edge_pe_array(rad, group_id, &grid, sm, us);
+    radiation_read_luminosity_edge_lw_array(rad, group_id, &grid, sm, us);
   }
 
   /* Mean Lyman-Werner photon energy, a reported diagnostic; validated

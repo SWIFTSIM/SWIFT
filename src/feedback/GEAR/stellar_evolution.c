@@ -1392,9 +1392,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
        is on, so no fallback branch is needed here. */
     if (sm->rad.with_ISRF) {
       sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
-          radiation_get_star_l_pe(&sm->rad, log_m, log_z);
+          radiation_get_star_luminosity_pe(&sm->rad, log_m, log_z);
       sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
-          radiation_get_star_l_lw(&sm->rad, log_m, log_z);
+          radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z);
       /* Direct assignment, no multiply: the mean photon energy is forced to
          the reference energy at this stage, so a computed ratio of 1 is not
          trusted to compile to exactly 1.0f under -ffast-math. */
@@ -1615,8 +1615,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
          floor is kept explicit rather than relied upon implicitly. */
       const float star_age_end_step_myr =
           (float)(star_age_beg_step_myr + dt_myr);
-      const float m_ms_end_step = radiation_get_ms_lifetime_inverse_mass_2d(
-          &sm->rad, log_z, star_age_end_step_myr, m_min);
+      const float m_ms_end_step =
+          radiation_get_main_sequence_lifetime_inverse_mass_2d(
+              &sm->rad, log_z, star_age_end_step_myr, m_min);
       const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
       m_sup_capped = max(m_min, m_sup_or_ms_end_step);
 
@@ -1649,14 +1650,14 @@ void stellar_evolution_compute_preSN_feedback_spart(
       float L_PE_per_msun, L_LW_per_msun;
       if (sm->rad.is_2d) {
         const float log_z = radiation_get_log_metallicity(metallicity);
-        L_PE_per_msun = radiation_get_l_pe_from_integral_2d(
+        L_PE_per_msun = radiation_get_luminosity_pe_from_integral_2d(
             &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
-        L_LW_per_msun = radiation_get_l_lw_from_integral_2d(
+        L_LW_per_msun = radiation_get_luminosity_lw_from_integral_2d(
             &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
       } else {
-        L_PE_per_msun = radiation_get_l_pe_from_integral(
+        L_PE_per_msun = radiation_get_luminosity_pe_from_integral(
             &sm->rad, log10f(m_min), log10f(m_sup_capped));
-        L_LW_per_msun = radiation_get_l_lw_from_integral(
+        L_LW_per_msun = radiation_get_luminosity_lw_from_integral(
             &sm->rad, log10f(m_min), log10f(m_sup_capped));
       }
       /* Convert per-Msun-of-stars-formed to total, exactly like L_bol/

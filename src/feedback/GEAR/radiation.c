@@ -78,13 +78,13 @@ double radiation_lw_photon_energy_cgs = 0.;
  *
  * lambda_E(b) - 1 = E_lo(b)^2 * Integrated_SpectralPhotonRateAtEdge(b) /
  * Integrated_L_b, both terms differenced over [mass_min, mass_max] the same
- * way #radiation_get_l_lw_from_integral already differences
+ * way #radiation_get_luminosity_lw_from_integral already differences
  * Integrated_L_LW: the two getters this function calls for each band share the
  * SAME difference pattern, so the ratio is never one-sided.
- * #radiation_get_l_edge_pe_from_integral/
- * #radiation_get_l_edge_lw_from_integral already fold E_lo(b)^2 and
+ * #radiation_get_luminosity_edge_pe_from_integral/
+ * #radiation_get_luminosity_edge_lw_from_integral already fold E_lo(b)^2 and
  * the cgs-to-internal power conversion into the stored value at read time
- * (radiation_read_l_edge_pe_array()/_lw_array()), so both numerator
+ * (radiation_read_luminosity_edge_pe_array()/_lw_array()), so both numerator
  * and denominator here are the SAME internal power units and the ratio needs no
  * further conversion.
  *
@@ -128,20 +128,22 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
 
   const double l_edge_pe =
       rad->is_2d
-          ? radiation_get_l_edge_pe_from_integral_2d(rad, log_z, log_m1, log_m2)
-          : radiation_get_l_edge_pe_from_integral(rad, log_m1, log_m2);
-  const double l_pe =
-      rad->is_2d
-          ? radiation_get_l_pe_from_integral_2d(rad, log_z, log_m1, log_m2)
-          : radiation_get_l_pe_from_integral(rad, log_m1, log_m2);
+          ? radiation_get_luminosity_edge_pe_from_integral_2d(rad, log_z,
+                                                              log_m1, log_m2)
+          : radiation_get_luminosity_edge_pe_from_integral(rad, log_m1, log_m2);
+  const double l_pe = rad->is_2d ? radiation_get_luminosity_pe_from_integral_2d(
+                                       rad, log_z, log_m1, log_m2)
+                                 : radiation_get_luminosity_pe_from_integral(
+                                       rad, log_m1, log_m2);
   const double l_edge_lw =
       rad->is_2d
-          ? radiation_get_l_edge_lw_from_integral_2d(rad, log_z, log_m1, log_m2)
-          : radiation_get_l_edge_lw_from_integral(rad, log_m1, log_m2);
-  const double l_lw =
-      rad->is_2d
-          ? radiation_get_l_lw_from_integral_2d(rad, log_z, log_m1, log_m2)
-          : radiation_get_l_lw_from_integral(rad, log_m1, log_m2);
+          ? radiation_get_luminosity_edge_lw_from_integral_2d(rad, log_z,
+                                                              log_m1, log_m2)
+          : radiation_get_luminosity_edge_lw_from_integral(rad, log_m1, log_m2);
+  const double l_lw = rad->is_2d ? radiation_get_luminosity_lw_from_integral_2d(
+                                       rad, log_z, log_m1, log_m2)
+                                 : radiation_get_luminosity_lw_from_integral(
+                                       rad, log_m1, log_m2);
   const double mean_e_lw_cgs =
       rad->is_2d
           ? radiation_get_mean_photon_energy_lw_from_integral_2d(rad, log_z,
@@ -157,7 +159,7 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
   if (l_pe <= 0. || l_lw <= 0.) return;
 
   /* E_lo(b)^2 is already folded into l_edge_pe/l_edge_lw at read time
-   * (radiation_read_l_edge_pe_array()/_lw_array()'s own
+   * (radiation_read_luminosity_edge_pe_array()/_lw_array()'s own
    * conversion_factor), so it must NOT be reapplied here: this is a straight
    * ratio of two already-unit-consistent internal-power quantities. */
   const double lambda_e_pe_minus_one = l_edge_pe / l_pe;
