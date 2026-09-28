@@ -313,8 +313,11 @@ radiation_iact_nonsym_feedback_apply(
         pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
+      /* No narrowing cast: #u is double (see its own doxygen), so this
+         keeps u_inject's own double precision instead of rounding it away
+         before the accumulation. */
       for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u += (float)(u_inject[m] / (double)mj);
+        pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
       }
     }
 

@@ -102,9 +102,18 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
       error("Compulsory data set '%s' not present in the file.", props.name);
     } else {
 
-      /* Create a single instance of the default value */
-      float *temp = (float *)malloc(copySize);
-      for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
+      /* Create a single instance of the default value, at the field's own
+       * width. */
+      void *temp = malloc(copySize);
+      if (props.type == DOUBLE) {
+        double *temp_d = (double *)temp;
+        for (int i = 0; i < props.dimension; ++i)
+          temp_d[i] = props.default_value;
+      } else {
+        float *temp_f = (float *)temp;
+        for (int i = 0; i < props.dimension; ++i)
+          temp_f[i] = props.default_value;
+      }
 
       /* Copy it everywhere in the particle array */
       for (size_t i = 0; i < N; ++i)

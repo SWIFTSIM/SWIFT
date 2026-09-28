@@ -183,6 +183,62 @@
     integral_2d()'s own doxygen for why this matters. */
 #define RADIATION_2D_EDGE_EPS 1e-5f
 
+/*! PE/LW band lower edges, eV: #RADIATION_SIGMA_D_PE_CGS/
+    #RADIATION_SIGMA_D_LW_CGS's own 6-11.2 eV / 11.2-13.6 eV split. Photons
+    redshift DOWNWARD through these two energies (fixed in physical energy,
+    not comoving), which is what radiation_set_band_edge_coefficients() and
+    the transfer term in radiation_end_force_propagation() are for; see
+    theory/GEAR/Radiation/02_fuv_isrf.tex for the derivation. */
+#define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
+#define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
+
+/*! #RADIATION_PE_BAND_LOWER_EDGE_EV/#RADIATION_LW_BAND_LOWER_EDGE_EV in cgs
+    erg (1 eV = 1.602176634e-12 erg, CODATA), hardcoded rather than converted
+    through #phys_const at runtime: eV is not an internal SWIFT unit, and
+    every other band constant in this header (e.g.
+    #RADIATION_SIGMA_H2_LW_CGS) is already a hand-computed cgs literal for
+    the same reason. Used only where #E_lo appears in the band-edge transfer
+    algebra (radiation_table_io.c, radiation.c); never itself unit-converted,
+    since the ratio it enters is dimensionless. */
+#define RADIATION_PE_BAND_LOWER_EDGE_CGS 9.6130598e-12
+#define RADIATION_LW_BAND_LOWER_EDGE_CGS 1.7944378e-11
+
+/*! Fallback band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW), used
+    only (a) to initialise #feedback_props.band_edge_weight_pe/lw and
+    #feedback_props.band_edge_photon_weight_lw at the top of
+    radiation_set_band_edge_coefficients(), so a value read before that
+    function's own table-derived assignment is never the physically wrong
+    "grey" value 1 (or 0), and
+    (b) as the value radiation_set_band_edge_coefficients() falls back to
+    when the table's own denominator (Integrated_L_PE or Integrated_L_LW)
+    vanishes -- a documented degenerate case (an IMF whose whole mass range
+    sits at or below the table's own native mass floor), not the table-
+    absence case: radiation_read_data() REQUIRES the band-edge datasets
+    whenever #radiation.with_ISRF is on and refuses to load a table lacking
+    them (radiation_table_io.c), matching the branch's own precedent for
+    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa).
+    That policy is intentionally the ONE place this can be flipped: see the
+    presence-gate block in radiation_read_data() for how to make it
+    non-fatal instead, which would make these three constants the live
+    fallback for a table generated before pychem exported the new datasets.
+
+    lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (see
+    theory/GEAR/Radiation/02_fuv_isrf.tex for the derivation). Values below
+    are the YOUNG-POPULATION end of a one-parameter spectral family fit (an
+    AGED population's Lambda_LW reaches about 18.3, i.e. lambda_E(LW) about
+    17.8, roughly 3x higher): the young end is shipped because a young
+    population dominates the LW luminosity of an actively star-forming
+    region (under 0.3% of time-integrated L_LW comes from a population
+    whose upper mass bound has already dropped to 4 Msun). The shipped
+    run-wide scalar approximates the IMF-integrated quantity
+    radiation_set_band_edge_coefficients() computes over the IMF's own
+    [mass_min, mass_max], not a population average; its bias against a
+    population average is not sized. See radiation_set_band_edge_
+    coefficients() for the table-borne quantity these approximate. */
+#define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
+#define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
+#define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
+
 /**
  * @brief Transient, read-time-only grid metadata shared by every dataset in
  * a Data/Radiation HDF5 group. Not part of the persistent #radiation
@@ -439,6 +495,17 @@ float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
                                           float log_z, float log_m1,
                                           float log_m2);
 
+float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
+                                            float log_m1, float log_m2);
+float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
+                                               float log_z, float log_m1,
+                                               float log_m2);
+float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
+                                            float log_m1, float log_m2);
+float radiation_get_l_edge_lw_from_integral_2d(const struct radiation *rad,
+                                               float log_z, float log_m1,
+                                               float log_m2);
+
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
                          const struct unit_system *us,
@@ -471,6 +538,14 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,
                                const struct unit_system *us);
+void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
+                                    const struct radiation_grid_metadata *grid,
+                                    const struct stellar_model *sm,
+                                    const struct unit_system *us);
+void radiation_read_l_edge_lw_array(struct radiation *rad, hid_t group_id,
+                                    const struct radiation_grid_metadata *grid,
+                                    const struct stellar_model *sm,
+                                    const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

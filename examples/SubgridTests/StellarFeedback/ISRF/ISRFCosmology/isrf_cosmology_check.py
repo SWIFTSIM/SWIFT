@@ -93,6 +93,47 @@ free_field
     field no longer decaying at leading order), a ~10% shift in the
     predicted x_H2 over this fixture's span, well above any noise floor.
 
+    A THIRD, more direct probe of the band-edge transfer itself does not need
+    A1's own un-modelled-decay punt: LW's energy moment and its photon-number
+    moment (LWSpecificEnergies/LWPhotonSpecificEnergies, ``u`` and ``n``
+    below) share one transport operator and the same per-particle c_hyp and
+    dt, but ``radiation_end_force_propagation`` (radiation_isrf.c) relaxes
+    them at two DIFFERENT depths, ``lambda_E(LW)*H_dilated`` and
+    ``lambda_N(LW)*H_dilated`` (the function's own doxygen: "the diagnostic
+    d ln(U/N)/dt identity the photon moment exists for collapses to zero" if
+    a shared, per-operator lambda were used instead of the per-moment lookup
+    it insists on). Everything else the two moments share -- transport,
+    glass noise, c_hyp itself, the float32 upstream inputs -- cancels in
+    their ratio, to first order, leaving
+
+        d ln(u/n)/dt = -(lambda_E(LW) - lambda_N(LW)) H_dilated ,
+
+    and, since H dt = d ln a exactly (the scale factor's own definition, no
+    approximation), integrating over the run's own snapshots gives
+
+        ln[u(t)/n(t)] - ln[u(0)/n(0)]
+            = -(lambda_E(LW) - lambda_N(LW)) int_0^t (c_hyp/c) d ln a .        (A3)
+
+    ``int (c_hyp/c) d ln a`` is evaluated as a trapezoid in ln a over the
+    run's own snapshots, from the c_hyp each one's own HyperbolicPropagation-
+    Speeds field recorded (median over particles; the field is uniform so
+    the spread is glass noise, not signal) -- NOT from a fitted or assumed
+    c_hyp, and not from A1's conservative c_hyp/c upper bound, which is too
+    loose by orders of magnitude to resolve (A3)'s own signal. The first
+    snapshot of an unpinned run is excluded: it is written before the first
+    force step, so its own HyperbolicPropagationSpeeds is still the light-
+    speed clamp `c_hyp = c` the module falls back on before any step has
+    run, not a rate a particle ever actually decayed under.
+
+    lambda_E(LW) and lambda_N(LW) are read from the SAME start-up log line
+    A1 already reads (radiation_set_band_edge_coefficients, radiation.c),
+    computed from the table before any step runs -- a different code path
+    from the per-step force update (A3) is checking, so this is not an
+    algebraic identity of the module under test: a shared-lambda bug (the
+    one the function's own doxygen warns against) leaves the measured ratio
+    flat while (A3)'s prediction stays at its full, nonzero, mechanism-
+    derived value.
+
 dust_absorption
     Seeded field, solar metallicity, propagation speed pinned to c_pin (so,
     unlike free_field, c_hyp/c is a single run-wide constant here, not a
@@ -150,6 +191,17 @@ that measured error, plus the cosmological terms:
   for the H term), summed over the run.
 - Particles are updated at their step ends, so a snapshot can lag by one
   step: one step's worth of the change.
+
+(A3)'s bar is built the same way, plus two terms of its own, neither fitted
+to a measured residual:
+
+- the log line's own ``%.5g`` precision on lambda_E(LW)/lambda_N(LW) (five
+  significant digits), propagated through their difference as a half-ulp
+  bound on each, times the run's own int (c_hyp/c) d ln a;
+- the trapezoid's own discretisation error from treating c_hyp as piecewise
+  constant between snapshots, bounded per interval by half the interval's
+  own |Delta c_hyp|/c times its d ln a (a bound on the deviation from the
+  true, continuously-varying c_hyp(t), not a correction to it).
 """
 
 import argparse
@@ -247,6 +299,14 @@ LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
 )
+# radiation_set_band_edge_coefficients()'s own start-up announcement
+# (radiation.c): the table-derived lambda_E(PE)/lambda_E(LW)/lambda_N(LW)
+# this run actually propagated with.
+BAND_EDGE_WEIGHTS_LOG_RE = re.compile(
+    r"radiation_set_band_edge_coefficients: Band-edge weights .*"
+    r"lambda_E\(PE\)=([-+0-9.eE]+), lambda_E\(LW\)=([-+0-9.eE]+), "
+    r"lambda_N\(LW\)=([-+0-9.eE]+)"
+)
 
 
 def _note_lw_calibration(message: str) -> None:
@@ -312,6 +372,42 @@ def find_run_logs(
         seen.add(key)
         logs.append(candidate)
     return logs
+
+
+def read_band_edge_weights(
+    *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
+) -> "Optional[Dict[str, float]]":
+    """Return this run's own table-derived band-edge weights, from its log.
+
+    ``radiation_set_band_edge_coefficients()`` announces
+    ``lambda_E(PE)``/``lambda_E(LW)``/``lambda_N(LW)`` once at start-up,
+    computed from the same radiation table the run propagated with
+    (``radiation.c``). Reading them here, rather than hardcoding a number,
+    keeps the cosmological allowance in `check_free_field` correct when the
+    table changes; the run's own log is the record of what it actually used.
+
+    Parameters
+    ----------
+    snapshot_globs : str, optional
+        Snapshot globs of the run being checked.
+    log : str, optional
+        A run log named explicitly on the command line.
+
+    Returns
+    -------
+    dict or None
+        ``{"PE": lambda_E(PE), "LW": lambda_E(LW), "N_LW": lambda_N(LW)}``,
+        or None if no log announced them.
+    """
+    for path in find_run_logs(*snapshot_globs, log=log):
+        match = BAND_EDGE_WEIGHTS_LOG_RE.search(path.read_text(errors="replace"))
+        if match:
+            return {
+                "PE": float(match.group(1)),
+                "LW": float(match.group(2)),
+                "N_LW": float(match.group(3)),
+            }
+    return None
 
 
 def check_run_lw_calibration(
@@ -405,6 +501,10 @@ FLOAT32_EPS = np.finfo(np.float32).eps
 # enum isrf_c_hyp_scheme values whose pairwise operators conserve
 # sum m u / c_hyp rather than sum m u (feedback_properties.h).
 VARIABLE_C_SCHEMES = (3, 4)
+# HyperbolicPropagationSpeeds reads exactly c on a snapshot written before
+# the first force step (the module's first-init clamp): below this fraction
+# of c, (A3) takes it as a genuine per-step value instead.
+C_HYP_CLAMP_FRACTION_OF_C = 0.999
 
 
 def parse_options() -> argparse.Namespace:
@@ -527,6 +627,26 @@ def read_snapshot(filename: str) -> Dict:
             "u": physical(gas["InternalEnergies"], a, energy)[order],
             "u_PE": physical(gas["PESpecificEnergies"], a, energy)[order],
             "u_LW": physical(gas["LWSpecificEnergies"], a, energy)[order],
+            # LW's photon-number moment (energy-equivalent units), used only by (A3).
+            "n_LW": (
+                physical(gas["LWPhotonSpecificEnergies"], a, energy)[order]
+                if "LWPhotonSpecificEnergies" in gas
+                else None
+            ),
+            # (A3)'s float-residual bar term: the FLOAT inputs still feeding
+            # the double relaxation update (radiation_isrf.c:1221-1261).
+            "div_LW": (
+                physical(gas["LWSpecificFluxDivergences"], a, energy / time)[order]
+                if "LWSpecificFluxDivergences" in gas
+                else None
+            ),
+            "div_LW_photon": (
+                physical(gas["LWPhotonSpecificFluxDivergences"], a, energy / time)[
+                    order
+                ]
+                if "LWPhotonSpecificFluxDivergences" in gas
+                else None
+            ),
             "c_hyp": (
                 physical(gas["HyperbolicPropagationSpeeds"], a, velocity)[order]
                 if "HyperbolicPropagationSpeeds" in gas
@@ -920,6 +1040,262 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     return out
 
 
+def band_edge_weight_log_precision(value: float) -> float:
+    """Return half the last-digit step of a value printed with ``%.5g``.
+
+    ``radiation_set_band_edge_coefficients`` (radiation.c) announces each
+    lambda with five significant digits, so the run's own value is known
+    only to within half of that last printed digit's step. Never used to
+    round a value, only to bound (A3)'s log-quantisation bar term.
+
+    Parameters
+    ----------
+    value : float
+        A lambda value as `read_band_edge_weights` parsed it from the log.
+
+    Returns
+    -------
+    float
+        Half the absolute step of its fifth significant digit, or 0 for
+        ``value == 0``.
+    """
+    if value == 0.0:
+        return 0.0
+    exponent = np.floor(np.log10(abs(value)))
+    return 0.5 * 10.0 ** (exponent - 4.0)
+
+
+def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
+    """Return the first snapshot whose c_hyp is a genuine per-step value.
+
+    Snapshot 0 of an unpinned run is written before the first force step,
+    so its own HyperbolicPropagationSpeeds still reads the module's
+    first-init light-speed clamp (``c_hyp = c``), not a rate any particle
+    ever actually decayed under; (A3) needs the trajectory the particles
+    actually experienced, so it starts integrating one snapshot later.
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order, as `load_run` returns them.
+
+    Returns
+    -------
+    int or None
+        Index of the first usable snapshot, or None if none qualifies.
+    """
+    for i, snap in enumerate(run):
+        c_hyp = snap["c_hyp"]
+        if (
+            c_hyp is not None
+            and np.all(np.isfinite(c_hyp))
+            and np.median(c_hyp) < C_HYP_CLAMP_FRACTION_OF_C * C_LIGHT_CGS
+        ):
+            return i
+    return None
+
+
+def band_edge_ratio_errors(run: List[Dict], start: int) -> Dict:
+    """Return (A3)'s measured ln(u_LW/n_LW) drift and its dilated-ln(a) integral.
+
+    Both series start at `run[start]` (see `band_edge_ratio_reference_index`)
+    and are indexed like `run` itself, with every entry before `start` left
+    as NaN so a caller cannot silently read a meaningless value.
+
+    `H dt = d ln a` exactly (the scale factor's own definition), so the
+    dilated integral ``int (c_hyp/c) d ln a`` is a trapezoid in ln a built
+    from each snapshot's own median c_hyp (box means: the field is uniform,
+    so the per-particle spread is glass noise). Its own discretisation
+    error -- from holding c_hyp piecewise constant between snapshots rather
+    than at its true, continuously-varying value -- is bounded per interval
+    by half the interval's own |Delta c_hyp|/c times its d ln a, accumulated
+    in absolute value since it is a bound, not a signed correction.
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order.
+    start : int
+        Index of the first snapshot to integrate from.
+
+    Returns
+    -------
+    dict
+        ``measured`` (ln(u_LW/n_LW) drift from `run[start]`), ``dilated_lna``
+        (the cumulative trapezoid), ``trapezoid_bound`` (its cumulative
+        discretisation bound) and ``span`` (total ln a covered).
+    """
+    ref = run[start]
+    ln_ratio0 = float(
+        np.log(ledger_mean(ref, "u_LW", False) / ledger_mean(ref, "n_LW", False))
+    )
+    measured = np.full(len(run), np.nan)
+    dilated_lna = np.zeros(len(run))
+    trapezoid_bound = np.zeros(len(run))
+    for i in range(start, len(run)):
+        snap = run[i]
+        ratio = ledger_mean(snap, "u_LW", False) / ledger_mean(snap, "n_LW", False)
+        measured[i] = np.log(ratio) - ln_ratio0
+        if i > start:
+            prev = run[i - 1]
+            dlna = np.log(snap["a"] / prev["a"])
+            c_prev, c_here = np.median(prev["c_hyp"]), np.median(snap["c_hyp"])
+            dilated_lna[i] = (
+                dilated_lna[i - 1] + 0.5 * (c_prev + c_here) / (C_LIGHT_CGS) * dlna
+            )
+            trapezoid_bound[i] = (
+                trapezoid_bound[i - 1] + 0.5 * abs(c_here - c_prev) / C_LIGHT_CGS * dlna
+            )
+    return {
+        "measured": measured,
+        "dilated_lna": dilated_lna,
+        "trapezoid_bound": trapezoid_bound,
+        "span": float(np.log(run[-1]["a"] / ref["a"])),
+    }
+
+
+def check_band_edge_ratio(
+    run: List[Dict],
+    band_edge_weights: Dict[str, float],
+    dt_max: float,
+    n_steps: float,
+    dt_step_cgs: float,
+) -> bool:
+    """Check (A3): d ln(u_LW/n_LW)/dt = -(lambda_E(LW) - lambda_N(LW)) H_dilated.
+
+    The reference is independent of the module under test: lambda_E(LW) and
+    lambda_N(LW) come from `radiation_set_band_edge_coefficients`'s own
+    start-up log line, computed from the table before any step runs, a
+    different code path from the per-step force update
+    (`radiation_end_force_propagation`) that this check exercises. A bug
+    that applied one shared lambda to both moments (the failure mode that
+    function's own doxygen names) would leave the measured ratio flat while
+    this prediction stays at its full, nonzero value, so the two cannot
+    agree by construction the way a residual built from the same quantities
+    the code computes would.
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order.
+    band_edge_weights : dict
+        This run's own lambda_E(PE)/lambda_E(LW)/lambda_N(LW), from
+        `read_band_edge_weights`.
+    dt_max : float
+        TimeIntegration:dt_max of the run, ln a units.
+    n_steps : float
+        Number of dt_max steps the run spans, from `step_count`.
+    dt_step_cgs : float
+        Longest step in proper time, seconds (the run's own dt_max
+        converted, as `check_free_field`'s own `dt_step` already is).
+
+    Returns
+    -------
+    bool
+        Whether (A3) passed.
+    """
+    start = band_edge_ratio_reference_index(run)
+    if start is None or start >= len(run) - 1:
+        print(
+            "  (A3) SKIPPED: fewer than two snapshots have a genuine "
+            "(non-clamped) HyperbolicPropagationSpeeds"
+        )
+        return True
+    if any(s["n_LW"] is None for s in run[start:]):
+        raise RuntimeError(
+            "cosmological free_field run but LWPhotonSpecificEnergies is "
+            "absent from a snapshot: (A3) needs the run's own photon-number "
+            "moment and must not silently skip the one check that field "
+            "supports."
+        )
+    for i in range(start, len(run)):
+        snap = run[i]
+        for name in ("u_LW", "n_LW", "c_hyp"):
+            if not np.all(np.isfinite(snap[name])):
+                print(f"  FAIL: (A3): non-finite {name} in snapshot {i}")
+                return False
+        if np.any(snap["u_LW"] <= 0.0) or np.any(snap["n_LW"] <= 0.0):
+            print(f"  FAIL: (A3): non-positive u_LW or n_LW in snapshot {i}")
+            return False
+        # This check's whole discriminating power depends on u_LW/n_LW
+        # actually carrying double precision end to end, not merely being
+        # cast to float64 on read (`physical()` always upcasts, so a value
+        # narrowed to float32 anywhere upstream -- storage, or an I/O path
+        # that reads it through a float buffer -- looks identical to a
+        # genuine double once loaded): before the double widen, both
+        # bands' exponentials rounded to the same float32 value and this
+        # identity read exactly 0.
+        for name in ("u_LW", "n_LW"):
+            arr = snap[name]
+            if np.array_equal(arr.astype(np.float32).astype(np.float64), arr):
+                print(
+                    f"  FAIL: (A3): {name} in snapshot {i} is exactly "
+                    "float32-representable end to end: the double-precision "
+                    "path this check depends on is not actually live, "
+                    "whatever the HDF5 dtype claims"
+                )
+                return False
+
+    errors = band_edge_ratio_errors(run, start)
+    delta_lambda = band_edge_weights["LW"] - band_edge_weights["N_LW"]
+    predicted = -delta_lambda * errors["dilated_lna"]
+    residual = errors["measured"] - predicted
+
+    quantisation = (
+        band_edge_weight_log_precision(band_edge_weights["LW"])
+        + band_edge_weight_log_precision(band_edge_weights["N_LW"])
+    ) * float(np.max(np.abs(errors["dilated_lna"])))
+    mean_c_hyp_ratio = (
+        errors["dilated_lna"][-1] / errors["span"] if errors["span"] > 0 else 0.0
+    )
+    step_end_and_lag = (
+        abs(delta_lambda) * mean_c_hyp_ratio * (0.75 * dt_max * errors["span"] + dt_max)
+    )
+    trapezoid = abs(delta_lambda) * float(errors["trapezoid_bound"][-1])
+
+    # c_hyp and dt_prev are shared by both moments (one operator,
+    # radiation_isrf.c:794-797) and cancel in the ratio to first order, so
+    # they do not enter here. What survives is the FLOAT operands that
+    # differ BETWEEN the two moments feeding the double relaxation update:
+    # each moment's own flux divergence and dissipation source
+    # (radiation_isrf.c:1221-1261 is still float end to end). Bounded by
+    # eps_f * n_steps * the divergence's own relative pull on u this step,
+    # read from the run's own snapshots, never fitted.
+    float_terms = []
+    for i in range(start, len(run)):
+        snap = run[i]
+        for u_key, div_key in (("u_LW", "div_LW"), ("n_LW", "div_LW_photon")):
+            div = snap.get(div_key)
+            if div is not None:
+                float_terms.append(
+                    float(np.max(np.abs(dt_step_cgs * div / snap[u_key])))
+                )
+    if float_terms:
+        float_residual = FLOAT32_EPS * n_steps * max(float_terms)
+        float_note = "flux-divergence-scaled"
+    else:
+        # No flux-divergence fields on this run (older snapshot): fall back
+        # to the double relaxation chain's own operand count instead of a
+        # value that would need those fields to derive -- about ten double
+        # FLOPs (exp, expm1, phi, multiply-adds) per moment update.
+        float_residual = 10.0 * np.finfo(np.float64).eps * n_steps
+        float_note = "fallback, no flux-divergence fields"
+    bar = quantisation + step_end_and_lag + trapezoid + float_residual
+
+    print(
+        f"  (A3) band-edge ratio: lambda_E(LW)-lambda_N(LW)={delta_lambda:.6g}, "
+        f"int(c_hyp/c) d ln a={errors['dilated_lna'][-1]:.3e}, predicted "
+        f"{predicted[-1]:.3e}, measured {errors['measured'][-1]:.3e}"
+    )
+    print(
+        f"  bar (A3): quantisation {quantisation:.2e} + step-end/lag "
+        f"{step_end_and_lag:.2e} + trapezoid {trapezoid:.2e} + float "
+        f"residual ({float_note}) {float_residual:.2e} = {bar:.2e}"
+    )
+    worst = float(np.max(np.abs(residual[start:])))
+    return gate("(A3) ln(u_LW/n_LW), worst |residual|", worst, bar)
+
+
 def check_free_field(opt: argparse.Namespace) -> bool:
     """Check Eqs. (A1) and (A2)."""
     run = load_run(opt.snapshots)
@@ -982,6 +1358,48 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  c_hyp/c upper bound: {c_hyp_ratio:.3e} (margin {margin:g}, "
             f"median h {h_phys_cgs:.3e} cm, dt_step {dt_step:.3e} s)"
         )
+    # Per-band redshift depth is lambda_E(band)*H_dilated, not H_dilated
+    # alone (radiation_end_force_propagation): read the run's own
+    # table-derived lambda_E(PE)/lambda_E(LW) from its log rather than
+    # hardcoding a number here, so this bar tracks the radiation table
+    # instead of one measurement of it.
+    band_edge_weights = None
+    if cosmological:
+        band_edge_weights = read_band_edge_weights(opt.snapshots, log=opt.log)
+        if band_edge_weights is None:
+            raise RuntimeError(
+                "cosmological free_field run but no output.log announced "
+                "radiation_set_band_edge_coefficients()'s lambda_E(PE)/"
+                "lambda_E(LW): this gate's cosmological allowance needs "
+                "them to size the un-modelled decay correctly, and cannot "
+                "default to lambda=1 without silently reintroducing the "
+                "gate this file's own history already flagged as too "
+                "tight. Pass --log or run beside the log this fixture "
+                "wrote."
+            )
+        print(
+            f"  band-edge weights from the log: lambda_E(PE)="
+            f"{band_edge_weights['PE']:.5g}, lambda_E(LW)="
+            f"{band_edge_weights['LW']:.5g}"
+        )
+    # The LW-to-PE band-edge transfer (radiation_end_force_propagation) adds
+    # (lambda_E(LW) - 1)*H_dilated*u_LW into PE's own `u` every step, on top
+    # of PE's own -lambda_E(PE)*H_dilated*u_PE decay: to first order in the
+    # (small) cosmological perturbation, PE's own relative drift coefficient
+    # is therefore [lambda_E(LW) - 1]*r - lambda_E(PE), not lambda_E(PE)
+    # alone, with r the box-mean u_LW0/u_PE0 this run actually started at
+    # (not assumed to be 1, though this fixture's own IC sets u_pe = u_lw).
+    # LW receives no such term, so its own coefficient is unchanged.
+    r_lw_over_pe = None
+    if cosmological:
+        r_lw_over_pe = float(
+            np.sum(run[0]["mass"] * run[0]["u_LW"])
+            / np.sum(run[0]["mass"] * run[0]["u_PE"])
+        )
+        print(
+            f"  box-mean u_LW0/u_PE0 (r, the LW-to-PE transfer's own scale "
+            f"factor): {r_lw_over_pe:.5g}"
+        )
     for band in ["PE", "LW"]:
         # Float32 round-off of each update, averaged over the particles.
         budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
@@ -990,9 +1408,22 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
         # The un-modelled dilated decay itself (span), plus its own step-end
         # H ((3/4) dlna_step per unit ln a) and one-step lag discretisation,
-        # all dilated by the same c_hyp/c factor as the term itself.
+        # all dilated by the same c_hyp/c factor as the term itself, AND by
+        # this band's own drift coefficient: lambda_E(band)*H_dilated for
+        # LW, but [lambda_E(LW) - 1]*r - lambda_E(PE), in magnitude, for PE
+        # (see the comment above the r_lw_over_pe computation).
+        if cosmological:
+            if band == "PE":
+                drift_coeff = abs(
+                    band_edge_weights["PE"]
+                    - (band_edge_weights["LW"] - 1.0) * r_lw_over_pe
+                )
+            else:
+                drift_coeff = band_edge_weights["LW"]
+        else:
+            drift_coeff = 0.0
         cosmo = (
-            c_hyp_ratio * (span + 0.75 * dt_max * span + dt_max)
+            c_hyp_ratio * drift_coeff * (span + 0.75 * dt_max * span + dt_max)
             if cosmological
             else 0.0
         )
@@ -1061,6 +1492,11 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         f"final error {errors['H2'][-1]:.3e}, bar {bar[-1]:.3e}"
     )
     ok &= gate("box-mean ln x_H2 exponent (A2), worst error/bar", float(ratio[k]), 1.0)
+
+    if cosmological:
+        ok &= check_band_edge_ratio(run, band_edge_weights, dt_max, n_steps, dt_step)
+    else:
+        print("  (A3) SKIPPED: non-cosmological, ratio preserved, lambda not tested")
     return ok
 
 

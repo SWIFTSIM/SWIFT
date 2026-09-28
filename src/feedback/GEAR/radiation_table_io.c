@@ -1096,6 +1096,66 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
 }
 
 /**
+ * @brief Assert a band-edge spectral-rate dataset's provenance: its own
+ * "lower_edge_energy"/"lower_edge_energy_units" attributes agree with the
+ * band edge SWIFT's own #RADIATION_PE_BAND_LOWER_EDGE_EV/
+ * #RADIATION_LW_BAND_LOWER_EDGE_EV compile-time constants assume, and its
+ * "native_grid_spacing_dlnE" attribute is present: refuse a table that
+ * lacks it, rather than silently trusting a point value with unknown
+ * provenance; a value of exactly 0.0 is legitimate there -- the
+ * analytic-blackbody/v1-table case -- so presence, not a value comparison,
+ * is the refuse condition.
+ *
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param dataset_name Name of the raw (non-"Integrated_") dataset to check.
+ * @param expected_lower_edge_ev The band lower edge this reader is about to
+ * assume, in eV.
+ */
+static void radiation_check_band_edge_provenance(
+    hid_t group_id, const char *dataset_name, double expected_lower_edge_ev) {
+
+  const hid_t h_dataset = H5Dopen(group_id, dataset_name, H5P_DEFAULT);
+  if (h_dataset < 0)
+    error("Error while opening dataset '%s' to check its provenance.",
+          dataset_name);
+
+  if (H5Aexists(h_dataset, "native_grid_spacing_dlnE") <= 0) {
+    H5Dclose(h_dataset);
+    error(
+        "Data/Radiation/%s has no 'native_grid_spacing_dlnE' attribute: this "
+        "table was generated before pychem recorded the edge value's own "
+        "grid provenance and needs regenerating with pychem's "
+        "pychem_generate_hdf5_parameters.",
+        dataset_name);
+  }
+
+  char units[16];
+  radiation_read_string_attribute(h_dataset, "lower_edge_energy_units", units,
+                                  sizeof(units));
+  if (strcmp(units, "eV") != 0) {
+    H5Dclose(h_dataset);
+    error(
+        "Data/Radiation/%s declares lower_edge_energy_units='%s', but SWIFT "
+        "assumes 'eV'.",
+        dataset_name, units);
+  }
+
+  double lower_edge_energy_ev = 0.;
+  io_read_attribute(h_dataset, "lower_edge_energy", DOUBLE,
+                    &lower_edge_energy_ev);
+  H5Dclose(h_dataset);
+
+  if (fabs(lower_edge_energy_ev - expected_lower_edge_ev) >
+      1e-6 * expected_lower_edge_ev) {
+    error(
+        "Data/Radiation/%s declares lower_edge_energy=%.6g eV, but SWIFT's "
+        "own band split assumes %.6g eV: this table was generated for a "
+        "different PE/LW band split than the code's, or is corrupted.",
+        dataset_name, lower_edge_energy_ev, expected_lower_edge_ev);
+  }
+}
+
+/**
  * @brief Read the L_PE (non-ionizing PE band emission rate) array from the
  * table.
  *
@@ -1142,6 +1202,81 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
                          "erg/s", &rad->raw.l_lw, &rad->integrated.l_lw,
                          &rad->raw.l_lw_2d, &rad->integrated.l_lw_2d,
                          grid->edge_policy_l_lw);
+}
+
+/**
+ * @brief Read the SpectralPhotonRateAtPEEdge (PE band lower-edge spectral
+ * photon rate dQ/dE) array from the table.
+ *
+ * Only called when #radiation.with_ISRF is set, mirroring
+ * #radiation_read_l_pe_array; radiation_read_data() has already required
+ * both the raw and IMF-integrated datasets to exist.
+ *
+ * The stored value is E_lo(PE)^2 * dQ/dE, NOT the bare dataset value: @p
+ * conversion_factor folds in both #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and
+ * the cgs-to-internal power conversion #radiation_read_l_pe_array itself
+ * uses, so the built table is directly comparable to #rad->raw.l_pe/
+ * #rad->integrated.l_pe in the SAME (internal power) units: both sides of
+ * the ratio land on that one system once, here at read time, rather than
+ * at every use of the ratio. @p expected_units stays
+ * the dataset's OWN "1/s/erg" (radiation_check_dataset_units() asserts the
+ * unconverted attribute string, unrelated to @p conversion_factor).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
+                                    const struct radiation_grid_metadata *grid,
+                                    const struct stellar_model *sm,
+                                    const struct unit_system *us) {
+
+  radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtPEEdge",
+                                       RADIATION_PE_BAND_LOWER_EDGE_EV);
+
+  const double conversion_factor =
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
+      (RADIATION_PE_BAND_LOWER_EDGE_CGS * RADIATION_PE_BAND_LOWER_EDGE_CGS);
+
+  radiation_build_tables(group_id, "SpectralPhotonRateAtPEEdge", grid, sm,
+                         rad->interpolation_size, conversion_factor, 1.,
+                         "1/s/erg", &rad->raw.l_edge_pe,
+                         &rad->integrated.l_edge_pe, &rad->raw.l_edge_pe_2d,
+                         &rad->integrated.l_edge_pe_2d, grid->edge_policy_l_pe);
+}
+
+/**
+ * @brief Read the SpectralPhotonRateAtLWEdge (LW band lower-edge spectral
+ * photon rate dQ/dE) array from the table. See
+ * #radiation_read_l_edge_pe_array (identical shape, on
+ * "SpectralPhotonRateAtLWEdge"/#RADIATION_LW_BAND_LOWER_EDGE_CGS/
+ * #rad->raw.l_edge_lw/#integrated.l_edge_lw).
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_l_edge_lw_array(struct radiation *rad, hid_t group_id,
+                                    const struct radiation_grid_metadata *grid,
+                                    const struct stellar_model *sm,
+                                    const struct unit_system *us) {
+
+  radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtLWEdge",
+                                       RADIATION_LW_BAND_LOWER_EDGE_EV);
+
+  const double conversion_factor =
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
+      (RADIATION_LW_BAND_LOWER_EDGE_CGS * RADIATION_LW_BAND_LOWER_EDGE_CGS);
+
+  radiation_build_tables(group_id, "SpectralPhotonRateAtLWEdge", grid, sm,
+                         rad->interpolation_size, conversion_factor, 1.,
+                         "1/s/erg", &rad->raw.l_edge_lw,
+                         &rad->integrated.l_edge_lw, &rad->raw.l_edge_lw_2d,
+                         &rad->integrated.l_edge_lw_2d, grid->edge_policy_l_lw);
 }
 
 /**
@@ -1601,6 +1736,41 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     }
   }
 
+  /* FATAL-IF-ABSENT is the policy this branch already applies to
+     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa)
+     and to L_PE/L_LW above: this is the ONE place to flip that policy for
+     the band-edge datasets specifically, to a has_teff-style optional read
+     with the compile-time RADIATION_BAND_EDGE_WEIGHT_*_DEFAULT fallback
+     (radiation.h), if a non-fatal table-absence path is wanted instead. */
+  if (rad->with_ISRF) {
+    const int has_l_edge_pe =
+        H5Lexists(group_id, "SpectralPhotonRateAtPEEdge", H5P_DEFAULT) > 0;
+    const int has_l_edge_lw =
+        H5Lexists(group_id, "SpectralPhotonRateAtLWEdge", H5P_DEFAULT) > 0;
+    const int has_integrated_l_edge_pe =
+        H5Lexists(group_id, "Integrated_SpectralPhotonRateAtPEEdge",
+                  H5P_DEFAULT) > 0;
+    const int has_integrated_l_edge_lw =
+        H5Lexists(group_id, "Integrated_SpectralPhotonRateAtLWEdge",
+                  H5P_DEFAULT) > 0;
+    if (!(has_l_edge_pe && has_l_edge_lw && has_integrated_l_edge_pe &&
+          has_integrated_l_edge_lw)) {
+      error(
+          "'%s': GEARFeedback:with_interstellar_radiation_field is on but "
+          "this Data/Radiation group is missing%s%s%s%s. Regenerate the "
+          "table with pychem's pychem_generate_hdf5_parameters on its own "
+          "chimieparam file.",
+          sm->yields_table,
+          has_l_edge_pe ? "" : " 'SpectralPhotonRateAtPEEdge'",
+          has_l_edge_lw ? "" : " 'SpectralPhotonRateAtLWEdge'",
+          has_integrated_l_edge_pe ? ""
+                                   : " 'Integrated_SpectralPhotonRateAtPEEdge'",
+          has_integrated_l_edge_lw
+              ? ""
+              : " 'Integrated_SpectralPhotonRateAtLWEdge'");
+    }
+  }
+
   /* Required whatever with_ISRF says or which stellar model reads the
      table: pychem writes both datasets for every table it generates, 1D
      and 2D alike, so a table missing either predates that and needs
@@ -1695,6 +1865,8 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   if (rad->with_ISRF) {
     radiation_read_l_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_l_lw_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_edge_pe_array(rad, group_id, &grid, sm, us);
+    radiation_read_l_edge_lw_array(rad, group_id, &grid, sm, us);
   }
 
   /* Mean Lyman-Werner photon energy, a reported diagnostic; validated

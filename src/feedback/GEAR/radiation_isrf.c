@@ -536,6 +536,24 @@ float radiation_relaxation_phi_factor(float a) {
 }
 
 /**
+ * @brief Double-precision #radiation_relaxation_phi_factor, for
+ * #radiation_end_force_propagation's `u`-update only: that update's own
+ * relaxation depth `a` can be a few 1e-8 (see #feedback_isrf_moment_data.u's
+ * own doxygen), a regime float32's 24-bit mantissa cannot resolve either
+ * side of the `1e-6` branch above. The flux update
+ * (#radiation_end_gradient_propagation) keeps the float version: `F` itself
+ * stays float, so a double `phi` there would not change what gets stored.
+ *
+ * @param a Dimensionless relaxation depth, see
+ * #radiation_relaxation_phi_factor. Always `>= 0`.
+ * @return phi(a), in double precision.
+ */
+static double radiation_relaxation_phi_factor_double(double a) {
+  if (a < 1e-6) return 1.0 - 0.5 * a + (1.0 / 6.0) * a * a;
+  return -expm1(-a) / a;
+}
+
+/**
  * @brief The three mutually exclusive outcomes of the M1 flux limiter,
  * split out so the operator that shares a limiter decision across several
  * moments (#radiation_end_gradient_propagation) applies the exact same
@@ -692,14 +710,27 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * sets `cosmo->H = 0` for a non-cosmological run (`cosmology_init_no_cosmo`),
  * so the term vanishes there by construction (multiplying it by `c_hyp/c`
  * first does not change this: `(c_hyp/c)*0 = 0` exactly), exactly as for
- * `hydro.h`'s own `div_v + hydro_dimension*cosmo->H`. No gate on the spectrum
- * shape, unlike `src/rt/GEAR/rt.h`'s own redshift term: photons also
- * redshift ACROSS these two narrow band edges, a loss `-H*u` does not model,
- * so `-H*u` is a lower bound on the true band loss rather than an
- * overestimate to be suppressed. `c_hyp` here plays the role of the M1 reduced
- * light speed `c_M`: the `c_M/c` rescale (replacing the old,
- * P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively
- * here; injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ * `hydro.h`'s own `div_v + hydro_dimension*cosmo->H`. `c_hyp` here plays the
+ * role of the M1 reduced light speed `c_M`: the `c_M/c` rescale (replacing
+ * the old, P1-Yukawa-tuned `3*c_hyp/c`) is applied exclusively here;
+ * injection (`radiation_iact.h`) deposits the raw, unrescaled dose.
+ *
+ * PHOTONS ALSO REDSHIFT ACROSS THE PE/LW BAND EDGES (fixed in physical, not
+ * comoving, energy), which a per-moment `-H*u` alone does not model: each
+ * moment's own `lambda(m)` (#feedback_props.band_edge_weight_pe/lw,
+ * #feedback_props.band_edge_photon_weight_lw) multiplies `H_dilated` in its own
+ * relaxation depth below, `lambda(m) = 1` recovering the grey (comoving-edge)
+ * result. The LW moment's own lower-edge loss (11.2 eV) is exactly the PE
+ * moment's upper-edge gain, since the two bands are contiguous: `transfer`
+ * below moves that energy from LW's depth into PE's `u` directly, since a
+ * gain from a NEIGHBOURING band cannot be folded into a decay of the
+ * receiving band's own state. `ISRF_MOMENT_LW_PHOTON` loses at its own
+ * lower edge the same way (its own `lambda(m) = lambda_N(LW)` below), but
+ * has no PE-side photon-number moment to transfer into: only the two
+ * energy moments are contiguous bands sharing a physical edge. The PE
+ * band's own 6 eV lower-edge loss is kept, not compensated: a photon
+ * below 6 eV stops doing photoelectric work, and Grackle's own G0
+ * calibration is defined over 6-13.6 eV.
  *
  * Runs in the `end_force` task, after the force loop and before cooling
  * (engine_maketasks.c). The negativity trigger that set this step's
@@ -736,16 +767,23 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
-  const float dt = fd->dt_prev;
-  const float c_hyp = fd->c_hyp;
-  const float rescale =
-      c_hyp / (float)e->physical_constants->const_speed_light_c;
-  const float H = (float)e->cosmology->H;
+  const double dt = (double)fd->dt_prev;
+  const double c_hyp = (double)fd->c_hyp;
+  const double rescale = c_hyp / e->physical_constants->const_speed_light_c;
+  const double H = e->cosmology->H;
   /* Dilated by the same c_hyp/c factor as the absorption term: see this
-   * function's own doxygen. Bit-identical to the plain H when H = 0.f
+   * function's own doxygen. Bit-identical to the plain H when H = 0
    * (SWIFT's non-cosmological cosmology_init_no_cosmo sets cosmo->H = 0):
-   * rescale * 0.f is exactly 0.f for any finite rescale, no rounding. */
-  const float H_dilated = rescale * H;
+   * rescale * 0 is exactly 0 for any finite rescale, no rounding.
+   *
+   * DOUBLE below, unlike #radiation_end_gradient_propagation's own copy of
+   * this quantity: this function's relaxation depth `a` can be a few 1e-8
+   * (#feedback_isrf_moment_data.u's own doxygen), which float32 cannot
+   * resolve against a neighbouring band's own depth. #cosmology.H and the
+   * three #feedback_props band-edge weights are already double at the
+   * source (cosmology.h, feedback_properties.h), so this keeps their
+   * precision rather than rounding it away on entry. */
+  const double H_dilated = rescale * H;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (fd->u_min_snapshot_index != e->snapshot_output_count) {
@@ -755,16 +793,108 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   }
 #endif
 
+  /* Per-moment band-edge weight, read PER MOMENT and never through
+   * #radiation_isrf_moment_to_operator/#radiation_isrf_operator_owner:
+   * #ISRF_MOMENT_LW and #ISRF_MOMENT_LW_PHOTON share ISRF_OPERATOR_LW's
+   * `kappa`, but NOT this coefficient: the photon-number moment carries
+   * `lambda_N(LW)`, the energy moment `lambda_E(LW)`, or the diagnostic
+   * `d ln(U/N)/dt` identity the photon moment exists for collapses to
+   * zero. DOUBLE, kept at its own source precision: see #H_dilated's own
+   * doxygen above for why. */
+  const double lambda[ISRF_MOMENT_COUNT] = {
+      e->feedback_props->band_edge_weight_pe,
+      e->feedback_props->band_edge_weight_lw,
+      e->feedback_props->band_edge_photon_weight_lw};
+
+  /* The LW-to-PE band-edge transfer is computed BEFORE the moment loop
+   * below, from LW's OWN relaxation depth, frozen `u_prev` and this step's
+   * accumulators, so the loop stays
+   * generic and the result does not depend on moment ordering (the
+   * function's own idempotence property, doxygen above). `f_edge` is
+   * derived from the SAME `a_lw` LW's own decay/phi use below, not a
+   * separately-formed rate expression: under -ffast-math two independently
+   * written but algebraically equal expressions can disagree at extreme
+   * `lambda`, which would let the LW loss apply while the PE gain silently
+   * does not (or the reverse).
+   *
+   * GATED ON `H_dilated != 0.`, NOT JUST ON `a_lw > 0.` BELOW: every
+   * non-cosmological run (`cosmology_init_no_cosmo` sets `cosmo->H = 0`)
+   * then skips this block's flops entirely, `transfer` staying the literal
+   * initialiser `0.`. This is the physically correct statement (no
+   * cosmological term exists to evaluate) and the cheaper path for a
+   * non-cosmological run, but it is not a bit-identity guarantee against
+   * the pre-change binary under production build flags
+   * (`-flto -O3 -ffast-math`): restructuring this hot function can shift
+   * `-ffast-math` reassociation even on a path this gate skips, so a
+   * production-build comparison against the pre-change binary should be
+   * checked on the compiled result, not assumed from this gate's
+   * presence. */
+  double transfer = 0.;
+  if (H_dilated != 0.) {
+    const struct feedback_isrf_operator_data *op_lw =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[ISRF_MOMENT_LW]];
+    const struct feedback_isrf_moment_data *moment_lw =
+        &fd->isrf_moment[ISRF_MOMENT_LW];
+    const double a_lw =
+        (c_hyp * (double)op_lw->kappa + lambda[ISRF_MOMENT_LW] * H_dilated) *
+        dt;
+    /* `-expm1(-a_lw)`, not `1. - exp(-a_lw)`: at the few-1e-8 relaxation
+     * depths this function's own doxygen describes, `exp(-a_lw)` itself is
+     * already the well-conditioned quantity, but subtracting it from 1
+     * loses relative precision exactly where #radiation_relaxation_phi_
+     * factor_double's own Taylor branch avoids that cancellation; expm1
+     * sidesteps it here too, at the source. */
+    const double one_minus_decay_lw = -expm1(-a_lw);
+    const double phi_lw = radiation_relaxation_phi_factor_double(a_lw);
+    /* The exact-relaxation update's own split of `u_prev` and the frozen
+     * source/transport terms into the fraction LW's depth absorbed this
+     * step (same shape as the debug-only ledger line below, but computed
+     * UNCONDITIONALLY within this branch: this is now a live physics
+     * input, not a diagnostic, and a build without SWIFT_DEBUG_CHECKS must
+     * still transfer it). */
+    const double absorbed_lw =
+        (moment_lw->u_prev + dt * phi_lw * (double)moment_lw->dissipation_u) *
+            one_minus_decay_lw +
+        (rescale * (double)moment_lw->u_source_rate -
+         (double)moment_lw->div_specific_flux) *
+            dt * (1. - phi_lw);
+    /* Guard against the exact `0/0` at `a_lw = 0` (a metal-free particle,
+     * `kappa_LW = 0`, even with `H_dilated != 0`): a NaN cannot be caught in
+     * source under -ffast-math, so this is an exact comparison before the
+     * division, in the style of
+     * #radiation_dissipation_floor_relaxation_gate's own `if (w <= 0.f)
+     * return 1.f;`. */
+    if (a_lw > 0.) {
+      const double f_edge =
+          (lambda[ISRF_MOMENT_LW] - 1.) * H_dilated * dt / a_lw;
+      /* Kept SIGNED, not clamped at zero: clamping would break both the
+       * exact 11.2 eV cancellation in G0 and the per-band ledger. A
+       * negative `transfer` (LW has undershot this step) reduces PE's own
+       * `u` on the same step. This can still change the post-clamp Habing
+       * G0 (#radiation_get_part_isrf_habing): that sum clamps each band to
+       * non-negative AT READ TIME, so if the reduction drives PE's `u`
+       * through zero, the read-side clamp reads it as zero illumination
+       * instead of the negative value that would otherwise cancel LW's
+       * loss exactly. Driving PE's `u` negative this way also zeroes PE's
+       * own flux on the NEXT step's M1 limiter (`ISRF_LIMITER_ZERO`,
+       * `u <= 0`, above): a genuine physical consequence of a large
+       * transfer, not a bug. */
+      transfer = f_edge * absorbed_lw;
+    }
+  }
+
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
     const struct feedback_isrf_operator_data *op =
         &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
     /* H_dilated is this particle's own scalar, not looked up per operator:
      * every moment applies its own residual against it here, so two
-     * moments sharing one operator can still carry different residuals. */
-    const float a = (c_hyp * op->kappa + H_dilated) * dt;
-    const float decay = expf(-a);
-    const float phi = radiation_relaxation_phi_factor(a);
+     * moments sharing one operator can still carry different residuals.
+     * lambda[m] is the moment's OWN band-edge weight (see above): 1 would
+     * recover the grey, comoving-edge result this replaces. */
+    const double a = (c_hyp * (double)op->kappa + lambda[m] * H_dilated) * dt;
+    const double decay = exp(-a);
+    const double phi = radiation_relaxation_phi_factor_double(a);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Energy-ledger accumulation, read from this step's own inputs before
@@ -772,22 +902,48 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * step attempted, and the exact-relaxation update's own split of
      * `u_prev` and the frozen source/transport terms into the fraction
      * that decayed/never-arrived this step, using the SAME `decay`/`phi`
-     * #u's update uses. */
-    moment->cumulative_injected += dt * rescale * moment->u_source_rate;
+     * #u's update uses. Narrowed to float on assignment: #cumulative_
+     * injected/#cumulative_absorbed stay float diagnostics (see
+     * #feedback_isrf_moment_data.u's own doxygen for what stays float and
+     * why), so this is the one place their own precision, not #u's, is
+     * what matters.
+     *
+     * `-expm1(-a)`, not `1. - decay`: see #one_minus_decay_lw's own comment
+     * above for why. */
+    const double one_minus_decay = -expm1(-a);
+    moment->cumulative_injected +=
+        (float)(dt * rescale * (double)moment->u_source_rate);
     moment->cumulative_absorbed +=
-        (moment->u_prev + dt * phi * moment->dissipation_u) * (1.f - decay) +
-        (rescale * moment->u_source_rate - moment->div_specific_flux) * dt *
-            (1.f - phi);
+        (float)((moment->u_prev + dt * phi * (double)moment->dissipation_u) *
+                    one_minus_decay +
+                (rescale * (double)moment->u_source_rate -
+                 (double)moment->div_specific_flux) *
+                    dt * (1. - phi));
+    /* PE's own share of the LW-to-PE transfer: LW's `cumulative_absorbed`
+     * above ALREADY contains it (the transfer is carved out of LW's own
+     * relaxation depth, not added on top), so only PE's `cumulative_
+     * injected` needs the explicit booking, or the per-moment ledger
+     * identity `E + Abs - Inj = 0` goes red by exactly the transferred
+     * amount. */
+    if (m == ISRF_MOMENT_PE) moment->cumulative_injected += (float)transfer;
 #endif
 
     moment->u =
-        decay * (moment->u_prev + dt * phi * moment->dissipation_u) +
+        decay * (moment->u_prev + dt * phi * (double)moment->dissipation_u) +
         dt * phi *
-            (rescale * moment->u_source_rate - moment->div_specific_flux);
+            (rescale * (double)moment->u_source_rate -
+             (double)moment->div_specific_flux);
+
+    /* Added as a separate statement, not folded into the expression above:
+     * a RAW ADD onto PE's already-relaxed `u`, not subject to PE's own
+     * absorption during its arrival step. Kept apart from the update
+     * expression so -ffast-math's reassociation cannot merge it into a
+     * form that no longer vanishes exactly at `H = 0`. */
+    if (m == ISRF_MOMENT_PE) moment->u += transfer;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (moment->u < moment->u_min_since_snapshot)
-      moment->u_min_since_snapshot = moment->u;
+    if (moment->u < (double)moment->u_min_since_snapshot)
+      moment->u_min_since_snapshot = (float)moment->u;
 #endif
   }
 }
@@ -931,7 +1087,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * avoids computing `C` as its own value, which can overflow float32 at
  * near-primordial `kappa`). `w` divides `H` by the TRUE speed of light
  * `c`, not `c_hyp`: it is `a/(c_hyp*dt)` for this function's own fixed-point
- * `a = c_hyp*(kappa+H/c)*dt` (#radiation_end_gradient_propagation), so
+ * `a = c_hyp*(kappa+lambda*H/c)*dt` (#radiation_end_gradient_propagation), so
  * `c_hyp` cancels out of `w` itself, unlike `a`. `R` and `(R/eps_R)^2` are
  * formed in double so that the squared denominator cannot underflow to zero
  * under this build's fast-math folding of the ratio and its square into one
@@ -946,6 +1102,11 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * @param H The Hubble rate, #cosmology.H.
  * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
  * `c_hyp`: see this function's own doxygen for why `w` uses the true speed).
+ * @param lambda The OWNING moment's own band-edge weight
+ * (#feedback_props.band_edge_weight_pe/lw), NOT looked up through
+ * #radiation_isrf_moment_to_operator: the caller passes its one owning
+ * moment's coefficient, exactly as it already passes that moment's `kappa`
+ * via @p kappa.
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
@@ -953,18 +1114,18 @@ __attribute__((always_inline)) INLINE static float
 radiation_dissipation_floor_relaxation_gate(const float F[3],
                                             const float grad_u[3], float c_hyp,
                                             float kappa, float H, float c,
-                                            float eps_R) {
+                                            float lambda, float eps_R) {
 
   if (eps_R <= 0.f) return 1.f;
   if (c_hyp <= 0.f) return 1.f;
 
-  /* Rescaled by (kappa + H/c) relative to the doxygen's |F + C*grad_u|
-   * form: algebraically identical (this factor cancels top and bottom),
-   * but every term here stays O(1)-to-O(1e10) on production fixtures,
-   * where computing C = c_hyp/(kappa+H/c) as its own value first
-   * can overflow float32 at near-primordial kappa. Divides by the TRUE
-   * speed c, not c_hyp: see this function's own doxygen. */
-  const float w = kappa + H / c;
+  /* Rescaled by (kappa + lambda*H/c) relative to the doxygen's
+   * |F + C*grad_u| form: algebraically identical (this factor cancels top
+   * and bottom), but every term here stays O(1)-to-O(1e10) on production
+   * fixtures, where computing C = c_hyp/(kappa+lambda*H/c) as its own value
+   * first can overflow float32 at near-primordial kappa. Divides by the
+   * TRUE speed c, not c_hyp: see this function's own doxygen. */
+  const float w = kappa + lambda * H / c;
 
   /* No relaxation timescale to settle against (kappa = 0 and H = 0): keep
    * the floor at full strength. Also avoids F dropping out of both the R
@@ -1080,6 +1241,17 @@ void radiation_end_gradient_propagation(struct part *p,
   const float eps_R =
       e->feedback_props->ISRF_dissipation_floor_relaxation_residual;
 
+  /* Per-moment band-edge weight: see #radiation_end_force_propagation's
+   * matching array and doxygen. The flux relaxes at the SAME rate as its
+   * own moment's energy (both dilute like `E`): using a different moment's
+   * or the operator's owning-moment's lambda here would relax `F` and `u`
+   * at different rates for the same moment and corrupt the reduced flux
+   * `f = |F|/(c_hyp*u)` the M1 closure reads. */
+  const float lambda[ISRF_MOMENT_COUNT] = {
+      (float)e->feedback_props->band_edge_weight_pe,
+      (float)e->feedback_props->band_edge_weight_lw,
+      (float)e->feedback_props->band_edge_photon_weight_lw};
+
   /* Pre-update flux, kept per OPERATOR (not per moment): the floor's
    * relaxation-residual gate below is evaluated once per operator, from
    * its one owning moment, so only the owner's snapshot is ever read back.
@@ -1093,8 +1265,10 @@ void radiation_end_gradient_propagation(struct part *p,
     const struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
 
     /* H_dilated is this particle's own scalar, not looked up per operator:
-     * see #radiation_end_force_propagation's matching comment. */
-    const float a = (c_hyp * op->kappa + H_dilated) * dt;
+     * see #radiation_end_force_propagation's matching comment. lambda[m]
+     * is this moment's OWN band-edge weight, never the operator's owning
+     * moment's (see the array's own doxygen above). */
+    const float a = (c_hyp * op->kappa + lambda[m] * H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
     /* One power of c_hyp under the consistent-variable-c scheme: see this
@@ -1169,7 +1343,8 @@ void radiation_end_gradient_propagation(struct part *p,
        * value (`s <= 1`), computed from the incoming flux snapshotted
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
-          F_old_stash[o], moment->grad_u, c_hyp, op->kappa, H, c, eps_R);
+          F_old_stash[o], moment->grad_u, c_hyp, op->kappa, H, c,
+          lambda[radiation_isrf_operator_owner[o]], eps_R);
       op->dissipation_alpha_floor =
           s * radiation_dissipation_alpha_floor_band(op->kappa, h_phys,
                                                      alpha_floor, eps_lambda);

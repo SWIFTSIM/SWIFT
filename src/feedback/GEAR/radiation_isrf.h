@@ -54,6 +54,22 @@ extern double radiation_lw_photon_energy_cgs;
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm);
 
+/**
+ * @brief Set #feedback_props.band_edge_weight_pe/lw/photon_weight_lw from
+ * the radiation table: see #feedback_props.band_edge_weight_pe's own
+ * doxygen (feedback_properties.h) for what they are. Unlike
+ * #radiation_lw_photon_energy_cgs these are fields of @p fb_props, not
+ * process globals, so restart needs no explicit re-derivation call: they
+ * ride #feedback_props's own flat dump/restore.
+ *
+ * @param fb_props (output) The #feedback_props to set.
+ * @param rad The main stellar model's #radiation.
+ * @param sm The main #stellar_model, for its IMF mass range.
+ */
+void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
+                                          const struct radiation *rad,
+                                          const struct stellar_model *sm);
+
 /*! 1 when #feedback_props.ISRF_c_hyp_scheme selects
  * #isrf_c_hyp_scheme_consistent_variable_c, 0 for every other scheme. Set
  * once by feedback_props_init() (feedback_properties.h) and read by the
