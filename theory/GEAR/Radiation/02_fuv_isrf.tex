@@ -1455,14 +1455,16 @@ own $c_{\rm hyp}$ restores it,
 because both changes above reduce to ``multiply by the receiver's own
 $c_{\rm hyp}$'' applied to what was otherwise the same shared,
 antisymmetric-under-$i\leftrightarrow j$ coefficient; checked directly by
-\code{tests/testRadiationISRFForceDispatchConservation.c}. The M1 closure
+\code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
+suite). The M1 closure
 tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$ under this
 scheme, since $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm
 hyp},i}u_i)$ identically, the same physical reduced flux $f$ the shipped
 scheme computes from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
 rewritten operator reduces bit-for-bit to its shipped counterpart
 whenever $c_{{\rm hyp},i}$ is spatially uniform, asserted by
-\code{tests/testRadiationISRFForceDispatchConservation.c}. Agreement
+\code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
+suite). Agreement
 between two evaluations of the same operator in different inlining
 contexts is a separate and weaker matter: on an FMA-capable target the
 two contract differently and land a few ULP apart, so the test compares

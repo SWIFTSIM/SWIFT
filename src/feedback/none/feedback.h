@@ -197,6 +197,23 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Is this star particle done evolving, i.e. finished with its
+ * feedback-relevant lifetime?
+ *
+ * This no-feedback model has no star-evolution-finished state, so the
+ * underlying member is always kept at 0 (see feedback_first_init_spart()
+ * and feedback_init_after_star_formation()).
+ *
+ * @param sp The #spart to query.
+ * @return sp->feedback_data.is_dead, always 0 for this model.
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_star_dead(
+    const struct spart *sp) {
+
+  return sp->feedback_data.is_dead;
+}
+
+/**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
  * Nothing to do here for the no-feedback model.

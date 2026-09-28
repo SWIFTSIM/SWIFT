@@ -52,10 +52,14 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* Did the particle receive an event? */
+  /* Did the particle receive an event? delta_mass is tested on its own
+     because ejecta can arrive with no accompanying energy, hence with none
+     of the hit flags set, and the mass still has to be applied here or it
+     is lost from the simulation. */
   /* TODO: Remove the ionization part from here and move it to cooling */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
       !xp->feedback_data.hit_by_radiation &&
+      xp->feedback_data.delta_mass == 0.f &&
       !radiation_is_part_tagged_as_ionized(p, xp))
     return;
 
@@ -266,6 +270,18 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
+}
+
+/**
+ * @brief Is this star particle done evolving, i.e. finished with its
+ * feedback-relevant lifetime?
+ *
+ * @param sp The #spart to query.
+ * @return sp->feedback_data.is_dead.
+ */
+int feedback_is_star_dead(const struct spart *sp) {
+
+  return sp->feedback_data.is_dead;
 }
 
 /**
