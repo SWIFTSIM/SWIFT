@@ -109,8 +109,7 @@ enum isrf_c_hyp_scheme {
    * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
    * selection into that file's pairwise dispatch. Reduces bit-for-bit to
    * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform
-   * (radiation_propagation_iact.h, testRadiationISRFForceDispatchConservation
-   * in swift-gear's GEAR test suite). Agreement between
+   * (radiation_propagation_iact.h). Agreement between
    * two evaluations of the same operator in different inlining contexts is
    * a separate, weaker matter: it holds only to a few ULP, because an
    * FMA-capable target contracts the two differently. That is a property of

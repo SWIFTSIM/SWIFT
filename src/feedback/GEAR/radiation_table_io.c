@@ -606,10 +606,10 @@ static void radiation_check_imf_consistency(hid_t group_id,
  * radiation_read_mean_excess_photon_energy_array() to avoid tripling the
  * read/convert/guard boilerplate.
  *
- * Guards against float overflow the way stellar_evolution.c:676-695 does:
- * error() aborts (MPI_Abort/swift_abort, src/error.h) rather than capping.
- * A units/scaling bug should stop the run, not silently corrupt the
- * physics. Also flags (debug-checks only) an implausible collapse to
+ * Guards against float overflow by aborting rather than capping:
+ * error() aborts (MPI_Abort/swift_abort, src/error.h). A units/scaling
+ * bug should stop the run, not silently corrupt the physics. Also flags
+ * (debug-checks only) an implausible collapse to
  * exactly zero for a CGS input that was not itself zero: pychem bakes a
  * literal 0 into Q_H/DotEExcess below its own ionization threshold, so an
  * exact-zero result is only suspicious when the source value was nonzero.
@@ -1209,13 +1209,13 @@ void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
  * photon rate dQ/dE) array from the table.
  *
  * Only called when #radiation.with_ISRF is set, mirroring
- * #radiation_read_l_pe_array; radiation_read_data() has already required
- * both the raw and IMF-integrated datasets to exist.
+ * #radiation_read_l_pe_array; radiation_read_data() has already
+ * required both the raw and IMF-integrated datasets to exist.
  *
  * The stored value is E_lo(PE)^2 * dQ/dE, NOT the bare dataset value: @p
  * conversion_factor folds in both #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and
- * the cgs-to-internal power conversion #radiation_read_l_pe_array itself
- * uses, so the built table is directly comparable to #rad->raw.l_pe/
+ * the cgs-to-internal power conversion #radiation_read_l_pe_array
+ * itself uses, so the built table is directly comparable to #rad->raw.l_pe/
  * #rad->integrated.l_pe in the SAME (internal power) units: both sides of
  * the ratio land on that one system once, here at read time, rather than
  * at every use of the ratio. @p expected_units stays
@@ -1421,9 +1421,9 @@ void radiation_read_main_sequence_lifetime_array(
  *   Excluded cell is a finite, non-NaN sentinel, so a differently-resampled
  *   output grid could blend a real value with that sentinel near a row's
  *   own Excluded transition, exactly the age range the min()-gate in
- *   #radiation_get_ms_lifetime_inverse_mass_2d() exists to protect. An
- *   identity resample maps every output age node 1:1 onto one native age
- *   cell, closing this off structurally.
+ *   #radiation_get_ms_lifetime_inverse_mass_2d() exists to protect.
+ * An identity resample maps every output age node 1:1 onto one native age cell,
+ * closing this off structurally.
  * - "MainSequenceLifetimeInverseExcluded" is reduced, in the same pass, to
  *   one #radiation.longest_ms_lifetime_myr scalar per native Z row: the
  *   largest non-Excluded tabulated age in that row, or FLT_MAX for a row
@@ -1432,8 +1432,8 @@ void radiation_read_main_sequence_lifetime_array(
  *   query well below FLT_MAX, so the two sentinels are equivalent in
  *   practice). The scan asserts each
  *   row's Excluded cells are contiguous-from-that-age-to-the-end, since
- *   #radiation_get_ms_lifetime_inverse_mass_2d()'s min()-gate safety proof
- *   depends on this shape.
+ *   #radiation_get_ms_lifetime_inverse_mass_2d()'s min()-gate safety
+ * proof depends on this shape.
  * - #radiation.longest_ms_lifetime_myr is indexed by that same native Z
  *   row, so a query brackets its two rows through
  *   #interpolate_2d_bracket_x() on the table itself; the table's x axis and
@@ -1736,9 +1736,9 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     }
   }
 
-  /* FATAL-IF-ABSENT is the policy this branch already applies to
-     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" and to L_PE/L_LW
-     above: this is the ONE place to flip that policy for
+  /* FATAL-IF-ABSENT is the policy already applied above to
+     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" and to L_PE/L_LW:
+     this is the ONE place to flip that policy for
      the band-edge datasets specifically, to a has_teff-style optional read
      with the compile-time RADIATION_BAND_EDGE_WEIGHT_*_DEFAULT fallback
      (radiation.h), if a non-fatal table-absence path is wanted instead. */

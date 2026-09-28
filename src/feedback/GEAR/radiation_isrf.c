@@ -702,11 +702,9 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * the way an explicit `-(c_hyp/c)*H*dt*u` can at high redshift with a long
  * step. A consequence of the dilation, not a defect: with no absorption at
  * all (`kappa = 0`, e.g. the `ISRFCosmology` `free_field` fixture), the
- * pure-expansion transient itself now decays at the SLOWED rate `(c_hyp/c)*H`
- * rather than the true `H`, exactly like every other transient the reduced
- * speed of light slows down; `examples/SubgridTests/StellarFeedback/ISRF/
- * ISRFCosmology/isrf_cosmology_check.py`'s `free_field` reference is
- * re-derived for this. Ungated: SWIFT
+ * pure-expansion transient decays at the SLOWED rate `(c_hyp/c)*H` rather
+ * than the true `H`, exactly like every other transient the reduced speed
+ * of light slows down. Ungated: SWIFT
  * sets `cosmo->H = 0` for a non-cosmological run (`cosmology_init_no_cosmo`),
  * so the term vanishes there by construction (multiplying it by `c_hyp/c`
  * first does not change this: `(c_hyp/c)*0 = 0` exactly), exactly as for

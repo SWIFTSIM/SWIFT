@@ -82,8 +82,7 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
                                      float *div_F_i, float *div_F_j) {
   /* Both schemes share the coefficient Phi_ij and differ only in a trailing
    * scalar. Reassociation is disabled so they stay bit-for-bit identical at
-   * uniform c_hyp (testRadiationISRFForceDispatchConservation, swift-gear's
-   * GEAR test suite). This holds under clang only: GCC has no block-scoped
+   * uniform c_hyp. This holds under clang only: GCC has no block-scoped
    * equivalent. */
   {
 #if defined(__clang__)

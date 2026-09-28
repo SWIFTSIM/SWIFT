@@ -466,10 +466,9 @@ struct feedback_part_data {
       own step does make_integer_timestep's `min_ngb_bin + 2` cap apply,
       in every configuration, limiter policy or not, bounding the
       overshoot at `2^time_bin_neighbour_max_delta_bin` = 4 from that step
-      on. An instrumented production-configuration run measured a
-      per-particle overshoot up to 128 while j stayed inactive: the
-      uncapped interval is common with `--sync` and sinks, not a rare
-      corner case. Closing the gap needs
+      on. The per-particle overshoot can reach up to 128 while j stays
+      inactive: the uncapped interval is common with `--sync` and sinks,
+      not a rare corner case. Closing the gap needs
       `dt_max(i)` to be built over the force loop's neighbour set rather
       than the density loop's. An inactive particle's value is simply last
       active step's, like #time_bin itself. Shared by both bands (unlike

@@ -163,8 +163,8 @@
     depends on the spectral shape within 11.2-13.6 eV and is not a single
     atomic-physics constant, so it is a compile-time constant rather than a
     per-run parameter. Held as a literal so the header stays parseable by
-    the check scripts; testRadiationISRFFormula (swift-gear's GEAR test
-    suite) asserts it still equals the quotient times the photon energy. */
+    the check scripts, which assert it still equals the quotient times the
+    photon energy. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Metallicity mass fraction at which the population mean Lyman-Werner
@@ -215,7 +215,7 @@
     sits at or below the table's own native mass floor), not the table-
     absence case: radiation_read_data() REQUIRES the band-edge datasets
     whenever #radiation.with_ISRF is on and refuses to load a table lacking
-    them (radiation_table_io.c), matching the branch's own precedent for
+    them (radiation_table_io.c), matching its own precedent for
     "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW". That policy is
     intentionally the ONE place this can be flipped: see the
     presence-gate block in radiation_read_data() for how to make it
