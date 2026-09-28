@@ -94,7 +94,7 @@
 /*! Mean mass per hydrogen nucleon (He folded in), for converting a
     per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_PE_CGS/
     #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
-    radiation_get_dust_extinction_factor()'s own doxygen. */
+    radiation_get_dust_extinction_factor()'s doxygen. */
 #define RADIATION_MU_H 1.4
 
 /*! Hydrogen atomic mass, g (cgs); see #RADIATION_MU_H. */
@@ -163,8 +163,8 @@
     depends on the spectral shape within 11.2-13.6 eV and is not a single
     atomic-physics constant, so it is a compile-time constant rather than a
     per-run parameter. Held as a literal so the header stays parseable by
-    the check scripts, which assert it still equals the quotient times the
-    photon energy. */
+    the check scripts; a unit test asserts it still equals the quotient
+    times the photon energy. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Metallicity mass fraction at which the population mean Lyman-Werner
@@ -180,7 +180,7 @@
     the integrated table's own top mass edge before calling interpolate_2d(),
     so an exact-mass_max query deterministically takes the blended (not
     boundary-clamped) branch. See radiation_get_luminosities_from_
-    integral_2d()'s own doxygen for why this matters. */
+    integral_2d()'s doxygen for why this matters. */
 #define RADIATION_2D_EDGE_EPS 1e-5f
 
 /*! PE/LW band lower edges, eV: #RADIATION_SIGMA_D_PE_CGS/
@@ -318,7 +318,7 @@ struct radiation_grid_metadata {
 
   /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
       "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
-      attributes. See #edge_policy_l_pe's own doxygen. */
+      attributes. See #edge_policy_l_pe's doxygen. */
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 

@@ -429,7 +429,7 @@ void radiation_read_grid_metadata(hid_t group_id,
           radiation_parse_edge_policy(teff_below, teff_above, "teff");
     }
 
-    /* L_PE/L_LW are optional (see radiation.h's own doxygen on
+    /* L_PE/L_LW are optional (see radiation.h's doxygen on
        #with_ISRF): a table generated before pychem added them has
        neither dataset, and hence no matching edge_policy_l_pe_ or
        edge_policy_l_lw_ attributes either. Guard on dataset presence
@@ -630,11 +630,11 @@ static void radiation_check_imf_consistency(hid_t group_id,
  * @param log_data_internal (output, optional) If not NULL, a caller-owned
  * float array of length @p count filled with log10 of the same
  * internal-unit value #RADIATION_LOG_FLOOR_CGS-floored on the CGS side
- * before conversion (see that macro's own doxygen), exactly pychem's
+ * before conversion (see that macro's doxygen), exactly pychem's
  * log-log convention, used to build a raw table's #interpolation_1d /
  * #interpolation_2d in log-value space instead of raw-value space. Left
  * untouched if NULL (the integrated-table caller has no use for it: see
- * radiation_build_tables()'s own doxygen for why the IMF-integrated table
+ * radiation_build_tables()'s doxygen for why the IMF-integrated table
  * stays in linear space).
  * @return Newly malloc'd float array of length count, in internal
  * (optionally rescaled) units, NOT logged. This is the value a raw
@@ -733,7 +733,7 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * are otherwise-unmodified generic linear interpolators, so feeding them
  * already-logged data makes their existing linear interpolation a log-log
  * interpolation for free. Every raw getter (radiation_get_*_from_raw())
- * must exponentiate the result back; see their own doxygen.
+ * must exponentiate the result back; see their doxygen.
  *
  * The IMF-integrated table (1D only) is deliberately left in linear
  * (un-logged) value space, unlike the raw table above: it is not the same
@@ -778,13 +778,13 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_1d (output, optional) IMF-integrated 1D interpolation
  * table (1D tables only), holding the linear (un-logged) cumulative value;
- * see this function's own doxygen for why. Pass NULL for a dataset with no
+ * see this function's doxygen for why. Pass NULL for a dataset with no
  * IMF-integrated concept; left untouched then, mirroring @p integrated_2d.
  * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
  * holding log10(value in internal units), pychem-floored.
  * @param integrated_2d (output, optional) IMF-integrated 2D interpolation
  * table (2D tables only), holding the linear (un-logged) cumulative value;
- * see this function's own doxygen. Pass NULL for a dataset with no
+ * see this function's doxygen. Pass NULL for a dataset with no
  * IMF-integrated concept (MainSequenceLifetime); left untouched then.
  * @param boundary_condition_mass Mass-axis #interpolate_boundary_condition
  * for @p dataset_name's raw table (2D tables only; ignored for a 1D table,
@@ -888,7 +888,7 @@ static void radiation_build_tables(
 
     /* log_data_internal = NULL: the cumulative integral stays in linear
        (un-logged) value space, unlike the raw table; see this function's
-       own doxygen for why. */
+       doxygen for why. */
     float *integrated_data = radiation_read_cgs_array(
         group_id, integrated_dataset_name, count, conversion_factor,
         extra_scaling, integrated_expected_units, NULL);
@@ -901,7 +901,7 @@ static void radiation_build_tables(
       integrated_data_double[i] = (double)integrated_data[i];
 
     /* Both axes clamp (boundary_condition_const), regardless of @p
-       boundary_condition_mass; see this function's own doxygen. */
+       boundary_condition_mass; see this function's doxygen. */
     interpolate_2d_init(integrated_2d, log_z_nodes, grid->n_metallicity,
                         log_z_nodes, grid->n_metallicity, log_mass_min_out,
                         log_mass_max_out, interpolation_size_mass,
@@ -934,7 +934,7 @@ static void radiation_build_tables(
 
   /* integrated_1d is built from pychem's own precomputed, number-weighted,
      cumulative-from-Mmin "Integrated_<dataset_name>" dataset, not from
-     integrating the raw values above. See this function's own doxygen. */
+     integrating the raw values above. See this function's doxygen. */
   char integrated_dataset_name[64];
   int written =
       snprintf(integrated_dataset_name, sizeof(integrated_dataset_name),
@@ -970,7 +970,7 @@ static void radiation_build_tables(
 
   /* log_data_internal = NULL: the cumulative integral stays in linear
      (un-logged) value space, unlike the raw table. See this function's
-     own doxygen for why. */
+     doxygen for why. */
   float *integrated_data = radiation_read_cgs_array(
       group_id, integrated_dataset_name, (hsize_t)grid->n_mass,
       conversion_factor, extra_scaling, integrated_expected_units, NULL);
@@ -1183,7 +1183,7 @@ void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
 
 /**
  * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
- * table, if present. See #radiation_read_l_pe_array's own doxygen
+ * table, if present. See #radiation_read_l_pe_array's doxygen
  * (identical shape, on "L_LW"/#radiation.raw.l_lw/#integrated.l_lw).
  *
  * @param rad The #radiation model.
@@ -1516,7 +1516,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
     log_z_nodes[i] = log10f(grid->metallicity[i]);
 
   /* Identity resample of the native age grid: Ny = na, exact native bounds.
-     See this function's own doxygen. */
+     See this function's doxygen. */
   const float log_age_min = (float)a0;
   const float log_age_max = (float)(a0 + (na - 1) * da);
 
@@ -1592,7 +1592,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
          any age this table covers. A threshold of exactly 0 makes the
          min()-gate below reject every real query for this row, the
          correct, conservative behaviour; not seen in any real table
-         checked so far (see this function's own doxygen). */
+         checked so far (see this function's doxygen). */
       rad->longest_ms_lifetime_myr[z] = 0.f;
     }
   }
@@ -1647,7 +1647,7 @@ static void radiation_open_data_group(const char *filename, hid_t *file_id,
  * The tables are in internal units at the end of this function, with two
  * exceptions: for a 2D ("M,Z") table, raw.main_sequence_lifetime_2d stays
  * in Myr and raw.main_sequence_lifetime_inverse_2d stays in Msun,
- * deliberately not run through the unit system. See their own doxygen on
+ * deliberately not run through the unit system. See their doxygen on
  * #radiation's raw sub-struct for why.
  *
  * @param rad The #radiation model.
@@ -1683,7 +1683,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int interpolation_size_before = rad->interpolation_size;
   const int n_HII_pixels_before = rad->n_HII_pixels;
   /* with_ISRF round-trips for the same reason: radiation_zero_pointers()
-     below clears it (see its own doxygen), but it was already set moments
+     below clears it (see its doxygen), but it was already set moments
      ago, by radiation_init() (fresh start) or by the flat restore in
      radiation_restore() (restart), which both run before this function is
      called and before the L_PE/L_LW check below needs to read it. Without
@@ -1693,7 +1693,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Zero every table up front: radiation_build_tables() only populates the
      _1d or _2d variant matching this table's dimensionality, and only the
-     2D path's raw tables at that (see its own doxygen). The rest must be
+     2D path's raw tables at that (see its doxygen). The rest must be
      safe no-ops for radiation_clean()'s interpolate_1d_free()/
      interpolate_2d_free() calls regardless of which branch ran. */
   radiation_zero_pointers(rad);
@@ -1794,7 +1794,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   }
 
   /* A no-op on a table without pychem's precomputed IMF-integrated
-     datasets; see radiation_check_imf_consistency()'s own doxygen. Runs
+     datasets; see radiation_check_imf_consistency()'s doxygen. Runs
      for both 1D and 2D tables. */
   radiation_check_imf_consistency(group_id, sm);
 

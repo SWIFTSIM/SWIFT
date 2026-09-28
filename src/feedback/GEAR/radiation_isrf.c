@@ -49,7 +49,7 @@
 #include <float.h>
 #include <math.h>
 
-/* See this global's own doxygen, radiation_isrf.h. */
+/* See this global's doxygen, radiation_isrf.h. */
 int isrf_c_hyp_consistent_variable_c = 0;
 
 /**
@@ -152,7 +152,7 @@ void radiation_first_init_part(struct part *restrict p) {
    * #radiation_snapshot_part_propagation has ever run. A 0.f seed here
    * would turn `grad(u)`'s `1/rho_i` into +inf, poisoning every particle
    * with NaN before the run's first real step even begins (see this
-   * field's own doxygen, feedback_struct.h). 1.0f is safe regardless of
+   * field's doxygen, feedback_struct.h). 1.0f is safe regardless of
    * this particle's real density, since `u`/`F` are also still 0 at this
    * point. */
   fd->rho_prev = 1.0f;
@@ -206,7 +206,7 @@ void radiation_snapshot_part_propagation(struct part *p,
   /* Stable comoving density snapshot, cached unconditionally (not gated on
    * ISRF_propagation below): the gradient loop's `grad(u)` accumulation
    * (radiation_propagation_iact.h) always runs, even in injection-only
-   * mode, and reads this snapshot. See this field's own doxygen
+   * mode, and reads this snapshot. See this field's doxygen
    * (feedback_struct.h) for why the density loop cannot use a live `p->rho`
    * instead, and why it must never be left at 0.f. */
   const float rho_comoving = hydro_get_comoving_density(p);
@@ -262,7 +262,7 @@ void radiation_snapshot_part_propagation(struct part *p,
    * dt_i here (below). The other schemes decide c_hyp now, from dt_i, and
    * radiation_end_density_propagation is a no-op for them, so this branch
    * is the ENTIRE definition of c_hyp for schemes 0, 2 and 3, bit-identical
-   * to the pre-comparison-branch shipped formula when scheme is 0. */
+   * to the shipped formula when scheme is 0. */
   if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
       e->feedback_props->ISRF_c_hyp_scheme !=
           isrf_c_hyp_scheme_kernel_local_plus_variable_c) {
@@ -339,7 +339,7 @@ void radiation_snapshot_part_propagation(struct part *p,
  * c_hyp is already derived from a timestep); ISRF_propagation is off (no
  * flux transport,
  * so no receiver-side CFL to protect); the debug off-switch is set
- * (diagnostic-only, see that parameter's own doxygen); or this particle is
+ * (diagnostic-only, see that parameter's doxygen); or this particle is
  * outside the narrow eligible set below.
  *
  * Eligible set (narrowest defensible, not "every particle"): this
@@ -457,13 +457,13 @@ void radiation_init_part_propagation(struct part *p) {
  * drift-time #radiation_snapshot_part_propagation already decided #c_hyp
  * (and #feedback_reset_part already cached the M1 closure built from it),
  * and this function must leave that alone, bit-identical to the
- * pre-comparison-branch behaviour for the shipped scheme. `dt_max(i)`
+ * behaviour for the shipped scheme. `dt_max(i)`
  * covers only the neighbours the ISRF density loop reached, i.e. those
  * inside `H_i`; see #feedback_part_data.c_hyp for the `H_i <= r < H_j`
  * pair class the resulting receiver bound does not cover. Under
  * #isrf_c_hyp_consistent_variable_c the rebuilt M1 closure's own `c_M` is
  * pinned to 1 regardless of `c_hyp` (see #radiation_cache_m1_closure_part's
- * own doxygen), so for scheme 4 this function still updates `c_hyp` itself
+ * doxygen), so for scheme 4 this function still updates `c_hyp` itself
  * (read by the pairwise operators' receiver-side multiply), even though the
  * closure rebuild that follows does not change value because of it.
  *
@@ -539,7 +539,7 @@ float radiation_relaxation_phi_factor(float a) {
  * @brief Double-precision #radiation_relaxation_phi_factor, for
  * #radiation_end_force_propagation's `u`-update only: that update's own
  * relaxation depth `a` can be a few 1e-8 (see #feedback_isrf_moment_data.u's
- * own doxygen), a regime float32's 24-bit mantissa cannot resolve either
+ * doxygen), a regime float32's 24-bit mantissa cannot resolve either
  * side of the `1e-6` branch above. The flux update
  * (#radiation_end_gradient_propagation) keeps the float version: `F` itself
  * stays float, so a double `phi` there would not change what gets stored.
@@ -770,13 +770,13 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   const double rescale = c_hyp / e->physical_constants->const_speed_light_c;
   const double H = e->cosmology->H;
   /* Dilated by the same c_hyp/c factor as the absorption term: see this
-   * function's own doxygen. Bit-identical to the plain H when H = 0
+   * function's doxygen. Bit-identical to the plain H when H = 0
    * (SWIFT's non-cosmological cosmology_init_no_cosmo sets cosmo->H = 0):
    * rescale * 0 is exactly 0 for any finite rescale, no rounding.
    *
    * DOUBLE below, unlike #radiation_end_gradient_propagation's own copy of
    * this quantity: this function's relaxation depth `a` can be a few 1e-8
-   * (#feedback_isrf_moment_data.u's own doxygen), which float32 cannot
+   * (#feedback_isrf_moment_data.u's doxygen), which float32 cannot
    * resolve against a neighbouring band's own depth. #cosmology.H and the
    * three #feedback_props band-edge weights are already double at the
    * source (cosmology.h, feedback_properties.h), so this keeps their
@@ -837,7 +837,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
         (c_hyp * (double)op_lw->kappa + lambda[ISRF_MOMENT_LW] * H_dilated) *
         dt;
     /* `-expm1(-a_lw)`, not `1. - exp(-a_lw)`: at the few-1e-8 relaxation
-     * depths this function's own doxygen describes, `exp(-a_lw)` itself is
+     * depths this function's doxygen describes, `exp(-a_lw)` itself is
      * already the well-conditioned quantity, but subtracting it from 1
      * loses relative precision exactly where #radiation_relaxation_phi_
      * factor_double's own Taylor branch avoids that cancellation; expm1
@@ -902,7 +902,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
      * that decayed/never-arrived this step, using the SAME `decay`/`phi`
      * #u's update uses. Narrowed to float on assignment: #cumulative_
      * injected/#cumulative_absorbed stay float diagnostics (see
-     * #feedback_isrf_moment_data.u's own doxygen for what stays float and
+     * #feedback_isrf_moment_data.u's doxygen for what stays float and
      * why), so this is the one place their own precision, not #u's, is
      * what matters.
      *
@@ -1099,7 +1099,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param H The Hubble rate, #cosmology.H.
  * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
- * `c_hyp`: see this function's own doxygen for why `w` uses the true speed).
+ * `c_hyp`: see this function's doxygen for why `w` uses the true speed).
  * @param lambda The OWNING moment's own band-edge weight
  * (#feedback_props.band_edge_weight_pe/lw), NOT looked up through
  * #radiation_isrf_moment_to_operator: the caller passes its one owning
@@ -1122,7 +1122,7 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
    * and bottom), but every term here stays O(1)-to-O(1e10) on production
    * fixtures, where computing C = c_hyp/(kappa+lambda*H/c) as its own value
    * first can overflow float32 at near-primordial kappa. Divides by the
-   * TRUE speed c, not c_hyp: see this function's own doxygen. */
+   * TRUE speed c, not c_hyp: see this function's doxygen. */
   const float w = kappa + lambda * H / c;
 
   /* No relaxation timescale to settle against (kappa = 0 and H = 0): keep
@@ -1219,12 +1219,12 @@ void radiation_end_gradient_propagation(struct part *p,
   const float c_hyp = fd->c_hyp;
   /* Under the consistent-variable-c scheme #specific_flux is already the
    * reduced flux Ft = F/c_hyp, whose own limiter bound is |Ft| <= u: see
-   * this function's own doxygen. */
+   * this function's doxygen. */
   const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : c_hyp;
   const float H = (float)e->cosmology->H;
   const float c = (float)e->physical_constants->const_speed_light_c;
   /* Dilated by the same c_hyp/c factor as the absorption term: see this
-   * function's own doxygen and #radiation_end_force_propagation's. Bit-
+   * function's doxygen and #radiation_end_force_propagation's. Bit-
    * identical to the plain H when H = 0.f (non-cosmological runs). */
   const float H_dilated = (c_hyp / c) * H;
   const float h_phys = (float)e->cosmology->a * p->h;
@@ -1265,12 +1265,12 @@ void radiation_end_gradient_propagation(struct part *p,
     /* H_dilated is this particle's own scalar, not looked up per operator:
      * see #radiation_end_force_propagation's matching comment. lambda[m]
      * is this moment's OWN band-edge weight, never the operator's owning
-     * moment's (see the array's own doxygen above). */
+     * moment's (see the array's doxygen above). */
     const float a = (c_hyp * op->kappa + lambda[m] * H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
     /* One power of c_hyp under the consistent-variable-c scheme: see this
-     * function's own doxygen for the substitution F = c_hyp*Ft. */
+     * function's doxygen for the substitution F = c_hyp*Ft. */
     const float coeff = isrf_c_hyp_consistent_variable_c
                             ? c_hyp * dt * phi
                             : c_hyp * c_hyp * dt * phi;
@@ -1319,7 +1319,7 @@ void radiation_end_gradient_propagation(struct part *p,
 
     if (alpha_pin > 0.f) {
       /* Bypass the trigger entirely: every particle's coefficient is held at
-       * the pinned value (see this parameter's own doxygen,
+       * the pinned value (see this parameter's doxygen,
        * feedback_properties.h). The pinned value goes into the trigger
        * component and the floor component is zeroed, so that the pin stays
        * a spatially uniform coefficient: routing it through the floor would

@@ -321,7 +321,7 @@ INLINE static int feedback_read_particles(struct part *parts,
      carries no a-exponent slot at all, so an IC value is taken verbatim. */
 
   /* DOUBLE, not FLOAT: this macro points directly at the struct field
-     (feedback_isrf_moment_data.u is double, see its own doxygen), not
+     (feedback_isrf_moment_data.u is double, see its doxygen), not
      through a converter, so this type must match the field's own C type
      or the reader copies the wrong byte width into it. */
   list[0] = io_make_input_field("PESpecificEnergy", DOUBLE, 1, OPTIONAL,
