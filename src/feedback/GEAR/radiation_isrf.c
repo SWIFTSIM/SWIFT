@@ -239,10 +239,12 @@ void radiation_snapshot_part_propagation(struct part *p,
    * particle's very first real step) cannot divide by an exact zero. */
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_step = get_integer_timestep(p->time_bin);
-  /* One-step lookback (`ti_current - ti_step`, not `ti_current` itself) is
-   * load-bearing for the dose-reservoir drawdown below: it keeps the drain
-   * rate constant across a star step's sub-steps. Using `ti_current` would
-   * over-drain and empty the reservoir one sub-step early. */
+  /* get_integer_time_begin() returns the start of the step at this bin that
+   * contains `ti_current`, i.e. `ti_current - ti_step` for a particle whose
+   * step ends now. That one-step lookback is load-bearing for the
+   * dose-reservoir drawdown below: it keeps the drain rate constant across a
+   * star step's sub-steps. Passing `ti_current` itself as the interval start
+   * would over-drain and empty the reservoir one sub-step early. */
   const integertime_t ti_begin =
       get_integer_time_begin(e->ti_current, p->time_bin);
   float dt_phys;
@@ -434,7 +436,12 @@ void radiation_init_part_propagation(struct part *p) {
  * duration of a step at #max_ngb_time_bin, computed with the same
  * get_integer_timestep/get_integer_time_begin/cosmology_get_delta_time
  * calls #radiation_snapshot_part_propagation uses for this particle's own
- * `dt_i`, just evaluated at the neighbour-maximum bin instead. Same-bin
+ * `dt_i`, just evaluated at the neighbour-maximum bin instead. Both call
+ * sites therefore take the same interval, "the step at this bin that
+ * contains `e->ti_current`": for this particle's own bin that interval ends
+ * at `ti_current` and lies wholly in the past, while for a coarser
+ * neighbour bin it straddles `ti_current`, which is that neighbour's own
+ * in-progress step and the duration wanted here. Same-bin
  * case (#max_ngb_time_bin equal to #part.time_bin, i.e. every neighbour on
  * this particle's own clock): reuses #dt_prev, already this step's `dt_i`
  * from the drift, rather than a second call with the same bin, so the
@@ -450,7 +457,10 @@ void radiation_init_part_propagation(struct part *p) {
  * drift-time #radiation_snapshot_part_propagation already decided #c_hyp
  * (and #feedback_reset_part already cached the M1 closure built from it),
  * and this function must leave that alone, bit-identical to the
- * pre-comparison-branch behaviour for the shipped scheme. Under
+ * pre-comparison-branch behaviour for the shipped scheme. `dt_max(i)`
+ * covers only the neighbours the ISRF density loop reached, i.e. those
+ * inside `H_i`; see #feedback_part_data.c_hyp for the `H_i <= r < H_j`
+ * pair class the resulting receiver bound does not cover. Under
  * #isrf_c_hyp_consistent_variable_c the rebuilt M1 closure's own `c_M` is
  * pinned to 1 regardless of `c_hyp` (see #radiation_cache_m1_closure_part's
  * own doxygen), so for scheme 4 this function still updates `c_hyp` itself
