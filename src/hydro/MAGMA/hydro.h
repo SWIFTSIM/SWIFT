@@ -362,12 +362,17 @@ hydro_set_drifted_physical_internal_energy(
 
   /* Now recompute the extra quantities */
 
-  /* Compute the sound speed */
+  /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float pressure_including_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
+
+  /* Compute the sound speed */
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Update variables. */
-  p->force.pressure = pressure;
+  p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 }
 
@@ -606,7 +611,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * Multiplies the C-matrix by the appropiate constants.
  *
  * Also adds/multiplies the cosmological terms if need be.
- * Nothing to do in this scheme as the gradient loop is not used.
  *
  * @param p The particle to act upon.
  */
@@ -622,14 +626,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
    * multiplying in the factors of h coming from W */
   sym_matrix_multiply_by_scalar(&p->gradient.c_matrix_inv, h_inv_dim);
 
-  /* Finish the construction of the inverse of the velocity gradient
+  /* Finish the construction of the (un-normalised) velocity gradient by
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] *= h_inv_dim;
 
-  /* Finish the construction of the inverse of the internal energy gradient
-   * multiplying in the factors of h coming from W */
+  /* Finish the construction of the (un-normalised) internal energy gradient
+   * by multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
 }
 
