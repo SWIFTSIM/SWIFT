@@ -79,11 +79,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
    * geometric property below */
   float psize = hydro_get_comoving_psize(p);
   /* If the particle shows large deviations from a sphere, better use the
-   * minimal distance to any of its faces to compute the timestep */
-  if (p->geometry.min_face_dist < 0.25 * psize &&
-      p->geometry.min_face_dist > 0.) {
-    psize = p->geometry.min_face_dist;
-  }
+   * minimal distance to any of its faces to compute the timestep. Updated
+   * to be consistent with other criteria of deformation */
+  if (p->geometry.max_face_angle < 2.25 &&
+    p->geometry.min_face_dist > 0.) {
+      psize = p->geometry.min_face_dist;
+    }
 
   /* Max Signal Velocity between neighbours + soundspeed */
   float vmax = p->timestepvars.vmax + hydro_get_comoving_soundspeed(p);
