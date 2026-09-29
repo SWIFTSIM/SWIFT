@@ -40,8 +40,8 @@ double radiation_lw_photon_energy_cgs = 0.;
     the grey lambda(b) = 1): applied uniformly to lambda_E(PE) - 1,
     lambda_E(LW) - 1, and lambda_N(LW) (which has no "+1" floor of its own,
     see radiation_set_band_edge_coefficients()). Neither bound is a
-    physical limit on the quantity itself -- a different or future table
-    could legitimately sit outside either one -- they are sanity checks on
+    physical limit on the quantity itself: a different or future table
+    could legitimately sit outside either one; they are sanity checks on
     THIS run's own numbers before trusting them.
 
     The FLOOR catches COLLAPSE TO GREY from a units bug: folding
@@ -55,7 +55,7 @@ double radiation_lw_photon_energy_cgs = 0.;
 
     The CEILING is the largest value measured over the PARSEC grid so far
     (237, for lambda_E(LW) - 1), rounded up: it is a sanity tripwire, not a
-    derived physical bound, so exceeding it is a warning, not a refusal --
+    derived physical bound, so exceeding it is a warning, not a refusal;
     a future table legitimately could. */
 #define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_FLOOR 0.05
 #define RADIATION_BAND_EDGE_WEIGHT_MINUS_ONE_SANITY_MAX 250.0
@@ -170,7 +170,7 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
    * library's own wavelength coverage does not reach this band's edge
    * energy, even though it covers enough of the band to give a nonzero
    * total. The ratio is then silently 0 (grey), which is the correct
-   * arithmetic result, not a bug to correct here -- but it should be
+   * arithmetic result, not a bug to correct here, but it should be
    * observable, since it is exactly the state this whole feature exists to
    * remove. */
   if (engine_rank == 0 && lambda_e_pe_minus_one <= 0.)
@@ -381,6 +381,7 @@ void radiation_print(const struct radiation *rad) {
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
  * @param us The unit system.
+ * @param phys_const The physical constants.
  */
 void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct stellar_model *sm,

@@ -77,7 +77,7 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
  * cannot reach #feedback_props there: every hydro interaction, including
  * these, shares one fixed (r2, dx, hi, hj, pi, pj, a, H) signature
  * (runner_doiact_functions_hydro.h) with no #engine pointer threaded
- * through its ~30 call sites -- the same reason #feedback_part_data.c_hyp
+ * through its ~30 call sites, the same reason #feedback_part_data.c_hyp
  * itself is a per-particle cache rather than a per-pair lookup. A global
  * rather than a struct field: unlike #feedback_part_data.c_hyp, this value
  * is identical for every particle in a run, so caching it on #part would
