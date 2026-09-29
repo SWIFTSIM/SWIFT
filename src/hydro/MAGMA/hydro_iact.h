@@ -441,20 +441,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[2] *= -wj * hjd_inv;
 
   /* Verify that the G vector has the right direction */
-  const float G_ij[3] = {0.5 * (G_i[0] + G_j[0]),  /* x */
-                         0.5 * (G_i[1] + G_j[1]),  /* y */
-                         0.5 * (G_i[2] + G_j[2])}; /* z */
+  const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]),  /* x */
+                         0.5f * (G_i[1] + G_j[1]),  /* y */
+                         0.5f * (G_i[2] + G_j[2])}; /* z */
 
-  /* Compute cosine of angle between G and the axis linking the particles */
+  /* Angle between G and the axis linking the particles */
   const float G_ij_norm =
       sqrtf(G_ij[0] * G_ij[0] + G_ij[1] * G_ij[1] + G_ij[2] * G_ij[2]);
   const float G_ij_dot_dx = G_ij[0] * dx[0] + G_ij[1] * dx[1] + G_ij[2] * dx[2];
-  const float cosine_G_ij_dx =
-      fabsf(G_ij_dot_dx) * r_inv / (G_ij_norm + 1e-6 * (pi->h + pj->h));
 
-  /* Apply threshold for the angle */
+  /* Apply threshold for the angle:
+   * |G.dx| < cos(limit) |G| r  <=>  angle > limit. */
   const int G_ij_misaligned =
-      (G_ij_norm > 0.f) && (cosine_G_ij_dx < cosf(const_G_ij_angle_limit));
+      fabsf(G_ij_dot_dx) < cosf(const_G_ij_angle_limit) * G_ij_norm * r;
 
   /* Check whether the sign of the reconstructed interface normals is wrong */
   const int G_ij_wrong_sign = (G_ij_dot_dx > 0.);
@@ -464,7 +463,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /*       "Misaligned dx=[%e %e %e] G_ij=[%e %e %e] cos(angle)=%e use_SPH_i=%d
    * " */
   /*       "use_SPH_j=%d", */
-  /*       dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], cosine_G_ij_dx, */
+  /*       dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], G_ij_dot_dx, */
   /*       use_base_SPH_i, use_base_SPH_j); */
 
   /* if (G_ij_wrong_sign) */
