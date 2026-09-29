@@ -61,22 +61,26 @@ def make_projection(data, key):
     return res
 
 
-def make_column_density(fname):
-    data = load(fname)
+def make_column_density(data):
 
     # get some metadata
-    global boxsize
     boxsize = data.metadata.boxsize
     time = data.metadata.time
+    time_iu = data.metadata.time.value
     time.convert_to_units(unyt.Myr)
 
-    # make projection
+    uM = data.metadata.units.mass
+    uL = data.metadata.units.length
+    u_rho = uM / uL**2
+
+    # make projection 
     masses = make_projection(data, "masses")
+    masses.convert_to_units(u_rho)
 
-    extent = np.array([0, boxsize[0].value, 0, boxsize[1].value])
+    extent = np.array([0, boxsize[0].value,
+                       0, boxsize[1].value])
 
-    return time, masses, extent
-
+    return time, time_iu, masses, extent
 
 # the snapshots to show
 snapnrs = [10, 20, 38]
@@ -84,15 +88,21 @@ fnames = ["snapshots/BK_" + str(i).zfill(4) + ".hdf5" for i in snapnrs]
 
 # prepare and store the column densities
 times = []
+times_iu = []
 col_densities = []
 
 for fname in fnames:
-    t, rho, extent = make_column_density(fname)
+    data = load(fname)
+
+    t, t_iu, rho, extent = make_column_density(data)
+
     times.append(t)
+    times_iu.append(t_iu)
     col_densities.append(rho)
 
 # parameters for scalebar to plot
-L_box = boxsize[0]
+L_box = data.metadata.boxsize[0]
+L_box_iu = L_box.value
 L_box.convert_to_units(unyt.pc)
 
 perc = 0.25  # percentage of the boxsize to use as scale
@@ -103,15 +113,15 @@ fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
 for i in range(3):
     im_rho = axes[i].imshow(
-        col_densities[i].value.T / 1e8,
-        vmin=1.7e-1,
-        vmax=2.7,
+        col_densities[i].value.T,
+        vmin=0,
+        vmax=0.8,
         extent=extent,
         origin="lower",
         cmap="viridis",
     )
 
-    axes[i].set_title(r"$t=$" + str(np.round(times[i], 3)) + " Myr")
+    axes[i].set_title(r'$t=$'+str(np.round(times_iu[i],3)) + ' (' +str(np.round(times[i],2)) + ' Myr)')
 
     # make nice axes edges
     for loc in ["bottom", "top", "right", "left"]:
@@ -137,7 +147,7 @@ for i in range(3):
     axes[i].text(
         0.75,
         0.06,
-        str(int(perc * L_box.value)) + " pc",
+        str(np.round(perc * L_box_iu,2)) + ' (' + str(int(perc*L_box.value)) + ' pc)',
         transform=axes[i].transAxes,
         color="white",
         horizontalalignment="center",
@@ -150,8 +160,8 @@ cbar_ax = fig.add_axes([0.905, 0.028, 0.02, 0.895])
 cbar = fig.colorbar(
     im_rho,
     cax=cbar_ax,
-    label=r"$\Sigma \ \mathrm{[10^8 \ M_\odot  kpc^{-2}]}$",
-    format=ScalarFormatter(),
+    label=r'$\Sigma \ \mathrm{[IU]}$',
+    format=ScalarFormatter()
 )
 cbar.minorformatter = ScalarFormatter()
 
