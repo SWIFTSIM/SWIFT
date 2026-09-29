@@ -24,15 +24,22 @@
  * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
  * definition)
  *
- * The thermal variable is the internal energy (u). MI1 implementation using
- * only 1st-order reconstruction of v and u at the interface and a diffusion
- * signal velocity compatible with gravity.
+ * The thermal variable is the internal energy (u). MI1 or MI2 formulation of
+ * the equations of motion (selected at configure time via
+ * --with-hydro=magma2-MI1 / magma2-MI2), using only 1st-order reconstruction
+ * of v and u at the interface and a diffusion signal velocity compatible with
+ * gravity.
  */
+
+#ifdef ADAPTIVE_SOFTENING
+#error "Adaptive softening is not implemented for the MAGMA SPH scheme."
+#endif
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "forcing_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
@@ -83,6 +90,9 @@ struct xpart {
 
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
+
+  /*! Additional data used by the forcing terms */
+  struct forcing_xpart_data forcing_data;
 
 } SWIFT_STRUCT_ALIGN;
 
