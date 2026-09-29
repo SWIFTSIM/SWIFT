@@ -697,12 +697,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
-  /* Local variables to allow for gradient -> force transition */
+  /* Local variables to allow for gradient -> force transition. */
   struct sym_matrix c_matrix;
-  float gradient_vx[3];
-  float gradient_vy[3];
-  float gradient_vz[3];
-  float gradient_u[3];
+  float gradient_vx[3] = {0.f, 0.f, 0.f};
+  float gradient_vy[3] = {0.f, 0.f, 0.f};
+  float gradient_vz[3] = {0.f, 0.f, 0.f};
+  float gradient_u[3] = {0.f, 0.f, 0.f};
 
   /* Invert the c-matrix */
   const int res = sym_matrix_invert(&c_matrix, &p->gradient.c_matrix_inv,
@@ -728,16 +728,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
         p->id, p->h, hydro_props->h_max);
   }
 
-  /* Finish computation of velocity gradient (eq. 18) */
-  sym_matrix_multiply_by_vector(gradient_vx, &c_matrix,
-                                p->gradient.gradient_vx);
-  sym_matrix_multiply_by_vector(gradient_vy, &c_matrix,
-                                p->gradient.gradient_vy);
-  sym_matrix_multiply_by_vector(gradient_vz, &c_matrix,
-                                p->gradient.gradient_vz);
+  /* Without a valid C-matrix, the gradients are undefined: leave them at 0
+   * (they are not used by the force loop in that case). */
+  if (!res) {
 
-  /* Finish computation of u gradient (same as eq. 18) */
-  sym_matrix_multiply_by_vector(gradient_u, &c_matrix, p->gradient.gradient_u);
+    /* Finish computation of velocity gradient (eq. 18) */
+    sym_matrix_multiply_by_vector(gradient_vx, &c_matrix,
+                                  p->gradient.gradient_vx);
+    sym_matrix_multiply_by_vector(gradient_vy, &c_matrix,
+                                  p->gradient.gradient_vy);
+    sym_matrix_multiply_by_vector(gradient_vz, &c_matrix,
+                                  p->gradient.gradient_vz);
+
+    /* Finish computation of u gradient (same as eq. 18) */
+    sym_matrix_multiply_by_vector(gradient_u, &c_matrix,
+                                  p->gradient.gradient_u);
+  }
 
   /* Finally, update the 'force' sub-structure' */
   memcpy(&p->force.c_matrix, &c_matrix, sizeof(struct sym_matrix));
