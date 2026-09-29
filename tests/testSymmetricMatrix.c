@@ -596,13 +596,22 @@ static void test_sym_matrix_invert(void) {
   check(sym_matrix_invert(&S_inv, &S, 1e6) == 1 && sym_matrix_is_null(&S_inv),
         name, "zero matrix", 0., 0.);
 
-  /* The NaN is deliberate here: no traps */
+  /* Non-finite values (NaN, +-Inf) in any element must be rejected. Under
+   * -ffast-math, comparisons with NaN cannot be trusted, so this checks the
+   * explicit test of the input. The NaNs are deliberate here: no traps. */
   fpe_traps(0);
-  sym_matrix_identity(&S);
-  S.xx = NAN;
-  S_inv.xx = 42.f;
-  check(sym_matrix_invert(&S_inv, &S, 1e6) == 1 && sym_matrix_is_null(&S_inv),
-        name, "NaN matrix", 0., 0.);
+  const float bad_values[3] = {NAN, INFINITY, -INFINITY};
+  for (int e = 0; e < sym_matrix_num_elements; ++e) {
+    for (int v = 0; v < 3; ++v) {
+      sym_matrix_identity(&S);
+      S.elements[e] = bad_values[v];
+      for (int i = 0; i < sym_matrix_num_elements; ++i)
+        S_inv.elements[i] = 42.f;
+      check(
+          sym_matrix_invert(&S_inv, &S, 1e6) == 1 && sym_matrix_is_null(&S_inv),
+          name, "non-finite element not rejected", e, v);
+    }
+  }
   fpe_traps(1);
 
 #if DIM > 1

@@ -25,6 +25,7 @@
 
 /* Standard headers */
 #include <stdint.h>
+#include <string.h>
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -242,6 +243,22 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 }
 
 /**
+ * @brief Check that all the elements of a symmetric matrix are finite.
+ *
+ * Uses the exponent bits, as isfinite()/isnan() and comparisons with NaN are
+ * not reliable under -ffast-math (which SWIFT always uses).
+ */
+__attribute__((always_inline)) INLINE static int sym_matrix_is_finite(
+    const struct sym_matrix *M) {
+  for (int i = 0; i < sym_matrix_num_elements; ++i) {
+    uint32_t bits;
+    memcpy(&bits, &M->elements[i], sizeof(bits));
+    if ((bits & 0x7f800000u) == 0x7f800000u) return 0;
+  }
+  return 1;
+}
+
+/**
  * @brief Compute the inverse of a symmetric matrix.
  *
  * The inversion is performed in double precision. The singularity and
@@ -257,6 +274,12 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
     const double max_cond_num) {
+
+  /* Non-finite input: fail (the checks below cannot be trusted with NaNs) */
+  if (!sym_matrix_is_finite(M)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -292,6 +315,12 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
   M_inv->xy = M_inv_matrix[0][1];
   M_inv->xz = M_inv_matrix[0][2];
   M_inv->yz = M_inv_matrix[1][2];
+
+  /* The (float) result must be finite too */
+  if (!sym_matrix_is_finite(M_inv)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
 
   return 0;
 
@@ -332,25 +361,29 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
   M_inv->yy = a * det_inv;
   M_inv->xy = -b * det_inv;
 
+  /* The (float) result must be finite too */
+  if (!sym_matrix_is_finite(M_inv)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
   return 0;
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  /* Detect inf/NaN from the exponent bits, as isfinite() is folded away
-   * under -ffast-math */
-  union {
-    float f;
-    uint32_t i;
-  } bits = {M->xx};
-  const int not_finite = (bits.i & 0x7f800000u) == 0x7f800000u;
-
   /* The condition number of a non-zero 1x1 matrix is 1 */
-  if (M->xx == 0.f || not_finite || max_cond_num < 1.) {
+  if (M->xx == 0.f || max_cond_num < 1.) {
     zero_sym_matrix(M_inv);
     return 1;
   }
 
   M_inv->xx = 1.f / M->xx;
+
+  /* The (float) result must be finite too */
+  if (!sym_matrix_is_finite(M_inv)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
 
   return 0;
 
