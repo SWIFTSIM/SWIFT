@@ -21,7 +21,7 @@
 
 /**
  * @file src/feedback/GEAR/radiation.h
- * @brief Subgrid radiation feedback for GEAR. This files contains functions to
+ * @brief Subgrid radiation feedback for GEAR. This file contains functions to
  * compute quantities for the radiation feedback.
  */
 
@@ -211,7 +211,7 @@
     "grey" value 1 (or 0), and
     (b) as the value radiation_set_band_edge_coefficients() falls back to
     when the table's own denominator (Integrated_L_PE or Integrated_L_LW)
-    vanishes -- a documented degenerate case (an IMF whose whole mass range
+    vanishes, a documented degenerate case (an IMF whose whole mass range
     sits at or below the table's own native mass floor), not the table-
     absence case: radiation_read_data() REQUIRES the band-edge datasets
     whenever #radiation.with_ISRF is on and refuses to load a table lacking

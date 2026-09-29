@@ -335,7 +335,7 @@ void radiation_snapshot_part_propagation(struct part *p,
  * used by the shipped formula.
  *
  * FLT_MAX (no constraint) whenever: the fixed fraction is off (0, the
- * default -- the other two schemes need no such term, since their own
+ * default; the other two schemes need no such term, since their own
  * c_hyp is already derived from a timestep); ISRF_propagation is off (no
  * flux transport,
  * so no receiver-side CFL to protect); the debug off-switch is set
@@ -345,8 +345,8 @@ void radiation_snapshot_part_propagation(struct part *p,
  * Eligible set (narrowest defensible, not "every particle"): this
  * particle's own field is live (#feedback_part_data.is_illuminated_ISRF,
  * or, since that tag lapses while #feedback_isrf_moment_data.u itself is
- * held indefinitely -- "never cleared by cooling", see that field's own
- * doxygen -- any band's u != 0), OR a neighbour inside this particle's own
+ * held indefinitely ("never cleared by cooling", see that field's own
+ * doxygen), any band's u != 0), OR a neighbour inside this particle's own
  * kernel carries field this step (any band's
  * #feedback_isrf_operator_data.ngb_mean_abs_u_V > 0, the same kernel-mean the
  * negativity trigger reads, giving one kernel of margin before the front
@@ -404,8 +404,8 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
  * density-loop neighbour-bin maximum #feedback_part_data.max_ngb_time_bin
  * (reset to this particle's own #part.time_bin, so a particle with no
  * neighbours this iteration still yields `dt_max(i) = dt_i`; read only by
- * the kernel-local scheme, but accumulated unconditionally -- one byte
- * compare per pair -- so switching #feedback_props.ISRF_c_hyp_scheme at
+ * the kernel-local scheme, but accumulated unconditionally (one byte
+ * compare per pair), so switching #feedback_props.ISRF_c_hyp_scheme at
  * runtime needs no separate code path here). Mirrors chemistry_init_part's
  * own per-iteration reset (called from the same sites: part_init.h and the
  * ghost h-iteration redo path), so it is safe to call once or several times
@@ -796,13 +796,12 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
    * then skips this block's flops entirely, `transfer` staying the literal
    * initialiser `0.`. This is the physically correct statement (no
    * cosmological term exists to evaluate) and the cheaper path for a
-   * non-cosmological run, but it is not a bit-identity guarantee against
-   * the pre-change binary under production build flags
+   * non-cosmological run, but it is not a bit-identity guarantee across two
+   * different builds of this function under production build flags
    * (`-flto -O3 -ffast-math`): restructuring this hot function can shift
-   * `-ffast-math` reassociation even on a path this gate skips, so a
-   * production-build comparison against the pre-change binary should be
-   * checked on the compiled result, not assumed from this gate's
-   * presence. */
+   * `-ffast-math` reassociation even on a path this gate skips, so any
+   * binary-level comparison should be checked on the compiled result, not
+   * assumed from this gate's presence. */
   double transfer = 0.;
   if (H_dilated != 0.) {
     const struct feedback_isrf_operator_data *op_lw =
