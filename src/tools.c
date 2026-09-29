@@ -46,6 +46,7 @@
 #include "cosmology.h"
 #include "error.h"
 #include "feedback.h"
+#include "feedback_iact.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "mhd.h"
@@ -548,6 +549,10 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       if (r2 < hig2) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, a, H);
+        runner_iact_nonsym_feedback_density(
+            r2, dx, hi, pj->h, spi, pj, &cj->hydro.xparts[j], cosmo,
+            e->feedback_props, e->hydro_properties, e->physical_constants,
+            e->internal_units, e->cooling_func, e->ti_current);
       }
     }
   }
@@ -582,6 +587,10 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       if (r2 < hjg2) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dx, hj, pi->h, spj, pi, a, H);
+        runner_iact_nonsym_feedback_density(
+            r2, dx, hj, pi->h, spj, pi, &ci->hydro.xparts[i], cosmo,
+            e->feedback_props, e->hydro_properties, e->physical_constants,
+            e->internal_units, e->cooling_func, e->ti_current);
       }
     }
   }
@@ -801,6 +810,10 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       if (r2 < hig2) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H);
+        runner_iact_nonsym_feedback_density(
+            r2, dxi, hi, hj, spi, pj, &ci->hydro.xparts[j], cosmo,
+            e->feedback_props, e->hydro_properties, e->physical_constants,
+            e->internal_units, e->cooling_func, e->ti_current);
       }
     }
   }
