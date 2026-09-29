@@ -77,8 +77,7 @@ def make_column_density(data):
     masses = make_projection(data, "masses")
     masses.convert_to_units(u_rho)
 
-    extent = np.array([0, boxsize[0].value,
-                       0, boxsize[1].value])
+    extent = np.array([0, boxsize[0].value, 0, boxsize[1].value])
 
     return time, time_iu, masses, extent
 
@@ -122,7 +121,13 @@ for i in range(3):
         cmap="viridis",
     )
 
-    axes[i].set_title(r'$t=$'+str(np.round(times_iu[i],3)) + ' (' +str(np.round(times[i],2)) + ' Myr)')
+    axes[i].set_title(
+        r"$t=$"
+        + str(np.round(times_iu[i], 3))
+        + " ("
+        + str(np.round(times[i], 2))
+        + " Myr)"
+    )
 
     # make nice axes edges
     for loc in ["bottom", "top", "right", "left"]:
@@ -148,7 +153,10 @@ for i in range(3):
     axes[i].text(
         0.75,
         0.06,
-        str(np.round(perc * L_box_iu,2)) + ' (' + str(int(perc*L_box.value)) + ' pc)',
+        str(np.round(perc * L_box_iu, 2))
+        + " ("
+        + str(int(perc * L_box.value))
+        + " pc)",
         transform=axes[i].transAxes,
         color="white",
         horizontalalignment="center",
