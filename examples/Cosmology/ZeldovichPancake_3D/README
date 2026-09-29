@@ -65,17 +65,18 @@ accordingly.
 
      python3 compareUnits.py [basename_1] [basename_2] [z_particle]
 
-   Defaults: zeldovichPancake, zeldovichPancake_kpc, z_particle = 2.
-   All quantities are converted to physical cgs units. For z >= z_particle
-   the particles are compared one by one (tolerance 1e-3); later, the
-   collapse amplifies tiny differences, so binned profiles along x are
-   compared instead (tolerance 5e-2 of the profile's range). The script
+   Defaults: zeldovichPancake, zeldovichPancake_kpc, z_particle = 3.
+   All quantities are converted to physical cgs units and the snapshots of
+   the two runs are paired by redshift. For z >= z_particle the particles
+   are compared one by one (tolerance 1e-3); later, binned profiles along x
+   are compared instead (tolerance 5e-2 of the profile's range). The script
    returns a non-zero exit code if any comparison fails.
 
    A failure reveals a hidden dimensional constant in the scheme, e.g.
    an absolute epsilon added to a dimensional quantity or a missing
-   factor of h. Note that differences of order 10^-4 in u can appear
-   when the artificial viscosity first switches on in the centre of the
-   pancake (z ~ 2.7). These come from round-off being amplified by the
-   switch, not from the units: the same differences appear between two
-   runs in the same units with different numbers of threads.
+   factor of h. Particles are only compared one by one before z = 3: when
+   the artificial viscosity first switches on in the centre of the pancake
+   (z ~ 2.7), round-off differences are amplified to ~1e-2 in u. These do
+   not come from the units: the same differences appear between two runs
+   in the same units with different numbers of threads, which is a useful
+   control run if the check fails.

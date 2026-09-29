@@ -21,9 +21,12 @@
 # system. It compares the run with zeldovichPancake.yml (Mpc) with the one with
 # zeldovichPancake_kpc.yml (kpc), which describe the same physical problem.
 #
-# All quantities are converted to physical cgs units. Before the caustic,
-# particles are compared one by one. After shell crossing, tiny differences are
-# amplified by the collapse, so binned profiles along x are compared instead.
+# All quantities are converted to physical cgs units. Snapshots of the two runs
+# are paired by redshift. Early on (z >= z_particle), particles are compared one
+# by one. Later, once the artificial viscosity switches on in the centre of the
+# pancake (z ~ 2.7) and during shell crossing, round-off differences get
+# amplified (to ~1e-2 in u, the same between two runs with different numbers
+# of threads), so binned profiles along x are compared instead.
 #
 # Any dependence on the units reveals a hidden dimensional constant in the
 # scheme (e.g. an absolute epsilon or a missing factor of h).
@@ -37,7 +40,7 @@ import numpy as np
 
 base_1 = sys.argv[1] if len(sys.argv) > 1 else "zeldovichPancake"
 base_2 = sys.argv[2] if len(sys.argv) > 2 else "zeldovichPancake_kpc"
-z_particle = float(sys.argv[3]) if len(sys.argv) > 3 else 2.0
+z_particle = float(sys.argv[3]) if len(sys.argv) > 3 else 3.0
 
 tol_particle = 1e-3  # per particle, before the caustic
 tol_profile = 5e-2  # binned profiles (relative to the profile's range)
@@ -67,18 +70,31 @@ def profile(x, y):
     return np.array([np.mean(y[idx == b]) if np.any(idx == b) else np.nan for b in range(num_bins)])
 
 
+def redshift(filename):
+    with h5py.File(filename, "r") as f:
+        return float(np.atleast_1d(f["Header"].attrs["Redshift"])[0])
+
+
+# Pair the snapshots of both runs by redshift (the last snapshot of a run is
+# written at a_end, which need not coincide with the regular output times)
 files_1 = sorted(glob.glob("%s_[0-9][0-9][0-9][0-9].hdf5" % base_1))
 files_2 = sorted(glob.glob("%s_[0-9][0-9][0-9][0-9].hdf5" % base_2))
-n = min(len(files_1), len(files_2))
-if n == 0:
-    print("No snapshots to compare")
+z_2 = [redshift(f) for f in files_2]
+pairs = []
+for f1 in files_1:
+    z1 = redshift(f1)
+    k = int(np.argmin(np.abs(np.array(z_2) - z1))) if z_2 else -1
+    if k >= 0 and abs(z_2[k] - z1) <= 1e-4 * (1.0 + z1):
+        pairs.append((f1, files_2[k]))
+if len(pairs) == 0:
+    print("No snapshots at matching redshifts to compare")
     sys.exit(1)
 
 fields = [("Densities", "rho"), ("InternalEnergies", "u"), ("Velocities", "v_x")]
 print("%8s %8s   %s" % ("snap", "z", "   ".join("%-24s" % f[1] for f in fields)))
 failed = False
-for i in range(n):
-    s1, s2 = read(files_1[i]), read(files_2[i])
+for i, (f1, f2) in enumerate(pairs):
+    s1, s2 = read(f1), read(f2)
     per_particle = s1["z"] >= z_particle
     row = []
     for name, label in fields:
