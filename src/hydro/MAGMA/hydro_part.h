@@ -219,6 +219,11 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
+      /*! Signal speed of the Courant condition: maximal sound speed of the
+       * particle and its neighbours, only ever raised until the next force
+       * loop (e.g. by heating). */
+      float c_sig;
+
     } force;
   };
 

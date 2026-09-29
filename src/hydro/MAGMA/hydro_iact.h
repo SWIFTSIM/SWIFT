@@ -442,6 +442,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] *= -wj * hjd_inv;
   G_j[2] *= -wj * hjd_inv;
 
+  const float cos_limit = cosf(const_G_ij_angle_limit);
+
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+  /* MI1 uses G_i and G_j individually: test each of them. The averaged G can
+   * look fine while one of them is tilted too much or points the wrong way.
+   * |G.dx| < cos(limit) |G| r  <=>  angle > limit. */
+  const float G_i_norm =
+      sqrtf(G_i[0] * G_i[0] + G_i[1] * G_i[1] + G_i[2] * G_i[2]);
+  const float G_j_norm =
+      sqrtf(G_j[0] * G_j[0] + G_j[1] * G_j[1] + G_j[2] * G_j[2]);
+  const float G_i_dot_dx = G_i[0] * dx[0] + G_i[1] * dx[1] + G_i[2] * dx[2];
+  const float G_j_dot_dx = G_j[0] * dx[0] + G_j[1] * dx[1] + G_j[2] * dx[2];
+  const int G_ij_misaligned = (fabsf(G_i_dot_dx) < cos_limit * G_i_norm * r) ||
+                              (fabsf(G_j_dot_dx) < cos_limit * G_j_norm * r);
+  const int G_ij_wrong_sign = (G_i_dot_dx > 0.f) || (G_j_dot_dx > 0.f);
+#else
   /* Verify that the G vector has the right direction */
   const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]),  /* x */
                          0.5f * (G_i[1] + G_j[1]),  /* y */
@@ -452,13 +468,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       sqrtf(G_ij[0] * G_ij[0] + G_ij[1] * G_ij[1] + G_ij[2] * G_ij[2]);
   const float G_ij_dot_dx = G_ij[0] * dx[0] + G_ij[1] * dx[1] + G_ij[2] * dx[2];
 
-  /* Apply threshold for the angle:
+  /* MI2 only uses the average of G_i and G_j.
    * |G.dx| < cos(limit) |G| r  <=>  angle > limit. */
-  const int G_ij_misaligned =
-      fabsf(G_ij_dot_dx) < cosf(const_G_ij_angle_limit) * G_ij_norm * r;
+  const int G_ij_misaligned = fabsf(G_ij_dot_dx) < cos_limit * G_ij_norm * r;
 
   /* Check whether the sign of the reconstructed interface normals is wrong */
-  const int G_ij_wrong_sign = (G_ij_dot_dx > 0.);
+  const int G_ij_wrong_sign = (G_ij_dot_dx > 0.f);
+#endif
 
   /* if (G_ij_misaligned) */
   /*   warning( */
@@ -638,6 +654,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
+
+  /* Update the signal speed of the time-step with the neighbour's sound
+   * speed: as conservative as the global time-step of the paper, which
+   * limits every particle by its hottest neighbour's Courant condition. */
+  pi->force.c_sig = max(pi->force.c_sig, cj);
 }
 
 /**

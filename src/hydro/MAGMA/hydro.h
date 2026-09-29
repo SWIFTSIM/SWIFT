@@ -374,6 +374,10 @@ hydro_set_drifted_physical_internal_energy(
   /* Update variables. */
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+
+  /* The signal speed of the time-step can only grow until the next force
+   * loop (as SPHENIX's v_sig) */
+  p->force.c_sig = max(p->force.c_sig, soundspeed);
 }
 
 /**
@@ -450,7 +454,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
              : FLT_MAX;
 
   /* Courant criterion (eq. 36) */
-  const float c = p->force.soundspeed;
+  /* Signal speed: maximal sound speed of the particle and its neighbours
+   * (the paper's global time-step limits every particle by the hottest one) */
+  const float c = p->force.c_sig;
   const float dt_Courant =
       cosmo->a * p->h /
       (cosmo->a_factor_sound_speed *
@@ -786,6 +792,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.mu_tilde = 0.0f;
+
+  /* The signal speed starts with the particle's own sound speed */
+  p->force.c_sig = p->force.soundspeed;
 }
 
 /**
@@ -820,6 +829,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Update variables */
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+
+  /* The signal speed of the time-step can only grow until the next force
+   * loop (as SPHENIX's v_sig) */
+  p->force.c_sig = max(p->force.c_sig, soundspeed);
 }
 
 /**
@@ -890,6 +903,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+
+  /* The signal speed of the time-step can only grow until the next force
+   * loop (as SPHENIX's v_sig) */
+  p->force.c_sig = max(p->force.c_sig, soundspeed);
 }
 
 /**
