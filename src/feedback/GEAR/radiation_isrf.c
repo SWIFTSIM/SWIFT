@@ -225,13 +225,13 @@ void radiation_snapshot_part_propagation(struct part *p,
   const float local_dust_to_gas_ratio =
       (float)e->cooling_func->chemistry_data.local_dust_to_gas_ratio;
   p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa =
-      radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
-                                                RADIATION_SIGMA_D_PE_CGS,
-                                                local_dust_to_gas_ratio);
+      radiation_get_part_linear_absorption_rate(
+          e->internal_units, e->physical_constants, Z, rho_phys,
+          RADIATION_SIGMA_D_PE_CGS, local_dust_to_gas_ratio);
   p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].kappa =
-      radiation_get_part_linear_absorption_rate(e->internal_units, Z, rho_phys,
-                                                RADIATION_SIGMA_D_LW_CGS,
-                                                local_dust_to_gas_ratio);
+      radiation_get_part_linear_absorption_rate(
+          e->internal_units, e->physical_constants, Z, rho_phys,
+          RADIATION_SIGMA_D_LW_CGS, local_dust_to_gas_ratio);
 
   /* This particle's own physical timestep, using its already-decided
    * integer timestep, not a new timestep-computation hook. Can be exactly
@@ -1490,6 +1490,7 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
  * = sigma_d_band * D(Z) / (mu_H * m_H).
  *
  * @param us Unit system.
+ * @param phys_const Physical constants (for the proton mass).
  * @param Z Gas metal mass fraction.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
  * @param local_dust_to_gas_ratio See
@@ -1497,14 +1498,17 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
  * @return Dust mass opacity, internal units.
  */
 __attribute__((always_inline)) INLINE static float
-radiation_get_dust_mass_opacity(const struct unit_system *us, float Z,
+radiation_get_dust_mass_opacity(const struct unit_system *us,
+                                const struct phys_const *phys_const, float Z,
                                 float sigma_d_band_cgs,
                                 float local_dust_to_gas_ratio) {
 
   const float D_relative = radiation_get_dust_to_gas_ratio_relative_to_MW(
       Z, local_dust_to_gas_ratio);
-  const float kappa_eff_cgs = sigma_d_band_cgs * D_relative /
-                              (RADIATION_MU_H * RADIATION_HYDROGEN_MASS_CGS);
+  const double m_H_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const float kappa_eff_cgs =
+      sigma_d_band_cgs * D_relative / (RADIATION_MU_H * m_H_cgs);
   return kappa_eff_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
          units_cgs_conversion_factor(us, UNIT_CONV_AREA);
 }
@@ -1513,6 +1517,7 @@ radiation_get_dust_mass_opacity(const struct unit_system *us, float Z,
  * Band-specific dust extinction factor: exp(-kappa_eff * Sigma_gas_p).
  *
  * @param us Unit system.
+ * @param phys_const Physical constants.
  * @param Z Gas metal mass fraction.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
  * @param Sigma_gas_p Physical gas column density, internal units.
@@ -1521,12 +1526,14 @@ radiation_get_dust_mass_opacity(const struct unit_system *us, float Z,
  * @return Dust extinction factor, in (0, 1].
  */
 __attribute__((always_inline)) INLINE static float
-radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
-                                     float sigma_d_band_cgs, float Sigma_gas_p,
+radiation_get_dust_extinction_factor(const struct unit_system *us,
+                                     const struct phys_const *phys_const,
+                                     float Z, float sigma_d_band_cgs,
+                                     float Sigma_gas_p,
                                      float local_dust_to_gas_ratio) {
 
   const float kappa_eff = radiation_get_dust_mass_opacity(
-      us, Z, sigma_d_band_cgs, local_dust_to_gas_ratio);
+      us, phys_const, Z, sigma_d_band_cgs, local_dust_to_gas_ratio);
   return expf(-kappa_eff * Sigma_gas_p);
 }
 
@@ -1538,6 +1545,7 @@ radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
  * physical rate.
  *
  * @param us Unit system.
+ * @param phys_const Physical constants.
  * @param Z Gas metal mass fraction.
  * @param rho_p Physical gas density, internal units.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
@@ -1546,10 +1554,12 @@ radiation_get_dust_extinction_factor(const struct unit_system *us, float Z,
  * @return Local linear dust absorption rate, internal units (1/length).
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
-                                          float rho_p, float sigma_d_band_cgs,
+radiation_get_part_linear_absorption_rate(const struct unit_system *us,
+                                          const struct phys_const *phys_const,
+                                          float Z, float rho_p,
+                                          float sigma_d_band_cgs,
                                           float local_dust_to_gas_ratio) {
-  return radiation_get_dust_mass_opacity(us, Z, sigma_d_band_cgs,
+  return radiation_get_dust_mass_opacity(us, phys_const, Z, sigma_d_band_cgs,
                                          local_dust_to_gas_ratio) *
          rho_p;
 }
@@ -1558,6 +1568,7 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  * @brief Receiver-side LW/PE dust extinction factors for a gas particle.
  *
  * @param us Unit system.
+ * @param phys_const Physical constants.
  * @param cosmo The current cosmological model.
  * @param p The receiving #part.
  * @param Z The receiving particle's own metal mass fraction.
@@ -1570,9 +1581,10 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us, float Z,
  */
 __attribute__((always_inline)) INLINE void
 radiation_get_part_ISRF_extinction_factors(
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct part *p, float Z, const struct cooling_function_data *cooling,
-    const float extinction_path, float extinction[ISRF_OPERATOR_COUNT]) {
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct part *p, float Z,
+    const struct cooling_function_data *cooling, const float extinction_path,
+    float extinction[ISRF_OPERATOR_COUNT]) {
 
   const float Sigma_gas_p =
       radiation_get_comoving_gas_column_density_at_part(p, extinction_path) *
@@ -1583,7 +1595,9 @@ radiation_get_part_ISRF_extinction_factors(
       (float)cooling->chemistry_data.local_dust_to_gas_ratio;
 
   extinction[ISRF_OPERATOR_PE] = radiation_get_dust_extinction_factor(
-      us, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
+      us, phys_const, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p,
+      local_dust_to_gas_ratio);
   extinction[ISRF_OPERATOR_LW] = radiation_get_dust_extinction_factor(
-      us, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p, local_dust_to_gas_ratio);
+      us, phys_const, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p,
+      local_dust_to_gas_ratio);
 }

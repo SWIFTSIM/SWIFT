@@ -91,14 +91,13 @@
     system. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
-/*! Mean mass per hydrogen nucleon (He folded in), for converting a
-    per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_PE_CGS/
-    #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
-    radiation_get_dust_extinction_factor()'s doxygen. */
+/*! Mean mass per hydrogen nucleon (He folded in), in units of the proton
+    mass. It is the calibration partner of the per-hydrogen-nucleon dust
+    cross-section (#RADIATION_SIGMA_D_PE_CGS/#RADIATION_SIGMA_D_LW_CGS),
+    fixed by the gas the grain model was calibrated in. It is deliberately
+    NOT the run's hydrogen fraction: the dust-to-gas ratio is a mass ratio,
+    so the run's composition cancels out of the opacity. */
 #define RADIATION_MU_H 1.4
-
-/*! Hydrogen atomic mass, g (cgs); see #RADIATION_MU_H. */
-#define RADIATION_HYDROGEN_MASS_CGS 1.6726219e-24
 
 /*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
     al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV

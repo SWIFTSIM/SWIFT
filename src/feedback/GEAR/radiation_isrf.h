@@ -106,13 +106,13 @@ float radiation_get_comoving_extinction_path(
 float radiation_get_comoving_gas_column_density_at_part(
     const struct part *p, const float extinction_path);
 void radiation_get_part_ISRF_extinction_factors(
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct part *p, float Z, const struct cooling_function_data *cooling,
-    const float extinction_path, float extinction[ISRF_OPERATOR_COUNT]);
-float radiation_get_part_linear_absorption_rate(const struct unit_system *us,
-                                                float Z, float rho_p,
-                                                float sigma_d_band_cgs,
-                                                float local_dust_to_gas_ratio);
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct part *p, float Z,
+    const struct cooling_function_data *cooling, const float extinction_path,
+    float extinction[ISRF_OPERATOR_COUNT]);
+float radiation_get_part_linear_absorption_rate(
+    const struct unit_system *us, const struct phys_const *phys_const, float Z,
+    float rho_p, float sigma_d_band_cgs, float local_dust_to_gas_ratio);
 float radiation_relaxation_phi_factor(float a);
 
 #endif /* SWIFT_RADIATION_ISRF_GEAR_H */

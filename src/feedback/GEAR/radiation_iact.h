@@ -286,8 +286,8 @@ radiation_iact_nonsym_feedback_apply(
        radiation_get_part_ISRF_extinction_factors for the formula. */
     const float extinction_path = radiation_get_comoving_extinction_path(
         fb_props, pj, xpj, r, cosmo, phys_const, hydro_props, us, cooling);
-    radiation_get_part_ISRF_extinction_factors(us, cosmo, pj, Z_j, cooling,
-                                               extinction_path, extinction);
+    radiation_get_part_ISRF_extinction_factors(
+        us, phys_const, cosmo, pj, Z_j, cooling, extinction_path, extinction);
 
     /* u_inject is an energy; dividing by mj below converts it to the
        specific energy each moment (or the dose reservoir) stores. Each
