@@ -65,7 +65,11 @@ radiation_iact_nonsym_feedback_density(
   }
 
   const float mj = hydro_get_mass(pj);
-  const float r = sqrtf(r2);
+  /* Floored so a coincident star/gas pair (r2 == 0) cannot divide dx_unit
+     to a NaN below; same shape feedback_common.c's HII channel uses for
+     si->h. */
+  const float r2_min = 1e-6f * hi * hi;
+  const float r = sqrtf(max(r2, r2_min));
 
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
@@ -200,7 +204,11 @@ radiation_iact_nonsym_feedback_apply(
     const integertime_t ti_current) {
 
   const float mj = hydro_get_mass(pj);
-  const float r = sqrtf(r2);
+  /* Floored so a coincident star/gas pair (r2 == 0) cannot divide the
+     radial momentum kick to a NaN below; same shape as the density loop
+     above and feedback_common.c's HII channel. */
+  const float r2_min = 1e-6f * hi * hi;
+  const float r = sqrtf(max(r2, r2_min));
 
   float hi_inv = 1.0f / hi;
   float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
