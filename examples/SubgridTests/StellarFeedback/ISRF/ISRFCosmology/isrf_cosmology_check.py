@@ -248,6 +248,11 @@ either direction. The generic terms:
   bounding it, and twice its measured drift replaces the bound wherever it
   is larger.
 
+(A2)'s bar is relative to the predicted exponent, like its residual. Its
+float term is the species fraction's own storage: H2I is a float rewritten
+every step (cooling_struct.h), so ln x_H2 carries at most eps/2 per step
+taken up to that snapshot, divided by the exponent predicted up to it.
+
 (A1)'s bar carries no term for the predicted decay itself, which is on the
 other side of the residual now, only: the log line's own ``%.5g`` precision
 on each lambda, propagated through the band's own coefficient and times the
@@ -1838,12 +1843,32 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
         ok &= gate(f"(A1) ln u_{band} drift, worst |residual|, {ledger}", worst, bar)
 
-    # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
+    # H2, per snapshot, every term RELATIVE to the predicted exponent, which
+    # is what errors["H2"] is: implicit solve (k dt/2), one-step snapshot lag
     # (dt/t without cosmology; with it the rate varies as a^-3, same order),
-    # float32 round-off; with cosmology the step-end rate adds 1.5 dlna_step
-    # ((p/2) dlna_step at p = 3, this module's own Bars section, not 2.0 at
-    # p = 4: A2's rate no longer carries u_LW's own a0/a factor).
-    budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + FLOAT32_EPS * n_steps
+    # float32 storage of the species fraction; with cosmology the step-end
+    # rate adds 1.5 dlna_step ((p/2) dlna_step at p = 3, this module's own
+    # Bars section, not 2.0 at p = 4: A2's rate no longer carries u_LW's own
+    # a0/a factor). H2I_frac is a float rewritten every step
+    # (cooling_struct.h), so ln x_H2 carries at most one unit round-off
+    # (eps/2) per step taken so far, an ABSOLUTE ln error divided by the
+    # predicted exponent it is compared with.
+    exponent_so_far = errors["rate"] * errors["integral"][1:]
+    steps_so_far = np.array(
+        [step_count(run[: i + 1], dt_max) for i in range(1, len(run))]
+    )
+    if not (
+        np.all(np.isfinite(errors["H2"]))
+        and np.all(np.isfinite(exponent_so_far))
+        and np.all(exponent_so_far > 0.0)
+    ):
+        print(
+            "  FAIL: (A2) the H2 error or the predicted exponent is "
+            "non-finite, or the predicted exponent is not positive"
+        )
+        return False
+    float_storage = 0.5 * FLOAT32_EPS * steps_so_far / exponent_so_far
+    budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + float_storage
     cosmo = 1.5 * dt_max if cosmological else 0.0
     measured_nc = np.zeros_like(budget)
     if reference is not None:
@@ -1886,7 +1911,8 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     k = int(np.argmax(ratio))
     print(
         f"  bar ln x_H2 (per snapshot): implicit solve {0.5 * errors['rate'] * dt_step:.1e} "
-        f"+ lag dt/t {dt_step / elapsed[-1]:.1e} (end) to {dt_step / elapsed[0]:.1e} (first), "
+        f"+ lag dt/t {dt_step / elapsed[-1]:.1e} (end) to {dt_step / elapsed[0]:.1e} (first) "
+        f"+ float32 H2I storage {float_storage[-1]:.1e} (end) to {float_storage[0]:.1e} (first), "
         f"2 x non-cosmological up to {2.0 * np.max(measured_nc):.1e}, step-end rate {cosmo:.1e}"
     )
     print(
