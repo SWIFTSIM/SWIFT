@@ -1505,12 +1505,9 @@ radiation_get_dust_mass_opacity(const struct unit_system *us,
 
   const float D_relative = radiation_get_dust_to_gas_ratio_relative_to_MW(
       Z, local_dust_to_gas_ratio);
-  const double m_H_cgs = phys_const->const_proton_mass *
-                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const float kappa_eff_cgs =
-      sigma_d_band_cgs * D_relative / (RADIATION_MU_H * m_H_cgs);
-  return kappa_eff_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
-         units_cgs_conversion_factor(us, UNIT_CONV_AREA);
+  return sigma_d_band_cgs * D_relative /
+         (RADIATION_MU_H * phys_const->const_proton_mass *
+          units_cgs_conversion_factor(us, UNIT_CONV_AREA));
 }
 
 /**
