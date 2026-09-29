@@ -234,9 +234,10 @@ void radiation_snapshot_part_propagation(struct part *p,
                                                 local_dust_to_gas_ratio);
 
   /* This particle's own physical timestep, using its already-decided
-   * integer timestep, not a new timestep-computation hook. dt_i is floored
-   * at FLT_MIN so a not-yet-assigned time_bin (only possible before this
-   * particle's very first real step) cannot divide by an exact zero. */
+   * integer timestep, not a new timestep-computation hook. Can be exactly
+   * 0 before this particle's very first real step. Cached into #dt_prev
+   * at its raw value, unfloored, so every reader can detect that case
+   * exactly with its own comparison rather than dividing by a floor. */
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_step = get_integer_timestep(p->time_bin);
   /* get_integer_time_begin() returns the start of the step at this bin that
@@ -254,7 +255,6 @@ void radiation_snapshot_part_propagation(struct part *p,
   } else {
     dt_phys = (float)get_timestep(p->time_bin, e->time_base);
   }
-  dt_phys = max(dt_phys, FLT_MIN);
 
   /* Schemes "kernel-local" and "kernel-local + variable-c" both defer
    * c_hyp entirely to radiation_end_density_propagation, once the density
@@ -276,6 +276,14 @@ void radiation_snapshot_part_propagation(struct part *p,
        * timestep term, see radiation_isrf_part_timestep(). */
       c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
               (float)e->physical_constants->const_speed_light_c;
+    } else if (dt_phys <= 0.f) {
+      /* h_phys/dt_phys would overflow float32 once h_phys exceeds about 8
+       * internal length units at this degenerate dt_phys. The else
+       * branch's own min(c_hyp, c) would only absorb that because
+       * min(+inf, c) resolves to c, which -ffast-math does not guarantee
+       * (swift-knowledge.md). Return that same intended value directly
+       * instead, without ever performing the division. */
+      c_hyp = (float)e->physical_constants->const_speed_light_c;
     } else {
       c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
       c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
@@ -296,9 +304,18 @@ void radiation_snapshot_part_propagation(struct part *p,
    * inactive particle must not draw down a dose it will not integrate this
    * step. An inactive particle's u_*_source_rate is simply left at last
    * step's value; it is never read again before this function next runs
-   * for it (as active) and overwrites it. */
+   * for it (as active) and overwrites it. dt_phys > 0.f is also required:
+   * #radiation_part_has_no_neighbours refunds a give-up particle's drawdown
+   * as `u_source_rate * dt_prev` (the raw, unfloored value cached above), so
+   * u_source_rate must be computed from that SAME raw dt_phys, not a
+   * floored copy, or the two no longer multiply back to the amount actually
+   * subtracted from the reservoir below. At dt_phys == 0 that means not
+   * drawing down at all: the "else if" branch zeroes the rate and leaves
+   * the reservoir untouched, so the dose is kept for a later step instead
+   * of being computed from, and lost to, a division that has no raw
+   * timestep to pair it with. */
   struct feedback_part_data *fd = &p->feedback_data;
-  if (part_is_active(p, e) &&
+  if (part_is_active(p, e) && dt_phys > 0.f &&
       (fd->isrf_moment[ISRF_MOMENT_PE].u_dose_reservoir > 0.f ||
        fd->isrf_moment[ISRF_MOMENT_LW].u_dose_reservoir > 0.f)) {
     double t_rem;
@@ -446,10 +463,13 @@ void radiation_init_part_propagation(struct part *p) {
  * this particle's own clock): reuses #dt_prev, already this step's `dt_i`
  * from the drift, rather than a second call with the same bin, so the
  * result is bit-identical to the shipped per-particle scheme there,
- * independent of codegen. `dt_max` is floored at FLT_MIN in both branches:
+ * independent of codegen. Only the same-bin branch can give `dt_max == 0`:
  * before this particle's first drift has ever run (the initial,
- * pre-any-step gradient pass), #dt_prev is still its first-init 0.f, which
- * would otherwise divide by an exact zero.
+ * pre-any-step gradient pass), #dt_prev is still its first-init 0.f. The
+ * cross-bin branch cannot: it is taken only when #max_ngb_time_bin exceeds
+ * #part.time_bin, so its own get_integer_timestep() is strictly positive.
+ * Either way, a zero `dt_max` is branched on explicitly below rather than
+ * floored and divided.
  *
  * No-op unless #feedback_props.ISRF_c_hyp_scheme is
  * #isrf_c_hyp_scheme_kernel_local or
@@ -496,11 +516,20 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
       dt_max = (float)get_timestep(fd->max_ngb_time_bin, e->time_base);
     }
   }
-  dt_max = max(dt_max, FLT_MIN);
 
   const float h_phys = (float)e->cosmology->a * p->h;
-  float c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_max;
-  c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
+  float c_hyp;
+  if (dt_max <= 0.f) {
+    /* Same degenerate case #radiation_snapshot_part_propagation documents
+     * for #dt_prev (its source in the same-bin branch above). The else
+     * branch's own min(c_hyp, c) would only absorb the resulting overflow
+     * because min(+inf, c) resolves to c, which -ffast-math does not
+     * guarantee. Return that same intended value directly instead. */
+    c_hyp = (float)e->physical_constants->const_speed_light_c;
+  } else {
+    c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_max;
+    c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
+  }
   /* The debug pin is applied after the light-speed clamp above and is not
    * itself clamped: a pin value above c gives a superluminal propagation
    * speed on purpose, for isolating dispersion behaviour at chosen values
