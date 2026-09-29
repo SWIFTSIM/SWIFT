@@ -111,7 +111,7 @@ float radiation_get_log_metallicity(float Z) {
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @param The bolometric luminosity.
+ * @return The bolometric luminosity.
  */
 float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2) {
@@ -120,7 +120,7 @@ float radiation_get_luminosities_from_integral(const struct radiation *rad,
   float luminosity_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
   float luminosity_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
   return luminosity_2 - luminosity_1;
-};
+}
 
 /**
  * @brief Get the non-IMF-integrated bolometric luminosity at a given mass.
@@ -140,7 +140,7 @@ float radiation_get_luminosities_from_raw(const struct radiation *rad,
                                           float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/0, __func__);
   return (float)exp10(interpolate_1d(&rad->raw.luminosities, log_m));
-};
+}
 
 /**
  * @brief Get the IMF-averaged ionization rate per mass.
@@ -148,7 +148,7 @@ float radiation_get_luminosities_from_raw(const struct radiation *rad,
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @param The ionization rate;
+ * @return The ionization rate.
  */
 double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2) {
@@ -159,7 +159,7 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
   double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2) *
                        RADIATION_DOT_N_ION_TABLE_SCALING;
   return dot_N_ion_2 - dot_N_ion_1;
-};
+}
 
 /**
  * @brief Get the non-IMF-integrated ionization rate at a given mass.
@@ -190,7 +190,7 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
   const float dot_N_ion_scaled =
       (float)exp10(interpolate_1d(&rad->raw.dot_N_ion, log_m));
   return (double)dot_N_ion_scaled * RADIATION_DOT_N_ION_TABLE_SCALING;
-};
+}
 
 /**
  * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
@@ -234,7 +234,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
   const double delta_dot_E_excess = dot_E_excess_2 - dot_E_excess_1;
 
   return delta_dot_E_excess / delta_dot_N_ion;
-};
+}
 
 /**
  * @brief Get the non-IMF-integrated mean excess photon energy above the
@@ -270,7 +270,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw(
   const double dot_E_excess =
       (float)exp10(interpolate_1d(&rad->raw.dot_E_excess, log_m));
   return dot_E_excess / dot_N_ion;
-};
+}
 
 /**
  * @brief Get the non-IMF-integrated bolometric luminosity at a given mass
@@ -299,7 +299,7 @@ float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
                                              float log_z, float log_m) {
   radiation_check_dimensionality(rad, /*expect_2d=*/1, __func__);
   return (float)exp10(interpolate_2d(&rad->raw.luminosities_2d, log_z, log_m));
-};
+}
 
 /**
  * @brief Return whether a star has evolved past MainSequenceLifetime(Z, M)
@@ -370,7 +370,7 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
   const float dot_N_ion_scaled =
       (float)exp10(interpolate_2d(&rad->raw.dot_N_ion_2d, log_z, log_m));
   return (double)dot_N_ion_scaled * RADIATION_DOT_N_ION_TABLE_SCALING;
-};
+}
 
 /**
  * @brief Get the non-IMF-integrated mean excess photon energy above the
@@ -414,7 +414,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
   const double dot_E_excess =
       (float)exp10(interpolate_2d(&rad->raw.dot_E_excess_2d, log_z, log_m));
   return dot_E_excess / dot_N_ion;
-};
+}
 
 /**
  * @brief Nudge a mass-axis log-mass query strictly inside a 2D IMF-
@@ -475,7 +475,7 @@ float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
   const float luminosity_2 = interpolate_2d(
       interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
   return luminosity_2 - luminosity_1;
-};
+}
 
 /**
  * @brief Get the IMF-averaged ionization rate per mass, at a given
@@ -505,7 +505,7 @@ double radiation_get_ionization_rate_from_integral_2d(
                      radiation_nudge_mass_edge_2d(interp, log_m2)) *
       RADIATION_DOT_N_ION_TABLE_SCALING;
   return dot_N_ion_2 - dot_N_ion_1;
-};
+}
 
 /**
  * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
@@ -555,7 +555,7 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
   const double delta_dot_E_excess = dot_E_excess_2 - dot_E_excess_1;
 
   return delta_dot_E_excess / delta_dot_N_ion;
-};
+}
 
 /**
  * @brief Get the population-level main-sequence-lifetime-capped upper mass

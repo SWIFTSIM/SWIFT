@@ -275,7 +275,7 @@ struct feedback_isrf_moment_data {
       Exactly `(u_prev + dt_prev*phi*dissipation_u)*(1-e) +
       ((c_hyp/c)*u_source_rate - div_specific_flux)*dt_prev*(1-phi)`,
       `e = exp(-a)`, `phi = radiation_relaxation_phi_factor(a)`, `a =
-      (c_hyp*kappa + H)*dt_prev` -- the same `e`/`phi`/`a` #u's own update
+      (c_hyp*kappa + H)*dt_prev`, the same `e`/`phi`/`a` #u's own update
       uses this step, read before #u is overwritten. This is NOT the pure
       dust-extinction loss alone: #div_specific_flux (transport) and
       #dissipation_u (the artificial-dissipation source) are folded in
@@ -399,8 +399,8 @@ struct feedback_part_data {
   /*! Neutral hydrogen mass fraction, cached by the cooling step right after
       its species update (grackle_1+: HI_frac; grackle_0: 1.0f
       unconditionally, no species tracked). Not read by anything yet: a
-      future MPI scheme's F3 latch must consume the PREVIOUS pass's value,
-      not the current step's.
+      future MPI-consistent consumer of this field must read the PREVIOUS
+      pass's value, not the current step's.
 
       The cache write is skipped on cooling_new_energy()'s early-return
       paths (subgrid-ionized floor, or pinned by
@@ -685,9 +685,9 @@ struct feedback_spart_data {
         two ends of the interval) instead of a rectangle rule at the rate
         "now" alone. A monotonically-declining SSP emission rate makes the
         rectangle rule systematically under-issue photons (biased, not
-        noise -- it does not average out over passes). Negative is the
+        noise: it does not average out over passes). Negative is the
         sentinel for "no previous pass yet" (set at star formation), which
-        falls back to the pre-fix rectangle rule for a star's first pass. */
+        falls back to the rectangle rule for a star's first pass. */
     double dot_N_ion_pix_prev[HII_MAX_ANGULAR_PIXELS];
 
     /*! Photon *count* spendable per pixel this HII rebuild pass:

@@ -19,7 +19,7 @@
 #ifndef SWIFT_FEEDBACK_GEAR_COMMON_H
 #define SWIFT_FEEDBACK_GEAR_COMMON_H
 
-/* We need to explicitely point to the src/ file to ensure the correct file is
+/* We need to explicitly point to the src/ file to ensure the correct file is
    included for each feedback */
 #include "../../feedback_properties.h"
 #include "cooling.h"
@@ -28,7 +28,7 @@
 #include "units.h"
 
 /**
- * @file src/feebback/GEAR/feedback_common.h
+ * @file src/feedback/GEAR/feedback_common.h
  * @brief Header file with common functions for GEAR and GEAR-mechanical
  * feedback modules.
  */

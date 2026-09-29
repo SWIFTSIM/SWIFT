@@ -48,6 +48,10 @@
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cooling The #cooling_function_data used in the run.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
@@ -356,6 +360,7 @@ radiation_iact_nonsym_feedback_apply(
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param initial_mass Initial mass of the gas, i.e. before any winds or SN.
  */
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,

@@ -38,7 +38,8 @@
 #include "units.h"
 
 /**
- * Total hydrogen mass fraction of this #part, from its composition alone.
+ * @brief Total hydrogen mass fraction of this #part, from its composition
+ * alone.
  *
  * Not cooling_get_hydrogen_mass_fraction(): that returns HI_frac + HII_frac at
  * COOLING_GRACKLE_MODE >= 1, i.e. the *atomic* hydrogen only, so at mode >= 2
@@ -64,10 +65,10 @@ radiation_get_part_total_hydrogen_mass_fraction(
 }
 
 /**
- * Get the gas number of hydrogen atoms.
+ * @brief Get the gas number of hydrogen atoms.
  *
  * @param phys_const Physical constants.
- * @param hydro_properties The #hydro_props.
+ * @param hydro_props The #hydro_props.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
@@ -94,7 +95,7 @@ radiation_get_part_number_hydrogen_atoms(
 }
 
 /**
- * Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
+ * @brief Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
  * fractions rather than total composition. Used only to price the one-off
  * cost of claiming a fresh candidate (feedback_iact_HII_ionization): a
  * particle whose species are already partly or fully ionized, whether
@@ -111,7 +112,7 @@ radiation_get_part_number_hydrogen_atoms(
  * conservative behaviour.
  *
  * @param phys_const Physical constants.
- * @param hydro_properties The #hydro_props.
+ * @param hydro_props The #hydro_props.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
@@ -156,7 +157,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
 }
 
 /**
- * Metallicity-dependent collisional-equilibrium temperature floor
+ * @brief Metallicity-dependent collisional-equilibrium temperature floor
  * (Hopkins 2023's photoionization temperature fit; see
  * theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). Depends
  * only on Z (used by radiation_get_part_ionized_internal_energy).
@@ -192,7 +193,7 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
 }
 
 /**
- * Get the specific internal energy this #part would be held at once
+ * @brief Get the specific internal energy this #part would be held at once
  * ionized: the minimum of the energy needed to fully ionize it and the
  * metallicity-dependent collisional-equilibrium energy (see
  * cooling_ionize_part_subgrid in cooling_gear_subgrid.h). Pure
@@ -204,7 +205,7 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
  * other.
  *
  * @param phys_const Physical constants.
- * @param hydro_properties The #hydro_props.
+ * @param hydro_props The #hydro_props.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
@@ -242,7 +243,7 @@ radiation_get_part_ionized_internal_energy(
 }
 
 /**
- * Case-B hydrogen recombination coefficient, temperature-dependent
+ * @brief Case-B hydrogen recombination coefficient, temperature-dependent
  * (Hui & Gnedin 1997, MNRAS 292, 27, Appendix A; their fit to Ferland et
  * al. 1992, accurate to 0.7% from 1 K to 1e9 K).
  *
@@ -261,10 +262,10 @@ radiation_get_case_b_recombination_coefficient_cgs(const double T) {
 }
 
 /**
- * Get the gas ionizing rate needed to fully ionize the #part.
+ * @brief Get the gas ionizing rate needed to fully ionize the #part.
  *
  * @param phys_const Physical constants.
- * @param hydro_properties The #hydro_props.
+ * @param hydro_props The #hydro_props.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
@@ -320,7 +321,7 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
- * Set the #spart's ionizing photon rate, split evenly across the active
+ * @brief Set the #spart's ionizing photon rate, split evenly across the active
  * angular pixels.
  *
  * @param sp The star.
@@ -340,7 +341,7 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 }
 
 /**
- * Zero a #spart's radiation feedback output (L_bol,
+ * @brief Zero a #spart's radiation feedback output (L_bol,
  * mean_excess_photon_energy_HI, and the ionizing photon rate), for the case
  * where no radiation table is loaded (#radiation.is_active = 0).
  *
@@ -364,7 +365,7 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
 }
 
 /**
- * Open this #spart's ionizing photon budget for one HII rebuild pass:
+ * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
  * convert its emission rate into the photon count emitted over dt_back, the
  * time elapsed since the previous pass, plus any overdraft carried from it.
  *
@@ -428,7 +429,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 }
 
 /**
- * Resync the trapezoid quadrature's cached rate to the rate now, without
+ * @brief Resync the trapezoid quadrature's cached rate to the rate now, without
  * opening a budget for this pass.
  *
  * A gas-free working-level cell skips radiation_open_ionizing_photon_budget()
@@ -437,7 +438,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
  * the skipped gap. Without this resync, dot_N_ion_pix_prev would instead
  * stay stuck at its value from before the skip, so the next real pass's
  * trapezoid would average against a stale, too-high rate over a dt_back that
- * does not cover the period the stale rate applied to -- a small
+ * does not cover the period the stale rate applied to, a small
  * one-directional over-issue. Call this on that skip path to keep the cache
  * anchored to the same instant dt_back is anchored to.
  *
@@ -453,7 +454,7 @@ radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
 }
 
 /**
- * Consume the #spart ionizing photon budget.
+ * @brief Consume the #spart ionizing photon budget.
  *
  * @param sp The star.
  * @param pixel The angular pixel to consume from.
@@ -466,7 +467,7 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
 }
 
 /**
- * Tag the #part as ionized to be ionized in feedback_update_part().
+ * @brief Tag the #part as ionized to be ionized in feedback_update_part().
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -475,6 +476,12 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * stay flagged as ionized (the ionizing star's next HII rebuild). Cooling
  * keeps re-flooring its temperature until then instead of undoing the
  * ionization on the very next step.
+ * @param excess_photon_energy_HI Mean photon energy above the 13.6 eV HI
+ * ionization threshold for the tagging star, in cgs (erg); 0 unless
+ * GEARFeedback:HII_couple_ionization_rate is on.
+ * @param photoionization_rate_HI Photoionization rate coefficient Gamma_HI
+ * from the tagging star at this particle's location, in internal 1/time;
+ * 0 unless GEARFeedback:HII_couple_ionization_rate is on.
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
     struct part *p, struct xpart *xp, long long star_id, double end_time,
@@ -490,7 +497,7 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
 }
 
 /**
- * Reset the #part ionization tag.
+ * @brief Reset the #part ionization tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -502,7 +509,7 @@ __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
 }
 
 /**
- * Is this #part *tagged* as ionized ?
+ * @brief Is this #part *tagged* as ionized ?
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -514,12 +521,13 @@ __attribute__((always_inline)) INLINE char radiation_is_part_tagged_as_ionized(
 }
 
 /**
- * The simulation time until which this #part should stay flagged as
+ * @brief The simulation time until which this #part should stay flagged as
  * ionized. Only meaningful while radiation_is_part_tagged_as_ionized()
  * is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @return The simulation time at which the ionization tag expires.
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_part_ionized_end_time(const struct part *p,
@@ -528,7 +536,7 @@ radiation_get_part_ionized_end_time(const struct part *p,
 }
 
 /**
- * Clear #part::feedback_data.is_illuminated_ISRF once its illumination
+ * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
  * window has lapsed. Mirrors cooling_ionize_part_subgrid's own
  * `time >= end_time` expiry of #is_ionized: called once per step, per
  * particle (feedback_reset_part), regardless of whether a star touches
@@ -560,11 +568,12 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
 }
 
 /**
- * Id of the star that ionized this #part. Only meaningful while
+ * @brief Id of the star that ionized this #part. Only meaningful while
  * radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @return The id of the ionizing star.
  */
 __attribute__((always_inline)) INLINE long long
 radiation_get_part_ionized_star_id(const struct part *p,
@@ -573,12 +582,13 @@ radiation_get_part_ionized_star_id(const struct part *p,
 }
 
 /**
- * Mean photon energy above the 13.6 eV HI ionization threshold of the
+ * @brief Mean photon energy above the 13.6 eV HI ionization threshold of the
  * star that tagged this #part, in cgs (erg), frozen at tag time. Only
  * meaningful while radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @return Mean excess photon energy above the HI threshold, cgs erg.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
@@ -587,12 +597,13 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
 }
 
 /**
- * Photoionization rate coefficient Gamma_HI frozen on this #part at tag
+ * @brief Photoionization rate coefficient Gamma_HI frozen on this #part at tag
  * time (internal 1/time). Only meaningful while
  * radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @return Photoionization rate coefficient Gamma_HI, internal 1/time.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
@@ -601,7 +612,7 @@ radiation_get_part_photoionization_rate_coefficient(const struct part *p,
 }
 
 /**
- * Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
+ * @brief Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
  * flux (photons / area / time, internal units), via the standard hydrogen
  * photoionization cross-section at the Lyman limit (sigma_HI = 6.3e-18
  * cm^2, Osterbrock & Ferland 2006), a physical constant, not a tunable
@@ -725,7 +736,7 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
 }
 
 /**
- * Local ISRF strength in Habing units, from this #part's own PE+LW
+ * @brief Local ISRF strength in Habing units, from this #part's own PE+LW
  * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
  * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
  * per-particle isrf_habing array (GrackleCooling chemistry_data.
@@ -769,7 +780,7 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 }
 
 /**
- * H2 Lyman-Werner photodissociation rate from this #part's own LW-band
+ * @brief H2 Lyman-Werner photodissociation rate from this #part's own LW-band
  * specific-energy field: k_diss = sigma_H2 * F_LW with F_LW a PHOTON flux,
  * which a particle does not carry. It carries the LW band's ENERGY flux,
  * so the photon flux is that divided by a mean photon energy E_LW and the

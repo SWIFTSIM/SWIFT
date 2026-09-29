@@ -27,7 +27,6 @@
 #include <config.h>
 
 /* Include header */
-#include "error.h"
 #include "inline.h"
 #include "kernel_hydro.h"
 #include "radiation.h"
@@ -35,8 +34,8 @@
 #include <math.h>
 
 /**
- * Compute the gas comoving column density at the star's location using the
- * Sobolev approximation.
+ * @brief Compute the gas comoving column density at the star's location
+ * using the Sobolev approximation.
  *
  * @param sp The #spart.
  * @return Comoving gas column density at the star's location.
@@ -63,8 +62,8 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
 }
 
 /**
- * Compute a metallicity-scaled dust opacity around a star, in physical
- * internal units, from its cgs value at solar metallicity.
+ * @brief Compute a metallicity-scaled dust opacity around a star, in
+ * physical internal units, from its cgs value at solar metallicity.
  *
  * @param sp The #spart.
  * @param us Unit system.
@@ -84,7 +83,8 @@ radiation_get_physical_opacity(const struct spart *sp,
 }
 
 /**
- * Compute the physical optical depth around a star for a given opacity.
+ * @brief Compute the physical optical depth around a star for a given
+ * opacity.
  *
  * @param sp The #spart.
  * @param us Unit system.
@@ -105,13 +105,13 @@ radiation_get_physical_optical_depth(const struct spart *sp,
 }
 
 /**
- * Compute the physical radiation pressure emitted by the star.
+ * @brief Compute the physical radiation pressure emitted by the star.
  *
  * LEBRON momentum coupling (Hopkins, Quataert & Murray 2012, MNRAS 421,
  * 3488, Sec 2.1; Hopkins et al. 2014, MNRAS 445, 581, App A):
  *          dot_p = (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c
- * fraction of the non-ionizing continuum absorbed before dust reprocessing
- * (was assumed always 1), times the IR-trapping boost.
+ * fraction of the non-ionizing continuum absorbed before dust reprocessing,
+ * times the IR-trapping boost.
  *
  * kappa_NUV=1800 cm^2/g*(Z/Zsun) is a flux-mean opacity standing in for the
  * whole non-ionizing continuum (912A-3um). This is population-(STARBURST99),
@@ -122,7 +122,7 @@ radiation_get_physical_optical_depth(const struct spart *sp,
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
- * @return Radiation pressure emittied by the star.
+ * @return Radiation pressure emitted by the star.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_star_physical_radiation_pressure(

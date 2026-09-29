@@ -256,6 +256,7 @@ void feedback_compute_spart_timestep(
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The #phys_const.
@@ -325,7 +326,7 @@ void feedback_will_do_feedback(
   if (star_age_end_step == 0.0) {
     /* See the comment in feedback_init_after_star_formation(). But you will
        need to go through the feedback loops in the next timestep to compute
-       all required quantitied for the stellar evolution. */
+       all required quantities for the stellar evolution. */
     sp->feedback_data.will_do_feedback = 1;
     sp->feedback_data.will_do_HII_ionization = 1;
     return;
@@ -499,6 +500,7 @@ void feedback_will_do_HII_ionization(
  * @param with_cosmology Are we running with the cosmological expansion?
  * @param cosmo The current cosmological model.
  * @param time The current time (in double)
+ * @return Age of the star at the end of the current timestep.
  */
 double compute_star_age_end_of_step(const struct spart *sp,
                                     const int with_cosmology,
@@ -585,11 +587,12 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 }
 
 /**
- * Get the #spart ionization photon emission rate for a given angular pixel.
+ * @brief Get the #spart ionization photon emission rate for a given angular
+ * pixel.
  *
  * A pure rate, never debited during a rebuild pass: use it for physical
  * quantities derived from the star's emission (the rate-coupled flux, the
- * bootstrap Stromgren radius), not for the pass's spending decisions --
+ * bootstrap Stromgren radius), not for the pass's spending decisions:
  * those go through #feedback_get_star_ionization_budget.
  *
  * @param sp The star.
@@ -602,8 +605,8 @@ __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
 }
 
 /**
- * Get the #spart's remaining ionizing photon *count* for a given angular
- * pixel this rebuild pass.
+ * @brief Get the #spart's remaining ionizing photon *count* for a given
+ * angular pixel this rebuild pass.
  *
  * @param sp The star.
  * @param pixel The angular pixel.
@@ -615,7 +618,7 @@ feedback_get_star_ionization_budget(const struct spart *sp, int pixel) {
 }
 
 /**
- * Get the largest remaining ionizing photon count across all of the
+ * @brief Get the largest remaining ionizing photon count across all of the
  * #spart's active angular pixels. Used only for loop-termination/retry
  * decisions: one exhausted pixel doesn't mean the star is done.
  *
@@ -633,8 +636,9 @@ feedback_get_star_ionization_budget_max(const struct spart *sp) {
 }
 
 /**
- * Get the raw sum of the remaining ionizing photon count over all of the
- * #spart's active angular pixels, positive and negative contributions alike
+ * @brief Get the raw sum of the remaining ionizing photon count over all of
+ * the #spart's active angular pixels, positive and negative contributions
+ * alike
  * (a pixel in debt after #feedback_hii_claim_part's deterministic-boundary
  * overdraw counts negatively). Diagnostic only: the per-pixel budget is
  * still what every spending decision above is gated on.
@@ -657,6 +661,7 @@ feedback_get_star_ionization_budget_total(const struct spart *sp) {
  *
  * @param sp The #spart.
  * @param e The #engine.
+ * @return 1 if this star should run HII ionization feedback, 0 otherwise.
  */
 int feedback_is_HII_ionization_active(const struct spart *sp,
                                       const struct engine *e) {
@@ -671,15 +676,11 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 }
 
 /**
- * Determines whether a gas #part can be ionized.
+ * @brief Determines whether a gas #part can be ionized.
  *
- * @param phys_const Physical constants.
- * @param us Unit system.
- * @param hydro_properties The #hydro_props.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  * @return Is the particle ionized?
  */
 __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
@@ -698,7 +699,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  /* The 1.1 factor is here for safety margin and numerical stability */
+  /* The 1.01 factor is here for safety margin and numerical stability */
   const char is_cold = (T <= 1.01 * ten_to_four_kelvin);
 
   /* Density threshold criterion */
@@ -726,6 +727,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param us Internal unit system.
  * @param cosmo The current cosmological model.
  * @param cooling Cooling function data.
+ * @return Photoionization rate coefficient Gamma_HI, internal 1/time, or 0
+ * if GEARFeedback:HII_couple_ionization_rate is off.
  */
 __attribute__((always_inline)) INLINE static float
 feedback_hii_photoionization_rate_HI(
@@ -758,6 +761,7 @@ feedback_hii_photoionization_rate_HI(
  *
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @return Absolute simulation time until which the tag stays valid.
  */
 __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
     const double time, const double dt_back) {
@@ -973,6 +977,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
  * sp->feedback_data.radiation, a GEAR-specific struct.
  *
  * @param sp The #spart to query.
+ * @return Number of active angular pixels for this star.
  */
 int feedback_get_star_HII_pixel_count(const struct spart *sp) {
   return sp->feedback_data.radiation.n_HII_pixels;
@@ -1017,6 +1022,8 @@ void feedback_set_star_HII_last_attempt(struct spart *sp,
  * to rebuild its HII region, whether or not that chance found gas.
  *
  * @param sp The #spart to query.
+ * @return The (star-relative) age at which this star's HII region was last
+ * given a chance to rebuild.
  */
 double feedback_get_star_HII_last_attempt(const struct spart *sp) {
   return sp->feedback_data.radiation.HII_region_last_attempt;
@@ -1033,6 +1040,7 @@ double feedback_get_star_HII_last_attempt(const struct spart *sp) {
  * @param feedback_props The #feedback_props.
  * @param dt_enrichment This star's current enrichment timestep, the stand-in
  * cadence in "rebuild every step" mode.
+ * @return The HII rebuild cadence currently in force for this star.
  */
 double feedback_get_star_HII_nominal_interval(
     const struct feedback_props *feedback_props, const double dt_enrichment) {
@@ -1085,6 +1093,7 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
  *
  * @param p The #part to query.
  * @param xp The #part's extended data.
+ * @return 1 if the particle is tagged as HII-ionized, 0 otherwise.
  */
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp) {
@@ -1100,6 +1109,7 @@ char feedback_is_part_tagged_as_ionized(const struct part *p,
  *
  * @param p The #part to query.
  * @param xp The #part's extended data.
+ * @return The id of the star that tagged this particle as HII-ionized.
  */
 long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp) {
@@ -1113,6 +1123,7 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
  * provides this function, returning 0 everywhere except here for GEAR.
  *
  * @param p The #part to query.
+ * @return Local specific PE-band radiation field.
  */
 double feedback_get_part_u_PE(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].u;
@@ -1123,6 +1134,7 @@ double feedback_get_part_u_PE(const struct part *p) {
  * #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
+ * @return Local specific Lyman-Werner-band radiation field.
  */
 double feedback_get_part_u_LW(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u;
@@ -1133,6 +1145,7 @@ double feedback_get_part_u_LW(const struct part *p) {
  * at a fixed reference photon energy, see #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
+ * @return Local Lyman-Werner-band photon-number moment.
  */
 double feedback_get_part_u_LW_PHOTON(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
@@ -1151,6 +1164,7 @@ double feedback_get_part_u_LW_PHOTON(const struct part *p) {
  * particle would contribute against an identical partner.
  *
  * @param p The #part to query.
+ * @return Negativity-triggered artificial-dissipation coefficient, PE band.
  */
 float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
   return max(
@@ -1163,6 +1177,8 @@ float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
  * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
+ * @return Negativity-triggered artificial-dissipation coefficient,
+ * Lyman-Werner band.
  */
 float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
   return max(
@@ -1178,6 +1194,8 @@ float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
  * #feedback_get_part_dissipation_alpha_LW.
  *
  * @param p The #part to query.
+ * @return Negativity-triggered artificial-dissipation coefficient,
+ * Lyman-Werner-band photon-number moment.
  */
 float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
   return max(
@@ -1192,6 +1210,7 @@ float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
  * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
  * @param p The #part to query.
+ * @return `(1/rho) div(rho F)` accumulator, PE band.
  */
 float feedback_get_part_div_specific_flux_PE(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux;
@@ -1201,6 +1220,7 @@ float feedback_get_part_div_specific_flux_PE(const struct part *p) {
  * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
+ * @return `(1/rho) div(rho F)` accumulator, Lyman-Werner band.
  */
 float feedback_get_part_div_specific_flux_LW(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].div_specific_flux;
@@ -1211,6 +1231,8 @@ float feedback_get_part_div_specific_flux_LW(const struct part *p) {
  * photon-number moment.
  *
  * @param p The #part to query.
+ * @return `(1/rho) div(rho F)` accumulator, Lyman-Werner-band photon-number
+ * moment.
  */
 float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].div_specific_flux;
@@ -1291,6 +1313,8 @@ void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
  *
  * @param p The #part to query.
  * @param e The #engine.
+ * @return Most negative PE-band specific energy since the previous
+ * snapshot, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
                                                 const struct engine *e) {
@@ -1306,6 +1330,8 @@ float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
  *
  * @param p The #part to query.
  * @param e The #engine.
+ * @return Most negative Lyman-Werner-band specific energy since the
+ * previous snapshot, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
                                                 const struct engine *e) {
@@ -1322,6 +1348,8 @@ float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
  *
  * @param p The #part to query.
  * @param e The #engine.
+ * @return Most negative Lyman-Werner-band photon-number moment since the
+ * previous snapshot, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
                                                        const struct engine *e) {
@@ -1339,6 +1367,8 @@ float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
  * without SWIFT_DEBUG_CHECKS.
  *
  * @param p The #part to query.
+ * @return Cumulative PE-band raw injected dose since first init, or 0
+ * without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_injected_PE(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1352,6 +1382,8 @@ float feedback_get_part_cumulative_injected_PE(const struct part *p) {
  * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
+ * @return Cumulative Lyman-Werner-band raw injected dose since first init,
+ * or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_injected_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1366,6 +1398,8 @@ float feedback_get_part_cumulative_injected_LW(const struct part *p) {
  * photon-number moment.
  *
  * @param p The #part to query.
+ * @return Cumulative Lyman-Werner-band photon-number moment raw injected
+ * dose since first init, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1383,6 +1417,8 @@ float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
  * without SWIFT_DEBUG_CHECKS.
  *
  * @param p The #part to query.
+ * @return Cumulative PE-band absorbed/dissipation-attributed specific
+ * energy since first init, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1396,6 +1432,8 @@ float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
  * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner band.
  *
  * @param p The #part to query.
+ * @return Cumulative Lyman-Werner-band absorbed/dissipation-attributed
+ * specific energy since first init, or 0 without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1410,6 +1448,9 @@ float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
  * photon-number moment.
  *
  * @param p The #part to query.
+ * @return Cumulative Lyman-Werner-band photon-number moment
+ * absorbed/dissipation-attributed specific energy since first init, or 0
+ * without SWIFT_DEBUG_CHECKS.
  */
 float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1429,6 +1470,7 @@ float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
  * length and a physical timestep.
  *
  * @param p The #part to query.
+ * @return Kernel-local hyperbolic propagation speed.
  */
 float feedback_get_part_c_hyp(const struct part *p) {
   return p->feedback_data.c_hyp;
@@ -1443,6 +1485,7 @@ float feedback_get_part_c_hyp(const struct part *p) {
  * being the one actually compiled in.
  *
  * @param sp The #spart to query.
+ * @return Current ionized mass of this star's HII region.
  */
 float feedback_get_star_HII_mass(const struct spart *sp) {
   return sp->feedback_data.radiation.mass_HII_region;
@@ -1457,6 +1500,7 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
  * being the one actually compiled in.
  *
  * @param sp The #spart to query.
+ * @return Star's current non-ionizing PE-band luminosity.
  */
 double feedback_get_star_L_PE(const struct spart *sp) {
   return sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE];
@@ -1467,6 +1511,7 @@ double feedback_get_star_L_PE(const struct spart *sp) {
  * #feedback_get_star_L_PE.
  *
  * @param sp The #spart to query.
+ * @return Star's current Lyman-Werner-band luminosity.
  */
 double feedback_get_star_L_LW(const struct spart *sp) {
   return sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
@@ -1477,6 +1522,7 @@ double feedback_get_star_L_LW(const struct spart *sp) {
  * #feedback_get_star_L_PE.
  *
  * @param sp The #spart to query.
+ * @return Star's photospheric effective temperature.
  */
 float feedback_get_star_teff(const struct spart *sp) {
   return sp->feedback_data.radiation.teff;
@@ -1489,7 +1535,7 @@ float feedback_get_star_teff(const struct spart *sp) {
  * star_formation_copy_properties().
  *
  * @param sp The #spart to act upon.
- * @param feedback_props The feedback perties to use.
+ * @param feedback_props The feedback properties to use.
  * @param star_type The stellar particle type.
  */
 void feedback_init_after_star_formation(

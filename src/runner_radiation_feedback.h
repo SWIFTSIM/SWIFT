@@ -20,8 +20,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RUNNER_RADIATION_FEEBDACK_H
-#define SWIFT_RUNNER_RADIATION_FEEBDACK_H
+#ifndef SWIFT_RUNNER_RADIATION_FEEDBACK_H
+#define SWIFT_RUNNER_RADIATION_FEEDBACK_H
 
 /* Config parameters. */
 #include <config.h>
@@ -404,4 +404,4 @@ runner_do_stars_hii_ionization_feedback_check_sort(
   }
 #endif
 }
-#endif /* SWIFT_RUNNER_RADIATION_FEEBDACK_H */
+#endif /* SWIFT_RUNNER_RADIATION_FEEDBACK_H */
