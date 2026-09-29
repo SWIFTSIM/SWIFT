@@ -334,13 +334,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
             ? expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit))
             : 1.f;
 
-    /* Van Leer limiter (eq. 21) */
+    /* Van Leer limiter (eq. 21).
+     * Slopes of opposite signs (A <= 0) mean an extremum between the
+     * particles: no reconstruction. Also avoids the division by zero at A = -1.
+     */
     const float fraction_vel =
-        (A_ij_vel != -1.f)
+        (A_ij_vel > 0.f)
             ? 4.f * A_ij_vel / ((1.f + A_ij_vel) * (1.f + A_ij_vel))
-            : 1.f;
+            : 0.f;
 
-    const float Phi_ij_vel = fmaxf(0.f, fminf(1.f, fraction_vel)) * exp_term;
+    const float Phi_ij_vel = fminf(1.f, fraction_vel) * exp_term;
 
     /* Mid-point reconstruction, first order (eq. 17) */
     v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
@@ -375,12 +378,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     const float A_ij_u = A_ij_u_den != 0.f ? A_ij_u_num / A_ij_u_den : 0.f;
 
-    /* Van Leer limiter (eq. 21) */
+    /* Van Leer limiter (eq. 21), as above */
     const float fraction_u =
-        (A_ij_u != -1.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u))
-                         : 1.f;
+        (A_ij_u > 0.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u)) : 0.f;
 
-    const float Phi_ij_u = fmaxf(0.f, fminf(1.f, fraction_u)) * exp_term;
+    const float Phi_ij_u = fminf(1.f, fraction_u) * exp_term;
 
     /* Mid-point reconstruction, first order (eq. 17) */
     u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
