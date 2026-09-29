@@ -292,6 +292,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const int force_zeroth_order = 0;
 #endif
 
+  /* Slope limiter applied to the velocities (0: no reconstruction). Also
+   * used for the Hubble flow, see below. */
+  float Phi_vel = 0.f;
+
   /* Reconstruct v and u at the interface unless one of the particles is weird
    */
   if (!use_base_SPH_i && !use_base_SPH_j && !force_zeroth_order) {
@@ -313,7 +317,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                pi->force.gradient_vy[2] * dx[1] * dx[2] +
                                pi->force.gradient_vz[0] * dx[2] * dx[0] +
                                pi->force.gradient_vz[1] * dx[2] * dx[1] +
-                               pi->force.gradient_vz[2] * dx[2] * dx[2];
+                               pi->force.gradient_vz[2] * dx[2] * dx[2] +
+                               a2_Hubble * r2; /* Hubble flow: a^2 H I */
 
     const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
                                pj->force.gradient_vx[1] * dx[0] * dx[1] +
@@ -323,7 +328,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                pj->force.gradient_vy[2] * dx[1] * dx[2] +
                                pj->force.gradient_vz[0] * dx[2] * dx[0] +
                                pj->force.gradient_vz[1] * dx[2] * dx[1] +
-                               pj->force.gradient_vz[2] * dx[2] * dx[2];
+                               pj->force.gradient_vz[2] * dx[2] * dx[2] +
+                               a2_Hubble * r2; /* Hubble flow: a^2 H I */
 
     const float A_ij_vel =
         A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
@@ -344,6 +350,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
             : 0.f;
 
     const float Phi_ij_vel = fminf(1.f, fraction_vel) * exp_term;
+    Phi_vel = Phi_ij_vel;
 
     /* Mid-point reconstruction, first order (eq. 17) */
     v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
@@ -393,11 +400,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
 
-    /* Simple limiter preventing problem inversion */
-    // if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
-    //     (pi->u < pj->u && u_rec_i > u_rec_j)) {
-    // u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
-    //}
+    /* Limiter preventing inversion: the slope limiter above only compares
+     * the two slopes, not the actual difference. For steep profiles, the
+     * reconstructed difference can change sign (or appear between equal
+     * values), which would make the conduction transport energy from the
+     * colder to the hotter particle. Use no difference in that case. */
+    if ((pi->u - pj->u) * (u_rec_i - u_rec_j) <= 0.f) {
+      u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
+    }
   }
 
   /* Difference in velocity at the mid-point */
@@ -410,17 +420,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float vel_rel_j = eta_j[0] * -v_rec_ij[0] + eta_j[1] * -v_rec_ij[1] +
                           eta_j[2] * -v_rec_ij[2];
 
-  /* Includes the hubble flow term (a^2 H dx, projected on eta = dx / h);
-   * not used for du/dt. */
-  const float vel_rel_Hubble_i = fac_mu * (vel_rel_i + a2_Hubble * r2 * hi_inv);
-  const float vel_rel_Hubble_j = fac_mu * (vel_rel_j + a2_Hubble * r2 * hj_inv);
+  /* Includes the hubble flow term (a^2 H dx, projected on eta = dx / h).
+   * The Hubble flow is a linear field: reconstructed to the mid-point like the
+   * peculiar velocities (with the same limiter), its difference reduces to
+   * (1 - Phi) a^2 H dx. fac_mu converts the internal velocities to the units
+   * of the (comoving) sound speed they are combined with in Q. */
+  const float Hubble_rec = (1.f - Phi_vel) * a2_Hubble * r2;
+  const float vel_rel_Hubble_i = fac_mu * (vel_rel_i + Hubble_rec * hi_inv);
+  const float vel_rel_Hubble_j = fac_mu * (vel_rel_j + Hubble_rec * hj_inv);
 
-  /* Terms entering the viscosity (eq. 15) */
+  /* Terms entering the viscosity (eq. 15).
+   * Only for pairs that are actually approaching (raw velocities including the
+   * Hubble flow, as in the other SPH schemes): the reconstructed velocities
+   * can indicate compression while the particles recede, in which case Q
+   * would do negative work (Q v_ij . G < 0) and cool the gas. */
+  const int pair_approaching = (dvdr_Hubble < 0.f);
   const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
   const float mu_i =
-      fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared));
+      pair_approaching
+          ? fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared))
+          : 0.f;
   const float mu_j =
-      fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared));
+      pair_approaching
+          ? fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared))
+          : 0.f;
 
   /* Eq. 14 */
   const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
@@ -510,8 +533,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_ij_dot_G_i =
       v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
 
-  /* Raw change in internal energy (eq. 3) */
-  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
+  /* Same, including the Hubble flow (a^2 H dx) */
+  const float v_ij_Hubble_dot_G_i =
+      v_ij_dot_G_i +
+      a2_Hubble * (dx[0] * G_i[0] + dx[1] * G_i[1] + dx[2] * G_i[2]);
+
+  /* Raw change in internal energy (eq. 3). The comoving internal energy
+   * absorbs the P dV work of the Hubble expansion, hence the pressure term
+   * uses the peculiar velocity only. The viscous pressure Q is not part of
+   * that change of variables: its heating uses the full relative velocity */
+  pi->u_dt += mj * (pressurei * v_ij_dot_G_i + Qi * v_ij_Hubble_dot_G_i) /
+              (rhoi * rhoi);
 
 #else /* Gasoline-like mixing */
 
@@ -520,7 +552,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                           0.5f * (G_i[2] + G_j[2])};
 
   const float acc_term = (pressurei + pressurej + Qi + Qj) / (rhoi * rhoj);
-  const float du_term = (pressurei + Qi) / (rhoi * rhoj);
 
   /* Raw fluid acceleration (eq. 10) */
   pi->a_hydro[0] -= mj * acc_term * G_avg[0];
@@ -531,8 +562,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_ij_dot_G_avg =
       v_ij[0] * G_avg[0] + v_ij[1] * G_avg[1] + v_ij[2] * G_avg[2];
 
-  /* Raw change in internal energy (eq. 11) */
-  pi->u_dt += du_term * mj * v_ij_dot_G_avg;
+  /* Same, including the Hubble flow (a^2 H dx) */
+  const float v_ij_Hubble_dot_G_avg =
+      v_ij_dot_G_avg +
+      a2_Hubble * (dx[0] * G_avg[0] + dx[1] * G_avg[1] + dx[2] * G_avg[2]);
+
+  /* Raw change in internal energy (eq. 11). The comoving internal energy
+   * absorbs the P dV work of the Hubble expansion, hence the pressure term
+   * uses the peculiar velocity only. The viscous pressure Q is not part of
+   * that change of variables: its heating uses the full relative velocity */
+  pi->u_dt += mj * (pressurei * v_ij_dot_G_avg + Qi * v_ij_Hubble_dot_G_avg) /
+              (rhoi * rhoj);
 
 #endif
 
