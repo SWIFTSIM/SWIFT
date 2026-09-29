@@ -269,8 +269,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       -fac_mu * hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
-  const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
-  const float eta_j[3] = {-dx[0] / hj, -dx[1] / hj, -dx[2] / hj};
+  const float eta_i[3] = {dx[0] * hi_inv, dx[1] * hi_inv, dx[2] * hi_inv};
+  const float eta_j[3] = {-dx[0] * hj_inv, -dx[1] * hj_inv, -dx[2] * hj_inv};
 
   /* Norms of the eta vectors (eq. 16) */
   const float eta_square_i =
@@ -460,7 +460,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* if (G_ij_misaligned) */
   /*   warning( */
-  /*       "Misaligned dx=[%e %e %e] G_ij=[%e %e %e] cos(angle)=%e use_SPH_i=%d
+  /*       "Misaligned dx=[%e %e %e] G_ij=[%e %e %e] G_ij.dx=%e use_SPH_i=%d
    * " */
   /*       "use_SPH_j=%d", */
   /*       dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], G_ij_dot_dx, */
@@ -549,7 +549,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       sqrtf(v_ij[0] * v_ij[0] + v_ij[1] * v_ij[1] + v_ij[2] * v_ij[2]);
 #else
   const float v_sig_u =
-      sqrtf(2. * fabsf(pressurei - pressurej) / (rhoi + rhoj));
+      sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
 #endif
 
   /* Diffusion term (eq. 24) */
