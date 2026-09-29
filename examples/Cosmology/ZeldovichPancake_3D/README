@@ -1,0 +1,81 @@
+Zeldovich pancake
+=================
+
+A single sine-wave perturbation in an Einstein-de Sitter universe
+collapses into a sheet (pancake). The initial conditions are set up at
+z = 100 such that shell crossing (caustic formation) happens at z_c = 1.
+The gas starts cold (T = 100 K). Before the caustic, the flow is a
+smooth compression with an analytic solution; afterwards, the gas is
+shock-heated in the sheet.
+
+Running the test
+----------------
+
+  ./run.sh
+
+generates the initial conditions (makeIC.py), runs SWIFT with hydro,
+cosmology and self-gravity, and plots every snapshot with
+plotSolution.py, which overplots the analytic solution (valid before the
+caustic).
+
+Validation scripts
+------------------
+
+The following scripts check two exact physical properties of the test.
+They are useful to validate the treatment of the cosmological terms
+(Hubble flow, scale-factor powers) and of the artificial dissipation of
+a hydro scheme. They only need the run to proceed a little past the
+caustic (z ~ 0.9); a_end in the parameter files can be reduced
+accordingly.
+
+1. checkAdiabaticity.py
+
+   Before shell crossing there are no shocks, so the entropy
+   A = (gamma - 1) u / rho^(gamma - 1) of every particle must be
+   conserved. Any change is spurious heating (or cooling) by the
+   artificial viscosity or conduction, for instance viscosity acting on
+   pairs of particles that separate in the physical (peculiar + Hubble)
+   frame.
+
+   Usage (in the directory containing the snapshots):
+
+     python3 checkAdiabaticity.py [basename] [z_check] [tolerance]
+
+   Defaults: basename = zeldovichPancake, z_check = 3, tolerance = 1e-2.
+   It prints the maximal and median relative entropy change of all the
+   snapshots down to z_check, and returns a non-zero exit code if the
+   maximal change exceeds the tolerance. Typical values for a correct
+   scheme are a few 10^-3 at z = 3.
+
+2. compareUnits.py (with zeldovichPancake_kpc.yml)
+
+   The result of a simulation must not depend on the internal unit
+   system. zeldovichPancake_kpc.yml describes the same physical problem
+   as zeldovichPancake.yml, but with kpc instead of Mpc as the internal
+   length unit. SWIFT converts the initial conditions (which carry their
+   own units) when reading them. The softening lengths are rescaled;
+   the time-step limits are left unchanged, as they are expressed as
+   d log(a) in cosmological runs.
+
+   Run both parameter files, e.g. in separate directories (two runs
+   started in the same directory at the same time would compete for the
+   restart directory), then collect the snapshots of both runs
+   (zeldovichPancake_XXXX.hdf5 and zeldovichPancake_kpc_XXXX.hdf5) in one
+   directory and run:
+
+     python3 compareUnits.py [basename_1] [basename_2] [z_particle]
+
+   Defaults: zeldovichPancake, zeldovichPancake_kpc, z_particle = 2.
+   All quantities are converted to physical cgs units. For z >= z_particle
+   the particles are compared one by one (tolerance 1e-3); later, the
+   collapse amplifies tiny differences, so binned profiles along x are
+   compared instead (tolerance 5e-2 of the profile's range). The script
+   returns a non-zero exit code if any comparison fails.
+
+   A failure reveals a hidden dimensional constant in the scheme, e.g.
+   an absolute epsilon added to a dimensional quantity or a missing
+   factor of h. Note that differences of order 10^-4 in u can appear
+   when the artificial viscosity first switches on in the centre of the
+   pancake (z ~ 2.7). These come from round-off being amplified by the
+   switch, not from the units: the same differences appear between two
+   runs in the same units with different numbers of threads.
