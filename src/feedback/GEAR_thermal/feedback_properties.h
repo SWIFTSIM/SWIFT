@@ -339,7 +339,7 @@ struct feedback_props {
    * term is applied, which is the only supported configuration whenever
    * the fixed fraction is on. 1: the term is skipped, so
    * #ISRF_c_hyp_fixed_fraction_of_c is exactly as unstable at a seam as the
-   * shipped per-particle formula -- this exists solely to measure, by A/B run,
+   * shipped per-particle formula: this exists solely to measure, by A/B run,
    * how much of the fixed fraction's step-count cost the timestep term itself
    * is responsible for. Never set in a production run. No effect when
    * #ISRF_c_hyp_fixed_fraction_of_c is 0. */
@@ -994,7 +994,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     error(
         "GEARFeedback:event_dt_floor_Myr must be > 0 (got %g): it floors "
         "single_star's event-anchored death timestep (dt_event) in every "
-        "run, not just radiation ones -- <= 0 reopens the get_spart_timestep "
+        "run, not just radiation ones: <= 0 reopens the get_spart_timestep "
         "crash this parameter exists to prevent.",
         fp->event_dt_floor_Myr);
 
@@ -1004,7 +1004,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
    * every single_star death (get_spart_timestep()'s dt_min error()), so it
    * must itself clear dt_min. TimeIntegration:dt_min is a mandatory
    * parameter already fully parsed into `params` at this point (engine_init
-   * has not run yet, but that only matters for e->dt_min the struct field --
+   * has not run yet, but that only matters for e->dt_min the struct field;
    * the parsed value is available directly from `params` regardless of
    * init order). */
   const double dt_min =
@@ -1115,7 +1115,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * dispatch, which has no #engine pointer to read #feedback_props from;
      * see #isrf_c_hyp_consistent_variable_c's doxygen. Scheme 4 selects
      * the same operator rewrite as scheme 3, just fed by the kernel-local
-     * speed instead of the shipped one -- the two axes are independent. */
+     * speed instead of the shipped one: the two axes are independent. */
     isrf_c_hyp_consistent_variable_c =
         (fp->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
          fp->ISRF_c_hyp_scheme ==
@@ -1342,7 +1342,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       error(
           "GEARFeedback:HII_rebuild_floor_Myr must be > 0 (got %g): it "
           "floors the interval every per-pass ionizing photon budget is "
-          "integrated over, in every cadence mode -- <= 0 silently zeroes "
+          "integrated over, in every cadence mode: <= 0 silently zeroes "
           "every star's first-pass budget.",
           fp->HII_rebuild_floor_Myr);
 
