@@ -695,33 +695,29 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* A foreign cell's dx_max_part is a permanent one-step-stale snapshot
-   * from the end-of-step tend exchange; substitute a full cell width on
-   * the foreign side. */
+  /* A foreign cell's dx_max_part is a permanent one-step-stale
+   * snapshot, so the check on that side is skipped below. */
   const int local_i = ci->nodeID == engine_rank;
   const int local_j = cj->nodeID == engine_rank;
-  const float ci_dx_max_part_safe =
-      local_i ? ci->hydro.dx_max_part : ci->width[0];
-  const float cj_dx_max_part_safe =
-      local_j ? cj->hydro.dx_max_part : cj->width[0];
-  /* Bound each particle by its own cell only, so the generous substitute
-   * used for a foreign cell cannot loosen the check on the local one. */
+  /* Only the cell that owns a particle has a live dx_max_part;
+   * skip the check on the side that is foreign here, since the
+   * rank that owns it runs the same pair task and checks it there. */
   const float shift_threshold_x_i =
-      2. * ci->width[0] + 2. * ci_dx_max_part_safe;
+      2. * ci->width[0] + 2. * ci->hydro.dx_max_part;
   const float shift_threshold_x_j =
-      2. * cj->width[0] + 2. * cj_dx_max_part_safe;
+      2. * cj->width[0] + 2. * cj->hydro.dx_max_part;
   const float shift_threshold_y_i =
-      2. * ci->width[1] + 2. * ci_dx_max_part_safe;
+      2. * ci->width[1] + 2. * ci->hydro.dx_max_part;
   const float shift_threshold_y_j =
-      2. * cj->width[1] + 2. * cj_dx_max_part_safe;
+      2. * cj->width[1] + 2. * cj->hydro.dx_max_part;
   const float shift_threshold_z_i =
-      2. * ci->width[2] + 2. * ci_dx_max_part_safe;
+      2. * ci->width[2] + 2. * ci->hydro.dx_max_part;
   const float shift_threshold_z_j =
-      2. * cj->width[2] + 2. * cj_dx_max_part_safe;
+      2. * cj->width[2] + 2. * cj->hydro.dx_max_part;
 
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
-    if (x[i] > shift_threshold_x_i || x[i] < -shift_threshold_x_i)
+    if (local_i && (x[i] > shift_threshold_x_i || x[i] < -shift_threshold_x_i))
       error(
           "Error: ci->loc[%lf,%lf,%lf],cj->loc[%lf,%lf,%lf] Particle %d x pos "
           "is not within "
@@ -729,7 +725,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "2*space_maxreldx)]. x=%f, ci->width[0]=%f",
           ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1],
           cj->loc[2], i, x[i], ci->width[0]);
-    if (y[i] > shift_threshold_y_i || y[i] < -shift_threshold_y_i)
+    if (local_i && (y[i] > shift_threshold_y_i || y[i] < -shift_threshold_y_i))
       error(
           "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d y pos "
           "is not within "
@@ -737,7 +733,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "2*space_maxreldx)]. y=%f, ci->width[1]=%f",
           ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1],
           cj->loc[2], i, y[i], ci->width[1]);
-    if (z[i] > shift_threshold_z_i || z[i] < -shift_threshold_z_i)
+    if (local_i && (z[i] > shift_threshold_z_i || z[i] < -shift_threshold_z_i))
       error(
           "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d z pos "
           "is not within "
@@ -813,7 +809,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i <= last_pj_align; i++) {
-    if (xj[i] > shift_threshold_x_j || xj[i] < -shift_threshold_x_j)
+    if (local_j &&
+        (xj[i] > shift_threshold_x_j || xj[i] < -shift_threshold_x_j))
       error(
           "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d xj "
           "pos is not within "
@@ -821,7 +818,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "2*space_maxreldx)]. xj=%f, ci->width[0]=%f",
           ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1],
           cj->loc[2], i, xj[i], ci->width[0]);
-    if (yj[i] > shift_threshold_y_j || yj[i] < -shift_threshold_y_j)
+    if (local_j &&
+        (yj[i] > shift_threshold_y_j || yj[i] < -shift_threshold_y_j))
       error(
           "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d yj "
           "pos is not within "
@@ -829,7 +827,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "2*space_maxreldx)]. yj=%f, ci->width[1]=%f",
           ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1],
           cj->loc[2], i, yj[i], ci->width[1]);
-    if (zj[i] > shift_threshold_z_j || zj[i] < -shift_threshold_z_j)
+    if (local_j &&
+        (zj[i] > shift_threshold_z_j || zj[i] < -shift_threshold_z_j))
       error(
           "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d zj "
           "pos is not within "
