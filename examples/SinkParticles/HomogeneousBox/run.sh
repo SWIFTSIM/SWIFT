@@ -41,11 +41,11 @@ then
     $scripts_location/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPII.hdf5 ]
-then
-    echo "Fetching the chemistry tables..."
-    $scripts_location/getChemistryTable.sh --with-winds
-fi
+# The yields table must carry a Data/Radiation group, and the band-edge
+# datasets the interstellar radiation field reads: the tables of the public
+# hosts (getChemistryTable.sh) carry neither.
+$scripts_location/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+$scripts_location/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
 # Get the debugging ICs
 if [[ -z "$debug" || "$debug" -eq 1 ]]; then
