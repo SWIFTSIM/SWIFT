@@ -15,7 +15,7 @@ Each star carries a band luminosity interpolated from the radiation datasets of 
 
 Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the deposited field is then transported away from the sources with a hyperbolic moment (M1) scheme under a reduced speed of light, so that the radiation reaches gas beyond the source kernels at a finite, controllable propagation speed instead of instantaneously.
 
-The resulting per-particle field is handed to Grackle every step: the PE band sets the photoelectric heating rate, and the LW band sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph).
+The resulting per-particle field is handed to Grackle every step. The Lyman-Werner band alone sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph). Photoelectric heating uses a different field, the Habing field :math:`G_0`. The Habing band spans 6 to 13.6 eV, so :math:`G_0` sums the PE and Lyman-Werner band energies. Lyman-Werner energy therefore still feeds photoelectric heating at every Grackle mode, including below mode 2.
 
 Working configurations are shipped in ``examples/SubgridTests/StellarFeedback/ISRF/``; each example directory carries its own README with its configure line, run command and check script.
 
@@ -27,10 +27,9 @@ The module is part of the GEAR feedback model and is coupled to Grackle, so a ru
 .. code:: bash
 
    ./configure --with-feedback=GEAR --with-chemistry=GEAR_10 --with-stars=GEAR \
-               --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT \
-               --with-tracers=GEAR
+               --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT
 
-See :ref:`gear_radiation` for the ``--with-tracers=GEAR`` requirement and the per-band Grackle mode gating shared by every radiation channel, and :ref:`gear_grackle_cooling` for the cooling module itself.
+See :ref:`gear_radiation` for the per-band Grackle mode gating shared by every radiation channel (and why ``--with-subgrid=GEAR`` is the wrong shortcut here), and :ref:`gear_grackle_cooling` for the cooling module itself.
 
 **The yields table must carry the ISRF datasets.** This module additionally needs the ``L_PE``, ``L_LW``, ``Integrated_L_PE`` and ``Integrated_L_LW`` datasets in the table's ``Data/Radiation`` group, on top of the datasets every radiation channel needs. See :ref:`gear_radiation_tables` for the full requirement and how to get and check a table.
 
@@ -81,7 +80,7 @@ Three ``GrackleCooling`` parameters control how the field is turned into heating
   Used by mode ``2`` only. ``kernel_diameter`` sets the shielding column path to twice the kernel support radius, ``kernel_radius`` to one kernel support radius.
 
 ``GrackleCooling:photoelectric_heating_efficiency`` (default ``constant``)
-  Which photoelectric efficiency Grackle applies to the PE band: ``constant`` (a fixed efficiency of 0.05, Wolfire et al. 1995 Eq. 1), ``wolfire1995`` (the electron-density-dependent efficiency of the same paper, Eq. 2), or ``density_dependent`` (requires a Grackle build that provides it; SWIFT stops at start-up if the module is on and the Grackle it was built against does not). None of the shipped ISRF examples override this: they run at the default, ``constant``.
+  Which photoelectric efficiency Grackle applies to the Habing field (the PE+Lyman-Werner sum described above): ``constant`` (a fixed efficiency of 0.05, Wolfire et al. 1995 Eq. 1), ``wolfire1995`` (the electron-density-dependent efficiency of the same paper, Eq. 2), or ``density_dependent`` (requires a Grackle build that provides it; SWIFT stops at start-up if the module is on and the Grackle it was built against does not). None of the shipped ISRF examples override this: they run at the default, ``constant``.
 
 Two further parameters are worth checking:
 

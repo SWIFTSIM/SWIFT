@@ -38,7 +38,10 @@ Whenever any radiation channel is switched on, the group must carry:
 * ``DotEExcess`` and ``Integrated_DotEExcess`` (erg/s and erg/s/Msun): excess-photon-energy emission rate above the HI ionization threshold.
 * ``MeanPhotonEnergyLW`` and ``Integrated_MeanPhotonEnergyLW`` (both erg): photon-number-weighted mean Lyman-Werner photon energy. Required unconditionally, even for a photoionization-only or radiation-pressure-only run that never touches the ISRF. Unlike the other ``Integrated_`` datasets, this one is not a per-Msun rate: it is an intensive per-photon quantity (:math:`L_\mathrm{LW}/Q_\mathrm{LW}`), so it does not scale with the mass formed.
 
-If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``), the group must also carry ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW`` (erg/s and erg/s/Msun), the photoelectric and Lyman-Werner band luminosities.
+If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``), the group must also carry:
+
+* ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW`` (erg/s and erg/s/Msun): the photoelectric and Lyman-Werner band luminosities.
+* ``SpectralPhotonRateAtPEEdge``/``Integrated_SpectralPhotonRateAtPEEdge`` and ``SpectralPhotonRateAtLWEdge``/``Integrated_SpectralPhotonRateAtLWEdge`` (1/s/erg): the spectral photon rate density at each band's own lower edge (6 eV for PE, 11.2 eV for LW). SWIFT uses these to move each band's own redshift-driven loss across that edge: the Lyman-Werner band's lower edge is the PE band's upper edge, so the Lyman-Werner loss becomes a PE gain; the PE band's own 6 eV loss has no such destination and is a genuine sink.
 
 ``Teff`` (photospheric effective temperature, K) is optional and has no ``Integrated_`` counterpart; it is read if present and otherwise simply unavailable.
 
@@ -78,7 +81,7 @@ Checking a table
 ``examples/GEAR_ICs_and_SCRIPTS/checkRadiationTable.sh <table.h5> [--with-isrf] [--require-1d]`` verifies a table before you spend time on the rest of an example's setup:
 
 * with no flag, it checks the datasets every radiation channel needs (``Luminosity``, ``Q_H``, ``DotEExcess``, ``MeanPhotonEnergyLW`` and their ``Integrated_`` counterparts);
-* ``--with-isrf`` additionally checks the four ISRF band datasets (``L_PE``, ``L_LW`` and their ``Integrated_`` counterparts);
+* ``--with-isrf`` additionally checks the ``L_PE``/``L_LW`` band-luminosity datasets and their ``Integrated_`` counterparts, but not the ``SpectralPhotonRateAtPEEdge``/``SpectralPhotonRateAtLWEdge`` band-edge datasets above: a table that passes ``--with-isrf`` can still be rejected by SWIFT itself at start-up over one of those;
 * ``--require-1d`` additionally fails on a mass x metallicity ("M,Z") table, for an example whose own Python check script only understands a mass-only table.
 
 It does not check the stellar-evolution groups above (``IMF``, ``LifeTimes``, ``SNII``, ``SNIa``, ``SW``); those are validated by SWIFT itself reading the table at start-up.

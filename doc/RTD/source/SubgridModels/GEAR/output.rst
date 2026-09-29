@@ -10,7 +10,7 @@ Snapshots ouputs
 
 Here, we provide a summary of the quantities written in the snapshots, in addition to positions, velocities, masses, smoothing lengths and particle IDs.
 
-Most tracer outputs are summarised on the :ref:`gear_tracers` page. The gas and star fields the radiation model registers (HII photoionization, radiation pressure, the interstellar radiation field) are the exception: they are grouped by channel below instead.
+Most tracer outputs are summarised on the :ref:`gear_tracers` page. The gas and star fields the radiation model registers are grouped by channel below instead: radiation pressure's own diagnostics are tracers-module fields; HII photoionization's and the interstellar radiation field's are not.
 
 Sink particles
 ~~~~~~~~~~~~~~
@@ -283,7 +283,7 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
 HII photoionization
 ~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`gear_radiation_hii` for the physics. Two star fields are always written for a GEAR run with feedback, whether or not ``--with-tracers=GEAR`` is used:
+See :ref:`gear_radiation_hii` for the physics. None of the six fields below are tracers-module fields, so none need ``--with-tracers=GEAR``:
 
 .. list-table::
    :header-rows: 1
@@ -301,17 +301,6 @@ See :ref:`gear_radiation_hii` for the physics. Two star fields are always writte
      - Gas mass the star currently holds ionized
      - [U_M]
      - Star. Same caveat as ``HIIRegionRadii``.
-
-The following fields need ``--with-tracers=GEAR``:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 45 15 30
-
-   * - Name
-     - Description
-     - Units
-     - Comments
    * - ``IsIonizedFlags``
      - Is this gas particle currently flagged as ionized?
      - [-]
@@ -381,7 +370,7 @@ See :ref:`gear_isrf` for the physics. ``PELuminosities``, ``LWLuminosities`` and
      - [U_K]
      - Star. Diagnostic only: no feedback channel uses it. 0 with no radiation table, or a table with no ``Teff`` dataset.
 
-The remaining fields are gas fields written by the GEAR tracers module, so they need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
+The remaining fields are gas fields registered by the GEAR feedback module's own I/O code, not the tracers module, so they do not need ``--with-tracers=GEAR``. All are physical quantities with no scale-factor exponent of their own.
 
 .. list-table::
    :header-rows: 1

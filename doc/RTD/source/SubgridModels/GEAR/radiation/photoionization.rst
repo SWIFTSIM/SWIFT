@@ -25,7 +25,7 @@ By default, an ionized particle is simply flagged and held at its floor temperat
 Configuring and compiling
 --------------------------
 
-See :ref:`gear_radiation` for how to configure and build this channel, including the ``--with-tracers=GEAR`` requirement shared by every radiation channel.
+See :ref:`gear_radiation` for how to configure and build this channel.
 
 Model parameters
 ------------------
