@@ -487,9 +487,9 @@ SIGMA_H2_OVER_E_LW_CGS = read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW
 HABING_FLUX_CGS = 1.6e-3
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 GRACKLE_DEFAULT_DUST_TO_GAS_RATIO = 0.009387
-# radiation.h's own RADIATION_HYDROGEN_MASS_CGS, which the extinction chain
-# uses; M_H_CGS below is the physical constant the photoelectric rate uses.
-RADIATION_HYDROGEN_MASS_CGS = 1.6726219e-24
+# Mirrors the C code: the extinction chain takes the proton mass from the
+# physical constants (const_proton_mass_cgs in physical_constants_cgs.h).
+EXTINCTION_PROTON_MASS_CGS = 1.67262192369e-24
 KERNEL_GAMMA_DEFAULT = 1.936492
 MU_H = 1.4
 GRACKLE_SOLAR_METAL_FRACTION = 0.01295
@@ -876,7 +876,7 @@ def optical_depths(
         / GRACKLE_SOLAR_METAL_FRACTION
         * (dust_to_gas / GRACKLE_DEFAULT_DUST_TO_GAS_RATIO)
     )
-    prefactor = d_relative / (MU_H * RADIATION_HYDROGEN_MASS_CGS) * column
+    prefactor = d_relative / (MU_H * EXTINCTION_PROTON_MASS_CGS) * column
     return {band: SIGMA_D_CGS[band] * prefactor for band in ("PE", "LW")}
 
 
