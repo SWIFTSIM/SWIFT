@@ -94,7 +94,7 @@
 /*! Mean mass per hydrogen nucleon (He folded in), for converting a
     per-hydrogen-nucleon dust cross-section (#RADIATION_SIGMA_D_PE_CGS/
     #RADIATION_SIGMA_D_LW_CGS) into a mass opacity; see
-    radiation_get_dust_extinction_factor()'s own doxygen. */
+    radiation_get_dust_extinction_factor()'s doxygen. */
 #define RADIATION_MU_H 1.4
 
 /*! Hydrogen atomic mass, g (cgs); see #RADIATION_MU_H. */
@@ -163,8 +163,8 @@
     depends on the spectral shape within 11.2-13.6 eV and is not a single
     atomic-physics constant, so it is a compile-time constant rather than a
     per-run parameter. Held as a literal so the header stays parseable by
-    the check scripts; testRadiationISRFFormula (swift-gear's GEAR test
-    suite) asserts it still equals the quotient times the photon energy. */
+    the check scripts; a unit test asserts it still equals the quotient
+    times the photon energy. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
 /*! Metallicity mass fraction at which the population mean Lyman-Werner
@@ -180,7 +180,7 @@
     the integrated table's own top mass edge before calling interpolate_2d(),
     so an exact-mass_max query deterministically takes the blended (not
     boundary-clamped) branch. See radiation_get_luminosities_from_
-    integral_2d()'s own doxygen for why this matters. */
+    integral_2d()'s doxygen for why this matters. */
 #define RADIATION_2D_EDGE_EPS 1e-5f
 
 /*! PE/LW band lower edges, eV: #RADIATION_SIGMA_D_PE_CGS/
@@ -215,9 +215,9 @@
     sits at or below the table's own native mass floor), not the table-
     absence case: radiation_read_data() REQUIRES the band-edge datasets
     whenever #radiation.with_ISRF is on and refuses to load a table lacking
-    them (radiation_table_io.c), matching the branch's own precedent for
-    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW" (commit 1f72152fa).
-    That policy is intentionally the ONE place this can be flipped: see the
+    them (radiation_table_io.c), matching its own precedent for
+    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW". That policy is
+    intentionally the ONE place this can be flipped: see the
     presence-gate block in radiation_read_data() for how to make it
     non-fatal instead, which would make these three constants the live
     fallback for a table generated before pychem exported the new datasets.
@@ -318,7 +318,7 @@ struct radiation_grid_metadata {
 
   /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
       "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
-      attributes. See #edge_policy_l_pe's own doxygen. */
+      attributes. See #edge_policy_l_pe's doxygen. */
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
@@ -445,9 +445,8 @@ double radiation_get_ionization_rate_from_integral_2d(
     const struct radiation *rad, float log_z, float log_m1, float log_m2);
 double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
     const struct radiation *rad, float log_z, float log_m1, float log_m2);
-float radiation_get_ms_lifetime_inverse_mass_2d(const struct radiation *rad,
-                                                float log_z, float star_age_myr,
-                                                float m_min);
+float radiation_get_main_sequence_lifetime_inverse_mass_2d(
+    const struct radiation *rad, float log_z, float star_age_myr, float m_min);
 
 float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
                                     float log_z);
@@ -463,14 +462,16 @@ float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
 float radiation_get_star_teff(const struct radiation *rad, float log_m,
                               float log_z);
 
-float radiation_get_l_pe_from_raw(const struct radiation *rad, float log_m);
-float radiation_get_l_pe_from_raw_2d(const struct radiation *rad, float log_z,
-                                     float log_m);
-float radiation_get_star_l_pe(const struct radiation *rad, float log_m,
-                              float log_z);
-float radiation_get_l_lw_from_raw(const struct radiation *rad, float log_m);
-float radiation_get_l_lw_from_raw_2d(const struct radiation *rad, float log_z,
-                                     float log_m);
+float radiation_get_luminosity_pe_from_raw(const struct radiation *rad,
+                                           float log_m);
+float radiation_get_luminosity_pe_from_raw_2d(const struct radiation *rad,
+                                              float log_z, float log_m);
+float radiation_get_star_luminosity_pe(const struct radiation *rad, float log_m,
+                                       float log_z);
+float radiation_get_luminosity_lw_from_raw(const struct radiation *rad,
+                                           float log_m);
+float radiation_get_luminosity_lw_from_raw_2d(const struct radiation *rad,
+                                              float log_z, float log_m);
 double radiation_get_mean_photon_energy_lw_from_raw(const struct radiation *rad,
                                                     float log_m);
 double radiation_get_mean_photon_energy_lw_from_raw_2d(
@@ -481,30 +482,28 @@ double radiation_get_mean_photon_energy_lw_from_integral(
     const struct radiation *rad, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral_2d(
     const struct radiation *rad, float log_z, float log_m);
-float radiation_get_star_l_lw(const struct radiation *rad, float log_m,
-                              float log_z);
+float radiation_get_star_luminosity_lw(const struct radiation *rad, float log_m,
+                                       float log_z);
 
-float radiation_get_l_pe_from_integral(const struct radiation *rad,
-                                       float log_m1, float log_m2);
-float radiation_get_l_pe_from_integral_2d(const struct radiation *rad,
-                                          float log_z, float log_m1,
-                                          float log_m2);
-float radiation_get_l_lw_from_integral(const struct radiation *rad,
-                                       float log_m1, float log_m2);
-float radiation_get_l_lw_from_integral_2d(const struct radiation *rad,
-                                          float log_z, float log_m1,
-                                          float log_m2);
+float radiation_get_luminosity_pe_from_integral(const struct radiation *rad,
+                                                float log_m1, float log_m2);
+float radiation_get_luminosity_pe_from_integral_2d(const struct radiation *rad,
+                                                   float log_z, float log_m1,
+                                                   float log_m2);
+float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
+                                                float log_m1, float log_m2);
+float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
+                                                   float log_z, float log_m1,
+                                                   float log_m2);
 
-float radiation_get_l_edge_pe_from_integral(const struct radiation *rad,
-                                            float log_m1, float log_m2);
-float radiation_get_l_edge_pe_from_integral_2d(const struct radiation *rad,
-                                               float log_z, float log_m1,
-                                               float log_m2);
-float radiation_get_l_edge_lw_from_integral(const struct radiation *rad,
-                                            float log_m1, float log_m2);
-float radiation_get_l_edge_lw_from_integral_2d(const struct radiation *rad,
-                                               float log_z, float log_m1,
-                                               float log_m2);
+float radiation_get_luminosity_edge_pe_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2);
+float radiation_get_luminosity_edge_pe_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
+float radiation_get_luminosity_edge_lw_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2);
+float radiation_get_luminosity_edge_lw_from_integral_2d(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
 
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
@@ -527,25 +526,25 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
                                const struct radiation_grid_metadata *grid,
                                const struct stellar_model *sm,
                                const struct unit_system *us);
-void radiation_read_l_pe_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us);
+void radiation_read_luminosity_pe_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 void radiation_read_mean_photon_energy_lw_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_l_lw_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us);
-void radiation_read_l_edge_pe_array(struct radiation *rad, hid_t group_id,
-                                    const struct radiation_grid_metadata *grid,
-                                    const struct stellar_model *sm,
-                                    const struct unit_system *us);
-void radiation_read_l_edge_lw_array(struct radiation *rad, hid_t group_id,
-                                    const struct radiation_grid_metadata *grid,
-                                    const struct stellar_model *sm,
-                                    const struct unit_system *us);
+void radiation_read_luminosity_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_luminosity_edge_pe_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_luminosity_edge_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

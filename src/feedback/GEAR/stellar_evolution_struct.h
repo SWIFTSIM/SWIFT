@@ -271,7 +271,7 @@ struct radiation {
     union {
       /*! PE band lower-edge (6 eV) spectral photon rate dQ/dE, PRE-MULTIPLIED
           by #RADIATION_PE_BAND_LOWER_EDGE_CGS^2 and unit-converted the same
-          way #l_pe is (see radiation_read_l_edge_pe_array()), so it is
+          way #l_pe is (see radiation_read_luminosity_edge_pe_array()), so it is
           directly comparable to #l_pe: their ratio (after the same
           Mmin-to-m difference both are read with) is lambda_E(PE) - 1.
           Read from pychem's "SpectralPhotonRateAtPEEdge" dataset (required

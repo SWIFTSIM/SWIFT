@@ -81,12 +81,11 @@ enum radiation_policy {
  * two do not double-throttle the same term the way a kernel-local +
  * pair-weight stack would. Every value is enforced to be one of these five
  * at parse time by feedback_props_init(); see
- * #feedback_props.ISRF_c_hyp_scheme's own doxygen for the specifics of each.
+ * #feedback_props.ISRF_c_hyp_scheme's doxygen for the specifics of each.
  */
 enum isrf_c_hyp_scheme {
   /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, `dt_i` this particle's own
-   * timestep. Operators: shipped. Bit-identical to the scheme this
-   * comparison branch was built from; no longer the default (see
+   * timestep. Operators: shipped. Not the default (see
    * #isrf_c_hyp_scheme_kernel_local_plus_variable_c), still reachable by
    * setting #feedback_props.ISRF_c_hyp_scheme explicitly. */
   isrf_c_hyp_scheme_shipped = 0,
@@ -110,8 +109,7 @@ enum isrf_c_hyp_scheme {
    * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
    * selection into that file's pairwise dispatch. Reduces bit-for-bit to
    * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform
-   * (radiation_propagation_iact.h, testRadiationISRFForceDispatchConservation
-   * in swift-gear's GEAR test suite). Agreement between
+   * (radiation_propagation_iact.h). Agreement between
    * two evaluations of the same operator in different inlining contexts is
    * a separate, weaker matter: it holds only to a few ULP, because an
    * FMA-capable target contracts the two differently. That is a property of
@@ -300,7 +298,7 @@ struct feedback_props {
    * 1 (kernel-local speed), 2 (fixed fraction of c, magnitude
    * #ISRF_c_hyp_fixed_fraction_of_c), 3 (consistent variable-c operators,
    * shipped speed formula) or 4 (kernel-local speed feeding the
-   * consistent-variable-c operators, default). See that enum's own doxygen for
+   * consistent-variable-c operators, default). See that enum's doxygen for
    * the specifics of each value. #isrf_c_hyp_scheme_fixed_fraction is an
    * alternative to the other four, not a layer: feedback_props_init()
    * errors if #ISRF_c_hyp_fixed_fraction_of_c is positive with this not set
@@ -656,7 +654,7 @@ feedback_props_check_c_hyp_scheme(int scheme, float fixed_fraction) {
  * maps to operator @p o, not only the first, so it would pass a map that
  * names a non-owning sharer as the owner while every writer reading
  * through @p owner still computes from the wrong moment. This checks the
- * property #radiation_isrf_operator_owner's own doxygen requires: @p
+ * property #radiation_isrf_operator_owner's doxygen requires: @p
  * owner[o] must be the FIRST (lowest-index) entry of @p forward equal to
  * @p o. Every operator must also own at least one moment, since "first"
  * is undefined over an empty set. Both maps are range-checked first, since
@@ -884,12 +882,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* The radiation table backs the HII photoionization band, the bolometric
    * radiation-pressure band, and the Lyman-Werner/PE bands (see
    * stellar_evolution_compute_preSN_feedback_individual_star()/_spart()).
-   * Previously omitted radiation_policy_photoelectric_heating here because
-   * "photoelectric heating has no downstream consumer yet". Now that it
-   * does, leaving it out would silently skip opening the radiation table
-   * for a with_interstellar_radiation_field-only run, and desync from
-   * feedback_struct_restore()'s own copy of this same condition on restart
-   * (see that function's matching comment). */
+   * with_interstellar_radiation_field must stay in this OR: omitting it
+   * would silently skip opening the radiation table for a
+   * with_interstellar_radiation_field-only run. Keep in sync with
+   * feedback_struct_restore()'s matching condition on restart. */
   const char with_radiation = with_photoionization || with_radiation_pressure ||
                               with_interstellar_radiation_field;
 
@@ -932,7 +928,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Announce the band-edge weights (redshift transfer across the
      6/11.2/13.6 eV band edges); see #feedback_props.band_edge_weight_pe's
-     own doxygen for why this is fields of fp, not a process global like
+     doxygen for why this is fields of fp, not a process global like
      the LW photon energy above. */
   radiation_set_band_edge_coefficients(fp, &fp->stellar_model.rad,
                                        &fp->stellar_model);
@@ -1096,12 +1092,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
 
-    /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's own doxygen.
+    /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's doxygen.
      * Parsed unconditionally, like the pin/fraction below, so a validation
      * run can set it even with ISRF_propagation off in the base config.
-     * Default is scheme 4: best measured negativity and amplitude of the
-     * five; the previously shipped scheme 0 stays reachable by setting this
-     * parameter explicitly. */
+     * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+     * scheme 0 stays reachable by setting this parameter explicitly. */
     fp->ISRF_c_hyp_scheme = parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_c_hyp_scheme",
         isrf_c_hyp_scheme_kernel_local_plus_variable_c);
@@ -1118,7 +1113,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->ISRF_c_hyp_scheme);
     /* Carries the selection into radiation_propagation_iact.h's pairwise
      * dispatch, which has no #engine pointer to read #feedback_props from;
-     * see #isrf_c_hyp_consistent_variable_c's own doxygen. Scheme 4 selects
+     * see #isrf_c_hyp_consistent_variable_c's doxygen. Scheme 4 selects
      * the same operator rewrite as scheme 3, just fed by the kernel-local
      * speed instead of the shipped one -- the two axes are independent. */
     isrf_c_hyp_consistent_variable_c =
@@ -1126,7 +1121,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
          fp->ISRF_c_hyp_scheme ==
              isrf_c_hyp_scheme_kernel_local_plus_variable_c);
 
-    /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's own doxygen.
+    /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
      * parameters below) so a validation run can set it even with
      * ISRF_propagation off in the base config and toggled on
@@ -1155,7 +1150,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "disables it.",
           fp->ISRF_c_hyp_fixed_fraction_of_c);
 
-    /* See feedback_props_check_c_hyp_scheme()'s own doxygen: the two speed
+    /* See feedback_props_check_c_hyp_scheme()'s doxygen: the two speed
      * schemes are alternatives, not layers. */
     feedback_props_check_c_hyp_scheme(fp->ISRF_c_hyp_scheme,
                                       fp->ISRF_c_hyp_fixed_fraction_of_c);
@@ -1180,10 +1175,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * giving C_hyp <= sqrt(2/0.70) ~ 1.6903. Increasing alpha only
      * tightens the bound further (enforced separately below, once
      * alpha_max/alpha_floor are known), so alpha = 0 is the loosest case
-     * and no configuration can ever exceed this value. The previous 1.7
-     * ceiling admitted C_hyp values in (1.6903, 1.7] that are unstable
-     * even with dissipation off, since the joint check below only fires
-     * when alpha_max or alpha_floor is nonzero. */
+     * and no configuration can ever exceed this value. */
     const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
 
     if (fp->ISRF_c_hyp_margin <= 0.f ||
@@ -1223,10 +1215,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->ISRF_dissipation_negativity_threshold);
 
     /* Diffuse-phase floor under the trigger: shipped defaults 0.5/0.5. The
-     * eps_lambda default moved 0.05 -> 0.5 together with the roll-off
-     * exponent 2 -> 4: the quartic tail is what keeps the thick regime
-     * negligible, so the knee itself no longer has to sit an order of
-     * magnitude below the regimes that need the floor. */
+     * quartic roll-off keeps the thick regime negligible, so the knee does
+     * not need to sit an order of magnitude below the regimes that need the
+     * floor. */
     fp->ISRF_dissipation_alpha_floor = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_alpha_floor", 0.5f);
     fp->ISRF_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
