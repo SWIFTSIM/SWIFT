@@ -429,28 +429,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float vel_rel_Hubble_i = fac_mu * (vel_rel_i + Hubble_rec * hi_inv);
   const float vel_rel_Hubble_j = fac_mu * (vel_rel_j + Hubble_rec * hj_inv);
 
-  /* Terms entering the viscosity (eq. 15).
-   * Only for pairs that are actually approaching (raw velocities including the
-   * Hubble flow, as in the other SPH schemes): the reconstructed velocities
-   * can indicate compression while the particles recede, in which case Q
-   * would do negative work (Q v_ij . G < 0) and cool the gas. */
-  const int pair_approaching = (dvdr_Hubble < 0.f);
-  const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
-  const float mu_i =
-      pair_approaching
-          ? fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared))
-          : 0.f;
-  const float mu_j =
-      pair_approaching
-          ? fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared))
-          : 0.f;
-
-  /* Eq. 14 */
-  const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
-                           const_viscosity_beta * mu_i * mu_i);
-  const float Qj = rhoj * (-const_viscosity_alpha * cj * mu_j +
-                           const_viscosity_beta * mu_j * mu_j);
-
   /* Construct the gradient functions (eq. 4 and 5) */
   float G_i[3] = {0.f}, G_j[3] = {0.f};
   sym_matrix_multiply_by_vector(G_i, &pi->force.c_matrix, dx);
@@ -517,6 +495,58 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_j[1] = wj_dr * r_inv * dx[1];
     G_j[2] = wj_dr * r_inv * dx[2];
   }
+
+  /* Terms entering the viscosity (eq. 15).
+   * Only for pairs that are actually approaching (raw velocities including the
+   * Hubble flow, as in the other SPH schemes): the reconstructed velocities
+   * can indicate compression while the particles recede, in which case Q
+   * would do negative work (Q v_ij . G < 0) and cool the gas. */
+  const int pair_approaching = (dvdr_Hubble < 0.f);
+  const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
+  const float mu_i =
+      pair_approaching
+          ? fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared))
+          : 0.f;
+  const float mu_j =
+      pair_approaching
+          ? fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared))
+          : 0.f;
+
+  /* Relative velocity including the Hubble flow (a^2 H dx) */
+  const float v_ij_Hubble[3] = {v_ij[0] + a2_Hubble * dx[0],
+                                v_ij[1] + a2_Hubble * dx[1],
+                                v_ij[2] + a2_Hubble * dx[2]};
+
+  /* The viscous pressure heats at a rate Q v_ij . G (see the energy
+   * equation below). G can be tilted from dx (up to const_G_ij_angle_limit),
+   * so for shear-dominated pairs v_ij . G can be negative although the pair
+   * approaches along dx: Q would then turn internal energy into kinetic
+   * energy. Only use Q where its heating term is positive. */
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+  /* Each particle's Q works through its own gradient function */
+  const int Q_dissipative_i =
+      (v_ij_Hubble[0] * G_i[0] + v_ij_Hubble[1] * G_i[1] +
+       v_ij_Hubble[2] * G_i[2]) > 0.f;
+  const int Q_dissipative_j =
+      (v_ij_Hubble[0] * G_j[0] + v_ij_Hubble[1] * G_j[1] +
+       v_ij_Hubble[2] * G_j[2]) > 0.f;
+#else
+  /* Both Q work through the averaged gradient function */
+  const int Q_dissipative_i =
+      (v_ij_Hubble[0] * (G_i[0] + G_j[0]) + v_ij_Hubble[1] * (G_i[1] + G_j[1]) +
+       v_ij_Hubble[2] * (G_i[2] + G_j[2])) > 0.f;
+  const int Q_dissipative_j = Q_dissipative_i;
+#endif
+
+  /* Eq. 14 */
+  const float Qi = Q_dissipative_i
+                       ? rhoi * (-const_viscosity_alpha * ci * mu_i +
+                                 const_viscosity_beta * mu_i * mu_i)
+                       : 0.f;
+  const float Qj = Q_dissipative_j
+                       ? rhoj * (-const_viscosity_alpha * cj * mu_j +
+                                 const_viscosity_beta * mu_j * mu_j)
+                       : 0.f;
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
 
@@ -591,9 +621,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * sound-speed units by fac_mu.
    * Note: unlike SPHENIX, which uses only the component along dx,
    * the shear components contribute too. */
-  const float v_ij_Hubble[3] = {v_ij[0] + a2_Hubble * dx[0],
-                                v_ij[1] + a2_Hubble * dx[1],
-                                v_ij[2] + a2_Hubble * dx[2]};
   const float v_sig_u = fac_mu * sqrtf(v_ij_Hubble[0] * v_ij_Hubble[0] +
                                        v_ij_Hubble[1] * v_ij_Hubble[1] +
                                        v_ij_Hubble[2] * v_ij_Hubble[2]);
