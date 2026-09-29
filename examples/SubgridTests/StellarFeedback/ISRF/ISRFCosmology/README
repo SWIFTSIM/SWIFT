@@ -6,7 +6,7 @@ applied to both. Where a closed form exists, the check compares against it:
 
 - `free_field`: a uniform seeded field in dust-free gas, no star. The module
   dilates the field's Hubble term by the same `c_hyp/c` factor as every other
-  rate, and `c_hyp/c` is of order 1e-5 on this fixture, so the mass-specific
+  rate, and `c_hyp/c` is about 1.5e-4 on this fixture, so the mass-specific
   field is constant to leading order with and without cosmology. The H2
   abundance then follows `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone,
   since the field itself no longer decays) with the rate the module hands to
