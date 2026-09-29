@@ -9,7 +9,11 @@
 # group, and that group must carry "MeanPhotonEnergyLW"/
 # "Integrated_MeanPhotonEnergyLW": SWIFT requires both unconditionally,
 # not only under with_interstellar_radiation_field. With --with-isrf it
-# must also carry the four ISRF band datasets.
+# must also carry the four ISRF band datasets and the four band-edge
+# spectral photon-rate datasets (SpectralPhotonRateAtPEEdge/LWEdge and
+# their Integrated_ counterparts), and each raw edge dataset must carry the
+# provenance attributes SWIFT checks (radiation_check_band_edge_provenance()
+# in src/feedback/GEAR/radiation_table_io.c).
 # The tables served by the public hosts (see getChemistryTable.sh) predate
 # the radiation tables and carry neither, so this check stops the example
 # before it spends time on the glass file, the Cloudy tables and the
@@ -78,6 +82,14 @@ with_isrf = sys.argv[2] == "1"
 require_1d = sys.argv[3] == "1"
 isrf_fields = ("L_PE", "L_LW", "Integrated_L_PE", "Integrated_L_LW")
 required_fields = ("MeanPhotonEnergyLW", "Integrated_MeanPhotonEnergyLW")
+# Band-edge datasets, required fatally by SWIFT under the ISRF. The lower
+# edge energies in eV must equal RADIATION_PE_BAND_LOWER_EDGE_EV and
+# RADIATION_LW_BAND_LOWER_EDGE_EV (src/feedback/GEAR/radiation.h).
+edge_fields = {
+    "SpectralPhotonRateAtPEEdge": 6.0,
+    "SpectralPhotonRateAtLWEdge": 11.2,
+}
+integrated_edge_fields = tuple("Integrated_" + d for d in edge_fields)
 
 # Attributes that identify the table itself. GEARFeedback:yields_table only
 # names a file, and the name says nothing about which Q_H the run used, so
@@ -106,6 +118,7 @@ def as_text(value):
 
 identity = None
 dimensionality = None
+edge_problems = []
 
 # A file that is not HDF5 at all reaches here: getRadiationTable.sh copies
 # whatever GEAR_RADIATION_TABLE names, and takes an existing file in the
@@ -139,6 +152,28 @@ with handle as f:
         absent = [d for d in required_fields if d not in group]
         if with_isrf:
             absent += [d for d in isrf_fields if d not in group]
+            absent += [d for d in edge_fields if d not in group]
+            absent += [d for d in integrated_edge_fields if d not in group]
+            for name, expected_ev in edge_fields.items():
+                if name not in group:
+                    continue
+                attrs = group[name].attrs
+                if "native_grid_spacing_dlnE" not in attrs:
+                    edge_problems.append(
+                        "'%s' has no 'native_grid_spacing_dlnE' attribute" % name
+                    )
+                if as_text(attrs.get("lower_edge_energy_units", "")) != "eV":
+                    edge_problems.append(
+                        "'%s' has lower_edge_energy_units other than 'eV'" % name
+                    )
+                edge_ev = attrs.get("lower_edge_energy")
+                if edge_ev is None or abs(float(edge_ev) - expected_ev) > (
+                    1e-6 * expected_ev
+                ):
+                    edge_problems.append(
+                        "'%s' has lower_edge_energy %s eV, SWIFT expects %s eV"
+                        % (name, edge_ev, expected_ev)
+                    )
         missing = None
         if absent:
             missing = "the dataset(s) " + ", ".join(
@@ -181,6 +216,20 @@ if missing is not None:
         "pychem_generate_hdf5_parameters, or ask the GEAR maintainers for one,\n"
         "then point GEARFeedback:yields_table in params.yml at it.\n"
         "\n" % (table, missing)
+    )
+
+if edge_problems:
+    failed = True
+    sys.stderr.write(
+        "\n"
+        "ERROR: '%s' has band-edge datasets SWIFT refuses:\n" % table
+    )
+    for problem in edge_problems:
+        sys.stderr.write("  %s\n" % problem)
+    sys.stderr.write(
+        "\n"
+        "Regenerate the table with pychem's pychem_generate_hdf5_parameters.\n"
+        "\n"
     )
 
 if dimensionality_fails:

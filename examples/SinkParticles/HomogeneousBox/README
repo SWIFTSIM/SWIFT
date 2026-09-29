@@ -27,6 +27,20 @@ The run.sh script calls `makeIC.py' script with default values. You can experime
 # Run
 Type run.sh, and let's go!
 
+run.sh fetches `PopII_parsec_spectral.hdf5`, the GEAR yields table
+carrying the `Data/Radiation` group, and checks it with
+`../../GEAR_ICs_and_SCRIPTS/checkRadiationTable.sh` before anything else.
+
+To use your own pychem-generated table instead, put it under any path,
+remove any `PopII_parsec_spectral.hdf5` from this directory, and run
+```
+GEAR_RADIATION_TABLE=/path/to/table.hdf5 GEAR_RADIATION_TABLE_ALLOW_MISMATCH=1 ./run.sh
+```
+run.sh copies your table here as `PopII_parsec_spectral.hdf5`. The second
+variable is required because the published table has a fixed checksum,
+which yours does not match. The structural check still runs and rejects a
+table lacking the radiation or band-edge data.
+
 Here are some runtime parameters:
 
 ./run.sh				 # Runs with sinks on 1 rank and 8 threads with N = 2^(3*5) ~ 32000 gas particles
