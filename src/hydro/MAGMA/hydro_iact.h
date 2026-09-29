@@ -410,9 +410,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float vel_rel_j = eta_j[0] * -v_rec_ij[0] + eta_j[1] * -v_rec_ij[1] +
                           eta_j[2] * -v_rec_ij[2];
 
-  /* Includes the hubble flow term; not used for du/dt */
-  const float vel_rel_Hubble_i = vel_rel_i + a2_Hubble * r2;
-  const float vel_rel_Hubble_j = vel_rel_j + a2_Hubble * r2;
+  /* Includes the hubble flow term (a^2 H dx, projected on eta = dx / h);
+   * not used for du/dt. */
+  const float vel_rel_Hubble_i = fac_mu * (vel_rel_i + a2_Hubble * r2 * hi_inv);
+  const float vel_rel_Hubble_j = fac_mu * (vel_rel_j + a2_Hubble * r2 * hj_inv);
 
   /* Terms entering the viscosity (eq. 15) */
   const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
@@ -545,8 +546,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Diffusion signal velocity (eq. 26) */
 #ifdef GRAVITY_DIFF_VELOCITY
-  const float v_sig_u =
-      sqrtf(v_ij[0] * v_ij[0] + v_ij[1] * v_ij[1] + v_ij[2] * v_ij[2]);
+  /* Norm of the full relative velocity vector (eq. 26, |v_a - v_b|, here
+   * without reconstruction), including the Hubble flow, converted to
+   * sound-speed units by fac_mu.
+   * Note: unlike SPHENIX, which uses only the component along dx,
+   * the shear components contribute too. */
+  const float v_ij_Hubble[3] = {v_ij[0] + a2_Hubble * dx[0],
+                                v_ij[1] + a2_Hubble * dx[1],
+                                v_ij[2] + a2_Hubble * dx[2]};
+  const float v_sig_u = fac_mu * sqrtf(v_ij_Hubble[0] * v_ij_Hubble[0] +
+                                       v_ij_Hubble[1] * v_ij_Hubble[1] +
+                                       v_ij_Hubble[2] * v_ij_Hubble[2]);
 #else
   const float v_sig_u =
       sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
