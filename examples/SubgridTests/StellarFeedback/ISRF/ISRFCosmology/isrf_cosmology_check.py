@@ -2070,7 +2070,16 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         raise RuntimeError("--dark is required for photoelectric")
     on = load_run(opt.snapshots)
     dark = load_run(opt.dark)
-    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    # The lag term uses the QUANTISED dt_max the run's own time-line actually
+    # allowed, not the raw parameter: see `read_timeline_dt_max`.
+    dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
+    if dt_max is None:
+        dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+        print(
+            "  NOTE: no engine_config line announced the time-line's own "
+            "maximal step, so the raw TimeIntegration:dt_max parameter is "
+            "used: the one-step lag term is then over-counted"
+        )
     cosmological = on[0]["cosmological"]
     err = photoelectric_errors(on, dark)
     dt_step = (
@@ -2090,8 +2099,17 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
     #   scales as exp(-T_line/T) with T_line = 92 K (C+), so the dark run's
     #   own net loss, scaled by exp(92/T_dark - 92/T_on) - 1, bounds the
     #   difference; any T-independent loss cancels in the dark twin;
-    # - float32 storage of u relative to the difference.
+    # - float32 storage of the gas u (InternalEnergies is a float in struct
+    #   part and in the snapshot), relative to the difference.
     t = err["times"][1:]
+    if not (
+        np.all(np.isfinite(err["relative"])) and np.all(err["predicted"][1:] > 0.0)
+    ):
+        print(
+            "  FAIL: (D2) the measured difference or the predicted heating is "
+            "non-finite, or the predicted heating is not positive"
+        )
+        return False
     temperature_ratio = err["on_u"][1:] / err["dark_u"][1:]
     # Neutral atomic gas, mu = 4/(1 + 3 X).
     t_dark = (
@@ -2101,13 +2119,21 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         * err["dark_u"][1:]
         / 1.380649e-16
     )
-    boost = np.expm1(92.0 / t_dark * (1.0 - 1.0 / temperature_ratio))
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        boost = np.expm1(92.0 / t_dark * (1.0 - 1.0 / temperature_ratio))
     cooling = (
         np.abs(err["dark_u"][1:] - err["dark_u"][0]) * boost / err["predicted"][1:]
     )
     lag = dt_step / t
     storage = 4.0 * FLOAT32_EPS * err["on_u"][1:] / err["predicted"][1:]
     bar = lag + cooling + storage
+    # A non-finite bar term makes every ratio below 0 or NaN, and 0 passes.
+    if not np.all(np.isfinite(bar)):
+        print(
+            "  FAIL: (D2) a bar term is not finite (cold dark gas overflows "
+            "the C+ cooling boost): the bar is meaningless"
+        )
+        return False
     if opt.reference:
         if opt.reference_dark is None:
             raise RuntimeError("--reference needs --reference-dark for photoelectric")
