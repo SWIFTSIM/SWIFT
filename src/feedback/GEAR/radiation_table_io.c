@@ -32,7 +32,6 @@
 #include "engine.h"
 #include "error.h"
 #include "hdf5_functions.h"
-#include "inline.h"
 #include "interpolation.h"
 #include "minmax.h"
 #include "radiation.h"
@@ -58,6 +57,8 @@
  * @param name Attribute name.
  * @param out Output buffer, NUL-terminated on return.
  * @param out_size Size of out, including the terminating NUL.
+ * @param truncate If 0, an attribute too long for out_size is fatal; if
+ * non-zero, it is silently truncated to fit.
  */
 static void radiation_read_string_attribute_impl(hid_t group_id,
                                                  const char *name, char *out,
@@ -1094,8 +1095,8 @@ void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
  * #RADIATION_LW_BAND_LOWER_EDGE_EV compile-time constants assume, and its
  * "native_grid_spacing_dlnE" attribute is present: refuse a table that
  * lacks it, rather than silently trusting a point value with unknown
- * provenance; a value of exactly 0.0 is legitimate there -- the
- * analytic-blackbody/v1-table case -- so presence, not a value comparison,
+ * provenance; a value of exactly 0.0 is legitimate there (the
+ * analytic-blackbody/v1-table case), so presence, not a value comparison,
  * is the refuse condition.
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
@@ -1605,8 +1606,7 @@ void radiation_read_main_sequence_lifetime_inverse_array(
  * actual fix. Mirrors the actionable-message convention radiation_init()
  * (radiation.c) already uses for GEARFeedback:HII_angular_nside.
  *
- * @param filename The yields table filename (sm->yields_table or
- * sm->yields_table for the first-stars model; same check either way).
+ * @param filename The yields table filename to open (sm->yields_table).
  * @param file_id (output) The opened HDF5 file id.
  * @param group_id (output) The opened "Data/Radiation" group id.
  */
@@ -1846,14 +1846,14 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Read the excess-photon-energy emission rates */
   radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
 
-  /* Read L_PE/L_LW directly from the table: validated above to exist
-     whenever GEARFeedback:with_interstellar_radiation_field is on. */
   /* Effective temperature, a stellar-evolution diagnostic written to the
      snapshot's star particles. Optional: a table generated before pychem
      exported it simply reports 0 for every star. */
   rad->has_teff = (char)(H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0);
   if (rad->has_teff) radiation_read_teff_array(rad, group_id, &grid, sm, us);
 
+  /* Read L_PE/L_LW directly from the table: validated above to exist
+     whenever GEARFeedback:with_interstellar_radiation_field is on. */
   if (rad->with_ISRF) {
     radiation_read_luminosity_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_luminosity_lw_array(rad, group_id, &grid, sm, us);
@@ -1880,4 +1880,4 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* The tables above are now valid: mark this #radiation active so callers
      use them instead of skipping to their zeroed defaults. */
   rad->is_active = 1;
-};
+}
