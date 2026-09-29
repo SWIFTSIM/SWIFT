@@ -390,7 +390,14 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
                                        const struct cosmology *cosmo,
                                        const float dv_phys) {
 
-  error("Implement me!!!");
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* This scheme has no v_sig: the Courant condition (eq. 36) uses
+   * c + 0.6 alpha (c + 2 mu_tilde) instead. The kick acts as an additional
+   * approach velocity on top of the one collected in the force loop (as the
+   * other schemes add beta * dv to v_sig). */
+  p->force.mu_tilde += dv;
 }
 
 /**
