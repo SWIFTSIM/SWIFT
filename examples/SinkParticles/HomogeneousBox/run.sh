@@ -20,6 +20,12 @@ echo "========================================"
 echo "Preparing the simulation..."
 echo "========================================"
 
+# The yields table must carry a Data/Radiation group, and the band-edge
+# datasets the interstellar radiation field reads: the tables of the public
+# hosts (getChemistryTable.sh) carry neither.
+$scripts_location/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+$scripts_location/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
+
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
 then
@@ -40,12 +46,6 @@ then
     echo "Fetching the Cloudy tables required by Grackle..."
     $scripts_location/getGrackleCoolingTable.sh
 fi
-
-# The yields table must carry a Data/Radiation group, and the band-edge
-# datasets the interstellar radiation field reads: the tables of the public
-# hosts (getChemistryTable.sh) carry neither.
-$scripts_location/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
-$scripts_location/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
 # Get the debugging ICs
 if [[ -z "$debug" || "$debug" -eq 1 ]]; then

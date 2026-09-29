@@ -150,7 +150,6 @@ with handle as f:
         if "dimensionality" in group.attrs:
             dimensionality = as_text(group.attrs["dimensionality"])
         absent = [d for d in required_fields if d not in group]
-        edge_problems = []
         if with_isrf:
             absent += [d for d in isrf_fields if d not in group]
             absent += [d for d in edge_fields if d not in group]
