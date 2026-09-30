@@ -1217,18 +1217,33 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     -------
     float or None
         max over snapshots of (max c_hyp - min c_hyp)/max c_hyp, or None
-        when any snapshot has no HyperbolicPropagationSpeeds or one that is
-        not everywhere finite and positive.
+        when any snapshot has no HyperbolicPropagationSpeeds, or one that is
+        not everywhere finite, or a non-positive value AFTER the first
+        snapshot that carries a speed at all, or no such snapshot exists.
+        Leading all-zero snapshots are skipped: see the body.
     """
+    started = False
     worst = 0.0
     for snap in run[start:]:
         c_hyp = snap["c_hyp"]
         if c_hyp is None:
             return None
-        if not np.all(np.isfinite(c_hyp)) or np.any(c_hyp <= 0.0):
+        if not np.all(np.isfinite(c_hyp)):
             return None
+        if np.all(c_hyp == 0.0) and not started:
+            # Written before any force step set a speed. A scheme-2 run's
+            # snapshot 0 reads exactly zero for every particle (MEASURED on
+            # the z0 leg of the 2026-09-30 cluster campaign: 32768 particles,
+            # one distinct float32 value, 0). Leading snapshots like that
+            # carry no speed to be uniform, so they are skipped rather than
+            # rejected; once a speed HAS appeared, a non-positive value is a
+            # rejection, not a skip.
+            continue
+        if np.any(c_hyp <= 0.0):
+            return None
+        started = True
         worst = max(worst, float((np.max(c_hyp) - np.min(c_hyp)) / np.max(c_hyp)))
-    return worst
+    return worst if started else None
 
 
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
