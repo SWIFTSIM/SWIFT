@@ -49,6 +49,11 @@
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
+/*! Particle-level reasons for falling back to standard SPH gradients */
+#define magma_fallback_none 0
+#define magma_fallback_condition_number 1
+#define magma_fallback_h_max 2
+
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
  *
@@ -224,6 +229,10 @@ struct part {
        * loop (e.g. by heating). */
       float c_sig;
 
+      /*! Number of neighbour pairs in which the gradient functions were
+       * replaced by kernel gradients during the last force loop (diagnostic) */
+      int n_pair_fallbacks;
+
     } force;
   };
 
@@ -251,8 +260,9 @@ struct part {
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
 
-  /*! Should this particle interact using base SPH? */
-  char use_base_SPH;
+  /*! Why this particle interacts using base SPH (0: it does not, otherwise a
+   * combination of the magma_fallback_* flags) */
+  char fallback_flags;
 
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;

@@ -547,7 +547,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->use_base_SPH = 0;
+  p->fallback_flags = magma_fallback_none;
 }
 
 /**
@@ -730,21 +730,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * --> Revert to base SPH, no reconstruction to the interface. */
   if (res) {
     sym_matrix_identity(&c_matrix);
-    p->use_base_SPH = 1;
+    p->fallback_flags |= magma_fallback_condition_number;
   }
 
   /* The particle has h close to h_max
    * --> Revert to base SPH, no reconstruction to the interface. */
   if (p->h > 0.99 * hydro_props->h_max) {
-    p->use_base_SPH = 1;
+    p->fallback_flags |= magma_fallback_h_max;
   }
 
-  /* Be verbose about this */
-  if (p->use_base_SPH) {
-    warning(
-        "Gas particle with ID %lld will use base SPH terms (h=%e h_max=%e).",
-        p->id, p->h, hydro_props->h_max);
-  }
+  /* The reasons are recorded in the snapshots ("FallbackFlags"), as are the
+   * pair-level fallbacks of the force loop ("GradientFallbackPairs"). */
 
   /* Without a valid C-matrix, the gradients are undefined: leave them at 0
    * (they are not used by the force loop in that case). */
@@ -793,6 +789,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.mu_tilde = 0.0f;
+  p->force.n_pair_fallbacks = 0;
 
   /* The signal speed starts with the particle's own sound speed */
   p->force.c_sig = p->force.soundspeed;

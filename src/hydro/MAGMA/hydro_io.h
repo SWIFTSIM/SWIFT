@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 15;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -251,6 +251,21 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[15] = io_make_output_field(
+      "FallbackFlags", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, parts, fallback_flags,
+      "Why the particle used standard SPH gradients instead of the "
+      "matrix-inversion gradient functions in its last force loop. 0: it did "
+      "not, 1: the condition number of its C-matrix was too large, 2: its "
+      "smoothing length was close to h_max, 3: both.");
+
+  list[16] = io_make_output_field(
+      "GradientFallbackPairs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      force.n_pair_fallbacks,
+      "Number of neighbour pairs of the particle in which the gradient "
+      "functions were replaced by kernel gradients during its last force loop "
+      "because they were misaligned with, or pointing away from, the pair "
+      "separation.");
 }
 
 /**

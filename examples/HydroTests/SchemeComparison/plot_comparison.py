@@ -113,6 +113,17 @@ def run_stats(run_dir):
         out["energy_drift"] = float((E[-1] - E[0]) / abs(E[0])) if (E[0] != 0 and not cosmological) else float("nan")
         out["E_kin_end"] = float(data[-1, 13])
         out["E_int_end"] = float(data[-1, 14])
+    # Fallback diagnostics of the MAGMA scheme (final snapshot)
+    snaps = sorted(glob.glob(os.path.join(run_dir, "*_[0-9][0-9][0-9][0-9].hdf5")))
+    if snaps:
+        with h5py.File(snaps[-1], "r") as f:
+            g = f["/PartType0"]
+            if "FallbackFlags" in g:
+                flags = g["FallbackFlags"][:]
+                out["frac_base_SPH_final"] = float(np.mean(flags != 0))
+                out["frac_cond_fallback_final"] = float(np.mean((flags & 1) != 0))
+            if "GradientFallbackPairs" in g:
+                out["mean_pair_fallbacks_final"] = float(np.mean(g["GradientFallbackPairs"][:]))
     log = os.path.join(run_dir, "output.log")
     if os.path.exists(log):
         n_base = 0

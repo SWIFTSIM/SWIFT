@@ -231,8 +231,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurej = pj->force.pressure;
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const int use_base_SPH_i = pi->use_base_SPH;
-  const int use_base_SPH_j = pj->use_base_SPH;
+  const int use_base_SPH_i = (pi->fallback_flags != magma_fallback_none);
+  const int use_base_SPH_j = (pj->fallback_flags != magma_fallback_none);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -477,26 +477,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const int G_ij_wrong_sign = (G_ij_dot_dx > 0.f);
 #endif
 
-  /* if (G_ij_misaligned) */
-  /*   warning( */
-  /*       "Misaligned dx=[%e %e %e] G_ij=[%e %e %e] G_ij.dx=%e use_SPH_i=%d
-   * " */
-  /*       "use_SPH_j=%d", */
-  /*       dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], G_ij_dot_dx, */
-  /*       use_base_SPH_i, use_base_SPH_j); */
-
-  /* if (G_ij_wrong_sign) */
-  /*   warning( */
-  /* 	    "Wrong sign! dx=[%e %e %e] G_ij=[%e %e %e]  use_SPH_i=%d " */
-  /* 	    "use_SPH_j=%d", */
-  /* 	    dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], */
-  /* 	    use_base_SPH_i, use_base_SPH_j); */
-
 #ifdef USE_STANDARD_KERNEL_GRADIENTS
   const int force_standard_kernel = 1;
 #else
   const int force_standard_kernel = 0;
 #endif
+
+  /* Record the pair-level fallbacks (diagnostic, written to the snapshots) */
+  if (!use_base_SPH_i && !use_base_SPH_j &&
+      (G_ij_misaligned || G_ij_wrong_sign))
+    pi->force.n_pair_fallbacks++;
 
   /* Default to the traditional SPH gradW term if one of the particles is weird
    */
