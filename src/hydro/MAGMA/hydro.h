@@ -397,11 +397,12 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   /* Compute the velocity kick in comoving coordinates */
   const float dv = dv_phys / cosmo->a_factor_sound_speed;
 
-  /* This scheme has no v_sig: the Courant condition (eq. 36) uses
-   * c + 0.6 alpha (c + 2 mu_tilde) instead. The kick acts as an additional
-   * approach velocity on top of the one collected in the force loop (as the
-   * other schemes add beta * dv to v_sig). */
-  p->force.mu_tilde += dv;
+  /* Raise the signal velocity of the Courant condition by beta * dv, as the
+   * other schemes do. Here v_sig = 2 (c + 0.6 alpha (c + 2 mu_tilde)), so the
+   * kick enters as an additional approach velocity beta dv / (2.4 alpha) on
+   * top of the one collected in the force loop. */
+  p->force.mu_tilde +=
+      magma_viscosity.beta * dv / (2.4f * magma_viscosity.alpha);
 }
 
 /**
@@ -430,7 +431,8 @@ hydro_diffusive_feedback_reset(struct part *p) {
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical
- * state. A typical time-step calculation would be the use of the CFL condition.
+ * state: the minimum of the Courant criterion (Rosswog 2020, eq. 36) and the
+ * acceleration criterion (eq. 35), both written in SWIFT's convention.
  *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
@@ -449,8 +451,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
                        p->a_hydro[2] * p->a_hydro[2];
   /* Physical length / physical acceleration (as in the gravity time-step) */
   const float dt_acc =
-      norm_a ? sqrtf(cosmo->a * p->h /
-                     (cosmo->a_factor_hydro_accel * sqrtf(norm_a)))
+      norm_a ? sqrtf(2.f * kernel_gamma) *
+                   sqrtf(cosmo->a * p->h /
+                         (cosmo->a_factor_hydro_accel * sqrtf(norm_a)))
              : FLT_MAX;
 
   /* Courant criterion (eq. 36) */
@@ -458,10 +461,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
    * (the paper's global time-step limits every particle by the hottest one) */
   const float c = p->force.c_sig;
   const float alpha = magma_viscosity.alpha;
-  const float dt_Courant =
-      cosmo->a * p->h /
-      (cosmo->a_factor_sound_speed *
-       (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde)));
+  const float v_sig = 2.f * (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde));
+  const float dt_Courant = 2.f * kernel_gamma * cosmo->a * p->h /
+                           (cosmo->a_factor_sound_speed * v_sig);
 
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }

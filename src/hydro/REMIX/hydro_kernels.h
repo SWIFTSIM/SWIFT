@@ -25,11 +25,11 @@
  * @brief Utilities for REMIX hydro kernels.
  */
 
-#include <float.h>
-
 #include "const.h"
 #include "hydro_parameters.h"
 #include "math.h"
+
+#include <float.h>
 
 /**
  * @brief Prepares extra kernel parameters for a particle for the density

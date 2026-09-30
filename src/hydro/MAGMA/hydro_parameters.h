@@ -211,8 +211,8 @@ static INLINE void viscosity_init(struct swift_params *params,
 
   if (viscosity->alpha < 0.f || viscosity->beta < 0.f ||
       viscosity->epsilon <= 0.f || viscosity->limiter_width <= 0.f ||
-      viscosity->max_condition_number < 1.f ||
-      viscosity->angle_limit < 0.f || viscosity->angle_limit > M_PI_2)
+      viscosity->max_condition_number < 1.f || viscosity->angle_limit < 0.f ||
+      viscosity->angle_limit > M_PI_2)
     error("Invalid MAGMA viscosity / gradient parameters.");
 
   viscosity->cos_angle_limit = cosf(viscosity->angle_limit);
