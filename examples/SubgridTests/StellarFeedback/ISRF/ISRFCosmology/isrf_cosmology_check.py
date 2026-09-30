@@ -127,26 +127,63 @@ free_field
     than skipping, which is still a real gate -- a module that applied the
     decay anyway fails it.
 
-    In a NON-COSMOLOGICAL run (A1) reports its measured drift and does not
-    gate it, the way (A3) already reports and skips there. The prediction
-    is identically zero, since H = 0 leaves no decay for the module to
-    apply, and every cosmological term of the bar vanishes with it. What
-    remains is the float-divergence floor on its own, and that is a
-    derived bound, the same one (A3) builds: this leg is ungated because
-    that bound does not cover the drift, not because the comparison was
-    vacuous. On this example's own z0 fixture the drift exceeds it by
-    about an order of magnitude (1.496e-06 against 1.357e-07, rebaselined
-    on the first genuine c_hyp snapshot). Sizing a bar term from that
-    measurement would fit the bar to the data, so none was added, and the
-    consequence is stated rather than hidden: between the float floor and
-    (A2)'s own bar, this leg no longer bounds the transport ledger's
-    conservation. The drift is printed instead, so it stays visible, and
-    the two checks the leg does carry stay live: the measured drift must
-    be finite, and (A2) is gated exactly as it is with cosmology. The
-    non-cosmological run's own purpose here is to be the `--reference` of
-    the cosmological one, where its drift enters that run's bar, is
-    therefore still acted upon, and is held below the predicted decay by
-    the resolution self-test.
+    In a NON-COSMOLOGICAL run the prediction is identically zero, since
+    H = 0 leaves no decay for the module to apply, and every cosmological
+    term of the bar vanishes with it. What remains is the float-divergence
+    floor on its own, a derived bound, the same one (A3) builds. Whether
+    that floor bounds the measured drift depends on one thing, and (A1)
+    splits the leg on it.
+
+    The ledger is a ratio of two sums taken at the SAME time, so a c_hyp
+    that is UNIFORM ACROSS THE BOX cancels between numerator and
+    denominator. An unpinned run's c_hyp is not: under the variable-c
+    schemes it is margin*h/dt, so it carries the glass's own h spread, and
+    the ledger mean then moves for a second reason that has nothing to do
+    with conservation. The scheme conserves the ledger's NUMERATOR at
+    fixed weights; it conserves neither the numerator once the weights
+    move nor the normalised ratio. Per interval the drift splits exactly
+    into a REWEIGHT term, mean(u_next, w_next) - mean(u_next, w), and a
+    fixed-weight TRANSPORT term, and the first is bounded by
+    spread(u)*spread(1/c_hyp) with no conservation content.
+
+    So (A1) at H = 0:
+
+    - With the propagation speed PINNED
+      (GEARFeedback:ISRF_c_hyp_pin_for_debugging, the same mechanism
+      `dust_absorption` uses), every particle's c_hyp is one bit-identical
+      value, the weight cancels identically, the metric becomes the
+      mass-weighted box mean the pairwise exchange conserves, and the
+      float-divergence floor is the whole error budget. The leg is GATED
+      against that floor, and against it alone: `--reference` cannot
+      inflate it, because the reference term is not in this bar. The pin
+      is applied after the light-speed clamp
+      (radiation_isrf.c's radiation_prepare_part_propagation and
+      radiation_end_density_propagation), and with c_i == c_j the
+      variable-c and shared-minimum operator branches are bit-identical
+      by construction (radiation_propagation_iact.h), so pinning does not
+      change which branch runs. What it does cost is the variable-c
+      coverage: this leg says nothing about a defect that only appears
+      once c_hyp varies between neighbours.
+    - UNPINNED, the drift is REPORTED and not gated, the way (A3) already
+      reports and skips there. It is not gated because the reweighting
+      term is not bounded by anything this check derives, and sizing a bar
+      term from the measurement would fit the bar to the data. The
+      consequence is stated rather than hidden: between the float floor
+      and (A2)'s own bar, the unpinned leg does not bound the transport
+      ledger's conservation, and the pinned leg is where that bound lives.
+      The drift is printed instead, so it stays visible, and the two
+      checks the unpinned leg does carry stay live: the measured drift must
+      be finite, and (A2) is gated exactly as it is with cosmology. The
+      unpinned non-cosmological run also remains the `--reference` of the
+      cosmological one, where its drift enters that run's bar, is
+      therefore still acted upon, and is held below the predicted decay by
+      the resolution self-test.
+
+    A pin the module did not apply FAILS rather than falling back to the
+    report: if the parameter is set and the recorded c_hyp is not
+    bit-uniform, the uniform-weight ledger the gate rests on is not live,
+    and a silent fallback would remove the gate exactly when something on
+    the pin path had broken.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -1106,6 +1143,78 @@ def read_c_hyp_scheme(pattern: str) -> Optional[int]:
         return None
 
 
+def read_c_hyp_pin(pattern: str) -> Optional[float]:
+    """Return GEARFeedback:ISRF_c_hyp_pin_for_debugging, or None if unrecorded.
+
+    The parameter is a propagation speed in the run's own internal velocity
+    units, and 0 disables the pin
+    (`feedback_properties.h`'s ISRF_c_hyp_pin_for_debugging). It is read
+    here only to decide whether the run CLAIMS a pinned speed: whether the
+    module actually applied one is established from the snapshots
+    themselves (`c_hyp_spatial_spread`).
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    float or None
+        The parameter's value, or None when used_parameters.yml is absent
+        or does not carry the key.
+    """
+    import os
+    import yaml
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    path = os.path.join(directory, "used_parameters.yml")
+    if not os.path.exists(path):
+        return None
+    with open(path) as handle:
+        parameters = yaml.safe_load(handle)
+    try:
+        return float(parameters["GEARFeedback"]["ISRF_c_hyp_pin_for_debugging"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
+    """Return the worst per-snapshot spatial spread of c_hyp, or None.
+
+    (A1)'s ledger is a ratio of two sums taken at the SAME time, so a
+    c_hyp that is uniform ACROSS THE BOX cancels between numerator and
+    denominator whatever it does from one snapshot to the next (this
+    module's docstring). What the pinned leg needs is therefore this
+    spatial spread, per snapshot, and exactly zero: a bit-uniform speed
+    makes the weighted ledger and the mass-weighted one the same
+    functional.
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order, as `load_run` returns them.
+    start : int, optional
+        First snapshot to include.
+
+    Returns
+    -------
+    float or None
+        max over snapshots of (max c_hyp - min c_hyp)/max c_hyp, or None
+        when any snapshot has no HyperbolicPropagationSpeeds or one that is
+        not everywhere finite and positive.
+    """
+    worst = 0.0
+    for snap in run[start:]:
+        c_hyp = snap["c_hyp"]
+        if c_hyp is None:
+            return None
+        if not np.all(np.isfinite(c_hyp)) or np.any(c_hyp <= 0.0):
+            return None
+        worst = max(worst, float((np.max(c_hyp) - np.min(c_hyp)) / np.max(c_hyp)))
+    return worst
+
+
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
@@ -1662,6 +1771,17 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # (radiation_end_force_propagation returns first), so its predicted
     # drift is exactly zero, whatever its cosmology.
     cosmo_decay = cosmological and propagation_on
+    # A pinned propagation speed makes c_hyp bit-uniform across the box, so
+    # the ledger's own 1/c_hyp weight cancels between its numerator and its
+    # denominator and the metric becomes the mass-weighted box mean the
+    # transport conserves. That removes the reweighting term an unpinned run
+    # carries, of order spread(u)*spread(1/c_hyp), and leaves the float
+    # divergence floor as (A1)'s whole error budget. The parameter decides
+    # whether the run CLAIMS a pin; the snapshots decide whether it is live.
+    c_hyp_pin = read_c_hyp_pin(opt.snapshots)
+    pin_claimed = c_hyp_pin is not None and c_hyp_pin > 0.0
+    c_hyp_spread = c_hyp_spatial_spread(run) if pin_claimed else None
+    pinned = pin_claimed and c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
@@ -1739,6 +1859,26 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
 
     ok = True
+    if pin_claimed:
+        spread_note = (
+            "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
+        )
+        print(
+            f"  (A1) GEARFeedback:ISRF_c_hyp_pin_for_debugging = "
+            f"{c_hyp_pin:.9g} (internal velocity units), worst spatial "
+            f"spread (max-min)/max of the recorded c_hyp {spread_note}"
+        )
+    if pin_claimed and not pinned:
+        # Fail rather than fall back to the ungated report: the pinned leg
+        # below is the only gate on this fixture's transport ledger, and a
+        # pin the module did not actually apply would otherwise remove it
+        # silently.
+        print(
+            "  FAIL: (A1) a c_hyp pin is set but the recorded "
+            "HyperbolicPropagationSpeeds is not bit-uniform across the box, "
+            "so the uniform-weight ledger this leg is gated on is not live"
+        )
+        ok = False
     # Longest step in proper time, from the run's quantised dt_max (ln a
     # with cosmology).
     dt_step = (
@@ -1886,6 +2026,28 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  (A1) u_{band}: drift coefficient {drift_coeff:+.6g}, predicted "
             f"{predicted[-1]:+.4e}, measured {errors[band][-1]:+.4e}"
         )
+        if not cosmological and pinned:
+            # GATED, on the float floor alone. With c_hyp bit-uniform the
+            # ledger's 1/c_hyp weight cancels identically, so the metric is
+            # the mass-weighted box mean the pairwise transport conserves,
+            # and the only error left is the float32 flux divergence the
+            # double relaxation update subtracts every step. That floor is
+            # mechanism-derived (`float_divergence_pull`), the same
+            # construction (A3) uses, and it is used here on its own rather
+            # than through `bar`, so a `--reference` handed to a
+            # non-cosmological run cannot inflate it.
+            print(
+                f"  (A1) u_{band}: c_hyp pinned, so the ledger weight "
+                f"cancels between the two sums and the metric is the "
+                f"mass-weighted box mean; bar is the analytic float floor "
+                f"({float_note}) {float_residual:.2e} on its own"
+            )
+            ok &= gate(
+                f"(A1) ln u_{band} drift, worst |residual|, {ledger}, " f"c_hyp pinned",
+                worst,
+                float_residual,
+            )
+            continue
         if not cosmological:
             # Reported, not gated: see this module's docstring. Both numbers
             # are printed because they are not the same one and both are

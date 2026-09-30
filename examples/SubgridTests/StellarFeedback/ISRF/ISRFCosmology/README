@@ -118,6 +118,30 @@ compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
 
+## The pinned free_field pair
+The ledger the band drift is measured on weights each particle by
+`1/c_hyp`, and an unpinned `c_hyp` is `margin*h/dt`, so it carries the
+glass's own `h` spread. That makes the ledger mean move for a reason
+unrelated to conservation, which is why the unpinned run above is reported
+rather than gated. Pinning the propagation speed (`c_hyp_pin`, internal
+velocity units, the same mechanism `dust_absorption` uses) makes `c_hyp`
+one value across the box, the weight cancels, and the check then gates the
+band drift against its own float floor:
+```
+config=free_field redshift=0 c_hyp_pin=38.7902259 run_name=ff_pin_z0 ./run.sh
+config=free_field redshift=9 c_hyp_pin=38.7902259 run_name=ff_pin_z9 ./run.sh
+python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z9/snap/snapshot_*.hdf5" \
+    --reference "ff_pin_z0/snap/snapshot_*.hdf5"
+```
+That value is the unpinned run's own box-mean `c_hyp` at the defaults
+above, so the pinned box evolves like the unpinned one instead of at some
+other Courant number. At another `level`, `gas_density` or `duration`,
+read the mean of `HyperbolicPropagationSpeeds` from an unpinned run's
+first post-startup snapshot and pin at that. A pinned run says nothing
+about a propagation speed that varies between neighbours, so run this pair
+in addition to the unpinned one, not instead of it.
+
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
 column attenuating the injected LW and PE bands. The `injection_dusty` box is
