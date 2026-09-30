@@ -47,11 +47,12 @@ The check equations, and the bars each one derives from the run's own
 discretisation, are in the docstrings of `isrf_cosmology_check.py` and
 `isrf_cosmology_h2_identity_check.py`. The `injection` bar is derived the same
 way, from the run's own step size, illuminated-neighbour count and float32
-widths, and the check prints each of its terms. The `injection_dusty` leg is
-the exception, with two fixed tolerances rather than derived ones: `--dust-tol`,
-default 1e-4, on the per-particle band-ratio residual, and a hard-coded 1e-5 on
-the bracket around the weighted mean of `exp(-tau)`. Both are set in
-`isrf_cosmology_check.py` itself.
+widths, and the check prints each of its terms. The `injection_dusty` leg's
+band-ratio bar is derived the same way, from the run's own signal and the six
+float32 roundings of the reconstruction, and is also printed; `--dust-tol`
+overrides it with a fixed value and a negative value reports without gating. One
+fixed tolerance remains in that leg: a hard-coded 1e-5 on the bracket around the
+weighted mean of `exp(-tau)`, set in `isrf_cosmology_check.py` itself.
 
 ## Initial conditions
 `makeIC.py` takes physical values at the starting redshift and writes the

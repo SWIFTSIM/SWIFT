@@ -160,14 +160,13 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--dust-tol",
         type=float,
-        default=1e-4,
-        help="--dusty only: max allowed max_j |R_j| on the band-ratio gate G2 "
-        "(default: %(default)s). The residual is pinned to 0 by an identity "
-        "with no free parameters, so the only expected discrepancy is float32 "
-        "rounding, measured at ~3e-7 at this example's defaults. The default "
-        "leaves two decades of margin above that floor, matching how --tol was "
-        "set. Pass a negative value to report the residual without gating on "
-        "it, which is how the floor was measured.",
+        default=None,
+        help="--dusty only: max allowed max_j |R_j| on the band-ratio gate G2. "
+        "The residual is pinned to 0 by an identity with no free parameters, so "
+        "the only admissible discrepancy is float32 rounding. Omitted, the bar "
+        "is DERIVED from the run's own signal and those float32 widths, and "
+        "printed with its terms. Pass a positive value to override it, or a "
+        "negative one to report the residual without gating on it.",
     )
     parser.add_argument(
         "--kernel-gamma",
@@ -434,12 +433,17 @@ def check_dusty(
     # Float32 error budget of the reconstruction, each term about half an
     # ulp: the two specific-energy stores, the two expf calls, and the
     # float32 chain that builds tau (h, rho, and about four roundings in the
-    # opacity), the last three scaling with the signal itself.
+    # opacity), the last three scaling with the signal itself. Half an ulp per
+    # expf is MEASURED on the canonical build's own flags, at 0.5015 float32
+    # ulps over the tau range these fixtures occupy, not assumed from the
+    # library's documented bound.
     signal = abs((1.0 - ratio) * float(np.max(tau_lw[lit])))
     budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 6.0 * FLOAT32_ULP * signal
     print(f"  float32 budget of |R_j|: {budget:.2e}")
 
-    if opt.dust_tol < 0.0:
+    if opt.dust_tol is None:
+        ok = gate("band-ratio residual (G2), max_j |R_j|, derived bar", worst, budget)
+    elif opt.dust_tol < 0.0:
         print(
             f"  REPORT (no bar given): band-ratio residual (G2), "
             f"max_j |R_j| = {worst:.3e}"

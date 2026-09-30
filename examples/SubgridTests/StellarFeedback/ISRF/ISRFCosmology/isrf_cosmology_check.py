@@ -717,11 +717,12 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--dust-tol",
         type=float,
-        default=1e-4,
+        default=None,
         help="injection_dusty only: max allowed max_j |R_j| on the band-ratio "
-        "gate (default: %(default)s), two decades above this reconstruction's "
-        "measured float32 floor. Pass a negative value to report the residual "
-        "without gating on it.",
+        "gate. Omitted, the bar is DERIVED from the run's own signal and the "
+        "float32 widths of the reconstruction, and printed with its terms. "
+        "Pass a positive value to override it, or a negative one to report the "
+        "residual without gating on it.",
     )
     parser.add_argument(
         "--kernel-gamma",
@@ -2596,6 +2597,41 @@ def log_step_quantisation(token: str) -> float:
     return LOG_STEP_MANTISSA_HALF_ULP / mantissa
 
 
+def dust_band_ratio_bar(signal: float) -> float:
+    """Return the float-arithmetic bar on the dusty band-ratio residual.
+
+    The residual ``R_j = ln(u_PE/u_LW) - ln(L_PE/L_LW) - (1 - sigma_PE/sigma_LW)
+    tau_LW`` is pinned to zero by an identity with no free parameter, so the
+    only admissible discrepancy is float32 rounding. Six roundings, each of at
+    most half a float32 ulp:
+
+    - the two band specific energies, as stored in the snapshot;
+    - the two ``expf`` extinction factors the injection applies
+      (``radiation_get_dust_extinction_factor``). MEASURED on the canonical
+      build's own flags: ``expf`` is accurate to 0.5015 float32 ulps over the
+      tau range these fixtures occupy, so half an ulp each is the right
+      allowance and not an assumption about the library;
+    - the float32 chain that rebuilds tau, about four roundings through h, rho
+      and the opacity.
+
+    The first two do not scale with the signal and the rest do, because they
+    perturb tau itself and the residual carries tau linearly. Hence
+    ``4 u32 + 6 u32 * signal`` with ``u32 = FLOAT32_EPS / 2``.
+
+    Parameters
+    ----------
+    signal : float
+        ``|(1 - sigma_PE/sigma_LW) * max_j tau_LW,j|``, dimensionless.
+
+    Returns
+    -------
+    float
+        The bar, dimensionless.
+    """
+    u32 = FLOAT32_EPS / 2.0
+    return 4.0 * u32 + 6.0 * u32 * float(signal)
+
+
 def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     """Return the float-arithmetic bar on the injection identity's residual.
 
@@ -2885,10 +2921,17 @@ def check_injection(opt: argparse.Namespace) -> bool:
     print(
         f"  tau_LW {np.min(tau['LW'][lit_pe]):.4f} to "
         f"{np.max(tau['LW'][lit_pe]):.4f}, band-ratio signal {signal:.4f}, "
-        f"float32 budget {4.0 * FLOAT32_EPS / 2.0 + 3.0 * FLOAT32_EPS * signal:.2e}"
+        f"float32 budget {dust_band_ratio_bar(signal):.2e}"
     )
     worst = float(np.max(np.abs(residual)))
-    if opt.dust_tol < 0.0:
+    derived_bar = dust_band_ratio_bar(signal)
+    if opt.dust_tol is None:
+        ok &= gate(
+            "band-ratio residual (G2), max_j |R_j|, derived bar",
+            worst,
+            derived_bar,
+        )
+    elif opt.dust_tol < 0.0:
         print(f"  REPORT (no bar given): band-ratio residual max_j |R_j| = {worst:.3e}")
         ok &= bool(np.isfinite(worst))
     else:
