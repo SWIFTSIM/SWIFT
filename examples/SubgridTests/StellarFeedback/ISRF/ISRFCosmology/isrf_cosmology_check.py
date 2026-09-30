@@ -248,6 +248,11 @@ either direction. The generic terms:
   bounding it, and twice its measured drift replaces the bound wherever it
   is larger.
 
+(A2)'s bar is relative to the predicted exponent, like its residual. Its
+float term is the species fraction's own storage: H2I is a float rewritten
+every step (cooling_struct.h), so ln x_H2 carries at most eps/2 per step
+taken up to that snapshot, divided by the exponent predicted up to it.
+
 (A1)'s bar carries no term for the predicted decay itself, which is on the
 other side of the residual now, only: the log line's own ``%.5g`` precision
 on each lambda, propagated through the band's own coefficient and times the
@@ -1843,12 +1848,32 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
         ok &= gate(f"(A1) ln u_{band} drift, worst |residual|, {ledger}", worst, bar)
 
-    # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
+    # H2, per snapshot, every term RELATIVE to the predicted exponent, which
+    # is what errors["H2"] is: implicit solve (k dt/2), one-step snapshot lag
     # (dt/t without cosmology; with it the rate varies as a^-3, same order),
-    # float32 round-off; with cosmology the step-end rate adds 1.5 dlna_step
-    # ((p/2) dlna_step at p = 3, this module's own Bars section, not 2.0 at
-    # p = 4: A2's rate no longer carries u_LW's own a0/a factor).
-    budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + FLOAT32_EPS * n_steps
+    # float32 storage of the species fraction; with cosmology the step-end
+    # rate adds 1.5 dlna_step ((p/2) dlna_step at p = 3, this module's own
+    # Bars section, not 2.0 at p = 4: A2's rate no longer carries u_LW's own
+    # a0/a factor). H2I_frac is a float rewritten every step
+    # (cooling_struct.h), so ln x_H2 carries at most one unit round-off
+    # (eps/2) per step taken so far, an ABSOLUTE ln error divided by the
+    # predicted exponent it is compared with.
+    exponent_so_far = errors["rate"] * errors["integral"][1:]
+    steps_so_far = np.array(
+        [step_count(run[: i + 1], dt_max) for i in range(1, len(run))]
+    )
+    if not (
+        np.all(np.isfinite(errors["H2"]))
+        and np.all(np.isfinite(exponent_so_far))
+        and np.all(exponent_so_far > 0.0)
+    ):
+        print(
+            "  FAIL: (A2) the H2 error or the predicted exponent is "
+            "non-finite, or the predicted exponent is not positive"
+        )
+        return False
+    float_storage = 0.5 * FLOAT32_EPS * steps_so_far / exponent_so_far
+    budget = 0.5 * errors["rate"] * dt_step + dt_step / elapsed + float_storage
     cosmo = 1.5 * dt_max if cosmological else 0.0
     measured_nc = np.zeros_like(budget)
     if reference is not None:
@@ -1891,7 +1916,8 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     k = int(np.argmax(ratio))
     print(
         f"  bar ln x_H2 (per snapshot): implicit solve {0.5 * errors['rate'] * dt_step:.1e} "
-        f"+ lag dt/t {dt_step / elapsed[-1]:.1e} (end) to {dt_step / elapsed[0]:.1e} (first), "
+        f"+ lag dt/t {dt_step / elapsed[-1]:.1e} (end) to {dt_step / elapsed[0]:.1e} (first) "
+        f"+ float32 H2I storage {float_storage[-1]:.1e} (end) to {float_storage[0]:.1e} (first), "
         f"2 x non-cosmological up to {2.0 * np.max(measured_nc):.1e}, step-end rate {cosmo:.1e}"
     )
     print(
@@ -2075,7 +2101,16 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         raise RuntimeError("--dark is required for photoelectric")
     on = load_run(opt.snapshots)
     dark = load_run(opt.dark)
-    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    # The lag term uses the QUANTISED dt_max the run's own time-line actually
+    # allowed, not the raw parameter: see `read_timeline_dt_max`.
+    dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
+    if dt_max is None:
+        dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+        print(
+            "  NOTE: no engine_config line announced the time-line's own "
+            "maximal step, so the raw TimeIntegration:dt_max parameter is "
+            "used: the one-step lag term is then over-counted"
+        )
     cosmological = on[0]["cosmological"]
     err = photoelectric_errors(on, dark)
     dt_step = (
@@ -2095,8 +2130,17 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
     #   scales as exp(-T_line/T) with T_line = 92 K (C+), so the dark run's
     #   own net loss, scaled by exp(92/T_dark - 92/T_on) - 1, bounds the
     #   difference; any T-independent loss cancels in the dark twin;
-    # - float32 storage of u relative to the difference.
+    # - float32 storage of the gas u (InternalEnergies is a float in struct
+    #   part and in the snapshot), relative to the difference.
     t = err["times"][1:]
+    if not (
+        np.all(np.isfinite(err["relative"])) and np.all(err["predicted"][1:] > 0.0)
+    ):
+        print(
+            "  FAIL: (D2) the measured difference or the predicted heating is "
+            "non-finite, or the predicted heating is not positive"
+        )
+        return False
     temperature_ratio = err["on_u"][1:] / err["dark_u"][1:]
     # Neutral atomic gas, mu = 4/(1 + 3 X).
     t_dark = (
@@ -2106,13 +2150,21 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         * err["dark_u"][1:]
         / 1.380649e-16
     )
-    boost = np.expm1(92.0 / t_dark * (1.0 - 1.0 / temperature_ratio))
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        boost = np.expm1(92.0 / t_dark * (1.0 - 1.0 / temperature_ratio))
     cooling = (
         np.abs(err["dark_u"][1:] - err["dark_u"][0]) * boost / err["predicted"][1:]
     )
     lag = dt_step / t
     storage = 4.0 * FLOAT32_EPS * err["on_u"][1:] / err["predicted"][1:]
     bar = lag + cooling + storage
+    # A non-finite bar term makes every ratio below 0 or NaN, and 0 passes.
+    if not np.all(np.isfinite(bar)):
+        print(
+            "  FAIL: (D2) a bar term is not finite (cold dark gas overflows "
+            "the C+ cooling boost): the bar is meaningless"
+        )
+        return False
     if opt.reference:
         if opt.reference_dark is None:
             raise RuntimeError("--reference needs --reference-dark for photoelectric")
