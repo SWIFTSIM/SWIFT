@@ -2171,6 +2171,19 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         ref = photoelectric_errors(
             load_run(opt.reference), load_run(opt.reference_dark)
         )
+        # The reference enters the bar, so a non-finite reference error
+        # would raise the bar to infinity and pass every residual.
+        if not (
+            np.all(np.isfinite(ref["relative"]))
+            and np.all(np.isfinite(ref["times"]))
+            and np.all(ref["predicted"][1:] > 0.0)
+        ):
+            print(
+                "  FAIL: (D2) the reference run's difference or predicted "
+                "heating is non-finite, or the predicted heating is not "
+                "positive: refusing to build a bar from it"
+            )
+            return False
         # Reference error at the same elapsed times.
         ref_error = np.interp(t, ref["times"][1:], np.abs(ref["relative"]))
         bar = np.maximum(bar, 2.0 * ref_error)
