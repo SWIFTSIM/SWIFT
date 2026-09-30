@@ -2511,7 +2511,9 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       first touch by any star (radiation_iact.h:320-326);
     - no quadrature of the source rate enters, because the star's band
       luminosity and its step are each cached once per step
-      (radiation_iact.h:124) and held constant across its neighbours;
+      (radiation_iact.h:124) and held constant across its neighbours. This
+      needs the snapshot's ``L_band`` to be the value the injection used,
+      which holds while the luminosity is constant over the run;
     - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
       (radiation_isrf.c:1585 and radiation_get_dust_extinction_factor);
@@ -2519,6 +2521,21 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       the snapshot (feedback_struct.h:166);
     - this check's own float64 summation of ``n_lit`` terms costs
       ``(n_lit - 1) * 2**-53``, eleven orders below the terms kept below.
+
+    Two premises the bar does not cover, because neither is a rounding:
+
+    - the two loops must evaluate the same ``r``. The injection floors it at
+      ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
+      (GEAR_thermal/feedback_iact.h:58), so a gas particle within that
+      radius of the star breaks the identity itself rather than widening its
+      floor;
+    - both call sites must compile ``W`` to the same operations.
+      ``kernel_eval`` and ``kernel_deval`` build it from the same
+      coefficients by the same Horner recurrence, so they agree exactly
+      while that holds. It is a premise and not a bounded term: near the
+      support edge the monomial Horner form is badly conditioned, so had the
+      two expansions compiled differently the disagreement would be set by
+      that conditioning and not by the allowance kept below.
 
     Parameters
     ----------
@@ -2549,14 +2566,15 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     # Roundings that differ between the two loops. Every weight is positive,
     # so the normalised sum is a convex combination of the per-term relative
     # perturbations and each of these counts once, not n_lit times: the
-    # injection's own per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
-    # the m_j * w_j product, the single hi_inv_dim scaling of
-    # enrichment_weight (GEAR_thermal/feedback.c:366), and the kernel itself.
-    # kernel_eval and kernel_deval build W from the same coefficients by the
-    # same Horner recurrence, so they agree exactly unless the compiler
-    # contracts that recurrence into an FMA at one call site and not the
-    # other, which costs at most one ulp per step of the recurrence.
-    reconstruction = (3 + KERNEL_MAX_DEGREE) * u32
+    # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
+    # then its m_j * w_j product, the density loop's own m_j * w_j product
+    # over different operands, and the single hi_inv_dim scaling of
+    # enrichment_weight (GEAR_thermal/feedback.c:366). KERNEL_MAX_DEGREE is
+    # an allowance for one ulp per step of the Horner recurrence, in case the
+    # compiler contracts it into an FMA at one call site and not the other;
+    # see this function's docstring for why identical compilation of W is a
+    # premise rather than a term.
+    reconstruction = (4 + KERNEL_MAX_DEGREE) * u32
     return {
         "dt_float32": dt_float32,
         "dt_text": dt_text,
