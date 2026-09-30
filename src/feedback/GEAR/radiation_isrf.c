@@ -1011,8 +1011,8 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
    * `-u_V > 0`. `u_V` is `rho_prev * u` with `u` in double, and the product
    * underflows float32 for a faint band: the narrowed `u_V` is then a
    * flushed `-0.f` while the sign test still reads the unnarrowed negative
-   * double, so the division becomes `0/0`. Returning 0 there matches what
-   * the same expression yielded before `u` was widened. */
+   * double, so the division becomes `0/0`. With no resolvable field scale there
+   * is no undershoot to measure, so the trigger stays at zero. */
   const float u_V_ref = max(ngb_mean_abs_u_V, -u_V);
   const float eps = (u_V < 0.f && u_V_ref > 0.f) ? -u_V / u_V_ref : 0.f;
   const float x = min(eps / eps_1, 1.f);
