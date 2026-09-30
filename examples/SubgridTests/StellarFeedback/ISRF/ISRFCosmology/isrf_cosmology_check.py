@@ -653,7 +653,11 @@ C_LIGHT_CGS = 2.99792458e10
 M_H_CGS = 1.67262171e-24
 HYDROGEN_MASS_FRACTION = 0.76
 PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
-FLOAT32_EPS = np.finfo(np.float32).eps
+# float(), so every bar term built from it is evaluated in double. Left as
+# the numpy float32 scalar, an expression such as n * eps / (1 - n * eps)
+# rounds to float32 at each step, which is the precision of the quantity the
+# bar is meant to bound.
+FLOAT32_EPS = float(np.finfo(np.float32).eps)
 # The step line prints its step-size field with "%14e" (src/engine.c), i.e.
 # six decimals of mantissa, so a step size read back from the log carries
 # half a unit in that last decimal.
