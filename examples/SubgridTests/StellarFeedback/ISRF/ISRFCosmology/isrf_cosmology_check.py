@@ -1099,8 +1099,13 @@ def summarize(label: str, error: np.ndarray) -> float:
 
 
 def gate(label: str, worst: float, bar: float) -> bool:
-    """Print a pass/fail line."""
-    ok = bool(np.isfinite(worst)) and worst <= bar
+    """Print a pass/fail line.
+
+    Both operands are tested for finiteness before the comparison: a NaN
+    compares false against any bar, and an infinite bar would otherwise
+    admit any residual.
+    """
+    ok = bool(np.isfinite(worst)) and bool(np.isfinite(bar)) and worst <= bar
     print(
         f"  {'PASS' if ok else 'FAIL'}: {label}: {worst:.3e} <= bar {bar:.3e}"
         if ok
