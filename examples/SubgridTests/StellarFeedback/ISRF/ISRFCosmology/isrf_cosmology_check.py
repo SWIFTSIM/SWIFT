@@ -1250,9 +1250,12 @@ def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
     It applies only to the consistent-variable-c schemes, and only when every
-    snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
-    Every rejection prints why, so a degraded run is never silently gated on
-    the wrong invariant.
+    snapshot that carries a speed at all has a finite, strictly positive
+    HyperbolicPropagationSpeeds. Leading all-zero snapshots are written before
+    the first force step and carry no speed, so they are skipped; a
+    non-positive value once a speed HAS appeared is a rejection. Every
+    rejection prints why, so a degraded run is never silently gated on the
+    wrong invariant.
     """
     scheme = read_c_hyp_scheme(pattern)
     if scheme is None:
@@ -1268,14 +1271,32 @@ def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
             "receiver-weighted redistribution as an error"
         )
         return False
+    started = False
     for snap in run:
-        if not np.all(np.isfinite(snap["c_hyp"])) or np.any(snap["c_hyp"] <= 0.0):
+        c_hyp = snap["c_hyp"]
+        if not np.all(np.isfinite(c_hyp)):
             print(
                 f"  {label}: HyperbolicPropagationSpeeds is not everywhere "
-                "finite and positive (propagation off, or a pre-first-step "
-                "snapshot); falling back to the sum m u ledger"
+                "finite; falling back to the sum m u ledger"
             )
             return False
+        if np.all(c_hyp == 0.0) and not started:
+            continue
+        if np.any(c_hyp <= 0.0):
+            print(
+                f"  {label}: HyperbolicPropagationSpeeds is not everywhere "
+                "positive after a snapshot that carried a speed (propagation "
+                "off mid-run); falling back to the sum m u ledger"
+            )
+            return False
+        started = True
+    if not started:
+        print(
+            f"  {label}: no snapshot carries a nonzero "
+            "HyperbolicPropagationSpeeds (propagation off); falling back to "
+            "the sum m u ledger"
+        )
+        return False
     return True
 
 
@@ -1429,11 +1450,16 @@ def band_edge_weight_log_precision(value: float) -> float:
 def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     """Return the first snapshot whose c_hyp is a genuine per-step value.
 
-    Snapshot 0 of an unpinned run is written before the first force step,
-    so its own HyperbolicPropagationSpeeds still reads the module's
-    first-init light-speed clamp (``c_hyp = c``), not a rate any particle
-    ever actually decayed under; (A3) needs the trajectory the particles
-    actually experienced, so it starts integrating one snapshot later.
+    Snapshot 0 of a run is written before the first force step, so its own
+    HyperbolicPropagationSpeeds carries no rate any particle actually decayed
+    under; (A3) needs the trajectory the particles actually experienced, so it
+    starts integrating one snapshot later. Two shapes of that pre-step
+    snapshot exist and both must be rejected: under the variable-c schemes it
+    reads the module's first-init light-speed clamp (``c_hyp = c``), and under
+    the fixed-fraction scheme it reads exactly zero for every particle
+    (MEASURED on both cluster legs of 2026-09-30, 32768 particles, one
+    distinct float32 value, 0). A median test alone passes the second, because
+    zero is below the clamp, so strict positivity is required as well.
 
     Parameters
     ----------
@@ -1450,6 +1476,7 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
         if (
             c_hyp is not None
             and np.all(np.isfinite(c_hyp))
+            and np.all(c_hyp > 0.0)
             and np.median(c_hyp) < C_HYP_CLAMP_FRACTION_OF_C * C_LIGHT_CGS
         ):
             return i
