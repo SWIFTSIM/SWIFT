@@ -136,7 +136,7 @@ extern struct diffusion_global_data magma_diffusion;
 
 /* Functions for reading from parameter file */
 
-/* Forward declartions */
+/* Forward declarations */
 struct swift_params;
 struct phys_const;
 struct unit_system;

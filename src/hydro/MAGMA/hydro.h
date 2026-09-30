@@ -565,7 +565,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 /**
  * @brief Finishes the density calculation.
  *
- * Multiplies the density and number of neighbours by the appropiate constants
+ * Multiplies the density and number of neighbours by the appropriate constants
  * and add the self-contribution term.
  *
  * Also adds/multiplies the cosmological terms if need be.
@@ -634,7 +634,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 /**
  * @brief Finishes the gradient calculation.
  *
- * Multiplies the C-matrix by the appropiate constants.
+ * Multiplies the C-matrix by the appropriate constants.
  *
  * Also adds/multiplies the cosmological terms if need be.
  *
@@ -922,7 +922,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the force and accelerations by the appropiate constants
+ * Multiplies the force and accelerations by the appropriate constants
  * and add the self-contribution term. In most cases, there is little
  * to do here.
  *

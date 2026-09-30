@@ -20,7 +20,7 @@
 #define SWIFT_MAGMA_HYDRO_DEBUG_H
 
 /**
- * @file MAGMA/hydro_part.h
+ * @file MAGMA/hydro_debug.h
  * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (debug routine)
  */
 

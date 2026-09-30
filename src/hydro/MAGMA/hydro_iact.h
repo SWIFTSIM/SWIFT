@@ -20,7 +20,7 @@
 #define SWIFT_MAGMA_HYDRO_IACT_H
 
 /**
- * @file MAGMA/hydro_part.h
+ * @file MAGMA/hydro_iact.h
  * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
  * interactions)
  *
@@ -259,7 +259,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Add Hubble flow */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
+  /* De-dimensionalised distances (eq. 16, recall dx = xi - xj) */
   const float eta_i[3] = {dx[0] * hi_inv, dx[1] * hi_inv, dx[2] * hi_inv};
   const float eta_j[3] = {-dx[0] * hj_inv, -dx[1] * hj_inv, -dx[2] * hj_inv};
 
