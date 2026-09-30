@@ -2552,11 +2552,15 @@ def log_step_quantisation(token: str) -> float:
     Raises
     ------
     RuntimeError
-        When the token is not in ``%14e`` form. Returning the format's worst
-        case instead would LOOSEN the bar, by up to 10x on this term, in
-        exactly the situation where the reference is not understood; the
-        caller has already parsed the same field as a float, so on a log this
-        code reads the raise cannot fire.
+        When the token is not in ``%14e`` form with a mantissa of 1 or more.
+        Returning the format's worst case instead would LOOSEN the bar, by up
+        to 10x on this term, in exactly the situation where the reference is
+        not understood. The parse branch cannot fire, because the caller has
+        already read the same field with ``float()``; the mantissa branch CAN,
+        because step 0 prints ``0.000000e+00`` in that field
+        (``src/engine.c``'s step line, from ``e->time_step`` before the first
+        step). The caller rejects a zero step before ever calling this, so the
+        raise is a backstop and not a live path.
     """
     try:
         mantissa = abs(float(token.split("e")[0]))
@@ -2609,13 +2613,15 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       about every SWIFT kernel. Wendland C2 (``{4,-15,20,-10,0,1}``,
       ``kernel_gamma = 1.936492``) has a vanishing gradient at zero
       separation and a leading ``-10 x**2``, so at the floor the relative
-      kernel change is ``10 * (1e-3 / 1.936492)**2 = 2.664e-06``. That is
+      kernel change is ``10 * (1e-3 / 1.936492)**2 = 2.667e-06``. That is
       then weighted by the coincident particle's own share of the normalised
-      weight sum, 0.196 to 0.225 over both legs' measured geometry, giving
-      about 5.2e-07 for a particle ADDED at the floor. For one that REPLACES
-      the closest neighbour the review derived about 6.5e-07, and that
-      larger figure is the one stated here, because a bound should be the
-      conservative framing. That fits inside the margin the terms below leave,
+      weight sum, 0.196 to 0.225 over both legs' measured geometry, so a
+      particle ADDED at the floor costs 5.2e-07 to 6.0e-07 across that range.
+      A particle that REPLACES the closest neighbour costs more, because the
+      share it takes is also the share the neighbour gave up, and 6.5e-07
+      bounds that case. The larger figure is the one stated here, since a
+      bound should be the conservative one. That fits inside the margin the
+      terms below leave,
       but it is not one of them, and the cost is not uniform in the
       neighbour count: as ``n_lit -> 1`` the share tends to 1 and the cost
       rises toward the full 2.7e-06. On both ISRFCosmology injection
@@ -2727,6 +2733,11 @@ def check_injection(opt: argparse.Namespace) -> bool:
                 t = float(fields[1])
                 dt = float(fields[4])
             except ValueError:
+                continue
+            # A zero step is the step-0 row, whose printed size is not a step
+            # any particle took; matching it would put a zero in the reference
+            # and turn the identity into 0/0.
+            if not np.isfinite(dt) or dt <= 0.0:
                 continue
             distance = abs(t - last["time_internal"])
             if distance < best and distance <= 0.5 * dt:
