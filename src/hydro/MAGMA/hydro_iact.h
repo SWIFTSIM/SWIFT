@@ -625,14 +625,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Diffusion signal velocity (eq. 26) */
 #ifdef GRAVITY_DIFF_VELOCITY
-  /* Norm of the full relative velocity vector (eq. 26, |v_a - v_b|, here
-   * without reconstruction), including the Hubble flow, converted to
-   * sound-speed units by fac_mu.
-   * Note: unlike SPHENIX, which uses only the component along dx,
-   * the shear components contribute too. */
-  const float v_sig_u = fac_mu * sqrtf(v_ij_Hubble[0] * v_ij_Hubble[0] +
-                                       v_ij_Hubble[1] * v_ij_Hubble[1] +
-                                       v_ij_Hubble[2] * v_ij_Hubble[2]);
+  /* Norm of the reconstructed relative velocity |v~_a - v~_b| (eq. 26, zero
+   * in a linear flow), including the Hubble flow, which reconstructs to
+   * (1 - Phi) a^2 H dx like the peculiar velocities; converted to sound-speed
+   * units by fac_mu. For pairs without reconstruction (base SPH) this is the
+   * raw difference. Note: unlike SPHENIX, which uses only the component along
+   * dx, the shear components contribute too. */
+  const float hubble_rec = (1.f - Phi_vel) * a2_Hubble;
+  const float dv_rec[3] = {v_rec_ij[0] + hubble_rec * dx[0],
+                           v_rec_ij[1] + hubble_rec * dx[1],
+                           v_rec_ij[2] + hubble_rec * dx[2]};
+  const float v_sig_u =
+      fac_mu * sqrtf(dv_rec[0] * dv_rec[0] + dv_rec[1] * dv_rec[1] +
+                     dv_rec[2] * dv_rec[2]);
 #else
   const float v_sig_u =
       sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
