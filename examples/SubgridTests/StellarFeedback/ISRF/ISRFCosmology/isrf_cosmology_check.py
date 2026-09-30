@@ -2542,11 +2542,20 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
       (GEAR_thermal/feedback_iact.h:58), so a pair inside that radius has
       the two sides reading different kernel arguments. The effect is small
-      rather than absent: every SWIFT kernel has a vanishing gradient at
-      zero separation, so even a coincident pair costs at most about
-      2.5e-07. That fits inside the margin the terms below leave, but it is
-      not one of them. On both ISRFCosmology injection fixtures the floor is
-      never approached, the closest pair sitting at ``r / h_star = 0.4675``;
+      rather than absent, but it is a statement about THIS kernel and not
+      about every SWIFT kernel. Wendland C2 (``{4,-15,20,-10,0,1}``,
+      ``kernel_gamma = 1.936492``) has a vanishing gradient at zero
+      separation and a leading ``-10 x**2``, so at the floor the relative
+      kernel change is ``10 * (1e-3 / 1.936492)**2 = 2.664e-06``. Weighted
+      by the coincident particle's own share of the normalised weight sum,
+      0.225 on these fixtures' measured geometry, a pair that REPLACES the
+      closest neighbour costs about 6.5e-07 (an added one about 5.2e-07, at
+      a share of 0.196). That fits inside the margin the terms below leave,
+      but it is not one of them, and the cost is not uniform in the
+      neighbour count: as ``n_lit -> 1`` the share tends to 1 and the cost
+      rises toward the full 2.7e-06. On both ISRFCosmology injection
+      fixtures the floor is never approached, the closest pair sitting at
+      ``r / h_star = 0.4675``;
     - both call sites must compile ``W`` to the same operations.
       ``kernel_eval`` and ``kernel_deval`` build it from the same
       coefficients by the same Horner recurrence, and under ``-ffast-math``
