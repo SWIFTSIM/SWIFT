@@ -71,6 +71,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pi->N_density++;
+#endif
 }
 
 /**
@@ -165,6 +170,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_u[0] -= common_term * uij * dx[0];
   pi->gradient.gradient_u[1] -= common_term * uij * dx[1];
   pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_gradient += w;
+  pi->N_gradient++;
+#endif
 }
 
 /**
@@ -645,6 +655,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * speed: as conservative as the global time-step of the paper, which
    * limits every particle by its hottest neighbour's Courant condition. */
   pi->force.c_sig = max(pi->force.c_sig, cj);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 /**

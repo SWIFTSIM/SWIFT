@@ -560,6 +560,23 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
   p->fallback_flags = magma_fallback_none;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->N_density = 1; /* Self contribution */
+  p->N_force = 0;
+  p->N_gradient = 1;
+  p->N_density_exact = 0;
+  p->N_force_exact = 0;
+  p->rho_exact = 0.f;
+  p->n_gradient = 0.f;
+  p->n_gradient_exact = 0.f;
+  p->n_density = 0.f;
+  p->n_density_exact = 0.f;
+  p->n_force = 0.f;
+  p->n_force_exact = 0.f;
+  p->inhibited_exact = 0;
+  p->limited_part = 0;
+#endif
 }
 
 /**
@@ -593,6 +610,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->n_density += kernel_root;
+  p->n_density *= h_inv_dim;
+#endif
 }
 
 /**
@@ -661,6 +683,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the (un-normalised) internal energy gradient
    * by multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->n_gradient += kernel_root;
+#endif
 }
 
 /**

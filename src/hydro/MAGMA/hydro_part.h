@@ -280,6 +280,54 @@ struct part {
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /* Integer number of neighbours in the gradient loop */
+  int N_gradient;
+
+  /* Exact integer number of neighbours in the gradient loop */
+  int N_gradient_exact;
+
+  /* Integer number of neighbours in the force loop */
+  int N_force;
+
+  /* Exact integer number of neighbours in the force loop */
+  int N_force_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  /*! Weighted number of neighbours in the density loop */
+  float n_density;
+
+  /*! Exact value of the weighted number of neighbours in the density loop */
+  float n_density_exact;
+
+  /*! Weighted number of neighbours in the gradient loop */
+  float n_gradient;
+
+  /*! Exact value of the weighted number of neighbours in the gradient loop */
+  float n_gradient_exact;
+
+  /*! Weighted number of neighbours in the force loop */
+  float n_force;
+
+  /*! Exact value of the weighted number of neighbours in the force loop */
+  float n_force_exact;
+
+  /*! Has this particle interacted with any inhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Has this particle been woken up by the limiter? */
+  char limited_part;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

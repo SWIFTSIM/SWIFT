@@ -101,9 +101,10 @@
 
 /* Check whether this scheme implements the density checks */
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH) && !defined(REMIX_SPH)
+#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH) && \
+    !defined(REMIX_SPH) && !defined(MAGMA_SPH)
 #error \
-    "Can only use the hydro brute-force density checks with the SPHENIX or PLANETARY or REMIX hydro schemes."
+    "Can only use the hydro brute-force density checks with the SPHENIX, PLANETARY, REMIX or MAGMA hydro schemes."
 #endif
 #endif
 
