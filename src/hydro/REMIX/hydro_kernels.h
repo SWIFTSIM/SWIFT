@@ -25,6 +25,8 @@
  * @brief Utilities for REMIX hydro kernels.
  */
 
+#include <float.h>
+
 #include "const.h"
 #include "hydro_parameters.h"
 #include "math.h"
@@ -438,8 +440,9 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
   for (int i = 0; i < 6; i++) {
     m2_bar_over_h2.elements[i] = p->gradient.m2_bar.elements[i] / (p->h * p->h);
   }
+  /* Only reject (numerically) singular matrices. */
   if (sym_matrix_invert(&m2_bar_inv, &m2_bar_over_h2,
-                        /*max_cond_num=*/1e8)) {
+                        /*max_cond_num=*/DBL_MAX)) {
     sym_matrix_print(&m2_bar_over_h2);
     error("Error inverting matrix of particle ID %lld", p->id);
   }
