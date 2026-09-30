@@ -157,7 +157,7 @@ free_field
       against that floor, and against it alone: `--reference` cannot
       inflate it, because the reference term is not in this bar. The pin
       is applied after the light-speed clamp
-      (radiation_isrf.c's radiation_prepare_part_propagation and
+      (radiation_isrf.c's radiation_snapshot_part_propagation and
       radiation_end_density_propagation), and with c_i == c_j the
       variable-c and shared-minimum operator branches are bit-identical
       by construction (radiation_propagation_iact.h), so pinning does not
@@ -165,10 +165,13 @@ free_field
       coverage: this leg says nothing about a defect that only appears
       once c_hyp varies between neighbours.
     - UNPINNED, the drift is REPORTED and not gated, the way (A3) already
-      reports and skips there. It is not gated because the reweighting
-      term is not bounded by anything this check derives, and sizing a bar
-      term from the measurement would fit the bar to the data. The
-      consequence is stated rather than hidden: between the float floor
+      reports and skips there. The reweighting term is not unbounded:
+      spread(u)*spread(1/c_hyp) bounds it, from the run's own recorded
+      spreads. What that bound covers, though, is a quantity the scheme
+      never promised to conserve, so adding it to the bar would gate
+      nothing, while sizing a term from the measured drift instead would
+      fit the bar to the data. Neither was done. The consequence is stated
+      rather than hidden: between the float floor
       and (A2)'s own bar, the unpinned leg does not bound the transport
       ledger's conservation, and the pinned leg is where that bound lives.
       The drift is printed instead, so it stays visible, and the two
