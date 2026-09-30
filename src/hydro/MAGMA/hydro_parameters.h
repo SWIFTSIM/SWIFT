@@ -70,13 +70,15 @@
 
 /*! Distance (in units of h) below which the slope limiter switches the
  * reconstruction off (eq. 21-23). A negative value means the mean
- * inter-particle separation, 1 / eta_neighbours, as in the paper. */
-#define hydro_props_default_limiter_eta_crit 1.0f
+ * inter-particle separation, 1 / eta_neighbours, as in the paper (whose
+ * eta_crit = (32 pi / 3 N_ngb)^(1/3) is that separation in units of half the
+ * kernel support). */
+#define hydro_props_default_limiter_eta_crit -1.f
 
 /*! Width (in units of h) of the exponential cut-off of the limiter (eq. 21).
  * A negative value means the paper's 0.2 in units of half the kernel support,
  * i.e. 0.1 * kernel_gamma. */
-#define hydro_props_default_limiter_width 0.2f
+#define hydro_props_default_limiter_width -1.f
 
 /*! Softening (in units of h^2) of the pair-wise approach velocity used in the
  * Courant condition (eq. 36) */

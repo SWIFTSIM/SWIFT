@@ -60,8 +60,8 @@ SPH:
   diffusion_alpha_min:                 0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
   viscosity_beta:                      2.0      # (Optional) MAGMA: quadratic viscosity coefficient (Rosswog 2020, eq. 14).
   viscosity_epsilon:                   0.1      # (Optional) MAGMA: softening of the viscosity velocity jump in units of h (eq. 15).
-  limiter_eta_crit:                    1.0      # (Optional) MAGMA: pair separation in units of h below which the slope limiter switches the reconstruction off (eq. 21-23). Negative: use the mean inter-particle separation 1/resolution_eta, as in the paper.
-  limiter_width:                       0.2      # (Optional) MAGMA: width in units of h of the exponential cut-off of the slope limiter (eq. 21). Negative: use the paper's value in SWIFT's h convention (0.1 * kernel_gamma).
+  limiter_eta_crit:                    -1.      # (Optional) MAGMA: pair separation in units of h below which the slope limiter switches the reconstruction off (eq. 21-23). Negative (default): the mean inter-particle separation 1/resolution_eta, as in the paper.
+  limiter_width:                       -1.      # (Optional) MAGMA: width in units of h of the exponential cut-off of the slope limiter (eq. 21). Negative (default): the paper's value in SWIFT's h convention (0.1 * kernel_gamma).
   timestep_mu_softening:               1e-4     # (Optional) MAGMA: softening in units of h^2 of the pair approach velocity entering the Courant condition (eq. 36).
   gradient_max_condition_number:       60.      # (Optional) MAGMA: condition number of the C-matrix above which a particle falls back to standard SPH gradients.
   gradient_angle_limit:                0.5      # (Optional) MAGMA: angle in radians between the gradient function and the pair separation above which a pair falls back to kernel gradients.
