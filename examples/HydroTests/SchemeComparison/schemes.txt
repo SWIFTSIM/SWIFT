@@ -1,0 +1,5 @@
+# Hydro schemes to compare: one per line, "<name> <extra configure flags>".
+# Each scheme is built twice (2D and 3D) with the common flags set in
+# run_suite.sh (kernel, external potential, ...).
+sphenix --with-hydro=sphenix
+magma   --with-hydro=magma2
