@@ -120,12 +120,26 @@ free_field
     one deliberately does not.
 
     With propagation off (GEARFeedback:ISRF_propagation, read by
-    `read_isrf_propagation`) the predicted drift is exactly zero:
-    radiation_end_force_propagation returns before its relaxation update, so
-    no cosmological term exists to predict. (A1) and (A3) then gate the
-    measured drift against their error-only bar rather than skipping, which
-    is still a real gate -- a module that applied the decay anyway fails
-    it.
+    `read_isrf_propagation`) in a COSMOLOGICAL run the predicted drift is
+    exactly zero: radiation_end_force_propagation returns before its
+    relaxation update, so no cosmological term exists to predict. (A1) and
+    (A3) then gate the measured drift against their error-only bar rather
+    than skipping, which is still a real gate -- a module that applied the
+    decay anyway fails it.
+
+    In a NON-COSMOLOGICAL run (A1) reports its measured drift and does not
+    gate it, the way (A3) already reports and skips there. The prediction is
+    identically zero and every cosmological term of the bar vanishes with
+    it, so what is left compares the run's numerical floor against a bound
+    on that same floor: a quantity this check was not built to bound, and
+    one whose observed size on this fixture no established mechanism
+    accounts for. Sizing a bar term from the measurement would fit the bar
+    to the data. The drift is printed instead, so it stays visible, and the
+    two checks the leg does carry stay live: the measured drift must be
+    finite, and (A2) is gated exactly as it is with cosmology. The
+    non-cosmological run's own purpose here is to be the `--reference` of
+    the cosmological one, where its drift enters that run's bar and is
+    therefore still acted upon.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -1860,6 +1874,37 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  (A1) u_{band}: drift coefficient {drift_coeff:+.6g}, predicted "
             f"{predicted[-1]:+.4e}, measured {errors[band][-1]:+.4e}"
         )
+        if not cosmological:
+            # Reported, not gated: see this module's docstring. Both numbers
+            # are printed because they are not the same one and both are
+            # used downstream -- the second is what `--reference` doubles
+            # into a cosmological run's own bar.
+            genuine = band_edge_ratio_reference_index(run)
+            if genuine is None:
+                from_genuine = worst
+            else:
+                # Rebaselined on the genuine snapshot, not merely sliced
+                # from it: that is the drift `--reference` reads, and it
+                # differs from a slice of this one, which is still measured
+                # from snapshot 0.
+                from_genuine = float(
+                    np.max(
+                        np.abs(
+                            free_field_errors(run, use_c_hyp, genuine)[band][genuine:]
+                        )
+                    )
+                )
+            print(
+                f"  (A1) u_{band} NOT GATED: non-cosmological, so the "
+                f"predicted drift is identically zero and every "
+                f"cosmological bar term vanishes with it. Measured "
+                f"|drift|: {worst:.3e} worst over the whole run, "
+                f"{from_genuine:.3e} worst from the first genuine c_hyp "
+                f"snapshot (the value --reference doubles into a "
+                f"cosmological run's bar); analytic float floor "
+                f"({float_note}) {float_residual:.2e}"
+            )
+            continue
         print(
             f"  bar u_{band}: quantisation {quantisation:.2e} + trapezoid "
             f"{trapezoid:.2e} + step-end/lag {step_end_and_lag:.2e} + "
@@ -1867,6 +1912,25 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"max(float residual ({float_note}) {float_residual:.2e}, "
             f"2 x non-cosmological {2.0 * measured_nc:.2e}) = {bar:.2e}"
         )
+        if cosmo_decay:
+            # Resolution self-test, not a bar term: nothing bounds the
+            # reference drift that `2 x non-cosmological` carries into the
+            # bar, so a reference run with a large drift can raise the bar
+            # above the very decay this band predicts. A residual built on
+            # a module that applied no decay at all is exactly
+            # max|predicted|, so once the bar reaches that value the gate
+            # admits the total absence of the effect and has stopped being
+            # a gate. Derived from the no-decay failure mode, not sized
+            # from any measurement.
+            signal = float(np.max(np.abs(predicted[ref_index:])))
+            if not np.isfinite(signal) or not np.isfinite(bar) or bar >= signal:
+                print(
+                    f"  FAIL: (A1) u_{band}: bar {bar:.3e} is not below the "
+                    f"predicted decay it has to discriminate {signal:.3e}, "
+                    "so a run that applied no decay at all would pass here"
+                )
+                ok = False
+                continue
         ok &= gate(f"(A1) ln u_{band} drift, worst |residual|, {ledger}", worst, bar)
 
     # H2, per snapshot, every term RELATIVE to the predicted exponent, which

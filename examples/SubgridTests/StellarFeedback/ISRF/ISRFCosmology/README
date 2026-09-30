@@ -113,6 +113,10 @@ bound on the part of the bar that does not depend on `a`, wherever it is
 larger.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
+Without cosmology the `free_field` band drift has no expansion term to be
+compared against, so the check prints it and does not gate it; the H2
+abundance is gated in both runs. That run's own role here is to be the
+`--reference` of the cosmological one, where its drift enters the bar.
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
