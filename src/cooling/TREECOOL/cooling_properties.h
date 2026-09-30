@@ -37,9 +37,6 @@
 /*! Maximal number of redshift entries in the TREECOOL table. */
 #define treecool_cooling_max_N_redshifts 512
 
-/*! Number of columns (excluding the redshift one) in the TREECOOL table. */
-#define treecool_cooling_N_columns 6
-
 /**
  * @brief Properties of the cooling function.
  */
