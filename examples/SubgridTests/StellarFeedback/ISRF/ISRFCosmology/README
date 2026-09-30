@@ -45,8 +45,10 @@ self-shielding) has no closed form. It is compared between `redshift=0` and
 high redshift over 25 yr, where expansion does not change the physical state.
 The check equations, and the bars each one derives from the run's own
 discretisation, are in the docstrings of `isrf_cosmology_check.py` and
-`isrf_cosmology_h2_identity_check.py`. The two injection bars are the
-exception: fixed relative tolerances of 1e-5 and 1e-4 respectively, set in
+`isrf_cosmology_h2_identity_check.py`. The `injection` bar is derived the same
+way, from the run's own step size, illuminated-neighbour count and float32
+widths, and the check prints each of its terms. The `injection_dusty` bar is
+the one exception: a fixed relative tolerance of 1e-4, set in
 `isrf_cosmology_check.py` itself.
 
 ## Initial conditions
