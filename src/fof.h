@@ -149,10 +149,10 @@ struct fof_props {
 
   /*! The number of links between pairs of particles on this node and
    * a foreign node */
-  int group_link_count;
+  size_t group_link_count;
 
   /*! The allocated size of the links array */
-  int group_links_size;
+  size_t group_links_size;
 
   /*! The links between pairs of particles on this node and a foreign
    * node */
