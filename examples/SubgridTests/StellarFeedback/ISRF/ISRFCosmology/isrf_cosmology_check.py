@@ -131,10 +131,8 @@ free_field
     gate it, the way (A3) already reports and skips there. The prediction is
     identically zero and every cosmological term of the bar vanishes with
     it, so what is left compares the run's numerical floor against a bound
-    on that same floor: a quantity this check was not built to bound, and
-    one whose observed size on this fixture no established mechanism
-    accounts for. Sizing a bar term from the measurement would fit the bar
-    to the data. The drift is printed instead, so it stays visible, and the
+    on that same floor, for which this check derives no bound. Sizing a bar
+    term from the measurement would fit the bar to the data. The drift is printed instead, so it stays visible, and the
     two checks the leg does carry stay live: the measured drift must be
     finite, and (A2) is gated exactly as it is with cosmology. The
     non-cosmological run's own purpose here is to be the `--reference` of
@@ -1047,10 +1045,15 @@ def read_timeline_dt_max(
     copies it from the cosmology model) while `dt_max` and the time-line
     itself are in d ln a (`cosmology.c:915` builds `time_base` from
     `log_a_end - log_a_begin`), so the message halves one quantity against a
-    threshold in the other. The true time-line step and this one both lie in
-    `(dt_max/2, dt_max]`, so they differ by less than a factor of two in
-    either direction; on this example's own z9 fixture the difference is
-    0.14% (5.440215e-05 printed against ln(0.125/0.1)/4096 = 5.447841e-05).
+    threshold in the other. WHEN both spans exceed `dt_max`, which is the
+    only case the halving loop acts in, the true time-line step and this one
+    both lie in `(dt_max/2, dt_max]` and so differ by less than a factor of
+    two in either direction. A span at or below `dt_max` is halved zero
+    times and carries no such bound, and under cosmology nothing rejects
+    that case: `engine_config.c:688-691` exempts a cosmological run from the
+    `dt_max > span` error. On this example's own z9 fixture both spans
+    exceed `dt_max` by 2000x and the difference is 0.14% (5.440215e-05
+    printed against ln(0.125/0.1)/4096 = 5.447841e-05).
     Every bar term here is linear in this value or in the step count derived
     from it, so that bounded factor carries straight into the bar and
     nowhere else: no residual and no prediction reads it.
@@ -1895,7 +1898,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                     )
                 )
             print(
-                f"  (A1) u_{band} NOT GATED: non-cosmological, so the "
+                f"  (A1) u_{band} SKIPPED: non-cosmological, so the "
                 f"predicted drift is identically zero and every "
                 f"cosmological bar term vanishes with it. Measured "
                 f"|drift|: {worst:.3e} worst over the whole run, "
@@ -1917,11 +1920,12 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # reference drift that `2 x non-cosmological` carries into the
             # bar, so a reference run with a large drift can raise the bar
             # above the very decay this band predicts. A residual built on
-            # a module that applied no decay at all is exactly
-            # max|predicted|, so once the bar reaches that value the gate
-            # admits the total absence of the effect and has stopped being
-            # a gate. Derived from the no-decay failure mode, not sized
-            # from any measurement.
+            # a module that applied no decay at all is max|predicted| to
+            # within the run's own floor, so once the bar reaches that
+            # value the gate admits the total absence of the effect and has
+            # stopped being a gate. Necessary, not sufficient: inside one
+            # floor of that value the gate is still weak. Derived from the
+            # no-decay failure mode, not sized from any measurement.
             signal = float(np.max(np.abs(predicted[ref_index:])))
             if not np.isfinite(signal) or not np.isfinite(bar) or bar >= signal:
                 print(
