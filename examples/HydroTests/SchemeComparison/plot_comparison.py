@@ -31,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolver.py
 
 GAS_GAMMA = 5.0 / 3.0
-COLORS = ["C0", "C3", "C2", "C1", "C4", "C5"]
+COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "zeldovich", "zeldovich_pert"]
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
@@ -160,8 +160,8 @@ def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None
         y = ykey_fn(d)
         ax.scatter(x, y, color="0.4", **scatter_props)
         xb, yb, sb = binned(x, y, edges)
-        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j], ms=4, lw=1, zorder=3)
-        over.plot(xb, yb, "-", color=COLORS[j], lw=1.3, label=s)
+        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
+        over.plot(xb, yb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
         if exact is not None:
             ax.plot(exact[0], exact[1], "-", color="k", lw=1, alpha=0.8, zorder=2)
         if row == 0:
@@ -580,7 +580,7 @@ def test_kh(root, schemes, out):
             tt.append(d["time"])
             vy.append(np.sqrt(np.mean(d["vel"][:, 1] ** 2)))
         if tt:
-            ax.semilogy(tt, vy, "-o", ms=3, color=COLORS[j], label=s)
+            ax.semilogy(tt, vy, "-o", ms=3, color=COLORS[j % len(COLORS)], label=s)
             metrics[s] = {"rms_vy_final": float(vy[-1]), "rms_vy_t1.5": float(np.interp(1.5, tt, vy))}
     ax.set_xlabel("t")
     ax.set_ylabel(r"rms $v_y$")
@@ -623,9 +623,9 @@ def test_square(root, schemes, out):
         if d is None:
             continue
         sl = np.abs(d["pos"][:, 1] - 0.5) < 0.03
-        ax.scatter(xf(d)[sl], d["rho"][sl], color=COLORS[j], s=4)
+        ax.scatter(xf(d)[sl], d["rho"][sl], color=COLORS[j % len(COLORS)], s=4)
         xb, yb, _ = binned(xf(d)[sl], d["rho"][sl], edges)
-        axes[row, -1].plot(xb, yb, "-", color=COLORS[j], label=s)
+        axes[row, -1].plot(xb, yb, "-", color=COLORS[j % len(COLORS)], label=s)
         ax.set_xlabel("x (|y-0.5|<0.03)")
         ax.set_ylabel(r"$\rho$")
         ax.set_ylim(0, 5)
@@ -680,7 +680,7 @@ def test_keplerian(root, schemes, out):
             r = np.sqrt(x * x + y * y)
             mass, _ = np.histogram(r, bins=edges, weights=d["m"])
             sigma = mass / areas
-            axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=COLORS[j], label=s)
+            axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=COLORS[j % len(COLORS)], label=s)
             # Fraction of the mass that left the initial ring region (1 < r < 3.5)
             metrics.setdefault(s, {})[f"mass_frac_outside_ring_t{t:.0f}"] = float(
                 np.sum(d["m"][(r < 1.0) | (r > 3.5)]) / np.sum(d["m"]))
