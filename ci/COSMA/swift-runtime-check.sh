@@ -152,6 +152,20 @@ link_data test_sink.hdf5
 link_data CloudyData_UVB=HM2012.h5
 link_data POPIIsw.h5
 do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
+cd ../../../
+
+echo "---------------------------------------"
+echo "TREECOOL cooling, cosmological box test"
+echo "---------------------------------------"
+do_make clean
+do_configure --with-cooling=TREECOOL --enable-debugging-checks --enable-debug
+do_make
+cd examples/Cooling/ConstantCosmoTempEvolution
+#wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/gravity_glassCube_32.hdf5
+link_data gravity_glassCube_32.hdf5
+python makeIC.py
+do_run ../../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml
+cd ../../../
 
 exit
 

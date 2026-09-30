@@ -6,13 +6,18 @@ then
     echo "Fetching initial gravity glass file for the constant cosmological box example..."
     ./getGlass.sh
 fi
+# Fetch the EAGLE cooling tables, unless SWIFT was clearly configured with
+# another cooling model (the TREECOOL table ships with the example).
 if [ ! -e coolingtables ]
 then
-    echo "Fetching EAGLE Cooling Tables"
-    ../getEagleCoolingTable.sh
+    if [ ! -e ../../../config.h ] || grep -q "define COOLING_EAGLE" ../../../config.h
+    then
+	echo "Fetching EAGLE Cooling Tables"
+	../getEagleCoolingTable.sh
+    fi
 fi
 
-# Fetch the cooling tables
+# Generate the initial conditions
 if [ ! -e constantBox.hdf5 ]
 then
     echo "Generating initial conditions for the uniform cosmo box example..."
