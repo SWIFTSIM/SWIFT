@@ -360,7 +360,9 @@ def test_sedov(root, schemes, out):
     rho_s = np.append(rho_s, [1.0, 1.0])
     P_s = np.append(P_s, [1e-6, 1e-6])
     v_s = np.append(v_s, [0.0, 0.0])
-    u_s = P_s / (rho_s * (GAS_GAMMA - 1.0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        u_s = P_s / (rho_s * (GAS_GAMMA - 1.0))
+    u_s[~np.isfinite(u_s)] = np.max(u_s[np.isfinite(u_s)])  # rho -> 0 at the centre
 
     def rf(d):
         c = 0.5 * d["boxsize"]
