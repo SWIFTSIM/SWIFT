@@ -129,6 +129,29 @@ def load_snapshot(path):
 
 
 def measure_c_hyp(run):
+    """Return the run's median propagation speed, in the run's velocity units.
+
+    Read from the recorded ``HyperbolicPropagationSpeeds`` when the snapshots
+    carry it, because that is the speed the module actually used under every
+    scheme. The ``margin*h/dt`` closure is the fallback for a build that does
+    not write the field, and it is only the speed under the schemes that derive
+    it that way: with a fixed speed the step is Courant-limited and then rounded
+    DOWN to a power-of-two time bin, so ``margin*h/dt`` overestimates it, by up
+    to about a factor of two.
+    """
+    with h5py.File(snapshots(run)[-1], "r") as f:
+        gas = f["/PartType0"]
+        recorded = (
+            np.asarray(gas["HyperbolicPropagationSpeeds"][:], dtype=np.float64)
+            if "HyperbolicPropagationSpeeds" in gas
+            else None
+        )
+    if (
+        recorded is not None
+        and np.all(np.isfinite(recorded))
+        and np.any(recorded > 0.0)
+    ):
+        return float(np.median(recorded))
     params = load_used_parameters(run)
     margin = float(params["GEARFeedback"].get("ISRF_c_hyp_margin", 0.5))
     h_med = float(np.median(load_snapshot(snapshots(run)[-1])["h"]))
