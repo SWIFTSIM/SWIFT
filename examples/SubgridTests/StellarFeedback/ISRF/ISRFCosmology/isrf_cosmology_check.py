@@ -650,10 +650,6 @@ M_H_CGS = 1.67262171e-24
 HYDROGEN_MASS_FRACTION = 0.76
 PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
 FLOAT32_EPS = np.finfo(np.float32).eps
-# Largest polynomial degree among the hydro kernels SWIFT ships
-# (src/kernel_hydro.h), used as a kernel-agnostic allowance for the Horner
-# recurrence so that no bar depends on which kernel the binary was built with.
-KERNEL_MAX_DEGREE = 11
 # The step line prints its step-size field with "%14e" (src/engine.c), i.e.
 # six decimals of mantissa, so a step size read back from the log carries
 # half a unit in that last decimal.
@@ -2509,16 +2505,18 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
 
     - only one step accumulates, because the field is reset on the step's
       first touch by any star (radiation_iact.h:320-326);
-    - no quadrature of the source rate enters, because the star's band
-      luminosity and its step are each cached once per step
-      (radiation_iact.h:124) and held constant across its neighbours. This
-      needs the snapshot's ``L_band`` to be the value the injection used,
-      which holds while the luminosity is constant over the run;
+    - no quadrature of the source rate enters, because the star's step is
+      cached once per step (radiation_iact.h:124) and its band luminosity
+      once per stellar-evolution update
+      (src/feedback/GEAR/stellar_evolution.c:1394 and :1668), and both are
+      held constant across its neighbours. This needs the snapshot's
+      ``L_band`` to be the value the injection used, which holds while the
+      luminosity is constant over the run;
     - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
       (radiation_isrf.c:1585 and radiation_get_dust_extinction_factor);
     - ``u`` carries no float32 term, being a double in ``struct part`` and in
-      the snapshot (feedback_struct.h:166);
+      the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:165);
     - this check's own float64 summation of ``n_lit`` terms costs
       ``(n_lit - 1) * 2**-53``, eleven orders below the terms kept below.
 
@@ -2526,16 +2524,31 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
 
     - the two loops must evaluate the same ``r``. The injection floors it at
       ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
-      (GEAR_thermal/feedback_iact.h:58), so a gas particle within that
-      radius of the star breaks the identity itself rather than widening its
-      floor;
+      (GEAR_thermal/feedback_iact.h:58), so a pair inside that radius has
+      the two sides reading different kernel arguments. The effect is small
+      rather than absent: every SWIFT kernel has a vanishing gradient at
+      zero separation, so even a coincident pair costs at most about
+      2.5e-07. That fits inside the margin the terms below leave, but it is
+      not one of them. On both ISRFCosmology injection fixtures the floor is
+      never approached, the closest pair sitting at ``r / h_star = 0.4675``;
     - both call sites must compile ``W`` to the same operations.
       ``kernel_eval`` and ``kernel_deval`` build it from the same
-      coefficients by the same Horner recurrence, so they agree exactly
-      while that holds. It is a premise and not a bounded term: near the
-      support edge the monomial Horner form is badly conditioned, so had the
-      two expansions compiled differently the disagreement would be set by
-      that conditioning and not by the allowance kept below.
+      coefficients by the same Horner recurrence, and under ``-ffast-math``
+      that is a premise rather than an identity: in ``kernel_eval`` only the
+      final ``w`` is live, so associative reassociation may reorder the
+      chain, while in ``kernel_deval`` every intermediate ``w`` feeds
+      ``dw_dx`` and pins it. No allowance is kept for it, because an
+      allowance of this size would not bound it: the monomial Horner form is
+      badly conditioned near the support edge, so a real divergence could
+      reach about 1.7e-04, some 50 times the bar. It can therefore only
+      produce a loud failure and never a silent pass, and it is measured to
+      hold in the canonical build.
+
+    The weight-sum closure below keeps the worst-case ``gamma_{n-1}`` growth
+    and not a probabilistic ``sqrt(n) u32`` form. The square-root form is
+    about 7x tighter, but it is a statistic whose spread is the size of its
+    own bar, so it can fail a healthy run; a bound that holds for every
+    summation order cannot.
 
     Parameters
     ----------
@@ -2569,12 +2582,10 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
     # then its m_j * w_j product, the density loop's own m_j * w_j product
     # over different operands, and the single hi_inv_dim scaling of
-    # enrichment_weight (GEAR_thermal/feedback.c:366). KERNEL_MAX_DEGREE is
-    # an allowance for one ulp per step of the Horner recurrence, in case the
-    # compiler contracts it into an FMA at one call site and not the other;
-    # see this function's docstring for why identical compilation of W is a
-    # premise rather than a term.
-    reconstruction = (4 + KERNEL_MAX_DEGREE) * u32
+    # enrichment_weight (GEAR_thermal/feedback.c:366). The kernel evaluation
+    # itself adds no term here; see this function's docstring for why
+    # identical compilation of W is a premise and cannot be given one.
+    reconstruction = 4.0 * u32
     return {
         "dt_float32": dt_float32,
         "dt_text": dt_text,
@@ -2673,11 +2684,23 @@ def check_injection(opt: argparse.Namespace) -> bool:
                 f"weight-sum closure {terms['closure']:.2e}, reconstruction "
                 f"{terms['reconstruction']:.2e}"
             )
+            residual = abs(lhs / rhs - 1.0)
             ok &= gate(
                 f"sum m u_{band} / (Delta_t L) - 1",
-                abs(lhs / rhs - 1.0),
+                residual,
                 terms["bar"],
             )
+            # Not gated, and deliberately worded so that a PASS/FAIL grep
+            # cannot pick it up. The residual sits far inside the bar, so its
+            # fraction of the bar is what makes a drift visible across runs.
+            fraction = "n/a"
+            if (
+                np.isfinite(residual)
+                and np.isfinite(terms["bar"])
+                and terms["bar"] > 0.0
+            ):
+                fraction = f"{residual / terms['bar']:.4g}"
+            print(f"  report only, not gated: residual/bar for {band} = {fraction}")
         return ok
 
     mechanism, path_in_kernel_radii = read_extinction_path(
