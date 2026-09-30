@@ -47,8 +47,10 @@ The check equations, and the bars each one derives from the run's own
 discretisation, are in the docstrings of `isrf_cosmology_check.py` and
 `isrf_cosmology_h2_identity_check.py`. The `injection` bar is derived the same
 way, from the run's own step size, illuminated-neighbour count and float32
-widths, and the check prints each of its terms. The `injection_dusty` bar is
-the one exception: a fixed relative tolerance of 1e-4, set in
+widths, and the check prints each of its terms. The `injection_dusty` leg is
+the exception, with two fixed tolerances rather than derived ones: `--dust-tol`,
+default 1e-4, on the per-particle band-ratio residual, and a hard-coded 1e-5 on
+the bracket around the weighted mean of `exp(-tau)`. Both are set in
 `isrf_cosmology_check.py` itself.
 
 ## Initial conditions
@@ -139,6 +141,14 @@ config=free_field redshift=9 c_hyp_pin=38.7902222 run_name=ff_pin_z9 ./run.sh
 python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z9/snap/snapshot_*.hdf5" \
     --reference "ff_pin_z0/snap/snapshot_*.hdf5"
+```
+The scheme-2 form of the same pair, at 100 km/s
+(`3.3357e-4 * c` with `c = 2.997925e5 km/s`). `c_hyp_pin` must stay 0, since
+the two are mutually exclusive, and the fixed speed sets the timestep, so the
+run takes as many steps as the Courant condition requires:
+```
+config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z0 ./run.sh
+config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z9 ./run.sh
 ```
 That value is the unpinned `redshift=0` run's own box-mean `c_hyp` at the
 defaults above, so that leg runs at the speed it would have run at
