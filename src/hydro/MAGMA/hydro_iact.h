@@ -259,16 +259,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Add Hubble flow */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-
-  /* Compute signal velocity (eq. 36) modified to add dimension on the
-   * denominator. This is the magnitude of the approach speed (>= 0), zero for
-   * receding particles. */
-  const float mu_tilde_i =
-      -fac_mu * hi * omega_ij /
-      (r * r + magma_viscosity.mu_softening * hi * hi);
-
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] * hi_inv, dx[1] * hi_inv, dx[2] * hi_inv};
   const float eta_j[3] = {-dx[0] * hj_inv, -dx[1] * hj_inv, -dx[2] * hj_inv};
@@ -645,8 +635,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
 
-  /* Update the signal velocity. */
-  pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
+  /* Approach velocity of the Courant condition (eq. 36). The paper's
+   * mu_tilde_a = max_b h_a v~_ab.r_ab / (r_ab^2 + eps^2 h_a^2) is the largest
+   * |mu_a| of eq. 15, i.e. the (reconstructed, softened) velocity jump the
+   * viscosity acts on; mu_i is <= 0 and zero for receding pairs. */
+  pi->force.mu_tilde = max(pi->force.mu_tilde, -mu_i);
 
   /* Update the signal speed of the time-step with the neighbour's sound
    * speed: as conservative as the global time-step of the paper, which

@@ -44,7 +44,6 @@ struct viscosity_global_data magma_viscosity = {
     /* The automatic limiter settings, resolved for eta_neighbours = 1.2348 */
     .eta_crit = 1.f / 1.2348f,
     .limiter_width = 0.1f * kernel_gamma,
-    .mu_softening = hydro_props_default_timestep_mu_softening,
     .max_condition_number = hydro_props_default_gradient_max_condition_number,
     .angle_limit = hydro_props_default_gradient_angle_limit,
     .cos_angle_limit = 0.87758256f /* cos(0.5) */};

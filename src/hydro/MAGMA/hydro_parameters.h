@@ -65,7 +65,8 @@
 /*! Quadratic viscosity coefficient beta (Rosswog 2020, eq. 14) */
 #define hydro_props_default_viscosity_beta 2.0f
 
-/*! Softening of the viscosity velocity jump, in units of h (eq. 15) */
+/*! Softening of the viscosity velocity jump, in units of h (eq. 15). Also
+ * softens the approach velocity of the Courant condition (eq. 36). */
 #define hydro_props_default_viscosity_epsilon 0.1f
 
 /*! Distance (in units of h) below which the slope limiter switches the
@@ -79,10 +80,6 @@
  * A negative value means the paper's 0.2 in units of half the kernel support,
  * i.e. 0.1 * kernel_gamma. */
 #define hydro_props_default_limiter_width -1.f
-
-/*! Softening (in units of h^2) of the pair-wise approach velocity used in the
- * Courant condition (eq. 36) */
-#define hydro_props_default_timestep_mu_softening 1e-4f
 
 /*! Maximal condition number of the C-matrix before falling back to standard
  * SPH gradients for the particle */
@@ -115,9 +112,6 @@ struct viscosity_global_data {
 
   /*! Limiter cut-off width, in units of h (eq. 21) */
   float limiter_width;
-
-  /*! Softening of the approach velocity of the Courant condition (h^2) */
-  float mu_softening;
 
   /*! Maximal condition number of the C-matrix */
   float max_condition_number;
@@ -164,7 +158,6 @@ static INLINE void viscosity_set_defaults(
   viscosity->epsilon = hydro_props_default_viscosity_epsilon;
   viscosity->eta_crit = hydro_props_default_limiter_eta_crit;
   viscosity->limiter_width = hydro_props_default_limiter_width;
-  viscosity->mu_softening = hydro_props_default_timestep_mu_softening;
   viscosity->max_condition_number =
       hydro_props_default_gradient_max_condition_number;
   viscosity->angle_limit = hydro_props_default_gradient_angle_limit;
@@ -199,9 +192,6 @@ static INLINE void viscosity_init(struct swift_params *params,
       params, "SPH:limiter_eta_crit", hydro_props_default_limiter_eta_crit);
   viscosity->limiter_width = parser_get_opt_param_float(
       params, "SPH:limiter_width", hydro_props_default_limiter_width);
-  viscosity->mu_softening =
-      parser_get_opt_param_float(params, "SPH:timestep_mu_softening",
-                                 hydro_props_default_timestep_mu_softening);
   viscosity->max_condition_number = parser_get_opt_param_float(
       params, "SPH:gradient_max_condition_number",
       hydro_props_default_gradient_max_condition_number);
@@ -221,7 +211,7 @@ static INLINE void viscosity_init(struct swift_params *params,
 
   if (viscosity->alpha < 0.f || viscosity->beta < 0.f ||
       viscosity->epsilon <= 0.f || viscosity->limiter_width <= 0.f ||
-      viscosity->mu_softening <= 0.f || viscosity->max_condition_number < 1.f ||
+      viscosity->max_condition_number < 1.f ||
       viscosity->angle_limit < 0.f || viscosity->angle_limit > M_PI_2)
     error("Invalid MAGMA viscosity / gradient parameters.");
 
@@ -256,10 +246,8 @@ static INLINE void viscosity_print(
       "Artificial viscosity parameters set to alpha: %.3f, beta: %.3f, "
       "epsilon: %.3f.",
       viscosity->alpha, viscosity->beta, viscosity->epsilon);
-  message(
-      "Slope limiter parameters set to eta_crit: %.4f h, width: %.4f h. "
-      "Courant approach-velocity softening: %.2e h^2.",
-      viscosity->eta_crit, viscosity->limiter_width, viscosity->mu_softening);
+  message("Slope limiter parameters set to eta_crit: %.4f h, width: %.4f h.",
+          viscosity->eta_crit, viscosity->limiter_width);
   message(
       "Gradient-function fallbacks: condition number > %.1f (particle), "
       "angle > %.3f rad (pair).",
@@ -281,8 +269,6 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_f(h_grpsph, "Epsilon viscosity", viscosity->epsilon);
   io_write_attribute_f(h_grpsph, "Limiter eta_crit", viscosity->eta_crit);
   io_write_attribute_f(h_grpsph, "Limiter width", viscosity->limiter_width);
-  io_write_attribute_f(h_grpsph, "Time-step mu softening",
-                       viscosity->mu_softening);
   io_write_attribute_f(h_grpsph, "Gradient max condition number",
                        viscosity->max_condition_number);
   io_write_attribute_f(h_grpsph, "Gradient angle limit",
