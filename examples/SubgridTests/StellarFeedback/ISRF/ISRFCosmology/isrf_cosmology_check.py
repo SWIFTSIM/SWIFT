@@ -148,24 +148,28 @@ free_field
 
     So (A1) at H = 0:
 
-    - With the propagation speed PINNED
-      (GEARFeedback:ISRF_c_hyp_pin_for_debugging, the same mechanism
-      `dust_absorption` uses), every particle's c_hyp is one bit-identical
-      value, the weight cancels identically, the metric becomes the
-      mass-weighted box mean the pairwise exchange conserves, and the
-      float-divergence floor is the whole error budget. The leg is GATED
-      against that floor, and against it alone: `--reference` cannot
-      inflate it, because the reference term is not in this bar. The pin
+    - With the recorded c_hyp BIT-UNIFORM across the box, every particle's
+      c_hyp is one bit-identical value, the weight cancels identically, the
+      metric becomes the mass-weighted box mean the pairwise exchange
+      conserves, and the float-divergence floor is the whole error budget.
+      The leg is GATED against that floor, and against it alone:
+      `--reference` cannot inflate it, because the reference term is not in
+      this bar. Uniformity is read from the field, not from whichever
+      parameter produced it, because it is the condition the cancellation
+      rests on: GEARFeedback:ISRF_c_hyp_pin_for_debugging gives it (the same
+      mechanism `dust_absorption` uses), and so does ISRF_c_hyp_scheme 2,
+      whose GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is one speed for the
+      whole box with the Courant condition imposed on the timestep. The pin
       is applied after the light-speed clamp
       (radiation_isrf.c's radiation_snapshot_part_propagation and
       radiation_end_density_propagation), and with c_i == c_j the
       variable-c and shared-minimum operator branches are bit-identical
-      by construction (radiation_propagation_iact.h), so pinning does not
-      change which branch runs. What it does cost is the variable-c
-      coverage: this leg says nothing about a defect that only appears
-      once c_hyp varies between neighbours.
-    - UNPINNED, the drift is REPORTED and not gated, the way (A3) already
-      reports and skips there. The reweighting term is not unbounded:
+      by construction (radiation_propagation_iact.h), so a uniform speed
+      does not change which branch runs. What it does cost is the
+      variable-c coverage: this leg says nothing about a defect that only
+      appears once c_hyp varies between neighbours.
+    - With c_hyp VARYING, the drift is REPORTED and not gated, the way (A3)
+      already reports and skips there. The reweighting term is not unbounded:
       spread(u)*spread(1/c_hyp) bounds it, from the run's own recorded
       spreads. What that bound covers, though, is a quantity the scheme
       never promised to conserve, so adding it to the bar would gate
@@ -1192,10 +1196,11 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     (A1)'s ledger is a ratio of two sums taken at the SAME time, so a
     c_hyp that is uniform ACROSS THE BOX cancels between numerator and
     denominator whatever it does from one snapshot to the next (this
-    module's docstring). What the pinned leg needs is therefore this
+    module's docstring). What the gated leg needs is therefore this
     spatial spread, per snapshot, and exactly zero: a bit-uniform speed
     makes the weighted ledger and the mass-weighted one the same
-    functional.
+    functional, whether a debug pin or scheme 2's fixed fraction produced
+    it.
 
     Parameters
     ----------
@@ -1778,17 +1783,21 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # (radiation_end_force_propagation returns first), so its predicted
     # drift is exactly zero, whatever its cosmology.
     cosmo_decay = cosmological and propagation_on
-    # A pinned propagation speed makes c_hyp bit-uniform across the box, so
-    # the ledger's own 1/c_hyp weight cancels between its numerator and its
-    # denominator and the metric becomes the mass-weighted box mean the
-    # transport conserves. That removes the reweighting term an unpinned run
-    # carries, of order spread(u)*spread(1/c_hyp), and leaves the float
-    # divergence floor as (A1)'s whole error budget. The parameter decides
-    # whether the run CLAIMS a pin; the snapshots decide whether it is live.
+    # A c_hyp that is bit-uniform across the box makes the ledger's own
+    # 1/c_hyp weight cancel between its numerator and its denominator, so the
+    # metric becomes the mass-weighted box mean the transport conserves. That
+    # removes the reweighting term a varying-c_hyp run carries, of order
+    # spread(u)*spread(1/c_hyp), and leaves the float divergence floor as
+    # (A1)'s whole error budget. Uniformity is the physical condition the
+    # gate rests on, so it is read from the recorded field itself and not
+    # from whichever parameter produced it: the debug pin and
+    # ISRF_c_hyp_scheme 2's fixed fraction both give a bit-uniform speed.
+    # The pin parameter is still read, because a pin the module did not apply
+    # must FAIL rather than fall back to the ungated report.
     c_hyp_pin = read_c_hyp_pin(opt.snapshots)
     pin_claimed = c_hyp_pin is not None and c_hyp_pin > 0.0
-    c_hyp_spread = c_hyp_spatial_spread(run) if pin_claimed else None
-    pinned = pin_claimed and c_hyp_spread == 0.0
+    c_hyp_spread = c_hyp_spatial_spread(run)
+    uniform_c_hyp = c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
@@ -1866,16 +1875,22 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
 
     ok = True
-    if pin_claimed:
-        spread_note = (
-            "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
-        )
-        print(
-            f"  (A1) GEARFeedback:ISRF_c_hyp_pin_for_debugging = "
-            f"{c_hyp_pin:.9g} (internal velocity units), worst spatial "
-            f"spread (max-min)/max of the recorded c_hyp {spread_note}"
-        )
-    if pin_claimed and not pinned:
+    spread_note = (
+        "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
+    )
+    pin_note = (
+        "unrecorded"
+        if c_hyp_pin is None
+        else f"{c_hyp_pin:.9g} (internal velocity units)"
+    )
+    print(
+        f"  (A1) worst spatial spread (max-min)/max of the recorded c_hyp "
+        f"{spread_note}, so the uniform-weight ledger is "
+        f"{'LIVE' if uniform_c_hyp else 'not live'}; "
+        f"GEARFeedback:ISRF_c_hyp_pin_for_debugging = {pin_note}, "
+        f"ISRF_c_hyp_scheme = {read_c_hyp_scheme(opt.snapshots)}"
+    )
+    if pin_claimed and not uniform_c_hyp:
         # Fail rather than fall back to the ungated report: the pinned leg
         # below is the only gate on this fixture's transport ledger, and a
         # pin the module did not actually apply would otherwise remove it
@@ -2033,7 +2048,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  (A1) u_{band}: drift coefficient {drift_coeff:+.6g}, predicted "
             f"{predicted[-1]:+.4e}, measured {errors[band][-1]:+.4e}"
         )
-        if not cosmological and pinned:
+        if not cosmological and uniform_c_hyp:
             # GATED, on the float floor alone. With c_hyp bit-uniform the
             # ledger's 1/c_hyp weight cancels identically, so the metric is
             # the mass-weighted box mean the pairwise transport conserves,
@@ -2044,13 +2059,14 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
             print(
-                f"  (A1) u_{band}: c_hyp pinned, so the ledger weight "
+                f"  (A1) u_{band}: c_hyp bit-uniform, so the ledger weight "
                 f"cancels between the two sums and the metric is the "
                 f"mass-weighted box mean; bar is the analytic float floor "
                 f"({float_note}) {float_residual:.2e} on its own"
             )
             ok &= gate(
-                f"(A1) ln u_{band} drift, worst |residual|, {ledger}, " f"c_hyp pinned",
+                f"(A1) ln u_{band} drift, worst |residual|, {ledger}, "
+                f"c_hyp bit-uniform",
                 worst,
                 float_residual,
             )

@@ -118,15 +118,19 @@ to be compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
 
-## The pinned free_field pair
+## The uniform-c_hyp free_field pair
 The ledger the band drift is measured on weights each particle by
-`1/c_hyp`, and an unpinned `c_hyp` is `margin*h/dt`, so it carries the
+`1/c_hyp`, and a varying `c_hyp` is `margin*h/dt`, so it carries the
 glass's own `h` spread. That makes the ledger mean move for a reason
-unrelated to conservation, which is why the unpinned run above is reported
-rather than gated. Pinning the propagation speed (`c_hyp_pin`, internal
-velocity units, the same mechanism `dust_absorption` uses) makes `c_hyp`
-one value across the box, the weight cancels, and the check then gates the
-band drift against its own float floor:
+unrelated to conservation, which is why the run above is reported rather
+than gated. One propagation speed across the whole box makes the weight
+cancel, and the check then gates the band drift against its own float
+floor. The check reads that uniformity from the recorded
+`HyperbolicPropagationSpeeds` itself, so either way of producing it works:
+`c_hyp_pin` (internal velocity units, the same mechanism
+`dust_absorption` uses), or `GEARFeedback:ISRF_c_hyp_scheme: 2` with
+`GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`, which is the one to use in a
+physics run because it imposes the Courant condition on the timestep.
 ```
 config=free_field redshift=0 c_hyp_pin=38.7902222 run_name=ff_pin_z0 ./run.sh
 config=free_field redshift=9 c_hyp_pin=38.7902222 run_name=ff_pin_z9 ./run.sh
