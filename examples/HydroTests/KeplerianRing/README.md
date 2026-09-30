@@ -22,20 +22,23 @@ The test uses:
 Code Setup
 ----------
 
-You will need to recompile SWIFT with an external potential. This can be done
-by using
+The ring is a razor-thin disc (all particles in the z = 5 plane) run with the
+3D code around an external point mass. You will need to recompile SWIFT with
+the softened point-mass potential, which is the one the initial velocities are
+computed for (v = sqrt(G M r^2 / (r^2 + eps^2)^(3/2)) with the softening eps):
 
-    ./configure --with-ext-potential=point-mass
+    ./configure --with-ext-potential=point-mass-softened
 
 in the root directory of the project. We suggest leaving all other code options
 as their defaults.
 
-Please also consider using:
-
-    ./configure --with-ext-potential=point-mass-softened
-
-if you are running with the initial conditions generated with the script and
-using a nonzero softening.
+The initial conditions exclude the particles within r = 0.5 of the centre
+(option `--innerradius` of `makeIC.py`): with the 100:1 density contrast at the
+inner edge of the ring, these light particles are shock-heated, fall through
+the point mass and end the run within a fraction of an orbit. Particles
+ejected from the ring later in the run lose all their neighbours; the
+parameter file caps the smoothing length (`SPH:h_max`) so that they do not
+stop the run either.
 
 
 Initial Conditions Generation

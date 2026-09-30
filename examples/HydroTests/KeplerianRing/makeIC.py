@@ -442,7 +442,9 @@ def gen_particles_grid(meta):
         (x - centre_of_ring[0]) ** 2 + (y - centre_of_ring[1]) ** 2
     )
     particles.theta = np.arctan2(y - centre_of_ring[1], x - centre_of_ring[0])
-    particles.exclude_particles((particles.softening, 100.0))
+    particles.exclude_particles(
+        (max(particles.softening, meta["innerradius"]), 100.0)
+    )
 
     particles.densities = sigma(particles.radii)
     particles.calculate_velocities()
@@ -481,7 +483,9 @@ def gen_particles_spiral(meta):
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles((particles.softening, 100.0))
+    particles.exclude_particles(
+        (max(particles.softening, meta["innerradius"]), 100.0)
+    )
 
     # This way of doing densities does not work for different sized patches.
     # Therefore we need to weight by effecitve area.
@@ -531,7 +535,9 @@ def gen_particles_gaussian(meta):
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles((particles.softening, 100.0))
+    particles.exclude_particles(
+        (max(particles.softening, meta["innerradius"]), 100.0)
+    )
 
     # This way of doing densities does not work for different sized patches.
     particles.densities = np.zeros_like(particles.radii)
@@ -610,6 +616,20 @@ if __name__ == "__main__":
              """,
         required=False,
         default=0.05,
+    )
+
+    PARSER.add_argument(
+        "-c",
+        "--innerradius",
+        help="""
+             Exclude all particles within this radius from the centre of the
+             ring. The light particles inside the inner edge of the ring
+             (r < 0.5 for the default density profile) are shock-heated at the
+             100:1 density contrast and fall through the point mass, which
+             stops the run within a fraction of an orbit. Default: 0.5.
+             """,
+        required=False,
+        default=0.5,
     )
 
     PARSER.add_argument(
@@ -701,6 +721,7 @@ if __name__ == "__main__":
         "particlemass": float(ARGS["particlemass"]),
         "smoothing": smoothing,
         "softening": float(ARGS["softening"]),
+        "innerradius": float(ARGS["innerradius"]),
         "internalenergy": float(ARGS["internalenergy"]),
         "boxsize": float(ARGS["boxsize"]),
         "angle": float(ARGS["angle"]),

@@ -143,38 +143,12 @@ test_gresho() {
   make_ic() { get_glass glassPlane_128; python3 makeIC.py; }
 }
 test_keplerian() {
-  DIM=2; EXAMPLE=HydroTests/KeplerianRing; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
+  # A razor-thin disc run with the 3D code (see the example's README)
+  DIM=3; EXAMPLE=HydroTests/KeplerianRing; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
   FLAGS="--hydro --external-gravity"
-  # In 2D SWIFT zeroes the z coordinates: the point mass must sit at z = 0, not
-  # at z = 5 as in the example's parameter file. h_max stops ejected particles
-  # from aborting the run.
-  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_T_END -P Snapshots:delta_time:1 -P SPH:h_max:0.5 -P PointMassPotential:position:[5.,5.,0.]"
+  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_T_END -P Snapshots:delta_time:1"
   PLOT_SNAP=""
-  # Post-process the IC
-  make_ic() {
-    python3 makeIC.py
-    python3 - <<PYEOF
-import h5py
-import numpy as np
-# Add the dimensionality flag (needed by the 2D code) and drop the light
-# particles inside r < 0.5: with the 100:1 density contrast at the inner edge
-# they get shock-heated and expelled through the point mass (all schemes).
-with h5py.File("initial_conditions.hdf5", "r+") as f:
-    g = f["PartType0"]
-    pos = g["Coordinates"][:]
-    keep = np.hypot(pos[:, 0] - 5.0, pos[:, 1] - 5.0) >= 0.5
-    data = {k: g[k][:][keep] for k in g.keys()}
-    del f["PartType0"]
-    g = f.create_group("PartType0")
-    for k, v in data.items():
-        g.create_dataset(k, data=v)
-    for k in ["NumPart_ThisFile", "NumPart_Total"]:
-        a = f["Header"].attrs[k]
-        a[0] = int(keep.sum())
-        f["Header"].attrs[k] = a
-    f["Header"].attrs["Dimension"] = 2
-PYEOF
-  }
+  make_ic() { python3 makeIC.py; }
 }
 test_zeldovich() {
   DIM=3; EXAMPLE=Cosmology/ZeldovichPancake_3D; YML=zeldovichPancake.yml; IC=zeldovichPancake.hdf5
