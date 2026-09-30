@@ -128,16 +128,25 @@ free_field
     decay anyway fails it.
 
     In a NON-COSMOLOGICAL run (A1) reports its measured drift and does not
-    gate it, the way (A3) already reports and skips there. The prediction is
-    identically zero and every cosmological term of the bar vanishes with
-    it, so what is left compares the run's numerical floor against a bound
-    on that same floor, for which this check derives no bound. Sizing a bar
-    term from the measurement would fit the bar to the data. The drift is printed instead, so it stays visible, and the
-    two checks the leg does carry stay live: the measured drift must be
-    finite, and (A2) is gated exactly as it is with cosmology. The
+    gate it, the way (A3) already reports and skips there. The prediction
+    is identically zero, since H = 0 leaves no decay for the module to
+    apply, and every cosmological term of the bar vanishes with it. What
+    remains is the float-divergence floor on its own, and that is a
+    derived bound, the same one (A3) builds: this leg is ungated because
+    that bound does not cover the drift, not because the comparison was
+    vacuous. On this example's own z0 fixture the drift exceeds it by
+    about an order of magnitude (1.496e-06 against 1.357e-07, rebaselined
+    on the first genuine c_hyp snapshot). Sizing a bar term from that
+    measurement would fit the bar to the data, so none was added, and the
+    consequence is stated rather than hidden: between the float floor and
+    (A2)'s own bar, this leg no longer bounds the transport ledger's
+    conservation. The drift is printed instead, so it stays visible, and
+    the two checks the leg does carry stay live: the measured drift must
+    be finite, and (A2) is gated exactly as it is with cosmology. The
     non-cosmological run's own purpose here is to be the `--reference` of
-    the cosmological one, where its drift enters that run's bar and is
-    therefore still acted upon.
+    the cosmological one, where its drift enters that run's bar, is
+    therefore still acted upon, and is held below the predicted decay by
+    the resolution self-test.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
