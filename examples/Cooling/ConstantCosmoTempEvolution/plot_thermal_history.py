@@ -112,8 +112,19 @@ if cooling_model == "EAGLE":
     z_r_He_sigma = float(params["EAGLECooling:He_reion_z_sigma"])
     He_heat_input = float(params["EAGLECooling:He_reion_eV_p_H"])
 
+if cooling_model == "TREECOOL":
+    # The UV background switches on at the end of the table or at the
+    # user-specified redshift, whichever comes first
+    z_UVB_table = float(
+        np.ravel(subgrid_metadata["UV background table max redshift"])[0]
+    )
+    z_UVB_start = float(params["TREECOOLCooling:UV_background_start_redshift"])
+    z_UVB_on = min(z_UVB_table, z_UVB_start)
+
 if chemistry_model == "EAGLE":
     metallicity = float(params["EAGLEChemistry:init_abundance_metal"])
+elif cooling_model == "TREECOOL":
+    metallicity = 0.0  # primordial by construction
 else:
     metallicity = "Unknown"
 
@@ -135,6 +146,11 @@ if cooling_model == "EAGLE":
         alpha=0.5,
         fontsize=7,
         va="bottom",
+    )
+elif cooling_model == "TREECOOL":
+    ax.axvline(z_UVB_on, color="k", linestyle="--", alpha=0.5, lw=0.7, zorder=-1)
+    ax.text(
+        z_UVB_on + 0.1, 3.55, "UVB on", rotation=90, alpha=0.5, fontsize=7, va="bottom"
     )
 
 # Plot observational data
