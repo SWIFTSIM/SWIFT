@@ -119,6 +119,15 @@ INLINE static float sink_get_physical_div_v_from_part(
 
   /* Add the missing term */
   div_v += hydro_dimension * cosmo->H;
+#elif MAGMA_SPH
+  /* Comoving divergence of the peculiar velocity (trace of the gradient) */
+  div_v = hydro_get_div_v(p);
+
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."

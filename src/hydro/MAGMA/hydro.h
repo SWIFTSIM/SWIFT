@@ -491,9 +491,14 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 }
 
 /**
- * @brief returns the signal velocity
+ * @brief Returns the signal velocity of the particle.
  *
- * @brief p  the particle
+ * This scheme has no per-particle signal velocity: its Courant condition is
+ * built from the sound speed and the approach velocity (force.c_sig and
+ * force.mu_tilde), see hydro_compute_timestep(). Returns 0; no core code
+ * relies on this getter.
+ *
+ * @param p The particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
     const struct part *p) {
@@ -501,14 +506,19 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
   return 0.;
 }
 /**
- * @brief returns the div_v
+ * @brief Returns the velocity divergence of the particle.
  *
- * @brief p  the particle
+ * The trace of the (matrix-inversion) gradient of the peculiar velocity, in
+ * comoving coordinates and without the Hubble-flow term. Zero for particles
+ * that fell back to standard SPH gradients (their gradient is not computed).
+ *
+ * @param p The particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *p) {
 
-  return 0.;
+  return p->force.gradient_vx[0] + p->force.gradient_vy[1] +
+         p->force.gradient_vz[2];
 }
 
 /**
