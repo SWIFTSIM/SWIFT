@@ -6,11 +6,16 @@ applied to both. Where a closed form exists, the check compares against it:
 
 - `free_field`: a uniform seeded field in dust-free gas, no star. The module
   dilates the field's Hubble term by the same `c_hyp/c` factor as every other
-  rate, and `c_hyp/c` is about 1.5e-4 on this fixture, so the mass-specific
-  field is constant to leading order with and without cosmology. The H2
-  abundance then follows `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone,
-  since the field itself no longer decays) with the rate the module hands to
-  Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
+  rate, so each band's box mean follows
+  `ln u/u_ref = coeff int (c_hyp/c) d ln a`, with `coeff = -lambda_E(LW)` for
+  LW and `[lambda_E(LW) - 1] r - lambda_E(PE)` for PE, `r` the box-mean
+  `u_LW/u_PE`: PE also gains the LW-to-PE band-edge transfer, and on this
+  fixture's table weights its box mean rises. The check compares the measured
+  drift against that prediction, built from the run's own recorded
+  `HyperbolicPropagationSpeeds`. `c_hyp/c` is of order 1e-4 here, so the whole
+  drift is ~1e-4 over the run and the H2 abundance follows
+  `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone) with the rate the module
+  hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
 - `dust_absorption`: the same at solar metallicity, with the propagation speed
   pinned (`c_hyp_pin`, km/s), so the absorption rate is known:
   `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
@@ -102,8 +107,9 @@ python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.h
 ```
 Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
 (exit code 0 or 1). `--reference` takes the non-cosmological run of the same
-configuration: the cosmological bar then becomes the larger of the a-priori
-budget and twice the error that run measured, plus the cosmological terms.
+configuration: its own measured drift, doubled, then replaces the derived
+bound on the part of the bar that does not depend on `a`, wherever it is
+larger.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
 

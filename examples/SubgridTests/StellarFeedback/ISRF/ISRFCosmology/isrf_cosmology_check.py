@@ -70,16 +70,61 @@ free_field
     scheme-aware, up to round-off: the weighted branch divides each mass by
     c_hyp before summing, so the two are not the same float expression.
 
-    A1 itself is not evaluated: with the module's own light-speed clamp,
-    c_hyp <= c always, and on every fixture this file runs c_hyp/c is of
-    order 1e-5 (c_hyp ~ margin*h/dt is a resolved-region speed, km/s-scale,
-    against c ~ 3e5 km/s in this unit system), so the integral above is many
-    orders below this check's own float32/discretisation floor over the
-    run's span. The practical prediction is therefore Q(t) = Q(0), with the
-    un-modelled decay folded into the bar as an explicit term bounded by
-    c_hyp_bound/c (c_hyp_bound an upper estimate from the run's own
-    smoothing length and step size, printed below), not asserted as exactly
-    0.
+    A1 is gated as a TWO-SIDED RESIDUAL, like (A3) below: the measured box-
+    mean drift ln[Q(t)/Q(t_ref)] MINUS the predicted drift, against a bar
+    that carries this check's own errors and nothing else. Folding the
+    predicted decay into the allowance instead, and comparing an absolute
+    deviation against it, passes a build with no cosmological decay at all,
+    and one whose decay has the wrong sign, since such a comparison never
+    looks at either.
+
+    The predicted drift is drift_coeff * int (c_hyp/c) d ln a
+    (`trapezoid_c_hyp_integral`), with c_hyp read from the run's own
+    HyperbolicPropagationSpeeds: a per-step rate the particles actually
+    decayed under, not an a-priori bound from margin*h/dt_max. SWIFT
+    quantises dt_max DOWN to a power-of-two subdivision of the run's own
+    time span before any particle uses it (`read_timeline_dt_max`), so a
+    bound built from the raw parameter under-states c_hyp ~ h/dt by that
+    factor and is not conservative. The coefficients are SIGNED, since the
+    residual is two-sided:
+
+        d ln u_LW / d[int (c_hyp/c) d ln a] = -lambda_E(LW)
+        d ln u_PE / d[int (c_hyp/c) d ln a] = [lambda_E(LW) - 1] r
+                                              - lambda_E(PE) ,
+
+    r the box-mean u_LW/u_PE at the reference snapshot. PE's own second term
+    is the LW-to-PE band-edge transfer: radiation_end_force_propagation adds
+    [lambda_E(LW) - 1] H_dilated u_LW into PE's `u` every step, on top of
+    PE's own -lambda_E(PE) H_dilated u_PE decay. At this fixture's own table
+    weights that sum is POSITIVE, so PE's box mean RISES while LW's falls,
+    and a gate on |drift| alone cannot tell a rise from a fall of the same
+    size.
+
+    The drift is measured from the first snapshot whose own c_hyp is a
+    genuine per-step rate, not from snapshot 0: an unpinned run's snapshot 0
+    is written before the first force step and still holds the module's
+    first-init light-speed clamp (`band_edge_ratio_reference_index`). That
+    one interval is therefore dropped rather than integrated with the clamp,
+    or with a later snapshot's value substituted for it -- a substitution
+    makes the interval's endpoints equal and so credits the interval whose
+    speed is least known with a discretisation bound of exactly zero.
+
+    (A1) cannot detect a wrong propagation-speed MAGNITUDE: its prediction
+    integrates the same recorded c_hyp the module decayed with, so a
+    systematically wrong speed moves the measurement and the prediction
+    together. What it does constrain is the band-edge coefficients, the sign
+    of each band's drift, and the c_hyp/c dilation of the Hubble term,
+    against the run's own speed. Constraining the speed itself needs a check
+    that predicts c_hyp from the run's own resolution and step, which this
+    one deliberately does not.
+
+    With propagation off (GEARFeedback:ISRF_propagation, read by
+    `read_isrf_propagation`) the predicted drift is exactly zero:
+    radiation_end_force_propagation returns before its relaxation update, so
+    no cosmological term exists to predict. (A1) and (A3) then gate the
+    measured drift against their error-only bar rather than skipping, which
+    is still a real gate -- a module that applied the decay anyway fails
+    it.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -93,8 +138,8 @@ free_field
     field no longer decaying at leading order), a ~10% shift in the
     predicted x_H2 over this fixture's span, well above any noise floor.
 
-    A THIRD, more direct probe of the band-edge transfer itself does not need
-    A1's own un-modelled-decay punt: LW's energy moment and its photon-number
+    A THIRD, more direct probe of the band-edge transfer itself cancels
+    everything the two LW moments share: LW's energy moment and its photon-number
     moment (LWSpecificEnergies/LWPhotonSpecificEnergies, ``u`` and ``n``
     below) share one transport operator and the same per-particle c_hyp and
     dt, but ``radiation_end_force_propagation`` (radiation_isrf.c) relaxes
@@ -179,11 +224,11 @@ injection
 Bars
 ----
 Each bar is the sum of terms stated in the output, derived from the run's
-discretisation: the non-cosmological run of the same configuration measures
-the error that does not depend on a (float32 updates, flux divergence on the
-glass, Grackle's implicit solve); ``--reference`` passes it to the
-cosmological check, whose bar is the larger of the a-priori budget and twice
-that measured error, plus the cosmological terms:
+discretisation. Every step size and step count in them is the time-line's
+own quantised dt_max (`read_timeline_dt_max`), not the raw
+TimeIntegration:dt_max parameter, which over-states the step and
+under-states the step count at once, so using it is not conservative in
+either direction. The generic terms:
 
 - H and the rates are frozen at the step end (``cosmology_update`` runs before
   the step's tasks). For a rate r(a) ~ a^-p, the ln error per step is
@@ -191,6 +236,25 @@ that measured error, plus the cosmological terms:
   for the H term), summed over the run.
 - Particles are updated at their step ends, so a snapshot can lag by one
   step: one step's worth of the change.
+- The floor that does not depend on a. The specific energy is DOUBLE in the
+  struct (feedback_struct.h), in its update and in the snapshot field
+  (feedback_io.h), so a term modelling float32 round-off OF it is not a
+  legitimate noise floor and none is used. What is still float is each
+  moment's own flux divergence, which the double relaxation update
+  subtracts every step: bounded by FLOAT32_EPS times the step count times
+  that increment's own relative size against u, read from the run's own
+  snapshots (`float_divergence_pull`). A paired non-cosmological run of the
+  same configuration (``--reference``) MEASURES this floor rather than
+  bounding it, and twice its measured drift replaces the bound wherever it
+  is larger.
+
+(A1)'s bar carries no term for the predicted decay itself, which is on the
+other side of the residual now, only: the log line's own ``%.5g`` precision
+on each lambda, propagated through the band's own coefficient and times the
+run's own integral; the trapezoid's own discretisation bound; the two
+generic terms above, scaled by that coefficient and by the run's own mean
+c_hyp/c; and, for PE alone, the drift of r over the run, which bounds
+holding it at its reference value.
 
 (A3)'s bar is built the same way, plus two terms of its own, neither fitted
 to a measured residual:
@@ -298,6 +362,13 @@ LW_QUOTIENT_LOG_RE = re.compile(
 LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
+)
+# engine_config()'s own announcement of the coarsest step any particle can
+# take: SWIFT quantises TimeIntegration:dt_max DOWN to a power-of-two
+# subdivision of (time_end - time_begin) before any particle uses it, so the
+# raw parameter over-states the step size and under-states the step count.
+TIMELINE_DT_MAX_LOG_RE = re.compile(
+    r"engine_config: Maximal timestep size \(on time-line\): (\S+)"
 )
 # radiation_set_band_edge_coefficients()'s own start-up announcement
 # (radiation.c): the table-derived lambda_E(PE)/lambda_E(LW)/lambda_N(LW)
@@ -633,8 +704,14 @@ def read_snapshot(filename: str) -> Dict:
                 if "LWPhotonSpecificEnergies" in gas
                 else None
             ),
-            # (A3)'s float-residual bar term: the FLOAT inputs still feeding
-            # the double relaxation update (radiation_isrf.c:1221-1261).
+            # (A1)'s and (A3)'s float-residual bar terms: the FLOAT inputs
+            # still feeding the double relaxation update
+            # (radiation_isrf.c:1221-1261).
+            "div_PE": (
+                physical(gas["PESpecificFluxDivergences"], a, energy / time)[order]
+                if "PESpecificFluxDivergences" in gas
+                else None
+            ),
             "div_LW": (
                 physical(gas["LWSpecificFluxDivergences"], a, energy / time)[order]
                 if "LWSpecificFluxDivergences" in gas
@@ -880,14 +957,73 @@ def optical_depths(
     return {band: SIGMA_D_CGS[band] * prefactor for band in ("PE", "LW")}
 
 
-def read_c_hyp_margin(pattern: str) -> float:
-    """Return GEARFeedback:ISRF_c_hyp_margin from the run's used_parameters.yml."""
+def read_isrf_propagation(pattern: str) -> bool:
+    """Return whether GEARFeedback:ISRF_propagation was on for this run.
+
+    `radiation_end_force_propagation` (radiation_isrf.c) returns before its
+    own relaxation update when propagation is off, so no cosmological term
+    exists to predict on such a run: (A1) and (A3) then gate the measured
+    drift against their error-only bar with a zero prediction, rather than
+    skipping. Missing from used_parameters.yml means the run predates the
+    parameter, when propagation was unconditional.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    bool
+        True when propagation was on, or when the parameter is not recorded.
+    """
     import os
     import yaml
 
     directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
-    with open(os.path.join(directory, "used_parameters.yml")) as handle:
-        return float(yaml.safe_load(handle)["GEARFeedback"]["ISRF_c_hyp_margin"])
+    path = os.path.join(directory, "used_parameters.yml")
+    if not os.path.exists(path):
+        return True
+    with open(path) as handle:
+        parameters = yaml.safe_load(handle)
+    try:
+        return int(parameters["GEARFeedback"]["ISRF_propagation"]) != 0
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+def read_timeline_dt_max(
+    *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
+) -> "Optional[float]":
+    """Return the coarsest step the run's time-line actually allowed.
+
+    SWIFT quantises TimeIntegration:dt_max down to a power-of-two
+    subdivision of the run's own (time_end - time_begin) before any particle
+    uses it, and announces the result once at start-up (`engine_config`).
+    Every bar term built from a step size or a step count needs THAT value,
+    not the raw parameter: the raw parameter over-states the step (inflating
+    a one-step lag term) and under-states the step count (shrinking a term
+    proportional to it), in opposite directions, so using it is not
+    conservative either way.
+
+    Parameters
+    ----------
+    snapshot_globs : str, optional
+        Snapshot globs of the run being checked.
+    log : str, optional
+        A run log named explicitly on the command line.
+
+    Returns
+    -------
+    float or None
+        The quantised dt_max in the run's own time-line units (the same
+        units as the parameter), or None if no log announced it.
+    """
+    for path in find_run_logs(*snapshot_globs, log=log):
+        match = TIMELINE_DT_MAX_LOG_RE.search(path.read_text(errors="replace"))
+        if match:
+            return float(match.group(1))
+    return None
 
 
 def read_c_hyp_scheme(pattern: str) -> Optional[int]:
@@ -986,8 +1122,10 @@ def ledger_mean(snap: Dict, key: str, use_c_hyp: bool) -> float:
     return float(np.sum(weight * snap[key]) / np.sum(weight))
 
 
-def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
-    """Return the errors of Eqs. (A1) and (A2) at every snapshot.
+def free_field_errors(
+    run: List[Dict], use_c_hyp: bool = False, ref_index: int = 0
+) -> Dict:
+    """Return the measured drift of Eq. (A1) and the error of Eq. (A2).
 
     The transport moves energy between particles and conserves the ledger of
     the run's own c_hyp scheme (this module's docstring), so on a glass each
@@ -995,11 +1133,11 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     while the box mean follows (A1) exactly. The gates use the box means; the
     per-particle spread is reported.
 
-    A1's reference is the ledger's own initial value (see this module's own
-    docstring: to the precision this check can resolve, the c_hyp/c-dilated
-    Hubble decay is un-modelled, not asserted as exactly 0), so `out[band]`
-    is the box mean's own fractional departure from it, not from an
-    a-dependent target.
+    ``out[band]`` is the MEASURED quantity of (A1)'s two-sided residual,
+    ``ln[Q(t)/Q(t_ref)]``, not an error: the caller subtracts (A1)'s own
+    predicted drift from it (`check_free_field`). Entries before
+    ``ref_index`` are NaN, so a caller cannot read a value the reference
+    snapshot does not define.
 
     Parameters
     ----------
@@ -1008,18 +1146,33 @@ def free_field_errors(run: List[Dict], use_c_hyp: bool = False) -> Dict:
     use_c_hyp
         Weight each particle by ``m_i/c_hyp,i`` rather than ``m_i``, for the
         consistent-variable-c schemes. Decided by `use_c_hyp_ledger`.
+    ref_index
+        Snapshot the log drift is measured from. (A1)'s reference is the
+        first snapshot whose c_hyp is a genuine per-step rate, since its
+        prediction integrates that same recorded c_hyp
+        (`band_edge_ratio_reference_index`).
     """
     first = run[0]
     mass = first["mass"]
-    out = {}
+    out = {"ref_index": ref_index}
     for band in ["PE", "LW"]:
-        u0 = ledger_mean(first, f"u_{band}", use_c_hyp)
-        out[band] = np.array(
-            [ledger_mean(s, f"u_{band}", use_c_hyp) / u0 - 1.0 for s in run]
-        )
+        q_ref = ledger_mean(run[ref_index], f"u_{band}", use_c_hyp)
+        drift = np.full(len(run), np.nan)
+        for i in range(ref_index, len(run)):
+            drift[i] = np.log(ledger_mean(run[i], f"u_{band}", use_c_hyp) / q_ref)
+        out[band] = drift
         out[f"{band}_spread"] = np.array(
             [np.median(np.abs(s[f"u_{band}"] / first[f"u_{band}"] - 1.0)) for s in run]
         )
+    # Box-mean u_LW/u_PE, the scale factor of the LW-to-PE band-edge
+    # transfer in (A1)'s PE prediction. Its own drift over the run bounds
+    # the error of holding it at its reference value (`check_free_field`).
+    out["r_lw_over_pe"] = np.array(
+        [
+            float(np.sum(s["mass"] * s["u_LW"]) / np.sum(s["mass"] * s["u_PE"]))
+            for s in run
+        ]
+    )
     # Box-mean density and field: the closed form is for the uniform state.
     rho0 = np.sum(mass) / np.sum(mass / first["density"])
     u_lw0 = np.sum(mass * first["u_LW"]) / np.sum(mass)
@@ -1095,21 +1248,100 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     return None
 
 
-def band_edge_ratio_errors(run: List[Dict], start: int) -> Dict:
+def trapezoid_c_hyp_integral(
+    run: List[Dict], c_hyp_at: List[float], ref_index: int
+) -> Dict:
+    """Return the trapezoid ``int (c_hyp/c) d ln a`` and its own error bound.
+
+    Shared by (A1) and (A3), which need the same construction for two
+    different prefactors. ``H dt = d ln a`` exactly (the scale factor's own
+    definition, no approximation), so the dilated integral is a trapezoid in
+    ln a over the snapshots the run itself wrote. Its discretisation error,
+    from holding c_hyp piecewise constant between snapshots rather than at
+    its true, continuously-varying value, is bounded per interval by half
+    the interval's own |Delta c_hyp|/c times its d ln a (a bound on the
+    deviation, not a signed correction to it), accumulated in absolute
+    value.
+
+    The integral starts at ``ref_index`` and is zero at and before it: no
+    interval is ever credited to a snapshot whose own c_hyp is not a
+    genuine per-step rate, and none is carried with substituted endpoints,
+    which would give the one interval whose speed is least known a
+    discretisation bound of exactly zero.
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order.
+    c_hyp_at : list of float
+        One representative c_hyp per snapshot, physical cgs (the median over
+        particles: the field is uniform, so the spread is glass noise). All
+        zero for a run whose module applied no dilated Hubble term at all.
+    ref_index : int
+        Snapshot index where the accumulated integral is defined to be zero.
+
+    Returns
+    -------
+    dict
+        ``dilated_lna`` (the cumulative trapezoid, one entry per snapshot),
+        ``trapezoid_bound`` (its cumulative discretisation bound) and
+        ``span`` (total ln a from ``ref_index`` to the run's end).
+    """
+    dilated_lna = np.zeros(len(run))
+    trapezoid_bound = np.zeros(len(run))
+    for i in range(ref_index + 1, len(run)):
+        dlna = float(np.log(run[i]["a"] / run[i - 1]["a"]))
+        c_prev, c_here = c_hyp_at[i - 1], c_hyp_at[i]
+        dilated_lna[i] = (
+            dilated_lna[i - 1] + 0.5 * (c_prev + c_here) / C_LIGHT_CGS * dlna
+        )
+        trapezoid_bound[i] = (
+            trapezoid_bound[i - 1] + 0.5 * abs(c_here - c_prev) / C_LIGHT_CGS * dlna
+        )
+    return {
+        "dilated_lna": dilated_lna,
+        "trapezoid_bound": trapezoid_bound,
+        "span": float(np.log(run[-1]["a"] / run[ref_index]["a"])),
+    }
+
+
+def representative_c_hyp(run: List[Dict], propagation_on: bool) -> List[float]:
+    """Return one c_hyp per snapshot for `trapezoid_c_hyp_integral`.
+
+    All zero when propagation is off: `radiation_end_force_propagation`
+    returns before its relaxation update then, so the module applies no
+    dilated Hubble term and the predicted drift is exactly zero, whatever
+    the snapshots' own HyperbolicPropagationSpeeds field happens to hold
+    (the module's first-init light-speed clamp, in that case).
+
+    Parameters
+    ----------
+    run : list of dict
+        The run's snapshots, in time order.
+    propagation_on : bool
+        GEARFeedback:ISRF_propagation of the run, from
+        `read_isrf_propagation`.
+
+    Returns
+    -------
+    list of float
+        Median c_hyp per snapshot, physical cgs, or zeros.
+    """
+    if not propagation_on:
+        return [0.0] * len(run)
+    return [float(np.median(s["c_hyp"])) for s in run]
+
+
+def band_edge_ratio_errors(
+    run: List[Dict], start: int, propagation_on: bool = True
+) -> Dict:
     """Return (A3)'s measured ln(u_LW/n_LW) drift and its dilated-ln(a) integral.
 
     Both series start at `run[start]` (see `band_edge_ratio_reference_index`)
     and are indexed like `run` itself, with every entry before `start` left
-    as NaN so a caller cannot silently read a meaningless value.
-
-    `H dt = d ln a` exactly (the scale factor's own definition), so the
-    dilated integral ``int (c_hyp/c) d ln a`` is a trapezoid in ln a built
-    from each snapshot's own median c_hyp (box means: the field is uniform,
-    so the per-particle spread is glass noise). Its own discretisation
-    error -- from holding c_hyp piecewise constant between snapshots rather
-    than at its true, continuously-varying value -- is bounded per interval
-    by half the interval's own |Delta c_hyp|/c times its d ln a, accumulated
-    in absolute value since it is a bound, not a signed correction.
+    as NaN so a caller cannot silently read a meaningless value. The dilated
+    integral is `trapezoid_c_hyp_integral`, shared with (A1), and is
+    identically zero when propagation is off.
 
     Parameters
     ----------
@@ -1117,6 +1349,10 @@ def band_edge_ratio_errors(run: List[Dict], start: int) -> Dict:
         The run's snapshots, in time order.
     start : int
         Index of the first snapshot to integrate from.
+    propagation_on : bool
+        GEARFeedback:ISRF_propagation of the run. With propagation off the
+        module applies no relaxation at all, so the predicted drift is zero
+        (`representative_c_hyp`).
 
     Returns
     -------
@@ -1130,28 +1366,55 @@ def band_edge_ratio_errors(run: List[Dict], start: int) -> Dict:
         np.log(ledger_mean(ref, "u_LW", False) / ledger_mean(ref, "n_LW", False))
     )
     measured = np.full(len(run), np.nan)
-    dilated_lna = np.zeros(len(run))
-    trapezoid_bound = np.zeros(len(run))
     for i in range(start, len(run)):
         snap = run[i]
         ratio = ledger_mean(snap, "u_LW", False) / ledger_mean(snap, "n_LW", False)
         measured[i] = np.log(ratio) - ln_ratio0
-        if i > start:
-            prev = run[i - 1]
-            dlna = np.log(snap["a"] / prev["a"])
-            c_prev, c_here = np.median(prev["c_hyp"]), np.median(snap["c_hyp"])
-            dilated_lna[i] = (
-                dilated_lna[i - 1] + 0.5 * (c_prev + c_here) / (C_LIGHT_CGS) * dlna
-            )
-            trapezoid_bound[i] = (
-                trapezoid_bound[i - 1] + 0.5 * abs(c_here - c_prev) / C_LIGHT_CGS * dlna
-            )
+    integral = trapezoid_c_hyp_integral(
+        run, representative_c_hyp(run, propagation_on), start
+    )
     return {
         "measured": measured,
-        "dilated_lna": dilated_lna,
-        "trapezoid_bound": trapezoid_bound,
-        "span": float(np.log(run[-1]["a"] / ref["a"])),
+        "dilated_lna": integral["dilated_lna"],
+        "trapezoid_bound": integral["trapezoid_bound"],
+        "span": integral["span"],
     }
+
+
+def float_divergence_pull(
+    snap: Dict, u_key: str, div_key: str, dt_step_cgs: float
+) -> Optional[float]:
+    """Return one step's largest relative transport pull on a moment's ``u``.
+
+    The relaxation update is double, but the flux divergence it subtracts is
+    still float end to end (radiation_isrf.c:1221-1261), so each step's
+    increment carries a float32 relative error. This returns the increment's
+    own size relative to ``u``, ``max_i |dt * div_i / u_i|``, which the
+    caller multiplies by ``FLOAT32_EPS`` and the run's step count. None when
+    the snapshot carries no such field, or when the ratio is not everywhere
+    finite, so a caller never folds a NaN into a bar.
+
+    Parameters
+    ----------
+    snap : dict
+        One snapshot, as `read_snapshot` returns it.
+    u_key, div_key : str
+        The moment's specific energy and its flux divergence.
+    dt_step_cgs : float
+        Longest step in proper time, seconds.
+
+    Returns
+    -------
+    float or None
+        The largest relative pull, or None.
+    """
+    div = snap.get(div_key)
+    if div is None:
+        return None
+    pull = np.abs(dt_step_cgs * div / snap[u_key])
+    if not np.all(np.isfinite(pull)):
+        return None
+    return float(np.max(pull))
 
 
 def check_band_edge_ratio(
@@ -1160,6 +1423,7 @@ def check_band_edge_ratio(
     dt_max: float,
     n_steps: float,
     dt_step_cgs: float,
+    propagation_on: bool = True,
 ) -> bool:
     """Check (A3): d ln(u_LW/n_LW)/dt = -(lambda_E(LW) - lambda_N(LW)) H_dilated.
 
@@ -1188,19 +1452,33 @@ def check_band_edge_ratio(
     dt_step_cgs : float
         Longest step in proper time, seconds (the run's own dt_max
         converted, as `check_free_field`'s own `dt_step` already is).
+    propagation_on : bool
+        GEARFeedback:ISRF_propagation of the run. With propagation off
+        `radiation_end_force_propagation` returns before its relaxation
+        update, so the prediction is exactly zero and the measured ratio
+        must stay flat: that is gated here, not skipped, the same way (A1)
+        gates its own zero prediction on such a run.
 
     Returns
     -------
     bool
         Whether (A3) passed.
     """
-    start = band_edge_ratio_reference_index(run)
-    if start is None or start >= len(run) - 1:
+    if propagation_on:
+        start = band_edge_ratio_reference_index(run)
+        if start is None or start >= len(run) - 1:
+            print(
+                "  (A3) SKIPPED: fewer than two snapshots have a genuine "
+                "(non-clamped) HyperbolicPropagationSpeeds"
+            )
+            return True
+    else:
+        start = 0
         print(
-            "  (A3) SKIPPED: fewer than two snapshots have a genuine "
-            "(non-clamped) HyperbolicPropagationSpeeds"
+            "  (A3): propagation off, so the predicted ln(u_LW/n_LW) drift is "
+            "exactly 0 and the measured drift is gated against the "
+            "error-only bar alone"
         )
-        return True
     if any(s["n_LW"] is None for s in run[start:]):
         raise RuntimeError(
             "cosmological free_field run but LWPhotonSpecificEnergies is "
@@ -1208,9 +1486,10 @@ def check_band_edge_ratio(
             "moment and must not silently skip the one check that field "
             "supports."
         )
+    checked = ("u_LW", "n_LW", "c_hyp") if propagation_on else ("u_LW", "n_LW")
     for i in range(start, len(run)):
         snap = run[i]
-        for name in ("u_LW", "n_LW", "c_hyp"):
+        for name in checked:
             if not np.all(np.isfinite(snap[name])):
                 print(f"  FAIL: (A3): non-finite {name} in snapshot {i}")
                 return False
@@ -1236,7 +1515,7 @@ def check_band_edge_ratio(
                 )
                 return False
 
-    errors = band_edge_ratio_errors(run, start)
+    errors = band_edge_ratio_errors(run, start, propagation_on)
     delta_lambda = band_edge_weights["LW"] - band_edge_weights["N_LW"]
     predicted = -delta_lambda * errors["dilated_lna"]
     residual = errors["measured"] - predicted
@@ -1265,11 +1544,8 @@ def check_band_edge_ratio(
     for i in range(start, len(run)):
         snap = run[i]
         for u_key, div_key in (("u_LW", "div_LW"), ("n_LW", "div_LW_photon")):
-            div = snap.get(div_key)
-            if div is not None:
-                float_terms.append(
-                    float(np.max(np.abs(dt_step_cgs * div / snap[u_key])))
-                )
+            float_terms.append(float_divergence_pull(snap, u_key, div_key, dt_step_cgs))
+    float_terms = [term for term in float_terms if term is not None]
     if float_terms:
         float_residual = FLOAT32_EPS * n_steps * max(float_terms)
         float_note = "flux-divergence-scaled"
@@ -1299,19 +1575,74 @@ def check_band_edge_ratio(
 def check_free_field(opt: argparse.Namespace) -> bool:
     """Check Eqs. (A1) and (A2)."""
     run = load_run(opt.snapshots)
-    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    dt_max_parameter = read_dt_max(opt.snapshots, opt.dt_max)
+    # Every term below built from a step size or a step count uses the
+    # QUANTISED dt_max the run's own time-line actually allowed, not the raw
+    # parameter: see `read_timeline_dt_max`.
+    dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
+    if dt_max is None:
+        dt_max = dt_max_parameter
+        print(
+            "  NOTE: no engine_config line announced the time-line's own "
+            "maximal step, so the raw TimeIntegration:dt_max parameter is "
+            "used: the step count is then under-counted and the one-step "
+            "lag term over-counted, in opposite directions"
+        )
     cosmological = run[0]["cosmological"]
+    propagation_on = read_isrf_propagation(opt.snapshots)
+    # A run with propagation off applies no relaxation at all
+    # (radiation_end_force_propagation returns first), so its predicted
+    # drift is exactly zero, whatever its cosmology.
+    cosmo_decay = cosmological and propagation_on
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
-    errors = free_field_errors(run, use_c_hyp)
-    span = float(np.log(run[-1]["a"] / run[0]["a"]))
+    # (A1) predicts from the run's OWN recorded c_hyp, so it measures the
+    # drift from the first snapshot whose c_hyp is a genuine per-step rate:
+    # snapshot 0 of an unpinned run still holds the module's first-init
+    # light-speed clamp (`band_edge_ratio_reference_index`), and neither
+    # substituting a later snapshot's value for it nor integrating the clamp
+    # itself is a measurement of anything the particles experienced.
+    ref_index = 0
+    if cosmo_decay:
+        genuine = band_edge_ratio_reference_index(run)
+        if genuine is None or genuine >= len(run) - 1:
+            raise RuntimeError(
+                "cosmological free_field run with propagation on, but fewer "
+                "than two snapshots carry a genuine (non-clamped) "
+                "HyperbolicPropagationSpeeds: (A1) predicts the dilated "
+                "Hubble decay from the run's own per-step c_hyp and has no "
+                "a-priori substitute for it (a bound from "
+                "TimeIntegration:dt_min is permissive enough on every "
+                "fixture this file runs that it never fails). Rerun with a "
+                "build that writes HyperbolicPropagationSpeeds."
+            )
+        for i in range(genuine, len(run)):
+            c_hyp = run[i]["c_hyp"]
+            if not np.all(np.isfinite(c_hyp)) or np.any(c_hyp <= 0.0):
+                raise RuntimeError(
+                    f"HyperbolicPropagationSpeeds in snapshot {i} is not "
+                    "everywhere finite and positive, after snapshot "
+                    f"{genuine} carried a genuine sample: (A1)'s prediction "
+                    "would be built on it."
+                )
+        ref_index = genuine
+    errors = free_field_errors(run, use_c_hyp, ref_index)
+    integral = trapezoid_c_hyp_integral(
+        run, representative_c_hyp(run, cosmo_decay), ref_index
+    )
+    dilated_lna = integral["dilated_lna"]
+    span = integral["span"]
+    mean_c_hyp_ratio = dilated_lna[-1] / span if span > 0.0 else 0.0
     elapsed = np.array([s["time"] - run[0]["time"] for s in run])[1:]
     print(
-        f"free_field: cosmological={cosmological}, a {run[0]['a']:.6g} -> "
-        f"{run[-1]['a']:.6g}, {len(run)} snapshots, {n_steps:.0f} dt_max steps, "
-        f"H2 exponent {errors['exponent']:.3f}, ledger {ledger}"
+        f"free_field: cosmological={cosmological}, propagation={propagation_on}, "
+        f"a {run[0]['a']:.6g} -> {run[-1]['a']:.6g}, {len(run)} snapshots, "
+        f"{n_steps:.0f} steps of the time-line's own dt_max {dt_max:.6g} "
+        f"(parameter {dt_max_parameter:.6g}), H2 exponent "
+        f"{errors['exponent']:.3f}, ledger {ledger}"
     )
+    print(f"  (A1) reference snapshot: {ref_index}, ln a span from it {span:.6g}")
     print(
         f"  Friedmann time vs SWIFT time: max rel. diff {friedmann_time_residual(run):.2e}"
     )
@@ -1332,31 +1663,27 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 "  WARNING: the reference run uses the other ledger, so its "
                 "measured error is not comparable with this run's"
             )
-        reference = free_field_errors(reference_run, use_c_hyp_reference)
+        reference_ref_index = band_edge_ratio_reference_index(reference_run)
+        reference = free_field_errors(
+            reference_run,
+            use_c_hyp_reference,
+            0 if reference_ref_index is None else reference_ref_index,
+        )
 
     ok = True
-    # Longest step in proper time, from dt_max (ln a with cosmology).
+    # Longest step in proper time, from the time-line's own dt_max (ln a with
+    # cosmology).
     dt_step = (
         dt_max / hubble_rate_cgs(run[0]["a"], run[0])
         if cosmological
         else dt_max * run[0]["time_unit"]
     )
-    # Upper-bound estimate of c_hyp/c, from the run's own resolution: c_hyp is
-    # not a snapshot field (this fixture's c_hyp_pin is off, so c_hyp itself
-    # varies per particle and per step, see this module's own docstring), but
-    # it is bounded by ISRF_c_hyp_margin*h/dt_step (h the smallest physical
-    # dt_step gives the largest bound) and by c. dt_step above already uses
-    # H(a0), the largest H over this matter-domination run, hence the
-    # smallest physical dt: a conservative (not tight) upper bound.
-    c_hyp_ratio = 0.0
-    if cosmological:
-        margin = read_c_hyp_margin(opt.snapshots)
-        h_phys_cgs = np.median(run[0]["h"])
-        c_hyp_bound_cgs = min(C_LIGHT_CGS, margin * h_phys_cgs / dt_step)
-        c_hyp_ratio = c_hyp_bound_cgs / C_LIGHT_CGS
+    if cosmo_decay:
         print(
-            f"  c_hyp/c upper bound: {c_hyp_ratio:.3e} (margin {margin:g}, "
-            f"median h {h_phys_cgs:.3e} cm, dt_step {dt_step:.3e} s)"
+            f"  int (c_hyp/c) d ln a from the run's own "
+            f"HyperbolicPropagationSpeeds: {dilated_lna[-1]:.4e} "
+            f"(mean c_hyp/c {mean_c_hyp_ratio:.4e}, trapezoid "
+            f"discretisation bound {integral['trapezoid_bound'][-1]:.3e})"
         )
     # Per-band redshift depth is lambda_E(band)*H_dilated, not H_dilated
     # alone (radiation_end_force_propagation): read the run's own
@@ -1370,12 +1697,11 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             raise RuntimeError(
                 "cosmological free_field run but no output.log announced "
                 "radiation_set_band_edge_coefficients()'s lambda_E(PE)/"
-                "lambda_E(LW): this gate's cosmological allowance needs "
-                "them to size the un-modelled decay correctly, and cannot "
-                "default to lambda=1 without silently reintroducing the "
-                "gate this file's own history already flagged as too "
-                "tight. Pass --log or run beside the log this fixture "
-                "wrote."
+                "lambda_E(LW): (A1) predicts each band's own drift from "
+                "them and cannot default to lambda=1, which is neither "
+                "band's coefficient and would make the residual meaningless "
+                "rather than merely loose. Pass --log or run beside the log "
+                "this fixture wrote."
             )
         print(
             f"  band-edge weights from the log: lambda_E(PE)="
@@ -1384,57 +1710,122 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
     # The LW-to-PE band-edge transfer (radiation_end_force_propagation) adds
     # (lambda_E(LW) - 1)*H_dilated*u_LW into PE's own `u` every step, on top
-    # of PE's own -lambda_E(PE)*H_dilated*u_PE decay: to first order in the
-    # (small) cosmological perturbation, PE's own relative drift coefficient
-    # is therefore [lambda_E(LW) - 1]*r - lambda_E(PE), not lambda_E(PE)
-    # alone, with r the box-mean u_LW0/u_PE0 this run actually started at
-    # (not assumed to be 1, though this fixture's own IC sets u_pe = u_lw).
-    # LW receives no such term, so its own coefficient is unchanged.
-    r_lw_over_pe = None
-    if cosmological:
-        r_lw_over_pe = float(
-            np.sum(run[0]["mass"] * run[0]["u_LW"])
-            / np.sum(run[0]["mass"] * run[0]["u_PE"])
-        )
+    # of PE's own -lambda_E(PE)*H_dilated*u_PE decay, so PE's own signed
+    # drift coefficient is [lambda_E(LW) - 1]*r - lambda_E(PE), with r the
+    # box-mean u_LW/u_PE at the reference snapshot (not assumed to be 1,
+    # though this fixture's own IC sets u_pe = u_lw). At this fixture's own
+    # weights that coefficient is POSITIVE: PE gains more from the transfer
+    # than it loses to its own decay, so its box mean rises. LW receives no
+    # such term and simply decays at -lambda_E(LW).
+    r_reference = 0.0
+    r_drift = 0.0
+    if cosmo_decay:
+        r_series = errors["r_lw_over_pe"]
+        r_reference = float(r_series[ref_index])
+        r_drift = float(np.max(np.abs(r_series[ref_index:] - r_reference)))
         print(
-            f"  box-mean u_LW0/u_PE0 (r, the LW-to-PE transfer's own scale "
-            f"factor): {r_lw_over_pe:.5g}"
+            f"  box-mean u_LW/u_PE (r, the LW-to-PE transfer's own scale "
+            f"factor): {r_reference:.6g} at the reference snapshot, drifting "
+            f"by at most {r_drift:.2e} over the run"
         )
     for band in ["PE", "LW"]:
-        # Float32 round-off of each update, averaged over the particles.
-        budget = FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
-        measured_nc = (
-            0.0 if reference is None else float(np.max(np.abs(reference[band])))
-        )
-        # The un-modelled dilated decay itself (span), plus its own step-end
-        # H ((3/4) dlna_step per unit ln a) and one-step lag discretisation,
-        # all dilated by the same c_hyp/c factor as the term itself, AND by
-        # this band's own drift coefficient: lambda_E(band)*H_dilated for
-        # LW, but [lambda_E(LW) - 1]*r - lambda_E(PE), in magnitude, for PE
-        # (see the comment above the r_lw_over_pe computation).
-        if cosmological:
-            if band == "PE":
-                drift_coeff = abs(
-                    band_edge_weights["PE"]
-                    - (band_edge_weights["LW"] - 1.0) * r_lw_over_pe
-                )
-            else:
-                drift_coeff = band_edge_weights["LW"]
+        # SIGNED: the residual below is two-sided, so a prediction of the
+        # wrong sign must not compare equal to the right one.
+        if cosmo_decay:
+            drift_coeff = (
+                (band_edge_weights["LW"] - 1.0) * r_reference - band_edge_weights["PE"]
+                if band == "PE"
+                else -band_edge_weights["LW"]
+            )
         else:
             drift_coeff = 0.0
-        cosmo = (
-            c_hyp_ratio * drift_coeff * (span + 0.75 * dt_max * span + dt_max)
-            if cosmological
+        predicted = drift_coeff * dilated_lna
+        residual = errors[band] - predicted
+        if not np.all(np.isfinite(residual[ref_index:])):
+            print(f"  FAIL: (A1) u_{band}: non-finite measured drift or residual")
+            ok = False
+            continue
+        # Error-only bar. Nothing here is the predicted decay itself: that
+        # is on the other side of the residual now.
+        #
+        # The log line's own %.5g precision on each lambda, propagated
+        # through this band's coefficient as a half-ulp bound on each, times
+        # the run's own integral.
+        quantisation = 0.0
+        if cosmo_decay:
+            quantisation = band_edge_weight_log_precision(band_edge_weights["LW"]) * (
+                r_reference if band == "PE" else 1.0
+            )
+            if band == "PE":
+                quantisation += band_edge_weight_log_precision(band_edge_weights["PE"])
+            quantisation *= abs(dilated_lna[-1])
+        # The trapezoid's own discretisation bound, and the step-end freeze
+        # of H ((3/4) dlna_step per unit ln a, matter domination) plus the
+        # one-step snapshot lag, both scaled by this band's coefficient.
+        trapezoid = abs(drift_coeff) * float(integral["trapezoid_bound"][-1])
+        step_end_and_lag = (
+            abs(drift_coeff) * mean_c_hyp_ratio * (0.75 * dt_max * span + dt_max)
+        )
+        # PE's coefficient holds r at its reference value; r itself drifts as
+        # the two bands separate, which is second order in the cosmological
+        # perturbation and bounded by that drift.
+        transfer_linearisation = (
+            abs(band_edge_weights["LW"] - 1.0) * r_drift * abs(dilated_lna[-1])
+            if cosmo_decay and band == "PE"
             else 0.0
         )
-        bar = max(budget, 2.0 * measured_nc) + cosmo
-        worst = float(np.max(np.abs(errors[band])))
-        print(
-            f"  bar u_{band}: max(float32 {budget:.1e}, 2 x non-cosmological "
-            f"{2.0 * measured_nc:.1e}) + c_hyp/c-dilated decay, step-end H "
-            f"and lag {cosmo:.1e}"
+        # The a-independent floor: the float32 flux divergence the double
+        # relaxation update subtracts every step (`float_divergence_pull`),
+        # or, when a non-cosmological run of the same configuration was
+        # paired in, twice its own measured drift, which measures that floor
+        # instead of bounding it.
+        pull = [
+            value
+            for value in (
+                float_divergence_pull(snap, f"u_{band}", f"div_{band}", dt_step)
+                for snap in run[ref_index:]
+            )
+            if value is not None
+        ]
+        if pull:
+            float_residual = FLOAT32_EPS * n_steps * max(pull)
+            float_note = "flux-divergence-scaled"
+        else:
+            # No flux-divergence field on this run (older snapshot): fall
+            # back to the double relaxation chain's own operand count, about
+            # ten double FLOPs per moment update, as (A3) does.
+            float_residual = 10.0 * np.finfo(np.float64).eps * n_steps
+            float_note = "fallback, no flux-divergence field"
+        measured_nc = (
+            0.0
+            if reference is None
+            else float(np.max(np.abs(reference[band][reference["ref_index"] :])))
         )
-        ok &= gate(f"box-mean u_{band} / u0 - 1 (A1), {ledger}", worst, bar)
+        if not np.isfinite(measured_nc):
+            raise RuntimeError(
+                f"the reference run's u_{band} drift is not finite -- "
+                "refusing to build a bar from a corrupted reference."
+            )
+        bar = (
+            quantisation
+            + trapezoid
+            + step_end_and_lag
+            + transfer_linearisation
+            + max(float_residual, 2.0 * measured_nc)
+        )
+        worst = float(np.max(np.abs(residual[ref_index:])))
+        print(
+            f"  (A1) u_{band}: drift coefficient {drift_coeff:+.6g}, predicted "
+            f"{predicted[-1]:+.4e}, measured {errors[band][-1]:+.4e}"
+        )
+        print(
+            f"  bar u_{band}: quantisation {quantisation:.2e} + trapezoid "
+            f"{trapezoid:.2e} + step-end/lag {step_end_and_lag:.2e} + "
+            f"transfer linearisation {transfer_linearisation:.2e} + "
+            f"max(float residual ({float_note}) {float_residual:.2e}, "
+            f"2 x non-cosmological {2.0 * measured_nc:.2e}) = {bar:.2e}"
+        )
+        ok &= gate(f"(A1) ln u_{band} drift, worst |residual|, {ledger}", worst, bar)
 
     # H2, per snapshot: implicit solve (k dt/2), one-step snapshot lag
     # (dt/t without cosmology; with it the rate varies as a^-3, same order),
@@ -1494,7 +1885,9 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     ok &= gate("box-mean ln x_H2 exponent (A2), worst error/bar", float(ratio[k]), 1.0)
 
     if cosmological:
-        ok &= check_band_edge_ratio(run, band_edge_weights, dt_max, n_steps, dt_step)
+        ok &= check_band_edge_ratio(
+            run, band_edge_weights, dt_max, n_steps, dt_step, propagation_on
+        )
     else:
         print("  (A3) SKIPPED: non-cosmological, ratio preserved, lambda not tested")
     return ok
