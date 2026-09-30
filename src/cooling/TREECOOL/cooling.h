@@ -110,7 +110,7 @@ INLINE static void cooling_update(
  *
  * @param u_ini_cgs The internal energy at the start of the step [erg * g^-1].
  * @param n_H_cgs The Hydrogen number density [cm^-3].
- * @param ratefact_cgs The factor n_H^2 / rho [cm^-3 * g^-1 * cm^3].
+ * @param ratefact_cgs The factor n_H^2 / rho [cm^-3 * g^-1].
  * @param dt_cgs The time-step [s].
  * @param cooling The #cooling_function_data used in the run.
  * @param gas The #treecool_gas_state carrying the electron density guess.
