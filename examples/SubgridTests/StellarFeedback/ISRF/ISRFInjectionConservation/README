@@ -117,7 +117,7 @@ At nonzero metallicity `run.sh` passes `--dusty`, which checks the two
 extinction identities instead. The band-ratio bar is DERIVED from the run's own
 signal and the float32 widths of the reconstruction, and printed with it;
 `--dust-tol` overrides it with a fixed value, and a negative value reports the
-residual without gating, which is how the floor was measured. `--dusty` reads the
+residual without gating. `--dusty` reads the
 run's `GEARFeedback:ISRF_extinction_path` from `used_parameters.yml` and
 rebuilds that mechanism's own column: the star-to-particle separation for
 `pair_separation` (the shipped default), or a multiple of the receiver's

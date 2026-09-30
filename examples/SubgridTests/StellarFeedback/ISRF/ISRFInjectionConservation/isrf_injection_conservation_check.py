@@ -352,8 +352,12 @@ def optical_depths(
 
 
 def gate(label: str, worst: float, bar: float) -> bool:
-    """Print a pass/fail line, failing closed on a non-finite value."""
-    ok = bool(np.isfinite(worst)) and worst <= bar
+    """Print a pass/fail line, failing closed on a non-finite value.
+
+    BOTH operands are tested: a NaN residual compares false against any bar,
+    and an infinite bar would otherwise admit any residual at all.
+    """
+    ok = bool(np.isfinite(worst)) and bool(np.isfinite(bar)) and worst <= bar
     print(f"  {'PASS' if ok else 'FAIL'}: {label}: {worst:.3e} vs bar {bar:.3e}")
     return ok
 
@@ -430,13 +434,16 @@ def check_dusty(
         f"{(1.0 - ratio) * float(np.max(tau_lw[lit])):.4f}"
     )
 
-    # Float32 error budget of the reconstruction, each term about half an
-    # ulp: the two specific-energy stores, the two expf calls, and the
-    # float32 chain that builds tau (h, rho, and about four roundings in the
-    # opacity), the last three scaling with the signal itself. Half an ulp per
-    # expf is MEASURED on the canonical build's own flags, at 0.5015 float32
-    # ulps over the tau range these fixtures occupy, not assumed from the
-    # library's documented bound.
+    # Float32 error budget of the reconstruction. The CANONICAL derivation of
+    # this bar, with the shared-versus-per-band split and the sensitivity
+    # weights that follow from sigma_PE/sigma_LW, is `dust_band_ratio_bar` in
+    # ISRFCosmology/isrf_cosmology_check.py; this fixture carries the same
+    # metric and must keep the same term list. In brief: 4 u32 that do not
+    # scale with the signal (the two specific-energy stores and the two expf
+    # calls, an expf relative error being an absolute error in the logarithm),
+    # plus the scaled part. The scaled coefficient is the OPEN item named
+    # there: 6 is coded, the weighting gives about 16.5, and 6 is the tighter
+    # of the two.
     signal = abs((1.0 - ratio) * float(np.max(tau_lw[lit])))
     budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 6.0 * FLOAT32_ULP * signal
     print(f"  float32 budget of |R_j|: {budget:.2e}")

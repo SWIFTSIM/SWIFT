@@ -2600,23 +2600,53 @@ def log_step_quantisation(token: str) -> float:
 def dust_band_ratio_bar(signal: float) -> float:
     """Return the float-arithmetic bar on the dusty band-ratio residual.
 
-    The residual ``R_j = ln(u_PE/u_LW) - ln(L_PE/L_LW) - (1 - sigma_PE/sigma_LW)
-    tau_LW`` is pinned to zero by an identity with no free parameter, so the
-    only admissible discrepancy is float32 rounding. Six roundings, each of at
-    most half a float32 ulp:
+    THE CANONICAL DERIVATION. `ISRFInjectionConservation` carries the same
+    metric and must keep the same term list.
 
-    - the two band specific energies, as stored in the snapshot;
-    - the two ``expf`` extinction factors the injection applies
-      (``radiation_get_dust_extinction_factor``). MEASURED on the canonical
-      build's own flags: ``expf`` is accurate to 0.5015 float32 ulps over the
-      tau range these fixtures occupy, so half an ulp each is the right
-      allowance and not an assumption about the library;
-    - the float32 chain that rebuilds tau, about four roundings through h, rho
-      and the opacity.
+    The residual ``R_j = ln(u_PE/u_LW) - ln(L_PE/L_LW) - (1 - rho) tau_LW``,
+    with ``rho = sigma_PE/sigma_LW = 0.6`` exactly
+    (``radiation.h``'s RADIATION_SIGMA_D_PE_CGS and _LW_CGS), is pinned to zero
+    by an identity with no free parameter, so the only admissible discrepancy is
+    float32 rounding. Writing each band's computed depth as
+    ``tau_b (1 + e_s + e_b)``, with ``e_s`` the error of the prefactor the two
+    bands SHARE and ``e_b`` the error of the per-band tail,
 
-    The first two do not scale with the signal and the rest do, because they
-    perturb tau itself and the residual carries tau linearly. Hence
-    ``4 u32 + 6 u32 * signal`` with ``u32 = FLOAT32_EPS / 2``.
+        R = e_s (tau_LW - tau_PE) - tau_PE e_PE + tau_LW e_LW
+            + (the two expf errors) + (the two snapshot-store errors)
+
+    so the terms split by how they enter, not merely by how many they are.
+
+    CONSTANT, 4 u32. The two band specific energies as stored in the snapshot,
+    and the two ``expf`` extinction factors
+    (``radiation_get_dust_extinction_factor``). An ``expf`` RELATIVE error is an
+    ABSOLUTE error in the logarithm, which is why these four do not scale with
+    the signal. MEASURED, not assumed from the library's documented bound: this
+    build's ``expf`` is accurate to at most 0.51 float32 ulps over the tau range
+    these fixtures occupy, under the build's own flags.
+
+    SIGNAL-SCALED. With ``S`` the printed signal, ``tau_LW = S/(1 - rho) =
+    2.5 S`` and ``tau_PE = rho tau_LW = 1.5 S``. So a shared-prefactor rounding
+    enters with weight ``tau_LW - tau_PE = S``, while a per-band rounding enters
+    with weight ``1.5 S`` or ``2.5 S``. On the shipped
+    ``ISRF_extinction_path: pair_separation`` path the column is the
+    star-to-particle separation ``r`` and the smoothing length never enters
+    (``radiation_get_comoving_extinction_path``). The per-band tail carries
+    three roundings in each band, at ``radiation_isrf.c``'s
+    ``sigma_d_band_cgs * D_relative``, its divide by the shared denominator, and
+    ``-kappa_eff * Sigma_gas_p``, so the per-band contribution alone is
+    ``3 u32 (1.5 + 2.5) S = 12 u32 S``. The shared roundings are the column's
+    ``path * rho_gas``, its comoving factor (exact at ``a = 1``), the
+    metallicity normalisation, and the separation chain, whose weight is NOT one
+    half-ulp but ``u32 |x - c->loc| / r``, because the injection differences the
+    cell-relative offsets in float while this check rebuilds the separation in
+    double.
+
+    OPEN, and the coded coefficient is deliberately the TIGHTER of the two
+    candidates: the value below spends ``6 u32 S`` on the whole scaled part,
+    where the weighting above gives about ``16.5 u32 S``. Six cannot be read off
+    the mechanism, so it stands only until the two are reconciled. It is the
+    conservative direction, so it cannot admit a residual the mechanism forbids;
+    what it can do is red a correct run whose per-band roundings anti-align.
 
     Parameters
     ----------
