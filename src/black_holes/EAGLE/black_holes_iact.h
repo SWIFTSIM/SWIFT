@@ -442,7 +442,7 @@ runner_iact_nonsym_bh_gas_swallow(
 
     /* Extra gas mass nibbled to be accreted onto the Nuclear Star Cluster.
      * Since no mass is radiated, excess fraction does not apply here. */
-    float nsc_nibble_mass = bi->nsc_mass_to_gain * particle_weight;
+    float nsc_nibble_mass = bi->nsc_mass_deficit * particle_weight;
 
     /* Total mass nibbled: mdot_bondi * (1 + k) * dt */
     float total_nibble_mass = nibble_mass * excess_fraction + nsc_nibble_mass;

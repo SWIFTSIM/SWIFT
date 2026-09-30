@@ -885,11 +885,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double m_gal = pow(10, logm_gal) * 3e10;
   const double logm_nsc = 0.48 * log10f(m_gal / 1e9) + 6.51;
   const double m_nsc_supposed = pow(10, logm_nsc);
-  bp->nsc_mass_to_gain = m_nsc_supposed - bp->nsc_mass;
+  bp->nsc_mass_deficit = m_nsc_supposed - bp->nsc_mass;
   
   /* If NSC sits above relation, no new mass needs to be added */
-  if (bp->nsc_mass_to_gain < 0.f) {
-    bp->nsc_mass_to_gain = 0.f;
+  if (bp->nsc_mass_deficit < 0.f) {
+    bp->nsc_mass_deficit = 0.f;
   }
 
   /* Integrate forward in time */
