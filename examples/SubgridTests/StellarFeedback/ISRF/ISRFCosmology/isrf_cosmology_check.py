@@ -256,6 +256,17 @@ generic terms above, scaled by that coefficient and by the run's own mean
 c_hyp/c; and, for PE alone, the drift of r over the run, which bounds
 holding it at its reference value.
 
+(B1) is already a two-sided residual (measured minus predicted ln sum m u),
+and its bar does not contain the predicted decay: the terms are the one-step
+lag (depth / step count), the drift of the mass-weighted comoving density
+that kappa is proportional to (times depth), the float flux-divergence floor
+above, and, with cosmology, the step-end kappa and H terms. A build with no
+absorption, or with the wrong sign, leaves a residual of 1 to 2 times the
+depth, thousands of times the bar. B1 is written for a pinned c_hyp with
+lambda = 1: the run's own band-edge weights (a factor lambda_E on the Hubble
+term, plus the LW-to-PE transfer) are of order (c_pin/c) ln(a/a0), ~1e-5,
+and are not modelled.
+
 (A3)'s bar is built the same way, plus two terms of its own, neither fitted
 to a measured residual:
 
@@ -1088,8 +1099,13 @@ def summarize(label: str, error: np.ndarray) -> float:
 
 
 def gate(label: str, worst: float, bar: float) -> bool:
-    """Print a pass/fail line."""
-    ok = bool(np.isfinite(worst)) and worst <= bar
+    """Print a pass/fail line.
+
+    Both operands are tested for finiteness before the comparison: a NaN
+    compares false against any bar, and an infinite bar would otherwise
+    admit any residual.
+    """
+    ok = bool(np.isfinite(worst)) and bool(np.isfinite(bar)) and worst <= bar
     print(
         f"  {'PASS' if ok else 'FAIL'}: {label}: {worst:.3e} <= bar {bar:.3e}"
         if ok
@@ -1944,10 +1960,26 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
     if opt.c_hyp_pin is None:
         raise RuntimeError("--c-hyp-pin (km/s) is required for dust_absorption")
     run = load_run(opt.snapshots)
-    dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+    # Every step size and step count below uses the QUANTISED dt_max the
+    # run's own time-line actually allowed, not the raw parameter: see
+    # `read_timeline_dt_max`.
+    dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
+    if dt_max is None:
+        dt_max = read_dt_max(opt.snapshots, opt.dt_max)
+        print(
+            "  NOTE: no engine_config line announced the time-line's own "
+            "maximal step, so the raw TimeIntegration:dt_max parameter is "
+            "used: the step count is then under-counted and the one-step "
+            "lag term over-counted, in opposite directions"
+        )
     cosmological = run[0]["cosmological"]
     n_steps = step_count(run, dt_max)
     errors = dust_absorption_errors(run, opt.c_hyp_pin * 1e5)
+    dt_step = (
+        dt_max / hubble_rate_cgs(run[0]["a"], run[0])
+        if cosmological
+        else dt_max * run[0]["time_unit"]
+    )
     span = np.log(run[-1]["a"] / run[0]["a"])
     print(
         f"dust_absorption: cosmological={cosmological}, {len(run)} snapshots, "
@@ -1972,11 +2004,19 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
     for band in ["PE", "LW"]:
         depth = errors[f"{band}_depth"]
         per_step = depth / max(n_steps, 1.0)
-        budget = (
-            FLOAT32_EPS * n_steps / np.sqrt(run[0]["mass"].size)
-            + per_step
-            + depth * errors["density_drift"]
-        )
+        # The flux divergence the double relaxation update subtracts is
+        # still float: see `float_divergence_pull`. u itself is double, so
+        # it contributes no round-off term.
+        pulls = [
+            float_divergence_pull(snap, f"u_{band}", f"div_{band}", dt_step)
+            for snap in run[1:]
+        ]
+        if any(pull is None for pull in pulls):
+            print(f"  NOTE: no finite {band} flux divergence field, float term 0")
+            float_floor = 0.0
+        else:
+            float_floor = FLOAT32_EPS * n_steps * max(pulls)
+        budget = float_floor + per_step + depth * errors["density_drift"]
         # The kappa step-end term is unaffected by the Hubble-term dilation
         # (kappa was already correctly dilated); the H-alone step-end term is
         # dilated by c_pin/c, same as the B1 formula's own second term above.
@@ -1988,7 +2028,8 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
         )
         bar = max(budget, 2.0 * nc[band]) + cosmo
         print(
-            f"  bar {band}: max(float32 + one-step lag + density drift "
+            f"  bar {band}: max(float32 flux divergence {float_floor:.1e} + "
+            f"one-step lag {per_step:.1e} + density drift "
             f"{errors['density_drift']:.1e} x depth = {budget:.1e}, 2 x reference "
             f"{2 * nc[band]:.1e}) + step-end kappa and H {cosmo:.1e}"
         )

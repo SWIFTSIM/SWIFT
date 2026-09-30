@@ -94,7 +94,8 @@ At level 5 each run takes a few minutes on 8 threads.
 python3 isrf_cosmology_check.py --config free_field -s "free_field_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "free_field_z9/snap/snapshot_*.hdf5" \
     --reference "free_field_z0/snap/snapshot_*.hdf5"
-python3 isrf_cosmology_check.py --config dust_absorption --c-hyp-pin 4 -s ...
+python3 isrf_cosmology_check.py --config dust_absorption --c-hyp-pin 4 -s "da_z9/snap/snapshot_*.hdf5" \
+    --log da_z9/output.log
 python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*.hdf5" \
     --dark "pe_dark_z9/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config injection -s "inj_z9/snap/snapshot_*.hdf5" \
