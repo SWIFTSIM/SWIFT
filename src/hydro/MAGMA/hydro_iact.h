@@ -266,7 +266,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * denominator. This is the magnitude of the approach speed (>= 0), zero for
    * receding particles. */
   const float mu_tilde_i =
-      -fac_mu * hi * omega_ij / (r * r + 0.0001f * hi * hi);
+      -fac_mu * hi * omega_ij /
+      (r * r + magma_viscosity.mu_softening * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] * hi_inv, dx[1] * hi_inv, dx[2] * hi_inv};
@@ -306,7 +307,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Terms entering the limiter (eq. 23) */
     const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
-    const float eta_crit = const_viscosity_eta_crit;
+    const float eta_crit = magma_viscosity.eta_crit;
+    const float width_inv = 1.f / magma_viscosity.limiter_width;
 
     /* Van Leer limiter fraction (eq. 22) */
     const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
@@ -335,10 +337,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
 
     /* Slope limiter exponential term (eq. 21, right term) */
+    const float delta_eta = (eta_ij - eta_crit) * width_inv;
     const float exp_term =
-        eta_ij < eta_crit
-            ? expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit))
-            : 1.f;
+        eta_ij < eta_crit ? expf(-delta_eta * delta_eta) : 1.f;
 
     /* Van Leer limiter (eq. 21).
      * Slopes of opposite signs (A <= 0) mean an extremum between the
@@ -442,7 +443,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] *= -wj * hjd_inv;
   G_j[2] *= -wj * hjd_inv;
 
-  const float cos_limit = cosf(const_G_ij_angle_limit);
+  const float cos_limit = magma_viscosity.cos_angle_limit;
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
   /* MI1 uses G_i and G_j individually: test each of them. The averaged G can
@@ -518,7 +519,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * can indicate compression while the particles recede, in which case Q
    * would do negative work (Q v_ij . G < 0) and cool the gas. */
   const int pair_approaching = (dvdr_Hubble < 0.f);
-  const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
+  const float eps_squared = magma_viscosity.epsilon * magma_viscosity.epsilon;
   const float mu_i =
       pair_approaching
           ? fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared))
@@ -534,7 +535,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                 v_ij[2] + a2_Hubble * dx[2]};
 
   /* The viscous pressure heats at a rate Q v_ij . G (see the energy
-   * equation below). G can be tilted from dx (up to const_G_ij_angle_limit),
+   * equation below). G can be tilted from dx (up to the angle limit parameter),
    * so for shear-dominated pairs v_ij . G can be negative although the pair
    * approaches along dx: Q would then turn internal energy into kinetic
    * energy. Only use Q where its heating term is positive. */
@@ -555,14 +556,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Eq. 14 */
-  const float Qi = Q_dissipative_i
-                       ? rhoi * (-const_viscosity_alpha * ci * mu_i +
-                                 const_viscosity_beta * mu_i * mu_i)
-                       : 0.f;
-  const float Qj = Q_dissipative_j
-                       ? rhoj * (-const_viscosity_alpha * cj * mu_j +
-                                 const_viscosity_beta * mu_j * mu_j)
-                       : 0.f;
+  const float visc_alpha = magma_viscosity.alpha;
+  const float visc_beta = magma_viscosity.beta;
+  const float Qi =
+      Q_dissipative_i
+          ? rhoi * (-visc_alpha * ci * mu_i + visc_beta * mu_i * mu_i)
+          : 0.f;
+  const float Qj =
+      Q_dissipative_j
+          ? rhoj * (-visc_alpha * cj * mu_j + visc_beta * mu_j * mu_j)
+          : 0.f;
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
 
@@ -646,7 +649,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Diffusion term (eq. 24) */
-  pi->u_dt += -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_sum_G /
+  pi->u_dt += -magma_diffusion.alpha * mj * delta_u * v_sig_u * norm_sum_G /
               (rhoi + rhoj);
 
   /* Get the time derivative for h. */

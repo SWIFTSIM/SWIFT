@@ -32,6 +32,25 @@
 #include "hydro_properties.h"
 #include "version.h"
 
+#ifdef MAGMA_SPH
+/* Run-time parameters of the MAGMA scheme, accessible to the interaction
+ * functions (which have no access to the #hydro_props). They are set from
+ * the parameter file in viscosity_init() / diffusion_init(); the values here
+ * are the defaults used when no initialisation happens (unit tests). */
+struct viscosity_global_data magma_viscosity = {
+    .alpha = hydro_props_default_viscosity_alpha,
+    .beta = hydro_props_default_viscosity_beta,
+    .epsilon = hydro_props_default_viscosity_epsilon,
+    .eta_crit = hydro_props_default_limiter_eta_crit,
+    .limiter_width = hydro_props_default_limiter_width,
+    .mu_softening = hydro_props_default_timestep_mu_softening,
+    .max_condition_number = hydro_props_default_gradient_max_condition_number,
+    .angle_limit = hydro_props_default_gradient_angle_limit,
+    .cos_angle_limit = 0.87758256f /* cos(0.5) */};
+struct diffusion_global_data magma_diffusion = {
+    .alpha = hydro_props_default_diffusion_alpha};
+#endif
+
 struct exact_density_data {
   const struct engine *e;
   const struct space *s;

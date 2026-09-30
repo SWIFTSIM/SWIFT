@@ -457,10 +457,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* Signal speed: maximal sound speed of the particle and its neighbours
    * (the paper's global time-step limits every particle by the hottest one) */
   const float c = p->force.c_sig;
+  const float alpha = magma_viscosity.alpha;
   const float dt_Courant =
       cosmo->a * p->h /
       (cosmo->a_factor_sound_speed *
-       (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde)));
+       (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde)));
 
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }
@@ -723,7 +724,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Invert the c-matrix */
   const int res = sym_matrix_invert(&c_matrix, &p->gradient.c_matrix_inv,
-                                    /*max_cond_num=*/60.);
+                                    magma_viscosity.max_condition_number);
 
   /* The matrix could not be inverted
    * --> Revert to base SPH, no reconstruction to the interface. */
