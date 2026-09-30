@@ -879,8 +879,18 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double mass_rate = (1. - epsilon_r) * accr_rate;
   const double luminosity = epsilon_r * accr_rate * c * c;
 
-  /* Compute NSC growth rate based on Bondi rate */
-  bp->nsc_mass_to_gain = props->nsc_growth_efficiency_k * accr_rate * dt;
+  /* Compute NSC growth rate based on mass deficit from *assumed* relation with BH mass */
+  /* We use scaling relations M_BH - M_gal (Greene+20, section 8.2) and M_gal - M_NSC (Neumayer+20)*/
+  const double logm_gal = 0.72 * log10f(bp->subgrid_mass) - 5.44;
+  const double m_gal = pow(10, logm_gal) * 3e10;
+  const double logm_nsc = 0.48 * log10f(m_gal / 1e9) + 6.51;
+  const double m_nsc_supposed = pow(10, logm_nsc);
+  bp->nsc_mass_to_gain = m_nsc_supposed - bp->nsc_mass;
+  
+  /* If NSC sits above relation, no new mass needs to be added */
+  if (bp->nsc_mass_to_gain < 0.f) {
+    bp->nsc_mass_to_gain = 0.f;
+  }
 
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
