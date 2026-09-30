@@ -508,6 +508,10 @@ def main():
     for band in ("PE", "LW"):
         vals = late_neg_energy_frac[band]
         if not vals:
+            # No snapshot after the star's birth reached the gate: a run
+            # that measured nothing must not report a pass.
+            all_ok = False
+            print(f"{band}: no snapshot in the last third was gated -> FAIL")
             continue
         p90 = float(np.percentile(vals, 90))
         gate_ok = p90 <= opt.energy_neg_threshold
