@@ -66,7 +66,7 @@ thin, spatially uniform UV background.
 
 The abundances of HI, HII, HeI, HeII, HeIII and of the electrons are obtained
 by solving eq. 33-38 of KWH96, and the following processes contribute to the
-net cooling rate (KWH96, Table 1):
+net cooling rate (KWH96, Table 1, eq. 24 and eq. 39):
 
  * collisional excitation of HI and HeII,
  * collisional ionization of HI, HeI and HeII,
@@ -76,8 +76,14 @@ net cooling rate (KWH96, Table 1):
  * inverse Compton cooling off the CMB,
  * photo-heating by the UV background.
 
-The rate coefficients are the fits of KWH96, Table 2 (mostly from `Cen 1992
-<https://ui.adsabs.harvard.edu/abs/1992ApJS...78..341C>`_). They are tabulated
+The rate coefficients and cooling rates are the fits of KWH96, Tables 1 and
+2 (mostly from `Cen 1992
+<https://ui.adsabs.harvard.edu/abs/1992ApJS...78..341C>`_), with two small
+differences inherited from the Gadget/Arepo implementation: the free-free
+normalisation is :math:`1.43\times10^{-27}` instead of
+:math:`1.42\times10^{-27}`, and the Compton cooling rate is
+:math:`5.65\times10^{-36}\,n_e\,(T - T_{\rm CMB})\,(1+z)^4` instead of
+KWH96's :math:`5.41\times10^{-36}\,n_e\,T\,(1+z)^4`. They are tabulated
 on a regular grid in :math:`\log_{10}(T)` at start-up, so no external table of
 rates is needed. Outside the tabulated range the gas is assumed to be entirely
 neutral (below :math:`T_{\rm min}`) or entirely ionized (above
@@ -105,7 +111,8 @@ where the :math:`\Gamma` are photo-ionization rates in
 :math:`\rm erg\,s^{-1}`, both per ion of the corresponding species. The
 rates are interpolated logarithmically in :math:`\log_{10}(1+z)` once per
 time-step. Above the highest redshift covered by the file the UV background is
-switched off entirely, and the gas cools by collisional processes alone. An
+switched off entirely, and the gas cools by collisional processes and
+inverse Compton scattering off the CMB alone. An
 example file, ``TREECOOL_UV_background.txt`` (Faucher-Giguère et al. 2009,
 December 2011 update), is provided with the
 ``examples/Cooling/ConstantCosmoTempEvolution`` example, which runs a uniform
@@ -121,14 +128,15 @@ the end of the model, and reading stops at the first such row. At least two
 usable rows are required.
 
 Note that the UV background is switched on instantaneously when the redshift
-first drops below the end of the table (or below
+first drops below the highest redshift of the table (or below
 ``UV_background_start_redshift``), which produces a sudden jump in the
 photo-heating rate at that time.
 
 The energy is integrated implicitly: if the change in energy over the
 time-step is small the explicit solution is used, and otherwise the equation
-:math:`u_{\rm new} = u_{\rm old} + \Lambda(u_{\rm new})\,\mathrm{d}t` is
-solved by bisection. The model therefore imposes no cooling time-step
+:math:`u_{\rm new} = u_{\rm old} + (n_{\rm H}^2/\rho)\,\Lambda(u_{\rm
+new})\,\mathrm{d}t` is solved by bisection, where :math:`\Lambda` is the net
+heating rate (heating minus cooling) divided by :math:`n_{\rm H}^2`. The model therefore imposes no cooling time-step
 criterion of its own.
 
 Two limitations of the model are worth keeping in mind. First, the gas is
@@ -177,20 +185,26 @@ listed above.
   coefficients are tabulated. ``log10_T_min`` should be at least one below
   ``log10(SPH:minimal_temperature)``, i.e. a tenth of the minimal gas
   temperature or less (see the limitations above). For instance, with
-  ``SPH:minimal_temperature: 100`` use ``log10_T_min: 1.0`` or lower. This
-  is not checked by the code.
+  ``SPH:minimal_temperature: 100`` use ``log10_T_min: 1.0`` or lower. SWIFT
+  prints a warning at start-up if this is not the case.
 
 Snapshot output
-~~~~~~~~~~~~~~~
+---------------
 
 In addition to the radiated energies, this model writes two fields per gas
-particle to the snapshots. ``Temperatures`` are computed from the internal
+particle to the snapshots. Note that ``RadiatedEnergies`` are net quantities:
+they decrease when the gas is photo-heated by the UV background and can
+therefore be negative. ``Temperatures`` are computed from the internal
 energies using the mean molecular weight of the equilibrium ionization state,
 so they differ from a conversion at a fixed mean molecular weight, in
 particular for partially ionized gas. ``ElectronFractions`` are the electron
 number densities in units of the Hydrogen number densities, again assuming
 ionization equilibrium; they are set for all particles at the start of the run
-and updated each time a particle is cooled. The parameters of the model are
+and updated each time a particle is cooled. They are the equilibrium values at
+the energy reached at the end of the last cooling step of the particle, whereas
+the ``Temperatures`` are recomputed from the energy at the time of the
+snapshot, so the two fields are not exactly consistent with each other, in
+particular for particles that have not been cooled recently. The parameters of the model are
 recorded in the ``SubgridScheme`` group of the snapshots.
 
 
