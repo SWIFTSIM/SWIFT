@@ -142,14 +142,6 @@ python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z0/snap/snapshot_
 python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z9/snap/snapshot_*.hdf5" \
     --reference "ff_pin_z0/snap/snapshot_*.hdf5"
 ```
-The scheme-2 form of the same pair, at 100 km/s
-(`3.3357e-4 * c` with `c = 2.997925e5 km/s`). `c_hyp_pin` must stay 0, since
-the two are mutually exclusive, and the fixed speed sets the timestep, so the
-run takes as many steps as the Courant condition requires:
-```
-config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z0 ./run.sh
-config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z9 ./run.sh
-```
 That value is the unpinned `redshift=0` run's own box-mean `c_hyp` at the
 defaults above, so that leg runs at the speed it would have run at
 anyway. The `redshift=9` leg does not: `c_hyp` is `ISRF_c_hyp_margin*a*h`
@@ -165,6 +157,21 @@ so the prediction follows whichever value is pinned. At another `level`,
 post-startup snapshot and pin at that. A pinned run says nothing about a
 propagation speed that varies between neighbours, so run this pair in
 addition to the unpinned one, not instead of it.
+
+The fixed-speed form uses `ISRF_c_hyp_scheme: 2` instead of the pin, and is the
+one a physics run uses, because its speed sets the timestep through the Courant
+condition. It is a DIFFERENT speed from the pinned pair above, not the same one:
+at `c_hyp_fraction=3.3357e-4` the box runs at 100 km/s, which is 2.58 times the
+38.7902222 the pinned pair uses. `c_hyp_pin` stays 0, since the two are mutually
+exclusive, and the run takes as many steps as the Courant condition requires, so
+expect several times the pinned pair's step count:
+```
+config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z0 ./run.sh
+config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z9 ./run.sh
+python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z9/snap/snapshot_*.hdf5" \
+    --reference "ff_s2_z0/snap/snapshot_*.hdf5"
+```
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust

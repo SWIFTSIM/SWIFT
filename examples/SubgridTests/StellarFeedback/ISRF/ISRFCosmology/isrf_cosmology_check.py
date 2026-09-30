@@ -1223,8 +1223,9 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
         max over snapshots of (max c_hyp - min c_hyp)/max c_hyp, or None
         when any snapshot has no HyperbolicPropagationSpeeds, or one that is
         not everywhere finite, or a non-positive value in any snapshot other
-        than an all-zero snapshot 0, or when only snapshot 0 exists.
-        Snapshot 0 alone is skipped when it is all zero: see the body.
+        than an all-zero snapshot 0, or when the run's only snapshot is an
+        all-zero snapshot 0. Snapshot 0 alone is skipped when it is all zero:
+        see the body.
     """
     seen = False
     worst = 0.0
@@ -1443,12 +1444,15 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     HyperbolicPropagationSpeeds carries no rate any particle actually decayed
     under; (A3) needs the trajectory the particles actually experienced, so it
     starts integrating one snapshot later. Two shapes of that pre-step
-    snapshot exist and both must be rejected: under the variable-c schemes it
-    reads the module's first-init light-speed clamp (``c_hyp = c``), and under
-    the fixed-fraction scheme it reads exactly zero for every particle
-    (MEASURED on both cluster legs of 2026-09-30, 32768 particles, one
-    distinct float32 value, 0). A median test alone passes the second, because
-    zero is below the clamp, so strict positivity is required as well.
+    snapshot exist and both must be rejected. Under the schemes that set
+    ``c_hyp`` in the density loop (1 and 4) it reads the module's first-init
+    light-speed clamp (``c_hyp = c``), because that loop does run before the
+    first snapshot is written. Under the schemes that set it in the snapshot
+    hook (0, 2 and 3) it reads exactly zero for every particle; that is
+    MEASURED for scheme 2 (both cluster legs of 2026-09-30, 32768 particles,
+    one distinct float32 value, 0) and read from the source for 0 and 3. A
+    median test alone passes the zero shape, because zero is below the clamp,
+    so strict positivity is required as well.
 
     Parameters
     ----------
@@ -1941,10 +1945,20 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             if pin_claimed
             else "ISRF_c_hyp_scheme is 2, which is one fixed speed for the " "whole box"
         )
+        # Two different failures, and naming the wrong one sends the
+        # investigation the wrong way: no snapshot carrying a usable speed is
+        # usually propagation switched off, while a spread is the claim not
+        # being honoured.
+        cause = (
+            "no snapshot records a usable speed (propagation off, the field "
+            "absent, or a non-positive value after the first step)"
+            if c_hyp_spread is None
+            else "the recorded HyperbolicPropagationSpeeds is not bit-uniform "
+            "across the box"
+        )
         print(
-            f"  FAIL: (A1) {source} but the recorded "
-            "HyperbolicPropagationSpeeds is not bit-uniform across the box, "
-            "so the uniform-weight ledger this leg is gated on is not live"
+            f"  FAIL: (A1) {source} but {cause}, so the uniform-weight ledger "
+            "this leg is gated on is not live"
         )
         ok = False
     # Longest step in proper time, from the run's quantised dt_max (ln a
@@ -2104,11 +2118,17 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # construction (A3) uses, and it is used here on its own rather
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
-            why = (
-                "the ledger weight cancels between the two sums"
-                if use_c_hyp
-                else "this scheme's operators conserve sum m u directly"
-            )
+            # Which statement is true depends on the SCHEME, not on which
+            # ledger this file chose: scheme 2's operators conserve sum m u
+            # directly, the variable-c schemes conserve sum m u / c_hyp and
+            # their weight cancels only because it is uniform here, and the
+            # two coincide exactly when it is.
+            if c_hyp_scheme == 2:
+                why = "this scheme's operators conserve sum m u directly"
+            elif use_c_hyp:
+                why = "the ledger weight cancels between the two sums"
+            else:
+                why = "a uniform weight makes the two ledgers the same functional"
             print(
                 f"  (A1) u_{band}: c_hyp bit-uniform, so {why} and the metric "
                 f"is the mass-weighted box mean; bar is the analytic float "
@@ -2618,12 +2638,13 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       weight sum, 0.196 to 0.225 over both legs' measured geometry, so a
       particle ADDED at the floor costs 5.2e-07 to 6.0e-07 across that range.
       A particle that REPLACES the closest neighbour costs more, because the
-      share it takes is also the share the neighbour gave up, and 6.5e-07
-      bounds that case. The larger figure is the one stated here, since a
-      bound should be the conservative one. That fits inside the margin the
-      terms below leave,
-      but it is not one of them, and the cost is not uniform in the
-      neighbour count: as ``n_lit -> 1`` the share tends to 1 and the cost
+      share it takes is also the share the neighbour gave up: with
+      ``s_rep = 1/(1/s_add - W_c/W(0))`` and ``W_c/W(0) = 0.651`` at the
+      fixture's own closest pair, the same share range gives 6.0e-07 to
+      7.0e-07. The figure carried here is 6.5e-07, which sits inside that
+      range rather than bounding it. Both framings fit inside the margin the
+      terms below leave, but neither is one of them, and the cost is not
+      uniform in the neighbour count: as ``n_lit -> 1`` the share tends to 1 and the cost
       rises toward the full 2.7e-06. On both ISRFCosmology injection
       fixtures the floor is never approached, the closest pair sitting at
       ``r / h_star = 0.4675``;
