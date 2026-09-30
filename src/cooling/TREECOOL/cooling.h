@@ -320,9 +320,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
    * snapshots and as the starting guess of the next step. The gas state holds
    * the one of the last energy evaluated by the solvers, which is close enough
    * to make this cheap. */
-  treecool_temperature_from_u(cooling,
-                              u_final * cooling->internal_energy_to_cgs,
-                              n_H_cgs, &gas);
+  treecool_temperature_from_u(
+      cooling, u_final * cooling->internal_energy_to_cgs, n_H_cgs, &gas);
   xp->cooling_data.electron_fraction = gas.n_e;
 
   /* Expected change in energy over the next kick step (assuming dt does not
