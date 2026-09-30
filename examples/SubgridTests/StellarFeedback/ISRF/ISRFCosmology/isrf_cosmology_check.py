@@ -2501,15 +2501,28 @@ def log_step_quantisation(token: str) -> float:
     -------
     float
         Half a unit in the last printed decimal of the mantissa, relative,
-        dimensionless. The format's worst case, 5e-7, is returned for a token
-        that is not in the expected exponential form.
+        dimensionless.
+
+    Raises
+    ------
+    RuntimeError
+        When the token is not in ``%14e`` form. Returning the format's worst
+        case instead would LOOSEN the bar, by up to 10x on this term, in
+        exactly the situation where the reference is not understood; the
+        caller has already parsed the same field as a float, so on a log this
+        code reads the raise cannot fire.
     """
     try:
         mantissa = abs(float(token.split("e")[0]))
     except (ValueError, IndexError):
-        return LOG_STEP_MANTISSA_HALF_ULP
+        mantissa = float("nan")
     if not np.isfinite(mantissa) or mantissa < 1.0:
-        return LOG_STEP_MANTISSA_HALF_ULP
+        raise RuntimeError(
+            f"the step size was printed as {token!r}, which is not the "
+            "%14e form this term's quantisation is derived from: refusing "
+            "to substitute the format's worst case, which would loosen the "
+            "bar"
+        )
     return LOG_STEP_MANTISSA_HALF_ULP / mantissa
 
 
