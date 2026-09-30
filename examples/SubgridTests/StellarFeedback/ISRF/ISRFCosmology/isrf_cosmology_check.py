@@ -650,6 +650,14 @@ M_H_CGS = 1.67262171e-24
 HYDROGEN_MASS_FRACTION = 0.76
 PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
 FLOAT32_EPS = np.finfo(np.float32).eps
+# Largest polynomial degree among the hydro kernels SWIFT ships
+# (src/kernel_hydro.h), used as a kernel-agnostic allowance for the Horner
+# recurrence so that no bar depends on which kernel the binary was built with.
+KERNEL_MAX_DEGREE = 11
+# The step line prints its step-size field with "%14e" (src/engine.c), i.e.
+# six decimals of mantissa, so a step size read back from the log carries
+# half a unit in that last decimal.
+LOG_STEP_MANTISSA_HALF_ULP = 0.5e-6
 # enum isrf_c_hyp_scheme values whose pairwise operators conserve
 # sum m u / c_hyp rather than sum m u (feedback_properties.h).
 VARIABLE_C_SCHEMES = (3, 4)
@@ -2465,6 +2473,117 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
     return gate("photoelectric heating (D2), worst error/bar", float(ratio[k]), 1.0)
 
 
+def log_step_quantisation(token: str) -> float:
+    """Return the relative quantisation of a step size read from the log text.
+
+    Parameters
+    ----------
+    token
+        The step-size field exactly as the log printed it.
+
+    Returns
+    -------
+    float
+        Half a unit in the last printed decimal of the mantissa, relative,
+        dimensionless. The format's worst case, 5e-7, is returned for a token
+        that is not in the expected exponential form.
+    """
+    try:
+        mantissa = abs(float(token.split("e")[0]))
+    except (ValueError, IndexError):
+        return LOG_STEP_MANTISSA_HALF_ULP
+    if not np.isfinite(mantissa) or mantissa < 1.0:
+        return LOG_STEP_MANTISSA_HALF_ULP
+    return LOG_STEP_MANTISSA_HALF_ULP / mantissa
+
+
+def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
+    """Return the float-arithmetic bar on the injection identity's residual.
+
+    At zero metallicity the injected energy is
+    ``sum_j m_j u_j = Delta_t L sum_j weight_j``, with
+    ``weight_j = m_j W(r_j, h_i) / enrichment_weight``
+    (radiation_iact.h:227,297), so the residual is bounded by the roundings
+    that stand between the two sides of that identity, and by nothing else.
+    These candidate terms are zero by construction, not by measurement:
+
+    - only one step accumulates, because the field is reset on the step's
+      first touch by any star (radiation_iact.h:320-326);
+    - no quadrature of the source rate enters, because the star's band
+      luminosity and its step are each cached once per step
+      (radiation_iact.h:124) and held constant across its neighbours. This
+      needs the snapshot's ``L_band`` to be the value the injection used,
+      which holds while the luminosity is constant over the run;
+    - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
+      ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
+      (radiation_isrf.c:1585 and radiation_get_dust_extinction_factor);
+    - ``u`` carries no float32 term, being a double in ``struct part`` and in
+      the snapshot (feedback_struct.h:166);
+    - this check's own float64 summation of ``n_lit`` terms costs
+      ``(n_lit - 1) * 2**-53``, eleven orders below the terms kept below.
+
+    Two premises the bar does not cover, because neither is a rounding:
+
+    - the two loops must evaluate the same ``r``. The injection floors it at
+      ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
+      (GEAR_thermal/feedback_iact.h:58), so a gas particle within that
+      radius of the star breaks the identity itself rather than widening its
+      floor;
+    - both call sites must compile ``W`` to the same operations.
+      ``kernel_eval`` and ``kernel_deval`` build it from the same
+      coefficients by the same Horner recurrence, so they agree exactly
+      while that holds. It is a premise and not a bounded term: near the
+      support edge the monomial Horner form is badly conditioned, so had the
+      two expansions compiled differently the disagreement would be set by
+      that conditioning and not by the allowance kept below.
+
+    Parameters
+    ----------
+    delta_t_token
+        The star's step size exactly as the run's log printed it.
+    n_lit
+        Number of illuminated gas particles. This is the neighbour count the
+        star's own weight normalisation summed over.
+
+    Returns
+    -------
+    dict
+        Key "bar" and one key per term, all dimensionless.
+    """
+    u32 = FLOAT32_EPS / 2.0
+    # The star's step is narrowed to a float before any neighbour reads it
+    # (radiation_iact.h:124), while the reference side uses the double the
+    # log printed.
+    dt_float32 = u32
+    dt_text = log_step_quantisation(delta_t_token)
+    # enrichment_weight accumulates the m_j W_j products in float32 over the
+    # star's neighbours (GEAR_thermal/feedback_iact.h:71) while the injection
+    # re-sums the same products in double. For any summation order a float32
+    # running sum of n positive terms carries at most gamma_{n-1}.
+    n_round = max(int(n_lit) - 1, 0)
+    growth = 1.0 - n_round * u32
+    closure = np.inf if growth <= 0.0 else n_round * u32 / growth
+    # Roundings that differ between the two loops. Every weight is positive,
+    # so the normalised sum is a convex combination of the per-term relative
+    # perturbations and each of these counts once, not n_lit times: the
+    # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
+    # then its m_j * w_j product, the density loop's own m_j * w_j product
+    # over different operands, and the single hi_inv_dim scaling of
+    # enrichment_weight (GEAR_thermal/feedback.c:366). KERNEL_MAX_DEGREE is
+    # an allowance for one ulp per step of the Horner recurrence, in case the
+    # compiler contracts it into an FMA at one call site and not the other;
+    # see this function's docstring for why identical compilation of W is a
+    # premise rather than a term.
+    reconstruction = (4 + KERNEL_MAX_DEGREE) * u32
+    return {
+        "dt_float32": dt_float32,
+        "dt_text": dt_text,
+        "closure": closure,
+        "reconstruction": reconstruction,
+        "bar": dt_float32 + dt_text + closure + reconstruction,
+    }
+
+
 def check_injection(opt: argparse.Namespace) -> bool:
     """Check one injection pass on the last snapshot.
 
@@ -2495,6 +2614,7 @@ def check_injection(opt: argparse.Namespace) -> bool:
     # The log prints Time with 7 significant digits, so take the step row
     # closest to the snapshot time and require it to lie within half a step.
     delta_t = None
+    delta_t_token = ""
     best = np.inf
     with open(opt.log) as handle:
         for line in handle:
@@ -2511,6 +2631,7 @@ def check_injection(opt: argparse.Namespace) -> bool:
             if distance < best and distance <= 0.5 * dt:
                 best = distance
                 delta_t = dt
+                delta_t_token = fields[4]
     if delta_t is None:
         raise RuntimeError("No step in the log matches the last snapshot's time")
     ok = True
@@ -2519,12 +2640,44 @@ def check_injection(opt: argparse.Namespace) -> bool:
         f"Delta_t {delta_t:.6e} internal"
     )
     if not dusty:
+        if last.get("n_stars", 0) != 1:
+            print(
+                f"  FAIL: the identity is written for a single illuminating "
+                f"star, and reads PELuminosities[0] alone; this snapshot has "
+                f"{last.get('n_stars', 0)}"
+            )
+            return False
+        for name in ("L_PE", "L_LW"):
+            if not np.isfinite(last[name]) or last[name] <= 0.0:
+                print(f"  FAIL: {name} must be finite and positive, got {last[name]}")
+                return False
         for band in ["PE", "LW"]:
-            lhs = np.sum(last["mass"] * last[f"u_{band}"]) / (
+            u_band = last[f"u_{band}"]
+            bad = int(np.sum(~np.isfinite(u_band)))
+            if bad:
+                print(f"  FAIL: {bad} non-finite u_{band} value(s) in the snapshot")
+                return False
+            n_lit = int(np.sum(u_band > 0.0))
+            if n_lit == 0:
+                print(f"  FAIL: no gas particle carries {band}-band energy")
+                return False
+            lhs = np.sum(last["mass"] * u_band) / (
                 last["mass_unit"] * last["energy_unit"]
             )
             rhs = delta_t * last[f"L_{band}"]
-            ok &= gate(f"sum m u_{band} / (Delta_t L) - 1", abs(lhs / rhs - 1.0), 1e-5)
+            terms = injection_identity_bar(delta_t_token, n_lit)
+            print(
+                f"  {band}: {n_lit} illuminated, Delta_t printed as "
+                f"'{delta_t_token}'; bar terms: float32 Delta_t "
+                f"{terms['dt_float32']:.2e}, log text {terms['dt_text']:.2e}, "
+                f"weight-sum closure {terms['closure']:.2e}, reconstruction "
+                f"{terms['reconstruction']:.2e}"
+            )
+            ok &= gate(
+                f"sum m u_{band} / (Delta_t L) - 1",
+                abs(lhs / rhs - 1.0),
+                terms["bar"],
+            )
         return ok
 
     mechanism, path_in_kernel_radii = read_extinction_path(
