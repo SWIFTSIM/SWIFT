@@ -104,9 +104,13 @@ INLINE static void cooling_update(
  *
  *   f(u) = u - u_ini - ratefact * Lambda(u) * dt = 0,
  *
- * where Lambda is the net cooling rate per n_H^2. Since f(+inf) > 0 and
- * f(0) < 0 whenever the gas cools, the root always exists and bisection is
- * guaranteed to find it.
+ * where Lambda = (Heating - Cooling) / n_H^2 is the net heating rate, which is
+ * negative when the gas cools. Since the gas only cools at high temperatures,
+ * f(u) -> +inf as u -> +inf. When the gas cools, f(u_ini) > 0 and the root
+ * lies below u_ini; if f is still positive at the energy floor u_min, there
+ * is no root above the floor and we return u_min. When the gas heats,
+ * f(u_ini) < 0 and the root lies above u_ini. Once the root is bracketed, the
+ * bisection converges to it.
  *
  * @param u_ini_cgs The internal energy at the start of the step [erg * g^-1].
  * @param n_H_cgs The Hydrogen number density [cm^-3].
@@ -133,11 +137,10 @@ __attribute__((always_inline)) INLINE static double treecool_bisection_iter(
 
   if (LambdaNet_cgs < 0.) {
 
-    /* We are cooling: bracket the solution from below */
+    /* We are cooling: bracket the solution from below. f(u_ini) > 0, so u_ini
+     * is a valid upper end of the bracket. */
     u_lower_cgs =
         max(u_lower_cgs / treecool_bracket_factor, cooling->u_min_cgs);
-    u_upper_cgs =
-        max(u_upper_cgs * treecool_bracket_factor, cooling->u_min_cgs);
 
     LambdaNet_cgs =
         treecool_cooling_rate_from_u(cooling, u_lower_cgs, n_H_cgs, gas);
@@ -164,8 +167,8 @@ __attribute__((always_inline)) INLINE static double treecool_bisection_iter(
 
   } else {
 
-    /* We are heating: bracket the solution from above */
-    u_lower_cgs /= treecool_bracket_factor;
+    /* We are heating: bracket the solution from above. f(u_ini) < 0, so u_ini
+     * is a valid lower end of the bracket. */
     u_upper_cgs *= treecool_bracket_factor;
 
     LambdaNet_cgs =
@@ -272,7 +275,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
       hydro_get_physical_density(p, cosmo) * cooling->density_to_cgs;
   const double n_H_cgs = rho_cgs * cooling->X_H * cooling->inv_proton_mass_cgs;
 
-  /* n_H^2 / rho, written so as to avoid a round-off prone division */
+  /* n_H^2 / rho, computed as n_H * X_H / m_p to avoid dividing by rho */
   const double ratefact_cgs =
       n_H_cgs * cooling->X_H * cooling->inv_proton_mass_cgs;
 
@@ -298,9 +301,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
                                           dt_cgs, cooling, &gas, p->id);
   }
 
-  /* Remember the electron density for the next step */
-  xp->cooling_data.electron_fraction = gas.n_e;
-
   /* Back to internal units */
   double u_final = u_final_cgs * cooling->internal_energy_from_cgs;
 
@@ -315,6 +315,15 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const double u_floor =
       gas_internal_energy_from_entropy(rho_physical, A_floor);
   u_final = max(u_final, u_floor);
+
+  /* Remember the equilibrium electron density at the final energy, for the
+   * snapshots and as the starting guess of the next step. The gas state holds
+   * the one of the last energy evaluated by the solvers, which is close enough
+   * to make this cheap. */
+  treecool_temperature_from_u(cooling,
+                              u_final * cooling->internal_energy_to_cgs,
+                              n_H_cgs, &gas);
+  xp->cooling_data.electron_fraction = gas.n_e;
 
   /* Expected change in energy over the next kick step (assuming dt does not
    * change) */
@@ -341,7 +350,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Store the radiated energy. This is the change due to the cooling alone,
    * i.e. excluding the contribution of the hydro forces already folded into
-   * u_0. */
+   * u_0. It is a net quantity: it decreases when the gas is photo-heated by
+   * the UV background and can therefore become negative. */
   xp->cooling_data.radiated_energy -=
       hydro_get_mass(p) * (u_final - max(u_0, u_floor));
 }
@@ -381,6 +391,8 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling #cooling_function_data struct.
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
+ *
+ * @return The temperature of the gas [K].
  */
 INLINE static float cooling_get_temperature(
     const struct phys_const *restrict phys_const,
@@ -660,6 +672,21 @@ INLINE static void cooling_init_backend(struct swift_params *parameter_file,
   cooling->u_min_cgs =
       hydro_props->minimal_internal_energy * cooling->internal_energy_to_cgs;
 
+  /* The relation between internal energy and temperature is discontinuous at
+   * T_min (see treecool_temperature_from_u()). Warn if the gas is allowed to
+   * get close to it. Note that cooling_init() guarantees that the minimal
+   * temperature is positive. */
+  const double T_min_gas_cgs =
+      hydro_props->minimal_temperature * cooling->temperature_to_cgs;
+  if (cooling->log10_T_min_cgs > log10(T_min_gas_cgs) - 1.)
+    warning(
+        "TREECOOLCooling:log10_T_min (%g) is not at least one below "
+        "log10(SPH:minimal_temperature) (%g). Gas close to the bottom of the "
+        "rate tables will be assigned inconsistent temperatures and "
+        "abundances. Consider lowering log10_T_min or raising "
+        "SPH:minimal_temperature.",
+        cooling->log10_T_min_cgs, log10(T_min_gas_cgs));
+
   /* Build the tables of rate coefficients and read the UV background */
   treecool_make_rate_table(cooling);
   treecool_read_table(cooling);
@@ -707,7 +734,8 @@ INLINE static void cooling_print_backend(
   message("Gas composition: X_H = %g, Y_He = %g (n_He / n_H = %g)",
           cooling->X_H, cooling->Y_He, cooling->y_He);
 
-  if (cooling->UV_background_start_redshift == FLT_MAX)
+  if (cooling->UV_background_start_redshift >=
+      exp10(cooling->TREECOOL_log10_1_plus_z[cooling->N_redshifts - 1]) - 1.)
     message("UV background switched on over the whole range of the table");
   else
     message("UV background switched on at z = %g",

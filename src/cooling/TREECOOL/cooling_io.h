@@ -63,6 +63,17 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 }
 #endif
 
+/**
+ * @brief Compute the temperature of a particle for the snapshots.
+ *
+ * The temperature is recomputed from the drifted internal energy, using the
+ * stored electron fraction as a starting guess for the equilibrium solver.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The temperature [internal units].
+ */
 INLINE static void convert_part_T(const struct engine *e, const struct part *p,
                                   const struct xpart *xp, float *ret) {
 
@@ -91,7 +102,8 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   list[1] = io_make_physical_output_field(
       "RadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, xparts,
       cooling_data.radiated_energy, /*can convert to comoving=*/0,
-      "Thermal energies radiated by the cooling mechanism");
+      "Net thermal energies radiated by the cooling mechanism. Negative "
+      "values indicate that the photo-heating dominated");
 
   list[2] = io_make_output_field(
       "ElectronFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,

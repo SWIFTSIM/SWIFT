@@ -63,7 +63,8 @@
 #define treecool_temperature_max_bisection_iterations 100
 
 /*! Convergence criterion of the ionization equilibrium solver, expressed as an
- * absolute change in the electron fraction n_e / n_H. */
+ * absolute change in the electron fraction n_e / n_H. The test is applied to
+ * the damped update, which is half of the undamped change. */
 #define treecool_ionization_tolerance 1.e-4
 
 /*! Convergence criterion of the temperature solver, expressed as a relative
@@ -141,9 +142,10 @@ struct treecool_gas_state {
 /**
  * @brief Free-free (Bremsstrahlung) cooling coefficient (Cen 1992).
  *
- * This is used both to build the table and above its upper end. Note that we
- * use the same 1.43e-27 normalisation in both places, whereas Arepo switches
- * to 1.42e-27 above T_max; keeping a single value avoids a jump in the cooling
+ * This is used both to build the table and above its upper end. The
+ * normalisation of 1.43e-27 is the one used in the Arepo table; KWH96 (Table
+ * 1) quote 1.42e-27, i.e. 0.7% lower. Arepo itself switches to 1.42e-27 above
+ * T_max. We use the same value in both places to avoid a jump in the cooling
  * rate at T_max.
  *
  * @param T The temperature [K].
@@ -162,8 +164,10 @@ treecool_free_free_coefficient(const double T, const double log10_T) {
  * @brief Construct the tables of rate coefficients.
  *
  * The tables are built on a regular grid in log10(T) running from
- * cooling->log10_T_min_cgs to cooling->log10_T_max_cgs. The fits are the ones
- * of KWH96, Table 2.
+ * cooling->log10_T_min_cgs to cooling->log10_T_max_cgs. The recombination and
+ * collisional ionization rates are the fits of KWH96, Table 2, and the
+ * collisional excitation and free-free cooling coefficients those of KWH96,
+ * Table 1.
  *
  * @param cooling The #cooling_function_data to fill in.
  */
@@ -203,6 +207,7 @@ __attribute__((always_inline)) INLINE static void treecool_make_rate_table(
     cooling->table_Alpha_Hp_cgs[i] =
         8.40e-11 * pow(T * 1.e-3, -0.2) / (1. + pow(T * 1.e-6, 0.7)) / sqrt_T;
     cooling->table_Alpha_Hep_cgs[i] = 1.50e-10 * pow(T, -0.6353);
+    /* 4 * 8.40e-11 = 3.36e-10, the normalisation of the HeIII fit of KWH96 */
     cooling->table_Alpha_Hepp_cgs[i] = 4. * cooling->table_Alpha_Hp_cgs[i];
 
     /* Dielectronic recombination of HeII (Cen 1992) */
@@ -419,6 +424,8 @@ __attribute__((always_inline)) INLINE static void treecool_abundances(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param n_e The electron number density in units of n_H.
+ *
+ * @return The mean molecular weight, in units of the proton mass.
  */
 __attribute__((always_inline)) INLINE static double
 treecool_mean_molecular_weight(const struct cooling_function_data *cooling,
@@ -432,8 +439,9 @@ treecool_mean_molecular_weight(const struct cooling_function_data *cooling,
  *
  * The temperature depends on the mean molecular weight, which itself depends
  * on the electron density, which in turn depends on the temperature. We
- * therefore iterate, using the damping scheme of Katz et al. (1996), until the
- * temperature and the abundances are mutually consistent.
+ * therefore iterate, using the damping scheme of the Gadget/Arepo
+ * implementation of this model, until the temperature and the abundances are
+ * mutually consistent.
  *
  * The relation u(T) is discontinuous at T_min: the gas is assumed to be
  * entirely neutral below it but can be highly ionized (by the UV background)
@@ -459,7 +467,7 @@ __attribute__((always_inline)) INLINE static double treecool_temperature_from_u(
     const struct cooling_function_data *cooling, const double u_cgs,
     const double n_H_cgs, struct treecool_gas_state *gas) {
 
-  /* (gamma - 1) * u * m_H / k_B, i.e. the temperature divided by mu */
+  /* (gamma - 1) * u * m_p / k_B, i.e. the temperature divided by mu */
   const double T_over_mu = hydro_gamma_minus_one * u_cgs *
                            cooling->proton_mass_cgs / cooling->boltzmann_k_cgs;
 
@@ -481,7 +489,7 @@ __attribute__((always_inline)) INLINE static double treecool_temperature_from_u(
     const double T_new = T_over_mu * mu;
 
     /* Estimate how strongly the temperature reacts to a change in n_e and damp
-     * the update accordingly (Katz et al. 1996). */
+     * the update accordingly (as in Gadget/Arepo). */
     const double new_damping =
         T_new / (1. + cooling->y_He + gas->n_e) *
         fabs((gas->n_e - n_e_old) / (T_new - T_old + 1.));
@@ -539,23 +547,27 @@ __attribute__((always_inline)) INLINE static double treecool_temperature_from_u(
 /**
  * @brief Compute the net cooling rate of the gas at a given temperature.
  *
- * This is the quantity (Heating - Cooling) / n_H^2 of KWH96, Table 1, in
- * physical cgs units [erg * cm^3 * s^-1]. A negative value means that the gas
- * is cooling.
+ * The cooling terms are those of KWH96, Table 1, plus the inverse Compton
+ * cooling off the CMB (KWH96, eq. 24), and the heating term is the
+ * photo-heating of KWH96, eq. 39.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param log10_T The log10 of the temperature (in K).
  * @param n_H_cgs The Hydrogen number density in physical cgs units [cm^-3].
  * @param gas (return) The #treecool_gas_state to fill in. On entry, its n_e
  * field is used as the starting guess of the iteration.
+ *
+ * @return (Heating - Cooling) / n_H^2 in physical cgs units
+ * [erg * cm^3 * s^-1]. A negative value means that the gas is cooling.
  */
 __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
     const struct cooling_function_data *cooling, double log10_T,
     const double n_H_cgs, struct treecool_gas_state *gas) {
 
   /* Never evaluate the rates below the table: the gas would be entirely
-   * neutral and the cooling rate exactly zero. Instead, as in KWH96's
-   * implementation, evaluate them in the middle of the first bin. */
+   * neutral and would not cool at all (only the photo-heating of HI and HeI
+   * would remain). Instead, as in the Gadget/Arepo implementation, evaluate
+   * them in the middle of the first bin. */
   if (log10_T <= cooling->log10_T_min_cgs)
     log10_T = cooling->log10_T_min_cgs + 0.5 * cooling->delta_log10_T;
 
@@ -638,7 +650,11 @@ __attribute__((always_inline)) INLINE static double treecool_cooling_rate(
   /* Inverse Compton cooling off the CMB. The coefficient is
    * 4 sigma_T a_rad k_B T_CMB,0^4 / (m_e c) [erg * s^-1 * K^-1] evaluated
    * with T_CMB,0 = 2.73 K, as in Arepo; the (1 + z)^4 factor then
-   * scales the CMB energy density to the current redshift. */
+   * scales the CMB energy density to the current redshift. Note that KWH96
+   * (eq. 24) instead use 5.41e-36 * n_e * T (1 + z)^4, i.e. a slightly lower
+   * normalisation and no heating of gas colder than the CMB. Also note that
+   * the CMB temperature T_CMB_cgs is the one of the SWIFT physical constants
+   * (2.7255 K), which differs slightly from the 2.73 K used above. */
   if (cooling->with_Compton_cooling) {
 
     Lambda_Compton = 5.65e-36 * gas->n_e * (T - cooling->T_CMB_cgs) *

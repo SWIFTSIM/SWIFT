@@ -142,6 +142,8 @@ INLINE static void treecool_read_table(struct cooling_function_data *cooling) {
  * @param index The index of the entry just below the requested redshift.
  * @param f_lo The weight of the entry just below the requested redshift.
  * @param f_hi The weight of the entry just above the requested redshift.
+ *
+ * @return The interpolated rate.
  */
 __attribute__((always_inline)) INLINE static double treecool_interpolate_table(
     const double *table, const int index, const double f_lo,
@@ -188,7 +190,7 @@ INLINE static void treecool_set_UV_background(
     return;
 
   /* Find the entry just below the current redshift. Below the first entry of
-   * the table we simply use its first interval. */
+   * the table we extrapolate from its first interval. */
   int index = 0;
   for (int i = 0; i < cooling->N_redshifts - 1; ++i) {
     if (cooling->TREECOOL_log10_1_plus_z[i] < log10_1_plus_z)
