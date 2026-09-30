@@ -186,11 +186,15 @@ free_field
       therefore still acted upon, and is held below the predicted decay by
       the resolution self-test.
 
-    A pin the module did not apply FAILS rather than falling back to the
-    report: if the parameter is set and the recorded c_hyp is not
-    bit-uniform, the uniform-weight ledger the gate rests on is not live,
-    and a silent fallback would remove the gate exactly when something on
-    the pin path had broken.
+    A claimed uniform speed the module did not deliver FAILS rather than
+    falling back to the report. Both routes count as a claim: a positive
+    ISRF_c_hyp_pin_for_debugging, and ISRF_c_hyp_scheme == 2. If either is set
+    and the recorded c_hyp is not bit-uniform, the uniform-weight ledger the
+    gate rests on is not live, and a silent fallback would remove the gate
+    exactly when something on that path had broken. Note what this covers:
+    the parameter validation in feedback_props_init() already rejects a
+    scheme/fraction mismatch at start-up, so what reaches here is a module or
+    plumbing failure, which is what this leg exists to catch.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -1218,44 +1222,47 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     float or None
         max over snapshots of (max c_hyp - min c_hyp)/max c_hyp, or None
         when any snapshot has no HyperbolicPropagationSpeeds, or one that is
-        not everywhere finite, or a non-positive value AFTER the first
-        snapshot that carries a speed at all, or no such snapshot exists.
-        Leading all-zero snapshots are skipped: see the body.
+        not everywhere finite, or a non-positive value in any snapshot other
+        than an all-zero snapshot 0, or when only snapshot 0 exists.
+        Snapshot 0 alone is skipped when it is all zero: see the body.
     """
-    started = False
+    seen = False
     worst = 0.0
-    for snap in run[start:]:
+    for index, snap in enumerate(run[start:], start=start):
         c_hyp = snap["c_hyp"]
         if c_hyp is None:
             return None
         if not np.all(np.isfinite(c_hyp)):
             return None
-        if np.all(c_hyp == 0.0) and not started:
-            # Written before any force step set a speed. A scheme-2 run's
-            # snapshot 0 reads exactly zero for every particle (MEASURED on
-            # the z0 leg of the 2026-09-30 cluster campaign: 32768 particles,
-            # one distinct float32 value, 0). Leading snapshots like that
-            # carry no speed to be uniform, so they are skipped rather than
-            # rejected; once a speed HAS appeared, a non-positive value is a
-            # rejection, not a skip.
+        if index == 0 and np.all(c_hyp == 0.0):
+            # Snapshot 0 is written before the first force step. Under the
+            # schemes that set c_hyp in radiation_snapshot_part_propagation
+            # (0, 2 and 3) it therefore still holds the first-init seed of
+            # exactly zero (radiation_isrf.c:159); the schemes that set it in
+            # radiation_end_density_propagation (1 and 4) read the
+            # light-speed value instead, because the initial density pass does
+            # run. A snapshot with no speed at all carries nothing to be
+            # uniform, so it is skipped. Only index 0 qualifies: after a step
+            # has run, an all-zero c_hyp is a degraded run and is rejected
+            # below.
             continue
         if np.any(c_hyp <= 0.0):
             return None
-        started = True
+        seen = True
         worst = max(worst, float((np.max(c_hyp) - np.min(c_hyp)) / np.max(c_hyp)))
-    return worst if started else None
+    return worst if seen else None
 
 
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
     It applies only to the consistent-variable-c schemes, and only when every
-    snapshot that carries a speed at all has a finite, strictly positive
-    HyperbolicPropagationSpeeds. Leading all-zero snapshots are written before
-    the first force step and carry no speed, so they are skipped; a
-    non-positive value once a speed HAS appeared is a rejection. Every
-    rejection prints why, so a degraded run is never silently gated on the
-    wrong invariant.
+    snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
+    Snapshot 0 is NOT excused here, unlike in `c_hyp_spatial_spread`: this
+    weight divides by c_hyp on every snapshot the ledger is evaluated on, and
+    for a non-cosmological run that includes snapshot 0. Every rejection
+    prints why, so a degraded run is never silently gated on the wrong
+    invariant.
     """
     scheme = read_c_hyp_scheme(pattern)
     if scheme is None:
@@ -1271,32 +1278,14 @@ def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
             "receiver-weighted redistribution as an error"
         )
         return False
-    started = False
     for snap in run:
-        c_hyp = snap["c_hyp"]
-        if not np.all(np.isfinite(c_hyp)):
+        if not np.all(np.isfinite(snap["c_hyp"])) or np.any(snap["c_hyp"] <= 0.0):
             print(
                 f"  {label}: HyperbolicPropagationSpeeds is not everywhere "
-                "finite; falling back to the sum m u ledger"
+                "finite and positive (propagation off, or a pre-first-step "
+                "snapshot); falling back to the sum m u ledger"
             )
             return False
-        if np.all(c_hyp == 0.0) and not started:
-            continue
-        if np.any(c_hyp <= 0.0):
-            print(
-                f"  {label}: HyperbolicPropagationSpeeds is not everywhere "
-                "positive after a snapshot that carried a speed (propagation "
-                "off mid-run); falling back to the sum m u ledger"
-            )
-            return False
-        started = True
-    if not started:
-        print(
-            f"  {label}: no snapshot carries a nonzero "
-            "HyperbolicPropagationSpeeds (propagation off); falling back to "
-            "the sum m u ledger"
-        )
-        return False
     return True
 
 
@@ -1841,9 +1830,19 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # The pin parameter is still read, because a pin the module did not apply
     # must FAIL rather than fall back to the ungated report.
     c_hyp_pin = read_c_hyp_pin(opt.snapshots)
+    c_hyp_scheme = read_c_hyp_scheme(opt.snapshots)
+    # Two configurations CLAIM one speed for the whole box: the debug pin, and
+    # scheme 2, whose ISRF_c_hyp_fixed_fraction_of_c is a single fraction of c
+    # (feedback_properties.h already errors at start-up if that key is not
+    # positive under scheme 2, or positive without it, so the scheme number
+    # alone is the claim). Either claim must FAIL when the recorded field does
+    # not honour it, rather than fall back to the ungated report: the gate
+    # below is the only bound on this fixture's transport ledger, and a claim
+    # the module did not deliver would otherwise remove it silently.
     pin_claimed = c_hyp_pin is not None and c_hyp_pin > 0.0
+    uniform_claimed = pin_claimed or c_hyp_scheme == 2
     c_hyp_spread = c_hyp_spatial_spread(run)
-    uniform_c_hyp = c_hyp_spread == 0.0
+    uniform_c_hyp = c_hyp_spread is not None and c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
@@ -1934,15 +1933,16 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         f"{spread_note}, so the uniform-weight ledger is "
         f"{'LIVE' if uniform_c_hyp else 'not live'}; "
         f"GEARFeedback:ISRF_c_hyp_pin_for_debugging = {pin_note}, "
-        f"ISRF_c_hyp_scheme = {read_c_hyp_scheme(opt.snapshots)}"
+        f"ISRF_c_hyp_scheme = {c_hyp_scheme}"
     )
-    if pin_claimed and not uniform_c_hyp:
-        # Fail rather than fall back to the ungated report: the pinned leg
-        # below is the only gate on this fixture's transport ledger, and a
-        # pin the module did not actually apply would otherwise remove it
-        # silently.
+    if uniform_claimed and not uniform_c_hyp:
+        source = (
+            "a c_hyp pin is set"
+            if pin_claimed
+            else "ISRF_c_hyp_scheme is 2, which is one fixed speed for the " "whole box"
+        )
         print(
-            "  FAIL: (A1) a c_hyp pin is set but the recorded "
+            f"  FAIL: (A1) {source} but the recorded "
             "HyperbolicPropagationSpeeds is not bit-uniform across the box, "
             "so the uniform-weight ledger this leg is gated on is not live"
         )
@@ -2104,11 +2104,15 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # construction (A3) uses, and it is used here on its own rather
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
+            why = (
+                "the ledger weight cancels between the two sums"
+                if use_c_hyp
+                else "this scheme's operators conserve sum m u directly"
+            )
             print(
-                f"  (A1) u_{band}: c_hyp bit-uniform, so the ledger weight "
-                f"cancels between the two sums and the metric is the "
-                f"mass-weighted box mean; bar is the analytic float floor "
-                f"({float_note}) {float_residual:.2e} on its own"
+                f"  (A1) u_{band}: c_hyp bit-uniform, so {why} and the metric "
+                f"is the mass-weighted box mean; bar is the analytic float "
+                f"floor ({float_note}) {float_residual:.2e} on its own"
             )
             ok &= gate(
                 f"(A1) ln u_{band} drift, worst |residual|, {ledger}, "
