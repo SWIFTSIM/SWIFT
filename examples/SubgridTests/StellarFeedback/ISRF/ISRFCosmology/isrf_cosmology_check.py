@@ -83,9 +83,10 @@ free_field
     HyperbolicPropagationSpeeds: a per-step rate the particles actually
     decayed under, not an a-priori bound from margin*h/dt_max. SWIFT
     quantises dt_max DOWN to a power-of-two subdivision of the run's own
-    time span before any particle uses it (`read_timeline_dt_max`), so a
-    bound built from the raw parameter under-states c_hyp ~ h/dt by that
-    factor and is not conservative. The coefficients are SIGNED, since the
+    span before any particle uses it (`read_timeline_dt_max`, whose
+    docstring states what the log line it reads does and does not report),
+    so a bound built from the raw parameter under-states c_hyp ~ h/dt by
+    that factor and is not conservative. The coefficients are SIGNED, since the
     residual is two-sided:
 
         d ln u_LW / d[int (c_hyp/c) d ln a] = -lambda_E(LW)
@@ -224,9 +225,10 @@ injection
 Bars
 ----
 Each bar is the sum of terms stated in the output, derived from the run's
-discretisation. Every step size and step count in them is the time-line's
-own quantised dt_max (`read_timeline_dt_max`), not the raw
-TimeIntegration:dt_max parameter, which over-states the step and
+discretisation. Every step size and step count in them is the quantised
+dt_max read back from the run's own start-up log (`read_timeline_dt_max`,
+which states the one way that number is approximate under cosmology), not
+the raw TimeIntegration:dt_max parameter, which over-states the step and
 under-states the step count at once, so using it is not conservative in
 either direction. The generic terms:
 
@@ -379,10 +381,12 @@ LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
 )
-# engine_config()'s own announcement of the coarsest step any particle can
-# take: SWIFT quantises TimeIntegration:dt_max DOWN to a power-of-two
-# subdivision of (time_end - time_begin) before any particle uses it, so the
-# raw parameter over-states the step size and under-states the step count.
+# engine_config()'s own quantisation of TimeIntegration:dt_max: it halves
+# (time_end - time_begin) until the result is at most dt_max, so the raw
+# parameter over-states the step size and under-states the step count.
+# Under cosmology the halved span is PROPER TIME while dt_max is in d ln a,
+# so the printed number is not the time-line's own step: see
+# `read_timeline_dt_max`.
 TIMELINE_DT_MAX_LOG_RE = re.compile(
     r"engine_config: Maximal timestep size \(on time-line\): (\S+)"
 )
@@ -1011,16 +1015,31 @@ def read_isrf_propagation(pattern: str) -> bool:
 def read_timeline_dt_max(
     *snapshot_globs: "Optional[str]", log: "Optional[str]" = None
 ) -> "Optional[float]":
-    """Return the coarsest step the run's time-line actually allowed.
+    """Return the quantised dt_max SWIFT announced at start-up.
 
     SWIFT quantises TimeIntegration:dt_max down to a power-of-two
-    subdivision of the run's own (time_end - time_begin) before any particle
-    uses it, and announces the result once at start-up (`engine_config`).
-    Every bar term built from a step size or a step count needs THAT value,
-    not the raw parameter: the raw parameter over-states the step (inflating
-    a one-step lag term) and under-states the step count (shrinking a term
-    proportional to it), in opposite directions, so using it is not
-    conservative either way.
+    subdivision of the run's own span before any particle uses it, and
+    announces one such quantisation at start-up (`engine_config.c:675-679`,
+    which halves `time_end - time_begin` until the result is at most
+    `dt_max`). Every bar term built from a step size or a step count needs a
+    quantised value, not the raw parameter: the raw parameter over-states
+    the step (inflating a one-step lag term) and under-states the step count
+    (shrinking a term proportional to it), in opposite directions, so using
+    it is not conservative either way.
+
+    WITHOUT cosmology the announced number IS the time-line's own step.
+    WITH cosmology it is not, and this function does not claim it is: the
+    halved span `time_end - time_begin` is PROPER TIME (`engine.c:3752-3753`
+    copies it from the cosmology model) while `dt_max` and the time-line
+    itself are in d ln a (`cosmology.c:915` builds `time_base` from
+    `log_a_end - log_a_begin`), so the message halves one quantity against a
+    threshold in the other. The true time-line step and this one both lie in
+    `(dt_max/2, dt_max]`, so they differ by less than a factor of two in
+    either direction; on this example's own z9 fixture the difference is
+    0.14% (5.440215e-05 printed against ln(0.125/0.1)/4096 = 5.447841e-05).
+    Every bar term here is linear in this value or in the step count derived
+    from it, so that bounded factor carries straight into the bar and
+    nowhere else: no residual and no prediction reads it.
 
     Parameters
     ----------
@@ -1032,8 +1051,10 @@ def read_timeline_dt_max(
     Returns
     -------
     float or None
-        The quantised dt_max in the run's own time-line units (the same
-        units as the parameter), or None if no log announced it.
+        The quantised dt_max in the same units as the parameter (d ln a
+        under cosmology), or None if no log announced it. Under cosmology
+        this is the proper-time span quantised against that parameter, not
+        the time-line's own step; see above.
     """
     for path in find_run_logs(*snapshot_globs, log=log):
         match = TIMELINE_DT_MAX_LOG_RE.search(path.read_text(errors="replace"))
@@ -1598,13 +1619,13 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     run = load_run(opt.snapshots)
     dt_max_parameter = read_dt_max(opt.snapshots, opt.dt_max)
     # Every term below built from a step size or a step count uses the
-    # QUANTISED dt_max the run's own time-line actually allowed, not the raw
+    # QUANTISED dt_max from the run's own start-up log, not the raw
     # parameter: see `read_timeline_dt_max`.
     dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
     if dt_max is None:
         dt_max = dt_max_parameter
         print(
-            "  NOTE: no engine_config line announced the time-line's own "
+            "  NOTE: no engine_config line announced the quantised "
             "maximal step, so the raw TimeIntegration:dt_max parameter is "
             "used: the step count is then under-counted and the one-step "
             "lag term over-counted, in opposite directions"
@@ -1659,7 +1680,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     print(
         f"free_field: cosmological={cosmological}, propagation={propagation_on}, "
         f"a {run[0]['a']:.6g} -> {run[-1]['a']:.6g}, {len(run)} snapshots, "
-        f"{n_steps:.0f} steps of the time-line's own dt_max {dt_max:.6g} "
+        f"{n_steps:.0f} steps of the run's quantised dt_max {dt_max:.6g} "
         f"(parameter {dt_max_parameter:.6g}), H2 exponent "
         f"{errors['exponent']:.3f}, ledger {ledger}"
     )
@@ -1692,8 +1713,8 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
 
     ok = True
-    # Longest step in proper time, from the time-line's own dt_max (ln a with
-    # cosmology).
+    # Longest step in proper time, from the run's quantised dt_max (ln a
+    # with cosmology).
     dt_step = (
         dt_max / hubble_rate_cgs(run[0]["a"], run[0])
         if cosmological
@@ -1986,14 +2007,14 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
     if opt.c_hyp_pin is None:
         raise RuntimeError("--c-hyp-pin (km/s) is required for dust_absorption")
     run = load_run(opt.snapshots)
-    # Every step size and step count below uses the QUANTISED dt_max the
-    # run's own time-line actually allowed, not the raw parameter: see
+    # Every step size and step count below uses the QUANTISED dt_max from
+    # the run's own start-up log, not the raw parameter: see
     # `read_timeline_dt_max`.
     dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
     if dt_max is None:
         dt_max = read_dt_max(opt.snapshots, opt.dt_max)
         print(
-            "  NOTE: no engine_config line announced the time-line's own "
+            "  NOTE: no engine_config line announced the quantised "
             "maximal step, so the raw TimeIntegration:dt_max parameter is "
             "used: the step count is then under-counted and the one-step "
             "lag term over-counted, in opposite directions"
@@ -2101,13 +2122,13 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         raise RuntimeError("--dark is required for photoelectric")
     on = load_run(opt.snapshots)
     dark = load_run(opt.dark)
-    # The lag term uses the QUANTISED dt_max the run's own time-line actually
-    # allowed, not the raw parameter: see `read_timeline_dt_max`.
+    # The lag term uses the QUANTISED dt_max from the run's own start-up
+    # log, not the raw parameter: see `read_timeline_dt_max`.
     dt_max = read_timeline_dt_max(opt.snapshots, log=opt.log)
     if dt_max is None:
         dt_max = read_dt_max(opt.snapshots, opt.dt_max)
         print(
-            "  NOTE: no engine_config line announced the time-line's own "
+            "  NOTE: no engine_config line announced the quantised "
             "maximal step, so the raw TimeIntegration:dt_max parameter is "
             "used: the one-step lag term is then over-counted"
         )
