@@ -102,10 +102,10 @@ struct spart {
   union {
 
     /*! Birth time */
-    float birth_time;
+    double birth_time;
 
     /*! Birth scale factor */
-    float birth_scale_factor;
+    double birth_scale_factor;
   };
 
   enum stellar_type star_type;
