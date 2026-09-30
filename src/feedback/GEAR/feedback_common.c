@@ -144,7 +144,7 @@ void feedback_will_do_feedback(
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(
-        sp, model, cosmo, us, phys_const,
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
         feedback_props->with_stellar_wind_feedback, ti_begin,
         star_age_beg_step_safe, dt_enrichment);
   } else {
@@ -152,10 +152,10 @@ void feedback_will_do_feedback(
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
-                                   feedback_props->with_stellar_wind_feedback,
-                                   ti_begin, star_age_beg_step_safe,
-                                   dt_enrichment);
+    stellar_evolution_evolve_spart(
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */
@@ -186,13 +186,13 @@ double compute_star_age_end_of_step(const struct spart *sp,
                                     const double time) {
   double star_age_end_of_step;
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
+    if (cosmo->a > sp->birth_scale_factor)
       star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+          cosmo, sp->birth_scale_factor, cosmo->a);
     else
       star_age_end_of_step = 0.;
   } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+    star_age_end_of_step = max(time - sp->birth_time, 0.);
   }
   return star_age_end_of_step;
 }
