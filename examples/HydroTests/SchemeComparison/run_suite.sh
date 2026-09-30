@@ -219,16 +219,21 @@ build_one() {
   if [[ $DO_BUILD -eq 0 && -x $dir/swift ]]; then return 0; fi
   log "Building $name (${dim}D) in $dir"
   mkdir -p "$dir"
+  # Copy the sources only: no build products of the source tree (in particular
+  # not its swift binary, which would mask a failed build here).
   rsync -a --delete --exclude='.git' --exclude='*.hdf5' --exclude='*.o' \
-    --exclude='*.lo' --exclude='*.a' --exclude='.libs' --exclude='*.png' \
-    --exclude='*.pdf' --exclude='restart' --exclude='suite_output' \
+    --exclude='*.lo' --exclude='*.la' --exclude='*.a' --exclude='.libs' \
+    --exclude='/swift' --exclude='/swift_mpi' --exclude='/swift_fof' \
+    --exclude='/swift_fof_mpi' --exclude='*.png' --exclude='*.pdf' \
+    --exclude='restart' --exclude='suite_output' --exclude='results_*' \
     "$SRC_DIR/" "$dir/" || return 1
   local dimflag=""
   [[ $dim -eq 2 ]] && dimflag="--with-hydro-dimension=2"
-  ( cd "$dir" && ./autogen.sh && ./configure $COMMON_FLAGS $dimflag ${SCHEME_FLAGS[$name]} \
-      && make -j"$THREADS" ) > "$dir/build.log" 2>&1
-  if [[ ! -x $dir/swift ]]; then echo "Build of ${name}_${dim}d failed, see $dir/build.log"; return 1; fi
-  ( cd "$dir" && rm -f swift_mpi ) # not needed
+  if ! ( cd "$dir" && ./autogen.sh && ./configure $COMMON_FLAGS $dimflag ${SCHEME_FLAGS[$name]} \
+      && make -j"$THREADS" ) > "$dir/build.log" 2>&1; then
+    echo "Build of ${name}_${dim}d failed, see $dir/build.log"; return 1
+  fi
+  [[ -x $dir/swift ]] || { echo "Build of ${name}_${dim}d produced no binary"; return 1; }
 }
 
 # ---------------------------------------------------------------------------
