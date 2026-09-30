@@ -49,10 +49,17 @@
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
-/*! Particle-level reasons for falling back to standard SPH gradients */
-#define magma_fallback_none 0
-#define magma_fallback_condition_number 1
-#define magma_fallback_h_max 2
+/**
+ * @brief Particle-level reasons for falling back to standard SPH gradients.
+ *
+ * Bit flags: a particle can fall back for several reasons at once. Stored in
+ * part::fallback_flags.
+ */
+enum magma_fallback_reasons {
+  magma_fallback_none = 0,
+  magma_fallback_condition_number = (1 << 0),
+  magma_fallback_h_max = (1 << 1),
+};
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -260,8 +267,8 @@ struct part {
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
 
-  /*! Why this particle interacts using base SPH (0: it does not, otherwise a
-   * combination of the magma_fallback_* flags) */
+  /*! Why this particle interacts using base SPH (magma_fallback_none if it
+   * does not, otherwise a combination of the #magma_fallback_reasons) */
   char fallback_flags;
 
   /*! Tree-depth at which size / 2 <= h * gamma < size */
