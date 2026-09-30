@@ -441,9 +441,9 @@ int main(int argc, char *argv[]) {
   stars_p.max_smoothing_iterations = 1;
 
   /* Zeroed so that every engine member the interaction loops read is
-     defined, not stack garbage. The loops now forward several of them
-     (feedback properties, constants, units, cooling) to the feedback
-     density interaction. */
+     defined, not stack garbage. The loops forward the feedback properties,
+     constants, units and cooling data to the feedback density
+     interaction. */
   static struct feedback_props feedback_properties;
   static struct phys_const physical_constants;
   static struct unit_system internal_units;
