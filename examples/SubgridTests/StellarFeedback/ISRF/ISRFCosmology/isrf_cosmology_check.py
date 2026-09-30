@@ -34,9 +34,9 @@ free_field
     u`` for the mass-specific field: the reduced-speed-of-light method is
     only correct if EVERY rate is dilated by the same c_hyp/c factor, and the
     Hubble term is no exception (see radiation_isrf.c's
-    radiation_end_force_propagation, fixed for this). ``c_hyp`` in this
-    fixture is NOT pinned (c_hyp_pin is 0, the run.sh default for
-    ``free_field``), so it is a per-particle, per-step quantity
+    radiation_end_force_propagation, fixed for this). In the unpinned legs
+    of this fixture ``c_hyp`` is NOT pinned (c_hyp_pin is 0, the run.sh
+    default for ``free_field``), so it is a per-particle, per-step quantity
     (ISRF_c_hyp_margin*h/dt, clamped at c), not a single constant, and the
     exact solution is the integral
 
