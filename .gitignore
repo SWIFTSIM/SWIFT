@@ -178,7 +178,7 @@ tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
 tests/testRiemannHLLC
-tests/testMatrixInversion
+tests/testSymmetricMatrix
 tests/testVoronoi1D
 tests/testVoronoi2D
 tests/testVoronoi3D

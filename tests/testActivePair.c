@@ -119,9 +119,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||                     \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) ||           \
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH) || \
+    defined(MAGMA_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -242,6 +243,7 @@ void zero_particle_fields_force(
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
 #endif /* GADGET-2 */
+
 #if defined(MINIMAL_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || \
     defined(GASOLINE_SPH)
     p->rho = 1.f;
@@ -254,6 +256,20 @@ void zero_particle_fields_force(
     p->viscosity.v_sig = hydro_get_comoving_soundspeed(p);
 #endif /* MINIMAL */
 #endif /* MINIMAL, SPHENIX, PHANTOM, GASOLINE */
+
+#if defined(MAGMA_SPH)
+    p->rho = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->gradient.c_matrix_inv.xx = 1.0f;
+    p->gradient.c_matrix_inv.yy = 1.0f;
+    p->gradient.c_matrix_inv.zz = 1.0f;
+    p->gradient.c_matrix_inv.xy = 0.0f;
+    p->gradient.c_matrix_inv.yz = 0.0f;
+    p->gradient.c_matrix_inv.xz = 0.0f;
+#endif
+
 #ifdef HOPKINS_PE_SPH
     p->rho = 1.f;
     p->rho_bar = 1.f;
@@ -262,6 +278,7 @@ void zero_particle_fields_force(
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENTROPY */
+
 #if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
     p->rho = 1.f;
@@ -271,8 +288,9 @@ void zero_particle_fields_force(
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENERGY */
-#if defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
+
     /* Initialise viscosity variables */
+#if defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
 #if defined(SPHENIX_SPH)
     p->force.pressure = hydro_get_comoving_pressure(p);
 #endif
@@ -301,6 +319,8 @@ void zero_particle_fields_force(
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
 #endif /* PLANETARY_SPH */
+
+    /* Set the geomety information */
 #if defined(REMIX_SPH)
     p->rho = 1.f;
     p->m0 = 1.f;
