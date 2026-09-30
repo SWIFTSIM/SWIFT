@@ -68,10 +68,26 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* The resort tasks are at either the chosen depth or the super level,
-   * whichever comes first. */
-  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
-      c->hydro.count > 0) {
-    scheduler_activate(s, c->hydro.stars_resort);
+   * whichever comes first. Stop descending here unconditionally: whether
+   * there is anything to activate must not gate the recursion itself. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+
+    /* Mirror engine_make_hierarchical_tasks_hydro()'s creation criterion
+     * exactly, so we only activate a task that was actually created. */
+    const int with_stars = (s->space->e->policy & engine_policy_stars);
+    const int with_sinks = (s->space->e->policy & engine_policy_sinks);
+    const int with_star_formation =
+        (s->space->e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    const int resort_for_star_formation =
+        with_star_formation && (c->hydro.count > 0);
+    const int resort_for_star_formation_sink =
+        with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0);
+
+    if (resort_for_star_formation || resort_for_star_formation_sink) {
+      scheduler_activate(s, c->hydro.stars_resort);
+    }
   } else {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
@@ -2269,13 +2285,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
-                                  ci_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_spart_density, ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
                                   ci_nodeID);
 #endif
-          cell_activate_drift_spart(cj, s);
+          /* Drift the cell actually named by the send task, not cj: they
+             can differ when the send task is shared across depths. */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (ci_active) {
@@ -2305,13 +2323,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
-                                  cj_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_spart_density, cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-          cell_activate_drift_spart(ci, s);
+          /* Drift the cell actually named by the send task, not ci: they
+             can differ when the send task is shared across depths. */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (cj_active) {
