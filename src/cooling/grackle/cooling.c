@@ -820,6 +820,10 @@ void cooling_copy_from_grackle3(grackle_field_data *data, const struct part *p,
  * @param p The #part.
  * @param xp The #xpart.
  * @param rho The particle density.
+ * @param species_densities The per-species densities filled for grackle.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
  * @param cosmo The current #cosmology (for the local Lyman-Werner/PE
  * feedback's own isrf_habing/RT_H2_dissociation_rate getters).
  */
@@ -841,12 +845,16 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     gr_float *volumetric_heating_rate = (gr_float *)malloc(sizeof(gr_float));
     *volumetric_heating_rate = cooling->volumetric_heating_rates;
     data->volumetric_heating_rate = volumetric_heating_rate;
+  } else {
+    data->volumetric_heating_rate = NULL;
   }
 
   if (cooling->chemistry_data.use_specific_heating_rate) {
     gr_float *specific_heating_rate = (gr_float *)malloc(sizeof(gr_float));
     *specific_heating_rate = cooling->specific_heating_rates;
     data->specific_heating_rate = specific_heating_rate;
+  } else {
+    data->specific_heating_rate = NULL;
   }
 
   if (cooling->chemistry_data.use_radiative_transfer) {
@@ -906,8 +914,6 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
 
   } else {
-    data->volumetric_heating_rate = NULL;
-    data->specific_heating_rate = NULL;
     data->RT_heating_rate = NULL;
     data->RT_HI_ionization_rate = NULL;
     data->RT_HeI_ionization_rate = NULL;
