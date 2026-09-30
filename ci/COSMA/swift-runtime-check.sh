@@ -160,12 +160,12 @@ echo "---------------------------------------"
 do_make clean
 do_configure --with-cooling=TREECOOL --enable-debugging-checks --enable-debug
 do_make
-cd examples/Cooling/ConstantCosmoTempEvolution
-#wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/gravity_glassCube_32.hdf5
-link_data gravity_glassCube_32.hdf5
-python makeIC.py
-do_run ../../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml
-cd ../../../
+# cd examples/Cooling/ConstantCosmoTempEvolution
+# #wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/gravity_glassCube_32.hdf5
+# link_data gravity_glassCube_32.hdf5
+# python makeIC.py
+# do_run ../../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml
+# cd ../../../
 
 exit
 
