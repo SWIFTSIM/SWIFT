@@ -128,8 +128,8 @@ velocity units, the same mechanism `dust_absorption` uses) makes `c_hyp`
 one value across the box, the weight cancels, and the check then gates the
 band drift against its own float floor:
 ```
-config=free_field redshift=0 c_hyp_pin=38.7902259 run_name=ff_pin_z0 ./run.sh
-config=free_field redshift=9 c_hyp_pin=38.7902259 run_name=ff_pin_z9 ./run.sh
+config=free_field redshift=0 c_hyp_pin=38.7902222 run_name=ff_pin_z0 ./run.sh
+config=free_field redshift=9 c_hyp_pin=38.7902222 run_name=ff_pin_z9 ./run.sh
 python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z9/snap/snapshot_*.hdf5" \
     --reference "ff_pin_z0/snap/snapshot_*.hdf5"
