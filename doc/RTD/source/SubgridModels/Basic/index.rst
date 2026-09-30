@@ -180,6 +180,9 @@ listed above.
   ``SPH:minimal_temperature: 100`` use ``log10_T_min: 1.0`` or lower. This
   is not checked by the code.
 
+Snapshot output
+~~~~~~~~~~~~~~~
+
 In addition to the radiated energies, this model writes two fields per gas
 particle to the snapshots. ``Temperatures`` are computed from the internal
 energies using the mean molecular weight of the equilibrium ionization state,
