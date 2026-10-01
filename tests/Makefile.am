@@ -28,7 +28,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
-        testKernelAccuracyAllBranches testKernelLongGrav \
+        testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
@@ -44,8 +44,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testKernelAccuracy testKernelAccuracyAllBranches \
-         testFFT testInteractions testMaths testRandom testExp \
+         testKernel testKernelAccuracy testFFT testInteractions testMaths \
+         testRandom testExp \
          testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
          testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
          testRiemannHLLC testMatrixInversion testDump testCSDS \
@@ -120,11 +120,6 @@ testParser_SOURCES = testParser.c
 testKernel_SOURCES = testKernel.c
 
 testKernelAccuracy_SOURCES = testKernelAccuracy.c
-
-# Same test with the gather-free (all sub-intervals) evaluation variant
-testKernelAccuracyAllBranches_SOURCES = testKernelAccuracy.c
-
-testKernelAccuracyAllBranches_CFLAGS = $(AM_CFLAGS) -DKERNEL_HYDRO_EVAL_ALL_BRANCHES
 
 testKernelLongGrav_SOURCES = testKernelLongGrav.c
 

@@ -68,13 +68,6 @@
  *   polynomial of the lower branch. The splines are C^(degree-1) across their
  *   branch points and the sub-intervals of the Wendland kernels are
  *   expansions of one and the same polynomial, so the error is O(ulp).
- * - KERNEL_HYDRO_EVAL_ALL_BRANCHES (compile-time, not exposed to configure)
- *   makes kernel_deval() evaluate every sub-interval with constant
- *   coefficients and select the result, which lets the compiler
- *   auto-vectorise neighbour loops. Same arithmetic, so the results agree
- *   to the compiler's contraction / association choices (a few ulp at most
- *   with -ffast-math); measured ~3x slower for the cubic spline and ~3x
- *   faster for the Wendland kernels when the loop does vectorise.
  */
 
 /* Config parameters. */
@@ -640,24 +633,6 @@ __attribute__((always_inline, const)) INLINE static int kernel_poly_index(
 __attribute__((always_inline)) INLINE static void kernel_deval(
     float u, float *restrict W, float *restrict dW_dx) {
 
-#ifdef KERNEL_HYDRO_EVAL_ALL_BRANCHES
-  /* Gather-free variant: evaluate every sub-interval with constant
-   * coefficients and select. Can be much faster when the compiler
-   * auto-vectorises the neighbour loop (e.g. icx, clang -ffast-math). */
-  const int ind = kernel_poly_index(u);
-  float w = 0.f, dw_dx = 0.f;
-  for (int i = 0; i < kernel_poly_ivals; i++) {
-    const float t = u - kernel_poly_origin[i];
-    const float *const c = &kernel_poly_coeffs[i * (kernel_poly_degree + 1)];
-    float wi = c[0], di = 0.f;
-    for (int k = 1; k <= kernel_poly_degree; k++) {
-      di = di * t + wi;
-      wi = wi * t + c[k];
-    }
-    w = (ind == i) ? wi : w;
-    dw_dx = (ind == i) ? di : dw_dx;
-  }
-#else
   /* Pick the correct branch of the kernel */
   const int ind = kernel_poly_index(u);
   const float *const coeffs =
@@ -673,7 +648,6 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     dw_dx = dw_dx * t + w;
     w = w * t + coeffs[k];
   }
-#endif
 
   /* Return everything (normalisation already in the coefficients) */
   *W = max(w, 0.f);
