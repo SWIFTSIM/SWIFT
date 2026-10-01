@@ -2641,12 +2641,19 @@ def dust_band_ratio_bar(signal: float) -> float:
     cell-relative offsets in float while this check rebuilds the separation in
     double.
 
-    OPEN, and the coded coefficient is deliberately the TIGHTER of the two
-    candidates: the value below spends ``6 u32 S`` on the whole scaled part,
-    where the weighting above gives about ``16.5 u32 S``. Six cannot be read off
-    the mechanism, so it stands only until the two are reconciled. It is the
-    conservative direction, so it cannot admit a residual the mechanism forbids;
-    what it can do is red a correct run whose per-band roundings anti-align.
+    THE SCALED COEFFICIENT, 16.5, and which part of it is counted. Fifteen are
+    counted: ``3 u32 (1.5 + 2.5) = 12`` per-band, and three shared at weight one
+    each, being the column ``extinction_path * rho``, the metallicity
+    normalisation ``max(Z,0)/RADIATION_GRACKLE_SOLAR_METAL_FRACTION``, and the
+    comoving-to-physical factor, which is exact at ``a = 1`` and is not at the
+    high-redshift leg. Two candidates are exactly zero rather than small: the
+    dust-to-gas self-ratio is ``1.0f`` at the default, so that multiply is exact,
+    and the two cross-section literals have bit-identical relative error on their
+    float32 cast, so it acts as a common prefactor and cancels in the band
+    difference. The remaining 1.5 is an ALLOWANCE and not a count: the separation
+    chain's error is absolute at the cell-offset scale, so its weight is
+    ``|x - c->loc| / r`` rather than one, and that ratio is a property of the
+    cell layout the snapshot does not record. It is the one soft term here.
 
     Parameters
     ----------
@@ -2659,7 +2666,7 @@ def dust_band_ratio_bar(signal: float) -> float:
         The bar, dimensionless.
     """
     u32 = FLOAT32_EPS / 2.0
-    return 4.0 * u32 + 6.0 * u32 * float(signal)
+    return 4.0 * u32 + 16.5 * u32 * float(signal)
 
 
 def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:

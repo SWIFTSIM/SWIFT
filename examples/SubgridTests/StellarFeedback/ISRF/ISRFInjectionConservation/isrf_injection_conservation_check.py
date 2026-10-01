@@ -441,11 +441,11 @@ def check_dusty(
     # metric and must keep the same term list. In brief: 4 u32 that do not
     # scale with the signal (the two specific-energy stores and the two expf
     # calls, an expf relative error being an absolute error in the logarithm),
-    # plus the scaled part. The scaled coefficient is the OPEN item named
-    # there: 6 is coded, the weighting gives about 16.5, and 6 is the tighter
-    # of the two.
+    # plus 16.5 u32 for the scaled part: twelve from the three per-band
+    # roundings at weights 1.5 and 2.5, three shared at weight one, and 1.5 as
+    # the one allowance rather than a count, for the separation chain.
     signal = abs((1.0 - ratio) * float(np.max(tau_lw[lit])))
-    budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 6.0 * FLOAT32_ULP * signal
+    budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 16.5 * FLOAT32_ULP * signal
     print(f"  float32 budget of |R_j|: {budget:.2e}")
 
     if opt.dust_tol is None:
