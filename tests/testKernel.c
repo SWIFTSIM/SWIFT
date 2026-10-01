@@ -45,10 +45,6 @@ int main(int argc, char *argv[]) {
 
   const float h = 1.2348f;
 
-  /* The vector functions use the same tables and arithmetic as the scalar
-   * ones; they may differ only by the rounding of the FMA contraction. */
-  const float tol = 8.f * FLT_EPSILON * kernel_root;
-
   float *u, *W, *dW;
   if (posix_memalign((void **)&u, SWIFT_CACHE_ALIGNMENT,
                      numPoints * sizeof(float)) != 0)
@@ -84,6 +80,10 @@ int main(int argc, char *argv[]) {
     error("Kernel derivative is positive u=%e dW=%e", 1.930290, dWtest);
 
 #ifdef WITH_VECTORIZATION
+
+  /* The vector functions use the same tables and arithmetic as the scalar
+   * ones; they may differ only by the rounding of the FMA contraction. */
+  const float tol = 8.f * FLT_EPSILON * kernel_root;
 
   message("Vector Output for VEC_SIZE=%d", VEC_SIZE);
   message("-------------");
