@@ -7,8 +7,8 @@
 # Usage: ./run_suite.sh [options]
 #   -s DIR    SWIFT source tree (default: the tree containing this script)
 #   -o DIR    output directory (default: ./suite_output)
-#   -c FILE   scheme list, "<name> <configure flags>" per line
-#             (default: schemes.txt next to this script)
+#   -c FILE   scheme list, "<name> <configure flags> [| <run-time -P overrides>]"
+#             per line (default: schemes.txt next to this script)
 #   -t LIST   comma-separated tests to run (default: all, see TESTS below)
 #   -j N      number of threads for the runs and the builds (default: 8)
 #   -k NAME   kernel passed to --with-kernel (default: wendland-C4)
@@ -80,13 +80,21 @@ COMMON_FLAGS="--with-kernel=$KERNEL --with-ext-potential=point-mass-softened --d
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 
-# Scheme names and configure flags
+# Scheme names, configure flags and (optional, after a '|') run-time
+# parameter overrides passed to every run of the scheme, e.g.
+#   magma_eta15 --with-hydro=magma2 | -P SPH:resolution_eta:1.5
 SCHEME_NAMES=()
 declare -A SCHEME_FLAGS
-while read -r name flags; do
-  [[ -z "$name" || "$name" == \#* ]] && continue
+declare -A SCHEME_RUNPARAMS
+while read -r line; do
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  runparams=""
+  if [[ "$line" == *"|"* ]]; then runparams="${line#*|}"; line="${line%%|*}"; fi
+  read -r name flags <<< "$line"
+  [[ -z "$name" ]] && continue
   SCHEME_NAMES+=("$name")
   SCHEME_FLAGS[$name]=$flags
+  SCHEME_RUNPARAMS[$name]=$runparams
 done < "$SCHEMES_FILE"
 [[ ${#SCHEME_NAMES[@]} -eq 0 ]] && { echo "No scheme in $SCHEMES_FILE"; exit 1; }
 
@@ -246,7 +254,7 @@ run_one() {
     case $(basename "$f") in *.hdf5) ln -s "$f" "$dir/" ;; *) cp -r "$f" "$dir/" ;; esac
   done
   local start=$(date +%s)
-  ( cd "$dir" && "$swift" $FLAGS --threads="$THREADS" $PARAMS "$YML" > output.log 2>&1 )
+  ( cd "$dir" && "$swift" $FLAGS --threads="$THREADS" $PARAMS ${SCHEME_RUNPARAMS[$scheme]} "$YML" > output.log 2>&1 )
   local status=$?
   local end=$(date +%s)
   echo "$((end - start))" > "$dir/walltime_s"

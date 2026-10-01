@@ -1,4 +1,4 @@
-# Hydro schemes to compare: one per line, "<name> <extra configure flags>".
+# Hydro schemes to compare: one per line, "<name> <extra configure flags> [| <run-time -P overrides>]".
 # Each scheme is built twice (2D and 3D) with the common flags set in
 # run_suite.sh (kernel, external potential, ...).
 sphenix --with-hydro=sphenix
