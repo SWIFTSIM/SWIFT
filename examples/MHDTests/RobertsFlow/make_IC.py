@@ -494,11 +494,12 @@ def add_other_particle_properties(
 
             # generate magnetic field with k^-3 spectrum and a cutoff at the Nyquist scale, with d_res = kernel cutoff radius ~ 3.2 interparticle spacing
             nB = -3.0
+            oversampling = 4
 
-            B, B_grid = generate_random_magnetic_field_from_spectra(
+            B, A = generate_random_magnetic_field_from_spectra(
                 positions=pos,
                 boxsize=np.array([L,L,L]),
-                Ngrid=4*Npx,
+                Ngrid=Npx * oversampling,
                 Brms=B0,
                 spectrum=lambda k: spectrum_powerlaw(
                     k,
@@ -507,10 +508,9 @@ def add_other_particle_properties(
                     kmax = np.pi / L * (Npx / 3.2),
                 ),
                 seed=1234,
-                return_grid=True,
+                return_grid=False,
                 )
 
-            A = B * L / (2 * np.pi)
         else:
             print("Error: wrong field type. Should be one_mode or random")
 
