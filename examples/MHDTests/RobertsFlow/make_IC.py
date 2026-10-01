@@ -500,9 +500,9 @@ def add_other_particle_properties(
                 Brms=B0,
                 spectrum=lambda k: spectrum_powerlaw(
                     k,
-                    n=-nB,
+                    n=nB,
                     kmin = 2.0 * np.pi / np.max(Lbox),
-                    kmax = np.pi / (2.0*np.max(h))
+                    kmax = np.pi / (2.5*np.max(h))
                 ),
                 seed=1234,
                 return_grid=False,
