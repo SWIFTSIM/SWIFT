@@ -18,6 +18,8 @@ if [ "$config" = "galilean" ]; then
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=1e-5}
     c_hyp_pin=${c_hyp_pin:=0}          # 0: shipped closure c_hyp = C_hyp*h/dt
+    c_hyp_scheme=${c_hyp_scheme:=4}    # 4: shipped closure. 2: one fixed speed, Courant-limited
+    c_hyp_fraction=${c_hyp_fraction:=0}  # scheme 2's speed, as a fraction of c. Also sets dt
     alpha_max=${alpha_max:=0.5}
     alpha_floor=${alpha_floor:=0.5}
     boost_factors=${boost_factors:="0.1 1 10"}  # bulk velocity in units of the measured c_hyp
@@ -28,6 +30,8 @@ elif [ "$config" = "lag" ]; then
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=5e-5}
     c_hyp_pin=${c_hyp_pin:=10}         # km/s; a uniform c_hyp gives a uniform tau
+    c_hyp_scheme=${c_hyp_scheme:=4}
+    c_hyp_fraction=${c_hyp_fraction:=0}
     alpha_max=${alpha_max:=0}
     alpha_floor=${alpha_floor:=0}
     v_rel_factors=${v_rel_factors:="0.25 0.5 1"}  # star velocity in units of c_hyp_pin
@@ -65,6 +69,8 @@ run_one() {
         -P Snapshots:delta_time:$delta_time \
         -P GEARChemistry:initial_metallicity:$initial_metallicity \
         -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+        -P GEARFeedback:ISRF_c_hyp_scheme:$c_hyp_scheme \
+        -P GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c:$c_hyp_fraction \
         -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
         -P GEARFeedback:ISRF_dissipation_alpha_floor:$alpha_floor \
         -P "InitialConditions:shift:$shift" \
