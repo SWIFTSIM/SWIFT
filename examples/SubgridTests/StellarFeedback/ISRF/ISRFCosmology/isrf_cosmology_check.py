@@ -2319,6 +2319,23 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             )
         measured_nc = np.interp(elapsed, ref_times, ref_error)
     bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
+
+    # Resolution self-test, matching the one (A1) already carries: a bar that
+    # has grown to or above the signal it must discriminate gates nothing, and a
+    # run that applied no H2 photodissociation at all would pass it. This can only turn a
+    # VACUOUS pass into a failure. It is needed because the bar above takes a
+    # `max` against twice the reference run's own measured error, which the
+    # reference run can make arbitrarily large.
+    signal_a2 = np.abs(errors["rate"] * errors["integral"][1:])
+    if np.any(bar >= signal_a2):
+        worst_k = int(np.argmax(bar / np.where(signal_a2 > 0.0, signal_a2, np.inf)))
+        print(
+            f"  FAIL: (A2) bar {np.atleast_1d(bar)[worst_k]:.3e} is not below the "
+            f"predicted exponent it has to discriminate "
+            f"{signal_a2[worst_k]:.3e}, so a run that applied no H2 "
+            "photodissociation at all would pass here"
+        )
+        return False
     ratio = np.abs(errors["H2"]) / bar
     k = int(np.argmax(ratio))
     print(
@@ -2460,6 +2477,21 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
             else 0.0
         )
         bar = max(budget, 2.0 * nc[band]) + cosmo
+
+        # Resolution self-test, matching the one (A1) already carries: a bar that
+        # has grown to or above the signal it must discriminate gates nothing, and a
+        # run that applied no absorption at all would pass it. This can only turn a
+        # VACUOUS pass into a failure. It is needed because the bar above takes a
+        # `max` against twice the reference run's own measured error, which the
+        # reference run can make arbitrarily large.
+        signal_b1 = abs(float(errors[f"{band}_depth"]))
+        if not np.isfinite(signal_b1) or bar >= signal_b1:
+            print(
+                f"  FAIL: (B1) {band}: bar {bar:.3e} is not below the predicted "
+                f"absorption it has to discriminate {signal_b1:.3e}, so a run "
+                "that applied no absorption at all would pass here"
+            )
+            return False
         print(
             f"  bar {band}: max(float32 flux divergence {float_floor:.1e} + "
             f"one-step lag {per_step:.1e} + density drift "
@@ -2594,6 +2626,23 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         # Reference error at the same elapsed times.
         ref_error = np.interp(t, ref["times"][1:], np.abs(ref["relative"]))
         bar = np.maximum(bar, 2.0 * ref_error)
+
+        # Resolution self-test, matching the one (A1) already carries: a bar that
+        # has grown to or above the signal it must discriminate gates nothing, and a
+        # run that applied no photoelectric heating at all would pass it. This can only turn a
+        # VACUOUS pass into a failure. It is needed because the bar above takes a
+        # `max` against twice the reference run's own measured error, which the
+        # reference run can make arbitrarily large.
+        signal_d2 = np.abs(err["predicted"][1:])
+        if np.any(bar >= signal_d2):
+            worst_k = int(np.argmax(bar / np.where(signal_d2 > 0.0, signal_d2, np.inf)))
+            print(
+                f"  FAIL: (D2) bar {np.atleast_1d(bar)[worst_k]:.3e} is not below "
+                f"the predicted heating it has to discriminate "
+                f"{signal_d2[worst_k]:.3e}, so a run that applied no "
+                "photoelectric heating at all would pass here"
+            )
+            return False
         print(
             f"  non-cosmological reference errors: first {ref['relative'][0]:.3e}, "
             f"final {ref['relative'][-1]:.3e}"
@@ -2669,13 +2718,23 @@ def dust_band_ratio_bar(signal: float) -> float:
 
     so the terms split by how they enter, not merely by how many they are.
 
-    CONSTANT, 4 u32. The two band specific energies as stored in the snapshot,
-    and the two ``expf`` extinction factors
+    CONSTANT, 2.04 u32, and it is the two ``expf`` extinction factors ALONE
     (``radiation_get_dust_extinction_factor``). An ``expf`` RELATIVE error is an
-    ABSOLUTE error in the logarithm, which is why these four do not scale with
-    the signal. MEASURED, not assumed from the library's documented bound: this
+    ABSOLUTE error in the logarithm, which is why they do not scale with the
+    signal. MEASURED, not assumed from the library's documented bound: this
     build's ``expf`` is accurate to at most 0.51 float32 ulps over the tau range
-    these fixtures occupy, under the build's own flags.
+    these fixtures occupy, under the build's own flags, and one ulp is 2 u32, so
+    each call contributes 1.02 u32.
+
+    **CORRECTED 2026-10-01, and the first version of this bar was 4 u32.** It
+    attributed two of those four to "the two band specific energies as stored in
+    the snapshot". There is no such term: `PESpecificEnergies` and
+    `LWSpecificEnergies` are written DOUBLE (`feedback_io.h`), the struct field is
+    double, and THIS MODULE'S OWN docstring already says so in terms, that "a term
+    modelling float32 round-off OF it is not a legitimate noise floor and none is
+    used". So the constant was about twice what its stated mechanism supports. The
+    direction was conservative, so it cannot have caused a false failure, but it
+    mattered most at low signal where the constant is effectively the whole bar.
 
     SIGNAL-SCALED. With ``S`` the printed signal, ``tau_LW = S/(1 - rho) =
     2.5 S`` and ``tau_PE = rho tau_LW = 1.5 S``. So a shared-prefactor rounding
@@ -2719,7 +2778,10 @@ def dust_band_ratio_bar(signal: float) -> float:
         The bar, dimensionless.
     """
     u32 = FLOAT32_EPS / 2.0
-    return 4.0 * u32 + 16.5 * u32 * float(signal)
+    # 0.51 float32 ulps per expf, measured on this build's own flags; one ulp
+    # is 2 u32, so 1.02 u32 per call and two calls in the residual.
+    expf_u32 = 2.0 * 1.02
+    return expf_u32 * u32 + 16.5 * u32 * float(signal)
 
 
 def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
