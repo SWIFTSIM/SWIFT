@@ -30,16 +30,51 @@
  * The numerical tables in this file are GENERATED (gen_kernel_hydro.py) from
  * exact rational expressions of the kernels; every constant is rounded once.
  *
- * kernel_coeffs: monomials in x = u / gamma on kernel_ivals uniform branches
- *   (to be multiplied by kernel_constant / gamma^d), as in the original
- *   file. Used by the hand-written SIMD code.
- * kernel_poly_coeffs: on kernel_poly_ivals uniform sub-intervals of
- *   [0, gamma), W(u) = sum_k c_k t^k with t = u - kernel_poly_origin[i] and
- *   the normalisation folded in (no rescaling of u, no final multiply).
- *   Origins are chosen per sub-interval to minimise the condition number;
- *   the last one is the support edge, so W -> 0 without cancellation.
- *   Used by the scalar kernel_deval(), kernel_eval(), kernel_eval_dWdx()
- *   and (double tables) kernel_eval_double().
+ * Representation
+ * --------------
+ * On kernel_poly_ivals uniform sub-intervals of [0, gamma) the kernel is
+ * stored as W(u) = sum_k c_k t^k with t = u - kernel_poly_origin[i] and the
+ * normalisation kernel_constant / gamma^d folded into the coefficients
+ * (kernel_poly_coeffs, highest degree first): no rescaling of u and no final
+ * multiply. Row kernel_poly_ivals is all zeros and is selected for
+ * u >= gamma. The same tables serve the scalar functions (kernel_deval(),
+ * kernel_eval(), kernel_eval_dWdx()), the hand-vectorised ones
+ * (WITH_VECTORIZATION, per-lane row selection with an in-register permute)
+ * and, in double precision, kernel_eval_double(); they therefore agree to
+ * the rounding of the compiler's FMA contraction (see testKernelAccuracy).
+ * kernel_constant is kept for documentation and for the unit tests only.
+ *
+ * Why expand about the edge of each sub-interval: in the monomial basis a
+ * branch behaving as (gamma - u)^n near the edge of the support is the sum
+ * of O(1) terms that cancel, so its absolute error is ~eps * sum_k |c_k|
+ * whatever the size of the result and the relative error near the edge is
+ * unbounded. With the origin at the right end of the sub-interval (the last
+ * one being the edge itself) t is exact, Horner's scheme has a relative
+ * error of O(degree * eps) and W(gamma) is exactly 0. Splitting the
+ * single-polynomial Wendland kernels into sub-intervals keeps |t| small on
+ * each piece and hence the condition number of the evaluation close to 1.
+ *
+ * Conventions
+ * -----------
+ * - gamma = H/h is the float kernel_gamma. The double tables
+ *   (kernel_poly_origin_d, kernel_poly_coeffs_d) are built around the same
+ *   float gamma promoted to double so that the support is identical in both
+ *   precisions: kernel_eval_double() is the exact kernel for the float gamma,
+ *   not for the irrational sqrt(...) value (a relative difference ~1e-8).
+ * - kernel_poly_ivals_over_gamma is rounded DOWN at generation time so that
+ *   no u < gamma selects the zero row; u >= gamma is tested explicitly.
+ *   A consequence is that a u just above an interior branch point of the
+ *   splines (e.g. u = gamma / 2 for the cubic) may be evaluated with the
+ *   polynomial of the lower branch. The splines are C^(degree-1) across their
+ *   branch points and the sub-intervals of the Wendland kernels are
+ *   expansions of one and the same polynomial, so the error is O(ulp).
+ * - KERNEL_HYDRO_EVAL_ALL_BRANCHES (compile-time, not exposed to configure)
+ *   makes kernel_deval() evaluate every sub-interval with constant
+ *   coefficients and select the result, which lets the compiler
+ *   auto-vectorise neighbour loops. Same arithmetic, so the results agree
+ *   to the compiler's contraction / association choices (a few ulp at most
+ *   with -ffast-math); measured ~3x slower for the cubic spline and ~3x
+ *   faster for the Wendland kernels when the loop does vectorise.
  */
 
 /* Config parameters. */
@@ -55,12 +90,12 @@
 #include "minmax.h"
 #include "vector.h"
 
+/* Generated tables: keep one row of the table per line. */
+/* clang-format off */
 /* ------------------------------------------------------------------------- */
 #if defined(CUBIC_SPLINE_KERNEL)
 
 #define kernel_name "Cubic spline (M4)"
-#define kernel_degree 3 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 2  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.8257418583505538)) /* sqrt(10/3) */
 #define kernel_constant ((float)(16. * M_1_PI))
@@ -69,19 +104,12 @@
 #define kernel_poly_ivals_over_gamma 1.09544504f
 #define kernel_poly_ivals_over_gamma_d 1.0954450977651105
 #define kernel_poly_root 0.418429196f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    3.f, -3.f, 0.f, (float)(1. / 2.),
-    -1.f, 3.f, -3.f, 1.f,
-    0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.82574189f, 1.82574189f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.8257418870925903, 1.8257418870925903};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.412529588f, -0.753172517f, 0.f, 0.418429196f,
         -0.137509853f, 0.f, 0.f, 0.f,
         0.f, 0.f, 0.f, 0.f,
@@ -100,19 +128,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.12485826f
 #define kernel_poly_ivals_over_gamma_d 1.1248582631130086
 #define kernel_poly_root 0.57537061f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    3.f, -3.f, 0.f, (float)(1. / 2.),
-    -1.f, 3.f, -3.f, 1.f,
-    0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.77800179f, 1.77800179f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.7780017852783203, 1.7780017852783203};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.614189446f, -1.09202993f, 0.f, 0.57537061f,
         -0.204729825f, 0.f, 0.f, 0.f,
         0.f, 0.f, 0.f, 0.f,
@@ -131,19 +152,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.15470052f
 #define kernel_poly_ivals_over_gamma_d 1.1547005591040844
 #define kernel_poly_root 0.769800365f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    3.f, -3.f, 0.f, (float)(1. / 2.),
-    -1.f, 3.f, -3.f, 1.f,
-    0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.73205078f, 1.73205078f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.7320507764816284, 1.7320507764816284};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.888888955f, -1.53960085f, 0.f, 0.769800365f,
         -0.296296328f, 0.f, 0.f, 0.f,
         0.f, 0.f, 0.f, 0.f,
@@ -160,8 +174,6 @@ static const double
 #elif defined(QUARTIC_SPLINE_KERNEL)
 
 #define kernel_name "Quartic spline (M5)"
-#define kernel_degree 4 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 5  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.0189321327181204)) /* sqrt(375/92) */
 #define kernel_constant ((float)(15625. * M_1_PI / 512.))
@@ -170,22 +182,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.47655678f
 #define kernel_poly_ivals_over_gamma_d 2.4765567845593095
 #define kernel_poly_root 0.434393048f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    6.f, 0.f, (float)(-12. / 5.), 0.f, (float)(46. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.807572842f, 1.21135926f, 1.61514568f, 2.0189321f, 2.0189321f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.8075728416442871, 1.2113592624664307, 1.6151456832885742, 2.0189321041107178, 2.0189321041107178};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.426284403f, 0.f, -0.695028901f, 0.f, 0.434393048f,
         -0.284189612f, 0.22950381f, 0.27801156f, -0.411610067f, 0.143538579f,
         -0.284189612f, -0.22950381f, 0.27801156f, -0.149676397f, 0.0302186478f,
@@ -210,22 +212,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.52886343f
 #define kernel_poly_ivals_over_gamma_d 2.5288635222320974
 #define kernel_poly_root 0.585734546f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    6.f, 0.f, (float)(-12. / 5.), 0.f, (float)(46. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.790869117f, 1.18630362f, 1.58173823f, 1.97717273f, 1.97717273f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.7908691167831421, 1.1863036155700684, 1.5817382335662842, 1.9771727323532104, 1.9771727323532104};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.624921978f, 0.f, -0.977181017f, 0.f, 0.585734546f,
         -0.416614652f, 0.329487622f, 0.390872419f, -0.566736281f, 0.19354704f,
         -0.416614652f, -0.329487622f, 0.390872419f, -0.20608595f, 0.0407467559f,
@@ -250,22 +242,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.58198881f
 #define kernel_poly_ivals_over_gamma_d 2.581988824504585
 #define kernel_poly_root 0.773251891f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    6.f, 0.f, (float)(-12. / 5.), 0.f, (float)(46. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    -4.f, 8.f, (float)(-24. / 5.), (float)(8. / 25.), (float)(44. / 125.),
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    1.f, -4.f, 6.f, -4.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.774596691f, 1.16189504f, 1.54919338f, 1.93649173f, 1.93649173f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.7745966911315918, 1.1618950366973877, 1.5491933822631836, 1.9364917278289795, 1.9364917278289795};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.896523774f, 0.f, -1.34478581f, 0.f, 0.773251891f,
         -0.597682536f, 0.462962925f, 0.537914336f, -0.763888836f, 0.255509317f,
         -0.597682536f, -0.462962925f, 0.537914336f, -0.277777761f, 0.0537914336f,
@@ -288,8 +270,6 @@ static const double
 #elif defined(QUINTIC_SPLINE_KERNEL)
 
 #define kernel_name "Quintic spline (M6)"
-#define kernel_degree 5 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 3  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.1957751641342)) /* sqrt(135/28) */
 #define kernel_constant ((float)(2187. * M_1_PI / 40.))
@@ -298,20 +278,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.36626005f
 #define kernel_poly_ivals_over_gamma_d 1.366260035968407
 #define kernel_poly_root 0.446491212f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    -10.f, 10.f, 0.f, (float)(-20. / 9.), 0.f, (float)(22. / 81.),
-    5.f, -15.f, (float)(50. / 3.), (float)(-70. / 9.), (float)(25. / 27.), (float)(17. / 81.),
-    -1.f, 5.f, -10.f, 10.f, -5.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.46385014f, 2.19577527f, 2.19577527f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.4638501405715942, 2.195775270462036, 2.195775270462036};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         -0.322059274f, 0.707169771f, 0.f, -0.757681966f, 0.f, 0.446491212f,
         0.161029637f, 0.117861599f, -0.172531784f, 0.126280352f, -0.0462138802f, 0.00676502008f,
         -0.0322059281f, 0.f, 0.f, 0.f, 0.f, 0.f,
@@ -332,20 +304,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.39009237f
 #define kernel_poly_ivals_over_gamma_d 1.3900923932370532
 #define kernel_poly_root 0.594499588f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    -10.f, 10.f, 0.f, (float)(-20. / 9.), 0.f, (float)(22. / 81.),
-    5.f, -15.f, (float)(50. / 3.), (float)(-70. / 9.), (float)(25. / 27.), (float)(17. / 81.),
-    -1.f, 5.f, -10.f, 10.f, -5.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.43875325f, 2.15812993f, 2.15812993f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.4387532472610474, 2.158129930496216, 2.158129930496216};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         -0.467547715f, 1.00902867f, 0.f, -1.04435027f, 0.f, 0.594499588f,
         0.233773857f, 0.168171406f, -0.241957262f, 0.174058408f, -0.0626067817f, 0.00900757127f,
         -0.04675477f, 0.f, 0.f, 0.f, 0.f, 0.f,
@@ -366,20 +330,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.41421366f
 #define kernel_poly_ivals_over_gamma_d 1.414213626312762
 #define kernel_poly_root 0.777817488f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    -10.f, 10.f, 0.f, (float)(-20. / 9.), 0.f, (float)(22. / 81.),
-    5.f, -15.f, (float)(50. / 3.), (float)(-70. / 9.), (float)(25. / 27.), (float)(17. / 81.),
-    -1.f, 5.f, -10.f, 10.f, -5.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.41421354f, 2.12132025f, 2.12132025f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.4142135381698608, 2.1213202476501465, 2.1213202476501465};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         -0.666666865f, 1.4142139f, 0.f, -1.41421378f, 0.f, 0.777817488f,
         0.333333433f, 0.235702381f, -0.333333343f, 0.235702246f, -0.0833333209f, 0.0117851105f,
         -0.066666685f, 0.f, 0.f, 0.f, 0.f, 0.f,
@@ -398,8 +354,6 @@ static const double
 #elif defined(WENDLAND_C2_KERNEL)
 
 #define kernel_name "Wendland C2"
-#define kernel_degree 5 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 1  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.9364916731037085)) /* sqrt(15/4) */
 #define kernel_constant ((float)(21. * M_1_PI / 2.))
@@ -408,18 +362,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.0655911f
 #define kernel_poly_ivals_over_gamma_d 2.065591059603668
 #define kernel_poly_root 0.460248619f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    4.f, -15.f, 20.f, -10.f, 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.968245864f, 1.45236874f, 1.93649173f, 1.93649173f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.9682458639144897, 1.4523687362670898, 1.9364917278289795, 1.9364917278289795};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.0676042885f, -0.490931809f, 1.26758051f, -1.22732961f, 0.f, 0.460248619f,
         0.0676042885f, -0.163643926f, 0.f, 0.306832403f, -0.297089189f, 0.086296618f,
         0.0676042885f, -2.01476489e-08f, -0.158447564f, 0.153416231f, -0.0557042435f, 0.00719138794f,
@@ -442,18 +390,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.10818505f
 #define kernel_poly_ivals_over_gamma_d 2.1081850547223233
 #define kernel_poly_root 0.618935883f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    4.f, -15.f, 20.f, -10.f, 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.948683321f, 1.42302501f, 1.89736664f, 1.89736664f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.9486833214759827, 1.4230250120162964, 1.8973666429519653, 1.8973666429519653};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.100681417f, -0.716360867f, 1.81226563f, -1.71926618f, 0.f, 0.618935883f,
         0.100681417f, -0.238786966f, 0.f, 0.429816544f, -0.407759786f, 0.116050474f,
         0.100681417f, 1.50027013e-08f, -0.226533204f, 0.214908257f, -0.0764549449f, 0.00967087038f,
@@ -476,18 +418,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 2.46885371f
 #define kernel_poly_ivals_over_gamma_d 2.4688536570040185
 #define kernel_poly_root 0.77151674f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    0.f, -3.f, 8.f, -6.f, 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 0.810092568f, 1.21513891f, 1.62018514f, 1.62018514f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 0.810092568397522, 1.2151389122009277, 1.620185136795044, 1.620185136795044};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         -0.335898489f, 1.45124733f, -1.76346695f, 0.f, 0.77151674f,
         -0.335898489f, 0.362811834f, 0.440866739f, -0.714285731f, 0.241098985f,
         -0.335898489f, -0.181405991f, 0.551083386f, -0.267857105f, 0.0391785689f,
@@ -508,8 +444,6 @@ static const double
 #elif defined(WENDLAND_C4_KERNEL)
 
 #define kernel_name "Wendland C4"
-#define kernel_degree 8 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 1  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.207940216581962)) /* sqrt(39/8) */
 #define kernel_constant ((float)(495. * M_1_PI / 32.))
@@ -518,18 +452,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.81164336f
 #define kernel_poly_ivals_over_gamma_d 1.811643348956221
 #define kernel_poly_root 0.457449853f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    (float)(35. / 3.), -64.f, 140.f, (float)(-448. / 3.), 70.f, 0.f, (float)(-28. / 3.), 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.10397005f, 1.65595508f, 2.2079401f, 2.2079401f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.1039700508117676, 1.6559550762176514, 2.207940101623535, 2.207940101623535};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.00944913365f, -0.114449121f, 0.552774251f, -1.30185854f, 1.34738708f, 0.f, -0.875801504f, 0.f, 0.457449853f,
         0.00944913365f, -0.0309966356f, -0.00921290368f, 0.142390788f, -0.140352815f, -0.123956248f, 0.314741164f, -0.211500332f, 0.0494379401f,
         0.00944913365f, 0.0107296044f, -0.0483677462f, 0.00254269247f, 0.0894749239f, -0.104588084f, 0.053668499f, -0.01345482f, 0.00134716521f,
@@ -552,18 +480,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.84226477f
 #define kernel_poly_ivals_over_gamma_d 1.842264767274455
 #define kernel_poly_root 0.607682526f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    (float)(35. / 3.), -64.f, 140.f, (float)(-448. / 3.), 70.f, 0.f, (float)(-28. / 3.), 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.08562028f, 1.62843037f, 2.17124057f, 2.17124057f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.0856202840805054, 1.6284303665161133, 2.1712405681610107, 2.1712405681610107};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.0143535715f, -0.170962602f, 0.812002003f, -1.88058853f, 1.91400468f, 0.f, -1.20308864f, 0.f, 0.607682526f,
         0.0143535715f, -0.0463023707f, -0.0135333668f, 0.205689371f, -0.199375495f, -0.173156857f, 0.432359993f, -0.285708815f, 0.0656740218f,
         0.0143535715f, 0.0160277374f, -0.071050182f, 0.00367304985f, 0.127101868f, -0.146101132f, 0.0737244561f, -0.0181756821f, 0.00178959349f,
@@ -586,8 +508,6 @@ static const double
 #elif defined(WENDLAND_C6_KERNEL)
 
 #define kernel_name "Wendland C6"
-#define kernel_degree 11 /*!< Degree of the polynomial (kernel_coeffs) */
-#define kernel_ivals 1  /*!< Number of branches (kernel_coeffs) */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.449489742783178)) /* sqrt(6) */
 #define kernel_constant ((float)(1365. * M_1_PI / 64.))
@@ -596,18 +516,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.6329931f
 #define kernel_poly_ivals_over_gamma_d 1.6329931024279474
 #define kernel_poly_root 0.461929709f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    32.f, -231.f, 704.f, -1155.f, 1056.f, -462.f, 0.f, 66.f, 0.f, -11.f, 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.22474492f, 1.83711743f, 2.44948983f, 2.44948983f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.2247449159622192, 1.8371174335479736, 2.4494898319244385, 2.4494898319244385};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.000776057364f, -0.013722444f, 0.102439575f, -0.411673337f, 0.921956241f, -0.988016069f, 0.f, 0.846870959f, 0.f, -0.846871018f, 0.f, 0.461929709f,
         0.000776057364f, -0.00326724839f, -0.00160061836f, 0.0264647137f, -0.0288111325f, -0.0617510043f, 0.151258454f, -0.0396970771f, -0.194475174f, 0.261339098f, -0.137753263f, 0.0275172964f,
         0.000776057364f, 0.0019603495f, -0.00560216326f, -0.00808644388f, 0.0252097379f, -0.00385942729f, -0.0425414443f, 0.05975236f, -0.0395027548f, 0.0145633426f, -0.00289623532f, 0.000243613191f,
@@ -630,18 +544,12 @@ static const double
 #define kernel_poly_ivals_over_gamma 1.65615726f
 #define kernel_poly_ivals_over_gamma_d 1.6561572729955074
 #define kernel_poly_root 0.608036816f
-static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-    32.f, -231.f, 704.f, -1155.f, 1056.f, -462.f, 0.f, 66.f, 0.f, -11.f, 0.f, 1.f,
-    0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-};
 static const float kernel_poly_origin[kernel_poly_ivals + 1] = {
     0.f, 1.20761478f, 1.81142211f, 2.41522956f, 2.41522956f};
 static const double kernel_poly_origin_d[kernel_poly_ivals + 1] = {
     0.0, 1.207614779472351, 1.8114221096038818, 2.415229558944702, 2.415229558944702};
 static const float
-    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)]
-    __attribute__((aligned(64))) = {
+    kernel_poly_coeffs[(kernel_poly_degree + 1) * (kernel_poly_ivals + 1)] = {
         0.00119271665f, -0.0207949411f, 0.153065309f, -0.606519163f, 1.33932161f, -1.41521144f, 0.f, 1.17934299f, 0.f, -1.14658356f, 0.f, 0.608036816f,
         0.00119271665f, -0.00495117623f, -0.00239164545f, 0.0389905162f, -0.0418538004f, -0.0884507149f, 0.213628784f, -0.0552817024f, -0.267036021f, 0.35382852f, -0.183896333f, 0.0362209417f,
         0.00119271665f, 0.00297070504f, -0.00837076083f, -0.0119137643f, 0.036622081f, -0.00552818505f, -0.060083095f, 0.0832104981f, -0.0542417094f, 0.0197174121f, -0.00386638916f, 0.000320667838f,
@@ -667,6 +575,7 @@ static const double
 
 /* ------------------------------------------------------------------------- */
 #endif
+/* clang-format on */
 
 /* Ok, now comes the real deal. */
 
@@ -690,9 +599,6 @@ static const double
 #define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma_dim_d * (double)kernel_gamma)))
 
-/* The number of branches (floating point conversion) */
-#define kernel_ivals_f ((float)(kernel_ivals))
-
 /* Kernel self contribution (i.e. W(0,h)), identical to kernel_deval(0) */
 #define kernel_root (kernel_poly_root)
 
@@ -702,16 +608,21 @@ static const double
 /* ------------------------------------------------------------------------- */
 
 /**
- * @brief Select the sub-interval of the scalar kernel table.
+ * @brief Select the sub-interval of the kernel table.
  *
  * kernel_poly_ivals_over_gamma is rounded down at generation time such that
  * any u < kernel_gamma maps to a row < kernel_poly_ivals; u >= kernel_gamma
- * (and only those) map to the final all-zero row.
+ * (and only those) map to the final all-zero row. The argument is clamped
+ * before the conversion so that the result is a valid row for any u (no
+ * overflow in the float to int conversion, NaN included).
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
  */
 __attribute__((always_inline, const)) INLINE static int kernel_poly_index(
     const float u) {
-  const int temp = (int)(u * kernel_poly_ivals_over_gamma);
-  return temp > kernel_poly_ivals ? kernel_poly_ivals : temp;
+  const float uc = min(u, kernel_gamma);
+  const int temp = (int)(uc * kernel_poly_ivals_over_gamma);
+  return (u >= kernel_gamma) ? kernel_poly_ivals : temp;
 }
 
 /**
@@ -813,8 +724,10 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
 __attribute__((always_inline)) INLINE static void kernel_eval_double(
     double u, double *restrict W) {
 
-  const int temp = (int)(u * kernel_poly_ivals_over_gamma_d);
-  const int ind = temp > kernel_poly_ivals ? kernel_poly_ivals : temp;
+  /* Same selection rule as kernel_poly_index() */
+  const double uc = min(u, (double)kernel_gamma);
+  const int temp = (int)(uc * kernel_poly_ivals_over_gamma_d);
+  const int ind = (u >= (double)kernel_gamma) ? kernel_poly_ivals : temp;
   const double *const coeffs =
       &kernel_poly_coeffs_d[ind * (kernel_poly_degree + 1)];
   const double t = u - kernel_poly_origin_d[ind];
@@ -855,7 +768,6 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
   *dW_dx = min(dw_dx, 0.f);
 }
 
-
 #ifdef WENDLAND_C2_KERNEL
 
 /**
@@ -890,107 +802,108 @@ __attribute__((always_inline, const)) INLINE static float potential_dh(
 
 #endif
 
-/* -------------------------------------------------------------------------
- */
-
-#ifdef WITH_OLD_VECTORIZATION
-/**
- * @brief Computes the kernel function and its derivative (Vectorised version).
- *
- * Return 0 if $u > \\gamma = H/h$
- *
- * @param u The ratio of the distance to the smoothing length $u = x/h$.
- * @param w (return) The value of the kernel function $W(x,h)$.
- * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
- */
-__attribute__((always_inline)) INLINE static void kernel_deval_vec(
-    vector *u, vector *w, vector *dw_dx) {
-
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
-
-  /* Load x and get the interval id. */
-  vector ind;
-  ind.m =
-      vec_ftoi(vec_fmin(vec_mul(x.v, kernel_ivals_vec.v), kernel_ivals_vec.v));
-
-  /* load the coefficients. */
-  vector c[kernel_degree + 1];
-  for (int k = 0; k < VEC_SIZE; k++)
-    for (int j = 0; j < kernel_degree + 1; j++)
-      c[j].f[k] = kernel_coeffs[ind.i[k] * (kernel_degree + 1) + j];
-
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(c[0].v, x.v, c[1].v);
-  dw_dx->v = c[0].v;
-
-  /* And we're off! */
-  for (int k = 2; k <= kernel_degree; k++) {
-    dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-    w->v = vec_fma(x.v, w->v, c[k].v);
-  }
-
-  /* Return everything */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
-}
-#endif
+/* ------------------------------------------------------------------------- */
 
 #ifdef WITH_VECTORIZATION
 
-static const vector kernel_gamma_inv_vec = FILL_VEC((float)kernel_gamma_inv);
-
-static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
-
-static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
-
-static const vector kernel_gamma_inv_dim_vec =
-    FILL_VEC((float)kernel_gamma_inv_dim);
-
-static const vector kernel_gamma_inv_dim_plus_one_vec =
-    FILL_VEC((float)kernel_gamma_inv_dim_plus_one);
-
-/* Define constant vectors for the Wendland C2 and Cubic Spline kernel
- * coefficients. */
-#ifdef WENDLAND_C2_KERNEL
-static const vector wendland_const_c0 = FILL_VEC(4.f);
-static const vector wendland_const_c1 = FILL_VEC(-15.f);
-static const vector wendland_const_c2 = FILL_VEC(20.f);
-static const vector wendland_const_c3 = FILL_VEC(-10.f);
-static const vector wendland_const_c4 = FILL_VEC(0.f);
-static const vector wendland_const_c5 = FILL_VEC(1.f);
-
-static const vector wendland_dwdx_const_c0 = FILL_VEC(20.f);
-static const vector wendland_dwdx_const_c1 = FILL_VEC(-60.f);
-static const vector wendland_dwdx_const_c2 = FILL_VEC(60.f);
-static const vector wendland_dwdx_const_c3 = FILL_VEC(-20.f);
-#elif defined(CUBIC_SPLINE_KERNEL)
-/* First region 0 < u < 0.5 */
-static const vector cubic_1_const_c0 = FILL_VEC(3.f);
-static const vector cubic_1_const_c1 = FILL_VEC(-3.f);
-static const vector cubic_1_const_c2 = FILL_VEC(0.f);
-static const vector cubic_1_const_c3 = FILL_VEC(0.5f);
-static const vector cubic_1_dwdx_const_c0 = FILL_VEC(9.f);
-static const vector cubic_1_dwdx_const_c1 = FILL_VEC(-6.f);
-static const vector cubic_1_dwdx_const_c2 = FILL_VEC(0.f);
-
-/* Second region 0.5 <= u < 1 */
-static const vector cubic_2_const_c0 = FILL_VEC(-1.f);
-static const vector cubic_2_const_c1 = FILL_VEC(3.f);
-static const vector cubic_2_const_c2 = FILL_VEC(-3.f);
-static const vector cubic_2_const_c3 = FILL_VEC(1.f);
-static const vector cubic_2_dwdx_const_c0 = FILL_VEC(-3.f);
-static const vector cubic_2_dwdx_const_c1 = FILL_VEC(6.f);
-static const vector cubic_2_dwdx_const_c2 = FILL_VEC(-3.f);
-static const vector cond = FILL_VEC(0.5f);
+/*
+ * The hand-vectorised functions below use the same tables and the same
+ * arithmetic as kernel_deval(): per lane, the row of kernel_poly_coeffs
+ * (and the origin) of the lane's sub-interval are selected and Horner's
+ * scheme is run in t = u - origin. Lanes with u >= kernel_gamma select the
+ * all-zero row and return exactly 0 (there is no need for the caller to mask
+ * them out). With AVX2 or AVX-512 the selection is a single in-register
+ * permute from a compile-time constant vector; on other targets it falls back
+ * to per-lane scalar look-ups.
+ */
+#if defined(HAVE_AVX512_F) && (kernel_poly_ivals + 1 <= VEC_SIZE)
+#define KERNEL_VEC_PERMUTE
+#define kernel_vec_permute(table, ind) _mm512_permutexvar_ps((ind).m, (table).v)
+#elif defined(HAVE_AVX2) && (kernel_poly_ivals + 1 <= VEC_SIZE)
+#define KERNEL_VEC_PERMUTE
+#define kernel_vec_permute(table, ind) \
+  _mm256_permutevar8x32_ps((table).v, (ind).m)
 #endif
 
 /**
- * @brief Computes the kernel function and its derivative for two particles
- * using vectors. The return value is undefined if $u > \\gamma = H/h$.
+ * @brief Vector version of kernel_poly_index(): the sub-interval of each lane.
+ *
+ * Same rule as the scalar function: lanes with u >= kernel_gamma select the
+ * all-zero row kernel_poly_ivals; any lane maps to a valid row.
+ *
+ * @param u The ratios of the distance to the smoothing length $u = x/h$.
+ * @return The row index of the tables for each lane.
+ */
+__attribute__((always_inline)) INLINE static vector kernel_poly_index_vec(
+    const vector u) {
+
+  /* Clamp before scaling: no overflow in the conversion for any u */
+  vector uc;
+  uc.v = vec_fmin(u.v, vec_set1(kernel_gamma));
+
+  /* Sub-interval (as a float, u is >= 0 so floor == truncation) */
+  vector ind_f;
+  ind_f.v = vec_floor(vec_mul(uc.v, vec_set1(kernel_poly_ivals_over_gamma)));
+
+  /* Lanes outside the support select the zero row */
+  mask_t mask;
+  vec_create_mask(mask, vec_cmp_gte(u.v, vec_set1(kernel_gamma)));
+  ind_f.v = vec_blend(mask, ind_f.v, vec_set1((float)kernel_poly_ivals));
+
+  vector ind;
+  ind.m = vec_ftoi(ind_f.v);
+  return ind;
+}
+
+/**
+ * @brief Per-lane look-up of the k-th coefficient of the kernel table.
+ *
+ * @param k The coefficient (0 = highest degree ... kernel_poly_degree).
+ * @param ind The row index of each lane (from kernel_poly_index_vec()).
+ */
+__attribute__((always_inline)) INLINE static vector kernel_poly_coeff_vec(
+    const int k, const vector ind) {
+
+  vector c;
+#ifdef KERNEL_VEC_PERMUTE
+  /* Lane i of the table holds row i; folded to a constant by the compiler */
+  vector table;
+  for (int i = 0; i < VEC_SIZE; i++)
+    table.f[i] = (i <= kernel_poly_ivals)
+                     ? kernel_poly_coeffs[i * (kernel_poly_degree + 1) + k]
+                     : 0.f;
+  c.v = kernel_vec_permute(table, ind);
+#else
+  for (int l = 0; l < VEC_SIZE; l++)
+    c.f[l] = kernel_poly_coeffs[ind.i[l] * (kernel_poly_degree + 1) + k];
+#endif
+  return c;
+}
+
+/**
+ * @brief Per-lane look-up of the origin of the kernel table.
+ *
+ * @param ind The row index of each lane (from kernel_poly_index_vec()).
+ */
+__attribute__((always_inline)) INLINE static vector kernel_poly_origin_vec(
+    const vector ind) {
+
+  vector o;
+#ifdef KERNEL_VEC_PERMUTE
+  vector table;
+  for (int i = 0; i < VEC_SIZE; i++)
+    table.f[i] = (i <= kernel_poly_ivals) ? kernel_poly_origin[i] : 0.f;
+  o.v = kernel_vec_permute(table, ind);
+#else
+  for (int l = 0; l < VEC_SIZE; l++) o.f[l] = kernel_poly_origin[ind.i[l]];
+#endif
+  return o;
+}
+
+/**
+ * @brief Computes the kernel function and its derivative for one vector.
+ *
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -999,78 +912,30 @@ static const vector cond = FILL_VEC(0.5f);
 __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
     vector *u, vector *w, vector *dw_dx) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+  /* Pick the correct branch of the kernel for each lane */
+  const vector ind = kernel_poly_index_vec(*u);
 
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
-  dw_dx->v = wendland_const_c0.v;
+  /* Local variable (exact near the edge of the support) */
+  vector t;
+  t.v = vec_sub(u->v, kernel_poly_origin_vec(ind).v);
 
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
+  /* Horner's scheme for the polynomial and its derivative */
+  w->v = kernel_poly_coeff_vec(0, ind).v;
+  dw_dx->v = vec_setzero();
+  for (int k = 1; k <= kernel_poly_degree; k++) {
+    dw_dx->v = vec_fma(dw_dx->v, t.v, w->v);
+    w->v = vec_fma(w->v, t.v, kernel_poly_coeff_vec(k, ind).v);
+  }
 
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  w->v = vec_mul(x.v, w->v); /* wendland_const_c4 is zero. */
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector w2, dw_dx2;
-  mask_t mask_reg;
-
-  /* Form a mask for one part of the kernel. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  vec_create_mask(mask_reg, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using a mask. */
-
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
-  w2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
-  dw_dx->v = cubic_1_const_c0.v;
-  dw_dx2.v = cubic_2_const_c0.v;
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, w2.v);
-  w->v = vec_mul(x.v, w->v); /* cubic_1_const_c2 is zero. */
-  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, w2.v);
-  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
-  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
-
-  /* Blend both kernel regions into one vector (mask out unneeded values). */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  w->v = vec_blend(mask_reg, w->v, w2.v);
-  dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
-
-#else
-#error \
-    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
-#endif
-
-  /* Return everyting */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  /* Return everything (normalisation already in the coefficients) */
+  w->v = vec_fmax(w->v, vec_setzero());
+  dw_dx->v = vec_fmin(dw_dx->v, vec_setzero());
 }
 
 /**
- * @brief Computes the kernel function and its derivative for two particles
- * using interleaved vectors. The return value is undefined if $u > \\gamma =
- * H/h$.
+ * @brief Computes the kernel function and its derivative for two vectors.
+ *
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -1086,115 +951,15 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
     vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2,
     vector *dw_dx2) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x, x2;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
-  x2.v = vec_mul(u2->v, kernel_gamma_inv_vec.v);
-
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
-  w2->v = vec_fma(wendland_const_c0.v, x2.v, wendland_const_c1.v);
-  dw_dx->v = wendland_const_c0.v;
-  dw_dx2->v = wendland_const_c0.v;
-
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
-  w2->v = vec_fma(x2.v, w2->v, wendland_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
-  w2->v = vec_fma(x2.v, w2->v, wendland_const_c3.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_mul(x.v, w->v);    /* wendland_const_c4 is zero. */
-  w2->v = vec_mul(x2.v, w2->v); /* wendland_const_c4 is zero. */
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
-  w2->v = vec_fma(x2.v, w2->v, wendland_const_c5.v);
-
-  /* Return everything */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  w2->v = vec_mul(w2->v,
-                  vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
-                                         kernel_gamma_inv_dim_plus_one_vec.v));
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector w_2, dw_dx_2;
-  vector w2_2, dw_dx2_2;
-  mask_t mask_reg, mask_reg_v2;
-
-  /* Form a mask for one part of the kernel for each vector. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  vec_create_mask(mask_reg, vec_cmp_gte(x.v, cond.v));     /* 0.5 < x < 1 */
-  vec_create_mask(mask_reg_v2, vec_cmp_gte(x2.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
-  w2->v = vec_fma(cubic_1_const_c0.v, x2.v, cubic_1_const_c1.v);
-  w_2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
-  w2_2.v = vec_fma(cubic_2_const_c0.v, x2.v, cubic_2_const_c1.v);
-  dw_dx->v = cubic_1_const_c0.v;
-  dw_dx2->v = cubic_1_const_c0.v;
-  dw_dx_2.v = cubic_2_const_c0.v;
-  dw_dx2_2.v = cubic_2_const_c0.v;
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  dw_dx_2.v = vec_fma(dw_dx_2.v, x.v, w_2.v);
-  dw_dx2_2.v = vec_fma(dw_dx2_2.v, x2.v, w2_2.v);
-  w->v = vec_mul(x.v, w->v);    /* cubic_1_const_c2 is zero. */
-  w2->v = vec_mul(x2.v, w2->v); /* cubic_1_const_c2 is zero. */
-  w_2.v = vec_fma(x.v, w_2.v, cubic_2_const_c2.v);
-  w2_2.v = vec_fma(x2.v, w2_2.v, cubic_2_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
-  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  dw_dx_2.v = vec_fma(dw_dx_2.v, x.v, w_2.v);
-  dw_dx2_2.v = vec_fma(dw_dx2_2.v, x2.v, w2_2.v);
-  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
-  w2->v = vec_fma(x2.v, w2->v, cubic_1_const_c3.v);
-  w_2.v = vec_fma(x.v, w_2.v, cubic_2_const_c3.v);
-  w2_2.v = vec_fma(x2.v, w2_2.v, cubic_2_const_c3.v);
-
-  /* Blend both kernel regions into one vector (mask out unneeded values). */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  w->v = vec_blend(mask_reg, w->v, w_2.v);
-  w2->v = vec_blend(mask_reg_v2, w2->v, w2_2.v);
-  dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx_2.v);
-  dw_dx2->v = vec_blend(mask_reg_v2, dw_dx2->v, dw_dx2_2.v);
-
-  /* Return everything */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  w2->v = vec_mul(w2->v,
-                  vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
-                                         kernel_gamma_inv_dim_plus_one_vec.v));
-
-#endif
+  /* Two independent chains; the compiler interleaves them. */
+  kernel_deval_1_vec(u, w, dw_dx);
+  kernel_deval_1_vec(u2, w2, dw_dx2);
 }
 
 /**
- * @brief Computes the kernel function for two particles
- * using vectors. The return value is undefined if $u > \\gamma = H/h$.
+ * @brief Computes the kernel function for one vector.
+ *
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -1202,60 +967,21 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
                                                                     vector *w) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+  const vector ind = kernel_poly_index_vec(*u);
+  vector t;
+  t.v = vec_sub(u->v, kernel_poly_origin_vec(ind).v);
 
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
+  w->v = kernel_poly_coeff_vec(0, ind).v;
+  for (int k = 1; k <= kernel_poly_degree; k++)
+    w->v = vec_fma(w->v, t.v, kernel_poly_coeff_vec(k, ind).v);
 
-  /* Calculate the polynomial interleaving vector operations */
-  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
-  w->v = vec_mul(x.v, w->v); /* wendland_const_c4 is zero.*/
-  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector w2;
-  mask_t mask_reg;
-
-  /* Form a mask for each part of the kernel. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  vec_create_mask(mask_reg, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
-  w2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations. */
-  w->v = vec_mul(x.v, w->v); /* cubic_1_const_c2 is zero */
-  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c2.v);
-
-  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
-  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
-
-  /* Mask out unneeded values. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  w->v = vec_blend(mask_reg, w->v, w2.v);
-
-#else
-#error \
-    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
-#endif
-
-  /* Return everything */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  w->v = vec_fmax(w->v, vec_setzero());
 }
 
 /**
- * @brief Computes the kernel function derivative for two particles
- * using vectors. The return value is undefined if $u > \\gamma = H/h$.
+ * @brief Computes the kernel function derivative for one vector.
+ *
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
@@ -1263,61 +989,28 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
     vector *u, vector *dw_dx) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+  const vector ind = kernel_poly_index_vec(*u);
+  vector t;
+  t.v = vec_sub(u->v, kernel_poly_origin_vec(ind).v);
 
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
+  /* Same recurrence as kernel_deval_1_vec() (identical rounding) */
+  vector w;
+  w.v = kernel_poly_coeff_vec(0, ind).v;
+  dw_dx->v = vec_setzero();
+  for (int k = 1; k < kernel_poly_degree; k++) {
+    dw_dx->v = vec_fma(dw_dx->v, t.v, w.v);
+    w.v = vec_fma(w.v, t.v, kernel_poly_coeff_vec(k, ind).v);
+  }
+  dw_dx->v = vec_fma(dw_dx->v, t.v, w.v);
 
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c3.v);
-
-  dw_dx->v = vec_mul(dw_dx->v, x.v);
-
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector dw_dx2;
-  mask_t mask_reg1, mask_reg2;
-
-  /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));  /* 0 < x < 0.5 */
-  vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(cubic_1_dwdx_const_c0.v, x.v, cubic_1_dwdx_const_c1.v);
-  dw_dx2.v = vec_fma(cubic_2_dwdx_const_c0.v, x.v, cubic_2_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_mul(dw_dx->v, x.v); /* cubic_1_dwdx_const_c2 is zero. */
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
-
-  /* Mask out unneeded values. */
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx2.v = vec_and_mask(dw_dx2.v, mask_reg2);
-
-  /* Added both dwdx and dwdx2 together to form complete result. */
-  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
-#else
-#error \
-    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
-#endif
-
-  /* Return everything */
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  dw_dx->v = vec_fmin(dw_dx->v, vec_setzero());
 }
 
 /**
- * @brief Computes the kernel function derivative for two particles
- * using vectors.
+ * @brief Computes the kernel function derivative for one vector.
  *
- * Return 0 if $u > \\gamma = H/h$
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$. Kept for the callers in
+ * the force loops; identical to kernel_eval_dWdx_vec().
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
@@ -1325,67 +1018,13 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
     vector *u, vector *dw_dx) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
-
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c3.v);
-
-  dw_dx->v = vec_mul(dw_dx->v, x.v);
-
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector dw_dx2;
-  mask_t mask_reg;
-
-  /* Form a mask for each part of the kernel. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  vec_create_mask(mask_reg, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(cubic_1_dwdx_const_c0.v, x.v, cubic_1_dwdx_const_c1.v);
-  dw_dx2.v = vec_fma(cubic_2_dwdx_const_c0.v, x.v, cubic_2_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_mul(dw_dx->v, x.v); /* cubic_1_dwdx_const_c2 is zero. */
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
-
-  /* Mask out unneeded values. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
-
-#else
-#error \
-    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
-#endif
-
-  /* Mask out result for particles that lie outside of the kernel function. */
-  mask_t mask;
-  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f))); /* x < 1 */
-
-  dw_dx->v = vec_and_mask(dw_dx->v, mask);
-
-  /* Return everything */
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  kernel_eval_dWdx_vec(u, dw_dx);
 }
 
 /**
- * @brief Computes the kernel function derivative for two particles
- * using interleaved vectors.
+ * @brief Computes the kernel function derivative for two vectors.
  *
- * Return 0 if $u > \\gamma = H/h$
+ * Returns 0 for the lanes with $u >= \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
@@ -1397,78 +1036,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
     vector *u, vector *dw_dx, vector *u_2, vector *dw_dx_2) {
 
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x, x_2;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
-  x_2.v = vec_mul(u_2->v, kernel_gamma_inv_vec.v);
-
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
-  dw_dx_2->v =
-      vec_fma(wendland_dwdx_const_c0.v, x_2.v, wendland_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
-  dw_dx_2->v = vec_fma(dw_dx_2->v, x_2.v, wendland_dwdx_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c3.v);
-  dw_dx_2->v = vec_fma(dw_dx_2->v, x_2.v, wendland_dwdx_const_c3.v);
-
-  dw_dx->v = vec_mul(dw_dx->v, x.v);
-  dw_dx_2->v = vec_mul(dw_dx_2->v, x_2.v);
-
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector dw_dx2, dw_dx2_2;
-  mask_t mask_reg;
-  mask_t mask_reg_v2;
-
-  /* Form a mask for one part of the kernel. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  vec_create_mask(mask_reg, vec_cmp_gte(x.v, cond.v));      /* 0.5 < x < 1 */
-  vec_create_mask(mask_reg_v2, vec_cmp_gte(x_2.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(cubic_1_dwdx_const_c0.v, x.v, cubic_1_dwdx_const_c1.v);
-  dw_dx_2->v = vec_fma(cubic_1_dwdx_const_c0.v, x_2.v, cubic_1_dwdx_const_c1.v);
-  dw_dx2.v = vec_fma(cubic_2_dwdx_const_c0.v, x.v, cubic_2_dwdx_const_c1.v);
-  dw_dx2_2.v = vec_fma(cubic_2_dwdx_const_c0.v, x_2.v, cubic_2_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_mul(dw_dx->v, x.v);       /* cubic_1_dwdx_const_c2 is zero. */
-  dw_dx_2->v = vec_mul(dw_dx_2->v, x_2.v); /* cubic_1_dwdx_const_c2 is zero. */
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
-  dw_dx2_2.v = vec_fma(dw_dx2_2.v, x_2.v, cubic_2_dwdx_const_c2.v);
-
-  /* Mask out unneeded values. */
-  /* Only need the mask for one region as the vec_blend defaults to the vector
-   * when the mask is 0.*/
-  dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
-  dw_dx_2->v = vec_blend(mask_reg_v2, dw_dx_2->v, dw_dx2_2.v);
-
-#else
-#error \
-    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
-#endif
-
-  /* Mask out result for particles that lie outside of the kernel function. */
-  mask_t mask, mask_2;
-  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f)));     /* x < 1 */
-  vec_create_mask(mask_2, vec_cmp_lt(x_2.v, vec_set1(1.f))); /* x < 1 */
-
-  dw_dx->v = vec_and_mask(dw_dx->v, mask);
-  dw_dx_2->v = vec_and_mask(dw_dx_2->v, mask_2);
-
-  /* Return everything */
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx_2->v = vec_mul(
-      dw_dx_2->v,
-      vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
+  kernel_eval_dWdx_vec(u, dw_dx);
+  kernel_eval_dWdx_vec(u_2, dw_dx_2);
 }
 
 #endif /* WITH_VECTORIZATION */

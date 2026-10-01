@@ -26,6 +26,7 @@
 
 /* System includes. */
 #include <fenv.h>
+#include <float.h>
 #include <stdlib.h>
 #include <strings.h>
 
@@ -43,6 +44,10 @@ int main(int argc, char *argv[]) {
 #endif
 
   const float h = 1.2348f;
+
+  /* The vector functions use the same tables and arithmetic as the scalar
+   * ones; they may differ only by the rounding of the FMA contraction. */
+  const float tol = 8.f * FLT_EPSILON * kernel_root;
 
   float *u, *W, *dW;
   if (posix_memalign((void **)&u, SWIFT_CACHE_ALIGNMENT,
@@ -110,10 +115,10 @@ int main(int argc, char *argv[]) {
         error("Kernel derivative is positive u=%e dW=%e", u[i + j],
               dW_vec.f[j]);
 
-      if (fabsf(W_vec.f[j] - W[i + j]) > 2e-6)
+      if (fabsf(W_vec.f[j] - W[i + j]) > tol)
         error("Invalid Wvalue ! scalar= %e, vector= %e\n", W[i + j],
               W_vec.f[j]);
-      if (fabsf(dW_vec.f[j] - dW[i + j]) > 2e-6)
+      if (fabsf(dW_vec.f[j] - dW[i + j]) > tol)
         error("Invalid dW value ! scalar= %e, vector= %e %e %e\n", dW[i + j],
               dW_vec.f[j], fabsf(dW_vec.f[j] - dW[i + j]), fabsf(dW[i + j]));
     }
@@ -153,9 +158,9 @@ int main(int argc, char *argv[]) {
         error("Kernel derivative is positive u=%e dW=%e", u[i + j],
               dW_vec.f[j]);
 
-      if (fabsf(W_vec.f[j] - W[i + j]) > 2e-6)
+      if (fabsf(W_vec.f[j] - W[i + j]) > tol)
         error("Invalid value ! scalar= %e, vector= %e\n", W[i + j], W_vec.f[j]);
-      if (fabsf(dW_vec.f[j] - dW[i + j]) > 2e-6)
+      if (fabsf(dW_vec.f[j] - dW[i + j]) > tol)
         error("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
               dW_vec.f[j]);
     }
@@ -172,10 +177,10 @@ int main(int argc, char *argv[]) {
         error("Kernel derivative is positive u=%e dW=%e", u[i + j],
               dW_vec_2.f[j]);
 
-      if (fabsf(W_vec_2.f[j] - W[i + j]) > 2e-6)
+      if (fabsf(W_vec_2.f[j] - W[i + j]) > tol)
         error("Invalid value ! scalar= %e, vector= %e\n", W[i + j],
               W_vec_2.f[j]);
-      if (fabsf(dW_vec_2.f[j] - dW[i + j]) > 2e-6)
+      if (fabsf(dW_vec_2.f[j] - dW[i + j]) > tol)
         error("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
               dW_vec_2.f[j]);
     }
