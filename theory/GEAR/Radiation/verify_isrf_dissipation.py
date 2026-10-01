@@ -599,7 +599,7 @@ print()
 
 # Two closure regimes for a_d,i at the ratio f, using v_sig_ij =
 # alpha*min(c_hyp_i, c_hyp_j) and the closure c_hyp_k = C_hyp*h_k/dt_k
-# (radiation_isrf.c:189):
+# (radiation_isrf.c:190):
 #
 #   (a) SAME time bin (dt_i = dt_j = dt), closure active for both:
 #       c_hyp_i = C_hyp*f*h_bulk/dt, c_hyp_j = C_hyp*h_bulk/dt

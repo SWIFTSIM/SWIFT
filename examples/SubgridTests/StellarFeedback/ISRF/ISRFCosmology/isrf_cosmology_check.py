@@ -46,29 +46,30 @@ free_field
     that is depends on GEARFeedback:ISRF_c_hyp_scheme, read from the run's
     used_parameters.yml:
 
-        Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   schemes 3, 4
-        Q = [sum_i m_i u_i] / [sum_i m_i]                       schemes 0, 1, 2
+        Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   scheme 4
+        Q = [sum_i m_i u_i] / [sum_i m_i]                       scheme 2
 
-    The consistent-variable-c schemes (3, and 4, the shipped default) rewrite
-    every pairwise operator as c_hyp_i/c times the true-speed equation, so
-    their transport conserves sum m u / c_hyp and NOT sum m u; the
-    shared-pair-speed schemes conserve sum m u. Both statements are made by
-    radiation_propagation_iact.h at the two dispatch branches that implement
-    them. Measuring the second ledger on a scheme that conserves the first
-    reports the receiver-weighted redistribution as an error.
+    Scheme 4 (the default) rewrites every pairwise operator as c_hyp_i/c times
+    the true-speed equation, so its transport conserves sum m u / c_hyp and
+    NOT sum m u; scheme 2 (one fixed speed for the whole box) conserves
+    sum m u. Both statements are made by radiation_propagation_iact.h at the
+    two dispatch branches that implement them. Measuring the second ledger on
+    a scheme that conserves the first reports the receiver-weighted
+    redistribution as an error. Any other recorded scheme value is a run from
+    a removed scheme: `read_c_hyp_scheme` raises on it.
 
     The c_hyp,i weights are the HyperbolicPropagationSpeeds snapshot field.
     A snapshot written before that field existed, or one whose c_hyp is not
     everywhere finite and positive, degrades to the sum m u ledger with a
-    printed message: exact for schemes 0 to 2, approximate for 3 and 4.
+    printed message: exact for scheme 2, approximate for scheme 4.
 
     Both forms are ratios of two sums at the SAME time, so a spatially
     uniform c_hyp cancels between numerator and denominator, whether or not
     it varies from one snapshot to the next. Every pinned run (c_hyp_pin >
-    0), every fixed-fraction run (scheme 2) and every scheme-0/1 run
-    therefore gets the number this check reported before the ledger became
-    scheme-aware, up to round-off: the weighted branch divides each mass by
-    c_hyp before summing, so the two are not the same float expression.
+    0) and every fixed-fraction run (scheme 2) therefore gets the number this
+    check reported before the ledger became scheme-aware, up to round-off:
+    the weighted branch divides each mass by c_hyp before summing, so the two
+    are not the same float expression.
 
     A1 is gated as a TWO-SIDED RESIDUAL, like (A3) below: the measured box-
     mean drift ln[Q(t)/Q(t_ref)] MINUS the predicted drift, against a bar
@@ -136,8 +137,8 @@ free_field
 
     The ledger is a ratio of two sums taken at the SAME time, so a c_hyp
     that is UNIFORM ACROSS THE BOX cancels between numerator and
-    denominator. An unpinned run's c_hyp is not: under the variable-c
-    schemes it is margin*h/dt, so it carries the glass's own h spread, and
+    denominator. An unpinned run's c_hyp is not: under scheme 4 it is
+    margin*h/dt_max, so it carries the glass's own h spread, and
     the ledger mean then moves for a second reason that has nothing to do
     with conservation. The scheme conserves the ledger's NUMERATOR at
     fixed weights; it conserves neither the numerator once the weights
@@ -163,7 +164,7 @@ free_field
       is applied after the light-speed clamp
       (radiation_isrf.c's radiation_snapshot_part_propagation and
       radiation_end_density_propagation), and with c_i == c_j the
-      variable-c and shared-minimum operator branches are bit-identical
+      reduced-flux and shared-minimum operator branches are bit-identical
       by construction (radiation_propagation_iact.h), so a uniform speed
       does not change which branch runs. What it does cost is the
       variable-c coverage: this leg says nothing about a defect that only
@@ -684,7 +685,9 @@ FLOAT32_EPS = float(np.finfo(np.float32).eps)
 LOG_STEP_MANTISSA_HALF_ULP = 0.5e-6
 # enum isrf_c_hyp_scheme values whose pairwise operators conserve
 # sum m u / c_hyp rather than sum m u (feedback_properties.h).
-VARIABLE_C_SCHEMES = (3, 4)
+VARIABLE_C_SCHEMES = (4,)
+# enum isrf_c_hyp_scheme values the module accepts (feedback_properties.h).
+VALID_C_HYP_SCHEMES = (2, 4)
 # HyperbolicPropagationSpeeds reads exactly c on a snapshot written before
 # the first force step (the module's first-init clamp): below this fraction
 # of c, (A3) takes it as a genuine per-step value instead.
@@ -820,7 +823,7 @@ def read_snapshot(filename: str) -> Dict:
             ),
             # (A1)'s and (A3)'s float-residual bar terms: the FLOAT inputs
             # still feeding the double relaxation update
-            # (radiation_isrf.c:1221-1261).
+            # (radiation_isrf.c:1207-1247).
             "div_PE": (
                 physical(gas["PESpecificFluxDivergences"], a, energy / time)[order]
                 if "PESpecificFluxDivergences" in gas
@@ -1163,7 +1166,14 @@ def read_timeline_dt_max(
 
 
 def read_c_hyp_scheme(pattern: str) -> Optional[int]:
-    """Return GEARFeedback:ISRF_c_hyp_scheme, or None when it is not recorded."""
+    """Return GEARFeedback:ISRF_c_hyp_scheme, or None when it is not recorded.
+
+    Raises
+    ------
+    ValueError
+        If a value is recorded and is not 2 or 4: the run used a removed
+        scheme (0, 1 or 3), whose ledger this check cannot interpret.
+    """
     import os
     import yaml
 
@@ -1174,9 +1184,20 @@ def read_c_hyp_scheme(pattern: str) -> Optional[int]:
     with open(path) as handle:
         parameters = yaml.safe_load(handle)
     try:
-        return int(parameters["GEARFeedback"]["ISRF_c_hyp_scheme"])
-    except (KeyError, TypeError, ValueError):
+        recorded = parameters["GEARFeedback"]["ISRF_c_hyp_scheme"]
+    except (KeyError, TypeError):
         return None
+    try:
+        scheme = int(recorded)
+    except (TypeError, ValueError):
+        scheme = None
+    if scheme not in VALID_C_HYP_SCHEMES:
+        raise ValueError(
+            f"{path}: GEARFeedback:ISRF_c_hyp_scheme is {recorded!r}; only 2 "
+            "(fixed fraction of c) and 4 (kernel-local speed, reduced-flux "
+            "operators) are supported. The values 0, 1 and 3 were removed."
+        )
+    return scheme
 
 
 def read_c_hyp_pin(pattern: str) -> Optional[float]:
@@ -1254,11 +1275,11 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
             return None
         if index == 0 and np.all(c_hyp == 0.0):
             # Snapshot 0 is written before the first force step. Under the
-            # schemes that set c_hyp in radiation_snapshot_part_propagation
-            # (0, 2 and 3) it therefore still holds the first-init seed of
-            # exactly zero (radiation_isrf.c:159); the schemes that set it in
-            # radiation_end_density_propagation (1 and 4) read the
-            # light-speed value instead, because the initial density pass does
+            # scheme that sets c_hyp in radiation_snapshot_part_propagation
+            # (2) it therefore still holds the first-init seed of exactly
+            # zero (radiation_isrf.c:159); the scheme that sets it in
+            # radiation_end_density_propagation (4) reads the light-speed
+            # value instead, because the initial density pass does
             # run. A snapshot with no speed at all carries nothing to be
             # uniform, so it is skipped. Only index 0 qualifies: after a step
             # has run, an all-zero c_hyp is a degraded run and is rejected
@@ -1274,7 +1295,7 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
-    It applies only to the consistent-variable-c schemes, and only when every
+    It applies only to the reduced-flux scheme (4), and only when every
     snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
     Snapshot 0 is NOT excused here, unlike in `c_hyp_spatial_spread`: this
     weight divides by c_hyp on every snapshot the ledger is evaluated on, and
@@ -1384,7 +1405,7 @@ def free_field_errors(
         The run's snapshots, in time order.
     use_c_hyp
         Weight each particle by ``m_i/c_hyp,i`` rather than ``m_i``, for the
-        consistent-variable-c schemes. Decided by `use_c_hyp_ledger`.
+        reduced-flux scheme (4). Decided by `use_c_hyp_ledger`.
     ref_index
         Snapshot the log drift is measured from. (A1)'s reference is the
         first snapshot whose c_hyp is a genuine per-step rate, since its
@@ -1468,14 +1489,13 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     HyperbolicPropagationSpeeds carries no rate any particle actually decayed
     under; (A3) needs the trajectory the particles actually experienced, so it
     starts integrating one snapshot later. Two shapes of that pre-step
-    snapshot exist and both must be rejected. Under the schemes that set
-    ``c_hyp`` in the density loop (1 and 4) it reads the module's first-init
+    snapshot exist and both must be rejected. Under the scheme that sets
+    ``c_hyp`` in the density loop (4) it reads the module's first-init
     light-speed clamp (``c_hyp = c``), because that loop does run before the
-    first snapshot is written. Under the schemes that set it in the snapshot
-    hook (0, 2 and 3) it reads exactly zero for every particle; that is
-    MEASURED for scheme 2 (both cluster legs of 2026-09-30, 32768 particles,
-    one distinct float32 value, 0) and read from the source for 0 and 3. A
-    median test alone passes the zero shape, because zero is below the clamp,
+    first snapshot is written. Under the scheme that sets it in the snapshot
+    hook (2) it reads exactly zero for every particle; that is MEASURED for
+    scheme 2 (both cluster legs of 2026-09-30, 32768 particles, one distinct
+    float32 value, 0). A median test alone passes the zero shape, because zero is below the clamp,
     so strict positivity is required as well.
 
     Parameters
@@ -1639,7 +1659,7 @@ def float_divergence_pull(
     """Return one step's largest relative transport pull on a moment's ``u``.
 
     The relaxation update is double, but the flux divergence it subtracts is
-    still float end to end (radiation_isrf.c:1221-1261), so each step's
+    still float end to end (radiation_isrf.c:1207-1247), so each step's
     increment carries a float32 relative error. This returns the increment's
     own size relative to ``u``, ``max_i |dt * div_i / u_i|``, which the
     caller multiplies by ``FLOAT32_EPS`` and the run's step count. None when
@@ -1785,11 +1805,11 @@ def check_band_edge_ratio(
     trapezoid = abs(delta_lambda) * float(errors["trapezoid_bound"][-1])
 
     # c_hyp and dt_prev are shared by both moments (one operator,
-    # radiation_isrf.c:794-797) and cancel in the ratio to first order, so
+    # radiation_isrf.c:780-783) and cancel in the ratio to first order, so
     # they do not enter here. What survives is the FLOAT operands that
     # differ BETWEEN the two moments feeding the double relaxation update:
     # each moment's own flux divergence and dissipation source
-    # (radiation_isrf.c:1221-1261 is still float end to end). Bounded by
+    # (radiation_isrf.c:1207-1247 is still float end to end). Bounded by
     # eps_f * n_steps * the divergence's own relative pull on u this step,
     # read from the run's own snapshots, never fitted.
     float_terms = []
@@ -2178,8 +2198,8 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # non-cosmological run cannot inflate it.
             # Which statement is true depends on the SCHEME, not on which
             # ledger this file chose: scheme 2's operators conserve sum m u
-            # directly, the variable-c schemes conserve sum m u / c_hyp and
-            # their weight cancels only because it is uniform here, and the
+            # directly, scheme 4 conserves sum m u / c_hyp and its weight
+            # cancels only because it is uniform here, and the
             # two coincide exactly when it is.
             if c_hyp_scheme == 2:
                 why = "this scheme's operators conserve sum m u directly"
@@ -2815,7 +2835,7 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       luminosity is constant over the run;
     - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
-      (radiation_isrf.c:1585 and radiation_get_dust_extinction_factor);
+      (radiation_isrf.c:1571 and radiation_get_dust_extinction_factor);
     - ``u`` carries no float32 term, being a double in ``struct part`` and in
       the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:165);
     - this check's own float64 summation of ``n_lit`` terms costs

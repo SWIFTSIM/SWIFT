@@ -22,7 +22,7 @@ nH2_ratio_default=1e-8
 h2_self_shielding_default=3
 propagation_default=1
 c_hyp_pin_default=0          # km/s, 0 = off
-c_hyp_scheme_default=4       # 4 = shipped closure, 2 = one fixed speed, Courant-limited
+c_hyp_scheme_default=4       # 4 = kernel-local closure, 2 = one fixed speed, Courant-limited
 c_hyp_fraction_default=0     # scheme 2's speed as a fraction of c; also sets the timestep
 disable_cooling_default=0    # GrackleCooling:disable_cooling_for_debugging
 star_mass_default=0          # Msun, 0 = no star

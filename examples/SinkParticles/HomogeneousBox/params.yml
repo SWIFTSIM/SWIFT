@@ -99,7 +99,7 @@ GEARFeedback:
   ISRF_propagation: 0                                       # Run the hyperbolic M1 propagation update on top of injection + receiver-side extinction. Only meaningful when with_interstellar_radiation_field is on. (Default: 0)
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_extinction_path_in_kernel_radii: 1.0                 # Extinction path length, in kernel support radii. Read only when ISRF_extinction_path is constant_kernel_path. (Default: 1.0)
-  ISRF_c_hyp_scheme: 4                                      # ISRF hyperbolic propagation speed/operator scheme (0-4, see feedback_properties.h). Only meaningful when ISRF_propagation is on. (Default: 4)
+  ISRF_c_hyp_scheme: 4                                      # ISRF hyperbolic propagation scheme: 2 (fixed fraction of c) or 4 (kernel-local speed, reduced-flux operators); see parameter_example.yml. Only meaningful when ISRF_propagation is on. (Default: 4)
   ISRF_c_hyp_margin: 0.5                                    # Stability-margin coefficient C_hyp in the ISRF_c_hyp_scheme closure. Only meaningful when ISRF_propagation is on. (Default: 0.5)
   ISRF_c_hyp_pin_for_debugging: 0                           # Debug/test only: pin every particle's c_hyp to this fixed value instead of the formula. Never set in a production run. (Default: 0)
   ISRF_c_hyp_fixed_fraction_of_c: 0                         # Uniform c_hyp = f*c, only used when ISRF_c_hyp_scheme is 2 (fixed fraction). (Default: 0)

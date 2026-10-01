@@ -19,7 +19,7 @@
 """
 The ISRF energy ledger: the only valid running reference for the LW/PE
 propagation's carried band energy. It does not depend on any particular
-`c_hyp` scheme (uniform pin, per-particle, kernel-local, ...): it is built
+`c_hyp` scheme (uniform pin, fixed fraction, kernel-local): it is built
 from `radiation_end_force_propagation`'s own exact-relaxation update
 (`src/feedback/GEAR/radiation_isrf.c`), so it is valid for any arm that
 runs that same update, and is meant to be re-run unchanged across

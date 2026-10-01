@@ -1149,18 +1149,20 @@ separated on the fixtures tested so far.
 \paragraph{Speed definitions tested, and the default chosen among them.}
 Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
 operators were implemented as selectable runtime schemes
-(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}), against scheme $0$ (the
-formula above, unmodified operators) as baseline: a kernel-local speed
+(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}) and compared, against scheme $0$
+(the formula above, unmodified operators) as baseline. Schemes $0$, $1$ and
+$3$ have since been removed, and a value other than $2$ or $4$ stops the run;
+the comparison is kept as the record of why $4$ is the default. The candidates: a kernel-local speed
 rule that takes the slowest step among a particle and every neighbour in
 its kernel (scheme $1$); a fixed global fraction of $c$, independent of
 $h$ or the time step (scheme $2$); a ``consistent variable-$c$''
 reformulation that changes which variable the pairwise operators carry so
 that every operator becomes the per-particle-speed generalisation of the
-reduced-speed-of-light method, reducing bit-for-bit to the shipped scheme
+reduced-speed-of-light method, reducing bit-for-bit to scheme $0$
 under a uniform speed (scheme $3$,
 Section~\ref{sec:fuv-variable-c-operators}); and the combination of the
 kernel-local speed with that operator rewrite (scheme $4$). All four
-measurably reduce pathway 1 relative to shipped on every fixture tested;
+measurably reduce pathway 1 relative to scheme $0$ on every fixture tested;
 scheme $4$ additionally clears most of Pathway 2's amplitude defect,
 which schemes $1$ and $2$ alone do not touch. None of $1$, $2$, $3$ alone
 clears its own pre-registered acceptance bar: each fails at least one
@@ -1186,10 +1188,10 @@ slow, a configuration a uniform-resolution test fixture cannot exercise
 but a real galaxy's density contrast can, so it reduces pathway 1
 without removing it ``by construction''.
 
-\textbf{Scheme $4$ is the shipped default}, as of \code{a53ab8311}: of
+\textbf{Scheme $4$ is the default}, as of \code{a53ab8311}: of
 the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
 measured (two of them exact zeros) and the best amplitude,
-$1.088\times$ the uniform-speed reference against the shipped scheme's
+$1.088\times$ the uniform-speed reference against scheme $0$'s
 $3.06\times$, at bit-identical particle-update cost (neither the
 kernel-local speed formula nor the operator rewrite alone changes what
 work is done per particle). That reference is not an analytic solution.
@@ -1210,11 +1212,10 @@ the speed field: an error of zeroth order in the neighbour ratio
 $c_{{\rm hyp},j}/c_{{\rm hyp},i}$, not in $c_{\rm hyp}$ itself, so
 lowering a uniform $c_{\rm hyp}$ would not reduce it. Both arms have
 settled by $t_{\rm end}$ on this fixture, so neither ratio is a
-transient. Scheme $0$ remains reachable by setting
-\code{ISRF\_c\_hyp\_scheme} explicitly. \textbf{This ranking rests on
+transient. \textbf{This ranking rests on
 three fixtures only}, which is not by itself sufficient to fix a
-default. \textbf{The default may yet be reverted to scheme $0$}; this
-section reports the current shipped choice and its
+default. \textbf{The default may yet be reconsidered}; this
+section reports the current choice and its
 measured justification, not a closed validation.
 
 \paragraph{Open question: is pathway 1 the whole story?} A same-day
@@ -1410,8 +1411,7 @@ the staggered integrator's stability (Section~\ref{sec:fuv-time}) needs
 more than this weaker, $\mathbf D_i=\mathbf D_j$-only adjointness is not
 resolved here.
 
-\subsubsection{The consistent variable-speed operators (schemes 3 and
-4)}
+\subsubsection{The consistent variable-speed operators (scheme 4)}
 \label{sec:fuv-variable-c-operators}
 
 Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} are exact only for
@@ -1466,9 +1466,9 @@ antisymmetric-under-$i\leftrightarrow j$ coefficient; checked directly by
 suite). The M1 closure
 tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$ under this
 scheme, since $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm
-hyp},i}u_i)$ identically, the same physical reduced flux $f$ the shipped
-scheme computes from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
-rewritten operator reduces bit-for-bit to its shipped counterpart
+hyp},i}u_i)$ identically, the same physical reduced flux $f$ the true-flux
+operators compute from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
+rewritten operator reduces bit-for-bit to its true-flux counterpart
 whenever $c_{{\rm hyp},i}$ is spatially uniform, asserted by
 \code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
 suite). Agreement
@@ -1486,12 +1486,11 @@ untouched by any of this, holding to $10^{-8}$ or better against its own
 $10^{-5}$ bar on exactly those builds: what contraction moves is a
 bit-exact comparison, not the physics.
 
-Scheme $3$ keeps $c_{{\rm hyp},i}$ at Eq.~\ref{eq:fuv-chyp}'s own formula
-and applies only this operator rewrite; scheme $4$ additionally uses the
-kernel-local speed of Section~\ref{sec:fuv-chyp-heterogeneity}'s scheme
-$1$. Scheme $4$ is the shipped default as of \code{a53ab8311}; scheme $0$
-(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula} unmodified) remains
-reachable by setting \code{GEARFeedback:ISRF\_c\_hyp\_scheme} explicitly
+Scheme $4$ pairs this operator rewrite with the kernel-local speed of
+Section~\ref{sec:fuv-chyp-heterogeneity}. It is the default as of
+\code{a53ab8311}; the unmodified operators
+(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) remain the form scheme
+$2$ (a fixed fraction of $c$) uses
 (Section~\ref{sec:fuv-chyp-heterogeneity} gives the full ranking and the
 default's caveats).
 

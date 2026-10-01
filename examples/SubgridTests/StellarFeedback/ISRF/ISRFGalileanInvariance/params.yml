@@ -117,7 +117,7 @@ GEARFeedback:
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_propagation: 1                                       # Run the hyperbolic ISRF propagation update
-  ISRF_c_hyp_scheme: 4                                      # Propagation-speed closure (default). 2 uses one fixed speed for the whole box
+  ISRF_c_hyp_scheme: 4                                      # Propagation scheme. 4 = kernel-local speed (default), 2 = one fixed speed for the whole box
   ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
   ISRF_c_hyp_fixed_fraction_of_c: 0                         # Scheme 2's speed as a fraction of c; must be positive there and 0 otherwise
   ISRF_c_hyp_pin_for_debugging: 0                           # Debug: fixed c_hyp override (default)

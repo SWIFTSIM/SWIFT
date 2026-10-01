@@ -17,8 +17,8 @@ if [ "$config" = "galilean" ]; then
     time_end=${time_end:=5e-5}
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=1e-5}
-    c_hyp_pin=${c_hyp_pin:=0}          # 0: shipped closure c_hyp = C_hyp*h/dt
-    c_hyp_scheme=${c_hyp_scheme:=4}    # 4: shipped closure. 2: one fixed speed, Courant-limited
+    c_hyp_pin=${c_hyp_pin:=0}          # 0: kernel-local closure c_hyp = C_hyp*h/dt_max
+    c_hyp_scheme=${c_hyp_scheme:=4}    # 4: kernel-local closure. 2: one fixed speed, Courant-limited
     c_hyp_fraction=${c_hyp_fraction:=0}  # scheme 2's speed, as a fraction of c. Also sets dt
     alpha_max=${alpha_max:=0.5}
     alpha_floor=${alpha_floor:=0.5}

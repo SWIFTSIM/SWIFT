@@ -162,7 +162,7 @@ def measure_c_hyp(run):
     Read from the recorded ``HyperbolicPropagationSpeeds`` when the snapshots
     carry it, because that is the speed the module actually used under every
     scheme. The ``margin*h/dt`` closure is the fallback for a build that does
-    not write the field, and it is only the speed under the schemes that derive
+    not write the field, and it is only the speed under the scheme that derives
     it that way: with a fixed speed the step is Courant-limited and then rounded
     DOWN to a power-of-two time bin, so ``margin*h/dt`` overestimates it, by up
     to about a factor of two.
