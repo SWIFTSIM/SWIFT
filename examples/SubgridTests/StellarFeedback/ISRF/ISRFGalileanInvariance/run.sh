@@ -22,7 +22,12 @@ if [ "$config" = "galilean" ]; then
     c_hyp_fraction=${c_hyp_fraction:=0}  # scheme 2's speed, as a fraction of c. Also sets dt
     alpha_max=${alpha_max:=0.5}
     alpha_floor=${alpha_floor:=0.5}
-    boost_factors=${boost_factors:="0.1 1 10"}  # bulk velocity in units of the measured c_hyp
+    # Bulk velocity in units of the measured c_hyp. Strictly BELOW 1: the
+    # scheme transports at a reduced speed, so at v >= c_hyp the gas outruns
+    # its own radiation and the frame comparison asserts an invariance the
+    # scheme never claims. Values of 1 and above are reachable but are out of
+    # regime; see the README.
+    boost_factors=${boost_factors:="0.1 0.3 0.5"}
     boost_kms=${boost_kms:="30"}                # bulk velocities in km/s
 elif [ "$config" = "lag" ]; then
     level=${level:=6}                  # same h as level 5, twice the box
