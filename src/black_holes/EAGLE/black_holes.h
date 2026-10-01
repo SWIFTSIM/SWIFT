@@ -879,7 +879,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double mass_rate = (1. - epsilon_r) * accr_rate;
   const double luminosity = epsilon_r * accr_rate * c * c;
 
-  /* Compute NSC growth rate based on mass deficit from *assumed* relation with BH mass */
+  /* Integrate forward in time */
+  bp->subgrid_mass += mass_rate * dt;
+  bp->total_accreted_mass += mass_rate * dt;
+  bp->energy_reservoir += luminosity * epsilon_f * dt;
+
+  /* Now also compute NSC growth rate based on mass deficit from *assumed* relation with BH mass */
   /* We use scaling relations M_BH - M_gal (Greene+20, section 8.2) and M_gal - M_NSC (Neumayer+20)*/
   const double logm_gal = 0.72 * log10f(bp->subgrid_mass) - 5.44;
   const double m_gal = pow(10, logm_gal) * 3e10;
@@ -892,12 +897,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->nsc_mass_deficit = 0.f;
   }
 
-  /* Integrate forward in time */
-  bp->subgrid_mass += mass_rate * dt;
-  bp->total_accreted_mass += mass_rate * dt;
-  bp->energy_reservoir += luminosity * epsilon_f * dt;
+  /* Accrete gas mass onto NSC */
+  /* Note: following the convention of the code, if the combined
+   * subgrid mass and nsc mass are less than the dynamical mass,
+   * 'the BH is still accreting from its (assumed) subgrid gas 
+   * mass reservoir left over when it was formed.' Only after the 
+   * subgrid masses have catched up to the dynamical mass, nibbling 
+   * will start taking place. */
+  bp->nsc_mass += bp->nsc_mass_deficit;
 
-  if (props->use_nibbling && bp->subgrid_mass < bp->mass) {
+  if (props->use_nibbling && (bp->subgrid_mass + bp->nsc_mass) < bp->mass) {
     /* In this case, the BH is still accreting from its (assumed) subgrid gas
      * mass reservoir left over when it was formed. There is some loss in this
      * due to radiative losses, so we must decrease the particle mass
