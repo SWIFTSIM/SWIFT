@@ -1068,7 +1068,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * #radiation_dissipation_alpha_floor_band's aim on a particle whose flux is
  * already at the discrete fixed point of
  * #radiation_end_gradient_propagation's own UNLIMITED flux-update recurrence
- * (`F ~= -C*grad_u`, `C = c_hyp/w`, `w = kappa+lambda*H/c`, i.e. before
+ * (`F ~= -C*grad_u`, `w = kappa+lambda*H/c`, i.e. before
  * #radiation_apply_flux_limiter_band clamps it), where the floor buys no
  * protection and only costs accuracy; on a fresh front or an unsettled
  * particle (`tau = 1/(c_hyp*w) >> dt`) it keeps the full floor instead
@@ -1077,7 +1077,14 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * theory/GEAR/Radiation/02_fuv_isrf.tex, "The flux-relaxation-residual
  * gate".
  *
- * `R = |w*F + c_hyp*grad_u| / (w*|F| + c_hyp*|grad_u|)` (the `|F+C*grad_u|`
+ * `C` DEPENDS ON WHICH VARIABLE specific_flux holds, because the two have
+ * different fixed points: `C = c_hyp/w` for the true flux, and `C = 1/w` for
+ * the reduced flux `Ft = F/c_hyp` that #isrf_c_hyp_consistent_variable_c
+ * selects, whose recurrence carries one power of `c_hyp` less. So, with
+ * `g = c_hyp` for the true flux and `g = 1` for the reduced one (@p
+ * reduced_flux),
+ *
+ * `R = |w*F + g*grad_u| / (w*|F| + g*|grad_u|)` (the `|F+C*grad_u|`
  * fixed-point form multiplied through by `w` so no intermediate overflows
  * at small `kappa`), `s = min(1, (R/eps_R)^2)`: `R=0` and `s=0` exactly at
  * the fixed point, `R=1` and `s=1` whenever exactly one of `F`, `grad_u` is
@@ -1114,15 +1121,16 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * moment's coefficient, exactly as it already passes that moment's `kappa`
  * via @p kappa.
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
- * @param reduced_flux Whether #feedback_isrf_moment_data.specific_flux holds the
- * REDUCED flux `Ft = F/c_hyp` rather than the true flux, i.e.
+ * @param reduced_flux Whether #feedback_isrf_moment_data.specific_flux holds
+ * the REDUCED flux `Ft = F/c_hyp` rather than the true flux, i.e.
  * #isrf_c_hyp_consistent_variable_c. The two store different variables and have
  * different fixed points, so the residual must be formed differently: with the
- * true flux the recurrence coefficient is `c_hyp^2*dt*phi` and the fixed point is
- * `w*F + c_hyp*grad_u = 0`, while with the reduced flux the coefficient loses one
- * power of `c_hyp` and the fixed point is `w*Ft + grad_u = 0`. Passing the wrong
- * one leaves a factor of `c_hyp` on the gradient term, which is dimensionally
- * inhomogeneous and drives `R` to 1 on an already-relaxed particle.
+ * true flux the recurrence coefficient is `c_hyp^2*dt*phi` and the fixed point
+ * is `w*F + c_hyp*grad_u = 0`, while with the reduced flux the coefficient
+ * loses one power of `c_hyp` and the fixed point is `w*Ft + grad_u = 0`.
+ * Passing the wrong one leaves a factor of `c_hyp` on the gradient term, which
+ * is dimensionally inhomogeneous and drives `R` to 1 on an already-relaxed
+ * particle.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
 __attribute__((always_inline)) INLINE static float
