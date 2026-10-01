@@ -71,8 +71,12 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                           const struct stellar_model *sm);
 
 /*! 1 when #feedback_props.ISRF_c_hyp_scheme selects
- * #isrf_c_hyp_scheme_consistent_variable_c, 0 for every other scheme. Set
- * once by feedback_props_init() (feedback_properties.h) and read by the
+ * #isrf_c_hyp_scheme_kernel_local_reduced_flux (the stored flux is the
+ * reduced flux), 0 for #isrf_c_hyp_scheme_fixed_fraction (the stored flux is
+ * the true flux). Set once by
+ * feedback_props_set_isrf_c_hyp_consistent_variable_c(), called from
+ * feedback_props_init() and feedback_struct_restore()
+ * (feedback_properties.h), and read by the
  * pairwise ISRF force-loop hooks (radiation_propagation_iact.h), which
  * cannot reach #feedback_props there: every hydro interaction, including
  * these, shares one fixed (r2, dx, hi, hj, pi, pj, a, H) signature

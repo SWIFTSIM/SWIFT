@@ -1462,15 +1462,14 @@ float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
 }
 
 /**
- * @brief Kernel-local hyperbolic propagation speed, see
- * #feedback_part_data.c_hyp. Thin dispatch wrapper, same reasoning as
- * #feedback_get_part_u_PE.
+ * @brief Hyperbolic propagation speed, see #feedback_part_data.c_hyp. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
- * Shared by both bands, and physical: built from the physical smoothing
- * length and a physical timestep.
+ * Shared by both bands, and physical: a physical speed, whichever scheme
+ * (#isrf_c_hyp_scheme) set it.
  *
  * @param p The #part to query.
- * @return Kernel-local hyperbolic propagation speed.
+ * @return Hyperbolic propagation speed.
  */
 float feedback_get_part_c_hyp(const struct part *p) {
   return p->feedback_data.c_hyp;
@@ -1677,19 +1676,34 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
+  /* The flat block read above bypasses feedback_props_init()'s parse-time
+   * check of the scheme, so a restart written by a run that used a removed
+   * scheme would otherwise resume with a speed rule nothing sets. The field
+   * is only meaningful, and only validated at parse time, when the
+   * interstellar radiation field is on. */
+  if ((feedback->radiation_policy & radiation_policy_photoelectric_heating) &&
+      feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
+      feedback->ISRF_c_hyp_scheme !=
+          isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    error(
+        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d, which is "
+        "not 2 (fixed fraction of c) or 4 (kernel-local speed with "
+        "reduced-flux operators). The values 0, 1 and 3 were removed, and a "
+        "restart written with one of them cannot be resumed. Rerun the "
+        "simulation from its initial conditions with scheme 2 or 4.",
+        feedback->ISRF_c_hyp_scheme);
+
   /* #isrf_c_hyp_consistent_variable_c is a process-global, not a
    * feedback_props field, so the flat block read above does not touch it;
    * it stays at its zero-initialized value unless re-derived here from the
    * restored #feedback_props.ISRF_c_hyp_scheme, exactly as
    * feedback_props_init() derives it on a fresh start. Without this, a
-   * restarted scheme-3/4 run keeps the speed axis (ISRF_c_hyp_scheme) but
-   * silently loses the operator axis, reading the stored reduced flux as
+   * restarted scheme-4 run keeps the speed rule (ISRF_c_hyp_scheme) but
+   * silently loses the operator form, reading the stored reduced flux as
    * if it were physical. See #isrf_c_hyp_consistent_variable_c's own
    * doxygen (radiation_isrf.h). */
-  isrf_c_hyp_consistent_variable_c =
-      (feedback->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
-       feedback->ISRF_c_hyp_scheme ==
-           isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+  feedback_props_set_isrf_c_hyp_consistent_variable_c(
+      feedback->ISRF_c_hyp_scheme);
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation

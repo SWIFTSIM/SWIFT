@@ -169,10 +169,11 @@ void radiation_first_init_part(struct part *restrict p) {
  * cache this step's per-band absorption rate, cache a stable comoving-density
  * snapshot the propagation loops need (see #feedback_part_data.rho_prev's own
  * doxygen for why), cache this step's own physical timestep
- * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 0
- * (shipped) or 2 (fixed-fraction), #feedback_part_data.c_hyp itself (scheme 1,
- * kernel-local, defers c_hyp to radiation_end_density_propagation, once the
- * density loop's neighbour-bin maximum is known), zero every per-step
+ * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 2
+ * (#isrf_c_hyp_scheme_fixed_fraction), #feedback_part_data.c_hyp itself
+ * (scheme 4, kernel-local, defers c_hyp to
+ * radiation_end_density_propagation, once the density loop's neighbour-bin
+ * maximum is known), zero every per-step
  * gradient-loop accumulator, and, for active particles only, draw down this
  * step's
  * #feedback_isrf_moment_data.u_source_rate from
@@ -256,47 +257,33 @@ void radiation_snapshot_part_propagation(struct part *p,
     dt_phys = (float)get_timestep(p->time_bin, e->time_base);
   }
 
-  /* Schemes "kernel-local" and "kernel-local + variable-c" both defer
-   * c_hyp entirely to radiation_end_density_propagation, once the density
-   * loop's neighbour-bin maximum (dt_max(i)) is known; drift only caches
-   * dt_i here (below). The other schemes decide c_hyp now, from dt_i, and
-   * radiation_end_density_propagation is a no-op for them, so this branch
-   * is the ENTIRE definition of c_hyp for schemes 0, 2 and 3, bit-identical
-   * to the shipped formula when scheme is 0. */
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-      e->feedback_props->ISRF_c_hyp_scheme !=
-          isrf_c_hyp_scheme_kernel_local_plus_variable_c) {
-    const float h_phys = (float)e->cosmology->a * p->h;
-    float c_hyp;
-    if (e->feedback_props->ISRF_c_hyp_scheme ==
-        isrf_c_hyp_scheme_fixed_fraction) {
-      /* Uniform reduced light-speed candidate: every particle gets the
-       * same c_hyp, independent of h_phys/dt_phys above. The receiver-side
-       * CFL this removes coverage for is instead enforced by a dedicated
-       * timestep term, see radiation_isrf_part_timestep(). */
-      c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
-              (float)e->physical_constants->const_speed_light_c;
-    } else if (dt_phys <= 0.f) {
-      /* h_phys/dt_phys would overflow float32 once h_phys exceeds about 8
-       * internal length units at this degenerate dt_phys. The else
-       * branch's own min(c_hyp, c) would only absorb that because
-       * min(+inf, c) resolves to c, which -ffast-math does not guarantee
-       * (swift-knowledge.md). Return that same intended value directly
-       * instead, without ever performing the division. */
-      c_hyp = (float)e->physical_constants->const_speed_light_c;
-    } else {
-      c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
-      c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
-    }
-    /* The debug pin is applied after the light-speed clamp above and is
-     * not itself clamped: a pin value above c gives a superluminal
-     * propagation speed on purpose, for isolating dispersion behaviour at
-     * chosen values of the Courant number. Never set it above c outside
-     * of that use. */
+  /* The kernel-local scheme defers c_hyp entirely to
+   * radiation_end_density_propagation, once the density loop's
+   * neighbour-bin maximum (dt_max(i)) is known; drift only caches dt_i
+   * here (below). The fixed-fraction scheme decides c_hyp now, and
+   * radiation_end_density_propagation is a no-op for it, so this branch is
+   * the ENTIRE definition of c_hyp for that scheme. Any other value is a
+   * corrupted or unvalidated #feedback_props: stop rather than leave c_hyp
+   * unset. */
+  const int c_hyp_scheme = e->feedback_props->ISRF_c_hyp_scheme;
+  if (c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction) {
+    /* Uniform reduced light-speed candidate: every particle gets the same
+     * c_hyp, independent of h and of dt_phys above. The receiver-side CFL
+     * this removes coverage for is instead enforced by a dedicated
+     * timestep term, see radiation_isrf_part_timestep(). */
+    float c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
+                  (float)e->physical_constants->const_speed_light_c;
+    /* The debug pin is not clamped: a pin value above c gives a
+     * superluminal propagation speed on purpose, for isolating dispersion
+     * behaviour at chosen values of the Courant number. Never set it above
+     * c outside of that use. */
     if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
       c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
     p->feedback_data.c_hyp = c_hyp;
+  } else if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux) {
+    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
+          c_hyp_scheme);
   }
   p->feedback_data.dt_prev = dt_phys;
 
@@ -345,18 +332,17 @@ void radiation_snapshot_part_propagation(struct part *p,
  * candidate (#feedback_props.ISRF_c_hyp_scheme ==
  * #isrf_c_hyp_scheme_fixed_fraction, magnitude
  * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c): every particle's c_hyp
- * is fixed at `f*c` there, independent of h/dt, so unlike the other two
- * schemes' `c_hyp_i` (each derived from a timestep) this speed carries
+ * is fixed at `f*c` there, independent of h/dt, so unlike the kernel-local
+ * scheme's `c_hyp_i` (derived from a timestep) this speed carries
  * no built-in guarantee that `f*c*dt_i <= C_hyp*h_i`. This returns that
  * bound directly, `C_hyp*h_i/(f*c)`, following the same #ISRF_c_hyp_margin
- * used by the shipped formula.
+ * used by the kernel-local formula.
  *
  * FLT_MAX (no constraint) whenever: the fixed fraction is off (0, the
- * default; the other two schemes need no such term, since their own
+ * default; the kernel-local scheme needs no such term, since its own
  * c_hyp is already derived from a timestep); ISRF_propagation is off (no
- * flux transport,
- * so no receiver-side CFL to protect); the debug off-switch is set
- * (diagnostic-only, see that parameter's doxygen); or this particle is
+ * flux transport, so no receiver-side CFL to protect); the debug off-switch is
+ * set (diagnostic-only, see that parameter's doxygen); or this particle is
  * outside the narrow eligible set below.
  *
  * Eligible set (narrowest defensible, not "every particle"): this
@@ -422,8 +408,8 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
  * (reset to this particle's own #part.time_bin, so a particle with no
  * neighbours this iteration still yields `dt_max(i) = dt_i`; read only by
  * the kernel-local scheme, but accumulated unconditionally (one byte
- * compare per pair), so switching #feedback_props.ISRF_c_hyp_scheme at
- * runtime needs no separate code path here). Mirrors chemistry_init_part's
+ * compare per pair), so the fixed-fraction scheme needs no separate code
+ * path here). Mirrors chemistry_init_part's
  * own per-iteration reset (called from the same sites: part_init.h and the
  * ghost h-iteration redo path), so it is safe to call once or several times
  * per step. The force-loop accumulators are zeroed once per step elsewhere:
@@ -462,30 +448,29 @@ void radiation_init_part_propagation(struct part *p) {
  * case (#max_ngb_time_bin equal to #part.time_bin, i.e. every neighbour on
  * this particle's own clock): reuses #dt_prev, already this step's `dt_i`
  * from the drift, rather than a second call with the same bin, so the
- * result is bit-identical to the shipped per-particle scheme there,
- * independent of codegen. Only the same-bin branch can give `dt_max == 0`:
- * before this particle's first drift has ever run (the initial,
+ * result does not depend on codegen. Only the same-bin branch can give `dt_max
+ * == 0`: before this particle's first drift has ever run (the initial,
  * pre-any-step gradient pass), #dt_prev is still its first-init 0.f. The
  * cross-bin branch cannot: it is taken only when #max_ngb_time_bin exceeds
  * #part.time_bin, so its own get_integer_timestep() is strictly positive.
  * Either way, a zero `dt_max` is branched on explicitly below rather than
  * floored and divided.
  *
- * No-op unless #feedback_props.ISRF_c_hyp_scheme is
- * #isrf_c_hyp_scheme_kernel_local or
- * #isrf_c_hyp_scheme_kernel_local_plus_variable_c: for the other schemes,
- * drift-time #radiation_snapshot_part_propagation already decided #c_hyp
- * (and #feedback_reset_part already cached the M1 closure built from it),
- * and this function must leave that alone, bit-identical to the
- * behaviour for the shipped scheme. `dt_max(i)`
+ * Acts only for #feedback_props.ISRF_c_hyp_scheme
+ * #isrf_c_hyp_scheme_kernel_local_reduced_flux. For
+ * #isrf_c_hyp_scheme_fixed_fraction, drift-time
+ * #radiation_snapshot_part_propagation already decided #c_hyp (and
+ * #feedback_reset_part already cached the M1 closure built from it), and
+ * this function leaves that alone. Any other scheme value stops the run
+ * with error(). `dt_max(i)`
  * covers only the neighbours the ISRF density loop reached, i.e. those
  * inside `H_i`; see #feedback_part_data.c_hyp for the `H_i <= r < H_j`
  * pair class the resulting receiver bound does not cover. Under
  * #isrf_c_hyp_consistent_variable_c the rebuilt M1 closure's own `c_M` is
  * pinned to 1 regardless of `c_hyp` (see #radiation_cache_m1_closure_part's
- * doxygen), so for scheme 4 this function still updates `c_hyp` itself
- * (read by the pairwise operators' receiver-side multiply), even though the
- * closure rebuild that follows does not change value because of it.
+ * doxygen), so this function still updates `c_hyp` itself (read by the
+ * pairwise operators' receiver-side multiply), even though the closure
+ * rebuild that follows does not change value because of it.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -493,10 +478,11 @@ void radiation_init_part_propagation(struct part *p) {
 void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->ISRF_propagation) return;
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-      e->feedback_props->ISRF_c_hyp_scheme !=
-          isrf_c_hyp_scheme_kernel_local_plus_variable_c)
-    return;
+  const int c_hyp_scheme = e->feedback_props->ISRF_c_hyp_scheme;
+  if (c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction) return;
+  if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
+          c_hyp_scheme);
 
   struct feedback_part_data *fd = &p->feedback_data;
 

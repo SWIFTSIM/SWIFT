@@ -441,12 +441,16 @@ struct feedback_part_data {
       point, so every term the placeholder feeds into is itself 0. */
   float rho_prev;
 
-  /*! This particle's kernel-local hyperbolic propagation speed
-      (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
+  /*! This particle's hyperbolic propagation speed. Under
+      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`, set at drift by
+      radiation_snapshot_part_propagation. Under
+      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is the kernel-local
+      speed (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
       timestep among this particle and every neighbour in its kernel,
       #max_ngb_time_bin), cached for active particles by
       radiation_end_density_propagation (the density ghost, after the
-      h-iteration converges). The receiver's CFL condition
+      h-iteration converges), and the rest of this comment describes that
+      scheme. The receiver's CFL condition
       `c_i*dt_j <= C_hyp*h_i` holds by construction for every neighbour j
       that entered #max_ngb_time_bin, which is every j inside `H_i`.
 
