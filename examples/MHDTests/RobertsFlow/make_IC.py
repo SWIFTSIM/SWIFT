@@ -40,6 +40,8 @@ def spectrum_powerlaw(k, n, kmin, kmax):
         mask = ( (k >= kmin) & (k <= kmax))
         P[mask] = 1.0
 
+    print(k, kmin, kmax)
+
     return P
 
 

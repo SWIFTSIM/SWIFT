@@ -116,7 +116,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
     # if specific path to some libraries is needed, set this up here
     if path_to_lib == True:
-        path_to_libraries = " --with-fftw=/opt/homebrew/Cellar/fftw/3.3.10_1/ --with-gsl=/opt/homebrew/Cellar/gsl/2.7.1/ --with-hdf5=/opt/homebrew/Cellar/hdf5/1.14.3/"
+        path_to_libraries = " --with-fftw=/opt/homebrew/fftw --with-hdf5=/opt/homebrew/opt/hdf5/bin/h5cc"
     else:
         path_to_libraries = ""
 
@@ -198,7 +198,7 @@ def make_IC(phys_parameters, IAfile):
         # Construct command to make ICs with selected parameters
         command = (
             " python3 "
-            + "make_IC_spec.py"
+            + "make_IC.py"
             + v0
             + path
             + kv
