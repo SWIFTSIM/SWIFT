@@ -2148,12 +2148,18 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 f"the reference run's u_{band} drift is not finite -- "
                 "refusing to build a bar from a corrupted reference."
             )
+            # The reference run's own measured error is NOT folded in. A bar
+            # taken as a multiple of a measurement made on the runs it then
+            # judges is fitted to the data, which this project's protocol
+            # forbids and the operator has ruled against in terms: an honest
+            # red is worth more than a green bought that way. The reference
+            # run's error is still PRINTED, as a diagnostic.
         bar = (
             quantisation
             + trapezoid
             + step_end_and_lag
             + transfer_linearisation
-            + max(float_residual, 2.0 * measured_nc)
+            + float_residual
         )
         worst = float(np.max(np.abs(residual[ref_index:])))
         print(
@@ -2230,8 +2236,9 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  bar u_{band}: quantisation {quantisation:.2e} + trapezoid "
             f"{trapezoid:.2e} + step-end/lag {step_end_and_lag:.2e} + "
             f"transfer linearisation {transfer_linearisation:.2e} + "
-            f"max(float residual ({float_note}) {float_residual:.2e}, "
-            f"2 x non-cosmological {2.0 * measured_nc:.2e}) = {bar:.2e}"
+            f"float residual ({float_note}) {float_residual:.2e}"
+            f" = {bar:.2e}; the reference run's own error {measured_nc:.2e} is "
+            f"REPORTED and deliberately NOT in the bar"
         )
         if cosmo_decay:
             # Resolution self-test, not a bar term: nothing bounds the
@@ -2318,7 +2325,9 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 "clamp there. Extend the reference run's time_end."
             )
         measured_nc = np.interp(elapsed, ref_times, ref_error)
-    bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
+    # See (A1) above: the reference run's measured error is reported, not
+    # folded into the bar.
+    bar = budget + cosmo
 
     # Resolution self-test, matching the one (A1) already carries: a bar that
     # has grown to or above the signal it must discriminate gates nothing, and a
@@ -2476,7 +2485,8 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
             if cosmological
             else 0.0
         )
-        bar = max(budget, 2.0 * nc[band]) + cosmo
+        # See (A1): reported, not folded in.
+        bar = budget + cosmo
 
         # Resolution self-test, matching the one (A1) already carries: a bar that
         # has grown to or above the signal it must discriminate gates nothing, and a
@@ -2625,7 +2635,7 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
             return False
         # Reference error at the same elapsed times.
         ref_error = np.interp(t, ref["times"][1:], np.abs(ref["relative"]))
-        bar = np.maximum(bar, 2.0 * ref_error)
+        # See (A1): reported, not folded in. `ref_error` is printed below.
 
         # Resolution self-test, matching the one (A1) already carries: a bar that
         # has grown to or above the signal it must discriminate gates nothing, and a
