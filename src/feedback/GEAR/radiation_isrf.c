@@ -1114,13 +1114,23 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * moment's coefficient, exactly as it already passes that moment's `kappa`
  * via @p kappa.
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
+ * @param reduced_flux Whether #feedback_isrf_moment_data.specific_flux holds the
+ * REDUCED flux `Ft = F/c_hyp` rather than the true flux, i.e.
+ * #isrf_c_hyp_consistent_variable_c. The two store different variables and have
+ * different fixed points, so the residual must be formed differently: with the
+ * true flux the recurrence coefficient is `c_hyp^2*dt*phi` and the fixed point is
+ * `w*F + c_hyp*grad_u = 0`, while with the reduced flux the coefficient loses one
+ * power of `c_hyp` and the fixed point is `w*Ft + grad_u = 0`. Passing the wrong
+ * one leaves a factor of `c_hyp` on the gradient term, which is dimensionally
+ * inhomogeneous and drives `R` to 1 on an already-relaxed particle.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_dissipation_floor_relaxation_gate(const float F[3],
                                             const float grad_u[3], float c_hyp,
                                             float kappa, float H, float c,
-                                            float lambda, float eps_R) {
+                                            float lambda, float eps_R,
+                                            int reduced_flux) {
 
   if (eps_R <= 0.f) return 1.f;
   if (c_hyp <= 0.f) return 1.f;
@@ -1144,7 +1154,9 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
    * 1.1e-19 (internal units), which would report a small nonzero flux or
    * gradient as exactly zero and send a front to the quiescent branch. */
   const double w_d = w;
-  const double c_d = c_hyp;
+  /* The gradient's weight at the fixed point, which is `c_hyp` for the true
+     flux and 1 for the reduced one: see @p reduced_flux. */
+  const double c_d = reduced_flux ? 1. : (double)c_hyp;
   const double F_d[3] = {F[0], F[1], F[2]};
   const double G_d[3] = {grad_u[0], grad_u[1], grad_u[2]};
   const double wx = w_d * F_d[0] + c_d * G_d[0];
@@ -1350,7 +1362,8 @@ void radiation_end_gradient_propagation(struct part *p,
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
           F_old_stash[o], moment->grad_u, c_hyp, op->kappa, H, c,
-          lambda[radiation_isrf_operator_owner[o]], eps_R);
+          lambda[radiation_isrf_operator_owner[o]], eps_R,
+          isrf_c_hyp_consistent_variable_c);
       op->dissipation_alpha_floor =
           s * radiation_dissipation_alpha_floor_band(op->kappa, h_phys,
                                                      alpha_floor, eps_lambda);
