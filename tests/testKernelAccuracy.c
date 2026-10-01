@@ -19,12 +19,9 @@
 
 /**
  * @file testKernelAccuracy.c
- * @brief Compares the tabulated kernels of kernel_hydro.h with the exact
- * analytic expressions of Dehnen & Aly (2012), including the edge of the
- * support, the double-precision version and the hand-vectorised versions.
- *
- * The reference uses the (float) kernel_gamma of the header as the support,
- * which is the convention of the tables.
+ * @brief Compares the kernels of kernel_hydro.h (scalar, double and
+ * hand-vectorised versions) with the exact expressions of Dehnen & Aly
+ * (2012), using the float kernel_gamma of the header as the support.
  */
 
 /* Config parameters. */
@@ -61,10 +58,8 @@ static const float tol_vec_ulps = 8.f;    /* between implementations, ulps */
 static const double tol_norm = 1e-5;      /* integral of W over the support */
 static const double tiny = 1e-30; /* smallest value checked relatively */
 
-/* ------------------------------------------------------------------------- */
-/* Dehnen & Aly (2012), table 1: normalisation C and shape f(q), q = r / H.  */
-/* Written in terms of q and s = 1 - q (passed exactly to avoid cancellation */
-/* near the edge of the support).                                            */
+/* Dehnen & Aly (2012), table 1: normalisation C and shape f(q), q = r / H,
+ * with s = 1 - q passed exactly to avoid cancellation near the edge. */
 
 static double pos(const double x) { return x > 0. ? x : 0.; }
 
@@ -312,8 +307,7 @@ int main(int argc, char *argv[]) {
             ui, gamma_d - ui, dW, dWr, rel);
     }
 
-    /* Consistency between the scalar functions (same arithmetic; they can
-     * only differ by the compiler's choice of contraction / association) */
+    /* Consistency between the scalar functions (same arithmetic) */
     if (fabsf(W2 - W) > tol_vec_ulps * FLT_EPSILON * fmaxf(W, kernel_root))
       error("kernel_eval() and kernel_deval() disagree: u=%.9g %.9g %.9g", ui,
             W2, W);

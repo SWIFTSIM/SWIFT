@@ -3,36 +3,21 @@
 Usage:
     gen_kernel_hydro.py [--check] [path/to/kernel_hydro.h]
 
-Regenerates the kernel tables of src/kernel_hydro.h, i.e. the region between
-the "/* clang-format off */" and "/* clang-format on */" guards, from the exact
-definitions of the kernels. Everything outside that region is left untouched.
-Without a path the header is looked up relative to this script. With --check
-nothing is written and the exit status is 1 if the header is not up to date.
-
-The kernels are those of table 1 of Dehnen & Aly, MNRAS 425, 1068 (2012):
-W(r, h) = C / H^d f(r / H) with H = gamma h the compact support and
-gamma = H / h = 1 / (2 sigma) fixed by the second moment sigma^2 of the kernel
-(h = 2 sigma), so that a given resolution_eta gives the same number of
-neighbours for all kernels. gamma is computed exactly, written as a double
-literal and cast to float by the compiler; all tables are built for that
-FLOAT value of gamma, so that the support is identical in float and double.
-
-For each kernel and dimension, [0, gamma) is split into kernel_poly_ivals
-uniform sub-intervals and the kernel is stored on each as a polynomial in
-t = u - origin, with the normalisation folded in (kernel_poly_coeffs, highest
-degree first; a last all-zero row is selected for u >= gamma). The origin is
-one of the two ends of the sub-interval, the one giving the smaller
-condition number of Horner's scheme for W and dW/du: this is u = 0 for the
-first sub-interval (W(0) is then a table entry and dW/du has no cancellation
-at the centre) and the right end for all others, so the last origin is the
-support edge and W(gamma) = 0 exactly. Both ends being floats, t is exact in
-float arithmetic (Sterbenz). For the splines the sub-intervals coincide with
-or subdivide the natural branches. See the header for the choice of the
-number of sub-intervals.
-
-Every constant is computed exactly (sympy) and rounded ONCE to float or to
-double (mpmath, round to nearest even). kernel_poly_ivals_over_gamma is
-rounded down until no u < gamma maps to the zero row.
+Regenerates the kernel tables of src/kernel_hydro.h (the region between the
+clang-format off/on guards) from the exact kernel definitions of table 1 of
+Dehnen & Aly, MNRAS 425, 1068 (2012); the rest of the header is untouched.
+Without a path the header is found relative to this script. With --check
+nothing is written and the exit status is 1 if the tables are not current.
+The representation and the choice of sub-intervals are documented in the
+header; what matters here:
+  * gamma = H/h = 1 / (2 sigma) is computed exactly, written as a double
+    literal and cast to float by the compiler; the tables are built for that
+    FLOAT value so that float and double have the same support.
+  * The origin of each sub-interval is the end (0 or the right end, both
+    floats) with the smaller Horner condition number for W and dW/du.
+  * Every constant is computed exactly (sympy) and rounded once (mpmath,
+    nearest even); kernel_poly_ivals_over_gamma is rounded down until no
+    u < gamma maps to the zero row.
 
 Requires numpy, sympy and mpmath.
 
