@@ -45,9 +45,14 @@ self-shielding) has no closed form. It is compared between `redshift=0` and
 high redshift over 25 yr, where expansion does not change the physical state.
 The check equations, and the bars each one derives from the run's own
 discretisation, are in the docstrings of `isrf_cosmology_check.py` and
-`isrf_cosmology_h2_identity_check.py`. The two injection bars are the
-exception: fixed relative tolerances of 1e-5 and 1e-4 respectively, set in
-`isrf_cosmology_check.py` itself.
+`isrf_cosmology_h2_identity_check.py`. The `injection` bar is derived the same
+way, from the run's own step size, illuminated-neighbour count and float32
+widths, and the check prints each of its terms. The `injection_dusty` leg's
+band-ratio bar is derived the same way, from the run's own signal and the six
+float32 roundings of the reconstruction, and is also printed; `--dust-tol`
+overrides it with a fixed value and a negative value reports without gating. One
+fixed tolerance remains in that leg: a hard-coded 1e-5 on the bracket around the
+weighted mean of `exp(-tau)`, set in `isrf_cosmology_check.py` itself.
 
 ## Initial conditions
 `makeIC.py` takes physical values at the starting redshift and writes the
@@ -118,15 +123,19 @@ to be compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
 
-## The pinned free_field pair
+## The uniform-c_hyp free_field pair
 The ledger the band drift is measured on weights each particle by
-`1/c_hyp`, and an unpinned `c_hyp` is `margin*h/dt`, so it carries the
+`1/c_hyp`, and a varying `c_hyp` is `margin*h/dt`, so it carries the
 glass's own `h` spread. That makes the ledger mean move for a reason
-unrelated to conservation, which is why the unpinned run above is reported
-rather than gated. Pinning the propagation speed (`c_hyp_pin`, internal
-velocity units, the same mechanism `dust_absorption` uses) makes `c_hyp`
-one value across the box, the weight cancels, and the check then gates the
-band drift against its own float floor:
+unrelated to conservation, which is why the run above is reported rather
+than gated. One propagation speed across the whole box makes the weight
+cancel, and the check then gates the band drift against its own float
+floor. The check reads that uniformity from the recorded
+`HyperbolicPropagationSpeeds` itself, so either way of producing it works:
+`c_hyp_pin` (internal velocity units, the same mechanism
+`dust_absorption` uses), or `GEARFeedback:ISRF_c_hyp_scheme: 2` with
+`GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`, which is the one to use in a
+physics run because it imposes the Courant condition on the timestep.
 ```
 config=free_field redshift=0 c_hyp_pin=38.7902222 run_name=ff_pin_z0 ./run.sh
 config=free_field redshift=9 c_hyp_pin=38.7902222 run_name=ff_pin_z9 ./run.sh
@@ -149,6 +158,21 @@ so the prediction follows whichever value is pinned. At another `level`,
 post-startup snapshot and pin at that. A pinned run says nothing about a
 propagation speed that varies between neighbours, so run this pair in
 addition to the unpinned one, not instead of it.
+
+The fixed-speed form uses `ISRF_c_hyp_scheme: 2` instead of the pin, and is the
+one a physics run uses, because its speed sets the timestep through the Courant
+condition. It is a DIFFERENT speed from the pinned pair above, not the same one:
+at `c_hyp_fraction=3.3357e-4` the box runs at 100 km/s, which is 2.58 times the
+38.7902222 the pinned pair uses. `c_hyp_pin` stays 0, since the two are mutually
+exclusive, and the run takes as many steps as the Courant condition requires, so
+expect several times the pinned pair's step count:
+```
+config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z0 ./run.sh
+config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z9 ./run.sh
+python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z9/snap/snapshot_*.hdf5" \
+    --reference "ff_s2_z0/snap/snapshot_*.hdf5"
+```
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust

@@ -160,14 +160,13 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--dust-tol",
         type=float,
-        default=1e-4,
-        help="--dusty only: max allowed max_j |R_j| on the band-ratio gate G2 "
-        "(default: %(default)s). The residual is pinned to 0 by an identity "
-        "with no free parameters, so the only expected discrepancy is float32 "
-        "rounding, measured at ~3e-7 at this example's defaults. The default "
-        "leaves two decades of margin above that floor, matching how --tol was "
-        "set. Pass a negative value to report the residual without gating on "
-        "it, which is how the floor was measured.",
+        default=None,
+        help="--dusty only: max allowed max_j |R_j| on the band-ratio gate G2. "
+        "The residual is pinned to 0 by an identity with no free parameters, so "
+        "the only admissible discrepancy is float32 rounding. Omitted, the bar "
+        "is DERIVED from the run's own signal and those float32 widths, and "
+        "printed with its terms. Pass a positive value to override it, or a "
+        "negative one to report the residual without gating on it.",
     )
     parser.add_argument(
         "--kernel-gamma",
@@ -353,8 +352,12 @@ def optical_depths(
 
 
 def gate(label: str, worst: float, bar: float) -> bool:
-    """Print a pass/fail line, failing closed on a non-finite value."""
-    ok = bool(np.isfinite(worst)) and worst <= bar
+    """Print a pass/fail line, failing closed on a non-finite value.
+
+    BOTH operands are tested: a NaN residual compares false against any bar,
+    and an infinite bar would otherwise admit any residual at all.
+    """
+    ok = bool(np.isfinite(worst)) and bool(np.isfinite(bar)) and worst <= bar
     print(f"  {'PASS' if ok else 'FAIL'}: {label}: {worst:.3e} vs bar {bar:.3e}")
     return ok
 
@@ -431,15 +434,23 @@ def check_dusty(
         f"{(1.0 - ratio) * float(np.max(tau_lw[lit])):.4f}"
     )
 
-    # Float32 error budget of the reconstruction, each term about half an
-    # ulp: the two specific-energy stores, the two expf calls, and the
-    # float32 chain that builds tau (h, rho, and about four roundings in the
-    # opacity), the last three scaling with the signal itself.
+    # Float32 error budget of the reconstruction. The CANONICAL derivation of
+    # this bar, with the shared-versus-per-band split and the sensitivity
+    # weights that follow from sigma_PE/sigma_LW, is `dust_band_ratio_bar` in
+    # ISRFCosmology/isrf_cosmology_check.py; this fixture carries the same
+    # metric and must keep the same term list. In brief: 4 u32 that do not
+    # scale with the signal (the two specific-energy stores and the two expf
+    # calls, an expf relative error being an absolute error in the logarithm),
+    # plus 16.5 u32 for the scaled part: twelve from the three per-band
+    # roundings at weights 1.5 and 2.5, three shared at weight one, and 1.5 as
+    # the one allowance rather than a count, for the separation chain.
     signal = abs((1.0 - ratio) * float(np.max(tau_lw[lit])))
-    budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 6.0 * FLOAT32_ULP * signal
+    budget = 2.0 * FLOAT32_ULP + 2.0 * FLOAT32_ULP + 16.5 * FLOAT32_ULP * signal
     print(f"  float32 budget of |R_j|: {budget:.2e}")
 
-    if opt.dust_tol < 0.0:
+    if opt.dust_tol is None:
+        ok = gate("band-ratio residual (G2), max_j |R_j|, derived bar", worst, budget)
+    elif opt.dust_tol < 0.0:
         print(
             f"  REPORT (no bar given): band-ratio residual (G2), "
             f"max_j |R_j| = {worst:.3e}"

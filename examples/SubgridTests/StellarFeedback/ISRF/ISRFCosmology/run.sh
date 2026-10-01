@@ -22,6 +22,8 @@ nH2_ratio_default=1e-8
 h2_self_shielding_default=3
 propagation_default=1
 c_hyp_pin_default=0          # km/s, 0 = off
+c_hyp_scheme_default=4       # 4 = shipped closure, 2 = one fixed speed, Courant-limited
+c_hyp_fraction_default=0     # scheme 2's speed as a fraction of c; also sets the timestep
 disable_cooling_default=0    # GrackleCooling:disable_cooling_for_debugging
 star_mass_default=0          # Msun, 0 = no star
 duration_default=0.22283119056961848  # internal time (218 Myr, z = 9 to a = 0.125)
@@ -111,6 +113,8 @@ nH2_ratio=${nH2_ratio:=$nH2_ratio_default}
 h2_self_shielding=${h2_self_shielding:=$h2_self_shielding_default} #0, 2 or 3
 propagation=${propagation:=$propagation_default}
 c_hyp_pin=${c_hyp_pin:=$c_hyp_pin_default}
+c_hyp_scheme=${c_hyp_scheme:=$c_hyp_scheme_default}
+c_hyp_fraction=${c_hyp_fraction:=$c_hyp_fraction_default}
 star_mass=${star_mass:=$star_mass_default}
 star_age=${star_age:=$star_age_default} #Internal time units
 duration=${duration:=$duration_default} #Proper time, internal units
@@ -177,6 +181,8 @@ mkdir snap
     -P GEARFeedback:ISRF_extinction_path_in_kernel_radii:$extinction_path_in_kernel_radii \
     -P GEARFeedback:ISRF_extinction_jeans_temperature_cap_K:$extinction_jeans_temperature_cap_K \
     -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+    -P GEARFeedback:ISRF_c_hyp_scheme:$c_hyp_scheme \
+    -P GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c:$c_hyp_fraction \
     -P Stars:max_timestep_young_Myr:$max_star_dt_myr \
     params.yml 2>&1 | tee output.log
 

@@ -148,24 +148,28 @@ free_field
 
     So (A1) at H = 0:
 
-    - With the propagation speed PINNED
-      (GEARFeedback:ISRF_c_hyp_pin_for_debugging, the same mechanism
-      `dust_absorption` uses), every particle's c_hyp is one bit-identical
-      value, the weight cancels identically, the metric becomes the
-      mass-weighted box mean the pairwise exchange conserves, and the
-      float-divergence floor is the whole error budget. The leg is GATED
-      against that floor, and against it alone: `--reference` cannot
-      inflate it, because the reference term is not in this bar. The pin
+    - With the recorded c_hyp BIT-UNIFORM across the box, every particle's
+      c_hyp is one bit-identical value, the weight cancels identically, the
+      metric becomes the mass-weighted box mean the pairwise exchange
+      conserves, and the float-divergence floor is the whole error budget.
+      The leg is GATED against that floor, and against it alone:
+      `--reference` cannot inflate it, because the reference term is not in
+      this bar. Uniformity is read from the field, not from whichever
+      parameter produced it, because it is the condition the cancellation
+      rests on: GEARFeedback:ISRF_c_hyp_pin_for_debugging gives it (the same
+      mechanism `dust_absorption` uses), and so does ISRF_c_hyp_scheme 2,
+      whose GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is one speed for the
+      whole box with the Courant condition imposed on the timestep. The pin
       is applied after the light-speed clamp
       (radiation_isrf.c's radiation_snapshot_part_propagation and
       radiation_end_density_propagation), and with c_i == c_j the
       variable-c and shared-minimum operator branches are bit-identical
-      by construction (radiation_propagation_iact.h), so pinning does not
-      change which branch runs. What it does cost is the variable-c
-      coverage: this leg says nothing about a defect that only appears
-      once c_hyp varies between neighbours.
-    - UNPINNED, the drift is REPORTED and not gated, the way (A3) already
-      reports and skips there. The reweighting term is not unbounded:
+      by construction (radiation_propagation_iact.h), so a uniform speed
+      does not change which branch runs. What it does cost is the
+      variable-c coverage: this leg says nothing about a defect that only
+      appears once c_hyp varies between neighbours.
+    - With c_hyp VARYING, the drift is REPORTED and not gated, the way (A3)
+      already reports and skips there. The reweighting term is not unbounded:
       spread(u)*spread(1/c_hyp) bounds it, from the run's own recorded
       spreads. What that bound covers, though, is a quantity the scheme
       never promised to conserve, so adding it to the bar would gate
@@ -182,11 +186,15 @@ free_field
       therefore still acted upon, and is held below the predicted decay by
       the resolution self-test.
 
-    A pin the module did not apply FAILS rather than falling back to the
-    report: if the parameter is set and the recorded c_hyp is not
-    bit-uniform, the uniform-weight ledger the gate rests on is not live,
-    and a silent fallback would remove the gate exactly when something on
-    the pin path had broken.
+    A claimed uniform speed the module did not deliver FAILS rather than
+    falling back to the report. Both routes count as a claim: a positive
+    ISRF_c_hyp_pin_for_debugging, and ISRF_c_hyp_scheme == 2. If either is set
+    and the recorded c_hyp is not bit-uniform, the uniform-weight ledger the
+    gate rests on is not live, and a silent fallback would remove the gate
+    exactly when something on that path had broken. Note what this covers:
+    the parameter validation in feedback_props_init() already rejects a
+    scheme/fraction mismatch at start-up, so what reaches here is a module or
+    plumbing failure, which is what this leg exists to catch.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
@@ -649,7 +657,11 @@ C_LIGHT_CGS = 2.99792458e10
 M_H_CGS = 1.67262171e-24
 HYDROGEN_MASS_FRACTION = 0.76
 PHOTOELECTRIC_RATE_CGS = 1e-24 * 0.05
-FLOAT32_EPS = np.finfo(np.float32).eps
+# float(), so every bar term built from it is evaluated in double. Left as
+# the numpy float32 scalar, an expression such as n * eps / (1 - n * eps)
+# rounds to float32 at each step, which is the precision of the quantity the
+# bar is meant to bound.
+FLOAT32_EPS = float(np.finfo(np.float32).eps)
 # The step line prints its step-size field with "%14e" (src/engine.c), i.e.
 # six decimals of mantissa, so a step size read back from the log carries
 # half a unit in that last decimal.
@@ -705,11 +717,12 @@ def parse_options() -> argparse.Namespace:
     parser.add_argument(
         "--dust-tol",
         type=float,
-        default=1e-4,
+        default=None,
         help="injection_dusty only: max allowed max_j |R_j| on the band-ratio "
-        "gate (default: %(default)s), two decades above this reconstruction's "
-        "measured float32 floor. Pass a negative value to report the residual "
-        "without gating on it.",
+        "gate. Omitted, the bar is DERIVED from the run's own signal and the "
+        "float32 widths of the reconstruction, and printed with its terms. "
+        "Pass a positive value to override it, or a negative one to report the "
+        "residual without gating on it.",
     )
     parser.add_argument(
         "--kernel-gamma",
@@ -1192,10 +1205,11 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     (A1)'s ledger is a ratio of two sums taken at the SAME time, so a
     c_hyp that is uniform ACROSS THE BOX cancels between numerator and
     denominator whatever it does from one snapshot to the next (this
-    module's docstring). What the pinned leg needs is therefore this
+    module's docstring). What the gated leg needs is therefore this
     spatial spread, per snapshot, and exactly zero: a bit-uniform speed
     makes the weighted ledger and the mass-weighted one the same
-    functional.
+    functional, whether a debug pin or scheme 2's fixed fraction produced
+    it.
 
     Parameters
     ----------
@@ -1208,18 +1222,37 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     -------
     float or None
         max over snapshots of (max c_hyp - min c_hyp)/max c_hyp, or None
-        when any snapshot has no HyperbolicPropagationSpeeds or one that is
-        not everywhere finite and positive.
+        when any snapshot has no HyperbolicPropagationSpeeds, or one that is
+        not everywhere finite, or a non-positive value in any snapshot other
+        than an all-zero snapshot 0, or when the run's only snapshot is an
+        all-zero snapshot 0. Snapshot 0 alone is skipped when it is all zero:
+        see the body.
     """
+    seen = False
     worst = 0.0
-    for snap in run[start:]:
+    for index, snap in enumerate(run[start:], start=start):
         c_hyp = snap["c_hyp"]
         if c_hyp is None:
             return None
-        if not np.all(np.isfinite(c_hyp)) or np.any(c_hyp <= 0.0):
+        if not np.all(np.isfinite(c_hyp)):
             return None
+        if index == 0 and np.all(c_hyp == 0.0):
+            # Snapshot 0 is written before the first force step. Under the
+            # schemes that set c_hyp in radiation_snapshot_part_propagation
+            # (0, 2 and 3) it therefore still holds the first-init seed of
+            # exactly zero (radiation_isrf.c:159); the schemes that set it in
+            # radiation_end_density_propagation (1 and 4) read the
+            # light-speed value instead, because the initial density pass does
+            # run. A snapshot with no speed at all carries nothing to be
+            # uniform, so it is skipped. Only index 0 qualifies: after a step
+            # has run, an all-zero c_hyp is a degraded run and is rejected
+            # below.
+            continue
+        if np.any(c_hyp <= 0.0):
+            return None
+        seen = True
         worst = max(worst, float((np.max(c_hyp) - np.min(c_hyp)) / np.max(c_hyp)))
-    return worst
+    return worst if seen else None
 
 
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
@@ -1227,8 +1260,11 @@ def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
 
     It applies only to the consistent-variable-c schemes, and only when every
     snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
-    Every rejection prints why, so a degraded run is never silently gated on
-    the wrong invariant.
+    Snapshot 0 is NOT excused here, unlike in `c_hyp_spatial_spread`: this
+    weight divides by c_hyp on every snapshot the ledger is evaluated on, and
+    for a non-cosmological run that includes snapshot 0. Every rejection
+    prints why, so a degraded run is never silently gated on the wrong
+    invariant.
     """
     scheme = read_c_hyp_scheme(pattern)
     if scheme is None:
@@ -1405,11 +1441,19 @@ def band_edge_weight_log_precision(value: float) -> float:
 def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     """Return the first snapshot whose c_hyp is a genuine per-step value.
 
-    Snapshot 0 of an unpinned run is written before the first force step,
-    so its own HyperbolicPropagationSpeeds still reads the module's
-    first-init light-speed clamp (``c_hyp = c``), not a rate any particle
-    ever actually decayed under; (A3) needs the trajectory the particles
-    actually experienced, so it starts integrating one snapshot later.
+    Snapshot 0 of a run is written before the first force step, so its own
+    HyperbolicPropagationSpeeds carries no rate any particle actually decayed
+    under; (A3) needs the trajectory the particles actually experienced, so it
+    starts integrating one snapshot later. Two shapes of that pre-step
+    snapshot exist and both must be rejected. Under the schemes that set
+    ``c_hyp`` in the density loop (1 and 4) it reads the module's first-init
+    light-speed clamp (``c_hyp = c``), because that loop does run before the
+    first snapshot is written. Under the schemes that set it in the snapshot
+    hook (0, 2 and 3) it reads exactly zero for every particle; that is
+    MEASURED for scheme 2 (both cluster legs of 2026-09-30, 32768 particles,
+    one distinct float32 value, 0) and read from the source for 0 and 3. A
+    median test alone passes the zero shape, because zero is below the clamp,
+    so strict positivity is required as well.
 
     Parameters
     ----------
@@ -1426,6 +1470,7 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
         if (
             c_hyp is not None
             and np.all(np.isfinite(c_hyp))
+            and np.all(c_hyp > 0.0)
             and np.median(c_hyp) < C_HYP_CLAMP_FRACTION_OF_C * C_LIGHT_CGS
         ):
             return i
@@ -1778,17 +1823,31 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # (radiation_end_force_propagation returns first), so its predicted
     # drift is exactly zero, whatever its cosmology.
     cosmo_decay = cosmological and propagation_on
-    # A pinned propagation speed makes c_hyp bit-uniform across the box, so
-    # the ledger's own 1/c_hyp weight cancels between its numerator and its
-    # denominator and the metric becomes the mass-weighted box mean the
-    # transport conserves. That removes the reweighting term an unpinned run
-    # carries, of order spread(u)*spread(1/c_hyp), and leaves the float
-    # divergence floor as (A1)'s whole error budget. The parameter decides
-    # whether the run CLAIMS a pin; the snapshots decide whether it is live.
+    # A c_hyp that is bit-uniform across the box makes the ledger's own
+    # 1/c_hyp weight cancel between its numerator and its denominator, so the
+    # metric becomes the mass-weighted box mean the transport conserves. That
+    # removes the reweighting term a varying-c_hyp run carries, of order
+    # spread(u)*spread(1/c_hyp), and leaves the float divergence floor as
+    # (A1)'s whole error budget. Uniformity is the physical condition the
+    # gate rests on, so it is read from the recorded field itself and not
+    # from whichever parameter produced it: the debug pin and
+    # ISRF_c_hyp_scheme 2's fixed fraction both give a bit-uniform speed.
+    # The pin parameter is still read, because a pin the module did not apply
+    # must FAIL rather than fall back to the ungated report.
     c_hyp_pin = read_c_hyp_pin(opt.snapshots)
+    c_hyp_scheme = read_c_hyp_scheme(opt.snapshots)
+    # Two configurations CLAIM one speed for the whole box: the debug pin, and
+    # scheme 2, whose ISRF_c_hyp_fixed_fraction_of_c is a single fraction of c
+    # (feedback_properties.h already errors at start-up if that key is not
+    # positive under scheme 2, or positive without it, so the scheme number
+    # alone is the claim). Either claim must FAIL when the recorded field does
+    # not honour it, rather than fall back to the ungated report: the gate
+    # below is the only bound on this fixture's transport ledger, and a claim
+    # the module did not deliver would otherwise remove it silently.
     pin_claimed = c_hyp_pin is not None and c_hyp_pin > 0.0
-    c_hyp_spread = c_hyp_spatial_spread(run) if pin_claimed else None
-    pinned = pin_claimed and c_hyp_spread == 0.0
+    uniform_claimed = pin_claimed or c_hyp_scheme == 2
+    c_hyp_spread = c_hyp_spatial_spread(run)
+    uniform_c_hyp = c_hyp_spread is not None and c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
@@ -1866,24 +1925,41 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         )
 
     ok = True
-    if pin_claimed:
-        spread_note = (
-            "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
+    spread_note = (
+        "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
+    )
+    pin_note = (
+        "unrecorded"
+        if c_hyp_pin is None
+        else f"{c_hyp_pin:.9g} (internal velocity units)"
+    )
+    print(
+        f"  (A1) worst spatial spread (max-min)/max of the recorded c_hyp "
+        f"{spread_note}, so the uniform-weight ledger is "
+        f"{'LIVE' if uniform_c_hyp else 'not live'}; "
+        f"GEARFeedback:ISRF_c_hyp_pin_for_debugging = {pin_note}, "
+        f"ISRF_c_hyp_scheme = {c_hyp_scheme}"
+    )
+    if uniform_claimed and not uniform_c_hyp:
+        source = (
+            "a c_hyp pin is set"
+            if pin_claimed
+            else "ISRF_c_hyp_scheme is 2, which is one fixed speed for the " "whole box"
+        )
+        # Two different failures, and naming the wrong one sends the
+        # investigation the wrong way: no snapshot carrying a usable speed is
+        # usually propagation switched off, while a spread is the claim not
+        # being honoured.
+        cause = (
+            "no snapshot records a usable speed (propagation off, the field "
+            "absent, or a non-positive value after the first step)"
+            if c_hyp_spread is None
+            else "the recorded HyperbolicPropagationSpeeds is not bit-uniform "
+            "across the box"
         )
         print(
-            f"  (A1) GEARFeedback:ISRF_c_hyp_pin_for_debugging = "
-            f"{c_hyp_pin:.9g} (internal velocity units), worst spatial "
-            f"spread (max-min)/max of the recorded c_hyp {spread_note}"
-        )
-    if pin_claimed and not pinned:
-        # Fail rather than fall back to the ungated report: the pinned leg
-        # below is the only gate on this fixture's transport ledger, and a
-        # pin the module did not actually apply would otherwise remove it
-        # silently.
-        print(
-            "  FAIL: (A1) a c_hyp pin is set but the recorded "
-            "HyperbolicPropagationSpeeds is not bit-uniform across the box, "
-            "so the uniform-weight ledger this leg is gated on is not live"
+            f"  FAIL: (A1) {source} but {cause}, so the uniform-weight ledger "
+            "this leg is gated on is not live"
         )
         ok = False
     # Longest step in proper time, from the run's quantised dt_max (ln a
@@ -2033,7 +2109,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             f"  (A1) u_{band}: drift coefficient {drift_coeff:+.6g}, predicted "
             f"{predicted[-1]:+.4e}, measured {errors[band][-1]:+.4e}"
         )
-        if not cosmological and pinned:
+        if not cosmological and uniform_c_hyp:
             # GATED, on the float floor alone. With c_hyp bit-uniform the
             # ledger's 1/c_hyp weight cancels identically, so the metric is
             # the mass-weighted box mean the pairwise transport conserves,
@@ -2043,14 +2119,25 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # construction (A3) uses, and it is used here on its own rather
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
+            # Which statement is true depends on the SCHEME, not on which
+            # ledger this file chose: scheme 2's operators conserve sum m u
+            # directly, the variable-c schemes conserve sum m u / c_hyp and
+            # their weight cancels only because it is uniform here, and the
+            # two coincide exactly when it is.
+            if c_hyp_scheme == 2:
+                why = "this scheme's operators conserve sum m u directly"
+            elif use_c_hyp:
+                why = "the ledger weight cancels between the two sums"
+            else:
+                why = "a uniform weight makes the two ledgers the same functional"
             print(
-                f"  (A1) u_{band}: c_hyp pinned, so the ledger weight "
-                f"cancels between the two sums and the metric is the "
-                f"mass-weighted box mean; bar is the analytic float floor "
-                f"({float_note}) {float_residual:.2e} on its own"
+                f"  (A1) u_{band}: c_hyp bit-uniform, so {why} and the metric "
+                f"is the mass-weighted box mean; bar is the analytic float "
+                f"floor ({float_note}) {float_residual:.2e} on its own"
             )
             ok &= gate(
-                f"(A1) ln u_{band} drift, worst |residual|, {ledger}, " f"c_hyp pinned",
+                f"(A1) ln u_{band} drift, worst |residual|, {ledger}, "
+                f"c_hyp bit-uniform",
                 worst,
                 float_residual,
             )
@@ -2481,16 +2568,105 @@ def log_step_quantisation(token: str) -> float:
     -------
     float
         Half a unit in the last printed decimal of the mantissa, relative,
-        dimensionless. The format's worst case, 5e-7, is returned for a token
-        that is not in the expected exponential form.
+        dimensionless.
+
+    Raises
+    ------
+    RuntimeError
+        When the token is not in ``%14e`` form with a mantissa of 1 or more.
+        Returning the format's worst case instead would LOOSEN the bar, by up
+        to 10x on this term, in exactly the situation where the reference is
+        not understood. The parse branch cannot fire, because the caller has
+        already read the same field with ``float()``; the mantissa branch CAN,
+        because step 0 prints ``0.000000e+00`` in that field
+        (``src/engine.c``'s step line, from ``e->time_step`` before the first
+        step). The caller rejects a zero step before ever calling this, so the
+        raise is a backstop and not a live path.
     """
     try:
         mantissa = abs(float(token.split("e")[0]))
     except (ValueError, IndexError):
-        return LOG_STEP_MANTISSA_HALF_ULP
+        mantissa = float("nan")
     if not np.isfinite(mantissa) or mantissa < 1.0:
-        return LOG_STEP_MANTISSA_HALF_ULP
+        raise RuntimeError(
+            f"the step size was printed as {token!r}, which is not the "
+            "%14e form this term's quantisation is derived from: refusing "
+            "to substitute the format's worst case, which would loosen the "
+            "bar"
+        )
     return LOG_STEP_MANTISSA_HALF_ULP / mantissa
+
+
+def dust_band_ratio_bar(signal: float) -> float:
+    """Return the float-arithmetic bar on the dusty band-ratio residual.
+
+    THE CANONICAL DERIVATION. `ISRFInjectionConservation` carries the same
+    metric and must keep the same term list.
+
+    The residual ``R_j = ln(u_PE/u_LW) - ln(L_PE/L_LW) - (1 - rho) tau_LW``,
+    with ``rho = sigma_PE/sigma_LW = 0.6`` exactly
+    (``radiation.h``'s RADIATION_SIGMA_D_PE_CGS and _LW_CGS), is pinned to zero
+    by an identity with no free parameter, so the only admissible discrepancy is
+    float32 rounding. Writing each band's computed depth as
+    ``tau_b (1 + e_s + e_b)``, with ``e_s`` the error of the prefactor the two
+    bands SHARE and ``e_b`` the error of the per-band tail,
+
+        R = e_s (tau_LW - tau_PE) - tau_PE e_PE + tau_LW e_LW
+            + (the two expf errors) + (the two snapshot-store errors)
+
+    so the terms split by how they enter, not merely by how many they are.
+
+    CONSTANT, 4 u32. The two band specific energies as stored in the snapshot,
+    and the two ``expf`` extinction factors
+    (``radiation_get_dust_extinction_factor``). An ``expf`` RELATIVE error is an
+    ABSOLUTE error in the logarithm, which is why these four do not scale with
+    the signal. MEASURED, not assumed from the library's documented bound: this
+    build's ``expf`` is accurate to at most 0.51 float32 ulps over the tau range
+    these fixtures occupy, under the build's own flags.
+
+    SIGNAL-SCALED. With ``S`` the printed signal, ``tau_LW = S/(1 - rho) =
+    2.5 S`` and ``tau_PE = rho tau_LW = 1.5 S``. So a shared-prefactor rounding
+    enters with weight ``tau_LW - tau_PE = S``, while a per-band rounding enters
+    with weight ``1.5 S`` or ``2.5 S``. On the shipped
+    ``ISRF_extinction_path: pair_separation`` path the column is the
+    star-to-particle separation ``r`` and the smoothing length never enters
+    (``radiation_get_comoving_extinction_path``). The per-band tail carries
+    three roundings in each band, at ``radiation_isrf.c``'s
+    ``sigma_d_band_cgs * D_relative``, its divide by the shared denominator, and
+    ``-kappa_eff * Sigma_gas_p``, so the per-band contribution alone is
+    ``3 u32 (1.5 + 2.5) S = 12 u32 S``. The shared roundings are the column's
+    ``path * rho_gas``, its comoving factor (exact at ``a = 1``), the
+    metallicity normalisation, and the separation chain, whose weight is NOT one
+    half-ulp but ``u32 |x - c->loc| / r``, because the injection differences the
+    cell-relative offsets in float while this check rebuilds the separation in
+    double.
+
+    THE SCALED COEFFICIENT, 16.5, and which part of it is counted. Fifteen are
+    counted: ``3 u32 (1.5 + 2.5) = 12`` per-band, and three shared at weight one
+    each, being the column ``extinction_path * rho``, the metallicity
+    normalisation ``max(Z,0)/RADIATION_GRACKLE_SOLAR_METAL_FRACTION``, and the
+    comoving-to-physical factor, which is exact at ``a = 1`` and is not at the
+    high-redshift leg. Two candidates are exactly zero rather than small: the
+    dust-to-gas self-ratio is ``1.0f`` at the default, so that multiply is exact,
+    and the two cross-section literals have bit-identical relative error on their
+    float32 cast, so it acts as a common prefactor and cancels in the band
+    difference. The remaining 1.5 is an ALLOWANCE and not a count: the separation
+    chain's error is absolute at the cell-offset scale, so its weight is
+    ``|x - c->loc| / r`` rather than one, and that ratio is a property of the
+    cell layout the snapshot does not record. It is the one soft term here.
+
+    Parameters
+    ----------
+    signal : float
+        ``|(1 - sigma_PE/sigma_LW) * max_j tau_LW,j|``, dimensionless.
+
+    Returns
+    -------
+    float
+        The bar, dimensionless.
+    """
+    u32 = FLOAT32_EPS / 2.0
+    return 4.0 * u32 + 16.5 * u32 * float(signal)
 
 
 def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
@@ -2526,11 +2702,25 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
       (GEAR_thermal/feedback_iact.h:58), so a pair inside that radius has
       the two sides reading different kernel arguments. The effect is small
-      rather than absent: every SWIFT kernel has a vanishing gradient at
-      zero separation, so even a coincident pair costs at most about
-      2.5e-07. That fits inside the margin the terms below leave, but it is
-      not one of them. On both ISRFCosmology injection fixtures the floor is
-      never approached, the closest pair sitting at ``r / h_star = 0.4675``;
+      rather than absent, but it is a statement about THIS kernel and not
+      about every SWIFT kernel. Wendland C2 (``{4,-15,20,-10,0,1}``,
+      ``kernel_gamma = 1.936492``) has a vanishing gradient at zero
+      separation and a leading ``-10 x**2``, so at the floor the relative
+      kernel change is ``10 * (1e-3 / 1.936492)**2 = 2.667e-06``. That is
+      then weighted by the coincident particle's own share of the normalised
+      weight sum, 0.196 to 0.225 over both legs' measured geometry, so a
+      particle ADDED at the floor costs 5.2e-07 to 6.0e-07 across that range.
+      A particle that REPLACES the closest neighbour costs more, because the
+      share it takes is also the share the neighbour gave up: with
+      ``s_rep = 1/(1/s_add - W_c/W(0))`` and ``W_c/W(0) = 0.651`` at the
+      fixture's own closest pair, the same share range gives 6.0e-07 to
+      7.0e-07. The figure carried here is 6.5e-07, which sits inside that
+      range rather than bounding it. Both framings fit inside the margin the
+      terms below leave, but neither is one of them, and the cost is not
+      uniform in the neighbour count: as ``n_lit -> 1`` the share tends to 1 and the cost
+      rises toward the full 2.7e-06. On both ISRFCosmology injection
+      fixtures the floor is never approached, the closest pair sitting at
+      ``r / h_star = 0.4675``;
     - both call sites must compile ``W`` to the same operations.
       ``kernel_eval`` and ``kernel_deval`` build it from the same
       coefficients by the same Horner recurrence, and under ``-ffast-math``
@@ -2637,6 +2827,11 @@ def check_injection(opt: argparse.Namespace) -> bool:
                 t = float(fields[1])
                 dt = float(fields[4])
             except ValueError:
+                continue
+            # A zero step is the step-0 row, whose printed size is not a step
+            # any particle took; matching it would put a zero in the reference
+            # and turn the identity into 0/0.
+            if not np.isfinite(dt) or dt <= 0.0:
                 continue
             distance = abs(t - last["time_internal"])
             if distance < best and distance <= 0.5 * dt:
@@ -2763,10 +2958,17 @@ def check_injection(opt: argparse.Namespace) -> bool:
     print(
         f"  tau_LW {np.min(tau['LW'][lit_pe]):.4f} to "
         f"{np.max(tau['LW'][lit_pe]):.4f}, band-ratio signal {signal:.4f}, "
-        f"float32 budget {4.0 * FLOAT32_EPS / 2.0 + 3.0 * FLOAT32_EPS * signal:.2e}"
+        f"float32 budget {dust_band_ratio_bar(signal):.2e}"
     )
     worst = float(np.max(np.abs(residual)))
-    if opt.dust_tol < 0.0:
+    derived_bar = dust_band_ratio_bar(signal)
+    if opt.dust_tol is None:
+        ok &= gate(
+            "band-ratio residual (G2), max_j |R_j|, derived bar",
+            worst,
+            derived_bar,
+        )
+    elif opt.dust_tol < 0.0:
         print(f"  REPORT (no bar given): band-ratio residual max_j |R_j| = {worst:.3e}")
         ok &= bool(np.isfinite(worst))
     else:
