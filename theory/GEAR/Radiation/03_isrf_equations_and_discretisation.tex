@@ -30,7 +30,7 @@ line numbers are the same at both.
 repository root:
 
 \begin{center}
-\begin{tabular}{ll}
+\begin{tabular}{p{4.6cm}p{9.9cm}}
 \hline
 \code{radiation\_isrf.c} & \code{src/feedback/GEAR/radiation\_isrf.c} \\
 \code{radiation\_propagation\_iact.h} & \code{src/feedback/GEAR/radiation\_propagation\_iact.h} \\
@@ -113,7 +113,7 @@ A compact key, for reading this section only; the symbols are chosen here to
 disambiguate letters the code reuses, and a paper would not need the table.
 
 \begin{center}
-\begin{tabular}{llp{6.4cm}}
+\begin{tabular}{p{1.7cm}p{3.3cm}p{9.1cm}}
 \hline
 symbol & units & meaning \\
 \hline
@@ -943,15 +943,15 @@ $dt_i = \code{dt\_prev}$, and $dt_{\max}(i)$ the physical step at
 \code{max\_ngb\_time\_bin}:
 
 \begin{center}
-\begin{tabular}{llll}
+\begin{tabular}{p{3.6cm}p{5.3cm}p{1.6cm}p{3.4cm}}
 \hline
 scheme & speed formula & operators & code \\
 \hline
-0 \texttt{shipped} & $c_{\rm hyp} = \min(C_{\rm hyp} h_{\rm phys}/dt_i,\, c)$ & shipped & \code{radiation\_isrf.c:288-289} \\
-1 \texttt{kernel\_local} & $c_{\rm hyp} = \min(C_{\rm hyp} h_{\rm phys}/dt_{\max}(i),\, c)$ & shipped & \code{radiation\_isrf.c:530-531} \\
-2 \texttt{fixed\_fraction} & $c_{\rm hyp} = f_c\, c$ & shipped & \code{radiation\_isrf.c:277-278} \\
-3 \texttt{consistent\_variable\_c} & scheme 0's formula & variable-$c$ & \code{radiation\_isrf.c:288-289} \\
-4 \texttt{kernel\_local\_plus\_variable\_c} & scheme 1's formula & variable-$c$ & \code{radiation\_isrf.c:530-531} \\
+0 \code{shipped} & $c_{\rm hyp} = \min(C_{\rm hyp} h_{\rm phys}/dt_i,\, c)$ & shipped & \code{radiation\_isrf.c:288-289} \\
+1 \code{kernel\_local} & $c_{\rm hyp} = \min(C_{\rm hyp} h_{\rm phys}/dt_{\max}(i),\, c)$ & shipped & \code{radiation\_isrf.c:530-531} \\
+2 \code{fixed\_fraction} & $c_{\rm hyp} = f_c\, c$ & shipped & \code{radiation\_isrf.c:277-278} \\
+3 \code{consistent\_variable\_c} & scheme 0's formula & variable-$c$ & \code{radiation\_isrf.c:288-289} \\
+4 \code{kernel\_local\_plus\_variable\_c} & scheme 1's formula & variable-$c$ & \code{radiation\_isrf.c:530-531} \\
 \hline
 \end{tabular}
 \end{center}
@@ -1186,7 +1186,7 @@ mechanism is \code{pair\_separation}
 \end{align}
 
 at \code{radiation\_isrf.c:1431}, \code{:1433-1434} and \code{:1457}, with
-$R_{\rm ext} = \code{ISRF\_extinction\_path\_in\_kernel\_radii}$, default 1.0
+$R_{\rm ext}$ the parameter \code{ISRF\_extinction\_path\_in\_kernel\_radii}, default 1.0
 (\code{feedback\_properties.h:41}, \code{:1053-1055}), and the Jeans length built
 from a temperature-capped sound speed:
 
