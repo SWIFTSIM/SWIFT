@@ -121,6 +121,11 @@ struct spart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+  /* Time at which this star's smoothing length last converged (no more
+   * density passes this step). Used to check whether a gas particle
+   * swallowed by a sink was already read by a fully-converged star. */
+  integertime_t debug_density_converged_at_tic;
+
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS

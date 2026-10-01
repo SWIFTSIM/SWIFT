@@ -204,8 +204,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
  */
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                    const int timer) {
-
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION)
   return;
 #endif
 
@@ -425,6 +424,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running star formation task on a foreign node!");
+  c->hydro.sf_ran_at_tic = ti_current;
 #endif
 
   /* Anything to do here? */
@@ -570,6 +570,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
+#ifdef SWIFT_DEBUG_CHECKS
+                /* p keeps existing (reduced mass) only on a spawn, not a
+                 * full conversion -- count how many times this exact
+                 * particle has been partially depleted this way. */
+                if (!part_converted) xp->sf_data.n_sf_spawn_events++;
+#endif
+
                 sp->x_diff[0] += displacement[0];
                 sp->x_diff[1] += displacement[1];
                 sp->x_diff[2] += displacement[2];
@@ -694,8 +701,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
  * @param c cell
  */
 void runner_do_sink_formation(struct runner *r, struct cell *c) {
-
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION)
   return;
 #endif
 
@@ -980,6 +986,9 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
            * the technically incorrect issue that multipole interactions can
            * account for a particle the simulation has "removed" */
           int interaction_check = 0;
+          long long n_removed = 0;
+          long long min_interactions = e->total_nr_gparts;
+          const long long max_interactions = e->total_nr_gparts;
           if (e->s->periodic) {
 
             /* In periodic runs we expect all g-particles to have interacted
@@ -991,9 +1000,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             /* In non-periodic runs we need to use an acceptable range between
              * all particles and all particles minus the number of inhibited
              * particles. */
-            const int n_removed = e->s->nr_inhibited_gparts;
-            const int min_interactions = e->total_nr_gparts - n_removed;
-            const int max_interactions = e->total_nr_gparts;
+            n_removed = e->s->nr_inhibited_gparts;
+            min_interactions = e->total_nr_gparts - n_removed;
             interaction_check = (gp->num_interacted < min_interactions ||
                                  gp->num_interacted > max_interactions);
           }

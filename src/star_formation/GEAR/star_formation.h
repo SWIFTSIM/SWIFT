@@ -531,7 +531,11 @@ star_formation_first_init_part(const struct phys_const *restrict phys_const,
                                const struct cosmology *restrict cosmo,
                                const struct star_formation *data,
                                const struct part *restrict p,
-                               struct xpart *restrict xp) {}
+                               struct xpart *restrict xp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  xp->sf_data.n_sf_spawn_events = 0;
+#endif
+}
 
 /**
  * @brief Split the star formation content of a particle into n pieces

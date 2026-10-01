@@ -222,6 +222,15 @@ int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts_foreign) {
       if (c->progeny[k] != NULL)
         offset += cell_link_gparts(c->progeny[k], &gparts_foreign[offset]);
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* The layout is only well-defined if the sub-cells tile their parent. */
+    if (offset != c->grav.count)
+      error(
+          "Sub-cell gpart counts do not sum to the cell's own count! "
+          "c->cellID=%lld c->depth=%d sum=%d c->grav.count=%d",
+          c->cellID, c->depth, offset, c->grav.count);
+#endif
   }
 
   /* Return the total number of linked particles. */
@@ -265,6 +274,11 @@ int cell_link_fof_gparts(struct cell *c,
 
 /**
  * @brief Link the cells recursively to the given #spart array.
+ *
+ * Unlike cell_link_foreign_gparts(), this recurses into every sub-cell:
+ * stars have no long-range/multipole split, so sender and receiver share
+ * one layout. If that changes, cell_unpack_sf_counts() needs the same
+ * relink treatment as gparts.
  *
  * @param c The #cell.
  * @param sparts The #spart array.
@@ -331,6 +345,11 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 
 /**
  * @brief Link the cells recursively to the given #sink array.
+ *
+ * Unlike cell_link_foreign_gparts(), this recurses into every sub-cell:
+ * sinks have no long-range/multipole split, so sender and receiver share
+ * one layout. If that changes, cell_unpack_sink_formation_counts() needs
+ * the same relink treatment as gparts.
  *
  * @param c The #cell.
  * @param sinks The #sink array.
@@ -415,6 +434,13 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
  * tasks; then trigger the linking of the #gpart_foreign array from that
  * level.
  *
+ * Sub-trees with no gravity recv task receive no data and therefore occupy
+ * no space here: the layout this builds is a compacted version of the
+ * sender's own, and the two agree only when every sub-tree has a task.
+ * Unlike cell_link_sparts()/cell_link_sinks(), which link every sub-cell:
+ * gravity has a long-range, multipole-only region that never sends
+ * particle data, but stars and sinks do not.
+ *
  * @param c The #cell.
  * @param gparts_foreign The #gpart_foreign array.
  *
@@ -433,12 +459,7 @@ int cell_link_foreign_gparts(struct cell *c,
   if (cell_get_recv(c, task_subtype_gpart) != NULL) {
 
     /* Recursively attach the gparts */
-    const int counts = cell_link_gparts(c, gparts_foreign);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (counts != c->grav.count)
-      error("Something is wrong with the foreign counts");
-#endif
-    return counts;
+    return cell_link_gparts(c, gparts_foreign);
   } else {
     c->grav.parts_foreign = gparts_foreign;
     c->grav.parts_foreign_rebuild = gparts_foreign;
@@ -460,6 +481,93 @@ int cell_link_foreign_gparts(struct cell *c,
 
 #else
   error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+#ifdef WITH_MPI
+/**
+ * @brief Re-derive the #gpart_foreign pointers of an already-linked cell
+ * hierarchy from the current counts.
+ *
+ * Same layout rule as cell_link_gparts(), but without claiming ownership of
+ * the slice: only the pointers move, never the rebuild-time baseline.
+ *
+ * @param c The #cell.
+ * @param gparts_foreign The start of this cell's slice.
+ *
+ * @return The number of particles re-linked.
+ */
+static int cell_relink_gparts(struct cell *c,
+                              struct gpart_foreign *gparts_foreign) {
+
+  c->grav.parts_foreign = gparts_foreign;
+
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_relink_gparts(c->progeny[k], &gparts_foreign[offset]);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* The layout is only well-defined if the sub-cells tile their parent. */
+    if (offset != c->grav.count)
+      error(
+          "Sub-cell gpart counts do not sum to the cell's own count! "
+          "c->cellID=%lld c->depth=%d sum=%d c->grav.count=%d",
+          c->cellID, c->depth, offset, c->grav.count);
+#endif
+  }
+
+  return c->grav.count;
+}
+#endif /* WITH_MPI */
+
+/**
+ * @brief Re-derive the #gpart_foreign pointers of a foreign cell hierarchy
+ * after its counts have been updated by the grav_counts channel.
+ *
+ * Mirrors cell_link_foreign_gparts() exactly, so the pointers stay inside
+ * the compacted slice the last rebuild reserved for this cell. The counts
+ * the sender ships are enough to do this locally; the sender's own offsets
+ * are not usable here because its layout is not compacted.
+ *
+ * @param c The foreign #cell.
+ * @param gparts_foreign The start of this cell's slice.
+ *
+ * @return The number of particles re-linked.
+ */
+int cell_relink_foreign_gparts(struct cell *c,
+                               struct gpart_foreign *gparts_foreign) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Re-linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a gravity task at this level? */
+  if (cell_get_recv(c, task_subtype_gpart) != NULL)
+    return cell_relink_gparts(c, gparts_foreign);
+
+  c->grav.parts_foreign = gparts_foreign;
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count +=
+            cell_relink_foreign_gparts(c->progeny[k], &gparts_foreign[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling re-linking of foreign particles in non-MPI mode.");
 #endif
 }
 
@@ -538,6 +646,9 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
   c->sinks.parts = NULL;
+
+  /* cell_relink_foreign_gparts() bases on this one. */
+  c->grav.parts_rebuild = NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
