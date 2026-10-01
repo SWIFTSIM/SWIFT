@@ -54,6 +54,41 @@
  * single-polynomial Wendland kernels into sub-intervals keeps |t| small on
  * each piece and hence the condition number of the evaluation close to 1.
  *
+ * Number of sub-intervals
+ * -----------------------
+ * The splines are piecewise polynomials with knots at r/H = 1/2 (cubic),
+ * 1/5 and 3/5 (quartic), 1/3 and 2/3 (quintic). The index of the table must
+ * be a single multiply and truncation, so the grid is uniform and the knots
+ * must be grid points: the smallest such grids have 2, 5 and 3 pieces (the
+ * quartic carries two pieces it does not need for accuracy). Finer grids
+ * would lower the condition number from ~2.5 to ~1.3 but the float error is
+ * already at the rounding floor (1-2 ulp of W(0)).
+ *
+ * Each Wendland kernel is a single polynomial, so the count is a free
+ * choice set by the conditioning. Expanded about the edge in s = 1 - r/H,
+ * e.g. C6 = 66 s^8 - 154 s^9 + 121 s^10 - 32 s^11 sums to 1 at the centre
+ * from terms adding up to 373 in magnitude: with a single edge-centred
+ * piece the condition number at r = 0 is 9 (C2), 60 (C4), 373 (C6). With
+ * N pieces, each re-expanded about its own right end (|t| <= gamma / N),
+ * the measured float error of W in units of W(0) and the condition number
+ * (3D, maximum where W > 1e-3 W(0)) are
+ *
+ *     N      C2               C4               C6
+ *     1    4.9e-7 /  9.0    3.0e-6 / 60      1.5e-5 / 373
+ *     2    1.3e-7 /  2.3    1.6e-7 /  5.2    2.5e-7 /  11.6
+ *     3    1.2e-7 /  1.7    1.3e-7 /  2.9    1.1e-7 /   4.9
+ *     4    1.1e-7 /  1.5    1.3e-7 /  2.2    9.9e-8 /   1.7
+ *     5    7.6e-8 /  1.4    1.0e-7 /  1.4    8.3e-8 /   1.5
+ *     8    9.7e-8 /  1.2    9.1e-8 /  1.2    7.5e-8 /   1.3
+ *
+ * Four is the smallest count for which all three kernels sit at the
+ * rounding floor (~1e-7 = 1.5-2 ulp of W(0), the cost of the Horner steps
+ * themselves) with a condition number below 2 everywhere; more pieces only
+ * move the error within the noise. The relative error near the edge does
+ * not depend on N since it is set by the last piece, whose origin is always
+ * the edge. Upper bound: the vectorised row selection is a single permute
+ * only while N + 1 <= 8 lanes (AVX2), i.e. N <= 7.
+ *
  * Conventions
  * -----------
  * - gamma = H/h is the float kernel_gamma. The double tables
