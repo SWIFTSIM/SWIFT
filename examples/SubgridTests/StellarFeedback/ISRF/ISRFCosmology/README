@@ -111,6 +111,16 @@ python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.h
     --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
     --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
 ```
+
+Several of these bars are set by the SNAPSHOT CADENCE rather than by
+round-off, so `snapshots` (and the `delta_time` it sets) changes them. The
+dominant term in the `dust_absorption` and `injection` bars is a one-step lag:
+the check compares a quantity integrated continuously by the code against a
+closed form evaluated at the times the run happened to write, so halving the
+cadence roughly halves that term and tightens the bar. If you change
+`snapshots`, expect the bars to move with it, and do not read a bar shift as a
+physics change. The float32 contributions are orders of magnitude smaller, so a
+compiler or library change cannot move these bars appreciably.
 Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
 (exit code 0 or 1). `--reference` takes the non-cosmological run of the same
 configuration: its own measured drift, doubled, then replaces the derived
