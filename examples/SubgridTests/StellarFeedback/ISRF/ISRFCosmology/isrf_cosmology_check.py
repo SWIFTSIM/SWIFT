@@ -197,15 +197,31 @@ free_field
     plumbing failure, which is what this leg exists to catch.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
-    ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and, to the
-    same leading order as A1 (u_LW ~= u_LW,0, not u_LW,0 a0/a as an undilated
-    Hubble term would give), so
+    ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and u_LW
+    carrying its OWN decay. Dilating the Hubble term by c_hyp/c does not remove
+    that decay, it scales it: the module relaxes u_LW at depth
+    ``lambda_E(LW) H_dilated``, so with no absorption
+    ``u_LW = u_LW,0 (a0/a)^beta``, ``beta = lambda_E(LW) c_hyp/c``, and
 
-        ln[x_H2(t)/x_H2(0)] = -k0 int_0^t (a0/a)^3 dt'    (-k0 t without).   (A2)
+        ln[x_H2(t)/x_H2(0)] = -k0 int_0^t (a0/a)^(3+beta) dt'                (A2)
 
-    This is the more discriminating of the two: the exponent changed from 4
-    (density cubed times a linearly-decaying field) to 3 (density alone, the
-    field no longer decaying at leading order), a ~10% shift in the
+    (``-k0 t`` without cosmology). **CORRECTED 2026-10-01, and the correction
+    matters:** this reference previously used the exponent 3 alone, on the
+    ground that the field "no longer decays at leading order". That is true only
+    of a GREY band, ``lambda_E = 1``. Once the band-edge transfer gave the LW
+    band ``lambda_E(LW) = 6.42`` at this fixture's own table, the neglected
+    factor grew by 6.42 and the check failed a correct run: on the 1000 km/s
+    cosmological leg the omission is 2.25e-03 at the last snapshot against a
+    7.18e-04 bar, which is the 3.05x that leg reported. The omission is in the
+    PREDICTION, so it is corrected there, not absorbed into the bar.
+
+    The exponent beta is formed only when the recorded speed is one value for
+    the whole run, where it is exact with no quadrature; a varying speed would
+    need the trapezoid and is not attempted, and the omission is printed instead
+    of hidden.
+
+    This is the more discriminating of the two: the exponent is 3 + beta
+    (density cubed times the field's own decay), a ~10% shift in the
     predicted x_H2 over this fixture's span, well above any noise floor.
 
     A THIRD, more direct probe of the band-edge transfer itself cancels
@@ -1343,7 +1359,10 @@ def ledger_mean(snap: Dict, key: str, use_c_hyp: bool) -> float:
 
 
 def free_field_errors(
-    run: List[Dict], use_c_hyp: bool = False, ref_index: int = 0
+    run: List[Dict],
+    use_c_hyp: bool = False,
+    ref_index: int = 0,
+    h2_field_decay: float = 0.0,
 ) -> Dict:
     """Return the measured drift of Eq. (A1) and the error of Eq. (A2).
 
@@ -1397,10 +1416,14 @@ def free_field_errors(
     rho0 = np.sum(mass) / np.sum(mass / first["density"])
     u_lw0 = np.sum(mass * first["u_LW"]) / np.sum(mass)
     k0 = SIGMA_H2_OVER_E_LW_CGS * C_LIGHT_CGS * rho0 * u_lw0
-    # Power 3, not 4: rho ~ (a0/a)^3 alone now (A2, this module's docstring).
-    # u_LW no longer contributes an (a0/a)^1 factor once the Hubble term is
-    # correctly dilated by c_hyp/c.
-    integral = power_integral(run, 3.0)
+    # rho ~ (a0/a)^3, times the LW field's OWN decay. Dilating the Hubble term
+    # by c_hyp/c does not remove that decay, it scales it: the module relaxes
+    # u_LW at depth lambda_E(LW)*H_dilated (radiation_isrf.c's relaxation
+    # depth, whose `lambda(m) = 1` grey case is the only one in which the field
+    # is constant at leading order), so u_LW ~ (a0/a)^beta with
+    # beta = lambda_E(LW)*c_hyp/c, and the integrand picks up 3 + beta. The
+    # caller passes beta, or 0 when it cannot be formed exactly.
+    integral = power_integral(run, 3.0 + h2_field_decay)
     measured = np.array([np.mean(np.log(s["H2I"] / first["H2I"])) for s in run])
     predicted = -k0 * integral
     out["H2"] = (measured[1:] - predicted[1:]) / np.abs(predicted[1:])
@@ -1881,7 +1904,34 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                     "would be built on it."
                 )
         ref_index = genuine
-    errors = free_field_errors(run, use_c_hyp, ref_index)
+    # (A2)'s reference needs the LW field's own decay exponent, and it is exact
+    # only when the recorded speed is one value for the whole run: beta is then
+    # lambda_E(LW)*c_hyp/c with no quadrature. A varying speed would need the
+    # trapezoid, which must not start at a snapshot whose recorded speed is
+    # zero, so it is not attempted here and the omission is printed.
+    h2_field_decay = 0.0
+    h2_decay_note = "not applied: non-cosmological, no expansion to decay under"
+    if cosmo_decay:
+        weights_for_a2 = read_band_edge_weights(opt.snapshots, log=opt.log)
+        if weights_for_a2 is None:
+            h2_decay_note = (
+                "not applied: the run's log announced no lambda_E(LW), so the "
+                "exponent cannot be formed from the run's own table"
+            )
+        elif not uniform_c_hyp:
+            h2_decay_note = (
+                "not applied: the recorded c_hyp is not one value for the run, "
+                "so beta is not a constant and (A2) carries the omission"
+            )
+        else:
+            c_hyp_cgs = float(np.median(run[ref_index]["c_hyp"]))
+            h2_field_decay = weights_for_a2["LW"] * c_hyp_cgs / C_LIGHT_CGS
+            h2_decay_note = (
+                f"lambda_E(LW) {weights_for_a2['LW']:.5g} x c_hyp/c "
+                f"{c_hyp_cgs / C_LIGHT_CGS:.4e} = {h2_field_decay:.4e}"
+            )
+    errors = free_field_errors(run, use_c_hyp, ref_index, h2_field_decay)
+    print(f"  (A2) LW field decay exponent beta: {h2_decay_note}")
     integral = trapezoid_c_hyp_integral(
         run, representative_c_hyp(run, cosmo_decay), ref_index
     )
@@ -1922,6 +1972,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             reference_run,
             use_c_hyp_reference,
             0 if reference_ref_index is None else reference_ref_index,
+            h2_field_decay,
         )
 
     ok = True
@@ -2158,7 +2209,9 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 from_genuine = float(
                     np.max(
                         np.abs(
-                            free_field_errors(run, use_c_hyp, genuine)[band][genuine:]
+                            free_field_errors(run, use_c_hyp, genuine, h2_field_decay)[
+                                band
+                            ][genuine:]
                         )
                     )
                 )
@@ -2266,6 +2319,23 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             )
         measured_nc = np.interp(elapsed, ref_times, ref_error)
     bar = np.maximum(budget, 2.0 * measured_nc) + cosmo
+
+    # Resolution self-test, matching the one (A1) already carries: a bar that
+    # has grown to or above the signal it must discriminate gates nothing, and a
+    # run that applied no H2 photodissociation at all would pass it. This can only turn a
+    # VACUOUS pass into a failure. It is needed because the bar above takes a
+    # `max` against twice the reference run's own measured error, which the
+    # reference run can make arbitrarily large.
+    signal_a2 = np.abs(errors["rate"] * errors["integral"][1:])
+    if np.any(bar >= signal_a2):
+        worst_k = int(np.argmax(bar / np.where(signal_a2 > 0.0, signal_a2, np.inf)))
+        print(
+            f"  FAIL: (A2) bar {np.atleast_1d(bar)[worst_k]:.3e} is not below the "
+            f"predicted exponent it has to discriminate "
+            f"{signal_a2[worst_k]:.3e}, so a run that applied no H2 "
+            "photodissociation at all would pass here"
+        )
+        return False
     ratio = np.abs(errors["H2"]) / bar
     k = int(np.argmax(ratio))
     print(
@@ -2407,6 +2477,21 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
             else 0.0
         )
         bar = max(budget, 2.0 * nc[band]) + cosmo
+
+        # Resolution self-test, matching the one (A1) already carries: a bar that
+        # has grown to or above the signal it must discriminate gates nothing, and a
+        # run that applied no absorption at all would pass it. This can only turn a
+        # VACUOUS pass into a failure. It is needed because the bar above takes a
+        # `max` against twice the reference run's own measured error, which the
+        # reference run can make arbitrarily large.
+        signal_b1 = abs(float(errors[f"{band}_depth"]))
+        if not np.isfinite(signal_b1) or bar >= signal_b1:
+            print(
+                f"  FAIL: (B1) {band}: bar {bar:.3e} is not below the predicted "
+                f"absorption it has to discriminate {signal_b1:.3e}, so a run "
+                "that applied no absorption at all would pass here"
+            )
+            return False
         print(
             f"  bar {band}: max(float32 flux divergence {float_floor:.1e} + "
             f"one-step lag {per_step:.1e} + density drift "
@@ -2541,6 +2626,23 @@ def check_photoelectric(opt: argparse.Namespace) -> bool:
         # Reference error at the same elapsed times.
         ref_error = np.interp(t, ref["times"][1:], np.abs(ref["relative"]))
         bar = np.maximum(bar, 2.0 * ref_error)
+
+        # Resolution self-test, matching the one (A1) already carries: a bar that
+        # has grown to or above the signal it must discriminate gates nothing, and a
+        # run that applied no photoelectric heating at all would pass it. This can only turn a
+        # VACUOUS pass into a failure. It is needed because the bar above takes a
+        # `max` against twice the reference run's own measured error, which the
+        # reference run can make arbitrarily large.
+        signal_d2 = np.abs(err["predicted"][1:])
+        if np.any(bar >= signal_d2):
+            worst_k = int(np.argmax(bar / np.where(signal_d2 > 0.0, signal_d2, np.inf)))
+            print(
+                f"  FAIL: (D2) bar {np.atleast_1d(bar)[worst_k]:.3e} is not below "
+                f"the predicted heating it has to discriminate "
+                f"{signal_d2[worst_k]:.3e}, so a run that applied no "
+                "photoelectric heating at all would pass here"
+            )
+            return False
         print(
             f"  non-cosmological reference errors: first {ref['relative'][0]:.3e}, "
             f"final {ref['relative'][-1]:.3e}"
@@ -2616,13 +2718,23 @@ def dust_band_ratio_bar(signal: float) -> float:
 
     so the terms split by how they enter, not merely by how many they are.
 
-    CONSTANT, 4 u32. The two band specific energies as stored in the snapshot,
-    and the two ``expf`` extinction factors
+    CONSTANT, 2.04 u32, and it is the two ``expf`` extinction factors ALONE
     (``radiation_get_dust_extinction_factor``). An ``expf`` RELATIVE error is an
-    ABSOLUTE error in the logarithm, which is why these four do not scale with
-    the signal. MEASURED, not assumed from the library's documented bound: this
+    ABSOLUTE error in the logarithm, which is why they do not scale with the
+    signal. MEASURED, not assumed from the library's documented bound: this
     build's ``expf`` is accurate to at most 0.51 float32 ulps over the tau range
-    these fixtures occupy, under the build's own flags.
+    these fixtures occupy, under the build's own flags, and one ulp is 2 u32, so
+    each call contributes 1.02 u32.
+
+    **CORRECTED 2026-10-01, and the first version of this bar was 4 u32.** It
+    attributed two of those four to "the two band specific energies as stored in
+    the snapshot". There is no such term: `PESpecificEnergies` and
+    `LWSpecificEnergies` are written DOUBLE (`feedback_io.h`), the struct field is
+    double, and THIS MODULE'S OWN docstring already says so in terms, that "a term
+    modelling float32 round-off OF it is not a legitimate noise floor and none is
+    used". So the constant was about twice what its stated mechanism supports. The
+    direction was conservative, so it cannot have caused a false failure, but it
+    mattered most at low signal where the constant is effectively the whole bar.
 
     SIGNAL-SCALED. With ``S`` the printed signal, ``tau_LW = S/(1 - rho) =
     2.5 S`` and ``tau_PE = rho tau_LW = 1.5 S``. So a shared-prefactor rounding
@@ -2666,7 +2778,10 @@ def dust_band_ratio_bar(signal: float) -> float:
         The bar, dimensionless.
     """
     u32 = FLOAT32_EPS / 2.0
-    return 4.0 * u32 + 16.5 * u32 * float(signal)
+    # 0.51 float32 ulps per expf, measured on this build's own flags; one ulp
+    # is 2 u32, so 1.02 u32 per call and two calls in the residual.
+    expf_u32 = 2.0 * 1.02
+    return expf_u32 * u32 + 16.5 * u32 * float(signal)
 
 
 def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
