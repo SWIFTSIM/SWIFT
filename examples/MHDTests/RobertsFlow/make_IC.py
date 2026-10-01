@@ -401,31 +401,32 @@ def open_IAfile(path_to_file):
 
 
 def add_other_particle_properties(
-    pos, h, V0, kb, kv, Vz_factor, L, field_type, Flow_kind
+    pos, h, V0, kb, kv, Vz_factor, Lbox, L, field_type, Flow_kind
 ):
     # One can start from any .hdf5 outputs of the simulation 
     if field_type != "load_from_file":
-        vol = L ** 3
-        N = len(h)
+        Lx,Ly,Lz = Lbox
+        V = Lx*Ly*Lz
+        N = len(pos)
 
         # initializing arrays with particle properties
         v = np.zeros((N, 3))
         B = np.zeros((N, 3))
         A = np.zeros((N, 3))
         ids = np.linspace(1, N, N)
-        m = np.ones(N) * rho0 * vol / N
+        m = np.ones(N) * rho0 * V / N
         u = np.ones(N) * u0
 
         # setting constants
-        kv0 = 2 * np.pi / L * kv
-        kb0 = 2 * np.pi / L * kb
+        kv0 = 2 * np.pi / np.max([Lx,Ly]) * kv
+        kb0 = 2 * np.pi / np.max([Lx,Ly]) * kb
         Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
 
         # rescaling the box to size L
         pos *= L
 
-        # setting the velocity profile
+        # Setting the velocity profile
         if Flow_kind == 1:
             v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
             v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
@@ -458,54 +459,48 @@ def add_other_particle_properties(
             v[:, 2] = Vz_factor * np.sin(kv0 * pos[:, 0])
         else:
             print("Wrong Flow kind. Use values 1-4")
-
         v *= V0
 
-        # setting the initial magnetic field
+        # Setting the initial magnetic field
 
         if field_type == "one_mode":
             B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
             B[:, 1] = -(np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
             B[:, 2] = -(np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
             B *= B0
-           
             meanB = np.mean(B,axis=0)
             B -= meanB[None,:]
-
             A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
             A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
             A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
             A0 = B0 / kb0
             A *= A0
+
         if field_type == "BxSin":
             B[:, 0] = np.sin(kb0 * pos[:, 2])
-
             meanB = np.mean(B,axis=0)
             B -= meanB[None,:]
-
             B *= B0
             A[:, 1] = - np.cos(kb0 * pos[:, 2])
             A0 = B0 / kb0
             A *= A0
  
-        elif field_type == "random":
+        elif field_type == "spectrum":
 
-            Npx = int((len(B))**(1/3))
-
-            # generate magnetic field with k^-3 spectrum and a cutoff at the Nyquist scale, with d_res = kernel cutoff radius ~ 3.2 interparticle spacing
+            # generate magnetic field with k^-3 spectrum and a cutoff at the Nyquist scale,
+            # with d_res = kernel cutoff radius
             nB = -3.0
-            oversampling = 4
-
+            oversampling = 2 #4
             B, A = generate_random_magnetic_field_from_spectra(
                 positions=pos,
-                boxsize=np.array([L,L,L]),
-                Ngrid=Npx * oversampling,
+                boxsize=np.array(Lbox),
+                Ngrid = (np.array(Lbox) * (N/V)**(1/3) * oversampling).astype(int),
                 Brms=B0,
                 spectrum=lambda k: spectrum_powerlaw(
                     k,
                     n=-nB,
-                    kmin = 2.0 * np.pi / L,
-                    kmax = np.pi / L * (Npx / 3.2),
+                    kmin = 2.0 * np.pi / np.max(Lbox),
+                    kmax = np.pi / (2.0*np.max(h))
                 ),
                 seed=1234,
                 return_grid=False,
@@ -516,9 +511,8 @@ def add_other_particle_properties(
 
     # One can start from any .hdf5 outputs of the simulation 
     else:
-        vol = L ** 3
         # Put path to IC snapshots here
-        filename ="./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5" #"./ICfiles/rf4d_o1_g64_randB_withVP.hdf5" #"./ICfiles/RF2_pattern_0090.hdf5" #"./ICfiles/rf2d_o1_g64_randB_withVP.hdf5" #"./ICfiles/rf2d_g128_randB_withVP.hdf5"
+        filename ="./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5"
         # read the variables of interest from the snapshot file
         pos = None
         h = None
@@ -549,20 +543,6 @@ def add_other_particle_properties(
         Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
         A, B = normalize_Magnetic_Field(A, B, B0)
-        # data = load(filename)
-        # print(data.metadata.gas_properties.field_names)
-
-        # pos = data.gas.coordinates[:].value
-        # rho = data.gas.densities.value
-        # h = data.gas.smoothing_lengths.value
-        # v = data.gas.velocities.value
-        # m = data.gas.masses.value
-        # P = data.gas.pressures.value
-        # B = data.gas.magnetic_flux_densities.value
-        # A = data.gas.magnetic_vector_potentials.value
-        # u = data.gas.internal_energies.value
-        # ids = data.gas.particle_ids.value
-        # N = len(h)
 
     return pos, h, v, B, A, ids, m, u
 
@@ -577,26 +557,6 @@ def stack_boxes(pos,h,npar,nper):
 
     pos_stack = np.concatenate(pos_stack)
     h_stack = np.concatenate(h_stack)
-
-   # N = len(h)
-
-    #cx, cy, cz = npar, npar, nper
-
-    #pos_stack = np.zeros((int(N * cx * cy * cz), 3))
-   # h_stack = np.zeros(int(N * cx * cy * cz))
-   # N_stack = N * cx * cy * cz
-
-    #c0 = 0
-    #c1 = N
-    #for i in range(cx):
-    #    for j in range(cy):
-    #        for k in range(cz):
-    #            pos_stack[c0:c1, 0] = pos[:, 0] + i
-    #            pos_stack[c0:c1, 1] = pos[:, 1] + j
-    #            pos_stack[c0:c1, 2] = pos[:, 2] + k
-    #            h_stack[c0:c1] = h[:]
-    #            c0 += N
-    #            c1 += N
 
     return pos_stack, h_stack
 
@@ -660,7 +620,7 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
-        default="random", #"BxSin", #"one_mode",#"load_from_file", #"BxSin", #"one_mode", #"load_from_file",  #'load_from_file',#'random',
+        default="spectrum",#"BxSin",#"one_mode",#"load_from_file",
         type=str,
     )
     parser.add_argument(
@@ -707,8 +667,6 @@ if __name__ == "__main__":
         type=int,
     )
 
-
-
     args = parser.parse_args()
     pos, h = open_IAfile(args.IA_path)
 
@@ -718,8 +676,6 @@ if __name__ == "__main__":
         args.npar_box,
         args.nper_box,
     )
-
-    print(pos, h)
 
     pos, h = deform_boxes(
         pos,
@@ -734,9 +690,13 @@ if __name__ == "__main__":
     # Filter positions that appear more than once
     repeating_pos = unique_pos[counts > 1]
 
-    print("Repeating positions:")
-    print(repeating_pos)
-
+    # Calculate box geometry
+    L = args.boxsize
+    cpar = args.npar_box*args.lparmultiplier
+    cper = args.nper_box*args.lpermultiplier
+    Lbox = [L*cpar, L*cpar, L*cper]
+    N = len(h)
+ 
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
         pos,
         h,
@@ -744,29 +704,11 @@ if __name__ == "__main__":
         args.magnetic_wavevector,
         args.velocity_wavevector,
         args.Vz_factor,
-        args.boxsize,
+        Lbox,
+        L,
         args.field_type,
         args.flow_kind,
     )
-
-    L = args.boxsize
-    cpar = args.npar_box*args.lparmultiplier
-    cper = args.nper_box*args.lpermultiplier
-    Lbox = [L*cpar, L*cpar, L*cper]
-    N = len(h)
-
-    # try to separate the modes
-    #Brms = np.sqrt(np.mean(np.linalg.norm(B,axis=1)**2))
-
-    #B[:,0] = 0.0
-    #B[:,1] = 0.0
-    #B[:,2] = 0.0
-
-    # excite Bx
-    #B[:,0] += Brms * np.sin(2 * np.pi * pos[:,2]/Lbox[2])
-
-    # excite By
-    #B[:,1] += Brms * np.sin(2 * np.pi * pos[:,2]/Lbox[2])
 
     # File
     try:
