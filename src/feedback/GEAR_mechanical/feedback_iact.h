@@ -558,6 +558,17 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.delta_u += dU / new_mass;
     xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SN;
 
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+    /* cos_out = +1 if the kick points away from the star (dx = si - pj) */
+    const double dp_SN_norm =
+        sqrt(dp_SN[0] * dp_SN[0] + dp_SN[1] * dp_SN[1] + dp_SN[2] * dp_SN[2]);
+    const double cos_out =
+        -(dp_SN[0] * dx[0] + dp_SN[1] * dx[1] + dp_SN[2] * dx[2]) /
+        (dp_SN_norm * sqrt(r2));
+    message("[SN kick direction] id=%lld r=%e |dp|=%e cos_out=%f", pj->id,
+            sqrt(r2), dp_SN_norm, cos_out);
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+
     /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
        of feedback_update_part() */
     tracers_after_supernovae_feedback_part(xpj, delta_p_mag_supernovae,
