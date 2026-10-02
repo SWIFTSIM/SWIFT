@@ -285,12 +285,12 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
  * @brief Cache every band's M1 closure tensor on the particle.
  *
  * Must run after the last write of `u` and `specific_flux` preceding a
- * gradient loop that reads the particle. Three call sites cover this: the
- * drift-time reset, the density ghost, and first init, since the initial
- * ti = 0 pass reaches the gradient loop without a drift.
+ * gradient loop that reads the particle. Two call sites are required: the
+ * drift-time reset, and first init, since the initial ti = 0 pass reaches
+ * the gradient loop without a drift.
  *
  * The stored flux is already reduced by `c_hyp`, so the closure is built with
- * `c_M = 1` and does not depend on `c_hyp`.
+ * `c_M = 1` and ignores `c_hyp`, so the density ghost's call is only a refresh.
  *
  * @param p The #part.
  */

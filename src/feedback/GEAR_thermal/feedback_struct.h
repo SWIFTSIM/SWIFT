@@ -316,9 +316,9 @@ struct feedback_isrf_operator_data {
   /*! M1 closure tensor `D(f)` from the owning moment's own
      #feedback_isrf_moment_data.u and the reduced flux
      #feedback_isrf_moment_data.specific_flux (#radiation_isrf_operator_owner),
-     cached by #radiation_cache_m1_closure_part (drift-time reset, the density
-     ghost and first init) so the gradient loop reads it per pair without
-     rebuilding it. */
+     cached by #radiation_cache_m1_closure_part (drift-time reset and first
+     init, where it is required; the density ghost also refreshes it) so the
+     gradient loop reads it per pair without rebuilding it. */
   float m1_closure_D[3][3];
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop

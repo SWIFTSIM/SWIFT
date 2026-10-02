@@ -1472,14 +1472,17 @@ tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$, since
 $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm hyp},i}u_i)$ identically,
 the same physical reduced flux $f$ that the true-flux form computes from
 $(\mathbf F_i, c_{{\rm hyp},i})$ directly. At a spatially uniform
-$c_{{\rm hyp},i}$ every rewritten operator is its true-flux counterpart divided
-by the one constant $c_{\rm hyp}$. The stored flux is rounded once when it is
-formed, so the equality is exact when $c_{\rm hyp}$ is a power of two (the
-division moves only the exponent) and holds to a few units of the float32
-round-off otherwise. \code{testRadiationISRFForceDispatchConservation}
-(swift-gear's GEAR test suite) asserts both against a frozen copy of the
-true-flux formulas kept inside the test, bitwise at a power-of-two
-$c_{\rm hyp}$ and to a derived tolerance at a general one. The operators carry
+$c_{{\rm hyp},i}$ every rewritten operator, which carries the receiver's
+$c_{{\rm hyp},i}$ as a factor (items \textbf{(2)} and \textbf{(3)} above), is
+its true-flux counterpart evaluated on
+$\mathbf F = c_{\rm hyp}\tilde{\mathbf F}$.
+The stored flux is rounded once when it is formed, and the compiler may
+associate the two evaluations differently, so the two agree to a few units of
+the float32 round-off at any uniform $c_{\rm hyp}$, not bit for bit.
+\code{testRadiationISRFForceDispatchConservation}
+(swift-gear's GEAR test suite) asserts this against a frozen copy of the
+true-flux formulas kept inside the test, to a derived tolerance at every
+$c_{\rm hyp}$ tried (a power of two included). The operators carry
 no floating-point annotation, so the compiler may reassociate them under
 \code{-ffast-math}: a change of compiler or flags can move the last bits of an
 accumulator, which changes neither the discrete scheme nor the conservation
@@ -1490,7 +1493,7 @@ speed of Section~\ref{sec:fuv-chyp-heterogeneity}; it is the default as of
 \code{a53ab8311}. Scheme $2$ (a fixed fraction of $c$) pairs it with a uniform
 speed, where it reduces to the unmodified operators
 (Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) acting on
-$\tilde{\mathbf F}$
+$\tilde{\mathbf F}$ and multiplied by the one receiver factor $c_{\rm hyp}$
 (Section~\ref{sec:fuv-chyp-heterogeneity} gives the full ranking and the
 default's caveats).
 

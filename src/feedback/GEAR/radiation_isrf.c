@@ -520,7 +520,7 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
     c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
   fd->c_hyp = c_hyp;
-
+  /* A refresh: the closure does not depend on the c_hyp set above. */
   radiation_cache_m1_closure_part(p);
 }
 

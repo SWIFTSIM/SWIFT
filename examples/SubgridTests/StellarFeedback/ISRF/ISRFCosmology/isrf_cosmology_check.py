@@ -167,8 +167,9 @@ free_field
       (radiation_isrf.c's radiation_snapshot_part_propagation and
       radiation_end_density_propagation), and the operators are the same
       whether the speed is uniform or not (radiation_propagation_iact.h).
-      What a uniform speed does cost is the variable-c coverage: this leg says nothing about a defect that only
-      appears once c_hyp varies between neighbours.
+      What a uniform speed does cost is the variable-c coverage: this leg
+      says nothing about a defect that only appears once c_hyp varies between
+      neighbours.
     - With c_hyp VARYING, the drift is REPORTED and not gated, the way (A3)
       already reports and skips there. The reweighting term is not unbounded:
       spread(u)*spread(1/c_hyp) bounds it, from the run's own recorded
@@ -825,7 +826,7 @@ def read_snapshot(filename: str) -> Dict:
             ),
             # (A1)'s and (A3)'s float-residual bar terms: the FLOAT inputs
             # still feeding the double relaxation update
-            # (radiation_isrf.c:1207-1247).
+            # (radiation_end_force_propagation, radiation_isrf.c:913-917).
             "div_PE": (
                 physical(gas["PESpecificFluxDivergences"], a, energy / time)[order]
                 if "PESpecificFluxDivergences" in gas
@@ -1279,7 +1280,7 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
             # Snapshot 0 is written before the first force step. Under the
             # scheme that sets c_hyp in radiation_snapshot_part_propagation
             # (2) it therefore still holds the first-init seed of exactly
-            # zero (radiation_isrf.c:159); the scheme that sets it in
+            # zero (radiation_isrf.c:156); the scheme that sets it in
             # radiation_end_density_propagation (4) reads the light-speed
             # value instead, because the initial density pass does
             # run. A snapshot with no speed at all carries nothing to be
@@ -1663,12 +1664,13 @@ def float_divergence_pull(
     """Return one step's largest relative transport pull on a moment's ``u``.
 
     The relaxation update is double, but the flux divergence it subtracts is
-    still float end to end (radiation_isrf.c:1207-1247), so each step's
-    increment carries a float32 relative error. This returns the increment's
-    own size relative to ``u``, ``max_i |dt * div_i / u_i|``, which the
-    caller multiplies by ``FLOAT32_EPS`` and the run's step count. None when
-    the snapshot carries no such field, or when the ratio is not everywhere
-    finite, so a caller never folds a NaN into a bar.
+    still float end to end (radiation_end_force_propagation,
+    radiation_isrf.c:913-917), so each step's increment carries a float32
+    relative error. This returns the increment's own size relative to ``u``,
+    ``max_i |dt * div_i / u_i|``, which the caller multiplies by
+    ``FLOAT32_EPS`` and the run's step count. None when the snapshot carries
+    no such field, or when the ratio is not everywhere finite, so a caller
+    never folds a NaN into a bar.
 
     Parameters
     ----------
@@ -1809,11 +1811,12 @@ def check_band_edge_ratio(
     trapezoid = abs(delta_lambda) * float(errors["trapezoid_bound"][-1])
 
     # c_hyp and dt_prev are shared by both moments (one operator,
-    # radiation_isrf.c:780-783) and cancel in the ratio to first order, so
+    # radiation_isrf.c:753-754) and cancel in the ratio to first order, so
     # they do not enter here. What survives is the FLOAT operands that
     # differ BETWEEN the two moments feeding the double relaxation update:
     # each moment's own flux divergence and dissipation source
-    # (radiation_isrf.c:1207-1247 is still float end to end). Bounded by
+    # (radiation_isrf.c:913-917 is still float end to end for the
+    # divergence and dissipation inputs). Bounded by
     # eps_f * n_steps * the divergence's own relative pull on u this step,
     # read from the run's own snapshots, never fitted.
     float_terms = []
