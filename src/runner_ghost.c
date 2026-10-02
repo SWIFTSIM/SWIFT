@@ -2268,21 +2268,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct part *pi = &c->hydro.parts[pi_idx];
       /* Anything to do here? */
       if (!part_is_active(pi, e)) continue;
-      // /* Derefine if below volume criteria and about to be <= 0 mass,
-      //  *          additional factor 3 added to control worst case before - mass
-      //  *          This is because in SWIFT the dt can change by a factor 2,
-      //  *          meaning that the first order guess for maximum mass lost this
-      //  *          timestep and next will be around 3 * flux.mass
-      //  * Continue if volume is above or not going to be <= 0 mass,
-      //  * Derefine if volume smaller than threshold AND mass will be negative
-      //  */
-      // if ((pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
-      //   || (pi->conserved.mass + 3 * pi->flux.mass) > 0.f) {
-      //   continue;
-      // }
 
       /* Use the splitting mass threshold to derefine */
       float mass_deref;
+      /* Derefine at 0.5 of average, 0.25 of splitting
       mass_deref = 0.25 * e->hydro_properties->particle_splitting_mass_threshold;
 
       /* Derefine if mass below threshold and volume below threshold */
@@ -2312,27 +2301,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
             face->left_idx == pi_idx ? face->right_idx : face->left_idx;
         struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];
 
-        /* We may have a conflict with pj also derefining. We do not want to
-         * derefine neighbors, however if pi is going negative in the next time
-         * step it _must_ be removed. This prevents negative masses, but at
-         * the cost of potentially removing neighbors who are both erratic.
-         *
-         * This is a potential source of bad geometry. Care.
-         */
-        if (pj->time_bin == time_bin_apoptosis &&
-            (pi->conserved.mass + pi->flux.mass > 0.f)) {
-          /* we found a conflict, so we won't de-refine pi, continue the outer
+        /* If pj is also to derefine, we cannot derefine pi */
+        if (pj->time_bin == time_bin_apoptosis) {
+          /* we found a conflict, so we can't de-refine pi, continue the outer
            * loop instead */
-            goto next_particle;
-          }
-
-        // if (pj->time_bin == time_bin_apoptosis ||
-        //     (part_is_active(pj, e) &&
-        //      pj->geometry.volume < pi->geometry.volume)) {
-        //   /* we found a conflict, so we can't de-refine pi, continue the outer
-        //    * loop instead */
-        //   goto next_particle;
-        // }
+          goto next_particle;
+        }
         total_weight += hydro_part_get_derefinement_weight_face(
             pi, pj, face->surface_area, face->midpoint);
       }
@@ -2343,7 +2317,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         error("Cannot do apoptosis, since total weight is 0!");
 #endif
       pi->time_bin = time_bin_apoptosis;
-      message("Added a particle to removal list");
       /* Apply any leftover fluxes */
       pi->conserved.mass += pi->flux.mass;
       pi->conserved.momentum[0] += pi->flux.momentum[0];
@@ -2357,7 +2330,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       pi->apoptosis_data.transferred_fraction = 0.;
       pi->apoptosis_data.transfer_count = 0;
 #endif
-      /* TODO apply gravitational work term? or transfer later? */
 
     next_particle:;
     }
