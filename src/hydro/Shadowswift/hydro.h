@@ -517,8 +517,6 @@ if (is_nan_float(Q[4])) {
   /* Evolve thermal energy to final state and use that as criterion */
   double thermal_energy;
   // See eq. 24 in Alonso Asensio et al. (preprint 2023)
-  float flux[6];
-  hydro_part_get_fluxes(p, flux);
   thermal_energy = Q[4] - Ekin; // Q4 has En + Ecool + Eflux and Egrav (=dEkin)
 
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
@@ -552,6 +550,9 @@ if (is_nan_float(Q[4])) {
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO
+
+  float flux[6];
+  hydro_part_get_fluxes(p, flux);
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
@@ -578,8 +579,6 @@ if (is_nan_float(Q[4])) {
   }
   else {
     /* Employ Gaburov 2011 method (Also used in Hopkins 2015, Asensio 2023)
-     *
-     * Note that we exclude dE from Gravity interactions
      *
      * Recall: Cooling is included in fluxes
      */
@@ -618,12 +617,16 @@ if (is_nan_float(Q[4])) {
     }
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO_COSMO
+
   /* Here we enter the default cosmological setup. This is noticably different
    * from the above, since it does not include the entropy switch unless we hit
    * a catastrophic failure of both methods here.
    * It is recommended to use this only in cosmological runs with a UV
    * background. Otherwise, default to above */
-   */
+
+  float flux[6];
+  hydro_part_get_fluxes(p, flux);
+
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
@@ -973,15 +976,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       const float m_inv2 = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
 
       const float Ekin1 = 0.5 * m_inv1 *
-                          (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
                           p->conserved.momentum[1] * p->conserved.momentum[1] +
                           p->conserved.momentum[2] * p->conserved.momentum[2]);
+
       const float Ekin2 =  0.5 * m_inv2 * (Q[1] * Q[1] +
                                             Q[2] * Q[2] +
                                             Q[3] * Q[3]);
 
       const float dEkin = Ekin2 - Ekin1;
 
+      /* Add the change in kinetic energy from gravity kicks to energy */
       Q[4] += dEkin;
 
       /* NOTE: 1 year of work, just to erase all of it and do this... */
