@@ -11,7 +11,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 set -eo pipefail
 
 if [ -n "${c_hyp_pin:-}" ]; then
-    echo "c_hyp_pin was removed: set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
+    echo "c_hyp_pin was removed: set c_hyp_fraction=<speed/c> instead." >&2
     exit 1
 fi
 
