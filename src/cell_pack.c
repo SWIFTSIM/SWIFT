@@ -704,8 +704,9 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an absolute, always-fresh
+   * offset from c->top->stars.parts. See cell_pack_grav_counts for why. */
+  pcells[0].delta_from_rebuild = c->stars.parts - c->top->stars.parts;
   pcells[0].count = c->stars.count;
   pcells[0].dx_max_part = c->stars.dx_max_part;
 
@@ -715,7 +716,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Stars part pointer moved in the wrong direction!");
+    error("Stars part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
@@ -755,9 +756,11 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
     error("Star particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. Reconstructing against our own top->stars.parts
+   * is valid because cell_link_sparts() links the whole tree, so both ranks
+   * share one layout. */
   c->stars.count = pcells[0].count;
-  c->stars.parts = c->stars.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->stars.parts = c->top->stars.parts + pcells[0].delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -789,8 +792,10 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
 
-  /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  /* Pack this cell's data. delta_from_rebuild is an offset into the sender's
+   * own layout: the receiver's is compacted, so it rebuilds its pointers from
+   * the counts instead and only reads this back as a diagnostic. */
+  pcells[0].delta_from_rebuild = c->grav.parts - c->top->grav.parts;
   pcells[0].count = c->grav.count;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -799,18 +804,45 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
 
   if (pcells[0].delta_from_rebuild < 0)
-    error("Grav part pointer moved in the wrong direction!");
+    error("Grav part pointer precedes its top-level ancestor's array!");
 
   if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
+
+  /* Localizes a layout bug to the sender vs the receiver's reconstruction. */
+  {
+    const ptrdiff_t rel_end =
+        (c->grav.parts + c->grav.count) - c->top->grav.parts;
+    if (rel_end > c->top->grav.count)
+      error(
+          "PACK: cell's local range exceeds its top-level ancestor's count! "
+          "c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
+          "top->cellID=%lld top->grav.count=%d",
+          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
+          c->top->grav.count);
+  }
 #endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+  int progeny_count_sum = 0;
+#endif
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       count += cell_pack_grav_counts(c->progeny[k], &pcells[count]);
+#ifdef SWIFT_DEBUG_CHECKS
+      progeny_count_sum += c->progeny[k]->grav.count;
+#endif
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->split && progeny_count_sum != c->grav.count)
+    error(
+        "Split cell's grav.count=%d does not match the sum of its progeny's "
+        "counts=%d at pack time (c->cellID=%lld c->depth=%d)",
+        c->grav.count, progeny_count_sum, c->cellID, c->depth);
+#endif
 
   /* Return the number of packed values. */
   return count;
@@ -839,10 +871,28 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
     error("Grav. particles array at rebuild is NULL!");
 #endif
 
-  /* Unpack this cell's data. */
+  /* Unpack this cell's data. The sender's delta_from_rebuild is an offset
+   * into its own layout, so reconstruct against our own
+   * top->grav.parts_foreign rather than a per-cell cached baseline. */
   c->grav.count = pcells[0].count;
   c->grav.parts_foreign =
-      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
+      c->top->grav.parts_foreign + pcells[0].delta_from_rebuild;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Mirror of the sender-side check, applied to the receiver's reconstruction.
+   */
+  {
+    const ptrdiff_t rel_end =
+        (c->grav.parts_foreign + c->grav.count) - c->top->grav.parts_foreign;
+    if (rel_end > c->top->grav.count)
+      error(
+          "UNPACK: cell's local range exceeds its top-level ancestor's "
+          "count! c->cellID=%lld c->depth=%d c->grav.count=%d rel_end=%td "
+          "top->cellID=%lld top->grav.count=%d top->grav.count_total=%d",
+          c->cellID, c->depth, c->grav.count, rel_end, c->top->cellID,
+          c->top->grav.count, c->top->grav.count_total);
+  }
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
