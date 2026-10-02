@@ -6,6 +6,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # pipefail: swift is piped into tee, whose exit code would hide a crash.
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
 redshift=${redshift:=0}         #Starting redshift, 0 runs without cosmology
 

@@ -10,6 +10,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)

@@ -5,6 +5,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 n_threads=${n_threads:=8}                   # Number of threads
 swift=${swift:="../../../../../swift"}      # SWIFT binary
 run_check=${run_check:=1}                   # Run the check after the runs
