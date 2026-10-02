@@ -2205,7 +2205,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # proportional to sum m u; scheme 4's weight cancels only because
             # it is uniform here, and the two coincide exactly when it is.
             if c_hyp_scheme == 2:
-                why = "this scheme's operators conserve sum m u directly"
+                why = "this scheme's one speed makes sum m u / c_hyp proportional to sum m u"
             elif use_c_hyp:
                 why = "the ledger weight cancels between the two sums"
             else:
