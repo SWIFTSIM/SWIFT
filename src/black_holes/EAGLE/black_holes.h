@@ -884,12 +884,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->total_accreted_mass += mass_rate * dt;
   bp->energy_reservoir += luminosity * epsilon_f * dt;
 
-  /* Now also compute NSC growth rate based on mass deficit from *assumed* relation with BH mass */
-  /* We use scaling relations M_BH - M_gal (Greene+20, section 8.2) and M_gal - M_NSC (Neumayer+20)*/
-  const double logm_gal = 0.72 * log10f(bp->subgrid_mass) - 5.44;
-  const double m_gal = pow(10, logm_gal) * 3e10;
-  const double logm_nsc = 0.48 * log10f(m_gal / 1e9) + 6.51;
-  const double m_nsc_supposed = pow(10, logm_nsc);
+  /* Now also compute NSC growth rate based on mass deficit from *assumed* relation with BH mass.
+  * We use combined scaling relations M_BH - M_gal (Greene+20, section 8.2) and 
+  * M_gal - M_NSC (Neumayer+20), in units of Msun */
+  const double m_bh_msun = bp->subgrid_mass * props->mass_to_solar_mass;
+  const double logm_nsc = 0.35 * log10f(m_bh_msun) + 4.61;
+  const double m_nsc_supposed = pow(10, logm_nsc) * constants->const_solar_mass;
   bp->nsc_mass_deficit = m_nsc_supposed - bp->nsc_mass;
   
   /* If NSC sits above relation, no new mass needs to be added */
