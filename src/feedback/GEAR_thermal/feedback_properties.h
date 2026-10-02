@@ -78,7 +78,7 @@ enum isrf_c_hyp_scheme {
    * timestep among this particle and every neighbour in its kernel, set by
    * radiation_end_density_propagation once the density loop has converged.
    * The kernel-local speed reduces the speed contrast between neighbours
-   * (and so the negativity), and the reduced-flux operators are the
+   * (and so the negativity), and the operators on the reduced flux are the
    * consistent generalisation of the single-uniform-speed reduced-speed-of-
    * light method to a per-particle `c_hyp_i`: a change of variable (every
    * operator at particle i becomes `c_hyp_i/c` times the true-speed
@@ -258,7 +258,7 @@ struct feedback_props {
 
   /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme): 2 (fixed fraction
    * of c, magnitude #ISRF_c_hyp_fixed_fraction_of_c) or 4 (kernel-local
-   * speed with reduced-flux operators, default). See that enum's doxygen for
+   * speed, default). See that enum's doxygen for
    * the specifics of each value. The fixed fraction is tied to scheme 2:
    * feedback_props_init() errors if #ISRF_c_hyp_fixed_fraction_of_c is
    * positive with this not set to 2, or this is set to 2 with
@@ -525,8 +525,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
-      const char *isrf_c_hyp_scheme_name =
-          "kernel-local speed, reduced-flux operators";
+      const char *isrf_c_hyp_scheme_name = "kernel-local speed";
       if (feedback_props->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction)
         isrf_c_hyp_scheme_name = "fixed fraction of c";
       message("ISRF c_hyp scheme                                          = %s",
@@ -1054,7 +1053,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
       error(
           "GEARFeedback:ISRF_c_hyp_scheme must be 2 (fixed fraction of c) "
-          "or 4 (kernel-local speed with reduced-flux operators), got %d. "
+          "or 4 (kernel-local speed), got %d. "
           "The values 0, 1 and 3 were removed: they are no longer "
           "supported.",
           fp->ISRF_c_hyp_scheme);
