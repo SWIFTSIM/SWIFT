@@ -318,10 +318,10 @@ float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
  * @param hj Comoving smoothing-length of particle j.
  * @param si First (star) particle.
  * @param pj Second (gas) particle.
- * @param dx_ij_plus (return) Projection vector plus. Pointer to array of
- * size 3.
- * @param dx_ij_minus (return) Projection vector minus. Pointer to array of
- * size 3.
+ * @param dx_ij_plus (return) Projection vector plus, of the unit vector from
+ * the star to the gas. Pointer to array of size 3.
+ * @param dx_ij_minus (return) Projection vector minus, of the unit vector from
+ * the star to the gas. Pointer to array of size 3.
  * @param scalar_weigth_j (return) Scalar weight.
  */
 __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
@@ -349,17 +349,21 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   dW_ij_dr_j = fabsf(dW_ij_dr_j);
   dW_jj_dr_j = fabsf(dW_jj_dr_j);
 
+  /* The paper's x_ba points from the star to the gas, while dx = si - pj, i.e.
+   * x_ba = pj - si */
+  const float dx_pj_si[3] = {-dx[0], -dx[1], -dx[2]};
+
   /* Compute the projection vectors (scale-factors cancel out) */
-  dx_ij_plus[0] = max(dx[0], 0.0) * r_inv;
-  dx_ij_plus[1] = max(dx[1], 0.0) * r_inv;
-  dx_ij_plus[2] = max(dx[2], 0.0) * r_inv;
+  dx_ij_plus[0] = max(dx_pj_si[0], 0.0) * r_inv;
+  dx_ij_plus[1] = max(dx_pj_si[1], 0.0) * r_inv;
+  dx_ij_plus[2] = max(dx_pj_si[2], 0.0) * r_inv;
 
-  dx_ij_minus[0] = min(dx[0], 0.0) * r_inv;
-  dx_ij_minus[1] = min(dx[1], 0.0) * r_inv;
-  dx_ij_minus[2] = min(dx[2], 0.0) * r_inv;
+  dx_ij_minus[0] = min(dx_pj_si[0], 0.0) * r_inv;
+  dx_ij_minus[1] = min(dx_pj_si[1], 0.0) * r_inv;
+  dx_ij_minus[2] = min(dx_pj_si[2], 0.0) * r_inv;
 
-  /* This is simply dx/r, i.e the unit vector of dx (scale-factors cancel out)
-   */
+  /* This is simply (pj - si)/r, i.e the unit vector from the star to the gas
+   * (scale-factors cancel out) */
   const double dx_ij_hat[3] = {(dx_ij_plus[0] + dx_ij_minus[0]),
                                (dx_ij_plus[1] + dx_ij_minus[1]),
                                (dx_ij_plus[2] + dx_ij_minus[2])};
