@@ -1104,13 +1104,14 @@ void cooling_cool_part(const struct phys_const* phys_const,
     hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
   }
 
-  /* Calculate energy after dt */
+  /* Grackle float of new internal energy after cooling */
   gr_float u_new = 0;
 
   /* Is the cooling turn off */
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
   } else {
+
     u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props, cooling, p,
                                xp, dt, dt_therm);
   }
@@ -1119,7 +1120,7 @@ void cooling_cool_part(const struct phys_const* phys_const,
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* We now need to check that we are not going to go below any of the limits */
-  u_new = max(u_new, u_minimal);
+  u_new = fmax(u_new, u_minimal);
 
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_ad_before) / dt_therm;
