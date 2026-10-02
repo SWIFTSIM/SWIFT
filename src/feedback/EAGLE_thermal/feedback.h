@@ -427,7 +427,7 @@ feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
 }
 
 /**
- * @brief Kernel-local hyperbolic propagation speed. Nothing to do here.
+ * @brief Hyperbolic propagation speed of the ISRF. Nothing to do here.
  *
  * @param p The #part to query.
  */

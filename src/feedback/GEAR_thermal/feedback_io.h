@@ -489,8 +489,10 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       xparts, convert_part_c_hyp,
       "Hyperbolic propagation speed the band updates and the "
       "pairwise transport operators ran with, shared by both bands. "
-      "Physical: built from the physical smoothing length and a physical "
-      "timestep, so no scale-factor exponent of its own. The conserved "
+      "Physical, so no scale-factor exponent of its own: a fixed fraction "
+      "of the speed of light (ISRF_c_hyp_scheme 2) or built from the "
+      "physical smoothing length and a physical timestep "
+      "(ISRF_c_hyp_scheme 4). The conserved "
       "ledger of the reduced-flux scheme (ISRF_c_hyp_scheme 4) is "
       "`sum m u / c_hyp` rather than `sum m u`, which is what this field "
       "makes measurable from a snapshot. Only meaningful when "
