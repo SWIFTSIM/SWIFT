@@ -173,7 +173,10 @@ struct feedback_isrf_moment_data {
   double u_prev;
 
   /*! Hyperbolic propagation state: the tracked specific flux moment,
-      mass-specific like #u. Zeroed unconditionally at
+      mass-specific like #u, stored as the REDUCED flux `Ft = F_true/c_hyp`
+      (same units as #u) for every ISRF scheme; the snapshot getters
+      multiply it by #feedback_part_data.c_hyp to write the true flux.
+      Zeroed unconditionally at
       first init (no IC field proposed for it); relaxed every step in the
       extra ghost (radiation_isrf.c's exact-relaxation update), then limited
       there against #u. Read by neighbours in the gradient loop (the old
@@ -311,11 +314,11 @@ struct feedback_isrf_operator_data {
   float kappa;
 
   /*! M1 closure tensor `D(f)` from the owning moment's own
-     #feedback_isrf_moment_data.u, #feedback_isrf_moment_data.specific_flux
-     (#radiation_isrf_operator_owner) and #feedback_part_data.c_hyp, cached
-     by #radiation_cache_m1_closure_part (drift-time reset and, once #c_hyp
-     itself is known, the density ghost) so the gradient loop reads it per
-     pair without rebuilding it. */
+     #feedback_isrf_moment_data.u and the reduced flux
+     #feedback_isrf_moment_data.specific_flux (#radiation_isrf_operator_owner),
+     cached by #radiation_cache_m1_closure_part (drift-time reset, the density
+     ghost and first init) so the gradient loop reads it per pair without
+     rebuilding it. */
   float m1_closure_D[3][3];
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop

@@ -493,9 +493,10 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "of the speed of light (ISRF_c_hyp_scheme 2) or built from the "
       "physical smoothing length and a physical timestep "
       "(ISRF_c_hyp_scheme 4). The conserved "
-      "ledger of the reduced-flux scheme (ISRF_c_hyp_scheme 4) is "
-      "`sum m u / c_hyp` rather than `sum m u`, which is what this field "
-      "makes measurable from a snapshot. Only meaningful when "
+      "ledger of the pairwise transport operators is `sum m u / c_hyp` "
+      "rather than `sum m u` (proportional where c_hyp is uniform), which "
+      "is what this field makes measurable from a snapshot. Only "
+      "meaningful when "
       "ISRF_propagation is on.");
 
   list[17] = io_make_output_field_convert_part(

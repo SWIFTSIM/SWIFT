@@ -61,53 +61,32 @@ enum radiation_policy {
 /**
  * @brief Which ISRF hyperbolic-propagation scheme is active.
  *
- * Each value fixes two things together: how the propagation speed `c_hyp_i`
- * is set (radiation_isrf.c), and which form of the pairwise operators
- * (radiation_propagation_iact.h) consumes it. Any other value is rejected at
- * parse time by feedback_props_init() and, for a restart, by
- * feedback_struct_restore().
+ * Each value fixes how the propagation speed `c_hyp_i` is set
+ * (radiation_isrf.c). The pairwise operators (radiation_propagation_iact.h)
+ * are the same for every value: they act on the reduced flux
+ * `Ft = F_true/c_hyp`. Any other value is rejected at parse time by
+ * feedback_props_init() and, for a restart, by feedback_struct_restore().
  */
 enum isrf_c_hyp_scheme {
   /*! Speed: `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every
    * particle, independent of `h` and of the timestep, set at drift. A
    * dedicated timestep term (radiation_isrf_part_timestep) enforces the
    * receiver-side CFL condition that a uniform speed does not satisfy by
-   * itself. Operators: the stored flux is the true flux `F`. */
+   * itself. */
   isrf_c_hyp_scheme_fixed_fraction = 2,
   /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
    * timestep among this particle and every neighbour in its kernel, set by
    * radiation_end_density_propagation once the density loop has converged.
-   * Operators: every pairwise transport/dissipation operator is the
+   * The kernel-local speed reduces the speed contrast between neighbours
+   * (and so the negativity), and the reduced-flux operators are the
    * consistent generalisation of the single-uniform-speed reduced-speed-of-
    * light method to a per-particle `c_hyp_i`: a change of variable (every
    * operator at particle i becomes `c_hyp_i/c` times the true-speed
-   * equation, and the state stored becomes the reduced flux `Ft =
-   * F_true/c_hyp`, so a time-bin change rescales nothing), not a new pair
-   * weight. See radiation_propagation_iact.h's file header and
-   * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
-   * selection into that file's pairwise dispatch. Agreement between two
-   * evaluations of the same operator in different inlining contexts holds
-   * only to a few ULP, because an FMA-capable target contracts the two
-   * differently; such comparisons are made against a tolerance. Default. */
+   * equation, and the state stored is the reduced flux `Ft = F_true/c_hyp`,
+   * so a time-bin change rescales nothing), not a new pair weight. See
+   * radiation_propagation_iact.h's file header. Default. */
   isrf_c_hyp_scheme_kernel_local_reduced_flux = 4,
 };
-
-/**
- * @brief Set #isrf_c_hyp_consistent_variable_c from an ISRF c_hyp scheme.
- *
- * The global is true exactly for the scheme that stores the reduced flux
- * (#isrf_c_hyp_scheme_kernel_local_reduced_flux). It is a process global,
- * not a #feedback_props field, so a restart does not restore it: both
- * feedback_props_init() and feedback_struct_restore() call this one
- * definition, so the two derivations cannot disagree.
- *
- * @param scheme #feedback_props.ISRF_c_hyp_scheme, already validated.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_props_set_isrf_c_hyp_consistent_variable_c(const int scheme) {
-  isrf_c_hyp_consistent_variable_c =
-      (scheme == isrf_c_hyp_scheme_kernel_local_reduced_flux);
-}
 
 /**
  * @brief Mechanism that sets the receiver-side LW/PE dust extinction path,
@@ -1079,10 +1058,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "The values 0, 1 and 3 were removed: they are no longer "
           "supported.",
           fp->ISRF_c_hyp_scheme);
-    /* Carries the selection into radiation_propagation_iact.h's pairwise
-     * dispatch, which has no #engine pointer to read #feedback_props from;
-     * see #isrf_c_hyp_consistent_variable_c's doxygen. */
-    feedback_props_set_isrf_c_hyp_consistent_variable_c(fp->ISRF_c_hyp_scheme);
 
     /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's doxygen.
      * Parsed unconditionally (like the stability margin and dissipation
