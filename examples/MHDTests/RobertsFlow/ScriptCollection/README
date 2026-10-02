@@ -1,0 +1,37 @@
+Scripts for the Roberts flow study
+
+FT_slice_pixel_show.py - script for plotting the 2D representation of a 3D magnetic field
+Example usecase: python3 FT_slice_pixel_show.py -in=test.hdf5 -out=save.h5 -outim=slice.png -res_xy=16 -res_z=32
+1) in - input snapshot
+2) out - output 2d field values (2d complex magnetic field maps)
+3) outim - output image
+4) res_xy, res_z - grid and image resolution in xy plane and z direction
+# Note: the growing fields are sine waves in z direction and within the script there is a modez wavenumber parameter, which choses which mode to show.
+# Note: the script can also read Pencil .VAR files
+
+particle_distribution_plot.py - projects particle positions into the chosen plane (by default the slab thickness is equal to the interparticle spacing)
+Example usecase: particle_distribution_plot.py --input_filename=test.hdf5 --out_image=slab.png
+
+FT_slice_comp_pixel_absB.py - compares two 2D magnetic field maps and plots the absolute difference map.
+Example usecase: make directiories with input and reference files, put .h5 maps within the folders, write paths into the script and run
+
+plot_test_program_SWIFT.py - script to calculate growth rates for flows I-IV for SWIFT runs.
+Example usecase: prepare a folder 'data_for_export_SWIFT', put there the directories for each run e.g. example_run_01, example_run_02 ... containing statistics.txt files, and add the corresponding test_run_parameters.csv. This will result SWIFT_results.csv which duplicates test_run_parameters.csv and adds columns for the calculated quantities.
+plot_test_program_Pencil.py - same for Pencil runs. But For Pencil one needs time_series.dat file and run_parameters.csv. Creates Pencil_results.csv
+
+plot_growth_rates.py - collects the data from SWIFT_results.csv and Pencil_results.csv and plots growth rates for the four flows.
+
+convergence_FT_process_quantities_of_interest_SWIFT_Pencil.py - calculates the quantities of interest for the SWIFT and Pencil runs. 
+Example Usage: put SWIFT runs into the same folder, add test_run_parameters_rf1dn.csv file with SWIFT convergence runs only. One needs to put directories and the last snapshots within. The script will create .csv file with the quantities of interest  
+
+convergence_save_time_averages_Pencil.py - save time averaged quantities of interest for Pencil code
+Example Usage: place Pencil results in a corresponding folder and run
+
+convergence_plot_quantities_of_interest.py - plot convergence to the highest resolution run for Pencil and SWIFT
+Example Usage: collect the time averages for SWIFT and Pencil (2nd, 6th, 10th order) and run
+
+Run parameter files for the run_test_program.py.
+test_run_parameters_four_flows_SWIFT.py - SWIFT run parameters used for growth rate vs resistivity study
+test_run_parameters_rf1dn.csv - SWIFT run parameters for the convergence study
+
+run_parameters_four_flows_Pencil.py - Run parameter files for the growth rate study for the Pencil code

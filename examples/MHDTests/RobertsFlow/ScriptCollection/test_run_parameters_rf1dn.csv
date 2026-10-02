@@ -1,0 +1,6 @@
+Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	Npar	Nper	LparMul	LperMul	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	viscosity_alpha	Status	Comment
+rf1dn_016_Run2_c1	1	1	0.05	1	1	6.2831853	1	ODI	s16	1	2	1	1			0	0	0	50	0.01	v		done	Reference Run2
+rf1dn_032_Run2_c1	1	1	0.05	1	1	6.2831853	1	ODI	s32	1	2	1	1			0	0	0	50	0.01	v		done	Reference Run2
+rf1dn_064_Run2_c1	1	1	0.05	1	1	6.2831853	1	ODI	s64	1	2	1	1			0	0	0	50	0.01	v		done	Reference Run2
+rf1dn_128_Run2_c1	1	1	0.05	1	1	6.2831853	1	ODI	s128	1	2	1	1			0	0	0	50	0.01	v		done	Reference Run2
+rf1dn_256_Run2_c1	1	1	0.05	1	1	6.2831853	1	ODI	s256	1	2	1	1			0	0	0	50	0.01	v		done	Reference Run2
