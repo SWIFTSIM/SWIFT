@@ -1152,13 +1152,16 @@ operators were implemented as selectable runtime schemes
 (\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}) and compared, against scheme $0$
 (the formula above, unmodified operators) as baseline. Schemes $0$, $1$ and
 $3$ have since been removed, and a value other than $2$ or $4$ stops the run;
-the comparison is kept as the record of why $4$ is the default. The candidates: a kernel-local speed
+the comparison is kept as the record of why $4$ is the default. The scheme $2$
+arm of that comparison stored the true flux; scheme $2$ now stores the reduced
+flux like scheme $4$, which at its uniform speed is the same equation divided by
+one constant, so the comparison's conclusions about its speed rule stand. The candidates: a kernel-local speed
 rule that takes the slowest step among a particle and every neighbour in
 its kernel (scheme $1$); a fixed global fraction of $c$, independent of
 $h$ or the time step (scheme $2$); a ``consistent variable-$c$''
 reformulation that changes which variable the pairwise operators carry so
 that every operator becomes the per-particle-speed generalisation of the
-reduced-speed-of-light method, reducing bit-for-bit to scheme $0$
+reduced-speed-of-light method, reducing (in the code of that comparison) bit-for-bit to scheme $0$
 under a uniform speed (scheme $3$,
 Section~\ref{sec:fuv-variable-c-operators}); and the combination of the
 kernel-local speed with that operator rewrite (scheme $4$). All four
@@ -1411,7 +1414,7 @@ the staggered integrator's stability (Section~\ref{sec:fuv-time}) needs
 more than this weaker, $\mathbf D_i=\mathbf D_j$-only adjointness is not
 resolved here.
 
-\subsubsection{The consistent variable-speed operators (scheme 4)}
+\subsubsection{The consistent variable-speed operators}
 \label{sec:fuv-variable-c-operators}
 
 Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} are exact only for
@@ -1437,7 +1440,8 @@ F}_i|\le u_i$),
 \end{equation}
 Three things change relative to Section~\ref{sec:fuv-operators}.
 \textbf{(1)} \code{specific\_flux} stores $\tilde{\mathbf F}$ rather than
-$\mathbf F$, so a time-bin change rescales nothing and the
+$\mathbf F$, for every $c_{\rm hyp}$ scheme (the code has no other form), so
+a time-bin change rescales nothing and the
 temporal-impedance jump at a speed seam (Pathway 1,
 Section~\ref{sec:fuv-chyp-heterogeneity}) disappears. \textbf{(2)} The
 divergence's shared coefficient $\Phi_{ij}$ of Eq.~\ref{eq:fuv-div-op},
@@ -1464,33 +1468,29 @@ $c_{\rm hyp}$'' applied to what was otherwise the same shared,
 antisymmetric-under-$i\leftrightarrow j$ coefficient; checked directly by
 \code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
 suite). The M1 closure
-tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$ under this
-scheme, since $|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm
-hyp},i}u_i)$ identically, the same physical reduced flux $f$ the true-flux
-operators compute from $(\mathbf F_i, c_{{\rm hyp},i})$ directly. Every
-rewritten operator reduces bit-for-bit to its true-flux counterpart
-whenever $c_{{\rm hyp},i}$ is spatially uniform, asserted by
-\code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
-suite). Agreement
-between two evaluations of the same operator in different inlining
-contexts is a separate and weaker matter: on an FMA-capable target the
-two contract differently and land a few ULP apart, so the test compares
-those against a tolerance rather than on raw bits (\code{480fdafd3}).
-That is a property of the target architecture and not of the compiler.
-No block-scoped escape from the contraction exists on either compiler:
-\code{clang}'s \code{contract(off)} and \code{GCC}'s
-\code{fp-contract=off} optimize attribute were each measured still
-emitting an FMA on an \code{always\_inline} function under
-\code{-ffast-math}. The pairwise conservation identity itself is
-untouched by any of this, holding to $10^{-8}$ or better against its own
-$10^{-5}$ bar on exactly those builds: what contraction moves is a
-bit-exact comparison, not the physics.
+tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$, since
+$|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm hyp},i}u_i)$ identically,
+the same physical reduced flux $f$ that the true-flux form computes from
+$(\mathbf F_i, c_{{\rm hyp},i})$ directly. At a spatially uniform
+$c_{{\rm hyp},i}$ every rewritten operator is its true-flux counterpart divided
+by the one constant $c_{\rm hyp}$. The stored flux is rounded once when it is
+formed, so the equality is exact when $c_{\rm hyp}$ is a power of two (the
+division moves only the exponent) and holds to a few units of the float32
+round-off otherwise. \code{testRadiationISRFForceDispatchConservation}
+(swift-gear's GEAR test suite) asserts both against a frozen copy of the
+true-flux formulas kept inside the test, bitwise at a power-of-two
+$c_{\rm hyp}$ and to a derived tolerance at a general one. The operators carry
+no floating-point annotation, so the compiler may reassociate them under
+\code{-ffast-math}: a change of compiler or flags can move the last bits of an
+accumulator, which changes neither the discrete scheme nor the conservation
+identity, holding to $10^{-8}$ or better against its own $10^{-5}$ bar.
 
-Scheme $4$ pairs this operator rewrite with the kernel-local speed of
-Section~\ref{sec:fuv-chyp-heterogeneity}. It is the default as of
-\code{a53ab8311}; the unmodified operators
-(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) remain the form scheme
-$2$ (a fixed fraction of $c$) uses
+Both schemes use this operator form. Scheme $4$ pairs it with the kernel-local
+speed of Section~\ref{sec:fuv-chyp-heterogeneity}; it is the default as of
+\code{a53ab8311}. Scheme $2$ (a fixed fraction of $c$) pairs it with a uniform
+speed, where it reduces to the unmodified operators
+(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) acting on
+$\tilde{\mathbf F}$
 (Section~\ref{sec:fuv-chyp-heterogeneity} gives the full ranking and the
 default's caveats).
 

@@ -42,21 +42,23 @@ free_field
 
         ln[Q(t)/Q(0)] = -(1/c) int_0^t c_hyp(t') H(t') dt'                  (A1)
 
-    with Q the ledger the run's own propagation scheme conserves. Which one
-    that is depends on GEARFeedback:ISRF_c_hyp_scheme, read from the run's
-    used_parameters.yml:
+    with Q the ledger the run's own propagation scheme conserves. Both
+    schemes use the same pairwise operators, each one c_hyp_i/c times the
+    true-speed equation (radiation_propagation_iact.h), so the transport
+    conserves sum m u / c_hyp. Which weights the check forms depends on
+    GEARFeedback:ISRF_c_hyp_scheme, read from the run's used_parameters.yml:
 
         Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   scheme 4
         Q = [sum_i m_i u_i] / [sum_i m_i]                       scheme 2
 
-    Scheme 4 (the default) rewrites every pairwise operator as c_hyp_i/c times
-    the true-speed equation, so its transport conserves sum m u / c_hyp and
-    NOT sum m u; scheme 2 (one fixed speed for the whole box) conserves
-    sum m u. Both statements are made by radiation_propagation_iact.h at the
-    two dispatch branches that implement them. Measuring the second ledger on
-    a scheme that conserves the first reports the receiver-weighted
-    redistribution as an error. Any other recorded scheme value is a run from
-    a removed scheme: `read_c_hyp_scheme` raises on it.
+    Scheme 4 (the default) has a c_hyp that varies from particle to particle,
+    so sum m u is NOT conserved and measuring it reports the receiver-weighted
+    redistribution as an error. Scheme 2 has one fixed speed for the whole
+    box, where the two weightings are proportional and the ratio is the same
+    number; the unweighted form is used there because it needs no
+    HyperbolicPropagationSpeeds, which reads 0 on a snapshot written before the
+    first drift. Any other recorded scheme value is a run from a removed
+    scheme: `read_c_hyp_scheme` raises on it.
 
     The c_hyp,i weights are the HyperbolicPropagationSpeeds snapshot field.
     A snapshot written before that field existed, or one whose c_hyp is not
@@ -163,11 +165,9 @@ free_field
       whole box with the Courant condition imposed on the timestep. The pin
       is applied after the light-speed clamp
       (radiation_isrf.c's radiation_snapshot_part_propagation and
-      radiation_end_density_propagation), and with c_i == c_j the
-      reduced-flux and shared-minimum operator branches are bit-identical
-      by construction (radiation_propagation_iact.h), so a uniform speed
-      does not change which branch runs. What it does cost is the
-      variable-c coverage: this leg says nothing about a defect that only
+      radiation_end_density_propagation), and the operators are the same
+      whether the speed is uniform or not (radiation_propagation_iact.h).
+      What a uniform speed does cost is the variable-c coverage: this leg says nothing about a defect that only
       appears once c_hyp varies between neighbours.
     - With c_hyp VARYING, the drift is REPORTED and not gated, the way (A3)
       already reports and skips there. The reweighting term is not unbounded:
@@ -683,8 +683,10 @@ FLOAT32_EPS = float(np.finfo(np.float32).eps)
 # six decimals of mantissa, so a step size read back from the log carries
 # half a unit in that last decimal.
 LOG_STEP_MANTISSA_HALF_ULP = 0.5e-6
-# enum isrf_c_hyp_scheme values whose pairwise operators conserve
-# sum m u / c_hyp rather than sum m u (feedback_properties.h).
+# enum isrf_c_hyp_scheme values whose c_hyp varies between particles, so that
+# the conserved sum m u / c_hyp is not proportional to sum m u
+# (feedback_properties.h). Scheme 2's operators conserve the same sum, but its
+# c_hyp is one value for the whole box.
 VARIABLE_C_SCHEMES = (4,)
 # enum isrf_c_hyp_scheme values the module accepts (feedback_properties.h).
 VALID_C_HYP_SCHEMES = (2, 4)
@@ -1194,8 +1196,8 @@ def read_c_hyp_scheme(pattern: str) -> Optional[int]:
     if scheme not in VALID_C_HYP_SCHEMES:
         raise ValueError(
             f"{path}: GEARFeedback:ISRF_c_hyp_scheme is {recorded!r}; only 2 "
-            "(fixed fraction of c) and 4 (kernel-local speed, reduced-flux "
-            "operators) are supported. The values 0, 1 and 3 were removed."
+            "(fixed fraction of c) and 4 (kernel-local speed) are supported. "
+            "The values 0, 1 and 3 were removed."
         )
     return scheme
 
@@ -1295,8 +1297,10 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
-    It applies only to the reduced-flux scheme (4), and only when every
-    snapshot carries a finite, strictly positive HyperbolicPropagationSpeeds.
+    It applies only to the scheme whose c_hyp varies between particles (4),
+    and only when every snapshot carries a finite, strictly positive
+    HyperbolicPropagationSpeeds. Scheme 2 has one speed for the whole box,
+    where the weighted and unweighted ledgers are proportional.
     Snapshot 0 is NOT excused here, unlike in `c_hyp_spatial_spread`: this
     weight divides by c_hyp on every snapshot the ledger is evaluated on, and
     for a non-cosmological run that includes snapshot 0. Every rejection
@@ -1405,7 +1409,7 @@ def free_field_errors(
         The run's snapshots, in time order.
     use_c_hyp
         Weight each particle by ``m_i/c_hyp,i`` rather than ``m_i``, for the
-        reduced-flux scheme (4). Decided by `use_c_hyp_ledger`.
+        scheme with a per-particle speed (4). Decided by `use_c_hyp_ledger`.
     ref_index
         Snapshot the log drift is measured from. (A1)'s reference is the
         first snapshot whose c_hyp is a genuine per-step rate, since its
@@ -2196,11 +2200,10 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # construction (A3) uses, and it is used here on its own rather
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
-            # Which statement is true depends on the SCHEME, not on which
-            # ledger this file chose: scheme 2's operators conserve sum m u
-            # directly, scheme 4 conserves sum m u / c_hyp and its weight
-            # cancels only because it is uniform here, and the
-            # two coincide exactly when it is.
+            # Both schemes' operators conserve sum m u / c_hyp. Scheme 2's
+            # speed is one value for the whole box, so there that is
+            # proportional to sum m u; scheme 4's weight cancels only because
+            # it is uniform here, and the two coincide exactly when it is.
             if c_hyp_scheme == 2:
                 why = "this scheme's operators conserve sum m u directly"
             elif use_c_hyp:
