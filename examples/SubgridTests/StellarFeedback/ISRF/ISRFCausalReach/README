@@ -1,8 +1,10 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
 box, with ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure) propagation on
-(photoionization and radiation pressure off), field initialised to zero
-everywhere. Checks that the propagated PE/LW interstellar-radiation-field
+(photoionization and radiation pressure off) and the artificial-dissipation
+term at its shipped defaults (`GEARFeedback:ISRF_dissipation_alpha_max` and
+`GEARFeedback:ISRF_dissipation_alpha_floor`, both 0.5), field initialised to
+zero everywhere. Checks that the propagated PE/LW interstellar-radiation-field
 energy density (`PESpecificEnergies`/`LWSpecificEnergies`) never travels
 farther than its causal reach `r <= c_hyp*(t - t0)` (`t0` = the star's
 `BirthTime`, 0 here), the defining, checkable feature that distinguishes
@@ -37,6 +39,14 @@ Same as `ISRFHyperbolicPropagation`: `initial_metallicity` must stay above
 `GrackleCooling:disable_cooling_for_debugging: 1` isolates the propagated
 field from any gas thermal response while still resolving `chemistry_data`.
 
+## Artificial dissipation
+The run uses the code defaults for the ISRF artificial-dissipation term, as
+a production run does. Setting `GEARFeedback:ISRF_dissipation_alpha_max` and
+`GEARFeedback:ISRF_dissipation_alpha_floor` to 0 (in `params.yml`, or with
+`-P` on the `swift` command line in `run.sh`) runs the transport without
+dissipation. That configuration is not positivity-preserving, so the
+negativity check is expected to fail there.
+
 # Configure
 ```
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
@@ -68,7 +78,6 @@ levels (10%/1%/0.1% of that snapshot's own peak, the most permissive
 plateau to compare against as there would be in a 1-D slab test), and gates
 on both that extent and on negativity anywhere in the particle set it
 measures, which is the whole box unless `--hot-particle-id` excluded one
-particle (unlike the Tier-1 steady-state check, negativity here is a hard
-failure: the wavefront is exactly where the estimator's known weaknesses
-are worst).
+particle. Any negative value beyond a float-noise floor
+(`1e-6` of the snapshot's peak) fails the check.
 Produces a comparison plot (`--output`).
