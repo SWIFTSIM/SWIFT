@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* If the particle shows large deviations from a sphere, better use the
    * minimal distance to any of its faces to compute the timestep. Updated
    * to be consistent with other criteria of deformation */
-  if (p->geometry.max_face_angle < 2.25 &&
+  if (p->geometry.max_face_angle > 2.25 &&
     p->geometry.min_face_dist > 0.) {
       psize = p->geometry.min_face_dist;
     }
