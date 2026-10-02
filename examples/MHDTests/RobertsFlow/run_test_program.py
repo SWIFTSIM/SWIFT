@@ -242,6 +242,7 @@ def run_simulation(phys_parameters, threads):
     v0 = phys_parameters["v0"].values[0]
     Vz_factor = phys_parameters["Vz_factor"].values[0]
     eta = phys_parameters["eta"].values[0]
+    U = phys_parameters["internal_energy"].values[0]
     kv = phys_parameters["kv"].values[0]
     Flow_kind = phys_parameters["Flow_kind"].values[0]
     Lbox = phys_parameters["Lbox"].values[0]
@@ -288,6 +289,11 @@ def run_simulation(phys_parameters, threads):
         set_av_min = sph_pref + "viscosity_alpha_min:" + str(viscosity_alpha)
     set_sph_par = set_av + set_av_max + set_av_min
 
+    # Construct string command to set up internal energy (equation of state)
+    eos_pref = " -P EoS:"
+    set_u = eos_pref + "isothermal_internal_energy:"+str(U)
+    set_eos_par = set_u
+
     # Construct string command to set up forcing options
 
     if Forcing_kind == "a":
@@ -311,7 +317,7 @@ def run_simulation(phys_parameters, threads):
     if Vz_factor != None:
         set_Vz_factor = f_pref + "Vz_factor:" + str(Vz_factor)
 
-    set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor
+    set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor + set_eos_par
 
     # Construct string command to set up MHD parameters
     MHD_pref = " -P MHD:"
