@@ -5,6 +5,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 n_threads=${n_threads:=8}                   # Number of threads
 swift=${swift:="../../../../../swift"}      # SWIFT binary
 run_check=${run_check:=1}                   # Run the check after the runs
@@ -13,7 +18,7 @@ gas_density=${gas_density:=1e3}             # atom/cm^3
 gas_mass=${gas_mass:=0.1}                   # Cold phase particle mass, Msun
 T_cold=${T_cold:=500}                       # Cold phase temperature, K (hot: 16 T_cold)
 star_mass=${star_mass:=29.7}                # Msun
-c_hyp_pin=${c_hyp_pin:=5}                   # km/s
+c_hyp_fraction=${c_hyp_fraction:=1.667820476e-05}  # one c_hyp for every particle (scheme 2): 5 km/s over c
 dt_fine=${dt_fine:=1.3e-6}                  # dt_max of the single-bin run; floored to the 1.25e-6 bin
 runs=${runs:="conservation_hierarchy conservation_single_bin"}
 # The cadence sweep: runs="cadence_base cadence_half cadence_quarter".
@@ -47,7 +52,7 @@ for run in $runs; do
         *) echo "Unknown run $run"; exit 1 ;;
     esac
 
-    echo "=== $run: c_hyp_pin=$c_hyp_pin dt_max=$dt"
+    echo "=== $run: c_hyp_fraction=$c_hyp_fraction dt_max=$dt"
     rm -rf "$run"
     mkdir -p "$run/snap"
     python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass \
@@ -63,7 +68,8 @@ for run in $runs; do
         -P Snapshots:delta_time:2e-5 \
         -P Statistics:delta_time:2e-5 \
         -P GEARChemistry:initial_metallicity:0 \
-        -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+        -P GEARFeedback:ISRF_c_hyp_scheme:2 \
+        -P GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c:$c_hyp_fraction \
         ../params.yml 2>&1 | tee output.log)
     grep -q "main: done. Bye." "$run/output.log"
 done

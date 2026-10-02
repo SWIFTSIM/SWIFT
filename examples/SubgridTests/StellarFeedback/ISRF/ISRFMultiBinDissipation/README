@@ -48,11 +48,13 @@ phase's own analytic CFL step; `--v-over-c-hyp` sets the ratio directly
 (default 0.25). `--star-velocity-km-s` overrides the derivation with an
 explicit value in km/s.
 
-## Debug pins
-`ISRF_c_hyp_pin_for_debugging` and
-`ISRF_dissipation_alpha_pin_for_debugging` are debug-only parameters
-(`c_hyp_pin`/`alpha_pin` env vars). Both are inert at their shipped default
-(0) and must never be set in a production run.
+## One fixed propagation speed, debug pin
+`c_hyp_fraction` > 0 runs `ISRF_c_hyp_scheme: 2`, one propagation speed
+`c_hyp_fraction*c` for every particle, which also limits the time step of
+particles near the field to `ISRF_c_hyp_margin*h/c_hyp`: pick a speed below
+`ISRF_c_hyp_margin*h/dt` in both phases to keep the bin split.
+`ISRF_dissipation_alpha_pin_for_debugging` (`alpha_pin`) is a debug-only
+parameter, inert at its default (0); never set it in a production run.
 
 ## Cooling and metallicity
 `GrackleCooling:disable_cooling_for_debugging: 1`: without it the
@@ -75,8 +77,8 @@ Override any parameter via the matching env var: `gas_density`
 (`uniform`/`twophase`), `bin_delta`, `bulk_temperature_K` (cold phase),
 `interface_offset_h`, `v_over_c_hyp`, `star_velocity_km_s`, `star_mass`,
 `star_type`, `n_stars`, `c_hyp_margin`
-(`GEARFeedback:ISRF_c_hyp_margin`), `c_hyp_pin`
-(`ISRF_c_hyp_pin_for_debugging`, debug only), `alpha_max`/`alpha_pin`
+(`GEARFeedback:ISRF_c_hyp_margin`), `c_hyp_fraction`
+(`ISRF_c_hyp_fixed_fraction_of_c`, 0 = scheme 4), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
 only), `propagation`, `initial_metallicity`, `time_end`, `dt_max`, `dt_min`,
 `delta_time`, and thread count (`n_threads`); see `run.sh` for the full list
@@ -90,7 +92,7 @@ accordingly for a finer one.
 
 # Checking
 ```
-python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --c-hyp-pin $c_hyp_pin --ledger-valid 0|1
+python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --ledger-valid 0|1
 python3 multibin_compare.py --mode gate --s0 s0_dir --m0 m0_dir --m1 m1_dir --m2 m2_dir --m4 m4_dir --m5 m5_dir [--m3 m3_dir]
 python3 multibin_compare.py --mode report --runs dir1 dir2 ...
 ```
@@ -112,7 +114,7 @@ controls.
 
 `multibin_compare.py --mode gate` combines a full six-run set (S0 smoke, M0
 uniform control, M1 test, M2 alpha_max=0 attribution twin, M4/M5 the
-2x-finer-`h` control/test pair; M3, the `c_hyp`-pin mechanism control, is
+2x-finer-`h` control/test pair; M3, the uniform-`c_hyp` mechanism control, is
 optional and read only as an interpretation aid). It checks the
 resolving-power precondition first (can the metric resolve the dipole size
 under discussion against the M0 control's own noise floor, and did S0 show a

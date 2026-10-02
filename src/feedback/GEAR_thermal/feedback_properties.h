@@ -267,16 +267,6 @@ struct feedback_props {
    * not a valid scheme. */
   int ISRF_c_hyp_scheme;
 
-  /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
-   * to this fixed physical value instead of computing it from whichever
-   * rule #ISRF_c_hyp_scheme selects, whenever positive. Needed by the
-   * causal-reach validation leg
-   * (a single, unambiguous wavefront speed to check the field against) and
-   * by the steady-state amplitude leg's two-`c_hyp` cross-check (confirming
-   * the source-rescaling cancellation empirically). 0 (default): disabled,
-   * use the formula. Never set in a production run. */
-  float ISRF_c_hyp_pin_for_debugging;
-
   /*! Uniform reduced light-speed candidate: fraction of the true speed of
    * light `c` every particle's `c_hyp_i` is set to, `c_hyp_i = f*c`, with
    * no dependence on `h_i` or on the particle's own timestep. Only read
@@ -286,12 +276,7 @@ struct feedback_props {
    * #ISRF_c_hyp_margin alone cannot (two neighbours on different time bins or
    * with different `h` otherwise get different `c_hyp_i`); the resulting
    * receiver-side CFL violation is instead prevented up front by a dedicated
-   * timestep term (see #ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging).
-   * Mutually exclusive with #ISRF_c_hyp_pin_for_debugging
-   * (feedback_props_init() errors if both are set): the pin exists to probe a
-   * single chosen `c_hyp`, this exists to ship a uniform one with its own
-   * stability term, and stacking them would silently let one override the
-   * other. */
+   * timestep term (see #ISRF_c_hyp_timestep_term_off_for_debugging). */
   float ISRF_c_hyp_fixed_fraction_of_c;
 
   /*! Debug/test-only: with #ISRF_c_hyp_fixed_fraction_of_c positive, skip
@@ -300,11 +285,11 @@ struct feedback_props {
    * term is applied, which is the only supported configuration whenever
    * the fixed fraction is on. 1: the term is skipped, so
    * #ISRF_c_hyp_fixed_fraction_of_c is exactly as unstable at a seam as a
-   * per-particle `C_hyp*h_i/dt_i` speed: this exists solely to measure, by A/B
-   * run, how much of the fixed fraction's step-count cost the timestep term
-   * itself is responsible for. Never set in a production run. No effect when
-   * #ISRF_c_hyp_fixed_fraction_of_c is 0. */
-  char ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging;
+   * per-particle `C_hyp*h_i/dt_i` speed. It exists only to measure, by A/B
+   * run, the step-count cost of the timestep term itself, or to run above the
+   * stability margin on purpose (a Courant-number sweep). Never set in a
+   * production run. No effect when #ISRF_c_hyp_fixed_fraction_of_c is 0. */
+  char ISRF_c_hyp_timestep_term_off_for_debugging;
 
   /*! Ceiling of the triggered artificial-conductivity coefficient. On by
    * default at the calibrated ceiling; 0 disables the term (for A/B runs).
@@ -530,17 +515,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
         isrf_c_hyp_scheme_name = "fixed fraction of c";
       message("ISRF c_hyp scheme                                          = %s",
               isrf_c_hyp_scheme_name);
-      if (feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
-        message(
-            "ISRF c_hyp pinned for debugging (physical units)          = %g",
-            feedback_props->ISRF_c_hyp_pin_for_debugging);
       if (feedback_props->ISRF_c_hyp_fixed_fraction_of_c > 0.f) {
         message(
             "ISRF c_hyp fixed fraction of c                             = %g",
             feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
         message(
             "ISRF c_hyp fixed fraction timestep term                    = %s",
-            feedback_props->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging
+            feedback_props->ISRF_c_hyp_timestep_term_off_for_debugging
                 ? "OFF for debugging (diagnostic only, not a supported "
                   "configuration)"
                 : "ON");
@@ -715,8 +696,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       {"GEARFeedback:do_photoionization", "GEARFeedback:with_photoionization"},
       {"GEARFeedback:LW_FUV_propagation", "GEARFeedback:ISRF_propagation"},
       {"GEARFeedback:LW_FUV_c_hyp_margin", "GEARFeedback:ISRF_c_hyp_margin"},
-      {"GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
-       "GEARFeedback:ISRF_c_hyp_pin_for_debugging"},
       {"GEARFeedback:LW_FUV_dissipation_alpha_max",
        "GEARFeedback:ISRF_dissipation_alpha_max"},
       {"GEARFeedback:LW_FUV_dissipation_negativity_threshold",
@@ -743,6 +722,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       {"GEARFeedback:photoelectric_heating_grackle_option",
        "GrackleCooling:photoelectric_heating_efficiency"},
       {"GEARFeedback:min_star_timestep_Myr", "Stars:min_star_timestep_Myr"},
+      {"GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
+       "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging"},
   };
   const int n_feedback_retired_keys =
       sizeof(feedback_retired_keys) / sizeof(feedback_retired_keys[0]);
@@ -756,6 +737,29 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           feedback_retired_keys[i].retired,
           feedback_retired_keys[i].replacement,
           feedback_retired_keys[i].replacement);
+  }
+
+  /* The fixed propagation-speed override has no one-key successor: a fixed
+   * speed is scheme 2, which also limits the timestep to keep that speed
+   * stable. */
+  const char *feedback_removed_c_hyp_pin_keys[] = {
+      "GEARFeedback:ISRF_c_hyp_pin_for_debugging",
+      "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
+  };
+  const int n_feedback_removed_c_hyp_pin_keys =
+      sizeof(feedback_removed_c_hyp_pin_keys) /
+      sizeof(feedback_removed_c_hyp_pin_keys[0]);
+  for (int i = 0; i < n_feedback_removed_c_hyp_pin_keys; ++i) {
+    if (parser_does_param_exist(params, feedback_removed_c_hyp_pin_keys[i]))
+      error(
+          "%s was removed. For a fixed propagation speed v, set "
+          "GEARFeedback:ISRF_c_hyp_scheme: 2 and "
+          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (c the speed of "
+          "light): scheme 2 gives every particle that speed and limits its "
+          "time step so the speed stays stable. Delete %s from the parameter "
+          "file.",
+          feedback_removed_c_hyp_pin_keys[i],
+          feedback_removed_c_hyp_pin_keys[i]);
   }
 
   /* Supernovae energy efficiency */
@@ -1043,7 +1047,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:ISRF_propagation", 0);
 
     /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's doxygen.
-     * Parsed unconditionally, like the pin/fraction below, so a validation
+     * Parsed unconditionally, like the fraction below, so a validation
      * run can set it even with ISRF_propagation off in the base config.
      * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_reduced_flux). */
     fp->ISRF_c_hyp_scheme =
@@ -1058,25 +1062,16 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "supported.",
           fp->ISRF_c_hyp_scheme);
 
-    /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's doxygen.
-     * Parsed unconditionally (like the stability margin and dissipation
-     * parameters below) so a validation run can set it even with
-     * ISRF_propagation off in the base config and toggled on
-     * separately; only meaningful when it is. */
-    fp->ISRF_c_hyp_pin_for_debugging = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_c_hyp_pin_for_debugging", 0.0f);
-
     /* Uniform reduced light-speed candidate: 0 disables it. Only takes
      * effect under ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction
-     * (enforced below). Parsed and validated unconditionally, like the pin
-     * above, so a validation run can set it even with ISRF_propagation off
-     * in the base config. */
+     * (enforced below). Parsed and validated unconditionally, like the
+     * scheme above, so a validation run can set it even with
+     * ISRF_propagation off in the base config. */
     fp->ISRF_c_hyp_fixed_fraction_of_c = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c", 0.0f);
-    fp->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging =
+    fp->ISRF_c_hyp_timestep_term_off_for_debugging =
         (char)parser_get_opt_param_int(
-            params,
-            "GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
+            params, "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging",
             0);
 
     if (fp->ISRF_c_hyp_fixed_fraction_of_c < 0.f ||
@@ -1092,15 +1087,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     feedback_props_check_c_hyp_scheme(fp->ISRF_c_hyp_scheme,
                                       fp->ISRF_c_hyp_fixed_fraction_of_c);
 
-    if (fp->ISRF_c_hyp_fixed_fraction_of_c > 0.f &&
-        fp->ISRF_c_hyp_pin_for_debugging > 0.f)
-      error(
-          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c and "
-          "GEARFeedback:ISRF_c_hyp_pin_for_debugging cannot both be set: "
-          "they are two different ways to override c_hyp_i and stacking "
-          "them leaves it ambiguous which one actually took effect.");
-
-    /* Parsed and validated unconditionally, like the pin above: a
+    /* Parsed and validated unconditionally, like the fraction above: a
      * validation run can set and check the stability margin (and the
      * dissipation coefficients below) even with ISRF_propagation off. */
     fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
@@ -1131,7 +1118,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      * the same value as the floor's own ceiling, so the joint stability
      * bound checked below
      * is unchanged. Parsed and validated unconditionally,
-     * like the pin and the stability margin above, so a validation run can
+     * like the stability margin above, so a validation run can
      * exercise these even with ISRF_propagation off. */
     fp->ISRF_dissipation_alpha_max = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_alpha_max", 0.5f);
@@ -1226,14 +1213,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
 
     if (fp->ISRF_propagation) {
-      if (fp->ISRF_c_hyp_pin_for_debugging > 0.f)
-        warning(
-            "GEARFeedback:ISRF_c_hyp_pin_for_debugging is set: every "
-            "particle's own hyperbolic propagation speed is pinned to %g "
-            "(physical units) instead of C_hyp*h/dt_max. Never use this in "
-            "a production run.",
-            fp->ISRF_c_hyp_pin_for_debugging);
-
       /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
        * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
        * visible here, so this warns unconditionally rather than gating on

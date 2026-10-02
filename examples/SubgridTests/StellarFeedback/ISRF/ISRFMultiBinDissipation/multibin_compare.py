@@ -61,7 +61,7 @@ def parse_options():
     )
     parser.add_argument(
         "--m3",
-        help="gate mode: M3 c_hyp-pin mechanism control (interpretation aid only).",
+        help="gate mode: M3 uniform-c_hyp mechanism control (interpretation aid only).",
     )
     parser.add_argument(
         "--m4", help="gate mode: M4 2x-finer-h uniform control directory."
@@ -390,9 +390,9 @@ def mode_gate(opt):
             if A3 is not None:
                 collapsed = abs(A3["d_x_h"]) < 3.0 * sigma[band]
                 print(
-                    f"  {band}: |d_x/h|@A under c_hyp pin = {abs(A3['d_x_h']):.5f}  "
+                    f"  {band}: |d_x/h|@A under uniform c_hyp = {abs(A3['d_x_h']):.5f}  "
                     f"3*sigma={3*sigma[band]:.5f}  -> "
-                    f"{'consistent with D-step mechanism' if collapsed else 'survives pin: points away from min(c_hyp)'}"
+                    f"{'consistent with D-step mechanism' if collapsed else 'survives uniform c_hyp: points away from min(c_hyp)'}"
                 )
 
     print(f"\nOverall gate: {'PASS' if overall_ok else 'FAIL'}")

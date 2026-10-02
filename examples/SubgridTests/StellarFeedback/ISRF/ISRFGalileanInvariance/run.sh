@@ -5,6 +5,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 config=${config:="galilean"}           # galilean or lag (see README)
 n_threads=${n_threads:=8}
 gas_density=${gas_density:=1e3}        # atom/cm^3
@@ -17,7 +22,6 @@ if [ "$config" = "galilean" ]; then
     time_end=${time_end:=5e-5}
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=1e-5}
-    c_hyp_pin=${c_hyp_pin:=0}          # 0: kernel-local closure c_hyp = C_hyp*h/dt_max
     c_hyp_scheme=${c_hyp_scheme:=4}    # 4: kernel-local closure. 2: one fixed speed, Courant-limited
     c_hyp_fraction=${c_hyp_fraction:=0}  # scheme 2's speed, as a fraction of c. Also sets dt
     alpha_max=${alpha_max:=0.5}
@@ -34,12 +38,11 @@ elif [ "$config" = "lag" ]; then
     time_end=${time_end:=5e-4}
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=5e-5}
-    c_hyp_pin=${c_hyp_pin:=10}         # km/s; a uniform c_hyp gives a uniform tau
-    c_hyp_scheme=${c_hyp_scheme:=4}
-    c_hyp_fraction=${c_hyp_fraction:=0}
+    c_hyp_scheme=2                     # one fixed speed: a uniform c_hyp gives a uniform tau
+    c_hyp_fraction=${c_hyp_fraction:=3.335640952e-05}  # 10 km/s, as a fraction of c
     alpha_max=${alpha_max:=0}
     alpha_floor=${alpha_floor:=0}
-    v_rel_factors=${v_rel_factors:="0.25 0.5 1"}  # star velocity in units of c_hyp_pin
+    v_rel_factors=${v_rel_factors:="0.25 0.5 1"}  # star velocity in units of c_hyp
 else
     echo "Unknown config=$config (galilean or lag)" >&2
     exit 1
@@ -73,7 +76,6 @@ run_one() {
         -P TimeIntegration:dt_max:$dt_max \
         -P Snapshots:delta_time:$delta_time \
         -P GEARChemistry:initial_metallicity:$initial_metallicity \
-        -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
         -P GEARFeedback:ISRF_c_hyp_scheme:$c_hyp_scheme \
         -P GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c:$c_hyp_fraction \
         -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
@@ -109,7 +111,7 @@ if [ "$config" = "galilean" ]; then
 else
     status=0
     for k in $v_rel_factors; do
-        v=$(python3 -c "print($k * $c_hyp_pin)")
+        v=$(python3 -c "print($k * $c_hyp_fraction * 299792.458)")
         run_one runs/lag_${k}c 0 $v
         gate_flag="--gate"
         # Numeric, not string, comparison: alpha_max=0.0 must match "0".

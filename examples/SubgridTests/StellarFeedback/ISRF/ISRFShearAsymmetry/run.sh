@@ -10,6 +10,11 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
+if [ -n "${c_hyp_pin:-}" ]; then
+    echo "c_hyp_pin was removed: set c_hyp_fraction=<speed/c> instead." >&2
+    exit 1
+fi
+
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
@@ -23,7 +28,7 @@ bulk_temperature_K=${bulk_temperature_K:=1000}
 pulse_amplitude=${pulse_amplitude:=1.0}
 pulse_sigma_h=${pulse_sigma_h:=2.0}
 c_hyp_margin=${c_hyp_margin:=0.5}
-c_hyp_pin=${c_hyp_pin:=0}
+c_hyp_fraction=${c_hyp_fraction:=0}  # >0: ISRF_c_hyp_scheme 2 at this fraction of c; 0: scheme 4
 alpha_max=${alpha_max:=0.5}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
@@ -82,6 +87,11 @@ else
     mkdir $DIR
 fi
 
+c_hyp_scheme=4
+if python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) > 0.0 else 1)" "$c_hyp_fraction"; then
+    c_hyp_scheme=2
+fi
+
 printf "Running simulation..."
 
 # --external-gravity with no Potential: block gives zero gravitational
@@ -100,7 +110,8 @@ printf "Running simulation..."
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P GEARFeedback:ISRF_propagation:$propagation \
 		   -P GEARFeedback:ISRF_c_hyp_margin:$c_hyp_margin \
-		   -P GEARFeedback:ISRF_c_hyp_pin_for_debugging:$c_hyp_pin \
+		   -P GEARFeedback:ISRF_c_hyp_scheme:$c_hyp_scheme \
+		   -P GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c:$c_hyp_fraction \
 		   -P GEARFeedback:ISRF_dissipation_alpha_max:$alpha_max \
 		   -P GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging:$alpha_pin \
 		   -P SPH:initial_temperature:0 \
@@ -111,7 +122,7 @@ printf "Running simulation..."
 # still worth keeping, so move them first and report the status at the end.
 check_status=0
 python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry \
-    --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin || check_status=$?
+    --v-shear $v_shear --c-hyp-margin $c_hyp_margin || check_status=$?
 if [ "$check_status" != "0" ] && [ "$check_status" != "2" ]; then
     exit "$check_status"
 fi

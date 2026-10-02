@@ -268,16 +268,8 @@ void radiation_snapshot_part_propagation(struct part *p,
      * c_hyp, independent of h and of dt_phys above. The receiver-side CFL
      * this removes coverage for is instead enforced by a dedicated
      * timestep term, see radiation_isrf_part_timestep(). */
-    float c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
-                  (float)e->physical_constants->const_speed_light_c;
-    /* The debug pin is not clamped: a pin value above c gives a
-     * superluminal propagation speed on purpose, for isolating dispersion
-     * behaviour at chosen values of the Courant number. Never set it above
-     * c outside of that use. */
-    if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
-      c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
-
-    p->feedback_data.c_hyp = c_hyp;
+    p->feedback_data.c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
+                             (float)e->physical_constants->const_speed_light_c;
   } else if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux) {
     error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
           c_hyp_scheme);
@@ -371,7 +363,7 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
    * scheme directly. */
   if (f <= 0.f) return FLT_MAX;
   if (!e->feedback_props->ISRF_propagation) return FLT_MAX;
-  if (e->feedback_props->ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging)
+  if (e->feedback_props->ISRF_c_hyp_timestep_term_off_for_debugging)
     return FLT_MAX;
 
   const struct feedback_part_data *fd = &p->feedback_data;
@@ -512,12 +504,6 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
     c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_max;
     c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
   }
-  /* The debug pin is applied after the light-speed clamp above and is not
-   * itself clamped: a pin value above c gives a superluminal propagation
-   * speed on purpose, for isolating dispersion behaviour at chosen values
-   * of the Courant number. Never set it above c outside of that use. */
-  if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
-    c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
   fd->c_hyp = c_hyp;
   /* A refresh: the closure does not depend on the c_hyp set above. */

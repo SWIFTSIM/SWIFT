@@ -1135,7 +1135,8 @@ this pathway, is unmeasured under cosmology and needs an operator ruling
 before a cosmological run with heterogeneous speeds is trusted on this
 point.
 
-What is measured: forcing a uniform speed (the pin, and independently a
+What is measured: forcing a uniform speed (the test-only override
+\code{ISRF\_c\_hyp\_pin\_for\_debugging}, since removed, and independently a
 lowered $C_{\rm hyp}$) changes the final FUV band energy on
 \code{ISRFCausalReach} relative to the shipped, heterogeneous-speed run;
 the fixture is still rising at $t_{\rm end}$ under every speed tested, and
@@ -2022,10 +2023,6 @@ are meaningful only with propagation on.
   0.40 & $[0, 1]$ &
   Residual below which the floor is reduced by $(R/\varepsilon_R)^2$.
   0 disables the gate. \\
-\hline
-\code{ISRF\_c\_hyp\_pin\_for\_debugging} & & 0 & $\ge0$ &
-  Test only: pin every particle's $c_{\rm hyp}$ to this value,
-  bypassing the clamp at $c$. Never in production. \\
 \hline
 \code{ISRF\_dissipation\_alpha\_pin\_for\_debugging} & & 0 & $\ge0$ &
   Test only: hold every particle's coefficient at this value, bypassing

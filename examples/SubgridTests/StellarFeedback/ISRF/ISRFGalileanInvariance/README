@@ -38,26 +38,20 @@ The `galilean` config can also be run with ONE fixed propagation speed for the
 whole box instead of the default kernel-local closure, by setting
 `c_hyp_scheme=2 c_hyp_fraction=<f>`, where `f` is the speed as a fraction of
 `c`. That speed sets the timestep through the Courant condition, so the run
-takes as many steps as the speed requires, and `c_hyp_pin` stays 0, since the
-two are mutually exclusive. To run the boosts at the same physical speed the
-default closure produces, take the `Measured median c_hyp` the config prints for
-the rest run and divide it by `c = 2.997925e5 km/s`:
+takes as many steps as the speed requires. To run the boosts at the same
+physical speed the default closure produces, take the `Measured median c_hyp`
+the config prints for the rest run and divide it by `c = 2.99792458e5 km/s`:
 
 ```
-config=galilean c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 ./run.sh   # 100 km/s
+config=galilean c_hyp_scheme=2 c_hyp_fraction=3.335640952e-04 ./run.sh   # 100 km/s
 ```
-
-`config=lag` does NOT support a fixed speed. Its star velocities are set as
-multiples of `c_hyp_pin`, and `lag_check.py` reads that same parameter as the
-`c_hyp` its `tau = lambda/c_hyp` prediction rests on, so the pin is the only
-speed either of them can see. Setting `c_hyp_scheme=2` there aborts at start-up
-on the pin/fraction exclusion, and clearing the pin makes every leg a rest run.
 
 `lag` (level 6, the level-5 spacing in twice the box, so that the box is
-more than 30 screening lengths in both bands) pins `c_hyp` to 10 km/s with
-`GEARFeedback:ISRF_c_hyp_pin_for_debugging` (a uniform `tau`; never set
-this parameter in a production run) and runs each star velocity of
-`v_rel_factors` (units of `c_hyp`, default `0.25 0.5 1`). By default the
+more than 30 screening lengths in both bands) always runs at one fixed speed,
+`ISRF_c_hyp_scheme: 2` with `c_hyp_fraction` (default `3.335640952e-05`,
+10 km/s), because its prediction needs a uniform `tau`. It runs each star
+velocity of `v_rel_factors` (units of `c_hyp`, default `0.25 0.5 1`). By
+default the
 dissipation is off (`alpha_max=0 alpha_floor=0`), the case the prediction
 is exact for. With dissipation on, the negativity trigger adds a small
 dipole of its own and the check reports the displacement from the
@@ -81,9 +75,9 @@ config=lag ./run.sh
 config=lag alpha_max=0.5 alpha_floor=0.5 ./run.sh
 ```
 Other env vars: `level`, `gas_density`, `gas_mass`, `star_mass`,
-`initial_metallicity`, `time_end`, `dt_max`, `delta_time`, `c_hyp_pin`,
-`alpha_max`, `alpha_floor`, `boost_factors`, `boost_kms`, `v_rel_factors`,
-`n_threads`. Each run is kept under `runs/<name>/`.
+`initial_metallicity`, `time_end`, `dt_max`, `delta_time`, `c_hyp_scheme`
+(`galilean` only), `c_hyp_fraction`, `alpha_max`, `alpha_floor`,
+`boost_factors`, `boost_kms`, `v_rel_factors`, `n_threads`. Each run is kept under `runs/<name>/`.
 
 # Checking
 `run.sh` runs the checks.

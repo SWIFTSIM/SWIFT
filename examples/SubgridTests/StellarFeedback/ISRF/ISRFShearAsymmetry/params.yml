@@ -123,7 +123,6 @@ GEARFeedback:
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_propagation: 1                                       # Run the hyperbolic ISRF propagation update
   ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
-  ISRF_c_hyp_pin_for_debugging: 0                           # Debug: fixed c_hyp override (default)
   ISRF_dissipation_alpha_max: 0.5                           # Artificial-dissipation trigger ceiling (default)
   ISRF_dissipation_negativity_threshold: 0.01               # Negativity trigger threshold, relative (default)
   ISRF_dissipation_alpha_floor: 0.5                         # Dissipation floor near the front (default)

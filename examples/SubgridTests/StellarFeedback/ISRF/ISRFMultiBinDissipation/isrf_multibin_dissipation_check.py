@@ -73,13 +73,6 @@ def parse_options():
     parser.add_argument("--ic-json", default="multibin_ic.json")
     parser.add_argument("--used-parameters", default="used_parameters.yml")
     parser.add_argument("--c-hyp-margin", type=float, default=0.5)
-    parser.add_argument(
-        "--c-hyp-pin",
-        type=float,
-        default=0.0,
-        help="ISRF_c_hyp_pin_for_debugging used by the run; > 0 makes "
-        "c_hyp a global constant, matching radiation_isrf.c's own closure.",
-    )
     parser.add_argument("--r-cut-h", type=float, default=6.0)
     parser.add_argument(
         "--ledger-valid",
@@ -538,7 +531,15 @@ def main():
     # --- M1/M2/M3 per star, per band, per snapshot ---
     R_cut = opt.r_cut_h
     C_hyp = opt.c_hyp_margin
-    c_pin = opt.c_hyp_pin
+    # ISRF_c_hyp_scheme 2 gives every particle the same c_hyp, f*c in float32
+    # (radiation_isrf.c); 0 here selects the kernel-local closure below.
+    fb = (used_params or {}).get("GEARFeedback") or {}
+    c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
+    c_fixed = (
+        float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
+        if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0
+        else 0.0
+    )
 
     per_star_series = {name: {"PE": [], "LW": []} for name in star_names}
 
@@ -556,8 +557,8 @@ def main():
             else np.zeros(n_gas, bool)
         )
         dt_i = np.where(is_hot, dt_hot_realized, dt_cold_realized)
-        if c_pin > 0.0:
-            c_hyp = np.full(n_gas, c_pin)
+        if c_fixed > 0.0:
+            c_hyp = np.full(n_gas, c_fixed)
         else:
             c_hyp = np.minimum(C_hyp * h / dt_i, SPEED_OF_LIGHT_KM_S)
 
@@ -691,8 +692,8 @@ def main():
         )
         dt_i = np.where(is_hot, dt_hot_realized, dt_cold_realized)
         c_hyp = (
-            np.full(n_gas, c_pin)
-            if c_pin > 0.0
+            np.full(n_gas, c_fixed)
+            if c_fixed > 0.0
             else np.minimum(C_hyp * h / dt_i, SPEED_OF_LIGHT_KM_S)
         )
         star_pos = star_position(snap, star_ids["A"])
@@ -843,7 +844,7 @@ def main():
         used_parameters=used_params,
         ic=ic,
         c_hyp_margin=opt.c_hyp_margin,
-        c_hyp_pin=opt.c_hyp_pin,
+        c_hyp_fixed=c_fixed,
         r_cut_h=R_cut,
         status=status,
     )

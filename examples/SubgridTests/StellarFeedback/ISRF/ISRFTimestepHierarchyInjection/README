@@ -8,8 +8,8 @@ interparticle spacings inside the hot phase, its kernel reaching both
 phases, on a step longer than its hot neighbours' step.
 
 The fixture exercises the ISRF dose reservoir and the hyperbolic
-propagation across a real time-bin hierarchy. With no dust (`Z = 0`) and a
-pinned `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
+propagation across a real time-bin hierarchy. With no dust (`Z = 0`) and one
+fixed `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
 `(c/c_hyp) sum m u` tracks `L t` up to the dose still held in the
 reservoirs and in the gas steps in flight.
 
@@ -57,17 +57,17 @@ would not.
 ./run.sh
 ```
 `run.sh` runs `conservation_hierarchy` and `conservation_single_bin` into
-their own directories. Both set `Z = 0` and pin `c_hyp` to 5 km/s, a debug
-parameter used here only so that `c/c_hyp` is one number for the whole box.
+their own directories. Both set `Z = 0` and run `ISRF_c_hyp_scheme: 2` at
+5 km/s, so that `c/c_hyp` is one number for the whole box.
 The single-bin run sets `dt_max` below every CFL step of the box, so all gas
 and the star share one bin.
 
 Environment overrides: `n_threads`, `swift` (binary path), `level`
 (`N = (2**level)**3`), `gas_density` (cold phase, atom/cm^3), `gas_mass`
 (cold phase, Msun), `T_cold` (K, below 625 K so that the hot phase stays
-under 1e4 K), `star_mass`, `c_hyp_pin` (km/s), `dt_fine` (`dt_max` of the
-single-bin run, slightly above the wanted power-of-two bin, which SWIFT
-floors a step to), and `runs`. At a finer `level`, divide `gas_mass` by 8
+under 1e4 K), `star_mass`, `c_hyp_fraction` (`c_hyp` over `c`), `dt_fine`
+(`dt_max` of the single-bin run, slightly above the wanted power-of-two bin,
+which SWIFT floors a step to), and `runs`. At a finer `level`, divide `gas_mass` by 8
 and `dt_fine` by 2 per level.
 
 # Checking
@@ -79,7 +79,7 @@ nonzero if any gate fails, and a non-finite value fails its gate. Gated,
 per run: partial and all-gas update steps in the hierarchy run with the
 cold phase on at least twice the hot phase's step, all-gas updates on
 every step in the single-bin run, the star step longer than the shortest
-gas step in the hierarchy run, pinned `c_hyp dt/h` at most
+gas step in the hierarchy run, fixed `c_hyp dt/h` at most
 `ISRF_c_hyp_margin` in each phase, and zero metallicity. Gated per run and
 per band: a finite, positive and constant stellar luminosity, and the lag
 `L t - (c/c_hyp) sum m u` inside its derived window at every snapshot

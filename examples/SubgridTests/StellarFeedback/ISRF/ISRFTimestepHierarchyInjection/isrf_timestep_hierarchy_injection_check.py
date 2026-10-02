@@ -23,11 +23,11 @@ Gated, the time-bin structure of each run, read from timesteps.txt: the
 hierarchy run updates part of the gas on some steps and all of it on
 others, with the coarse slab on at least twice the fine slab's step and
 the star step longer than the shortest gas step; the single-bin run
-updates every gas particle on every step; with a pinned c_hyp,
+updates every gas particle on every step; with one fixed c_hyp,
 c_hyp dt / h stays at or below ISRF_c_hyp_margin in each slab; the gas
 carries no metals, so nothing absorbs.
 
-Gated, the injection budget. With Z = 0 and a pinned c_hyp the stored
+Gated, the injection budget. With Z = 0 and one fixed c_hyp the stored
 energy E = (c / c_hyp) sum m u trails the emitted energy L t only by the
 dose still in flight between the star and the gas. That lag is bounded,
 and the bound follows from the cadences the run itself ran at, see
@@ -174,6 +174,31 @@ def parameter(run: str, key: str) -> float:
     with open(os.path.join(run, "used_parameters.yml")) as f:
         m = re.search(rf"{key}:\s*([0-9.eE+-]+)", f.read())
     return float(m.group(1))
+
+
+def fixed_c_hyp(run: str, c: float) -> float:
+    """Return the run's one propagation speed, internal units.
+
+    ISRF_c_hyp_scheme 2 gives every particle f*c, computed in float32
+    (radiation_isrf.c). Any other scheme has no single speed, so NaN is
+    returned, which fails every gate it reaches.
+
+    Parameters
+    ----------
+    run : str
+        Run directory.
+    c : float
+        Speed of light, internal units.
+
+    Returns
+    -------
+    float
+        The speed, or NaN.
+    """
+    if parameter(run, "ISRF_c_hyp_scheme") != 2:
+        return float("nan")
+    fraction = parameter(run, "ISRF_c_hyp_fixed_fraction_of_c")
+    return float(np.float32(fraction) * np.float32(c))
 
 
 def gate(name: str, value: float, bar: float) -> bool:
@@ -371,7 +396,7 @@ def main() -> None:
         r = preconditions(run(name), snap, "hierarchy" in name)
         ok &= r.ok
         info[name] = r
-        pin = parameter(run(name), "ISRF_c_hyp_pin_for_debugging")
+        c_hyp = fixed_c_hyp(run(name), snap["c"])
         margin = parameter(run(name), "ISRF_c_hyp_margin")
         # c_hyp dt / h <= margin is an upper bound on dt, so each slab
         # contributes its LONGEST interval and its smallest h. np.maximum,
@@ -379,17 +404,17 @@ def main() -> None:
         # against a NaN and would drop a slab with no recorded interval.
         courant = float(
             np.maximum(
-                pin * r.dt_fine_longest / snap["h"][snap["fine"]].min(),
-                pin * r.dt_gas_longest / snap["h"][~snap["fine"]].min(),
+                c_hyp * r.dt_fine_longest / snap["h"][snap["fine"]].min(),
+                c_hyp * r.dt_gas_longest / snap["h"][~snap["fine"]].min(),
             )
         )
-        ok &= gate(f"{name} pinned c_hyp dt / h", courant, margin)
+        ok &= gate(f"{name} fixed c_hyp dt / h", courant, margin)
         ok &= gate(f"{name} max metallicity", float(snap["Z"].max()), 0.0)
 
     print("Injection budget in flight, L t - E against its derived window")
     for name in ("conservation_single_bin", "conservation_hierarchy"):
         snaps = [load(f) for f in snapshots(run(name))[1:]]
-        pin = parameter(run(name), "ISRF_c_hyp_pin_for_debugging")
+        c_hyp = fixed_c_hyp(run(name), snaps[0]["c"])
         low, high = lag_window(info[name].dt_gas_longest, info[name].dt_star_longest)
         n_gas = len(snaps[0]["mass"])
         t = np.array([s["time"] for s in snaps])
@@ -412,7 +437,7 @@ def main() -> None:
             spread = float(np.max(np.abs(L - L[0])) / max(abs(L[0]), 1e-300))
             ok &= gate(f"{name} {band} luminosity spread", spread, FLT_EPSILON)
             E = np.array(
-                [np.sum(s["mass"] * s["u"][band]) * s["c"] / pin for s in snaps]
+                [np.sum(s["mass"] * s["u"][band]) * s["c"] / c_hyp for s in snaps]
             )
             lag = t - E / L
             # E is a sum of N float32 specific energies, so its rounding

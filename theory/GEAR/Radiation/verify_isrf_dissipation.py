@@ -610,8 +610,8 @@ print()
 #       a_d,i = alpha*C_hyp*G(f)/f, the ratio f in the denominator
 #       PARTIALLY CANCELS the numerator's G(f) growth.
 #
-#   (b) c_hyp PINNED EQUAL for i and j (ISRF_c_hyp_pin_for_debugging, or
-#       both particles simultaneously at the light-speed clamp):
+#   (b) c_hyp EQUAL for i and j (scheme 2's ISRF_c_hyp_fixed_fraction_of_c,
+#       or both particles simultaneously at the light-speed clamp):
 #       min(c_hyp_i, c_hyp_j) = c_hyp (shared), dt_i = C_hyp*h_i/c_hyp
 #       a_d,i = dt_i*alpha*c_hyp*G(f)/h_i = alpha*C_hyp*G(f)
 #       No cancellation: the guard gap is the full measured ratio.
@@ -625,7 +625,7 @@ print(
     "  (a) same time bin, closure active for both particles: a_d,i = alpha*C_hyp*G(f)/f"
 )
 print(
-    "  (b) c_hyp pinned equal (debug pin / mutual light-speed clamp): a_d,i = alpha*C_hyp*G(f)"
+    "  (b) c_hyp equal (scheme 2 fixed speed / mutual light-speed clamp): a_d,i = alpha*C_hyp*G(f)"
 )
 print()
 

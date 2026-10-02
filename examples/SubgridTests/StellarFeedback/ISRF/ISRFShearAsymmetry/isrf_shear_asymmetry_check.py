@@ -115,7 +115,6 @@ def parse_options():
         default="blobs",
     )
     parser.add_argument("--v-shear", type=float, default=1.0, help="km/s")
-    parser.add_argument("--c-hyp-pin", type=float, default=0.0)
     parser.add_argument("--c-hyp-margin", type=float, default=0.5)
     parser.add_argument("--pulse-sigma-h", type=float, default=2.0)
     parser.add_argument("--n-x-bins", type=int, default=16)
@@ -304,8 +303,10 @@ def main():
     h_med_last = float(np.median(snap_last["h"]))
 
     dt_bulk = modal_bulk_dt(opt.timesteps_log, n_gas)
-    if opt.c_hyp_pin > 0.0:
-        c_hyp = opt.c_hyp_pin
+    # ISRF_c_hyp_scheme 2: one speed, f*c in float32 (radiation_isrf.c).
+    c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
+    if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0:
+        c_hyp = float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
     else:
         c_hyp = (
             min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S)
