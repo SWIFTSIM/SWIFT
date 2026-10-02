@@ -48,6 +48,9 @@ recorded, not assumed universally correct.
 Negativity is GATED for this leg (unlike the Tier-1 steady-state check's
 "informational only"): Sec 6.2 explicitly names the wavefront region as
 where Sec 2.3's estimator weakness is most likely to actually show up.
+The gate is meant for a run with the shipped artificial-dissipation defaults;
+the bare operator (`ISRF_dissipation_alpha_max` and `..._alpha_floor` both 0)
+has no positivity bound and is expected to fail it.
 
 `worst_bump`, the largest bin-to-bin relative rise of u(r) outside a
 near-injection-kernel exclusion zone, is REPORTED ONLY and gates nothing.
