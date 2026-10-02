@@ -46,6 +46,8 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->density.rho_dh = 0.f;
   sip->SIDM_rate = 0.f;
 
+  for (int k = 0; k < 6; k++) sip->inertia_tensor[k] = 0.f;
+
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
   sip->N_density = 0;
   sip->N_density_exact = 0;

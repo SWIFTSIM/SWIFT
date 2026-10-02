@@ -42,13 +42,14 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
+  const size_t nr_siparts = s->nr_siparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
-  if (nr_parts > 0) {
+  if (nr_parts > 0 || nr_siparts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
     if (s->local_cells_with_particles_top != NULL) {
@@ -66,6 +67,9 @@ void space_regrid(struct space *s, int verbose) {
         }
         if (c->sinks.h_max > h_max) {
           h_max = c->sinks.h_max;
+        }
+        if (c->sidm.h_max > h_max) {
+          h_max = c->sidm.h_max;
         }
       }
 
@@ -85,6 +89,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->sinks.h_max > h_max) {
           h_max = c->sinks.h_max;
         }
+        if (c->nodeID == engine_rank && c->sidm.h_max > h_max) {
+          h_max = c->sidm.h_max;
+        }
       }
 
       /* Last option: run through the particles */
@@ -100,6 +107,9 @@ void space_regrid(struct space *s, int verbose) {
       }
       for (size_t k = 0; k < nr_sinks; k++) {
         if (s->sinks[k].h > h_max) h_max = s->sinks[k].h;
+      }
+      for (size_t k = 0; k < nr_siparts; k++) {
+        if (s->siparts[k].h > h_max) h_max = s->siparts[k].h;
       }
     }
   }

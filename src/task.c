@@ -695,7 +695,8 @@ void task_unlock(struct task *t) {
         cell_bunlocktree(cj);
         cell_unlocktree(ci);
         cell_unlocktree(cj);
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if ((subtype == task_subtype_sidm_density) ||
+                 (subtype == task_subtype_sidm_force)) {
         cell_siunlocktree(ci);
         cell_siunlocktree(cj);
       } else if (subtype == task_subtype_do_bh_swallow) {
@@ -1036,7 +1037,8 @@ int task_lock(struct task *t) {
           cell_bunlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if ((subtype == task_subtype_sidm_density) ||
+                 (subtype == task_subtype_sidm_force)) {
         if (ci->sidm.hold || cj->sidm.hold) return 0;
         if (cell_silocktree(ci) != 0) return 0;
         if (cell_silocktree(cj) != 0) {

@@ -78,6 +78,10 @@ struct sipart {
   /*! SIDM scattering rate - in physical units (internal) */
   float SIDM_rate;
 
+  /*! Inertia tensor of neighbour positions about this particle, computed in
+   * the force loop (comoving). Stored as (xx, yy, zz, xy, xz, yz). */
+  float inertia_tensor[6];
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

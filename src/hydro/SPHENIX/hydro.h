@@ -969,6 +969,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
+
+  /* Reset the inertia tensor. */
+  for (int k = 0; k < 6; k++) p->force.inertia_tensor[k] = 0.0f;
 }
 
 /**

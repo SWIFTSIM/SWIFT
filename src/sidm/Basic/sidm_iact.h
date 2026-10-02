@@ -242,6 +242,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   sipi->SIDM_rate += SIDM_rate_i;
   sipj->SIDM_rate += SIDM_rate_j;
 
+  /* Inertia tensor contributions */
+  sipi->inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
+  sipi->inertia_tensor[1] += mj * (r2 - dx[1] * dx[1]);
+  sipi->inertia_tensor[2] += mj * (r2 - dx[2] * dx[2]);
+  sipi->inertia_tensor[3] -= mj * dx[0] * dx[1];
+  sipi->inertia_tensor[4] -= mj * dx[0] * dx[2];
+  sipi->inertia_tensor[5] -= mj * dx[1] * dx[2];
+
+  sipj->inertia_tensor[0] += mi * (r2 - dx[0] * dx[0]);
+  sipj->inertia_tensor[1] += mi * (r2 - dx[1] * dx[1]);
+  sipj->inertia_tensor[2] += mi * (r2 - dx[2] * dx[2]);
+  sipj->inertia_tensor[3] -= mi * dx[0] * dx[1];
+  sipj->inertia_tensor[4] -= mi * dx[0] * dx[2];
+  sipj->inertia_tensor[5] -= mi * dx[1] * dx[2];
+
   /* Interaction probability for sipi and sipj */
   float pij = SIDM_rate_i * dt_sipi;
   float pji = SIDM_rate_j * dt_sipj;
@@ -311,6 +326,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   /* Scattering rates */
   float SIDM_rate_i = mj * sidm_props->sigma_over_m * vij * lambda_ij;
   sipi->SIDM_rate += SIDM_rate_i;
+
+  /* Inertia tensor contribution */
+  sipi->inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
+  sipi->inertia_tensor[1] += mj * (r2 - dx[1] * dx[1]);
+  sipi->inertia_tensor[2] += mj * (r2 - dx[2] * dx[2]);
+  sipi->inertia_tensor[3] -= mj * dx[0] * dx[1];
+  sipi->inertia_tensor[4] -= mj * dx[0] * dx[2];
+  sipi->inertia_tensor[5] -= mj * dx[1] * dx[2];
 
   /* Interaction probability */
   float pij = SIDM_rate_i * dt_sipi;

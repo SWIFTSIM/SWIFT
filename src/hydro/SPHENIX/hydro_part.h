@@ -218,6 +218,10 @@ struct part {
       /*! Maximal alpha (viscosity) over neighbours */
       float alpha_visc_max_ngb;
 
+      /*! Inertia tensor of neighbour positions about this particle.
+       *  Stored as (xx, yy, zz, xy, xz, yz). */
+      float inertia_tensor[6];
+
     } force;
   };
 

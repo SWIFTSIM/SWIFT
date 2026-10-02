@@ -192,7 +192,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 16;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -275,6 +275,13 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[16] = io_make_output_field(
+      "InertiaTensors", FLOAT, 6, UNIT_CONV_MOMENT_OF_INERTIA, 2.f, parts,
+      force.inertia_tensor,
+      "Co-moving inertia tensors of the neighbour positions about the "
+      "particles, computed in the force loop. Stored as (xx, yy, zz, xy, xz, "
+      "yz).");
 }
 
 /**

@@ -71,6 +71,8 @@ BasicSIDM:
   resolution_eta:        1.2348           # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   h_min_ratio:           0.1              # Minimal smoothing length in units of softening.
   h_max:                 0.5              # Maximal smoothing length in co-moving internal units.
+  constant_cross_section: 1               # Use a velocity-independent cross-section.
+  sigma_over_m_cgs:      1                # Cross-section per unit mass (cm^2/g).
 
 # Parameters for the hydrodynamics scheme
 SPH:
