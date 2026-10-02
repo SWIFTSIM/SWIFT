@@ -53,8 +53,22 @@ IA_dict = {
     "s112": "stacked_112.hdf5",
     "s120": "stacked_120.hdf5",
     "s128": "stacked_128.hdf5",
+    "s256": "stacked_256.hdf5",
     "c32": "c32.hdf5",
     "c64": "c64.hdf5",
+    "bcc16":"BCCcube_16_16_16.hdf5",
+    "bcc24":"BCCcube_24_24_24.hdf5",
+    "bcc32":"BCCcube_32_32_32.hdf5",
+    "bcc48":"BCCcube_48_48_48.hdf5",
+    "bcc64":"BCCcube_64_64_64.hdf5",
+    "bcc20":"BCCcube_20_20_20.hdf5",
+    "bcc30":"BCCcube_30_30_30.hdf5",
+    "bcc40":"BCCcube_40_40_40.hdf5",
+    "bcc60":"BCCcube_60_60_60.hdf5",
+    "bcc80":"BCCcube_80_80_80.hdf5",
+    "bcc22":"BCCcube_22_22_22.hdf5",
+    "bcc45":"BCCcube_45_45_45.hdf5",
+    "bcc90":"BCCcube_90_90_90.hdf5",
 }
 
 # full names of forcing types
@@ -68,7 +82,6 @@ results_directory_name = "test_results"
 
 # funcions
 ###################################################################################################
-
 
 # Function that reads parameter dataframe
 def read_parameter_csv(addr_to_csv):
@@ -103,7 +116,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
     # if specific path to some libraries is needed, set this up here
     if path_to_lib == True:
-        path_to_libraries = " --with-fftw=/opt/homebrew/Cellar/fftw/3.3.10_1/ --with-gsl=/opt/homebrew/Cellar/gsl/2.7.1/ --with-hdf5=/opt/homebrew/Cellar/hdf5/1.14.3/"
+        path_to_libraries = " --with-fftw=/opt/homebrew/fftw --with-hdf5=/opt/homebrew/opt/hdf5/bin/h5cc"
     else:
         path_to_libraries = ""
 
@@ -170,11 +183,20 @@ def make_IC(phys_parameters, IAfile):
         # get configuration parameters from phys_parameters row of parameters dataframe
         v0 = " --rms_velocity=" + str(phys_parameters["v0"].values[0])
         Vz_factor = " --Vz_factor=" + str(phys_parameters["Vz_factor"].values[0])
-        kv = " --velocity_wavevector=" + str(phys_parameters["kv"].values[0])
-        kb = " --magnetic_wavevector=" + str(phys_parameters["kb"].values[0])
+        kv = " --velocity_wavevector=" + str(int(phys_parameters["kv"].values[0]))
+        kb = " --magnetic_wavevector=" + str(int(phys_parameters["kb"].values[0]))
         Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
         path = " --IA_path=" + "./IAfiles/" + IAfile
         Flow_kind = " --flow_kind=" + str(int(phys_parameters["Flow_kind"].values[0]))
+
+        Npar = " --npar_box=" + str(int(phys_parameters["Npar"].values[0]))
+        Nper = " --nper_box=" + str(int(phys_parameters["Nper"].values[0]))
+        LparMul = " --lparmultiplier=" + str(int(phys_parameters["LparMul"].values[0]))
+        LperMul = " --lpermultiplier=" + str(int(phys_parameters["LperMul"].values[0]))
+        
+        ICMF_type = " --field_type=" + phys_parameters["ICMF_type"].values[0]
+        
+
         # Construct command to make ICs with selected parameters
         command = (
             " python3 "
@@ -186,6 +208,11 @@ def make_IC(phys_parameters, IAfile):
             + Lbox
             + Vz_factor
             + Flow_kind
+            + Npar
+            + Nper
+            + LparMul
+            + LperMul
+            + ICMF_type
         )
     else:
         command = " python3 " + "make_IC.py"
@@ -218,6 +245,7 @@ def run_simulation(phys_parameters, threads):
     v0 = phys_parameters["v0"].values[0]
     Vz_factor = phys_parameters["Vz_factor"].values[0]
     eta = phys_parameters["eta"].values[0]
+    U = phys_parameters["internal_energy"].values[0]
     kv = phys_parameters["kv"].values[0]
     Flow_kind = phys_parameters["Flow_kind"].values[0]
     Lbox = phys_parameters["Lbox"].values[0]
@@ -264,6 +292,11 @@ def run_simulation(phys_parameters, threads):
         set_av_min = sph_pref + "viscosity_alpha_min:" + str(viscosity_alpha)
     set_sph_par = set_av + set_av_max + set_av_min
 
+    # Construct string command to set up internal energy (equation of state)
+    eos_pref = " -P EoS:"
+    set_u = eos_pref + "isothermal_internal_energy:"+str(U)
+    set_eos_par = set_u
+
     # Construct string command to set up forcing options
 
     if Forcing_kind == "a":
@@ -285,9 +318,9 @@ def run_simulation(phys_parameters, threads):
 
     set_Vz_factor = ""
     if Vz_factor != None:
-        set_Vz_factor = f_pref + "Vz_factor:" + str(int(Vz_factor))
+        set_Vz_factor = f_pref + "Vz_factor:" + str(Vz_factor)
 
-    set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor
+    set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor + set_eos_par
 
     # Construct string command to set up MHD parameters
     MHD_pref = " -P MHD:"
@@ -359,7 +392,7 @@ def run_simulation(phys_parameters, threads):
         result = subprocess.run(
             command, shell=True, capture_output=True, check=True, text=True
         )
-        # print(result.stdout)
+        #print(result.stdout)
         print("SWIFT run complete")
         move_res = True
     except subprocess.CalledProcessError as e:
