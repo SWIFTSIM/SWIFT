@@ -124,8 +124,7 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
      ISRF_dissipation_alpha_floor: 0.5                       # Dissipation floor under the trigger
      ISRF_dissipation_floor_h_over_lambda: 0.5               # Knee of the floor's roll-off
      ISRF_dissipation_floor_relaxation_residual: 0.40        # Relaxation-residual gate of the floor
-     ISRF_c_hyp_pin_for_debugging: 0                         # Debugging only, leave at 0
-     ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging: 0 # Debugging only, leave at 0
+     ISRF_c_hyp_timestep_term_off_for_debugging: 0           # Debugging only, leave at 0
      ISRF_dissipation_alpha_pin_for_debugging: 0             # Debugging only, leave at 0
 
 and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\mathrm{H}_2` (these are not Grackle's own defaults; see :ref:`gear_grackle_cooling` for the full block and its actual defaults):
