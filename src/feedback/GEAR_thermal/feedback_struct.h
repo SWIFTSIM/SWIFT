@@ -173,7 +173,10 @@ struct feedback_isrf_moment_data {
   double u_prev;
 
   /*! Hyperbolic propagation state: the tracked specific flux moment,
-      mass-specific like #u. Zeroed unconditionally at
+      mass-specific like #u, stored as the REDUCED flux `Ft = F_true/c_hyp`
+      (same units as #u) for every ISRF scheme; the snapshot getters
+      multiply it by #feedback_part_data.c_hyp to write the true flux.
+      Zeroed unconditionally at
       first init (no IC field proposed for it); relaxed every step in the
       extra ghost (radiation_isrf.c's exact-relaxation update), then limited
       there against #u. Read by neighbours in the gradient loop (the old
@@ -311,11 +314,11 @@ struct feedback_isrf_operator_data {
   float kappa;
 
   /*! M1 closure tensor `D(f)` from the owning moment's own
-     #feedback_isrf_moment_data.u, #feedback_isrf_moment_data.specific_flux
-     (#radiation_isrf_operator_owner) and #feedback_part_data.c_hyp, cached
-     by #radiation_cache_m1_closure_part (drift-time reset and, once #c_hyp
-     itself is known, the density ghost) so the gradient loop reads it per
-     pair without rebuilding it. */
+     #feedback_isrf_moment_data.u and the reduced flux
+     #feedback_isrf_moment_data.specific_flux (#radiation_isrf_operator_owner),
+     cached by #radiation_cache_m1_closure_part (drift-time reset and first
+     init, where it is required; the density ghost also refreshes it) so the
+     gradient loop reads it per pair without rebuilding it. */
   float m1_closure_D[3][3];
 
   /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop
@@ -441,12 +444,16 @@ struct feedback_part_data {
       point, so every term the placeholder feeds into is itself 0. */
   float rho_prev;
 
-  /*! This particle's kernel-local hyperbolic propagation speed
-      (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
+  /*! This particle's hyperbolic propagation speed. Under
+      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`, set at drift by
+      radiation_snapshot_part_propagation. Under
+      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is the kernel-local
+      speed (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
       timestep among this particle and every neighbour in its kernel,
       #max_ngb_time_bin), cached for active particles by
       radiation_end_density_propagation (the density ghost, after the
-      h-iteration converges). The receiver's CFL condition
+      h-iteration converges), and the rest of this comment describes that
+      scheme. The receiver's CFL condition
       `c_i*dt_j <= C_hyp*h_i` holds by construction for every neighbour j
       that entered #max_ngb_time_bin, which is every j inside `H_i`.
 

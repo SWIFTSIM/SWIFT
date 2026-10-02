@@ -150,6 +150,14 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
+/*! Value of the ISRF flux-form marker block that feedback_struct_dump() writes
+ * ahead of the #feedback_props block: the tracked flux is the reduced flux
+ * `Ft = F_true/c_hyp` for every ISRF scheme. A restart file written by an
+ * earlier code version has no such block, and a restart that holds the true
+ * flux would otherwise be read back as reduced flux, silently wrong by a
+ * factor `c_hyp`. */
+#define FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED 1
+
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                              const struct unit_system *us,

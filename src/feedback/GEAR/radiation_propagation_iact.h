@@ -32,6 +32,14 @@
  * theory/GEAR/Radiation/02_fuv_isrf.tex, secs. "Spatial operators" and "The
  * consistent variable-speed operators".
  *
+ * The stored flux is the reduced flux `Ft = F_true/c_hyp` for every ISRF
+ * scheme: a change of variable under which every operator at particle i
+ * becomes `c_hyp_i/c` times the true-speed equation, so a change of
+ * `c_hyp_i` between steps rescales nothing in the stored state. Each pair
+ * term below carries the RECEIVER's own `c_hyp`, so a pair conserves
+ * `sum m_i X_i / c_hyp_i`, not `sum m_i X_i`; at a uniform `c_hyp` the two
+ * ledgers are proportional.
+ *
  * Nothing writes `u` between the drift snapshot and the end-force ghost, so
  * the live `u` the gradient and dissipation loops read is `u^n`.
  *
@@ -62,11 +70,10 @@
  * @param mj Particle j's mass.
  * @param rho_i Particle i's cached comoving density snapshot.
  * @param rho_j Particle j's cached comoving density snapshot.
- * @param F_i Particle i's tracked flux (this band), or the reduced flux
- * `Ft = F_true/c_hyp` under #isrf_c_hyp_consistent_variable_c.
- * @param F_j Particle j's tracked flux, same convention.
- * @param c_i Particle i's #feedback_part_data.c_hyp, used only under
- * #isrf_c_hyp_consistent_variable_c.
+ * @param F_i Particle i's tracked reduced flux `Ft = F_true/c_hyp` (this band).
+ * @param F_j Particle j's tracked reduced flux.
+ * @param c_i Particle i's #feedback_part_data.c_hyp, the receiver-side speed
+ * that turns `div(Ft)` into the accumulated `div(F)`.
  * @param c_j Particle j's #feedback_part_data.c_hyp, same role.
  * @param a_factor_comoving_to_physical `1/a`.
  * @param div_F_i (return, accumulated) Particle i's div(F) accumulator.
@@ -80,34 +87,17 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
                                      float c_i, float c_j,
                                      float a_factor_comoving_to_physical,
                                      float *div_F_i, float *div_F_j) {
-  /* Both schemes share the coefficient Phi_ij and differ only in a trailing
-   * scalar. Reassociation is disabled so they stay bit-for-bit identical at
-   * uniform c_hyp. This holds under clang only: GCC has no block-scoped
-   * equivalent. */
-  {
-#if defined(__clang__)
-#pragma clang fp reassociate(off) contract(off) reciprocal(off)
-#endif
-    const float Fi_dot_dx = F_i[0] * dx[0] + F_i[1] * dx[1] + F_i[2] * dx[2];
-    const float Fj_dot_dx = F_j[0] * dx[0] + F_j[1] * dx[1] + F_j[2] * dx[2];
+  const float Fi_dot_dx = F_i[0] * dx[0] + F_i[1] * dx[1] + F_i[2] * dx[2];
+  const float Fj_dot_dx = F_j[0] * dx[0] + F_j[1] * dx[1] + F_j[2] * dx[2];
 
-    const float Phi_ij = (Fi_dot_dx / rho_i * wi_dr * r_inv +
-                          Fj_dot_dx / rho_j * wj_dr * r_inv) *
-                         a_factor_comoving_to_physical;
+  const float Phi_ij =
+      (Fi_dot_dx / rho_i * wi_dr * r_inv + Fj_dot_dx / rho_j * wj_dr * r_inv) *
+      a_factor_comoving_to_physical;
 
-    if (isrf_c_hyp_consistent_variable_c) {
-      /* F_i and F_j already hold the reduced flux, so Phi_ij is already
-       * div(Ft)'s shared coefficient and each side takes its OWN (receiver)
-       * c_hyp. The pair then conserves sum m_i X_i / c_hyp_i, not
-       * sum m_i X_i. */
-      *div_F_i += c_i * mj * Phi_ij;
-      *div_F_j += -c_j * mi * Phi_ij;
-      return;
-    }
-
-    *div_F_i += mj * Phi_ij;
-    *div_F_j += -mi * Phi_ij;
-  }
+  /* Phi_ij is div(Ft)'s shared coefficient; each side takes its OWN
+   * (receiver) c_hyp. */
+  *div_F_i += c_i * mj * Phi_ij;
+  *div_F_j += -c_j * mi * Phi_ij;
 }
 
 /**
@@ -147,8 +137,9 @@ radiation_dissipation_reference_accumulate_band(float wi, float wj, float mi,
  * @brief Band contribution to particle i's negativity-triggered
  * artificial-dissipation source term, and the mirrored contribution to j's.
  *
- * `v_sig,ij = alpha_ij * min(c_hyp_i, c_hyp_j)` with
- * `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`; see
+ * The coefficient is `alpha_ij = max(trigger_i, trigger_j, floor_i,
+ * floor_j)`, and each side takes its OWN (receiver) `c_hyp`, so the signal
+ * speed is `alpha_ij * c_hyp_i` on i and `alpha_ij * c_hyp_j` on j; see
  * theory/GEAR/Radiation/02_fuv_isrf.tex sec. "Artificial dissipation". Runs
  * after the extra ghost has set this step's `alpha`, on the live `u`, which is
  * still `u^n` there. No mutual-reach gate is needed: the force loop fires both
@@ -182,45 +173,31 @@ radiation_dissipation_force_accumulate_band(
     float a_factor_comoving_to_physical, float *dissipation_u_i,
     float *dissipation_u_j) {
 
-  /* Same fp-reassociation hazard and clang-only guard as
-   * #radiation_divergence_accumulate_band's pragma. */
-  {
-#if defined(__clang__)
-#pragma clang fp reassociate(off) contract(off) reciprocal(off)
-#endif
-    const float d_ij = rho_i * u_i - rho_j * u_j;
+  const float d_ij = rho_i * u_i - rho_j * u_j;
 
-    /* Split out rather than nested: max() expands to a statement
-     * expression with its own locals, which -Wshadow rejects when
-     * nested. */
-    const float alpha_trigger_ij = max(alpha_trigger_i, alpha_trigger_j);
-    const float alpha_floor_ij = max(alpha_floor_i, alpha_floor_j);
-    const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
+  /* Split out rather than nested: max() expands to a statement
+   * expression with its own locals, which -Wshadow rejects when
+   * nested. */
+  const float alpha_trigger_ij = max(alpha_trigger_i, alpha_trigger_j);
+  const float alpha_floor_ij = max(alpha_floor_i, alpha_floor_j);
+  const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
 
-    const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
+  const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
 
-    const float shape_ij =
-        d_ij * Wbar_ij / (rho_i * rho_j) * a_factor_comoving_to_physical;
+  const float shape_ij =
+      d_ij * Wbar_ij / (rho_i * rho_j) * a_factor_comoving_to_physical;
 
-    if (isrf_c_hyp_consistent_variable_c) {
-      /* Two receiver-side speeds, not one shared minimum. The pair then
-       * conserves sum m_i X_i / c_hyp_i, not sum m_i X_i. */
-      *dissipation_u_i += mj * (alpha_ij * c_i * shape_ij);
-      *dissipation_u_j += -mi * (alpha_ij * c_j * shape_ij);
-      return;
-    }
-
-    const float Psi_ij = alpha_ij * min(c_i, c_j) * shape_ij;
-
-    *dissipation_u_i += mj * Psi_ij;
-    *dissipation_u_j += -mi * Psi_ij;
-  }
+  /* Two receiver-side speeds, not one shared minimum. */
+  *dissipation_u_i += mj * (alpha_ij * c_i * shape_ij);
+  *dissipation_u_j += -mi * (alpha_ij * c_j * shape_ij);
 }
 
 /**
  * @brief M1 closure coefficients for one particle, one band, built from its
- * own `(u, F, c_M)`. `c_M` is #feedback_part_data.c_hyp, reinterpreted as the
- * fastest M1 characteristic (`f=1`), not a new field.
+ * own `(u, F, c_M)`. `c_M` is the speed that normalises the flux against `u`,
+ * the fastest M1 characteristic (`f=1`). The tracked flux is the reduced flux
+ * `Ft = F_true/c_hyp`, which is already normalised, so the module passes
+ * `c_M = 1` and `f = |Ft|/u`.
  *
  * `f = min(1, |F|/(c_M*u))` for `u > 0`, `f = 0` otherwise;
  * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`;
@@ -233,8 +210,9 @@ radiation_dissipation_force_accumulate_band(
  * keep `F = 0` at `n = 0`, `f = 0` rather than a NaN.
  *
  * @param u This band's specific field `u^n` for this particle.
- * @param F This particle's tracked flux (this band).
- * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param F This particle's tracked reduced flux (this band).
+ * @param c_M The speed that normalises `F` against `u`: 1 for the tracked
+ * reduced flux.
  * @param n (return) The flux direction `F/|F|`, zero at `F = 0`.
  * @param iso_coeff (return) `(1-chi)/2`.
  * @param aniso_coeff (return) `(3chi-1)/2`.
@@ -288,8 +266,9 @@ radiation_build_m1_closure_tensor(const float n[3], float iso_coeff,
  * scratch. See #radiation_get_m1_closure_coefficients_band.
  *
  * @param u This band's specific field `u^n` for this particle.
- * @param F This particle's tracked flux (this band).
- * @param c_M This particle's own #feedback_part_data.c_hyp.
+ * @param F This particle's tracked reduced flux (this band).
+ * @param c_M The speed that normalises `F` against `u`: 1 for the tracked
+ * reduced flux.
  * @param D (return) The 3x3 closure tensor.
  */
 __attribute__((always_inline)) INLINE static void
@@ -305,14 +284,13 @@ radiation_get_m1_closure_tensor_band(float u, const float F[3], float c_M,
 /**
  * @brief Cache every band's M1 closure tensor on the particle.
  *
- * Must run after the last write of `u`, `specific_flux` and `c_hyp` preceding
- * a gradient loop that reads the particle. Three call sites cover this: the
- * drift-time reset, the density ghost once this step's `c_hyp` is known, and
- * first init, since the initial ti = 0 pass reaches the gradient loop without
- * a drift.
+ * Must run after the last write of `u` and `specific_flux` preceding a
+ * gradient loop that reads the particle. Two call sites are required: the
+ * drift-time reset, and first init, since the initial ti = 0 pass reaches
+ * the gradient loop without a drift.
  *
- * Under #isrf_c_hyp_consistent_variable_c the stored flux is already reduced
- * by `c_hyp`, so the closure is built with `c_M = 1` and yields the same `f`.
+ * The stored flux is already reduced by `c_hyp`, so the closure is built with
+ * `c_M = 1` and ignores `c_hyp`, so the density ghost's call is only a refresh.
  *
  * @param p The #part.
  */
@@ -320,12 +298,11 @@ __attribute__((always_inline)) INLINE static void
 radiation_cache_m1_closure_part(struct part *p) {
 
   struct feedback_part_data *fd = &p->feedback_data;
-  const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : fd->c_hyp;
   for (int o = 0; o < ISRF_OPERATOR_COUNT; o++) {
     const int m = radiation_isrf_operator_owner[o];
     const struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
     struct feedback_isrf_operator_data *op = &fd->isrf_operator[o];
-    radiation_get_m1_closure_tensor_band(moment->u, moment->specific_flux, c_M,
+    radiation_get_m1_closure_tensor_band(moment->u, moment->specific_flux, 1.f,
                                          op->m1_closure_D);
   }
 }
@@ -656,8 +633,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
   const float mi = hydro_get_mass(pi);
   const float mj = hydro_get_mass(pj);
   /* Read outside the band loop: the band writes may alias c_hyp for the
-   * compiler. Both speeds are kept, not just their minimum, because the
-   * consistent-variable-c scheme needs each side separately. */
+   * compiler. Both speeds are kept, not just their minimum, because each
+   * side takes its own. */
   const float c_i = fdi->c_hyp;
   const float c_j = fdj->c_hyp;
 

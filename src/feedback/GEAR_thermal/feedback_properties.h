@@ -61,69 +61,31 @@ enum radiation_policy {
 /**
  * @brief Which ISRF hyperbolic-propagation scheme is active.
  *
- * Two independent choices sit behind this one selector:
- *  - the FORMULA for the propagation speed `c_hyp_i` (radiation_isrf.c):
- *    #isrf_c_hyp_scheme_shipped's per-particle `dt_i` (the default) or
- *    #isrf_c_hyp_scheme_kernel_local's per-kernel `dt_max(i)`;
- *    #isrf_c_hyp_scheme_fixed_fraction's uniform `f*c` is a third, standalone
- *    option that does not combine with either;
- *  - which PAIRWISE OPERATORS (radiation_propagation_iact.h) consume that
- *    speed: the shipped operators, or the consistent-variable-c change of
- *    variable (#isrf_c_hyp_consistent_variable_c) that rebuilds them for a
- *    genuinely per-particle `c_hyp_i`.
- *
- * #isrf_c_hyp_scheme_kernel_local_plus_variable_c selects BOTH non-default
- * choices at once: the kernel-local speed formula feeding the
- * change-of-variable operators. The two axes are independent by
- * construction (the operator rewrite never reads how `c_hyp_i` was computed,
- * only its value), so this is not a new formula, just the selected
- * combination; see radiation_propagation_iact.h's file header for why the
- * two do not double-throttle the same term the way a kernel-local +
- * pair-weight stack would. Every value is enforced to be one of these five
- * at parse time by feedback_props_init(); see
- * #feedback_props.ISRF_c_hyp_scheme's doxygen for the specifics of each.
+ * Each value fixes how the propagation speed `c_hyp_i` is set
+ * (radiation_isrf.c). The pairwise operators (radiation_propagation_iact.h)
+ * are the same for every value: they act on the reduced flux
+ * `Ft = F_true/c_hyp`. Any other value is rejected at parse time by
+ * feedback_props_init() and, for a restart, by feedback_struct_restore().
  */
 enum isrf_c_hyp_scheme {
-  /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_i, c)`, `dt_i` this particle's own
-   * timestep. Operators: shipped. Not the default (see
-   * #isrf_c_hyp_scheme_kernel_local_plus_variable_c), still reachable by
-   * setting #feedback_props.ISRF_c_hyp_scheme explicitly. */
-  isrf_c_hyp_scheme_shipped = 0,
-  /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
-   * timestep among this particle and every neighbour in its kernel.
-   * Operators: shipped. */
-  isrf_c_hyp_scheme_kernel_local = 1,
   /*! Speed: `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every
-   * particle, independent of `h`/timestep. Operators: shipped. Does not
-   * combine with either other speed formula. */
+   * particle, independent of `h` and of the timestep, set at drift. A
+   * dedicated timestep term (radiation_isrf_part_timestep) enforces the
+   * receiver-side CFL condition that a uniform speed does not satisfy by
+   * itself. */
   isrf_c_hyp_scheme_fixed_fraction = 2,
-  /*! Speed: #isrf_c_hyp_scheme_shipped's own `dt_i` formula, unchanged.
-   * Operators: every pairwise transport/dissipation operator
-   * (radiation_propagation_iact.h) is rebuilt as the consistent
-   * generalisation of the single-uniform-speed reduced-speed-of-light
-   * method to a per-particle `c_hyp_i`: a change of variable (every
+  /*! Speed: `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
+   * timestep among this particle and every neighbour in its kernel, set by
+   * radiation_end_density_propagation once the density loop has converged.
+   * The kernel-local speed reduces the speed contrast between neighbours
+   * (and so the negativity), and the operators on the reduced flux are the
+   * consistent generalisation of the single-uniform-speed reduced-speed-of-
+   * light method to a per-particle `c_hyp_i`: a change of variable (every
    * operator at particle i becomes `c_hyp_i/c` times the true-speed
-   * equation, and the state stored becomes the reduced flux `Ft =
-   * F_true/c_hyp`, so a time-bin change rescales nothing), not a new pair
-   * weight. See radiation_propagation_iact.h's file header and
-   * #isrf_c_hyp_consistent_variable_c, the global flag that carries this
-   * selection into that file's pairwise dispatch. Reduces bit-for-bit to
-   * #isrf_c_hyp_scheme_shipped whenever `c_hyp_i` is spatially uniform
-   * (radiation_propagation_iact.h). Agreement between
-   * two evaluations of the same operator in different inlining contexts is
-   * a separate, weaker matter: it holds only to a few ULP, because an
-   * FMA-capable target contracts the two differently. That is a property of
-   * the target architecture, not of the compiler, so such comparisons are
-   * made against a tolerance. */
-  isrf_c_hyp_scheme_consistent_variable_c = 3,
-  /*! Speed: #isrf_c_hyp_scheme_kernel_local's own `dt_max(i)` formula.
-   * Operators: #isrf_c_hyp_scheme_consistent_variable_c's own change of
-   * variable. The kernel-local speed reduces the speed contrast between
-   * neighbours (and so the negativity); the change of variable fixes the
-   * pairwise operators' amplitude error; neither touches the other's
-   * mechanism, so the two compose without a combined re-derivation.
-   * Default. */
-  isrf_c_hyp_scheme_kernel_local_plus_variable_c = 4,
+   * equation, and the state stored is the reduced flux `Ft = F_true/c_hyp`,
+   * so a time-bin change rescales nothing), not a new pair weight. See
+   * radiation_propagation_iact.h's file header. Default. */
+  isrf_c_hyp_scheme_kernel_local_reduced_flux = 4,
 };
 
 /**
@@ -294,21 +256,20 @@ struct feedback_props {
    * range depends on both dissipation parameters, not just this one. */
   float ISRF_c_hyp_margin;
 
-  /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme): 0 (shipped),
-   * 1 (kernel-local speed), 2 (fixed fraction of c, magnitude
-   * #ISRF_c_hyp_fixed_fraction_of_c), 3 (consistent variable-c operators,
-   * shipped speed formula) or 4 (kernel-local speed feeding the
-   * consistent-variable-c operators, default). See that enum's doxygen for
-   * the specifics of each value. #isrf_c_hyp_scheme_fixed_fraction is an
-   * alternative to the other four, not a layer: feedback_props_init()
-   * errors if #ISRF_c_hyp_fixed_fraction_of_c is positive with this not set
-   * to it, or this is set to it with #ISRF_c_hyp_fixed_fraction_of_c left at
-   * 0. */
+  /*! Selects the active ISRF scheme (#isrf_c_hyp_scheme): 2 (fixed fraction
+   * of c, magnitude #ISRF_c_hyp_fixed_fraction_of_c) or 4 (kernel-local
+   * speed, default). See that enum's doxygen for
+   * the specifics of each value. The fixed fraction is tied to scheme 2:
+   * feedback_props_init() errors if #ISRF_c_hyp_fixed_fraction_of_c is
+   * positive with this not set to 2, or this is set to 2 with
+   * #ISRF_c_hyp_fixed_fraction_of_c left at 0. Only meaningful when the
+   * interstellar radiation field is on; with it off this stays 0, which is
+   * not a valid scheme. */
   int ISRF_c_hyp_scheme;
 
   /*! Debug/test-only: pin every particle's own `c_hyp_i` (radiation_isrf.c)
    * to this fixed physical value instead of computing it from whichever
-   * formula #ISRF_c_hyp_scheme selects, whenever positive. Needed by the
+   * rule #ISRF_c_hyp_scheme selects, whenever positive. Needed by the
    * causal-reach validation leg
    * (a single, unambiguous wavefront speed to check the field against) and
    * by the steady-state amplitude leg's two-`c_hyp` cross-check (confirming
@@ -338,10 +299,10 @@ struct feedback_props {
    * particle's own receiver-side CFL condition satisfied. 0 (default): the
    * term is applied, which is the only supported configuration whenever
    * the fixed fraction is on. 1: the term is skipped, so
-   * #ISRF_c_hyp_fixed_fraction_of_c is exactly as unstable at a seam as the
-   * shipped per-particle formula: this exists solely to measure, by A/B run,
-   * how much of the fixed fraction's step-count cost the timestep term itself
-   * is responsible for. Never set in a production run. No effect when
+   * #ISRF_c_hyp_fixed_fraction_of_c is exactly as unstable at a seam as a
+   * per-particle `C_hyp*h_i/dt_i` speed: this exists solely to measure, by A/B
+   * run, how much of the fixed fraction's step-count cost the timestep term
+   * itself is responsible for. Never set in a production run. No effect when
    * #ISRF_c_hyp_fixed_fraction_of_c is 0. */
   char ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging;
 
@@ -381,32 +342,32 @@ struct feedback_props {
   float ISRF_dissipation_floor_h_over_lambda;
 
   /*! Flux-relaxation residual threshold gating the floor's own aim:
-   * `R = |F + C*grad_u| / (|F| + C*|grad_u|)`, `C =
-   * c_hyp^2/(c_hyp*kappa+H)` the exact fixed point of the UNLIMITED
-   * flux-update recurrence, is identically 0 at the code's own discrete
-   * steady state and ~1 away from it; the triangle inequality bounds R to
-   * [0, 1], so this parameter's valid range is [0, 1] too (checked in
-   * feedback_props_init(): a value above 1 would scale the floor down on
-   * every particle, fronts included). A particle whose flux is instead
-   * pinned by the M1 limiter (#radiation_apply_flux_limiter_band, `|F| =
-   * c_M*u`, the free-streaming branch) generally never reaches that fixed
-   * point either, so R stays finite there too: a conservative false
-   * positive that keeps part of the floor where the limiter is active,
-   * never removes protection where a front is present. The floor's aim is
-   * multiplied by `min(1, (R/eps_R)^2)`, so a particle already at the
-   * flux-relaxation fixed point (a resolved, settled profile) gets a
-   * reduced floor, while a genuine front (R large) keeps the floor at
-   * full strength. Can only lower the floor relative to
-   * #ISRF_dissipation_floor_h_over_lambda's own roll-off, never raise
-   * it: `s=1` whenever exactly one of `F`, `grad_u` is zero (`R=1`), so a
-   * fresh front or a limiter-zeroed flux keeps the full floor, provided
-   * the relaxation weight `w = kappa + H/c_hyp` is nonzero. The exception
-   * is a quiescent particle with both `F` and `grad_u` zero and `w`
-   * nonzero: that is trivially at the fixed point, giving `R=0` and
-   * `s=0`. At `w=0` (`kappa=0` and `H=0`: no relaxation timescale to
-   * settle against), the gate returns `s=1` unconditionally instead. 0
-   * disables this gate (R treated as always saturating, i.e. `s=1`
-   * everywhere) and recovers the `h/lambda`-only floor exactly. */
+   * `R = |w*Ft + grad_u| / (w*|Ft| + |grad_u|)`, `w = kappa + lambda*H/c`,
+   * `Ft` the stored reduced flux, whose fixed point `Ft = -grad_u/w` is
+   * that of the UNLIMITED flux-update recurrence, is identically 0 at the
+   * code's own discrete steady state and ~1 away from it; the triangle
+   * inequality bounds R to [0, 1], so this parameter's valid range is [0, 1]
+   * too (checked in feedback_props_init(): a value above 1 would scale the
+   * floor down on every particle, fronts included). A particle whose flux is
+   * instead pinned by the M1 limiter (#radiation_apply_flux_limiter_band, `|Ft|
+   * = u`, the free-streaming branch) generally never reaches that fixed point
+   * either, so R stays finite there too: a conservative false positive that
+   * keeps part of the floor where the limiter is active, never removes
+   * protection where a front is present. The floor's aim is multiplied by
+   * `min(1, (R/eps_R)^2)`, so a particle already at the flux-relaxation fixed
+   * point (a resolved, settled profile) gets a reduced floor, while a genuine
+   * front (R large) keeps the floor at full strength. Can only lower the floor
+   * relative to #ISRF_dissipation_floor_h_over_lambda's own roll-off, never
+   * raise it: `s=1` whenever exactly one of `Ft`, `grad_u` is zero (`R=1`), so
+   * a fresh front or a limiter-zeroed flux keeps the full floor, provided the
+   * relaxation weight `w = kappa + lambda*H/c` is nonzero. The exception is a
+   * quiescent particle with both `Ft` and `grad_u` zero and `w` nonzero: that
+   * is trivially at the fixed point, giving `R=0` and `s=0`. At `w=0`
+   * (`kappa=0` and `H=0`: no relaxation timescale to settle against), the gate
+   * returns `s=1` unconditionally instead. 0 disables this gate (R treated as
+   * always saturating, i.e. `s=1` everywhere) and recovers the `h/lambda`-only
+   * floor exactly. `lambda` here is the owning moment's own band-edge weight.
+   */
   float ISRF_dissipation_floor_relaxation_residual;
 
   /*! Debug/test-only: bypass the negativity trigger and hold every
@@ -564,20 +525,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
-      const char *isrf_c_hyp_scheme_name = "shipped (per-particle timestep)";
-      if (feedback_props->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_kernel_local)
-        isrf_c_hyp_scheme_name = "kernel-local (per-kernel slowest timestep)";
-      else if (feedback_props->ISRF_c_hyp_scheme ==
-               isrf_c_hyp_scheme_fixed_fraction)
+      const char *isrf_c_hyp_scheme_name = "kernel-local speed";
+      if (feedback_props->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction)
         isrf_c_hyp_scheme_name = "fixed fraction of c";
-      else if (feedback_props->ISRF_c_hyp_scheme ==
-               isrf_c_hyp_scheme_consistent_variable_c)
-        isrf_c_hyp_scheme_name =
-            "consistent variable-c operators (shipped c_hyp formula)";
-      else if (feedback_props->ISRF_c_hyp_scheme ==
-               isrf_c_hyp_scheme_kernel_local_plus_variable_c)
-        isrf_c_hyp_scheme_name =
-            "consistent variable-c operators (kernel-local c_hyp formula)";
       message("ISRF c_hyp scheme                                          = %s",
               isrf_c_hyp_scheme_name);
       if (feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
@@ -616,10 +566,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 /**
  * @brief Enforce that #feedback_props.ISRF_c_hyp_scheme and
  * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c stay a matched pair: the
- * kernel-local and fixed-fraction c_hyp schemes are alternatives, not
- * layers, so a magnitude set without its scheme selected (or a scheme
- * selected without its magnitude) would otherwise silently do nothing or
- * silently pick up a stale value. A standalone function (not inlined into
+ * fixed-fraction and kernel-local c_hyp schemes are alternatives, not
+ * layers, so a magnitude set without scheme 2 selected (or scheme 2 selected
+ * without its magnitude) would otherwise silently do nothing or silently pick
+ * up a stale value. A standalone function (not inlined into
  * feedback_props_init()'s own body) so a unit test can call it directly,
  * with neither a #swift_params nor the stellar-evolution tables
  * feedback_props_init() also reads.
@@ -1095,31 +1045,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's doxygen.
      * Parsed unconditionally, like the pin/fraction below, so a validation
      * run can set it even with ISRF_propagation off in the base config.
-     * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_plus_variable_c);
-     * scheme 0 stays reachable by setting this parameter explicitly. */
-    fp->ISRF_c_hyp_scheme = parser_get_opt_param_int(
-        params, "GEARFeedback:ISRF_c_hyp_scheme",
-        isrf_c_hyp_scheme_kernel_local_plus_variable_c);
-    if (fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_shipped &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_consistent_variable_c &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_plus_variable_c)
+     * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_reduced_flux). */
+    fp->ISRF_c_hyp_scheme =
+        parser_get_opt_param_int(params, "GEARFeedback:ISRF_c_hyp_scheme",
+                                 isrf_c_hyp_scheme_kernel_local_reduced_flux);
+    if (fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
+        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
       error(
-          "GEARFeedback:ISRF_c_hyp_scheme must be 0 (shipped), 1 "
-          "(kernel-local), 2 (fixed fraction of c), 3 (consistent "
-          "variable-c operators) or 4 (kernel-local speed with the "
-          "consistent variable-c operators) (got %d).",
+          "GEARFeedback:ISRF_c_hyp_scheme must be 2 (fixed fraction of c) "
+          "or 4 (kernel-local speed), got %d. "
+          "The values 0, 1 and 3 were removed: they are no longer "
+          "supported.",
           fp->ISRF_c_hyp_scheme);
-    /* Carries the selection into radiation_propagation_iact.h's pairwise
-     * dispatch, which has no #engine pointer to read #feedback_props from;
-     * see #isrf_c_hyp_consistent_variable_c's doxygen. Scheme 4 selects
-     * the same operator rewrite as scheme 3, just fed by the kernel-local
-     * speed instead of the shipped one: the two axes are independent. */
-    isrf_c_hyp_consistent_variable_c =
-        (fp->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
-         fp->ISRF_c_hyp_scheme ==
-             isrf_c_hyp_scheme_kernel_local_plus_variable_c);
 
     /* Debug/test-only: see ISRF_c_hyp_pin_for_debugging's doxygen.
      * Parsed unconditionally (like the stability margin and dissipation

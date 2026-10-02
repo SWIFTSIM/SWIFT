@@ -49,9 +49,6 @@
 #include <float.h>
 #include <math.h>
 
-/* See this global's doxygen, radiation_isrf.h. */
-int isrf_c_hyp_consistent_variable_c = 0;
-
 /**
  * @brief First-init of a #part's LW/PE radiation-field state. Shared
  * across GEAR feedback variants: independent of the injection mechanism.
@@ -169,10 +166,11 @@ void radiation_first_init_part(struct part *restrict p) {
  * cache this step's per-band absorption rate, cache a stable comoving-density
  * snapshot the propagation loops need (see #feedback_part_data.rho_prev's own
  * doxygen for why), cache this step's own physical timestep
- * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 0
- * (shipped) or 2 (fixed-fraction), #feedback_part_data.c_hyp itself (scheme 1,
- * kernel-local, defers c_hyp to radiation_end_density_propagation, once the
- * density loop's neighbour-bin maximum is known), zero every per-step
+ * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 2
+ * (#isrf_c_hyp_scheme_fixed_fraction), #feedback_part_data.c_hyp itself
+ * (scheme 4, kernel-local, defers c_hyp to
+ * radiation_end_density_propagation, once the density loop's neighbour-bin
+ * maximum is known), zero every per-step
  * gradient-loop accumulator, and, for active particles only, draw down this
  * step's
  * #feedback_isrf_moment_data.u_source_rate from
@@ -256,47 +254,33 @@ void radiation_snapshot_part_propagation(struct part *p,
     dt_phys = (float)get_timestep(p->time_bin, e->time_base);
   }
 
-  /* Schemes "kernel-local" and "kernel-local + variable-c" both defer
-   * c_hyp entirely to radiation_end_density_propagation, once the density
-   * loop's neighbour-bin maximum (dt_max(i)) is known; drift only caches
-   * dt_i here (below). The other schemes decide c_hyp now, from dt_i, and
-   * radiation_end_density_propagation is a no-op for them, so this branch
-   * is the ENTIRE definition of c_hyp for schemes 0, 2 and 3, bit-identical
-   * to the shipped formula when scheme is 0. */
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-      e->feedback_props->ISRF_c_hyp_scheme !=
-          isrf_c_hyp_scheme_kernel_local_plus_variable_c) {
-    const float h_phys = (float)e->cosmology->a * p->h;
-    float c_hyp;
-    if (e->feedback_props->ISRF_c_hyp_scheme ==
-        isrf_c_hyp_scheme_fixed_fraction) {
-      /* Uniform reduced light-speed candidate: every particle gets the
-       * same c_hyp, independent of h_phys/dt_phys above. The receiver-side
-       * CFL this removes coverage for is instead enforced by a dedicated
-       * timestep term, see radiation_isrf_part_timestep(). */
-      c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
-              (float)e->physical_constants->const_speed_light_c;
-    } else if (dt_phys <= 0.f) {
-      /* h_phys/dt_phys would overflow float32 once h_phys exceeds about 8
-       * internal length units at this degenerate dt_phys. The else
-       * branch's own min(c_hyp, c) would only absorb that because
-       * min(+inf, c) resolves to c, which -ffast-math does not guarantee
-       * (swift-knowledge.md). Return that same intended value directly
-       * instead, without ever performing the division. */
-      c_hyp = (float)e->physical_constants->const_speed_light_c;
-    } else {
-      c_hyp = e->feedback_props->ISRF_c_hyp_margin * h_phys / dt_phys;
-      c_hyp = min(c_hyp, (float)e->physical_constants->const_speed_light_c);
-    }
-    /* The debug pin is applied after the light-speed clamp above and is
-     * not itself clamped: a pin value above c gives a superluminal
-     * propagation speed on purpose, for isolating dispersion behaviour at
-     * chosen values of the Courant number. Never set it above c outside
-     * of that use. */
+  /* The kernel-local scheme defers c_hyp entirely to
+   * radiation_end_density_propagation, once the density loop's
+   * neighbour-bin maximum (dt_max(i)) is known; drift only caches dt_i
+   * here (below). The fixed-fraction scheme decides c_hyp now, and
+   * radiation_end_density_propagation is a no-op for it, so this branch is
+   * the ENTIRE definition of c_hyp for that scheme. Any other value is a
+   * corrupted or unvalidated #feedback_props: stop rather than leave c_hyp
+   * unset. */
+  const int c_hyp_scheme = e->feedback_props->ISRF_c_hyp_scheme;
+  if (c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction) {
+    /* Uniform reduced light-speed candidate: every particle gets the same
+     * c_hyp, independent of h and of dt_phys above. The receiver-side CFL
+     * this removes coverage for is instead enforced by a dedicated
+     * timestep term, see radiation_isrf_part_timestep(). */
+    float c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
+                  (float)e->physical_constants->const_speed_light_c;
+    /* The debug pin is not clamped: a pin value above c gives a
+     * superluminal propagation speed on purpose, for isolating dispersion
+     * behaviour at chosen values of the Courant number. Never set it above
+     * c outside of that use. */
     if (e->feedback_props->ISRF_c_hyp_pin_for_debugging > 0.f)
       c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
     p->feedback_data.c_hyp = c_hyp;
+  } else if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux) {
+    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
+          c_hyp_scheme);
   }
   p->feedback_data.dt_prev = dt_phys;
 
@@ -345,18 +329,17 @@ void radiation_snapshot_part_propagation(struct part *p,
  * candidate (#feedback_props.ISRF_c_hyp_scheme ==
  * #isrf_c_hyp_scheme_fixed_fraction, magnitude
  * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c): every particle's c_hyp
- * is fixed at `f*c` there, independent of h/dt, so unlike the other two
- * schemes' `c_hyp_i` (each derived from a timestep) this speed carries
+ * is fixed at `f*c` there, independent of h/dt, so unlike the kernel-local
+ * scheme's `c_hyp_i` (derived from a timestep) this speed carries
  * no built-in guarantee that `f*c*dt_i <= C_hyp*h_i`. This returns that
  * bound directly, `C_hyp*h_i/(f*c)`, following the same #ISRF_c_hyp_margin
- * used by the shipped formula.
+ * used by the kernel-local formula.
  *
  * FLT_MAX (no constraint) whenever: the fixed fraction is off (0, the
- * default; the other two schemes need no such term, since their own
+ * default; the kernel-local scheme needs no such term, since its own
  * c_hyp is already derived from a timestep); ISRF_propagation is off (no
- * flux transport,
- * so no receiver-side CFL to protect); the debug off-switch is set
- * (diagnostic-only, see that parameter's doxygen); or this particle is
+ * flux transport, so no receiver-side CFL to protect); the debug off-switch is
+ * set (diagnostic-only, see that parameter's doxygen); or this particle is
  * outside the narrow eligible set below.
  *
  * Eligible set (narrowest defensible, not "every particle"): this
@@ -422,8 +405,8 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
  * (reset to this particle's own #part.time_bin, so a particle with no
  * neighbours this iteration still yields `dt_max(i) = dt_i`; read only by
  * the kernel-local scheme, but accumulated unconditionally (one byte
- * compare per pair), so switching #feedback_props.ISRF_c_hyp_scheme at
- * runtime needs no separate code path here). Mirrors chemistry_init_part's
+ * compare per pair), so the fixed-fraction scheme needs no separate code
+ * path here). Mirrors chemistry_init_part's
  * own per-iteration reset (called from the same sites: part_init.h and the
  * ghost h-iteration redo path), so it is safe to call once or several times
  * per step. The force-loop accumulators are zeroed once per step elsewhere:
@@ -444,10 +427,9 @@ void radiation_init_part_propagation(struct part *p) {
  * @brief Cache this active particle's kernel-local hyperbolic propagation
  * speed #feedback_part_data.c_hyp, once the density loop's h-iteration has
  * converged and #feedback_part_data.max_ngb_time_bin therefore holds the
- * true neighbour-bin maximum for this step's kernel, then rebuild the M1
- * closure cache from it (#radiation_cache_m1_closure_part), so the
- * gradient loop that follows reads a closure built from THIS step's speed
- * rather than the stale value the drift-time call left behind.
+ * true neighbour-bin maximum for this step's kernel, then refresh the M1
+ * closure cache (#radiation_cache_m1_closure_part) the gradient loop that
+ * follows reads.
  *
  * `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the physical
  * duration of a step at #max_ngb_time_bin, computed with the same
@@ -462,30 +444,29 @@ void radiation_init_part_propagation(struct part *p) {
  * case (#max_ngb_time_bin equal to #part.time_bin, i.e. every neighbour on
  * this particle's own clock): reuses #dt_prev, already this step's `dt_i`
  * from the drift, rather than a second call with the same bin, so the
- * result is bit-identical to the shipped per-particle scheme there,
- * independent of codegen. Only the same-bin branch can give `dt_max == 0`:
- * before this particle's first drift has ever run (the initial,
+ * result does not depend on codegen. Only the same-bin branch can give `dt_max
+ * == 0`: before this particle's first drift has ever run (the initial,
  * pre-any-step gradient pass), #dt_prev is still its first-init 0.f. The
  * cross-bin branch cannot: it is taken only when #max_ngb_time_bin exceeds
  * #part.time_bin, so its own get_integer_timestep() is strictly positive.
  * Either way, a zero `dt_max` is branched on explicitly below rather than
  * floored and divided.
  *
- * No-op unless #feedback_props.ISRF_c_hyp_scheme is
- * #isrf_c_hyp_scheme_kernel_local or
- * #isrf_c_hyp_scheme_kernel_local_plus_variable_c: for the other schemes,
- * drift-time #radiation_snapshot_part_propagation already decided #c_hyp
- * (and #feedback_reset_part already cached the M1 closure built from it),
- * and this function must leave that alone, bit-identical to the
- * behaviour for the shipped scheme. `dt_max(i)`
+ * Acts only for #feedback_props.ISRF_c_hyp_scheme
+ * #isrf_c_hyp_scheme_kernel_local_reduced_flux. For
+ * #isrf_c_hyp_scheme_fixed_fraction, drift-time
+ * #radiation_snapshot_part_propagation already decided #c_hyp (and
+ * #feedback_reset_part already cached the M1 closure), and this function
+ * leaves that alone. Any other scheme value stops the run
+ * with error(). `dt_max(i)`
  * covers only the neighbours the ISRF density loop reached, i.e. those
  * inside `H_i`; see #feedback_part_data.c_hyp for the `H_i <= r < H_j`
- * pair class the resulting receiver bound does not cover. Under
- * #isrf_c_hyp_consistent_variable_c the rebuilt M1 closure's own `c_M` is
- * pinned to 1 regardless of `c_hyp` (see #radiation_cache_m1_closure_part's
- * doxygen), so for scheme 4 this function still updates `c_hyp` itself
- * (read by the pairwise operators' receiver-side multiply), even though the
- * closure rebuild that follows does not change value because of it.
+ * pair class the resulting receiver bound does not cover. The M1 closure is
+ * built from `u` and the reduced flux alone, with `c_M = 1` (see
+ * #radiation_cache_m1_closure_part's doxygen), so it does not depend on
+ * `c_hyp`; this function's `c_hyp` is read by the pairwise operators'
+ * receiver-side multiply, and the closure refresh that follows does not
+ * change value because of it.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -493,10 +474,11 @@ void radiation_init_part_propagation(struct part *p) {
 void radiation_end_density_propagation(struct part *p, const struct engine *e) {
 
   if (!e->feedback_props->ISRF_propagation) return;
-  if (e->feedback_props->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local &&
-      e->feedback_props->ISRF_c_hyp_scheme !=
-          isrf_c_hyp_scheme_kernel_local_plus_variable_c)
-    return;
+  const int c_hyp_scheme = e->feedback_props->ISRF_c_hyp_scheme;
+  if (c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction) return;
+  if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
+          c_hyp_scheme);
 
   struct feedback_part_data *fd = &p->feedback_data;
 
@@ -538,7 +520,7 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
     c_hyp = e->feedback_props->ISRF_c_hyp_pin_for_debugging;
 
   fd->c_hyp = c_hyp;
-
+  /* A refresh: the closure does not depend on the c_hyp set above. */
   radiation_cache_m1_closure_part(p);
 }
 
@@ -597,9 +579,10 @@ enum radiation_isrf_flux_limiter_state {
 
 /**
  * @brief M1 flux limiter decision for one particle, one band:
- * `F <- F*min(1, c_M*u/|F|)` for `u > 0`, `F <- 0` for `u <= 0`. Enforces
- * the reduced-flux closure's guarantee (the interior field is `|F|/c_M`,
- * not more) against whatever `u` this call is given. Split from the apply
+ * `F <- F*min(1, u/|F|)` for `u > 0`, `F <- 0` for `u <= 0`, on the tracked
+ * reduced flux `Ft = F_true/c_hyp`. Enforces the closure's guarantee
+ * (`|Ft| <= u`, i.e. `|F_true| <= c_hyp*u`) against whatever `u` this call
+ * is given. Split from the apply
  * half (#radiation_apply_flux_limiter_band) so a scale computed once, from
  * one band, can be applied identically to another band that shares this
  * band's operator.
@@ -607,22 +590,19 @@ enum radiation_isrf_flux_limiter_state {
  * Guarded rather than relying on algebraic cancellation: `F = 0` under
  * `u > 0` needs no division at all (scaling the zero vector is still
  * zero), so that case is skipped outright instead of computing
- * `c_M*u/|F|` unguarded. `F.F` and the limiter ratio are formed in double:
+ * `u/|F|` unguarded. `F.F` and the limiter ratio are formed in double:
  * in float32, `F.F` underflows to zero once `|F| < sqrt(FLT_MIN) ~ 1.1e-19`
  * (internal units), which would skip the limiter for a nonzero flux.
  *
  * @param u This band's specific field `u^n`.
- * @param c_M This particle's own #feedback_part_data.c_hyp, or 1 under
- * #isrf_c_hyp_consistent_variable_c (`F` is then already the reduced flux
- * `Ft = F_true/c_hyp`, whose own bound is `|Ft| <= u`).
- * @param F This particle's tracked flux (this band), unmodified.
+ * @param F This particle's tracked reduced flux (this band), unmodified.
  * @param scale (return) The multiplier to apply, valid only when the
  * return value is #ISRF_LIMITER_SCALE.
  * @return Which of the three outcomes applies.
  */
 __attribute__((
     always_inline)) INLINE static enum radiation_isrf_flux_limiter_state
-radiation_compute_flux_limiter_scale_band(float u, float c_M, const float F[3],
+radiation_compute_flux_limiter_scale_band(float u, const float F[3],
                                           float *scale) {
 
   if (u <= 0.f) return ISRF_LIMITER_ZERO;
@@ -631,7 +611,7 @@ radiation_compute_flux_limiter_scale_band(float u, float c_M, const float F[3],
                     (double)F[2] * (double)F[2];
   if (F2 <= 0.) return ISRF_LIMITER_SKIP;
 
-  *scale = (float)min(1., (double)c_M * (double)u / sqrt(F2));
+  *scale = (float)min(1., (double)u / sqrt(F2));
   return ISRF_LIMITER_SCALE;
 }
 
@@ -682,7 +662,7 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * case `a = c_hyp*(kappa + H/c)*dt`). Without the dissipation this is
  * exact over one step with `source_rate` and `div_F` frozen, under the
  * SAME CHANGE OF VARIABLE the reduced-speed method applies to every
- * other rate (#isrf_c_hyp_consistent_variable_c). `H` is
+ * other rate (radiation_propagation_iact.h's file header). `H` is
  * dilated by the SAME `c_hyp/c` factor as absorption and injection: unlike
  * `kappa`, it does not pick that factor up "for free", and leaving it bare
  * instead suppresses the true-speed fixed point of the homogeneous
@@ -1068,7 +1048,7 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * #radiation_dissipation_alpha_floor_band's aim on a particle whose flux is
  * already at the discrete fixed point of
  * #radiation_end_gradient_propagation's own UNLIMITED flux-update recurrence
- * (`F ~= -C*grad_u`, `w = kappa+lambda*H/c`, i.e. before
+ * (`Ft = -grad_u/w`, `w = kappa+lambda*H/c`, i.e. before
  * #radiation_apply_flux_limiter_band clamps it), where the floor buys no
  * protection and only costs accuracy; on a fresh front or an unsettled
  * particle (`tau = 1/(c_hyp*w) >> dt`) it keeps the full floor instead
@@ -1077,17 +1057,15 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * theory/GEAR/Radiation/02_fuv_isrf.tex, "The flux-relaxation-residual
  * gate".
  *
- * `C` DEPENDS ON WHICH VARIABLE specific_flux holds, because the two have
- * different fixed points: `C = c_hyp/w` for the true flux, and `C = 1/w` for
- * the reduced flux `Ft = F/c_hyp` that #isrf_c_hyp_consistent_variable_c
- * selects, whose recurrence carries one power of `c_hyp` less. So, with
- * `g = c_hyp` for the true flux and `g = 1` for the reduced one (@p
- * reduced_flux),
+ * The stored flux is the reduced flux `Ft = F/c_hyp`, whose recurrence
+ * `Ft_new = e*Ft - c_hyp*dt*phi*grad_u` has the fixed point
+ * `w*Ft + grad_u = 0`: with the relaxation depth `a = c_hyp*w*dt`, the
+ * factor `c_hyp*dt*phi` cancels against `1 - e = a*phi`. So
  *
- * `R = |w*F + g*grad_u| / (w*|F| + g*|grad_u|)` (the `|F+C*grad_u|`
+ * `R = |w*Ft + grad_u| / (w*|Ft| + |grad_u|)` (the `|Ft + grad_u/w|`
  * fixed-point form multiplied through by `w` so no intermediate overflows
  * at small `kappa`), `s = min(1, (R/eps_R)^2)`: `R=0` and `s=0` exactly at
- * the fixed point, `R=1` and `s=1` whenever exactly one of `F`, `grad_u` is
+ * the fixed point, `R=1` and `s=1` whenever exactly one of `Ft`, `grad_u` is
  * zero, so a fresh front or a limiter-zeroed flux keeps the full floor. A
  * particle whose flux is pinned by the M1 limiter generally never reaches
  * the fixed point either, so `R` stays finite there too: a conservative
@@ -1096,10 +1074,10 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  *
  * Degenerate returns, each checked before the `R` formula: `eps_R<=0` or
  * `c_hyp<=0` return `1` (gate disabled, or no timescale to settle against);
- * `w<=0` also returns `1` rather than falling through, since at `w=0` `F`
+ * `w<=0` also returns `1` rather than falling through, since at `w=0` `Ft`
  * drops out of both the numerator and denominator, which would otherwise
- * break the `s=1` guarantee above whenever `F` alone is nonzero; a
- * quiescent particle (`F=grad_u=0`, zero denominator) returns `0` instead,
+ * break the `s=1` guarantee above whenever `Ft` alone is nonzero; a
+ * quiescent particle (`Ft=grad_u=0`, zero denominator) returns `0` instead,
  * trivially at the fixed point. `w` divides `H` by the TRUE speed `c`, not
  * `c_hyp`: `w = a/(c_hyp*dt)` for #radiation_end_gradient_propagation's own
  * relaxation depth `a`, so `c_hyp` cancels out of `w` itself, unlike `a`.
@@ -1107,10 +1085,11 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * cannot underflow to zero under this build's fast-math folding of the
  * ratio and its square into one division.
  *
- * @param F This band's #feedback_isrf_moment_data.specific_flux, from BEFORE
- * this step's own update (already post-limiter).
+ * @param F This band's #feedback_isrf_moment_data.specific_flux (the reduced
+ * flux), from BEFORE this step's own update (already post-limiter).
  * @param grad_u This band's #feedback_isrf_moment_data.grad_u accumulator.
- * @param c_hyp The particle's own #c_hyp.
+ * @param c_hyp The particle's own #c_hyp. Only its sign is read: the fixed
+ * point does not depend on its value.
  * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param H The Hubble rate, #cosmology.H.
  * @param c The TRUE speed of light, #phys_const.const_speed_light_c (not
@@ -1121,32 +1100,21 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
  * moment's coefficient, exactly as it already passes that moment's `kappa`
  * via @p kappa.
  * @param eps_R #feedback_props.ISRF_dissipation_floor_relaxation_residual.
- * @param reduced_flux Whether #feedback_isrf_moment_data.specific_flux holds
- * the REDUCED flux `Ft = F/c_hyp` rather than the true flux, i.e.
- * #isrf_c_hyp_consistent_variable_c. The two store different variables and have
- * different fixed points, so the residual must be formed differently: with the
- * true flux the recurrence coefficient is `c_hyp^2*dt*phi` and the fixed point
- * is `w*F + c_hyp*grad_u = 0`, while with the reduced flux the coefficient
- * loses one power of `c_hyp` and the fixed point is `w*Ft + grad_u = 0`.
- * Passing the wrong one leaves a factor of `c_hyp` on the gradient term, which
- * is dimensionally inhomogeneous and drives `R` to 1 on an already-relaxed
- * particle.
  * @return The floor-aim multiplier `s`, in `[0, 1]`.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_dissipation_floor_relaxation_gate(const float F[3],
                                             const float grad_u[3], float c_hyp,
                                             float kappa, float H, float c,
-                                            float lambda, float eps_R,
-                                            int reduced_flux) {
+                                            float lambda, float eps_R) {
 
   if (eps_R <= 0.f) return 1.f;
   if (c_hyp <= 0.f) return 1.f;
 
   /* Rescaled by (kappa + lambda*H/c) relative to the doxygen's
-   * |F + C*grad_u| form: algebraically identical (this factor cancels top
+   * |Ft + grad_u/w| form: algebraically identical (this factor cancels top
    * and bottom), but every term here stays O(1)-to-O(1e10) on production
-   * fixtures, where computing C = c_hyp/(kappa+lambda*H/c) as its own value
+   * fixtures, where computing grad_u/(kappa+lambda*H/c) as its own value
    * first can overflow float32 at near-primordial kappa. Divides by the
    * TRUE speed c, not c_hyp: see this function's doxygen. */
   const float w = kappa + lambda * H / c;
@@ -1162,20 +1130,17 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
    * 1.1e-19 (internal units), which would report a small nonzero flux or
    * gradient as exactly zero and send a front to the quiescent branch. */
   const double w_d = w;
-  /* The gradient's weight at the fixed point, which is `c_hyp` for the true
-     flux and 1 for the reduced one: see @p reduced_flux. */
-  const double c_d = reduced_flux ? 1. : (double)c_hyp;
   const double F_d[3] = {F[0], F[1], F[2]};
   const double G_d[3] = {grad_u[0], grad_u[1], grad_u[2]};
-  const double wx = w_d * F_d[0] + c_d * G_d[0];
-  const double wy = w_d * F_d[1] + c_d * G_d[1];
-  const double wz = w_d * F_d[2] + c_d * G_d[2];
+  const double wx = w_d * F_d[0] + G_d[0];
+  const double wy = w_d * F_d[1] + G_d[1];
+  const double wz = w_d * F_d[2] + G_d[2];
   const double num = sqrt(wx * wx + wy * wy + wz * wz);
   const double F_norm =
       sqrt(F_d[0] * F_d[0] + F_d[1] * F_d[1] + F_d[2] * F_d[2]);
   const double G_norm =
       sqrt(G_d[0] * G_d[0] + G_d[1] * G_d[1] + G_d[2] * G_d[2]);
-  const double den = w_d * F_norm + c_d * G_norm;
+  const double den = w_d * F_norm + G_norm;
 
   /* Quiescent particle (`F` and `grad_u` both zero): trivially at the fixed
    * point, so `R = 0`. Branched rather than kept finite by an epsilon added
@@ -1215,24 +1180,23 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * #feedback_isrf_moment_data.div_specific_flux for that loop to accumulate
  * `div(F^{n+1})` into.
  *
- * `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact solution of
- * `dF/dt = -F/tau - H*F - (D/tau)*grad(u)` over one step with the source
- * term frozen at this step's value, `D/tau = c_hyp^2`. `-H*F` is the flux
- * counterpart of the `-H*u` derived at #radiation_end_force_propagation,
+ * The true flux obeys `F_new = e*F - c_hyp^2*dt*phi*grad(u)`: the exact
+ * solution of `dF/dt = -F/tau - H*F - (D/tau)*grad(u)` over one step with the
+ * source term frozen at this step's value, `D/tau = c_hyp^2`. `-H*F` is the
+ * flux counterpart of the `-H*u` derived at #radiation_end_force_propagation,
  * one power of the Hubble rate for the same mass-specific reason, dilated by
  * the same `c_hyp/c` factor for the same fixed-point reason, and carried the
  * same way, inside the relaxation depth `a = c_hyp*(kappa + H/c)*dt`.
  * No-op when propagation is off.
  *
- * Under #isrf_c_hyp_consistent_variable_c, #feedback_isrf_moment_data.
- * specific_flux stores the reduced flux `Ft = F_true/c_hyp` instead of
- * `F_true` (see radiation_propagation_iact.h's file header): substituting
- * `F = c_hyp*Ft` into the recurrence above and dividing through by the
- * (this-step-constant) `c_hyp` removes exactly one power of it, giving
- * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)`, and the M1 limiter's own bound
- * becomes `|Ft| <= u` (#radiation_compute_flux_limiter_scale_band with
- * `c_M = 1`, matching #radiation_cache_m1_closure_part's own selection for
- * the same scheme).
+ * #feedback_isrf_moment_data.specific_flux stores the reduced flux
+ * `Ft = F_true/c_hyp` (see radiation_propagation_iact.h's file header):
+ * substituting `F = c_hyp*Ft` into the recurrence above and dividing through
+ * by the (this-step-constant) `c_hyp` removes exactly one power of it, giving
+ * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)`, which is what this function
+ * evaluates. The M1 limiter's own bound is `|Ft| <= u`
+ * (#radiation_compute_flux_limiter_scale_band), matching
+ * #radiation_cache_m1_closure_part's `c_M = 1`.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -1245,10 +1209,6 @@ void radiation_end_gradient_propagation(struct part *p,
   struct feedback_part_data *fd = &p->feedback_data;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
-  /* Under the consistent-variable-c scheme #specific_flux is already the
-   * reduced flux Ft = F/c_hyp, whose own limiter bound is |Ft| <= u: see
-   * this function's doxygen. */
-  const float c_M = isrf_c_hyp_consistent_variable_c ? 1.f : c_hyp;
   const float H = (float)e->cosmology->H;
   const float c = (float)e->physical_constants->const_speed_light_c;
   /* Dilated by the same c_hyp/c factor as the absorption term: see this
@@ -1272,7 +1232,7 @@ void radiation_end_gradient_propagation(struct part *p,
    * own moment's energy (both dilute like `E`): using a different moment's
    * or the operator's owning-moment's lambda here would relax `F` and `u`
    * at different rates for the same moment and corrupt the reduced flux
-   * `f = |F|/(c_hyp*u)` the M1 closure reads. */
+   * `f = |Ft|/u` the M1 closure reads. */
   const float lambda[ISRF_MOMENT_COUNT] = {
       (float)e->feedback_props->band_edge_weight_pe,
       (float)e->feedback_props->band_edge_weight_lw,
@@ -1297,11 +1257,9 @@ void radiation_end_gradient_propagation(struct part *p,
     const float a = (c_hyp * op->kappa + lambda[m] * H_dilated) * dt;
     const float decay = expf(-a);
     const float phi = radiation_relaxation_phi_factor(a);
-    /* One power of c_hyp under the consistent-variable-c scheme: see this
-     * function's doxygen for the substitution F = c_hyp*Ft. */
-    const float coeff = isrf_c_hyp_consistent_variable_c
-                            ? c_hyp * dt * phi
-                            : c_hyp * c_hyp * dt * phi;
+    /* One power of c_hyp: see this function's doxygen for the substitution
+     * F = c_hyp*Ft. */
+    const float coeff = c_hyp * dt * phi;
 
     /* Snapshot for the floor's relaxation-residual gate below: `u^n` was
      * produced from THIS flux, not the one about to be computed. */
@@ -1341,7 +1299,7 @@ void radiation_end_gradient_propagation(struct part *p,
      * already run to completion, so #radiation_apply_flux_limiter_band has
      * not yet touched this moment's flux. */
     limiter_state[o] = radiation_compute_flux_limiter_scale_band(
-        moment->u, c_M, moment->specific_flux, &limiter_scale[o]);
+        moment->u, moment->specific_flux, &limiter_scale[o]);
 
     const float u_V = fd->rho_prev * moment->u;
 
@@ -1370,8 +1328,7 @@ void radiation_end_gradient_propagation(struct part *p,
        * above. */
       const float s = radiation_dissipation_floor_relaxation_gate(
           F_old_stash[o], moment->grad_u, c_hyp, op->kappa, H, c,
-          lambda[radiation_isrf_operator_owner[o]], eps_R,
-          isrf_c_hyp_consistent_variable_c);
+          lambda[radiation_isrf_operator_owner[o]], eps_R);
       op->dissipation_alpha_floor =
           s * radiation_dissipation_alpha_floor_band(op->kappa, h_phys,
                                                      alpha_floor, eps_lambda);

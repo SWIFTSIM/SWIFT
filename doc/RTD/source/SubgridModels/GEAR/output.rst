@@ -429,7 +429,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^3 U_T^{-3}]
      - Only meaningful when ``ISRF_propagation`` is on.
    * - ``HyperbolicPropagationSpeeds``
-     - Kernel-local hyperbolic propagation speed the band updates ran with, shared by both bands
+     - Hyperbolic propagation speed the band updates ran with (fixed fraction of the speed of light, or kernel-local, per ``ISRF_c_hyp_scheme``), shared by both bands
      - [U_L U_T^{-1}]
      - Only meaningful when ``ISRF_propagation`` is on.
    * - ``PEMinimumSpecificEnergies``

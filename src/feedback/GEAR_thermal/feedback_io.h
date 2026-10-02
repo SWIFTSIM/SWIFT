@@ -487,13 +487,17 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
   list[16] = io_make_output_field_convert_part(
       "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,
       xparts, convert_part_c_hyp,
-      "Kernel-local hyperbolic propagation speed the band updates and the "
+      "Hyperbolic propagation speed the band updates and the "
       "pairwise transport operators ran with, shared by both bands. "
-      "Physical: built from the physical smoothing length and a physical "
-      "timestep, so no scale-factor exponent of its own. The conserved "
-      "ledger of the consistent-variable-c schemes is `sum m u / c_hyp` "
-      "rather than `sum m u`, which is what this field makes measurable "
-      "from a snapshot. Only meaningful when ISRF_propagation is on.");
+      "Physical, so no scale-factor exponent of its own: a fixed fraction "
+      "of the speed of light (ISRF_c_hyp_scheme 2) or built from the "
+      "physical smoothing length and a physical timestep "
+      "(ISRF_c_hyp_scheme 4). The conserved "
+      "ledger of the pairwise transport operators is `sum m u / c_hyp` "
+      "rather than `sum m u` (proportional where c_hyp is uniform), which "
+      "is what this field makes measurable from a snapshot. Only "
+      "meaningful when "
+      "ISRF_propagation is on.");
 
   list[17] = io_make_output_field_convert_part(
       "LWPhotonSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,

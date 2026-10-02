@@ -1240,24 +1240,20 @@ float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
 
 /**
  * @brief Tracked specific flux moment, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].specific_flux, ALWAYS
- * returned as the true physical flux `F_true`, regardless of which ISRF
- * scheme is active. Under #isrf_c_hyp_consistent_variable_c the stored
- * field is instead the reduced flux `Ft = F_true/c_hyp`
- * (radiation_propagation_iact.h's file header), so this getter rescales it
- * back (`F_true = c_hyp*Ft`) before returning: the io field's meaning
- * (PESpecificFluxes, tracers_io.h) and every downstream consumer (the
- * ISRFHyperbolicPropagation check scripts included) stay scheme-
- * independent, rather than leaking this internal representation choice
- * into the snapshot format. A multiply, never a division: no new
+ * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].specific_flux, returned as
+ * the true physical flux `F_true`. The stored field is the reduced flux
+ * `Ft = F_true/c_hyp` (radiation_propagation_iact.h's file header), so this
+ * getter rescales it back (`F_true = c_hyp*Ft`) before returning: the io
+ * field's meaning (PESpecificFluxes, feedback_io.h) and every downstream
+ * consumer (the ISRFHyperbolicPropagation check scripts included) do not
+ * depend on this internal representation. A multiply, never a division: no
  * zero-denominator hazard.
  *
  * @param p The #part to query.
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
-  const float rescale =
-      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  const float rescale = p->feedback_data.c_hyp;
   ret[0] =
       rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[0];
   ret[1] =
@@ -1273,8 +1269,7 @@ void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
  * @param ret (return) The three components.
  */
 void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
-  const float rescale =
-      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  const float rescale = p->feedback_data.c_hyp;
   ret[0] =
       rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[0];
   ret[1] =
@@ -1292,8 +1287,7 @@ void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
  */
 void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
                                                float *ret) {
-  const float rescale =
-      isrf_c_hyp_consistent_variable_c ? p->feedback_data.c_hyp : 1.f;
+  const float rescale = p->feedback_data.c_hyp;
   ret[0] = rescale *
            p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[0];
   ret[1] = rescale *
@@ -1462,15 +1456,14 @@ float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
 }
 
 /**
- * @brief Kernel-local hyperbolic propagation speed, see
- * #feedback_part_data.c_hyp. Thin dispatch wrapper, same reasoning as
- * #feedback_get_part_u_PE.
+ * @brief Hyperbolic propagation speed, see #feedback_part_data.c_hyp. Thin
+ * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
  *
- * Shared by both bands, and physical: built from the physical smoothing
- * length and a physical timestep.
+ * Shared by both bands, and physical: a physical speed, whichever scheme
+ * (#isrf_c_hyp_scheme) set it.
  *
  * @param p The #part to query.
- * @return Kernel-local hyperbolic propagation speed.
+ * @return Hyperbolic propagation speed.
  */
 float feedback_get_part_c_hyp(const struct part *p) {
   return p->feedback_data.c_hyp;
@@ -1625,8 +1618,17 @@ void feedback_first_init_spart(struct spart *sp,
   sp->feedback_data.will_do_HII_ionization = 1;
 }
 
+/* Printed by restart_read_blocks() when the marker block is missing, i.e.
+   when the restart file was written by a code version older than the
+   reduced-flux representation. */
+#define ISRF_FLUX_FORM_RESTART_DESCRIPTION                                \
+  "ISRF flux-form marker (absent from the restart files of earlier code " \
+  "versions, which cannot be resumed: rerun the simulation)"
+
 /**
- * @brief Write a feedback struct to the given FILE as a stream of bytes.
+ * @brief Write a feedback struct to the given FILE as a stream of bytes,
+ * preceded by the ISRF flux-form marker block
+ * (#FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED).
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1644,6 +1646,14 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
     stellar_evolution_zero_pointers(feedback_copy.stellar_model_first_stars);
   }
 
+  /* Written first, so that a restart file of an earlier version, whose first
+     block is the (much larger) #feedback_props block, fails the block-length
+     check of restart_read_blocks() instead of being read with the wrong flux
+     form. The description string is what that error prints. */
+  const int flux_form = FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED;
+  restart_write_blocks((void *)&flux_form, sizeof(int), 1, stream,
+                       "isrf_flux_form", ISRF_FLUX_FORM_RESTART_DESCRIPTION);
+
   restart_write_blocks((void *)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 
@@ -1656,7 +1666,8 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
 /**
  * @brief Restore a feedback struct from the given FILE as a stream of
- * bytes.
+ * bytes. Stops with error() if the ISRF flux-form marker block is missing or
+ * differs, or if the restored ISRF c_hyp scheme is not a valid one.
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1666,6 +1677,17 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                              const struct unit_system *us,
                              const struct phys_const *phys_const) {
+
+  int flux_form = 0;
+  restart_read_blocks(&flux_form, sizeof(int), 1, stream, NULL,
+                      ISRF_FLUX_FORM_RESTART_DESCRIPTION);
+  if (flux_form != FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED)
+    error(
+        "The restart file holds ISRF flux form %d, but this code stores the "
+        "reduced flux for every scheme. A restart written by another code "
+        "version cannot be resumed: rerun the simulation from its initial "
+        "conditions.",
+        flux_form);
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
@@ -1677,19 +1699,22 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
-  /* #isrf_c_hyp_consistent_variable_c is a process-global, not a
-   * feedback_props field, so the flat block read above does not touch it;
-   * it stays at its zero-initialized value unless re-derived here from the
-   * restored #feedback_props.ISRF_c_hyp_scheme, exactly as
-   * feedback_props_init() derives it on a fresh start. Without this, a
-   * restarted scheme-3/4 run keeps the speed axis (ISRF_c_hyp_scheme) but
-   * silently loses the operator axis, reading the stored reduced flux as
-   * if it were physical. See #isrf_c_hyp_consistent_variable_c's own
-   * doxygen (radiation_isrf.h). */
-  isrf_c_hyp_consistent_variable_c =
-      (feedback->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_consistent_variable_c ||
-       feedback->ISRF_c_hyp_scheme ==
-           isrf_c_hyp_scheme_kernel_local_plus_variable_c);
+  /* The flat block read above bypasses feedback_props_init()'s parse-time
+   * check of the scheme, so a restart written by a run that used a removed
+   * scheme would otherwise resume with a speed rule nothing sets. The field
+   * is only meaningful, and only validated at parse time, when the
+   * interstellar radiation field is on. */
+  if ((feedback->radiation_policy & radiation_policy_photoelectric_heating) &&
+      feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
+      feedback->ISRF_c_hyp_scheme !=
+          isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    error(
+        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d, which is "
+        "not 2 (fixed fraction of c) or 4 (kernel-local speed). The values 0, "
+        "1 and 3 were removed, and a restart written with one of them cannot "
+        "be resumed. Rerun the simulation from its initial conditions with "
+        "scheme 2 or 4.",
+        feedback->ISRF_c_hyp_scheme);
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
