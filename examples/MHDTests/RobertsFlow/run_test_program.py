@@ -194,6 +194,8 @@ def make_IC(phys_parameters, IAfile):
         LparMul = " --lparmultiplier=" + str(int(phys_parameters["LparMul"].values[0]))
         LperMul = " --lpermultiplier=" + str(int(phys_parameters["LperMul"].values[0]))
         
+        ICMF_type = " --field_type=" + phys_parameters["ICMF_type"].values[0]
+        
 
         # Construct command to make ICs with selected parameters
         command = (
@@ -210,6 +212,7 @@ def make_IC(phys_parameters, IAfile):
             + Nper
             + LparMul
             + LperMul
+            + ICMF_type
         )
     else:
         command = " python3 " + "make_IC.py"

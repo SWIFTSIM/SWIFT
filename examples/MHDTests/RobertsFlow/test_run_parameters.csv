@@ -1,3 +1,4 @@
-Run #	v0	Vz_factor	eta	internal_energy	kv	kb	Lbox	Flow_kind	Scheme	IAfile	Npar	Nper	LparMul	LperMul	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	viscosity_alpha	Status	Comment
-RF1D_O1_016_032_test	1.0	0.7071	0.2	1210	1.0	1.0	6.2831853	1.0	ODI	g16	1.0	2.0	1.0	1.0			0.0	0.0	0.0	100.0	0.01	v			Testing: growing flow I and elongated box with w0=1/sqrt(2).
-RFP_016_016_test	1.0	0.0	0.2	1210	1.0	1.0	6.2831853	1.0	ODI	g16	1.0	1.0	1.0	1.0			0.0	0.0	0.0	100.0	0.01	v			Testing: decaying planar flow cubic box.
+Run #	v0	Vz_factor	eta	internal_energy	kv	kb	Lbox	Flow_kind	Scheme	IAfile	ICMF_type	Npar	Nper	LparMul	LperMul	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	viscosity_alpha	Status	Comment
+RF1D_O1_016_032_test_00	1.0	0.7071	0.05	1210	1.0	1.0	6.2831853	1.0	ODI	g16	BxSin	1.0	2.0	1.0	1.0			0.0	0.0	0.0	100.0	0.01	v			Testing: growing flow I and elongated box with w0=1/sqrt(2).
+RF1D_O1_016_032_test	1.0	0.7071	0.2	1210	1.0	1.0	6.2831853	1.0	ODI	g16	spectrum	1.0	2.0	1.0	1.0			0.0	0.0	0.0	100.0	0.01	v			Testing: growing flow I and elongated box with w0=1/sqrt(2).
+RFP_016_016_test	1.0	0.0	0.2	1210	1.0	1.0	6.2831853	1.0	ODI	g16	spectrum	1.0	1.0	1.0	1.0			0.0	0.0	0.0	100.0	0.01	v			Testing: decaying planar flow cubic box.
