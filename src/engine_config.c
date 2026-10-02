@@ -424,7 +424,7 @@ void engine_config(int restart, int fof, struct engine *e,
     int *tag_ub = NULL;
     int tag_ub_set = 0;
     MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub, &tag_ub_set);
-    if (tag_ub_set && tag_ub != NULL) {
+    if (tag_ub_set) {
 
       /* We have found MPI_TAG_UB, so we can use it to bound the cell tags. */
       if (cell_max_tag > *tag_ub) cell_max_tag = *tag_ub;
