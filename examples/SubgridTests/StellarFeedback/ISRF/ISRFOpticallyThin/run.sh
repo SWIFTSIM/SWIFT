@@ -16,7 +16,7 @@ gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 star_mass=${star_mass:=29.7} #Star mass (Msun)
 star_type=${star_type:="single_star"}
 level=${level:=6} #Resolution level: N = (2**level)**3 gas particles
-time_end=${time_end:=6e-4} #TimeIntegration:time_end override (internal units): the causal front passes the box around t=6.6e-4, and the measurement window's own geometry (see README) has already closed a little before that, so running further adds no usable snapshot
+time_end=${time_end:=6e-4} #TimeIntegration:time_end override (internal units): SWIFT steps by dt_max rounded down to time_end/2^k, 9.375e-6 here, so the front ends at about 6.3 pc in the 10.2 pc box (see README)
 dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1e-2} #GEARChemistry:initial_metallicity override (Z/Zsun)

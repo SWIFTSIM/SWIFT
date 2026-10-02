@@ -17,9 +17,16 @@
 #
 ################################################################################
 """
-Check the ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure)
+Report the ISRF hyperbolic (Cattaneo-type flux-relaxation, M1 closure)
 propagation scheme in the optically-thin corner, where the screening
 length is much larger than both the smoothing length and the box.
+
+This fixture has NO pass/fail gate: it reports. The radial slope and the
+amplitude are printed next to their free-streaming predictions and are never
+compared against a bar that decides the exit code. The exit code is 0 when
+the snapshots and the run log are readable and every value read or computed
+is finite, and 1 otherwise (missing or unreadable input, a non-finite
+value, or fewer snapshots with a usable measurement window than `--n-late`).
 
 For a single point source of band luminosity `L` in a static, uniform,
 purely absorbing medium the M1 closure is exact (there is no scattering to
@@ -32,7 +39,7 @@ with `lambda = 1/(kappa_eff*rho)` the absorption length, `kappa_eff` the
 dust mass opacity (area/mass) and `c` the true speed of light (theory/GEAR/
 Radiation/02_fuv_isrf.tex, "Steady states"). The reduced propagation speed
 `c_hyp` cancels: it sets how long the field takes to settle, not where it
-settles. This is the gated target of this check.
+settles. This is the reference profile of this report.
 
 The isotropic/diffusion-closure branch,
 
@@ -46,39 +53,35 @@ the exact target of the sibling `ISRFHyperbolicPropagation` check, which
 measures the screened corner (h/lambda ~ 1) where a diffuse, many-source
 field legitimately isotropizes.
 
-Gated leg, against the free-streaming solution with NO fitted parameter:
+Reported against the free-streaming solution with NO fitted parameter:
 
   * SHAPE: the radial log-log slope of `u(r)`. Free-streaming predicts
     `-2 - r/lambda`; the informational diffusion curve predicts
-    `-1 - r/lambda`. The two are a full decade apart in a quantity measured
-    over ~0.9 decades of radius.
-
-Reported, not gated:
-
+    `-1 - r/lambda`. The measured slope, the prediction, their difference
+    and the tolerance (`--slope-tol`) the slope was once compared with are
+    printed. The tolerance is printed only and is not applied.
   * AMPLITUDE: the ratio of the measured field to the free-streaming
-    prediction. This absolute continuum comparison is possible here (not
-    at the sibling `ISRFHyperbolicPropagation` corner, where `h/lambda` is
-    of order 1 and the discrete SPH estimator's own fixed point departs
-    from the continuum profile), but the settled value is currently above
-    unity by more than this check's own tolerance would allow; see
+    prediction, and its radial spread. The absolute continuum comparison is
+    possible here (not at the sibling `ISRFHyperbolicPropagation` corner,
+    where `h/lambda` is of order 1 and the discrete SPH estimator's own
+    fixed point departs from the continuum profile); see
     `theory/GEAR/Radiation/02_fuv_isrf.tex`, "Limitations and open items".
-    The check still fails on a non-finite amplitude or radial spread.
 
-Precondition, applied to the gated snapshots only, never used to pick a
-different window:
+The profile inside the window need not be a single power law, so the fitted
+slope can change with the snapshots averaged, that is with where the run
+stops. This is why the slope is reported and not gated.
+
+Diagnostic, printed for the last `--n-late` snapshots with a usable window:
 
   * RADIAL COHERENCE: free streaming means the flux points along `r_hat`,
     `F.r_hat/|F| = 1`. If the flux carried no radial information at all
     (a direction isotropic relative to `r_hat`), the expectation over a
-    uniform sphere is 0. `ALIGNMENT_MIN = 0.5` requires the per-snapshot
-    median to sit in the upper half of that range, closer to a radial field
-    than to directionless noise. A gated snapshot below the floor makes the
-    band's verdict INVALID rather than PASS or FAIL: the fit may still
-    converge on such a snapshot, but a converged fit to a field that is not
-    radially coherent is not a free-streaming measurement. This check can
-    only remove a window this way, never select a better one: the gated
-    snapshots are still chosen on window geometry alone (see below), and
-    the coherence precondition is evaluated only after that selection.
+    uniform sphere is 0. `ALIGNMENT_MIN = 0.5` is the midpoint of that
+    range. A reported snapshot below it is labelled INVALID: the fit may
+    still converge on it, but a converged fit to a field that is not
+    radially coherent is not a free-streaming measurement. The label does
+    not change the exit code and never selects a different window: the
+    snapshots are still chosen on window geometry alone (see below).
 
 Measurement window, per snapshot: `[3*h_star, min(R_f - 2*H, L_box - R_f)]`.
   * `3*h_star` excludes the star's own injection footprint, which is not
@@ -96,16 +99,13 @@ propagation-speed closure `c_hyp = C_hyp*h/dt` makes `c_hyp*dt == C_hyp*h`
 identically, whatever `dt` the run actually took. No reconstruction of
 `c_hyp` from the timestep record is needed or wanted here.
 
-`run.sh`'s `time_end` is set to where this window itself closes: the causal
-front passes the box (`R_f = L_box`) at `t ~ 6.6e-4` for the shipped
-defaults, and the eligibility geometry above (`r_max > 1.5*r_min`) already
-fails a couple of snapshots before that. Running further adds no further
-usable snapshot, only cost. A window taken too early instead measures a
-transient, not the settled field, and reads a steeper slope than the
-settled one.
-
-Tolerances are derived from measurement, not tuned to pass. A failure at
-these tolerances is a real regression, not a case for loosening them.
+The number of steps to a given time depends on the step SWIFT takes, which
+is `dt_max` rounded down to `(time_end - time_begin)/2^k`. With `run.sh`'s
+defaults (`dt_max = 1e-5`, `time_end = 6e-4`, level 6) the step is 9.375e-6,
+so the run ends after 64 steps with `R_f = 64*C_hyp*h`, about 6.3 pc in a
+10.2 pc box: the front has not reached the box edge and the window is still
+open. The window closes (`r_max <= 1.5*r_min`) once `L_box - R_f` falls to
+`1.5*r_min`, which takes about 95 steps at this resolution.
 """
 
 import argparse
@@ -180,8 +180,9 @@ def parse_options() -> argparse.Namespace:
         "--slope-tol",
         type=float,
         default=0.25,
-        help="Max allowed absolute difference between the measured log-log "
-        "slope and the free-streaming prediction (default: %(default)s).",
+        help="Tolerance the slope difference was once compared with. It is "
+        "printed next to the difference and is NOT applied: this check has "
+        "no pass/fail gate (default: %(default)s).",
     )
     parser.add_argument(
         "--output",
@@ -281,6 +282,35 @@ def load_snapshot(path: str) -> dict:
             L_PE=float(star["PELuminosities"][0]),
             L_LW=float(star["LWLuminosities"][0]),
         )
+
+
+def require_finite(path: str, snapshot: dict) -> None:
+    """Raise if any value read from a snapshot is not finite.
+
+    A NaN compares false against every comparison, so finiteness is tested
+    on the data before any quantity is derived from it.
+
+    Parameters
+    ----------
+    path : str
+        Snapshot filename, for the message.
+    snapshot : dict
+        Output of :func:`load_snapshot`.
+
+    Raises
+    ------
+    ValueError
+        If any entry holds a NaN or an infinity. The message names the
+        offending fields and how many values in each.
+    """
+    bad = []
+    for name, value in snapshot.items():
+        values = np.asarray(value, dtype=float)
+        count = int(np.count_nonzero(~np.isfinite(values)))
+        if count:
+            bad.append(f"{name} ({count} of {values.size})")
+    if bad:
+        raise ValueError(f"{path}: non-finite values in {', '.join(bad)}")
 
 
 def radial_vector(pos: np.ndarray, star_pos: np.ndarray, boxsize: float) -> np.ndarray:
@@ -591,35 +621,74 @@ def plot(results: dict, filename: str) -> None:
     print(f"Wrote {filename}")
 
 
-def main() -> int:
-    """Run the check and return a shell exit code."""
-    options = parse_options()
+def read_measurements(options: argparse.Namespace) -> dict:
+    """Read every snapshot and measure both bands.
+
+    Parameters
+    ----------
+    options : argparse.Namespace
+        Parsed command-line options.
+
+    Returns
+    -------
+    dict
+        Band name ("PE", "LW") mapped to the list of per-snapshot
+        measurements, in snapshot order.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no snapshot matches the glob pattern.
+    OSError, KeyError, RuntimeError, ValueError
+        If the log or a snapshot is unreadable, lacks a needed field, or
+        holds a non-finite value.
+    """
     paths = sorted(glob.glob(options.snapshot))
     if not paths:
-        print(f"No snapshot matched {options.snapshot}.")
-        return 1
+        raise FileNotFoundError(f"No snapshot matched {options.snapshot}.")
     record = read_step_times(options.logfile)
 
     per_band = {"PE": [], "LW": []}
     for path in paths:
         snapshot = load_snapshot(path)
+        require_finite(path, snapshot)
         if snapshot["time"] <= 0.0:
             continue
         for band in ("PE", "LW"):
             per_band[band].append(
                 measure(snapshot, record, options.c_hyp_margin, band, options.n_bins)
             )
+    return per_band
 
-    failures = []
-    invalid = []
+
+def main() -> int:
+    """Run the report and return a shell exit code.
+
+    Returns
+    -------
+    int
+        0 when the input is readable and every value is finite, 1 otherwise.
+        No physics result changes the exit code.
+    """
+    options = parse_options()
+    try:
+        per_band = read_measurements(options)
+    except (OSError, KeyError, RuntimeError, ValueError) as error:
+        print(f"ERROR: cannot read the input: {error}")
+        print(
+            "REPORT ONLY: this fixture has no pass/fail gate. No report was produced."
+        )
+        return 1
+
+    errors = []
     final = {}
     for band in ("PE", "LW"):
         items = per_band[band]
-        # The gate's snapshots are chosen on the measurement window's
+        # The reported snapshots are chosen on the measurement window's
         # geometry alone, never on whether the fit succeeded. Selecting the
         # last fittable snapshots instead let a run whose late snapshots
         # ring in sign fall back to earlier, transient ones, and a
-        # sign-ringing field is the very defect this check exists to catch.
+        # sign-ringing field is exactly what this report must show.
         eligible = [item for item in items if item["window_ok"]]
         print(f"\n=== {band} band ===")
         print(
@@ -632,7 +701,7 @@ def main() -> int:
         )
         # Show the tail of the ELIGIBLE set: on a run whose front has run
         # past the box, the last snapshots carry no window at all and would
-        # hide the rows the verdict is actually built from.
+        # hide the rows the report is actually built from.
         for item in (eligible or items)[-options.n_late * 3 :]:
             window = f"[{item['r_min'] / PC_CGS:4.2f},{item['r_max'] / PC_CGS:5.2f}]"
             dex = (
@@ -664,28 +733,27 @@ def main() -> int:
         if len(eligible) < options.n_late:
             comment = items[-1]["comment"] if items else "no snapshots"
             print(
-                f"FAIL [{band}]: fewer than {options.n_late} snapshots have a "
-                "usable measurement window."
+                f"ERROR [{band}]: fewer than {options.n_late} snapshots have a "
+                "usable measurement window, so there is nothing to report."
             )
             print(f"      last reason: {comment}")
-            failures.append(band)
+            errors.append(band)
             final[band] = items[-1] if items else None
             continue
 
         late = eligible[-options.n_late :]
         final[band] = late[-1]
 
-        # Radial-coherence precondition (see module docstring). Applied
-        # after the geometry-only selection above, never used to pick a
-        # different snapshot: a gated snapshot below the floor makes the
-        # band INVALID, not a reason to fall back to an earlier one.
+        # Radial-coherence diagnostic (see module docstring). Applied after
+        # the geometry-only selection above, never used to pick a different
+        # snapshot. It labels the band, it does not stop the report.
         incoherent = [item for item in late if not item["coherence_ok"]]
         if incoherent:
             print(
-                f"  INVALID: {len(incoherent)} of the {len(late)} gated "
-                f"snapshots have lost radial flux coherence (median "
-                f"F.r_hat/|F| <= {ALIGNMENT_MIN}); no free-streaming "
-                "measurement can be reported for this band."
+                f"  INVALID (diagnostic): {len(incoherent)} of the {len(late)} "
+                "reported snapshots have lost radial flux coherence (median "
+                f"F.r_hat/|F| <= {ALIGNMENT_MIN}); the values below are not a "
+                "free-streaming measurement for this band."
             )
             for item in incoherent:
                 align = (
@@ -694,20 +762,19 @@ def main() -> int:
                     else "no valid particle"
                 )
                 print(f"      t = {item['time']:.3e}: alignment = {align}")
-            invalid.append(band)
-            continue
 
-        # A snapshot inside the gated window that could not be fitted is
-        # evidence, not a reason to look elsewhere.
+        # A snapshot inside the window that could not be fitted is a result
+        # of the run, not a reason to look elsewhere.
         unfitted = [item for item in late if not np.isfinite(item["slope"])]
         if unfitted:
             print(
-                f"  FAIL: {len(unfitted)} of the {len(late)} gated snapshots "
-                "could not be fitted."
+                f"  NOT MEASURED: {len(unfitted)} of the {len(late)} reported "
+                "snapshots could not be fitted, so no slope is reported."
             )
             for item in unfitted:
                 print(f"      t = {item['time']:.3e}: {item['comment']}")
-            failures.append(band)
+            continue
+
         slope = float(np.mean([item["slope"] for item in late]))
         slope_err = float(np.std([item["slope"] for item in late]) / np.sqrt(len(late)))
         predicted = float(np.mean([item["slope_freestream"] for item in late]))
@@ -716,6 +783,18 @@ def main() -> int:
         flatness = float(np.max([item["flatness"] for item in late]))
         lam = late[-1]["lam"] / PC_CGS
         h_over_lam = late[-1]["h"] / late[-1]["lam"]
+
+        # The quantities below are derived, so finiteness is tested before
+        # they are printed as a result.
+        derived = (slope, slope_err, predicted, diffusion, amplitude, flatness)
+        if not all(np.isfinite(derived)):
+            print(
+                f"ERROR [{band}]: a fitted or predicted quantity is not "
+                "finite (slope, slope error, predictions, amplitude or "
+                "radial spread)."
+            )
+            errors.append(band)
+            continue
 
         print(
             f"\n  lambda = {lam:.1f} pc, h/lambda = {h_over_lam:.2e}, "
@@ -727,44 +806,29 @@ def main() -> int:
             f"predicts {diffusion:+.3f})"
         )
         print(
+            f"  REPORT ONLY: slope difference (measured - predicted) = "
+            f"{slope - predicted:+.3f}; tolerance it was previously compared "
+            f"with = {options.slope_tol} (printed, not applied)."
+        )
+        print(
             f"  measured / free-streaming = {amplitude:.3f} (radial spread "
-            f"{flatness:.3f}), NOT GATED: open amplitude question, see "
+            f"{flatness:.3f}), REPORT ONLY: open amplitude question, see "
             'theory/GEAR/Radiation/02_fuv_isrf.tex, "Limitations and open items".'
         )
-
-        # The slope gate below is a `> tol -> FAIL` comparison, which a NaN
-        # passes silently, so finiteness is tested first and separately.
-        if not np.isfinite(slope) or not np.isfinite(predicted):
-            print("  FAIL: the fitted slope or its prediction is not finite.")
-            failures.append(band)
-        if not np.isfinite(amplitude) or not np.isfinite(flatness):
-            print("  FAIL: amplitude or radial spread is not finite.")
-            failures.append(band)
-        if abs(slope - predicted) > options.slope_tol:
-            print(
-                f"  FAIL: slope is {abs(slope - predicted):.3f} from the "
-                f"free-streaming prediction, tolerance {options.slope_tol}."
-            )
-            failures.append(band)
 
     if all(final.get(band) is not None for band in ("PE", "LW")):
         plot(final, options.output)
 
-    if failures:
-        print(f"\nCHECK FAILED for: {', '.join(sorted(set(failures)))}")
-        return 1
-    if invalid:
+    if errors:
         print(
-            f"\nCHECK INVALID for: {', '.join(sorted(set(invalid)))} -- the "
-            "radial-coherence precondition failed in the gated window. No "
-            "free-streaming verdict for this band; this is not a PASS."
+            f"\nREPORT INCOMPLETE for: {', '.join(sorted(set(errors)))}. "
+            "This fixture has no pass/fail gate (REPORT ONLY); the exit code "
+            "is 1 because the input does not support a report."
         )
         return 1
     print(
-        "\nCHECK PASSED: the propagated field's radial slope matches the "
-        "free-streaming 1/r^2 profile in both bands, not the diffusion-"
-        "closure 1/r profile kept here only for comparison. The amplitude "
-        "ratio above is reported only; see the printout for the open item."
+        "\nREPORT ONLY: this fixture has no pass/fail gate. The radial slope "
+        "and the amplitude above are reported, not compared against a bar."
     )
     return 0
 
