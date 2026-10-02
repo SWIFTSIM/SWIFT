@@ -420,18 +420,25 @@ void engine_config(int restart, int fof, struct engine *e,
         parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
 
     /* Cell tags used to send comms between ranks cannot exceed MPI_TAG_UB.
-     * Print this for clarity and set cell_max_tag for later bounding. */
-    int *tag_ub = NULL;
+     * Print this for clarity and set cell_max_tag for later bounding.
+     *
+     * Note that the attribute is itself a pointer to the value, so we must
+     * pass the address of a void pointer here rather than the address of an
+     * int (see "Environmental Inquiries" and "Caching" in the MPI standard,
+     * and "NOTES FOR C" in man MPI_Comm_get_attr). */
+    void *tag_ub_attr = NULL;
     int tag_ub_set = 0;
-    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub, &tag_ub_set);
+    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &tag_ub_attr, &tag_ub_set);
     if (tag_ub_set) {
 
+      const int tag_ub = *(const int *)tag_ub_attr;
+
       /* We have found MPI_TAG_UB, so we can use it to bound the cell tags. */
-      if (cell_max_tag > *tag_ub) cell_max_tag = *tag_ub;
+      if (cell_max_tag > tag_ub) cell_max_tag = tag_ub;
 
       /* Report regardless of verbosity setting */
       if (nodeID == 0) {
-        message("MPI_TAG_UB is %d, cell tags capped at %d", *tag_ub,
+        message("MPI_TAG_UB is %d, cell tags capped at %d", tag_ub,
                 cell_max_tag);
       }
 
