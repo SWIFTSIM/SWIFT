@@ -132,4 +132,8 @@ float feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
 
 float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo);
+
+float feedback_compute_residual_internal_energy_for_multiple_sn_events(
+    const struct xpart *xp, const struct cosmology *cosmo,
+    const float new_mass);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

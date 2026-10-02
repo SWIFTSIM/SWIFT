@@ -57,6 +57,24 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     error("Delta mass smaller than 0");
   }
 
+  /* Correction to account for multiple feedback events. It recovers energy
+     conservation: the factor scales the momentum down when the events add up,
+     and the residual energy is given as thermal energy when they cancel. If
+     there is only one event that affected p and xp, f_corr = 1 and
+     u_residual = 0. */
+  const unsigned int N_SN = xp->feedback_data.number_SN;
+  const unsigned int N_SW = xp->feedback_data.number_winds;
+  float f_corr = 1.f;
+  float u_residual = 0.f;
+  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
+      (N_SN + N_SW > 1)) {
+    f_corr = feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+        p, xp, cosmo);
+    u_residual =
+        feedback_compute_residual_internal_energy_for_multiple_sn_events(
+            xp, cosmo, new_mass);
+  }
+
   /* Update the mass of p, as well as its gpart's friend */
   hydro_set_mass(p, new_mass);
 
@@ -69,28 +87,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   const float u =
       hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
   const float u_min = e->hydro_properties->minimal_internal_energy;
-  const float u_feedback = u + xp->feedback_data.delta_u;
+  const float u_feedback = u + xp->feedback_data.delta_u + u_residual;
   const float u_new = (u_feedback > u_min) ? u_feedback : u_min;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
-  /* Compute correction therm to account for multiple feedback events. This
-     terms allows to recover energy conservation. If there is only one
-     feedback that affected p and xp, f_corr = 1. */
-  const unsigned int N_SN = xp->feedback_data.number_SN;
-  const unsigned int N_SW = xp->feedback_data.number_winds;
-  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
-      (N_SN > 1 || N_SW > 1)) {
-    const float f_corr =
-        feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-            p, xp, cosmo);
-
-    /* Update the xpart accumulated dp from the feedback */
-    xp->feedback_data.delta_p[0] *= f_corr;
-    xp->feedback_data.delta_p[1] *= f_corr;
-    xp->feedback_data.delta_p[2] *= f_corr;
-  }
+  /* Update the xpart accumulated dp from the feedback */
+  xp->feedback_data.delta_p[0] *= f_corr;
+  xp->feedback_data.delta_p[1] *= f_corr;
+  xp->feedback_data.delta_p[2] *= f_corr;
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
@@ -617,6 +623,10 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  * Okamoto works in the gas frame. Therefore, the p_old terms disapear and the
  * equation is simpler and non-pathological.
  *
+ * The factor is never larger than 1. When the events partly cancel, the
+ * missing energy is given back as thermal energy, see
+ * feedback_compute_residual_internal_energy_for_multiple_sn_events().
+ *
  * @param p The #part to correct.
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
@@ -656,4 +666,41 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
   } else {
     return f_corr;
   }
+}
+
+/**
+ * @brief Compute the specific internal energy to give to a #part when multiple
+ * feedback events partly cancel each other.
+ *
+ * In the gas frame, the events were meant to give the kinetic energy
+ * sum(|dp_e|^2) / (2 m). The summed momentum only gives |sum(dp_e)|^2 / (2 m).
+ * The difference is given as thermal energy. It is zero when the momentum
+ * correction factor is smaller than 1, since that factor already restores the
+ * kinetic energy.
+ *
+ * Note: This function is called in feedback_update_part().
+ *
+ * Reference: https://arxiv.org/pdf/2603.17421
+ *
+ * @param xp The #xpart.
+ * @param cosmo The #cosmology.
+ * @param new_mass The mass of the #part after all the events.
+ * @return The physical specific internal energy to add.
+ */
+__attribute__((always_inline)) INLINE float
+feedback_compute_residual_internal_energy_for_multiple_sn_events(
+    const struct xpart *xp, const struct cosmology *cosmo,
+    const float new_mass) {
+
+  /* Physical momenta, as in the momentum correction factor */
+  const float dp_sum_norm_2 = xp->feedback_data.delta_p_norm_2_sum;
+  const float dp[3] = {xp->feedback_data.delta_p[0] * cosmo->a_inv,
+                       xp->feedback_data.delta_p[1] * cosmo->a_inv,
+                       xp->feedback_data.delta_p[2] * cosmo->a_inv};
+  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+
+  /* The events add up: the correction factor handles them */
+  if (dp_norm_2 >= dp_sum_norm_2) return 0.f;
+
+  return 0.5f * (dp_sum_norm_2 - dp_norm_2) / (new_mass * new_mass);
 }
