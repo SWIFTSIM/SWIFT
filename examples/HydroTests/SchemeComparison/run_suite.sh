@@ -56,7 +56,9 @@ DO_PLOT=1
 GLASS_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs
 REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
-ALL_TESTS="gresho square zeldovich sod keplerian kh noh evrard sedov zeldovich_pert blob nfw"
+# The NFW halo (nfw) is not in the default list: expensive and so far not
+# discriminating between schemes; run it with -t nfw.
+ALL_TESTS="gresho square zeldovich sod keplerian kh noh evrard sedov zeldovich_pert blob"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bnph" opt; do

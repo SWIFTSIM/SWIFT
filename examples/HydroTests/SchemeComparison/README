@@ -2,8 +2,8 @@ Hydro scheme comparison suite
 =============================
 
 Runs the standard hydro tests (Sod, Sedov, Noh, Gresho, Evrard, Kelvin-
-Helmholtz, square, blob, NFW hydrostatic halo, Keplerian ring, Zel'dovich
-pancake) with several hydro
+Helmholtz, square, blob, Keplerian ring, Zel'dovich pancake; the NFW
+hydrostatic halo on request with -t nfw) with several hydro
 schemes built from the same source tree and produces comparison plots and a
 summary table (steps, wall-clock time, energy conservation, L1 errors w.r.t.
 the analytic or reference solutions).
@@ -13,7 +13,9 @@ the analytic or reference solutions).
   ./run_suite.sh -o /path/to/output -c my_schemes.txt -k cubic-spline
   ./run_suite.sh -h                             # all options
 
-The schemes are listed in schemes.txt ("<name> <configure flags>"). Each
+The schemes are listed in schemes.txt ("<name> <configure flags> [| -P
+overrides]"); the default list compares SPHENIX with the MI2 formulation of
+MAGMA at three neighbour numbers plus MI1 at eta 1.5 for reference. Each
 scheme is built in 2D and 3D with the Wendland C4 kernel (option -k) and the
 point-mass external potential (needed by the Keplerian ring); the NFW halo
 test uses a third build with the NFW potential. Builds are only redone when

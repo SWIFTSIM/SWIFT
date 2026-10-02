@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "zeldovich", "zeldovich_pert",
-             "blob", "nfw"]
+             "blob"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
