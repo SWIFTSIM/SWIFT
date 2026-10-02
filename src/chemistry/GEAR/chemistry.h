@@ -588,7 +588,9 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.metal_mass[i] /=n;
+#ifdef MOVING_MESH
     p->chemistry_data.metal_mass_fluxes[i] /=n;
+#endif
   }
 }
 
