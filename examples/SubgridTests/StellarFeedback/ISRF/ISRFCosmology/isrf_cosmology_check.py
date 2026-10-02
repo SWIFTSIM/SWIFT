@@ -34,9 +34,9 @@ free_field
     u`` for the mass-specific field: the reduced-speed-of-light method is
     only correct if EVERY rate is dilated by the same c_hyp/c factor, and the
     Hubble term is no exception (see radiation_isrf.c's
-    radiation_end_force_propagation, fixed for this). In the unpinned legs
-    of this fixture ``c_hyp`` is NOT pinned (c_hyp_pin is 0, the run.sh
-    default for ``free_field``), so it is a per-particle, per-step quantity
+    radiation_end_force_propagation, fixed for this). In the scheme 4 legs
+    of this fixture (the run.sh default for ``free_field``) ``c_hyp`` is a
+    per-particle, per-step quantity
     (ISRF_c_hyp_margin*h/dt, clamped at c), not a single constant, and the
     exact solution is the integral
 
@@ -67,8 +67,8 @@ free_field
 
     Both forms are ratios of two sums at the SAME time, so a spatially
     uniform c_hyp cancels between numerator and denominator, whether or not
-    it varies from one snapshot to the next. Every pinned run (c_hyp_pin >
-    0) and every fixed-fraction run (scheme 2) therefore gets the number this
+    it varies from one snapshot to the next. Every fixed-fraction run
+    (scheme 2) therefore gets the number this
     check reported before the ledger became scheme-aware, up to round-off:
     the weighted branch divides each mass by c_hyp before summing, so the two
     are not the same float expression.
@@ -105,7 +105,7 @@ free_field
     size.
 
     The drift is measured from the first snapshot whose own c_hyp is a
-    genuine per-step rate, not from snapshot 0: an unpinned run's snapshot 0
+    genuine per-step rate, not from snapshot 0: a scheme 4 run's snapshot 0
     is written before the first force step and still holds the module's
     first-init light-speed clamp (`band_edge_ratio_reference_index`). That
     one interval is therefore dropped rather than integrated with the clamp,
@@ -139,7 +139,7 @@ free_field
 
     The ledger is a ratio of two sums taken at the SAME time, so a c_hyp
     that is UNIFORM ACROSS THE BOX cancels between numerator and
-    denominator. An unpinned run's c_hyp is not: under scheme 4 it is
+    denominator. A scheme 4 run's c_hyp is not: there it is
     margin*h/dt_max, so it carries the glass's own h spread, and
     the ledger mean then moves for a second reason that has nothing to do
     with conservation. The scheme conserves the ledger's NUMERATOR at
@@ -159,14 +159,12 @@ free_field
       `--reference` cannot inflate it, because the reference term is not in
       this bar. Uniformity is read from the field, not from whichever
       parameter produced it, because it is the condition the cancellation
-      rests on: GEARFeedback:ISRF_c_hyp_pin_for_debugging gives it (the same
-      mechanism `dust_absorption` uses), and so does ISRF_c_hyp_scheme 2,
-      whose GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is one speed for the
-      whole box with the Courant condition imposed on the timestep. The pin
-      is applied after the light-speed clamp
-      (radiation_isrf.c's radiation_snapshot_part_propagation and
-      radiation_end_density_propagation), and the operators are the same
-      whether the speed is uniform or not (radiation_propagation_iact.h).
+      rests on: ISRF_c_hyp_scheme 2 gives it (the same mechanism
+      `dust_absorption` uses), whose GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c
+      is one speed for the whole box with the Courant condition imposed on
+      the timestep (radiation_isrf.c's radiation_snapshot_part_propagation),
+      and the operators are the same whether the speed is uniform or not
+      (radiation_propagation_iact.h).
       What a uniform speed does cost is the variable-c coverage: this leg
       says nothing about a defect that only appears once c_hyp varies between
       neighbours.
@@ -178,20 +176,20 @@ free_field
       nothing, while sizing a term from the measured drift instead would
       fit the bar to the data. Neither was done. The consequence is stated
       rather than hidden: between the float floor
-      and (A2)'s own bar, the unpinned leg does not bound the transport
-      ledger's conservation, and the pinned leg is where that bound lives.
+      and (A2)'s own bar, the scheme 4 leg does not bound the transport
+      ledger's conservation, and the scheme 2 leg is where that bound lives.
       The drift is printed instead, so it stays visible, and the two
-      checks the unpinned leg does carry stay live: the measured drift must
+      checks the scheme 4 leg does carry stay live: the measured drift must
       be finite, and (A2) is gated exactly as it is with cosmology. The
-      unpinned non-cosmological run also remains the `--reference` of the
+      scheme 4 non-cosmological run also remains the `--reference` of the
       cosmological one, where its drift enters that run's bar, is
       therefore still acted upon, and is held below the predicted decay by
       the resolution self-test.
 
     A claimed uniform speed the module did not deliver FAILS rather than
-    falling back to the report. Both routes count as a claim: a positive
-    ISRF_c_hyp_pin_for_debugging, and ISRF_c_hyp_scheme == 2. If either is set
-    and the recorded c_hyp is not bit-uniform, the uniform-weight ledger the
+    falling back to the report. ISRF_c_hyp_scheme == 2 is that claim. If it
+    is set and the recorded c_hyp is not bit-uniform, the uniform-weight
+    ledger the
     gate rests on is not live, and a silent fallback would remove the gate
     exactly when something on that path had broken. Note what this covers:
     the parameter validation in feedback_props_init() already rejects a
@@ -253,7 +251,7 @@ free_field
     the spread is glass noise, not signal) -- NOT from a fitted or assumed
     c_hyp, and not from A1's conservative c_hyp/c upper bound, which is too
     loose by orders of magnitude to resolve (A3)'s own signal. The first
-    snapshot of an unpinned run is excluded: it is written before the first
+    snapshot of a scheme 4 run is excluded: it is written before the first
     force step, so its own HyperbolicPropagationSpeeds is still the light-
     speed clamp `c_hyp = c` the module falls back on before any step has
     run, not a rate a particle ever actually decayed under.
@@ -268,7 +266,9 @@ free_field
     derived value.
 
 dust_absorption
-    Seeded field, solar metallicity, propagation speed pinned to c_pin (so,
+    Seeded field, solar metallicity, one fixed propagation speed c_pin for
+    every particle, set by scheme 2 as ISRF_c_hyp_fixed_fraction_of_c * c and
+    read from the run's used_parameters.yml (so,
     unlike free_field, c_hyp/c is a single run-wide constant here, not a
     per-particle/per-step quantity). The exact solution of the module's
     relaxation update is
@@ -293,7 +293,8 @@ dust_absorption
     coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for PE and LW).
 
 photoelectric
-    Seeded G0, solar metallicity, low pinned speed so G0 barely changes.
+    Seeded G0, solar metallicity, low fixed speed (scheme 2) so G0 barely
+    changes.
     Grackle's constant-efficiency photoelectric heating
     (``photoelectric_heating = 2``, cool1d_multi_g.F) is
 
@@ -735,7 +736,6 @@ def parse_options() -> argparse.Namespace:
         help="TimeIntegration:dt_max of the run (ln a with cosmology); "
         "read from used_parameters.yml next to snap/ when omitted",
     )
-    parser.add_argument("--c-hyp-pin", type=float, default=None, help="km/s")
     parser.add_argument(
         "--dust-tol",
         type=float,
@@ -826,7 +826,7 @@ def read_snapshot(filename: str) -> Dict:
             ),
             # (A1)'s and (A3)'s float-residual bar terms: the FLOAT inputs
             # still feeding the double relaxation update
-            # (radiation_end_force_propagation, radiation_isrf.c:913-917).
+            # (radiation_end_force_propagation, radiation_isrf.c:899-903).
             "div_PE": (
                 physical(gas["PESpecificFluxDivergences"], a, energy / time)[order]
                 if "PESpecificFluxDivergences" in gas
@@ -1203,15 +1203,11 @@ def read_c_hyp_scheme(pattern: str) -> Optional[int]:
     return scheme
 
 
-def read_c_hyp_pin(pattern: str) -> Optional[float]:
-    """Return GEARFeedback:ISRF_c_hyp_pin_for_debugging, or None if unrecorded.
+def read_c_hyp_fraction(pattern: str) -> Optional[float]:
+    """Return GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c, or None if unrecorded.
 
-    The parameter is a propagation speed in the run's own internal velocity
-    units, and 0 disables the pin
-    (`feedback_properties.h`'s ISRF_c_hyp_pin_for_debugging). It is read
-    here only to decide whether the run CLAIMS a pinned speed: whether the
-    module actually applied one is established from the snapshots
-    themselves (`c_hyp_spatial_spread`).
+    Under ISRF_c_hyp_scheme 2 every particle's propagation speed is this
+    fraction of c (`feedback_properties.h`'s ISRF_c_hyp_fixed_fraction_of_c).
 
     Parameters
     ----------
@@ -1223,6 +1219,14 @@ def read_c_hyp_pin(pattern: str) -> Optional[float]:
     float or None
         The parameter's value, or None when used_parameters.yml is absent
         or does not carry the key.
+
+    Raises
+    ------
+    ValueError
+        If the run recorded a positive GEARFeedback:ISRF_c_hyp_pin_for_debugging.
+        That override was removed: it set the speed without this fraction, so
+        the run's speed cannot be read from here, and treating it as a
+        scheme 4 run would drop the uniform-speed gate without a word.
     """
     import os
     import yaml
@@ -1233,8 +1237,19 @@ def read_c_hyp_pin(pattern: str) -> Optional[float]:
         return None
     with open(path) as handle:
         parameters = yaml.safe_load(handle)
+    feedback = (parameters or {}).get("GEARFeedback") or {}
     try:
-        return float(parameters["GEARFeedback"]["ISRF_c_hyp_pin_for_debugging"])
+        pin = float(feedback.get("ISRF_c_hyp_pin_for_debugging", 0.0))
+    except (TypeError, ValueError):
+        pin = 0.0
+    if pin > 0.0:
+        raise ValueError(
+            f"{path}: GEARFeedback:ISRF_c_hyp_pin_for_debugging is {pin!r}. "
+            "That override was removed; rerun with ISRF_c_hyp_scheme: 2 and "
+            "ISRF_c_hyp_fixed_fraction_of_c set to the speed over c."
+        )
+    try:
+        return float(feedback["ISRF_c_hyp_fixed_fraction_of_c"])
     except (KeyError, TypeError, ValueError):
         return None
 
@@ -1248,8 +1263,7 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
     module's docstring). What the gated leg needs is therefore this
     spatial spread, per snapshot, and exactly zero: a bit-uniform speed
     makes the weighted ledger and the mass-weighted one the same
-    functional, whether a debug pin or scheme 2's fixed fraction produced
-    it.
+    functional.
 
     Parameters
     ----------
@@ -1665,7 +1679,7 @@ def float_divergence_pull(
 
     The relaxation update is double, but the flux divergence it subtracts is
     still float end to end (radiation_end_force_propagation,
-    radiation_isrf.c:913-917), so each step's increment carries a float32
+    radiation_isrf.c:899-903), so each step's increment carries a float32
     relative error. This returns the increment's own size relative to ``u``,
     ``max_i |dt * div_i / u_i|``, which the caller multiplies by
     ``FLOAT32_EPS`` and the run's step count. None when the snapshot carries
@@ -1811,11 +1825,11 @@ def check_band_edge_ratio(
     trapezoid = abs(delta_lambda) * float(errors["trapezoid_bound"][-1])
 
     # c_hyp and dt_prev are shared by both moments (one operator,
-    # radiation_isrf.c:753-754) and cancel in the ratio to first order, so
+    # radiation_isrf.c:739-740) and cancel in the ratio to first order, so
     # they do not enter here. What survives is the FLOAT operands that
     # differ BETWEEN the two moments feeding the double relaxation update:
     # each moment's own flux divergence and dissipation source
-    # (radiation_isrf.c:913-917 is still float end to end for the
+    # (radiation_isrf.c:899-903 is still float end to end for the
     # divergence and dissipation inputs). Bounded by
     # eps_f * n_steps * the divergence's own relative pull on u this step,
     # read from the run's own snapshots, never fitted.
@@ -1880,22 +1894,21 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # spread(u)*spread(1/c_hyp), and leaves the float divergence floor as
     # (A1)'s whole error budget. Uniformity is the physical condition the
     # gate rests on, so it is read from the recorded field itself and not
-    # from whichever parameter produced it: the debug pin and
-    # ISRF_c_hyp_scheme 2's fixed fraction both give a bit-uniform speed.
-    # The pin parameter is still read, because a pin the module did not apply
-    # must FAIL rather than fall back to the ungated report.
-    c_hyp_pin = read_c_hyp_pin(opt.snapshots)
+    # from the parameter that produced it, ISRF_c_hyp_scheme 2's fixed
+    # fraction. The parameters are still read, because a claimed uniform
+    # speed the module did not apply must FAIL rather than fall back to the
+    # ungated report.
+    c_hyp_fraction = read_c_hyp_fraction(opt.snapshots)
     c_hyp_scheme = read_c_hyp_scheme(opt.snapshots)
-    # Two configurations CLAIM one speed for the whole box: the debug pin, and
-    # scheme 2, whose ISRF_c_hyp_fixed_fraction_of_c is a single fraction of c
+    # Scheme 2 CLAIMS one speed for the whole box: its
+    # ISRF_c_hyp_fixed_fraction_of_c is a single fraction of c
     # (feedback_properties.h already errors at start-up if that key is not
     # positive under scheme 2, or positive without it, so the scheme number
-    # alone is the claim). Either claim must FAIL when the recorded field does
+    # alone is the claim). The claim must FAIL when the recorded field does
     # not honour it, rather than fall back to the ungated report: the gate
     # below is the only bound on this fixture's transport ledger, and a claim
     # the module did not deliver would otherwise remove it silently.
-    pin_claimed = c_hyp_pin is not None and c_hyp_pin > 0.0
-    uniform_claimed = pin_claimed or c_hyp_scheme == 2
+    uniform_claimed = c_hyp_scheme == 2
     c_hyp_spread = c_hyp_spatial_spread(run)
     uniform_c_hyp = c_hyp_spread is not None and c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
@@ -1903,7 +1916,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
     # (A1) predicts from the run's OWN recorded c_hyp, so it measures the
     # drift from the first snapshot whose c_hyp is a genuine per-step rate:
-    # snapshot 0 of an unpinned run still holds the module's first-init
+    # snapshot 0 of a scheme 4 run still holds the module's first-init
     # light-speed clamp (`band_edge_ratio_reference_index`), and neither
     # substituting a later snapshot's value for it nor integrating the clamp
     # itself is a measurement of anything the particles experienced.
@@ -2006,24 +2019,16 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     spread_note = (
         "absent or non-positive" if c_hyp_spread is None else f"{c_hyp_spread:.3e}"
     )
-    pin_note = (
-        "unrecorded"
-        if c_hyp_pin is None
-        else f"{c_hyp_pin:.9g} (internal velocity units)"
-    )
+    fraction_note = "unrecorded" if c_hyp_fraction is None else f"{c_hyp_fraction:.9g}"
     print(
         f"  (A1) worst spatial spread (max-min)/max of the recorded c_hyp "
         f"{spread_note}, so the uniform-weight ledger is "
         f"{'LIVE' if uniform_c_hyp else 'not live'}; "
-        f"GEARFeedback:ISRF_c_hyp_pin_for_debugging = {pin_note}, "
-        f"ISRF_c_hyp_scheme = {c_hyp_scheme}"
+        f"ISRF_c_hyp_scheme = {c_hyp_scheme}, "
+        f"ISRF_c_hyp_fixed_fraction_of_c = {fraction_note}"
     )
     if uniform_claimed and not uniform_c_hyp:
-        source = (
-            "a c_hyp pin is set"
-            if pin_claimed
-            else "ISRF_c_hyp_scheme is 2, which is one fixed speed for the " "whole box"
-        )
+        source = "ISRF_c_hyp_scheme is 2, which is one fixed speed for the whole box"
         # Two different failures, and naming the wrong one sends the
         # investigation the wrong way: no snapshot carrying a usable speed is
         # usually propagation switched off, while a spread is the claim not
@@ -2440,10 +2445,39 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
     return out
 
 
+def fixed_c_hyp_cgs(pattern: str) -> float:
+    """Return a scheme 2 run's propagation speed, ISRF_c_hyp_fixed_fraction_of_c * c.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    float
+        The speed, cm/s.
+
+    Raises
+    ------
+    RuntimeError
+        If the run did not record ISRF_c_hyp_scheme 2 with a positive
+        fraction: (B1) needs one speed for every particle.
+    """
+    scheme = read_c_hyp_scheme(pattern)
+    fraction = read_c_hyp_fraction(pattern)
+    if scheme != 2 or fraction is None or not fraction > 0.0:
+        raise RuntimeError(
+            f"{pattern}: dust_absorption needs ISRF_c_hyp_scheme 2 with a "
+            f"positive ISRF_c_hyp_fixed_fraction_of_c in used_parameters.yml "
+            f"(got scheme {scheme}, fraction {fraction})"
+        )
+    return fraction * C_LIGHT_CGS
+
+
 def check_dust_absorption(opt: argparse.Namespace) -> bool:
     """Check Eq. (B1)."""
-    if opt.c_hyp_pin is None:
-        raise RuntimeError("--c-hyp-pin (km/s) is required for dust_absorption")
+    c_pin_cgs = fixed_c_hyp_cgs(opt.snapshots)
     run = load_run(opt.snapshots)
     # Every step size and step count below uses the QUANTISED dt_max from
     # the run's own start-up log, not the raw parameter: see
@@ -2459,7 +2493,7 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
         )
     cosmological = run[0]["cosmological"]
     n_steps = step_count(run, dt_max)
-    errors = dust_absorption_errors(run, opt.c_hyp_pin * 1e5)
+    errors = dust_absorption_errors(run, c_pin_cgs)
     dt_step = (
         dt_max / hubble_rate_cgs(run[0]["a"], run[0])
         if cosmological
@@ -2477,7 +2511,9 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
     }
     nc = {"PE": 0.0, "LW": 0.0}
     if opt.reference:
-        ref = dust_absorption_errors(load_run(opt.reference), opt.c_hyp_pin * 1e5)
+        ref = dust_absorption_errors(
+            load_run(opt.reference), fixed_c_hyp_cgs(opt.reference)
+        )
         nc = {
             band: float(np.max(np.median(np.abs(ref[band]), axis=1)))
             for band in ["PE", "LW"]
@@ -2505,7 +2541,7 @@ def check_dust_absorption(opt: argparse.Namespace) -> bool:
         # The kappa step-end term is unaffected by the Hubble-term dilation
         # (kappa was already correctly dilated); the H-alone step-end term is
         # dilated by c_pin/c, same as the B1 formula's own second term above.
-        c_pin_ratio = (opt.c_hyp_pin * 1e5) / C_LIGHT_CGS if cosmological else 0.0
+        c_pin_ratio = c_pin_cgs / C_LIGHT_CGS if cosmological else 0.0
         cosmo = (
             1.5 * dt_max * depth + c_pin_ratio * 0.75 * dt_max * span
             if cosmological
@@ -2841,7 +2877,7 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       luminosity is constant over the run;
     - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
-      (radiation_isrf.c:1571 and radiation_get_dust_extinction_factor);
+      (radiation_isrf.c:1557 and radiation_get_dust_extinction_factor);
     - ``u`` carries no float32 term, being a double in ``struct part`` and in
       the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:165);
     - this check's own float64 summation of ``n_lit`` terms costs

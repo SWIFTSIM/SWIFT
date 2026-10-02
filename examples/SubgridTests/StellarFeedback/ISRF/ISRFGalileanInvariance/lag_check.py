@@ -107,6 +107,7 @@ import h5py
 import numpy as np
 import yaml
 
+SPEED_OF_LIGHT_KM_S = 2.99792458e5
 # src/feedback/GEAR/radiation.h
 SIGMA_D_CGS = {"PE": 9e-22, "LW": 1.5e-21}
 MU_H = 1.4
@@ -261,10 +262,15 @@ def main():
     opt = parse_options()
     params = yaml.safe_load(open(os.path.join(opt.run, "used_parameters.yml")))
     fb = params["GEARFeedback"]
-    c_hyp = float(fb["ISRF_c_hyp_pin_for_debugging"])
-    if c_hyp <= 0.0:
-        print("FAIL: this check needs ISRF_c_hyp_pin_for_debugging > 0 (uniform tau).")
+    fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
+    if int(fb.get("ISRF_c_hyp_scheme", 4)) != 2 or fraction <= 0.0:
+        print(
+            "FAIL: this check needs ISRF_c_hyp_scheme 2 with "
+            "ISRF_c_hyp_fixed_fraction_of_c > 0 (uniform tau)."
+        )
         sys.exit(1)
+    # The speed the module applies, f*c in float32 (radiation_isrf.c).
+    c_hyp = float(np.float32(fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
     alpha_max = float(fb["ISRF_dissipation_alpha_max"])
     alpha_floor = float(fb["ISRF_dissipation_alpha_floor"])
     if opt.gate and (alpha_max != 0.0 or alpha_floor != 0.0):

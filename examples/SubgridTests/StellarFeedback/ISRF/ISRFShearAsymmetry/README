@@ -57,8 +57,9 @@ resolution level (`level`, N = `(2**level)**3` gas particles), `variant`
 (km/s, full relative velocity between the two streams), `propagation`
 (`ISRF_propagation`), `layer_width_h`,
 `density_ratio` (contrast variant only), `bulk_temperature_K`,
-`pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_pin`
-(`ISRF_c_hyp_pin_for_debugging`), `alpha_max`/`alpha_pin`
+`pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_fraction`
+(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs `ISRF_c_hyp_scheme: 2`, one speed
+for every particle), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, debug/test only,
 never use in a production run), `initial_metallicity`, `time_end`,
 `dt_max`, `dt_min`, `delta_time`, and thread count (`n_threads`); see
@@ -75,7 +76,7 @@ insufficient resolving power at that resolution and `--pulse-sigma-h` or
 
 # Checking
 ```
-python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry --v-shear $v_shear --c-hyp-pin $c_hyp_pin --c-hyp-margin $c_hyp_margin
+python3 isrf_shear_asymmetry_check.py --variant $variant --source-geometry $source_geometry --v-shear $v_shear --c-hyp-margin $c_hyp_margin
 python3 shear_compare.py --mode gate --runs dir1 dir2 ... --control zero_shear_dir
 python3 shear_compare.py --mode pair --plus plus_dir --minus minus_dir
 python3 shear_compare_ensemble.py --shear-runs dir1 dir2 ... --control-runs zero_dir1 zero_dir2 ...

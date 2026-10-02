@@ -16,8 +16,9 @@ applied to both. Where a closed form exists, the check compares against it:
   drift is ~1e-4 over the run and the H2 abundance follows
   `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone) with the rate the module
   hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
-- `dust_absorption`: the same at solar metallicity, with the propagation speed
-  pinned (`c_hyp_pin`, km/s), so the absorption rate is known:
+- `dust_absorption`: the same at solar metallicity, with one fixed propagation
+  speed `c_pin` for the whole box (`ISRF_c_hyp_scheme: 2`, 4 km/s by default),
+  so the absorption rate is known:
   `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
   carrying the same `c_pin/c` dilation.
 - `photoelectric` and `photoelectric_dark`: a seeded field of `G0 ~ 1` and the
@@ -99,7 +100,7 @@ At level 5 each run takes a few minutes on 8 threads.
 python3 isrf_cosmology_check.py --config free_field -s "free_field_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "free_field_z9/snap/snapshot_*.hdf5" \
     --reference "free_field_z0/snap/snapshot_*.hdf5"
-python3 isrf_cosmology_check.py --config dust_absorption --c-hyp-pin 4 -s "da_z9/snap/snapshot_*.hdf5" \
+python3 isrf_cosmology_check.py --config dust_absorption -s "da_z9/snap/snapshot_*.hdf5" \
     --log da_z9/output.log
 python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*.hdf5" \
     --dark "pe_dark_z9/snap/snapshot_*.hdf5"
@@ -128,7 +129,7 @@ bound on the part of the bar that does not depend on `a`, wherever it is
 larger.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
-Without cosmology the unpinned `free_field` band drift has no expansion term
+Without cosmology the scheme 4 `free_field` band drift has no expansion term
 to be compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
@@ -140,49 +141,34 @@ glass's own `h` spread. That makes the ledger mean move for a reason
 unrelated to conservation, which is why the run above is reported rather
 than gated. One propagation speed across the whole box makes the weight
 cancel, and the check then gates the band drift against its own float
-floor. The check reads that uniformity from the recorded
-`HyperbolicPropagationSpeeds` itself, so either way of producing it works:
-`c_hyp_pin` (internal velocity units, the same mechanism
-`dust_absorption` uses), or `GEARFeedback:ISRF_c_hyp_scheme: 2` with
-`GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`, which is the one to use in a
-physics run because it imposes the Courant condition on the timestep.
+floor. One speed for the whole box is `ISRF_c_hyp_scheme: 2`, set with
+`c_hyp_scheme=2 c_hyp_fraction=<v/c>` (`c = 299792.458 km/s`), the same
+mechanism `dust_absorption` uses. Scheme 2 also limits the time step of every
+particle carrying or near the field to `ISRF_c_hyp_margin*h/c_hyp`, so it can
+take more steps than the run above. The check reads the uniformity from the
+recorded `HyperbolicPropagationSpeeds` itself.
 ```
-config=free_field redshift=0 c_hyp_pin=38.7902222 run_name=ff_pin_z0 ./run.sh
-config=free_field redshift=9 c_hyp_pin=38.7902222 run_name=ff_pin_z9 ./run.sh
-python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z0/snap/snapshot_*.hdf5"
-python3 isrf_cosmology_check.py --config free_field -s "ff_pin_z9/snap/snapshot_*.hdf5" \
-    --reference "ff_pin_z0/snap/snapshot_*.hdf5"
-```
-That value is the unpinned `redshift=0` run's own box-mean `c_hyp` at the
-defaults above, so that leg runs at the speed it would have run at
-anyway. The `redshift=9` leg does not: `c_hyp` is `ISRF_c_hyp_margin*a*h`
-over the step, and over `a = 0.1` to `0.125` the unpinned run's own value
-is 41 to 46 km/s, so the same pin puts that leg at a Courant number of
-0.42 to 0.47 against the `ISRF_c_hyp_margin` of 0.5, below the margin and
-never above it. One pin is used for both so the two legs share the same
-ledger weight, which is what makes the `--reference` pairing comparable;
-(A1) predicts from each run's own recorded `HyperbolicPropagationSpeeds`,
-so the prediction follows whichever value is pinned. At another `level`,
-`gas_density` or `duration`, read the mean of
-`HyperbolicPropagationSpeeds` from an unpinned `redshift=0` run's first
-post-startup snapshot and pin at that. A pinned run says nothing about a
-propagation speed that varies between neighbours, so run this pair in
-addition to the unpinned one, not instead of it.
-
-The fixed-speed form uses `ISRF_c_hyp_scheme: 2` instead of the pin, and is the
-one a physics run uses, because its speed sets the timestep through the Courant
-condition. It is a DIFFERENT speed from the pinned pair above, not the same one:
-at `c_hyp_fraction=3.3357e-4` the box runs at 100 km/s, which is 2.58 times the
-38.7902222 the pinned pair uses. `c_hyp_pin` stays 0, since the two are mutually
-exclusive, and the run takes as many steps as the Courant condition requires, so
-expect several times the pinned pair's step count:
-```
-config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z0 ./run.sh
-config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=3.3357e-4 run_name=ff_s2_z9 ./run.sh
+config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z0 ./run.sh
+config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z9 ./run.sh
 python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z9/snap/snapshot_*.hdf5" \
     --reference "ff_s2_z0/snap/snapshot_*.hdf5"
 ```
+That fraction is 38.79 km/s, the scheme 4 `redshift=0` run's own box-mean
+`c_hyp` at the defaults above, so that leg runs at the speed it would have run
+at anyway. The `redshift=9` leg does not: `c_hyp` is `ISRF_c_hyp_margin*a*h`
+over the step, and over `a = 0.1` to `0.125` the scheme 4 run's own value is
+41 to 46 km/s, so the same speed puts that leg at a Courant number of 0.42 to
+0.47 against the `ISRF_c_hyp_margin` of 0.5. One speed is used for both so the
+two legs share the same ledger weight, which is what makes the `--reference`
+pairing comparable; (A1) predicts from each run's own recorded
+`HyperbolicPropagationSpeeds`, so the prediction follows whichever speed is
+set. At another `level`, `gas_density` or `duration`, read the mean of
+`HyperbolicPropagationSpeeds` from a scheme 4 `redshift=0` run's first
+post-startup snapshot and divide it by `c`. A uniform speed says nothing about
+a propagation speed that varies between neighbours, so run this pair in
+addition to the scheme 4 one, not instead of it. A faster speed runs the same
+way (`c_hyp_fraction=3.335640952e-04` is 100 km/s) and takes more steps.
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust

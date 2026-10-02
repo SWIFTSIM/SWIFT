@@ -26,7 +26,7 @@ put every gas particle and the star on one shared bin of, respectively,
 dt, dt/2 and dt/4, so the number of injection events over the run changes
 by a factor four while nothing else does.
 
-With Z = 0 and a pinned c_hyp the stored energy E = (c / c_hyp) sum m u
+With Z = 0 and one fixed c_hyp the stored energy E = (c / c_hyp) sum m u
 trails the emitted energy L t by the dose still held between the star and
 the gas. The gated quantity is that lag EXPRESSED IN THE RUN'S OWN STEP,
 n = (L t - E) / (L dt). The scheme's hand-off pipeline is a fixed number
@@ -196,6 +196,31 @@ def parameter(run: str, key: str) -> float:
     return float(m.group(1))
 
 
+def fixed_c_hyp(run: str, c: float) -> float:
+    """Return the run's one propagation speed, internal units.
+
+    ISRF_c_hyp_scheme 2 gives every particle f*c, computed in float32
+    (radiation_isrf.c). Any other scheme has no single speed, so NaN is
+    returned, which fails every gate it reaches.
+
+    Parameters
+    ----------
+    run : str
+        Run directory.
+    c : float
+        Speed of light, internal units.
+
+    Returns
+    -------
+    float
+        The speed, or NaN.
+    """
+    if parameter(run, "ISRF_c_hyp_scheme") != 2:
+        return float("nan")
+    fraction = parameter(run, "ISRF_c_hyp_fixed_fraction_of_c")
+    return float(np.float32(fraction) * np.float32(c))
+
+
 def gate(name: str, value: float, bar: float) -> bool:
     """Print and return one upper-bound gate; non-finite values fail.
 
@@ -325,7 +350,7 @@ def same_configuration(base: str, other: str) -> bool:
     return bool(ok)
 
 
-def lag_in_steps(snaps: list, band: str, pin: float, dt: float) -> tuple:
+def lag_in_steps(snaps: list, band: str, c_hyp: float, dt: float) -> tuple:
     """Return the in-flight lag of one band, in units of the run's step.
 
     Parameters
@@ -334,8 +359,8 @@ def lag_in_steps(snaps: list, band: str, pin: float, dt: float) -> tuple:
         Snapshots of one run, first one dropped.
     band : str
         "PE" or "LW".
-    pin : float
-        Pinned c_hyp, internal units.
+    c_hyp : float
+        The run's fixed c_hyp, internal units.
     dt : float
         The run's shared time step.
 
@@ -347,7 +372,7 @@ def lag_in_steps(snaps: list, band: str, pin: float, dt: float) -> tuple:
     """
     L = np.array([s["L"][band] for s in snaps])
     t = np.array([s["time"] for s in snaps])
-    E = np.array([np.sum(s["mass"] * s["u"][band]) * s["c"] / pin for s in snaps])
+    E = np.array([np.sum(s["mass"] * s["u"][band]) * s["c"] / c_hyp for s in snaps])
     n = (t - E / L) / dt
     # E is a sum of N float32 specific energies, so its rounding error
     # grows as sqrt(N) eps E; carried to the lag through L that is
@@ -378,12 +403,12 @@ def main() -> None:
     measured = {}
     for name in RUNS:
         snaps = [load(f) for f in snapshots(path(name))[1:]]
-        pin = parameter(path(name), "ISRF_c_hyp_pin_for_debugging")
+        c_hyp = fixed_c_hyp(path(name), snaps[0]["c"])
         dt = info[name]["dt"]
         t_end = snaps[-1]["time"]
         info[name]["t_end"] = t_end
         for b in ("PE", "LW"):
-            n, tol, L = lag_in_steps(snaps, b, pin, dt)
+            n, tol, L = lag_in_steps(snaps, b, c_hyp, dt)
             positive = bool(np.all(np.isfinite(L)) and np.all(L > 0.0))
             print(
                 f"  {name} {b} luminosity finite and positive: "

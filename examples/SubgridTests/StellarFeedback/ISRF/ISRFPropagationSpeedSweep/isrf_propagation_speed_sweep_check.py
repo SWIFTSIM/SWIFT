@@ -25,8 +25,9 @@ on. Writes all of it to --json-out; cross-run comparisons (self-similarity,
 retardation collapse, the stability bracket) are done separately by
 sweep_compare.py.
 
-nu_eff = c_hyp*dt_bulk/h_med IS A MEASUREMENT ONLY WHEN c_hyp IS PINNED.
-Without a pin, c_hyp comes from the closure min(margin*h_med/dt_bulk, c),
+nu_eff = c_hyp*dt_bulk/h_med IS A MEASUREMENT ONLY WHEN c_hyp IS ONE FIXED
+SPEED (ISRF_c_hyp_scheme 2, read from --used-parameters). Under scheme 4,
+c_hyp comes from the closure min(margin*h_med/dt_bulk, c),
 built from the same h_med and dt_bulk, so nu_eff returns the margin
 parameter exactly and measures nothing at all (it still measures something
 when the light-speed clamp binds, which is reported separately). The run's
@@ -67,21 +68,9 @@ def parse_options():
         help="Path to the run's own timesteps.txt (default: %(default)s).",
     )
     parser.add_argument(
-        "--log",
-        default="output.log",
-        help="Path to the run's own stdout/stderr log (default: %(default)s).",
-    )
-    parser.add_argument(
         "--used-parameters",
         default="used_parameters.yml",
         help="Path to the run's own used_parameters.yml (default: %(default)s).",
-    )
-    parser.add_argument(
-        "--c-hyp-pin",
-        type=float,
-        default=0.0,
-        help="GEARFeedback:ISRF_c_hyp_pin_for_debugging used by the run, "
-        "km/s (default: %(default)s; 0 = closure).",
     )
     parser.add_argument(
         "--c-hyp-margin",
@@ -199,6 +188,11 @@ def load_snapshot(path):
         rho = gas["Densities"][:].astype(np.float64)
         u_pe = gas["PESpecificEnergies"][:].astype(np.float64)
         u_lw = gas["LWSpecificEnergies"][:].astype(np.float64)
+        c_hyp = (
+            gas["HyperbolicPropagationSpeeds"][:]
+            if "HyperbolicPropagationSpeeds" in gas
+            else None
+        )
     return dict(
         time=time,
         boxsize=boxsize,
@@ -208,6 +202,7 @@ def load_snapshot(path):
         rho=rho,
         u_pe=u_pe,
         u_lw=u_lw,
+        c_hyp=c_hyp,
     )
 
 
@@ -224,6 +219,14 @@ def main():
     alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
     dt_max_param = float(ti.get("dt_max", np.nan))
     alpha_eff = alpha_pin if alpha_pin > 0.0 else alpha_max
+    # ISRF_c_hyp_scheme 2 gives every particle one speed, f*c in float32
+    # (radiation_isrf.c); 0 selects the closure below.
+    c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
+    c_hyp_fixed = (
+        float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
+        if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0
+        else 0.0
+    )
 
     snaps = [load_snapshot(fn) for fn in files]
     n_gas = snaps[0]["pos"].shape[0]
@@ -231,8 +234,8 @@ def main():
     dt_bulk, n_steps = modal_bulk_dt(opt.timesteps_log, n_gas)
     h_med_last = float(np.median(snaps[-1]["h"]))
 
-    if opt.c_hyp_pin > 0.0:
-        c_hyp = opt.c_hyp_pin
+    if c_hyp_fixed > 0.0:
+        c_hyp = c_hyp_fixed
     else:
         c_hyp = (
             min(opt.c_hyp_margin * h_med_last / dt_bulk, SPEED_OF_LIGHT_KM_S)
@@ -242,11 +245,11 @@ def main():
 
     nu_eff = c_hyp * dt_bulk / h_med_last if h_med_last > 0 else 0.0
     nu_max = nu_max_of(alpha_eff)
-    # Provenance of nu_eff. Without a pin, c_hyp is the closure evaluated on
+    # Provenance of nu_eff. Under scheme 4, c_hyp is the closure evaluated on
     # the same h_med and dt_bulk, so nu_eff is the margin parameter itself
     # unless the light-speed clamp binds.
-    if opt.c_hyp_pin > 0.0:
-        nu_eff_source = "measured (c_hyp pinned)"
+    if c_hyp_fixed > 0.0:
+        nu_eff_source = "measured (one fixed c_hyp, scheme 2)"
     elif c_hyp >= SPEED_OF_LIGHT_KM_S:
         nu_eff_source = "measured (light-speed clamp binding)"
     else:
@@ -270,19 +273,28 @@ def main():
     )
     print(f"nu_eff = {nu_eff:.6f}  [{nu_eff_source}]")
 
-    # M-P5: pin assertion.
+    # M-P5: fixed-speed assertion. Snapshot 0 is written before the first
+    # drift sets c_hyp, so it is skipped.
     all_ok = True
-    if opt.c_hyp_pin > 0.0:
-        with open(opt.log) as f:
-            log_text = f.read()
-        if "ISRF_c_hyp_pin_for_debugging is set" not in log_text:
+    if c_hyp_fixed > 0.0:
+        applied = len(snaps) > 1 and all(
+            s["c_hyp"] is not None
+            and s["c_hyp"].size > 0
+            and bool(np.all(s["c_hyp"] == np.float32(c_hyp_fixed)))
+            for s in snaps[1:]
+        )
+        if not applied:
             all_ok = False
             print(
-                "\nFAIL M-P5: --c-hyp-pin > 0 but the pin warning is absent "
-                "from the log -- the pin did not take effect."
+                "\nFAIL M-P5: ISRF_c_hyp_scheme 2 is set but the recorded "
+                "HyperbolicPropagationSpeeds is not f*c on every particle "
+                "after snapshot 0 -- the fixed speed did not take effect."
             )
         else:
-            print("\nM-P5 PASS: pin warning present in the log.")
+            print(
+                f"\nM-P5 PASS: HyperbolicPropagationSpeeds is {c_hyp_fixed:.9g} "
+                "km/s on every particle after snapshot 0."
+            )
 
     # M-P2: gas-drift control. Snapshot particle order is not guaranteed
     # stable across outputs, so match by ParticleIDs before differencing.
@@ -401,7 +413,7 @@ def main():
         n_steps=n_steps,
         dt_max=dt_max_param,
         c_hyp=c_hyp,
-        c_hyp_pin=opt.c_hyp_pin,
+        c_hyp_fixed=c_hyp_fixed,
         c_hyp_margin=opt.c_hyp_margin,
         alpha_max=alpha_max,
         alpha_pin=alpha_pin,
