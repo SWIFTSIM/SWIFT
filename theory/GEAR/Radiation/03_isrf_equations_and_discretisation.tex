@@ -99,7 +99,7 @@ Star injection runs in the star feedback-apply loop,
 
 \paragraph{The transport is off by default.}
 \code{GEARFeedback:ISRF\_propagation} defaults to 0
-(\code{feedback\_properties.h:1046-1047}), i.e.\ the default ISRF run is
+(\code{feedback\_properties.h:1051-1052}), i.e.\ the default ISRF run is
 injection plus receiver-side extinction only, with no transport. In that mode the
 three ghosts return early (\code{radiation\_isrf.c:468}, \code{:736},
 \code{:1193}) and both $\kappa$ are forced to zero
@@ -806,7 +806,7 @@ tag expiry, which can zero $u$), and the density ghost
 
 Defaults, all parsed unconditionally so a validation run can set them with
 propagation off: \code{ISRF\_dissipation\_alpha\_max} $=0.5$
-(\code{feedback\_properties.h:1123-1124}),
+(\code{feedback\_properties.h:1128-1129}),
 \code{ISRF\_dissipation\_negativity\_threshold} $\epsilon_1 = 0.01$
 (\code{:1125-1126}), \code{ISRF\_dissipation\_alpha\_floor} $=0.5$
 (\code{:1145-1146}), \code{ISRF\_dissipation\_floor\_h\_over\_lambda}
@@ -938,7 +938,7 @@ The enum is \code{isrf\_c\_hyp\_scheme}
 (\code{feedback\_properties.h:70-88}) and has two values. Each fixes the speed
 rule; the pairwise operators are the same for both, and both store the reduced
 flux $\tilde{\boldsymbol{F}}$. Any other value is an \code{error()} at parse time
-(\code{feedback\_properties.h:1056-1063}), at the drift and density-ghost
+(\code{feedback\_properties.h:1061-1068}), at the drift and density-ghost
 dispatch (\code{radiation\_isrf.c:273-275}, \code{:471-473}) and on a restart,
 where the restored value is checked separately because the flat restart read
 bypasses the parser (\code{feedback\_common.c:1707-1717}); a restart written
@@ -964,10 +964,10 @@ scheme & speed formula & code \\
 \end{tabular}
 \end{center}
 
-Scheme 4 is the \textbf{default} (\code{feedback\_properties.h:1049-1055}).
+Scheme 4 is the \textbf{default} (\code{feedback\_properties.h:1054-1060}).
 Here $f_c = \code{ISRF\_c\_hyp\_fixed\_fraction\_of\_c}$ and
 $C_{\rm hyp} = \code{ISRF\_c\_hyp\_margin}$, default $0.5$
-(\code{feedback\_properties.h:1093-1094}).
+(\code{feedback\_properties.h:1098-1099}).
 
 Scheme 2 decides $c_{\rm hyp}$ at the drift
 (\code{radiation\_isrf.c:265-275}); scheme 4 defers it to the density ghost,
@@ -983,11 +983,13 @@ $\min(+\infty, c)$, which \code{-ffast-math} does not guarantee
 $dt_{\max}(i)$ reuses \code{dt\_prev} in the same-bin case rather than
 recomputing (\code{radiation\_isrf.c:478-479}). At parse time
 \code{feedback\_props\_check\_c\_hyp\_scheme} forces $f_c > 0$ and scheme 2 to
-agree (\code{feedback\_properties.h:563-577}). A fixed propagation speed $v$ is
+agree (\code{feedback\_properties.h:647-661}). A fixed propagation speed $v$ is
 scheme 2 with $f_c = v/c$. The former test-only override
 \code{ISRF\_c\_hyp\_pin\_for\_debugging}, which set $c_{\rm hyp}$ to a chosen value
 under either scheme without the timestep term below, was removed; a parameter
-file that still sets it stops at start-up (\code{feedback\_properties.h:742-763}).
+file that still sets it starts normally, with a warning that the key is ignored
+(\code{feedback\_properties.h:566-629}). The same holds for every retired
+\code{GEARFeedback} key.
 
 \subsubsection{The timestep each scheme imposes}
 \label{sec:isrf-eqdisc-timestep}
@@ -1174,7 +1176,7 @@ band-specific and computed per operator
 (\code{radiation\_isrf.c:1359-1406}), with
 $h_{\rm gas} = \gamma_K\, h$ (\code{radiation\_isrf.c:1368}). The default
 mechanism is \code{pair\_separation}
-(\code{feedback\_properties.h:1001-1002}).
+(\code{feedback\_properties.h:1006-1007}).
 
 \begin{align}
   \text{\code{constant\_kernel\_path}:}\quad
@@ -1208,11 +1210,11 @@ $T_{\rm cap} = 40$\,K by default (\code{feedback\_properties.h:43}).
 Guards: $T \le 0$ or $\rho_{\rm phys} \le 0$ returns $h_{\rm gas}$ outright,
 rather than clamping a division, because a guarded denominator is not safe under
 \code{-ffast-math} (\code{radiation\_isrf.c:1384-1387}). An unrecognised
-mechanism string is fatal (\code{feedback\_properties.h:1029-1041}), and an
+mechanism string is fatal (\code{feedback\_properties.h:1034-1046}), and an
 unknown enum value reaching the switch is fatal
 (\code{radiation\_isrf.c:1404-1405}). Each mechanism's magnitude key is parsed
 only by the mechanism that reads it, so \code{used\_parameters.yml} records a
-number only where it was used (\code{feedback\_properties.h:997-998}). The
+number only where it was used (\code{feedback\_properties.h:1002-1003}). The
 comment calls $R_{\rm ext} = 5/12$ the exact value in the uniform optically thin
 limit (\code{feedback\_properties.h:108-111}).
 
@@ -1516,7 +1518,7 @@ Each item below is a place where the scheme departs from its own ideal form.
     $\code{min\_ngb\_bin} + 2$ cap bounds it at 4. Closing the gap needs
     $dt_{\max}(i)$ built over the force loop's neighbour set.
   \item \textbf{Stability bound with hard-coded kernel constants}
-    (\code{feedback\_properties.h:1178-1199}):
+    (\code{feedback\_properties.h:1183-1204}):
     \begin{equation}
       6.2\,\alpha\, C_{\rm hyp} + 0.70\, C_{\rm hyp}^2 \le 2,
       \label{eq:isrfd-stability}
@@ -1525,7 +1527,7 @@ Each item below is a place where the scheme departs from its own ideal form.
     ($I_W = 3.10$, $\nu_{\max} = 1.18$). It is \emph{not} re-derived for any
     other kernel. At $\alpha = 0$ it gives the absolute ceiling
     $C_{\rm hyp} \le \sqrt{2/0.70} \approx 1.6903$
-    (\code{feedback\_properties.h:1103}); at the shipped
+    (\code{feedback\_properties.h:1108}); at the shipped
     $\alpha_{\rm floor} = 0.5$ it caps $C_{\rm hyp}$ at about $0.571$
     (\code{feedback\_properties.h:252-256}).
   \item The staggered order is forced: $\boldsymbol{F}$ is advanced first, then

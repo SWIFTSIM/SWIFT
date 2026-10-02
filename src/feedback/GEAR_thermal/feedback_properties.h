@@ -545,6 +545,90 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 }
 
 /**
+ * @brief Warn about every retired or removed parameter key present in
+ * @p params.
+ *
+ * A retired key is ignored: the parser leaves it in unused_parameters.yml
+ * and nothing reads it, so it has no effect on the run. Each key found gets
+ * one warning that names the replacement, because the parser accepts an
+ * unknown key silently and a renamed feature would otherwise run at its
+ * replacement's default with no sign of it. This table is the single place
+ * that lists the retired keys: add an entry whenever a
+ * GEARFeedback/GEARRadiation key is renamed or removed. A standalone
+ * function so a unit test can call it with neither the stellar-evolution
+ * tables nor the other arguments feedback_props_init() reads.
+ *
+ * @param params The parsed parameter file.
+ *
+ * @return The number of retired keys found.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_warn_retired_keys(struct swift_params *params) {
+  const struct {
+    const char *retired;
+    const char *replacement;
+  } feedback_retired_keys[] = {
+      {"GEARFeedback:with_photoelectric_heating",
+       "GEARFeedback:with_interstellar_radiation_field"},
+      {"GEARFeedback:do_photoionization", "GEARFeedback:with_photoionization"},
+      {"GEARFeedback:LW_FUV_propagation", "GEARFeedback:ISRF_propagation"},
+      {"GEARFeedback:LW_FUV_c_hyp_margin", "GEARFeedback:ISRF_c_hyp_margin"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_max",
+       "GEARFeedback:ISRF_dissipation_alpha_max"},
+      {"GEARFeedback:LW_FUV_dissipation_negativity_threshold",
+       "GEARFeedback:ISRF_dissipation_negativity_threshold"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_floor",
+       "GEARFeedback:ISRF_dissipation_alpha_floor"},
+      {"GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
+       "GEARFeedback:ISRF_dissipation_floor_h_over_lambda"},
+      {"GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
+       "GEARFeedback:ISRF_dissipation_floor_relaxation_residual"},
+      {"GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
+       "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"},
+      {"GEARFeedback:radiation_interpolation_size_mass",
+       "GEARRadiation:interpolation_size_mass"},
+      {"GEARFeedback:minimal_HII_ionization_density_Hpcm3",
+       "GEARFeedback:HII_min_density_Hpcm3"},
+      {"GEARFeedback:HII_region_min_density_Hpcm3",
+       "GEARFeedback:HII_min_density_Hpcm3"},
+      {"GEARFeedback:HII_region_max_age_Myr", "GEARFeedback:HII_max_age_Myr"},
+      {"GEARFeedback:HII_region_rebuild_time_Myr",
+       "GEARFeedback:HII_rebuild_time_Myr"},
+      {"GEARFeedback:HII_region_rebuild_floor_Myr",
+       "GEARFeedback:HII_rebuild_floor_Myr"},
+      {"GEARFeedback:photoelectric_heating_grackle_option",
+       "GrackleCooling:photoelectric_heating_efficiency"},
+      {"GEARFeedback:min_star_timestep_Myr", "Stars:min_star_timestep_Myr"},
+      {"GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
+       "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging"},
+      /* A fixed propagation speed is scheme 2, which also limits the time
+       * step so that the speed stays stable. */
+      {"GEARFeedback:ISRF_c_hyp_pin_for_debugging",
+       "GEARFeedback:ISRF_c_hyp_scheme: 2 with "
+       "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (v the wanted "
+       "speed, c the speed of light)"},
+      {"GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
+       "GEARFeedback:ISRF_c_hyp_scheme: 2 with "
+       "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (v the wanted "
+       "speed, c the speed of light)"},
+  };
+  int n_found = 0;
+  const int n_feedback_retired_keys =
+      sizeof(feedback_retired_keys) / sizeof(feedback_retired_keys[0]);
+  for (int i = 0; i < n_feedback_retired_keys; ++i) {
+    if (!parser_does_param_exist(params, feedback_retired_keys[i].retired))
+      continue;
+    warning(
+        "%s is retired and ignored: it has no effect on this run. Use %s "
+        "instead and delete %s from the parameter file.",
+        feedback_retired_keys[i].retired, feedback_retired_keys[i].replacement,
+        feedback_retired_keys[i].retired);
+    ++n_found;
+  }
+  return n_found;
+}
+
+/**
  * @brief Enforce that #feedback_props.ISRF_c_hyp_scheme and
  * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c stay a matched pair: the
  * fixed-fraction and kernel-local c_hyp schemes are alternatives, not
@@ -681,86 +765,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
-  /* A retired key must stop the run instead of vanishing into
-   * unused_parameters.yml, since the parser accepts an unknown key silently
-   * and would otherwise leave the renamed feature at its replacement's
-   * default. Add a pair here whenever a GEARFeedback/GEARRadiation key is
-   * renamed; a key that was removed outright, with no successor, does not
-   * belong in this table. */
-  const struct {
-    const char *retired;
-    const char *replacement;
-  } feedback_retired_keys[] = {
-      {"GEARFeedback:with_photoelectric_heating",
-       "GEARFeedback:with_interstellar_radiation_field"},
-      {"GEARFeedback:do_photoionization", "GEARFeedback:with_photoionization"},
-      {"GEARFeedback:LW_FUV_propagation", "GEARFeedback:ISRF_propagation"},
-      {"GEARFeedback:LW_FUV_c_hyp_margin", "GEARFeedback:ISRF_c_hyp_margin"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_max",
-       "GEARFeedback:ISRF_dissipation_alpha_max"},
-      {"GEARFeedback:LW_FUV_dissipation_negativity_threshold",
-       "GEARFeedback:ISRF_dissipation_negativity_threshold"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_floor",
-       "GEARFeedback:ISRF_dissipation_alpha_floor"},
-      {"GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
-       "GEARFeedback:ISRF_dissipation_floor_h_over_lambda"},
-      {"GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
-       "GEARFeedback:ISRF_dissipation_floor_relaxation_residual"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
-       "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"},
-      {"GEARFeedback:radiation_interpolation_size_mass",
-       "GEARRadiation:interpolation_size_mass"},
-      {"GEARFeedback:minimal_HII_ionization_density_Hpcm3",
-       "GEARFeedback:HII_min_density_Hpcm3"},
-      {"GEARFeedback:HII_region_min_density_Hpcm3",
-       "GEARFeedback:HII_min_density_Hpcm3"},
-      {"GEARFeedback:HII_region_max_age_Myr", "GEARFeedback:HII_max_age_Myr"},
-      {"GEARFeedback:HII_region_rebuild_time_Myr",
-       "GEARFeedback:HII_rebuild_time_Myr"},
-      {"GEARFeedback:HII_region_rebuild_floor_Myr",
-       "GEARFeedback:HII_rebuild_floor_Myr"},
-      {"GEARFeedback:photoelectric_heating_grackle_option",
-       "GrackleCooling:photoelectric_heating_efficiency"},
-      {"GEARFeedback:min_star_timestep_Myr", "Stars:min_star_timestep_Myr"},
-      {"GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
-       "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging"},
-  };
-  const int n_feedback_retired_keys =
-      sizeof(feedback_retired_keys) / sizeof(feedback_retired_keys[0]);
-  for (int i = 0; i < n_feedback_retired_keys; ++i) {
-    if (parser_does_param_exist(params, feedback_retired_keys[i].retired))
-      error(
-          "%s was retired and renamed to %s. Stopping here: the parser "
-          "ignores an unrecognised key, so this run would otherwise carry "
-          "on with the feature silently off (or at its replacement's "
-          "default). Update the parameter file to set %s.",
-          feedback_retired_keys[i].retired,
-          feedback_retired_keys[i].replacement,
-          feedback_retired_keys[i].replacement);
-  }
-
-  /* The fixed propagation-speed override has no one-key successor: a fixed
-   * speed is scheme 2, which also limits the timestep to keep that speed
-   * stable. */
-  const char *feedback_removed_c_hyp_pin_keys[] = {
-      "GEARFeedback:ISRF_c_hyp_pin_for_debugging",
-      "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
-  };
-  const int n_feedback_removed_c_hyp_pin_keys =
-      sizeof(feedback_removed_c_hyp_pin_keys) /
-      sizeof(feedback_removed_c_hyp_pin_keys[0]);
-  for (int i = 0; i < n_feedback_removed_c_hyp_pin_keys; ++i) {
-    if (parser_does_param_exist(params, feedback_removed_c_hyp_pin_keys[i]))
-      error(
-          "%s was removed. For a fixed propagation speed v, set "
-          "GEARFeedback:ISRF_c_hyp_scheme: 2 and "
-          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (c the speed of "
-          "light): scheme 2 gives every particle that speed and limits its "
-          "time step so the speed stays stable. Delete %s from the parameter "
-          "file.",
-          feedback_removed_c_hyp_pin_keys[i],
-          feedback_removed_c_hyp_pin_keys[i]);
-  }
+  feedback_props_warn_retired_keys(params);
 
   /* Supernovae energy efficiency */
   double e_efficiency =

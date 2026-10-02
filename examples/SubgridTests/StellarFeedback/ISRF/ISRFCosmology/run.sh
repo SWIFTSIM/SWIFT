@@ -7,8 +7,8 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 set -eo pipefail
 
 if [ -n "${c_hyp_pin:-}" ]; then
-    echo "c_hyp_pin was removed: set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
-    exit 1
+    echo "WARNING: c_hyp_pin was removed and is ignored:" \
+         "set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
 fi
 
 config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
