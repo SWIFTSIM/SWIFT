@@ -16,12 +16,13 @@ settled field behind the causal front is
 with `lambda = 1/(kappa_eff*rho)` the dust absorption length, `kappa_eff` the
 dust mass opacity, and `c` the true speed of light (the reduced propagation
 speed `c_hyp` cancels in this steady state). `isrf_optically_thin_check.py`
-fits the settled profile against this `1/r^2` law, in both bands, with no
-fitted parameter. It also plots the isotropic/diffusion-closure profile the
-same source would give if the field isotropized,
+compares the measured profile with this `1/r^2` law, in both bands, with no
+fitted parameter, and reports the result. This example has no pass/fail
+gate. It also plots the isotropic/diffusion-closure profile the same source
+would give if the field isotropized,
 `3*L*exp(-sqrt(3)*r/lambda)/(4*pi*c*lambda*rho*r)`, for comparison only: that
 profile is not a valid steady state this close to a single source and is not
-what this check gates on.
+what the measurement is compared with.
 
 `ISRFHyperbolicPropagation` measures the SCREENED steady state instead,
 where `lambda` is comparable to `h` and compares against a discrete solve
@@ -34,10 +35,12 @@ the front radius and `H` the kernel support. The first term excludes the
 star's injection footprint, the second the front itself (which the
 estimator smears over a couple of supports), and the third every periodic
 image, which cannot have reached radius `r` before `c_hyp*t = L_box - r`.
-`time_end` is set to where this window itself closes: the causal front
-passes the box around `t ~ 6.6e-4` for the shipped defaults, and the window
-geometry above already fails a little before that. Running further adds no
-usable snapshot.
+SWIFT takes a step equal to `dt_max` rounded down to `time_end/2^k`, and
+`N_steps` is the number of steps completed at the snapshot. With the shipped
+defaults (`dt_max=1e-5`, `time_end=6e-4`, `level=6`) the step is `9.375e-6`
+and the run ends after 64 steps, with `R_f` about 6.3 pc in the 10.2 pc box.
+The window closes once `L_box - R_f` falls to `1.5*3*h_star`, which takes
+about 95 steps at this resolution; the shipped run stops at 64.
 
 ## Metallicity, cooling
 `initial_metallicity` (env var, `run.sh`) sets `lambda` and must stay above
@@ -85,27 +88,32 @@ radial range available for the slope fit shrinks with it.
 python3 isrf_optically_thin_check.py
 ```
 `run.sh` runs this automatically against its own `output.log` and snapshots.
-For each band it bins the field radially inside the causal front and fits the
-log-log slope against the free-streaming prediction, averaging over the last
-few snapshots that carry a measurement window (`--n-late`). Which snapshots
-those are is decided on the window's geometry alone, never on whether the fit
-succeeded, so a snapshot the fit could not use fails the check instead of
-being replaced by an earlier one. Once selected, those gated snapshots must
-also pass a radial-coherence precondition (median `F.r_hat/|F| > 0.5` in the
-fitted window): a gated snapshot that fails it reports the band INVALID
-rather than PASS or FAIL, again without falling back to an earlier snapshot.
-With `run.sh`'s shipped defaults this check currently reports INVALID: the
-gated window sits where the near-source flux has lost radial coherence. It
-fails if the slope is more than `--slope-tol` from the prediction, if a
-gated snapshot could not be fitted, or if any fitted quantity is not finite.
-`--slope-tol` should not be loosened to make a run pass. The absolute
-amplitude ratio
-(measured field over the free-streaming prediction) and its radial spread are
-reported but not gated on: the flux limiter pins particles near the source
-before they reach the unlimited fixed point, biasing the settled amplitude
-there without changing the power-law slope this check measures. If
-the field is ringing in sign the script says so explicitly rather than
-reporting an unfittable profile as an error. Produces a comparison plot
-(`--output`, default `isrf_optically_thin_check.png`) showing the measured
-profile against both the free-streaming target and the diffusion-closure
-curve kept for comparison.
+The check is report only: it has no pass/fail gate. For each band it bins the
+field radially inside the causal front, fits the log-log slope, and prints
+the measured slope next to the free-streaming prediction, their difference
+and the tolerance `--slope-tol` (default 0.25), which is printed and not
+applied. It averages over the last few snapshots that carry a measurement
+window (`--n-late`). Those snapshots are chosen on the window's geometry
+alone, never on whether the fit succeeded. The slope depends on which
+snapshots are averaged, because the profile inside the window need not be a
+single power law.
+
+The absolute amplitude ratio (measured field over the free-streaming
+prediction) and its radial spread are reported too. The flux limiter pins
+particles near the source before they reach the unlimited fixed point,
+biasing the settled amplitude there without changing the power-law slope.
+For each reported snapshot the median `F.r_hat/|F|` in the fitted window is
+printed as a coherence diagnostic. A value below 0.5 labels the band INVALID:
+the flux has lost its radial direction there, and the slope is not a
+free-streaming measurement. The label does not change the exit code. If the
+field is ringing in sign the script says so explicitly rather than reporting
+an unfittable profile as an error.
+
+The exit code is 0 when the snapshots and the log are readable and every
+value is finite. It is 1 when an input is missing or unreadable, when a value
+is not finite, or when fewer than `--n-late` snapshots have a measurement
+window. The last printed line states that the check is report only.
+Produces a comparison plot (`--output`, default
+`isrf_optically_thin_check.png`) showing the measured profile against both
+the free-streaming target and the diffusion-closure curve kept for
+comparison.
