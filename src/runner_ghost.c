@@ -2271,7 +2271,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Use the splitting mass threshold to derefine */
       float mass_deref;
-      /* Derefine at 0.5 of average, 0.25 of splitting
+      /* Derefine at 0.5 of average, 0.25 of splitting */
       mass_deref = 0.25 * e->hydro_properties->particle_splitting_mass_threshold;
 
       /* Derefine if mass below threshold and volume below threshold */
