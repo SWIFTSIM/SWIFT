@@ -2,7 +2,8 @@ Hydro scheme comparison suite
 =============================
 
 Runs the standard hydro tests (Sod, Sedov, Noh, Gresho, Evrard, Kelvin-
-Helmholtz, square, Keplerian ring, Zel'dovich pancake) with several hydro
+Helmholtz, square, blob, NFW hydrostatic halo, Keplerian ring, Zel'dovich
+pancake) with several hydro
 schemes built from the same source tree and produces comparison plots and a
 summary table (steps, wall-clock time, energy conservation, L1 errors w.r.t.
 the analytic or reference solutions).
@@ -14,12 +15,13 @@ the analytic or reference solutions).
 
 The schemes are listed in schemes.txt ("<name> <configure flags>"). Each
 scheme is built in 2D and 3D with the Wendland C4 kernel (option -k) and the
-point-mass external potential (needed by the Keplerian ring). Builds are only
-redone when the binary is missing or -b is given.
+point-mass external potential (needed by the Keplerian ring); the NFW halo
+test uses a third build with the NFW potential. Builds are only redone when
+the binary is missing or -b is given.
 
 Resolutions / durations can be changed through environment variables, see
 the top of run_suite.sh (KH_L2, EVRARD_NPARTS, KEPLERIAN_T_END,
-ZELDOVICH_Z_END, SEDOV_GLASS, NOH_GLASS).
+ZELDOVICH_Z_END, SEDOV_GLASS, NOH_GLASS, BLOB_N, BLOB_T_END, NFW_T_END).
 
 Finished runs (marked by a DONE file) are not repeated: delete the run
 directory to redo it. The comparison plots can be regenerated on their own:
@@ -27,7 +29,7 @@ directory to redo it. The comparison plots can be regenerated on their own:
   python3 plot_comparison.py /path/to/output [test ...]
 
 Outputs:
-  builds/<scheme>_{2d,3d}/   copies of the source tree with the binaries
+  builds/<scheme>_{2d,3d,3dnfw}/  copies of the source tree with the binaries
   ics/<test>/                initial conditions shared by all schemes
   runs/<scheme>/<test>/      snapshots, output.log, statistics, the
                              example's own plotSolution.py figure

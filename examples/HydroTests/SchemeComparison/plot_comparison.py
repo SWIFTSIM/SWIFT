@@ -32,7 +32,8 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
-ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "zeldovich", "zeldovich_pert"]
+ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "zeldovich", "zeldovich_pert",
+             "blob", "nfw"]
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -53,10 +54,10 @@ def load(filename):
         d["boxsize"] = np.atleast_1d(f["/Header"].attrs["BoxSize"])
         if d["boxsize"].size == 1:
             d["boxsize"] = np.repeat(d["boxsize"], 3)
-        d["time"] = float(np.atleast_1d(f["/Header"].attrs["Time"])[0])
+        d["time"] = float(np.atleast_1d(f["/Header"].attrs.get("Time", 0.0))[0])
         d["a"] = float(np.atleast_1d(f["/Header"].attrs.get("Scale-factor", 1.0))[0])
         d["z"] = float(np.atleast_1d(f["/Header"].attrs.get("Redshift", 0.0))[0])
-        d["scheme"] = str(f["/HydroScheme"].attrs["Scheme"]) if "/HydroScheme" in f else ""
+        d["scheme"] = str(f["/HydroScheme"].attrs.get("Scheme", "")) if "/HydroScheme" in f else ""
         g = f["/PartType0"]
         d["pos"] = g["Coordinates"][:]
         d["vel"] = g["Velocities"][:]
@@ -70,7 +71,7 @@ def load(filename):
             d["U_L"] = float(np.atleast_1d(f["/Units"].attrs["Unit length in cgs (U_L)"])[0])
             d["U_M"] = float(np.atleast_1d(f["/Units"].attrs["Unit mass in cgs (U_M)"])[0])
             d["U_t"] = float(np.atleast_1d(f["/Units"].attrs["Unit time in cgs (U_t)"])[0])
-        if "/Cosmology" in f:
+        if "/Cosmology" in f and "H0 [internal units]" in f["/Cosmology"].attrs:
             d["H0"] = float(np.atleast_1d(f["/Cosmology"].attrs["H0 [internal units]"])[0])
     return d
 
@@ -780,10 +781,135 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
     return metrics
 
 
+def test_blob(root, schemes, out):
+    """Blob in a Mach 2.7 wind: projected density maps and the surviving blob
+    mass fraction (Agertz et al. 2007 criterion: rho > 0.64 rho_blob and
+    u < 0.9 u_ambient) as a function of time in units of tau_KH."""
+    # The example's wind has speed 1 (its sound speed is set for Mach 2.7)
+    tau_kh = (1.0 + 10.0) * 0.1 / (1.0 * np.sqrt(10.0))
+    times = [1.0, 2.0, 4.0]  # in tau_KH
+    fig, axes = plt.subplots(len(times), len(schemes) + 1,
+                             figsize=(3.6 * (len(schemes) + 1), 2.0 * len(times) + 1.0), squeeze=False)
+    metrics = {}
+    for i, t in enumerate(times):
+        data = load_all(root, schemes, "blob", "blob", time=t * tau_kh)
+        for j, s in enumerate(schemes):
+            ax = axes[i, j]
+            d = data[s]
+            if d is None:
+                ax.text(0.5, 0.5, "missing", ha="center", transform=ax.transAxes)
+                continue
+            # Mass-weighted projection along z
+            # Mass-weighted projection along z of the region around the blob and its wake
+            xmax = 0.6 * d["boxsize"][0]
+            H, xe, ye = np.histogram2d(d["pos"][:, 0], d["pos"][:, 1], bins=(300, 125),
+                                       range=[[0, xmax], [0, d["boxsize"][1]]], weights=d["m"])
+            ax.imshow(np.log10(H.T + 1e-10 * H.max()), origin="lower", extent=(0, xmax, 0, d["boxsize"][1]),
+                      cmap="viridis", vmin=np.log10(H.max()) - 1.5, vmax=np.log10(H.max()))
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_title(f"{s}, t={d['time'] / tau_kh:.1f} " + r"$\tau_{\rm KH}$", fontsize=9)
+        axes[i, -1].axis("off")
+    # Surviving blob mass fraction
+    ax = axes[0, -1]
+    ax.axis("on")
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "blob")
+        ic_file = os.path.join(run_dir, "blob.hdf5")
+        files = snapshot_files(run_dir, "blob")
+        if not files or not os.path.exists(ic_file):
+            continue
+        ic = load(ic_file)
+        centre = np.array([0.5, 0.5, 0.5])
+        blob_ids = np.sort(ic["ids"][np.sum((ic["pos"] - centre) ** 2, axis=1) < 0.1 ** 2])
+        # Reference blob density and ambient internal energy from the first snapshot
+        # (the example's units give rho_bg = 1024, not 1)
+        d0 = load(files[0])
+        in_blob0 = np.isin(d0["ids"], blob_ids)
+        rho_blob = float(np.median(d0["rho"][in_blob0]))
+        u_bg = float(np.median(d0["u"][~in_blob0]))
+        tt, frac = [], []
+        for f in files:
+            d = load(f)
+            in_blob = np.isin(d["ids"], blob_ids)
+            cold_dense = (d["rho"] > 0.64 * rho_blob) & (d["u"] < 0.9 * u_bg)
+            tt.append(d["time"] / tau_kh)
+            frac.append(float(np.sum(in_blob & cold_dense) / max(np.sum(in_blob), 1)))
+        ax.plot(tt, frac, "-o", ms=3, color=COLORS[j % len(COLORS)], label=s)
+        metrics[s] = {"blob_mass_frac_2tau": float(np.interp(2.0, tt, frac)),
+                      "blob_mass_frac_final": float(frac[-1]), "t_final_tauKH": float(tt[-1])}
+    ax.set_xlabel(r"$t / \tau_{\rm KH}$")
+    ax.set_ylabel("blob mass fraction")
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=7)
+    fig.suptitle("Blob test (3D), projected density")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "blob.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_nfw(root, schemes, out):
+    """Gas in hydrostatic equilibrium in an NFW potential: density profile at
+    the end compared with the initial one."""
+    fig, axes = plt.subplots(2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 6.0), squeeze=False)
+    metrics = {}
+    edges = np.logspace(np.log10(0.5), np.log10(100.0), 36)
+    rb = np.sqrt(edges[1:] * edges[:-1])
+
+    def profile(d):
+        c = 0.5 * d["boxsize"]
+        r = np.sqrt(np.sum((d["pos"] - c) ** 2, axis=1))
+        _, rho, _ = binned(r, d["rho"], edges)
+        return rb, rho
+
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "nfw")
+        ic_file = os.path.join(run_dir, "nfw.hdf5")
+        f = pick_snapshot(run_dir, "snapshot")
+        if f is None or not os.path.exists(ic_file):
+            axes[0, j].text(0.5, 0.5, "missing", ha="center", transform=axes[0, j].transAxes)
+            continue
+        ic, d = load(ic_file), load(f)
+        r0, rho0 = profile(ic)
+        r1, rho1 = profile(d)
+        ax = axes[0, j]
+        ax.loglog(r0, rho0, "k-", lw=1, label="initial")
+        ax.loglog(r1, rho1, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=f"t={d['time']:.2f}")
+        ax.set_title(s)
+        ax.set_ylabel(r"$\rho$")
+        ax.set_xlabel("r")
+        ax.legend(fontsize=7)
+        ax = axes[1, j]
+        ax.semilogx(r1, rho1 / rho0, "-", color=COLORS[j % len(COLORS)], lw=1.3)
+        ax.axhline(1.0, color="k", lw=0.8)
+        ax.set_ylim(0.5, 1.5)
+        ax.set_xlabel("r")
+        ax.set_ylabel(r"$\rho / \rho_{\rm initial}$")
+        axes[0, -1].loglog(r1, rho1, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        axes[1, -1].semilogx(r1, rho1 / rho0, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        sel = (rb > 1.0) & (rb < 50.0) & np.isfinite(rho1) & np.isfinite(rho0)
+        metrics[s] = {"L1_logrho_1-50": float(np.mean(np.abs(np.log10(rho1[sel] / rho0[sel])))),
+                      "rho_ratio_r<2": float(np.nanmean((rho1 / rho0)[rb < 2.0]))}
+        if j == 0:
+            axes[0, -1].loglog(r0, rho0, "k-", lw=1, label="initial")
+    axes[0, -1].set_title("overlay")
+    axes[0, -1].legend(fontsize=7)
+    axes[1, -1].axhline(1.0, color="k", lw=0.8)
+    axes[1, -1].set_ylim(0.5, 1.5)
+    axes[1, -1].legend(fontsize=7)
+    fig.suptitle("NFW hydrostatic halo (3D), gas density profile")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "nfw.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
 TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
          "evrard": test_evrard, "kh": test_kh, "square": test_square,
          "keplerian": test_keplerian, "zeldovich": test_zeldovich,
-         "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert")}
+         "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
+         "blob": test_blob, "nfw": test_nfw}
 
 
 # ---------------------------------------------------------------------------

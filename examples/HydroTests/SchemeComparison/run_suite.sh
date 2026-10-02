@@ -18,7 +18,7 @@
 #   -h        this help
 #
 # Layout of the output directory:
-#   builds/<scheme>_{2d,3d}/   source copies + binaries
+#   builds/<scheme>_{2d,3d,3dnfw}/   source copies + binaries
 #   ics/<test>/                initial conditions (shared by all schemes)
 #   runs/<scheme>/<test>/      snapshots, logs, statistics, example plots
 #   plots/                     comparison figures and summary.md
@@ -49,11 +49,14 @@ DO_PLOT=1
 : "${ZELDOVICH_PERTURB:=0.1}"   # Zeldovich_pert: transverse random displacement in units of the spacing
 : "${SEDOV_GLASS:=glassCube_64}"
 : "${NOH_GLASS:=glassCube_64}"
+: "${BLOB_N:=64}"               # Blob: makeIC.py's num_on_side (BCC lattice: N^3/4 particles per unit cube, N even)
+: "${BLOB_T_END:=1.75}"         # Blob: end time (tau_KH = 0.348 for the example's set-up: wind speed 1, Mach 2.7)
+: "${NFW_T_END:=1.0}"           # NFW hydrostatic halo: end time (internal units, ~Gyr)
 
 GLASS_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs
 REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
-ALL_TESTS="gresho square zeldovich sod keplerian kh noh evrard sedov zeldovich_pert"
+ALL_TESTS="gresho square zeldovich sod keplerian kh noh evrard sedov zeldovich_pert blob nfw"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bnph" opt; do
@@ -104,6 +107,8 @@ done < "$SCHEMES_FILE"
 # test_<name> sets: DIM, EXAMPLE (relative to examples/), YML, IC (file name),
 # FLAGS (SWIFT run-time flags), PARAMS (-P overrides), PLOT_SNAP (snapshot
 # passed to the example's plotSolution.py; empty: none), and defines make_ic().
+# Tests needing a build with different common flags set BUILD (default: the
+# "<dim>d" build of the scheme), see BUILD_FLAGS below.
 test_sod() {
   DIM=3; EXAMPLE=HydroTests/SodShock_3D; YML=sodShock.yml; IC=sodShock.hdf5
   FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=1
@@ -186,6 +191,38 @@ PYEOF
   }
 }
 
+# Blob test (Agertz et al. 2007 set-up as in the SPHENIX paper): a dense
+# (rho = 10) sphere of radius 0.1 in a Mach 2.7 wind, 4 x 1 x 1 box.
+test_blob() {
+  DIM=3; EXAMPLE=HydroTests/BlobTest_3D; YML=blob.yml; IC=blob.hdf5
+  FLAGS="--hydro"
+  PARAMS="-P TimeIntegration:time_end:$BLOB_T_END -P Snapshots:delta_time:0.348"
+  PLOT_SNAP=""
+  make_ic() {
+    sed -i "s/num_on_side=64/num_on_side=$BLOB_N/" makeIC.py
+    python3 makeIC.py
+    # Recent swiftsimio writers use the plural dataset name; SWIFT reads the singular one
+    python3 -c "
+import h5py
+with h5py.File('blob.hdf5', 'r+') as f:
+    g = f['PartType0']
+    if 'SmoothingLength' not in g and 'SmoothingLengths' in g:
+        g.move('SmoothingLengths', 'SmoothingLength')
+"
+  }
+}
+# Gas in hydrostatic equilibrium in a fixed NFW potential (plus self-gravity);
+# needs a build with the NFW external potential.
+test_nfw() {
+  DIM=3; BUILD=3dnfw; EXAMPLE=HydroTests/NFW_Hydrostatic; YML=NFW_Hydrostatic.yml; IC=nfw.hdf5
+  FLAGS="--hydro --external-gravity --self-gravity"
+  # Current SWIFT requires Gravity:epsilon_fmm > 0 even with the geometric MAC of
+  # the example's file; use the standard adaptive MAC instead.
+  PARAMS="-P TimeIntegration:time_end:$NFW_T_END -P Gravity:MAC:adaptive -P Gravity:epsilon_fmm:0.001"
+  PLOT_SNAP=""
+  make_ic() { [[ -e nfw.hdf5 ]] || wget -q $GLASS_URL/NFW_Hydrostatic/nfw.hdf5; }
+}
+
 get_glass() {
   for g in "$@"; do
     [[ -e $g.hdf5 ]] || wget -q "$GLASS_URL/$g.hdf5" || { echo "Cannot fetch $g"; return 1; }
@@ -195,11 +232,19 @@ get_glass() {
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
+# Build flavours: suffix -> configure flags added to COMMON_FLAGS (the
+# external potential of COMMON_FLAGS is replaced for the NFW build).
+declare -A BUILD_FLAGS=(
+  [2d]="--with-hydro-dimension=2"
+  [3d]=""
+  [3dnfw]="--with-ext-potential=nfw"
+)
+
 build_one() {
-  local name=$1 dim=$2
-  local dir=$OUT_DIR/builds/${name}_${dim}d
+  local name=$1 build=$2
+  local dir=$OUT_DIR/builds/${name}_${build}
   if [[ $DO_BUILD -eq 0 && -x $dir/swift ]]; then return 0; fi
-  log "Building $name (${dim}D) in $dir"
+  log "Building $name ($build) in $dir"
   mkdir -p "$dir"
   # Copy the sources only: no build products of the source tree (in particular
   # not its swift binary, which would mask a failed build here).
@@ -209,13 +254,13 @@ build_one() {
     --exclude='/swift_fof_mpi' --exclude='*.png' --exclude='*.pdf' \
     --exclude='restart' --exclude='suite_output' --exclude='results_*' \
     "$SRC_DIR/" "$dir/" || return 1
-  local dimflag=""
-  [[ $dim -eq 2 ]] && dimflag="--with-hydro-dimension=2"
-  if ! ( cd "$dir" && ./autogen.sh && ./configure $COMMON_FLAGS $dimflag ${SCHEME_FLAGS[$name]} \
+  local common=$COMMON_FLAGS
+  [[ ${BUILD_FLAGS[$build]} == *--with-ext-potential* ]] && common=${common/--with-ext-potential=point-mass-softened/}
+  if ! ( cd "$dir" && ./autogen.sh && ./configure $common ${BUILD_FLAGS[$build]} ${SCHEME_FLAGS[$name]} \
       && make -j"$THREADS" ) > "$dir/build.log" 2>&1; then
-    echo "Build of ${name}_${dim}d failed, see $dir/build.log"; return 1
+    echo "Build of ${name}_${build} failed, see $dir/build.log"; return 1
   fi
-  [[ -x $dir/swift ]] || { echo "Build of ${name}_${dim}d produced no binary"; return 1; }
+  [[ -x $dir/swift ]] || { echo "Build of ${name}_${build} produced no binary"; return 1; }
 }
 
 # ---------------------------------------------------------------------------
@@ -242,10 +287,12 @@ prepare_ic() {
 # ---------------------------------------------------------------------------
 run_one() {
   local scheme=$1 test=$2
+  BUILD=""
   test_$test
+  [[ -z $BUILD ]] && BUILD=${DIM}d
   local icdir=$OUT_DIR/ics/$test
   local dir=$OUT_DIR/runs/$scheme/$test
-  local swift=$OUT_DIR/builds/${scheme}_${DIM}d/swift
+  local swift=$OUT_DIR/builds/${scheme}_${BUILD}/swift
   if [[ -e $dir/DONE ]]; then log "$scheme/$test already done"; return 0; fi
   log "Running $test with $scheme"
   rm -rf "$dir"; mkdir -p "$dir"
@@ -271,8 +318,14 @@ run_one() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+# Only the builds needed by the selected tests
+NEEDED_BUILDS=""
+for t in $TESTS; do
+  BUILD=""; test_$t; [[ -z $BUILD ]] && BUILD=${DIM}d
+  [[ " $NEEDED_BUILDS " == *" $BUILD "* ]] || NEEDED_BUILDS="$NEEDED_BUILDS $BUILD"
+done
 for s in "${SCHEME_NAMES[@]}"; do
-  for d in 2 3; do build_one "$s" "$d" || exit 1; done
+  for b in $NEEDED_BUILDS; do build_one "$s" "$b" || exit 1; done
 done
 
 if [[ $DO_RUN -eq 1 ]]; then
