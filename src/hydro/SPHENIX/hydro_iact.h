@@ -484,6 +484,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
+  /* Inertia tensor contributions */
+  pi->force.inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
+  pi->force.inertia_tensor[1] += mj * (r2 - dx[1] * dx[1]);
+  pi->force.inertia_tensor[2] += mj * (r2 - dx[2] * dx[2]);
+  pi->force.inertia_tensor[3] -= mj * dx[0] * dx[1];
+  pi->force.inertia_tensor[4] -= mj * dx[0] * dx[2];
+  pi->force.inertia_tensor[5] -= mj * dx[1] * dx[2];
+
+  pj->force.inertia_tensor[0] += mi * (r2 - dx[0] * dx[0]);
+  pj->force.inertia_tensor[1] += mi * (r2 - dx[1] * dx[1]);
+  pj->force.inertia_tensor[2] += mi * (r2 - dx[2] * dx[2]);
+  pj->force.inertia_tensor[3] -= mi * dx[0] * dx[1];
+  pj->force.inertia_tensor[4] -= mi * dx[0] * dx[2];
+  pj->force.inertia_tensor[5] -= mi * dx[1] * dx[2];
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
   pj->n_force += wi + wj;
@@ -624,6 +639,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+
+  /* Inertia tensor contribution */
+  pi->force.inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
+  pi->force.inertia_tensor[1] += mj * (r2 - dx[1] * dx[1]);
+  pi->force.inertia_tensor[2] += mj * (r2 - dx[2] * dx[2]);
+  pi->force.inertia_tensor[3] -= mj * dx[0] * dx[1];
+  pi->force.inertia_tensor[4] -= mj * dx[0] * dx[2];
+  pi->force.inertia_tensor[5] -= mj * dx[1] * dx[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

@@ -201,6 +201,12 @@ void space_init_unique_id(struct space *s, int nr_nodes) {
         max(s->unique_id.global_next_id, s->bparts[i].id);
   }
 
+  /* Check the siparts for the max id. */
+  for (size_t i = 0; i < s->nr_siparts; i++) {
+    s->unique_id.global_next_id =
+        max(s->unique_id.global_next_id, s->siparts[i].id);
+  }
+
 #ifdef WITH_MPI
   /* Find the global max. */
   MPI_Allreduce(MPI_IN_PLACE, &s->unique_id.global_next_id, 1, MPI_LONG_LONG,

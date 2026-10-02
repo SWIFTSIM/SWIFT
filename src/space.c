@@ -2393,6 +2393,8 @@ long long space_get_max_parts_id(struct space *s) {
     max_id = max(max_id, s->sparts[i].id);
   for (size_t i = 0; i < s->nr_bparts; ++i)
     max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_siparts; ++i)
+    max_id = max(max_id, s->siparts[i].id);
 
   /* Note: We Explicitly do *NOT* consider background particles */
   for (size_t i = 0; i < s->nr_gparts; ++i)
