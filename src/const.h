@@ -115,8 +115,7 @@
 #define SHADOWSWIFT_FLUX_LIMITER
 
 /*! @brief Option to enable using density to compute centre of mass, assumes linear gradients */
-#define CENTER_OF_MASS_DENSITY
-
+//#define CENTER_OF_MASS_DENSITY
 
 /*! @brief Option controlling output of grids */
 // #define SHADOWSWIFT_OUTPUT_GRIDS
@@ -171,7 +170,7 @@
 #define THERMAL_ENERGY_SWITCH_SPRINGEL_MACH 2
 #define THERMAL_ENERGY_SWITCH_ASENSIO 3
 #define THERMAL_ENERGY_SWITCH_ASENSIO_COSMO 4 // Excludes entropy switch (Asensio, private communication)
-#define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_ASENSIO
+#define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_NONE
 
 /* Options controlling derefinement of particles */
 #define SHADOWSWIFT_DEREFINEMENT_WEIGHTS_AREA 1
