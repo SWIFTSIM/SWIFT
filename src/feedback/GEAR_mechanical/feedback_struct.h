@@ -40,12 +40,20 @@ struct feedback_xpart_data {
   /*! Mass received from supernovae and stellar winds */
   float delta_mass;
 
-  /*! Physical specific energy received from supernovae and stellar winds */
-  float delta_u;
+  /*! Physical thermal energy received from supernovae and stellar winds */
+  float delta_E_th;
 
   /*! Sum over the feedback events of the squared norm of the physical
       momentum received from the blastwave */
   float delta_p_norm_2_sum;
+
+  /*! Sum over the feedback events of the physical kinetic energy that each
+      event gave to the particle alone, in the peculiar frame. */
+  float delta_E_kin_events;
+
+  /*! Sum over the feedback events of the physical Hubble flow velocity
+     (relative to the star) dotted with the feedback momentum of the event. */
+  float delta_p_hubble_work;
 
   /*! Comoving feedback momentum received from the blastwave. */
   float delta_p[3];

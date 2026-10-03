@@ -25,9 +25,9 @@ __attribute__((always_inline)) INLINE static void feedback_debug_particle(
   if (xp != NULL) {
     warning("[PID%lld] feedback_xpart_data:", p->id);
     warning(
-        "[PID%lld] delta_mass = %.3e, delta_u = %.3e, delta_p = [%.3e, %.3e, "
-        "%.3e]",
-        p->id, xp->feedback_data.delta_mass, xp->feedback_data.delta_u,
+        "[PID%lld] delta_mass = %.3e, delta_E_th = %.3e, delta_p = [%.3e, "
+        "%.3e, %.3e]",
+        p->id, xp->feedback_data.delta_mass, xp->feedback_data.delta_E_th,
         xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
         xp->feedback_data.delta_p[2]);
   }
