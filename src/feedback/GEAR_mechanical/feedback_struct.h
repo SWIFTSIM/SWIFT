@@ -20,6 +20,10 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_MECHANICAL_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_MECHANICAL_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Local includes */
 #include "chemistry_struct.h"
 
 /**
@@ -31,6 +35,34 @@ struct feedback_part_data {
     /*! Neighbour number count. */
     float wcount;
   } density;
+};
+
+/**
+ * @brief Momentum and thermal energy of the feedback events of one step, kept
+ * for the tracers and given to them at the update, after the multiple-event
+ * correction. The struct is empty without tracers, so it takes no memory.
+ */
+struct feedback_tracers_pending {
+#if defined(TRACERS_GEAR)
+  /*! Sum over the supernova events of the physical momentum received, in the
+      frame of the particle (mass after the event times the velocity change) */
+  float p_sum_SN;
+
+  /*! Largest momentum of one supernova event, same frame */
+  float p_max_SN;
+
+  /*! Physical thermal energy received from the supernova events */
+  float E_th_SN;
+
+  /*! Same as p_sum_SN for the stellar winds */
+  float p_sum_SW;
+
+  /*! Same as p_max_SN for the stellar winds */
+  float p_max_SW;
+
+  /*! Same as E_th_SN for the stellar winds */
+  float E_th_SW;
+#endif /* defined(TRACERS_GEAR) */
 };
 
 /**
@@ -55,25 +87,9 @@ struct feedback_xpart_data {
      (relative to the star) dotted with the feedback momentum of the event. */
   float delta_p_hubble_work;
 
-  /*! Sum over the supernova events of the physical momentum received, in the
-      frame of the particle (mass after the event times the velocity change).
-      Given to the tracers at the update. */
-  float tracer_p_sum_SN;
-
-  /*! Largest momentum of one supernova event, same frame. */
-  float tracer_p_max_SN;
-
-  /*! Physical thermal energy received from the supernova events. */
-  float tracer_E_th_SN;
-
-  /*! Same as tracer_p_sum_SN for the stellar winds. */
-  float tracer_p_sum_SW;
-
-  /*! Same as tracer_p_max_SN for the stellar winds. */
-  float tracer_p_max_SW;
-
-  /*! Same as tracer_E_th_SN for the stellar winds. */
-  float tracer_E_th_SW;
+  /*! Values of the events of this step for the tracers (empty without
+      tracers) */
+  struct feedback_tracers_pending tracers_pending;
 
   /*! Comoving feedback momentum received from the blastwave. */
   float delta_p[3];

@@ -21,11 +21,11 @@
 
 /* Local includes */
 #include "feedback.h"
+#include "feedback_tracers.h"
 #include "hydro.h"
 #include "mechanical_feedback_iact.h"
 #include "random.h"
 #include "timestep_sync_part.h"
-#include "tracers.h"
 
 #include <math.h>
 
@@ -408,11 +408,13 @@ runner_iact_nonsym_feedback_apply(
                                    -a2H * dx[1] + xpj->v_full[1],
                                    -a2H * dx[2] + xpj->v_full[2]};
 
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
   /* Physical peculiar velocity and Hubble flow (relative to the star) of the
-     gas, for the energy balance of multiple events. */
+     gas, for the tracers and the energy balance of multiple events. */
   const float vj_pec[3] = {xpj->v_full[0] * a_inv, xpj->v_full[1] * a_inv,
                            xpj->v_full[2] * a_inv};
   const float vj_hubble[3] = {-a * H * dx[0], -a * H * dx[1], -a * H * dx[2]};
+#endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
   /* Compute the _physical_ relative velocity between the particles. */
   const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,
@@ -489,10 +491,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* The tracers get these values in feedback_update_part(), after the
        multiple-event correction */
-    xpj->feedback_data.tracer_p_sum_SW += delta_p_mag_winds;
-    xpj->feedback_data.tracer_p_max_SW =
-        max(xpj->feedback_data.tracer_p_max_SW, delta_p_mag_winds);
-    xpj->feedback_data.tracer_E_th_SW += dU_SW;
+    feedback_tracers_pending_add_SW(xpj, delta_p_mag_winds, dU_SW);
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
@@ -582,19 +581,18 @@ runner_iact_nonsym_feedback_apply(
     /* cos_out = +1 if the kick points away from the star (dx = si - pj) */
     const double dp_SN_norm =
         sqrt(dp_SN[0] * dp_SN[0] + dp_SN[1] * dp_SN[1] + dp_SN[2] * dp_SN[2]);
-    const double cos_out =
-        -(dp_SN[0] * dx[0] + dp_SN[1] * dx[1] + dp_SN[2] * dx[2]) /
-        (dp_SN_norm * sqrt(r2));
-    message("[SN kick direction] id=%lld r=%e |dp|=%e cos_out=%f", pj->id,
-            sqrt(r2), dp_SN_norm, cos_out);
+    if (dp_SN_norm > 0.0) {
+      const double cos_out =
+          -(dp_SN[0] * dx[0] + dp_SN[1] * dx[1] + dp_SN[2] * dx[2]) /
+          (dp_SN_norm * sqrt(r2));
+      message("[SN kick direction] id=%lld r=%e |dp|=%e cos_out=%f", pj->id,
+              sqrt(r2), dp_SN_norm, cos_out);
+    }
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
     /* The tracers get these values in feedback_update_part(), after the
        multiple-event correction */
-    xpj->feedback_data.tracer_p_sum_SN += delta_p_mag_supernovae;
-    xpj->feedback_data.tracer_p_max_SN =
-        max(xpj->feedback_data.tracer_p_max_SN, delta_p_mag_supernovae);
-    xpj->feedback_data.tracer_E_th_SN += dU;
+    feedback_tracers_pending_add_SN(xpj, delta_p_mag_supernovae, dU);
 
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;
