@@ -125,7 +125,7 @@ INLINE static double feedback_get_enrichment_timestep(
 
   if (with_cosmology) {
     return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->last_enrichment_time, cosmo->a);
+        cosmo, sp->last_enrichment_time, cosmo->a);
   } else {
     return time - sp->last_enrichment_time;
   }
@@ -267,16 +267,20 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param with_cosmology Are we running with cosmology on?
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (unused here: EAGLE_thermal recomputes its supernova rate fresh every
+ * call rather than reconstructing a discrete event's age from the bin).
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* Special case for new-born stars */
   if (with_cosmology) {
-    if (sp->birth_scale_factor == (float)cosmo->a) {
+    if (sp->birth_scale_factor == cosmo->a) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
@@ -285,7 +289,7 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
       return;
     }
   } else {
-    if (sp->birth_time == (float)time) {
+    if (sp->birth_time == time) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
@@ -299,9 +303,9 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
   double age_of_star;
   if (with_cosmology) {
     age_of_star = cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+        cosmo, sp->birth_scale_factor, cosmo->a);
   } else {
-    age_of_star = time - (double)sp->birth_time;
+    age_of_star = time - sp->birth_time;
   }
 
   /* Is the star still young? */

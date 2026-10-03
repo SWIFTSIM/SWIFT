@@ -467,7 +467,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
   /* Sum the contributions from SNIa and SNII */
   sp->feedback_data.supernovae.mass_ejected =
-      mass_frac_snii * sp->sf_data.birth_mass +
+      mass_frac_snii * m_init * phys_const->const_solar_mass +
       mass_snia * phys_const->const_solar_mass;
 
   /* Check whether the mass that has to be expelled by SN in case the cumulated
@@ -509,8 +509,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
           &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
-  const float birth_mass_Msun =
-      sp->sf_data.birth_mass * phys_const->const_solar_mass;
+  const float birth_mass_Msun = m_init;
   chemistry_set_star_supernovae_ejected_yields(
       sp, birth_mass_Msun, non_processed,
       /*number_snii*/ 1, number_snia_f, snii_yields, snia_yields, phys_const);
@@ -603,6 +602,64 @@ void stellar_evolution_compute_discrete_feedback_properties(
 }
 
 /**
+ * @brief Pick the upper-mass bound for a continuous-emission feedback
+ * channel (radiation, radiation pressure, stellar winds) over this
+ * timestep's mass window.
+ *
+ * m_beg_step credits stars that die partway through the step with the
+ * FULL step's emission (overestimate); m_end_step drops the partial
+ * contribution of every star that died during the step (underestimate,
+ * today's validated default). The other schemes are point-estimate
+ * compromises between the two. All schemes agree when the window has zero
+ * width (single stars, or a continuous-IMF particle clamped at the
+ * discrete-mass split, see f493e9158).
+ *
+ * @param sm The #stellar_model (only used for the IMF, needed by
+ * mass_sup_scheme_imf_weighted).
+ * @param m_end_step Mass of a star ending its life at the end of the step
+ * (solMass).
+ * @param m_beg_step Mass of a star ending its life at the beginning of the
+ * step (solMass).
+ * @param scheme Which point estimate to return.
+ * @return The representative mass to use as the channel's upper bound
+ * (solMass).
+ */
+float stellar_evolution_get_continuous_feedback_mass_sup(
+    const struct stellar_model *sm, float m_end_step, float m_beg_step,
+    enum stellar_evolution_mass_sup_scheme scheme) {
+
+  /* The physically valid ordering is m_end_step <= m_beg_step; normalise
+     defensively so every scheme below can assume it. */
+  const float m_lo = min(m_end_step, m_beg_step);
+  const float m_hi = max(m_end_step, m_beg_step);
+
+  /* Zero-width window: every scheme must return the single mass available. */
+  if (m_lo == m_hi) return m_lo;
+
+  switch (scheme) {
+    case mass_sup_scheme_beg_step:
+      return m_hi;
+    case mass_sup_scheme_end_step:
+      return m_lo;
+    case mass_sup_scheme_midpoint:
+      return 0.5f * (m_lo + m_hi);
+    case mass_sup_scheme_imf_weighted: {
+      const float number_fraction =
+          initial_mass_function_get_imf_number_fraction(&sm->imf, m_lo, m_hi);
+      /* Guard against dividing by zero if the IMF puts no stars in this
+         (already non-zero-width) window. */
+      if (number_fraction <= 0.0f) return m_lo;
+      const float mass_fraction =
+          initial_mass_function_get_imf_mass_fraction(&sm->imf, m_lo, m_hi);
+      return mass_fraction / number_fraction;
+    }
+    default:
+      error("Unknown stellar_evolution_mass_sup_scheme: %d", (int)scheme);
+      return m_lo;
+  }
+}
+
+/**
  * @brief Compute the pre-supernova feedback's properties.
  * At the end of this function, the mass and energy ejected by stellar wind are
  * correctly stored in the feedback_data struct in internal units.
@@ -625,24 +682,17 @@ void stellar_evolution_compute_preSN_properties(
     const float dt_myr, const float m_beg_step, const float m_end_step,
     const float m_init) {
 
-  /* the end/beg step mass are already limited to the imf if SSP or continuous
-   * IMF stars */
-  float m_end_lim = m_end_step;
-
-  /* Here, for SSP and continuous part of IMF stars,
-   it means the part of stars that explode is behind the IMF considered.
-   Thus we do not take into account this part.
-   */
-  if (m_beg_step < m_end_lim) {
-    m_end_lim = m_beg_step;
-  }
+  /* m_beg_step/m_end_step are already limited to the IMF for SSP and
+     continuous-IMF stars. */
+  const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
+      sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
   /* Get the log of the metallicity normalised by solar metallicity */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const float log_metallicity =
       log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
-  const float log_m = log10(m_beg_step);
+  const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
   if (sp->star_type == single_star) {
@@ -771,6 +821,13 @@ void stellar_evolution_evolve_individual_star(
   /* Check that this function is called for single_star only. */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
+  }
+
+  /* One-shot latch: never re-enter a star that has already exploded, since
+     star_age_beg_step is rebuilt from sp->time_bin every call and can fall
+     back below lifetime_myr on a later call. */
+  if (sp->feedback_data.is_dead) {
+    return;
   }
 
   /* Convert the inputs */
@@ -929,6 +986,13 @@ void stellar_evolution_compute_SN_feedback_individual_star(
     error("This function can only be called for single/individual star!");
   }
 
+  /* Self-contained one-shot guard: do not trust the caller alone to keep
+     an already-exploded star out (see
+     stellar_evolution_evolve_individual_star). */
+  if (sp->feedback_data.is_dead) {
+    return;
+  }
+
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_end_step_myr =
@@ -961,6 +1025,10 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   /* Get the integer number of supernovae */
   const int number_snia = 0;
   const int number_snii = 1;
+
+  /* A single star has now had its one core-collapse SN: latch it dead here,
+     at the injection itself, rather than only relying on a later age check. */
+  sp->feedback_data.is_dead = 1;
 
   /* Save the number of supernovae */
   sp->feedback_data.number_snia = number_snia;
@@ -1334,6 +1402,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* Limit the mass interval to the IMF boundaries */
   m_end_step = max(m_end_step, sm->imf.mass_min);
+  m_end_step = min(m_end_step, sm->imf.mass_max);
   m_beg_step = min(m_beg_step, sm->imf.mass_max);
 
   /* considering only the "alive" part of the IMF, i.e., we stop only if we are
@@ -1341,12 +1410,19 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (m_beg_step < sm->imf.mass_min) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback for the discrete part. */
+  special treatment. They do not contain stars above the mass that separate
+  the IMF into two parts (variable called minimal_discrete_mass_Msun in the
+  sink module). So, if m_beg_step > minimal_discrete_mass_Msun, skip
+  feedback for the discrete part. m_end_step needs the same clamp: winds are
+  continuous emission, not discrete death events, so a young population with
+  m_end_step above minimal_discrete_mass_Msun still has every star up to
+  that mass alive and emitting. The m_sup query point computed downstream
+  (stellar_evolution_get_continuous_feedback_mass_sup, via
+  stellar_evolution_compute_preSN_properties) must reach exactly that far,
+  not stop early or overshoot. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
+    m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
   }
 
   /* Compute the initial mass. The initial mass is different if the star

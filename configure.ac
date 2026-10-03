@@ -2792,7 +2792,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2851,6 +2851,10 @@ case "$with_cooling" in
    PS2020)
       AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
       with_cooling_name="PS2020 (Ploeckinger+20 tables)"
+   ;;
+   TREECOOL)
+      AC_DEFINE([COOLING_TREECOOL], [1], [Cooling following the Katz, Weinberg & Hernquist (1996) primordial model])
+      with_cooling_name="TREECOOL (Katz+96 primordial H/He, tabulated UV background)"
    ;;
    COLIBRE)
       AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
@@ -3571,6 +3575,7 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 AC_CONFIG_FILES([tests/selectOutputParameters.yml])
 
