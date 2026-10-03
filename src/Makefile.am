@@ -504,6 +504,7 @@ nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback.h feedback/GEAR_mechanical/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_properties.h feedback/GEAR_mechanical/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_debug.h feedback/GEAR_mechanical/mechanical_feedback_iact.h
+nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_tracers.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h
