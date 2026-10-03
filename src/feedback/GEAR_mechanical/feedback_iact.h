@@ -408,6 +408,12 @@ runner_iact_nonsym_feedback_apply(
                                    -a2H * dx[1] + xpj->v_full[1],
                                    -a2H * dx[2] + xpj->v_full[2]};
 
+  /* Physical peculiar velocity and Hubble flow (relative to the star) of the
+     gas, for the energy balance of multiple events. */
+  const float vj_pec[3] = {xpj->v_full[0] * a_inv, xpj->v_full[1] * a_inv,
+                           xpj->v_full[2] * a_inv};
+  const float vj_hubble[3] = {-a * H * dx[0], -a * H * dx[1], -a * H * dx[2]};
+
   /* Compute the _physical_ relative velocity between the particles. */
   const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,
                           vi_plus_H_flow[2] * a_inv};
@@ -460,6 +466,11 @@ runner_iact_nonsym_feedback_apply(
       xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SW[i] * a;
     }
 
+    if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+      feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+          xpj, mj, new_mass, vj_pec, vj_hubble, dp_SW, dp_ejecta_SW);
+    }
+
     /* Physical lab-frame momentum given to pj, as in GEAR_thermal winds */
     delta_p_mag_winds = (float)sqrt(
         (dp_SW[0] + dp_ejecta_SW[0]) * (dp_SW[0] + dp_ejecta_SW[0]) +
@@ -467,8 +478,8 @@ runner_iact_nonsym_feedback_apply(
         (dp_SW[2] + dp_ejecta_SW[2]) * (dp_SW[2] + dp_ejecta_SW[2]));
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
-    /* Note: This is physical internal energy. See feedback_update_part(). */
-    xpj->feedback_data.delta_u += dU_SW / new_mass;
+    /* Note: This is physical thermal energy. See feedback_update_part(). */
+    xpj->feedback_data.delta_E_th += dU_SW;
 
     xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SW;
 
@@ -547,6 +558,11 @@ runner_iact_nonsym_feedback_apply(
       xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
     }
 
+    if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+      feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+          xpj, mj, new_mass, vj_pec, vj_hubble, dp_SN, dp_ejecta_SN);
+    }
+
     /* Physical momentum given to pj in its own frame, as in GEAR_thermal SN.
        It does not depend on the bulk motion of the star-gas pair. */
     const double dp_SN_rel[3] = {dp_SN[0] + dm_SN * (v_i_p[0] - v_j_p[0]),
@@ -557,8 +573,8 @@ runner_iact_nonsym_feedback_apply(
                     dp_SN_rel[2] * dp_SN_rel[2]);
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
-    /* Note: This is physical internal energy. See feedback_update_part(). */
-    xpj->feedback_data.delta_u += dU / new_mass;
+    /* Note: This is physical thermal energy. See feedback_update_part(). */
+    xpj->feedback_data.delta_E_th += dU;
     xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SN;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS

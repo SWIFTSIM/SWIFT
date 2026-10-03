@@ -52,6 +52,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   const float dm = xp->feedback_data.delta_mass;
   const float old_mass = hydro_get_mass(p);
   const float new_mass = old_mass + dm;
+  const float new_mass_inv = 1.0f / new_mass;
 
   if (xp->feedback_data.delta_mass < 0.) {
     error("Delta mass smaller than 0");
@@ -64,15 +65,15 @@ void feedback_update_part(struct part *p, struct xpart *xp,
      u_residual = 0. */
   const unsigned int N_SN = xp->feedback_data.number_SN;
   const unsigned int N_SW = xp->feedback_data.number_winds;
-  float f_corr = 1.f;
-  float u_residual = 0.f;
+  float f_corr = 1.0f;
+  float u_residual = 0.0f;
   if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
       (N_SN + N_SW > 1)) {
     f_corr = feedback_compute_momentum_correction_factor_for_multiple_sn_events(
         p, xp, cosmo);
     u_residual =
         feedback_compute_residual_internal_energy_for_multiple_sn_events(
-            xp, cosmo, new_mass);
+            xp, cosmo, old_mass, new_mass, f_corr);
   }
 
   /* Update the mass of p, as well as its gpart's friend */
@@ -84,10 +85,11 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update internal energy. The feedback can remove internal energy, e.g.
      when the gas recedes from the star, so keep it above the hydro floor. The
      comparison is explicit: a clamp does not shield a non-finite value. */
-  const float u =
-      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
+  const float u = hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass *
+                  new_mass_inv;
   const float u_min = e->hydro_properties->minimal_internal_energy;
-  const float u_feedback = u + xp->feedback_data.delta_u + u_residual;
+  const float u_feedback =
+      u + xp->feedback_data.delta_E_th * new_mass_inv + u_residual;
   const float u_new = (u_feedback > u_min) ? u_feedback : u_min;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
@@ -102,7 +104,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   for (int i = 0; i < 3; i++) {
     const float dp_prime =
         xp->feedback_data.delta_p_ejecta[i] + xp->feedback_data.delta_p[i];
-    const float dv = dp_prime / new_mass;
+    const float dv = dp_prime * new_mass_inv;
 
     xp->v_full[i] += dv;
     p->v[i] += dv;
@@ -113,8 +115,10 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   }
 
   /* Reset the values */
-  xp->feedback_data.delta_u = 0.0;
+  xp->feedback_data.delta_E_th = 0.0;
   xp->feedback_data.delta_p_norm_2_sum = 0.0;
+  xp->feedback_data.delta_E_kin_events = 0.0;
+  xp->feedback_data.delta_p_hubble_work = 0.0;
   xp->feedback_data.delta_mass = 0.0;
   xp->feedback_data.number_SN = 0;
   xp->feedback_data.number_winds = 0;
@@ -669,38 +673,129 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
 }
 
 /**
- * @brief Compute the specific internal energy to give to a #part when multiple
- * feedback events partly cancel each other.
+ * @brief Add the kinetic energy that a feedback event gives to the gas particle
+ * alone, to later check the energy balance when multiple events overlap.
  *
- * In the gas frame, the events were meant to give the kinetic energy
- * sum(|dp_e|^2) / (2 m). The summed momentum only gives |sum(dp_e)|^2 / (2 m).
- * The difference is given as thermal energy. It is zero when the momentum
- * correction factor is smaller than 1, since that factor already restores the
- * kinetic energy.
+ * The energy is evaluated in the peculiar frame of the gas: the event changes
+ * the momentum of the gas of mass m and velocity v by dp + dp_ejecta, and its
+ * mass to new_mass. The Hubble flow relative to the star does not enter this
+ * energy. Only the work of the feedback momentum against that flow is stored,
+ * because the momentum correction factor rescales it.
  *
- * Note: This function is called in feedback_update_part().
+ * Note: This function is called in runner_iact_nonsym_feedback_apply().
  *
- * Reference: https://arxiv.org/pdf/2603.17421
+ * @param xp The #xpart.
+ * @param mj The mass of the gas particle before the events.
+ * @param new_mass The mass of the gas particle after this event.
+ * @param v_pec The physical peculiar velocity of the gas particle.
+ * @param v_hubble The physical Hubble flow velocity of the gas particle
+ * relative to the star.
+ * @param dp The physical feedback momentum given by the event.
+ * @param dp_ejecta The physical momentum brought by the transferred mass.
+ */
+__attribute__((always_inline)) INLINE void
+feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+    struct xpart *xp, const float mj, const float new_mass,
+    const float v_pec[3], const float v_hubble[3], const double dp[3],
+    const double dp_ejecta[3]) {
+
+  const double dp_tot[3] = {dp[0] + dp_ejecta[0], dp[1] + dp_ejecta[1],
+                            dp[2] + dp_ejecta[2]};
+  const double v_norm_2 =
+      v_pec[0] * v_pec[0] + v_pec[1] * v_pec[1] + v_pec[2] * v_pec[2];
+  const double v_dot_dp =
+      v_pec[0] * dp_tot[0] + v_pec[1] * dp_tot[1] + v_pec[2] * dp_tot[2];
+  const double dp_tot_norm_2 =
+      dp_tot[0] * dp_tot[0] + dp_tot[1] * dp_tot[1] + dp_tot[2] * dp_tot[2];
+
+  /* Written as a difference of the energies to avoid the cancellation between
+     two large kinetic energies */
+  const double new_mass_inv = 1.0 / new_mass;
+  const double dE_kin =
+      0.5 *
+      (-mj * v_norm_2 * (new_mass - mj) + 2.0 * mj * v_dot_dp + dp_tot_norm_2) *
+      new_mass_inv;
+
+  xp->feedback_data.delta_E_kin_events += dE_kin;
+  xp->feedback_data.delta_p_hubble_work +=
+      v_hubble[0] * dp[0] + v_hubble[1] * dp[1] + v_hubble[2] * dp[2];
+}
+
+/**
+ * @brief Compute the specific internal energy to give to a #part to conserve
+ * the energy when multiple feedback events overlap.
+ *
+ * Each event gave away its thermal energy assuming that it is the only one to
+ * kick the gas. The gas actually receives the summed (and rescaled) momentum.
+ * The thermal energy absorbs the difference between the kinetic energy that the
+ * events intended to give and the kinetic energy that the gas gets, both in the
+ * peculiar frame. The work of the momentum against the Hubble flow relative to
+ * each star, which the events counted, is rescaled with the momentum.
+ *
+ * The result is clipped so that the correction never removes more thermal
+ * energy than the events gave.
+ *
+ * Note: This function is called in feedback_update_part(), before the velocity
+ * update.
  *
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
+ * @param old_mass The mass of the #part before the events.
  * @param new_mass The mass of the #part after all the events.
+ * @param f_corr The momentum correction factor.
  * @return The physical specific internal energy to add.
  */
 __attribute__((always_inline)) INLINE float
 feedback_compute_residual_internal_energy_for_multiple_sn_events(
-    const struct xpart *xp, const struct cosmology *cosmo,
-    const float new_mass) {
+    const struct xpart *xp, const struct cosmology *cosmo, const float old_mass,
+    const float new_mass, const float f_corr) {
 
-  /* Physical momenta, as in the momentum correction factor */
-  const float dp_sum_norm_2 = xp->feedback_data.delta_p_norm_2_sum;
-  const float dp[3] = {xp->feedback_data.delta_p[0] * cosmo->a_inv,
-                       xp->feedback_data.delta_p[1] * cosmo->a_inv,
-                       xp->feedback_data.delta_p[2] * cosmo->a_inv};
-  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  /* Physical peculiar velocity and momenta */
+  const double a_inv = cosmo->a_inv;
+  const double v[3] = {xp->v_full[0] * a_inv, xp->v_full[1] * a_inv,
+                       xp->v_full[2] * a_inv};
+  const double dp_tot[3] = {(xp->feedback_data.delta_p_ejecta[0] +
+                             f_corr * xp->feedback_data.delta_p[0]) *
+                                a_inv,
+                            (xp->feedback_data.delta_p_ejecta[1] +
+                             f_corr * xp->feedback_data.delta_p[1]) *
+                                a_inv,
+                            (xp->feedback_data.delta_p_ejecta[2] +
+                             f_corr * xp->feedback_data.delta_p[2]) *
+                                a_inv};
 
-  /* The events add up: the correction factor handles them */
-  if (dp_norm_2 >= dp_sum_norm_2) return 0.f;
+  const double v_norm_2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  const double v_dot_dp =
+      v[0] * dp_tot[0] + v[1] * dp_tot[1] + v[2] * dp_tot[2];
+  const double dp_tot_norm_2 =
+      dp_tot[0] * dp_tot[0] + dp_tot[1] * dp_tot[1] + dp_tot[2] * dp_tot[2];
 
-  return 0.5f * (dp_sum_norm_2 - dp_norm_2) / (new_mass * new_mass);
+  /* Kinetic energy actually given, same form as for one event */
+  const double new_mass_inv = 1.0 / new_mass;
+  const double dE_kin_actual = 0.5 *
+                               (-old_mass * v_norm_2 * (new_mass - old_mass) +
+                                2.0 * old_mass * v_dot_dp + dp_tot_norm_2) *
+                               new_mass_inv;
+
+  const double dE_residual =
+      xp->feedback_data.delta_E_kin_events +
+      (1.0 - f_corr) * xp->feedback_data.delta_p_hubble_work - dE_kin_actual;
+  double u_residual = dE_residual * new_mass_inv;
+
+  /* Do not remove more thermal energy than what the events gave */
+  const double u_events = max(xp->feedback_data.delta_E_th, 0.0) * new_mass_inv;
+  if (u_residual < -u_events) u_residual = -u_events;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  message(
+      "[Multiple events] N_SN = %d, N_SW = %d, f_corr = %e | dE_kin_events = "
+      "%e, hubble_work = %e, dE_kin_actual = %e | u_residual = %e (before clip "
+      "%e), delta_E_th = %e",
+      xp->feedback_data.number_SN, xp->feedback_data.number_winds, f_corr,
+      xp->feedback_data.delta_E_kin_events,
+      xp->feedback_data.delta_p_hubble_work, dE_kin_actual, u_residual,
+      dE_residual * new_mass_inv, xp->feedback_data.delta_E_th);
+#endif
+
+  return u_residual;
 }
