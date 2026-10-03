@@ -445,9 +445,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   const float cos_limit = magma_viscosity.cos_angle_limit;
 
-#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
-  /* MI1 uses G_i and G_j individually: test each of them. The averaged G can
-   * look fine while one of them is tilted too much or points the wrong way.
+#if defined(TRADITIONAL_SPH_ACCELERATION_TERM) || defined(MAGMA_MI3_FORMULATION)
+  /* MI1 and MI3 use G_i and G_j individually: test each of them. The averaged G
+   * can look fine while one of them is tilted too much or points the wrong way.
    * |G.dx| < cos(limit) |G| r  <=>  angle > limit. */
   const float G_i_norm =
       sqrtf(G_i[0] * G_i[0] + G_i[1] * G_i[1] + G_i[2] * G_i[2]);
@@ -529,7 +529,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * so for shear-dominated pairs v_ij . G can be negative although the pair
    * approaches along dx: Q would then turn internal energy into kinetic
    * energy. Only use Q where its heating term is positive. */
-#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+#if defined(TRADITIONAL_SPH_ACCELERATION_TERM) || defined(MAGMA_MI3_FORMULATION)
   /* Each particle's Q works through its own gradient function */
   const int Q_dissipative_i =
       (v_ij_Hubble[0] * G_i[0] + v_ij_Hubble[1] * G_i[1] +
@@ -583,6 +583,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * that change of variables: its heating uses the full relative velocity */
   pi->u_dt += mj * (pressurei * v_ij_dot_G_i + Qi * v_ij_Hubble_dot_G_i) /
               (rhoi * rhoi);
+
+#elif defined(MAGMA_MI3_FORMULATION)
+
+  /* MI3: the sigma = 1 (Gasoline-like) weighting of MI2, 1 / (rho_i rho_j), but
+   * with each pressure acting through its own particle's gradient function
+   * instead of the average G_ij = (G_i + G_j) / 2. The pair term is
+   * antisymmetric under i <-> j (both G flip sign), so momentum is conserved,
+   * and the energy equation below is its exact partner. Unlike the average,
+   * a vanishing W_ij(h_j) (particle j does not see i, e.g. h_i >> h_j in the
+   * hot centre of a blast) leaves particle i with its full operator G_i
+   * instead of half of it. */
+  const float P_term_i = (pressurei + Qi) / (rhoi * rhoj);
+  const float P_term_j = (pressurej + Qj) / (rhoi * rhoj);
+
+  /* Raw fluid acceleration */
+  pi->a_hydro[0] -= mj * (P_term_i * G_i[0] + P_term_j * G_j[0]);
+  pi->a_hydro[1] -= mj * (P_term_i * G_i[1] + P_term_j * G_j[1]);
+  pi->a_hydro[2] -= mj * (P_term_i * G_i[2] + P_term_j * G_j[2]);
+
+  /* Equivalent of div v, with the particle's own operator */
+  const float v_ij_dot_G_i =
+      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
+
+  /* Same, including the Hubble flow (a^2 H dx) */
+  const float v_ij_Hubble_dot_G_i =
+      v_ij_dot_G_i +
+      a2_Hubble * (dx[0] * G_i[0] + dx[1] * G_i[1] + dx[2] * G_i[2]);
+
+  /* Raw change in internal energy (exact partner of the acceleration). The
+   * comoving internal energy absorbs the P dV work of the Hubble expansion,
+   * hence the pressure term uses the peculiar velocity only. */
+  pi->u_dt += mj * (pressurei * v_ij_dot_G_i + Qi * v_ij_Hubble_dot_G_i) /
+              (rhoi * rhoj);
 
 #else /* Gasoline-like mixing */
 

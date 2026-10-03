@@ -36,7 +36,12 @@
 #include "kernel_hydro.h"
 #include "parser.h"
 
-// #define TRADITIONAL_SPH_ACCELERATION_TERM
+// #define TRADITIONAL_SPH_ACCELERATION_TERM /* MI1 (set by configure) */
+// #define MAGMA_MI3_FORMULATION /* MI3 (set by configure): MI2's 1/(rho_a
+// rho_b)
+//                                  weights with P_a on G_a and P_b on G_b,
+//                                  so that a vanishing W_ab(h_b) does not halve
+//                                  the operator of particle a. */
 // #define USE_ZEROTH_ORDER_VELOCITIES
 // #define USE_STANDARD_KERNEL_GRADIENTS
 #define GRAVITY_DIFF_VELOCITY

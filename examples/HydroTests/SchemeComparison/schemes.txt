@@ -6,3 +6,4 @@ magma_mi2        --with-hydro=magma2-MI2
 magma_mi2_eta15  --with-hydro=magma2-MI2 | -P SPH:resolution_eta:1.5
 magma_mi2_eta175 --with-hydro=magma2-MI2 | -P SPH:resolution_eta:1.75
 magma_mi1_eta15  --with-hydro=magma2-MI1 | -P SPH:resolution_eta:1.5
+magma_mi3_eta15  --with-hydro=magma2-MI3 | -P SPH:resolution_eta:1.5
