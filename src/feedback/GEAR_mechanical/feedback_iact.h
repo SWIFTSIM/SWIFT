@@ -471,11 +471,15 @@ runner_iact_nonsym_feedback_apply(
           xpj, mj, new_mass, vj_pec, vj_hubble, dp_SW, dp_ejecta_SW);
     }
 
-    /* Physical lab-frame momentum given to pj, as in GEAR_thermal winds */
-    delta_p_mag_winds = (float)sqrt(
-        (dp_SW[0] + dp_ejecta_SW[0]) * (dp_SW[0] + dp_ejecta_SW[0]) +
-        (dp_SW[1] + dp_ejecta_SW[1]) * (dp_SW[1] + dp_ejecta_SW[1]) +
-        (dp_SW[2] + dp_ejecta_SW[2]) * (dp_SW[2] + dp_ejecta_SW[2]));
+    /* Physical momentum given to pj in its own frame: the mass after the event
+       times the velocity change of pj. It does not depend on the bulk motion of
+       the star-gas pair. The tracers use the same frame for SN and winds. */
+    const double dp_SW_rel[3] = {dp_SW[0] + dm_SW * (v_i_p[0] - vj_pec[0]),
+                                 dp_SW[1] + dm_SW * (v_i_p[1] - vj_pec[1]),
+                                 dp_SW[2] + dm_SW * (v_i_p[2] - vj_pec[2])};
+    delta_p_mag_winds =
+        (float)sqrt(dp_SW_rel[0] * dp_SW_rel[0] + dp_SW_rel[1] * dp_SW_rel[1] +
+                    dp_SW_rel[2] * dp_SW_rel[2]);
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
     /* Note: This is physical thermal energy. See feedback_update_part(). */
@@ -483,11 +487,12 @@ runner_iact_nonsym_feedback_apply(
 
     xpj->feedback_data.delta_p_norm_2_sum += dp_norm_2_SW;
 
-    /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
-       of feedback_update_part() */
-    tracers_after_stellar_winds_feedback_part(xpj, delta_p_mag_winds,
-                                              (float)(dU_SW / new_mass),
-                                              delta_p_mag_winds / new_mass);
+    /* The tracers get these values in feedback_update_part(), after the
+       multiple-event correction */
+    xpj->feedback_data.tracer_p_sum_SW += delta_p_mag_winds;
+    xpj->feedback_data.tracer_p_max_SW =
+        max(xpj->feedback_data.tracer_p_max_SW, delta_p_mag_winds);
+    xpj->feedback_data.tracer_E_th_SW += dU_SW;
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
@@ -560,11 +565,10 @@ runner_iact_nonsym_feedback_apply(
           xpj, mj, new_mass, vj_pec, vj_hubble, dp_SN, dp_ejecta_SN);
     }
 
-    /* Physical momentum given to pj in its own frame, as in GEAR_thermal SN.
-       It does not depend on the bulk motion of the star-gas pair. */
-    const double dp_SN_rel[3] = {dp_SN[0] + dm_SN * (v_i_p[0] - v_j_p[0]),
-                                 dp_SN[1] + dm_SN * (v_i_p[1] - v_j_p[1]),
-                                 dp_SN[2] + dm_SN * (v_i_p[2] - v_j_p[2])};
+    /* Physical momentum given to pj in its own frame, as for the winds */
+    const double dp_SN_rel[3] = {dp_SN[0] + dm_SN * (v_i_p[0] - vj_pec[0]),
+                                 dp_SN[1] + dm_SN * (v_i_p[1] - vj_pec[1]),
+                                 dp_SN[2] + dm_SN * (v_i_p[2] - vj_pec[2])};
     delta_p_mag_supernovae =
         (float)sqrt(dp_SN_rel[0] * dp_SN_rel[0] + dp_SN_rel[1] * dp_SN_rel[1] +
                     dp_SN_rel[2] * dp_SN_rel[2]);
@@ -585,11 +589,12 @@ runner_iact_nonsym_feedback_apply(
             sqrt(r2), dp_SN_norm, cos_out);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
-    /* Lifetime-cumulative tracer, before the multiple-event correction f_corr
-       of feedback_update_part() */
-    tracers_after_supernovae_feedback_part(xpj, delta_p_mag_supernovae,
-                                           (float)(dU / new_mass),
-                                           delta_p_mag_supernovae / new_mass);
+    /* The tracers get these values in feedback_update_part(), after the
+       multiple-event correction */
+    xpj->feedback_data.tracer_p_sum_SN += delta_p_mag_supernovae;
+    xpj->feedback_data.tracer_p_max_SN =
+        max(xpj->feedback_data.tracer_p_max_SN, delta_p_mag_supernovae);
+    xpj->feedback_data.tracer_E_th_SN += dU;
 
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;

@@ -141,4 +141,8 @@ void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
 float feedback_compute_residual_internal_energy_for_multiple_sn_events(
     const struct xpart *xp, const struct cosmology *cosmo, const float old_mass,
     const float new_mass, const float f_corr);
+
+void feedback_update_tracers_part(struct xpart *xp, const float f_corr,
+                                  const float u_residual,
+                                  const float new_mass_inv);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

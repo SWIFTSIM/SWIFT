@@ -55,6 +55,26 @@ struct feedback_xpart_data {
      (relative to the star) dotted with the feedback momentum of the event. */
   float delta_p_hubble_work;
 
+  /*! Sum over the supernova events of the physical momentum received, in the
+      frame of the particle (mass after the event times the velocity change).
+      Given to the tracers at the update. */
+  float tracer_p_sum_SN;
+
+  /*! Largest momentum of one supernova event, same frame. */
+  float tracer_p_max_SN;
+
+  /*! Physical thermal energy received from the supernova events. */
+  float tracer_E_th_SN;
+
+  /*! Same as tracer_p_sum_SN for the stellar winds. */
+  float tracer_p_sum_SW;
+
+  /*! Same as tracer_p_max_SN for the stellar winds. */
+  float tracer_p_max_SW;
+
+  /*! Same as tracer_E_th_SN for the stellar winds. */
+  float tracer_E_th_SW;
+
   /*! Comoving feedback momentum received from the blastwave. */
   float delta_p[3];
 

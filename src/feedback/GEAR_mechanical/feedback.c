@@ -27,6 +27,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "tracers.h"
 #include "units.h"
 
 #include <strings.h>
@@ -114,7 +115,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     xp->feedback_data.delta_p_ejecta[i] = 0.0;
   }
 
+  /* The tracers get what the particle received, after the correction */
+  feedback_update_tracers_part(xp, f_corr, u_residual, new_mass_inv);
+
   /* Reset the values */
+  xp->feedback_data.tracer_p_sum_SN = 0.0;
+  xp->feedback_data.tracer_p_max_SN = 0.0;
+  xp->feedback_data.tracer_E_th_SN = 0.0;
+  xp->feedback_data.tracer_p_sum_SW = 0.0;
+  xp->feedback_data.tracer_p_max_SW = 0.0;
+  xp->feedback_data.tracer_E_th_SW = 0.0;
   xp->feedback_data.delta_E_th = 0.0;
   xp->feedback_data.delta_p_norm_2_sum = 0.0;
   xp->feedback_data.delta_E_kin_events = 0.0;
@@ -798,4 +808,60 @@ feedback_compute_residual_internal_energy_for_multiple_sn_events(
 #endif
 
   return u_residual;
+}
+
+/**
+ * @brief Give to the tracers the momentum and the thermal energy that a gas
+ * particle received, once the multiple-event correction is known.
+ *
+ * The momentum is the one in the frame of the particle (the mass after the
+ * event times the velocity change), for supernovae and winds alike. The
+ * momentum and the kick speed are rescaled by the momentum correction factor.
+ * The thermal energy of each channel is divided by the final mass, and the
+ * residual thermal energy is shared between the channels in proportion to the
+ * thermal energy that they gave.
+ *
+ * Note: This function is called in feedback_update_part(), before the reset of
+ * the feedback fields.
+ *
+ * @param xp The #xpart.
+ * @param f_corr The momentum correction factor.
+ * @param u_residual The physical specific residual thermal energy.
+ * @param new_mass_inv The inverse of the mass of the #part after all events.
+ */
+__attribute__((always_inline)) INLINE void feedback_update_tracers_part(
+    struct xpart *xp, const float f_corr, const float u_residual,
+    const float new_mass_inv) {
+
+  const float E_th_SN = xp->feedback_data.tracer_E_th_SN;
+  const float E_th_SW = xp->feedback_data.tracer_E_th_SW;
+  const float E_th_SN_pos = max(E_th_SN, 0.0f);
+  const float E_th_SW_pos = max(E_th_SW, 0.0f);
+  const float E_th_pos = E_th_SN_pos + E_th_SW_pos;
+
+  /* Share of the residual thermal energy given to each channel */
+  float share_SN = 0.0f;
+  float share_SW = 0.0f;
+  if (E_th_pos > 0.0f) {
+    share_SN = E_th_SN_pos / E_th_pos;
+    share_SW = 1.0f - share_SN;
+  } else if (xp->feedback_data.number_SN > 0) {
+    share_SN = 1.0f;
+  } else {
+    share_SW = 1.0f;
+  }
+
+  if (xp->feedback_data.number_SN > 0) {
+    tracers_after_supernovae_feedback_part(
+        xp, f_corr * xp->feedback_data.tracer_p_sum_SN,
+        E_th_SN * new_mass_inv + share_SN * u_residual,
+        f_corr * xp->feedback_data.tracer_p_max_SN * new_mass_inv);
+  }
+
+  if (xp->feedback_data.number_winds > 0) {
+    tracers_after_stellar_winds_feedback_part(
+        xp, f_corr * xp->feedback_data.tracer_p_sum_SW,
+        E_th_SW * new_mass_inv + share_SW * u_residual,
+        f_corr * xp->feedback_data.tracer_p_max_SW * new_mass_inv);
+  }
 }
