@@ -60,9 +60,9 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Correction to account for multiple feedback events. It recovers energy
      conservation: the factor scales the momentum down when the events add up,
-     and the residual energy is given as thermal energy when they cancel. If
-     there is only one event that affected p and xp, f_corr = 1 and
-     u_residual = 0. */
+     and the thermal energy absorbs the difference between the intended and the
+     actual kinetic energy. If there is only one event that affected p and xp,
+     f_corr = 1 and u_residual = 0. */
   const unsigned int N_SN = xp->feedback_data.number_SN;
   const unsigned int N_SW = xp->feedback_data.number_winds;
   float f_corr = 1.0f;
