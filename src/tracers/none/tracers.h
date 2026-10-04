@@ -314,12 +314,9 @@ static INLINE void tracers_after_snia_event_spart(struct spart *sp,
  * @param mass_ejected Wind mass ejected this step (internal units).
  * @param energy_ejected Wind energy ejected this step, after the winds
  * efficiency factor (physical internal units).
- * @param enrichment_weight The star's SPH-averaged local gas density from the
- * preceding step.
  */
 static INLINE void tracers_after_winds_event_spart(
-    struct spart *sp, const double mass_ejected, const double energy_ejected,
-    const float enrichment_weight) {}
+    struct spart *sp, const double mass_ejected, const double energy_ejected) {}
 
 /**
  * @brief Update the particles' tracer data with values before an AGN feedback
