@@ -105,9 +105,14 @@ void feedback_update_part(struct part *p, struct xpart *xp,
      gained mass dm also has to be accelerated from the velocity of p, so that
      m_f v_new = m v + dp_prime. */
   for (int i = 0; i < 3; i++) {
+#if defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    /* The isotropy test injects no momentum */
+    const float dv = 0.0f;
+#else
     const float dp_prime =
         xp->feedback_data.delta_p_ejecta[i] + xp->feedback_data.delta_p[i];
     const float dv = (dp_prime - dm * p->v[i]) * new_mass_inv;
+#endif
 
     xp->v_full[i] += dv;
     p->v[i] += dv;
