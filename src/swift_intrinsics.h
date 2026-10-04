@@ -123,4 +123,29 @@ __attribute__((always_inline, const)) INLINE static int intrinsics_popcountll(
 #endif
 }
 
+/**
+ * @brief Emit a CPU spin-hint instruction.
+ *
+ * Issues the appropriate architecture-specific hint to the CPU that this
+ * thread is in a spin-wait loop.  On x86/x86-64 this emits PAUSE (F3 90h),
+ * which flushes the memory order buffer and dramatically reduces cache-
+ * coherency traffic on the cache line holding the lock.  On AArch64 it
+ * emits YIELD.  On POWER it emits the low-priority execution hint.  On
+ * other architectures the inline asm acts as a compiler memory barrier,
+ * preventing the compiler from hoisting the load out of the loop.
+ *
+ * Call this inside every busy-wait body in place of an empty loop body.
+ */
+__attribute__((always_inline)) INLINE static void cpu_relax(void) {
+#if defined(__x86_64__) || defined(__i386__)
+  __asm__ volatile("pause" ::: "memory");
+#elif defined(__aarch64__)
+  __asm__ volatile("yield" ::: "memory");
+#elif defined(__powerpc__) || defined(__ppc__)
+  __asm__ volatile("or 27,27,27" ::: "memory");
+#else
+  __asm__ volatile("" ::: "memory");
+#endif
+}
+
 #endif /* SWIFT_INTRINSICS_H */

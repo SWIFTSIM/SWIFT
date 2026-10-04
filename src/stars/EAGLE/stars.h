@@ -91,9 +91,9 @@ __attribute__((always_inline)) INLINE static double stars_compute_age(
 
   if (with_cosmology) {
     return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+        cosmo, sp->birth_scale_factor, cosmo->a);
   } else {
-    return time - (double)sp->birth_time;
+    return time - sp->birth_time;
   }
 }
 

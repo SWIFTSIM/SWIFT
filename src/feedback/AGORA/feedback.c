@@ -144,13 +144,13 @@ void compute_time(struct spart *sp, const int with_cosmology,
   /* Calculate age of the star at current time */
   double star_age_end_of_step;
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
+    if (cosmo->a > sp->birth_scale_factor)
       star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+          cosmo, sp->birth_scale_factor, cosmo->a);
     else
       star_age_end_of_step = 0.;
   } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+    star_age_end_of_step = max(time - sp->birth_time, 0.);
   }
 
   /* Get the length of the enrichment time-step */
@@ -175,12 +175,14 @@ void compute_time(struct spart *sp, const int with_cosmology,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
+ * @param old_time_bin The star's time bin for the step that just finished.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
