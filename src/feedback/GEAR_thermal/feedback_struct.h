@@ -23,36 +23,13 @@
 #include <config.h>
 
 /* Local includes */
+#include "../GEAR/feedback_tracers_struct.h"
 #include "chemistry_struct.h"
 
 /**
  * @brief Feedback fields carried by each hydro particles
  */
 struct feedback_part_data {};
-
-/**
- * @brief Momentum and thermal energy of the feedback events of one step, kept
- * for the tracers and given to them at the update, when the final mass is
- * known. The struct is empty without the GEAR tracers, so it takes no memory.
- */
-struct feedback_tracers_pending {
-#if defined(TRACERS_GEAR)
-  /*! Sum over the supernova events of the physical momentum received, in the
-      frame of the particle (mass after the event times the velocity change) */
-  float p_sum_SN;
-
-  /*! Largest momentum of one supernova event */
-  float p_max_SN;
-
-  /*! Sum over the supernova events of the physical thermal energy given */
-  float E_th_SN;
-
-  /*! Same for the stellar winds */
-  float p_sum_SW;
-  float p_max_SW;
-  float E_th_SW;
-#endif
-};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
