@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
+#include "feedback_tracers.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "minmax.h"
@@ -105,6 +106,10 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
     xp->feedback_data.delta_p[i] = 0;
   }
+
+  /* The tracers get what the particle received, with the final mass */
+  feedback_tracers_pending_update(xp, new_mass_inv);
+  feedback_tracers_pending_reset(xp);
 
   /*----------------------------------------*/
   /* Update the radiation fields */
