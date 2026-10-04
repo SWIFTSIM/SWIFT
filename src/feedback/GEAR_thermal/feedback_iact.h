@@ -228,7 +228,7 @@ runner_iact_nonsym_feedback_apply(
          the SN. The GEAR tracers get the sums at the update, with the final
          mass. */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
-      feedback_tracers_pending_add_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
+      feedback_tracers_event_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
 
       xpj->feedback_data.hit_by_winds = 1;
     }
@@ -281,8 +281,7 @@ runner_iact_nonsym_feedback_apply(
               delta_p_supernovae[2] * delta_p_supernovae[2]);
     const float delta_p_mag_supernovae =
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
-    feedback_tracers_pending_add_SN(xpj, delta_p_mag_supernovae, dE_th,
-                                    new_mass);
+    feedback_tracers_event_SN(xpj, delta_p_mag_supernovae, dE_th, new_mass);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;

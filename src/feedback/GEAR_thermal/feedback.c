@@ -97,7 +97,9 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   }
 
   /* The tracers get what the particle received, with the final mass */
-  feedback_tracers_pending_update(xp, new_mass_inv);
+  feedback_tracers_pending_update(xp, xp->feedback_data.hit_by_SN,
+                                  xp->feedback_data.hit_by_winds, 1.0f, 0.0f,
+                                  new_mass_inv);
   feedback_tracers_pending_reset(xp);
 
   xp->feedback_data.hit_by_SN = 0;
