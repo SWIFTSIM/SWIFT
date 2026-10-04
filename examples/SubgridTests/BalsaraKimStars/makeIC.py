@@ -31,9 +31,9 @@ Myr = 1e6 * 60 * 60 * 24 * 365  # s
 
 # unit system
 uL = 1e3 * pc  # cm, 1 kpc
-uM = 6.757e41  # g, 3.398×10^8 M_sun
-ut = 8.071e14  # s, 2.5577×10^7  years
-uv = 38.23e5  # cm / s, 38.23 km/s
+uM = 6.757e40  # g, 3.398×10^8 M_sun
+ut = 2.552e15  # s, 2.5577×10^7  years
+uv = 12.1e5  # cm / s, 38.23 km/s
 uU = uv**2  # (cm / s)^2
 uA = 1e10
 
