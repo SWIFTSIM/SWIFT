@@ -269,7 +269,7 @@ static INLINE void tracers_first_init_xpart(
  * Called once per channel per feedback event, from inside that channel's
  * own branch in the SN/winds/radiation-pressure interaction code, using
  * that branch's own locally-computed momentum/energy, not read back from
- * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
+ * the shared feedback_xpart_data.delta_p/delta_E_th afterwards, since SN and
  * winds can both fire on the same gas particle in the same step and would
  * otherwise be inseparable.
  *
