@@ -30,6 +30,12 @@
  * @brief Feedback fields carried by each hydro particles
  */
 struct feedback_part_data {
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+#endif
+
   /* Save quantities computed in the #hydro density loop for feedback loop */
   struct {
     /*! Neighbour number count. */

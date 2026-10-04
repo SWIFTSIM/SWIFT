@@ -538,6 +538,10 @@ runner_iact_nonsym_feedback_apply(
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       pj->chemistry_data.metal_mass[i] +=
           w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      pj->feedback_data.metal_mass[i] +=
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#endif
     }
 
     /* Now we treat the fluxes distribution differently for each mode */
