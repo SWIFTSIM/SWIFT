@@ -164,10 +164,6 @@ runner_iact_nonsym_feedback_apply(
       const float p_ej = sqrt(2.0 * si->feedback_data.winds.mass_ejected *
                               si->feedback_data.winds.energy_ejected);
 
-      /* norm of physical velocities of the gas particle j */
-      const float norm2_v_p =
-          v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
-
       /* Ejecta momentum in the rest frame of the star (away from it, dx points
          to the star), then in the lab frame (the ejected mass carries the star
          velocity), then in the frame of the gas, which is the one applied
@@ -185,48 +181,31 @@ runner_iact_nonsym_feedback_apply(
         xpj->feedback_data.delta_p[i] += delta_p_gas_frame[i] * a;
       }
 
-      const double norm2_delta_p_lab_frame =
-          delta_p_lab_frame[0] * delta_p_lab_frame[0] +
-          delta_p_lab_frame[1] * delta_p_lab_frame[1] +
-          delta_p_lab_frame[2] * delta_p_lab_frame[2];
       const double norm2_delta_p_gas_frame =
           delta_p_gas_frame[0] * delta_p_gas_frame[0] +
           delta_p_gas_frame[1] * delta_p_gas_frame[1] +
           delta_p_gas_frame[2] * delta_p_gas_frame[2];
-      const double norm2_delta_p = weight * weight * p_ej * p_ej;
 
       /* ----- Calculate physical Energy and internal Energy received ------ */
 
-      /* The energy ejected from the star particle i by stellar wind that is
-       * actually received by the gas particle j */
-      const double weighted_energy = weight * e_winds;
-      /* The additional energy received by the gas particle j due to the
-       * momentum of the star particle i */
-      const double dE_change_of_frame =
-          0.5 * (norm2_delta_p_lab_frame - norm2_delta_p) /
-          (weight * si->feedback_data.winds.mass_ejected);
-      /* The total energy received from the gas particle j in the laboratory
-       * frame of reference */
-      const double dE_lab_frame = weighted_energy + dE_change_of_frame;
-
-      /* The momentum of the gas particle j after receiving the momentum from
-       * stellar wind */
-      const double p_new[3] = {mj * v_j_p[0] + delta_p_lab_frame[0],
-                               mj * v_j_p[1] + delta_p_lab_frame[1],
-                               mj * v_j_p[2] + delta_p_lab_frame[2]};
-      const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
-                                  p_new[2] * p_new[2]};
-
-      /* The new and old kinetic energy of the gas particle j */
-      const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass;
-      const float old_kinetic_energy = 0.5 * mj * norm2_v_p;
-
-      /* The additional thermal energy of the gas particle j.
-        Ekin_new + U_new = Ekin_old + U_old + dEtot
-        -> dE_th = U_new - U_old = Ekin_old + dEtot - Ekin_new. The update
-        divides the sum over the events by the final mass. */
-      const double dE_th =
-          old_kinetic_energy + dE_lab_frame - new_kinetic_energy;
+      /* The thermal energy of the gas particle j is the energy of the ejecta
+         (wind energy and kinetic energy of the frame change) plus its kinetic
+         energy, minus the kinetic energy after the momentum is shared:
+           dE_th = Ekin_old + dE_lab - Ekin_new
+                 = 0.5 m dm / m_f |u_rel|^2,
+         with u_rel the velocity of the ejecta relative to the gas (the gas has
+         the Hubble flow around the star). This form has no cancellation of
+         large terms. The update divides the sum over the events by the final
+         mass. Without ejected mass, only the wind energy is given. */
+      double dE_th = weight * e_winds;
+      if (dm_SW > 0.0) {
+        double norm2_u_rel = 0.0;
+        for (int i = 0; i < 3; i++) {
+          const double u_rel = delta_p_lab_frame[i] / dm_SW - v_j_p[i];
+          norm2_u_rel += u_rel * u_rel;
+        }
+        dE_th = 0.5 * mj * dm_SW / new_mass * norm2_u_rel;
+      }
       xpj->feedback_data.delta_E_th += dE_th;
 
       /* Only used in non-cosmological simulations. Has to be
