@@ -139,6 +139,6 @@ void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
     const double dp_ejecta[3]);
 
 float feedback_compute_residual_internal_energy_for_multiple_sn_events(
-    const struct xpart *xp, const struct cosmology *cosmo, const float old_mass,
-    const float new_mass, const float f_corr);
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass, const float f_corr);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

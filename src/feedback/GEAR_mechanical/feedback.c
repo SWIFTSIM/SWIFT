@@ -74,7 +74,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
         p, xp, cosmo);
     u_residual =
         feedback_compute_residual_internal_energy_for_multiple_sn_events(
-            xp, cosmo, old_mass, new_mass, f_corr);
+            p, xp, cosmo, old_mass, new_mass, f_corr);
   }
 
   /* Update the mass of p, as well as its gpart's friend */
@@ -743,6 +743,7 @@ feedback_accumulate_kinetic_energy_for_multiple_sn_events(
  * Note: This function is called in feedback_update_part(), before the velocity
  * update.
  *
+ * @param p The #part.
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
  * @param old_mass The mass of the #part before the events.
@@ -752,13 +753,12 @@ feedback_accumulate_kinetic_energy_for_multiple_sn_events(
  */
 __attribute__((always_inline)) INLINE float
 feedback_compute_residual_internal_energy_for_multiple_sn_events(
-    const struct xpart *xp, const struct cosmology *cosmo, const float old_mass,
-    const float new_mass, const float f_corr) {
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass, const float f_corr) {
 
   /* Physical peculiar velocity and momenta */
   const double a_inv = cosmo->a_inv;
-  const double v[3] = {xp->v_full[0] * a_inv, xp->v_full[1] * a_inv,
-                       xp->v_full[2] * a_inv};
+  const double v[3] = {p->v[0] * a_inv, p->v[1] * a_inv, p->v[2] * a_inv};
   const double dp_tot[3] = {(xp->feedback_data.delta_p_ejecta[0] +
                              f_corr * xp->feedback_data.delta_p[0]) *
                                 a_inv,

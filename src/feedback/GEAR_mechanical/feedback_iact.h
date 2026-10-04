@@ -404,15 +404,15 @@ runner_iact_nonsym_feedback_apply(
   /* The Hubble flow term is relative wrt the star particle, hence dx = 0. For
    * the gas, we use -dx = pj - si. */
   const float vi_plus_H_flow[3] = {si->v[0], si->v[1], si->v[2]};
-  const float vj_plus_H_flow[3] = {-a2H * dx[0] + xpj->v_full[0],
-                                   -a2H * dx[1] + xpj->v_full[1],
-                                   -a2H * dx[2] + xpj->v_full[2]};
+  const float vj_plus_H_flow[3] = {-a2H * dx[0] + pj->v[0],
+                                   -a2H * dx[1] + pj->v[1],
+                                   -a2H * dx[2] + pj->v[2]};
 
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
   /* Physical peculiar velocity and Hubble flow (relative to the star) of the
      gas, for the tracers and the energy balance of multiple events. */
-  const float vj_pec[3] = {xpj->v_full[0] * a_inv, xpj->v_full[1] * a_inv,
-                           xpj->v_full[2] * a_inv};
+  const float vj_pec[3] = {pj->v[0] * a_inv, pj->v[1] * a_inv,
+                           pj->v[2] * a_inv};
   const float vj_hubble[3] = {-a * H * dx[0], -a * H * dx[1], -a * H * dx[2]};
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
