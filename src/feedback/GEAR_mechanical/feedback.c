@@ -21,11 +21,11 @@
 #include "feedback.h"
 
 /* Local includes */
+#include "../GEAR/feedback_tracers_common.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
-#include "feedback_tracers.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
@@ -123,7 +123,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   }
 
   /* The tracers get what the particle received, after the correction */
-  feedback_tracers_pending_update(xp, f_corr, u_residual, new_mass_inv);
+  feedback_tracers_pending_update(xp, N_SN > 0, N_SW > 0, f_corr, u_residual,
+                                  new_mass_inv);
 
   /* Reset the values */
   feedback_tracers_pending_reset(xp);

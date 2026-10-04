@@ -20,8 +20,8 @@
 #define SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H
 
 /* Local includes */
+#include "../GEAR/feedback_tracers_common.h"
 #include "feedback.h"
-#include "feedback_tracers.h"
 #include "hydro.h"
 #include "mechanical_feedback_iact.h"
 #include "random.h"

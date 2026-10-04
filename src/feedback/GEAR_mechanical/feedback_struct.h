@@ -24,6 +24,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "../GEAR/feedback_tracers_struct.h"
 #include "chemistry_struct.h"
 
 /**
@@ -41,34 +42,6 @@ struct feedback_part_data {
     /*! Neighbour number count. */
     float wcount;
   } density;
-};
-
-/**
- * @brief Momentum and thermal energy of the feedback events of one step, kept
- * for the tracers and given to them at the update, after the multiple-event
- * correction. The struct is empty without tracers, so it takes no memory.
- */
-struct feedback_tracers_pending {
-#if defined(TRACERS_GEAR)
-  /*! Sum over the supernova events of the physical momentum received, in the
-      frame of the particle (mass after the event times the velocity change) */
-  float p_sum_SN;
-
-  /*! Largest momentum of one supernova event, same frame */
-  float p_max_SN;
-
-  /*! Physical thermal energy received from the supernova events */
-  float E_th_SN;
-
-  /*! Same as p_sum_SN for the stellar winds */
-  float p_sum_SW;
-
-  /*! Same as p_max_SN for the stellar winds */
-  float p_max_SW;
-
-  /*! Same as E_th_SN for the stellar winds */
-  float E_th_SW;
-#endif /* defined(TRACERS_GEAR) */
 };
 
 /**
