@@ -26,6 +26,7 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
+#include "feedback_tracers.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
@@ -94,6 +95,10 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
     xp->feedback_data.delta_metal_mass[i] = 0.0;
   }
+
+  /* The tracers get what the particle received, with the final mass */
+  feedback_tracers_pending_update(xp, new_mass_inv);
+  feedback_tracers_pending_reset(xp);
 
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_winds = 0;

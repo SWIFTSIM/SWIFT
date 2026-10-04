@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "feedback.h"
+#include "feedback_tracers.h"
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
@@ -224,12 +225,10 @@ runner_iact_nonsym_feedback_apply(
          momentum/energy (not the shared feedback_data.delta_p/delta_E_th,
          which the SN branch below can also add to this same step). The
          momentum is the one applied, m_f |dv|, in the frame of the gas as for
-         the SN. The specific energy is the one of this event, per mass after
-         the event. */
+         the SN. The GEAR tracers get the sums at the update, with the final
+         mass. */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
-      tracers_after_stellar_winds_feedback_part(
-          xpj, delta_p_mag_winds, (float)(dE_th / new_mass),
-          delta_p_mag_winds / (float)new_mass);
+      feedback_tracers_pending_add_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
 
       xpj->feedback_data.hit_by_winds = 1;
     }
@@ -282,10 +281,8 @@ runner_iact_nonsym_feedback_apply(
               delta_p_supernovae[2] * delta_p_supernovae[2]);
     const float delta_p_mag_supernovae =
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
-    tracers_after_supernovae_feedback_part(
-        xpj, delta_p_mag_supernovae,
-        new_mass > 0.0 ? (float)(dE_th / new_mass) : 0.0f,
-        new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
+    feedback_tracers_pending_add_SN(xpj, delta_p_mag_supernovae, dE_th,
+                                    new_mass);
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
