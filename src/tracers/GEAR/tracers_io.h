@@ -219,10 +219,8 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "CumulativeWindsMassEjected", DOUBLE, 1, UNIT_CONV_MASS, 0.f, sparts,
       tracers_data.winds.mass_ejected,
       "Mass this star ejected by stellar winds over its lifetime so far, "
-      "counted once per injection step from the star's own budget, but only "
-      "for a step whose preceding step left the star with gas neighbours; "
-      "the star's mass budget is spent regardless, so this undercounts the "
-      "star's true total wind mass loss whenever a step had none.");
+      "counted once per injection step from the star's own budget, whether or "
+      "not gas neighbours received it.");
 
   list[7] = io_make_physical_output_field(
       "CumulativeWindsEnergyEjected", DOUBLE, 1, UNIT_CONV_ENERGY, 0.f, sparts,

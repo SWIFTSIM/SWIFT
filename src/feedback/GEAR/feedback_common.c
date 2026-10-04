@@ -170,8 +170,7 @@ void feedback_will_do_feedback(
 
   /* Record the wind budget of the star, after the efficiency factor */
   tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
-                                  sp->feedback_data.winds.energy_ejected,
-                                  sp->feedback_data.enrichment_weight);
+                                  sp->feedback_data.winds.energy_ejected);
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
