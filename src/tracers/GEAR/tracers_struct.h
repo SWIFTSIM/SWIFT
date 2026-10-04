@@ -32,11 +32,14 @@ struct tracers_xpart_data {
   struct {
 
     /*! Cumulative |delta_p| per event (scalar sum, not vector: isotropic
-        kicks would else cancel), physical. */
+        kicks would else cancel), physical. It is the momentum applied to the
+        gas in its own frame, mass after the event times the velocity change. */
     float momentum_supernovae;
     float momentum_winds;
 
-    /*! Cumulative specific internal energy received. */
+    /*! Cumulative thermal energy per unit mass given by the events. It is not
+        the change of the specific internal energy (dilution is not counted),
+        and the kinetic energy given is not included. */
     float energy_supernovae;
     float energy_winds;
 
@@ -75,6 +78,26 @@ struct tracers_sn_event_data {
 };
 
 /**
+ * @brief Record of a star's own stellar-wind budget over its lifetime.
+ *
+ * The budget the star ejected, summed once per injection step (not over the
+ * receiving gas). It gives the star-side versus gas-side ratios.
+ */
+struct tracers_winds_data {
+
+  /*! Cumulative mass ejected by winds (internal units). */
+  double mass_ejected;
+
+  /*! Cumulative wind energy ejected, after the winds efficiency factor
+      (physical internal units). */
+  double energy_ejected;
+
+  /*! Cumulative wind momentum magnitude, sqrt(2 m_ej E_ej) per step, in the
+      rest frame of the star (physical internal units). */
+  double momentum_ejected;
+};
+
+/**
  * @brief Properties of the tracers stored in the star particle data.
  *
  */
@@ -83,6 +106,9 @@ struct tracers_spart_data {
   /*! SN event tracers, one per channel */
   struct tracers_sn_event_data snii_events;
   struct tracers_sn_event_data snia_events;
+
+  /*! Stellar-wind ejecta budget */
+  struct tracers_winds_data winds;
 };
 
 /**

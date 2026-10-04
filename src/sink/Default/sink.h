@@ -480,4 +480,28 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time, const float r_acc_p, const double dim[3]) {}
 
+/**
+ * @brief Return the current instantaneous accretion rate of the sink.
+ *
+ * The Default sink model does not track an accretion rate.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_accretion_rate(
+    const struct sink *sink) {
+  return 0.f;
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * The Default sink model does not track a star formation rate.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_SFR(
+    const struct sink *sink) {
+  return 0.f;
+}
+
 #endif /* SWIFT_DEFAULT_SINK_H */

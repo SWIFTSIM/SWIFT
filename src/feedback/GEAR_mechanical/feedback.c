@@ -101,11 +101,13 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   xp->feedback_data.delta_p[1] *= f_corr;
   xp->feedback_data.delta_p[2] *= f_corr;
 
-  /* Update the velocities */
+  /* Update the velocities. dp_prime is the momentum in the lab frame: the
+     gained mass dm also has to be accelerated from the velocity of p, so that
+     m_f v_new = m v + dp_prime. */
   for (int i = 0; i < 3; i++) {
     const float dp_prime =
         xp->feedback_data.delta_p_ejecta[i] + xp->feedback_data.delta_p[i];
-    const float dv = dp_prime * new_mass_inv;
+    const float dv = (dp_prime - dm * p->v[i]) * new_mass_inv;
 
     xp->v_full[i] += dv;
     p->v[i] += dv;

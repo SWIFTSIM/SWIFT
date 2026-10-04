@@ -315,6 +315,49 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
 
   sp->tracers_data.snii_events = (struct tracers_sn_event_data){0};
   sp->tracers_data.snia_events = (struct tracers_sn_event_data){0};
+  sp->tracers_data.winds = (struct tracers_winds_data){0};
+}
+
+/**
+ * @brief Accumulate one stellar-wind injection step into a star's record.
+ *
+ * Counts the step only if the star has a positive wind energy and mass, and had
+ * gas neighbours; the gas-side injection has similar conditions. The energy
+ * must already include the winds efficiency factor; the mass is not scaled by
+ * it. Values at the overflow limit set by the stellar evolution are ignored.
+ *
+ * The momentum is the ejecta budget sqrt(2 m_ej E_ej) in the rest frame of the
+ * star, the same p_ej the gas-side injection distributes. The star cannot know
+ * the velocity of the gas, so it records no other frame. The gas-side
+ * CumulativeMomentumFromWinds is a sum over the gas particles of the momentum
+ * applied to each one, which equals this budget when the star and the gas move
+ * with the same velocity. The gas receives the budget in the step after this
+ * call, so a snapshot can see the star-side totals lead the gas-side totals by
+ * one step.
+ *
+ * @param w The star's #tracers_winds_data to update.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, after the winds
+ * efficiency factor (physical internal units).
+ * @param enrichment_weight The star's SPH-averaged local gas density from the
+ * preceding step; used only to detect that the star had gas neighbours.
+ */
+static INLINE void tracers_gear_record_winds_event(
+    struct tracers_winds_data *w, const double mass_ejected,
+    const double energy_ejected, const float enrichment_weight) {
+
+  /* Both budgets must be positive: a negative pair still yields a positive
+     sqrt(2 m E). FLT_MAX is what the stellar evolution sets on an overflow. */
+  if (energy_ejected <= 0. || mass_ejected <= 0. || energy_ejected >= FLT_MAX ||
+      mass_ejected >= FLT_MAX || enrichment_weight <= 0.f)
+    return;
+
+  /* Same once-per-active-star-per-step assumption as
+     tracers_gear_update_sn_event(). */
+  w->mass_ejected += mass_ejected;
+  w->energy_ejected += energy_ejected;
+  const double p2 = 2. * mass_ejected * energy_ejected;
+  if (p2 > 0.) w->momentum_ejected += sqrt(p2);
 }
 
 /**
@@ -483,6 +526,25 @@ static INLINE void tracers_after_snia_event_spart(struct spart *sp,
 
   tracers_gear_record_sn_event(&sp->tracers_data.snia_events, number_events,
                                comoving_density, with_cosmology, cosmo, time);
+}
+
+/**
+ * @brief Update the star particle tracer data after it released stellar wind
+ * feedback.
+ *
+ * @param sp The star particle.
+ * @param mass_ejected Wind mass ejected this step (internal units).
+ * @param energy_ejected Wind energy ejected this step, after the winds
+ * efficiency factor (physical internal units).
+ * @param enrichment_weight The star's SPH-averaged local gas density from the
+ * preceding step.
+ */
+static INLINE void tracers_after_winds_event_spart(
+    struct spart *sp, const double mass_ejected, const double energy_ejected,
+    const float enrichment_weight) {
+
+  tracers_gear_record_winds_event(&sp->tracers_data.winds, mass_ejected,
+                                  energy_ejected, enrichment_weight);
 }
 
 /**
