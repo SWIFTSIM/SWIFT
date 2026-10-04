@@ -238,8 +238,9 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "Sum over injection steps of the wind momentum budget sqrt(2 m_ej E_ej), "
       "in the rest frame of the star (scalar sum, not vector: isotropic "
       "ejecta would else cancel). The gas CumulativeMomentumFromWinds is the "
-      "momentum applied to the gas, which equals this budget for a star at "
-      "rest and differs from it for a moving star.");
+      "sum over gas particles of the momentum applied to each, which equals "
+      "this budget when the star and the gas move with the same velocity and "
+      "differs from it otherwise.");
 
   return num;
 }

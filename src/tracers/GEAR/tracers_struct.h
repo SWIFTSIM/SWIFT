@@ -32,11 +32,14 @@ struct tracers_xpart_data {
   struct {
 
     /*! Cumulative |delta_p| per event (scalar sum, not vector: isotropic
-        kicks would else cancel), physical. */
+        kicks would else cancel), physical. It is the momentum applied to the
+        gas in its own frame, mass after the event times the velocity change. */
     float momentum_supernovae;
     float momentum_winds;
 
-    /*! Cumulative specific internal energy received. */
+    /*! Cumulative thermal energy per unit mass given by the events. It is not
+        the change of the specific internal energy (dilution is not counted),
+        and the kinetic energy given is not included. */
     float energy_supernovae;
     float energy_winds;
 
