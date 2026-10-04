@@ -33,8 +33,8 @@ struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
 
-  /*! specific energy received from supernovae */
-  float delta_u;
+  /*! Thermal energy (not specific) received from supernovae and winds */
+  float delta_E_th;
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];

@@ -214,13 +214,13 @@ runner_iact_nonsym_feedback_apply(
       const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass;
       const float old_kinetic_energy = 0.5 * mj * norm2_v_p;
 
-      /* The additional specific internal energy of the gas particle j.
+      /* The additional thermal energy of the gas particle j.
         Ekin_new + U_new = Ekin_old + U_old + dEtot
-        -> du = (U_new - U_old) / new_mass = (Ekin_old + dEtot - Ekin_new) /
-        new_mass */
-      const float du =
-          (old_kinetic_energy + dE_lab_frame - new_kinetic_energy) / new_mass;
-      xpj->feedback_data.delta_u += du;
+        -> dE_th = U_new - U_old = Ekin_old + dEtot - Ekin_new. The update
+        divides the sum over the events by the final mass. */
+      const double dE_th =
+          old_kinetic_energy + dE_lab_frame - new_kinetic_energy;
+      xpj->feedback_data.delta_E_th += dE_th;
 
       /* Only used in non-cosmological simulations. Has to be
          investigated in cosmological simulations*/
@@ -255,11 +255,12 @@ runner_iact_nonsym_feedback_apply(
       }
 
       /* Lifetime-cumulative tracer, using this branch's own locally-computed
-         momentum/energy (not the shared feedback_data.delta_p/delta_u,
-         which the SN branch below can also add to this same step). */
+         momentum/energy (not the shared feedback_data.delta_p/delta_E_th,
+         which the SN branch below can also add to this same step). The
+         specific energy is the one of this event, per mass after the event. */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
       tracers_after_stellar_winds_feedback_part(
-          xpj, delta_p_mag_winds, (float)du,
+          xpj, delta_p_mag_winds, (float)(dE_th / new_mass),
           delta_p_mag_winds / (float)new_mass);
 
       xpj->feedback_data.hit_by_winds = 1;
@@ -283,10 +284,9 @@ runner_iact_nonsym_feedback_apply(
        feedback at the previous step. */
     new_mass += dm_SN;
 
-    /* Energy received. Guard against 0/0 (mj == 0): matches the winds
-       branch's own new_mass > 0.0 guard above. */
-    const double du = new_mass > 0.0 ? (e_sn)*weight / new_mass : 0.0;
-    xpj->feedback_data.delta_u += du;
+    /* Energy received */
+    const double dE_th = e_sn * weight;
+    xpj->feedback_data.delta_E_th += dE_th;
 
     /* Compute momentum received. */
     float delta_p_supernovae[3];
@@ -310,7 +310,8 @@ runner_iact_nonsym_feedback_apply(
     const float delta_p_mag_supernovae =
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
     tracers_after_supernovae_feedback_part(
-        xpj, delta_p_mag_supernovae, (float)du,
+        xpj, delta_p_mag_supernovae,
+        new_mass > 0.0 ? (float)(dE_th / new_mass) : 0.0f,
         new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
     /* Set the indication of SN event for cooling*/
