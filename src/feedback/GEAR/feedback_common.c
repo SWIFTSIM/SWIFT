@@ -25,6 +25,7 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "stellar_evolution.h"
+#include "tracers.h"
 #include "units.h"
 
 /**
@@ -166,6 +167,11 @@ void feedback_will_do_feedback(
 
   /* Multiply pre-SN energy by the efficiency */
   sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
+
+  /* Record the wind budget of the star, after the efficiency factor */
+  tracers_after_winds_event_spart(sp, sp->feedback_data.winds.mass_ejected,
+                                  sp->feedback_data.winds.energy_ejected,
+                                  sp->feedback_data.enrichment_weight);
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
