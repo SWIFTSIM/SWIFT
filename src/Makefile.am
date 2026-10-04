@@ -500,6 +500,7 @@ nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/radiation_iact.
 nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf.h feedback/GEAR/radiation_propagation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
+nobase_noinst_HEADERS += feedback/GEAR/feedback_tracers_struct.h feedback/GEAR/feedback_tracers_common.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h feedback/GEAR_thermal/feedback_io.h
