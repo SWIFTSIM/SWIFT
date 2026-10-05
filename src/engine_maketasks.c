@@ -87,11 +87,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (with_sinks) {
-    error("TODO: Sink and star formation sink over MPI");
-  }
-#endif
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
@@ -802,11 +797,6 @@ void engine_addtasks_recv_hydro(
     const int with_sync, const int with_rt) {
 
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (with_sinks) {
-    error("TODO: Sink and star formation sink over MPI");
-  }
-#endif
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
@@ -1511,11 +1501,6 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (with_sinks) {
-    error("TODO: Sink and star formation sink over MPI");
-  }
-#endif
   struct scheduler *s = &e->sched;
   const int are_particles_forming =
       (with_star_formation && c->hydro.count > 0) ||
