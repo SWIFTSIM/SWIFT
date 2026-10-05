@@ -61,6 +61,13 @@ static const double tiny = 1e-30; /* smallest value checked relatively */
 /* Dehnen & Aly (2012), table 1: normalisation C and shape f(q), q = r / H,
  * with s = 1 - q passed exactly to avoid cancellation near the edge. */
 
+/* The reference must be evaluated as written: under a fast FP model (the
+ * default of the Intel compilers) (gamma - u) / gamma may become
+ * gamma / gamma - u / gamma, which cancels near the edge. */
+#if defined(__clang__) || defined(__INTEL_COMPILER)
+#pragma float_control(precise, on, push)
+#endif
+
 static double pos(const double x) { return x > 0. ? x : 0.; }
 
 #if defined(CUBIC_SPLINE_KERNEL)
@@ -180,6 +187,10 @@ static double dW_ref(const double u) {
   const double s = (gamma_d - u) / gamma_d;
   return C_ref / pow(gamma_d, DIM + 1) * fp_ref(q, s);
 }
+
+#if defined(__clang__) || defined(__INTEL_COMPILER)
+#pragma float_control(pop)
+#endif
 
 /* ------------------------------------------------------------------------- */
 
