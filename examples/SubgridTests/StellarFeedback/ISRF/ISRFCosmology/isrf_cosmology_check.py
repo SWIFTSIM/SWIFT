@@ -2879,7 +2879,7 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
       (radiation_isrf.c:1557 and radiation_get_dust_extinction_factor);
     - ``u`` carries no float32 term, being a double in ``struct part`` and in
-      the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:165);
+      the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:127);
     - this check's own float64 summation of ``n_lit`` terms costs
       ``(n_lit - 1) * 2**-53``, eleven orders below the terms kept below.
 
@@ -2959,7 +2959,7 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
     # then its m_j * w_j product, the density loop's own m_j * w_j product
     # over different operands, and the single hi_inv_dim scaling of
-    # enrichment_weight (GEAR_thermal/feedback.c:366). The kernel evaluation
+    # enrichment_weight (GEAR_thermal/feedback.c:346). The kernel evaluation
     # itself adds no term here; see this function's docstring for why
     # identical compilation of W is a premise and cannot be given one.
     reconstruction = 4.0 * u32
