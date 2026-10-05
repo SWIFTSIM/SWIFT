@@ -45,6 +45,7 @@ DO_PLOT=1
 : "${KH_L2:=128}"               # KH: particles per edge in the low-density region
 : "${EVRARD_NPARTS:=100000}"    # Evrard: number of particles
 : "${KEPLERIAN_T_END:=50}"      # Keplerian ring: end time
+: "${KEPLERIAN2D_T_END:=30}"    # Keplerian ring, 2D code: end time (the 2D run segfaults later on particles without neighbours)
 : "${ZELDOVICH_Z_END:=0.9}"     # Zeldovich: final redshift
 : "${ZELDOVICH_PERTURB:=0.1}"   # Zeldovich_pert: transverse random displacement in units of the spacing
 : "${SEDOV_GLASS:=glassCube_64}"
@@ -58,7 +59,7 @@ REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
 # discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square zeldovich sod keplerian kh noh evrard sedov zeldovich_pert blob"
+ALL_TESTS="gresho square zeldovich sod keplerian keplerian2d kh noh evrard sedov zeldovich_pert blob"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bnph" opt; do
@@ -164,6 +165,28 @@ test_keplerian() {
   PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_T_END -P Snapshots:delta_time:1"
   PLOT_SNAP=""
   make_ic() { python3 makeIC.py; }
+}
+# The same ring with the 2D code: the particles are put in the z = 0 plane and
+# the point mass with them. In the 3D planar set-up every MAGMA particle has
+# a singular correction matrix (no z extent), which exercises the regularised
+# inverse; in 2D the 2x2 matrices are regular, so this is the reference that
+# tests the matrix-inversion gradients themselves on a differentially rotating
+# flow. Late-time (t > 10) ring metrics scatter between runs of the same code.
+test_keplerian2d() {
+  DIM=2; EXAMPLE=HydroTests/KeplerianRing; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
+  FLAGS="--hydro --external-gravity"
+  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN2D_T_END -P Snapshots:delta_time:1 -P PointMassPotential:position:[5.,5.,0.]"
+  PLOT_SNAP=""
+  make_ic() {
+    python3 makeIC.py
+    python3 -c "
+import h5py
+with h5py.File('initial_conditions.hdf5', 'r+') as f:
+    pos = f['/PartType0/Coordinates']; x = pos[:]; x[:, 2] = 0.0; pos[...] = x
+    vel = f['/PartType0/Velocities']; v = vel[:]; v[:, 2] = 0.0; vel[...] = v
+    f['/Header'].attrs['Dimension'] = 2
+"
+  }
 }
 test_zeldovich() {
   DIM=3; EXAMPLE=Cosmology/ZeldovichPancake_3D; YML=zeldovichPancake.yml; IC=zeldovichPancake.hdf5

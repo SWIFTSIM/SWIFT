@@ -32,8 +32,8 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
-ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "zeldovich", "zeldovich_pert",
-             "blob"]  # "nfw" on request
+ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "keplerian2d", "zeldovich",
+             "zeldovich_pert", "blob"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -651,7 +651,7 @@ def test_square(root, schemes, out):
     return metrics
 
 
-def test_keplerian(root, schemes, out):
+def test_keplerian(root, schemes, out, test="keplerian"):
     times = [0.0, 10.0, 25.0, 50.0]
     fig, axes = plt.subplots(len(schemes) + 1, len(times),
                              figsize=(3.4 * len(times), 3.4 * (len(schemes) + 1)), squeeze=False)
@@ -660,7 +660,7 @@ def test_keplerian(root, schemes, out):
     edges = np.linspace(0, 5, 51)
     areas = np.pi * (edges[1:] ** 2 - edges[:-1] ** 2)
     for i, t in enumerate(times):
-        data = load_all(root, schemes, "keplerian", "keplerian_ring", time=t)
+        data = load_all(root, schemes, test, "keplerian_ring", time=t)
         for j, s in enumerate(schemes):
             ax = axes[j, i]
             d = data[s]
@@ -692,9 +692,9 @@ def test_keplerian(root, schemes, out):
         axes[-1, i].set_ylabel(r"$\Sigma$")
         axes[-1, i].set_title(f"surface density, t={t:.0f}", fontsize=9)
         axes[-1, i].legend(fontsize=7)
-    fig.suptitle("Keplerian ring (2D), log density")
+    fig.suptitle(f"Keplerian ring ({'2D code' if test.endswith('2d') else '3D planar'}), log density")
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "keplerian.png"), dpi=150)
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
     return metrics
 
@@ -910,7 +910,9 @@ def test_nfw(root, schemes, out):
 
 TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
          "evrard": test_evrard, "kh": test_kh, "square": test_square,
-         "keplerian": test_keplerian, "zeldovich": test_zeldovich,
+         "keplerian": test_keplerian,
+         "keplerian2d": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian2d"),
+         "zeldovich": test_zeldovich,
          "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
          "blob": test_blob, "nfw": test_nfw}
 
