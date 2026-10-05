@@ -39,15 +39,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Dimension as an integer */
-#if defined(HYDRO_DIMENSION_3D)
-#define DIM 3
-#elif defined(HYDRO_DIMENSION_2D)
-#define DIM 2
-#elif defined(HYDRO_DIMENSION_1D)
-#define DIM 1
-#endif
-
 /* Tolerances */
 static const double tol_abs_W = 1e-6;    /* |W - W_ref| in units of W(0) */
 static const double tol_abs_dW = 1e-6;   /* |dW - dW_ref| in units of max|dW| */
@@ -71,9 +62,9 @@ static const double tiny = 1e-30; /* smallest value checked relatively */
 static double pos(const double x) { return x > 0. ? x : 0.; }
 
 #if defined(CUBIC_SPLINE_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 16. * M_1_PI;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 80. * M_1_PI / 7.;
 #else
 static const double C_ref = 8. / 3.;
@@ -86,9 +77,9 @@ static double fp_ref(const double q, const double s) {
 }
 
 #elif defined(QUARTIC_SPLINE_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 15625. * M_1_PI / 512.;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 46875. * M_1_PI / 2398.;
 #else
 static const double C_ref = 3125. / 768.;
@@ -103,9 +94,9 @@ static double fp_ref(const double q, const double s) {
 }
 
 #elif defined(QUINTIC_SPLINE_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 2187. * M_1_PI / 40.;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 15309. * M_1_PI / 478.;
 #else
 static const double C_ref = 243. / 40.;
@@ -120,22 +111,22 @@ static double fp_ref(const double q, const double s) {
 }
 
 #elif defined(WENDLAND_C2_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 21. * M_1_PI / 2.;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 7. * M_1_PI;
 #else
 static const double C_ref = 5. / 4.;
 #endif
 static double f_ref(const double q, const double s) {
-#if DIM == 1
+#if defined(HYDRO_DIMENSION_1D)
   return pow(pos(s), 3) * (1. + 3. * q);
 #else
   return pow(pos(s), 4) * (1. + 4. * q);
 #endif
 }
 static double fp_ref(const double q, const double s) {
-#if DIM == 1
+#if defined(HYDRO_DIMENSION_1D)
   return -12. * q * pow(pos(s), 2);
 #else
   return -20. * q * pow(pos(s), 3);
@@ -143,9 +134,9 @@ static double fp_ref(const double q, const double s) {
 }
 
 #elif defined(WENDLAND_C4_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 495. * M_1_PI / 32.;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 9. * M_1_PI;
 #else
 #error "Wendland C4 kernel not defined in 1D."
@@ -158,9 +149,9 @@ static double fp_ref(const double q, const double s) {
 }
 
 #elif defined(WENDLAND_C6_KERNEL)
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
 static const double C_ref = 1365. * M_1_PI / 64.;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
 static const double C_ref = 78. * M_1_PI / 7.;
 #else
 #error "Wendland C6 kernel not defined in 1D."
@@ -179,13 +170,13 @@ static const double gamma_d = (double)kernel_gamma;
 static double W_ref(const double u) {
   const double q = u / gamma_d;
   const double s = (gamma_d - u) / gamma_d;
-  return C_ref / pow(gamma_d, DIM) * f_ref(q, s);
+  return C_ref / pow(gamma_d, hydro_dimension) * f_ref(q, s);
 }
 
 static double dW_ref(const double u) {
   const double q = u / gamma_d;
   const double s = (gamma_d - u) / gamma_d;
-  return C_ref / pow(gamma_d, DIM + 1) * fp_ref(q, s);
+  return C_ref / pow(gamma_d, hydro_dimension + 1.) * fp_ref(q, s);
 }
 
 #if defined(__clang__) || defined(__INTEL_COMPILER)
@@ -212,7 +203,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   message("Kernel: %s, %dD, gamma=%.9g, %d sub-intervals of degree %d",
-          kernel_name, DIM, kernel_gamma, kernel_poly_ivals,
+          kernel_name, (int)hydro_dimension, kernel_gamma, kernel_poly_ivals,
           kernel_poly_degree);
 
   /* The header's normalisation constant must be the one of the reference */
@@ -362,9 +353,9 @@ int main(int argc, char *argv[]) {
       float Wi;
       kernel_eval(ui, &Wi);
       const double weight = (i == 0 || i == M) ? 0.5 : 1.;
-#if DIM == 3
+#if defined(HYDRO_DIMENSION_3D)
       integral += weight * 4. * M_PI * ui * ui * Wi;
-#elif DIM == 2
+#elif defined(HYDRO_DIMENSION_2D)
       integral += weight * 2. * M_PI * ui * Wi;
 #else
       integral += weight * 2. * Wi;
