@@ -27,7 +27,12 @@ removal of the $c_{\rm hyp}$ schemes 0, 1 and 3 then moved the lines of
 \code{radiation\_isrf.c}, \code{radiation\_isrf.h}, \code{feedback\_properties.h},
 \code{feedback\_common.c}, \code{feedback\_struct.h} and \code{feedback\_io.h}
 that follow the edited code; the citations into those six files are shifted
-accordingly, and the citations into the edited functions are rewritten.
+accordingly, and the citations into the edited functions are rewritten. A later
+comment-shortening pass over \code{feedback\_struct.h}, \code{feedback\_properties.h},
+\code{feedback.c}, \code{feedback\_io.h}, \code{radiation.c} and
+\code{feedback\_common.c} (no code change) shifted the citations into them again;
+they were re-mapped line by line against \code{c158b5c41}, and the errata that
+quote a removed comment cite it at \code{c158b5c41}.
 
 \paragraph{File keys.} Short basenames used in the citations, all relative to the
 repository root:
@@ -59,7 +64,7 @@ this ordering is needed to read it:
 
 \begin{enumerate}
   \item \textbf{drift.} \code{feedback\_reset\_part} (\code{src/cell\_drift.c:357}
-    into \code{feedback.c:226-233}) calls
+    into \code{feedback.c:209-215}) calls
     \code{radiation\_snapshot\_part\_propagation}
     (\code{radiation\_isrf.c:188}), which snapshots $u \to u_{\rm prev}$ and
     $\rho \to \rho_{\rm prev}$, sets $\kappa$, sets $c_{\rm hyp}$ for scheme
@@ -99,7 +104,7 @@ Star injection runs in the star feedback-apply loop,
 
 \paragraph{The transport is off by default.}
 \code{GEARFeedback:ISRF\_propagation} defaults to 0
-(\code{feedback\_properties.h:1051-1052}), i.e.\ the default ISRF run is
+(\code{feedback\_properties.h:843-844}), i.e.\ the default ISRF run is
 injection plus receiver-side extinction only, with no transport. In that mode the
 three ghosts return early (\code{radiation\_isrf.c:468}, \code{:736},
 \code{:1193}) and both $\kappa$ are forced to zero
@@ -163,11 +168,11 @@ pairwise operators take comoving inputs and write physical accumulators
 
 \subsubsection{Moments and operators}
 
-There are three \textbf{moments} (\code{feedback\_struct.h:51-56}):
+There are three \textbf{moments} (\code{feedback\_struct.h:43-48}):
 \code{ISRF\_MOMENT\_PE} $=0$, \code{ISRF\_MOMENT\_LW} $=1$,
 \code{ISRF\_MOMENT\_LW\_PHOTON} $=2$, with
 \code{ISRF\_MOMENT\_COUNT} $=3$; and two \textbf{operators}
-(\code{feedback\_struct.h:64-68}), \code{ISRF\_OPERATOR\_PE} $=0$ and
+(\code{feedback\_struct.h:56-60}), \code{ISRF\_OPERATOR\_PE} $=0$ and
 \code{ISRF\_OPERATOR\_LW} $=1$. The two maps are
 
 \begin{align}
@@ -177,9 +182,9 @@ There are three \textbf{moments} (\code{feedback\_struct.h:51-56}):
   \label{eq:isrfd-op-owner}
 \end{align}
 
-at \code{feedback\_struct.h:85-86} and \code{:115-116}, both declared unsized
-with a \code{\_Static\_assert} on their length (\code{feedback\_struct.h:88-92},
-\code{:118-122}). Equation~(\ref{eq:isrfd-moment-to-op}) means
+at \code{feedback\_struct.h:77-78} and \code{:107-108}, both declared unsized
+with a \code{\_Static\_assert} on their length (\code{feedback\_struct.h:80-84},
+\code{:110-114}). Equation~(\ref{eq:isrfd-moment-to-op}) means
 \code{ISRF\_MOMENT\_LW\_PHOTON} shares LW's opacity, Eddington tensor and
 dissipation coefficients; Equation~(\ref{eq:isrfd-op-owner}) means every write to
 per-operator state reads its owning moment's $(u,\boldsymbol{F})$.
@@ -197,20 +202,42 @@ $\lambda_N(\mathrm{LW})$ (\code{radiation\_isrf.c:765-776}).
 \subsubsection{Per-moment, per-operator and per-particle state}
 
 Per moment, \code{struct feedback\_isrf\_moment\_data}
-(\code{feedback\_struct.h:128-297}): $u$ (\textbf{double},
-\code{feedback\_struct.h:165}), $u_{\rm prev}$ (\textbf{double}, \code{:173}),
-\code{specific\_flux[3]} (float, \code{:196}), \code{div\_specific\_flux} (float,
-\code{:207}), \code{dissipation\_u} (float, \code{:218}), \code{grad\_u[3]}
-(float, \code{:225}), \code{u\_dose\_reservoir} (float, \code{:236}),
-\code{u\_source\_rate} (float, \code{:246}), plus the debug-only
-\code{u\_min\_since\_snapshot} (\code{:258}), \code{cumulative\_injected}
-(\code{:271}) and \code{cumulative\_absorbed} (\code{:295}).
+(\code{feedback\_struct.h:120-175}): $u$ (\textbf{double},
+\code{feedback\_struct.h:127}), $u_{\rm prev}$ (\textbf{double}, \code{:131}),
+\code{specific\_flux[3]} (float, \code{:135}), \code{div\_specific\_flux} (float,
+\code{:139}), \code{dissipation\_u} (float, \code{:144}), \code{grad\_u[3]}
+(float, \code{:149}), \code{u\_dose\_reservoir} (float, \code{:154}),
+\code{u\_source\_rate} (float, \code{:159}), plus the debug-only
+\code{u\_min\_since\_snapshot} (\code{:164}), \code{cumulative\_injected}
+(\code{:168}) and \code{cumulative\_absorbed} (\code{:173}).
 
 The double width of $u$ and $u_{\rm prev}$ is load-bearing and the code states why
-(\code{feedback\_struct.h:157-164}): the per-step relaxation depth
+(\code{feedback\_struct.h:122-126}): the per-step relaxation depth
 $\mathcal{A}$ can be a few $10^{-8}$, and $1-\mathcal{A}$ at that scale is not
 distinguishable in a 24-bit mantissa. Every other accumulator stays float because
 none carries a multi-step decay at that depth.
+
+\textbf{The energy ledger (debug builds only).} \code{cumulative\_injected}
+sums the raw dose handed to $u$, $\Delta t\,\mathcal{R}\,S_m$ with
+$\mathcal{R} = c_{\rm hyp}/c$: rescaled but not relaxed.
+\code{cumulative\_absorbed} sums, every step and before $u$ is overwritten,
+\begin{equation}
+  \mathrm{Abs} \mathrel{+}=
+    \big(u^{n} + \Delta t\,\varphi\,D\big)\big(1 - e^{-\mathcal{A}}\big)
+    + \big(\mathcal{R}\,S_m - \code{div\_specific\_flux}\big)\,\Delta t\,(1-\varphi),
+\end{equation}
+with $D$ the artificial-dissipation source (\code{dissipation\_u}) and
+$\varphi$, $\mathcal{A}$ as in Equation~(\ref{eq:isrfd-depth-u}). It is
+\textbf{not} the dust-extinction loss alone: the transport divergence and the
+dissipation source are folded in too, because the exact-relaxation update mixes
+all three under one $\varphi$. At a snapshot, $E + \mathrm{Abs} - \mathrm{Inj}$,
+with $E = \sum m\,u$, isolates the part of the update that this closed-form split
+attributes neither to injection nor to the surviving field: the transport and
+dissipation residual, which the SPH divergence's kernel-sum identity and the
+dissipation's pairwise antisymmetry drive to about zero when summed over all
+particles. Both totals are never reset, so the identity holds at every snapshot.
+The PE moment's share of the LW-to-PE transfer is booked into PE's injected total,
+since LW's absorbed total already contains it.
 
 \textbf{\code{grad\_u} is not the gradient of $u$.} The code accumulates the
 anisotropic M1 pressure-tensor divergence
@@ -223,32 +250,32 @@ written $\boldsymbol{G}_m$ here.
 For every scheme, \code{specific\_flux} stores the \textbf{reduced} flux
 $\tilde{\boldsymbol{F}} = \boldsymbol{F}/c_{\rm hyp}$, not the true flux
 (\code{radiation\_isrf.c:1246-1248}, \code{radiation\_propagation\_iact.h:35-41},
-\code{feedback\_struct.h:175-196}). The snapshot getters multiply it by the
+\code{feedback\_struct.h:133-135}). The snapshot getters multiply it by the
 particle's current $c_{\rm hyp}$ before writing it, so the output fields hold the
 true flux.
 
 Per operator, \code{struct feedback\_isrf\_operator\_data}
-(\code{feedback\_struct.h:305-364}): $\kappa$ (float, \code{:314}),
-\code{m1\_closure\_D[3][3]} (float, \code{:322}), \code{ngb\_mean\_abs\_u\_V}
-(float, \code{:329}), \code{dissipation\_alpha\_trigger} (float, \code{:345}) and
-\code{dissipation\_alpha\_floor} (float, \code{:363}).
+(\code{feedback\_struct.h:183-207}): $\kappa$ (float, \code{:188}),
+\code{m1\_closure\_D[3][3]} (float, \code{:192}), \code{ngb\_mean\_abs\_u\_V}
+(float, \code{:197}), \code{dissipation\_alpha\_trigger} (float, \code{:202}) and
+\code{dissipation\_alpha\_floor} (float, \code{:206}).
 
 Per particle, in \code{struct feedback\_part\_data}: \code{max\_ngb\_time\_bin}
-(\code{feedback\_struct.h:394}), the largest \code{time\_bin} seen in this
-$h$-iteration's kernel; \code{rho\_prev} (float, \code{:445}), a
+(\code{feedback\_struct.h:237}), the largest \code{time\_bin} seen in this
+$h$-iteration's kernel; \code{rho\_prev} (float, \code{:288}), a
 \textbf{comoving} density snapshot seeded to $1.0$ at first init and never left
 at zero (\code{radiation\_isrf.c:155}, \code{:211}); \code{c\_hyp} (float,
-\code{:470}), physical; \code{dt\_prev} (float, \code{:479}), this particle's own
+\code{:328}), physical; \code{dt\_prev} (float, \code{:337}), this particle's own
 \textbf{physical} timestep, cached raw and unfloored
 (\code{radiation\_isrf.c:277}); and the four tag fields
 \code{ISRF\_last\_touch\_ti}, \code{is\_illuminated\_ISRF},
 \code{ISRF\_illumination\_end\_ti}, \code{ISRF\_reservoir\_end\_ti}
-(\code{feedback\_struct.h:520}, \code{:539}, \code{:554}, \code{:563}).
+(\code{feedback\_struct.h:363}, \code{:382}, \code{:397}, \code{:406}).
 
 On the star side, \code{struct feedback\_spart\_data.radiation} carries
 \code{L\_band[ISRF\_MOMENT\_COUNT]} as \textbf{double} physical power in internal
-units (\code{feedback\_struct.h:752}) and \code{Delta\_t} as float proper time
-(\code{:766}).
+units (\code{feedback\_struct.h:563}) and \code{Delta\_t} as float proper time
+(\code{:572}).
 
 \subsubsection{Band definitions and cross sections}
 \label{sec:isrf-eqdisc-bands}
@@ -258,7 +285,7 @@ is $11.2$--$13.6$\,eV. Only the lower edges enter the code as numbers:
 $E_{\rm lo}(\mathrm{PE}) = 6.0$\,eV (\code{radiation.h:191}) and
 $E_{\rm lo}(\mathrm{LW}) = 11.2$\,eV (\code{radiation.h:192}); the $13.6$\,eV
 upper edge appears in the band comments (\code{radiation.h:104},
-\code{feedback\_struct.h:41-43}) but is never used. The cgs forms are hard-coded
+\code{feedback\_struct.h:33-35}) but is never used. The cgs forms are hard-coded
 literals and never unit-converted (\code{radiation.h:202-203}):
 
 \begin{equation}
@@ -319,18 +346,18 @@ The grey (comoving-edge) value \textbf{differs per moment}:
   \label{eq:isrfd-lambda-N}
 \end{align}
 
-at \code{radiation.h:225} and \code{radiation.c:91}, \code{:222-224}. The $+1$ in
+at \code{radiation.h:225} and \code{radiation.c:91}, \code{:220-222}. The $+1$ in
 Equation~(\ref{eq:isrfd-lambda-E}) is the redshift loss of photon \emph{energy},
 which survives when the edges are comoving, so the grey value of $\lambda_E$ is
 $1$. Photon \emph{number} does not redshift, so the grey value of
 $\lambda_N(\mathrm{LW})$ is $0$, not $1$ (rationale
-\code{radiation.c:226-230}). The three shipped fallbacks are mutually consistent
+\code{radiation.c:224-228}). The three shipped fallbacks are mutually consistent
 on this: $(6.508 - 1)\times 12.2/11.2 = 6.0$ (\code{radiation.h:237-239}).
 
 The three scalars are computed once at start-up, over the whole IMF
 $[\code{imf.mass\_min}, \code{imf.mass\_max}]$, at one reference metallicity
 $Z_{\rm ref} = 0.014$ for a 2D table (\code{radiation.h:176},
-\code{radiation.c:122-127}):
+\code{radiation.c:120-125}):
 
 \begin{align}
   \lambda_E(\mathrm{PE}) &= 1 + \frac{l_{\rm edge}(\mathrm{PE})}{l_{\rm PE}},
@@ -342,8 +369,8 @@ $Z_{\rm ref} = 0.014$ for a 2D table (\code{radiation.h:176},
   \label{eq:isrfd-lambda-n-table}
 \end{align}
 
-at \code{radiation.c:212}, \code{:213} and \code{:221-224}, with the ratio itself
-formed at \code{radiation.c:165-166}. Here $l_{\rm edge}(b)$ is the
+at \code{radiation.c:210}, \code{:211} and \code{:219-222}, with the ratio itself
+formed at \code{radiation.c:163-164}. Here $l_{\rm edge}(b)$ is the
 IMF-integrated \code{Integrated\_SpectralPhotonRateAt<b>Edge} differenced over
 the mass interval, \emph{already} multiplied by $E_{\rm lo}(b)^2$ and converted to
 internal power at read time (the read divides the cgs value by
@@ -351,27 +378,27 @@ $\code{units\_cgs(POWER)}/E_{\rm lo}(b)^2$,
 \code{radiation\_table\_io.c:1232-1234} for PE and \code{:1264-1266} for LW; the
 division itself is \code{radiation\_table\_io.c:668}), so both sides of the ratio
 are internal power and no further factor is applied
-(\code{radiation.c:161-165}). $l_b$ is \code{Integrated\_L\_PE} or
+(\code{radiation.c:159-163}). $l_b$ is \code{Integrated\_L\_PE} or
 \code{Integrated\_L\_LW} over the same mass interval, and
 $\langle E\rangle_{\rm LW}$ is \code{Integrated\_MeanPhotonEnergyLW} read at
 \code{mass\_max} as a single point, not differenced
-(\code{radiation.c:147-151}), in cgs erg.
+(\code{radiation.c:145-149}), in cgs erg.
 
 Guards and tripwires: with radiation inactive or the ISRF off, the three keep
-their compile-time fallbacks (\code{radiation.c:115-120}); so do they if
+their compile-time fallbacks (\code{radiation.c:113-118}); so do they if
 $l_{\rm PE} \le 0$ or $l_{\rm LW} \le 0$, tested exactly with no epsilon
-(\code{radiation.c:159}). A zero numerator over a nonzero denominator gives
+(\code{radiation.c:157}). A zero numerator over a nonzero denominator gives
 exactly grey, $\lambda = 1$, with a rank-0 warning
-(\code{radiation.c:176-189}). A positive but implausibly small
-$\lambda - 1 < 0.05$ is fatal (\code{radiation.c:197-210}, macro
+(\code{radiation.c:174-187}). A positive but implausibly small
+$\lambda - 1 < 0.05$ is fatal (\code{radiation.c:195-208}, macro
 \code{radiation.c:60}); the same floor is applied to $\lambda_N(\mathrm{LW})$
-\emph{itself}, not to $\lambda_N - 1$ (\code{radiation.c:231-239}, rationale
-\code{:226-230}). A value above 250 is a warning only
+\emph{itself}, not to $\lambda_N - 1$ (\code{radiation.c:229-237}, rationale
+\code{:224-228}). A value above 250 is a warning only
 (\code{radiation.c:61}). The compile-time fallbacks, described as the
 young-population end of a one-parameter spectral family, are
 $\lambda_E(\mathrm{PE}) = 2.154$, $\lambda_E(\mathrm{LW}) = 6.508$,
 $\lambda_N(\mathrm{LW}) = 6.0$ (\code{radiation.h:237-239}), stored as double
-fields of \code{feedback\_props} (\code{feedback\_properties.h:214-216}).
+fields of \code{feedback\_props} (\code{feedback\_properties.h:146-148}).
 
 \subsection{The continuum M1 system, per band}
 \label{sec:isrf-eqdisc-continuum}
@@ -464,7 +491,7 @@ other than the star source. $\kappa_o$ is the band mass opacity times the local
 physical density (\code{radiation\_isrf.c:1520-1522}), with no column.
 Section~\ref{sec:isrf-eqdisc-extinction}'s extinction is a separate,
 independently computed quantity and the code states the two are not
-interchangeable (\code{feedback\_struct.h:311-313}).
+interchangeable (\code{feedback\_struct.h:186-188}).
 
 \paragraph{Cosmological terms.} Exactly \emph{one} power of $H$ appears, in both
 equations. The code's justification (\code{radiation\_isrf.c:668-671}): $u$ is
@@ -547,8 +574,7 @@ time bins it does not.
 
 The divergence sits in the \emph{force} loop, not a type-1 loop, because it needs
 both sides of every pair credited and only the type-2 dispatch fires both sides
-whenever either kernel reaches (\code{radiation\_propagation\_iact.h:26-33},
-\code{feedback\_struct.h:198-202}).
+whenever either kernel reaches (\code{radiation\_propagation\_iact.h:26-33}).
 
 \paragraph{Gradient (gradient loop).}
 \code{radiation\_gradient\_accumulate\_band}
@@ -576,7 +602,7 @@ factor. The comment states that this is the deliberate complement of the
 divergence's shared-coefficient form, and that pairing the two makes them exactly
 skew-adjoint in the $m\rho$ inner product
 (\code{radiation\_propagation\_iact.h:314-317},
-\code{feedback\_struct.h:432-438}); that algebra is reported here as the code's
+\code{feedback\_struct.h:275-281}); that algebra is reported here as the code's
 own claim and has not been re-derived.
 
 Both operators read \code{rho\_prev}, never the live \code{p->rho}
@@ -797,7 +823,7 @@ $|\tilde{\boldsymbol{F}}|$, $c_M u$ and $\hat f$ are formed in double for the sa
 underflow reason (\code{radiation\_propagation\_iact.h:225-234}), and zero guards
 keep $\boldsymbol{F} = 0$ at $n=0$ giving $\hat f = 0$ rather than a NaN
 (\code{radiation\_propagation\_iact.h:227}). Three call sites: first init
-(\code{radiation\_isrf.c:160}), the drift reset (\code{feedback.c:232}, after the
+(\code{radiation\_isrf.c:160}), the drift reset (\code{feedback.c:214}, after the
 tag expiry, which can zero $u$), and the density ghost
 (\code{radiation\_isrf.c:510}).
 
@@ -806,20 +832,20 @@ tag expiry, which can zero $u$), and the density ghost
 
 Defaults, all parsed unconditionally so a validation run can set them with
 propagation off: \code{ISRF\_dissipation\_alpha\_max} $=0.5$
-(\code{feedback\_properties.h:1128-1129}),
+(\code{feedback\_properties.h:920-921}),
 \code{ISRF\_dissipation\_negativity\_threshold} $\epsilon_1 = 0.01$
-(\code{:1125-1126}), \code{ISRF\_dissipation\_alpha\_floor} $=0.5$
-(\code{:1145-1146}), \code{ISRF\_dissipation\_floor\_h\_over\_lambda}
-$\epsilon_\lambda = 0.5$ (\code{:1147-1148}),
+(\code{:922-923}), \code{ISRF\_dissipation\_alpha\_floor} $=0.5$
+(\code{:942-943}), \code{ISRF\_dissipation\_floor\_h\_over\_lambda}
+$\epsilon_\lambda = 0.5$ (\code{:944-945}),
 \code{ISRF\_dissipation\_floor\_relaxation\_residual} $\epsilon_R = 0.40$
-(\code{:1164-1166}) and \code{ISRF\_dissipation\_alpha\_pin\_for\_debugging}
-$=0$ (\code{:1127-1128}). Elsewhere: \code{ISRF\_c\_hyp\_margin} $=0.5$
-(\code{:1093-1094}), with \code{ISRF\_c\_hyp\_fixed\_fraction\_of\_c} disabled
+(\code{:961-963}) and \code{ISRF\_dissipation\_alpha\_pin\_for\_debugging}
+$=0$ (\code{:924-925}). Elsewhere: \code{ISRF\_c\_hyp\_margin} $=0.5$
+(\code{:890-891}), with \code{ISRF\_c\_hyp\_fixed\_fraction\_of\_c} disabled
 by default. Ranges are
-enforced at parse time: $\alpha_{\max} \ge 0$ (\code{:1130-1132}),
-$\epsilon_1 \in (0,1]$ (\code{:1134-1139}), $\alpha_{\rm floor} \ge 0$
-(\code{:1150-1154}), $\epsilon_\lambda > 0$ (\code{:1156-1160}),
-$\epsilon_R \in [0,1]$ (\code{:1168-1176}).
+enforced at parse time: $\alpha_{\max} \ge 0$ (\code{:927-929}),
+$\epsilon_1 \in (0,1]$ (\code{:931-936}), $\alpha_{\rm floor} \ge 0$
+(\code{:947-951}), $\epsilon_\lambda > 0$ (\code{:953-957}),
+$\epsilon_R \in [0,1]$ (\code{:965-973}).
 
 \paragraph{Trigger.} \code{radiation\_update\_dissipation\_alpha\_band}
 (\code{radiation\_isrf.c:971-994}), evaluated once per operator per step in the
@@ -935,19 +961,19 @@ rather than epsilon-guarded for the same reason
 \label{sec:isrf-eqdisc-chyp}
 
 The enum is \code{isrf\_c\_hyp\_scheme}
-(\code{feedback\_properties.h:70-88}) and has two values. Each fixes the speed
+(\code{feedback\_properties.h:72-78}) and has two values. Each fixes the speed
 rule; the pairwise operators are the same for both, and both store the reduced
 flux $\tilde{\boldsymbol{F}}$. Any other value is an \code{error()} at parse time
-(\code{feedback\_properties.h:1061-1068}), at the drift and density-ghost
+(\code{feedback\_properties.h:853-860}), at the drift and density-ghost
 dispatch (\code{radiation\_isrf.c:273-275}, \code{:471-473}) and on a restart,
 where the restored value is checked separately because the flat restart read
-bypasses the parser (\code{feedback\_common.c:1707-1717}); a restart written
+bypasses the parser (\code{feedback\_common.c:1705-1715}); a restart written
 with a removed scheme cannot be resumed. Neither can a restart written by an
 earlier code version: scheme 2 stored the true flux there, which this code would
 read as the reduced flux, wrong by a factor $c_{\rm hyp}$. The restart stream
 therefore starts with a marker block naming the stored flux form, and a file
 without it, or with another value, stops the run
-(\code{feedback\_common.c:1652-1655}, \code{:1681-1691}). A run is rerun, never
+(\code{feedback\_common.c:1650-1653}, \code{:1679-1689}). A run is rerun, never
 resumed, across that change.
 
 With $h_{\rm phys} = a\, h$ (note: \emph{not} $\gamma_K h$) and $dt_{\max}(i)$
@@ -964,10 +990,10 @@ scheme & speed formula & code \\
 \end{tabular}
 \end{center}
 
-Scheme 4 is the \textbf{default} (\code{feedback\_properties.h:1054-1060}).
+Scheme 4 is the \textbf{default} (\code{feedback\_properties.h:846-852}).
 Here $f_c = \code{ISRF\_c\_hyp\_fixed\_fraction\_of\_c}$ and
 $C_{\rm hyp} = \code{ISRF\_c\_hyp\_margin}$, default $0.5$
-(\code{feedback\_properties.h:1098-1099}).
+(\code{feedback\_properties.h:890-891}).
 
 Scheme 2 decides $c_{\rm hyp}$ at the drift
 (\code{radiation\_isrf.c:265-275}); scheme 4 defers it to the density ghost,
@@ -983,12 +1009,12 @@ $\min(+\infty, c)$, which \code{-ffast-math} does not guarantee
 $dt_{\max}(i)$ reuses \code{dt\_prev} in the same-bin case rather than
 recomputing (\code{radiation\_isrf.c:478-479}). At parse time
 \code{feedback\_props\_check\_c\_hyp\_scheme} forces $f_c > 0$ and scheme 2 to
-agree (\code{feedback\_properties.h:647-661}). A fixed propagation speed $v$ is
+agree (\code{feedback\_properties.h:483-497}). A fixed propagation speed $v$ is
 scheme 2 with $f_c = v/c$. The former test-only override
 \code{ISRF\_c\_hyp\_pin\_for\_debugging}, which set $c_{\rm hyp}$ to a chosen value
 under either scheme without the timestep term below, was removed; a parameter
 file that still sets it starts normally, with a warning that the key is ignored
-(\code{feedback\_properties.h:566-629}). The same holds for every retired
+(\code{feedback\_properties.h:406-469}). The same holds for every retired
 \code{GEARFeedback} key.
 
 \subsubsection{The timestep each scheme imposes}
@@ -1015,14 +1041,14 @@ omitted, because first init forces it nonzero if and only if $u_{\rm LW}$ is
 (\code{radiation\_isrf.c:370-374}).
 \code{feedback\_compute\_part\_timestep} additionally aborts the run if the
 scheme-2 bound falls below \code{TimeIntegration:dt\_min}, naming the parameter
-(\code{feedback.c:194-212}).
+(\code{feedback.c:185-199}).
 
 Scheme 4 imposes \textbf{no} radiation timestep at all: its $c_{\rm hyp}$ is
 already derived from a timestep (\code{radiation\_isrf.c:319-334}). It builds
 $c_{\rm hyp}$ from $dt_{\max}(i)$, so the receiver bound
 $c_i\, dt_j \le C_{\rm hyp} h_i$ holds for every neighbour the density loop
 reached, i.e.\ every $j$ inside $\mathcal{H}_i$
-(\code{feedback\_struct.h:457-458}), including a neighbour on a coarser bin.
+(\code{feedback\_struct.h:300-301}), including a neighbour on a coarser bin.
 This does not cover the $\mathcal{H}_i \le r < \mathcal{H}_j$ pair class
 (Section~\ref{sec:isrf-eqdisc-limits}, item~\ref{it:isrfd-uncovered}).
 
@@ -1032,6 +1058,8 @@ is exact at any $\kappa\, dt$.
 \subsubsection{The dose reservoir and its drawdown}
 \label{sec:isrfd-reservoir}
 
+Every star's touch only adds to the reservoir, so any number of stars on any
+time bins superpose without losing or double-counting emission.
 Drawdown happens at the drift, for active particles only
 (\code{radiation\_isrf.c:294-316}). With
 $\code{ti\_begin} = \code{get\_integer\_time\_begin}(\code{ti\_current}, \code{time\_bin})$:
@@ -1088,7 +1116,7 @@ at \code{radiation\_iact.h:214-215}, \code{:218-222} and \code{:224-227}, with
 $r$ and $h_i$ \textbf{comoving} and $d$ the dimension count. Here
 \code{enrichment\_weight} is $\sum_j m_j W(r/h_i)$ accumulated in the star
 density loop (\code{feedback\_iact.h:71}) and multiplied by $h_i^{-d}$ in
-\code{feedback\_prepare\_feedback} (\code{feedback.c:366}), i.e.\ it \emph{is} the
+\code{feedback\_prepare\_feedback} (\code{feedback.c:346}), i.e.\ it \emph{is} the
 SPH density estimate at the star; a value of 0 gives
 $\omega_{ij} = 0$ rather than a division
 (\code{radiation\_iact.h:224-226}). The injected energy per pair, per moment, is
@@ -1163,7 +1191,7 @@ must be kept distinct from the per-particle $\kappa$ of
 Section~\ref{sec:isrf-eqdisc-continuum}, which is a \emph{linear} rate
 (1/length) equal to $\kappa_{\rm eff}\,\rho_{\rm phys}$
 (\code{radiation\_isrf.c:1520-1522}). The two are computed independently and the
-code states they are not interchangeable (\code{feedback\_struct.h:311-313}).
+code states they are not interchangeable (\code{feedback\_struct.h:186-188}).
 $f_{\rm gr}$ is the \emph{resolved}
 \code{chemistry\_data.local\_dust\_to\_gas\_ratio}, never the $-1$ sentinel
 (\code{radiation\_isrf.c:1552-1553}, \code{:223-224}). The factor is
@@ -1176,7 +1204,7 @@ band-specific and computed per operator
 (\code{radiation\_isrf.c:1359-1406}), with
 $h_{\rm gas} = \gamma_K\, h$ (\code{radiation\_isrf.c:1368}). The default
 mechanism is \code{pair\_separation}
-(\code{feedback\_properties.h:1006-1007}).
+(\code{feedback\_properties.h:798-799}).
 
 \begin{align}
   \text{\code{constant\_kernel\_path}:}\quad
@@ -1192,7 +1220,7 @@ mechanism is \code{pair\_separation}
 
 at \code{radiation\_isrf.c:1374}, \code{:1376-1377} and \code{:1400}, with
 $R_{\rm ext}$ the parameter \code{ISRF\_extinction\_path\_in\_kernel\_radii}, default 1.0
-(\code{feedback\_properties.h:41}, \code{:1007-1009}), and the Jeans length built
+(\code{feedback\_properties.h:41}, \code{:799-801}), and the Jeans length built
 from a temperature-capped sound speed:
 
 \begin{equation}
@@ -1205,18 +1233,18 @@ from a temperature-capped sound speed:
 \end{equation}
 
 at \code{radiation\_isrf.c:1393-1395} and \code{:1398-1399}, with
-$T_{\rm cap} = 40$\,K by default (\code{feedback\_properties.h:43}).
+$T_{\rm cap} = 40$\,K by default (\code{feedback\_properties.h:46}).
 
 Guards: $T \le 0$ or $\rho_{\rm phys} \le 0$ returns $h_{\rm gas}$ outright,
 rather than clamping a division, because a guarded denominator is not safe under
 \code{-ffast-math} (\code{radiation\_isrf.c:1384-1387}). An unrecognised
-mechanism string is fatal (\code{feedback\_properties.h:1034-1046}), and an
+mechanism string is fatal (\code{feedback\_properties.h:826-838}), and an
 unknown enum value reaching the switch is fatal
 (\code{radiation\_isrf.c:1404-1405}). Each mechanism's magnitude key is parsed
 only by the mechanism that reads it, so \code{used\_parameters.yml} records a
-number only where it was used (\code{feedback\_properties.h:1002-1003}). The
-comment calls $R_{\rm ext} = 5/12$ the exact value in the uniform optically thin
-limit (\code{feedback\_properties.h:108-111}).
+number only where it was used (\code{feedback\_properties.h:794-795}). The
+value $R_{\rm ext} = 5/12$ is exact in the uniform optically thin limit, as
+stated for \code{pair\_separation} above.
 
 \subsubsection{The exact identity at zero metallicity}
 \label{sec:isrfd-zero-Z}
@@ -1235,7 +1263,7 @@ $\mathcal{X} = e^{0} = 1$ exactly for both bands. Summing the deposited
 \end{equation}
 
 because $\rho_\star = \sum_j m_j w_i$ is the same kernel sum
-(\code{feedback\_iact.h:71} with \code{feedback.c:366}). So the injection
+(\code{feedback\_iact.h:71} with \code{feedback.c:346}). So the injection
 conserves the star's band energy over the step exactly, with three documented
 exceptions:
 
@@ -1445,7 +1473,7 @@ an illuminated cloud without it (\code{cooling\_io.h:417-430}).
     constants rather than per-run parameters (\code{radiation.h:156-166}).
   \item \textbf{Run-wide scalar band-edge weights}, evaluated once over the
     whole IMF at one reference metallicity $Z = 0.014$
-    (\code{radiation.c:122-127}). The comment states that the bias of the
+    (\code{radiation.c:120-125}). The comment states that the bias of the
     shipped scalar against a population average is \emph{not sized}
     (\code{radiation.h:230-236}), and that an aged population's
     $\Lambda_{\rm LW}$ reaches about 18.3, roughly three times the shipped
@@ -1456,10 +1484,10 @@ an illuminated cloud without it (\code{cooling\_io.h:417-430}).
   \item \textbf{Receiver-side extinction column with no resolved density
     gradient.} The column is the receiver's own local density times a path
     length (\code{radiation\_isrf.c:1423-1424}), and every path mechanism
-    assumes the intervening medium sits at the receiver's density
-    (\code{feedback\_properties.h:117-119}).
+    assumes the intervening medium sits at the receiver's density (a model
+    assumption, not checked by the code).
   \item The transported \code{LW\_PHOTON} moment is energy-equivalent at a fixed
-    reference photon energy (\code{feedback\_struct.h:749-751}), so a spectrum's
+    reference photon energy (\code{feedback\_struct.h:38-40}), so a spectrum's
     own $E_{\rm LW}$ cannot change the dissociation rate
     (\code{radiation\_gas.c:794-797}).
   \item \textbf{No $v/c$ terms anywhere.} $u$ and $\boldsymbol{F}$ are
@@ -1508,7 +1536,7 @@ Each item below is a place where the scheme departs from its own ideal form.
 \begin{enumerate}
   \setcounter{enumi}{16}
   \item \label{it:isrfd-uncovered} \textbf{The uncovered pair class
-    $\mathcal{H}_i \le r < \mathcal{H}_j$} (\code{feedback\_struct.h:459-484}).
+    $\mathcal{H}_i \le r < \mathcal{H}_j$} (\code{feedback\_struct.h:302-327}).
     The force loop fires a side whenever either kernel reaches, and the shared
     $\Phi_{ij}$ of Equation~(\ref{eq:isrfd-div-phi}) carries a nonzero
     $W'_j$ into particle $i$ even where $W'_i = 0$; but the
@@ -1518,7 +1546,7 @@ Each item below is a place where the scheme departs from its own ideal form.
     $\code{min\_ngb\_bin} + 2$ cap bounds it at 4. Closing the gap needs
     $dt_{\max}(i)$ built over the force loop's neighbour set.
   \item \textbf{Stability bound with hard-coded kernel constants}
-    (\code{feedback\_properties.h:1183-1204}):
+    (\code{feedback\_properties.h:975-996}):
     \begin{equation}
       6.2\,\alpha\, C_{\rm hyp} + 0.70\, C_{\rm hyp}^2 \le 2,
       \label{eq:isrfd-stability}
@@ -1527,9 +1555,9 @@ Each item below is a place where the scheme departs from its own ideal form.
     ($I_W = 3.10$, $\nu_{\max} = 1.18$). It is \emph{not} re-derived for any
     other kernel. At $\alpha = 0$ it gives the absolute ceiling
     $C_{\rm hyp} \le \sqrt{2/0.70} \approx 1.6903$
-    (\code{feedback\_properties.h:1108}); at the shipped
+    (\code{feedback\_properties.h:900}); at the shipped
     $\alpha_{\rm floor} = 0.5$ it caps $C_{\rm hyp}$ at about $0.571$
-    (\code{feedback\_properties.h:252-256}).
+    (solve the bound at $\alpha = 0.5$).
   \item The staggered order is forced: $\boldsymbol{F}$ is advanced first, then
     $u$ from the new flux. The code attributes the order to conservation, not
     to stability (\code{radiation\_isrf.c:659-665}).
@@ -1549,9 +1577,12 @@ Each item below is a place where the scheme departs from its own ideal form.
   \item The $u$-path and $\boldsymbol{F}$-path relax at different precision; see
     Section~\ref{sec:isrf-eqdisc-F-update}.
   \item MPI and restart: operator and moment state lives on
-    \code{struct part} (\code{feedback\_struct.h:418-423}), so it rides the
+    \code{struct part} (\code{feedback\_struct.h:261-266}), so it rides the
     normal exchange and dump; the HII owner-computed payload does not
-    (\code{feedback\_struct.h:586-605}).
+    (\code{feedback\_struct.h:429-442}). The flux read order is safe across ranks:
+    the gradient loop reads the old flux (before this cell's extra ghost), the
+    force loop the new one, every force task runs after the extra ghosts of both
+    cells it pairs, and a foreign particle is received after its own extra ghost.
   \item Not independently verified here, and reported as the code's own claims:
     the exact skew-adjointness of the divergence/gradient pair
     (\code{radiation\_propagation\_iact.h:314-317}), and the $6.2$ and $0.70$
@@ -1577,9 +1608,10 @@ something the code does not do. The equations in this section follow the code.
     \code{:865} and \code{:1245}. The same doxygen gives
     $\mathcal{A} = c_{\rm hyp}(\kappa + H/c)dt$, omitting $\lambda_m$; the code
     is Equation~(\ref{eq:isrfd-depth-u}).
-  \item \code{feedback\_struct.h:280-281} gives
+  \item The former comment of \code{cumulative\_absorbed} in
+    \code{feedback\_struct.h} (\code{c158b5c41:280-281}, since removed) gave
     $\mathcal{A} = (c_{\rm hyp}\kappa + H)\code{dt\_prev}$ for the
-    \code{cumulative\_absorbed} ledger: no $c_{\rm hyp}/c$ dilation on $H$, and
+    ledger: no $c_{\rm hyp}/c$ dilation on $H$, and
     no $\lambda_m$. The code is Equation~(\ref{eq:isrfd-depth-u}).
   \item \code{radiation\_isrf.c:1169-1171} writes the true-flux equation as
     $d\boldsymbol{F}/dt = -\boldsymbol{F}/\tau - H\boldsymbol{F}
@@ -1588,8 +1620,9 @@ something the code does not do. The equations in this section follow the code.
     (\code{radiation\_propagation\_iact.h:338-366}) and $\mathsf{D}$ is the
     closure tensor, not a diffusion coefficient. That doxygen form is also
     grey-only, with no $\lambda_m$.
-  \item Stale output-path references: \code{feedback\_struct.h:146},
-    \code{:187} and \code{:205} cite \code{tracers\_io.h} for the snapshot
+  \item Stale output-path references: the former comments of
+    \code{feedback\_struct.h} (\code{c158b5c41:146}, \code{:187} and \code{:205},
+    since removed) cited \code{tracers\_io.h} for the snapshot
     fields. The registrations are in fact in
     \code{src/feedback/GEAR\_thermal/feedback\_io.h}.
   \item \code{radiation\_isrf.c:861-862} says of the per-moment band-edge
@@ -1598,7 +1631,8 @@ something the code does not do. The equations in this section follow the code.
     \textbf{false} for \code{ISRF\_MOMENT\_LW\_PHOTON}, whose grey value is 0
     by Equation~(\ref{eq:isrfd-lambda-N}). The same wording appears at
     \code{radiation\_isrf.c:692}.
-  \item \code{feedback\_struct.h:328} says \code{ngb\_mean\_abs\_u\_V} is
+  \item The former comment of \code{ngb\_mean\_abs\_u\_V} in
+    \code{feedback\_struct.h} (\code{c158b5c41:328}, since removed) said it is
     zeroed ``alongside \code{div\_specific\_flux}''. They are zeroed in
     different places: \code{ngb\_mean\_abs\_u\_V} every $h$-iteration at
     \code{radiation\_isrf.c:415}, \code{div\_specific\_flux} once per step at

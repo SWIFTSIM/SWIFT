@@ -457,7 +457,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``PECumulativeAbsorbedSpecificEnergies``
-     - Cumulative mass-specific PE-band energy attributed to dust absorption and the cosmological redshift term
+     - Cumulative mass-specific PE-band energy attributed to relaxation (dust absorption and the cosmological redshift term), including the transport and dissipation terms of optically thick steps. Not the dust loss alone
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``LWCumulativeAbsorbedSpecificEnergies``
@@ -465,7 +465,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``LWPhotonCumulativeAbsorbedSpecificEnergies``
-     - Cumulative mass-specific Lyman-Werner-band photon-number-moment energy attributed to dust absorption and the cosmological redshift term
+     - Same, Lyman-Werner-band photon-number moment
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
 

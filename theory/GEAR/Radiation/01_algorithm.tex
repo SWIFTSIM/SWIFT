@@ -492,6 +492,19 @@ over-issue photons in proportion to how many passes elapse per unit
 time, i.e.\ as $1/\Delta t_{\rm back}$: a cadence-dependent bias,
 which this model is built to avoid.
 
+In the code, the rate in Eq.~\ref{eq:budget-open} is the trapezoid mean
+$\tfrac{1}{2}(\dot N_{{\rm ion},p}^{\rm prev} + \dot N_{{\rm ion},p}^{\rm now})$
+of the rate at the previous pass and now (\code{dot\_N\_ion\_pix\_prev}), not
+the current rate alone: a monotonically declining SSP rate makes the
+rectangle rule under-issue photons, a bias that does not average out over
+passes. A star's first pass has no previous rate and uses the current rate
+alone. $\Delta t_{\rm back}$ is anchored at the star's last rebuild
+\emph{attempt}, whether or not it found gas
+(\code{HII\_region\_last\_attempt}), so that a pass skipped by a gas-free
+cell does not make the next real pass cover the skipped gap. The cached
+previous rate is resynced to the current one on that skip, so the trapezoid
+never averages against a stale rate.
+
 \subsubsection{Sequential Spend Within a Pass}
 
 A pass gathers its candidates
