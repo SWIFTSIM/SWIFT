@@ -22,17 +22,9 @@
 #include "chemistry_struct.h"
 #include "timeline.h"
 
-/*! Maximum number of HEALPix angular pixels the HII ionization budget can
-    be split across (12*nside_max^2). Every star carries a fixed-size
-    array of this length regardless of the run's actual
-    GEARFeedback:HII_angular_nside, so this is a memory/generality
-    trade-off, not a physics one. Set via
-    ./configure --with-number-of-hii-angular-pixels=N (default 12, i.e.
-    nside<=1) rather than hardcoded here, so builds that only ever need
-    nside<=1 don't pay for a finer split they'll never request.
-    radiation_init() (src/feedback/GEAR/radiation.c) errors clearly at
-    startup if GEARFeedback:HII_angular_nside implies more pixels than
-    this build was configured for. */
+/*! Maximum number of HEALPix pixels (12*nside_max^2) a star's HII budget can
+    be split across, set by ./configure --with-number-of-hii-angular-pixels
+    (default 12). Every star carries an array of this size. */
 #ifndef HII_MAX_ANGULAR_PIXELS
 #error "HII_MAX_ANGULAR_PIXELS should be defined by configure (config.h)"
 #endif
@@ -127,171 +119,57 @@ _Static_assert(sizeof(radiation_isrf_operator_owner) /
  */
 struct feedback_isrf_moment_data {
 
-  /*! Local specific radiation field of each band, internal
-      specific-energy units (per-unit-mass, like this codebase's own
-      hydro `u`; NOT cgs, unlike
-      #feedback_spart_data.radiation.mean_excess_photon_energy_HI). The
-      LW band feeds Grackle's RT_H2_dissociation_rate (COOLING_GRACKLE_MODE
-      > 1 only) separately from the PE band, since the two bands carry
-      different dust opacities. An
-      instantaneous field strength, not an accumulated dose: holds the
-      illuminating star(s)' most recently computed contribution, summed
-      across every star that touched this particle in the same step
-      (#feedback_part_data.ISRF_last_touch_ti), then held unchanged until the
-      next step any star touches it again. Never cleared by cooling: a reader
-      gets whatever was last written, however long ago that was.
-
-      `a`-SCALING: PHYSICAL and mass-specific, with no scale-factor exponent
-      of its own beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS already implies
-      (snapshot output declares `0.f`, tracers_io.h, and is correct). Being
-      per-unit-mass, it carries the volume part of cosmological dilution
-      automatically through the physical gas density it is measured against;
-      only the redshift residual `-H*u` is an explicit term, applied in
-      radiation_isrf.c's #radiation_end_force_propagation. Every field
-      feeding it is physical too: the pairwise operators in
-      radiation_propagation_iact.h convert their comoving-coordinate
-      estimates before accumulating.
-
-      DOUBLE, not float: the per-step relaxation depth `a` this field's own
-      decay uses can be as small as a few 1e-8 (a weak absorber under a slow
-      cosmological redshift term), and `1 - a` at that scale needs more
-      mantissa than float32's 24 bits to stay distinguishable from `1 -
-      a'` for a nearby but distinct `a'`; #radiation_end_force_propagation's
-      own update is evaluated in double for the same reason. Every other
-      per-step accumulator this moment carries (#specific_flux,
-      #div_specific_flux, #dissipation_u, #u_dose_reservoir,
-      #u_source_rate) stays float: none of them carries a multi-step decay
-      at this depth. */
+  /*! Local specific radiation field of the band, in internal specific-energy
+      units (physical, per unit mass). An instantaneous strength held until a
+      star next touches the particle, never cleared by cooling. Double: the
+      per-step relaxation depth can be ~1e-8, too small for `1 - a` in float;
+      the other accumulators stay float. */
   double u;
 
-  /*! Snapshot of #u taken once per step (feedback_reset_part,
-      cell_drift.c), before the density loop's h-iterations begin. The
-      density loop's kernel mean reads it, so that value does not drift
-      across h-iterations, and the end-force update rebuilds #u from it, so
-      that update is idempotent. Until that update, #u still equals it.
-      DOUBLE, matching #u: see #u's doxygen. */
+  /*! Snapshot of #u taken once per step, before the density loop's
+      h-iterations. Double, like #u. */
   double u_prev;
 
-  /*! Hyperbolic propagation state: the tracked specific flux moment,
-      mass-specific like #u, stored as the REDUCED flux `Ft = F_true/c_hyp`
-      (same units as #u) for every ISRF scheme; the snapshot getters
-      multiply it by #feedback_part_data.c_hyp to write the true flux.
-      Zeroed unconditionally at
-      first init (no IC field proposed for it); relaxed every step in the
-      extra ghost (radiation_isrf.c's exact-relaxation update), then limited
-      there against #u. Read by neighbours in the gradient loop (the old
-      value, before this cell's extra ghost) and in the force loop (the new
-      value: every force task runs after the extra ghosts of both cells it
-      pairs, and a foreign particle is received after its own). Written to
-      snapshots as
-      "PESpecificFluxes"/"LWSpecificFluxes" (tracers_io.h), following
-      #u's own "PESpecificEnergy(ies)" convention; no IC input
-      field exists, and one added later would be the singular
-      "PESpecificFlux"/"LWSpecificFlux".
-
-      `a`-SCALING: PHYSICAL and mass-specific, like #u, with no
-      scale-factor exponent of its own, which is what the output field
-      declares. Its own redshift residual `-H*F` is applied in
-      radiation_isrf.c's #radiation_end_gradient_propagation. */
+  /*! Reduced specific flux `Ft = F_true/c_hyp` of the propagation update, in
+      the units of #u. Zeroed at first init: there is no IC field for it. */
   float specific_flux[3];
 
-  /*! `(1/rho) div(rho F)` accumulator of this step's relaxed flux, FORCE
-      loop (radiation_propagation_iact.h), whose dispatch fires both sides of
-      a pair whenever either kernel reaches, so the mirrored pair is never
-      split at h_i != h_j. Consumed by #radiation_end_force_propagation.
-      Zeroed once per step by #radiation_end_gradient_propagation, not at the
-      drift, so a snapshot holds the last step's value. PHYSICAL: the force
-      loop converts its comoving-coordinate estimate before accumulating, so
-      the snapshot output's declared `0.f` exponent (tracers_io.h) is
-      correct. */
+  /*! `(1/rho) div(rho F)` accumulated by the force loop and consumed by
+      #radiation_end_force_propagation. */
   float div_specific_flux;
 
-  /*! Negativity-triggered artificial-dissipation source term, FORCE loop
-      (radiation_propagation_iact.h): pairwise signal-velocity conductivity
-      on the #u jump, #u still holding `u^n` there, applied by
-      #radiation_end_force_propagation. The force loop's dispatch fires
-      both sides of a pair whenever either kernel reaches, which is what
-      keeps the mirrored credit/debit pair whole at h_i != h_j. Scratch:
-      zeroed once per step by radiation_snapshot_part_propagation, like
-      #grad_u, since the force loop runs exactly once per step.
-      PHYSICAL, like every accumulator the pairwise operators fill. */
+  /*! Negativity-triggered artificial-dissipation source term accumulated by
+      the force loop and applied by #radiation_end_force_propagation. Scratch,
+      zeroed once per step. */
   float dissipation_u;
 
-  /*! `(1/rho) grad(rho u)` accumulator, gradient loop
-      (radiation_propagation_iact.h). Scratch: zeroed once per step by
-      radiation_snapshot_part_propagation, since the gradient loop runs
-      exactly once per step (never re-run across h-iterations). PHYSICAL:
-      per physical length, not per comoving one. */
+  /*! Gradient-loop accumulator of the M1 pressure-tensor divergence
+      `(1/rho) div(D rho u)`, per physical length. Scratch, zeroed once per
+      step. */
   float grad_u[3];
 
-  /*! Mass-specific per-band emission dose still owed to this particle by
-      every star that has touched it (#radiation_iact_nonsym_feedback_apply),
-      not yet injected into #u. Persistent, dumped with #part like
-      #specific_flux; zero at first init, no IC field (an IC has no
-      notion of "dose in flight"). Drained once per step, for active
-      particles only, by #radiation_snapshot_part_propagation into
-      #u_source_rate; every star's touch only ever
-      adds to it, so any number of stars on any time bins superpose without
-      losing or double-counting emission. */
+  /*! Mass-specific per-band emission dose owed to this particle by the stars
+      that touched it, not yet injected into #u. Zeroed at first init: there
+      is no IC field for it. */
   float u_dose_reservoir;
 
-  /*! This step's mass-specific per-band source rate, drawn down from
-      #u_dose_reservoir by
-      #radiation_snapshot_part_propagation and consumed by
-      #radiation_end_force_propagation's exact-relaxation update. Scratch:
-      recomputed every step for active particles, not restart-critical (an
-      inactive particle recomputes it correctly the moment it next becomes
-      active), but dumped anyway since it lives in #part alongside the
-      persistent fields above. */
+  /*! This step's mass-specific per-band source rate, drawn from
+      #u_dose_reservoir and consumed by #radiation_end_force_propagation.
+      Scratch, recomputed every step for active particles. */
   float u_source_rate;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u written by #radiation_end_force_propagation since the
-      previous snapshot, 0 if none was negative. Reset on the first update
-      after a snapshot (#feedback_part_data.u_min_snapshot_index). "Since the
-      previous snapshot" means since the last increment of
-      #engine.snapshot_output_count, which also happens when a FOF seeding
-      catalogue is dumped (FOF:dump_catalogue_when_seeding, engine.c), not
-      only at a real snapshot dump. Written as
-      "PEMinimumSpecificEnergies"/"LWMinimumSpecificEnergies". PHYSICAL, like
-      #u. */
+      previous snapshot, 0 if none was negative. */
   float u_min_since_snapshot;
 
-  /*! Cumulative mass-specific dose this particle has been handed by the
-      dose reservoir since first init, RESCALED exactly as
-      #radiation_end_force_propagation rescales it into #u
-      (`c_hyp/c`) but NOT relaxed by #radiation_relaxation_phi_factor: the
-      raw amount attempted this step, `dt_prev*(c_hyp/c)*u_source_rate`,
-      summed step over step. Never reset (unlike #u_min_since_snapshot): an
-      energy-conservation check reads this as a running total at every
-      snapshot, so a mid-run reset would break its own conservation
-      identity. Written as
-      "PECumulativeInjectedSpecificEnergies"/
-      "LWCumulativeInjectedSpecificEnergies". PHYSICAL, like #u. */
+  /*! Cumulative mass-specific dose handed to #u by the dose reservoir since
+      first init, rescaled by `c_hyp/c` but not relaxed. Never reset. */
   float cumulative_injected;
 
-  /*! Cumulative mass-specific energy this particle's #u update has
-      attributed to relaxation (dust absorption plus the cosmological
-      redshift term folded into the same decay) and to the fraction of
-      this step's source/transport terms that never reached #u because
-      the step was optically thick (`(1-phi)` of each), since first init.
-      Exactly `(u_prev + dt_prev*phi*dissipation_u)*(1-e) +
-      ((c_hyp/c)*u_source_rate - div_specific_flux)*dt_prev*(1-phi)`,
-      `e = exp(-a)`, `phi = radiation_relaxation_phi_factor(a)`, `a =
-      (c_hyp*kappa + H)*dt_prev`, the same `e`/`phi`/`a` #u's own update
-      uses this step, read before #u is overwritten. This is NOT the pure
-      dust-extinction loss alone: #div_specific_flux (transport) and
-      #dissipation_u (the artificial-dissipation source) are folded in
-      too, because the exact-relaxation update mixes all three under one
-      `phi`. Summed with #cumulative_injected and the current #u at a
-      snapshot, `E + Abs - Inj` isolates exactly the part of the update
-      the closed-form split above does not attribute to injection or the
-      surviving field: the transport and dissipation residual, which the
-      SPH divergence's kernel-sum identity and the dissipation's pairwise
-      antisymmetry drive to ~0 when summed over the whole particle set.
-      Never reset, for the same reason as #cumulative_injected. Written as
-      "PECumulativeAbsorbedSpecificEnergies"/
-      "LWCumulativeAbsorbedSpecificEnergies". PHYSICAL, like #u. */
+  /*! Cumulative mass-specific energy attributed to relaxation (dust
+      absorption and the redshift term) since first init, including the
+      transport and dissipation terms of optically thick steps. Never reset. */
   float cumulative_absorbed;
 #endif
 };
@@ -304,62 +182,27 @@ struct feedback_isrf_moment_data {
  */
 struct feedback_isrf_operator_data {
 
-  /*! Band-specific local linear dust absorption rate (see
-      #radiation_get_part_linear_absorption_rate), cached once per step
-      (radiation_snapshot_part_propagation) so the propagation loops do not
-      recompute it, and the same unit conversion, per neighbour pair.
-      The raw physical rate: distinct from and NOT interchangeable with the
-      injection-side extinction's own, independently-computed kappa
-      (#radiation_get_part_ISRF_extinction_factors). */
+  /*! Band-specific local linear dust absorption rate, cached once per step by
+      radiation_snapshot_part_propagation. Not the injection-side extinction
+      kappa of #radiation_get_part_ISRF_extinction_factors. */
   float kappa;
 
-  /*! M1 closure tensor `D(f)` from the owning moment's own
-     #feedback_isrf_moment_data.u and the reduced flux
-     #feedback_isrf_moment_data.specific_flux (#radiation_isrf_operator_owner),
-     cached by #radiation_cache_m1_closure_part (drift-time reset and first
-     init, where it is required; the density ghost also refreshes it) so the
-     gradient loop reads it per pair without rebuilding it. */
+  /*! M1 closure tensor `D(f)` of the owning moment, cached by
+      #radiation_cache_m1_closure_part. */
   float m1_closure_D[3][3];
 
-  /*! Kernel-mean of the neighbours' |rho_prev*u_prev|, density loop
-      (radiation_propagation_iact.h): the local field-scale reference the
-      negativity trigger (#radiation_end_gradient_propagation)
-      divides an undershoot by. Scratch: zeroed every h-iteration alongside
-      #feedback_isrf_moment_data.div_specific_flux. */
+  /*! Kernel mean of the neighbours' `|rho_prev*u_prev|`, the reference the
+      negativity trigger divides an undershoot by. Scratch, zeroed every
+      h-iteration. */
   float ngb_mean_abs_u_V;
 
-  /*! Negativity-triggered artificial-dissipation coefficient, REACTIVE
-      component: raised by the
-      negativity trigger and decayed otherwise, updated once per step in
-      #radiation_end_gradient_propagation (not the density ghost, which
-      re-runs across h-iterations). Persistent, dumped with #part like
-      #feedback_isrf_moment_data.specific_flux; zero at first init, no IC
-      field. Read by THIS step's force loop, which dissipates `u^n`, the
-      same state the trigger read, so an undershoot is corrected one step
-      after it appears. Applied to a pair UNGATED, as
-      `max(trigger_i, trigger_j)`: the trigger only ever fires on a
-      particle that is already locally wrong, so it is local by
-      construction.
-
-      `a`-SCALING: dimensionless, exponent 0. */
+  /*! Reactive component of the artificial-dissipation coefficient: raised by
+      the negativity trigger and decayed otherwise, updated once per step in
+      #radiation_end_gradient_propagation. Dimensionless, persistent. */
   float dissipation_alpha_trigger;
 
-  /*! Negativity-triggered artificial-dissipation coefficient, ANTICIPATORY
-      component:
-      the `h/lambda`-gated floor (#radiation_dissipation_alpha_floor_band),
-      which supplies dissipation on a positive front the negativity trigger
-      is structurally blind to. Written alongside the trigger component
-      above, in the same once-per-step ghost, and persistent for the same
-      reason.
-
-      Kept SEPARATE from the trigger rather than pre-combined with max(),
-      even though the force loop combines them unconditionally: the two are
-      produced by different mechanisms on different conditions (reactive
-      undershoot response versus anticipatory resolution gating), so a run
-      that dissipates too much or too little is only diagnosable when the
-      two contributions can be read apart.
-
-      `a`-SCALING: dimensionless, exponent 0. */
+  /*! Anticipatory component, the `h/lambda`-gated floor
+      (#radiation_dissipation_alpha_floor_band), kept apart from the trigger. */
   float dissipation_alpha_floor;
 };
 
@@ -583,23 +426,17 @@ struct feedback_xpart_data {
     float delta_p[3];
   } radiation;
 
-  /*! HII ionization owner-computed payload, local to the owning rank (the
-      tag core itself lives on struct part's feedback_data, see
-      feedback_part_data's doxygen). */
+  /*! HII ionization payload computed by the owner, local to its rank. The tag
+      itself lives in #feedback_part_data. */
   struct {
 
-    /*! Mean photon energy above the 13.6 eV HI ionization threshold for
-        the tagging star, frozen at tag time (only set when
-        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). Stored
-        in cgs (erg), not internal units, since the absolute per-particle
-        value underflows float precision in this project's internal unit
-        system. */
+    /*! Mean photon energy of the tagging star above 13.6 eV, frozen at tag
+        time, in erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
     float excess_photon_energy_HI;
 
-    /*! Photoionization rate coefficient Gamma_HI from the tagging star at
-        this particle's location, frozen at tag time (internal 1/time;
-        only set when GEARFeedback:HII_couple_ionization_rate is on, 0
-        otherwise). */
+    /*! Photoionization rate coefficient Gamma_HI of the tagging star at this
+        particle, frozen at tag time (internal 1/time). Only set with
+        GEARFeedback:HII_couple_ionization_rate, 0 otherwise. */
     float photoionization_rate_HI;
 
   } HII_region;
@@ -679,29 +516,18 @@ struct feedback_spart_data {
     /*! Bolometric luminosity (physical units) from the stellar evolution */
     double L_bol;
 
-    /*! Number of ionizing photons per unit time, split evenly across the
-        n_HII_pixels active angular pixels (this is a HUGE number, so must
-        be a double) (physical units) from the stellar evolution. A pure
-        rate: never debited, so it stays valid all pass for the rate-coupled
-        flux calculation (GEARFeedback:HII_couple_ionization_rate). */
+    /*! Ionizing photon rate of each active pixel (physical units): the star's
+        total, split evenly. Double, since the value is huge. A pure rate,
+        never debited. */
     double dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS];
 
-    /*! dot_N_ion_pix as it stood at the previous HII rebuild pass, cached so
-        radiation_open_ionizing_photon_budget() can integrate the emission
-        rate over dt_back with a trapezoid rule (average of the rate at the
-        two ends of the interval) instead of a rectangle rule at the rate
-        "now" alone. A monotonically-declining SSP emission rate makes the
-        rectangle rule systematically under-issue photons (biased, not
-        noise: it does not average out over passes). Negative is the
-        sentinel for "no previous pass yet" (set at star formation), which
-        falls back to the rectangle rule for a star's first pass. */
+    /*! dot_N_ion_pix at the previous HII rebuild pass, for the trapezoid rule
+        of radiation_open_ionizing_photon_budget(). Negative until the first
+        pass. */
     double dot_N_ion_pix_prev[HII_MAX_ANGULAR_PIXELS];
 
-    /*! Photon *count* spendable per pixel this HII rebuild pass:
-        dot_N_ion_pix * dt_back (elapsed time since the last pass), debited
-        by radiation_consume_ionizing_photons. Budgeting counts over the real
-        elapsed interval, instead of comparing bare rates, is what makes the
-        ionized extent independent of the rebuild cadence. */
+    /*! Photon count spendable per pixel this rebuild pass, `dot_N_ion_pix *
+        dt_back`, debited by radiation_consume_ionizing_photons. */
     double N_ion_budget_pix[HII_MAX_ANGULAR_PIXELS];
 
     /*! Number of active angular pixels this star is currently using
@@ -723,46 +549,26 @@ struct feedback_spart_data {
         dt_back (age now minus this) scales the whole photon budget above. */
     double HII_region_last_rebuild;
 
-    /*! Star age the last time this star was given a chance to rebuild its
-        HII region, whether or not gas was found (unlike
-        HII_region_last_rebuild, which only advances on an actual rebuild).
-        Anchors the photon-budget interval dt_back instead, so a pass
-        skipped by a gas-free working-level cell does not make the next
-        real pass look like it covers the whole gap. See
-        runner_radiation_feedback.c. */
+    /*! Star age at the last rebuild attempt, whether or not gas was found
+        (HII_region_last_rebuild only advances on an actual rebuild). Anchors
+        the interval dt_back, see runner_radiation_feedback.c. */
     double HII_region_last_attempt;
 
-    /*! Mean photon energy above the 13.6 eV HI ionization threshold,
-        cached once per HII rebuild pass (only computed when
-        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). Stored
-        in cgs (erg), not internal units, since the absolute per-particle
-        value underflows float precision in this project's internal unit
-        system. */
+    /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
+        erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
     float mean_excess_photon_energy_HI;
 
-    /*! Moment luminosity (physical units), indexed by #radiation_isrf_moment:
-        non-ionizing PE, 6-11.2 eV, and Lyman-Werner, 11.2-13.6 eV (H2
-        photodissociating photons). Read from the radiation table's own
-        L_PE/L_LW (or Integrated_L_PE/Integrated_L_LW) datasets, which
-        carry the band split directly. Feeds the injection term; only
-        computed when GEARFeedback:with_interstellar_radiation_field is on, 0
-        otherwise. #ISRF_MOMENT_LW_PHOTON is set equal to #ISRF_MOMENT_LW: it
-        is energy-equivalent in erg/s like every other entry, not a photon
-        rate, so no new unit handling applies to it. */
+    /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
+        radiation table. 0 unless the interstellar radiation field is on. */
     double L_band[ISRF_MOMENT_COUNT];
 
-    /*! Photospheric effective temperature (internal units), a
-        stellar-evolution diagnostic written to the snapshot and not used
-        by any feedback channel. For an IMF-population particle it is the
-        value at the upper mass bound of the stars still alive, i.e. the
-        hottest surviving star, not an IMF average. 0 when the radiation
-        table carries no "Teff" dataset. */
+    /*! Photospheric effective temperature (internal units), a diagnostic no
+        feedback channel uses. For a population particle, the hottest
+        surviving star. 0 without a "Teff" table dataset. */
     float teff;
 
-    /*! This star's feedback timestep (proper time, internal units),
-        cached once per step by feedback_prepare_radiation_feedback so
-        radiation_iact_nonsym_feedback_apply does not repeat the
-        cosmology table lookup for every gas neighbour. */
+    /*! This star's feedback timestep (proper time, internal units), cached once
+        per step by feedback_prepare_radiation_feedback. */
     float Delta_t;
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -34,9 +34,7 @@
 #include "units.h"
 
 /*! Fixed midpoint (Myr) of dt_evolution_ssp's logistic transition: factor =
- * 1 + (factor_max-1)/2 there. Not exposed as a parameter (see
- * feedback_properties.h's dt_evolution_factor_max comment): this branch's
- * fine-tuning pain centred on factor_max, not this midpoint. */
+ * 1 + (factor_max-1)/2 there. Not a parameter: only factor_max is tunable. */
 #define GEAR_dt_evolution_lifetime_myr_0 30.0
 
 /*! Fixed steepness of that logistic transition in log10(lifetime_myr);
@@ -1744,12 +1742,10 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
      here, unlike radiation_lw_photon_energy_cgs above: they are plain
      fields of *feedback, already restored verbatim by the flat
-     restart_read_blocks() call at the top of this function (see
-     #feedback_props.band_edge_weight_pe's own doxygen,
-     feedback_properties.h). Announcing the restored value (not
-     re-deriving it) still lets a restarted run's log be checked against
-     its own start-up announcement, confirming the restart path preserves
-     this value across a change to the radiation sub-struct. */
+     restart_read_blocks() call at the top of this function. Announcing the
+     restored value (not re-deriving it) still lets a restarted run's log be
+     checked against its own start-up announcement, confirming the restart
+     path preserves this value across a change to the radiation sub-struct. */
   if (engine_rank == 0 && feedback->radiation_policy != 0)
     message(
         "Band-edge weights restored from the restart file: lambda_E(PE)=%.5g, "

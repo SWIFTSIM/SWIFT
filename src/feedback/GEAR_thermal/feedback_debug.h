@@ -19,6 +19,7 @@
 #ifndef SWIFT_FEEDBACK_GEAR_DEBUG_H
 #define SWIFT_FEEDBACK_GEAR_DEBUG_H
 
+// TODO: Make this actually useful
 __attribute__((always_inline)) INLINE static void feedback_debug_particle(
     const struct part *p, const struct xpart *xp) {
 

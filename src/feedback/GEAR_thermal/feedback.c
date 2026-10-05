@@ -169,35 +169,22 @@ void feedback_end_force(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief Radiation timestep contribution: the uniform reduced light-speed
- * candidate's own stability term is shared GEAR physics, see
+ * @brief Radiation timestep bound of a particle, see
  * #radiation_isrf_part_timestep.
  *
- * Also enforces that this bound never falls below TimeIntegration:dt_min,
- * after applying the same cosmology factor #get_part_timestep applies to
- * every other candidate before its own dt_min check (1 for a
- * non-cosmological run). A fixed light-speed fraction large enough to do
- * so drives dt_rad below dt_min for this particle's h, so the run stops
- * here with a message naming the offending parameter and its remedy; the
- * generic dt_min check in timestep.h would otherwise catch the same
- * condition once this candidate is combined into the overall minimum, but
- * with no indication that ISRF was the cause.
+ * Stops the run if the bound is below TimeIntegration:dt_min, so that the
+ * message names the ISRF parameter responsible.
  *
  * @param p The particle to consider.
  * @param e The #engine.
- * @return The radiation timestep bound (before the cosmology factor,
- *     matching what #get_part_timestep expects to scale itself), or
+ * @return The radiation timestep bound (before the cosmology factor), or
  *     FLT_MAX if none applies.
  */
 float feedback_compute_part_timestep(const struct part *restrict p,
                                      const struct engine *e) {
   const float dt_isrf = radiation_isrf_part_timestep(p, e);
-  /* dt_isrf, like every other candidate combined into get_part_timestep's
-   * new_dt, is a pre-cosmology-factor quantity: for a cosmological run
-   * TimeIntegration:dt_min bounds Delta ln(a), not a physical time, and
-   * only the multiplication by time_step_factor (1 for a non-cosmological
-   * run) converts between the two. This mirrors that multiplication, in
-   * float, so the two abort conditions agree exactly. */
+  /* Like every other candidate in get_part_timestep(), dt_isrf is compared to
+   * dt_min after the cosmology factor. */
   const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
   if (dt_isrf_scaled < e->dt_min)
     error(
@@ -212,12 +199,8 @@ float feedback_compute_part_timestep(const struct part *restrict p,
 }
 
 /**
- * @brief Reset the gas particle-carried fields related to feedback once
- * per step, before the density loop's h-iterations begin: snapshots
- * every band's u and caches this step's absorption rate (shared GEAR
- * physics), see #radiation_snapshot_part_propagation, and expires a
- * lapsed LW/PE illumination tag, see
- * #radiation_reset_part_ISRF_illumination_tag.
+ * @brief Reset the feedback fields of a gas particle once per step, before
+ * the density loop's h-iterations.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -227,16 +210,13 @@ void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
   radiation_snapshot_part_propagation(p, e);
   radiation_reset_part_ISRF_illumination_tag(p, e);
-  /* Must stay after the tag reset: expiring an ISRF tag can zero `u`, and the
-   * cache below must read that post-expiry value. */
+  /* Must stay after the tag reset: an expired tag can zero `u`. */
   radiation_cache_m1_closure_part(p);
 }
 
 /**
- * @brief Re-initialise the gas particle-carried fields related to
- * feedback at the start of each density h-iteration: LW/PE propagation
- * accumulators are shared GEAR physics, see
- * #radiation_init_part_propagation.
+ * @brief Re-initialise the feedback fields of a gas particle at the start of
+ * each density h-iteration.
  *
  * @param p The particle.
  * @param e The #engine.
