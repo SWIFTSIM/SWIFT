@@ -48,6 +48,9 @@ DO_PLOT=1
 : "${KEPLERIAN2D_T_END:=30}"    # Keplerian ring, 2D code: end time (the 2D run segfaults later on particles without neighbours)
 : "${ZELDOVICH_Z_END:=0.9}"     # Zeldovich: final redshift
 : "${ZELDOVICH_PERTURB:=0.1}"   # Zeldovich_pert: transverse random displacement in units of the spacing
+: "${ZELDOVICH_N:=32}"          # Zeldovich (lattice): particles per dimension
+: "${ZELDOVICH_GLASS:=glassCube_32}" # Zeldovich_glass: glass file for the Lagrangian positions
+: "${ZELDOVICH_Z_START:=10}"    # Zeldovich_glass: starting redshift (limits the growth of the glass noise)
 : "${SEDOV_GLASS:=glassCube_64}"
 : "${NOH_GLASS:=glassCube_64}"
 : "${BLOB_N:=64}"               # Blob: makeIC.py's num_on_side (BCC lattice: N^3/4 particles per unit cube, N even)
@@ -59,7 +62,7 @@ REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
 # discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square zeldovich sod keplerian keplerian2d kh noh evrard sedov zeldovich_pert blob"
+ALL_TESTS="gresho square zeldovich zeldovich_glass sod keplerian keplerian2d kh noh evrard sedov zeldovich_pert blob"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bnph" opt; do
@@ -193,7 +196,24 @@ test_zeldovich() {
   FLAGS="--hydro --self-gravity --cosmology"
   PARAMS="-P Cosmology:a_end:$(python3 -c "print(1./(1.+$ZELDOVICH_Z_END))")"
   PLOT_SNAP=""
-  make_ic() { python3 makeIC.py; }
+  make_ic() { sed -i "s/^numPart_1D = .*/numPart_1D = $ZELDOVICH_N  # Number of particles along each dimension/" makeIC.py; python3 makeIC.py; }
+}
+
+# Same problem on a glass (makeIC_glass.py): no lattice symmetry, hence no
+# column regime, at the price of particle-scale density noise. The cold gas is
+# Jeans-unstable at all resolved scales, so the run starts at ZELDOVICH_Z_START
+# (default z = 10) rather than z = 100 to limit the linear growth of that noise
+# (factor 6 instead of 50); the thermal state is the adiabatic one of the z =
+# 100 start, so the analytic solution is unchanged.
+test_zeldovich_glass() {
+  test_zeldovich
+  local a_begin
+  a_begin=$(python3 -c "print(1./(1.+$ZELDOVICH_Z_START))")
+  PARAMS="$PARAMS -P Cosmology:a_begin:$a_begin -P Snapshots:scale_factor_first:$a_begin"
+  make_ic() {
+    get_glass "$ZELDOVICH_GLASS"
+    python3 makeIC_glass.py --glass "$ZELDOVICH_GLASS.hdf5" --z_start "$ZELDOVICH_Z_START" --z_end "$ZELDOVICH_Z_END"
+  }
 }
 
 # Same as zeldovich, but the lattice symmetry is broken by random transverse

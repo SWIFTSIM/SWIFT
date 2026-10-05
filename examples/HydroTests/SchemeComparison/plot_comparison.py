@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "keplerian2d", "zeldovich",
-             "zeldovich_pert", "blob"]  # "nfw" on request
+             "zeldovich_glass", "zeldovich_pert", "blob"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -777,7 +777,8 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
             metrics.setdefault(s, {})[f"max_dS_over_S_{key}"] = float(np.max(np.abs(dS)))
             metrics[s][f"median_dS_over_S_{key}"] = float(np.median(np.abs(dS)))
             metrics[s][f"frac_dS_gt_1pc_{key}"] = float(np.mean(np.abs(dS) > 0.01))
-    fig.suptitle("Zel'dovich pancake (3D, cosmological)" + (" -- lattice symmetry broken" if test != "zeldovich" else ""))
+    variant = {"zeldovich_glass": " -- glass IC", "zeldovich_pert": " -- lattice symmetry broken"}.get(test, "")
+    fig.suptitle("Zel'dovich pancake (3D, cosmological)" + variant)
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
@@ -913,6 +914,7 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
          "keplerian": test_keplerian,
          "keplerian2d": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian2d"),
          "zeldovich": test_zeldovich,
+         "zeldovich_glass": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_glass"),
          "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
          "blob": test_blob, "nfw": test_nfw}
 

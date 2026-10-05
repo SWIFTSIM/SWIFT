@@ -3,7 +3,7 @@ Hydro scheme comparison suite
 
 Runs the standard hydro tests (Sod, Sedov, Noh, Gresho, Evrard, Kelvin-
 Helmholtz, square, blob, Keplerian ring in 3D (planar) and in 2D, Zel'dovich
-pancake; the NFW
+pancake on a lattice and on a glass; the NFW
 hydrostatic halo on request with -t nfw) with several hydro
 schemes built from the same source tree and produces comparison plots and a
 summary table (steps, wall-clock time, energy conservation, L1 errors w.r.t.
@@ -24,7 +24,7 @@ the binary is missing or -b is given.
 
 Resolutions / durations can be changed through environment variables, see
 the top of run_suite.sh (KH_L2, EVRARD_NPARTS, KEPLERIAN_T_END,
-KEPLERIAN2D_T_END, ZELDOVICH_Z_END, SEDOV_GLASS, NOH_GLASS, BLOB_N, BLOB_T_END, NFW_T_END).
+KEPLERIAN2D_T_END, ZELDOVICH_Z_END, ZELDOVICH_N, ZELDOVICH_GLASS, ZELDOVICH_Z_START, SEDOV_GLASS, NOH_GLASS, BLOB_N, BLOB_T_END, NFW_T_END).
 
 Finished runs (marked by a DONE file) are not repeated: delete the run
 directory to redo it. The comparison plots can be regenerated on their own:
