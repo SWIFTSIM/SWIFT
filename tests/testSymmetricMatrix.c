@@ -629,6 +629,144 @@ static void test_sym_matrix_invert(void) {
 }
 
 /**
+ * @brief sym_matrix_invert_regularised(): exact inverse when well-conditioned,
+ * spectrally-filtered inverse otherwise.
+ *
+ * Positive semi-definite matrices are built with a known eigen-basis Q and
+ * spectrum lambda, so that the expected result Q diag(f(lambda)) Q^T, with
+ * f the filter of sym_matrix_invert_regularised(), is known exactly. Planar (one zero eigenvalue),
+ * filamentary (two small eigenvalues) and round-off (tiny negative
+ * eigenvalue) spectra are all covered, at all scales.
+ */
+static void test_sym_matrix_invert_regularised(void) {
+
+  const char *name = "sym_matrix_invert_regularised";
+  const double kappa = 60.;
+
+  /* Spectra (lambda_max = 1 by construction; entries beyond DIM unused) */
+  const double spectra[][3] = {
+      {1., 0.5, 0.2},       /* regular */
+      {1., 1. / 59., 0.3},  /* just inside the limit: regular */
+      {1., 1e-3, 0.5},      /* planar (3D) / filamentary (2D) */
+      {1., 1e-3, 1e-3},     /* filamentary (3D) */
+      {1., 0., 0.5},        /* exactly planar */
+      {1., -1e-9, 0.5},     /* negative round-off eigenvalue */
+      {1., 1. / 61., 0.3},  /* just outside the limit: regularised */
+      {1., 1e-3, 1. / 59.}, /* mixed: one clipped, one kept */
+  };
+  const int num_spectra = sizeof(spectra) / sizeof(spectra[0]);
+
+  for (int sp = 0; sp < num_spectra; ++sp) {
+    for (int s = 0; s < num_scales; ++s) {
+      for (int t = 0; t < NUM_TRIALS; ++t) {
+
+        double Q[3][3], M[3][3] = {{0.}}, expected[3][3] = {{0.}};
+        random_orthogonal(DIM, Q);
+
+        int expect_regularised = 0;
+        for (int k = 0; k < DIM; ++k)
+          if (spectra[sp][k] < 1. / kappa) expect_regularised = 1;
+
+        for (int i = 0; i < DIM; ++i) {
+          for (int j = i; j < DIM; ++j) {
+            double m = 0., e = 0.;
+            for (int k = 0; k < DIM; ++k) {
+              const double lambda = spectra[sp][k];
+              m += Q[i][k] * lambda * Q[j][k];
+              const double f = (lambda >= 1. / kappa)
+                                   ? 1. / lambda
+                                   : fmax(lambda, 0.) * kappa * kappa;
+              e += Q[i][k] * Q[j][k] * f;
+            }
+            M[i][j] = M[j][i] = (float)(scales[s] * m);
+            expected[i][j] = expected[j][i] = e / scales[s];
+          }
+        }
+
+        struct sym_matrix S, S_inv, S_inv_ref;
+        to_sym_matrix(M, &S);
+        for (int i = 0; i < sym_matrix_num_elements; ++i)
+          S_inv.elements[i] = 42.f;
+
+        int regularised = -1;
+        const int res =
+            sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised);
+
+        check(res == 0, name, "inversion failed", sp, scales[s]);
+        if (res != 0) continue;
+
+        check(regularised == expect_regularised, name,
+              "regularisation flag", regularised, expect_regularised);
+
+        /* Element-wise comparison with the expected filtered inverse. The
+         * rounding of M to float perturbs its spectrum by ~eps_f lambda_max,
+         * which the ramp below the floor amplifies by kappa^2: an absolute
+         * error ~eps_f kappa^2 on elements of size up to kappa, i.e. a
+         * relative error ~eps_f kappa ~ 1e-5 (float output adds ~1e-7). */
+        double inv[3][3];
+        from_sym_matrix(&S_inv, inv);
+        double diff = 0., norm = 0.;
+        for (int i = 0; i < DIM; ++i) {
+          for (int j = 0; j < DIM; ++j) {
+            diff = fmax(diff, fabs(inv[i][j] - expected[i][j]));
+            norm = fmax(norm, fabs(expected[i][j]));
+          }
+        }
+        check(diff <= 1e-4 * norm, name, "filtered inverse", diff / norm, 1e-4);
+
+        /* Well-conditioned: identical to sym_matrix_invert() */
+        if (!expect_regularised) {
+          const int res_ref = sym_matrix_invert(&S_inv_ref, &S, kappa);
+          check(res_ref == 0, name, "reference inversion failed", sp,
+                scales[s]);
+          int identical = 1;
+          for (int i = 0; i < sym_matrix_num_elements; ++i)
+            if (S_inv.elements[i] != S_inv_ref.elements[i]) identical = 0;
+          check(identical, name, "differs from sym_matrix_invert()", sp,
+                scales[s]);
+        }
+      }
+    }
+  }
+
+  /* Degenerate inputs must fail and return the null matrix. */
+  struct sym_matrix S, S_inv;
+  int regularised = -1;
+  zero_sym_matrix(&S);
+  S_inv.xx = 42.f;
+  check(sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised) == 1 &&
+            sym_matrix_is_null(&S_inv),
+        name, "zero matrix", 0., 0.);
+
+#if DIM > 1
+  /* Negative-definite input has no positive eigenvalue: fail */
+  sym_matrix_identity(&S);
+  sym_matrix_multiply_by_scalar(&S, -1.f);
+  S_inv.xx = 42.f;
+  check(sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised) == 1 &&
+            sym_matrix_is_null(&S_inv),
+        name, "negative-definite matrix", 0., 0.);
+#endif
+
+  /* Non-finite values must be rejected (deliberate NaNs: no traps) */
+  fpe_traps(0);
+  const float bad_values[3] = {NAN, INFINITY, -INFINITY};
+  for (int e = 0; e < sym_matrix_num_elements; ++e) {
+    for (int v = 0; v < 3; ++v) {
+      sym_matrix_identity(&S);
+      S.elements[e] = bad_values[v];
+      for (int i = 0; i < sym_matrix_num_elements; ++i)
+        S_inv.elements[i] = 42.f;
+      check(sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised) ==
+                    1 &&
+                sym_matrix_is_null(&S_inv),
+            name, "non-finite element not rejected", e, v);
+    }
+  }
+  fpe_traps(1);
+}
+
+/**
  * @brief sym_matrix_multiply_by_vector() vs. gsl_blas_dsymv().
  */
 static void test_sym_matrix_multiply_by_vector(void) {
@@ -809,6 +947,7 @@ int main(int argc, char *argv[]) {
   test_symmetric_condition_number();
   test_LU_inverse();
   test_sym_matrix_invert();
+  test_sym_matrix_invert_regularised();
   test_sym_matrix_multiply_by_vector();
   test_sym_matrix_multiplication_ABA();
   test_invert_dimension_by_dimension();

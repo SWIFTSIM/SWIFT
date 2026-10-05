@@ -254,10 +254,14 @@ INLINE static void hydro_write_particles(const struct part *parts,
 
   list[15] = io_make_output_field(
       "FallbackFlags", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, parts, fallback_flags,
-      "Why the particle used standard SPH gradients instead of the "
-      "matrix-inversion gradient functions in its last force loop. 0: it did "
-      "not, 1: the condition number of its C-matrix was too large, 2: its "
-      "smoothing length was close to h_max, 3: both.");
+      "Bit flags describing the gradient functions of the particle in its "
+      "last force loop. Bit 0 (value 1): the C-matrix could not be inverted "
+      "and standard SPH gradients were used. Bit 1 (value 2): the smoothing "
+      "length was close to h_max and standard SPH gradients were used. Bit 2 "
+      "(value 4): the C-matrix was ill-conditioned (planar or filamentary "
+      "neighbourhood) and its inverse was regularised in the degenerate "
+      "directions; the gradient functions were still used. 0: regular "
+      "matrix-inversion gradient functions.");
 
   list[16] = io_make_output_field(
       "GradientFallbackPairs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,

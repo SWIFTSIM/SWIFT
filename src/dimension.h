@@ -380,18 +380,24 @@ invert_dimension_by_dimension_matrix(float A[3][3],
 }
 
 /**
- * @brief Eigenvalues of a symmetric 3x3 matrix using cyclic Jacobi rotations.
+ * @brief Eigen-decomposition of a symmetric 3x3 matrix using cyclic Jacobi
+ * rotations.
  *
  * Each rotation annihilates one off-diagonal element; the method converges
  * quadratically and delivers eigenvalues with an absolute error ~eps * |A|
  * without the loss of accuracy of the closed-form (Cardano) solution for
  * (near-)degenerate spectra. Only the upper triangle of A is read.
  *
+ * On return A = V diag(ev) V^T with the k-th column of V the (unit)
+ * eigenvector of ev[k].
+ *
  * @param A The symmetric matrix.
  * @param ev (return) The three (unsorted) eigenvalues.
+ * @param V (return) The orthogonal matrix of eigenvectors (as columns).
  */
 __attribute__((always_inline)) INLINE static void
-matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
+matrix_3x3_symmetric_eigendecomposition(const double A[3][3], double ev[3],
+                                        double V[3][3]) {
 
   double a[3][3];
   for (int i = 0; i < 3; ++i) {
@@ -399,6 +405,7 @@ matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
       a[i][j] = A[i][j];
       a[j][i] = A[i][j];
     }
+    for (int j = 0; j < 3; ++j) V[i][j] = (i == j) ? 1. : 0.;
   }
 
   /* Rotations in the (0,1), (0,2) and (1,2) planes */
@@ -442,6 +449,14 @@ matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
         a[q][r] = s * apr + c * aqr;
       }
       a[p][q] = a[q][p] = 0.;
+
+      /* V <- V J (accumulate the eigenvectors) */
+      for (int r = 0; r < 3; ++r) {
+        const double vrp = V[r][p];
+        const double vrq = V[r][q];
+        V[r][p] = c * vrp - s * vrq;
+        V[r][q] = s * vrp + c * vrq;
+      }
       rotated = 1;
     }
 
@@ -451,6 +466,22 @@ matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
   ev[0] = a[0][0];
   ev[1] = a[1][1];
   ev[2] = a[2][2];
+}
+
+/**
+ * @brief Eigenvalues of a symmetric 3x3 matrix using cyclic Jacobi rotations.
+ *
+ * See matrix_3x3_symmetric_eigendecomposition(). Only the upper triangle of A
+ * is read.
+ *
+ * @param A The symmetric matrix.
+ * @param ev (return) The three (unsorted) eigenvalues.
+ */
+__attribute__((always_inline)) INLINE static void
+matrix_3x3_symmetric_eigenvalues(const double A[3][3], double ev[3]) {
+
+  double V[3][3];
+  matrix_3x3_symmetric_eigendecomposition(A, ev, V);
 }
 
 /**

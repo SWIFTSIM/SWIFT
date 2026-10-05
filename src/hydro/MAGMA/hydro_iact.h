@@ -241,8 +241,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurej = pj->force.pressure;
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const int use_base_SPH_i = (pi->fallback_flags != magma_fallback_none);
-  const int use_base_SPH_j = (pj->fallback_flags != magma_fallback_none);
+  const int use_base_SPH_i =
+      (pi->fallback_flags & magma_fallback_base_sph_mask) != 0;
+  const int use_base_SPH_j =
+      (pj->fallback_flags & magma_fallback_base_sph_mask) != 0;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;

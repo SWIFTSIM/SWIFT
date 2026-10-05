@@ -86,8 +86,9 @@
  * i.e. 0.1 * kernel_gamma. */
 #define hydro_props_default_limiter_width -1.f
 
-/*! Maximal condition number of the C-matrix before falling back to standard
- * SPH gradients for the particle */
+/*! Maximal condition number of the inverse C-matrix. Directions in which the
+ * neighbourhood is more degenerate than this (planar or filamentary
+ * configurations) are regularised by clipping the spectrum of the inverse. */
 #define hydro_props_default_gradient_max_condition_number 60.f
 
 /*! Maximal angle (in radians) between the gradient function G and the
@@ -254,8 +255,9 @@ static INLINE void viscosity_print(
   message("Slope limiter parameters set to eta_crit: %.4f h, width: %.4f h.",
           viscosity->eta_crit, viscosity->limiter_width);
   message(
-      "Gradient-function fallbacks: condition number > %.1f (particle), "
-      "angle > %.3f rad (pair).",
+      "Gradient-function regularisation: C-matrix inverse clipped to a "
+      "condition number of %.1f (particle); fallback: angle > %.3f rad "
+      "(pair).",
       viscosity->max_condition_number, viscosity->angle_limit);
 }
 

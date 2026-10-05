@@ -760,12 +760,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float gradient_vz[3] = {0.f, 0.f, 0.f};
   float gradient_u[3] = {0.f, 0.f, 0.f};
 
-  /* Invert the c-matrix */
-  const int res = sym_matrix_invert(&c_matrix, &p->gradient.c_matrix_inv,
-                                    magma_viscosity.max_condition_number);
+  /* Invert the c-matrix. Directions in which the neighbourhood is
+   * (nearly) degenerate (planar or filamentary configurations) are
+   * regularised: the inverse is clipped to the maximal condition number
+   * there while the well-sampled directions keep their exact inverse. */
+  int regularised = 0;
+  const int res = sym_matrix_invert_regularised(
+      &c_matrix, &p->gradient.c_matrix_inv,
+      magma_viscosity.max_condition_number, &regularised);
 
-  /* The matrix could not be inverted
-   * --> Revert to base SPH, no reconstruction to the interface. */
+  /* Record the regularisation (diagnostic only, the particle keeps using the
+   * gradient functions) */
+  if (regularised) p->fallback_flags |= magma_fallback_regularised;
+
+  /* The matrix could not be inverted at all (no neighbours, non-finite
+   * sums) --> Revert to base SPH, no reconstruction to the interface. */
   if (res) {
     sym_matrix_identity(&c_matrix);
     p->fallback_flags |= magma_fallback_condition_number;

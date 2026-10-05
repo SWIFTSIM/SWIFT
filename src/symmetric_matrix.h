@@ -392,4 +392,199 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
 #endif
 }
 
+/**
+ * @brief Compute the inverse of a symmetric positive semi-definite matrix,
+ * regularised in its ill-conditioned directions.
+ *
+ * With M = sum_k lambda_k e_k e_k^T and the floor l_f = lambda_max /
+ * max_cond_num, the result is
+ *   M_inv = sum_k e_k e_k^T f(lambda_k),  f(l) = 1/l for l >= l_f,
+ *                                          f(l) = max(l, 0) / l_f^2 otherwise,
+ * i.e. the exact inverse when the condition number is within the limit, and
+ * otherwise a spectrally-filtered inverse: the well-resolved directions keep
+ * their exact inverse while the (near-)degenerate ones are damped, down to
+ * zero for an exactly singular direction (and for negative eigenvalues from
+ * round-off). f is continuous and bounded by max_cond_num / lambda_max. The
+ * intended use is the moment matrix of a neighbourhood that is planar or
+ * filamentary (rank-deficient in one or two directions) but well sampled in
+ * the others.
+ *
+ * In 1D, there is no direction to regularise: the function reduces to
+ * sym_matrix_invert().
+ *
+ * @param M_inv (return) The (regularised) inverse of M.
+ * @param M The symmetric matrix to invert.
+ * @param max_cond_num Maximal 2-norm condition number of the result.
+ * @param regularised (return) 1 if at least one eigenvalue was clipped.
+ * @return 1 if the inversion has failed (non-finite input, no positive
+ * eigenvalue). The matrix M_inv is then the null matrix. 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sym_matrix_invert_regularised(
+    struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
+    const double max_cond_num, int *restrict regularised) {
+
+  *regularised = 0;
+
+  /* Non-finite input: fail (the checks below cannot be trusted with NaNs) */
+  if (!sym_matrix_is_finite(M)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  float A[3][3];
+  get_matrix_from_sym_matrix(A, M);
+
+  double A_d[3][3];
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      A_d[i][j] = A[i][j];
+    }
+  }
+
+  double ev[3], V[3][3];
+  matrix_3x3_symmetric_eigendecomposition(A_d, ev, V);
+
+  const double ev_max = fmax(ev[0], fmax(ev[1], ev[2]));
+  if (!(ev_max > 0.)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  /* Regularise the spectrum below the floor: 1/lambda above it, a linear
+   * ramp lambda / floor^2 below it (continuous at the floor, zero for an
+   * exactly degenerate direction). */
+  const double ev_floor = ev_max / max_cond_num;
+  double ev_inv[3];
+  for (int k = 0; k < 3; ++k) {
+    if (ev[k] < ev_floor) {
+      ev_inv[k] = fmax(ev[k], 0.) / (ev_floor * ev_floor);
+      *regularised = 1;
+    } else {
+      ev_inv[k] = 1. / ev[k];
+    }
+  }
+
+  /* Well-conditioned case: use the LU inverse, identical to the result of
+   * sym_matrix_invert() */
+  if (!*regularised) {
+    double M_inv_matrix[3][3];
+    if (invert3x3_matrix_LU(A_d, M_inv_matrix)) {
+      zero_sym_matrix(M_inv);
+      return 1;
+    }
+    M_inv->xx = M_inv_matrix[0][0];
+    M_inv->yy = M_inv_matrix[1][1];
+    M_inv->zz = M_inv_matrix[2][2];
+    M_inv->xy = M_inv_matrix[0][1];
+    M_inv->xz = M_inv_matrix[0][2];
+    M_inv->yz = M_inv_matrix[1][2];
+  } else {
+
+    /* M_inv = V diag(ev_inv) V^T */
+    double Minv[3][3];
+    for (int i = 0; i < 3; ++i) {
+      for (int j = i; j < 3; ++j) {
+        double m = 0.;
+        for (int k = 0; k < 3; ++k) m += V[i][k] * ev_inv[k] * V[j][k];
+        Minv[i][j] = m;
+      }
+    }
+    M_inv->xx = Minv[0][0];
+    M_inv->yy = Minv[1][1];
+    M_inv->zz = Minv[2][2];
+    M_inv->xy = Minv[0][1];
+    M_inv->xz = Minv[0][2];
+    M_inv->yz = Minv[1][2];
+  }
+
+  /* The (float) result must be finite too */
+  if (!sym_matrix_is_finite(M_inv)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  return 0;
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  const double a = M->xx;
+  const double b = M->xy;
+  const double c = M->yy;
+
+  /* Eigenvalues (the small one from the determinant to avoid cancellation) */
+  const double mean = 0.5 * (a + c);
+  const double half_diff = 0.5 * (a - c);
+  const double disc = sqrt(half_diff * half_diff + b * b);
+  const double ev_big = mean + disc;
+  const double ev_small = (ev_big > 0.) ? (a * c - b * b) / ev_big : -1.;
+
+  if (!(ev_big > 0.)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  const double ev_floor = ev_big / max_cond_num;
+
+  if (ev_small >= ev_floor) {
+
+    /* Well-conditioned case: direct inverse, identical to sym_matrix_invert() */
+    const double det_inv = 1. / (a * c - b * b);
+    M_inv->xx = c * det_inv;
+    M_inv->yy = a * det_inv;
+    M_inv->xy = -b * det_inv;
+
+  } else {
+
+    *regularised = 1;
+
+    /* Eigenvector of ev_big: (M - ev_big I) e = 0. Use the row of
+     * M - ev_big I with the larger norm for a well-defined direction. */
+    double ex, ey;
+    const double r1x = a - ev_big, r1y = b;
+    const double r2x = b, r2y = c - ev_big;
+    if (r1x * r1x + r1y * r1y >= r2x * r2x + r2y * r2y) {
+      ex = -r1y;
+      ey = r1x;
+    } else {
+      ex = -r2y;
+      ey = r2x;
+    }
+    const double norm = sqrt(ex * ex + ey * ey);
+    if (norm > 0.) {
+      ex /= norm;
+      ey /= norm;
+    } else {
+      /* M is a multiple of the identity: any direction will do */
+      ex = 1.;
+      ey = 0.;
+    }
+
+    /* M_inv = e e^T / ev_big + e_perp e_perp^T * (ev_small / ev_floor^2)
+     * with e_perp = (-ey, ex): linear ramp below the floor */
+    const double inv_big = 1. / ev_big;
+    const double inv_floor = fmax(ev_small, 0.) / (ev_floor * ev_floor);
+    M_inv->xx = ex * ex * inv_big + ey * ey * inv_floor;
+    M_inv->yy = ey * ey * inv_big + ex * ex * inv_floor;
+    M_inv->xy = ex * ey * (inv_big - inv_floor);
+  }
+
+  /* The (float) result must be finite too */
+  if (!sym_matrix_is_finite(M_inv)) {
+    zero_sym_matrix(M_inv);
+    return 1;
+  }
+
+  return 0;
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return sym_matrix_invert(M_inv, M, max_cond_num);
+
+#else
+#error "A problem dimensionality must be chosen in config.h !"
+#endif
+}
+
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */

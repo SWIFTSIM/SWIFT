@@ -121,8 +121,11 @@ def run_stats(run_dir):
             g = f["/PartType0"]
             if "FallbackFlags" in g:
                 flags = g["FallbackFlags"][:]
-                out["frac_base_SPH_final"] = float(np.mean(flags != 0))
+                # Bits 1 and 2 switch the particle to base SPH; bit 4 only
+                # records a regularised (planar/filamentary) C-matrix.
+                out["frac_base_SPH_final"] = float(np.mean((flags & 3) != 0))
                 out["frac_cond_fallback_final"] = float(np.mean((flags & 1) != 0))
+                out["frac_regularised_final"] = float(np.mean((flags & 4) != 0))
             if "GradientFallbackPairs" in g:
                 out["mean_pair_fallbacks_final"] = float(np.mean(g["GradientFallbackPairs"][:]))
     log = os.path.join(run_dir, "output.log")

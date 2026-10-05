@@ -54,11 +54,20 @@
  *
  * Bit flags: a particle can fall back for several reasons at once. Stored in
  * part::fallback_flags.
+ *
+ * magma_fallback_regularised is a diagnostic only: the C-matrix was
+ * ill-conditioned (planar or filamentary neighbourhood) and its inverse was
+ * regularised in the degenerate directions; the particle still uses the
+ * matrix-inversion gradient functions. Only the bits in
+ * magma_fallback_base_sph_mask switch a particle to standard SPH gradients.
  */
 enum magma_fallback_reasons {
   magma_fallback_none = 0,
   magma_fallback_condition_number = (1 << 0),
   magma_fallback_h_max = (1 << 1),
+  magma_fallback_regularised = (1 << 2),
+  magma_fallback_base_sph_mask =
+      magma_fallback_condition_number | magma_fallback_h_max,
 };
 
 /**
