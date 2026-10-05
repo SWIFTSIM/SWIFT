@@ -4,18 +4,19 @@
 
 .. _integer_time_line:
 
-Integer time-line & time-bins
-=============================
+===============================
+ Integer time-line & time-bins
+===============================
 
-SWIFT does not keep track of time with floating-point numbers. Every
-quantity that decides *when* something happens (the start and the end of a
-time-step, whether a particle is active, when to write a snapshot) is an
-integer on a fixed grid, the *integer time-line*. This page describes the
-grid, the *time-bins* that give a time-step to every particle and the
-conversion to physical time. The definitions are in ``src/timeline.h``.
+SWIFT does not keep track of time with floating-point numbers. Every quantity
+that decides *when* something happens (the start and the end of a time-step,
+whether a particle is active, when to write a snapshot) is an integer on a
+fixed grid, the *integer time-line*. This page explains how SWIFT represents
+time and assigns time-steps to particles. The definitions are in
+``src/timeline.h``.
 
 The time-line
--------------
+=============
 
 The integer time is stored in a 64-bit integer (``integertime_t``). The
 whole simulation, from the start to the end time, is divided into
@@ -23,13 +24,10 @@ whole simulation, from the start to the end time, is divided into
 
 .. note::
 
-   **A tick is the unit of the integer time.** It is the smallest step that
-   time can make in the code: nothing happens between two ticks. The integer
-   time is a number of ticks counted from the start of the run (it is 0 at the
-   start and :math:`2^{57}` at the end). A time-step is a whole number of
-   ticks. The physical length of a tick is called ``time_base`` (its value is
-   given below). For example, a run that covers 10 Gyr has ticks of about 2
-   seconds.
+   **A tick is the smallest interval on the integer time-line.** Integer
+   time advances in whole numbers of ticks, so events cannot be scheduled
+   between two consecutive ticks. A time-step is therefore always a whole
+   number of ticks.   
 
 The total number of ticks is the constant ``max_nr_timesteps``, which is
 ``1 << (num_time_bins + 1)`` with ``num_time_bins = 56``.
@@ -64,7 +62,7 @@ The simulation is finished when the integer time reaches :math:`2^{57}`
 (``engine_is_done()``).
 
 Time-bins
----------
+=========
 
 Each particle carries a *time-bin*, stored in ``time_bin``. A particle in the
 time-bin :math:`b \geq 1` uses time-steps that are
@@ -78,8 +76,7 @@ bin :math:`b \leq 0`, which is not a valid step length. The shortest possible
 time-step is the one of the bin 1 and has 4 ticks. The longest one is the one
 of the bin 56 and is the whole time-line.
 
-As illustrated in the figure below, each bin exactly doubles the length of the
-step compared to its predecessor.
+Each successive bin doubles the time-step length, as shown below.
 
 .. figure:: figures/time_bins.png
    :width: 100%
@@ -120,18 +117,15 @@ step lengths.
   is synchronised on the time-line (see :ref:`time_step_sync`).
 
 Which bins are active
----------------------
+=====================
 
 The steps of the bin :math:`b` start and end at the integer times that are
-multiples of :math:`\Delta t_{\rm int}(b)`. Every length is a power of two.
-Hence a multiple of a long step is also a multiple of all the shorter ones. At
-the end of a step of the bin :math:`b`, all the particles in the bins
-:math:`1,\ldots,b` are also ending a step. This is why SWIFT never needs a
-list of the active particles. It only needs the **highest active bin** at the
-current time.
-
-The rhythmic nesting of these steps across the timeline can be seen clearly in
-the figure below.
+multiples of :math:`\Delta t_{\rm int}(b)`. Every length is a power of two (see
+figure below).  Hence a multiple of a long step is also a multiple of all the
+shorter ones. At the end of a step of the bin :math:`b`, all the particles in
+the bins :math:`1,\ldots,b` are also ending a step. Therefore, SWIFT never
+needs a list of the active particles: it only needs the **highest active bin**
+at the current time.
 
 .. figure:: figures/active_bins.png
    :width: 100%
@@ -147,13 +141,12 @@ A particle is active when:
 
 .. code-block:: c
 
-   p->time_bin <= e->max_active_bin
+   p->time_bin <= e->max_active_bin # see part_is_active()
 
-which is the whole content of ``part_is_active()``. The highest active bin is
-computed from the integer time by ``get_max_active_bin()``. It is the position
-of the lowest set bit of the integer time, minus one. The lowest active bin is
-the bin whose step is as long as the step that has just been taken
-(``get_min_active_bin()``).
+The highest active bin is computed from the integer time by
+``get_max_active_bin()``. It is the position of the lowest set bit of the
+integer time, minus one. The lowest active bin is the bin whose step is as long
+as the step that has just been taken (``get_min_active_bin()``).
 
 Because the time-line is shared universally, two particles are synchronized on
 the same step only when the integer time is a multiple of both of their step

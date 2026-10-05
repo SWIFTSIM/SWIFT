@@ -6,15 +6,16 @@
 Choosing the time-step of a particle
 ====================================
 
-When a particle ends a step, the ``timestep`` task gives it a new time-bin
-(see :ref:`kick_drift_kick`). This page explains how the new time-step is
-computed. There are two stages. First, every physics module that acts on the
-particle proposes a *physical* time-step, and the smallest proposal is kept.
-Second, this time-step is converted to the integer time-line and adjusted, so
-that it fits the rules of the time-line (see :ref:`integer_time_line`).
+When a particle ends a step, we need to determine the length of the next
+step. This page explains how the new time-step is computed.
 
-Stage 1: the proposals
-----------------------
+There are two stages. First, every physics module that acts on the particle
+proposes a *physical* time-step, and the smallest proposal is kept.  Second,
+this time-step is converted to the integer time-line and adjusted, so that it
+fits the rules of the time-line (see :ref:`integer_time_line`).
+
+Physical time-step criteria
+---------------------------
 
 The proposals depend on the type of the particle. The functions that combine
 them are in ``src/timestep.h``.
@@ -86,8 +87,8 @@ Each of them stops with an error if the result is below ``dt_min``.
 A gas particle that has a gravity counterpart gives its time-bin to it, so
 that both always use the same steps.
 
-Stage 2: the rules of the time-line
------------------------------------
+Time-line constraints
+---------------------
 
 The function ``make_integer_timestep()`` turns the physical time-step into a
 valid number of ticks. It applies these rules in this order.
@@ -104,12 +105,12 @@ When the radiative transfer with sub-cycling is used, the step of a gas
 particle is finally limited to ``max_nr_rt_subcycles`` times its radiative
 transfer step (see the pages on radiative transfer).
 
-Worked Example
-~~~~~~~~~~~~~~
+Example
+~~~~~~~
 
-To see how these rules interact sequentially, consider a particle currently on **bin 3 (16 ticks)** whose physical criteria request **100 ticks**, with the smallest neighbour bin set to **2**. 
+Consider a particle currently on **bin 3 (16 ticks)** whose physical criteria request **100 ticks**, with the smallest neighbour bin set to **2**. 
 
-The table below traces how this request is progressively constrained depending on whether the step happens to end at :math:`t = 48` or :math:`t = 64`.
+The same request gives different results at :math:`t = 48` and :math:`t = 64`:
 
 .. list-table::
    :header-rows: 1
@@ -130,8 +131,6 @@ The table below traces how this request is progressively constrained depending o
    * - **4. Alignment** (:math:`T` must divide :math:`t`)
      - 32 does not divide 48 :math:`\rightarrow` **Reverts to Bin 3** (16 ticks)
      - 32 divides 64 cleanly :math:`\rightarrow` **Accepts Bin 4** (32 ticks)
-
-As this example demonstrates, particles do not instantly jump to their requested criteria. They are strictly bounded by their neighbours, growth limits, and global timeline alignment, ensuring system-wide synchronization.
 
 The time-step limiter and the synchronisation (see :ref:`time_step_limiter`
 and :ref:`time_step_sync`) can shorten the step of a particle in the middle of

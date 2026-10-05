@@ -8,9 +8,8 @@ The integration scheme and the steps of the code
 
 SWIFT integrates the particles with a kick-drift-kick (leapfrog) scheme in
 which every particle has its own time-step (see :ref:`integer_time_line` and
-:ref:`time_step_criteria`). This page describes what the scheme does to a
-particle, which tasks do it, and how the code decides when the next step
-happens.
+:ref:`time_step_criteria`). This page describes the time integration scheme and
+its implementation.
 
 .. _scheme_for_one_particle:
 

@@ -6,12 +6,12 @@
 Time integration details
 ========================
 
-This section of the documentation includes information on the time
-stepping and time integration used in SWIFT. It starts with the integer
-time-line and the time-bins, then describes how the time-step of a particle
-is chosen and how the kick-drift-kick scheme runs as tasks. The time-step
-limiter and the synchronisation are described next. The last page explains the
-table of the steps that SWIFT prints, and what the time-step parameters cost.
+This section of the documentation includes information on the time stepping and
+time integration used in SWIFT. It starts with the integer time-line and the
+time-bins, then describes how the time-step of a particle is chosen and how the
+kick-drift-kick scheme runs as tasks. Then it describeds the time-step limiter
+and the synchronisation. Finally, the last page explains the content of the
+``timesteps.txt`` file.
 
 .. toctree::
    :maxdepth: 2
