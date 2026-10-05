@@ -543,9 +543,8 @@ void *runner_main(void *data) {
             if (count_relinked > ci->grav.count_total)
               error(
                   "Foreign gparts no longer fit the slice reserved at the "
-                  "last rebuild! ci->cellID=%lld count_relinked=%d "
-                  "count_total=%d",
-                  ci->cellID, count_relinked, ci->grav.count_total);
+                  "last rebuild! count_relinked=%d count_total=%d",
+                  count_relinked, ci->grav.count_total);
 #ifdef SWIFT_DEBUG_CHECKS
             cell_debug_stamp_grav_counts_recv(ci, r->e->ti_current);
 #endif
