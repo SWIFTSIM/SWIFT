@@ -58,7 +58,7 @@ resolution level (`level`, N = `(2**level)**3` gas particles), `variant`
 (`ISRF_propagation`), `layer_width_h`,
 `density_ratio` (contrast variant only), `bulk_temperature_K`,
 `pulse_amplitude`/`pulse_sigma_h`, `c_hyp_margin`, `c_hyp_fraction`
-(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs `ISRF_c_hyp_scheme: 2`, one speed
+(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs `ISRF_c_hyp_scheme: fixed_fraction`, one speed
 for every particle), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, debug/test only,
 never use in a production run), `initial_metallicity`, `time_end`,

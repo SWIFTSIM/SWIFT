@@ -120,9 +120,9 @@ GEARFeedback:
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_propagation: 1                                       # run.sh override
-  ISRF_c_hyp_scheme: 4                                      # Propagation scheme, run.sh override. 4 = kernel-local speed (default), 2 = one fixed speed for the whole box
+  ISRF_c_hyp_scheme: kernel_local                           # Propagation scheme, run.sh override. kernel_local = kernel-local speed (default), fixed_fraction = one fixed speed for the whole box
   ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
-  ISRF_c_hyp_fixed_fraction_of_c: 0                         # Scheme 2's speed as a fraction of c, run.sh override; must be positive there and 0 otherwise
+  ISRF_c_hyp_fixed_fraction_of_c: 0                         # fixed_fraction's speed as a fraction of c, run.sh override; must be positive there and 0 otherwise
   ISRF_dissipation_alpha_max: 0.5                           # Artificial-dissipation trigger ceiling (default)
   ISRF_dissipation_negativity_threshold: 0.01               # Negativity trigger threshold, relative (default)
   ISRF_dissipation_alpha_floor: 0.5                         # Dissipation floor near the front (default)

@@ -17,7 +17,7 @@ applied to both. Where a closed form exists, the check compares against it:
   `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone) with the rate the module
   hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
 - `dust_absorption`: the same at solar metallicity, with one fixed propagation
-  speed `c_pin` for the whole box (`ISRF_c_hyp_scheme: 2`, 4 km/s by default),
+  speed `c_pin` for the whole box (`ISRF_c_hyp_scheme: fixed_fraction`, 4 km/s by default),
   so the absorption rate is known:
   `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
   carrying the same `c_pin/c` dilation.
@@ -129,7 +129,7 @@ bound on the part of the bar that does not depend on `a`, wherever it is
 larger.
 With `--config photoelectric` it also needs `--reference-dark`, the
 non-cosmological `photoelectric_dark` run.
-Without cosmology the scheme 4 `free_field` band drift has no expansion term
+Without cosmology the kernel_local `free_field` band drift has no expansion term
 to be compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
@@ -141,33 +141,33 @@ glass's own `h` spread. That makes the ledger mean move for a reason
 unrelated to conservation, which is why the run above is reported rather
 than gated. One propagation speed across the whole box makes the weight
 cancel, and the check then gates the band drift against its own float
-floor. One speed for the whole box is `ISRF_c_hyp_scheme: 2`, set with
-`c_hyp_scheme=2 c_hyp_fraction=<v/c>` (`c = 299792.458 km/s`), the same
-mechanism `dust_absorption` uses. Scheme 2 also limits the time step of every
+floor. One speed for the whole box is `ISRF_c_hyp_scheme: fixed_fraction`, set with
+`c_hyp_scheme=fixed_fraction c_hyp_fraction=<v/c>` (`c = 299792.458 km/s`), the same
+mechanism `dust_absorption` uses. fixed_fraction also limits the time step of every
 particle carrying or near the field to `ISRF_c_hyp_margin*h/c_hyp`, so it can
 take more steps than the run above. The check reads the uniformity from the
 recorded `HyperbolicPropagationSpeeds` itself.
 ```
-config=free_field redshift=0 c_hyp_scheme=2 c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z0 ./run.sh
-config=free_field redshift=9 c_hyp_scheme=2 c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z9 ./run.sh
+config=free_field redshift=0 c_hyp_scheme=fixed_fraction c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z0 ./run.sh
+config=free_field redshift=9 c_hyp_scheme=fixed_fraction c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z9 ./run.sh
 python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z0/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z9/snap/snapshot_*.hdf5" \
     --reference "ff_s2_z0/snap/snapshot_*.hdf5"
 ```
-That fraction is 38.79 km/s, the scheme 4 `redshift=0` run's own box-mean
+That fraction is 38.79 km/s, the kernel_local `redshift=0` run's own box-mean
 `c_hyp` at the defaults above, so that leg runs at the speed it would have run
 at anyway. The `redshift=9` leg does not: `c_hyp` is `ISRF_c_hyp_margin*a*h`
-over the step, and over `a = 0.1` to `0.125` the scheme 4 run's own value is
+over the step, and over `a = 0.1` to `0.125` the kernel_local run's own value is
 41 to 46 km/s, so the same speed puts that leg at a Courant number of 0.42 to
 0.47 against the `ISRF_c_hyp_margin` of 0.5. One speed is used for both so the
 two legs share the same ledger weight, which is what makes the `--reference`
 pairing comparable; (A1) predicts from each run's own recorded
 `HyperbolicPropagationSpeeds`, so the prediction follows whichever speed is
 set. At another `level`, `gas_density` or `duration`, read the mean of
-`HyperbolicPropagationSpeeds` from a scheme 4 `redshift=0` run's first
+`HyperbolicPropagationSpeeds` from a kernel_local `redshift=0` run's first
 post-startup snapshot and divide it by `c`. A uniform speed says nothing about
 a propagation speed that varies between neighbours, so run this pair in
-addition to the scheme 4 one, not instead of it. A faster speed runs the same
+addition to the kernel_local one, not instead of it. A faster speed runs the same
 way (`c_hyp_fraction=3.335640952e-04` is 100 km/s) and takes more steps.
 
 # Regression-testing the receiver-side extinction path

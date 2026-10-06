@@ -263,9 +263,12 @@ def main():
     params = yaml.safe_load(open(os.path.join(opt.run, "used_parameters.yml")))
     fb = params["GEARFeedback"]
     fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
-    if int(fb.get("ISRF_c_hyp_scheme", 4)) != 2 or fraction <= 0.0:
+    if (
+        fb.get("ISRF_c_hyp_scheme", "kernel_local") != "fixed_fraction"
+        or fraction <= 0.0
+    ):
         print(
-            "FAIL: this check needs ISRF_c_hyp_scheme 2 with "
+            "FAIL: this check needs ISRF_c_hyp_scheme: fixed_fraction with "
             "ISRF_c_hyp_fixed_fraction_of_c > 0 (uniform tau)."
         )
         sys.exit(1)

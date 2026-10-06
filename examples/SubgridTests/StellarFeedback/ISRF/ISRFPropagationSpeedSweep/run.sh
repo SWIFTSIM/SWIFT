@@ -15,7 +15,7 @@ gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 seed_pulse=${seed_pulse:=1.0}          # >0: star-free seeded pulse (see README); 0: star source
-c_hyp_fraction=${c_hyp_fraction:=0}    # >0: ISRF_c_hyp_scheme 2 at this fraction of c; 0: the closure (scheme 4)
+c_hyp_fraction=${c_hyp_fraction:=0}    # >0: ISRF_c_hyp_scheme: fixed_fraction at this fraction of c; 0: the kernel_local closure
 c_hyp_margin=${c_hyp_margin:=0.5}      # GEARFeedback:ISRF_c_hyp_margin
 alpha_max=${alpha_max:=0.5}            # GEARFeedback:ISRF_dissipation_alpha_max
 alpha_pin=${alpha_pin:=0}              # GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging; 0 = use the trigger
@@ -75,9 +75,9 @@ else
     mkdir $DIR
 fi
 
-c_hyp_scheme=4
+c_hyp_scheme=kernel_local
 if python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) > 0.0 else 1)" "$c_hyp_fraction"; then
-    c_hyp_scheme=2
+    c_hyp_scheme=fixed_fraction
 fi
 
 printf "Running simulation..."

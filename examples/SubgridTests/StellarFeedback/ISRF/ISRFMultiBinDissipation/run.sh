@@ -24,7 +24,7 @@ star_mass=${star_mass:=29.7}
 star_type=${star_type:="single_star"}
 n_stars=${n_stars:=3}
 c_hyp_margin=${c_hyp_margin:=0.5}
-c_hyp_fraction=${c_hyp_fraction:=0}             # >0: ISRF_c_hyp_scheme 2 at this fraction of c; 0: scheme 4
+c_hyp_fraction=${c_hyp_fraction:=0}             # >0: ISRF_c_hyp_scheme: fixed_fraction at this fraction of c; 0: kernel_local
 alpha_max=${alpha_max:=0.5}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
@@ -83,9 +83,9 @@ else
     mkdir $DIR
 fi
 
-c_hyp_scheme=4
+c_hyp_scheme=kernel_local
 if python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) > 0.0 else 1)" "$c_hyp_fraction"; then
-    c_hyp_scheme=2
+    c_hyp_scheme=fixed_fraction
 fi
 
 printf "Running simulation..."

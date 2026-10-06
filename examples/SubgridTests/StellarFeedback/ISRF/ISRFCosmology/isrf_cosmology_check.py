@@ -34,7 +34,7 @@ free_field
     u`` for the mass-specific field: the reduced-speed-of-light method is
     only correct if EVERY rate is dilated by the same c_hyp/c factor, and the
     Hubble term is no exception (see radiation_isrf.c's
-    radiation_end_force_propagation, fixed for this). In the scheme 4 legs
+    radiation_end_force_propagation, fixed for this). In the kernel_local legs
     of this fixture (the run.sh default for ``free_field``) ``c_hyp`` is a
     per-particle, per-step quantity
     (ISRF_c_hyp_margin*h/dt, clamped at c), not a single constant, and the
@@ -48,12 +48,12 @@ free_field
     conserves sum m u / c_hyp. Which weights the check forms depends on
     GEARFeedback:ISRF_c_hyp_scheme, read from the run's used_parameters.yml:
 
-        Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   scheme 4
-        Q = [sum_i m_i u_i] / [sum_i m_i]                       scheme 2
+        Q = [sum_i m_i u_i / c_hyp,i] / [sum_i m_i / c_hyp,i]   kernel_local
+        Q = [sum_i m_i u_i] / [sum_i m_i]                       fixed_fraction
 
-    Scheme 4 (the default) has a c_hyp that varies from particle to particle,
+    kernel_local (the default) has a c_hyp that varies from particle to particle,
     so sum m u is NOT conserved and measuring it reports the receiver-weighted
-    redistribution as an error. Scheme 2 has one fixed speed for the whole
+    redistribution as an error. fixed_fraction has one fixed speed for the whole
     box, where the two weightings are proportional and the ratio is the same
     number; the unweighted form is used there because it needs no
     HyperbolicPropagationSpeeds, which reads 0 on a snapshot written before the
@@ -63,12 +63,12 @@ free_field
     The c_hyp,i weights are the HyperbolicPropagationSpeeds snapshot field.
     A snapshot written before that field existed, or one whose c_hyp is not
     everywhere finite and positive, degrades to the sum m u ledger with a
-    printed message: exact for scheme 2, approximate for scheme 4.
+    printed message: exact for fixed_fraction, approximate for kernel_local.
 
     Both forms are ratios of two sums at the SAME time, so a spatially
     uniform c_hyp cancels between numerator and denominator, whether or not
     it varies from one snapshot to the next. Every fixed-fraction run
-    (scheme 2) therefore gets the number this
+    (fixed_fraction) therefore gets the number this
     check reported before the ledger became scheme-aware, up to round-off:
     the weighted branch divides each mass by c_hyp before summing, so the two
     are not the same float expression.
@@ -105,7 +105,7 @@ free_field
     size.
 
     The drift is measured from the first snapshot whose own c_hyp is a
-    genuine per-step rate, not from snapshot 0: a scheme 4 run's snapshot 0
+    genuine per-step rate, not from snapshot 0: a kernel_local run's snapshot 0
     is written before the first force step and still holds the module's
     first-init light-speed clamp (`band_edge_ratio_reference_index`). That
     one interval is therefore dropped rather than integrated with the clamp,
@@ -139,7 +139,7 @@ free_field
 
     The ledger is a ratio of two sums taken at the SAME time, so a c_hyp
     that is UNIFORM ACROSS THE BOX cancels between numerator and
-    denominator. A scheme 4 run's c_hyp is not: there it is
+    denominator. A kernel_local run's c_hyp is not: there it is
     margin*h/dt_max, so it carries the glass's own h spread, and
     the ledger mean then moves for a second reason that has nothing to do
     with conservation. The scheme conserves the ledger's NUMERATOR at
@@ -159,7 +159,7 @@ free_field
       `--reference` cannot inflate it, because the reference term is not in
       this bar. Uniformity is read from the field, not from whichever
       parameter produced it, because it is the condition the cancellation
-      rests on: ISRF_c_hyp_scheme 2 gives it (the same mechanism
+      rests on: ISRF_c_hyp_scheme: fixed_fraction gives it (the same mechanism
       `dust_absorption` uses), whose GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c
       is one speed for the whole box with the Courant condition imposed on
       the timestep (radiation_isrf.c's radiation_snapshot_part_propagation),
@@ -176,18 +176,18 @@ free_field
       nothing, while sizing a term from the measured drift instead would
       fit the bar to the data. Neither was done. The consequence is stated
       rather than hidden: between the float floor
-      and (A2)'s own bar, the scheme 4 leg does not bound the transport
-      ledger's conservation, and the scheme 2 leg is where that bound lives.
+      and (A2)'s own bar, the kernel_local leg does not bound the transport
+      ledger's conservation, and the fixed_fraction leg is where that bound lives.
       The drift is printed instead, so it stays visible, and the two
-      checks the scheme 4 leg does carry stay live: the measured drift must
+      checks the kernel_local leg does carry stay live: the measured drift must
       be finite, and (A2) is gated exactly as it is with cosmology. The
-      scheme 4 non-cosmological run also remains the `--reference` of the
+      kernel_local non-cosmological run also remains the `--reference` of the
       cosmological one, where its drift enters that run's bar, is
       therefore still acted upon, and is held below the predicted decay by
       the resolution self-test.
 
     A claimed uniform speed the module did not deliver FAILS rather than
-    falling back to the report. ISRF_c_hyp_scheme == 2 is that claim. If it
+    falling back to the report. ISRF_c_hyp_scheme: fixed_fraction is that claim. If it
     is set and the recorded c_hyp is not bit-uniform, the uniform-weight
     ledger the
     gate rests on is not live, and a silent fallback would remove the gate
@@ -251,7 +251,7 @@ free_field
     the spread is glass noise, not signal) -- NOT from a fitted or assumed
     c_hyp, and not from A1's conservative c_hyp/c upper bound, which is too
     loose by orders of magnitude to resolve (A3)'s own signal. The first
-    snapshot of a scheme 4 run is excluded: it is written before the first
+    snapshot of a kernel_local run is excluded: it is written before the first
     force step, so its own HyperbolicPropagationSpeeds is still the light-
     speed clamp `c_hyp = c` the module falls back on before any step has
     run, not a rate a particle ever actually decayed under.
@@ -267,7 +267,7 @@ free_field
 
 dust_absorption
     Seeded field, solar metallicity, one fixed propagation speed c_pin for
-    every particle, set by scheme 2 as ISRF_c_hyp_fixed_fraction_of_c * c and
+    every particle, set by fixed_fraction as ISRF_c_hyp_fixed_fraction_of_c * c and
     read from the run's used_parameters.yml (so,
     unlike free_field, c_hyp/c is a single run-wide constant here, not a
     per-particle/per-step quantity). The exact solution of the module's
@@ -293,7 +293,7 @@ dust_absorption
     coefficient at the start (sigma_d = 9e-22 and 1.5e-21 cm^2 for PE and LW).
 
 photoelectric
-    Seeded G0, solar metallicity, low fixed speed (scheme 2) so G0 barely
+    Seeded G0, solar metallicity, low fixed speed (fixed_fraction) so G0 barely
     changes.
     Grackle's constant-efficiency photoelectric heating
     (``photoelectric_heating = 2``, cool1d_multi_g.F) is
@@ -685,13 +685,13 @@ FLOAT32_EPS = float(np.finfo(np.float32).eps)
 # six decimals of mantissa, so a step size read back from the log carries
 # half a unit in that last decimal.
 LOG_STEP_MANTISSA_HALF_ULP = 0.5e-6
-# enum isrf_c_hyp_scheme values whose c_hyp varies between particles, so that
+# GEARFeedback:ISRF_c_hyp_scheme values whose c_hyp varies between particles, so that
 # the conserved sum m u / c_hyp is not proportional to sum m u
-# (feedback_properties.h). Scheme 2's operators conserve the same sum, but its
+# (feedback_properties.h). fixed_fraction's operators conserve the same sum, but its
 # c_hyp is one value for the whole box.
-VARIABLE_C_SCHEMES = (4,)
-# enum isrf_c_hyp_scheme values the module accepts (feedback_properties.h).
-VALID_C_HYP_SCHEMES = (2, 4)
+VARIABLE_C_SCHEMES = ("kernel_local",)
+# GEARFeedback:ISRF_c_hyp_scheme values the module accepts (feedback_properties.h).
+VALID_C_HYP_SCHEMES = ("fixed_fraction", "kernel_local")
 # HyperbolicPropagationSpeeds reads exactly c on a snapshot written before
 # the first force step (the module's first-init clamp): below this fraction
 # of c, (A3) takes it as a genuine per-step value instead.
@@ -1168,14 +1168,16 @@ def read_timeline_dt_max(
     return None
 
 
-def read_c_hyp_scheme(pattern: str) -> Optional[int]:
+def read_c_hyp_scheme(pattern: str) -> Optional[str]:
     """Return GEARFeedback:ISRF_c_hyp_scheme, or None when it is not recorded.
 
     Raises
     ------
     ValueError
-        If a value is recorded and is not 2 or 4: the run used a removed
-        scheme (0, 1 or 3), whose ledger this check cannot interpret.
+        If a value is recorded and is not ``fixed_fraction`` or
+        ``kernel_local``: the run used a removed scheme, or an integer value
+        from before the parameter took a string, whose ledger this check
+        cannot interpret.
     """
     import os
     import yaml
@@ -1190,23 +1192,19 @@ def read_c_hyp_scheme(pattern: str) -> Optional[int]:
         recorded = parameters["GEARFeedback"]["ISRF_c_hyp_scheme"]
     except (KeyError, TypeError):
         return None
-    try:
-        scheme = int(recorded)
-    except (TypeError, ValueError):
-        scheme = None
-    if scheme not in VALID_C_HYP_SCHEMES:
+    if recorded not in VALID_C_HYP_SCHEMES:
         raise ValueError(
-            f"{path}: GEARFeedback:ISRF_c_hyp_scheme is {recorded!r}; only 2 "
-            "(fixed fraction of c) and 4 (kernel-local speed) are supported. "
-            "The values 0, 1 and 3 were removed."
+            f"{path}: GEARFeedback:ISRF_c_hyp_scheme is {recorded!r}; only "
+            "'fixed_fraction' and 'kernel_local' are supported."
         )
+    scheme = recorded
     return scheme
 
 
 def read_c_hyp_fraction(pattern: str) -> Optional[float]:
     """Return GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c, or None if unrecorded.
 
-    Under ISRF_c_hyp_scheme 2 every particle's propagation speed is this
+    Under ISRF_c_hyp_scheme: fixed_fraction every particle's propagation speed is this
     fraction of c (`feedback_properties.h`'s ISRF_c_hyp_fixed_fraction_of_c).
 
     Parameters
@@ -1275,9 +1273,9 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
         if index == 0 and np.all(c_hyp == 0.0):
             # Snapshot 0 is written before the first force step. Under the
             # scheme that sets c_hyp in radiation_snapshot_part_propagation
-            # (2) it therefore still holds the first-init seed of exactly
+            # (fixed_fraction) it therefore still holds the first-init seed of exactly
             # zero (radiation_isrf.c:156); the scheme that sets it in
-            # radiation_end_density_propagation (4) reads the light-speed
+            # radiation_end_density_propagation (kernel_local) reads the light-speed
             # value instead, because the initial density pass does
             # run. A snapshot with no speed at all carries nothing to be
             # uniform, so it is skipped. Only index 0 qualifies: after a step
@@ -1294,9 +1292,9 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
 def use_c_hyp_ledger(run: List[Dict], pattern: str, label: str) -> bool:
     """Report whether the c_hyp-weighted ledger applies to this run.
 
-    It applies only to the scheme whose c_hyp varies between particles (4),
+    It applies only to the scheme whose c_hyp varies between particles (kernel_local),
     and only when every snapshot carries a finite, strictly positive
-    HyperbolicPropagationSpeeds. Scheme 2 has one speed for the whole box,
+    HyperbolicPropagationSpeeds. fixed_fraction has one speed for the whole box,
     where the weighted and unweighted ledgers are proportional.
     Snapshot 0 is NOT excused here, unlike in `c_hyp_spatial_spread`: this
     weight divides by c_hyp on every snapshot the ledger is evaluated on, and
@@ -1406,7 +1404,7 @@ def free_field_errors(
         The run's snapshots, in time order.
     use_c_hyp
         Weight each particle by ``m_i/c_hyp,i`` rather than ``m_i``, for the
-        scheme with a per-particle speed (4). Decided by `use_c_hyp_ledger`.
+        scheme with a per-particle speed (kernel_local). Decided by `use_c_hyp_ledger`.
     ref_index
         Snapshot the log drift is measured from. (A1)'s reference is the
         first snapshot whose c_hyp is a genuine per-step rate, since its
@@ -1491,11 +1489,11 @@ def band_edge_ratio_reference_index(run: List[Dict]) -> Optional[int]:
     under; (A3) needs the trajectory the particles actually experienced, so it
     starts integrating one snapshot later. Two shapes of that pre-step
     snapshot exist and both must be rejected. Under the scheme that sets
-    ``c_hyp`` in the density loop (4) it reads the module's first-init
+    ``c_hyp`` in the density loop (kernel_local) it reads the module's first-init
     light-speed clamp (``c_hyp = c``), because that loop does run before the
     first snapshot is written. Under the scheme that sets it in the snapshot
-    hook (2) it reads exactly zero for every particle; that is MEASURED for
-    scheme 2 (both cluster legs of 2026-09-30, 32768 particles, one distinct
+    hook (fixed_fraction) it reads exactly zero for every particle; that is MEASURED for
+    fixed_fraction (both cluster legs of 2026-09-30, 32768 particles, one distinct
     float32 value, 0). A median test alone passes the zero shape, because zero is below the clamp,
     so strict positivity is required as well.
 
@@ -1876,21 +1874,21 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     # spread(u)*spread(1/c_hyp), and leaves the float divergence floor as
     # (A1)'s whole error budget. Uniformity is the physical condition the
     # gate rests on, so it is read from the recorded field itself and not
-    # from the parameter that produced it, ISRF_c_hyp_scheme 2's fixed
+    # from the parameter that produced it, ISRF_c_hyp_scheme: fixed_fraction's fixed
     # fraction. The parameters are still read, because a claimed uniform
     # speed the module did not apply must FAIL rather than fall back to the
     # ungated report.
     c_hyp_fraction = read_c_hyp_fraction(opt.snapshots)
     c_hyp_scheme = read_c_hyp_scheme(opt.snapshots)
-    # Scheme 2 CLAIMS one speed for the whole box: its
+    # fixed_fraction CLAIMS one speed for the whole box: its
     # ISRF_c_hyp_fixed_fraction_of_c is a single fraction of c
     # (feedback_properties.h already errors at start-up if that key is not
-    # positive under scheme 2, or positive without it, so the scheme number
+    # positive under fixed_fraction, or positive without it, so the scheme name
     # alone is the claim). The claim must FAIL when the recorded field does
     # not honour it, rather than fall back to the ungated report: the gate
     # below is the only bound on this fixture's transport ledger, and a claim
     # the module did not deliver would otherwise remove it silently.
-    uniform_claimed = c_hyp_scheme == 2
+    uniform_claimed = c_hyp_scheme == "fixed_fraction"
     c_hyp_spread = c_hyp_spatial_spread(run)
     uniform_c_hyp = c_hyp_spread is not None and c_hyp_spread == 0.0
     n_steps = step_count(run, dt_max)
@@ -1898,7 +1896,7 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
     # (A1) predicts from the run's OWN recorded c_hyp, so it measures the
     # drift from the first snapshot whose c_hyp is a genuine per-step rate:
-    # snapshot 0 of a scheme 4 run still holds the module's first-init
+    # snapshot 0 of a kernel_local run still holds the module's first-init
     # light-speed clamp (`band_edge_ratio_reference_index`), and neither
     # substituting a later snapshot's value for it nor integrating the clamp
     # itself is a measurement of anything the particles experienced.
@@ -2010,7 +2008,10 @@ def check_free_field(opt: argparse.Namespace) -> bool:
         f"ISRF_c_hyp_fixed_fraction_of_c = {fraction_note}"
     )
     if uniform_claimed and not uniform_c_hyp:
-        source = "ISRF_c_hyp_scheme is 2, which is one fixed speed for the whole box"
+        source = (
+            "ISRF_c_hyp_scheme is fixed_fraction, which is one fixed speed for "
+            "the whole box"
+        )
         # Two different failures, and naming the wrong one sends the
         # investigation the wrong way: no snapshot carrying a usable speed is
         # usually propagation switched off, while a spread is the claim not
@@ -2190,11 +2191,11 @@ def check_free_field(opt: argparse.Namespace) -> bool:
             # construction (A3) uses, and it is used here on its own rather
             # than through `bar`, so a `--reference` handed to a
             # non-cosmological run cannot inflate it.
-            # Both schemes' operators conserve sum m u / c_hyp. Scheme 2's
+            # Both schemes' operators conserve sum m u / c_hyp. fixed_fraction's
             # speed is one value for the whole box, so there that is
-            # proportional to sum m u; scheme 4's weight cancels only because
+            # proportional to sum m u; kernel_local's weight cancels only because
             # it is uniform here, and the two coincide exactly when it is.
-            if c_hyp_scheme == 2:
+            if c_hyp_scheme == "fixed_fraction":
                 why = "this scheme's one speed makes sum m u / c_hyp proportional to sum m u"
             elif use_c_hyp:
                 why = "the ledger weight cancels between the two sums"
@@ -2428,7 +2429,7 @@ def dust_absorption_errors(run: List[Dict], c_pin_cgs: float) -> Dict:
 
 
 def fixed_c_hyp_cgs(pattern: str) -> float:
-    """Return a scheme 2 run's propagation speed, ISRF_c_hyp_fixed_fraction_of_c * c.
+    """Return a fixed_fraction run's propagation speed, ISRF_c_hyp_fixed_fraction_of_c * c.
 
     Parameters
     ----------
@@ -2443,14 +2444,14 @@ def fixed_c_hyp_cgs(pattern: str) -> float:
     Raises
     ------
     RuntimeError
-        If the run did not record ISRF_c_hyp_scheme 2 with a positive
+        If the run did not record ISRF_c_hyp_scheme: fixed_fraction with a positive
         fraction: (B1) needs one speed for every particle.
     """
     scheme = read_c_hyp_scheme(pattern)
     fraction = read_c_hyp_fraction(pattern)
-    if scheme != 2 or fraction is None or not fraction > 0.0:
+    if scheme != "fixed_fraction" or fraction is None or not fraction > 0.0:
         raise RuntimeError(
-            f"{pattern}: dust_absorption needs ISRF_c_hyp_scheme 2 with a "
+            f"{pattern}: dust_absorption needs ISRF_c_hyp_scheme: fixed_fraction with a "
             f"positive ISRF_c_hyp_fixed_fraction_of_c in used_parameters.yml "
             f"(got scheme {scheme}, fraction {fraction})"
         )

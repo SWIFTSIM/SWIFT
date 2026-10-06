@@ -196,10 +196,30 @@ def parameter(run: str, key: str) -> float:
     return float(m.group(1))
 
 
+def string_parameter(run: str, key: str) -> str:
+    """Read a string parameter from used_parameters.yml.
+
+    Parameters
+    ----------
+    run : str
+        Run directory.
+    key : str
+        Parameter name.
+
+    Returns
+    -------
+    str
+        Its value.
+    """
+    with open(os.path.join(run, "used_parameters.yml")) as f:
+        m = re.search(rf"{key}:\s*(\S+)", f.read())
+    return m.group(1)
+
+
 def fixed_c_hyp(run: str, c: float) -> float:
     """Return the run's one propagation speed, internal units.
 
-    ISRF_c_hyp_scheme 2 gives every particle f*c, computed in float32
+    ISRF_c_hyp_scheme: fixed_fraction gives every particle f*c, computed in float32
     (radiation_isrf.c). Any other scheme has no single speed, so NaN is
     returned, which fails every gate it reaches.
 
@@ -215,7 +235,13 @@ def fixed_c_hyp(run: str, c: float) -> float:
     float
         The speed, or NaN.
     """
-    if parameter(run, "ISRF_c_hyp_scheme") != 2:
+    scheme = string_parameter(run, "ISRF_c_hyp_scheme")
+    if scheme not in ("fixed_fraction", "kernel_local"):
+        raise ValueError(
+            f"{run}: GEARFeedback:ISRF_c_hyp_scheme is {scheme!r}; only "
+            "'fixed_fraction' and 'kernel_local' are supported."
+        )
+    if scheme != "fixed_fraction":
         return float("nan")
     fraction = parameter(run, "ISRF_c_hyp_fixed_fraction_of_c")
     return float(np.float32(fraction) * np.float32(c))

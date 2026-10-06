@@ -49,7 +49,7 @@ phase's own analytic CFL step; `--v-over-c-hyp` sets the ratio directly
 explicit value in km/s.
 
 ## One fixed propagation speed, debug pin
-`c_hyp_fraction` > 0 runs `ISRF_c_hyp_scheme: 2`, one propagation speed
+`c_hyp_fraction` > 0 runs `ISRF_c_hyp_scheme: fixed_fraction`, one propagation speed
 `c_hyp_fraction*c` for every particle, which also limits the time step of
 particles near the field to `ISRF_c_hyp_margin*h/c_hyp`: pick a speed below
 `ISRF_c_hyp_margin*h/dt` in both phases to keep the bin split.
@@ -78,7 +78,7 @@ Override any parameter via the matching env var: `gas_density`
 `interface_offset_h`, `v_over_c_hyp`, `star_velocity_km_s`, `star_mass`,
 `star_type`, `n_stars`, `c_hyp_margin`
 (`GEARFeedback:ISRF_c_hyp_margin`), `c_hyp_fraction`
-(`ISRF_c_hyp_fixed_fraction_of_c`, 0 = scheme 4), `alpha_max`/`alpha_pin`
+(`ISRF_c_hyp_fixed_fraction_of_c`, 0 = kernel_local), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
 only), `propagation`, `initial_metallicity`, `time_end`, `dt_max`, `dt_min`,
 `delta_time`, and thread count (`n_threads`); see `run.sh` for the full list
