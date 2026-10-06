@@ -552,9 +552,8 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * @brief One band of a pair whose members have unequal steps: the finer member
  * may take its rate, the coarser one gets its share as pending amounts.
  *
- * The coarser share is integrated over the finer step and stored divided by
- * c_hyp, so the pair is booked once, from the finer timeline. The amount
- * carries no relaxation factor, so the finer member must have a = 0.
+ * The coarser share covers the finer step, divided by c_hyp. It carries no
+ * relaxation factor, so the finer member must have a = 0.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -621,9 +620,8 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
 }
 
 /**
- * @brief All bands of a pair whose members have unequal steps, see
- * #radiation_cross_bin_pair_band. Out of line, so the same-step path keeps
- * its code generation.
+ * @brief All bands of an unequal-step pair (#radiation_cross_bin_pair_band).
+ * Out of line, so the same-step path keeps its code generation.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.

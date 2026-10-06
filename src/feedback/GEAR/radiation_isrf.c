@@ -460,9 +460,8 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
 }
 
 /**
- * @brief Add the pending amounts owed by finer neighbours to `u_prev` as
- * specific energies, then zero them. Out of line, so the update keeps its
- * code generation.
+ * @brief Add the pending amounts to `u_prev` as specific energies and zero
+ * them. Out of line, so the update keeps its code generation.
  *
  * @param p The particle to act upon.
  */
@@ -495,10 +494,8 @@ __attribute__((noinline)) static void radiation_add_pending_part(
  * Injection deposits the raw dose, so the `c_hyp/c` rescale is applied only
  * here.
  *
- * Pending amounts owed by finer neighbours are first added to `u_prev` and
- * zeroed (#radiation_add_pending_part), so they enter `u` plus absorbed with
- * total weight 1. Not idempotent then; the debug-only ledger counters also
- * need exactly one call per active particle per step.
+ * Pending amounts enter `u` plus absorbed with weight 1 via `u_prev`
+ * (#radiation_add_pending_part). The debug ledger needs one call per step.
  * Reads `dt_prev`, `c_hyp` and `kappa`, and takes no `dt` so that it stays
  * consistent with the flux update. No-op when propagation is off.
  *

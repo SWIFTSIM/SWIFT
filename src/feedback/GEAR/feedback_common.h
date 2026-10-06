@@ -151,10 +151,8 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
-/*! Value of the ISRF layout marker block that feedback_struct_dump() writes
- * ahead of the #feedback_props block. 1: reduced flux `Ft = F_true/c_hyp`.
- * 2: also the cross-bin pending fields, which keep sizeof(struct part), so a
- * file of value 1 would load with shifted fields. Older files have no block. */
+/*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
+ * pending fields too (same sizeof(struct part), so 1 would load shifted). */
 #define FEEDBACK_RESTART_ISRF_PART_LAYOUT 2
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
