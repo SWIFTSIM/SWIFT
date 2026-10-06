@@ -174,10 +174,11 @@ dust opacity of $10\,{\rm cm^2\,g^{-1}}$ at solar metallicity, a
 standard order-of-magnitude value for dust-processed IR opacity in this
 class of model. $Z$ here is \code{sp->feedback\_data.Z\_star}, the
 SPH-kernel-weighted gas metallicity at the star's own location
-(accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
-alongside $\nabla\rho_\star$ below, normalized by the same
-$1/h^{d+1}$ factor in \code{feedback\_prepare\_radiation\_feedback}
-that finishes $\nabla\rho_\star$; both are zero, not divided-by-zero,
+(accumulated in the star density loop
+alongside $\nabla\rho_\star$ below, with the same kernel weight as the
+local density $\rho_\star$ and divided by it, so $Z_\star$ is the
+dimensionless kernel-weighted mean metallicity; only $\nabla\rho_\star$
+takes the $1/h^{d+1}$ factor; both are zero, not divided-by-zero,
 for a star with no gas neighbours this step, since
 \code{enrichment\_weight} being zero is checked before the divide).
 
