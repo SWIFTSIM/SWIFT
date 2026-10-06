@@ -401,7 +401,7 @@ $\Gamma_{\rm HI}$
 A companion quantity, the star's mean excess photon energy above the
 $13.6\,$eV threshold (from the same blackbody spectrum as
 Eq.~\ref{eq:planck-photon-rate},
-\code{radiation\_get\_individual\_star\_mean\_excess\_photon\_energy\_HI}),
+\code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}),
 gives a heating rate $\Gamma_{\rm HI}\times E_{\rm excess}$. Both are
 frozen on the particle at tag time and injected into Grackle every
 step the tag is held
@@ -669,15 +669,16 @@ A
 single particle whose tag lapsed early and then advected outward for
 several dynamical times can dominate a plain maximum over ever-owned
 distances and inflate the reported extent by double digits percent,
-without any genuine coverage problem. The analysis of the historical extent
-therefore does not take this maximum directly. It reads the extent robustly: sort ever-owned distances descending, estimate a local point
+without any genuine coverage problem. The robust extent rule, a post-processing
+estimate made from snapshots that SWIFT does not compute, therefore does not
+take this maximum directly. It sorts ever-owned distances descending, estimate a local point
 spacing from the median gap among the outermost few percent of
 points, then walk inward from the largest distance and discard a
 point only while the gap to its next-lower neighbour exceeds several
 times that local spacing: an isolated advected straggler produces a
 gap an order of magnitude or more above the front's own natural
 surface roughness, so this stops at the first point that is not such
-an outlier. The true (unrejected) maximum is still reported alongside
+an outlier. The true (unrejected) maximum is reported alongside
 it as a secondary diagnostic.
 
 This robustness is also what makes the search-radius expansion
