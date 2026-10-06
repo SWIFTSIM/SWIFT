@@ -878,17 +878,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       float mdt1 = p->gravity.dt * p->conserved.mass;
       float mdt2 = dt_grav * (p->conserved.mass + p->flux.mass);
 
-      /* I think its mdt2 that's off, it should use the gravity fluxes here
-       * not the standard mass flux as these are indeed different (with exact
-       * grav work), its likely fine for momentum but NOT for dE springel
-       * So we should rescale grav kick mass fluxes for dE springel!
-       *
-       * Note: The above is wrong because the timesteps are not the same in
-       * cosmo runs. grav dt has 1/a and hydro has 1/a**2. See thesis.
-       * However, this is something to seriously consider. But it seems...
-       * idk, the mass flux is hydro dt integrated, surely this cannot be the
-       * right value... and must be gravity dt integrated.
-       */
       grav_kick[0] = mdt2 * a_grav[0] + mdt1 * xp->a_grav[0];
       grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
       grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
