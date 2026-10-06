@@ -6,7 +6,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # pipefail: swift is piped into tee, whose exit code would hide a crash.
 set -eo pipefail
 
-config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
+config=${config:="free_field"}  #free_field, free_field_uniform, free_field_two_bin_witness, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
 redshift=${redshift:=0}         #Starting redshift, 0 runs without cosmology
 
 # Physical inputs at the starting redshift, see README.
@@ -31,11 +31,23 @@ steps_default=2230
 max_star_dt_myr_default=1e-7  # Myr, young-star step cap
 star_age_default=0
 case "$config" in
-    free_field)
+    free_field|free_field_uniform|free_field_two_bin_witness)
 	u_pe_default=6.9955e4
 	u_lw_default=6.9955e4
 	nH2_ratio_default=2e-4
 	h2_self_shielding_default=0  # the check's closed form (A2) is unshielded
+	if [ "$config" = "free_field_uniform" ]; then
+	    # One speed for the whole box, chosen so that every particle stays on
+	    # one time bin for the whole run (see the README).
+	    c_hyp_scheme_default=fixed_fraction
+	    c_hyp_fraction_default=2.001384571e-04  # 60 km/s
+	elif [ "$config" = "free_field_two_bin_witness" ]; then
+	    # A speed whose Courant step straddles a time-bin boundary: the
+	    # particles split over two bins, so pair exchanges across bins are
+	    # not conservative. Check it with --two-bin-witness.
+	    c_hyp_scheme_default=fixed_fraction
+	    c_hyp_fraction_default=1.293902537e-04  # 38.79 km/s
+	fi
 	;;
     dust_absorption)
 	metallicity_default=1

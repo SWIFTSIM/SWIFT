@@ -134,41 +134,72 @@ to be compared against, so the check prints it and does not gate it; the H2
 abundance is gated in both runs. That run's own role here is to be the
 `--reference` of the cosmological one, where its drift enters the bar.
 
-## The uniform-c_hyp free_field pair
+## The uniform-speed free_field pair
 The ledger the band drift is measured on weights each particle by
 `1/c_hyp`, and a varying `c_hyp` is `margin*h/dt`, so it carries the
 glass's own `h` spread. That makes the ledger mean move for a reason
 unrelated to conservation, which is why the run above is reported rather
 than gated. One propagation speed across the whole box makes the weight
 cancel, and the check then gates the band drift against its own float
-floor. One speed for the whole box is `ISRF_c_hyp_scheme: fixed_fraction`, set with
-`c_hyp_scheme=fixed_fraction c_hyp_fraction=<v/c>` (`c = 299792.458 km/s`), the same
-mechanism `dust_absorption` uses. fixed_fraction also limits the time step of every
-particle carrying or near the field to `ISRF_c_hyp_margin*h/c_hyp`, so it can
-take more steps than the run above. The check reads the uniformity from the
-recorded `HyperbolicPropagationSpeeds` itself.
+floor.
+
+One speed for the whole box is `ISRF_c_hyp_scheme: fixed_fraction` with
+`ISRF_c_hyp_fixed_fraction_of_c = v/c` (`c = 299792.458 km/s`). It also limits
+the time step of every particle carrying or near the field to
+`ISRF_c_hyp_margin*h/c_hyp`. The `free_field_uniform` config of `run.sh` sets
+it to 60 km/s (`c_hyp_fraction=2.001384571e-04`):
 ```
-config=free_field redshift=0 c_hyp_scheme=fixed_fraction c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z0 ./run.sh
-config=free_field redshift=9 c_hyp_scheme=fixed_fraction c_hyp_fraction=1.293902537e-04 run_name=ff_s2_z9 ./run.sh
-python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z0/snap/snapshot_*.hdf5"
-python3 isrf_cosmology_check.py --config free_field -s "ff_s2_z9/snap/snapshot_*.hdf5" \
-    --reference "ff_s2_z0/snap/snapshot_*.hdf5"
+config=free_field_uniform redshift=0 run_name=ff_u60_z0 ./run.sh
+config=free_field_uniform redshift=9 run_name=ff_u60_z9 ./run.sh
+python3 isrf_cosmology_check.py --config free_field -s "ff_u60_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "ff_u60_z9/snap/snapshot_*.hdf5" \
+    --reference "ff_u60_z0/snap/snapshot_*.hdf5"
 ```
-That fraction is 38.79 km/s, the kernel_local `redshift=0` run's own box-mean
-`c_hyp` at the defaults above, so that leg runs at the speed it would have run
-at anyway. The `redshift=9` leg does not: `c_hyp` is `ISRF_c_hyp_margin*a*h`
-over the step, and over `a = 0.1` to `0.125` the kernel_local run's own value is
-41 to 46 km/s, so the same speed puts that leg at a Courant number of 0.42 to
-0.47 against the `ISRF_c_hyp_margin` of 0.5. One speed is used for both so the
-two legs share the same ledger weight, which is what makes the `--reference`
-pairing comparable; (A1) predicts from each run's own recorded
-`HyperbolicPropagationSpeeds`, so the prediction follows whichever speed is
-set. At another `level`, `gas_density` or `duration`, read the mean of
-`HyperbolicPropagationSpeeds` from a kernel_local `redshift=0` run's first
-post-startup snapshot and divide it by `c`. A uniform speed says nothing about
-a propagation speed that varies between neighbours, so run this pair in
-addition to the kernel_local one, not instead of it. A faster speed runs the same
-way (`c_hyp_fraction=3.335640952e-04` is 100 km/s) and takes more steps.
+The check reads the uniformity from the recorded `HyperbolicPropagationSpeeds`.
+A uniform speed says nothing about a propagation speed that varies between
+neighbours, so run this pair in addition to the kernel_local one, not instead
+of it.
+
+The float-floor bar holds only if every particle takes the same time step, so
+the check also reads the `timesteps.txt` beside `snap/` and requires the
+`Updates` column to equal the gas particle count on every step. A leg that
+fails this prints `PREMISE VIOLATED: multi-bin fixture, the float-floor bar
+does not apply` and exits with code 1.
+
+### Choosing the speed
+Each particle's Courant step is `0.5*h/(f*c)`, where `0.5` is
+`ISRF_c_hyp_margin`, `f = v/c` and `h` is the physical smoothing length. The
+leg stays on one time bin while that step falls inside the bin
+`[dt_down, dt_up)`, with `dt_up = 2*dt_down` the length of the next bin up. The
+window is
+
+    0.5*h_max/dt_up < f*c <= 0.5*h_min/dt_down
+
+with `h_min` and `h_max` the smallest and largest smoothing length of the gas
+at one output time. Evaluate it at every output time of the run and keep the
+speeds that lie inside all of them: the largest lower edge to the smallest upper
+edge. The physical `h` is `a*SmoothingLengths`, since the snapshot stores it
+comoving. `dt_down` is the `Time-step` column of `timesteps.txt`, a proper
+time. With cosmology the bins are fixed in `ln a`, so their proper-time length
+grows over the run together with `a*h`.
+
+At the defaults (`level=5`, `gas_density=1`) the window is 39.2 to 77.2 km/s at
+`redshift=0` and 46.6 to 82.3 km/s at `redshift=9`, so 60 km/s sits inside
+both. It depends on `level`, `gas_density`, `gas_mass` and `duration`:
+re-derive the speed whenever one of them changes. The check confirms the choice
+after the run.
+
+### Two-bin witness
+```
+config=free_field_two_bin_witness redshift=0 run_name=ff_witness_z0 ./run.sh
+python3 isrf_cosmology_check.py --config free_field \
+    -s "ff_witness_z0/snap/snapshot_*.hdf5" --two-bin-witness
+```
+This leg runs at 38.79 km/s, where the Courant step straddles a time-bin
+boundary at the median `h`. Particles on different time bins integrate the same
+pair exchange with their own time step, so the exchange is not conservative
+across bins. The check prints its (A1) drift as `two-bin witness, not gated`
+and never counts it as a failure.
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
