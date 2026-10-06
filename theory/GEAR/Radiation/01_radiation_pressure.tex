@@ -29,8 +29,9 @@ energy above the ionization threshold becomes the photoelectron's
 kinetic energy, which thermalizes via collisions; this is what heats
 the gas to $\sim10^4\,$K, balanced against recombination/line cooling.
 Only photons above that specific energy threshold count, and the
-relevant budget is $Q_H$ (ionizing photon \emph{number} rate, the
-blackbody-fit section of the HII photoionization theory document), not energy.
+relevant budget is $Q_H$ (ionizing photon \emph{number} rate, read from the pychem tables;
+the blackbody-fit section of the HII photoionization theory document
+describes how an entry can be understood), not energy.
 This is fundamentally a \textbf{thermal/chemical} effect: it sets the
 gas's ionization state and temperature, and in this code drives
 dynamics only indirectly, through the resulting thermal-pressure
@@ -43,10 +44,9 @@ absorbed or scattered photon, at any wavelength, transfers momentum
 $p=E/c$ to whatever absorbs or scatters it. This draws on $L_{\rm
 bol}$: the star's entire spectrum, dominated for most stars by the
 non-ionizing UV/optical continuum, not the ionizing band specifically
-(the mass-luminosity fit vs.\ the separate ionizing-rate fit behind
-$Q_H$, both in the HII photoionization theory document's blackbody-fit
-section. Two different fits of the same underlying blackbody, not the same
-fit reused). It is
+($L_{\rm bol}$ and $Q_H$ are separate entries of the pychem tables;
+the HII photoionization theory document's blackbody-fit section
+describes how such entries can be understood, not what SWIFT evaluates). It is
 a \textbf{dynamical} effect: a direct push, independent of whether
 the interaction happens to ionize anything, and in this code it acts
 through Eq.~\ref{eq:rp-momentum-rate} directly, with no thermal
@@ -155,9 +155,8 @@ particles at all; a genuine multi-band scheme would need that transport
 first, judged out of scope (see \S\ref{sec:rp-shell-tier2}'s roadmap
 note).
 
-$L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
-the same blackbody mass--luminosity fit as the ionizing photon rate
-(the HII photoionization theory document's blackbody-fit section) and scaled
+$L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, read from
+the pychem tables (as is the ionizing photon rate) and scaled
 by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}):
 an overall dial on this channel independent of the photoionization
 budget, default behaviour unaffected unless explicitly set $\ne1$.

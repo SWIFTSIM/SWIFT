@@ -12,8 +12,10 @@ radius); the non-uniform, particle-sampled density field an SPH
 simulation actually has does not, so \citet[Appendix~E]{Hopkins2018}'s
 FIRE-2 scheme evaluates the balance directly, gas element by gas
 element, rather than solving for a radius. Given a star's ionizing
-photon rate $\dot N_{\rm ion}$ (Eq.~\ref{eq:planck-photon-rate},
-Appendix~\ref{sec:blackbody}), the algorithm proceeds as follows, once
+photon rate $\dot N_{\rm ion}$ (read from the pychem tables;
+Eq.~\ref{eq:planck-photon-rate} and Appendix~\ref{sec:blackbody}
+describe how a table entry can be understood, not what SWIFT
+evaluates), the algorithm proceeds as follows, once
 per rebuild pass:
 \begin{enumerate}
   \item Gather the gas particles within the star's current search
@@ -399,8 +401,7 @@ cross-section $\sigma_{\rm HI}=6.3\times10^{-18}\,{\rm cm^2}$ (Osterbrock
 $\Gamma_{\rm HI}$
 (\code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}).
 A companion quantity, the star's mean excess photon energy above the
-$13.6\,$eV threshold (from the same blackbody spectrum as
-Eq.~\ref{eq:planck-photon-rate},
+$13.6\,$eV threshold (read from the pychem tables,
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}),
 gives a heating rate $\Gamma_{\rm HI}\times E_{\rm excess}$. Both are
 frozen on the particle at tag time and injected into Grackle every
@@ -671,9 +672,9 @@ several dynamical times can dominate a plain maximum over ever-owned
 distances and inflate the reported extent by double digits percent,
 without any genuine coverage problem. The robust extent rule, a post-processing
 estimate made from snapshots that SWIFT does not compute, therefore does not
-take this maximum directly. It sorts ever-owned distances descending, estimate a local point
+take this maximum directly. It sorts ever-owned distances descending, estimates a local point
 spacing from the median gap among the outermost few percent of
-points, then walk inward from the largest distance and discard a
+points, then walks inward from the largest distance and discards a
 point only while the gap to its next-lower neighbour exceeds several
 times that local spacing: an isolated advected straggler produces a
 gap an order of magnitude or more above the front's own natural
