@@ -196,6 +196,18 @@ free_field
     scheme/fraction mismatch at start-up, so what reaches here is a module or
     plumbing failure, which is what this leg exists to catch.
 
+    The float-floor bar on a uniform-speed leg rests on a second premise: every
+    particle takes the same time step, so each pair's exchange is integrated
+    with one dt on both sides and conserves sum m u algebraically. Particles on
+    different time bins integrate the same pair with their own dt, and the
+    exchange then leaks across bins by a drift no float floor bounds. The check
+    therefore reads the run's timesteps.txt and requires the Updates column to
+    equal the gas particle count on every step (`read_one_bin_premise`). A leg
+    that fails this premise is reported as PREMISE VIOLATED, its own failure,
+    and its (A1) residual is printed without the float-floor verdict.
+    `--two-bin-witness` marks a leg that is meant to run on several bins: its
+    (A1) result is printed and never counts as a failure.
+
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and u_LW
     carrying its OWN decay. Dilating the Hubble term by c_hyp/c does not remove
@@ -728,6 +740,13 @@ def parse_options() -> argparse.Namespace:
         default=None,
         help="Snapshot glob of the non-cosmological photoelectric_dark run",
     )
+    parser.add_argument(
+        "--two-bin-witness",
+        action="store_true",
+        help="free_field only: the leg is meant to run on several time bins "
+        "(the uniform-speed witness of the cross-bin pair leak). Its (A1) "
+        "result is printed and never counts as a failure.",
+    )
     parser.add_argument("--log", default=None, help="Run log, for injection")
     parser.add_argument(
         "--dt-max",
@@ -955,6 +974,232 @@ def read_dt_max(pattern: str, given: Optional[float]) -> float:
     directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
     with open(os.path.join(directory, "used_parameters.yml")) as handle:
         return float(yaml.safe_load(handle)["TimeIntegration"]["dt_max"])
+
+
+def read_one_bin_premise(pattern: str, n_gas: int, last_time: float) -> Dict:
+    """Test that every step of the run updates every gas particle.
+
+    Reads the run's ``timesteps.txt`` (next to ``snap/``) and counts the steps
+    whose ``Updates`` column differs from ``n_gas``. Step 0, the initial rate
+    evaluation, is the only row not tested and the only one whose time step may
+    be zero. On every other row the time step and the time must be finite and
+    the time step positive, or the row is malformed. The table must also be
+    whole: consecutive step numbers from 0, ending at or after the last
+    snapshot. The columns are found from the table's own header: ``Time-bins``
+    holds two columns (smallest and largest active bin) in every row, which
+    shifts every column after it by one.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+    n_gas : int
+        Number of gas particles, from the first snapshot.
+    last_time : float
+        Time of the last snapshot, in internal time units like the table's
+        ``Time`` column.
+
+    Returns
+    -------
+    dict
+        ``ok`` (every step updates ``n_gas`` particles), ``reason`` (why the
+        premise could not be tested, else None), ``steps``, ``partial`` (steps
+        with another count), ``min_updates``, ``max_updates`` and ``path``.
+    """
+    import os
+
+    directory = os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
+    path = os.path.join(directory, "timesteps.txt")
+    result: Dict = {
+        "ok": False,
+        "reason": None,
+        "steps": 0,
+        "partial": 0,
+        "min_updates": None,
+        "max_updates": None,
+        "path": path,
+    }
+    try:
+        with open(path) as handle:
+            lines = handle.read().splitlines()
+    except OSError as error:
+        result["reason"] = f"{path} is unreadable ({error})"
+        return result
+    headers = [
+        line.split()[1:]
+        for line in lines
+        if line.startswith("#") and "Time-bins" in line and "Updates" in line
+    ]
+    if not headers:
+        result["reason"] = f"{path} has no step-table header"
+        return result
+    columns = headers[-1]
+    i_step = columns.index("Step")
+    i_time = columns.index("Time")
+    i_dt = columns.index("Time-step")
+    i_updates = columns.index("Updates") + 1
+    updates = []
+    expected_step = 0
+    time = float("nan")
+    for number, line in enumerate(lines, start=1):
+        if line.startswith("#") or not line.strip():
+            continue
+        fields = line.split()
+        try:
+            step = int(fields[i_step])
+            time = float(fields[i_time])
+            dt = float(fields[i_dt])
+            count = int(fields[i_updates])
+        except (IndexError, ValueError):
+            result["reason"] = f"{path}:{number} is not a step row"
+            return result
+        if step != expected_step:
+            result["reason"] = (
+                f"{path}:{number} is step {step} where step {expected_step} "
+                "was expected, so a row is missing"
+            )
+            return result
+        expected_step += 1
+        if not np.isfinite(time) or not np.isfinite(dt) or (step > 0 and dt <= 0.0):
+            result["reason"] = f"{path}:{number} has a non-finite time or a bad step"
+            return result
+        if step > 0:
+            updates.append(count)
+    if not updates:
+        result["reason"] = f"{path} holds no step after step 0"
+        return result
+    # The table prints Time with 7 significant digits.
+    if not time >= last_time * (1.0 - 1e-6):
+        result["reason"] = (
+            f"{path} ends at time {time:.7g}, before the last snapshot "
+            f"({last_time:.7g}), so the table is truncated"
+        )
+        return result
+    result["steps"] = len(updates)
+    result["partial"] = sum(1 for count in updates if count != n_gas)
+    result["min_updates"] = min(updates)
+    result["max_updates"] = max(updates)
+    result["ok"] = result["partial"] == 0
+    return result
+
+
+FLOAT_FLOOR_BAR = "float-floor bar"
+
+
+def premise_failure_text(premise: Dict, bar_name: str = FLOAT_FLOOR_BAR) -> str:
+    """Return the message of a premise that failed or could not be tested."""
+    if premise["reason"] is not None:
+        return (
+            "PREMISE UNVERIFIED: the one-bin premise cannot be tested, the "
+            f"{bar_name} is not applied"
+        )
+    return f"PREMISE VIOLATED: multi-bin fixture, the {bar_name} does not apply"
+
+
+def gate_one_bin_leg(
+    label: str,
+    worst: float,
+    bar: float,
+    premise: Optional[Dict],
+    witness: bool,
+    bar_name: str = FLOAT_FLOOR_BAR,
+) -> bool:
+    """Apply (A1)'s bar to a uniform-speed leg only when its premise holds.
+
+    A non-finite residual or bar fails in every branch, before any
+    comparison. A leg without a premise (premise is None) is gated as usual.
+
+    Parameters
+    ----------
+    label : str
+        Name of the gate, as `gate` prints it.
+    worst : float
+        Measured worst residual.
+    bar : float
+        The bar.
+    premise : dict or None
+        Result of `read_one_bin_premise`, None when the leg is not a uniform-
+        speed leg.
+    witness : bool
+        The leg is a declared two-bin witness: report, never gate.
+    bar_name : str
+        How the bar is named in the messages.
+
+    Returns
+    -------
+    bool
+        False on a non-finite value, or on a failed gate of a leg whose
+        premise holds. A premise failure is registered by the caller.
+    """
+    if not (np.isfinite(worst) and np.isfinite(bar)):
+        print(f"  FAIL: {label}: non-finite residual {worst:.3e} or bar {bar:.3e}")
+        return False
+    if premise is None:
+        return gate(label, worst, bar)
+    if witness and premise["reason"] is None:
+        print(
+            f"  {label}: two-bin witness, not gated: {worst:.3e} against the "
+            f"{bar_name} value {bar:.3e}"
+        )
+        return True
+    if premise["ok"]:
+        return gate(label, worst, bar)
+    print(
+        f"  {label}: {bar_name} {bar:.3e} not applied to the measured "
+        f"{worst:.3e}: {premise_failure_text(premise, bar_name)}"
+    )
+    return True
+
+
+def report_one_bin_premise(
+    premise: Dict, witness: bool, bar_name: str = FLOAT_FLOOR_BAR
+) -> bool:
+    """Print the premise verdict of a uniform-speed leg and return its status.
+
+    A premise that cannot be tested fails in witness mode too: only a readable,
+    verified table is tolerated as two-bin.
+
+    Parameters
+    ----------
+    premise : dict
+        Result of `read_one_bin_premise`.
+    witness : bool
+        The leg is a declared two-bin witness.
+    bar_name : str
+        How the bar is named in the messages.
+
+    Returns
+    -------
+    bool
+        False when the premise failed on a leg that is not a witness, or could
+        not be tested.
+    """
+    if premise["reason"] is not None:
+        detail = premise["reason"]
+    elif premise["ok"]:
+        detail = (
+            f"one bin: Updates equals the gas count on all {premise['steps']} "
+            f"steps of {premise['path']}"
+        )
+    else:
+        detail = (
+            f"Updates differs from the gas count on {premise['partial']} of "
+            f"{premise['steps']} steps (range {premise['min_updates']} to "
+            f"{premise['max_updates']}) in {premise['path']}"
+        )
+    if premise["reason"] is None and witness:
+        expected = (
+            "two-bin expected, observed:"
+            if not premise["ok"]
+            else "two-bin expected, NOT observed:"
+        )
+        print(f"  (A1) two-bin witness, not gated: {expected} {detail}")
+        return True
+    if premise["ok"]:
+        print(f"  (A1) one-bin premise holds: {detail}")
+        return True
+    print(f"  (A1) {premise_failure_text(premise, bar_name)} ({detail})")
+    return False
 
 
 def read_extinction_path(pattern: str, given: Optional[float]) -> Tuple[str, float]:
@@ -1891,6 +2136,20 @@ def check_free_field(opt: argparse.Namespace) -> bool:
     uniform_claimed = c_hyp_scheme == "fixed_fraction"
     c_hyp_spread = c_hyp_spatial_spread(run)
     uniform_c_hyp = c_hyp_spread is not None and c_hyp_spread == 0.0
+    # The float-floor bar of a uniform-speed leg assumes every pair is
+    # integrated with one dt on both sides, which holds on one time bin only.
+    premise = None
+    if uniform_claimed or uniform_c_hyp:
+        premise = read_one_bin_premise(
+            opt.snapshots,
+            int(run[0]["mass"].size),
+            run[-1]["time"] / run[-1]["time_unit"],
+        )
+    elif opt.two_bin_witness:
+        print(
+            "  NOTE: --two-bin-witness applies to a uniform-speed leg only and "
+            "is ignored here"
+        )
     n_steps = step_count(run, dt_max)
     use_c_hyp = use_c_hyp_ledger(run, opt.snapshots, "run")
     ledger = "sum m u / c_hyp" if use_c_hyp else "sum m u"
@@ -2206,11 +2465,14 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 f"is the mass-weighted box mean; bar is the analytic float "
                 f"floor ({float_note}) {float_residual:.2e} on its own"
             )
-            ok &= gate(
+            ok &= gate_one_bin_leg(
                 f"(A1) ln u_{band} drift, worst |residual|, {ledger}, "
                 f"c_hyp bit-uniform",
                 worst,
                 float_residual,
+                premise,
+                opt.two_bin_witness,
+                FLOAT_FLOOR_BAR,
             )
             continue
         if not cosmological:
@@ -2274,7 +2536,21 @@ def check_free_field(opt: argparse.Namespace) -> bool:
                 )
                 ok = False
                 continue
-        ok &= gate(f"(A1) ln u_{band} drift, worst |residual|, {ledger}", worst, bar)
+        ok &= gate_one_bin_leg(
+            f"(A1) ln u_{band} drift, worst |residual|, {ledger}",
+            worst,
+            bar,
+            premise,
+            opt.two_bin_witness,
+            "composite cosmological bar",
+        )
+
+    if premise is not None:
+        ok &= report_one_bin_premise(
+            premise,
+            opt.two_bin_witness,
+            "composite cosmological bar" if cosmological else FLOAT_FLOOR_BAR,
+        )
 
     # H2, per snapshot, every term RELATIVE to the predicted exponent, which
     # is what errors["H2"] is: implicit solve (k dt/2), one-step snapshot lag
