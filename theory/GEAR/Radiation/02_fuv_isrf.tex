@@ -1371,10 +1371,16 @@ differs between particles whose time bin or $c_{\rm hyp}\kappa\rho$
 differ. $\sum_i m_i u_i$ is therefore conserved exactly only when both
 particles of a pair share the time bin and the same $c_{\rm
 hyp}\kappa\rho$; otherwise a residual of order the difference between
-the two particles' $\Delta t\,\varphi(a)$ remains, the price of applying
-an exact exponential integrator per particle rather than one global
-step. An active/inactive pair, which leaves one side undebited until
-that particle's own next step, is a special case of the same effect.
+the two particles' $\varphi(a)$ remains, the price of applying an exact
+exponential integrator per particle rather than one global step. A pair
+across time bins is booked once, over the finer member's step, on one
+rank: the coarser member receives the exact opposite of the finer
+member's booking, its dissipation weighted by the finer member's
+$\varphi$, and adds it at its own next step. That keeps the
+$c_{\rm hyp}$-weighted ledger exact across bins, up to the Hubble term
+left out of the finer member's $\varphi$ under cosmology. On several MPI
+ranks each member integrates the pair with its own $\Delta t$, and the
+residual includes the step mismatch.
 
 \textbf{Pressure-tensor divergence.} A difference estimator on the
 volumetric field $U = \rho u$ contracted with each particle's own

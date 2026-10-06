@@ -196,12 +196,14 @@ python3 isrf_cosmology_check.py --config free_field \
     -s "ff_witness_z0/snap/snapshot_*.hdf5" --two-bin-witness
 ```
 This leg runs at 38.79 km/s, where the Courant step straddles a time-bin
-boundary at the median `h`. On one rank at `redshift=0`, a pair of particles on
-different time bins is booked once, from the finer particle's step; the coarser
-particle's share is held in the `*PendingSpecificEnergies` fields until its own
-update. The check adds those fields to the energy sum, so the (A1) drift of this
-leg stays at the float floor. With cosmology (`redshift=9`) or on several MPI
-ranks, each particle integrates the pair with its own time step, which is not
+boundary at the median `h`. On one rank, a pair of particles on different time
+bins is booked once, from the finer particle's step; the coarser particle's
+share is held in the `*PendingSpecificEnergies` fields until its own update. The
+check adds those fields to the energy sum. At `redshift=0` the (A1) drift of
+this leg stays at the float floor. With cosmology, the coarser particle's
+dissipation share leaves out the Hubble term of the finer particle's relaxation
+depth, a relative error of about `lambda (c_hyp/c) H dt / 2`. On several MPI
+ranks each particle integrates the pair with its own time step, which is not
 conservative across bins. The check prints the (A1) drift as `two-bin witness,
 not gated` and never counts it as a failure.
 

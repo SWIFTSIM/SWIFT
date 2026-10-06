@@ -198,14 +198,16 @@ free_field
 
     The float-floor bar on a uniform-speed leg rests on a second premise: every
     particle takes the same time step, so each pair's exchange is integrated
-    with one dt on both sides and conserves sum m u algebraically. On one rank
-    without cosmology, a pair across time bins is booked once, from the finer
-    member's step: the coarser member's share waits in the
-    ``*PendingSpecificEnergies`` fields until its own update, and the ledger
-    adds them, so a two-bin leg at redshift=0 is conservative too. With
-    cosmology, or on several ranks, each member still integrates the pair with
-    its own dt, and the exchange leaks across bins. The bar is derived for one
-    bin only, so the check reads the run's timesteps.txt and requires the
+    with one dt on both sides and conserves sum m u algebraically. On one rank,
+    a pair across time bins is booked once, from the finer member's step: the
+    coarser member's share waits in the ``*PendingSpecificEnergies`` fields
+    until its own update, and the ledger adds them, so a two-bin leg at
+    redshift=0 is conservative too. With cosmology the coarser member's
+    dissipation share leaves out the Hubble term of the finer member's
+    relaxation depth (first order in lambda (c_hyp/c) H dt). On several ranks
+    each member still integrates the pair with its own dt, and the exchange
+    leaks across bins. The bar is derived for one bin only, so the check reads
+    the run's timesteps.txt and requires the
     Updates column to equal the gas particle count on every step
     (`read_one_bin_premise`). A leg that fails this premise is reported as
     PREMISE VIOLATED, its own failure, and its (A1) residual is printed without
