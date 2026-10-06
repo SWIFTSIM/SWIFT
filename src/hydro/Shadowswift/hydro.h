@@ -508,9 +508,9 @@ if (is_nan_float(Q[4])) {
 #else
 
   /* Evolve thermal energy to final state and use that as criterion */
-  double thermal_energy;
   // See eq. 24 in Alonso Asensio et al. (preprint 2023)
-  thermal_energy = Q[4] - Ekin; // Q4 has En + Ecool + Eflux and Egrav (=dEkin)
+  double thermal_energy;
+  thermal_energy = Q[4] - Ekin;
 
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
   u = thermal_energy * m_inv;
@@ -582,23 +582,30 @@ if (is_nan_float(Q[4])) {
      */
 
     /* Get fluid velocity at timestep n, no funny kicks, just strictly
-     * what was spat out at the end of kick2 last time */
-    const float m_inv_old = (p->conserved.mass != 0.0f) ? 1.0 / p->conserved.mass  : 0.0f;
+     * what was spat out at the end of kick2 last timestep */
+    const float m_inv_old =
+      (p->conserved.mass != 0.0f) ? 1.0 / p->conserved.mass  : 0.0f;
     float fluid_v[3] = {0.f, 0.f, 0.f};
     fluid_v[0] = p->conserved.momentum[0] * m_inv_old;
     fluid_v[1] = p->conserved.momentum[1] * m_inv_old;
     fluid_v[2] = p->conserved.momentum[2] * m_inv_old;
 
-    /* Free from effects of gravity in momentum kicks */
-    double dE_therm = flux[4] - (fluid_v[0] * flux[1] +
-                      fluid_v[1] * flux[2] +
-                      fluid_v[2] * flux[3]) +
-                       0.5f * (fluid_v[0] * fluid_v[0] +
-                               fluid_v[1] * fluid_v[1] +
-                               fluid_v[2] * fluid_v[2]) * flux[0];
+    const float thermal_energy_old = p->conserved.energy - 0.5 * m_inv_old *
+                          (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                          p->conserved.momentum[1] * p->conserved.momentum[1] +
+                          p->conserved.momentum[2] * p->conserved.momentum[2]);
 
-    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
-    thermal_energy = u_old * p->conserved.mass + dE_therm;
+    /* Instead of estimating change in thermal, take change in kinetic */
+    const float dEkin = (fluid_v[0] * flux[1] + // vdp terms
+                         fluid_v[1] * flux[2] +
+                         fluid_v[2] * flux[3]) -
+                           0.5f * flux[0] *
+                           (fluid_v[0] * fluid_v[0] + // v^2dm terms
+                           fluid_v[1] * fluid_v[1] +
+                           fluid_v[2] * fluid_v[2]);
+
+    /* Get new thermal and internal energy, free of kinetic energy changes */
+    thermal_energy = thermal_energy_old + flux[4] - dEkin;
     u = thermal_energy * m_inv;
 
     if (u <= 0.) {
