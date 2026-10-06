@@ -1087,13 +1087,13 @@ not only its own; a fast-stepping neighbour with a large $c_{\rm hyp}$
 can drive the shared pairwise flux term past what the slower receiver's
 own step can absorb, undershooting $u$ past zero. This is established
 as a real cause, three independent ways, on
-\code{ISRFDissipationExtreme} and \code{ISRFCausalReach}: pinning every
-particle to one uniform $c_{\rm hyp}$ removes the sign violation
+\code{ISRFDissipationExtreme} and \code{ISRFCausalReach}: giving every
+particle one uniform $c_{\rm hyp}$ removes the sign violation
 entirely (a fixture-specific sign-closure gate goes from $0.57\%$/$0.85\%$
 FUV/LW to exactly $0.0000\%$); lowering $C_{\rm hyp}$ alone, with no code
 change, removes every negative on a fixture where the artificial
 dissipation cannot repair one; and two independently implemented
-neighbour-dependent pair weights, predicted in advance to trade this
+neighbour-dependent pair weights, expected to trade this
 pathway for a different SPH-consistency violation, both do exactly that,
 regressing the same fixture's sign closure by a factor of $10$--$13$. See
 the \code{swift-gear} logbook, \code{theory/radiation/}, for the full
