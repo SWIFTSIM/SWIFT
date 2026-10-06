@@ -36,7 +36,7 @@ implementation splits the work into two different kinds of task:
     \code{\_out}} (self and pair): created once at the
     \emph{top-level} cell grid (27-neighbour stencil,
     \code{engine\_make\_radiationloop\_tasks\_mapper},
-    \code{engine\_maketasks.c:4250}), \textbf{as implicit tasks}
+    \code{engine\_maketasks.c:4327}), \textbf{as implicit tasks}
     (\code{implicit=1} in \code{scheduler\_addtask}): they run no
     compute code at all (no case for them in \code{runner\_main.c}'s
     dispatch switch). Their only job is to exist as dependency nodes:
@@ -50,14 +50,14 @@ implementation splits the work into two different kinds of task:
     runs (they are created afterward, once the hydro-attach flags
     their split criterion depends on are available), so a separate,
     dedicated pass, \code{scheduler\_splittasks\_radiation}
-    (\code{scheduler\_splittasks.c:963}), walks exactly the
+    (\code{scheduler\_splittasks.c:966}), walks exactly the
     newly-created \code{radiation\_in} tasks and hands each to
     \code{scheduler\_splittask\_radiation\_subgrid}.
   \item \textbf{\code{task\_type\_stars\_hii\_ionization\_feedback}}
     (subtype \code{none}): a \emph{single, coarse-grained} task
     created once per \code{radiation\_level} cell
     (\code{engine\_make\_hierarchical\_tasks\_radiation\_subgrid},
-    \code{engine\_maketasks.c:2110}). This is the only task that
+    \code{engine\_maketasks.c:2118}). This is the only task that
     actually runs code (\code{runner\_do\_stars\_hii\_\allowbreak
     ionization\_feedback}, dispatched at \code{runner\_main.c:582}).
     It performs its own manual, run-time recursion down to the
@@ -115,10 +115,10 @@ for this invariant.
 For every \code{radiation\_in} self/pair task \code{t} covering
 cell(s) \code{ci}/\code{cj}, \code{engine\_\allowbreak
 make\_extra\_radiationloop\_tasks\_mapper}
-(\code{engine\_maketasks.c:3636}) creates the matching
+(\code{engine\_maketasks.c:3713}) creates the matching
 \code{radiation\_out} task and wires, via
 \code{engine\_radiation\_wire\_super\_deps}
-(\code{engine\_maketasks.c:3572}, which recurses down to every
+(\code{engine\_maketasks.c:3649}, which recurses down to every
 \code{hydro.super} beneath a coarse \code{radiation\_level} cell,
 visiting each disjoint subtree exactly once), the dependency chain
 shown in Figure~\ref{fig:dep-chain}: for every \code{hydro.super}
@@ -164,14 +164,14 @@ is active).
 
 A \code{SWIFT\_DEBUG\_CHECKS} invariant enforces that a
 \code{radiation\_in} pair task always connects two \emph{distinct}
-\code{radiation\_level} regions (\code{engine\_maketasks.c:3722}):
+\code{radiation\_level} regions (\code{engine\_maketasks.c:3799}):
 otherwise both sides would wire identical unlocks onto the same
 \code{hii\_ionization\_feedback} task, a duplicate-unlock error.
 
 \subsection{Activation (unskip)}
 \label{sec:unskip}
 
-\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2273})
+\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2328})
 walks \code{c->stars.radiation\_in} and \code{radiation\_out}
 each timestep. For every active task it also activates
 drift/sync/\code{stars\_in} (or \code{stars\_out}) over
@@ -187,9 +187,11 @@ rebuild pass is due (Section~\ref{sec:persistence} of the algorithm
 document); the ordinary \code{cell\_need\_rebuild\_for\_stars\_pair}
 is blind to $h_{\rm hii}$ growth and would under-trigger the tree
 rebuild.
-\code{c->stars.hii\_ionization\_feedback} itself is unskipped
-unconditionally alongside the other per-cell tasks
-(\code{cell\_unskip.c:2807}) whenever the cell needs activating.
+\code{c->stars.hii\_ionization\_feedback} itself is activated by
+\code{cell\_radiation\_activate\_hii} (\code{cell\_unskip.c:2294}) together with
+the \code{radiation\_in} tasks that unlock it, and not by the cell's own star or
+gas activity (\code{cell\_unskip.c:2878}). A starless region that a neighbour's
+active star searches into therefore still runs the task.
 
 \subsection{Locking}
 
@@ -216,13 +218,13 @@ lock-order contention between neighbours is possible under load.
 
 Once \code{hii\_ionization\_feedback} actually runs
 (\code{runner\_do\_stars\_hii\_ionization\_feedback},
-\code{runner\_radiation\_feedback.c:259}), it manually recurses down
+\code{runner\_radiation\_feedback.c:262}), it manually recurses down
 \code{c->progeny} (mirroring what \code{scheduler\_splittasks}
 would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:471}).
+(\code{runner\_radiation\_feedback.c:474}).
 
 \begin{figure}[h]
   \centering
@@ -272,7 +274,7 @@ For each active star at that level:
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
     \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:613}); the
+    the comment at \code{runner\_radiation\_feedback.c:629}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
@@ -494,15 +496,15 @@ a star's \code{radiation\_level} (Section~\ref{sec:not-regular}) can
 actually reach every gas particle within its current \code{h\_hii}. That
 grid is sized once per tree rebuild by \code{space\_regrid()}
 (\code{src/space\_regrid.c}), which already folds ordinary hydro/star
-\code{h\_max} into the top-level cell width: \code{h\_hii} was not
-part of that calculation until this branch. Without it, a star whose
+\code{h\_max} into the top-level cell width: \code{h\_hii} is added to
+that calculation. Without it, a star whose
 ionization search radius has grown large (in the fast-$Z=0$ growth
 regime, the GEAR radiation logbook's Metallicity and the ionized-gas
 temperature floor section, this can reach many pc) could in
 principle out-grow a top-level cell grid sized only for ordinary
 smoothing lengths, silently missing gas the search should have reached.
 
-\code{space\_regrid()} now folds \code{c->stars.h\_hii\_max} (the
+\code{space\_regrid()} folds \code{c->stars.h\_hii\_max} (the
 cell-aggregate, both the \code{local\_cells\_with\_particles\_top} and
 \code{cells\_top} branches) and \code{s->sparts[k].h\_hii} (the
 raw-particle fallback pass) into the same \code{h\_max} max-chain
@@ -524,7 +526,7 @@ how large \code{h\_hii} grows: a real Str\"omgren sphere reaching many
 pc dwarfs a \code{cell\_min} sized for \code{dim/3}, so \code{h\_hii}
 folded in unconditionally just pushes \code{cdim} below 3 and trips the
 pre-existing ``must have at least 3 cells'' error. This is a
-\emph{spurious} failure, not the missed-gas bug this change exists to
+\emph{spurious} failure, not the missed-gas failure this criterion exists to
 catch: there is nothing left to miss once periodic wrap already covers
 the whole box.
 
