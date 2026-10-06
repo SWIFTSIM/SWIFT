@@ -52,9 +52,9 @@ Propagation
 
 Set ``GEARFeedback:ISRF_propagation: 1`` to transport the injected field away from the sources, at a reduced speed of light :math:`c_\mathrm{hyp}`. This is what makes the transport affordable: the true speed of light would force a prohibitively small time step.
 
-The radiation update rides the gas particle's existing time step rather than running on a separate clock: for the default ``ISRF_c_hyp_scheme`` (``4``), :math:`c_\mathrm{hyp}` is derived from whatever time step the particle and its neighbours would already take, so it never constrains it further. Only scheme ``2`` (a fixed fraction of :math:`c`, set by ``ISRF_c_hyp_fixed_fraction_of_c``) fixes the propagation speed first; the particle's time step is then constrained to keep the receiver-side stability condition satisfied, the same way ``HII_rebuild_time_Myr`` constrains a star's time step (see :ref:`gear_radiation_hii`).
+The radiation update rides the gas particle's existing time step rather than running on a separate clock: for the default ``ISRF_c_hyp_scheme`` (``kernel_local``), :math:`c_\mathrm{hyp}` is derived from whatever time step the particle and its neighbours would already take, so it never constrains it further. Only the ``fixed_fraction`` scheme (a fixed fraction of :math:`c`, set by ``ISRF_c_hyp_fixed_fraction_of_c``) fixes the propagation speed first; the particle's time step is then constrained to keep the receiver-side stability condition satisfied, the same way ``HII_rebuild_time_Myr`` constrains a star's time step (see :ref:`gear_radiation_hii`).
 
-``GEARFeedback:ISRF_c_hyp_scheme`` (``2`` or ``4``) selects how the propagation speed is set on each particle. Both schemes carry the flux as the reduced flux :math:`F/c_\mathrm{hyp}` and use the same pairwise transport operators. Use the default (``4``: a kernel-local speed) unless you have a specific reason not to. The alternative is ``2``, a fixed fraction of the speed of light, useful when you want a propagation speed that does not vary with resolution or time step. To run at one fixed propagation speed :math:`v`, set ``ISRF_c_hyp_fixed_fraction_of_c`` to :math:`v/c`. Any other value stops SWIFT at start-up. A restart file written with another value, or by an earlier version of the code, cannot be resumed: rerun the simulation. ``ISRF_c_hyp_fixed_fraction_of_c`` must be positive when ``ISRF_c_hyp_scheme`` is ``2`` and must be zero when it is ``4``; SWIFT stops at start-up on either mismatch.
+``GEARFeedback:ISRF_c_hyp_scheme`` (the string ``kernel_local`` or ``fixed_fraction``) selects how the propagation speed is set on each particle. Both schemes carry the flux as the reduced flux :math:`F/c_\mathrm{hyp}` and use the same pairwise transport operators. Use the default (``kernel_local``: a kernel-local speed) unless you have a specific reason not to. The alternative is ``fixed_fraction``, a fixed fraction of the speed of light, useful when you want a propagation speed that does not vary with resolution or time step. To run at one fixed propagation speed :math:`v`, set ``ISRF_c_hyp_fixed_fraction_of_c`` to :math:`v/c`. Any other value stops SWIFT at start-up. A restart file written with another value, or by an earlier version of the code, cannot be resumed: rerun the simulation. ``ISRF_c_hyp_fixed_fraction_of_c`` must be positive when ``ISRF_c_hyp_scheme`` is ``fixed_fraction`` and must be zero when it is ``kernel_local``; SWIFT stops at start-up on either mismatch.
 
 ``GEARFeedback:ISRF_c_hyp_margin`` sets the stability-margin coefficient that, in turn, sets the radiation time step: larger values propagate the field faster and cost more steps. Its admissible range is tied to the dissipation coefficients below through a joint stability bound, so raising it requires lowering them. With the dissipation switched off the margin must lie in :math:`(0, \sqrt{2/0.70}] \approx (0, 1.69]`. With the default dissipation coefficients (both ``0.5``) the joint bound caps it at :math:`0.571`. SWIFT checks the bound at start-up: if your margin and dissipation coefficients together violate it, the error message reports the exact admissible number for your own settings, rather than a fixed cutoff you would otherwise have to look up.
 
@@ -90,12 +90,12 @@ Grackle coupling
 Three ``GrackleCooling`` parameters control how the field is turned into heating and dissociation rates. Their defaults are chosen for a run without the ISRF, so a new ISRF run should look at all three.
 
 ``GrackleCooling:H2_self_shielding`` (default ``0``)
-  How :math:`\mathrm{H}_2` shields itself from the Lyman-Werner field. ``0`` means no shielding, ``2`` sets the shielding column from the kernel support radius, and ``3`` uses Grackle's own local Jeans length. Mode ``1`` is rejected: its length is read from neighbouring Cartesian grid cells, and SWIFT calls Grackle one particle at a time.
+  How :math:`\mathrm{H}_2` shields itself from the Lyman-Werner field. ``0`` means no shielding, ``2`` sets the shielding column from the kernel support radius (see ``H2_self_shielding_path``), and ``3`` uses Grackle's own local Jeans length. Mode ``1`` is rejected: its length is read from neighbouring Cartesian grid cells, and SWIFT calls Grackle one particle at a time.
 
   **The default of 0 is the wrong choice for an ISRF run that tracks** :math:`\mathbf{H}_2`. Unshielded, the local Lyman-Werner rate dissociates molecular gas that a real cloud would keep. Set ``3`` unless you have a reason to prefer ``2``; the shipped ``ISRFCosmology`` and ``ISRFH2Photodissociation`` examples both set ``3``. SWIFT emits a start-up warning if the module is on, :math:`\mathrm{H}_2` is tracked and this is still ``0``.
 
-``GrackleCooling:H2_self_shielding_path`` (default ``kernel_diameter``)
-  Used by mode ``2`` only. ``kernel_diameter`` sets the shielding column path to twice the kernel support radius, ``kernel_radius`` to one kernel support radius.
+``GrackleCooling:H2_self_shielding_path`` (default ``kernel_radius``)
+  Used by mode ``2`` only. ``kernel_radius`` sets the shielding column path to one kernel support radius, ``kernel_diameter`` to twice the kernel support radius. Any other value stops SWIFT at start-up.
 
 ``GrackleCooling:photoelectric_heating_efficiency`` (default ``constant``)
   Which photoelectric efficiency Grackle applies to the Habing field (the PE+Lyman-Werner sum described above): ``constant`` (a fixed efficiency of 0.05 with prefactor :math:`10^{-24}`, Wolfire et al. 1995 Eq. 1), ``wolfire1995`` (the electron-density-dependent efficiency of the same paper, Eq. 2), or ``density_dependent`` (:math:`\min(0.07, 0.0149\,n_\mathrm{H}^{0.235})` with prefactor :math:`1.3 \times 10^{-24}`, Smith 2026 Eqs. A1-A2; requires a Grackle build that provides it; SWIFT stops at start-up if the module is on and the Grackle it was built against does not). None of the shipped ISRF examples override this: they run at the default, ``constant``.
@@ -134,9 +134,9 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
      ISRF_extinction_path: pair_separation                   # Receiver-side dust column path mechanism
      ISRF_extinction_path_in_kernel_radii: 1.0               # Path R in kernel support radii, constant_kernel_path only
      ISRF_extinction_jeans_temperature_cap_K: 40             # Jeans-length temperature cap, temperature_capped_jeans only
-     ISRF_c_hyp_scheme: 4                                    # Propagation-speed scheme: 2 (fixed fraction of c) or 4
+     ISRF_c_hyp_scheme: kernel_local                         # Propagation-speed scheme: kernel_local or fixed_fraction
      ISRF_c_hyp_margin: 0.5                                  # Stability-margin coefficient C_hyp
-     ISRF_c_hyp_fixed_fraction_of_c: 0                       # Reduced speed of light as a fraction of c, scheme 2 only
+     ISRF_c_hyp_fixed_fraction_of_c: 0                       # Reduced speed of light as a fraction of c, fixed_fraction only
      ISRF_dissipation_alpha_max: 0.5                         # Ceiling of the triggered dissipation coefficient
      ISRF_dissipation_negativity_threshold: 0.01             # Relative undershoot at which the trigger saturates
      ISRF_dissipation_alpha_floor: 0.5                       # Dissipation floor under the trigger
@@ -151,7 +151,7 @@ and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\
 
    GrackleCooling:
      H2_self_shielding: 3                         # Use 3 (local Jeans length) or 2 in an ISRF run tracking H2
-     H2_self_shielding_path: kernel_diameter      # Mode 2 only: kernel_diameter or kernel_radius
+     H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
      photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent
      local_dust_to_gas_ratio: -1                  # -1 uses Grackle's own default
      RT_H2_dissociation_rate_cgs: 0               # Keep at 0 in an ISRF run

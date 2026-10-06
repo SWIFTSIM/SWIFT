@@ -81,7 +81,7 @@ this ordering is needed to read it:
     \code{:438}) accumulate the dissipation reference and
     \code{max\_ngb\_time\_bin}.
   \item \textbf{density ghost.} \code{radiation\_end\_density\_propagation}
-    (\code{radiation\_isrf.c:466}) sets $c_{\rm hyp}$ for scheme 4 and
+    (\code{radiation\_isrf.c:466}) sets $c_{\rm hyp}$ for the \code{kernel\_local} scheme and
     rebuilds the closure cache (\code{radiation\_isrf.c:510}). The
     no-neighbour give-up path is \code{radiation\_part\_has\_no\_neighbours}
     (\code{radiation\_isrf.c:934}).
@@ -969,7 +969,7 @@ dispatch (\code{radiation\_isrf.c:273-275}, \code{:471-473}) and on a restart,
 where the restored value is checked separately because the flat restart read
 bypasses the parser (\code{feedback\_common.c:1705-1715}); a restart written
 with a removed scheme cannot be resumed. Neither can a restart written by an
-earlier code version: scheme 2 stored the true flux there, which this code would
+earlier code version: the \code{fixed\_fraction} scheme stored the true flux there, which this code would
 read as the reduced flux, wrong by a factor $c_{\rm hyp}$. The restart stream
 therefore starts with a marker block naming the stored flux form, and a file
 without it, or with another value, stops the run
@@ -995,8 +995,8 @@ Here $f_c = \code{ISRF\_c\_hyp\_fixed\_fraction\_of\_c}$ and
 $C_{\rm hyp} = \code{ISRF\_c\_hyp\_margin}$, default $0.5$
 (\code{feedback\_properties.h:787-788}).
 
-Scheme 2 decides $c_{\rm hyp}$ at the drift
-(\code{radiation\_isrf.c:265-275}); scheme 4 defers it to the density ghost,
+The \code{fixed\_fraction} scheme decides $c_{\rm hyp}$ at the drift
+(\code{radiation\_isrf.c:265-275}); the \code{kernel\_local} scheme defers it to the density ghost,
 once the $h$-iteration has converged (\code{radiation\_isrf.c:466-510}), and the
 drift only caches $dt_i$ for it (\code{radiation\_isrf.c:277}).
 \code{max\_ngb\_time\_bin} is accumulated unconditionally, one byte compare per
@@ -1008,9 +1008,9 @@ $\min(+\infty, c)$, which \code{-ffast-math} does not guarantee
 (\code{radiation\_isrf.c:496-502}); this guard exists only in the density ghost.
 $dt_{\max}(i)$ reuses \code{dt\_prev} in the same-bin case rather than
 recomputing (\code{radiation\_isrf.c:478-479}). At parse time
-\code{feedback\_props\_check\_c\_hyp\_scheme} forces $f_c > 0$ and scheme 2 to
+\code{feedback\_props\_check\_c\_hyp\_scheme} forces $f_c > 0$ and the \code{fixed\_fraction} scheme to
 agree (\code{feedback\_properties.h:394-408}). A fixed propagation speed $v$ is
-scheme 2 with $f_c = v/c$. The former test-only override
+the \code{fixed\_fraction} scheme with $f_c = v/c$. The former test-only override
 \code{ISRF\_c\_hyp\_pin\_for\_debugging}, which set $c_{\rm hyp}$ to a chosen value
 under either scheme without the timestep term below, was removed; SWIFT
 ignores a parameter file key that no code reads, so \code{tools/check\_param\_keys.py}
@@ -1019,7 +1019,7 @@ is the pre-run check for a stale key.
 \subsubsection{The timestep each scheme imposes}
 \label{sec:isrf-eqdisc-timestep}
 
-Only scheme 2 imposes a radiation timestep.
+Only the \code{fixed\_fraction} scheme imposes a radiation timestep.
 \code{radiation\_isrf\_part\_timestep} (\code{radiation\_isrf.c:356-392}):
 
 \begin{equation}
@@ -1039,7 +1039,7 @@ $u_{\rm PE} \ne 0$, or $u_{\rm LW} \ne 0$, or either operator's
 omitted, because first init forces it nonzero if and only if $u_{\rm LW}$ is
 (\code{radiation\_isrf.c:370-374}).
 \code{feedback\_compute\_part\_timestep} additionally aborts the run if the
-scheme-2 bound falls below \code{TimeIntegration:dt\_min}, naming the parameter
+\code{fixed\_fraction} bound falls below \code{TimeIntegration:dt\_min}, naming the parameter
 (\code{feedback.c:185-199}).
 
 Scheme 4 imposes \textbf{no} radiation timestep at all: its $c_{\rm hyp}$ is

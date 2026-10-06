@@ -82,8 +82,8 @@ RETIRED_KEYS: Dict[str, str] = {
     "GrackleCooling:provide_specific_heating_rates": "GrackleCooling:specific_heating_rates_cgs",
     "GrackleCooling:convergence_limit": "nothing (the key is no longer read)",
     "GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging": "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging",
-    "GEARFeedback:ISRF_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme 2 with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
-    "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme 2 with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
+    "GEARFeedback:ISRF_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme: fixed_fraction with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
+    "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme: fixed_fraction with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
 }
 
 

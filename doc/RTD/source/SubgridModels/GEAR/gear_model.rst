@@ -187,7 +187,7 @@ Here is the complete section in the parameter file:
     RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
 
     H2_self_shielding: 0                         # H2 self-shielding from the Lyman-Werner field: 0 none, 2 kernel-based, 3 local Jeans length. The default is wrong for an ISRF run tracking H2, see below
-    H2_self_shielding_path: kernel_diameter      # Mode 2 only: kernel_diameter or kernel_radius
+    H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
     photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent, see below
 
     volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
