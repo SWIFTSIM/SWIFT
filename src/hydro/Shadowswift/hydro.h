@@ -72,16 +72,13 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   }
 #endif
 
-  float W[6];
-  hydro_part_get_primitive_variables(p, W);
-
   /* Get the comoving psize, since we will compare with another comoving
    * geometric property below */
   float psize = hydro_get_comoving_psize(p);
   /* If the particle shows large deviations from a sphere, better use the
    * minimal distance to any of its faces to compute the timestep. Updated
    * to be consistent with other criteria of deformation */
-  if (p->geometry.max_face_angle > 2.25 &&
+  if (p->geometry.max_face_angle > steering_beta &&
     p->geometry.min_face_dist > 0.) {
       psize = p->geometry.min_face_dist;
     }
