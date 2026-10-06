@@ -464,9 +464,9 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->table_metallicity_min = 0.f;
   rad->table_metallicity_max = 0.f;
 
-  /* All-bits-zero nulls every pointer and zeroes both union members.
-     Nothing is freed: after a restart the bytes are another process's heap
-     addresses. */
+  /* All-bits-zero nulls every pointer and zeroes both union members, and
+     boundary_condition_error must be the first enumerator. Nothing is freed:
+     after a restart the bytes are another process's heap addresses. */
   memset(&rad->raw, 0, sizeof(rad->raw));
   memset(&rad->integrated, 0, sizeof(rad->integrated));
 }

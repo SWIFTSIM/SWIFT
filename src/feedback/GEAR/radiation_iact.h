@@ -102,6 +102,7 @@ radiation_iact_nonsym_feedback_density(
  * @brief Store the star's feedback time-step for this step.
  *
  * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
+ * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
  * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
  *
  * @param sp The #spart to update.

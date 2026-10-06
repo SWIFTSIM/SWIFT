@@ -178,9 +178,9 @@ struct feedback_part_data {
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
 
-  /*! Neutral hydrogen mass fraction cached by the cooling step. Not read
-      by anything yet. 0 until the cache is first written, not "fully
-      ionized". */
+  /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
+      1.0f). Not read by anything yet: an MPI-consistent consumer must read
+      the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
   float neutral_H_frac;
 
   /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */

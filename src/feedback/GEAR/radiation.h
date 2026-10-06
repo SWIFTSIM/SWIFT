@@ -68,8 +68,8 @@
     hydrogen fraction: the dust-to-gas mass ratio cancels the composition. */
 #define RADIATION_MU_H 1.4
 
-/*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023): PE
-    (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV) bands. */
+/*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023, Weingartner
+    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
@@ -127,7 +127,9 @@
     table's Integrated_L_PE or Integrated_L_LW denominator vanishes.
     lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (theory/GEAR/Radiation/
     02_fuv_isrf.tex). The values are the young-population end of the spectral
-    family, which dominates the LW luminosity. */
+    family, which dominates the LW luminosity. An aged population's Lambda_LW
+    reaches about 18.3, 3x higher. The bias against a population average is
+    not sized. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
