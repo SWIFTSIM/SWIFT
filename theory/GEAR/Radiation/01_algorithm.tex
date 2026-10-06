@@ -669,12 +669,8 @@ A
 single particle whose tag lapsed early and then advected outward for
 several dynamical times can dominate a plain maximum over ever-owned
 distances and inflate the reported extent by double digits percent,
-without any genuine coverage problem. The validation checks
-(\code{examples/SubgridTests/SubgridRadiation/\{StromgrenSphere,\allowbreak
-Hu2017,\allowbreak Starbench\}/
-*\_analytic\_check.py}, function \code{robust\_ever\_tagged\_radius})
-read the historical extent robustly instead of taking this maximum
-directly: sort ever-owned distances descending, estimate a local point
+without any genuine coverage problem. The analysis of the historical extent
+therefore does not take this maximum directly. It reads the extent robustly: sort ever-owned distances descending, estimate a local point
 spacing from the median gap among the outermost few percent of
 points, then walk inward from the largest distance and discard a
 point only while the gap to its next-lower neighbour exceeds several
