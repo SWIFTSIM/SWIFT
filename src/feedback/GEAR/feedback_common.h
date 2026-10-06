@@ -152,8 +152,8 @@ void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
- * pending fields too (same sizeof(struct part), so 1 would load shifted). */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 2
+ * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,

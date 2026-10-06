@@ -122,8 +122,8 @@ struct feedback_isrf_moment_data {
       zeroed by the next own update. */
   float pending_transport_u;
 
-  /*! Dissipation amount owed by finer neighbours, divided by c_hyp. Same life
-      cycle as #pending_transport_u. */
+  /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
+      weighted by their phi. Same life cycle as #pending_transport_u. */
   float pending_dissipation_u;
 
 #ifdef SWIFT_DEBUG_CHECKS

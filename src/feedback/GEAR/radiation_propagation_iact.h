@@ -549,11 +549,24 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 }
 
 /**
+ * @brief Relaxation factor `phi(a) = (1 - e^-a)/a` in double precision, for
+ * depths down to ~1e-8, below float32 resolution.
+ *
+ * @param a Dimensionless relaxation depth. Always `>= 0`.
+ * @return phi(a).
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_relaxation_phi_factor_double(double a) {
+  if (a < 1e-6) return 1.0 - 0.5 * a + (1.0 / 6.0) * a * a;
+  return -expm1(-a) / a;
+}
+
+/**
  * @brief One band of a pair whose members have unequal steps: the finer member
  * may take its rate, the coarser one gets its share as pending amounts.
  *
- * The coarser share covers the finer step, divided by c_hyp. It carries no
- * relaxation factor, so both members must have a = 0.
+ * The coarser share is the finer member's booking over its step, divided by
+ * c_hyp, with its dissipation weighted by the finer member's phi.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -570,7 +583,6 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * @param c_i Particle i's #feedback_part_data.c_hyp.
  * @param c_j Particle j's #feedback_part_data.c_hyp.
  * @param a_factor_comoving_to_physical `1/a`.
- * @param H Current Hubble parameter.
  * @param i_is_fine 1 if particle i has the shorter step.
  * @param fine_rate 1 to add the finer member's rate here.
  * @param dt_fine The finer member's step.
@@ -582,16 +594,15 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
     struct feedback_isrf_moment_data *moment_j,
     const struct feedback_isrf_operator_data *op_i,
     const struct feedback_isrf_operator_data *op_j, float c_i, float c_j,
-    float a_factor_comoving_to_physical, float H, int i_is_fine, int fine_rate,
+    float a_factor_comoving_to_physical, int i_is_fine, int fine_rate,
     float dt_fine) {
 
-  /* The coarser member's update weights pending as if present at its step
-   * start, which is exact only at a = 0 too. */
-  if (op_i->kappa != 0.f || op_j->kappa != 0.f || H != 0.f)
-    error(
-        "The cross-bin pending deposit needs a = 0 (no dust, no expansion): "
-        "kappa %e and %e, H %e. Use Z = 0, or the kernel_local scheme.",
-        op_i->kappa, op_j->kappa, H);
+  /* The finer member's phi as its update forms it, without the Hubble term
+   * (no lambda or c here): exact at H = 0. */
+  const float c_fine = i_is_fine ? c_i : c_j;
+  const float kappa_fine = i_is_fine ? op_i->kappa : op_j->kappa;
+  const double phi_fine = radiation_relaxation_phi_factor_double(
+      (double)c_fine * (double)kappa_fine * (double)dt_fine);
 
   /* The coarser side is formed with c_hyp = 1, which makes it c-free. */
   const float cf_i = i_is_fine ? c_i : 1.f;
@@ -615,9 +626,10 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
     fine->div_specific_flux += div[f];
     fine->dissipation_u += diss[f];
   }
-  /* Gains to u over the finer step: -div and +diss. */
+  /* Gains to u over the finer step: -div and +phi*diss. */
   coarse->pending_transport_u += -div[1 - f] * dt_fine;
-  coarse->pending_dissipation_u += diss[1 - f] * dt_fine;
+  coarse->pending_dissipation_u +=
+      (float)((double)diss[1 - f] * (double)dt_fine * phi_fine);
 }
 
 /**
@@ -633,7 +645,6 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
  * @param fdi Particle i's feedback data.
  * @param fdj Particle j's feedback data.
  * @param a_factor_comoving_to_physical `1/a`.
- * @param H Current Hubble parameter.
  * @param i_is_fine 1 if particle i has the shorter step.
  * @param fine_rate 1 to add the finer member's rate here.
  * @param dt_fine The finer member's step.
@@ -641,7 +652,7 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
 __attribute__((noinline)) static void radiation_cross_bin_pair(
     const float dx[3], float r_inv, float wi_dr, float wj_dr, float mi,
     float mj, struct feedback_part_data *fdi, struct feedback_part_data *fdj,
-    float a_factor_comoving_to_physical, float H, int i_is_fine, int fine_rate,
+    float a_factor_comoving_to_physical, int i_is_fine, int fine_rate,
     float dt_fine) {
 
   const float c_i = fdi->c_hyp;
@@ -651,7 +662,7 @@ __attribute__((noinline)) static void radiation_cross_bin_pair(
     radiation_cross_bin_pair_band(
         dx, r_inv, wi_dr, wj_dr, mi, mj, fdi->rho_prev, fdj->rho_prev,
         &fdi->isrf_moment[m], &fdj->isrf_moment[m], &fdi->isrf_operator[o],
-        &fdj->isrf_operator[o], c_i, c_j, a_factor_comoving_to_physical, H,
+        &fdj->isrf_operator[o], c_i, c_j, a_factor_comoving_to_physical,
         i_is_fine, fine_rate, dt_fine);
   }
 }
@@ -710,7 +721,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
       error("Symmetric ISRF pair with an inactive member (%e, %e).", s_i, s_j);
 #endif
     radiation_cross_bin_pair(dx, r_inv, wi_dr, wj_dr, mi, mj, fdi, fdj,
-                             a_factor_comoving_to_physical, H, s_i < s_j,
+                             a_factor_comoving_to_physical, s_i < s_j,
                              /*fine_rate=*/1, min(s_i, s_j));
     return;
   }
@@ -797,7 +808,7 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
     const int i_is_fine = s_j < 0.f;
     radiation_cross_bin_pair(dx, r_inv, wi_dr, wj_dr, mi, mj, fdi,
                              &pj->feedback_data, a_factor_comoving_to_physical,
-                             H, i_is_fine,
+                             i_is_fine,
                              /*fine_rate=*/i_is_fine, i_is_fine ? s_i : s_j);
     return;
   }

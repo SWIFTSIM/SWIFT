@@ -120,18 +120,15 @@ void radiation_first_init_part(struct part *restrict p) {
 }
 
 /**
- * @brief Is the cross-bin pair booking on? It needs one rank, the uniform
- * fixed_fraction c_hyp, no cosmology (a = 0 at zero dust) and the extra ghost.
+ * @brief Is the cross-bin pair booking on? It needs one rank and the extra
+ * ghost, which sets the active state.
  *
  * @param e The #engine.
  * @return 1 if pair amounts of unequal-step pairs go to pending, else 0.
  */
 static int radiation_cross_bin_booking_on(const struct engine *e) {
 #ifdef EXTRA_HYDRO_LOOP
-  return e->nr_nodes <= 1 && e->feedback_props->ISRF_propagation &&
-         e->feedback_props->ISRF_c_hyp_scheme ==
-             isrf_c_hyp_scheme_fixed_fraction &&
-         !(e->policy & engine_policy_cosmology);
+  return e->nr_nodes <= 1 && e->feedback_props->ISRF_propagation;
 #else
   return 0;
 #endif
@@ -378,19 +375,6 @@ float radiation_relaxation_phi_factor(float a) {
 }
 
 /**
- * @brief Double-precision #radiation_relaxation_phi_factor for the
- * `u`-update, whose depth `a` can be ~1e-8, below float32 resolution.
- *
- * @param a Dimensionless relaxation depth, see
- * #radiation_relaxation_phi_factor. Always `>= 0`.
- * @return phi(a), in double precision.
- */
-static double radiation_relaxation_phi_factor_double(double a) {
-  if (a < 1e-6) return 1.0 - 0.5 * a + (1.0 / 6.0) * a * a;
-  return -expm1(-a) / a;
-}
-
-/**
  * @brief The three outcomes of the M1 flux limiter, so that moments sharing
  * an operator apply the same branch.
  */
@@ -460,20 +444,64 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
 }
 
 /**
- * @brief Add the pending amounts to `u_prev` as specific energies and zero
- * them. Out of line, so the update keeps its code generation.
+ * @brief Add the pending amounts to `u` and zero them, weighted as this step's
+ * own terms: transport by `phi`, dissipation by `decay`. Out of line.
+ *
+ * Each amount enters `u` plus absorbed with weight 1. LW's absorbed share
+ * feeds the band-edge transfer into PE, as in the update.
  *
  * @param p The particle to act upon.
+ * @param e The #engine.
  */
 __attribute__((noinline)) static void radiation_add_pending_part(
-    struct part *p) {
+    struct part *p, const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(fd->dt_active > 0.f))
+    error("Particle %lld holds pending amounts in cross-bin state %e.", p->id,
+          fd->dt_active);
+#endif
+  const double dt = (double)fd->dt_prev;
+  const double c_hyp = (double)fd->c_hyp;
+  const double rescale = c_hyp / e->physical_constants->const_speed_light_c;
+  const double H_dilated = rescale * e->cosmology->H;
+  const double lambda[ISRF_MOMENT_COUNT] = {
+      e->feedback_props->band_edge_weight_pe,
+      e->feedback_props->band_edge_weight_lw,
+      e->feedback_props->band_edge_photon_weight_lw};
+
+  double du[ISRF_MOMENT_COUNT], absorbed[ISRF_MOMENT_COUNT];
+  double a_moment[ISRF_MOMENT_COUNT];
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
-    mo->u_prev += (double)fd->c_hyp * ((double)mo->pending_transport_u +
-                                       (double)mo->pending_dissipation_u);
+    const struct feedback_isrf_operator_data *op =
+        &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+    const double a = (c_hyp * (double)op->kappa + lambda[m] * H_dilated) * dt;
+    const double decay = exp(-a);
+    const double phi = radiation_relaxation_phi_factor_double(a);
+    const double pend_d = c_hyp * (double)mo->pending_dissipation_u;
+    const double pend_t = c_hyp * (double)mo->pending_transport_u;
+    a_moment[m] = a;
+    du[m] = decay * pend_d + phi * pend_t;
+    absorbed[m] = -expm1(-a) * pend_d + (1. - phi) * pend_t;
     mo->pending_transport_u = 0.f;
     mo->pending_dissipation_u = 0.f;
+  }
+
+  double transfer = 0.;
+  if (H_dilated != 0. && a_moment[ISRF_MOMENT_LW] > 0.)
+    transfer = (lambda[ISRF_MOMENT_LW] - 1.) * H_dilated * dt /
+               a_moment[ISRF_MOMENT_LW] * absorbed[ISRF_MOMENT_LW];
+
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
+    mo->u += du[m] + (m == ISRF_MOMENT_PE ? transfer : 0.);
+#ifdef SWIFT_DEBUG_CHECKS
+    mo->cumulative_absorbed += (float)absorbed[m];
+    if (m == ISRF_MOMENT_PE) mo->cumulative_injected += (float)transfer;
+    if (mo->u < (double)mo->u_min_since_snapshot)
+      mo->u_min_since_snapshot = (float)mo->u;
+#endif
   }
 }
 
@@ -494,8 +522,8 @@ __attribute__((noinline)) static void radiation_add_pending_part(
  * Injection deposits the raw dose, so the `c_hyp/c` rescale is applied only
  * here.
  *
- * Pending amounts enter `u` plus absorbed with weight 1 via `u_prev`
- * (#radiation_add_pending_part). The debug ledger needs one call per step.
+ * Pending amounts are added after the update (#radiation_add_pending_part).
+ * The debug ledger needs one call per step.
  * Reads `dt_prev`, `c_hyp` and `kappa`, and takes no `dt` so that it stays
  * consistent with the flux update. No-op when propagation is off.
  *
@@ -514,13 +542,6 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     error("Particle %lld: cross-bin state %e at end_force, dt_prev %e.", p->id,
           fd->dt_active, fd->dt_prev);
 #endif
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    if (fd->isrf_moment[m].pending_transport_u != 0.f ||
-        fd->isrf_moment[m].pending_dissipation_u != 0.f) {
-      radiation_add_pending_part(p);
-      break;
-    }
-  }
 
   const double dt = (double)fd->dt_prev;
   const double c_hyp = (double)fd->c_hyp;
@@ -620,6 +641,14 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     if (moment->u < (double)moment->u_min_since_snapshot)
       moment->u_min_since_snapshot = (float)moment->u;
 #endif
+  }
+
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    if (fd->isrf_moment[m].pending_transport_u != 0.f ||
+        fd->isrf_moment[m].pending_dissipation_u != 0.f) {
+      radiation_add_pending_part(p, e);
+      break;
+    }
   }
 }
 

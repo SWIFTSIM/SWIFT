@@ -1696,9 +1696,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   if (flux_form != FEEDBACK_RESTART_ISRF_PART_LAYOUT)
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
-        "%d (reduced flux and cross-bin pending fields). A restart written by "
-        "another code version cannot be resumed: rerun the simulation from its "
-        "initial conditions.",
+        "%d (reduced flux, phi-weighted cross-bin pending fields). A restart "
+        "written by another code version cannot be resumed: rerun the "
+        "simulation from its initial conditions.",
         flux_form, FEEDBACK_RESTART_ISRF_PART_LAYOUT);
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,

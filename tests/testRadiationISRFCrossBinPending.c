@@ -32,21 +32,19 @@
 /* Local headers. */
 #include "swift.h"
 
-/* Energy conservation of the ISRF force-loop pair terms across time bins, at
- * a = 0 and uniform c_hyp, through the real drift, extra ghost, type-2 force
- * dispatch and end_force. Two cells of particles on mixed time bins are
- * stepped over two coarse steps. Per-owner integration of the pair rates
- * leaks L = c m_i m_j d [sum_k G(t_k) - R G(t_R)] per cross-bin pair; with
- * every pair amount booked once from the finer member's timeline, sum_i m_i
- * u_i is conserved to round-off at every synchronised time. */
-#if defined(FEEDBACK_GEAR) && defined(SPHENIX_SPH)
+/* Conservation of the ISRF force-loop pair terms across time bins, through the
+ * real drift, extra ghost, type-2 force dispatch and end_force. Two cells of
+ * particles on mixed time bins are stepped over two coarse steps, with dust,
+ * the kernel_local speed and a Hubble term. The conserved quantity is the
+ * c-weighted ledger L4: the sum over updates of m Delta(u + Abs - Inj)/c_hyp,
+ * plus the pending amounts m P in flight. Per-owner integration of the pair
+ * terms leaks the closed form below; booking every pair once, from the finer
+ * member's step, leaves only the same-step phi mismatch and, at H != 0, the
+ * missing Hubble term of the finer member's phi in its deposits. */
+#if defined(FEEDBACK_GEAR) && defined(SPHENIX_SPH) && \
+    defined(FEEDBACK_RESTART_ISRF_PART_LAYOUT) && defined(SWIFT_DEBUG_CHECKS)
 
 #include "feedback/GEAR/radiation_propagation_iact.h"
-
-/* The pending fields exist only with the cross-bin booking. */
-#ifdef FEEDBACK_RESTART_ISRF_PART_LAYOUT
-#define HAVE_CROSS_BIN_PENDING 1
-#endif
 
 #define NODE_ID 0
 #define CELL_N 6
@@ -77,6 +75,17 @@ static struct hydro_props hydro_props;
 static struct pressure_floor_props pressure_floor;
 static struct runner *runner;
 
+/** The physics knobs of one case. */
+struct case_config {
+  int scheme;       /*!< The ISRF c_hyp scheme. */
+  double kappa0;    /*!< Absorption rate scale; 0 for no dust. */
+  int kappa_random; /*!< 1: per-particle kappa in [0.5, 1.5] kappa0. */
+  int c_random;     /*!< 1: per-particle, per-step c_hyp in [0.6, 1.4]. */
+  double H;         /*!< Hubble rate seen by the update and the iact. */
+  double lambda_lw; /*!< Band-edge weight of the two LW moments. */
+};
+static struct case_config cfg;
+
 /**
  * @brief Finiteness from the bit pattern, robust to -ffinite-math-only.
  *
@@ -91,7 +100,7 @@ static int is_finite_bits(double x) {
 }
 
 /**
- * @brief Set up a non-cosmological engine with scheme 2 (uniform c_hyp = 1).
+ * @brief Set up a non-cosmological engine; #cfg sets H and the LW weights.
  *
  * @param nr_nodes Number of ranks the engine claims; above 1 forces the
  * legacy pair booking.
@@ -105,6 +114,7 @@ static void make_engine(int nr_nodes, int scheme, double time_base) {
   for (int k = 0; k < 3; k++) space.dim[k] = 3.;
 
   cosmology_init_no_cosmo(&cosmo);
+  cosmo.H = cfg.H;
 
   bzero(&phys_const, sizeof(struct phys_const));
   phys_const.const_speed_light_c = 1.e4;
@@ -123,8 +133,8 @@ static void make_engine(int nr_nodes, int scheme, double time_base) {
   fp.ISRF_dissipation_floor_h_over_lambda = 0.5f;
   fp.ISRF_dissipation_floor_relaxation_residual = 0.f;
   fp.band_edge_weight_pe = 1.;
-  fp.band_edge_weight_lw = 1.;
-  fp.band_edge_photon_weight_lw = 1.;
+  fp.band_edge_weight_lw = cfg.lambda_lw;
+  fp.band_edge_photon_weight_lw = cfg.lambda_lw;
 
   bzero(&cooling, sizeof(struct cooling_function_data));
   cooling.chemistry_data.local_dust_to_gas_ratio = 0.01;
@@ -398,17 +408,87 @@ static double pair_term_error(const struct part *pi, const struct part *pj,
   return err_div + err_diss;
 }
 
-/** Per-particle reference sums of one step, in double. */
+/**
+ * @brief Deterministic uniform number in [0, 1) from an id and a salt.
+ *
+ * @param id The particle id.
+ * @param salt Distinguishes the draws of one particle.
+ * @return The number.
+ */
+static double hash_uniform(long long id, int salt) {
+  uint64_t x = (uint64_t)id * 0x9E3779B97F4A7C15ULL +
+               (uint64_t)(salt + 1) * 0xBF58476D1CE4E5B9ULL;
+  x ^= x >> 31;
+  x *= 0x94D049BB133111EBULL;
+  x ^= x >> 29;
+  return (double)(x >> 11) * 0x1.0p-53;
+}
+
+/**
+ * @brief Set the absorption rates and, for kernel_local, the speed that the
+ * density ghost would set, after the drift of a step.
+ *
+ * @param p The particle.
+ * @param step The step number.
+ */
+static void set_dust_and_speed(struct part *p, int step) {
+  struct feedback_part_data *fd = &p->feedback_data;
+  for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+    fd->isrf_operator[o].kappa =
+        (float)(cfg.kappa0 *
+                (cfg.kappa_random ? 0.5 + hash_uniform(p->id, o) : 1.));
+  if (cfg.scheme == isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    fd->c_hyp =
+        (float)(cfg.c_random ? 0.6 + 0.8 * hash_uniform(p->id, 100 + step)
+                             : 1.);
+}
+
+/**
+ * @brief Relaxation factor (1 - e^-a)/a, written independently of the library.
+ *
+ * @param a The depth.
+ * @return phi(a).
+ */
+static double phi_of(double a) {
+  return a < 1e-6 ? 1. - 0.5 * a + a * a / 6. : -expm1(-a) / a;
+}
+
+/**
+ * @brief A moment's relaxation depth as the update forms it, with or without
+ * the Hubble term.
+ *
+ * @param p The particle.
+ * @param m The moment.
+ * @param with_H 1 to include lambda (c_hyp/c) H.
+ * @return The depth.
+ */
+static double depth_of(const struct part *p, int m, int with_H) {
+  const struct feedback_part_data *fd = &p->feedback_data;
+  const double c = fd->c_hyp;
+  const double kappa =
+      fd->isrf_operator[radiation_isrf_moment_to_operator[m]].kappa;
+  const double lambda[ISRF_MOMENT_COUNT] = {fp.band_edge_weight_pe,
+                                            fp.band_edge_weight_lw,
+                                            fp.band_edge_photon_weight_lw};
+  const double H_dil = with_H ? c / phys_const.const_speed_light_c * cfg.H : 0.;
+  return (c * kappa + lambda[m] * H_dil) * (double)fd->dt_prev;
+}
+
+/** Per-particle reference sums, in double; pair rates carry the owner's c. */
 struct reference {
-  double S[ISRF_MOMENT_COUNT];       /*!< Sum of |rate terms|. */
-  int n;                             /*!< Number of rate terms. */
-  double cross[ISRF_MOMENT_COUNT];   /*!< Cross-bin rate terms, diss - div. */
-  double E_cross[ISRF_MOMENT_COUNT]; /*!< Error bound of #cross. */
-  double Pt[ISRF_MOMENT_COUNT];      /*!< Expected transport pending. */
-  double Pd[ISRF_MOMENT_COUNT];      /*!< Expected dissipation pending. */
-  double SP[ISRF_MOMENT_COUNT];      /*!< Sum of |deposits|. */
-  double E_P[ISRF_MOMENT_COUNT];     /*!< Error bound of the deposits. */
-  int n_dep;                         /*!< Number of deposits. */
+  double diss_fine[ISRF_MOMENT_COUNT];   /*!< Dissipation, coarser partners. */
+  double div_fine[ISRF_MOMENT_COUNT];    /*!< Divergence, coarser partners. */
+  double diss_coarse[ISRF_MOMENT_COUNT]; /*!< Dissipation, finer partners. */
+  double div_coarse[ISRF_MOMENT_COUNT];  /*!< Divergence, finer partners. */
+  double S[ISRF_MOMENT_COUNT];           /*!< Sum of |rate terms|. */
+  double E[ISRF_MOMENT_COUNT];      /*!< Error bound, cross-bin rate terms. */
+  double E_fine[ISRF_MOMENT_COUNT]; /*!< Same, coarser partners only. */
+  int n;                            /*!< Number of rate terms. */
+  double Pt[ISRF_MOMENT_COUNT];     /*!< Expected transport pending. */
+  double Pd[ISRF_MOMENT_COUNT];     /*!< Expected dissipation pending. */
+  double SP[ISRF_MOMENT_COUNT];     /*!< Sum of |deposits|. */
+  double E_P[ISRF_MOMENT_COUNT];    /*!< Error bound of the deposits. */
+  int n_dep;                        /*!< Number of deposits. */
 };
 
 /** A two-cell system and its reference state. */
@@ -417,12 +497,14 @@ struct system {
   struct reference *ref[2];
   float h_split;
   int two_levels;
+  double R_same[ISRF_MOMENT_COUNT];   /*!< Same-step pairs' L4, cumulated. */
+  double bar_same[ISRF_MOMENT_COUNT]; /*!< Round-off bar of #R_same. */
 };
 
 /**
  * @brief Brute-force pair terms of every active particle, from the legacy
- * symmetric iact on copies: the rate terms and the deposits owed to coarser
- * partners.
+ * symmetric iact on copies: the rates split by the partner's step, and the
+ * deposits owed to coarser partners.
  *
  * @param sys The system.
  */
@@ -454,14 +536,13 @@ static void reference_pairs(struct system *sys) {
             tj.feedback_data.isrf_moment[m].div_specific_flux = 0.f;
             tj.feedback_data.isrf_moment[m].dissipation_u = 0.f;
           }
-#ifdef HAVE_CROSS_BIN_PENDING
           ti.feedback_data.dt_active = 0.f;
           tj.feedback_data.dt_active = 0.f;
-#endif
           runner_iact_isrf_dissipation(r2, dx, pi->h, pj->h, &ti, &tj, 1.f,
-                                       0.f);
+                                       (float)cfg.H);
 
           struct reference *rj = &sys->ref[cj][j];
+          const int same = pj->time_bin == pi->time_bin;
           const int coarser_j = pj->time_bin > pi->time_bin;
           ri->n++;
           if (coarser_j) rj->n_dep++;
@@ -470,16 +551,40 @@ static void reference_pairs(struct system *sys) {
                 &ti.feedback_data.isrf_moment[m];
             const struct feedback_isrf_moment_data *mj =
                 &tj.feedback_data.isrf_moment[m];
-            ri->S[m] += fabs(mi->div_specific_flux) + fabs(mi->dissipation_u);
-            if (pj->time_bin != pi->time_bin) {
-              ri->cross[m] +=
-                  (double)mi->dissipation_u - (double)mi->div_specific_flux;
-              ri->E_cross[m] += pair_term_error(pi, pj, r2, dx, m);
+            const double diss = mi->dissipation_u;
+            const double div = mi->div_specific_flux;
+            ri->S[m] += fabs(div) + fabs(diss);
+            if (same) {
+              /* Half of the pair's L4 from one call, so its sides cancel to
+               * round-off: dt m_i m_j G^D (phi_i - phi_j) and no transport. */
+              const double phi_i = phi_of(depth_of(pi, m, 1));
+              const double phi_j = phi_of(depth_of(pj, m, 1));
+              const double ti_l = pi->mass / (double)pi->feedback_data.c_hyp;
+              const double tj_l = pj->mass / (double)pj->feedback_data.c_hyp;
+              const double xi_d = ti_l * phi_i * diss, xi_v = ti_l * div;
+              const double xj_d = tj_l * phi_j * mj->dissipation_u;
+              const double xj_v = tj_l * mj->div_specific_flux;
+              sys->R_same[m] += 0.5 * dt_i * (xi_d - xi_v + xj_d - xj_v);
+              sys->bar_same[m] +=
+                  0.5 * dt_i * 8. * U_F32 *
+                  (fabs(xi_d) + fabs(xi_v) + fabs(xj_d) + fabs(xj_v));
+            } else if (coarser_j) {
+              ri->diss_fine[m] += diss;
+              ri->div_fine[m] += div;
+            } else {
+              ri->diss_coarse[m] += diss;
+              ri->div_coarse[m] += div;
+            }
+            if (!same) {
+              const double e = pair_term_error(pi, pj, r2, dx, m);
+              ri->E[m] += e;
+              if (coarser_j) ri->E_fine[m] += e;
             }
             if (coarser_j) {
               const double c_j = pj->feedback_data.c_hyp;
+              const double phi_i = phi_of(depth_of(pi, m, 0));
               rj->Pt[m] += -(double)mj->div_specific_flux / c_j * dt_i;
-              rj->Pd[m] += (double)mj->dissipation_u / c_j * dt_i;
+              rj->Pd[m] += (double)mj->dissipation_u / c_j * dt_i * phi_i;
               rj->SP[m] +=
                   (fabs(mj->div_specific_flux) + fabs(mj->dissipation_u)) /
                   c_j * dt_i;
@@ -517,53 +622,45 @@ static void force_dispatch(struct system *sys) {
   runner_dopair2_branch_force(runner, cells[0], cells[1], 1, 1);
 }
 
-/**
- * @brief Field energy sum_i m_i u_i of one moment, plus the pending amounts.
- *
- * @param sys The system.
- * @param m The moment.
- * @param with_pending Add c_hyp * m * pending.
- * @param abs_sum (return) sum_i m_i |u_i|.
- * @return The sum.
- */
-static double ledger(const struct system *sys, int m, int with_pending,
-                     double *abs_sum) {
-  double sum = 0.;
-  *abs_sum = 0.;
-  for (int c = 0; c < 2; c++) {
-    for (int i = 0; i < COUNT; i++) {
-      const struct part *p = &sys->cells[c]->hydro.parts[i];
-      const struct feedback_isrf_moment_data *mo =
-          &p->feedback_data.isrf_moment[m];
-      double x = (double)p->mass * mo->u;
-#ifdef HAVE_CROSS_BIN_PENDING
-      if (with_pending)
-        x += (double)p->mass * (double)p->feedback_data.c_hyp *
-             ((double)mo->pending_transport_u +
-              (double)mo->pending_dissipation_u);
-#endif
-      if (!is_finite_bits(x)) error("particle %lld: non-finite ledger", p->id);
-      sum += x;
-      *abs_sum += fabs(x);
-    }
-  }
-  return sum;
-}
-
-/** Outcome of one stepped case. */
+/** Outcome of one stepped case; ledger sums are c-free (L4). */
 struct outcome {
-  double residual[ISRF_MOMENT_COUNT]; /*!< Final minus initial ledger. */
-  double L_pred[ISRF_MOMENT_COUNT];   /*!< Closed-form cross-bin leak. */
-  double bar[ISRF_MOMENT_COUNT];      /*!< Round-off bar of the residual. */
-  double L_bar[ISRF_MOMENT_COUNT];    /*!< Extra bar of #L_pred, two TUs. */
-  double E0[ISRF_MOMENT_COUNT];       /*!< Initial ledger. */
+  double res[ISRF_MOMENT_COUNT];      /*!< Booked plus in flight. */
+  double pred[ISRF_MOMENT_COUNT];     /*!< Prediction of #res. */
+  double bar[ISRF_MOMENT_COUNT];      /*!< Library round-off bar. */
+  double bar_pred[ISRF_MOMENT_COUNT]; /*!< Round-off bar of #pred. */
+  double R_same[ISRF_MOMENT_COUNT];   /*!< Same-step phi mismatch. */
+  double R_cross[ISRF_MOMENT_COUNT];  /*!< Per-owner cross-bin leak. */
+  double R_H[ISRF_MOMENT_COUNT];      /*!< Deposits' missing Hubble term. */
+  double R_nophi[ISRF_MOMENT_COUNT]; /*!< Extra residual if phi were dropped. */
+  double gross[ISRF_MOMENT_COUNT];   /*!< Sum of |booked pair terms|. */
+  double dep_diss[ISRF_MOMENT_COUNT]; /*!< Sum of |phi diss| of finer sides. */
+  double aH_half;                     /*!< Mean a_H/2 of the finer updates. */
+  double transfer_worst;              /*!< Worst band-edge error / its bar. */
   double min_u_coarse;                /*!< Smallest PE u of the coarsest bin. */
   int routed;                         /*!< Cross-bin booking active. */
 };
 
 /**
+ * @brief Field plus absorbed minus injected specific energy of a moment.
+ *
+ * @param p The particle.
+ * @param m The moment.
+ * @return The value.
+ */
+static double ledger_of(const struct part *p, int m) {
+  const struct feedback_isrf_moment_data *mo = &p->feedback_data.isrf_moment[m];
+  const double x =
+      mo->u + (double)mo->cumulative_absorbed - (double)mo->cumulative_injected;
+  if (!is_finite_bits(x)) error("particle %lld: non-finite ledger", p->id);
+  return x;
+}
+
+/**
  * @brief Step a two-cell system through the real drift, extra ghost, force
- * dispatch and end_force, and book the ledger.
+ * dispatch and end_force, and book the c-weighted ledger L4.
+ *
+ * Prediction of L4 at every step: per-owner booking leaks R_same + R_cross;
+ * the cross-bin booking leaves R_same + R_H.
  *
  * @param sys The system (cells built, sorted, SPH inputs set).
  * @param n_steps Number of fine steps (bin of the finest particle).
@@ -580,15 +677,13 @@ static void step_system(struct system *sys, int n_steps, struct outcome *out) {
   const integertime_t dti_fine = get_integer_timestep(bin_min);
   const integertime_t dti_coarse = get_integer_timestep(bin_max);
 
-  double abs_sum;
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    out->E0[m] = ledger(sys, m, 1, &abs_sum);
-    out->L_pred[m] = 0.;
-    out->L_bar[m] = 0.;
-    out->bar[m] = 4. * DBL_EPSILON * abs_sum;
-  }
-  out->routed = 0;
+  bzero(out, sizeof(struct outcome));
+  double booked[ISRF_MOMENT_COUNT] = {0.};
+  double bar_legacy[ISRF_MOMENT_COUNT] = {0.};
+  double n_fine_updates = 0.;
 
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    sys->R_same[m] = sys->bar_same[m] = 0.;
   for (int c = 0; c < 2; c++) {
     sys->ref[c] = calloc(COUNT, sizeof(struct reference));
     if (sys->ref[c] == NULL) error("Couldn't allocate the reference");
@@ -606,11 +701,10 @@ static void step_system(struct system *sys, int n_steps, struct outcome *out) {
       integertime_t ti_end_min = max_nr_timesteps;
       for (int i = 0; i < COUNT; i++) {
         struct part *p = &cell->hydro.parts[i];
-#ifdef SWIFT_DEBUG_CHECKS
         p->ti_drift = T;
         p->ti_kick = T;
-#endif
         radiation_snapshot_part_propagation(p, &engine);
+        set_dust_and_speed(p, step);
         ti_end_min = min(ti_end_min, get_integer_time_end(T, p->time_bin));
       }
       cell->hydro.ti_end_min = ti_end_min;
@@ -622,15 +716,17 @@ static void step_system(struct system *sys, int n_steps, struct outcome *out) {
         struct part *p = &sys->cells[c]->hydro.parts[i];
         if (part_is_active(p, &engine))
           radiation_end_gradient_propagation(p, &engine);
-#ifdef HAVE_CROSS_BIN_PENDING
         if (p->feedback_data.dt_active != 0.f) out->routed = 1;
-#endif
       }
 
     reference_pairs(sys);
     force_dispatch(sys);
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      out->R_same[m] += sys->R_same[m];
+      out->bar_pred[m] += sys->bar_same[m];
+      sys->R_same[m] = sys->bar_same[m] = 0.;
+    }
 
-#ifdef HAVE_CROSS_BIN_PENDING
     /* Every particle's pending against its brute-force deposits. */
     for (int c = 0; c < 2; c++)
       for (int i = 0; i < COUNT; i++) {
@@ -654,61 +750,134 @@ static void step_system(struct system *sys, int n_steps, struct outcome *out) {
                 mo->pending_dissipation_u, eP, eD, bar);
         }
       }
-#endif
 
-    /* End force on the active particles; close their reference sums. */
+    /* End force on the active particles; book L4 and its prediction. */
     for (int c = 0; c < 2; c++)
       for (int i = 0; i < COUNT; i++) {
         struct part *p = &sys->cells[c]->hydro.parts[i];
         struct reference *ri = &sys->ref[c][i];
         if (!part_is_active(p, &engine)) continue;
-        radiation_end_force_propagation(p, &engine);
-        const double m_dt = (double)p->mass * p->feedback_data.dt_prev;
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-          out->L_pred[m] += m_dt * ri->cross[m];
-          out->L_bar[m] += m_dt * 2. * ri->E_cross[m];
-          out->bar[m] += m_dt * SUM_ERR_UNITS(ri->n) * U_F32 * ri->S[m] +
-                         (double)p->mass * p->feedback_data.c_hyp *
-                             SUM_ERR_UNITS(ri->n_dep) * U_F32 * ri->SP[m];
-          ri->S[m] = ri->cross[m] = ri->E_cross[m] = 0.;
-          ri->Pt[m] = ri->Pd[m] = ri->SP[m] = ri->E_P[m] = 0.;
-#ifdef HAVE_CROSS_BIN_PENDING
+        double X0[ISRF_MOMENT_COUNT];
+        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) X0[m] = ledger_of(p, m);
+        const double abs_lw0 =
+            p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_absorbed;
+        const double inj_pe0 =
+            p->feedback_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected;
+        /* LW pending's absorbed share, from the state before end_force. */
+        double abs_pend_lw = 0.;
+        {
           const struct feedback_isrf_moment_data *mo =
-              &p->feedback_data.isrf_moment[m];
+              &p->feedback_data.isrf_moment[ISRF_MOMENT_LW];
+          const double a_lw = depth_of(p, ISRF_MOMENT_LW, 1);
+          const double c_p = p->feedback_data.c_hyp;
+          abs_pend_lw = -expm1(-a_lw) * c_p * mo->pending_dissipation_u +
+                        (1. - phi_of(a_lw)) * c_p * mo->pending_transport_u;
+        }
+
+        radiation_end_force_propagation(p, &engine);
+
+        const struct feedback_part_data *fd = &p->feedback_data;
+        const double c_p = fd->c_hyp;
+        const double mass = p->mass;
+        const double w = mass * fd->dt_prev / c_p;
+        const int fine = ri->diss_fine[0] != 0. || ri->div_fine[0] != 0.;
+        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+          const struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
           if (mo->pending_transport_u != 0.f ||
               mo->pending_dissipation_u != 0.f)
             error("particle %lld: pending not consumed", p->id);
-#endif
+          booked[m] += mass * (ledger_of(p, m) - X0[m]) / c_p;
+
+          const double phi_T = phi_of(depth_of(p, m, 1));
+          const double phi_E = phi_of(depth_of(p, m, 0));
+          out->R_cross[m] +=
+              w * (phi_T * (ri->diss_fine[m] + ri->diss_coarse[m]) -
+                   (ri->div_fine[m] + ri->div_coarse[m]));
+          out->R_H[m] += w * (phi_T - phi_E) * ri->diss_fine[m];
+          out->R_nophi[m] += w * (phi_E - 1.) * ri->diss_fine[m];
+          out->gross[m] += w * ri->S[m];
+          out->dep_diss[m] += w * phi_E * fabs(ri->diss_fine[m]);
+          out->bar[m] += w * SUM_ERR_UNITS(ri->n) * U_F32 * ri->S[m] +
+                         mass * SUM_ERR_UNITS(ri->n_dep) * U_F32 * ri->SP[m] +
+                         mass / c_p * 4. * U_F32 *
+                             (fabs(mo->cumulative_absorbed) +
+                              fabs(mo->cumulative_injected)) +
+                         mass / c_p * 8. * DBL_EPSILON * fabs(mo->u);
+          bar_legacy[m] += w * 2. * ri->E[m];
+          out->bar_pred[m] += w * 2. * ri->E_fine[m] * fabs(phi_T - phi_E);
+          ri->diss_fine[m] = ri->div_fine[m] = 0.;
+          ri->diss_coarse[m] = ri->div_coarse[m] = 0.;
+          ri->S[m] = ri->E[m] = ri->E_fine[m] = 0.;
+          ri->Pt[m] = ri->Pd[m] = ri->SP[m] = ri->E_P[m] = 0.;
+        }
+        if (fine) {
+          const double a_T = depth_of(p, ISRF_MOMENT_PE, 1);
+          const double a_E = depth_of(p, ISRF_MOMENT_PE, 0);
+          out->aH_half += 0.5 * (a_T - a_E);
+          n_fine_updates += 1.;
+        }
+
+        /* The PE injection gain equals the transferred share of LW's absorbed
+         * gain, pending included. */
+        if (cfg.H != 0.) {
+          const double a_lw = depth_of(p, ISRF_MOMENT_LW, 1);
+          const double H_dil = c_p / phys_const.const_speed_light_c * cfg.H;
+          const double f_edge =
+              (fp.band_edge_weight_lw - 1.) * H_dil * fd->dt_prev / a_lw;
+          const double abs_lw1 =
+              fd->isrf_moment[ISRF_MOMENT_LW].cumulative_absorbed;
+          const double inj_pe1 =
+              fd->isrf_moment[ISRF_MOMENT_PE].cumulative_injected;
+          const double err =
+              fabs((inj_pe1 - inj_pe0) - f_edge * (abs_lw1 - abs_lw0));
+          /* Two float additions per cumulative field: the update's and the
+           * pending's, each bounded by its own part. */
+          const double d_main = fabs(abs_lw1 - abs_lw0 - abs_pend_lw);
+          const double parts = fabs(abs_pend_lw) + d_main;
+          const double tbar =
+              4. * U_F32 *
+              (fabs(inj_pe1) + fabs(inj_pe0) +
+               fabs(f_edge) * (fabs(abs_lw1) + fabs(abs_lw0) + 2. * parts));
+          if (!is_finite_bits(err) || !(err <= tbar))
+            error("particle %lld: band-edge transfer off by %e, bar %e", p->id,
+                  err, tbar);
+          out->transfer_worst = max(out->transfer_worst, err / tbar);
         }
         ri->n = ri->n_dep = 0;
       }
 
-#ifdef HAVE_CROSS_BIN_PENDING
-    /* With the pending amounts, the ledger holds after every step. */
-    if (out->routed)
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        double in_flight = 0.;
-        for (int c = 0; c < 2; c++)
-          for (int i = 0; i < COUNT; i++) {
-            const struct part *p = &sys->cells[c]->hydro.parts[i];
-            const struct reference *ri = &sys->ref[c][i];
-            in_flight += (double)p->mass * p->feedback_data.c_hyp *
-                         SUM_ERR_UNITS(ri->n_dep) * U_F32 * ri->SP[m];
-          }
-        const double E = ledger(sys, m, 1, &abs_sum);
-        if (!(fabs(E - out->E0[m]) <= out->bar[m] + in_flight))
-          error("step %d moment %d: ledger with pending off by %e, bar %e",
-                step, m, E - out->E0[m], out->bar[m] + in_flight);
-      }
-#endif
+    /* L4 with the amounts in flight against its prediction, every step. */
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      double in_flight = 0., in_flight_bar = 0.;
+      for (int c = 0; c < 2; c++)
+        for (int i = 0; i < COUNT; i++) {
+          const struct part *p = &sys->cells[c]->hydro.parts[i];
+          const struct reference *ri = &sys->ref[c][i];
+          const struct feedback_isrf_moment_data *mo =
+              &p->feedback_data.isrf_moment[m];
+          in_flight += (double)p->mass * ((double)mo->pending_transport_u +
+                                          (double)mo->pending_dissipation_u);
+          in_flight_bar +=
+              (double)p->mass * SUM_ERR_UNITS(ri->n_dep) * U_F32 * ri->SP[m];
+        }
+      out->res[m] = booked[m] + in_flight;
+      out->pred[m] =
+          out->R_same[m] + (out->routed ? out->R_H[m] : out->R_cross[m]);
+      const double bar = out->bar[m] + in_flight_bar + out->bar_pred[m] +
+                         (out->routed ? 0. : bar_legacy[m]);
+      const double d = out->res[m] - out->pred[m];
+      if (!is_finite_bits(d) || !(fabs(d) <= bar))
+        error("step %d moment %d: L4 %e, predicted %e, off by %e, bar %e", step,
+              m, out->res[m], out->pred[m], d, bar);
+    }
   }
 
   if ((n_steps * dti_fine) % dti_coarse != 0)
     error("the case must end on a synchronised time");
 
+  if (n_fine_updates > 0.) out->aH_half /= n_fine_updates;
+
   out->min_u_coarse = DBL_MAX;
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    out->residual[m] = ledger(sys, m, 0, &abs_sum) - out->E0[m];
   for (int c = 0; c < 2; c++) {
     for (int i = 0; i < COUNT; i++) {
       const struct part *p = &sys->cells[c]->hydro.parts[i];
@@ -772,7 +941,7 @@ static void run_case(const char *label, int nr_nodes, const timebin_t *bins,
                      int n_bins, int two_levels, int small_first,
                      struct outcome *out) {
   static long long part_id = 0;
-  make_engine(nr_nodes, isrf_c_hyp_scheme_fixed_fraction, 1.e-2);
+  make_engine(nr_nodes, cfg.scheme, 1.e-2);
   srand(4321 + 17 * n_bins + 3 * two_levels + small_first);
   const double offset[3] = {1., 0., 0.};
   const enum fill_kind kinds[2] = {fill_random, fill_random};
@@ -785,15 +954,16 @@ static void run_case(const char *label, int nr_nodes, const timebin_t *bins,
   const int R = 1 << (bin_max - bins[0]);
   step_system(&sys, 2 * R, out);
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    if (!is_finite_bits(out->residual[m]) || !is_finite_bits(out->L_pred[m]) ||
+    if (!is_finite_bits(out->res[m]) || !is_finite_bits(out->R_cross[m]) ||
         !is_finite_bits(out->bar[m]) || !(out->bar[m] > 0.))
       error("%s moment %d: non-finite or empty sums", label, m);
     message(
-        "%s moment %d: residual %+.6e  closed form %+.6e  bar %.3e  (of E0: "
-        "%.3e, %.3e, %.3e) routed %d",
-        label, m, out->residual[m], out->L_pred[m], out->bar[m],
-        out->residual[m] / out->E0[m], out->L_pred[m] / out->E0[m],
-        out->bar[m] / out->E0[m], out->routed);
+        "%s m%d: L4 %+.4e pred %+.4e bars %.2e %.2e | of gross %.2e: leak "
+        "%+.2e, same-step %+.2e, Hubble %+.2e, no-phi %+.2e",
+        label, m, out->res[m], out->pred[m], out->bar[m], out->bar_pred[m],
+        out->gross[m], out->R_cross[m] / out->gross[m],
+        out->R_same[m] / out->gross[m], out->R_H[m] / out->gross[m],
+        out->R_nophi[m] / out->gross[m]);
   }
   clean_up(sys.cells[0]);
   clean_up(sys.cells[1]);
@@ -804,58 +974,97 @@ static const timebin_t bins_r2[2] = {1, 2};
 static const timebin_t bins_r4[2] = {1, 3};
 static const timebin_t bins_r124[3] = {1, 2, 3};
 
+/** The physics cases: name and knobs. */
+struct named_config {
+  const char *name;
+  struct case_config c;
+};
+static const struct named_config configs[] = {
+    {"s2 a=0", {isrf_c_hyp_scheme_fixed_fraction, 0., 0, 0, 0., 1.}},
+    {"s2 dust", {isrf_c_hyp_scheme_fixed_fraction, 1.5, 0, 0, 0., 1.}},
+    {"s2 Z-var", {isrf_c_hyp_scheme_fixed_fraction, 1.5, 1, 0, 0., 1.}},
+    {"s4 a=0", {isrf_c_hyp_scheme_kernel_local_reduced_flux, 0., 0, 1, 0., 1.}},
+    {"s4 Z-var",
+     {isrf_c_hyp_scheme_kernel_local_reduced_flux, 1.5, 1, 1, 0., 1.}},
+    {"s4 Z-var H",
+     {isrf_c_hyp_scheme_kernel_local_reduced_flux, 1.5, 1, 1, 1.e4, 1.3}}};
+#define N_CONFIGS ((int)(sizeof(configs) / sizeof(configs[0])))
+
 /**
- * @brief Legacy booking (several ranks): its residual is the closed-form
- * cross-bin leak, which is well above the round-off bar.
+ * @brief Legacy booking (several ranks), every physics case: L4 equals the
+ * closed-form per-owner leak, which is well above the round-off bar.
  */
 static void test_legacy_residual_is_closed_form(void) {
-  struct outcome out;
-  run_case("legacy R=4", 2, bins_r4, 2, 0, 1, &out);
-  if (out.routed) error("legacy R=4: a particle left state 0 on two ranks");
-  double resolved = 0.;
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    if (!(fabs(out.residual[m] - out.L_pred[m]) <= out.bar[m] + out.L_bar[m]))
-      error("legacy moment %d: residual %e is not the closed form %e (bar %e)",
-            m, out.residual[m], out.L_pred[m], out.bar[m] + out.L_bar[m]);
-    resolved = max(resolved, fabs(out.L_pred[m]) / out.bar[m]);
+  for (int k = 0; k < N_CONFIGS; k++) {
+    cfg = configs[k].c;
+    char label[96];
+    sprintf(label, "legacy %s R=4", configs[k].name);
+    struct outcome out;
+    run_case(label, 2, bins_r4, 2, 0, 1, &out);
+    if (out.routed) error("%s: a particle left state 0 on two ranks", label);
+    double resolved = 0.;
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      resolved = max(resolved, fabs(out.R_cross[m]) / out.bar[m]);
+    if (!(resolved > 10.)) error("%s: no moment has a resolvable leak", label);
   }
-  if (!(resolved > 10.)) error("legacy: no moment has a resolvable leak");
 }
 
 /**
- * @brief One rank, uniform c_hyp, a = 0: the cross-bin leak must vanish to
- * round-off at the synchronised end, in every geometry and depth split.
+ * @brief One rank, every physics case, geometry and depth split: L4 equals
+ * the same-step phi mismatch plus, at H != 0, the deposits' Hubble term.
  */
 static void test_routed_conserves(void) {
   const timebin_t *sets[3] = {bins_r2, bins_r4, bins_r124};
   const int n_bins[3] = {2, 2, 3};
-  for (int s = 0; s < 3; s++)
-    for (int two_levels = 0; two_levels < 2; two_levels++)
-      for (int small_first = 0; small_first < 2; small_first++) {
-        char label[64];
-        sprintf(label, "routed bins %d-%d levels %d first %d", sets[s][0],
-                sets[s][n_bins[s] - 1], two_levels + 1, small_first);
-        struct outcome out;
-        run_case(label, 1, sets[s], n_bins[s], two_levels, small_first, &out);
-        double resolved = 0.;
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-          if (!(fabs(out.residual[m]) <= out.bar[m]))
-            error("%s moment %d: residual %e above its round-off bar %e", label,
-                  m, out.residual[m], out.bar[m]);
-          resolved = max(resolved, fabs(out.L_pred[m]) / out.bar[m]);
+  const char *set_names[3] = {"1-2", "1-3", "1-2-3"};
+  for (int k = 0; k < N_CONFIGS; k++) {
+    cfg = configs[k].c;
+    for (int s = 0; s < 3; s++)
+      for (int two_levels = 0; two_levels < 2; two_levels++)
+        for (int small_first = 0; small_first < 2; small_first++) {
+          char label[128];
+          sprintf(label, "routed %s bins %s levels %d first %d",
+                  configs[k].name, set_names[s], two_levels + 1, small_first);
+          struct outcome out;
+          run_case(label, 1, sets[s], n_bins[s], two_levels, small_first, &out);
+          if (!out.routed) error("%s: the booking stayed off", label);
+          double leak = 0., nophi = 0., hubble = 0.;
+          for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+            const double bar = out.bar[m] + out.bar_pred[m];
+            leak = max(leak, fabs(out.R_cross[m]) / bar);
+            nophi = max(nophi, fabs(out.R_nophi[m]) / bar);
+            hubble = max(hubble, fabs(out.R_H[m]) / bar);
+          }
+          if (!(leak > 10.))
+            error("%s: no moment has a resolvable leak to remove", label);
+          if (cfg.kappa0 > 0. && !(nophi > 10.))
+            error("%s: dropping the phi weight would not be seen", label);
+          if (cfg.H != 0.) {
+            message(
+                "%s: Hubble term %.1f bars; PE |R_H| / deposit dissipation "
+                "%.3e against mean a_H/2 %.3e; band-edge worst %.2f of bar",
+                label, hubble,
+                fabs(out.R_H[ISRF_MOMENT_PE]) / out.dep_diss[ISRF_MOMENT_PE],
+                out.aH_half, out.transfer_worst);
+            if (!(hubble > 10.))
+              error("%s: the Hubble term is not resolved", label);
+          }
         }
-        if (!(resolved > 10.))
-          error("%s: no moment has a resolvable leak to remove", label);
-      }
+  }
 }
 
 /**
  * @brief Report only: a hot coarse cell next to a cold, twice heavier fine
- * cell, dissipation only. Smallest u of the coarse particles, both bookings.
+ * cell. Smallest coarse u, both bookings, against the coarse Courant number.
+ *
+ * @param h_coarse Smoothing length of the coarse cell, in spacings.
+ * @param h_fine Smoothing length of the fine cell, in spacings.
+ * @param time_base Sets the steps: bins 1 and 4 have 2 and 16 time bases.
  */
-static void test_report_adverse_positivity(void) {
+static void report_adverse_positivity(double h_coarse, double h_fine,
+                                      double time_base) {
   for (int nr_nodes = 2; nr_nodes >= 1; nr_nodes--) {
-    make_engine(nr_nodes, isrf_c_hyp_scheme_fixed_fraction, 1.e-2);
+    make_engine(nr_nodes, cfg.scheme, time_base);
     srand(99);
     long long part_id = 1000000;
     const double offset[3] = {1., 0., 0.};
@@ -865,117 +1074,50 @@ static void test_report_adverse_positivity(void) {
     const double origin[3] = {0., 0., 0.};
     sys.h_split = 0.f;
     sys.two_levels = 0;
-    sys.cells[0] = make_cell(origin, 2.4696, 0, coarse, 1, fill_hot, &part_id);
-    sys.cells[1] = make_cell(offset, 2.4696, 0, fine, 1, fill_cold, &part_id);
+    sys.cells[0] =
+        make_cell(origin, h_coarse, 0, coarse, 1, fill_hot, &part_id);
+    sys.cells[1] = make_cell(offset, h_fine, 0, fine, 1, fill_cold, &part_id);
     for (int k = 0; k < 2; k++) {
       sys.cells[k]->hydro.ti_old_part = 0;
       runner_do_hydro_sort(runner, sys.cells[k], 0x1FFF, 0, 0, 0, 0);
       prepare_sph(sys.cells[k]);
     }
+    const double dt_c = get_timestep(4, time_base);
+    const double courant = 1. * dt_c / (h_coarse / CELL_N);
     struct outcome out;
     step_system(&sys, 8, &out);
     message(
-        "adverse geometry (report only), %s booking: min u of the hot coarse "
-        "cell %+.4e, PE residual %+.3e of E0",
-        nr_nodes > 1 ? "legacy" : "routed", out.min_u_coarse,
-        out.residual[ISRF_MOMENT_PE] / out.E0[ISRF_MOMENT_PE]);
+        "adverse (report only), %s, h %.2f/%.2f, kappa %.1f, c dt/h of the "
+        "coarse %.2f: min u of the hot coarse cell %+.4e",
+        nr_nodes > 1 ? "legacy" : "routed", h_coarse, h_fine, cfg.kappa0,
+        courant, out.min_u_coarse);
     clean_up(sys.cells[0]);
     clean_up(sys.cells[1]);
   }
 }
 
-#ifdef HAVE_CROSS_BIN_PENDING
-
-/**
- * @brief Fork, run @p fn, and require that it stops with error() and prints
- * @p expected_text.
- *
- * @param label Message label.
- * @param fn The function to run in the child.
- * @param expected_text Substring of the expected error message.
- */
-static void assert_aborts_with_error(const char *label, void (*fn)(void),
-                                     const char *expected_text) {
-  char path[] = "crossbinXXXXXX";
-  const int fd = mkstemp(path);
-  if (fd < 0) error("mkstemp() failed in %s.", label);
-  close(fd);
-  const pid_t pid = fork();
-  if (pid == 0) {
-    if (freopen(path, "w", stderr) == NULL) _exit(43);
-    fn();
-    _exit(42);
-  } else if (pid > 0) {
-    int status;
-    waitpid(pid, &status, 0);
-    const int failed = (WIFEXITED(status) && WEXITSTATUS(status) == 1) ||
-                       (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT);
-    char text[4096];
-    size_t n = 0;
-    FILE *f = fopen(path, "r");
-    if (f != NULL) {
-      n = fread(text, 1, sizeof(text) - 1, f);
-      fclose(f);
+/** @brief The adverse-geometry scan of #report_adverse_positivity. */
+static void test_report_adverse_positivity(void) {
+  const double kappas[2] = {0., 1.5};
+  const double time_bases[4] = {2.5e-3, 5.e-3, 1.e-2, 2.e-2};
+  for (int k = 0; k < 2; k++) {
+    cfg = configs[0].c;
+    cfg.kappa0 = kappas[k];
+    for (int t = 0; t < 4; t++) {
+      report_adverse_positivity(2.4696, 2.4696, time_bases[t]);
+      report_adverse_positivity(2.4696, 0.8, time_bases[t]);
     }
-    text[n] = '\0';
-    unlink(path);
-    if (!failed) error("%s: expected error(), got status %d", label, status);
-    if (strstr(text, expected_text) == NULL)
-      error("%s: wrong message: %s", label, text);
-  } else {
-    error("fork() failed in %s.", label);
   }
 }
 
 /**
- * @brief A cross-bin deposit with dust (a > 0) on one time bin, which the
- * a = 0 booking cannot weight.
- *
- * @param dusty_bin The time bin whose particles get kappa = 1.
- */
-static void run_dusty_deposit(int dusty_bin) {
-  make_engine(1, isrf_c_hyp_scheme_fixed_fraction, 2.5e-3);
-  srand(7);
-  long long part_id = 2000000;
-  const double offset[3] = {1., 0., 0.};
-  const enum fill_kind kinds[2] = {fill_random, fill_random};
-  struct system sys;
-  make_system(&sys, offset, 1, 0, bins_r4, 2, kinds, &part_id);
-  engine.ti_current = 4;
-  engine.max_active_bin = get_max_active_bin(4);
-  for (int c = 0; c < 2; c++) {
-    sys.cells[c]->hydro.ti_old_part = 4;
-    sys.cells[c]->hydro.ti_end_min = 4;
-    for (int i = 0; i < COUNT; i++) {
-      struct part *p = &sys.cells[c]->hydro.parts[i];
-#ifdef SWIFT_DEBUG_CHECKS
-      p->ti_drift = 4;
-      p->ti_kick = 4;
-#endif
-      radiation_snapshot_part_propagation(p, &engine);
-      if (p->time_bin == dusty_bin)
-        for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
-          p->feedback_data.isrf_operator[o].kappa = 1.f;
-      if (part_is_active(p, &engine))
-        radiation_end_gradient_propagation(p, &engine);
-    }
-  }
-  force_dispatch(&sys);
-}
-
-/** @brief #run_dusty_deposit with dust on the finer members only. */
-static void run_dusty_fine_deposit(void) { run_dusty_deposit(bins_r4[0]); }
-
-/** @brief #run_dusty_deposit with dust on the coarser members only. */
-static void run_dusty_coarse_deposit(void) { run_dusty_deposit(bins_r4[1]); }
-
-/**
- * @brief The sentinel: -1 inactive and dt_prev active on one rank under
- * scheme 2; 0 on several ranks and under scheme 4. A deposit at a > 0 stops.
+ * @brief The sentinel: -1 inactive and dt_prev active on one rank under both
+ * schemes; 0 on several ranks.
  */
 static void test_sentinel_states(void) {
   const int schemes[2] = {isrf_c_hyp_scheme_fixed_fraction,
                           isrf_c_hyp_scheme_kernel_local_reduced_flux};
+  cfg = configs[0].c;
   for (int s = 0; s < 2; s++)
     for (int nr_nodes = 1; nr_nodes <= 2; nr_nodes++) {
       make_engine(nr_nodes, schemes[s], 2.5e-3);
@@ -996,7 +1138,7 @@ static void test_sentinel_states(void) {
         if (part_is_active(&p[k], &engine))
           radiation_end_gradient_propagation(&p[k], &engine);
       }
-      const int routed = s == 0 && nr_nodes == 1;
+      const int routed = nr_nodes == 1;
       const float want_active = routed ? p[0].feedback_data.dt_prev : 0.f;
       const float want_inactive = routed ? -1.f : 0.f;
       if (p[0].feedback_data.dt_active != want_active ||
@@ -1006,14 +1148,8 @@ static void test_sentinel_states(void) {
               schemes[s], nr_nodes, p[0].feedback_data.dt_active,
               p[1].feedback_data.dt_active, want_active, want_inactive);
     }
-  assert_aborts_with_error("dusty fine member deposit", run_dusty_fine_deposit,
-                           "needs a = 0");
-  assert_aborts_with_error("dusty coarse member deposit",
-                           run_dusty_coarse_deposit, "needs a = 0");
-  message("sentinel states and the a > 0 stop: as expected");
+  message("sentinel states: as expected");
 }
-
-#endif /* HAVE_CROSS_BIN_PENDING */
 
 int main(int argc, char *argv[]) {
 
@@ -1032,12 +1168,10 @@ int main(int argc, char *argv[]) {
   cache_init(&runner->cj_cache, 512);
 #endif
 
-#ifdef HAVE_CROSS_BIN_PENDING
-  test_sentinel_states();
-#endif
   test_legacy_residual_is_closed_form();
-  test_report_adverse_positivity();
   test_routed_conserves();
+  test_report_adverse_positivity();
+  test_sentinel_states();
 
 #ifdef WITH_VECTORIZATION
   cache_clean(&runner->ci_cache);
@@ -1049,6 +1183,11 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char *argv[]) {
+  printf(
+      "SKIPPED: needs FEEDBACK_GEAR, SPHENIX_SPH, the cross-bin pending fields "
+      "and --enable-debugging-checks.\n");
+  return 0;
+}
 
-#endif /* FEEDBACK_GEAR && SPHENIX_SPH */
+#endif
