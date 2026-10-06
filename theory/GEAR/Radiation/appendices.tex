@@ -11,12 +11,13 @@
 
 Every active star's ionizing photon rate $\dot N_{\rm ion}$ (the budget
 spent in Section~\ref{sec:photon-budget} of the algorithm document)
-comes from
-\code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_
-rate\_fit} (\code{src/feedback/GEAR/radiation.c}), used both directly
-for individual (non-SSP) star particles and to build the IMF-integrated
-lookup table population stars read from. Unlike a simple empirical
-$\dot N_{\rm ion}(M)$ fit, this derives $\dot N_{\rm ion}$ from the
+comes from \code{radiation\_get\_star\_ionization\_rate}
+(\code{src/feedback/GEAR/radiation.h}), which interpolates the
+$(M,Z)$-dependent \code{Data/Radiation} table of \code{pychem}. SWIFT does
+not evaluate the blackbody chain of this appendix. The chain gives the
+blackbody estimate of $\dot N_{\rm ion}$ from the stellar mass alone.
+Unlike a simple empirical
+$\dot N_{\rm ion}(M)$ fit, it derives $\dot N_{\rm ion}$ from the
 star's own blackbody spectrum, via a mass $\to$ radius $\to$
 luminosity $\to$ effective temperature chain:
 \begin{align}
@@ -40,8 +41,7 @@ luminosity $\to$ effective temperature chain:
   \label{eq:stefan-boltzmann}
 \end{align}
 i.e.\ a piecewise power-law mass--radius and mass--luminosity relation
-(\code{radiation\_get\_individual\_star\_radius},
-\code{radiation\_get\_individual\_star\_luminosity}), then $T_{\rm eff}$
+then $T_{\rm eff}$
 from the Stefan--Boltzmann law applied to $L$ and $R$ directly (not a
 separate mass--temperature fit: see the note at the end of this
 section). $\dot N_{\rm ion}$ is then the photon-number flux of a
@@ -56,8 +56,8 @@ $h\nu_0=13.6\,$eV:
 the standard Planck photon-number integral normalized so the
 $15/\pi^4$ prefactor makes the \emph{bolometric} photon rate exact in
 the $x_0\to0$ limit. The incomplete integral in
-Eq.~\ref{eq:planck-photon-rate} has no closed form, so the code
-evaluates it via the standard series expansion
+Eq.~\ref{eq:planck-photon-rate} has no closed form, so it is
+evaluated via the standard series expansion
 \begin{equation}
   \int_{x_0}^\infty \frac{x^2}{e^x-1}\,dx =
   \sum_{n=1}^{\infty} \frac{e^{-nx_0}}{n}
@@ -71,36 +71,17 @@ $x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output, as
 happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
 ion}=0$ is returned directly rather than evaluating the series.
 
-\textbf{Note: two independent mass--temperature relations coexist and
-disagree.}
-\code{radiation\_get\_individual\_star\_temperature} is a separate,
-piecewise mass--temperature fit ($3500\,{\rm K}\,(M/M_\odot)^{0.5}$
-below $1\,M_\odot$, $5800\,{\rm K}\,(M/M_\odot)^{0.5}$ up to
-$8\,M_\odot$, $25000\,{\rm K}\,(M/M_\odot/20)^{0.1}$ above), \emph{not}
-used by Eq.~\ref{eq:stefan-boltzmann} above, which derives $T_{\rm
-eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. A grep confirms
-\code{radiation\_get\_individual\_star\_temperature} has zero call
-sites anywhere in \code{src/}: genuinely dead code, not merely
-redundant. Evaluated both relations (plus the $R(M)$/$L(M)$ fits the
-Stefan--Boltzmann path depends on) across $0.1$--$150\,M_\odot$: they
-agree only near the two piecewise-boundary anchors ($\approx1\,M_\odot$,
-$\approx8\,M_\odot$, almost certainly tuned to known reference points
-like the Sun's $T_{\rm eff}$) and diverge by a factor
-$\sim1.5$--$2.7\times$ everywhere else, worst in the OB-star range that
-dominates ionizing photon production. The Stefan--Boltzmann path (the
-one actually used) also saturates at a fixed $\approx77{,}300\,$K for
+\textbf{Note: the blackbody chain saturates at high mass.}
+The Stefan--Boltzmann path gives a fixed $T_{\rm eff}\approx77{,}300\,$K for
 every mass above $\approx54\,M_\odot$: a structural artifact of the
 mass--luminosity fit turning linear ($L\propto M$) at exactly the mass
 the mass--radius fit is already $R\propto M^{0.5}$, making $L/R^2$ (and
 hence $T_{\rm eff}$) mass-independent there by construction, not
-physical intent. \textbf{Not worth reconciling in place}: both fits are
-single-metallicity piecewise power laws with no $(M,Z)$ dependence at
-all, which is the actual limitation regardless of which temperature
-relation is used. This entire empirical-fit layer (radius, luminosity,
-temperature) is intended to be replaced by extending \texttt{pychem}
-(\texttt{\textasciitilde/programs/pychem/}, already the source of this
-project's GEAR chemical-yield tables) to emit proper
-$(M,Z)$-dependent stellar tables: this is a separate piece of work, tracked in the open items of the
-GEAR radiation logbook. When it
-lands, the unused \code{radiation\_get\_individual\_star\_temperature}
-should simply be deleted.
+physical intent. Both fits are single-metallicity piecewise power laws
+with no $(M,Z)$ dependence. SWIFT therefore reads the luminosity, the
+effective temperature and the ionizing photon rate from the
+$(M,Z)$-dependent \code{pychem} stellar tables
+(\code{radiation\_get\_star\_luminosity},
+\code{radiation\_get\_star\_teff},
+\code{radiation\_get\_star\_ionization\_rate}), and no empirical radius,
+luminosity or temperature fit remains in \code{src/}.
