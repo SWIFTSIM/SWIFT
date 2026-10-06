@@ -92,7 +92,7 @@ Each active star's momentum injection rate is
   \dot p_{\rm rad} = \frac{L_{\rm bol}}{c}\,(1-e^{-\tau_{\rm NUV}})\,(1+\tau_{\rm IR}),
   \label{eq:rp-momentum-rate}
 \end{equation}
-implemented (commit \texttt{92399e7ad}): the
+implemented: the
 $(1-e^{-\tau_{\rm NUV}})$ factor is the fraction of the star's non-ionizing
 continuum actually absorbed before dust reprocessing, using
 $\kappa_{\rm NUV}=1800\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ (the value where
@@ -121,16 +121,15 @@ codebase's $\kappa_{\rm IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$
 lineages sharing the same functional form but are no longer the
 open question: \citet{Hopkins2020} is confirmed as the actual source.
 
-\textbf{Fixed (commit \texttt{92399e7ad}): a term this codebase
-was missing.} \citet{Hopkins2020} \S4.4, footnote 16 (also
+\textbf{The momentum-coupling factor.} \citet{Hopkins2020} \S4.4, footnote 16 (also
 \citealt{Hopkins2014}, Appendix~A) gives the full LEBRON momentum-coupling
 formula as $\dot p = \tilde\tau\,L_{\rm bol}/c$, with
 $\tilde\tau = (1-e^{-\tau_{\rm single}})\,(1+\tau_{\rm eff,IR})$,
-\emph{not} simply $(1+\tau_{\rm IR})$ as this codebase implemented before
-that commit. The $(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
+\emph{not} simply $(1+\tau_{\rm IR})$ as it would be without the first factor.
+The $(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
 \emph{input} (non-ionizing UV/optical) luminosity actually absorbed before
-reaching the dust that reprocesses it into the trapped IR term: the old
-formula implicitly assumed $\tau_{\rm single}\to\infty$ (full absorption),
+reaching the dust that reprocesses it into the trapped IR term: the bare
+$(1+\tau_{\rm IR})$ form implicitly assumes $\tau_{\rm single}\to\infty$ (full absorption),
 which only holds deep in a dense cloud, over-estimating direct/single-
 scattering radiation pressure at the production resolution this codebase
 targets (10\,$M_\odot$ to a few $10^4\,M_\odot$ per gas particle), where
@@ -201,8 +200,7 @@ the local gas density times an effective path length: the kernel
 support radius $h_\star\gamma_k$ (a floor: always included, not just
 a fallback) plus the Sobolev length $\rho/|\nabla\rho|$, the
 characteristic distance over which the density itself changes by a
-factor of $e$, itself capped at $h_\star\gamma_k$ (\textbf{implemented,
-commit \code{9fa74a666}}, see below). $\rho_\star$ is
+factor of $e$, itself capped at $h_\star\gamma_k$ (see below). $\rho_\star$ is
 \code{enrichment\_weight} (the star's
 own SPH-averaged local gas density, already computed by the regular
 enrichment density loop, reused here rather than a separate
@@ -225,23 +223,19 @@ $\rho_\star(h_\star\gamma_k + \ell_{\rm Sobolev})$: same
 floor-plus-Sobolev-length sum, just a slightly different (arguably
 more physically motivated, since it is the actual SPH kernel support
 radius rather than a generic mass/density cube root) floor term.
-\textbf{One correction to an earlier assumption in this discussion}:
-FIRE is not confirmed to cap the $\rho/|\nabla\rho|$ term at the
+\textbf{Caveat:} FIRE is not confirmed to cap the $\rho/|\nabla\rho|$ term at the
 smoothing length; the formula as quoted in \citet{Hopkins2020} \S4.4
 is a plain sum, no $\min(\cdot)$: i.e.\ no cap is visible in this
 specific paper. This may be in \citet{Hopkins2018} (their ``Paper~I'',
 not yet checked) or a later code update; not resolved. So the cap in
 Eq.~\ref{eq:rp-sobolev} is a robustness \emph{improvement over} what
 \citet{Hopkins2020} documents, not a correction to match it, adopted
-anyway (\textbf{implemented, commit \code{9fa74a666}}) once the
-uncapped Sobolev length was found to produce a hard discontinuity: an
-earlier interim version of the code (since removed) used a hard
-ternary that dropped $\ell_{\rm Sobolev}$ to exactly 0 below a
-noise-floor threshold on $|\nabla\rho_\star|$ instead of capping it,
-growing arbitrarily large approaching that floor from above and then
-jumping discontinuously to 0 the instant $|\nabla\rho_\star|$ crossed
-below it, consequential once the absorption factor
-(Section~\ref{sec:rp-momentum}) made $\tau_{\rm IR}/\tau_{\rm NUV}$ feed
+because the uncapped Sobolev length has a hard discontinuity. Suppose
+$\ell_{\rm Sobolev}$ were set to exactly 0 below a noise-floor threshold on
+$|\nabla\rho_\star|$ instead of being capped. It would grow without bound as
+$|\nabla\rho_\star|$ approaches that floor from above, and then jump to 0 at
+the floor. The jump matters because the absorption factor
+(Section~\ref{sec:rp-momentum}) feeds $\tau_{\rm IR}/\tau_{\rm NUV}$ into
 an exponential. The $\min(\cdot)$ form in Eq.~\ref{eq:rp-sobolev} removes
 that discontinuity (the minimum of two continuous functions is itself
 continuous) and needs no separate noise-floor constant.
@@ -268,11 +262,9 @@ $\times\,a$ conversion applied). The result accumulates into
 the top-level \code{xpj->feedback\_data.delta\_p} used for
 supernova/wind momentum (\code{feedback\_struct.h}), applied separately
 in \code{feedback\_update\_part\_radiation}
-(\code{feedback\_data\_iact.h}: see the bug fixed in the HII
-photoionization logbook's bugs-and-fixes section,
-\code{hit\_by\_radiation} was never actually
-set until that fix, so this accumulated momentum was silently
-discarded every step until then).
+(\code{radiation\_iact.h:320}). The flag \code{hit\_by\_radiation} is
+set where the momentum is accumulated (\code{radiation\_iact.h:249}), and the
+momentum is applied only to flagged particles.
 
 \subsection{Tier 2: dynamical shell-expansion validation}
 \label{sec:rp-shell-tier2}
@@ -312,12 +304,12 @@ combined radiation-plus-gas-pressure problem.
 Unlike \citet{KrumholzMatzner2009}'s constant $f_{\rm trap}$, this
 codebase's is not constant: it depends on the star's own local
 SPH-kernel gas column (Sec.~\ref{sec:rp-sobolev}), which changes as
-radiation pressure empties the region around the star. The check script
-measures it directly per snapshot (from debug-gated
+radiation pressure empties the region around the star. The factor
+can be measured directly per snapshot (from the debug-gated
 \code{EnrichmentWeight}/\code{GradRhoStar}/\code{ZStar} star output
-fields, \code{src/stars/GEAR/stars\_io.h}) rather than assuming a
-literature fiducial value, and reports how much it drifts over a run --
-this tests, rather than assumes, whether the star's adaptive smoothing
+fields, \code{src/stars/GEAR/stars\_io.h}) instead of assuming a
+literature fiducial value. Its drift over a run then tests, rather than
+assumes, whether the star's adaptive smoothing
 length keeps its local coupling tracking the swept-up shell as the
 interior cavity grows.
 
