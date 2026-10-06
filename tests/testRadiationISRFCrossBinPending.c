@@ -928,10 +928,12 @@ static void assert_aborts_with_error(const char *label, void (*fn)(void),
 }
 
 /**
- * @brief A cross-bin deposit from a dusty fine member (a > 0), which the a = 0
- * booking cannot weight.
+ * @brief A cross-bin deposit with dust (a > 0) on one time bin, which the
+ * a = 0 booking cannot weight.
+ *
+ * @param dusty_bin The time bin whose particles get kappa = 1.
  */
-static void run_dusty_fine_deposit(void) {
+static void run_dusty_deposit(int dusty_bin) {
   make_engine(1, isrf_c_hyp_scheme_fixed_fraction, 2.5e-3);
   srand(7);
   long long part_id = 2000000;
@@ -951,14 +953,21 @@ static void run_dusty_fine_deposit(void) {
       p->ti_kick = 4;
 #endif
       radiation_snapshot_part_propagation(p, &engine);
-      for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
-        p->feedback_data.isrf_operator[o].kappa = 1.f;
+      if (p->time_bin == dusty_bin)
+        for (int o = 0; o < ISRF_OPERATOR_COUNT; o++)
+          p->feedback_data.isrf_operator[o].kappa = 1.f;
       if (part_is_active(p, &engine))
         radiation_end_gradient_propagation(p, &engine);
     }
   }
   force_dispatch(&sys);
 }
+
+/** @brief #run_dusty_deposit with dust on the finer members only. */
+static void run_dusty_fine_deposit(void) { run_dusty_deposit(bins_r4[0]); }
+
+/** @brief #run_dusty_deposit with dust on the coarser members only. */
+static void run_dusty_coarse_deposit(void) { run_dusty_deposit(bins_r4[1]); }
 
 /**
  * @brief The sentinel: -1 inactive and dt_prev active on one rank under
@@ -999,6 +1008,8 @@ static void test_sentinel_states(void) {
     }
   assert_aborts_with_error("dusty fine member deposit", run_dusty_fine_deposit,
                            "needs a = 0");
+  assert_aborts_with_error("dusty coarse member deposit",
+                           run_dusty_coarse_deposit, "needs a = 0");
   message("sentinel states and the a > 0 stop: as expected");
 }
 

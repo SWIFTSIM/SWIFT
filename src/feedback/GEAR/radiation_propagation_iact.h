@@ -553,7 +553,7 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * may take its rate, the coarser one gets its share as pending amounts.
  *
  * The coarser share covers the finer step, divided by c_hyp. It carries no
- * relaxation factor, so the finer member must have a = 0.
+ * relaxation factor, so both members must have a = 0.
  *
  * @param dx Comoving separation vector (pi - pj).
  * @param r_inv Inverse comoving particle separation.
@@ -585,12 +585,13 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
     float a_factor_comoving_to_physical, float H, int i_is_fine, int fine_rate,
     float dt_fine) {
 
-  const struct feedback_isrf_operator_data *op_fine = i_is_fine ? op_i : op_j;
-  if (op_fine->kappa != 0.f || H != 0.f)
+  /* The coarser member's update weights pending as if present at its step
+   * start, which is exact only at a = 0 too. */
+  if (op_i->kappa != 0.f || op_j->kappa != 0.f || H != 0.f)
     error(
         "The cross-bin pending deposit needs a = 0 (no dust, no expansion): "
-        "the finer member has kappa %e, H %e.",
-        op_fine->kappa, H);
+        "kappa %e and %e, H %e. Use Z = 0, or the kernel_local scheme.",
+        op_i->kappa, op_j->kappa, H);
 
   /* The coarser side is formed with c_hyp = 1, which makes it c-free. */
   const float cf_i = i_is_fine ? c_i : 1.f;
