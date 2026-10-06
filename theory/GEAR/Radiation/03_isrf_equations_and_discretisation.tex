@@ -197,7 +197,7 @@ Per moment, \code{struct feedback\_isrf\_moment\_data}
 \code{u\_min\_since\_snapshot} (\code{:123}), \code{cumulative\_injected}
 (\code{:127}) and \code{cumulative\_absorbed} (\code{:131}).
 
-The double width of $u$ and $u_{\rm prev}$ is load-bearing and the code states why
+The double width of $u$ and $u_{\rm prev}$ is load-bearing, as its comment explains
 (\code{feedback\_struct.h:94-96}): the per-step relaxation depth
 $\mathcal{A}$ can be a few $10^{-8}$, and $1-\mathcal{A}$ at that scale is not
 distinguishable in a 24-bit mantissa. Every other accumulator stays float because
@@ -251,7 +251,8 @@ Per particle, in \code{struct feedback\_part\_data}: \code{max\_ngb\_time\_bin}
 $h$-iteration's kernel; \code{rho\_prev} (float, \code{:199}), a
 \textbf{comoving} density snapshot seeded to $1.0$ at first init and never left
 at zero (\code{radiation\_isrf.c:111}, \code{:146}); \code{c\_hyp} (float,
-\code{:206}), physical; \code{dt\_prev} (float, \code{:210}), this particle's own
+\code{feedback\_struct.h:206}), physical; \code{dt\_prev} (float,
+\code{feedback\_struct.h:210}), this particle's own
 \textbf{physical} timestep, cached raw and unfloored
 (\code{radiation\_isrf.c:197}); and the four tag fields
 \code{ISRF\_last\_touch\_ti}, \code{is\_illuminated\_ISRF},
@@ -476,7 +477,7 @@ flux is already reduced, so $\hat f = |\tilde{\boldsymbol{F}}|/u$.
 other than the star source. $\kappa_o$ is the band mass opacity times the local
 physical density (\code{radiation\_isrf.c:1001-1003}), with no column.
 Section~\ref{sec:isrf-eqdisc-extinction}'s extinction is a separate,
-independently computed quantity and the code states the two are not
+independently computed quantity and the two are not
 interchangeable (\code{feedback\_struct.h:140-143}).
 
 \paragraph{Cosmological terms.} Exactly \emph{one} power of $H$ appears, in both
@@ -956,13 +957,14 @@ flux $\tilde{\boldsymbol{F}}$. Any other value is an \code{error()} at parse tim
 dispatch (\code{radiation\_isrf.c:191-196}, \code{:302-306}) and on a restart,
 where the restored value is checked separately because the flat restart read
 bypasses the parser (\code{feedback\_common.c:1705-1715}); a restart written
-with another scheme cannot be resumed. Neither can a restart that stores the
-true flux: this code would
-read it as the reduced flux, wrong by a factor $c_{\rm hyp}$. The restart stream
-therefore starts with a marker block naming the stored flux form, and a file
-without it, or with another value, stops the run
-(\code{feedback\_common.c:1647-1653}, \code{:1679-1689}). A run is rerun, never
-resumed, across that change.
+with a removed scheme cannot be resumed. A restart that stores the true flux
+cannot be resumed either, because this code would read it as the reduced flux,
+wrong by a factor $c_{\rm hyp}$. The restart stream therefore starts with a
+marker block naming the stored flux form, and a file without it, or with
+another value, stops the run
+(\code{feedback\_common.c:1647-1653}, \code{:1679-1689}). A restart file
+written by an older code, which stores the true flux and has no marker, stops
+the run, so such a run is rerun, never resumed.
 
 With $h_{\rm phys} = a\, h$ (note: \emph{not} $\gamma_K h$) and $dt_{\max}(i)$
 the physical step at \code{max\_ngb\_time\_bin}:
@@ -1598,36 +1600,4 @@ something the code does not do. The equations in this section follow the code.
     \code{:532} and \code{:770}. The same doxygen gives
     $\mathcal{A} = c_{\rm hyp}(\kappa + H/c)dt$, omitting $\lambda_m$; the code
     is Equation~(\ref{eq:isrfd-depth-u}).
-  \item The former comment of \code{cumulative\_absorbed} in
-    \code{feedback\_struct.h} (\code{c158b5c41:280-281}, since removed) gave
-    $\mathcal{A} = (c_{\rm hyp}\kappa + H)\code{dt\_prev}$ for the
-    ledger: no $c_{\rm hyp}/c$ dilation on $H$, and
-    no $\lambda_m$. The code is Equation~(\ref{eq:isrfd-depth-u}).
-  \item The former comment of \code{radiation\_end\_gradient\_propagation}
-    (\code{e8256c00b:radiation\_isrf.c}, lines 1175-1176, since removed) wrote the
-    true-flux equation as
-    $d\boldsymbol{F}/dt = -\boldsymbol{F}/\tau - H\boldsymbol{F}
-    - (\mathsf{D}/\tau)\nabla u$ with $\mathsf{D}/\tau = c_{\rm hyp}^2$. In the
-    code the spatial term is the M1 pressure-tensor divergence
-    (\code{radiation\_propagation\_iact.h:298-326}) and $\mathsf{D}$ is the
-    closure tensor, not a diffusion coefficient. That doxygen form is also
-    grey-only, with no $\lambda_m$.
-  \item Stale output-path references: the former comments of
-    \code{feedback\_struct.h} (\code{c158b5c41:146}, \code{:159} and \code{:172},
-    since removed) cited \code{tracers\_io.h} for the snapshot
-    fields. The registrations are in fact in
-    \code{src/feedback/GEAR\_thermal/feedback\_io.h}.
-  \item The former comments of \code{radiation\_end\_force\_propagation}
-    (\code{e8256c00b:radiation\_isrf.c}, lines 697-698 and 866-867, since
-    removed) said of the per-moment band-edge weight that ``1 would recover the
-    grey, comoving-edge result this replaces''. True for \code{ISRF\_MOMENT\_PE}
-    and \code{ISRF\_MOMENT\_LW}; \textbf{false} for
-    \code{ISRF\_MOMENT\_LW\_PHOTON}, whose grey value is 0 by
-    Equation~(\ref{eq:isrfd-lambda-N}).
-  \item The former comment of \code{ngb\_mean\_abs\_u\_V} in
-    \code{feedback\_struct.h} (\code{c158b5c41:328}, since removed) said it is
-    zeroed ``alongside \code{div\_specific\_flux}''. They are zeroed in
-    different places: \code{ngb\_mean\_abs\_u\_V} every $h$-iteration at
-    \code{radiation\_isrf.c:281}, \code{div\_specific\_flux} once per step at
-    \code{radiation\_isrf.c:786}.
 \end{enumerate}
