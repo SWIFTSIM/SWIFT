@@ -60,30 +60,58 @@ GEARChemistry:
   diffusion_coefficient: 1e-3
 
 GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012.h5       # Cloudy table name
-  with_UV_background: 0                        # No metagalactic background
-  redshift: -1                                 # Time-based redshift
-  with_metal_cooling: 1                        # Required by dust chemistry, see README
-  primordial_chemistry: 2                      # H, He and H2 network
-  H2_self_shielding: 3                         # Local Jeans length, run.sh override
-  initial_nHII_to_nH_ratio: 1e-8               # Residual ionization, see README
-  initial_nH2I_to_nH_ratio: 5e-10              # run.sh override, sets the H2 column
-  self_shielding_method: 0                     # Off: continuum shielding not tested
-  self_shielding_threshold_atom_per_cm3: 0.007
-  max_steps: 10000
-  thermal_time_myr: 0
-  maximal_density_Hpcm3: 1e4                   # Cooling density ceiling
-  HydrogenFractionByMass: 0.76                 # Hydrogen fraction by mass
-  use_radiative_transfer: 0                    # Forced on by the ISRF switch
-  cmb_temperature_floor: 1                     # Effective CMB temperature floor
-  RT_heating_rate_cgs: 0
-  RT_HI_ionization_rate_cgs: 0
-  RT_HeI_ionization_rate_cgs: 0
-  RT_HeII_ionization_rate_cgs: 0
-  RT_H2_dissociation_rate_cgs: 0               # Must stay 0, the ISRF supplies it
-  volumetric_heating_rates_cgs: 0
-  specific_heating_rates_cgs: 0
-  disable_cooling_for_debugging: 0
+  # Core Grackle settings. Each optional key states its parser default.
+  cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
+  primordial_chemistry: 2                       # H, He and H2 network (Default: the compiled grackle_N mode)
+  with_UV_background: 0                         # Metagalactic UV background on or off (required)
+  redshift: -1                                  # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                         # Required by dust chemistry, see README
+  thermal_time_myr: 0                           # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: 1e4                    # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)
+  max_steps: 10000                              # Maximal Grackle sub-cycle iterations per particle solve (Default: 10000)
+  subcycle_on_failure: 2                        # Retries of a failed solve, each halving the sub-step, in [0, 20] (Default: 2)
+  cmb_temperature_floor: 1                      # Effective CMB temperature floor (Default: 1)
+  agora_cmb_temperature_floor: 0                # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
+  HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
+
+  # H2 and self-shielding. The ISRF needs H2_self_shielding 2 or 3 with primordial_chemistry >= 2,
+  # otherwise the Lyman-Werner field reaches Grackle unshielded.
+  H2_self_shielding: 3                          # Local Jeans length, run.sh override (Default: 0)
+  H2_self_shielding_path: kernel_radius         # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
+  H2_on_dust: 0                                 # H2 formation on dust grains (Default: 0)
+  H2_photodissociation_heating: 0               # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
+  H2_three_body_rate: 0                         # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
+  H2_cie_cooling: 0                             # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)
+  self_shielding_method: 0                      # Off: continuum shielding not tested (Default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
+
+  # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
+  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
+  local_dust_to_gas_ratio: -1                   # Dust-to-gas mass ratio, -1 keeps Grackle's own default (Default: -1)
+
+  # Chemistry network: initial abundances as number ratios to nH, -1 keeps the default.
+  initial_nHII_to_nH_ratio: 1e-8                # Residual ionization, see README (Default: -1)
+  initial_nHeI_to_nH_ratio: -1                  # nHeI / nH (Default: -1)
+  initial_nHeII_to_nH_ratio: -1                 # nHeII / nH (Default: -1)
+  initial_nHeIII_to_nH_ratio: -1                # nHeIII / nH (Default: -1)
+  initial_nHM_to_nH_ratio: -1                   # nHM / nH (Default: -1)
+  initial_nH2I_to_nH_ratio: 5e-10               # run.sh override, sets the H2 column (Default: -1)
+  initial_nH2II_to_nH_ratio: -1                 # nH2II / nH (Default: -1)
+
+  # Radiation field and RT rates (cgs).
+  use_radiative_transfer: 0                     # Ionization and heating rates are provided; forced on by HII_couple_ionization_rate, and by the ISRF in grackle_2 and grackle_3 builds (Default: 0)
+  RT_heating_rate_cgs: 0                        # Heating rate per nHI, cgs (Default: 0)
+  RT_HI_ionization_rate_cgs: 0                  # HI ionization rate [1/s] (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0                 # HeI ionization rate [1/s] (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0                # HeII ionization rate [1/s] (Default: 0)
+  RT_H2_dissociation_rate_cgs: 0                # H2 dissociation rate [1/s], keep 0 when the ISRF supplies it (Default: 0)
+
+  # Constant heating rates.
+  volumetric_heating_rates_cgs: 0               # Constant volumetric heating rate [erg/s/cm3] (Default: 0)
+  specific_heating_rates_cgs: 0                 # Constant specific heating rate [erg/s/g] (Default: 0)
+
+  # Debug.
+  disable_cooling_for_debugging: 0              # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GEARFeedback:
   # Stellar evolution
