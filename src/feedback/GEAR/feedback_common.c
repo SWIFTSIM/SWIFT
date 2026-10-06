@@ -1707,11 +1707,11 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
       feedback->ISRF_c_hyp_scheme !=
           isrf_c_hyp_scheme_kernel_local_reduced_flux)
     error(
-        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d, which is "
-        "not 2 (fixed fraction of c) or 4 (kernel-local speed). The values 0, "
-        "1 and 3 were removed, and a restart written with one of them cannot "
-        "be resumed. Rerun the simulation from its initial conditions with "
-        "scheme 2 or 4.",
+        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d (internal "
+        "value), which is neither fixed_fraction (2) nor kernel_local (4). A "
+        "restart written with a removed scheme cannot be resumed. Rerun the "
+        "simulation from its initial conditions with fixed_fraction or "
+        "kernel_local.",
         feedback->ISRF_c_hyp_scheme);
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already

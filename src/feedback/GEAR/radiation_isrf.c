@@ -166,9 +166,10 @@ void radiation_first_init_part(struct part *restrict p) {
  * cache this step's per-band absorption rate, cache a stable comoving-density
  * snapshot the propagation loops need (see #feedback_part_data.rho_prev's own
  * doxygen for why), cache this step's own physical timestep
- * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme 2
- * (#isrf_c_hyp_scheme_fixed_fraction), #feedback_part_data.c_hyp itself
- * (scheme 4, kernel-local, defers c_hyp to
+ * #feedback_part_data.dt_prev and, for #feedback_props.ISRF_c_hyp_scheme
+ * fixed_fraction (#isrf_c_hyp_scheme_fixed_fraction),
+ * #feedback_part_data.c_hyp itself
+ * (kernel_local defers c_hyp to
  * radiation_end_density_propagation, once the density loop's neighbour-bin
  * maximum is known), zero every per-step
  * gradient-loop accumulator, and, for active particles only, draw down this
@@ -271,8 +272,10 @@ void radiation_snapshot_part_propagation(struct part *p,
     p->feedback_data.c_hyp = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c *
                              (float)e->physical_constants->const_speed_light_c;
   } else if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux) {
-    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
-          c_hyp_scheme);
+    error(
+        "Invalid GEARFeedback:ISRF_c_hyp_scheme (internal value %d): must be "
+        "fixed_fraction (2) or kernel_local (4).",
+        c_hyp_scheme);
   }
   p->feedback_data.dt_prev = dt_phys;
 
@@ -469,8 +472,10 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
   const int c_hyp_scheme = e->feedback_props->ISRF_c_hyp_scheme;
   if (c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction) return;
   if (c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
-    error("Invalid GEARFeedback:ISRF_c_hyp_scheme = %d (must be 2 or 4).",
-          c_hyp_scheme);
+    error(
+        "Invalid GEARFeedback:ISRF_c_hyp_scheme (internal value %d): must be "
+        "fixed_fraction (2) or kernel_local (4).",
+        c_hyp_scheme);
 
   struct feedback_part_data *fd = &p->feedback_data;
 

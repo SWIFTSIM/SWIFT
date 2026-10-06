@@ -183,17 +183,18 @@ struct cooling_function_data {
   float self_shielding_threshold;
 
   /*! Grackle's H2 self-shielding mode (chemistry_data.H2_self_shielding):
-   * 0 = off, 2 = shielding length supplied per particle, with the default
-   * H2_self_shielding_path, as the kernel support radius kernel_gamma * h
-   * (physical), 3 = local Jeans length (computed internally by Grackle).
+   * 0 = off, 2 = shielding length supplied per particle, half the column
+   * path set by H2_self_shielding_path (one kernel support radius
+   * kernel_gamma * h, physical, by default), 3 = local Jeans length
+   * (computed internally by Grackle).
    * Mode 1 (Sobolev-like, differences neighbouring grid cells) is rejected
    * at start-up, since SWIFT calls Grackle on a single particle. Unrelated
    * to self_shielding_method above, which is a separate Grackle field
    * gating UV-background self-shielding. */
   int H2_self_shielding;
 
-  /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 2
-   * for "kernel_diameter", 1 for "kernel_radius"
+  /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
+   * for "kernel_radius" (default), 2 for "kernel_diameter"
    * (GrackleCooling:H2_self_shielding_path). Grackle forms N_H2 = 2 n_H2 l,
    * so the length handed to it is half this path. */
   float H2_self_shielding_path_in_kernel_radii;

@@ -60,20 +60,69 @@ enum radiation_policy {
   radiation_policy_isrf = (1 << 2),
 };
 
-// TODO: We should change the numbers to 0 and 1...
-//  Same in the parameter file. Even better to use a string in the parameter
-//  file.
 /**
  * @brief Which ISRF hyperbolic-propagation scheme sets the speed `c_hyp_i`.
+ *
+ * The parameter file selects a scheme by name
+ * (#isrf_c_hyp_scheme_name_fixed_fraction,
+ * #isrf_c_hyp_scheme_name_kernel_local). The numeric values below are only
+ * the internal identity of the scheme: they are what #feedback_props and the
+ * restart file carry, and they do not appear in a parameter file.
  */
 enum isrf_c_hyp_scheme {
   /*! `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every particle. A
-   * dedicated timestep term enforces the receiver-side CFL condition. */
+   * dedicated timestep term enforces the receiver-side CFL condition.
+   * Parameter value `fixed_fraction`. */
   isrf_c_hyp_scheme_fixed_fraction = 2,
   /*! `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
-   * timestep among particle i and its kernel neighbours. Default. */
+   * timestep among particle i and its kernel neighbours. Default. Parameter
+   * value `kernel_local`. */
   isrf_c_hyp_scheme_kernel_local_reduced_flux = 4,
 };
+
+/*! Value of GEARFeedback:ISRF_c_hyp_scheme that selects
+ * #isrf_c_hyp_scheme_fixed_fraction. */
+#define isrf_c_hyp_scheme_name_fixed_fraction "fixed_fraction"
+
+/*! Value of GEARFeedback:ISRF_c_hyp_scheme that selects
+ * #isrf_c_hyp_scheme_kernel_local_reduced_flux. */
+#define isrf_c_hyp_scheme_name_kernel_local "kernel_local"
+
+/**
+ * @brief Convert a GEARFeedback:ISRF_c_hyp_scheme value to #isrf_c_hyp_scheme.
+ *
+ * @param name The parameter value.
+ *
+ * @return The scheme, or -1 if @p name is neither
+ * #isrf_c_hyp_scheme_name_fixed_fraction nor
+ * #isrf_c_hyp_scheme_name_kernel_local.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_c_hyp_scheme_from_name(const char *name) {
+  if (strcmp(name, isrf_c_hyp_scheme_name_fixed_fraction) == 0)
+    return isrf_c_hyp_scheme_fixed_fraction;
+  if (strcmp(name, isrf_c_hyp_scheme_name_kernel_local) == 0)
+    return isrf_c_hyp_scheme_kernel_local_reduced_flux;
+  return -1;
+}
+
+/**
+ * @brief Convert a #isrf_c_hyp_scheme to its GEARFeedback:ISRF_c_hyp_scheme
+ * value.
+ *
+ * @param scheme The scheme.
+ *
+ * @return The parameter value, or "invalid" if @p scheme is not a valid
+ * #isrf_c_hyp_scheme.
+ */
+__attribute__((always_inline)) INLINE static const char *
+feedback_props_c_hyp_scheme_name(int scheme) {
+  if (scheme == isrf_c_hyp_scheme_fixed_fraction)
+    return isrf_c_hyp_scheme_name_fixed_fraction;
+  if (scheme == isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    return isrf_c_hyp_scheme_name_kernel_local;
+  return "invalid";
+}
 
 /**
  * @brief Mechanism that sets the receiver-side LW/PE dust extinction path
@@ -162,13 +211,16 @@ struct feedback_props {
    * feedback_props_init(). */
   float ISRF_c_hyp_margin;
 
-  /*! Active #isrf_c_hyp_scheme: 2 or 4 (default). Scheme 2 needs
-   * #ISRF_c_hyp_fixed_fraction_of_c, scheme 4 needs it at 0. 0 (not a valid
-   * scheme) when the interstellar radiation field is off. */
+  /*! Active #isrf_c_hyp_scheme, parsed from the string
+   * GEARFeedback:ISRF_c_hyp_scheme and stored (and restarted) as its integer
+   * value: #isrf_c_hyp_scheme_kernel_local_reduced_flux (default) or
+   * #isrf_c_hyp_scheme_fixed_fraction. The fixed-fraction scheme needs
+   * #ISRF_c_hyp_fixed_fraction_of_c, the kernel-local one needs it at 0. 0
+   * (not a valid scheme) when the interstellar radiation field is off. */
   int ISRF_c_hyp_scheme;
 
   /*! Fraction f of the speed of light with `c_hyp_i = f*c` for every particle,
-   * scheme 2 only. 0 (default) when unused. */
+   * fixed_fraction scheme only. 0 (default) when unused. */
   float ISRF_c_hyp_fixed_fraction_of_c;
 
   /*! Debug only: with #ISRF_c_hyp_fixed_fraction_of_c positive, skip the
@@ -345,11 +397,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
-      const char *isrf_c_hyp_scheme_name = "kernel-local speed";
-      if (feedback_props->ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction)
-        isrf_c_hyp_scheme_name = "fixed fraction of c";
-      message("ISRF c_hyp scheme                                          = %s",
-              isrf_c_hyp_scheme_name);
+      message(
+          "ISRF c_hyp scheme                                          = %s",
+          feedback_props_c_hyp_scheme_name(feedback_props->ISRF_c_hyp_scheme));
       if (feedback_props->ISRF_c_hyp_fixed_fraction_of_c > 0.f) {
         message(
             "ISRF c_hyp fixed fraction of c                             = %g",
@@ -394,17 +444,17 @@ __attribute__((always_inline)) INLINE static void
 feedback_props_check_c_hyp_scheme(int scheme, float fixed_fraction) {
   if (scheme == isrf_c_hyp_scheme_fixed_fraction && fixed_fraction <= 0.f)
     error(
-        "GEARFeedback:ISRF_c_hyp_scheme is set to 2 (fixed fraction of c) "
+        "GEARFeedback:ISRF_c_hyp_scheme is set to fixed_fraction "
         "but GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is 0: there is "
         "nothing to select. Set a positive fraction.");
   if (scheme != isrf_c_hyp_scheme_fixed_fraction && fixed_fraction > 0.f)
     error(
         "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is set (%g) but "
-        "GEARFeedback:ISRF_c_hyp_scheme is %d, not 2 (fixed fraction of c): "
+        "GEARFeedback:ISRF_c_hyp_scheme is %s, not fixed_fraction: "
         "the two speed schemes are alternatives, not layers. Set "
-        "ISRF_c_hyp_scheme to 2 to use this fraction, or leave it at 0 if "
-        "it was set by mistake.",
-        fixed_fraction, scheme);
+        "ISRF_c_hyp_scheme to fixed_fraction to use this fraction, or leave "
+        "it at 0 if it was set by mistake.",
+        fixed_fraction, feedback_props_c_hyp_scheme_name(scheme));
 }
 
 /**
@@ -743,18 +793,20 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's doxygen.
      * Parsed unconditionally, like the fraction below, so a validation
      * run can set it even with ISRF_propagation off in the base config.
-     * Default is scheme 4 (#isrf_c_hyp_scheme_kernel_local_reduced_flux). */
-    fp->ISRF_c_hyp_scheme =
-        parser_get_opt_param_int(params, "GEARFeedback:ISRF_c_hyp_scheme",
-                                 isrf_c_hyp_scheme_kernel_local_reduced_flux);
-    if (fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
-        fp->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_kernel_local_reduced_flux)
+     * Default is kernel_local
+     * (#isrf_c_hyp_scheme_kernel_local_reduced_flux). */
+    char c_hyp_scheme[PARSER_MAX_LINE_SIZE];
+    parser_get_opt_param_string(params, "GEARFeedback:ISRF_c_hyp_scheme",
+                                c_hyp_scheme,
+                                isrf_c_hyp_scheme_name_kernel_local);
+    fp->ISRF_c_hyp_scheme = feedback_props_c_hyp_scheme_from_name(c_hyp_scheme);
+    if (fp->ISRF_c_hyp_scheme < 0)
       error(
-          "GEARFeedback:ISRF_c_hyp_scheme must be 2 (fixed fraction of c) "
-          "or 4 (kernel-local speed), got %d. "
-          "The values 0, 1 and 3 were removed: they are no longer "
-          "supported.",
-          fp->ISRF_c_hyp_scheme);
+          "GEARFeedback:ISRF_c_hyp_scheme must be one of %s (kernel-local "
+          "speed) or %s (fixed fraction of c), got '%s'. The integer values "
+          "are no longer accepted.",
+          isrf_c_hyp_scheme_name_kernel_local,
+          isrf_c_hyp_scheme_name_fixed_fraction, c_hyp_scheme);
 
     /* Uniform reduced light-speed candidate: 0 disables it. Only takes
      * effect under ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction
