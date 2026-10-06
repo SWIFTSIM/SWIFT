@@ -432,6 +432,18 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - Hyperbolic propagation speed the band updates ran with (fixed fraction of the speed of light, or kernel-local, per ``ISRF_c_hyp_scheme``), shared by both bands
      - [U_L U_T^{-1}]
      - Only meaningful when ``ISRF_propagation`` is on.
+   * - ``PEPendingSpecificEnergies``
+     - PE-band specific energy owed to the particle by neighbours on shorter time steps, not yet in ``PESpecificEnergies``. The particle's next update adds it to its field and absorbed energy. It is ``HyperbolicPropagationSpeeds`` times the stored amount
+     - [U_L^2 U_T^{-2}]
+     - Add it to ``PESpecificEnergies`` for an energy sum at a time when not all particles are synchronised. 0 on a synchronised snapshot, on one time bin, and on several MPI ranks.
+   * - ``LWPendingSpecificEnergies``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+     - Same as ``PEPendingSpecificEnergies``.
+   * - ``LWPhotonPendingSpecificEnergies``
+     - Same, Lyman-Werner-band photon-number moment
+     - [U_L^2 U_T^{-2}]
+     - Same as ``PEPendingSpecificEnergies``.
    * - ``PEMinimumSpecificEnergies``
      - Most negative ``PESpecificEnergies`` value written since the previous snapshot, 0 if none was negative
      - [U_L^2 U_T^{-2}]
