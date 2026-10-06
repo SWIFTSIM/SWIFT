@@ -94,15 +94,13 @@ double radiation_lw_photon_energy_cgs = 0.;
  * #radiation_get_mean_photon_energy_lw_from_integral's doxygen).
  *
  * Left at the compile-time fallback (#RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT
- * etc.; see #feedback_props.band_edge_weight_pe's doxygen) while radiation
- * is inactive, or if a denominator vanishes (an IMF whose whole mass range
- * sits at or below the table's own native mass floor).
+ * etc.) while radiation is inactive, or if a denominator vanishes (an IMF
+ * whose whole mass range sits at or below the table's own native mass floor).
  *
  * Call this for the main stellar model only, alongside
  * #radiation_set_lw_photon_energy_cgs, at start-up ONLY: unlike that
  * function, this one need not be re-called on restart, since @p fb_props is
- * dumped/restored as one flat block and these are plain fields of it (see
- * #feedback_props.band_edge_weight_pe's doxygen).
+ * dumped/restored as one flat block and these are plain fields of it.
  *
  * @param fb_props (output) The #feedback_props to set.
  * @param rad The main stellar model's #radiation.

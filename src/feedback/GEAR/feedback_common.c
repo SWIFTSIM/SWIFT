@@ -34,9 +34,7 @@
 #include "units.h"
 
 /*! Fixed midpoint (Myr) of dt_evolution_ssp's logistic transition: factor =
- * 1 + (factor_max-1)/2 there. Not exposed as a parameter (see
- * feedback_properties.h's dt_evolution_factor_max comment): this branch's
- * fine-tuning pain centred on factor_max, not this midpoint. */
+ * 1 + (factor_max-1)/2 there. Not a parameter: only factor_max is tunable. */
 #define GEAR_dt_evolution_lifetime_myr_0 30.0
 
 /*! Fixed steepness of that logistic transition in log10(lifetime_myr);
@@ -1704,16 +1702,16 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
    * scheme would otherwise resume with a speed rule nothing sets. The field
    * is only meaningful, and only validated at parse time, when the
    * interstellar radiation field is on. */
-  if ((feedback->radiation_policy & radiation_policy_photoelectric_heating) &&
+  if ((feedback->radiation_policy & radiation_policy_isrf) &&
       feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
       feedback->ISRF_c_hyp_scheme !=
           isrf_c_hyp_scheme_kernel_local_reduced_flux)
     error(
-        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d, which is "
-        "not 2 (fixed fraction of c) or 4 (kernel-local speed). The values 0, "
-        "1 and 3 were removed, and a restart written with one of them cannot "
-        "be resumed. Rerun the simulation from its initial conditions with "
-        "scheme 2 or 4.",
+        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d (internal "
+        "value), which is neither fixed_fraction (2) nor kernel_local (4). A "
+        "restart written with a removed scheme cannot be resumed. Rerun the "
+        "simulation from its initial conditions with fixed_fraction or "
+        "kernel_local.",
         feedback->ISRF_c_hyp_scheme);
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
@@ -1729,7 +1727,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   const char with_radiation =
       (feedback->radiation_policy &
        (radiation_policy_photoionization | radiation_policy_radiation_pressure |
-        radiation_policy_photoelectric_heating)) != 0;
+        radiation_policy_isrf)) != 0;
 
   stellar_evolution_restore(&feedback->stellar_model, stream,
                             feedback->with_stellar_wind_feedback,
@@ -1744,12 +1742,10 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
      here, unlike radiation_lw_photon_energy_cgs above: they are plain
      fields of *feedback, already restored verbatim by the flat
-     restart_read_blocks() call at the top of this function (see
-     #feedback_props.band_edge_weight_pe's own doxygen,
-     feedback_properties.h). Announcing the restored value (not
-     re-deriving it) still lets a restarted run's log be checked against
-     its own start-up announcement, confirming the restart path preserves
-     this value across a change to the radiation sub-struct. */
+     restart_read_blocks() call at the top of this function. Announcing the
+     restored value (not re-deriving it) still lets a restarted run's log be
+     checked against its own start-up announcement, confirming the restart
+     path preserves this value across a change to the radiation sub-struct. */
   if (engine_rank == 0 && feedback->radiation_policy != 0)
     message(
         "Band-edge weights restored from the restart file: lambda_E(PE)=%.5g, "

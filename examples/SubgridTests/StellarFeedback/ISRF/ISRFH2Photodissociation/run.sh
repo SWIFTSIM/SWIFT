@@ -49,7 +49,7 @@ star_type=${star_type:="single_star"}
 level=${level:=5} #Resolution level: N = (2**level)**3 gas particles
 nH2_ratio=${nH2_ratio:=$nH2_ratio_default} #GrackleCooling:initial_nH2I_to_nH_ratio override
 h2_self_shielding=${h2_self_shielding:=3} #GrackleCooling:H2_self_shielding override (0=off, 2=kernel support radius, 3=local Jeans length)
-h2_self_shielding_path=${h2_self_shielding_path:="kernel_diameter"} #GrackleCooling:H2_self_shielding_path override, mode 2 only (kernel_diameter or kernel_radius)
+h2_self_shielding_path=${h2_self_shielding_path:="kernel_radius"} #GrackleCooling:H2_self_shielding_path override, mode 2 only (kernel_radius or kernel_diameter)
 time_end=${time_end:=$time_end_default} #TimeIntegration:time_end override (internal units)
 dt_max=${dt_max:=1.6e-10} #TimeIntegration:dt_max override (internal units)
 delta_time=${delta_time:=$delta_time_default} #Snapshots:delta_time override (internal units)

@@ -131,6 +131,7 @@ GEARFeedback:
   with_interstellar_radiation_field:    0
   with_photoionization:          1
   HII_min_density_Hpcm3: 0.01
+  with_radiation_pressure: 0                          # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
   HII_rebuild_time_Myr:   0.5               # fixed cadence, the sibling examples' value

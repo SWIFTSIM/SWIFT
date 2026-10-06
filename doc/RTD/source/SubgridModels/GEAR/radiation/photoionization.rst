@@ -18,7 +18,7 @@ The star's search for gas to ionize is bounded by ``Stars:HII_max_search_radius`
 
 Optionally, a star's ionizing budget can be split across several independent angular sectors (a HEALPix tessellation, ``GEARFeedback:HII_angular_nside``), so that one heavily-illuminated direction cannot starve another.
 
-By default, an ionized particle is simply flagged and held at its floor temperature by the cooling module until its tag expires. Setting ``GEARFeedback:HII_couple_ionization_rate`` instead derives a physically motivated, distance-dependent photoionization rate coefficient (:math:`\Gamma_\mathrm{HI} = \sigma_\mathrm{HI} \times` ionizing flux, with :math:`\sigma_\mathrm{HI} = 6.3 \times 10^{-18}\,\mathrm{cm}^2` at the Lyman limit, Osterbrock and Ferland 2006) and feeds it into Grackle's own radiative-transfer rate fields every step, instead of the instant flag-and-floor scheme. This requires Grackle mode 1 or higher.
+By default, an ionized particle is simply flagged and held at its floor temperature by the cooling module until its tag expires. Setting ``GEARFeedback:HII_couple_ionization_rate`` instead derives a physically motivated, distance-dependent photoionization rate coefficient (:math:`\Gamma_\mathrm{HI} = \sigma_\mathrm{HI} \times` ionizing flux, with :math:`\sigma_\mathrm{HI} = 6.3 \times 10^{-18}\,\mathrm{cm}^2` at the Lyman limit, Osterbrock and Ferland 2006) and feeds it into Grackle's own radiative-transfer rate fields every step, instead of the instant flag-and-floor scheme. This requires Grackle mode 1 or higher. The mean photon energy above the Lyman limit is held in erg, since its absolute per-particle value underflows float precision in internal units.
 
 ``GEARFeedback:HII_rebuild_time_Myr`` also bounds the timestep of every star still young enough to do photoionization (below ``HII_max_age_Myr``), not just the ionization cadence: a smaller value forces smaller, more numerous steps.
 
@@ -67,7 +67,7 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
 Compile-time constants
 ------------------------
 
-``--with-number-of-hii-angular-pixels`` (default 12) caps the HEALPix pixel count ``HII_angular_nside`` may request; see above.
+``--with-number-of-hii-angular-pixels`` (default 12) caps the HEALPix pixel count ``HII_angular_nside`` may request; see above. Every star carries an array of this size, so a larger value costs memory per star.
 
 Three ``-D`` flags, set via ``CFLAGS+="..." ./configure``, are for test and diagnostic setups, not production runs. The shipped ``Starbench``, ``ClumpSmith2021``, ``Hu2017`` and ``StromgrenSphereCosmo`` examples use them to build the idealised, two-state configuration their check scripts compare against:
 

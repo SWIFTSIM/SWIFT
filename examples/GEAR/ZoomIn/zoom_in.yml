@@ -116,6 +116,7 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
   # Radiation parameters
+  with_radiation_pressure: 0                               # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   with_interstellar_radiation_field:    0                         # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere. Note this needs to compile with GRACKLE_X, X=1,2 or 3 and will automatically turn on grackle
                                                            # photoelectric parameters. 1: Run with photoelectric heating, 0: Run without. (Default: 0)

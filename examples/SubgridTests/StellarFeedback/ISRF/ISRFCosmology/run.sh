@@ -6,11 +6,6 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # pipefail: swift is piped into tee, whose exit code would hide a crash.
 set -eo pipefail
 
-if [ -n "${c_hyp_pin:-}" ]; then
-    echo "WARNING: c_hyp_pin was removed and is ignored:" \
-         "set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
-fi
-
 config=${config:="free_field"}  #free_field, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty or h2_shielded
 redshift=${redshift:=0}         #Starting redshift, 0 runs without cosmology
 
@@ -26,8 +21,8 @@ u_lw_default=0               # erg/g
 nH2_ratio_default=1e-8
 h2_self_shielding_default=3
 propagation_default=1
-c_hyp_scheme_default=4       # 4 = kernel-local closure, 2 = one fixed speed, Courant-limited
-c_hyp_fraction_default=0     # scheme 2's speed as a fraction of c; also sets the timestep
+c_hyp_scheme_default=kernel_local  # kernel_local closure, or fixed_fraction (one fixed speed, Courant-limited)
+c_hyp_fraction_default=0     # fixed_fraction's speed as a fraction of c; also sets the timestep
 disable_cooling_default=0    # GrackleCooling:disable_cooling_for_debugging
 star_mass_default=0          # Msun, 0 = no star
 duration_default=0.22283119056961848  # internal time (218 Myr, z = 9 to a = 0.125)
@@ -46,13 +41,13 @@ case "$config" in
 	metallicity_default=1
 	u_pe_default=1e5
 	u_lw_default=1e5
-	c_hyp_scheme_default=2
+	c_hyp_scheme_default=fixed_fraction
 	c_hyp_fraction_default=1.334256381e-05  # 4 km/s
 	;;
     photoelectric|photoelectric_dark)
 	metallicity_default=1
 	temperature_default=10
-	c_hyp_scheme_default=2
+	c_hyp_scheme_default=fixed_fraction
 	c_hyp_fraction_default=3.335640952e-06  # 1 km/s
 	duration_default=3.07e-6
 	snapshots_default=20

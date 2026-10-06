@@ -94,12 +94,12 @@ radius
 with ``h`` the snapshot's ``SmoothingLengths`` and ``gamma_K`` the kernel's
 support-to-smoothing ratio (``--kernel-gamma``, 1.936492 for the Wendland C2
 kernel in 3D). With Eq. (4), mode 2 is the H2 column through a path of
-``2 gamma_K h``. With ``GrackleCooling:H2_self_shielding_path:
-kernel_radius`` (``--h2-self-shielding-path``) SWIFT supplies half that
-length, a path of ``gamma_K h``. SWIFT rejects mode 1 (Sobolev-like) at
-start-up: it reads six neighbouring grid points that do not exist when
-Grackle is called on one particle. Mode 0 disables shielding altogether,
-``f_shield = 1``, and is the unshielded reference.
+``gamma_K h``, the default ``GrackleCooling:H2_self_shielding_path:
+kernel_radius``. With ``kernel_diameter`` (``--h2-self-shielding-path``)
+SWIFT supplies twice that length, a path of ``2 gamma_K h``. SWIFT rejects
+mode 1 (Sobolev-like) at start-up: it reads six neighbouring grid points
+that do not exist when Grackle is called on one particle. Mode 0 disables
+shielding altogether, ``f_shield = 1``, and is the unshielded reference.
 
 The mean molecular weight follows Grackle's own definition
 (``cool1d_multi_g.F``),
@@ -502,8 +502,8 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--h2-self-shielding-path",
-        choices=["kernel_diameter", "kernel_radius"],
-        default="kernel_diameter",
+        choices=["kernel_radius", "kernel_diameter"],
+        default="kernel_radius",
         help="GrackleCooling:H2_self_shielding_path the run used, mode 2 only "
         "(default: %(default)s)",
     )
@@ -785,8 +785,8 @@ def build_history(
     kernel_gamma : float
         Kernel support-to-smoothing ratio, for the mode-2 length.
     path_in_kernel_radii : float
-        Mode-2 H2 column path in kernel support radii: 2 for
-        ``kernel_diameter``, 1 for ``kernel_radius``.
+        Mode-2 H2 column path in kernel support radii: 1 for
+        ``kernel_radius``, 2 for ``kernel_diameter``.
 
     Returns
     -------
@@ -1088,7 +1088,7 @@ def main() -> int:
         return 1
 
     path_in_kernel_radii = (
-        1.0 if options.h2_self_shielding_path == "kernel_radius" else 2.0
+        2.0 if options.h2_self_shielding_path == "kernel_diameter" else 1.0
     )
     history = build_history(
         filenames,
