@@ -18,10 +18,8 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_isrf.c
- * @brief Receiver-side LW/PE dust extinction and hyperbolic M1
- * propagation physics for GEAR: closed by a variable Eddington tensor
- * (not a fixed E/3) that adapts between the free-streaming and diffusive
- * limits.
+ * @brief Receiver-side LW/PE dust extinction and hyperbolic M1 propagation
+ * physics for GEAR, closed by a variable Eddington tensor.
  */
 
 /* Config parameters. */
@@ -119,10 +117,8 @@ void radiation_first_init_part(struct part *restrict p) {
 }
 
 /**
- * @brief Once per step, before the density loop: snapshot `u`, cache the
- * absorption rates, the comoving density, `dt_prev` and (fixed_fraction
- * scheme) `c_hyp`, zero the gradient accumulators and, for active particles,
- * draw down `u_source_rate` from the dose reservoir.
+ * @brief Once per step, before the density loop: snapshot `u` and cache the
+ * absorption rates, comoving density, `dt_prev` and `c_hyp`.
  *
  * Runs at drift time, the last point where the metal fraction and `p->rho`
  * still hold the previous step's converged values.
@@ -231,8 +227,7 @@ void radiation_snapshot_part_propagation(struct part *p,
 
 /**
  * @brief Radiation timestep bound `C_hyp*h_i/(f*c)` for the fixed_fraction
- * c_hyp scheme (#feedback_props.ISRF_c_hyp_fixed_fraction_of_c = f), which
- * has no built-in guarantee that `f*c*dt_i <= C_hyp*h_i`.
+ * c_hyp scheme (#feedback_props.ISRF_c_hyp_fixed_fraction_of_c = f).
  *
  * FLT_MAX (no constraint) if f is 0, ISRF_propagation is off, the debug
  * off-switch is set, or the particle is not near a field. Near a field means
@@ -381,10 +376,11 @@ enum radiation_isrf_flux_limiter_state {
 };
 
 /**
- * @brief M1 flux limiter decision for one particle, one band:
- * `F <- F*min(1, u/|F|)` for `u > 0`, `F <- 0` for `u <= 0`, on the reduced
- * flux `Ft = F_true/c_hyp`. The scale is applied by
- * #radiation_apply_flux_limiter_band, possibly to another band.
+ * @brief M1 flux limiter decision for one particle, one band, on the reduced
+ * flux `Ft = F_true/c_hyp`: `F <- F*min(1, u/|F|)` for `u > 0`, else 0.
+ *
+ * The scale is applied by #radiation_apply_flux_limiter_band, possibly to
+ * another band.
  *
  * `F.F` and the ratio are in double: in float32 `F.F` underflows for
  * `|F| < 1.1e-19` and the limiter would be skipped for a nonzero flux.
@@ -412,8 +408,7 @@ radiation_compute_flux_limiter_scale_band(float u, const float F[3],
 
 /**
  * @brief Apply a flux-limiter decision
- * (#radiation_compute_flux_limiter_scale_band) to one band's flux. The SKIP
- * case does no multiply, since "scale by 1.0" may differ under `-ffast-math`.
+ * (#radiation_compute_flux_limiter_scale_band) to one band's flux.
  *
  * @param state The decision, from #radiation_compute_flux_limiter_scale_band.
  * @param scale The multiplier, meaningful only under #ISRF_LIMITER_SCALE.
@@ -571,9 +566,10 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief Refund this step's dose-reservoir drawdown (`source_rate*dt_prev`)
- * for a #part whose density h-iteration gives up with no neighbours, and zero
- * the rates. No-op when propagation is off.
+ * @brief Refund this step's dose-reservoir drawdown (`source_rate*dt_prev`) for
+ * a #part whose density h-iteration gives up with no neighbours.
+ *
+ * No-op when propagation is off.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -592,9 +588,10 @@ void radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {
 
 /**
  * @brief One band's negativity-triggered dissipation coefficient: raised
- * instantly to the target, or decayed toward it. Compares `u_V = rho_prev*u^n`
- * with the neighbours' kernel mean. The result is used by this step's force
- * loop, so an undershoot is corrected one step later.
+ * instantly to the target, or decayed toward it.
+ *
+ * Compares `u_V = rho_prev*u^n` with the neighbours' kernel mean. The result is
+ * used by this step's force loop, so an undershoot is fixed a step later.
  *
  * @param u_V This band's volumetric field, rho_prev*u^n.
  * @param ngb_mean_abs_u_V This band's kernel-mean |rho_prev*u_prev| scratch
@@ -635,9 +632,7 @@ radiation_update_dissipation_alpha_band(float u_V, float ngb_mean_abs_u_V,
 
 /**
  * @brief The `h/lambda`-gated dissipation floor under the trigger of
- * #radiation_update_dissipation_alpha_band. It damps the dispersive wake of
- * an optically-thin front, where the trigger is zero, and rolls off as
- * `alpha_floor/(1 + (h*kappa/eps_lambda)^4)`.
+ * #radiation_update_dissipation_alpha_band.
  *
  * @param kappa This band's #feedback_isrf_operator_data.kappa.
  * @param h_phys The particle's own physical smoothing length.
@@ -656,11 +651,11 @@ radiation_dissipation_alpha_floor_band(float kappa, float h_phys,
 }
 
 /**
- * @brief Flux-relaxation residual gate on the dissipation floor. It lowers
- * the floor on a particle whose flux is at the fixed point `w*Ft + grad_u = 0`
- * of the unlimited flux update (`w = kappa + lambda*H/c`), and keeps the full
- * floor (`s = 1`) on a fresh front. It can only lower the floor. See
- * theory/GEAR/Radiation/02_fuv_isrf.tex, "The flux-relaxation-residual gate".
+ * @brief Flux-relaxation residual gate on the dissipation floor: lowers it on a
+ * particle whose flux is at the fixed point `w*Ft + grad_u = 0`.
+ *
+ * It can only lower the floor. See theory/GEAR/Radiation/02_fuv_isrf.tex, "The
+ * flux-relaxation-residual gate".
  *
  * `R = |w*Ft + grad_u| / (w*|Ft| + |grad_u|)`, `s = min(1, (R/eps_R)^2)`.
  * Returns 1 for `eps_R <= 0`, `c_hyp <= 0` or `w <= 0`, and 0 for a quiescent
@@ -721,11 +716,7 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
 
 /**
  * @brief Exact-relaxation update of the reduced flux
- * #feedback_isrf_moment_data.specific_flux from `grad(u)`, followed by the M1
- * flux limiter against `u^n`. Also updates the two dissipation coefficients
- * (#radiation_update_dissipation_alpha_band,
- * #radiation_dissipation_alpha_floor_band) and zeroes `div_specific_flux` for
- * the force loop.
+ * #feedback_isrf_moment_data.specific_flux from `grad(u)`, then the limiter.
  *
  * Runs once per step in the extra ghost. The limiter scale is decided once per
  * operator from its owning moment and applied to every moment sharing it.
@@ -921,8 +912,9 @@ radiation_get_comoving_gas_column_density_at_part(const struct part *p,
 
 /**
  * @brief Dust-to-gas ratio relative to the Milky Way, following Grackle:
- * `(fgr/fgr_default) * Z/z_solar`, see
- * #RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO.
+ * `(fgr/fgr_default) * Z/z_solar`.
+ *
+ * See #RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO.
  *
  * @param Z Gas metal mass fraction.
  * @param local_dust_to_gas_ratio Resolved chemistry_data value, not the raw

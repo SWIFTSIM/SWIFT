@@ -22,8 +22,7 @@
 /**
  * @file src/feedback/GEAR/radiation_iact.h
  * @brief Subgrid radiation feedback for GEAR: functions called from
- * feedback_iact.h and feedback_prepare_feedback(), split out so the
- * mechanical feedback module does not duplicate them.
+ * feedback_iact.h and feedback_prepare_feedback().
  */
 
 #include "chemistry.h"
@@ -102,8 +101,8 @@ radiation_iact_nonsym_feedback_density(
  * @brief Store the star's feedback time-step for this step.
  *
  * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
- * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
  * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
+ * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
  *
  * @param sp The #spart to update.
  * @param dt Length of the star's feedback step, in internal units.
@@ -166,9 +165,8 @@ feedback_prepare_radiation_feedback(
 }
 
 /**
- * @brief Radiation feedback interaction between two particles
- * (non-symmetric). Used for updating properties of gas particles neighbouring
- * a star particle.
+ * @brief Radiation feedback interaction between two particles (non-symmetric),
+ * updating the gas particles neighbouring a star particle.
  *
  * Applies radiation pressure and injects the local Lyman-Werner/PE field.
  *

@@ -96,9 +96,10 @@ INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients,
- * see #feedback_write_particles. Reads the same operator field as
- * #convert_part_dissipation_alpha_LW.
+ * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients, see
+ * #feedback_write_particles.
+ *
+ * Reads the same operator field as #convert_part_dissipation_alpha_LW.
  */
 INLINE static void convert_part_dissipation_alpha_LW_PHOTON(
     const struct engine *e, const struct part *p, const struct xpart *xp,

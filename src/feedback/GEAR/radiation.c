@@ -19,10 +19,7 @@
 /**
  * @file src/feedback/GEAR/radiation.c
  * @brief Lifecycle of the #radiation structure for GEAR: printing,
- * initialization (angular HII pixel setup), restart dump/restore, and
- * cleanup. Per-particle and per-star physics live in radiation_gas.c and
- * radiation_pressure.c; the star-emission getters in radiation_getters.c;
- * the HDF5 table reading in radiation_table_io.c.
+ * initialization, restart dump/restore and cleanup.
  */
 
 /* Include header */

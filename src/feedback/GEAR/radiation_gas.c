@@ -19,8 +19,7 @@
 /**
  * @file src/feedback/GEAR/radiation_gas.c
  * @brief Per-gas-particle radiation feedback physics for GEAR: hydrogen
- * content, ionized-state temperature and recombination rate, the ionizing
- * photon budget, and the ionization tag carried on each #part.
+ * content, ionized state, ionizing photon budget and the ionization tag.
  */
 
 /* Config parameters. */
@@ -209,9 +208,8 @@ radiation_get_part_ionized_internal_energy(
 }
 
 /**
- * @brief Case-B hydrogen recombination coefficient, temperature-dependent
- * (Hui & Gnedin 1997, MNRAS 292, 27, Appendix A; their fit to Ferland et
- * al. 1992, accurate to 0.7% from 1 K to 1e9 K).
+ * @brief Case-B hydrogen recombination coefficient, temperature-dependent (Hui
+ * & Gnedin 1997, MNRAS 292, 27, Appendix A).
  *
  * @param T Temperature in Kelvin.
  * @return alpha_B in cm^3/s (CGS).
@@ -536,9 +534,10 @@ radiation_get_part_photoionization_rate_coefficient(const struct part *p,
 
 /**
  * @brief Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
- * flux (internal units), with sigma_HI = 6.3e-18 cm^2 at the Lyman limit
- * (Osterbrock & Ferland 2006). Computed at tag time: the raw flux overflows
- * float32 but the product with the cross section does not.
+ * flux (internal units).
+ *
+ * Uses sigma_HI = 6.3e-18 cm^2 (Osterbrock & Ferland 2006). The raw flux
+ * overflows float32, so the product is formed at tag time.
  *
  * @param us Unit system.
  * @param ionizing_flux_HI HI-ionizing photon flux (internal units).
@@ -638,8 +637,9 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
 
 /**
  * @brief Local ISRF strength in Habing units: G0 = c*rho*u /
- * #RADIATION_HABING_FLUX_CGS, with u the PE+LW specific energy. Feeds
- * Grackle's isrf_habing array. Zero for a particle never illuminated.
+ * #RADIATION_HABING_FLUX_CGS, with u the PE+LW specific energy.
+ *
+ * Feeds Grackle's isrf_habing array. Zero for a particle never illuminated.
  *
  * Each band is clamped to be non-negative before the sum, so an undershot band
  * cannot cancel the other (#radiation_get_band_u_nonnegative).

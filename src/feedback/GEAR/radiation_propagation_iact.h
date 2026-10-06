@@ -21,9 +21,8 @@
 
 /**
  * @file src/feedback/GEAR/radiation_propagation_iact.h
- * @brief Gas-gas density-loop, gradient-loop and force-loop hooks for the
- * hyperbolic M1-relaxation propagation of the per-band u and specific_flux
- * fields.
+ * @brief Gas-gas density-, gradient- and force-loop hooks for the hyperbolic
+ * M1-relaxation propagation of the per-band u and specific_flux fields.
  *
  * `div(F)` is in the force loop because it needs both sides of every pair
  * credited, which only the force loop's type-2 dispatch guarantees. The
@@ -81,9 +80,8 @@ radiation_divergence_accumulate_band(const float dx[3], float r_inv,
 }
 
 /**
- * @brief Band contribution to each particle's kernel-mean `|rho_prev*u_prev|`
- * reference accumulator, the local field scale the negativity trigger divides
- * an undershoot by (#radiation_update_dissipation_alpha_band).
+ * @brief Band contribution to the kernel-mean `|rho_prev*u_prev|` accumulator,
+ * the field scale used by #radiation_update_dissipation_alpha_band.
  *
  * Built from the `u_prev` and `rho_prev` snapshots. It takes no
  * comoving-to-physical factor: its consumer divides it into `rho_prev*u`,
@@ -166,9 +164,8 @@ radiation_dissipation_force_accumulate_band(
 }
 
 /**
- * @brief M1 closure coefficients for one particle, one band, built from its
- * own `(u, F, c_M)`. `c_M` normalises the flux against `u`; it is 1 for the
- * tracked reduced flux.
+ * @brief M1 closure coefficients for one particle, one band, from its own `(u,
+ * F, c_M)`; `c_M` normalises the flux (1 for the reduced flux).
  *
  * `f = min(1, |F|/(c_M*u))` for `u > 0`, else 0;
  * `chi(f) = (3+4f^2)/(5+2*sqrt(4-3f^2))`. See
@@ -383,9 +380,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
 }
 
 /**
- * @brief Density-loop propagation interaction between two particles
- * (non-symmetric): only particle i's trigger reference accumulator is
- * updated.
+ * @brief Density-loop interaction between two particles (non-symmetric): only
+ * particle i's trigger reference accumulator is updated.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -553,9 +549,8 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 }
 
 /**
- * @brief Force-loop propagation interaction between two particles
- * (symmetric): both particles' `div(F)` and dissipation accumulators are
- * updated.
+ * @brief Force-loop interaction between two particles (symmetric): both
+ * particles' `div(F)` and dissipation terms are updated.
  *
  * Runs after the extra ghost has relaxed `specific_flux` and set `alpha`.
  *
@@ -620,9 +615,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 }
 
 /**
- * @brief Force-loop propagation interaction between two particles
- * (non-symmetric): only particle i's `div(F)` and dissipation accumulators
- * are updated.
+ * @brief Force-loop interaction between two particles (non-symmetric): only
+ * particle i's `div(F)` and dissipation terms are updated.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).

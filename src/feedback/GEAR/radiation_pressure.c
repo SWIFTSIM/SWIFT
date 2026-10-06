@@ -18,9 +18,8 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_pressure.c
- * @brief Star-side infrared radiation pressure for GEAR: the local gas
- * column density around a star (Sobolev approximation), the resulting IR
- * dust opacity and optical depth, and the radiation pressure they imply.
+ * @brief Star-side infrared radiation pressure for GEAR: the Sobolev gas
+ * column, the IR dust opacity and optical depth, and the resulting pressure.
  */
 
 /* Config parameters. */

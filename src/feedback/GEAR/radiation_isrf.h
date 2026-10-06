@@ -22,8 +22,7 @@
 /**
  * @file src/feedback/GEAR/radiation_isrf.h
  * @brief Receiver-side LW/PE dust extinction and hyperbolic-relaxation
- * propagation physics for GEAR: gas-side opacity, extinction, local
- * absorption rate, and the propagation mixing fraction.
+ * propagation physics for GEAR: opacity, extinction and absorption.
  */
 
 #include "feedback_struct.h"

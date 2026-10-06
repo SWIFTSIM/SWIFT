@@ -30,8 +30,10 @@
 
 /**
  * @brief The ISRF moments: PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV)
- * specific energy, and the Lyman-Werner photon-number moment. Indexes
- * #feedback_part_data.isrf_moment and #feedback_spart_data.radiation.L_band.
+ * specific energy, and the Lyman-Werner photon-number moment.
+ *
+ * Indexes #feedback_part_data.isrf_moment and
+ * #feedback_spart_data.radiation.L_band.
  *
  * #ISRF_MOMENT_LW_PHOTON uses the operator of #ISRF_MOMENT_LW.
  */

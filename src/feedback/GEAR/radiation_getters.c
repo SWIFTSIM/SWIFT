@@ -18,10 +18,8 @@
  ******************************************************************************/
 /**
  * @file src/feedback/GEAR/radiation_getters.c
- * @brief Star-emission getters for GEAR radiation feedback: IMF-integrated
- * and raw (single-mass) bolometric luminosity, ionization rate and mean
- * excess photon energy, from the 1D (mass-only) and 2D (mass x
- * metallicity) interpolation tables built by radiation_read_data().
+ * @brief Star-emission getters for GEAR radiation feedback: luminosity,
+ * ionization rate and mean excess photon energy, from the 1D and 2D tables.
  */
 
 /* Config parameters. */
@@ -303,9 +301,8 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get the non-IMF-integrated mean excess photon energy above the 13.6
- * eV HI threshold, at a given mass, metallicity and age, from a 2D ("M,Z")
- * table.
+ * @brief Get the non-IMF-integrated mean excess photon energy above the 13.6 eV
+ * HI threshold, from a 2D ("M,Z") table.
  *
  * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_raw, with the same
  * MainSequenceLifetime cap as #radiation_get_ionization_rate_from_raw_2d,
@@ -386,9 +383,10 @@ float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged ionization rate per mass, at a given
- * metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_luminosities_from_integral_2d for the 2D caveats.
+ * @brief Get the IMF-averaged ionization rate per mass at a given metallicity,
+ * from a 2D ("M,Z") table.
+ *
+ * See #radiation_get_luminosities_from_integral_2d for the 2D caveats.
  *
  *
  * @param rad The #radiation model.
@@ -570,8 +568,9 @@ double radiation_get_mean_photon_energy_lw_from_raw(const struct radiation *rad,
 
 /**
  * @brief Get a single star's mean LW photon energy at a given mass and
- * metallicity, from a 2D table. See
- * #radiation_get_mean_photon_energy_lw_from_raw.
+ * metallicity, from a 2D table.
+ *
+ * See #radiation_get_mean_photon_energy_lw_from_raw.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -626,8 +625,9 @@ double radiation_get_mean_photon_energy_lw_from_integral(
 
 /**
  * @brief Get the mean LW photon energy of the population formed between the
- * IMF's mass_min and @p log_m, at a given metallicity, from a 2D table. See
- * #radiation_get_mean_photon_energy_lw_from_integral.
+ * IMF's mass_min and @p log_m, at a given metallicity, from a 2D table.
+ *
+ * See #radiation_get_mean_photon_energy_lw_from_integral.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -670,10 +670,10 @@ float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
 }
 
 /**
- * @brief Get a single star's effective temperature at a given mass,
- * dispatching on #rad->is_2d. Not capped by the main-sequence lifetime, like
- * #radiation_get_star_luminosity. Valid only when #radiation.has_teff is set;
- * callers must check.
+ * @brief Get a single star's effective temperature at a given mass, dispatching
+ * on #rad->is_2d. Not capped by the main-sequence lifetime.
+ *
+ * Valid only when #radiation.has_teff is set; callers must check.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -719,9 +719,10 @@ float radiation_get_luminosity_pe_from_raw_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get a single star's PE band emission rate at a given mass,
- * dispatching on #rad->is_2d. Valid only when #radiation.with_ISRF is set;
- * callers must check.
+ * @brief Get a single star's PE band emission rate at a given mass, dispatching
+ * on #rad->is_2d.
+ *
+ * Valid only when #radiation.with_ISRF is set; callers must check.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -802,9 +803,10 @@ float radiation_get_luminosity_pe_from_integral(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged PE band emission rate per mass, at a given
- * metallicity, from a 2D table. See
- * #radiation_get_luminosities_from_integral_2d.
+ * @brief Get the IMF-averaged PE band emission rate per mass at a given
+ * metallicity, from a 2D table.
+ *
+ * See #radiation_get_luminosities_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -843,9 +845,10 @@ float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged LW band emission rate per mass, at a given
- * metallicity, from a 2D table. See
- * #radiation_get_luminosity_pe_from_integral_2d.
+ * @brief Get the IMF-averaged LW band emission rate per mass at a given
+ * metallicity, from a 2D table.
+ *
+ * See #radiation_get_luminosity_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -890,8 +893,9 @@ float radiation_get_luminosity_edge_pe_from_integral(
 
 /**
  * @brief Get the IMF-averaged PE band lower-edge spectral photon rate, at a
- * given metallicity, from a 2D table. See
- * #radiation_get_luminosity_pe_from_integral_2d.
+ * given metallicity, from a 2D table.
+ *
+ * See #radiation_get_luminosity_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -931,8 +935,9 @@ float radiation_get_luminosity_edge_lw_from_integral(
 
 /**
  * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, at a
- * given metallicity, from a 2D table. See
- * #radiation_get_luminosity_edge_pe_from_integral_2d.
+ * given metallicity, from a 2D table.
+ *
+ * See #radiation_get_luminosity_edge_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).

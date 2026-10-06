@@ -524,9 +524,8 @@ static void radiation_check_imf_consistency(hid_t group_id,
 }
 
 /**
- * @brief Read one CGS-valued dataset of Data/Radiation, convert it to
- * internal units (and #RADIATION_DOT_N_ION_TABLE_SCALING) as float, and
- * optionally compute its log10.
+ * @brief Read one CGS-valued Data/Radiation dataset, convert it to internal
+ * units (and #RADIATION_DOT_N_ION_TABLE_SCALING) as float, optional log10.
  *
  * Aborts on float overflow. With debug checks, warns when a nonzero CGS value
  * collapses to exactly zero.
@@ -1059,9 +1058,10 @@ void radiation_read_luminosity_edge_pe_array(
 }
 
 /**
- * @brief Read the SpectralPhotonRateAtLWEdge (LW band lower-edge spectral
- * photon rate dQ/dE) array from the table. Same as
- * #radiation_read_luminosity_edge_pe_array.
+ * @brief Read the SpectralPhotonRateAtLWEdge array (LW band lower-edge spectral
+ * photon rate dQ/dE) from the table.
+ *
+ * Same as #radiation_read_luminosity_edge_pe_array.
  *
  * @param rad The #radiation model.
  * @param group_id Open HDF5 "Data/Radiation" group id.
@@ -1089,9 +1089,8 @@ void radiation_read_luminosity_edge_lw_array(
 }
 
 /**
- * @brief Read the MeanPhotonEnergyLW / Integrated_MeanPhotonEnergyLW
- * (photon-number-weighted mean Lyman-Werner photon energy, L_LW/Q_LW over
- * 11.2-13.6 eV) arrays from the table.
+ * @brief Read the MeanPhotonEnergyLW / Integrated_MeanPhotonEnergyLW arrays
+ * (photon-number-weighted mean LW photon energy, L_LW/Q_LW) from the table.
  *
  * Both datasets are kept in cgs erg (no unit conversion or scaling), like
  * #radiation_get_mean_excess_photon_energy_HI_from_integral and
@@ -1174,9 +1173,8 @@ void radiation_read_main_sequence_lifetime_array(
 }
 
 /**
- * @brief Read the main-sequence-lifetime-inverse table (2D "M,Z" tables
- * only): "Age", "MainSequenceLifetimeInverse" and
- * "MainSequenceLifetimeInverseExcluded".
+ * @brief Read the main-sequence-lifetime-inverse table of a 2D table (Age,
+ * MainSequenceLifetimeInverse, MainSequenceLifetimeInverseExcluded).
  *
  * Does not use #radiation_build_tables(): the output axis is age, not mass.
  * The Z axis keeps the native log10(Z) nodes and the age axis is the native
