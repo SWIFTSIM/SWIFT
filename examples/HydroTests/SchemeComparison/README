@@ -2,7 +2,7 @@ Hydro scheme comparison suite
 =============================
 
 Runs the standard hydro tests (Sod, Sedov, Noh, Gresho, Evrard, Kelvin-
-Helmholtz, square, blob, Keplerian ring in 3D (planar) and in 2D, Zel'dovich
+Helmholtz, square (spacing-based and mass-based ICs), blob, Keplerian ring in 3D (planar) and in 2D, Zel'dovich
 pancake on a lattice and on a glass; the NFW
 hydrostatic halo on request with -t nfw) with several hydro
 schemes built from the same source tree and produces comparison plots and a

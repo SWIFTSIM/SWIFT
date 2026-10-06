@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
-ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "keplerian", "keplerian2d", "zeldovich",
+ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d", "zeldovich",
              "zeldovich_glass", "zeldovich_pert", "blob"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
@@ -596,22 +596,22 @@ def test_kh(root, schemes, out):
     return metrics
 
 
-def test_square(root, schemes, out):
+def test_square(root, schemes, out, test="square"):
     times = [1.0, 4.0]
     fig, axes = plt.subplots(len(times) + 1, len(schemes) + 1,
                              figsize=(3.6 * (len(schemes) + 1), 3.4 * (len(times) + 1)), squeeze=False)
     metrics = {}
     for i, t in enumerate(times):
-        data = load_all(root, schemes, "square", "square", time=t)
+        data = load_all(root, schemes, test, "square", time=t)
         image_panels(axes, i, schemes, data, "rho", (0.5, 4.5))
         for j, s in enumerate(schemes):
             axes[i, j].add_patch(plt.Rectangle((0.25, 0.25), 0.5, 0.5, fill=False, ec="k", lw=0.8))
         axes[i, -1].axis("off")
     # Density along a slice through the middle at the final time
-    data = load_all(root, schemes, "square", "square", time=times[-1])
+    data = load_all(root, schemes, test, "square", time=times[-1])
     ic = None
     for s in schemes:
-        f = os.path.join(root, "runs", s, "square", "square.hdf5")
+        f = os.path.join(root, "runs", s, test, "square.hdf5")
         if os.path.exists(f):
             ic = load(f)
             break
@@ -639,14 +639,19 @@ def test_square(root, schemes, out):
             pos0 = ic["pos"][order][np.searchsorted(ic["ids"][order], d["ids"])]
             inside = (np.abs(pos0[:, 0] - 0.5) < 0.25) & (np.abs(pos0[:, 1] - 0.5) < 0.25)
             target = np.where(inside, 4.0, 1.0)
-            metrics[s] = {"L1_rho_vs_initial": float(np.mean(np.abs(d["rho"] / target - 1.0)))}
+            # Shape: dense gas that left the initial square (rotation into a
+            # diamond, fingers); the per-particle L1 is blind to it.
+            now_inside = (np.abs(d["pos"][:, 0] - 0.5) < 0.25) & (np.abs(d["pos"][:, 1] - 0.5) < 0.25)
+            dense = d["rho"] > 2.5
+            metrics[s] = {"L1_rho_vs_initial": float(np.mean(np.abs(d["rho"] / target - 1.0))),
+                          "frac_dense_outside_square": float(np.sum(dense & ~now_inside) / max(np.sum(dense), 1))}
     axes[row, -1].plot([0, 0.25, 0.25, 0.75, 0.75, 1], [1, 1, 4, 4, 1, 1], "k-", lw=0.8, label="initial")
     axes[row, -1].set_xlabel("x")
     axes[row, -1].set_ylabel(r"$\rho$")
     axes[row, -1].legend(fontsize=7)
-    fig.suptitle("Square test (2D), density")
+    fig.suptitle("Square test (2D), density" + (" -- equal spacing, 4:1 masses" if test == "square_mass" else ""))
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "square.png"), dpi=150)
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
     return metrics
 
@@ -911,6 +916,7 @@ def test_nfw(root, schemes, out):
 
 TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
          "evrard": test_evrard, "kh": test_kh, "square": test_square,
+         "square_mass": lambda root, schemes, out: test_square(root, schemes, out, test="square_mass"),
          "keplerian": test_keplerian,
          "keplerian2d": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian2d"),
          "zeldovich": test_zeldovich,
