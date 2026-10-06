@@ -2,8 +2,7 @@
 \label{sec:radiation-pressure}
 
 This section documents the radiation-pressure feedback channel
-(\code{GEARFeedback:radiation\_pressure\_efficiency},
-\code{radiation\_policy\_radiation\_pressure}), a separate mechanism
+(\code{GEARFeedback:radiation\_pressure\_efficiency}), a separate mechanism
 from the HII photoionization budget documented in the algorithm
 section of the HII photoionization theory document
 (\code{radiation.tex}/\code{radiation.pdf}, this same directory):
@@ -15,6 +14,12 @@ Section~\ref{sec:rp-vs-hii} below) and use the same SPH gather around
 the star, but are otherwise independent: a star can have one policy
 enabled without the other. Not yet covered anywhere else in this
 document; written up here for the first time.
+
+\paragraph{Implementation.} The channel is the policy bit
+\code{radiation\_policy\_radiation\_pressure}
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:55}), set at
+\code{feedback\_properties.h:690} and tested in the apply loop at
+\code{src/feedback/GEAR/radiation\_iact.h:230}.
 
 \subsection{Physical distinction from photoionization}
 \label{sec:rp-vs-hii}
@@ -86,8 +91,6 @@ Two consequences worth keeping precise:
 \label{sec:rp-momentum}
 
 Each active star's momentum injection rate is
-(\code{radiation\_get\_star\_physical\_radiation\_pressure},
-\code{src/feedback/GEAR/radiation\_pressure.c}):
 \begin{equation}
   \dot p_{\rm rad} = \frac{L_{\rm bol}}{c}\,(1-e^{-\tau_{\rm NUV}})\,(1+\tau_{\rm IR}),
   \label{eq:rp-momentum-rate}
@@ -97,8 +100,7 @@ $(1-e^{-\tau_{\rm NUV}})$ factor is the fraction of the star's non-ionizing
 continuum actually absorbed before dust reprocessing, using
 $\kappa_{\rm NUV}=1800\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ (the value where
 \citet{Hopkins2012a}'s single flux-mean estimate and
-\citet{Hopkins2020}'s own NUV sub-band agree; see the git history of this
-section for the "missing term" discussion that preceded the fix). The
+\citet{Hopkins2020}'s own NUV sub-band agree). The
 standard single-UV-scattering-plus-dust-IR-trapping recipe: direct
 absorption/scattering of the star's own UV/optical photons deposits
 $L_{\rm bol}/c$ of momentum per unit time; photons re-radiated in the
@@ -157,7 +159,7 @@ note).
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, read from
 the pychem tables (as is the ionizing photon rate) and scaled
-by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}):
+by the parameter \code{radiation\_pressure\_efficiency}:
 an overall dial on this channel independent of the photoionization
 budget, default behaviour unaffected unless explicitly set $\ne1$.
 
@@ -167,8 +169,7 @@ The IR optical depth is
   \kappa_{\rm IR} = 10\,\frac{\rm cm^2}{\rm g}\,\frac{Z}{Z_\odot},
   \label{eq:rp-tauIR}
 \end{equation}
-(\code{radiation\_get\_physical\_optical\_depth},
-\code{radiation\_get\_physical\_opacity}): a metallicity-linear
+a metallicity-linear
 dust opacity of $10\,{\rm cm^2\,g^{-1}}$ at solar metallicity, a
 standard order-of-magnitude value for dust-processed IR opacity in this
 class of model. $Z$ here is \code{sp->feedback\_data.Z\_star}, the
@@ -181,6 +182,19 @@ for a star with no gas neighbours this step, since
 \code{enrichment\_weight} being zero is checked before the divide).
 
 \subsection{Gas column density: Sobolev approximation}
+\paragraph{Implementation.} Equation~(\ref{eq:rp-momentum-rate}) is
+\code{radiation\_get\_star\_physical\_radiation\_pressure}
+(\code{src/feedback/GEAR/radiation\_pressure.c:121}).
+Equation~(\ref{eq:rp-tauIR}) is \code{radiation\_get\_physical\_optical\_depth}
+(\code{radiation\_pressure.c:94}) with \code{radiation\_get\_physical\_opacity}
+(\code{radiation\_pressure.c:72}). The efficiency scales $L_{\rm bol}$ in
+\code{feedback\_will\_do\_feedback}
+(\code{src/feedback/GEAR/feedback\_common.c:268}, lines 386-387). $Z_\star$ is
+accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
+(\code{src/feedback/GEAR/radiation\_iact.h:57}, line 96) and normalized in
+\code{feedback\_prepare\_radiation\_feedback} (\code{radiation\_iact.h:142},
+lines 157-160, behind the \code{enrichment\_weight} test).
+
 \label{sec:rp-sobolev}
 
 $\Sigma_{\rm gas}$ in Eq.~\ref{eq:rp-tauIR} uses the Sobolev
@@ -194,7 +208,7 @@ codes:
   h_\star\,\gamma_k\right),
   \label{eq:rp-sobolev}
 \end{equation}
-(\code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}), i.e.\
+i.e.\
 the local gas density times an effective path length: the kernel
 support radius $h_\star\gamma_k$ (a floor: always included, not just
 a fallback) plus the Sobolev length $\rho/|\nabla\rho|$, the
@@ -240,12 +254,19 @@ the length by $h_\star\gamma_k$ and has no jump (the minimum of two continuous f
 is itself continuous), and it needs no separate noise-floor constant.
 
 \subsection{Distributing the kick to gas particles}
+\paragraph{Implementation.} Equation~(\ref{eq:rp-sobolev}) is
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}
+(\code{src/feedback/GEAR/radiation\_pressure.c:43}); the zero-gradient branch and
+the cap are at \code{radiation\_pressure.c:53-57}. $\nabla\rho_\star$ is
+accumulated at \code{src/feedback/GEAR/radiation\_iact.h:92} and normalized at
+\code{radiation\_iact.h:153-155}.
+
 \label{sec:rp-distribute}
 
 $\dot p_{\rm rad}$ (Eq.~\ref{eq:rp-momentum-rate}) is a single
 star-level rate; distributing it to individual gas neighbours uses the
 same SPH-kernel-weighted-share pattern already used for chemical
-enrichment (\code{radiation\_iact\_nonsym\_feedback\_apply}):
+enrichment:
 \begin{equation}
   \Delta\vec p_j = -\,\dot p_{\rm rad}\,\Delta t_\star\,
   \frac{m_j w_{ij}}{\rho_\star}\,\hat{\vec r}_{j\star},
@@ -259,13 +280,19 @@ particle (the code computes $-dx/r$ with $dx \equiv \vec x_\star -
 $\times\,a$ conversion applied). The result accumulates into
 \code{xpj->feedback\_data.radiation.delta\_p}: a field distinct from
 the top-level \code{xpj->feedback\_data.delta\_p} used for
-supernova/wind momentum (\code{feedback\_struct.h}), applied separately
-in \code{feedback\_update\_part\_radiation}
-(\code{radiation\_iact.h:320}). The flag \code{hit\_by\_radiation} is
-set where the momentum is accumulated (\code{radiation\_iact.h:249}), and the
+supernova/wind momentum, applied separately. The flag \code{hit\_by\_radiation} is
+set where the momentum is accumulated, and the
 momentum is applied only to flagged particles.
 
 \subsection{Tier 2: dynamical shell-expansion validation}
+\paragraph{Implementation.} Equation~(\ref{eq:rp-per-particle}) is in
+\code{radiation\_iact\_nonsym\_feedback\_apply}
+(\code{src/feedback/GEAR/radiation\_iact.h:189}, lines 234-239). The two
+momentum fields are \code{src/feedback/GEAR\_thermal/feedback\_struct.h:252}
+(supernova and wind) and \code{:258} (radiation). The radiation kick is applied
+in \code{feedback\_update\_part\_radiation} (\code{radiation\_iact.h:320}). The
+flag \code{hit\_by\_radiation} is set at \code{radiation\_iact.h:249}.
+
 \label{sec:rp-shell-tier2}
 
 Eq.~\ref{eq:rp-momentum-rate}'s correctness in isolation (weight
@@ -306,7 +333,7 @@ SPH-kernel gas column (Sec.~\ref{sec:rp-sobolev}), which changes as
 radiation pressure empties the region around the star. The factor
 can be measured directly per snapshot (from the debug-gated
 \code{EnrichmentWeight}/\code{GradRhoStar}/\code{ZStar} star output
-fields, \code{src/stars/GEAR/stars\_io.h}) instead of assuming a
+fields) instead of assuming a
 literature fiducial value. Its drift over a run then tests, rather than
 assumes, whether the star's adaptive smoothing
 length keeps its local coupling tracking the swept-up shell as the
@@ -322,3 +349,7 @@ content, not design: they are logged in the GEAR radiation logbook
 (\code{swift-gear} repository, \code{theory/radiation/
 04\_radiation\_pressure\_and\_isrf.tex}), not here.
 
+
+\paragraph{Implementation.} The star output fields \code{EnrichmentWeight},
+\code{GradRhoStar} and \code{ZStar} are registered in
+\code{src/stars/GEAR/stars\_io.h:275}, \code{:283} and \code{:290}.
