@@ -72,33 +72,40 @@ GEARChemistry:
   diffusion_coefficient: 1e-3
 
 GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012.h5        # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 0                         # Enable or not the UV background
-  redshift: -1                                  # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                         # Enable or not the metal cooling
-  self_shielding_method: -1                     # Grackle (<= 3) or Gear self shielding method
-  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
-  thermal_time_myr: 0
-  maximal_density_Hpcm3: 1e4                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value. A value < 0 deactivates this parameter.
-  HydrogenFractionByMass: 0.76                  # Hydrogen fraction by mass. (Default: 0.76)
-  use_radiative_transfer: 0                     # Arrays of ionization/heating rates are provided. (Default: 0)
-  cmb_temperature_floor: 1                      # Enable/disable an effective CMB temperature floor. (Default: 1)
-  RT_heating_rate_cgs: 0
-  RT_HI_ionization_rate_cgs: 0
-  RT_HeI_ionization_rate_cgs: 0
-  RT_HeII_ionization_rate_cgs: 0
-  volumetric_heating_rates_cgs: 0
-  specific_heating_rates_cgs: 0
-  # local_dust_to_gas_ratio left unset: resolves to Grackle's own compiled
-  # default, which is what this example's screening length is derived
-  # against.
-  #
-  # --cooling is on (run.sh) so cooling_init() actually resolves
-  # chemistry_data, but this example's own point is to isolate the ISRF
-  # propagation field from gas thermal/dynamical response: this flag skips
-  # the per-particle cooling/heating update itself while leaving
-  # chemistry_data (including local_dust_to_gas_ratio) fully resolved.
-  disable_cooling_for_debugging: 1
+  # Core Grackle settings. Each optional key states its parser default.
+  cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
+  with_UV_background: 0                         # Metagalactic UV background on or off (required)
+  redshift: -1                                  # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                         # Metal cooling on or off (required)
+  thermal_time_myr: 0                           # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: 1e4                    # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)
+  max_steps: 10000                              # Maximal Grackle sub-cycle iterations per particle solve (Default: 10000)
+  subcycle_on_failure: 2                        # Retries of a failed solve, each halving the sub-step, in [0, 20] (Default: 2)
+  cmb_temperature_floor: 1                      # Grackle's internal CMB temperature floor on or off (Default: 1)
+  agora_cmb_temperature_floor: 0                # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
+  HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
+
+  # Self-shielding.
+  self_shielding_method: -1                     # Continuum self-shielding: -1 GEAR, 0 none, 1 to 3 Grackle (Default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
+
+  # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
+  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
+  local_dust_to_gas_ratio: -1                   # Grackle's compiled default, which this example's screening length is derived against (Default: -1)
+
+  # Radiation field and RT rates (cgs).
+  use_radiative_transfer: 0                     # Ionization and heating rates are provided; forced on by HII_couple_ionization_rate, and by the ISRF in grackle_2 and grackle_3 builds (Default: 0)
+  RT_heating_rate_cgs: 0                        # Heating rate per nHI, cgs (Default: 0)
+  RT_HI_ionization_rate_cgs: 0                  # HI ionization rate [1/s] (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0                 # HeI ionization rate [1/s] (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0                # HeII ionization rate [1/s] (Default: 0)
+
+  # Constant heating rates.
+  volumetric_heating_rates_cgs: 0               # Constant volumetric heating rate [erg/s/cm3] (Default: 0)
+  specific_heating_rates_cgs: 0                 # Constant specific heating rate [erg/s/g] (Default: 0)
+
+  # Debug.
+  disable_cooling_for_debugging: 1              # Skips the per-particle cooling update to isolate the ISRF from the gas response; cooling_init() still resolves chemistry_data (Default: 0)
 
 GEARFeedback:
   # Stellar evolution

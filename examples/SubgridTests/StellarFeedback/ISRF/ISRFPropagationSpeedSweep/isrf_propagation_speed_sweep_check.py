@@ -26,7 +26,7 @@ retardation collapse, the stability bracket) are done separately by
 sweep_compare.py.
 
 nu_eff = c_hyp*dt_bulk/h_med IS A MEASUREMENT ONLY WHEN c_hyp IS ONE FIXED
-SPEED (ISRF_c_hyp_scheme 2, read from --used-parameters). Under scheme 4,
+SPEED (ISRF_c_hyp_scheme: fixed_fraction, read from --used-parameters). Under kernel_local,
 c_hyp comes from the closure min(margin*h_med/dt_bulk, c),
 built from the same h_med and dt_bulk, so nu_eff returns the margin
 parameter exactly and measures nothing at all (it still measures something
@@ -219,12 +219,19 @@ def main():
     alpha_pin = float(fb.get("ISRF_dissipation_alpha_pin_for_debugging", 0.0))
     dt_max_param = float(ti.get("dt_max", np.nan))
     alpha_eff = alpha_pin if alpha_pin > 0.0 else alpha_max
-    # ISRF_c_hyp_scheme 2 gives every particle one speed, f*c in float32
-    # (radiation_isrf.c); 0 selects the closure below.
+    # ISRF_c_hyp_scheme: fixed_fraction gives every particle one speed, f*c in float32
+    # (radiation_isrf.c); kernel_local selects the closure below.
+    recorded_scheme = fb.get("ISRF_c_hyp_scheme", "kernel_local")
+    if recorded_scheme not in ("fixed_fraction", "kernel_local"):
+        raise ValueError(
+            f"GEARFeedback:ISRF_c_hyp_scheme is {recorded_scheme!r} in the run's "
+            "used_parameters.yml; only 'fixed_fraction' and 'kernel_local' are "
+            "supported."
+        )
     c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
     c_hyp_fixed = (
         float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
-        if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0
+        if recorded_scheme == "fixed_fraction" and c_fraction > 0.0
         else 0.0
     )
 
@@ -245,11 +252,11 @@ def main():
 
     nu_eff = c_hyp * dt_bulk / h_med_last if h_med_last > 0 else 0.0
     nu_max = nu_max_of(alpha_eff)
-    # Provenance of nu_eff. Under scheme 4, c_hyp is the closure evaluated on
+    # Provenance of nu_eff. Under kernel_local, c_hyp is the closure evaluated on
     # the same h_med and dt_bulk, so nu_eff is the margin parameter itself
     # unless the light-speed clamp binds.
     if c_hyp_fixed > 0.0:
-        nu_eff_source = "measured (one fixed c_hyp, scheme 2)"
+        nu_eff_source = "measured (one fixed c_hyp, fixed_fraction)"
     elif c_hyp >= SPEED_OF_LIGHT_KM_S:
         nu_eff_source = "measured (light-speed clamp binding)"
     else:
@@ -286,7 +293,7 @@ def main():
         if not applied:
             all_ok = False
             print(
-                "\nFAIL M-P5: ISRF_c_hyp_scheme 2 is set but the recorded "
+                "\nFAIL M-P5: ISRF_c_hyp_scheme: fixed_fraction is set but the recorded "
                 "HyperbolicPropagationSpeeds is not f*c on every particle "
                 "after snapshot 0 -- the fixed speed did not take effect."
             )

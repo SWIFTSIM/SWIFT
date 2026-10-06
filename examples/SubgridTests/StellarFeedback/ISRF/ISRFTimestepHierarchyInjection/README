@@ -57,7 +57,7 @@ would not.
 ./run.sh
 ```
 `run.sh` runs `conservation_hierarchy` and `conservation_single_bin` into
-their own directories. Both set `Z = 0` and run `ISRF_c_hyp_scheme: 2` at
+their own directories. Both set `Z = 0` and run `ISRF_c_hyp_scheme: fixed_fraction` at
 5 km/s, so that `c/c_hyp` is one number for the whole box.
 The single-bin run sets `dt_max` below every CFL step of the box, so all gas
 and the star share one bin.

@@ -531,13 +531,20 @@ def main():
     # --- M1/M2/M3 per star, per band, per snapshot ---
     R_cut = opt.r_cut_h
     C_hyp = opt.c_hyp_margin
-    # ISRF_c_hyp_scheme 2 gives every particle the same c_hyp, f*c in float32
-    # (radiation_isrf.c); 0 here selects the kernel-local closure below.
+    # ISRF_c_hyp_scheme: fixed_fraction gives every particle the same c_hyp, f*c in float32
+    # (radiation_isrf.c); kernel_local selects the closure below.
     fb = (used_params or {}).get("GEARFeedback") or {}
+    recorded_scheme = fb.get("ISRF_c_hyp_scheme", "kernel_local")
+    if recorded_scheme not in ("fixed_fraction", "kernel_local"):
+        raise ValueError(
+            f"GEARFeedback:ISRF_c_hyp_scheme is {recorded_scheme!r} in the run's "
+            "used_parameters.yml; only 'fixed_fraction' and 'kernel_local' are "
+            "supported."
+        )
     c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
     c_fixed = (
         float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
-        if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0
+        if recorded_scheme == "fixed_fraction" and c_fraction > 0.0
         else 0.0
     )
 

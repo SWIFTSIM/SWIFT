@@ -30,9 +30,9 @@ snapshots 6.2 times further apart.
 - 0: no shielding.
 - 2: `l_shield` is half the column path set by `h2_self_shielding_path`
   (`GrackleCooling:H2_self_shielding_path`): `l_shield = path/2`, with
-  `path = kernel_diameter` (`2 gamma_K h`, the default) or `kernel_radius`
-  (`gamma_K h`), so the default gives `l_shield = gamma_K h` and
-  `kernel_radius` halves that. The column depends on resolution.
+  `path = kernel_radius` (`gamma_K h`, the default) or `kernel_diameter`
+  (`2 gamma_K h`), so the default gives `l_shield = gamma_K h / 2` and
+  `kernel_diameter` doubles that. The column depends on resolution.
 - 3: `l_shield` is the local Jeans length (4 pc in this setup).
 
 SWIFT rejects mode 1, which needs neighbouring grid cells.

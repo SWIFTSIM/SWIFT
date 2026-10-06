@@ -283,31 +283,6 @@ INLINE static void convert_part_c_hyp(const struct engine *e,
 /**
  * @brief Specifies which particle fields to read from the ICs.
  *
- * Reads "PESpecificEnergy"/"LWSpecificEnergy" (singular: the codebase's
- * own IC-read convention, e.g. hydro's "Density"/"SmoothingLength", vs. the
- * plural "Densities"/"SmoothingLengths" used for the matching snapshot
- * output) as OPTIONAL fields into #feedback_isrf_moment_data.u.
- * The snapshot output for the same quantity
- * (#convert_part_u_PE/convert_part_u_LW, this file)
- * deliberately uses the plural "PESpecificEnergies"/"LWSpecificEnergies"
- * instead, so a snapshot cannot be fed back in as an IC unmodified. This
- * is a validation/testing tool, not a normal production IC input, and is
- * not meant to make that round-trip easy. It lets a test set an arbitrary,
- * analytically-known initial LW/PE field shape (a value range across
- * particles, a pulse, a step) and watch only Grackle's chemistry, or only
- * the LW/PE propagation PDE, evolve it, decoupled from the star and
- * injection machinery. It only makes physical sense in a run with no star,
- * though this reader does not itself enforce that.
- *
- * An IC without these fields is unaffected: #radiation_first_init_part no
- * longer zeroes #feedback_isrf_moment_data.u (and seeds
- * #feedback_isrf_moment_data.u_prev from it, not from 0.f, so a supplied value
- * also survives the very first propagation update when
- * `GEARFeedback:ISRF_propagation` is on) so that a supplied value survives
- * first-init, but every #part is bzero'd before this read runs
- * (single_io.c/parallel_io.c/serial_io.c), so a missing field still leaves
- * exactly 0.f, matching pre-existing behaviour.
- *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
  *
@@ -320,10 +295,6 @@ INLINE static int feedback_read_particles(struct part *parts,
      beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS implies, and an input field
      carries no a-exponent slot at all, so an IC value is taken verbatim. */
 
-  /* DOUBLE, not FLOAT: this macro points directly at the struct field
-     (feedback_isrf_moment_data.u is double, see its doxygen), not
-     through a converter, so this type must match the field's own C type
-     or the reader copies the wrong byte width into it. */
   list[0] = io_make_input_field("PESpecificEnergy", DOUBLE, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_PE].u);
@@ -331,12 +302,8 @@ INLINE static int feedback_read_particles(struct part *parts,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_LW].u);
 
-  /* LWPhotonSpecificEnergy = 0 together with a nonzero LWSpecificEnergy is
-     not representable after first-init: radiation_first_init_part()
-     overwrites it with the LW value, for either sign, since a seeded LW
-     field with no attribution is a field at the reference photon energy by
-     definition. An IC author who wants no photon moment carried must also
-     zero LWSpecificEnergy. */
+  /* A zero LWPhotonSpecificEnergy beside a nonzero LWSpecificEnergy is
+     overwritten at first init, see radiation_first_init_part(). */
   list[2] =
       io_make_input_field("LWPhotonSpecificEnergy", DOUBLE, 1, OPTIONAL,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
@@ -490,9 +457,9 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Hyperbolic propagation speed the band updates and the "
       "pairwise transport operators ran with, shared by both bands. "
       "Physical, so no scale-factor exponent of its own: a fixed fraction "
-      "of the speed of light (ISRF_c_hyp_scheme 2) or built from the "
-      "physical smoothing length and a physical timestep "
-      "(ISRF_c_hyp_scheme 4). The conserved "
+      "of the speed of light (ISRF_c_hyp_scheme fixed_fraction) or built from "
+      "the physical smoothing length and a physical timestep "
+      "(ISRF_c_hyp_scheme kernel_local). The conserved "
       "ledger of the pairwise transport operators is `sum m u / c_hyp` "
       "rather than `sum m u` (proportional where c_hyp is uniform), which "
       "is what this field makes measurable from a snapshot. Only "

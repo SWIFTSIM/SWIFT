@@ -19,9 +19,9 @@ dissipation coefficient is nonzero. At this example's resolution the full
 range spans `c_hyp` from about 0.98 to 33 km/s: a factor of 34, nowhere
 near either end of the physically interesting range.
 Reaching `c_hyp -> c` or `c_hyp << c` needs one fixed speed,
-`ISRF_c_hyp_scheme: 2` with `ISRF_c_hyp_fixed_fraction_of_c` (`c_hyp_fraction`,
+`ISRF_c_hyp_scheme: fixed_fraction` with `ISRF_c_hyp_fixed_fraction_of_c` (`c_hyp_fraction`,
 the speed over `c`). `params.yml` sets
-`ISRF_c_hyp_timestep_term_off_for_debugging: 1`, so scheme 2 does not limit the
+`ISRF_c_hyp_timestep_term_off_for_debugging: 1`, so fixed_fraction does not limit the
 time step and the effective Courant number `nu_eff = c_hyp*dt/h` is a free
 quantity that this example's check script measures and reports rather than
 assumes, above the stability margin when Leg N asks for it. **Never set that
@@ -57,7 +57,7 @@ make -j
 Override any parameter via the matching env var: gas density (`gas_density`,
 atom/cm^3), gas particle mass (`gas_mass`, Msun), resolution level (`level`),
 `seed_pulse` (>0: star-free seeded pulse; 0: star source), `c_hyp_fraction`
-(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs scheme 2 at that fraction of `c`),
+(`ISRF_c_hyp_fixed_fraction_of_c`; > 0 runs fixed_fraction at that fraction of `c`),
 `c_hyp_margin`
 (`ISRF_c_hyp_margin`), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`), `propagation`

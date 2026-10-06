@@ -65,7 +65,8 @@ written to it.
 
 Before a run, ``tools/check_param_keys.py params.yml`` lists the keys that SWIFT
 would not read, either because no code reads them (a typo, a removed feature) or
-because they were retired (the replacement is printed). It does not run SWIFT.
+because the tool knows the name as retired (the replacement is printed). It does
+not run SWIFT.
 
 The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file

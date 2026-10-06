@@ -133,7 +133,7 @@ def mode_P(opt):
         print(
             "\nM-P6 cannot be certified: nu_eff is not a measurement in "
             + ", ".join(f"{d} ({src})" for d, src in identity_runs)
-            + ". Set one fixed c_hyp (ISRF_c_hyp_scheme 2, c_hyp_fraction > 0) in "
+            + ". Set one fixed c_hyp (ISRF_c_hyp_scheme: fixed_fraction, c_hyp_fraction > 0) in "
             "every run of a Leg P sweep, so nu_eff is set independently of the "
             "closure."
         )

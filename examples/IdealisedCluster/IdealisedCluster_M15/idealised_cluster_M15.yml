@@ -298,16 +298,29 @@ SPINJETAGN:
 # GEAR subgrid physics
 ########################################
 GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 1 # Enable or not the UV background
-  redshift: 0 # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1 # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
-  provide_specific_heating_rates: 0 # User provide specific heating rates
-  self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
-  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
-  thermal_time_myr: 5
-  maximal_density_Hpcm3: -1 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  # Core Grackle settings. Each optional key states its parser default.
+  cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
+  with_UV_background: 1                         # Metagalactic UV background on or off (required)
+  redshift: 0                                   # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                         # Metal cooling on or off (required)
+  thermal_time_myr: 5                           # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: -1                     # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)
+  max_steps: 10000                              # Maximal Grackle sub-cycle iterations per particle solve (Default: 10000)
+  subcycle_on_failure: 2                        # Retries of a failed solve, each halving the sub-step, in [0, 20] (Default: 2)
+  cmb_temperature_floor: 1                      # Grackle's internal CMB temperature floor on or off (Default: 1)
+  agora_cmb_temperature_floor: 0                # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
+  HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
+
+  # Self-shielding.
+  self_shielding_method: -1                     # Continuum self-shielding: -1 GEAR, 0 none, 1 to 3 Grackle (Default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
+
+  # Constant heating rates.
+  volumetric_heating_rates_cgs: 0               # Constant volumetric heating rate [erg/s/cm3] (Default: 0)
+  specific_heating_rates_cgs: 0                 # Constant specific heating rate [erg/s/g] (Default: 0)
+
+  # Debug.
+  disable_cooling_for_debugging: 0              # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GEARStarFormation:
   star_formation_efficiency: 0.01     # star formation efficiency (c_*)

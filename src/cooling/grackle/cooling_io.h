@@ -403,15 +403,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   char H2_path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
                               "GrackleCooling:H2_self_shielding_path", H2_path,
-                              "kernel_diameter");
-  if (strcmp(H2_path, "kernel_diameter") == 0)
-    cooling->H2_self_shielding_path_in_kernel_radii = 2.0f;
-  else if (strcmp(H2_path, "kernel_radius") == 0)
+                              "kernel_radius");
+  if (strcmp(H2_path, "kernel_radius") == 0)
     cooling->H2_self_shielding_path_in_kernel_radii = 1.0f;
+  else if (strcmp(H2_path, "kernel_diameter") == 0)
+    cooling->H2_self_shielding_path_in_kernel_radii = 2.0f;
   else
     error(
-        "GrackleCooling:H2_self_shielding_path must be kernel_diameter or "
-        "kernel_radius, got '%s'.",
+        "GrackleCooling:H2_self_shielding_path must be kernel_radius or "
+        "kernel_diameter, got '%s'.",
         H2_path);
 
   /* With the ISRF on and H2 tracked, the local LW dissociation rate
@@ -427,8 +427,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GrackleCooling:primordial_chemistry >= 2 (H2 tracked) and "
         "GrackleCooling:H2_self_shielding is 0 (unshielded): the local LW "
         "dissociation rate this feature injects reaches Grackle with no "
-        "H2 self-shielding applied. Set H2_self_shielding to 2 (kernel "
-        "support radius, with the default H2_self_shielding_path) or 3 "
+        "H2 self-shielding applied. Set H2_self_shielding to 2 (column set "
+        "by H2_self_shielding_path, one kernel support radius by default) or 3 "
         "(local Jeans length) unless this is deliberate.");
   }
 

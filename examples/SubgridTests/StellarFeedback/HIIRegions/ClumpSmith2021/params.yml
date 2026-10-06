@@ -68,29 +68,42 @@ SPH:
 
 # Cooling with Grackle 3.0
 GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012_high_density.h5  # High-density variant (hden up to 1e10 cm^-3, vs 1e4
-                                                       # for the standard table) -- needed since the clump's own density is 1e4 cm^-3.
-  with_UV_background: 0                                # Enable or not the UV background
-  redshift: -1                                         # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                                # Enable or not the metal cooling
-  self_shielding_method: -1                            # Grackle (<= 3) or Gear self shielding method
-  self_shielding_threshold_atom_per_cm3: 0.007         # Required only with GEAR's self shielding. Density threshold of the self shielding
-  thermal_time_myr: 0
-  maximal_density_Hpcm3: 1e8                           # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value
-                                                       # < 0 deactivates this parameter. Within the high-density table's 1e10 range, with margin above the clump's own 1e4 cm^-3 for SPH density noise.
-  HydrogenFractionByMass: 0.76                         # Hydrogen fraction by mass. (Default: 0.76)
-  use_radiative_transfer: 0                            # Arrays of ionization/heating rates are provided. (Default: 0)
-  cmb_temperature_floor: 1                             # Enable/disable an effective CMB temperature floor. (Default: 1)
-  RT_heating_rate_cgs: 0                               # Heating rate in units of / nHI_cgs. (Default: 0)
-  RT_HI_ionization_rate_cgs: 0                         # HI ionization rate in cgs [1/s]. (Default: 0)
-  RT_HeI_ionization_rate_cgs: 0                        # HeI ionization rate in cgs [1/s]. (Default: 0)
-  RT_HeII_ionization_rate_cgs: 0                       # HeII ionization rate in cgs [1/s]. (Default: 0)
-  volumetric_heating_rates_cgs: 0                      # Volumetric heating rate in cgs [erg/s/cm3]. (Default: 0)
-  specific_heating_rates_cgs: 0                        # Specific heating rate in cgs [erg/s/g]. (Default: 0)
-  initial_nHII_to_nH_ratio: -1                         # Initial nHII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeI_to_nH_ratio: -1                         # Initial nHeI to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeII_to_nH_ratio: -1                        # Initial nHeII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
-  initial_nHeIII_to_nH_ratio: -1                       # Initial nHeIII to nH ratio (number density ratio). Ignored if -1. (Default: -1)
+  # Core Grackle settings. Each optional key states its parser default.
+  cloudy_table: CloudyData_UVB=HM2012_high_density.h5  # High-density table (up to 1e10 cm^-3), needed since the clump's own density is 1e4 cm^-3
+  with_UV_background: 0                                # Metagalactic UV background on or off (required)
+  redshift: -1                                         # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                                # Metal cooling on or off (required)
+  thermal_time_myr: 0                                  # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: 1e8                           # Ceiling inside the high-density table, with margin above the clump's 1e4 cm^-3 for SPH density noise
+  max_steps: 10000                                     # Maximal Grackle sub-cycle iterations per particle solve (Default: 10000)
+  subcycle_on_failure: 2                               # Retries of a failed solve, each halving the sub-step, in [0, 20] (Default: 2)
+  cmb_temperature_floor: 1                             # Grackle's internal CMB temperature floor on or off (Default: 1)
+  agora_cmb_temperature_floor: 0                       # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
+  HydrogenFractionByMass: 0.76                         # Hydrogen mass fraction (Default: 0.76)
+
+  # Self-shielding.
+  self_shielding_method: -1                            # Continuum self-shielding: -1 GEAR, 0 none, 1 to 3 Grackle (Default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007         # Density threshold in H atoms/cm^3, required with self_shielding_method -1
+
+  # Chemistry network: initial abundances as number ratios to nH, -1 keeps the default.
+  initial_nHII_to_nH_ratio: -1                         # nHII / nH (Default: -1)
+  initial_nHeI_to_nH_ratio: -1                         # nHeI / nH (Default: -1)
+  initial_nHeII_to_nH_ratio: -1                        # nHeII / nH (Default: -1)
+  initial_nHeIII_to_nH_ratio: -1                       # nHeIII / nH (Default: -1)
+
+  # Radiation field and RT rates (cgs).
+  use_radiative_transfer: 0                            # Ionization and heating rates are provided; forced on by HII_couple_ionization_rate, and by the ISRF in grackle_2 and grackle_3 builds (Default: 0)
+  RT_heating_rate_cgs: 0                               # Heating rate per nHI, cgs (Default: 0)
+  RT_HI_ionization_rate_cgs: 0                         # HI ionization rate [1/s] (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0                        # HeI ionization rate [1/s] (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0                       # HeII ionization rate [1/s] (Default: 0)
+
+  # Constant heating rates.
+  volumetric_heating_rates_cgs: 0                      # Constant volumetric heating rate [erg/s/cm3] (Default: 0)
+  specific_heating_rates_cgs: 0                        # Constant specific heating rate [erg/s/g] (Default: 0)
+
+  # Debug.
+  disable_cooling_for_debugging: 0                     # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GEARChemistry:
   initial_metallicity: 0

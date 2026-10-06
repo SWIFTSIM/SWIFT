@@ -10,11 +10,6 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-if [ -n "${c_hyp_pin:-}" ]; then
-    echo "WARNING: c_hyp_pin was removed and is ignored:" \
-         "set c_hyp_fraction=<speed/c> instead." >&2
-fi
-
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
@@ -28,7 +23,7 @@ bulk_temperature_K=${bulk_temperature_K:=1000}
 pulse_amplitude=${pulse_amplitude:=1.0}
 pulse_sigma_h=${pulse_sigma_h:=2.0}
 c_hyp_margin=${c_hyp_margin:=0.5}
-c_hyp_fraction=${c_hyp_fraction:=0}  # >0: ISRF_c_hyp_scheme 2 at this fraction of c; 0: scheme 4
+c_hyp_fraction=${c_hyp_fraction:=0}  # >0: ISRF_c_hyp_scheme: fixed_fraction at this fraction of c; 0: kernel_local
 alpha_max=${alpha_max:=0.5}
 alpha_pin=${alpha_pin:=0}
 propagation=${propagation:=1}
@@ -87,9 +82,9 @@ else
     mkdir $DIR
 fi
 
-c_hyp_scheme=4
+c_hyp_scheme=kernel_local
 if python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) > 0.0 else 1)" "$c_hyp_fraction"; then
-    c_hyp_scheme=2
+    c_hyp_scheme=fixed_fraction
 fi
 
 printf "Running simulation..."

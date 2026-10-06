@@ -303,9 +303,16 @@ def main():
     h_med_last = float(np.median(snap_last["h"]))
 
     dt_bulk = modal_bulk_dt(opt.timesteps_log, n_gas)
-    # ISRF_c_hyp_scheme 2: one speed, f*c in float32 (radiation_isrf.c).
+    # fixed_fraction ISRF_c_hyp_scheme: one speed, f*c in float32 (radiation_isrf.c).
+    recorded_scheme = fb.get("ISRF_c_hyp_scheme", "kernel_local")
+    if recorded_scheme not in ("fixed_fraction", "kernel_local"):
+        raise ValueError(
+            f"GEARFeedback:ISRF_c_hyp_scheme is {recorded_scheme!r} in the run's "
+            "used_parameters.yml; only 'fixed_fraction' and 'kernel_local' are "
+            "supported."
+        )
     c_fraction = float(fb.get("ISRF_c_hyp_fixed_fraction_of_c", 0.0))
-    if int(fb.get("ISRF_c_hyp_scheme", 4)) == 2 and c_fraction > 0.0:
+    if recorded_scheme == "fixed_fraction" and c_fraction > 0.0:
         c_hyp = float(np.float32(c_fraction) * np.float32(SPEED_OF_LIGHT_KM_S))
     else:
         c_hyp = (

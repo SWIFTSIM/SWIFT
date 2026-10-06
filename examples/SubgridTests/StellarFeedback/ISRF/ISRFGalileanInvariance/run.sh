@@ -5,11 +5,6 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 
 set -eo pipefail
 
-if [ -n "${c_hyp_pin:-}" ]; then
-    echo "WARNING: c_hyp_pin was removed and is ignored:" \
-         "set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
-fi
-
 config=${config:="galilean"}           # galilean or lag (see README)
 n_threads=${n_threads:=8}
 gas_density=${gas_density:=1e3}        # atom/cm^3
@@ -22,8 +17,8 @@ if [ "$config" = "galilean" ]; then
     time_end=${time_end:=5e-5}
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=1e-5}
-    c_hyp_scheme=${c_hyp_scheme:=4}    # 4: kernel-local closure. 2: one fixed speed, Courant-limited
-    c_hyp_fraction=${c_hyp_fraction:=0}  # scheme 2's speed, as a fraction of c. Also sets dt
+    c_hyp_scheme=${c_hyp_scheme:=kernel_local}  # kernel_local closure, or fixed_fraction: one fixed speed, Courant-limited
+    c_hyp_fraction=${c_hyp_fraction:=0}  # fixed_fraction's speed, as a fraction of c. Also sets dt
     alpha_max=${alpha_max:=0.5}
     alpha_floor=${alpha_floor:=0.5}
     # Bulk velocity in units of the measured c_hyp. Strictly BELOW 1: the
@@ -38,7 +33,7 @@ elif [ "$config" = "lag" ]; then
     time_end=${time_end:=5e-4}
     dt_max=${dt_max:=2.5e-6}
     delta_time=${delta_time:=5e-5}
-    c_hyp_scheme=2                     # one fixed speed: a uniform c_hyp gives a uniform tau
+    c_hyp_scheme=fixed_fraction        # one fixed speed: a uniform c_hyp gives a uniform tau
     c_hyp_fraction=${c_hyp_fraction:=3.335640952e-05}  # 10 km/s, as a fraction of c
     alpha_max=${alpha_max:=0}
     alpha_floor=${alpha_floor:=0}

@@ -30,7 +30,7 @@ Every channel reads the star's photon output (an ionizing photon rate, a bolomet
      - ``GEARFeedback:with_photoionization``
      - :ref:`gear_radiation_hii`
    * - Radiation pressure
-     - ``GEARFeedback:radiation_pressure_efficiency`` (0 = off)
+     - ``GEARFeedback:with_radiation_pressure`` (with ``GEARFeedback:radiation_pressure_efficiency``)
      - :ref:`gear_radiation_pressure`
    * - Interstellar radiation field
      - ``GEARFeedback:with_interstellar_radiation_field``
@@ -92,7 +92,7 @@ Timestep criteria
 
 A star still young enough to do photoionization (below ``HII_max_age_Myr``) has its timestep bounded by ``GEARFeedback:HII_rebuild_time_Myr``, so it rebuilds its HII region on schedule; see :ref:`gear_radiation_hii`. Every star, whatever channel it runs, also has its event-anchored timestep terms floored by ``GEARFeedback:event_dt_floor_Myr``, and a Single Stellar Population or continuous-IMF star additionally has its own timestep tightened while young by ``GEARFeedback:dt_evolution_factor_max``; see :ref:`gear_stellar_evolution_and_feedback`.
 
-On the gas side, a particle generally rides its own hydrodynamic timestep: no radiation channel adds a general CFL-like bound to it. The one exception is the ISRF's fixed-fraction-of-c propagation scheme (``ISRF_c_hyp_scheme: 2``), where ``GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`` adds a receiver-side stability bound to a particle carrying or near the field; see :ref:`gear_isrf`. A gas particle freshly ionized or freshly illuminated is synced onto a shorter time bin on the step it is first touched, but this is a one-off wake-up, not sub-cycling: it then rides its own step like any other particle.
+On the gas side, a particle generally rides its own hydrodynamic timestep: no radiation channel adds a general CFL-like bound to it. The one exception is the ISRF's fixed-fraction-of-c propagation scheme (``ISRF_c_hyp_scheme: fixed_fraction``), where ``GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c`` adds a receiver-side stability bound to a particle carrying or near the field; see :ref:`gear_isrf`. A gas particle freshly ionized or freshly illuminated is synced onto a shorter time bin on the step it is first touched, but this is a one-off wake-up, not sub-cycling: it then rides its own step like any other particle.
 
 Checking a run
 ----------------

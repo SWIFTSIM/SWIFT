@@ -981,7 +981,8 @@ self-shielding needs a separate column length, set independently via
 (\texttt{H2\_self\_shielding} = 2, kernel support radius), Grackle forms
 $N_{\rm H2} = 2 n_{\rm H2} l$, so the length passed is
 $l = {\rm path}/2$ with ${\rm path} = {\rm path\_in\_kernel\_radii}\,
-\gamma_K h$ (physical); at mode 3 the length is Grackle's own local
+\gamma_K h$ (physical), with ${\rm path\_in\_kernel\_radii} = 1$ for the default
+\texttt{kernel\_radius} and $2$ for \texttt{kernel\_diameter}; at mode 3 the length is Grackle's own local
 Jeans length instead. Dust extinction and H2 self-shielding use
 different lengths on purpose: the dust column reflects the illuminating
 pair's own local geometry, while H2 self-shielding needs the scale over
@@ -1152,11 +1153,14 @@ Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
 operators were implemented as selectable runtime schemes
 (\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}) and compared, against scheme $0$
 (the formula above, unmodified operators) as baseline. Schemes $0$, $1$ and
-$3$ have since been removed, and a value other than $2$ or $4$ stops the run;
-the comparison is kept as the record of why $4$ is the default. The scheme $2$
-arm of that comparison stored the true flux; scheme $2$ now stores the reduced
-flux like scheme $4$, which at its uniform speed is the same equation divided by
-one constant, so the comparison's conclusions about its speed rule stand. The candidates: a kernel-local speed
+$3$ have since been removed, and a value of the parameter other than
+\texttt{fixed\_fraction} (the former scheme $2$) or \texttt{kernel\_local}
+(the former scheme $4$) stops the run; the comparison is kept as the record of
+why \texttt{kernel\_local} is the default. The scheme $2$ arm of that
+comparison stored the true flux; \texttt{fixed\_fraction} now stores the
+reduced flux like \texttt{kernel\_local}, which at its uniform speed is the
+same equation divided by one constant, so the comparison's conclusions about
+its speed rule stand. The candidates: a kernel-local speed
 rule that takes the slowest step among a particle and every neighbour in
 its kernel (scheme $1$); a fixed global fraction of $c$, independent of
 $h$ or the time step (scheme $2$); a ``consistent variable-$c$''
