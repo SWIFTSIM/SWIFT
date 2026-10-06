@@ -51,9 +51,8 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
       sqrtf(grad_rho[0] * grad_rho[0] + grad_rho[1] * grad_rho[1] +
             grad_rho[2] * grad_rho[2]);
 
-  /* Cap the Sobolev length rho/|grad rho| at the kernel support radius
-     rather than letting it blow up towards infinity for a locally uniform
-     density field (zero or near-zero gradient). */
+  /* Cap the Sobolev length rho/|grad rho| at the kernel support radius, so
+     a uniform density (zero gradient) does not make it diverge. */
   const float h_gas = sp->h * kernel_gamma;
   const float sobolev_length =
       norm_grad_rho > 0.0f ? fminf(rho_gas / norm_grad_rho, h_gas) : h_gas;
@@ -107,15 +106,10 @@ radiation_get_physical_optical_depth(const struct spart *sp,
 /**
  * @brief Compute the physical radiation pressure emitted by the star.
  *
- * LEBRON momentum coupling (Hopkins, Quataert & Murray 2012, MNRAS 421,
- * 3488, Sec 2.1; Hopkins et al. 2014, MNRAS 445, 581, App A):
- *          dot_p = (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c
- * fraction of the non-ionizing continuum absorbed before dust reprocessing,
- * times the IR-trapping boost.
- *
- * kappa_NUV=1800 cm^2/g*(Z/Zsun) is a flux-mean opacity standing in for the
- * whole non-ionizing continuum (912A-3um). This is population-(STARBURST99),
- * not single-star-, calibrated, same caveat kappa_IR already carries.
+ * Momentum coupling (Hopkins et al. 2014, MNRAS 445, 581, App A):
+ * dot_p = (1-exp(-tau_NUV)) * (1+tau_IR) * L_bol/c.
+ * kappa_NUV = 1800 cm^2/g * (Z/Zsun) is a population-calibrated flux-mean
+ * opacity for the whole non-ionizing continuum.
  *
  * @param sp The #spart.
  * @param Delta_t The current #spart timestep.
@@ -137,11 +131,8 @@ radiation_get_star_physical_radiation_pressure(
   const double L_bol = sp->feedback_data.radiation.L_bol;
   const double c = phys_const->const_speed_light_c;
 
-  /* Double, not float: under -ffast-math the compiler may reassociate this
-     product (e.g. L_bol*(1+tau_IR) before dividing by c), which overflows
-     float32 at reachable extreme inputs (L_bol~1e38, tau_IR~19) even
-     though the true result does not; negligible cost at one call per
-     star feedback event. */
+  /* Double: -ffast-math may reassociate this product and overflow float32
+     at extreme inputs (L_bol~1e38, tau_IR~19). */
   const double p_rad = (double)Delta_t * L_bol / c *
                        (1.0 - exp(-(double)tau_NUV)) * (1.0 + (double)tau_IR);
   return (float)p_rad;

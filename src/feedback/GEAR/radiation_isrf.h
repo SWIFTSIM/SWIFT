@@ -40,27 +40,17 @@ struct phys_const;
 struct radiation;
 struct stellar_model;
 
-/*! Population photon-number-weighted mean Lyman-Werner photon energy the
- * radiation table reports, in cgs erg, or 0 while radiation is inactive.
- * A DIAGNOSTIC: the H2 photodissociation rate reads the
- * calibrated quotient #RADIATION_SIGMA_H2_OVER_E_LW_CGS and nothing here.
- * A global because the value is identical for every particle in a run and
- * is announced where no #feedback_props is in scope. Set once by
- * #radiation_set_lw_photon_energy_cgs at start-up and on restart, then
- * read-only for the remainder of the run. Defined in radiation.c, beside
- * the table lifecycle it is derived from. */
+/*! Photon-number-weighted mean Lyman-Werner photon energy of the radiation
+ * table in erg, or 0 while radiation is inactive. Diagnostic only: the H2
+ * photodissociation rate uses #RADIATION_SIGMA_H2_OVER_E_LW_CGS. Set once at
+ * start-up and on restart by #radiation_set_lw_photon_energy_cgs. */
 extern double radiation_lw_photon_energy_cgs;
 
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm);
 
 /**
- * @brief Set #feedback_props.band_edge_weight_pe/lw/photon_weight_lw from
- * the radiation table: see #feedback_props.band_edge_weight_pe's own
- * doxygen (feedback_properties.h) for what they are. Unlike
- * #radiation_lw_photon_energy_cgs these are fields of @p fb_props, not
- * process globals, so restart needs no explicit re-derivation call: they
- * ride #feedback_props's own flat dump/restore.
+ * @brief Set the band-edge weights of @p fb_props from the radiation table.
  *
  * @param fb_props (output) The #feedback_props to set.
  * @param rad The main stellar model's #radiation.
