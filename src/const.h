@@ -161,6 +161,11 @@
 
 /*! @brief Use a geometric argument for steering, see Vogelsberger 2012 */
 #define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+/* Set some global parameters, these are needed in both steering and refining */
+#ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+#define steering_beta 2.25f
+#define steering_factor 0.5f
+#endif
 #endif
 #endif
 

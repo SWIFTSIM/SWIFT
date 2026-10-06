@@ -194,8 +194,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
     /* Angle Steering Parameters (AREPO Defaults) */
     const float max_angle = p->geometry.max_face_angle;
-    const float beta = 2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25 or 2.0
-    const float f_shaping_speed = 0.5; // Steering aggressiveness factor. AREPO 0.5
+    const float beta = steering_beta ; //2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25 or 2.0
+    const float f_shaping_speed = steering_factor; //0.67; // Steering aggressiveness factor. AREPO 0.5
     const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
     float vchar = soundspeed; // Determines cold steering corrective velocity. Default is soundspeed.
 
