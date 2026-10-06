@@ -198,15 +198,20 @@ free_field
 
     The float-floor bar on a uniform-speed leg rests on a second premise: every
     particle takes the same time step, so each pair's exchange is integrated
-    with one dt on both sides and conserves sum m u algebraically. Particles on
-    different time bins integrate the same pair with their own dt, and the
-    exchange then leaks across bins by a drift no float floor bounds. The check
-    therefore reads the run's timesteps.txt and requires the Updates column to
-    equal the gas particle count on every step (`read_one_bin_premise`). A leg
-    that fails this premise is reported as PREMISE VIOLATED, its own failure,
-    and its (A1) residual is printed without the float-floor verdict.
-    `--two-bin-witness` marks a leg that is meant to run on several bins: its
-    (A1) result is printed and never counts as a failure.
+    with one dt on both sides and conserves sum m u algebraically. On one rank
+    without cosmology, a pair across time bins is booked once, from the finer
+    member's step: the coarser member's share waits in the
+    ``*PendingSpecificEnergies`` fields until its own update, and the ledger
+    adds them, so a two-bin leg at redshift=0 is conservative too. With
+    cosmology, or on several ranks, each member still integrates the pair with
+    its own dt, and the exchange leaks across bins. The bar is derived for one
+    bin only, so the check reads the run's timesteps.txt and requires the
+    Updates column to equal the gas particle count on every step
+    (`read_one_bin_premise`). A leg that fails this premise is reported as
+    PREMISE VIOLATED, its own failure, and its (A1) residual is printed without
+    the float-floor verdict. `--two-bin-witness` marks a leg that is meant to
+    run on several bins: its (A1) result is printed and never counts as a
+    failure.
 
     The unshielded H2 photodissociation rate the module hands to Grackle is
     ``k = (sigma_H2/E_LW) c rho u_LW``, with rho = rho0 (a0/a)^3 and u_LW
@@ -868,6 +873,17 @@ def read_snapshot(filename: str) -> Dict:
                 if "HyperbolicPropagationSpeeds" in gas
                 else None
             ),
+            # Energy owed by finer neighbours, not yet in the band fields; the
+            # ledger adds it. Absent from snapshots of earlier code.
+            "pending": {
+                key: physical(gas[name], a, energy)[order]
+                for key, name in (
+                    ("u_PE", "PEPendingSpecificEnergies"),
+                    ("u_LW", "LWPendingSpecificEnergies"),
+                    ("n_LW", "LWPhotonPendingSpecificEnergies"),
+                )
+                if name in gas
+            },
             "H2I": gas["H2I"][:].astype(np.float64)[order],
             "hydrogen": sum(
                 gas[name][:].astype(np.float64)[order]
@@ -1614,13 +1630,17 @@ def ledger_mean(snap: Dict, key: str, use_c_hyp: bool) -> float:
     ``m_i``. Numerator and denominator are summed at the same time, so a
     spatially uniform c_hyp cancels between them and the two branches then
     agree to round-off, whether or not c_hyp varies from snapshot to
-    snapshot.
+    snapshot. The pending fields (energy owed by finer neighbours and not yet
+    in the band field) are added when the snapshot carries them.
     """
     mass = snap["mass"]
+    value = snap[key]
+    if key in snap.get("pending", {}):
+        value = value + snap["pending"][key]
     if not use_c_hyp:
-        return float(np.sum(mass * snap[key]) / np.sum(mass))
+        return float(np.sum(mass * value) / np.sum(mass))
     weight = mass / snap["c_hyp"]
-    return float(np.sum(weight * snap[key]) / np.sum(weight))
+    return float(np.sum(weight * value) / np.sum(weight))
 
 
 def free_field_errors(
