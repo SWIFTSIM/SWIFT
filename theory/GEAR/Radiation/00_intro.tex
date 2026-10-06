@@ -23,8 +23,8 @@ published, closely related reference algorithms:
     source absorbing a disproportionate share of the photon budget
     regardless of the small solid angle it subtends.
 
-  Both papers are the ground truth this branch is being validated
-  against; the example \code{examples/SubgridTests/\allowbreak
+  Both papers are the reference results for the validation of this
+  implementation; the example \code{examples/SubgridTests/\allowbreak
   SubgridRadiation/ClumpSmith2021/} reproduces their
   exact test geometry (four 19.2\,M$_\odot$ co-located sources,
   $n=100\,\rm cm^{-3}$ background, a $10^4\,\rm cm^{-3}$ clump
@@ -41,8 +41,7 @@ track bug history, validation results, or open work. Those change
 far more often than the algorithm itself, and outgrew what belongs
 alongside shipped source. That material lives in the \textbf{GEAR
 radiation logbook}, a separate document in the \code{swift-gear}
-repository (\code{theory/radiation/}, branch
-\code{darwin/radiation-logbook|main} once merged), covering:
+repository (\code{theory/radiation/}), covering:
 \begin{itemize}
   \item a dated log of bugs found and fixed;
   \item the running validation campaign against Hu et al.\ (2017),
