@@ -69,6 +69,8 @@ void radiation_first_init_part(struct part *restrict p) {
     moment->u_source_rate = 0.f;
     moment->dissipation_u = 0.f;
     moment->div_specific_flux = 0.f;
+    moment->pending_transport_u = 0.f;
+    moment->pending_dissipation_u = 0.f;
 #ifdef SWIFT_DEBUG_CHECKS
     moment->u_min_since_snapshot = 0.f;
     moment->cumulative_injected = 0.f;
@@ -111,9 +113,28 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->rho_prev = 1.0f;
   fd->c_hyp = 0.f;
   fd->dt_prev = 0.f;
+  fd->dt_active = 0.f;
   fd->ISRF_reservoir_end_ti = -1;
   radiation_init_part_propagation(p);
   radiation_cache_m1_closure_part(p);
+}
+
+/**
+ * @brief Is the cross-bin pair booking on? It needs one rank, the uniform
+ * fixed_fraction c_hyp, no cosmology (a = 0 at zero dust) and the extra ghost.
+ *
+ * @param e The #engine.
+ * @return 1 if pair amounts of unequal-step pairs go to pending, else 0.
+ */
+static int radiation_cross_bin_booking_on(const struct engine *e) {
+#ifdef EXTRA_HYDRO_LOOP
+  return e->nr_nodes <= 1 && e->feedback_props->ISRF_propagation &&
+         e->feedback_props->ISRF_c_hyp_scheme ==
+             isrf_c_hyp_scheme_fixed_fraction &&
+         !(e->policy & engine_policy_cosmology);
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -144,6 +165,10 @@ void radiation_snapshot_part_propagation(struct part *p,
    * it, and it must never be 0. */
   const float rho_comoving = hydro_get_comoving_density(p);
   p->feedback_data.rho_prev = rho_comoving > 0.f ? rho_comoving : 1.0f;
+
+  /* Every particle a force pair can reach is drifted here; the extra ghost
+   * overwrites this for the active ones. */
+  p->feedback_data.dt_active = radiation_cross_bin_booking_on(e) ? -1.f : 0.f;
 
   if (!e->feedback_props->ISRF_propagation) {
     p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa = 0.f;
@@ -435,6 +460,25 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
 }
 
 /**
+ * @brief Add the pending amounts owed by finer neighbours to `u_prev` as
+ * specific energies, then zero them. Out of line, so the update keeps its
+ * code generation.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((noinline)) static void radiation_add_pending_part(
+    struct part *p) {
+  struct feedback_part_data *fd = &p->feedback_data;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
+    mo->u_prev += (double)fd->c_hyp * ((double)mo->pending_transport_u +
+                                       (double)mo->pending_dissipation_u);
+    mo->pending_transport_u = 0.f;
+    mo->pending_dissipation_u = 0.f;
+  }
+}
+
+/**
  * @brief Exact-relaxation update of #feedback_isrf_moment_data.u from the
  * `div(F)` and dissipation accumulators and this step's `u_source_rate`.
  *
@@ -451,8 +495,10 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * Injection deposits the raw dose, so the `c_hyp/c` rescale is applied only
  * here.
  *
- * Idempotent: `u` is rebuilt from `u_prev`. The debug-only ledger counters
- * are the exception and need exactly one call per active particle per step.
+ * Pending amounts owed by finer neighbours are first added to `u_prev` and
+ * zeroed (#radiation_add_pending_part), so they enter `u` plus absorbed with
+ * total weight 1. Not idempotent then; the debug-only ledger counters also
+ * need exactly one call per active particle per step.
  * Reads `dt_prev`, `c_hyp` and `kappa`, and takes no `dt` so that it stays
  * consistent with the flux update. No-op when propagation is off.
  *
@@ -464,6 +510,21 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
+#ifdef SWIFT_DEBUG_CHECKS
+  /* -1 here means the extra ghost missed this particle: a double count. */
+  if (fd->dt_active < 0.f ||
+      (fd->dt_active > 0.f && fd->dt_active != fd->dt_prev))
+    error("Particle %lld: cross-bin state %e at end_force, dt_prev %e.", p->id,
+          fd->dt_active, fd->dt_prev);
+#endif
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    if (fd->isrf_moment[m].pending_transport_u != 0.f ||
+        fd->isrf_moment[m].pending_dissipation_u != 0.f) {
+      radiation_add_pending_part(p);
+      break;
+    }
+  }
+
   const double dt = (double)fd->dt_prev;
   const double c_hyp = (double)fd->c_hyp;
   const double rescale = c_hyp / e->physical_constants->const_speed_light_c;
@@ -733,6 +794,7 @@ void radiation_end_gradient_propagation(struct part *p,
   if (!e->feedback_props->ISRF_propagation) return;
 
   struct feedback_part_data *fd = &p->feedback_data;
+  fd->dt_active = radiation_cross_bin_booking_on(e) ? fd->dt_prev : 0.f;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
   const float H = (float)e->cosmology->H;
