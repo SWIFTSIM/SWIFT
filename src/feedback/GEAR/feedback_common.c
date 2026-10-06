@@ -1702,7 +1702,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
    * scheme would otherwise resume with a speed rule nothing sets. The field
    * is only meaningful, and only validated at parse time, when the
    * interstellar radiation field is on. */
-  if ((feedback->radiation_policy & radiation_policy_photoelectric_heating) &&
+  if ((feedback->radiation_policy & radiation_policy_isrf) &&
       feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
       feedback->ISRF_c_hyp_scheme !=
           isrf_c_hyp_scheme_kernel_local_reduced_flux)
@@ -1727,7 +1727,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   const char with_radiation =
       (feedback->radiation_policy &
        (radiation_policy_photoionization | radiation_policy_radiation_pressure |
-        radiation_policy_photoelectric_heating)) != 0;
+        radiation_policy_isrf)) != 0;
 
   stellar_evolution_restore(&feedback->stellar_model, stream,
                             feedback->with_stellar_wind_feedback,

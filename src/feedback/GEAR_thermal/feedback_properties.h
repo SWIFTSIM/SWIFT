@@ -55,12 +55,9 @@ enum radiation_policy {
   /*! Radiation pressure from the stars' bolometric luminosity */
   radiation_policy_radiation_pressure = (1 << 1),
 
-  // TODO: Should be reamed to ISRF instead of PE_heating
-  /* Local Lyman-Werner/PE feedback: photoelectric (PE) heating by PE
-     radiation on dust, and H2 photodissociation by the Lyman-Werner band.
-     One switch for both, since they share the same two band luminosities
-     and injected fields. */
-  radiation_policy_photoelectric_heating = (1 << 2),
+  /*! Interstellar radiation field: photoelectric heating and H2
+   * photodissociation (Lyman-Werner band), on one switch. */
+  radiation_policy_isrf = (1 << 2),
 };
 
 // TODO: We should change the numbers to 0 and 1...
@@ -138,7 +135,7 @@ struct feedback_props {
   float radiation_pressure_efficiency;
 
   /*! Run the hyperbolic M1 propagation update? Only meaningful when
-   * radiation_policy_photoelectric_heating is set. */
+   * radiation_policy_isrf is set. */
   char ISRF_propagation;
 
   /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or 1:
@@ -243,8 +240,7 @@ struct feedback_props {
 __attribute__((always_inline)) INLINE static int
 feedback_props_needs_cooling_initialized(
     const struct feedback_props *feedback_props) {
-  return (feedback_props->radiation_policy &
-          radiation_policy_photoelectric_heating) != 0;
+  return (feedback_props->radiation_policy & radiation_policy_isrf) != 0;
 }
 
 /**
@@ -340,7 +336,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 
   /* ISRF */
   const char do_photoelectric_heating =
-      feedback_props->radiation_policy & radiation_policy_photoelectric_heating;
+      feedback_props->radiation_policy & radiation_policy_isrf;
   message("Photo-electric heating / H2 photodissociation (ISRF)       = %i",
           do_photoelectric_heating);
   if (do_photoelectric_heating) {
@@ -381,91 +377,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
     }
   }
-}
-
-// TODO: This should not exist.
-/**
- * @brief Warn about every retired or removed parameter key present in
- * @p params.
- *
- * A retired key is ignored: the parser leaves it in unused_parameters.yml
- * and nothing reads it, so it has no effect on the run. Each key found gets
- * one warning that names the replacement, because the parser accepts an
- * unknown key silently and a renamed feature would otherwise run at its
- * replacement's default with no sign of it. This table is the single place
- * that lists the retired keys: add an entry whenever a
- * GEARFeedback/GEARRadiation key is renamed or removed. A standalone
- * function so a unit test can call it with neither the stellar-evolution
- * tables nor the other arguments feedback_props_init() reads.
- *
- * @param params The parsed parameter file.
- *
- * @return The number of retired keys found.
- */
-__attribute__((always_inline)) INLINE static int
-feedback_props_warn_retired_keys(struct swift_params *params) {
-  const struct {
-    const char *retired;
-    const char *replacement;
-  } feedback_retired_keys[] = {
-      {"GEARFeedback:with_photoelectric_heating",
-       "GEARFeedback:with_interstellar_radiation_field"},
-      {"GEARFeedback:do_photoionization", "GEARFeedback:with_photoionization"},
-      {"GEARFeedback:LW_FUV_propagation", "GEARFeedback:ISRF_propagation"},
-      {"GEARFeedback:LW_FUV_c_hyp_margin", "GEARFeedback:ISRF_c_hyp_margin"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_max",
-       "GEARFeedback:ISRF_dissipation_alpha_max"},
-      {"GEARFeedback:LW_FUV_dissipation_negativity_threshold",
-       "GEARFeedback:ISRF_dissipation_negativity_threshold"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_floor",
-       "GEARFeedback:ISRF_dissipation_alpha_floor"},
-      {"GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda",
-       "GEARFeedback:ISRF_dissipation_floor_h_over_lambda"},
-      {"GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual",
-       "GEARFeedback:ISRF_dissipation_floor_relaxation_residual"},
-      {"GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging",
-       "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging"},
-      {"GEARFeedback:radiation_interpolation_size_mass",
-       "GEARRadiation:interpolation_size_mass"},
-      {"GEARFeedback:minimal_HII_ionization_density_Hpcm3",
-       "GEARFeedback:HII_min_density_Hpcm3"},
-      {"GEARFeedback:HII_region_min_density_Hpcm3",
-       "GEARFeedback:HII_min_density_Hpcm3"},
-      {"GEARFeedback:HII_region_max_age_Myr", "GEARFeedback:HII_max_age_Myr"},
-      {"GEARFeedback:HII_region_rebuild_time_Myr",
-       "GEARFeedback:HII_rebuild_time_Myr"},
-      {"GEARFeedback:HII_region_rebuild_floor_Myr",
-       "GEARFeedback:HII_rebuild_floor_Myr"},
-      {"GEARFeedback:photoelectric_heating_grackle_option",
-       "GrackleCooling:photoelectric_heating_efficiency"},
-      {"GEARFeedback:min_star_timestep_Myr", "Stars:min_star_timestep_Myr"},
-      {"GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging",
-       "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging"},
-      /* A fixed propagation speed is scheme 2, which also limits the time
-       * step so that the speed stays stable. */
-      {"GEARFeedback:ISRF_c_hyp_pin_for_debugging",
-       "GEARFeedback:ISRF_c_hyp_scheme: 2 with "
-       "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (v the wanted "
-       "speed, c the speed of light)"},
-      {"GEARFeedback:LW_FUV_c_hyp_pin_for_debugging",
-       "GEARFeedback:ISRF_c_hyp_scheme: 2 with "
-       "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c: v/c (v the wanted "
-       "speed, c the speed of light)"},
-  };
-  int n_found = 0;
-  const int n_feedback_retired_keys =
-      sizeof(feedback_retired_keys) / sizeof(feedback_retired_keys[0]);
-  for (int i = 0; i < n_feedback_retired_keys; ++i) {
-    if (!parser_does_param_exist(params, feedback_retired_keys[i].retired))
-      continue;
-    warning(
-        "%s is retired and ignored: it has no effect on this run. Use %s "
-        "instead and delete %s from the parameter file.",
-        feedback_retired_keys[i].retired, feedback_retired_keys[i].replacement,
-        feedback_retired_keys[i].retired);
-    ++n_found;
-  }
-  return n_found;
 }
 
 /**
@@ -586,8 +497,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
-  feedback_props_warn_retired_keys(params);
-
   /* Supernovae energy efficiency */
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
@@ -615,36 +524,24 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const char with_photoionization = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_photoionization", 0);
 
-  // TODO: With radiation_pressure MUST allow to read the efficiency, not the
-  // other way around.
-  /* Radiation pressure efficiency */
-  const float radiation_pressure_efficiency = parser_get_opt_param_float(
-      params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
-
-  /* Are we running with radiation pressure? Unlike with_photoionization
-   * above, the default is not a bare 0: an absent key defaults to
-   * (radiation_pressure_efficiency > 0), so the efficiency alone selects
-   * the channel; an explicit value is cross-checked against it below. */
+  /* Radiation pressure. The efficiency is read only when this is on. */
   const char with_radiation_pressure = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_radiation_pressure",
-      radiation_pressure_efficiency > 0.0f);
+      params, "GEARFeedback:with_radiation_pressure", 0);
 
-  /* Only an explicit with_radiation_pressure that contradicts the efficiency
-   * can reach these errors. */
-  if (with_radiation_pressure && radiation_pressure_efficiency <= 0.0f)
-    error(
-        "GEARFeedback:with_radiation_pressure is on but "
-        "GEARFeedback:radiation_pressure_efficiency is %g (<= 0): there is "
-        "nothing to inject. Set radiation_pressure_efficiency to a "
-        "positive value (1 reproduces the table's own unboosted L_bol).",
-        radiation_pressure_efficiency);
-  if (!with_radiation_pressure && radiation_pressure_efficiency > 0.0f)
-    error(
-        "GEARFeedback:radiation_pressure_efficiency is %g (> 0) but "
-        "GEARFeedback:with_radiation_pressure is explicitly off: this "
-        "efficiency would be silently ignored. Set with_radiation_pressure "
-        "to 1, or set radiation_pressure_efficiency to 0.",
-        radiation_pressure_efficiency);
+  /* L_bol is multiplied by the efficiency unconditionally in feedback_common.c,
+   * so it stays 0 when radiation pressure is off. */
+  float radiation_pressure_efficiency = 0.f;
+  if (with_radiation_pressure) {
+    radiation_pressure_efficiency = parser_get_opt_param_float(
+        params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
+    if (radiation_pressure_efficiency <= 0.0f)
+      error(
+          "GEARFeedback:with_radiation_pressure is on but "
+          "GEARFeedback:radiation_pressure_efficiency is %g (<= 0): there is "
+          "nothing to inject. Set radiation_pressure_efficiency to a "
+          "positive value (1 reproduces the table's own unboosted L_bol).",
+          radiation_pressure_efficiency);
+  }
 
   /* Are we running with the local Lyman-Werner/PE feedback (photoelectric
    * heating + H2 photodissociation)? */
@@ -838,7 +735,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   }
 
   if (with_interstellar_radiation_field) {
-    fp->radiation_policy |= radiation_policy_photoelectric_heating;
+    fp->radiation_policy |= radiation_policy_isrf;
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
