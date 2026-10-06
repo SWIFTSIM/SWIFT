@@ -182,7 +182,6 @@ takes the $1/h^{d+1}$ factor; both are zero, not divided-by-zero,
 for a star with no gas neighbours this step, since
 \code{enrichment\_weight} being zero is checked before the divide).
 
-\subsection{Gas column density: Sobolev approximation}
 \paragraph{Implementation.} Equation~(\ref{eq:rp-momentum-rate}) is
 \code{radiation\_get\_star\_physical\_radiation\_pressure}
 (\code{src/feedback/GEAR/radiation\_pressure.c:121}).
@@ -196,6 +195,7 @@ accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
 \code{feedback\_prepare\_radiation\_feedback} (\code{radiation\_iact.h:142},
 lines 157-160, behind the \code{enrichment\_weight} test).
 
+\subsection{Gas column density: Sobolev approximation}
 \label{sec:rp-sobolev}
 
 $\Sigma_{\rm gas}$ in Eq.~\ref{eq:rp-tauIR} uses the Sobolev
@@ -254,7 +254,6 @@ $\tau_{\rm IR}/\tau_{\rm NUV}$ into an exponential. The $\min(\cdot)$ form in Eq
 the length by $h_\star\gamma_k$ and has no jump (the minimum of two continuous functions
 is itself continuous), and it needs no separate noise-floor constant.
 
-\subsection{Distributing the kick to gas particles}
 \paragraph{Implementation.} Equation~(\ref{eq:rp-sobolev}) is
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}
 (\code{src/feedback/GEAR/radiation\_pressure.c:43}); the zero-gradient branch and
@@ -262,6 +261,7 @@ the cap are at \code{radiation\_pressure.c:53-57}. $\nabla\rho_\star$ is
 accumulated at \code{src/feedback/GEAR/radiation\_iact.h:92} and normalized at
 \code{radiation\_iact.h:153-155}.
 
+\subsection{Distributing the kick to gas particles}
 \label{sec:rp-distribute}
 
 $\dot p_{\rm rad}$ (Eq.~\ref{eq:rp-momentum-rate}) is a single
@@ -285,7 +285,6 @@ supernova/wind momentum, applied separately. The flag \code{hit\_by\_radiation} 
 set where the momentum is accumulated, and the
 momentum is applied only to flagged particles.
 
-\subsection{Tier 2: dynamical shell-expansion validation}
 \paragraph{Implementation.} Equation~(\ref{eq:rp-per-particle}) is in
 \code{radiation\_iact\_nonsym\_feedback\_apply}
 (\code{src/feedback/GEAR/radiation\_iact.h:189}, lines 234-239). The two
@@ -294,6 +293,7 @@ momentum fields are \code{src/feedback/GEAR\_thermal/feedback\_struct.h:252}
 in \code{feedback\_update\_part\_radiation} (\code{radiation\_iact.h:320}). The
 flag \code{hit\_by\_radiation} is set at \code{radiation\_iact.h:249}.
 
+\subsection{Tier 2: dynamical shell-expansion validation}
 \label{sec:rp-shell-tier2}
 
 Eq.~\ref{eq:rp-momentum-rate}'s correctness in isolation (weight
