@@ -21,7 +21,7 @@ two radiation energies per unit gas mass, $u_{{\rm FUV},i}$ for the
 $6$--$11.2$\,eV band (the PE band of \citealt{Kim2023}) and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
 ${\rm erg\,g^{-1}}$, sourced by the stars in the simulation and
 attenuated by dust. The code stores the two bands under the internal
-identifiers \code{ISRF\_BAND\_PE} and \code{ISRF\_BAND\_LW}, and names the
+moment identifiers \code{ISRF\_MOMENT\_PE} and \code{ISRF\_MOMENT\_LW}, and names the
 snapshot I/O fields to match (\code{PESpecificEnergy},
 \code{LWSpecificEnergy}); this document keeps writing the first band as
 FUV throughout, since $6$--$11.2$\,eV is the photoelectric part of the
@@ -1110,22 +1110,21 @@ independent of the pathway-1 sign question above. At a uniform
 $c_{\rm hyp}$ this construction is exactly self-consistent: the source
 rescale and the rate getters in \code{radiation\_gas.c} (which read the
 true $c$, never $c_{\rm hyp}$) form a matched pair whose propagation
-fixed point cancels the speed identically, with or without transport
+fixed point cancels the speed identically, with or without transport.
 The defect is specific to $c_{\rm hyp}$
 \emph{varying between neighbours}: a particle's divergence sums fluxes
 carrying each sender's own $c_{{\rm hyp},j}$ while its own terms carry
 $c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
 \citet{Katz2017}'s problem class (Section~\ref{sec:fuv-chyp-literature}),
 not a general source-normalisation one. At a \emph{uniform} $c_{\rm hyp}$
-the cancellation now holds under cosmology too, since $H$ is dilated by
+the cancellation holds under cosmology too, since $H$ is dilated by
 the same $c_{\rm hyp}/c$ factor as every other rate
 (Section~\ref{sec:fuv-lagrangian}). Whether the cancellation still holds when
 $c_{{\rm hyp},i}$ varies \emph{between neighbours}, the actual subject of
 this pathway, is unmeasured under cosmology. A cosmological run with heterogeneous
 speeds therefore cannot yet be trusted on this point.
 
-What is measured: forcing a uniform speed (by pinning every particle to one speed, and independently by a
-lowered $C_{\rm hyp}$) changes the final FUV band energy on
+What is measured: forcing a uniform speed by a lowered $C_{\rm hyp}$ changes the final FUV band energy on
 \code{ISRFCausalReach} relative to the shipped, heterogeneous-speed run;
 the fixture is still rising at $t_{\rm end}$ under every speed tested, and
 the ratio between the runs on this fixture has not
@@ -1137,14 +1136,17 @@ separated on the fixtures tested so far.
 
 \paragraph{Speed definitions tested, and the default chosen among them.}
 Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
-operators were implemented as selectable runtime schemes
-(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}) and compared, against scheme $0$
-(the formula above, unmodified operators) as baseline. Only schemes $2$
-(\texttt{fixed\_fraction}) and $4$ (\texttt{kernel\_local}) are implemented. Any other
-value of the parameter stops the run. The comparison explains why
-\texttt{kernel\_local} is the default. Both implemented schemes store the
-reduced flux. At its uniform speed, \texttt{fixed\_fraction} is the same
-equation as the true-flux form divided by one constant. The candidates: a kernel-local speed
+operators were compared as selectable runtime schemes
+(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}), against scheme $0$
+(the formula above, unmodified operators) as baseline. The code now implements
+only scheme $2$ (\texttt{fixed\_fraction}) and scheme $4$
+(\texttt{kernel\_local}); any other value of the parameter stops the run. The
+comparison explains why \texttt{kernel\_local} is the default. In the
+comparison, scheme $2$ stored the true flux. Both implemented schemes now
+store the reduced flux. At its uniform speed, \texttt{fixed\_fraction} with
+the reduced flux is the same equation as the true-flux form divided by one
+constant, so the comparison's conclusions about its speed rule still hold. The
+candidates: a kernel-local speed
 rule that takes the slowest step among a particle and every neighbour in
 its kernel (scheme $1$); a fixed global fraction of $c$, independent of
 $h$ or the time step (scheme $2$); a ``consistent variable-$c$''
@@ -1157,14 +1159,14 @@ kernel-local speed with that operator rewrite (scheme $4$). All four
 measurably reduce pathway 1 relative to scheme $0$ on every fixture tested;
 scheme $4$ additionally clears most of Pathway 2's amplitude defect,
 which schemes $1$ and $2$ alone do not touch. None of $1$, $2$, $3$ alone
-clears its own pre-registered acceptance bar: each fails at least one
+meets its acceptance bar: each fails at least one
 fixture's exact sign-closure or accuracy criterion; the fixed-fraction
 scheme costs nothing extra at a fraction low enough to be free, but only
 because that fraction is below the bulk sound speed, making the
-radiation non-causal, while at the only fraction so far judged physically
-defensible it carries an initially undercounted particle-update cost of
-$+21$ to $+29\%$ once measured correctly (a low fraction can never bind
-the new timestep term, so it was never informative about cost); and the
+radiation non-causal, while at a physically defensible fraction it carries a
+particle-update cost of $+21$ to $+29\%$ (a low fraction can never bind
+the timestep term this scheme adds, so the cost at a low fraction says
+nothing about the cost at a defensible one); and the
 kernel-local scheme's own neighbour-maximum accumulates only over
 neighbours within $i$'s own kernel, so at an asymmetric pair
 $H_j \le r_{ij} < H_i$ only the larger-$h$ particle $i$ records the
@@ -1188,8 +1190,8 @@ $3.06\times$, at bit-identical particle-update cost (neither the
 kernel-local speed formula nor the operator rewrite alone changes what
 work is done per particle). That reference is not an analytic solution.
 It is \code{ISRFDissipationExtreme}'s own settled FUV band energy
-$E_{\rm end} = \sum_i m_i u_i$ at $t_{\rm end}$, measured on a scheme
-$2$ arm at the uniform $c_{\rm hyp} = 16.494\,{\rm km\,s^{-1}}$,
+$E_{\rm end} = \sum_i m_i u_i$ at $t_{\rm end}$, measured in a scheme
+$2$ run at the uniform $c_{\rm hyp} = 16.494\,{\rm km\,s^{-1}}$,
 $3.7226\times10^{-8}$, and both ratios are that same fixture's FUV
 $E_{\rm end}$ against it. It stands in for the discrete fixed point
 because, as noted above, that fixed point is independent of a
@@ -1202,7 +1204,7 @@ $a = C_{\rm hyp}\,h/\lambda \approx 0.24$ in the FUV band on this
 fixture. What the two ratios measure is therefore the heterogeneity of
 the speed field: an error of zeroth order in the neighbour ratio
 $c_{{\rm hyp},j}/c_{{\rm hyp},i}$, not in $c_{\rm hyp}$ itself, so
-lowering a uniform $c_{\rm hyp}$ would not reduce it. Both arms have
+lowering a uniform $c_{\rm hyp}$ would not reduce it. Both runs have
 settled by $t_{\rm end}$ on this fixture, so neither ratio is a
 transient. \textbf{This ranking rests on
 three fixtures only}, which is not by itself sufficient to fix a
@@ -1304,7 +1306,7 @@ signal speed the transport is meant to resolve, evaluated against the
 shortest timescale of interest.
 
 \textbf{No prior report of negative radiation energy at a variable-speed
-interface was found (verified absence, not a positive claim).} We read every RSLA-interface source directly, including
+interface was found (verified absence, not a positive claim).} We read directly every source marked verified in this section, including
 the paper most focused on RSLA conservation failures generally
 \citep{Gnedin2026}, for any mention of a sign-violating failure at a
 speed boundary. None was found. This may mean the failure is rare in
@@ -1722,14 +1724,20 @@ state is then
       + e^{-a_i}\,\dot u_i\big|_{\rm diss}\right] .
   \label{eq:fuv-diss-apply}
 \end{equation}
-The transient amplification, $\max_{n\le200}\|G^n\|_2$ along the
-closure, is not the same as for that placement: at $C_{\rm hyp} = 0.5$
-it equals the reference ($1.35$) for $\alpha\lesssim0.323$, reaches
-$1.54$ at the shipped $\alpha_{\max} = 0.5$, and $1.68$ at the guard
-limit $\alpha = 0.5887$. At the guard boundary itself the ratio to the
-reference grows with $C_{\rm hyp}$: $1.14\times$ at $C_{\rm hyp} =
-0.25$, $1.25\times$ at $C_{\rm hyp} = 0.5$, and $1.35\times$ at
-$C_{\rm hyp} = 1.0$.
+The transient amplification is $\max_{n\le200}\|G^n\|_2$, where $G$ is the
+per-step $2\times2$ amplification matrix of one Fourier mode on a uniform
+lattice, maximised over $h/\lambda$ with $c_{\rm hyp} = C_{\rm hyp}h/\Delta t$.
+The reference is the same quantity for an update in which the exchange acts on
+the transported energy instead of on $u^n$ as above. The reference does not
+depend on $\alpha$ and equals the value with the dissipation off. At
+$C_{\rm hyp} = 0.5$ the amplification of the update above equals the reference,
+$1.35$, for $\alpha\lesssim0.323$, reaches $1.54$ at the shipped
+$\alpha_{\max} = 0.5$, and $1.68$ at $\alpha = 0.5887$, the largest value that
+the start-up check of Eq.~\ref{eq:fuv-stability-bound} admits. At that largest
+admitted $\alpha$ the amplification divided by the reference grows with
+$C_{\rm hyp}$: $1.14$ at $C_{\rm hyp} = 0.25$ ($1.32$ against $1.16$), $1.25$ at
+$C_{\rm hyp} = 0.5$ ($1.68$ against $1.35$) and $1.35$ at $C_{\rm hyp} = 1.0$
+($2.57$ against $1.91$).
 It is bounded within the stability bound of
 Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
 one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
@@ -2151,9 +2159,10 @@ path.
     at $1.97$--$2.58$ times the analytic root of
     Eq.~\ref{eq:fuv-stability-bound}, consistent with that same margin
     rather than with any unmodelled effect. The transient
-    amplification of the shipped order grows with $\alpha$ above
-    $\alpha\approx0.32$: $1.54$ at $0.5$ and $1.68$ at the bound, against
-    $1.35$ with the dissipation off. The
+    amplification of the shipped update (defined in
+    Section~\ref{sec:fuv-dissipation}) stays at its dissipation-off value,
+    $1.35$, for $\alpha\lesssim0.32$ and grows above it: $1.54$ at $0.5$ and
+    $1.68$ at the bound. The
     negativity threshold $\varepsilon_1 = 0.01$ only sets where the
     trigger saturates and does not enter the stability analysis; it was
     measured under the isotropic closure and not re-measured with the
