@@ -170,8 +170,8 @@ Here is the complete section in the parameter file:
     with_UV_background: 1                        # Enable or not the UV background
     redshift: 0                                  # Redshift to use (-1 means time based redshift)
     with_metal_cooling: 1                        # Enable or not the metal cooling
-    provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-    provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+    volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
+    specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
     max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve
     thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)

@@ -23,12 +23,14 @@ See :ref:`gear_radiation` for how to configure and build this channel. Its own s
 Model parameters
 ------------------
 
-* ``radiation_pressure_efficiency``: dimensionless factor the code multiplies the star's bolometric luminosity by before computing :math:`\dot{p}` above. 0 (default) switches the channel off entirely; 1 uses the star's bolometric luminosity as read from the table, unboosted. A value above 1 scales the effective luminosity used for the momentum injection beyond the star's tabulated output.
+* ``with_radiation_pressure``: switches the channel on (1) or off (0, the default). ``radiation_pressure_efficiency`` is read only when this is 1.
+* ``radiation_pressure_efficiency``: dimensionless factor the code multiplies the star's bolometric luminosity by before computing :math:`\dot{p}` above. It must be positive when the channel is on; 1 uses the star's bolometric luminosity as read from the table, unboosted. A value above 1 scales the effective luminosity used for the momentum injection beyond the star's tabulated output.
 
 .. code:: YAML
 
    GEARFeedback:
-     radiation_pressure_efficiency: 0   # Multiplies L_bol before the momentum injection. 0 = off, 1 = unboosted (Default: 0)
+     with_radiation_pressure: 0         # 1: radiation-pressure momentum channel on (Default: 0)
+     radiation_pressure_efficiency: 1   # Multiplies L_bol before the momentum injection. Read only when the channel is on. 1 = unboosted
 
 Snapshot outputs
 ------------------

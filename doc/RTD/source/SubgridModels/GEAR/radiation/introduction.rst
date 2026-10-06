@@ -30,7 +30,7 @@ Every channel reads the star's photon output (an ionizing photon rate, a bolomet
      - ``GEARFeedback:with_photoionization``
      - :ref:`gear_radiation_hii`
    * - Radiation pressure
-     - ``GEARFeedback:radiation_pressure_efficiency`` (0 = off)
+     - ``GEARFeedback:with_radiation_pressure`` (with ``GEARFeedback:radiation_pressure_efficiency``)
      - :ref:`gear_radiation_pressure`
    * - Interstellar radiation field
      - ``GEARFeedback:with_interstellar_radiation_field``
