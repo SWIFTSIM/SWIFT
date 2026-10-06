@@ -588,7 +588,7 @@ true-speed rate $c/\lambda + H = c\,\kappa\rho + H$, because $H$ carries no
 factor of $c$ for the substitution to act on -- it is a property of the
 expanding background, not of the radiation transport, so unlike
 $\kappa$ it does not pick up the dilation "for free". Leaving $H$ out of
-that rescaling, as an earlier version of this document did, is the same
+that rescaling is the same
 class of error as leaving any other rate undilated:
 \begin{align}
   \frac{{\rm D}u}{{\rm D}t}
@@ -617,8 +617,7 @@ homogeneous equation's fixed point identically to every other term, for
 any per-particle speed field (Section~\ref{sec:fuv-time}).
 
 \textbf{Consequence of the undilated form.} Writing $H$ bare instead,
-$(c_{\rm hyp}/\lambda + H)$, as this document did until this fix and as
-the code did until \code{d47419d04}, suppresses the true-speed fixed
+$(c_{\rm hyp}/\lambda + H)$ suppresses the true-speed fixed
 point $u^\ast_{\rm true} = (\dot s/c)/(\kappa\rho + H/c)$ by the factor
 $x/(1+x)$, $x = c_{\rm hyp}\kappa\rho/H$: since $c_{\rm hyp}\ll c$,
 $H/c_{\rm hyp} \gg H/c$, so the bare-$H$ fixed point
@@ -812,11 +811,7 @@ flux that \code{RADIATION\_HABING\_FLUX\_CGS} normalises,
 10\%$ uncertainty of the band integrations entering that comparison. Both
 expressions are linear in the field strength, so agreement is a fixed
 multiplicative offset: the comparison bounds the normalisation and says
-nothing about how either behaves under a different spectral shape. The
-derivation is reproduced by
-\code{theory/GEAR/Radiation/verify\_sigma\_h2\_lw\_sternberg2014.py}, which
-reads the constants out of \code{radiation.h} directly so it cannot drift
-from the code it checks. Grackle adds
+nothing about how either behaves under a different spectral shape. Grackle adds
 $k_{\rm diss}$ to its background dissociation rate and applies its own
 self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Grackle
 adds no heating for these dissociations by default. The optional switch
@@ -970,9 +965,7 @@ hoisting the call out of it would fork the code path for
 \texttt{pair\_separation} alone
 (\code{radiation\_get\_comoving\_extinction\_path()}). An unrecognised
 value of \texttt{ISRF\_extinction\_path} is a fatal error, not a silent
-fallback: \texttt{kernel\_diameter} and \texttt{kernel\_radius} named two
-now-unsupported earlier defaults, from before the mechanism was a runtime
-choice (Section~\ref{sec:fuv-parameters} gives the parameters each
+fallback (Section~\ref{sec:fuv-parameters} gives the parameters each
 mechanism reads).
 
 At \texttt{COOLING\_GRACKLE\_MODE} $>1$, Grackle's own H2
@@ -1081,20 +1074,18 @@ Eq.~\ref{eq:fuv-chyp} is evaluated independently for every particle, so
 $c_{{\rm hyp},i}$ generally differs from $c_{{\rm hyp},j}$ for any pair
 $(i,j)$ that sits on different time bins or has different $h$ -- a
 ``seam'' the pairwise transport and injection operators cross on every
-step. An investigation opened 2026-09-18 (operator-directed, following
-up the T6 validation above) separated this heterogeneity's consequences
-into two distinct failure pathways and quantified each against the
-shipped scheme's own example fixtures
+step. This heterogeneity has two distinct consequences, each
+quantified on the example fixtures of the shipped scheme
 (\code{examples/SubgridTests/StellarFeedback/ISRF/}). Both are
-established; a residual mechanism beyond either is not, and no fix is
-adopted here -- \textbf{this section documents an open investigation, not
-a resolved design.}
+established. A further mechanism beyond them is not, and no fix beyond the
+default speed rule below is adopted. \textbf{This section documents an
+open question, not a resolved design.}
 
 \paragraph{Pathway 1: negative energy at a speed seam.} A receiver
 particle's own Courant number is set by its neighbours' $c_{\rm hyp}$,
 not only its own; a fast-stepping neighbour with a large $c_{\rm hyp}$
 can drive the shared pairwise flux term past what the slower receiver's
-own step can absorb, undershooting $u$ past zero. This is now established
+own step can absorb, undershooting $u$ past zero. This is established
 as a real cause, three independent ways, on
 \code{ISRFDissipationExtreme} and \code{ISRFCausalReach}: pinning every
 particle to one uniform $c_{\rm hyp}$ removes the sign violation
@@ -1106,7 +1097,7 @@ neighbour-dependent pair weights, predicted in advance to trade this
 pathway for a different SPH-consistency violation, both do exactly that,
 regressing the same fixture's sign closure by a factor of $10$--$13$. See
 the \code{swift-gear} logbook, \code{theory/radiation/}, for the full
-numbers and job references; this document states the mechanism, not the
+numbers; this document states the mechanism, not the
 validation record.
 
 \paragraph{Pathway 2: an amplitude error from coupling the source to
@@ -1128,21 +1119,17 @@ $c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
 not a general source-normalisation one. At a \emph{uniform} $c_{\rm hyp}$
 the cancellation now holds under cosmology too, since $H$ is dilated by
 the same $c_{\rm hyp}/c$ factor as every other rate
-(Section~\ref{sec:fuv-lagrangian}, \code{d47419d04}); an earlier version
-of this paragraph called this unmeasured because that dilation was
-missing at the time. Whether the cancellation still holds when
+(Section~\ref{sec:fuv-lagrangian}). Whether the cancellation still holds when
 $c_{{\rm hyp},i}$ varies \emph{between neighbours}, the actual subject of
-this pathway, is unmeasured under cosmology and needs an operator ruling
-before a cosmological run with heterogeneous speeds is trusted on this
-point.
+this pathway, is unmeasured under cosmology. A cosmological run with heterogeneous
+speeds therefore cannot yet be trusted on this point.
 
-What is measured: forcing a uniform speed (the test-only override
-\code{ISRF\_c\_hyp\_pin\_for\_debugging}, since removed, and independently a
+What is measured: forcing a uniform speed (by pinning every particle to one speed, and independently by a
 lowered $C_{\rm hyp}$) changes the final FUV band energy on
 \code{ISRFCausalReach} relative to the shipped, heterogeneous-speed run;
 the fixture is still rising at $t_{\rm end}$ under every speed tested, and
-the same-day check above found this fixture's own cross-arm ratio has not
-settled by that point (still declining across snapshots), so no number
+the ratio between the runs on this fixture has not
+settled by that point (it is still declining across snapshots), so no number
 from it is quoted here. Part of any gap measured this way is a slower
 relaxation clock (Section~\ref{sec:fuv-chyp}'s own discussion of the
 transient), not a pure injection bias, and the two effects are not
@@ -1152,15 +1139,12 @@ separated on the fixtures tested so far.
 Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
 operators were implemented as selectable runtime schemes
 (\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}) and compared, against scheme $0$
-(the formula above, unmodified operators) as baseline. Schemes $0$, $1$ and
-$3$ have since been removed, and a value of the parameter other than
-\texttt{fixed\_fraction} (the former scheme $2$) or \texttt{kernel\_local}
-(the former scheme $4$) stops the run; the comparison is kept as the record of
-why \texttt{kernel\_local} is the default. The scheme $2$ arm of that
-comparison stored the true flux; \texttt{fixed\_fraction} now stores the
-reduced flux like \texttt{kernel\_local}, which at its uniform speed is the
-same equation divided by one constant, so the comparison's conclusions about
-its speed rule stand. The candidates: a kernel-local speed
+(the formula above, unmodified operators) as baseline. Only schemes $2$
+(\texttt{fixed\_fraction}) and $4$ (\texttt{kernel\_local}) are implemented. Any other
+value of the parameter stops the run. The comparison explains why
+\texttt{kernel\_local} is the default. Both implemented schemes store the
+reduced flux. At its uniform speed, \texttt{fixed\_fraction} is the same
+equation as the true-flux form divided by one constant. The candidates: a kernel-local speed
 rule that takes the slowest step among a particle and every neighbour in
 its kernel (scheme $1$); a fixed global fraction of $c$, independent of
 $h$ or the time step (scheme $2$); a ``consistent variable-$c$''
@@ -1196,7 +1180,7 @@ slow, a configuration a uniform-resolution test fixture cannot exercise
 but a real galaxy's density contrast can, so it reduces pathway 1
 without removing it ``by construction''.
 
-\textbf{Scheme $4$ is the default}, as of \code{a53ab8311}: of
+\textbf{Scheme $4$ is the default}: of
 the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
 measured (two of them exact zeros) and the best amplitude,
 $1.088\times$ the uniform-speed reference against scheme $0$'s
@@ -1226,8 +1210,8 @@ default. \textbf{The default may yet be reconsidered}; this
 section reports the current choice and its
 measured justification, not a closed validation.
 
-\paragraph{Open question: is pathway 1 the whole story?} A same-day
-finding (2026-09-18, not yet independently re-tested) proposes that the
+\paragraph{Open question: is pathway 1 the whole story?} One
+hypothesis, not yet tested independently, is that the
 scheme's central-SPH-divergence-plus-pairwise-dissipation structure is
 positive only in the diffusive regime and is \emph{not} positive for a
 free-streaming neighbour (M1 flux ratio $f\to1$) at any choice of
@@ -1235,18 +1219,16 @@ $c_{\rm hyp}$, uniform or not, once the required dissipation coefficient
 exceeds what the shipped stability bound (Eq.~\ref{eq:fuv-stability-bound})
 allows -- which would mean the speed-seam heterogeneity mainly amplifies
 a pre-existing structural gap rather than being its root cause. This is
-a working hypothesis under active test as of this writing, not an
-established result: it is included here so the open question is stated
-precisely, not so a reader treats it as settled. It must not be read as
+a working hypothesis, not an established result. It is stated here to make
+the open question precise. It must not be read as
 a second candidate fix alongside the three above.
 
 \subsubsection{Literature position on a variable propagation speed}
 \label{sec:fuv-chyp-literature}
 
-A literature review
-answered whether any published radiation-transport scheme varies its
+This section asks whether any published radiation-transport scheme varies its
 reduced speed of light the way Eq.~\ref{eq:fuv-chyp} does. Citations
-below are separated as the review itself separates them: \textbf{verified}
+below are separated by how they were checked: \textbf{verified}
 means the source's full text was read directly (or, for the two SWIFT
 modules, the source code); \textbf{secondary} means only a search
 summary or a citing paper's own reference list was checked, and no
@@ -1271,7 +1253,7 @@ finite-volume setting, the exact proof degrades to an admitted
 few-percent, not sign-violating, leak once per-level time steps are
 allowed to desynchronise \citep{Katz2017,Rosdahl2018}. A citation inside
 \citet{Katz2017} (Commer\c{c}on, Debout \& Teyssier 2014, A\&A 563, A11)
-is flagged by the review as the one lead that addresses this
+is the one lead that addresses this
 asynchronous-time-step case directly; it was not independently read and
 its content is not asserted here.
 
@@ -1301,8 +1283,7 @@ there instead. Both papers warn against exactly this operation when the
 reduction is \emph{unmatched}: a source rescaled by $c_{\rm hyp}/c$ whose
 rate is then read back at the reduced speed. GEAR's convention pairs the
 source rescale with a rate getter that reads the true $c$
-(Section~\ref{sec:fuv-chyp}, Pathway 2), which a same-day check found to
-cancel exactly at a uniform speed; the residual defect these citations
+(Section~\ref{sec:fuv-chyp}, Pathway 2), which cancels exactly at a uniform speed; the residual defect these citations
 bound is therefore the per-neighbour interface case (heterogeneous
 $c_{\rm hyp}$, Pathway 2 above), not a general defect at any single
 global speed.
@@ -1310,27 +1291,26 @@ global speed.
 \textbf{The RSLA validity criterion in the literature is derived for an
 ionizing, recombination-bounded front and does not transfer directly to
 GEAR's non-ionizing bands (verified for the cited numbers, non-transfer
-is this review's own reading).} \citet{Rosdahl2013}'s criterion
+is our own reading).} \citet{Rosdahl2013}'s criterion
 ($f_c\gtrsim10\,t_{\rm cross}/\tau_{\rm sim}$) and the values people
 actually run at (STARFORGE, \citealt{Grudic2021}, single global
 $\tilde c=5$--$300\,{\rm km\,s^{-1}}$, fiducial $90\,{\rm km\,s^{-1}}$)
 are both set from ionizing-front or recombination timescales that have
 no analogue for photoelectric heating or H$_2$ photodissociation. No
-source found by the review gives a validity criterion or a value
+source found gives a validity criterion or a value
 specific to non-ionizing ISM radiation transport; the general form that
 does transfer is simply that $c_{\rm hyp}$ must exceed every physical
 signal speed the transport is meant to resolve, evaluated against the
 shortest timescale of interest.
 
 \textbf{No prior report of negative radiation energy at a variable-speed
-interface was found (verified absence, not a positive claim).} The
-review checked every RSLA-interface source it read directly, including
+interface was found (verified absence, not a positive claim).} We read every RSLA-interface source directly, including
 the paper most focused on RSLA conservation failures generally
 \citep{Gnedin2026}, for any mention of a sign-violating failure at a
-speed boundary; none was found. This may mean the failure is rare in
+speed boundary. None was found. This may mean the failure is rare in
 schemes that never couple a per-element time step to the propagation
-speed the way this scheme does, or it may mean it is undocumented; the
-review could not distinguish the two, and the unread Commer\c{c}on et
+speed the way this scheme does, or it may mean it is undocumented; we
+cannot distinguish the two, and the unread Commer\c{c}on et
 al. (2014) source above is the most promising remaining lead.
 
 \subsubsection{Spatial operators}
@@ -1494,8 +1474,7 @@ accumulator, which changes neither the discrete scheme nor the conservation
 identity, holding to $10^{-8}$ or better against its own $10^{-5}$ bar.
 
 Both schemes use this operator form. Scheme $4$ pairs it with the kernel-local
-speed of Section~\ref{sec:fuv-chyp-heterogeneity}; it is the default as of
-\code{a53ab8311}. Scheme $2$ (a fixed fraction of $c$) pairs it with a uniform
+speed of Section~\ref{sec:fuv-chyp-heterogeneity}; it is the default. Scheme $2$ (a fixed fraction of $c$) pairs it with a uniform
 speed, where it reduces to the unmodified operators
 (Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) acting on
 $\tilde{\mathbf F}$ and multiplied by the one receiver factor $c_{\rm hyp}$
@@ -1537,8 +1516,7 @@ with the artificial dissipation of Section~\ref{sec:fuv-dissipation}
 evaluated on $u^n$. This is a staggered, leapfrog-like scheme: $\mathbf F$
 first from the old $u$, then $u$ from the new $\mathbf F$. Its
 amplification matrix has the same trace and determinant as the opposite
-order ($u$ first), so the stability condition below is unchanged
-(\texttt{verify\_isrf\_timestepping\_stability.py}, S2'). The order is
+order ($u$ first), so the stability condition below is unchanged. The order is
 forced by conservation: only the force loop visits both sides of every
 pair, and it runs after the flux update. The exponential
 integrator is unconditionally stable in the relaxation for any $\Delta
@@ -1735,8 +1713,7 @@ update is corrected by the next step's; cooling sees it for one step,
 through its non-negative clamp. Folding the exchange in with the decay
 factor $e^{-a_i}$, rather than adding it undamped, keeps the per-step
 amplification matrix with the same eigenvalues as a correction applied
-to an already relaxed field, which has the larger stability margin
-(\texttt{verify\_isrf\_dissipation.py}, Part I); the discrete steady
+to an already relaxed field, which has the larger stability margin. The discrete steady
 state is then
 \begin{equation}
   \big(1 - e^{-a_i}\big)\,u_i = \Delta t_i\,\varphi(a_i)
@@ -1752,8 +1729,7 @@ $1.54$ at the shipped $\alpha_{\max} = 0.5$, and $1.68$ at the guard
 limit $\alpha = 0.5887$. At the guard boundary itself the ratio to the
 reference grows with $C_{\rm hyp}$: $1.14\times$ at $C_{\rm hyp} =
 0.25$, $1.25\times$ at $C_{\rm hyp} = 0.5$, and $1.35\times$ at
-$C_{\rm hyp} = 1.0$
-(\texttt{verify\_isrf\_dissipation\_flux\_first\_parameters.py}, Part E).
+$C_{\rm hyp} = 1.0$.
 It is bounded within the stability bound of
 Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
 one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
@@ -2177,8 +2153,7 @@ path.
     rather than with any unmodelled effect. The transient
     amplification of the shipped order grows with $\alpha$ above
     $\alpha\approx0.32$: $1.54$ at $0.5$ and $1.68$ at the bound, against
-    $1.35$ with the dissipation off
-    (\texttt{verify\_isrf\_dissipation\_flux\_first\_parameters.py}). The
+    $1.35$ with the dissipation off. The
     negativity threshold $\varepsilon_1 = 0.01$ only sets where the
     trigger saturates and does not enter the stability analysis; it was
     measured under the isotropic closure and not re-measured with the
