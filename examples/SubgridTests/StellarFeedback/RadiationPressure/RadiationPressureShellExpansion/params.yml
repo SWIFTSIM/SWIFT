@@ -113,6 +113,7 @@ GEARFeedback:
   with_stellar_wind_feedback: 0                             # Stellar wind feedback switch
 
   # Radiation pressure
+  with_radiation_pressure: 1                                # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 1                          # Radiation-pressure momentum efficiency
 
 Stars:

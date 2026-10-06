@@ -5,11 +5,6 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 
 set -eo pipefail
 
-if [ -n "${c_hyp_pin:-}" ]; then
-    echo "WARNING: c_hyp_pin was removed and is ignored:" \
-         "set c_hyp_scheme=2 c_hyp_fraction=<speed/c> instead." >&2
-fi
-
 config=${config:="galilean"}           # galilean or lag (see README)
 n_threads=${n_threads:=8}
 gas_density=${gas_density:=1e3}        # atom/cm^3

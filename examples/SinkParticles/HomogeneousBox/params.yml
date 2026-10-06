@@ -59,7 +59,6 @@ SPH:
   CFL_condition:         0.1                     # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1
 
-  # TODO: Show all grackle parameters to their defaults. Group them into categories, in particular those needed for the ISRF.
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012_high_density.h5         # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -95,6 +94,7 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]   # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
   # Radiation parameters
+  with_radiation_pressure: 0                               # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   with_interstellar_radiation_field: 0                     # ISRF master switch: photoelectric heating + dust chemistry (any Grackle mode); H2 photodissociation additionally needs COOLING_GRACKLE_MODE > 1 (grackle_2 or grackle_3). 1: on, 0: off. (Default: 0)
   ISRF_propagation: 0                                       # Run the hyperbolic M1 propagation update on top of injection + receiver-side extinction. Only meaningful when with_interstellar_radiation_field is on. (Default: 0)

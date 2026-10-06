@@ -1219,14 +1219,6 @@ def read_c_hyp_fraction(pattern: str) -> Optional[float]:
     float or None
         The parameter's value, or None when used_parameters.yml is absent
         or does not carry the key.
-
-    Raises
-    ------
-    ValueError
-        If the run recorded a positive GEARFeedback:ISRF_c_hyp_pin_for_debugging.
-        That override was removed: it set the speed without this fraction, so
-        the run's speed cannot be read from here, and treating it as a
-        scheme 4 run would drop the uniform-speed gate without a word.
     """
     import os
     import yaml
@@ -1238,16 +1230,6 @@ def read_c_hyp_fraction(pattern: str) -> Optional[float]:
     with open(path) as handle:
         parameters = yaml.safe_load(handle)
     feedback = (parameters or {}).get("GEARFeedback") or {}
-    try:
-        pin = float(feedback.get("ISRF_c_hyp_pin_for_debugging", 0.0))
-    except (TypeError, ValueError):
-        pin = 0.0
-    if pin > 0.0:
-        raise ValueError(
-            f"{path}: GEARFeedback:ISRF_c_hyp_pin_for_debugging is {pin!r}. "
-            "That override was removed; rerun with ISRF_c_hyp_scheme: 2 and "
-            "ISRF_c_hyp_fixed_fraction_of_c set to the speed over c."
-        )
     try:
         return float(feedback["ISRF_c_hyp_fixed_fraction_of_c"])
     except (KeyError, TypeError, ValueError):
