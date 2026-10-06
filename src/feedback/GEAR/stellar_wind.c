@@ -25,6 +25,8 @@
 #include <math.h>
 #include <stdio.h>
 
+// TODO: Do we want to print properties of the stellar wind?
+
 /**
  * @brief Initialize the #stellar_wind structure.
  *
