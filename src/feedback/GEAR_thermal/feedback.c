@@ -52,10 +52,9 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* Did the particle receive an event? delta_mass is tested on its own
-     because ejecta can arrive with no accompanying energy, hence with none
-     of the hit flags set, and the mass still has to be applied here or it
-     is lost from the simulation. */
+  /* Did the particle receive an event? delta_mass is tested on its own:
+     ejecta can arrive with no hit flag set, and the mass must still be
+     applied. */
   /* TODO: Remove the ionization part from here and move it to cooling */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
       !xp->feedback_data.hit_by_radiation &&
@@ -116,11 +115,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part density calculation: caches this step's
- * kernel-local LW/PE propagation speed, now that the density loop's
- * neighbour-bin maximum is known, see #radiation_end_density_propagation.
- * The field `u` itself is still updated in #feedback_end_force, after the
- * flux-divergence has been accumulated in the force loop.
+ * @brief Finishes the #part density calculation: caches the LW/PE
+ * propagation speed, see #radiation_end_density_propagation.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
@@ -133,8 +129,7 @@ void feedback_end_density(struct part *p, struct xpart *xp,
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0
- * neighbours: LW/PE dose-reservoir recovery is shared GEAR physics, see
- * #radiation_part_has_no_neighbours.
+ * neighbours, see #radiation_part_has_no_neighbours.
  *
  * @param p The particle to act upon.
  * @param xp The extra particle to act upon.
@@ -146,8 +141,7 @@ void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Finishes the #part gradient calculation: LW/PE propagation's
- * `F` relaxation is shared GEAR physics, see
+ * @brief Finishes the #part gradient calculation, see
  * #radiation_end_gradient_propagation.
  *
  * @param p The particle to act upon.
@@ -158,8 +152,8 @@ void feedback_end_gradient(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief Finishes the #part force calculation: LW/PE propagation's `u`
- * update is shared GEAR physics, see #radiation_end_force_propagation.
+ * @brief Finishes the #part force calculation, see
+ * #radiation_end_force_propagation.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -172,8 +166,7 @@ void feedback_end_force(struct part *p, const struct engine *e) {
  * @brief Radiation timestep bound of a particle, see
  * #radiation_isrf_part_timestep.
  *
- * Stops the run if the bound is below TimeIntegration:dt_min, so that the
- * message names the ISRF parameter responsible.
+ * Stops the run if the bound is below TimeIntegration:dt_min.
  *
  * @param p The particle to consider.
  * @param e The #engine.
@@ -183,8 +176,8 @@ void feedback_end_force(struct part *p, const struct engine *e) {
 float feedback_compute_part_timestep(const struct part *restrict p,
                                      const struct engine *e) {
   const float dt_isrf = radiation_isrf_part_timestep(p, e);
-  /* Like every other candidate in get_part_timestep(), dt_isrf is compared to
-   * dt_min after the cosmology factor. */
+  /* Compared to dt_min after the cosmology factor, like the other
+   * candidates in get_part_timestep(). */
   const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
   if (dt_isrf_scaled < e->dt_min)
     error(
@@ -226,8 +219,8 @@ void feedback_init_part(struct part *p, const struct engine *e) {
 }
 
 /**
- * @brief First-init of a #part's feedback-model state: LW/PE init is
- * shared GEAR physics, see #radiation_first_init_part.
+ * @brief First-init of a #part's feedback state, see
+ * #radiation_first_init_part.
  *
  * @param p The #part to initialise.
  */
@@ -277,13 +270,8 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.enrichment_weight = 0.f;
   sp->feedback_data.num_ngbs = 0;
 
-  /* mass_HII_region is NOT reset here: this function runs every active
-     step for every star, but the HII search only actually reruns on a
-     rebuild step (feedback_will_do_feedback's need_HII_region_rebuild).
-     Resetting unconditionally here wiped the accumulated mass long before
-     any snapshot dump could read it. It is reset instead in
-     feedback_will_do_feedback(), exactly when a fresh rebuild is about to
-     recompute it. */
+  /* mass_HII_region is not reset here: the HII search only reruns on a
+     rebuild step. It is reset in feedback_will_do_feedback(). */
 
   sp->feedback_data.grad_rho_star[0] = 0.0;
   sp->feedback_data.grad_rho_star[1] = 0.0;

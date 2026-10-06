@@ -276,9 +276,8 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
-      /* Lifetime-cumulative tracer, using this branch's own locally-computed
-         momentum/energy (not the shared feedback_data.delta_p/delta_u,
-         which the SN branch below can also add to this same step). */
+      /* Tracer uses this branch's own momentum and energy, not the shared
+         delta_p and delta_u, which the SN branch can also change. */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
       tracers_after_stellar_winds_feedback_part(
           xpj, delta_p_mag_winds, (float)du,
@@ -288,10 +287,9 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* Distribute SN. The mass is a condition in its own right: a zero SN
-     energy (supernovae_efficiency = 0) does not mean there is nothing to
-     distribute, because the stellar evolution has already subtracted
-     mass_ejected from the star, and that mass must reach the gas. */
+  /* Distribute SN. The mass is a condition in its own right: with zero SN
+     energy the ejected mass, already removed from the star, must still reach
+     the gas. */
   if (e_sn != 0.0 || si->feedback_data.supernovae.mass_ejected != 0.0) {
 
     /* Mass received by SN */
@@ -338,15 +336,12 @@ runner_iact_nonsym_feedback_apply(
         xpj, delta_p_mag_supernovae, (float)du,
         new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
 
-    /* Set the indication of SN event for cooling. This flags the thermal
-       event (delayed cooling, maximal viscosity), so it tracks the injected
-       energy and not the injected mass. */
+    /* Flag the thermal event for cooling: it tracks the injected energy,
+       not the mass. */
     if (e_sn != 0.0) xpj->feedback_data.hit_by_SN = 1;
   }
 
-  /* Both terms are 0 when nothing was distributed, so this needs no
-     condition, and it must not depend on hit_by_SN: mass can be delivered
-     with no accompanying energy. */
+  /* Must not depend on hit_by_SN: mass can arrive with no energy. */
   xpj->feedback_data.delta_mass += dm_SW + dm_SN;
 
   /* Impose maximal viscosity (only for SN) */
