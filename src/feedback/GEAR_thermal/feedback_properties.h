@@ -36,47 +36,43 @@
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
-/* One kernel support radius: the largest path the geometry admits, since the
- * illuminating star sits inside the receiver's own kernel. */
+/* One kernel support radius: the largest path with the star inside the
+ * receiver's kernel. */
 #define default_ISRF_extinction_path_in_kernel_radii 1.0
 
-/* Cap in K on the temperature in the Jeans length of the
- * temperature_capped_jeans extinction path: Safranek-Shrader et al. (2017),
- * MNRAS 465, 885, Section 3.4. */
+/* Temperature cap in K of the temperature_capped_jeans extinction path:
+ * Safranek-Shrader et al. (2017), MNRAS 465, 885, Section 3.4. */
 #define default_ISRF_extinction_jeans_temperature_cap_K 40.0
 
 /**
- * @brief The different subgrid radiation feedback processes GEAR models.
+ * @brief The subgrid radiation feedback processes.
  */
 enum radiation_policy {
   radiation_policy_none = 0,
-  /*! Do we want the ionization effect (Strömgren sphere)? */
+  /*! Photoionization (Strömgren sphere). */
   radiation_policy_photoionization = (1 << 0),
   /*! Radiation pressure from the stars' bolometric luminosity */
   radiation_policy_radiation_pressure = (1 << 1),
 
   /*! Interstellar radiation field: photoelectric heating and H2
-   * photodissociation (Lyman-Werner band), on one switch. */
+   * photodissociation. */
   radiation_policy_isrf = (1 << 2),
 };
 
 /**
- * @brief Which ISRF hyperbolic-propagation scheme sets the speed `c_hyp_i`.
+ * @brief Scheme that sets the ISRF propagation speed `c_hyp_i`.
  *
- * The parameter file selects a scheme by name
- * (#isrf_c_hyp_scheme_name_fixed_fraction,
- * #isrf_c_hyp_scheme_name_kernel_local). The numeric values below are only
- * the internal identity of the scheme: they are what #feedback_props and the
- * restart file carry, and they do not appear in a parameter file.
+ * The parameter file uses the names #isrf_c_hyp_scheme_name_fixed_fraction and
+ * #isrf_c_hyp_scheme_name_kernel_local. The integer values are internal and
+ * go to the restart file.
  */
 enum isrf_c_hyp_scheme {
   /*! `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every particle. A
-   * dedicated timestep term enforces the receiver-side CFL condition.
-   * Parameter value `fixed_fraction`. */
+   * timestep term enforces the CFL condition. Parameter value
+   * `fixed_fraction`. */
   isrf_c_hyp_scheme_fixed_fraction = 2,
   /*! `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
-   * timestep among particle i and its kernel neighbours. Default. Parameter
-   * value `kernel_local`. */
+   * timestep in the kernel of i. Default. Parameter value `kernel_local`. */
   isrf_c_hyp_scheme_kernel_local_reduced_flux = 4,
 };
 
@@ -125,7 +121,7 @@ feedback_props_c_hyp_scheme_name(int scheme) {
 }
 
 /**
- * @brief Mechanism that sets the receiver-side LW/PE dust extinction path
+ * @brief Dust extinction path of the LW/PE bands
  * (GEARFeedback:ISRF_extinction_path).
  */
 enum isrf_extinction_path_mechanism {
@@ -166,13 +162,11 @@ struct feedback_props {
 
   /* ------------- Star evolution timestep properties ------------- */
 
-  /*! Timestep refinement factor of SSP stars as lifetime_myr -> 0 (logistic
-   * transition in feedback_compute_spart_timestep()). */
+  /*! Timestep refinement factor of SSP stars as lifetime_myr -> 0. */
   float dt_evolution_factor_max;
 
-  /*! Floor, in internal units, on the event-anchored star timestep terms
-   * (dt_event, dt_HII_safe). Never zero: dt_event applies to every
-   * single_star. */
+  /*! Floor on the event-anchored star timestep terms (dt_event,
+   * dt_HII_safe), in internal units after init. Never zero. */
   float event_dt_floor_Myr;
 
   /* ------------- Subgrid Radiation properties ------------- */
@@ -187,70 +181,59 @@ struct feedback_props {
    * radiation_policy_isrf is set. */
   char ISRF_propagation;
 
-  /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or 1:
-   * they multiply the Hubble term. */
+  /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or
+   * 1. */
   double band_edge_weight_pe;
   double band_edge_weight_lw;
   double band_edge_photon_weight_lw;
 
-  /*! Which #isrf_extinction_path_mechanism builds the receiver-side LW/PE
-   * dust extinction path (GEARFeedback:ISRF_extinction_path). */
+  /*! Active #isrf_extinction_path_mechanism. */
   char ISRF_extinction_path_mechanism;
 
   /*! Path R of #isrf_extinction_path_constant_kernel_path, in kernel support
-   * radii (GEARFeedback:ISRF_extinction_path_in_kernel_radii, default 1).
-   * Left unparsed under any other mechanism. */
+   * radii. Only parsed for that mechanism. */
   float ISRF_extinction_path_in_kernel_radii;
 
-  /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans.
-   * Unused by every other mechanism. */
+  /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
   float ISRF_extinction_jeans_temperature_cap_K;
 
-  /*! Stability margin C_hyp in `c_hyp_i = C_hyp*h_i/dt_max(i)`. Its valid
-   * range depends on the dissipation coefficients, see
-   * feedback_props_init(). */
+  /*! Stability margin C_hyp in `c_hyp_i = C_hyp*h_i/dt_max(i)`, see
+   * feedback_props_init() for its range. */
   float ISRF_c_hyp_margin;
 
-  /*! Active #isrf_c_hyp_scheme, parsed from the string
-   * GEARFeedback:ISRF_c_hyp_scheme and stored (and restarted) as its integer
-   * value: #isrf_c_hyp_scheme_kernel_local_reduced_flux (default) or
-   * #isrf_c_hyp_scheme_fixed_fraction. The fixed-fraction scheme needs
-   * #ISRF_c_hyp_fixed_fraction_of_c, the kernel-local one needs it at 0. 0
-   * (not a valid scheme) when the interstellar radiation field is off. */
+  /*! Active #isrf_c_hyp_scheme, parsed from a string and stored as an
+   * integer. 0 (not a valid scheme) when the ISRF is off. */
   int ISRF_c_hyp_scheme;
 
-  /*! Fraction f of the speed of light with `c_hyp_i = f*c` for every particle,
-   * fixed_fraction scheme only. 0 (default) when unused. */
+  /*! Fraction f with `c_hyp_i = f*c`, fixed_fraction scheme only. 0 when
+   * unused. */
   float ISRF_c_hyp_fixed_fraction_of_c;
 
-  /*! Debug only: with #ISRF_c_hyp_fixed_fraction_of_c positive, skip the
-   * radiation timestep term `C_hyp*h_i/(f*c)`. Never set in production. */
+  /*! Debug only: skip the timestep term `C_hyp*h_i/(f*c)` of the
+   * fixed_fraction scheme. */
   char ISRF_c_hyp_timestep_term_off_for_debugging;
 
-  /*! Ceiling of the negativity-triggered artificial-conductivity coefficient.
-   * 0 disables it. The allowed range depends on #ISRF_c_hyp_margin. */
+  /*! Ceiling of the negativity-triggered dissipation coefficient. 0 disables
+   * it. The allowed range depends on #ISRF_c_hyp_margin. */
   float ISRF_dissipation_alpha_max;
 
-  /*! Relative undershoot of a particle's `rho_prev*u` below the neighbours'
-   * kernel mean `|rho_prev*u_prev|` at which the trigger reaches
-   * #ISRF_dissipation_alpha_max. */
+  /*! Relative undershoot of `rho_prev*u` below the neighbours' kernel mean
+   * at which the trigger reaches #ISRF_dissipation_alpha_max. */
   float ISRF_dissipation_negativity_threshold;
 
-  /*! Floor under the negativity trigger, which is blind to positive fronts:
-   * `alpha_floor/(1+(h*kappa/eps_lambda)^4)`, combined with the trigger by a
-   * max. 0 disables it. */
+  /*! Floor `alpha_floor/(1+(h*kappa/eps_lambda)^4)` under the trigger,
+   * combined with it by a max. 0 disables it. */
   float ISRF_dissipation_alpha_floor;
 
-  /*! Screening-length error budget `eps_lambda`: the floor rolls off as
-   * `(eps_lambda/(h*kappa))^4` beyond this `h/lambda`. */
+  /*! Screening-length budget `eps_lambda` of the floor roll-off. */
   float ISRF_dissipation_floor_h_over_lambda;
 
-  /*! Threshold `eps_R`, in [0, 1], of the flux-relaxation residual gate on
-   * the floor. 0 disables the gate. */
+  /*! Threshold `eps_R` in [0, 1] of the flux-relaxation residual gate on
+   * the floor. 0 disables it. */
   float ISRF_dissipation_floor_relaxation_residual;
 
-  /*! Debug only: when positive, hold every particle's dissipation coefficient
-   * at this value and bypass the trigger. Never set in production. */
+  /*! Debug only: when positive, pin every dissipation coefficient to this
+   * value. */
   float ISRF_dissipation_alpha_pin_for_debugging;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
@@ -262,12 +245,11 @@ struct feedback_props {
   /*! Maximun age of star particle to trigger the HII region algorithm */
   float HII_max_age;
 
-  /*! Boundary gas particle the remaining photon budget cannot fully ionize:
-   * 0 = probabilistic (unbiased), 1 = always ionize it. */
+  /*! Boundary particle the photon budget cannot fully ionize: 0 =
+   * probabilistic, 1 = always ionize it. */
   char HII_deterministic_boundary_ionization;
 
-  /*! Floors the elapsed interval the per-pass ionizing photon budget is
-   * integrated over, in every cadence mode. */
+  /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
 
   /* ------------- Stellar winds properties ------------- */
@@ -280,14 +262,11 @@ struct feedback_props {
 };
 
 /**
- * @brief Does this run need Grackle's chemistry_data actually resolved
- * (cooling_init() having run, via --cooling or --temperature), for
- * GEAR's own local Lyman-Werner/PE photoelectric-heating channel to
- * read a real (not silently zero) local_dust_to_gas_ratio? See
- * radiation_isrf.c's dust-opacity helpers.
+ * @brief Does this run need cooling_init() to have run, so that the ISRF
+ * reads a real local_dust_to_gas_ratio?
  *
  * @param feedback_props The #feedback_props.
- * @return True if with_interstellar_radiation_field is enabled.
+ * @return True if the ISRF is enabled.
  */
 __attribute__((always_inline)) INLINE static int
 feedback_props_needs_cooling_initialized(
@@ -322,9 +301,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Chemistry elements: %s", txt);
   }
 
-  /* Print the feedback properties, grouped by mechanism to match
-   * GEARFeedback's layout in parameter_example.yml: stellar evolution, SN,
-   * stellar winds, radiation pressure, HII regions, ISRF. */
+  /* Grouped like GEARFeedback in parameter_example.yml. */
 
   /* Stellar evolution */
   message("Yields table                                               = %s",
@@ -433,8 +410,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
  * @brief Enforce that #feedback_props.ISRF_c_hyp_scheme and
  * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c are a matched pair.
  *
- * The two schemes are alternatives, not layers. A standalone function so a
- * unit test can call it directly.
+ * The two schemes are alternatives. Standalone so a unit test can call it.
  *
  * @param scheme #feedback_props.ISRF_c_hyp_scheme's parsed value.
  * @param fixed_fraction #feedback_props.ISRF_c_hyp_fixed_fraction_of_c's
@@ -461,10 +437,9 @@ feedback_props_check_c_hyp_scheme(int scheme, float fixed_fraction) {
  * @brief Enforce that the operator -> owning-moment map is the first-match
  * reverse of the moment -> operator map.
  *
- * @p owner[o] must be the lowest-index entry of @p forward equal to @p o: a
- * round trip alone would accept any sharer. Every operator must own a moment,
- * and both maps are range-checked first. The maps are arguments so a unit test
- * can pass synthetic ones.
+ * @p owner[o] must be the lowest-index entry of @p forward equal to @p o.
+ * Every operator must own a moment. The maps are arguments so a unit test can
+ * pass synthetic ones.
  *
  * @param forward Moment -> operator map (#radiation_isrf_moment_to_operator
  * or a test stand-in).
@@ -530,19 +505,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
 
-  /* Several fields below (ISRF_*, HII_*, stellar_model_first_stars) are only
-   * assigned inside a conditional branch; zero first so the disabled case
-   * reads a defined 0, not uninitialised stack memory, since those fields
-   * are read downstream unconditionally. sink_props_init() writes
-   * with_sinks after this function returns, not before. */
+  /* Several fields are only assigned in conditional branches but read
+   * unconditionally downstream. sink_props_init() writes with_sinks after
+   * this function returns. */
   bzero(fp, sizeof(struct feedback_props));
 
-  /* The owner map is the one every operator-state writer trusts to find its
-   * moment; a hand-edit that desyncs it from the forward map would corrupt
-   * every ISRF run silently, so check it once at start-up rather than
-   * trusting the two maps stay consistent by inspection. Mirrored on
-   * restart by feedback_struct_restore(), since this function does not run
-   * then. */
+  /* Every operator-state writer trusts the owner map. Mirrored on restart by
+   * feedback_struct_restore(). */
   feedback_check_isrf_operator_owner_map(
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
@@ -551,10 +520,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
-  /* The efficiency multiplies supernovae.energy_ejected unconditionally in
-   * feedback_common.c, so a negative value makes a supernova remove thermal
-   * energy from its gas neighbours. 0 is legal: it is the documented way to
-   * run the enrichment channel without the thermal one. */
+  /* 0 is legal: it runs the enrichment channel without the thermal one. */
   if (e_efficiency < 0.0)
     error(
         "GEARFeedback:supernovae_efficiency is %g (< 0): a negative "
@@ -578,8 +544,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const char with_radiation_pressure = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_radiation_pressure", 0);
 
-  /* L_bol is multiplied by the efficiency unconditionally in feedback_common.c,
-   * so it stays 0 when radiation pressure is off. */
+  /* Stays 0 when radiation pressure is off. */
   float radiation_pressure_efficiency = 0.f;
   if (with_radiation_pressure) {
     radiation_pressure_efficiency = parser_get_opt_param_float(
@@ -598,9 +563,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   const char with_interstellar_radiation_field = (char)parser_get_opt_param_int(
       params, "GEARFeedback:with_interstellar_radiation_field", 0);
 
-  /* The radiation table backs every radiation channel, so every channel
-   * switch must appear in this OR. Keep in sync with
-   * feedback_struct_restore()'s matching condition. */
+  /* Every channel switch must appear here. Keep in sync with
+   * feedback_struct_restore(). */
   const char with_radiation = with_photoionization || with_radiation_pressure ||
                               with_interstellar_radiation_field;
 
@@ -632,9 +596,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                cosmo, fp->with_stellar_wind_feedback,
                                with_radiation);
 
-  /* Announce the H2 photodissociation coefficient and report the main
-     model's own mean LW photon energy beside it. Deliberately not repeated
-     for the first-stars model below: one line per run. */
+  /* Announce the H2 photodissociation coefficient, once per run (not for the
+     first-stars model). */
   radiation_set_lw_photon_energy_cgs(&fp->stellar_model.rad,
                                      &fp->stellar_model);
 
@@ -680,12 +643,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   }
 
   /* ------------- Star evolution timestep properties ------------- */
-  /* Runs for every star regardless of radiation, so parsed unconditionally
-   * (feedback_compute_spart_timestep() uses this factor for all stars). */
-
-  /* Needed unconditionally below (event_dt_floor_Myr's conversion), unlike
-   * HII_max_age/HII_rebuild_time/HII_rebuild_floor_Myr further down, which
-   * stay gated behind with_photoionization. */
+  /* Parsed unconditionally: applies to every star. */
   const double Myr_internal_units = 1e6 * phys_const->const_year;
 
   fp->dt_evolution_factor_max =
@@ -709,8 +667,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   fp->event_dt_floor_Myr *= Myr_internal_units;
 
-  /* event_dt_floor_Myr guards every single_star death against
-   * get_spart_timestep()'s dt_min error(), so it must exceed dt_min. */
+  /* The floor must exceed dt_min to avoid get_spart_timestep()'s error. */
   const double dt_min =
       parser_get_param_double(params, "TimeIntegration:dt_min");
   if (fp->event_dt_floor_Myr <= dt_min)
@@ -726,18 +683,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* TODO: For the future, enforce these to have a non-zero value */
 
-  /* Radiation pressure. L_bol is multiplied by the efficiency unconditionally
-   * in feedback_common.c; the policy bit gates the injection in
-   * radiation_iact.h. */
+  /* Radiation pressure. The policy bit gates the injection. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
 
   if (with_radiation_pressure) {
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
-  /* Parsed unconditionally. The magnitude keys are parsed only by the
-   * mechanism that reads them, so used_parameters.yml lists only used
-   * numbers. */
+  /* The magnitude keys are parsed only by the mechanism that reads them. */
   fp->ISRF_extinction_path_in_kernel_radii = 0.f;
   fp->ISRF_extinction_jeans_temperature_cap_K = 0.f;
 
@@ -771,9 +724,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "positive, got %g.",
           fp->ISRF_extinction_jeans_temperature_cap_K);
   } else {
-    /* An unrecognised value must stop the run rather than fall back: the
-     * parser accepts an unknown key silently, so a stale value that mapped
-     * to a default would give a clean-looking run at the wrong column. */
+    /* Stop the run on an unknown value rather than fall back to a default. */
     error(
         "GEARFeedback:ISRF_extinction_path must be one of "
         "constant_kernel_path, pair_separation or temperature_capped_jeans, "
@@ -790,11 +741,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
 
-    /* Which c_hyp scheme runs; see #isrf_c_hyp_scheme's doxygen.
-     * Parsed unconditionally, like the fraction below, so a validation
-     * run can set it even with ISRF_propagation off in the base config.
-     * Default is kernel_local
-     * (#isrf_c_hyp_scheme_kernel_local_reduced_flux). */
+    /* Parsed even with ISRF_propagation off, so validation runs can set it.
+     * Default is kernel_local. */
     char c_hyp_scheme[PARSER_MAX_LINE_SIZE];
     parser_get_opt_param_string(params, "GEARFeedback:ISRF_c_hyp_scheme",
                                 c_hyp_scheme,
@@ -808,11 +756,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           isrf_c_hyp_scheme_name_kernel_local,
           isrf_c_hyp_scheme_name_fixed_fraction, c_hyp_scheme);
 
-    /* Uniform reduced light-speed candidate: 0 disables it. Only takes
-     * effect under ISRF_c_hyp_scheme == isrf_c_hyp_scheme_fixed_fraction
-     * (enforced below). Parsed and validated unconditionally, like the
-     * scheme above, so a validation run can set it even with
-     * ISRF_propagation off in the base config. */
+    /* 0 disables it. Only valid with the fixed_fraction scheme, enforced
+     * below. */
     fp->ISRF_c_hyp_fixed_fraction_of_c = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c", 0.0f);
     fp->ISRF_c_hyp_timestep_term_off_for_debugging =
@@ -828,24 +773,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "disables it.",
           fp->ISRF_c_hyp_fixed_fraction_of_c);
 
-    /* See feedback_props_check_c_hyp_scheme()'s doxygen: the two speed
-     * schemes are alternatives, not layers. */
+    /* The two speed schemes are alternatives. */
     feedback_props_check_c_hyp_scheme(fp->ISRF_c_hyp_scheme,
                                       fp->ISRF_c_hyp_fixed_fraction_of_c);
 
-    /* Parsed and validated unconditionally, like the fraction above: a
-     * validation run can set and check the stability margin (and the
-     * dissipation coefficients below) even with ISRF_propagation off. */
+    /* Parsed even with ISRF_propagation off, like the dissipation
+     * coefficients below. */
     fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_c_hyp_margin", 0.5f);
 
-    /* Absolute static bound: even with dissipation fully disabled
-     * (alpha_max = alpha_floor = 0), the joint stability bound below
-     * (6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2) still applies at alpha = 0,
-     * giving C_hyp <= sqrt(2/0.70) ~ 1.6903. Increasing alpha only
-     * tightens the bound further (enforced separately below, once
-     * alpha_max/alpha_floor are known), so alpha = 0 is the loosest case
-     * and no configuration can ever exceed this value. */
+    /* Loosest case of the joint bound below, at alpha = 0:
+     * C_hyp <= sqrt(2/0.70) ~ 1.6903. */
     const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
 
     if (fp->ISRF_c_hyp_margin <= 0.f ||
@@ -860,12 +798,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "alpha = 0).",
           ISRF_c_hyp_absolute_bound, fp->ISRF_c_hyp_margin);
 
-    /* Negativity-triggered artificial dissipation. Shipped default 0.5,
-     * the same value as the floor's own ceiling, so the joint stability
-     * bound checked below
-     * is unchanged. Parsed and validated unconditionally,
-     * like the stability margin above, so a validation run can
-     * exercise these even with ISRF_propagation off. */
+    /* Negativity-triggered artificial dissipation. */
     fp->ISRF_dissipation_alpha_max = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_alpha_max", 0.5f);
     fp->ISRF_dissipation_negativity_threshold = parser_get_opt_param_float(
@@ -884,10 +817,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "in (0, 1] (got %g).",
           fp->ISRF_dissipation_negativity_threshold);
 
-    /* Diffuse-phase floor under the trigger: shipped defaults 0.5/0.5. The
-     * quartic roll-off keeps the thick regime negligible, so the knee does
-     * not need to sit an order of magnitude below the regimes that need the
-     * floor. */
+    /* Diffuse-phase floor under the trigger. */
     fp->ISRF_dissipation_alpha_floor = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_alpha_floor", 0.5f);
     fp->ISRF_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
@@ -905,8 +835,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "(got %g).",
           fp->ISRF_dissipation_floor_h_over_lambda);
 
-    /* Flux-relaxation residual gate: 0 disables it (recovers the
-     * h/lambda-only floor). */
+    /* Flux-relaxation residual gate: 0 disables it. */
     fp->ISRF_dissipation_floor_relaxation_residual = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
         0.40f);
@@ -921,14 +850,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "disables the gate.",
           fp->ISRF_dissipation_floor_relaxation_residual);
 
-    /* Joint (alpha_max, C_hyp) stability bound: 6.2 = 2*I_W and
-     * 0.70 = nu_max_coeff^2/2, the kernel's own Wendland-C2 lattice
-     * constants (I_W = 3.10,
-     * nu_max_coeff = 1.18), reproduced by
-     * theory/GEAR/Radiation/verify_isrf_dissipation.py's Part C. The
-     * floor can dissipate even where the trigger never fires (it is not
-     * gated on negativity), so it must satisfy the same bound as the
-     * trigger's own ceiling: check max(alpha_max, alpha_floor). */
+    /* Joint stability bound: 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2, the
+     * Wendland-C2 lattice constants (I_W = 3.10, nu_max_coeff = 1.18). The
+     * floor is not gated on negativity, so check max(alpha_max,
+     * alpha_floor). */
     const float C_hyp = fp->ISRF_c_hyp_margin;
     const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
     const float alpha_joint_ceiling =
@@ -959,11 +884,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
 
     if (fp->ISRF_propagation) {
-      /* Tripwire, not a fix (see radiation_get_dust_mass_opacity() in
-       * radiation_isrf.c): IC metallicity is per-particle HDF5 data, not
-       * visible here, so this warns unconditionally rather than gating on
-       * a metallicity value that cannot bound the risk (kappa -> 0
-       * continuously as Z -> 0, with no floor on the opacity itself). */
+      /* The IC metallicity is not visible here, so warn unconditionally. */
       warning(
           "GEARFeedback:ISRF_propagation is on together with "
           "GEARFeedback:with_interstellar_radiation_field. The propagation's "
@@ -1014,7 +935,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_min_density *=
         m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
-    /* Myr_internal_units already computed above, unconditionally. */
     fp->HII_max_age *= Myr_internal_units;
     fp->HII_rebuild_time *= Myr_internal_units;
     fp->HII_rebuild_floor_Myr *= Myr_internal_units;

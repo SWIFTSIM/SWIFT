@@ -22,8 +22,7 @@
 /**
  * @file src/feedback/GEAR/radiation_iact.h
  * @brief Subgrid radiation feedback for GEAR: functions called from
- * feedback_iact.h and feedback_prepare_feedback(), split out so the
- * mechanical feedback module does not duplicate them.
+ * feedback_iact.h and feedback_prepare_feedback().
  */
 
 #include "chemistry.h"
@@ -69,9 +68,7 @@ radiation_iact_nonsym_feedback_density(
   }
 
   const float mj = hydro_get_mass(pj);
-  /* Floored so a coincident star/gas pair (r2 == 0) cannot divide dx_unit
-     to a NaN below; same shape feedback_common.c's HII channel uses for
-     si->h. */
+  /* Floor avoids a NaN in dx_unit for a coincident pair (r2 == 0). */
   const float r2_min = 1e-6f * hi * hi;
   const float r = sqrtf(max(r2, r2_min));
 
@@ -95,8 +92,7 @@ radiation_iact_nonsym_feedback_density(
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Weighted like enrichment_weight (feedback_iact.h) so both share the
-     same kernel normalization in feedback_prepare_radiation_feedback(). */
+  /* Same weighting as enrichment_weight, so both share one normalization. */
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
@@ -104,15 +100,9 @@ radiation_iact_nonsym_feedback_density(
 /**
  * @brief Store the star's feedback time-step for this step.
  *
- * The pairwise injection loop needs it once per neighbour; caching it here
- * keeps the cosmological lookup off the per-pair path.
- *
- * @p dt already carries the d(ln a) versus proper-time distinction under
- * cosmology, mirroring compute_time() in feedback_common.c. It is the star's
- * own step only because GEAR's feedback_get_enrichment_timestep() returns
- * dt_star unchanged; were that ever to differ, this would silently cache the
- * wrong quantity and the staleness check below would not catch it, because
- * the value would be fresh rather than stale.
+ * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
+ * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
+ * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
  *
  * @param sp The #spart to update.
  * @param dt Length of the star's feedback step, in internal units.
@@ -164,10 +154,8 @@ feedback_prepare_radiation_feedback(
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  /* enrichment_weight is 0 only when Z_star's own sum is too (same
-     weighting), so skipping is exact, not an approximation. Uses
-     hi_inv_dim, not hi_inv_dim_plus_one: Z_star needs the density
-     estimate's 1/h^d, not the gradient's extra 1/h. */
+  /* enrichment_weight is 0 only when the Z_star sum is too, so skipping is
+     exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). */
   if (sp->feedback_data.enrichment_weight > 0.0f) {
     sp->feedback_data.Z_star *=
         hi_inv_dim / sp->feedback_data.enrichment_weight;
@@ -177,9 +165,8 @@ feedback_prepare_radiation_feedback(
 }
 
 /**
- * @brief Radiation feedback interaction between two particles
- * (non-symmetric). Used for updating properties of gas particles neighbouring
- * a star particle.
+ * @brief Radiation feedback interaction between two particles (non-symmetric),
+ * updating the gas particles neighbouring a star particle.
  *
  * Applies radiation pressure and injects the local Lyman-Werner/PE field.
  *
@@ -208,9 +195,7 @@ radiation_iact_nonsym_feedback_apply(
     const integertime_t ti_current) {
 
   const float mj = hydro_get_mass(pj);
-  /* Floored so a coincident star/gas pair (r2 == 0) cannot divide the
-     radial momentum kick to a NaN below; same shape as the density loop
-     above and feedback_common.c's HII channel. */
+  /* Floor avoids a NaN in the radial kick for a coincident pair (r2 == 0). */
   const float r2_min = 1e-6f * hi * hi;
   const float r = sqrtf(max(r2, r2_min));
 
@@ -226,13 +211,10 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
-  /* Also reused below to renew the LW/PE illumination window
-   * (radiation_reset_part_ISRF_illumination_tag). */
+  /* Also used to renew the LW/PE illumination window. */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
 
-  /* Cached once per star by feedback_prepare_radiation_feedback, not
-     recomputed per neighbour: shared by radiation pressure and LW/PE
-     injection below. */
+  /* Cached once per star by feedback_prepare_radiation_feedback(). */
   const float Delta_t = si->feedback_data.radiation.Delta_t;
 #ifdef SWIFT_DEBUG_CHECKS
   if (get_integer_time_begin(ti_current, si->time_bin) !=
@@ -243,55 +225,43 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
-  /* Policy bit first: on the population path L_bol can be positive from two
-     negative factors (radiation_get_luminosities_from_integral times a
-     negative efficiency) even with the switch off, so L_bol > 0 alone is
-     not sufficient. */
+  /* Test the policy bit first: L_bol can be positive from two negative
+     factors even with the switch off. */
   if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
       si->feedback_data.radiation.L_bol > 0.0) {
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
-    /* Radially outwards from the star; * cosmo->a converts to comoving
-       units. */
+    /* Radially outwards from the star; cosmo->a converts to comoving. */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.radiation.delta_p[i] -=
           delta_p_rad * dx[i] / r * cosmo->a;
     }
 
-    /* Lifetime-cumulative tracer. delta_p_rad is the physical momentum for
-       this pair, before it is projected onto the radial direction above; no
-       separate energy channel (tracers_struct.h). The kick velocity goes in
-       as a magnitude: MaxKickVelocityFromRadiationPressure is a running
-       maximum starting at 0, so a signed value could never overtake 0 on a
-       negative event and would report 0 for a kicked particle;
-       CumulativeMomentumFromRadiationPressure carries the sign instead. */
+    /* Tracer. The kick velocity is a magnitude because
+       MaxKickVelocityFromRadiationPressure is a running maximum from 0;
+       the cumulative momentum carries the sign. */
     tracers_after_radiation_pressure_feedback_part(xpj, delta_p_rad,
                                                    fabsf(delta_p_rad / mj));
 
-    /* Matches hit_by_SN/hit_by_winds: without it,
-       feedback_update_part_radiation() never applies this momentum. */
+    /* Required for feedback_update_part_radiation() to apply the momentum. */
     xpj->feedback_data.hit_by_radiation = 1;
   }
 
-  /* Zero unless GEARFeedback:with_interstellar_radiation_field is on
-     (L_band is then computed by stellar_evolution.c). */
+  /* L_band is zero unless with_interstellar_radiation_field is on. */
   if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
       si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction[ISRF_OPERATOR_COUNT];
-    /* Receiver-side, using pj's own column density, not the source; see
-       radiation_get_part_ISRF_extinction_factors for the formula. */
+    /* Receiver-side: uses pj's own column density, not the source's. */
     const float extinction_path = radiation_get_comoving_extinction_path(
         fb_props, pj, xpj, r, cosmo, phys_const, hydro_props, us, cooling);
     radiation_get_part_ISRF_extinction_factors(
         us, phys_const, cosmo, pj, Z_j, cooling, extinction_path, extinction);
 
-    /* u_inject is an energy; dividing by mj below converts it to the
-       specific energy each moment (or the dose reservoir) stores. Each
-       moment takes its operator's extinction through the map. */
+    /* Energy; divided by mj below to get the stored specific energy. */
     double u_inject[ISRF_MOMENT_COUNT];
     for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
       u_inject[m] = (double)Delta_t * weight *
@@ -300,12 +270,8 @@ radiation_iact_nonsym_feedback_apply(
     }
 
     if (fb_props->ISRF_propagation) {
-      /* Dose-reservoir accumulator: pure accumulation of the elapsed star
-         step's own (unrescaled) deposit, no reset, no first-touch logic, so
-         any number of stars on any time bins just add without losing or
-         double-counting emission. The rescale/phi fold-in happens once, at
-         the receiving particle's own cadence, in
-         radiation_end_force_propagation. */
+      /* Pure accumulation, no reset, so stars on any time bin just add. The
+         fold-in happens in radiation_end_force_propagation(). */
       for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
         pj->feedback_data.isrf_moment[m].u_dose_reservoir +=
             (float)(u_inject[m] / (double)mj);
@@ -314,39 +280,27 @@ radiation_iact_nonsym_feedback_apply(
           max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
     } else {
-      /* An instantaneous field strength, not an accumulated dose: reset to
-         0 on the first touch this step (by any star), so a later read sees
-         this step's illumination rather than a total across every step
-         since the last cooling call. A later touch this same step (a
-         second illuminating star) sums into what the first just wrote. */
+      /* Instantaneous field: reset on the first touch this step, then sum
+         over the stars. */
       if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
         for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
           pj->feedback_data.isrf_moment[m].u = 0.f;
         pj->feedback_data.ISRF_last_touch_ti = ti_current;
       }
 
-      /* No narrowing cast: #u is double (see its doxygen), so this
-         keeps u_inject's own double precision instead of rounding it away
-         before the accumulation. */
+      /* #u is double: no narrowing cast. */
       for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
         pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
       }
     }
 
-    /* Renew the illumination window on every touch, first or not: mirrors
-       feedback_iact_HII_maintain_ionized_part's per-pass renewal of the HII
-       tag's own end_time, so a continuously-illuminated particle's window
-       never lapses between touches. The expiry check itself
-       (radiation_reset_part_ISRF_illumination_tag) runs once per step in
-       feedback_reset_part, not here. */
+    /* Renew the window on every touch. The expiry check runs once per step
+       in feedback_reset_part(). */
     pj->feedback_data.ISRF_illumination_end_ti =
         ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step;
 
-    /* First-touch-only sync, mirroring feedback_hii_claim_part vs.
-       feedback_iact_HII_maintain_ionized_part's claim-vs-maintain split
-       (feedback_common.c): do not re-sync an already-illuminated particle
-       every pass, or every held particle drags the whole region down to
-       the shortest time bin. */
+    /* Sync on the first touch only: re-syncing every pass drags the whole
+       region to the shortest time bin. */
     if (!pj->feedback_data.is_illuminated_ISRF) {
       pj->feedback_data.is_illuminated_ISRF = 1;
       timestep_sync_part(pj);
@@ -370,7 +324,6 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
   /* Momentum only; internal energy is handled elsewhere, before cooling. */
   if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
-      /* Initial mass of the gas, i.e. before any winds or SN. */
       const float dv = xp->feedback_data.radiation.delta_p[i] / initial_mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;

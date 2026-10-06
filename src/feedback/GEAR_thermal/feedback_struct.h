@@ -22,23 +22,20 @@
 #include "chemistry_struct.h"
 #include "timeline.h"
 
-/*! Maximum number of HEALPix pixels (12*nside_max^2) a star's HII budget can
-    be split across, set by ./configure --with-number-of-hii-angular-pixels
-    (default 12). Every star carries an array of this size. */
+/*! Maximum number of HEALPix pixels (12*nside_max^2) of a star's HII budget,
+    set by ./configure --with-number-of-hii-angular-pixels. */
 #ifndef HII_MAX_ANGULAR_PIXELS
 #error "HII_MAX_ANGULAR_PIXELS should be defined by configure (config.h)"
 #endif
 
 /**
- * @brief The three moments the ISRF module transports: PE (6-11.2 eV) and
- * Lyman-Werner (11.2-13.6 eV) specific energy, and the Lyman-Werner band's
- * photon-number moment. Indexes #feedback_part_data.isrf_moment and
+ * @brief The ISRF moments: PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV)
+ * specific energy, and the Lyman-Werner photon-number moment.
+ *
+ * Indexes #feedback_part_data.isrf_moment and
  * #feedback_spart_data.radiation.L_band.
  *
- * #ISRF_MOMENT_LW_PHOTON shares #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW
- * (#radiation_isrf_moment_to_operator below): it carries the same field as
- * #ISRF_MOMENT_LW, at a fixed reference photon energy, so its own opacity,
- * M1 closure and dissipation state are never independent of LW's.
+ * #ISRF_MOMENT_LW_PHOTON uses the operator of #ISRF_MOMENT_LW.
  */
 enum radiation_isrf_moment {
   ISRF_MOMENT_PE = 0,
@@ -48,10 +45,8 @@ enum radiation_isrf_moment {
 };
 
 /**
- * @brief The physical band operators (dust opacity, M1 closure,
- * dissipation coefficients) a moment is evaluated against. Indexes
- * #feedback_part_data.isrf_operator; a moment reaches its own operator
- * through #radiation_isrf_moment_to_operator.
+ * @brief The band operators (dust opacity, M1 closure, dissipation) a moment
+ * is evaluated against. Indexes #feedback_part_data.isrf_operator.
  */
 enum radiation_isrf_operator {
   ISRF_OPERATOR_PE = 0,
@@ -60,19 +55,9 @@ enum radiation_isrf_operator {
 };
 
 /**
- * @brief Compile-time moment -> operator map: which #radiation_isrf_operator
- * each #radiation_isrf_moment reads its opacity/closure/dissipation
- * coefficients from. A moment can point at an operator an earlier moment
- * already owns instead of getting its own. The cosmological redshift
- * residual is NOT looked up through this map: every consumer evaluates it
- * once per particle, not per operator, at each moment's own update site,
- * so two moments sharing one operator can still carry different residuals.
+ * @brief Operator used by each #radiation_isrf_moment.
  *
- * Declared unsized: for a sized array, sizeof(a)/sizeof(a[0]) equals the
- * declared count regardless of how many initialisers were written, so a
- * length assert against a sized array is vacuous. Unsized, the array's
- * size comes from the initialiser list itself, so a missing entry is a
- * compile error rather than a silent zero-fill.
+ * Unsized, so that a missing initialiser fails the _Static_assert below.
  */
 static const enum radiation_isrf_operator radiation_isrf_moment_to_operator[] =
     {ISRF_OPERATOR_PE, ISRF_OPERATOR_LW, ISRF_OPERATOR_LW};
@@ -84,25 +69,13 @@ _Static_assert(sizeof(radiation_isrf_moment_to_operator) /
                "ISRF_MOMENT_COUNT.");
 
 /**
- * @brief Compile-time operator -> owning-moment map, the reverse of
- * #radiation_isrf_moment_to_operator: which moment's state a WRITER to an
- * operator field must read, when several moments share that operator.
+ * @brief Owning moment of each #radiation_isrf_operator, the reverse of
+ * #radiation_isrf_moment_to_operator.
  *
- * Every site that writes an #feedback_isrf_operator_data field must loop
- * over operators and fetch its one owning moment's data through this map,
- * rather than looping over moments and writing through the forward map: a
- * loop bounded by #ISRF_OPERATOR_COUNT can physically only touch each
- * operator once per particle, so a later moment sharing an operator cannot
- * turn an assignment into last-writer-wins or an accumulation into a
- * double count.
- *
- * Each entry MUST be the FIRST (lowest-index) moment that maps to that
- * operator: a bare round trip through the forward map accepts any sharer,
- * not only the first, so it cannot tell a correct entry from a wrong one
- * when two moments share an operator. #feedback_check_isrf_operator_owner_map()
- * checks the stronger property this map actually needs.
- *
- * Declared unsized for the same reason as the forward map above.
+ * Writers of an #feedback_isrf_operator_data field loop over operators and
+ * use this map, so a shared operator is written once. Each entry MUST be the
+ * lowest-index moment mapping to that operator, see
+ * #feedback_check_isrf_operator_owner_map(). Unsized, like the forward map.
  */
 static const enum radiation_isrf_moment radiation_isrf_operator_owner[] = {
     ISRF_MOMENT_PE, ISRF_MOMENT_LW};
@@ -114,126 +87,91 @@ _Static_assert(sizeof(radiation_isrf_operator_owner) /
                "ISRF_OPERATOR_COUNT.");
 
 /**
- * @brief Per-moment ISRF transport state carried by each hydro particle,
- * one instance per #radiation_isrf_moment in #feedback_part_data.isrf_moment.
+ * @brief Per-moment ISRF transport state of a hydro particle.
  */
 struct feedback_isrf_moment_data {
 
-  /*! Local specific radiation field of the band, in internal specific-energy
-      units (physical, per unit mass). An instantaneous strength held until a
-      star next touches the particle, never cleared by cooling. Double: the
-      per-step relaxation depth can be ~1e-8, too small for `1 - a` in float;
-      the other accumulators stay float. */
+  /*! Local specific radiation field of the band (physical, per unit mass).
+      Double: the per-step relaxation depth can be ~1e-8, too small for
+      `1 - a` in float. */
   double u;
 
-  /*! Snapshot of #u taken once per step, before the density loop's
-      h-iterations. Double, like #u. */
+  /*! Snapshot of #u taken once per step. Double, like #u. */
   double u_prev;
 
-  /*! Reduced specific flux `Ft = F_true/c_hyp` of the propagation update, in
-      the units of #u. Zeroed at first init: there is no IC field for it. */
+  /*! Reduced specific flux `F_true/c_hyp`, in the units of #u. */
   float specific_flux[3];
 
-  /*! `(1/rho) div(rho F)` accumulated by the force loop and consumed by
-      #radiation_end_force_propagation. */
+  /*! `(1/rho) div(rho F)` accumulated by the force loop. */
   float div_specific_flux;
 
-  /*! Negativity-triggered artificial-dissipation source term accumulated by
-      the force loop and applied by #radiation_end_force_propagation. Scratch,
-      zeroed once per step. */
+  /*! Artificial-dissipation source term from the force loop. Scratch. */
   float dissipation_u;
 
-  /*! Gradient-loop accumulator of the M1 pressure-tensor divergence
-      `(1/rho) div(D rho u)`, per physical length. Scratch, zeroed once per
-      step. */
+  /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
+      loop, per physical length. Scratch. */
   float grad_u[3];
 
-  /*! Mass-specific per-band emission dose owed to this particle by the stars
-      that touched it, not yet injected into #u. Zeroed at first init: there
-      is no IC field for it. */
+  /*! Mass-specific emission dose not yet injected into #u. */
   float u_dose_reservoir;
 
-  /*! This step's mass-specific per-band source rate, drawn from
-      #u_dose_reservoir and consumed by #radiation_end_force_propagation.
-      Scratch, recomputed every step for active particles. */
+  /*! This step's source rate, drawn from #u_dose_reservoir. Scratch. */
   float u_source_rate;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Most negative #u written by #radiation_end_force_propagation since the
-      previous snapshot, 0 if none was negative. */
+  /*! Most negative #u written since the previous snapshot, 0 if none. */
   float u_min_since_snapshot;
 
-  /*! Cumulative mass-specific dose handed to #u by the dose reservoir since
-      first init, rescaled by `c_hyp/c` but not relaxed. Never reset. */
+  /*! Cumulative dose handed to #u by the reservoir, rescaled by `c_hyp/c`
+      but not relaxed. */
   float cumulative_injected;
 
-  /*! Cumulative mass-specific energy attributed to relaxation (dust
-      absorption and the redshift term) since first init, including the
-      transport and dissipation terms of optically thick steps. Never reset. */
+  /*! Cumulative energy lost to relaxation (dust absorption and redshift),
+      including transport and dissipation terms of optically thick steps. */
   float cumulative_absorbed;
 #endif
 };
 
 /**
- * @brief Per-operator ISRF band-physics coefficients carried by each hydro
- * particle, one instance per #radiation_isrf_operator in
- * #feedback_part_data.isrf_operator. A moment reads its own operator
- * through #radiation_isrf_moment_to_operator.
+ * @brief Per-operator ISRF band coefficients of a hydro particle.
  */
 struct feedback_isrf_operator_data {
 
-  /*! Band-specific local linear dust absorption rate, cached once per step by
-      radiation_snapshot_part_propagation. Not the injection-side extinction
-      kappa of #radiation_get_part_ISRF_extinction_factors. */
+  /*! Local linear dust absorption rate of the band, cached once per step. Not
+      the injection-side kappa of #radiation_get_part_ISRF_extinction_factors.
+   */
   float kappa;
 
-  /*! M1 closure tensor `D(f)` of the owning moment, cached by
-      #radiation_cache_m1_closure_part. */
+  /*! M1 closure tensor `D(f)` of the owning moment. */
   float m1_closure_D[3][3];
 
-  /*! Kernel mean of the neighbours' `|rho_prev*u_prev|`, the reference the
-      negativity trigger divides an undershoot by. Scratch, zeroed every
-      h-iteration. */
+  /*! Kernel mean of the neighbours' `|rho_prev*u_prev|`, the reference of the
+      negativity trigger. Scratch. */
   float ngb_mean_abs_u_V;
 
-  /*! Reactive component of the artificial-dissipation coefficient: raised by
-      the negativity trigger and decayed otherwise, updated once per step in
-      #radiation_end_gradient_propagation. Dimensionless, persistent. */
+  /*! Reactive part of the dissipation coefficient, raised by the negativity
+      trigger and decayed otherwise. Dimensionless. */
   float dissipation_alpha_trigger;
 
-  /*! Anticipatory component, the `h/lambda`-gated floor
-      (#radiation_dissipation_alpha_floor_band), kept apart from the trigger. */
+  /*! Anticipatory part, the `h/lambda`-gated floor
+      (#radiation_dissipation_alpha_floor_band). */
   float dissipation_alpha_floor;
 };
 
 /**
- * @brief Feedback fields carried by each hydro particles
+ * @brief Feedback fields carried by each hydro particle.
  *
- * Carries the HII ionization tag core (radiation.c's
- * radiation_tag_part_as_ionized() and friends). A struct part field, not
- * struct xpart, so it rides the particle's normal MPI exchange and restart
- * dump automatically, unlike xpart's owner-only payload
- * (feedback_xpart_data.HII_region: excess_photon_energy_HI,
- * photoionization_rate_HI), which stays local to the owning rank.
+ * Lives in #part, not #xpart, so the HII tag follows MPI exchange and
+ * restarts.
  */
 struct feedback_part_data {
 
   /*! Tag to mark the particle as ionized. */
   char is_ionized;
 
-  /*! Largest #part.time_bin among this particle and every neighbour
-      accumulated by the ISRF density loop this h-iteration
-      (radiation_propagation_iact.h's runner_iact_isrf_propagation and
-      runner_iact_nonsym_isrf_propagation), reset to #part.time_bin at
-      the start of each h-iteration by radiation_init_part_propagation.
-      Drives #c_hyp: the propagation speed is set from the SLOWEST
-      particle in the kernel, not this particle's own step, so that the
-      receiver's CFL condition holds for every neighbour this loop
-      reaches, i.e. every neighbour inside `H_i` (see #c_hyp for the pairs
-      it does NOT cover). Placed here, right after
-      #is_ionized, to land in that field's own compiler padding rather
-      than growing #part (verified by a standalone sizeof/offsetof
-      probe, not by inspection: `struct part` stays 640 bytes). */
+  /*! Largest #part.time_bin among this particle and its neighbours in the
+      ISRF density loop of this h-iteration. Drives #c_hyp. Sits in the
+      padding after #is_ionized, so #part does not grow. */
   timebin_t max_ngb_time_bin;
 
   /*! Id of the star that ionized this particle. */
@@ -242,19 +180,9 @@ struct feedback_part_data {
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
 
-  /*! Neutral hydrogen mass fraction, cached by the cooling step right after
-      its species update (grackle_1+: HI_frac; grackle_0: 1.0f
-      unconditionally, no species tracked). Not read by anything yet: a
-      future MPI-consistent consumer of this field must read the PREVIOUS
-      pass's value, not the current step's.
-
-      The cache write is skipped on cooling_new_energy()'s early-return
-      paths (subgrid-ionized floor, or pinned by
-      IONIZATION_FEEDBACK_DEBUG_FIXED_*_TEMPERATURE_K), so on a particle's
-      first such step this field is still its zero-init default, 0.0f, the
-      OPPOSITE of the 1.0f "no data" sentinel above. A reader must not treat
-      0.0f as "fully ionized" without checking the cache has actually been
-      written for that particle. */
+  /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
+      1.0f). Not read by anything yet: an MPI-consistent consumer must read
+      the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
   float neutral_H_frac;
 
   /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
@@ -265,144 +193,48 @@ struct feedback_part_data {
       #radiation_isrf_moment_to_operator. */
   struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
 
-  /*! Comoving density snapshot, cached once per step by
-      radiation_snapshot_part_propagation at the same call site as
-      #feedback_isrf_moment_data.u_prev (before this step's density accumulators
-      are reset), so it holds the previous step's fully-converged comoving
-      density. Needed because the density loop's kernel-mean accumulation
-      (radiation_propagation_iact.h) runs interleaved with SPH's own density
-      sum: `p->rho` is a partial accumulator there, not a density, until the
-      density ghost finalizes it. The gradient loop's `grad(u)` and the force
-      loop's `div(F)` use this SAME snapshot rather than the by-then-available,
-      more current ghost-finalized density, because the staggered time
-      integrator's stability on a disordered particle distribution depends
-      on `grad` being minus the adjoint of `div` in the `m*rho` inner
-      product: that identity only holds when both operators are built from
-      the same `rho_i`/`rho_j`. Never legitimately 0 or negative: seeded to
-      1.0f at first init (before any real density has ever been computed,
-      see radiation_isrf.c) rather than 0.0f, since `grad(u)`'s own formula
-      needs `rho_i` itself (not just `1/rho_i`), and a 0.0f seed would turn
-      into +inf under any reciprocal taken from it. A placeholder value
-      is safe there regardless, since `u`/`F` are also still 0 at that
-      point, so every term the placeholder feeds into is itself 0. */
+  /*! Comoving density snapshot of the previous step, used by the gradient
+      and force loops so `grad` stays the adjoint of `div`. Seeded to 1 at
+      first init, never 0. */
   float rho_prev;
 
-  /*! This particle's hyperbolic propagation speed. Under
-      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`, set at drift by
-      radiation_snapshot_part_propagation. Under
-      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is the kernel-local
-      speed (`c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
-      timestep among this particle and every neighbour in its kernel,
-      #max_ngb_time_bin), cached for active particles by
-      radiation_end_density_propagation (the density ghost, after the
-      h-iteration converges), and the rest of this comment describes that
-      scheme. The receiver's CFL condition
-      `c_i*dt_j <= C_hyp*h_i` holds by construction for every neighbour j
-      that entered #max_ngb_time_bin, which is every j inside `H_i`.
-
-      ONE PAIR CLASS IS NOT COVERED: `H_i <= r < H_j`. The force loop
-      fires a side whenever EITHER kernel reaches (see
-      runner_iact_isrf_dissipation), and
-      radiation_divergence_accumulate_band's shared `Phi_ij` carries a
-      nonzero `wj_dr` term into particle i's `div(F)` even where
-      `wi_dr == 0`, so i does receive such a pair; the density loop never
-      saw j, so `dt_j` never entered `dt_max(i)`. The overshoot factor is
-      `dt_j/dt_max(i)`. Nothing bounds it while j stays inactive: the
-      force loop's `doj` requires `pj_active` (runner_iact_nonsym_timebin,
-      both type-2 dispatches), so an inactive j never feeds i's bin into
-      #timestep_limiter_data.min_ngb_time_bin, and the limiter's own
-      wakeup loop only reaches neighbours inside the waking particle's
-      `H_i`, so it never sees this pair either. Only once j recomputes its
-      own step does make_integer_timestep's `min_ngb_bin + 2` cap apply,
-      in every configuration, limiter policy or not, bounding the
-      overshoot at `2^time_bin_neighbour_max_delta_bin` = 4 from that step
-      on. Per-particle overshoots of 128 occur while j stays inactive: the
-      uncapped interval is common with `--sync` and sinks, not a rare
-      corner case. Closing the gap needs
-      `dt_max(i)` to be built over the force loop's neighbour set rather
-      than the density loop's. An inactive particle's value is simply last
-      active step's, like #time_bin itself. Shared by both bands (unlike
-      #feedback_isrf_operator_data.kappa): the propagation speed is a
-      property of the particle's resolution and its kernel's slowest
-      clock, not of its dust opacity. */
+  /*! Hyperbolic propagation speed, shared by both bands. Under
+      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`. Under
+      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is
+      `min(C_hyp*h_i/dt_max(i), c)`, with `dt_max(i)` set by #max_ngb_time_bin.
+      The CFL condition is not guaranteed for pairs with `H_i <= r < H_j`. */
   float c_hyp;
 
-  /*! This particle's own physical timestep (`dt_i`, NOT #max_ngb_time_bin's
-      `dt_max(i)`: only #c_hyp uses the kernel maximum), cached by
-      radiation_snapshot_part_propagation (the drift, once per step, every
-      particle whether active or not) so the exact-relaxation finalizes
-      (radiation_isrf.c) and the dose-reservoir drawdown/restore
-      (radiation_snapshot_part_propagation/radiation_part_has_no_neighbours)
-      do not need to recompute it a second and third time. */
+  /*! This particle's own physical timestep, cached once per step at the
+      drift. */
   float dt_prev;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! #engine.snapshot_output_count at the last write of
-      #feedback_isrf_moment_data.u_min_since_snapshot: the index of the snapshot
-      those values belong to. Incremented by a FOF seeding catalogue dump as
-      well as a real snapshot; see
-     #feedback_isrf_moment_data.u_min_since_snapshot. */
+      #feedback_isrf_moment_data.u_min_since_snapshot. */
   int u_min_snapshot_index;
 #endif
 
-  /*! With ISRF_propagation off: simulation step (#engine.ti_current)
-      #feedback_isrf_moment_data.u were last written at.
-      radiation_iact_nonsym_feedback_apply compares this against the current
-      step: a match means some star already wrote this step, so a further touch
-      (a second illuminating star) sums into the existing value; a mismatch
-      means this is the first touch this step, so #feedback_isrf_moment_data.u
-     are zeroed before summing. This is what makes the field an instantaneous
-      strength rather than an ever-growing total, while still summing multiple
-      simultaneously-illuminating stars correctly within one step. With
-      ISRF_propagation on, this is only bookkeeping (the last step any star
-      touched this particle): the dose-reservoir form never resets
-      #feedback_isrf_moment_data.u, so no consumer relies on it there.
-      feedback_first_init_part sets this to -1 (never a valid step) so the very
-      first touch of a particle's life also resets rather than summing onto
-      uninitialized memory. */
+  /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
+      last written. With ISRF_propagation off, a match with the current step
+      means a further star sums into u, a mismatch means u is zeroed first.
+      Set to -1 at first init. */
   integertime_t ISRF_last_touch_ti;
 
-  /*! Has this particle been illuminated (any band's
-     #feedback_isrf_moment_data.u nonzero) by any star's injection pass, and is
-     that illumination episode still live? Dedicated flag, not inferred from
-     #feedback_isrf_moment_data.u itself, since those now reset every step a
-     star touches this particle and so cannot signal "newly illuminated" via a
-     zero-crossing. Mirrors #is_ionized's claimed/not-claimed cycle, including
-     the reset half: gates a first-touch-only timestep_sync_part call in
-      radiation_iact_nonsym_feedback_apply, mirroring
-      feedback_hii_claim_part/feedback_iact_HII_maintain_ionized_part's own
-      claim-vs-maintain split, and is cleared once #ISRF_illumination_end_ti
-      lapses (radiation_gas.c:radiation_reset_part_ISRF_illumination_tag,
-      called from feedback_reset_part), exactly as cooling clears #is_ionized
-      once its own end_time lapses (cooling_gear_subgrid.h). A particle that
-      leaves every illuminating star's kernel, then re-enters one later (a
-      star re-approaches, a new star's kernel reaches it, or its own h
-      changes), therefore gets a fresh sync on re-illumination instead of
-      being silently skipped forever. */
+  /*! Is the particle illuminated by a star's injection pass, with the
+      episode still live? Gates a first-touch-only timestep_sync_part call and
+      is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
 
-  /*! Absolute integer time (#engine.ti_current units) until which
-      #is_illuminated_ISRF stays set. Renewed to
-      `ti_current + RADIATION_ISRF_TAG_LIFETIME_INTERVALS * ti_step` on
-      every injection touch (ti_step = the illuminating star's own
-      integer timestep), whether or not this is the particle's first touch
-      this episode. Mirrors #feedback_iact_HII_maintain_ionized_part's
-      per-pass renewal of the HII tag's own end_time. The
-      RADIATION_ISRF_TAG_LIFETIME_INTERVALS buffer (radiation.h) keeps
-      the window from lapsing between two touches by a star on a coarser
-      time bin than this particle's own once-per-step expiry check
-      (feedback_reset_part). feedback_first_init_part sets this to -1 so a
-      never-illuminated particle's garbage/zero-initialized state can never
-      read as "still illuminated". */
+  /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
+      every injection touch with a margin of
+      RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps. Set to -1 at first
+      init. */
   integertime_t ISRF_illumination_end_ti;
 
-  /*! Absolute integer time (#engine.ti_current units) by which every dose
-      currently held in #feedback_isrf_moment_data.u_dose_reservoir must have
-      been fully drained. Extended to `ti_current + ti_step_star` on every
-      star touch (never reset), so it always covers the latest-finishing
-      contributing star's own step. feedback_first_init_part sets this to -1,
-      like #ISRF_illumination_end_ti, so a never-touched particle's
-      reservoir is never mistaken for one with a live horizon. */
+  /*! Integer time by which every dose in
+      #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
+      every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
 };
 
@@ -416,13 +248,13 @@ struct feedback_xpart_data {
   /*! specific energy received from supernovae */
   float delta_u;
 
-  /*! Momemtum received from a supernovae */
+  /*! Momentum received from a supernova */
   float delta_p[3];
 
   /*! Radiation struct */
   struct {
 
-    /*! Momemtum received from a radiation_pressure */
+    /*! Momentum received from radiation pressure */
     float delta_p[3];
   } radiation;
 
@@ -537,21 +369,19 @@ struct feedback_spart_data {
     /*! Mass in the HII region generated by this star particle */
     float mass_HII_region;
 
-    /*! Co-moving HII region radius before the star died or was not
-        eligible to form HII regions anymore. Same algorithm's bookkeeping
-        caveat as the live #h_hii it is retired from. */
+    /*! Co-moving HII region radius when the star died or stopped being
+        eligible. */
     float final_HII_radius;
 
-    /*! Ionized gas mass of that same final HII region. */
+    /*! Ionized gas mass of the final HII region. */
     float final_HII_mass;
 
     /*! Star age at this HII region's last rebuild pass. Double, since
         dt_back (age now minus this) scales the whole photon budget above. */
     double HII_region_last_rebuild;
 
-    /*! Star age at the last rebuild attempt, whether or not gas was found
-        (HII_region_last_rebuild only advances on an actual rebuild). Anchors
-        the interval dt_back, see runner_radiation_feedback.c. */
+    /*! Star age at the last rebuild attempt, whether or not gas was found.
+        Anchors the interval dt_back. */
     double HII_region_last_attempt;
 
     /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
@@ -572,9 +402,7 @@ struct feedback_spart_data {
     float Delta_t;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /*! Integer time at the start of the step #Delta_t was cached for.
-        radiation_iact_nonsym_feedback_apply recomputes it and asserts a
-        match before trusting the cached value. */
+    /*! Integer time at the start of the step #Delta_t was cached for. */
     integertime_t Delta_t_cached_ti_begin;
 #endif
 

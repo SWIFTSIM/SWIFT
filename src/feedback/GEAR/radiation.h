@@ -35,289 +35,152 @@
 #include "stellar_evolution_struct.h"
 #include "units.h"
 
-/*! Rescaling applied when building/reading the ionizing-photon-rate
-    (dot_N_ion) interpolation tables: raw values are ~1e48-1e50 photons/s in
-    code units, too large for the tables' float storage, so the table holds
-    (raw value / this factor) and every reader multiplies back by it. */
+/*! Scale of the dot_N_ion tables: they store (raw value / this factor) to fit
+    float, and every reader multiplies back. */
 #define RADIATION_DOT_N_ION_TABLE_SCALING 1e50
 
-/*! Lifetime granted to an ionization tag, in units of the rebuild interval
-    that produced it. Must exceed 1: a tag has to outlive the gap to its own
-    star's next rebuild pass, or cooling (which expires tags on the gas
-    particle's own, independently-binned timestep) can clear it before the star
-    ever gets the chance to renew it. */
+/*! Lifetime of an ionization tag, in rebuild intervals. Must exceed 1 so the
+    tag outlives the gap to its star's next rebuild pass. */
 #define RADIATION_TAG_LIFETIME_INTERVALS 2.0
 
-/*! Lifetime granted to an LW/PE illumination episode, in units of the
-    illuminating star's own integer timestep. Integer, not a double factor
-    on a physical time like RADIATION_TAG_LIFETIME_INTERVALS: the
-    injection/expiry comparison this feeds (radiation_iact.h,
-    radiation_gas.c:radiation_reset_part_ISRF_illumination_tag) works
-    entirely in integertime_t, so there is no float boundary to round
-    against. Must exceed 1 for the same reason as RADIATION_TAG_LIFETIME_
-    INTERVALS: a touch has to outlive the gap to the star's next visit, or
-    the gas particle's own once-per-step expiry check (feedback_reset_part)
-    can clear it first. */
+/*! Lifetime of an LW/PE illumination episode, in integer timesteps of the
+    illuminating star. Must exceed 1 so it outlives the gap to the star's next
+    visit. */
 #define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
-/*! Memory length, in units of a particle's own smoothing length, of the
-    negativity-triggered artificial-dissipation coefficient's decay. The
-    coefficient relaxes toward its trigger-driven target at rate
-    c_hyp*(1/(this*h) + kappa) per unit time, i.e. an e-folding of `this`
-    particle-own-steps at the default ISRF_c_hyp_margin. It sets
-    the term's transient behaviour, not its steady-state strength
-    (ISRF_dissipation_alpha_max does that). */
+/*! Decay length, in particle smoothing lengths, of the negativity-triggered
+    artificial-dissipation coefficient. Sets the transient, not the steady
+    state (ISRF_dissipation_alpha_max does that). */
 #define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
 
-/*! Ceiling on the elapsed interval the per-pass photon budget is integrated
-    over, in units of the rebuild cadence actually in force. A scheduled pass
-    is skipped whenever the star's working-level cell holds no gas, which
-    leaves the last-rebuild stamp untouched and lets the elapsed interval grow
-    without bound; the photons emitted meanwhile escaped an empty cell rather
-    than being stored, so they must not be handed to the next landing pass. */
+/*! Ceiling, in rebuild cadences, on the interval the per-pass photon budget
+    is integrated over. Photons emitted while the star's cell held no gas
+    escaped and must not be handed to the next pass. */
 #define HII_DT_BACK_MAX_INTERVALS 2.0
 
-/*! Floor applied before taking log10() of a Data/Radiation CGS value, so a
-    genuinely-zero table entry (Q_H/DotEExcess below the source table's own
-    ionization-threshold mass, where pychem defines them to be exactly 0;
-    see PyChemInitTable/libradiation.py) does not produce log10(0) = -inf.
-    Matches pychem's own floor bit-for-bit (PyChemInitTable/
-    libparsec_radiation.py's `_LOG_FLOOR`): SWIFT's radiation interpolation
-    must match pychem's own log10(mass)-vs-log10(value) interpolation
-    scheme. Applied to the CGS value itself (before the internal-unit
-    conversion), not the converted value: this is the number pychem's own
-    floor actually clamps. So, a query that is "native-zero" in SWIFT means
-    exactly what it means in pychem, independently of SWIFT's unit
-    system. */
+/*! Floor applied to a Data/Radiation CGS value before log10(). It matches
+    pychem's `_LOG_FLOOR` bit for bit, so a native-zero entry means the same in
+    both codes. Applied to the CGS value, before the unit conversion. */
 #define RADIATION_LOG_FLOOR_CGS 1e-300
 
-/*! Mean mass per hydrogen nucleon (He folded in), in units of the proton
-    mass. It is the calibration partner of the per-hydrogen-nucleon dust
-    cross-section (#RADIATION_SIGMA_D_PE_CGS/#RADIATION_SIGMA_D_LW_CGS),
-    fixed by the gas the grain model was calibrated in. It is deliberately
-    NOT the run's hydrogen fraction: the dust-to-gas ratio is a mass ratio,
-    so the run's composition cancels out of the opacity. */
+/*! Mean mass per hydrogen nucleon (He included), in proton masses. It pairs
+    with the per-hydrogen dust cross-sections below. It is not the run's
+    hydrogen fraction: the dust-to-gas mass ratio cancels the composition. */
 #define RADIATION_MU_H 1.4
 
-/*! Band-specific dust cross-section per hydrogen nucleon, cm^2 (Kim et
-    al. 2023, Weingartner & Draine 2001 grain population): 6-11.2 eV
-    (PE) and 11.2-13.6 eV (Lyman-Werner) bands respectively. */
+/*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023, Weingartner
+    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
-/*! Grackle's own solar metal mass fraction, SolarMetalFractionByMass
-    (default 0.01295), not radiation_pressure.c's unrelated Z_sun=0.02.
-    Matches Grackle's own dust-to-gas ratio convention (local_dust_to_gas_
-    ratio * Z/this), keeping our assumed dust abundance consistent with
-    Grackle's dust_chemistry=1-coupled channels for the same gas; see the
-    local_dust_to_gas_ratio call sites in radiation_isrf.c. */
+/*! Grackle's solar metal mass fraction (SolarMetalFractionByMass), used to
+    scale the dust-to-gas ratio as Grackle does. */
 #define RADIATION_GRACKLE_SOLAR_METAL_FRACTION 0.01295
 
-/*! Grackle's own compiled default for chemistry_data.local_dust_to_gas_
-    ratio (Pollack et al. 1994), resolved from the `-1` sentinel in
-    cooling.c when GrackleCooling:local_dust_to_gas_ratio is left unset. */
+/*! Grackle's default local_dust_to_gas_ratio (Pollack et al. 1994), used when
+    GrackleCooling:local_dust_to_gas_ratio is unset. */
 #define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
 
-/*! Standard Habing-unit flux normalization, erg/s/cm^2: G0=1 corresponds
-    to this flux integrated over the PE+LW bands. */
+/*! Habing flux, erg/s/cm^2: G0=1 is this flux over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
-/*! Sternberg-anchored H2 Lyman-Werner photodissociation coefficient,
-    cm^2 erg^-1: the quotient sigma_H2/E_LW of an effective cross section
-    and a mean photon energy.
-
-    radiation_get_part_LW_dissociation_rate_internal() needs a photon flux
-    to multiply a cross section by, but a gas particle only carries the LW
-    band's ENERGY flux, so the rate is sigma_H2 * (F_LW / E_LW) and depends
-    on this quotient alone. The Sternberg et al. (2014, ApJ 790:10) anchor
-    constrains exactly that combination and neither factor separately, so
-    the quotient is the primary constant here and #RADIATION_SIGMA_H2_LW_CGS
-    and #RADIATION_LW_PHOTON_ENERGY_EV are the pair it is quoted through.
-    See theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py for the
-    derivation; the agreement there is at the 10% level, and the digits
-    below carry the quotient of the quoted pair, not a claim of precision.
-
-    No table value enters the rate. pychem's required "MeanPhotonEnergyLW"
-    and "Integrated_MeanPhotonEnergyLW" datasets still yield a population
-    mean photon energy in #radiation_lw_photon_energy_cgs, but that is
-    reported as a DIAGNOSTIC only: using it as the divisor while the cross
-    section stayed pinned would break the quotient and rescale every rate. A
-    per-star photon-number moment, transported alongside the energy, is the
-    way to make a spectrum's own E_LW change the rate. */
+/*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1
+    (Sternberg et al. 2014, ApJ 790:10). The particle carries only the LW
+    energy flux, so the rate depends on this quotient alone. Agreement with the
+    anchor is at the 10% level. See
+    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py. */
 #define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.2847106348798106e-07
 
-/*! Representative Lyman-Werner photon energy, eV: the 11.2-13.6 eV band
-    mean published in Kim et al. (2023), their Table 3. The photon energy
-    #RADIATION_SIGMA_H2_OVER_E_LW_CGS and #RADIATION_SIGMA_H2_LW_CGS are
-    quoted at. Not used by the dissociation rate, which reads the quotient
-    directly. */
+/*! Representative Lyman-Werner photon energy, eV (Kim et al. 2023, Table 3).
+    Not used by the dissociation rate. */
 #define RADIATION_LW_PHOTON_ENERGY_EV 12.2
 
-/*! Effective H2 Lyman-Werner-band photodissociation cross section, cm^2.
-    A DERIVED value, #RADIATION_SIGMA_H2_OVER_E_LW_CGS times
-    #RADIATION_LW_PHOTON_ENERGY_EV in erg, kept because a cross section is
-    the readable form of the calibration and the verification script in
-    theory/GEAR/Radiation/ reports it. The dissociation rate does not read
-    it. A fixed, spectrum-averaged approximation: the true cross section
-    depends on the spectral shape within 11.2-13.6 eV and is not a single
-    atomic-physics constant, so it is a compile-time constant rather than a
-    per-run parameter. Held as a literal so the header stays parseable by
-    the check scripts; a unit test asserts it still equals the quotient
-    times the photon energy. */
+/*! Effective H2 LW cross section, cm^2: the quotient above times
+    #RADIATION_LW_PHOTON_ENERGY_EV in erg. The rate does not read it. It is a
+    literal so the check scripts can parse it; a unit test asserts it equals
+    the product. */
 #define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
 
-/*! Metallicity mass fraction at which the population mean Lyman-Werner
-    photon energy is read off a 2D table, for
-    #radiation_lw_photon_energy_cgs. That mean is a reported diagnostic and
-    does not enter the dissociation rate; one representative rung is read
-    because the gas particle is source-anonymous, its LW band summing
-    emission from many stars of different mass and metallicity. This is the
-    rung the cross-section calibration is quoted at. */
+/*! Metallicity mass fraction at which the diagnostic mean LW photon energy is
+    read from a 2D table (#radiation_lw_photon_energy_cgs). The gas particle
+    is source-anonymous, so one representative rung is used. */
 #define RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY 0.014
 
-/*! Relative epsilon a 2D IMF-integrated getter's query mass is nudged below
-    the integrated table's own top mass edge before calling interpolate_2d(),
-    so an exact-mass_max query deterministically takes the blended (not
-    boundary-clamped) branch. See radiation_get_luminosities_from_
-    integral_2d()'s doxygen for why this matters. */
+/*! Relative epsilon by which a 2D IMF-integrated query mass is nudged below
+    the table's top mass edge, so an exact mass_max query takes the blended
+    branch of interpolate_2d(). */
 #define RADIATION_2D_EDGE_EPS 1e-5f
 
-/*! PE/LW band lower edges, eV: #RADIATION_SIGMA_D_PE_CGS/
-    #RADIATION_SIGMA_D_LW_CGS's own 6-11.2 eV / 11.2-13.6 eV split. Photons
-    redshift DOWNWARD through these two energies (fixed in physical energy,
-    not comoving), which is what radiation_set_band_edge_coefficients() and
-    the transfer term in radiation_end_force_propagation() are for; see
-    theory/GEAR/Radiation/02_fuv_isrf.tex for the derivation. */
+/*! PE/LW band lower edges, eV. Photons redshift downward through these
+    energies (fixed in physical energy). See
+    theory/GEAR/Radiation/02_fuv_isrf.tex. */
 #define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
 #define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
 
-/*! #RADIATION_PE_BAND_LOWER_EDGE_EV/#RADIATION_LW_BAND_LOWER_EDGE_EV in cgs
-    erg (1 eV = 1.602176634e-12 erg, CODATA), hardcoded rather than converted
-    through #phys_const at runtime: eV is not an internal SWIFT unit, and
-    every other band constant in this header (e.g.
-    #RADIATION_SIGMA_H2_LW_CGS) is already a hand-computed cgs literal for
-    the same reason. Used only where #E_lo appears in the band-edge transfer
-    algebra (radiation_table_io.c, radiation.c); never itself unit-converted,
-    since the ratio it enters is dimensionless. */
+/*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
+    eV is not an internal unit. They enter only a dimensionless ratio. */
 #define RADIATION_PE_BAND_LOWER_EDGE_CGS 9.6130598e-12
 #define RADIATION_LW_BAND_LOWER_EDGE_CGS 1.7944378e-11
 
-/*! Fallback band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW), used
-    only (a) to initialise #feedback_props.band_edge_weight_pe/lw and
-    #feedback_props.band_edge_photon_weight_lw at the top of
-    radiation_set_band_edge_coefficients(), so a value read before that
-    function's own table-derived assignment is never the physically wrong
-    "grey" value 1 (or 0), and
-    (b) as the value radiation_set_band_edge_coefficients() falls back to
-    when the table's own denominator (Integrated_L_PE or Integrated_L_LW)
-    vanishes, a documented degenerate case (an IMF whose whole mass range
-    sits at or below the table's own native mass floor), not the table-
-    absence case: radiation_read_data() REQUIRES the band-edge datasets
-    whenever #radiation.with_ISRF is on and refuses to load a table lacking
-    them (radiation_table_io.c), matching its own precedent for
-    "MeanPhotonEnergyLW"/"Integrated_MeanPhotonEnergyLW". That policy is
-    intentionally the ONE place this can be flipped: see the
-    presence-gate block in radiation_read_data() for how to make it
-    non-fatal instead, which would make these three constants the live
-    fallback for a table generated before pychem exported the new datasets.
-
-    lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (see
-    theory/GEAR/Radiation/02_fuv_isrf.tex for the derivation). Values below
-    are the YOUNG-POPULATION end of a one-parameter spectral family fit (an
-    AGED population's Lambda_LW reaches about 18.3, i.e. lambda_E(LW) about
-    17.8, roughly 3x higher): the young end is shipped because a young
-    population dominates the LW luminosity of an actively star-forming
-    region (under 0.3% of time-integrated L_LW comes from a population
-    whose upper mass bound has already dropped to 4 Msun). The shipped
-    run-wide scalar approximates the IMF-integrated quantity
-    radiation_set_band_edge_coefficients() computes over the IMF's own
-    [mass_min, mass_max], not a population average; its bias against a
-    population average is not sized. See radiation_set_band_edge_
-    coefficients() for the table-borne quantity these approximate. */
+/*! Fallback band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). They
+    initialise the #feedback_props band_edge weights and are used when the
+    table's Integrated_L_PE or Integrated_L_LW denominator vanishes.
+    lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (theory/GEAR/Radiation/
+    02_fuv_isrf.tex). The values are the young-population end of the spectral
+    family, which dominates the LW luminosity. An aged population's Lambda_LW
+    reaches about 18.3, 3x higher. The bias against a population average is
+    not sized. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
 
 /**
- * @brief Transient, read-time-only grid metadata shared by every dataset in
- * a Data/Radiation HDF5 group. Not part of the persistent #radiation
- * struct: rebuilt fresh by radiation_read_data() on every read, including
- * on restart.
+ * @brief Read-time grid metadata shared by the datasets of a Data/Radiation
+ * HDF5 group. Rebuilt on every read, not stored in #radiation.
  */
 struct radiation_grid_metadata {
-  /*! "M" (mass-only) or "M,Z" (mass x metallicity), from the group's own
-      "dimensionality" attribute. */
+  /*! "M" (mass-only) or "M,Z" (mass x metallicity). */
   char dimensionality[8];
 
-  /*! Is this a 2D ("M,Z") table? Derived from #dimensionality. */
+  /*! Is this a 2D ("M,Z") table? */
   int is_2d;
 
-  /*! log10(mass grid minimum), from the group's "m0" attribute. */
+  /*! log10(mass grid minimum). */
   float log_mass_min;
 
-  /*! log10 mass grid step, from the group's "dm" attribute. */
+  /*! log10 mass grid step. */
   float mass_step;
 
-  /*! Number of mass grid points, from the group's "nm" attribute. */
+  /*! Number of mass grid points. */
   int n_mass;
 
-  /*! Number of metallicity grid points (0 for a 1D table), from the
-      group's "nz" attribute. */
+  /*! Number of metallicity grid points (0 for a 1D table). */
   int n_metallicity;
 
-  /*! Metallicity grid values (mass fraction Z, native units; NULL for a
-      1D table). Strictly increasing and strictly positive, but not
-      log-uniformly spaced: every 2D table therefore keeps these values as
-      its own metallicity axis (interpolate_2d_init()) rather
-      than resampling them onto a uniform grid. */
+  /*! Metallicity grid (mass fraction, NULL for 1D). Increasing and positive,
+      not log-uniform, so 2D tables keep it as their own axis. */
   float *metallicity;
 
-  /*! Mass-axis boundary condition for the "Luminosity" dataset (2D tables
-      only; boundary_condition_error otherwise), from the group's
-      edge_policy_luminosity_below/above attributes. The metallicity axis
-      always clamps (boundary_condition_const), matching pychem's own
-      "clamp to nearest grid Z, never extrapolated" convention; see
-      radiation_build_tables(). */
+  /*! Mass-axis boundary condition for "Luminosity" (2D only). The metallicity
+      axis always clamps. */
   enum interpolate_boundary_condition edge_policy_luminosity;
 
-  /*! Mass-axis boundary condition for the "Q_H" dataset (2D tables only),
-      from the group's generic edge_policy_q_h_below/above attributes.
-      pychem sets these, at write time, to whichever per-variant edge
-      policy (e.g. edge_policy_q_h_blackbody_*, edge_policy_q_h_parsec_*)
-      matches the table's own primary Q_H; SWIFT reads them directly and
-      never dispatches on the group's "source" attribute itself, so a new
-      pychem source mode needs no companion SWIFT change. */
+  /*! Mass-axis boundary condition for "Q_H" (2D only), read from the generic
+      edge_policy_q_h_below/above attributes written by pychem. */
   enum interpolate_boundary_condition edge_policy_q_h;
 
-  /*! Mass-axis boundary condition for the "DotEExcess" dataset (2D tables
-      only), from the group's generic
-      edge_policy_mean_excess_energy_below/above attributes (mirroring
-      #edge_policy_q_h above). DotEExcess's VALUE is (the primary Q_H
-      variant "source" selects) times MeanExcessPhotonEnergyHI; this field
-      only records the edge policy pychem assigns to
-      MeanExcessPhotonEnergyHI/DotEExcess's own primary content, which
-      need not match #edge_policy_q_h's variant. */
+  /*! Mass-axis boundary condition for "DotEExcess" (2D only). It may differ
+      from #edge_policy_q_h. */
   enum interpolate_boundary_condition edge_policy_dot_e_excess;
 
-  /*! Mass-axis boundary condition for the "Teff" dataset (2D tables with
-      a "Teff" dataset only; boundary_condition_error otherwise, matching
-      every other edge_policy_* field's convention for a table where the
-      dataset is absent). */
+  /*! Mass-axis boundary condition for "Teff" (2D only, if present). */
   enum interpolate_boundary_condition edge_policy_teff;
 
-  /*! Mass-axis boundary condition for the "L_PE" dataset (2D tables with
-      an "L_PE" dataset only; boundary_condition_error otherwise, matching
-      every other edge_policy_* field's convention for a table where the
-      corresponding dataset does not apply), from the group's own
-      edge_policy_l_pe_below/above attributes, a dedicated pair, NOT
-      shared with #edge_policy_luminosity, since pychem's L_PE/L_LW default
-      policy ("zero" below the native mass floor, "constant" above) differs
-      from Luminosity's own. */
+  /*! Mass-axis boundary condition for "L_PE" (2D only, if present). It has its
+      own attribute pair, separate from #edge_policy_luminosity. */
   enum interpolate_boundary_condition edge_policy_l_pe;
 
-  /*! Mass-axis boundary condition for the "L_LW" dataset (2D tables with an
-      "L_LW" dataset only), from the group's own edge_policy_l_lw_below/above
-      attributes. See #edge_policy_l_pe's doxygen. */
+  /*! Mass-axis boundary condition for "L_LW" (2D only, if present). */
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 

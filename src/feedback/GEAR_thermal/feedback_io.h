@@ -64,9 +64,7 @@ INLINE static void convert_part_u_LW(const struct engine *e,
 
 /**
  * @brief Snapshot converter for #LWPhotonSpecificEnergies, see
- * #feedback_write_particles. Distinct from the RT schemes' PhotonEnergies
- * (src/rt/GEAR/rt_io.h, src/rt/SPHM1RT/rt_io.h): those are raw per-group
- * energies, not mass-specific and not band-prefixed.
+ * #feedback_write_particles.
  */
 INLINE static void convert_part_u_LW_PHOTON(const struct engine *e,
                                             const struct part *p,
@@ -98,10 +96,10 @@ INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
 }
 
 /**
- * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients,
- * see #feedback_write_particles. Decorative: #ISRF_MOMENT_LW_PHOTON shares
- * #ISRF_OPERATOR_LW with #ISRF_MOMENT_LW, so this reads the identical
- * operator field as #convert_part_dissipation_alpha_LW.
+ * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients, see
+ * #feedback_write_particles.
+ *
+ * Reads the same operator field as #convert_part_dissipation_alpha_LW.
  */
 INLINE static void convert_part_dissipation_alpha_LW_PHOTON(
     const struct engine *e, const struct part *p, const struct xpart *xp,
@@ -291,9 +289,7 @@ INLINE static void convert_part_c_hyp(const struct engine *e,
 INLINE static int feedback_read_particles(struct part *parts,
                                           struct io_props *list) {
 
-  /* Both are PHYSICAL, mass-specific quantities: no scale-factor exponent
-     beyond what UNIT_CONV_ENERGY_PER_UNIT_MASS implies, and an input field
-     carries no a-exponent slot at all, so an IC value is taken verbatim. */
+  /* Physical, mass-specific quantities: an IC value is taken verbatim. */
 
   list[0] = io_make_input_field("PESpecificEnergy", DOUBLE, 1, OPTIONAL,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
@@ -302,8 +298,8 @@ INLINE static int feedback_read_particles(struct part *parts,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                                 feedback_data.isrf_moment[ISRF_MOMENT_LW].u);
 
-  /* A zero LWPhotonSpecificEnergy beside a nonzero LWSpecificEnergy is
-     overwritten at first init, see radiation_first_init_part(). */
+  /* A zero value beside a nonzero LWSpecificEnergy is overwritten at first
+     init, see radiation_first_init_part(). */
   list[2] =
       io_make_input_field("LWPhotonSpecificEnergy", DOUBLE, 1, OPTIONAL,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
@@ -557,8 +553,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
 
 /**
  * @brief Specifies which star particle fields to read from the ICs or a
- * restart file. Empty by design, not by omission: no feedback-owned #spart
- * field is currently read from either source (see #stars_read_particles).
+ * restart file. Empty: no feedback-owned #spart field is read.
  *
  * @param sparts The star particle array.
  * @param list The list of i/o properties to read.
