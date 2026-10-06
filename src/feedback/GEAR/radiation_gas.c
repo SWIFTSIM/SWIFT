@@ -38,14 +38,10 @@
 #include "units.h"
 
 /**
- * @brief Total hydrogen mass fraction of this #part, from its composition
- * alone.
+ * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
- * Not cooling_get_hydrogen_mass_fraction(): that returns HI_frac + HII_frac at
- * COOLING_GRACKLE_MODE >= 1, i.e. the *atomic* hydrogen only, so at mode >= 2
- * it omits the hydrogen bound in H2/H- and under-reports what this model has to
- * ionize and then keep ionized. Composition is also the one source available in
- * every cooling mode.
+ * Not cooling_get_hydrogen_mass_fraction(): at COOLING_GRACKLE_MODE >= 2 that
+ * omits the hydrogen bound in H2/H-.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
@@ -57,10 +53,7 @@ radiation_get_part_total_hydrogen_mass_fraction(
 
   const double Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
 
-  /* Clamped: a pathologically enriched particle (Z > HydrogenFractionByMass)
-     would otherwise give a negative N_H, hence a negative photon cost, and
-     radiation_consume_ionizing_photons() would manufacture photons rather
-     than spend them. The star-level formula below guards this the same way. */
+  /* Clamped: Z > HydrogenFractionByMass would give a negative photon cost. */
   return max(cooling->HydrogenFractionByMass - Z, 0.);
 }
 
@@ -95,21 +88,12 @@ radiation_get_part_number_hydrogen_atoms(
 }
 
 /**
- * @brief Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
- * fractions rather than total composition. Used only to price the one-off
- * cost of claiming a fresh candidate (feedback_iact_HII_ionization): a
- * particle whose species are already partly or fully ionized, whether
- * re-tagged after its previous tag lapsed on a marginal budget shortfall
- * or pre-ionized by a UV background, does not need to pay to strip
- * electrons it has already lost. The maintenance cost
- * (radiation_get_part_rate_to_fully_ionize) keeps using the total, since
- * upkeep of a fully-ionized particle scales with its full electron/proton
- * content, not with what was neutral before this pass.
+ * @brief Get the gas number of NEUTRAL hydrogen atoms, from the tracked
+ * species fractions.
  *
- * At COOLING_GRACKLE_MODE == 0 (no species tracking) there is nothing to
- * distinguish neutral from ionized, so this falls back to the total N_H
- * (radiation_get_part_number_hydrogen_atoms), the pre-existing,
- * conservative behaviour.
+ * Prices only the one-off cost of claiming a fresh candidate: an already
+ * (partly) ionized particle need not pay again. The maintenance cost uses the
+ * total. At COOLING_GRACKLE_MODE == 0 it falls back to the total N_H.
  *
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
@@ -134,19 +118,12 @@ radiation_get_part_number_neutral_hydrogen_atoms(
 
   double X_HI = cool_data->HI_frac;
 #if COOLING_GRACKLE_MODE >= 2
-  /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-     already singly-ionized, so it is excluded. This is the same H2II
-     approximation radiation_get_part_total_hydrogen_mass_fraction's own
-     doxygen already notes for the total-hydrogen accounting. */
+  /* H2 and H- hydrogen is neutral; H2II is already ionized, so excluded. */
   X_HI += cool_data->H2I_frac + cool_data->HM_frac;
 #endif
   const double N_HI = (X_HI * m) / m_p;
 
-  /* Capped at the composition total: species can transiently drift above
-     it (e.g. mid-way through a Grackle sub-step), and a neutral count
-     above the particle's total hydrogen content would make this exceed
-     radiation_get_part_number_hydrogen_atoms itself, defeating the point
-     of pricing on neutral content specifically. */
+  /* Capped at the composition total: species can transiently exceed it. */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   return min(N_HI, N_H);
@@ -157,17 +134,11 @@ radiation_get_part_number_neutral_hydrogen_atoms(
 }
 
 /**
- * @brief Metallicity-dependent collisional-equilibrium temperature floor
- * (Hopkins 2023's photoionization temperature fit; see
- * theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). Depends
- * only on Z (used by radiation_get_part_ionized_internal_energy).
+ * @brief Collisional-equilibrium temperature floor as a function of Z
+ * (Hopkins 2023 fit; theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional).
  *
  * Compile with -DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<value>
- * to force this to a fixed value regardless of Z, e.g. to reproduce a paper's
- * own flat T_i=1e4 K convention at Z=0 (pure hydrogen, no metal-line
- * cooling), decoupling the ionized-gas temperature from the metallicity
- * this fit would otherwise require to hit that value (Z/Zsun~0.231 for
- * 1e4 K, which brings real metal cooling along with it).
+ * to force a fixed value regardless of Z.
  *
  * @param Z Metal mass fraction.
  * @return Collisional-equilibrium temperature (Kelvin).
@@ -193,16 +164,11 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
 }
 
 /**
- * @brief Get the specific internal energy this #part would be held at once
- * ionized: the minimum of the energy needed to fully ionize it and the
- * metallicity-dependent collisional-equilibrium energy (see
- * cooling_ionize_part_subgrid in cooling_gear_subgrid.h). Pure
- * computation, no side effects: shared by cooling_ionize_part_subgrid
- * (which actually floors the particle's temperature) and
- * radiation_get_part_rate_to_fully_ionize (which evaluates the case-B
- * recombination coefficient at the temperature the gas is actually held
- * at, instead of a fixed 1e4 K), so the two stay consistent with each
- * other.
+ * @brief Specific internal energy of this #part once ionized: the minimum of
+ * the energy to fully ionize it and the collisional-equilibrium energy.
+ *
+ * Shared by cooling_ionize_part_subgrid() and
+ * radiation_get_part_rate_to_fully_ionize().
  *
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
@@ -252,10 +218,7 @@ radiation_get_part_ionized_internal_energy(
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_case_b_recombination_coefficient_cgs(const double T) {
-  /* Floored: T=0 (e.g. a fully-metal particle's N_H==0 chain, or any other
-     caller's edge case) would otherwise give lambda=inf and the fit below
-     inf*0 = NaN. 1 K is far outside the fit's accurate range (1-1e9 K per
-     Hui & Gnedin) and only ever reached through a guard like this one. */
+  /* Floor avoids lambda=inf and inf*0 = NaN for T=0. */
   const double lambda = 315614.0 / max(T, 1.0);
   return 2.753e-14 * pow(lambda, 1.5) *
          pow(1.0 + pow(lambda / 2.740, 0.407), -2.242);
@@ -290,17 +253,14 @@ radiation_get_part_rate_to_fully_ionize(
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
-  /* Z >= HydrogenFractionByMass clamps N_H to 0 (this file's X_H clamp);
-     nothing to ionize, and the temperature machinery below would give
-     u_ionized=0 -> T=0 -> NaN in the recombination fit for zero cost. */
+  /* Z >= HydrogenFractionByMass gives N_H = 0: nothing to ionize, and T=0
+     would give a NaN in the recombination fit. */
   if (N_H <= 0.) return 0.;
 
   /* Electron density assuming full ionization (n_e ~= n_H). */
   const double n_e = (X_H * rho) / m_p;
 
-  /* Case-B recombination coefficient, evaluated at the temperature this
-     particle is actually held at once ionized (Hui & Gnedin 1997),
-     instead of the fixed 1e4 K convention. */
+  /* Case-B coefficient at the temperature the gas is held at once ionized. */
   const double u_ionized = radiation_get_part_ionized_internal_energy(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const double mu = cooling_get_mean_molecular_weight(
@@ -341,16 +301,11 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
 }
 
 /**
- * @brief Zero a #spart's radiation feedback output (L_bol,
- * mean_excess_photon_energy_HI, and the ionizing photon rate), for the case
- * where no radiation table is loaded (#radiation.is_active = 0).
+ * @brief Zero a #spart's radiation output, for when no radiation table is
+ * loaded (#radiation.is_active = 0).
  *
- * Shared by stellar_evolution_compute_preSN_feedback_individual_star() and
- * stellar_evolution_compute_preSN_feedback_spart(): leaves every radiation
- * output at its safe zeroed default instead of reading the zero-pointered
- * interpolation tables (radiation_get_*_from_raw() would divide by a zeroed
- * dx, and dividing by n_HII_pixels=0 in radiation_set_ionizing_photon_rate()
- * would too).
+ * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
+ * by zero in radiation_set_ionizing_photon_rate().
  *
  * @param sp The star to zero.
  */
@@ -366,13 +321,10 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
 
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
- * convert its emission rate into the photon count emitted over dt_back, the
- * time elapsed since the previous pass, plus any overdraft carried from it.
+ * photons emitted over dt_back plus any overdraft carried from the last pass.
  *
- * Integrates dot_N_ion_pix over dt_back with the trapezoid rule (average of
- * the rate now and the cached rate from the previous pass), not a rectangle
- * rule at the rate now alone: a monotonically-declining SSP emission rate
- * makes the rectangle rule systematically under-issue photons.
+ * The rate is integrated with the trapezoid rule, because a declining SSP rate
+ * makes the rectangle rule under-issue photons.
  *
  * @param sp The star.
  * @param dt_back Time elapsed since this star's last HII rebuild pass.
@@ -381,29 +333,21 @@ __attribute__((always_inline)) INLINE void
 radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  /* Every pixel gets the same rate (radiation_set_ionizing_photon_rate()
-     splits one total evenly), so one star-level message covers them all;
-     logged once here instead of once per pixel to match this file's other
-     per-star (not per-pixel) SWIFT_DEBUG_CHECKS_VERBOSE messages. */
+  /* All pixels share one rate, so log once per star. */
   double issued_total = 0.;
   double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
 #endif
 
   for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    /* A pass overdraws its pixel by up to one particle's cost, since the
-       boundary particle is claimed in full. Carry that debt forward instead of
-       forgiving it: forgiven once per pass, it would over-issue photons in
-       proportion to the number of passes, i.e. as 1/dt_back, a cadence
-       dependence. Unspent *positive* budget is not carried, those photons
-       reached no gas and escaped. */
+    /* A pass overdraws its pixel by up to one particle's cost. Carry the debt
+       forward: forgiving it would over-issue photons as 1/dt_back. Unspent
+       positive budget escaped and is dropped. */
     const double debt =
         min(sp->feedback_data.radiation.N_ion_budget_pix[p], 0.);
 
     const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
     const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
-    /* rate_prev < 0 is the "first pass, no previous sample" sentinel: fall
-       back to the rate_now-only rectangle rule, since no better information
-       exists yet. */
+    /* rate_prev < 0: first pass, no previous sample, so use rate_now. */
     const double rate_used =
         rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
     const double issued = rate_used * dt_back;
@@ -429,18 +373,12 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 }
 
 /**
- * @brief Resync the trapezoid quadrature's cached rate to the rate now, without
- * opening a budget for this pass.
+ * @brief Resync the cached previous rate to the rate now, without opening a
+ * budget.
  *
- * A gas-free working-level cell skips radiation_open_ionizing_photon_budget()
- * entirely (see runner_radiation_feedback.c) while still advancing
- * HII_region_last_attempt, so dt_back on the next real pass never includes
- * the skipped gap. Without this resync, dot_N_ion_pix_prev would instead
- * stay stuck at its value from before the skip, so the next real pass's
- * trapezoid would average against a stale, too-high rate over a dt_back that
- * does not cover the period the stale rate applied to, a small
- * one-directional over-issue. Call this on that skip path to keep the cache
- * anchored to the same instant dt_back is anchored to.
+ * Call it when a gas-free cell skips the budget but advances
+ * HII_region_last_attempt. Otherwise the next trapezoid averages against a
+ * stale, too-high rate and over-issues photons.
  *
  * @param sp The star.
  */
@@ -472,16 +410,12 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * @param p The particle.
  * @param xp The extended data of the particle.
  * @param star_id The id of the star that ionized this particle.
- * @param end_time The simulation time until which this particle should
- * stay flagged as ionized (the ionizing star's next HII rebuild). Cooling
- * keeps re-flooring its temperature until then instead of undoing the
- * ionization on the very next step.
+ * @param end_time The simulation time until which the particle stays tagged
+ * (the star's next HII rebuild).
  * @param excess_photon_energy_HI Mean photon energy above the 13.6 eV HI
- * ionization threshold for the tagging star, in cgs (erg); 0 unless
- * GEARFeedback:HII_couple_ionization_rate is on.
- * @param photoionization_rate_HI Photoionization rate coefficient Gamma_HI
- * from the tagging star at this particle's location, in internal 1/time;
- * 0 unless GEARFeedback:HII_couple_ionization_rate is on.
+ * threshold, erg; 0 unless GEARFeedback:HII_couple_ionization_rate is on.
+ * @param photoionization_rate_HI Gamma_HI at the particle, internal 1/time; 0
+ * unless GEARFeedback:HII_couple_ionization_rate is on.
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
     struct part *p, struct xpart *xp, long long star_id, double end_time,
@@ -521,9 +455,8 @@ __attribute__((always_inline)) INLINE char radiation_is_part_tagged_as_ionized(
 }
 
 /**
- * @brief The simulation time until which this #part should stay flagged as
- * ionized. Only meaningful while radiation_is_part_tagged_as_ionized()
- * is true.
+ * @brief The simulation time at which the ionization tag expires. Valid only
+ * while tagged ionized.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -537,18 +470,10 @@ radiation_get_part_ionized_end_time(const struct part *p,
 
 /**
  * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
- * window has lapsed. Mirrors cooling_ionize_part_subgrid's own
- * `time >= end_time` expiry of #is_ionized: called once per step, per
- * particle (feedback_reset_part), regardless of whether a star touches
- * this particle this step, so a gap in illumination is detected even
- * though nothing in the injection pass itself runs for an un-illuminated
- * particle.
+ * window has lapsed. Called once per step per particle (feedback_reset_part).
  *
- * With LW/PE propagation off, an expiring particle also has every band's u
- * zeroed here: nothing else decays that stale value once the particle
- * stops being illuminated (propagation ON already handles this via its own
- * per-step decay/mixing update, so it is deliberately left untouched
- * here).
+ * With LW/PE propagation off, the band u values are also zeroed: nothing else
+ * decays them. With propagation on, its own per-step update does.
  *
  * @param p The particle.
  * @param e The #engine.
@@ -568,8 +493,8 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
 }
 
 /**
- * @brief Id of the star that ionized this #part. Only meaningful while
- * radiation_is_part_tagged_as_ionized() is true.
+ * @brief Id of the star that ionized this #part. Valid only while tagged
+ * ionized.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -582,9 +507,8 @@ radiation_get_part_ionized_star_id(const struct part *p,
 }
 
 /**
- * @brief Mean photon energy above the 13.6 eV HI ionization threshold of the
- * star that tagged this #part, in cgs (erg), frozen at tag time. Only
- * meaningful while radiation_is_part_tagged_as_ionized() is true.
+ * @brief Mean photon energy above the 13.6 eV HI threshold of the tagging star,
+ * in cgs (erg), frozen at tag time. Valid only while tagged ionized.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -597,9 +521,8 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
 }
 
 /**
- * @brief Photoionization rate coefficient Gamma_HI frozen on this #part at tag
- * time (internal 1/time). Only meaningful while
- * radiation_is_part_tagged_as_ionized() is true.
+ * @brief Photoionization rate coefficient Gamma_HI frozen at tag time (internal
+ * 1/time). Valid only while tagged ionized.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -613,13 +536,9 @@ radiation_get_part_photoionization_rate_coefficient(const struct part *p,
 
 /**
  * @brief Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
- * flux (photons / area / time, internal units), via the standard hydrogen
- * photoionization cross-section at the Lyman limit (sigma_HI = 6.3e-18
- * cm^2, Osterbrock & Ferland 2006), a physical constant, not a tunable
- * parameter. Called once at tag time (feedback_iact_HII_ionization): the
- * raw flux is too large for float32 in this unit system, but the product
- * with the tiny cross-section is safely representable, so only that
- * product is stored.
+ * flux (internal units), with sigma_HI = 6.3e-18 cm^2 at the Lyman limit
+ * (Osterbrock & Ferland 2006). Computed at tag time: the raw flux overflows
+ * float32 but the product with the cross section does not.
  *
  * @param us Unit system.
  * @param ionizing_flux_HI HI-ionizing photon flux (internal units).
@@ -637,24 +556,18 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
   return sigma_HI * ionizing_flux_HI;
 }
 
-/* Throttling for #radiation_clamp_nonnegative_for_grackle's warning below:
-   report the first this-many clamp events individually, then only a
-   running summary every this-many further events, so a run with a
-   persistent undershoot does not go silent about it without flooding the
-   log under a threaded per-particle loop. */
+/* Warning throttle: the first N clamp events are reported, then one summary
+   per interval. */
 #define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
 #define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
 
 /**
- * @brief Clamp a radiation quantity about to reach Grackle to be
- * non-negative, warning (throttled) whenever a negative value is caught.
+ * @brief Clamp a quantity about to reach Grackle to be non-negative, with a
+ * throttled warning.
  *
- * The propagated PE/LW specific energy can undershoot below zero at an
- * unresolved jump in the propagation scheme's non-dissipative central
- * difference. A negative flux is unphysical on its face: unclamped, it
- * turns into spurious cooling (or dissociation) inside Grackle instead of
- * simply reading as zero illumination. This is the last line of defence
- * at the Grackle interface, not a fix for the underlying undershoot.
+ * The propagated PE/LW energy can undershoot below zero, and a negative flux
+ * would act as spurious cooling or dissociation in Grackle. This masks the
+ * undershoot at the interface, it does not fix it.
  *
  * @param name Human-readable name of the quantity, for the warning message.
  * @param value The value about to be sent to Grackle.
@@ -690,8 +603,7 @@ static double radiation_clamp_nonnegative_for_grackle(const char *name,
   return 0.;
 }
 
-/*! Human-readable moment names for #radiation_get_band_u_nonnegative's
-    clamp warnings, indexed by #radiation_isrf_moment. */
+/*! Moment names for the clamp warnings, indexed by #radiation_isrf_moment. */
 static const char *const radiation_isrf_moment_clamp_name[] = {
     "PE-band specific energy", "LW-band specific energy",
     "LW-band photon-number specific energy"};
@@ -704,20 +616,9 @@ _Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
 /**
  * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
  *
- * Every quantity handed to Grackle is built from the bands through this
- * fetch, so that a band which has undershot below zero contributes
- * nothing instead of cancelling part of another band's real signal.
- * Clamping only the summed result would let a negative LW energy be
- * subtracted from a positive PE energy, suppressing the field Grackle
- * receives with no clamp event and no warning.
- *
- * The clamp count is per band, not per particle: a particle whose LW band
- * is negative passes through here once for the LW photodissociation rate
- * and once more for the Habing sum.
- *
- * Read-only on the particle. The stored band energy keeps its negative
- * value, so the propagation state and the u_min_since_snapshot
- * diagnostic stay intact.
+ * Each band is clamped before any sum, so a negative LW energy cannot cancel
+ * a positive PE energy unnoticed. The count is per band read, not per
+ * particle. The stored value is unchanged.
  *
  * @param p The particle.
  * @param m The moment to read (#radiation_isrf_moment).
@@ -736,21 +637,12 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
 }
 
 /**
- * @brief Local ISRF strength in Habing units, from this #part's own PE+LW
- * specific-energy fields: G0 = c*rho*u / #RADIATION_HABING_FLUX_CGS,
- * with u the sum of both bands (post-injection/extinction). Feeds Grackle's
- * per-particle isrf_habing array (GrackleCooling chemistry_data.
- * use_isrf_field, forced on by GEARFeedback:with_interstellar_radiation_field).
- * Zero for a particle no star has ever illuminated and whose IC did not
- * supply "PESpecificEnergy"/"LWSpecificEnergy" (#part is bzero'd
- * before the IC read; #radiation_first_init_part leaves the band fields
- * untouched either way).
+ * @brief Local ISRF strength in Habing units: G0 = c*rho*u /
+ * #RADIATION_HABING_FLUX_CGS, with u the PE+LW specific energy. Feeds
+ * Grackle's isrf_habing array. Zero for a particle never illuminated.
  *
- * Each band is clamped to be non-negative as it is read, BEFORE the two
- * are summed (#radiation_get_band_u_nonnegative), so a band that has
- * undershot reads as zero illumination rather than cancelling part of the
- * other band. The summed result passes through the same clamp again; see
- * #radiation_clamp_nonnegative_for_grackle.
+ * Each band is clamped to be non-negative before the sum, so an undershot band
+ * cannot cancel the other (#radiation_get_band_u_nonnegative).
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -780,38 +672,20 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 }
 
 /**
- * @brief H2 Lyman-Werner photodissociation rate from this #part's own LW-band
- * specific-energy field: k_diss = sigma_H2 * F_LW with F_LW a PHOTON flux,
- * which a particle does not carry. It carries the LW band's ENERGY flux,
- * so the photon flux is that divided by a mean photon energy E_LW and the
- * rate is (sigma_H2 / E_LW) times the energy flux. Only that quotient is
- * physically constrained, by the Sternberg et al. (2014) anchor, so it is
- * read straight off #RADIATION_SIGMA_H2_OVER_E_LW_CGS and no separate
- * cross section or photon energy appears below.
+ * @brief H2 Lyman-Werner photodissociation rate from this #part's LW-band
+ * specific energy: k_diss = (sigma_H2 / E_LW) * energy flux.
  *
- * #radiation_lw_photon_energy_cgs, the population mean LW photon energy a
- * table can supply, is therefore a reported DIAGNOSTIC and has no effect
- * here: dividing by it while the cross section stayed pinned would break
- * the calibrated quotient and rescale every rate. Making a spectrum's own
- * E_LW change the rate needs a transported per-star photon-number moment,
- * the way the ionizing channel already separates Q_H from L_bol.
- * Feeds Grackle's per-particle RT_H2_dissociation_rate (COOLING_GRACKLE_
- * MODE > 1 only; H2 is untracked otherwise, and use_radiative_transfer is
- * only forced on for this feature at that mode, see cooling_io.h).
- *
- * The LW band is clamped to be non-negative as it is read
- * (#radiation_get_band_u_nonnegative), and the resulting rate passes
- * through the same clamp again; see
- * #radiation_clamp_nonnegative_for_grackle.
+ * Only the quotient is constrained (Sternberg et al. 2014), so it is read from
+ * #RADIATION_SIGMA_H2_OVER_E_LW_CGS. #radiation_lw_photon_energy_cgs is a
+ * diagnostic and has no effect here. Feeds Grackle's RT_H2_dissociation_rate
+ * (COOLING_GRACKLE_MODE > 1 only). The band and the rate are both clamped to
+ * be non-negative.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @param p The particle.
- * @return H2 photodissociation rate, internal 1/time (Grackle's own
- * expected unit for a per-particle rate-coupled RT field, matching
- * radiation_get_part_photoionization_rate_coefficient's convention),
- * never negative.
+ * @return H2 photodissociation rate, internal 1/time, never negative.
  */
 double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,

@@ -37,21 +37,14 @@
 #include <math.h>
 
 /**
- * @brief Abort with a clear message if #rad's table dimensionality does not
- * match what the calling getter expects.
+ * @brief Abort if #rad's table dimensionality does not match what the calling
+ * getter expects.
  *
- * For an expected 2D (mass x metallicity) table, checks #is_active before
- * #is_2d: a #radiation with no table loaded at all (photoionization and
- * radiation pressure both off; radiation_zero_pointers()) also has
- * is_2d = 0, and reporting that case as "holds a mass-only (1D) table"
- * would be actively misleading: there is no table of either
- * dimensionality, not a 1D one. An expected-1D check does not need this:
- * every 1D getter below is only ever reached from an #is_active branch
- * upstream already.
+ * For an expected 2D table, #is_active is checked first: a #radiation with no
+ * table also has is_2d = 0, and reporting it as 1D would mislead.
  *
  * @param rad The #radiation model.
- * @param expect_2d Nonzero if the caller needs a mass x metallicity (2D)
- * table; 0 if it needs a mass-only (1D) table.
+ * @param expect_2d Nonzero if the caller needs a 2D table, 0 for a 1D table.
  * @param caller Name of the calling getter, for the error message.
  */
 __attribute__((always_inline)) INLINE static void
@@ -80,21 +73,15 @@ radiation_check_dimensionality(const struct radiation *rad, int expect_2d,
  * @brief Floor a metallicity mass fraction and return its log10, for a 2D
  * getter's log_z argument.
  *
- * Floors at #RADIATION_LOG_FLOOR_CGS so Z=0 (pristine/Pop III gas) does
- * not hand log10() a genuine 0. #interpolate_2d's boundary condition
- * already clamps any out-of-range metallicity to the table's lowest row,
- * but as a single cell, not blended with its neighbours: every star at
- * or below the table's lowest tabulated Z loses mass-axis interpolation,
- * a small real discontinuity this floor exists to route into.
+ * Z=0 (pristine gas) must not reach log10(). Out-of-range Z is clamped to the
+ * lowest row as a single cell, with no mass-axis blending, so stars at or
+ * below the lowest tabulated Z get a small discontinuity.
  *
  * @param Z Metallicity mass fraction (may be exactly 0).
  * @return log10(max(Z, #RADIATION_LOG_FLOOR_CGS)).
  */
 float radiation_get_log_metallicity(float Z) {
-  /* Floor computed in double, narrowed to float only on return: flooring
-     in float first would narrow RADIATION_LOG_FLOOR_CGS (1e-300) to
-     exactly 0.0f (float32's smallest denormal is ~1.4e-45), silently
-     defeating the floor and reintroducing log10(0). */
+  /* Floor in double: in float, 1e-300 would narrow to 0.0f and defeat it. */
   const double Z_floored = max((double)Z, RADIATION_LOG_FLOOR_CGS);
   return (float)log10(Z_floored);
 }
@@ -102,11 +89,8 @@ float radiation_get_log_metallicity(float Z) {
 /**
  * @brief Get the IMF-averaged bolometric luminosity per mass.
  *
- * Reads #rad->integrated.luminosities directly (no exponentiation): unlike
- * the raw table, the IMF-integrated table stays in linear value space.
- * See radiation_build_tables()'s doxygen for why pychem's log-log
- * convention does not apply to this SWIFT-side cumulative-integral
- * quantity.
+ * Reads #rad->integrated.luminosities in linear value space, with no
+ * exponentiation, unlike the raw table. See radiation_build_tables().
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -125,12 +109,9 @@ float radiation_get_luminosities_from_integral(const struct radiation *rad,
 /**
  * @brief Get the non-IMF-integrated bolometric luminosity at a given mass.
  *
- * #rad->raw.luminosities holds log10(luminosity), pychem's own
- * log10(mass)-vs-log10(value) convention (see radiation_build_tables()'s
- * doxygen); the interpolated log-value is exponentiated back here. The
- * narrowing to float happens implicitly on return (exp10() itself returns
- * double); Luminosity is never 0 in this table (unlike Q_H/DotEExcess), so
- * there is no floor-underflow case to worry about here.
+ * #rad->raw.luminosities holds log10(luminosity), which is exponentiated back
+ * here. Luminosity is never 0, so no underflow case arises.
+ *
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -165,20 +146,11 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
  * @brief Get the non-IMF-integrated ionization rate at a given mass.
  *
  * #rad->raw.dot_N_ion holds log10(dot_N_ion /
- * #RADIATION_DOT_N_ION_TABLE_SCALING in internal units) (see
- * radiation_build_tables()'s doxygen for the log-log storage convention);
- * exp10() undoes the log, exactly recovering the pre-log-transform
- * (already-scaled-down) internal value, then the existing
- * *RADIATION_DOT_N_ION_TABLE_SCALING undoes the scaling as before. The
- * narrowing to `float` below is load-bearing, not cosmetic: near
- * #RADIATION_LOG_FLOOR_CGS (1e-300, applied before the internal-unit
- * conversion divides it further down), float32's underflow floor
- * (~1e-45) is reached well before float64's, so this narrowing is what
- * makes a below-ionization-threshold query reliably return exactly
- * 0.0f; the exact query mass at which that happens depends on the run's
- * own unit system. See radiation_read_cgs_array()'s doxygen for the
- * reasoning behind #RADIATION_LOG_FLOOR_CGS's specific value; this getter
- * is why it needs to be that extreme.
+ * #RADIATION_DOT_N_ION_TABLE_SCALING). The narrowing to float is load-bearing:
+ * below the ionization threshold the value underflows float32 and returns
+ * exactly 0.0f, which depends on the unit system. See
+ * radiation_read_cgs_array() for the floor value.
+ *
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -193,16 +165,12 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
- * the 13.6 eV HI ionization threshold, for a population over a mass window.
+ * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above the
+ * 13.6 eV HI threshold, for a population over a mass window.
  *
- * Ratio of the integrated dot_E_excess and dot_N_ion tables, taken directly
- * on the raw (still /RADIATION_DOT_N_ION_TABLE_SCALING) interpolated
- * values rather than through their public accessors: the scaling constant
- * multiplies both tables identically, so it cancels in the ratio without
- * ever needing to be undone, leaving a result in cgs erg (see
- * #radiation_read_mean_excess_photon_energy_array's doxygen for why
- * that unit convention holds).
+ * It is the ratio of the integrated dot_E_excess and dot_N_ion tables, taken on
+ * the scaled values: the common scaling cancels, leaving cgs erg.
+ *
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -219,12 +187,9 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
   const double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2);
   const double delta_dot_N_ion = dot_N_ion_2 - dot_N_ion_1;
 
-  /* The cumulative table is monotonically non-decreasing in mass, so any
-     non-positive difference (no alive ionizing stars in this window, a
-     zero-width window, or roundoff noise between two nearly-equal table
-     entries) is degenerate. Guard against dividing by it rather than
-     testing for exact 0, which a near-cancellation could slip past and
-     amplify into a meaningless huge or negative result. */
+  /* The cumulative table is non-decreasing, so a non-positive difference is
+     degenerate (no ionizing stars, zero-width window or roundoff). Test <= 0,
+     not == 0, which a near-cancellation could slip past. */
   if (delta_dot_N_ion <= 0.) return 0.;
 
   const double dot_E_excess_1 =
@@ -237,20 +202,13 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
 }
 
 /**
- * @brief Get the non-IMF-integrated mean excess photon energy above the
- * 13.6 eV HI ionization threshold, for a single star of a given mass.
+ * @brief Get the non-IMF-integrated mean excess photon energy above the 13.6
+ * eV HI threshold, for a single star of a given mass.
  *
- * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_integral on the
- * raw (single-mass) tables: the ratio of the raw dot_E_excess and dot_N_ion
- * tables, taken directly on their still-/RADIATION_DOT_N_ION_TABLE_SCALING
- * values, for the same reason that ratio is exact and comes out in cgs erg
- * there. Both tables now hold log10(value) (see radiation_build_tables()'s
- * doxygen for the log-log storage convention); each is exponentiated
- * back, narrowed to `float`, before the ratio: the same load-bearing
- * float32-underflow narrowing #radiation_get_ionization_rate_from_raw
- * uses to return exactly 0.0f below the table's native ionization
- * threshold, which is what makes the `dot_N_ion <= 0.` guard below
- * actually trigger there instead of dividing by a near-zero double.
+ * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_integral on the raw
+ * tables. Each table is exponentiated and narrowed to float before the ratio,
+ * as in #radiation_get_ionization_rate_from_raw, so the `dot_N_ion <= 0.`
+ * guard fires below the ionization threshold.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -273,22 +231,14 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw(
 }
 
 /**
- * @brief Get the non-IMF-integrated bolometric luminosity at a given mass
- * and metallicity, from a 2D ("M,Z") table.
+ * @brief Get the non-IMF-integrated bolometric luminosity at a given mass and
+ * metallicity, from a 2D ("M,Z") table.
  *
- * Mirrors #radiation_get_luminosities_from_raw exactly, on the 2D table
- * instead of the 1D one. See that getter's doxygen for the log-log
- * storage convention. Not capped by #main_sequence_lifetime_2d, even
- * though Luminosity is collapsed over the same main-sequence window as
- * Q_H/DotEExcess (pychem's single group-level "time_collapse" attribute
- * applies uniformly, there is no per-field exception): a post-main-sequence
- * star remains genuinely luminous, and truncating radiation pressure (which
- * #radiation_get_star_physical_radiation_pressure() derives from L_bol) to
- * exactly 0 at TAMS would be a worse approximation than over-extending its
- * main-sequence-averaged luminosity. Q_H/DotEExcess are capped instead
- * because an ionizing photon rate that no longer matches the star's real
- * state actively misleads the HII-region budget, whereas an over-extended
- * L_bol only makes radiation pressure conservative.
+ * Mirrors #radiation_get_luminosities_from_raw. It is not capped by the
+ * main-sequence lifetime: a post-main-sequence star stays luminous, so
+ * truncating radiation pressure at TAMS would be worse than over-extending
+ * the averaged L_bol.
+ *
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -302,20 +252,14 @@ float radiation_get_luminosities_from_raw_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Return whether a star has evolved past MainSequenceLifetime(Z, M)
- * in the 2D ("M,Z") table.
+ * @brief Return whether a star has evolved past MainSequenceLifetime(Z, M) in
+ * the 2D ("M,Z") table. Used to cap Q_H and DotEExcess to 0.
  *
- * Shared by #radiation_get_ionization_rate_from_raw_2d and
- * #radiation_get_mean_excess_photon_energy_HI_from_raw_2d, which both cap
- * their output to exactly 0 once this returns true. See either getter's
- * doxygen for why.
  *
  * @param rad The #radiation model (must hold an active 2D table).
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @param star_age_myr The star's current age, in Myr, ZAMS-anchored; see
- * #radiation_get_ionization_rate_from_raw_2d's doxygen for why this
- * normalization matters.
+ * @param star_age_myr The star's age in Myr, ZAMS-anchored.
  * @return 1 if @p star_age_myr exceeds MainSequenceLifetime(Z, M), 0
  * otherwise.
  */
@@ -331,31 +275,17 @@ radiation_is_past_main_sequence_2d(const struct radiation *rad, float log_z,
  * @brief Get the non-IMF-integrated ionization rate at a given mass,
  * metallicity and stellar age, from a 2D ("M,Z") table.
  *
- * Mirrors #radiation_get_ionization_rate_from_raw exactly on the 2D table,
- * including the load-bearing float32-underflow narrowing documented on
- * that getter; @p star_age_myr adds one gate on top: MainSequenceLifetime
- * (Z, M) is pychem's own documented time-averaging window for the table's
- * Q_H (see #radiation's raw.main_sequence_lifetime_2d doxygen), so past
- * that age the tabulated Q_H no longer describes the star's real state and
- * this returns exactly 0.0 rather than an over-extended value. This cap is
- * distinct from, and independent of, GEAR's own (typically longer) Poirier
- * stellar-lifetime death and #feedback_properties.HII_max_age, both of
- * which still gate this star's feedback independently upstream
- * (feedback_common.c): PARSEC's own main-sequence duration can run several
- * times shorter than Poirier's at some grid points, so this cap can fire
- * well before either of those does.
+ * Mirrors #radiation_get_ionization_rate_from_raw. Past the table's
+ * MainSequenceLifetime(Z, M), the time-averaging window of its Q_H, it returns
+ * exactly 0. This cap is independent of Poirier lifetimes and
+ * #feedback_properties.HII_max_age, and can fire earlier.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @param star_age_myr The star's current age, in Myr, anchored at the ZAMS
- * (birth of the star as a hydrogen-burning main-sequence object), matching
- * MainSequenceLifetime's own ZAMS-to-TAMS definition. NOT anchored at
- * protostellar formation. A caller deriving this from SWIFT's own star
- * particle age (which starts at particle birth/spawn, including any
- * pre-main-sequence contraction phase the model represents) must confirm
- * that normalization matches before wiring a call site; see pychem's own
- * warning on this in its MainSequenceLifetime dataset description.
+ * @param star_age_myr The star's age in Myr, anchored at the ZAMS, as in
+ * MainSequenceLifetime. A caller using SWIFT's particle age (from spawn, with
+ * any pre-main-sequence phase) must check the normalization matches.
  * @return The ionization rate, internal units, or exactly 0.0 if
  * @p star_age_myr exceeds the table's MainSequenceLifetime(Z, M).
  */
@@ -373,26 +303,18 @@ double radiation_get_ionization_rate_from_raw_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get the non-IMF-integrated mean excess photon energy above the
- * 13.6 eV HI ionization threshold, at a given mass, metallicity and
- * stellar age, from a 2D ("M,Z") table.
+ * @brief Get the non-IMF-integrated mean excess photon energy above the 13.6
+ * eV HI threshold, at a given mass, metallicity and age, from a 2D ("M,Z")
+ * table.
  *
- * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_raw exactly on
- * the 2D table, including the ratio-of-raw-tables construction and its
- * degenerate-ratio guard. Gated by the same @p star_age_myr /
- * MainSequenceLifetime(Z, M) cap as
- * #radiation_get_ionization_rate_from_raw_2d, for the same reason
- * (DotEExcess is Q_H * mean excess energy, so it shares Q_H's
- * main-sequence-averaging convention): applied first, before either raw
- * table is read, so a past-main-sequence query short-circuits to 0 without
- * needing the degenerate-ratio guard to catch it.
+ * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_raw, with the same
+ * MainSequenceLifetime cap as #radiation_get_ionization_rate_from_raw_2d,
+ * applied first.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param log_m The mass in log.
- * @param star_age_myr The star's current age, in Myr, ZAMS-anchored; see
- * #radiation_get_ionization_rate_from_raw_2d's doxygen for why this
- * normalization matters.
+ * @param star_age_myr The star's age in Myr, ZAMS-anchored.
  * @return Mean excess photon energy in cgs erg, or 0 if this (mass,
  * metallicity, age) produces no ionizing photons (dot_N_ion <= 0, or
  * @p star_age_myr exceeds MainSequenceLifetime(Z, M)).
@@ -417,21 +339,13 @@ double radiation_get_mean_excess_photon_energy_HI_from_raw_2d(
 }
 
 /**
- * @brief Nudge a mass-axis log-mass query strictly inside a 2D IMF-
- * integrated table's own top edge, so an exact-mass_max query
- * deterministically takes the blended (Z-interpolated), not
- * boundary-clamped, branch of #interpolate_2d.
+ * @brief Nudge a log-mass query strictly inside a 2D IMF-integrated table's
+ * top edge.
  *
- * A query at @p log_m exactly equal to @p interp's own top edge (`j ==
- * Ny - 1` exactly) takes #interpolate_2d's out-of-range branch, which
- * floor-snaps the Z axis to the nearest tabulated row instead of blending
- * it, unlike the bottom edge (`j == 0`), which is safely in-range. This
- * is not a rare corner case: stellar_evolution_compute_preSN_feedback_
- * spart() clamps its upper mass bound to sm->imf.mass_max, and the default
- * mass_sup_scheme_end_step scheme routinely returns exactly that value for
- * an early-age population (before its first star has died). The nudge is a
- * #RADIATION_2D_EDGE_EPS relative fraction of the table's own mass-axis
- * span, physically negligible.
+ * A query exactly at the top edge takes #interpolate_2d's out-of-range branch,
+ * which snaps the Z axis to the nearest row instead of blending. That case is
+ * common: the upper mass bound is clamped to sm->imf.mass_max for an early-age
+ * population. The nudge is a #RADIATION_2D_EDGE_EPS fraction of the mass span.
  *
  * @param interp The 2D IMF-integrated table the caller is about to query.
  * @param log_m The mass-axis query, in log10.
@@ -449,15 +363,9 @@ __attribute__((always_inline)) INLINE static float radiation_nudge_mass_edge_2d(
  * @brief Get the IMF-averaged bolometric luminosity per mass, at a given
  * metallicity, from a 2D ("M,Z") table.
  *
- * Mirrors #radiation_get_luminosities_from_integral exactly, blended across
- * the metallicity axis at fixed @p log_z. See that getter's doxygen
- * for the two-point-subtraction shape, and this file's own #radiation_
- * nudge_mass_edge_2d for the top-edge-boundary fix this 2D getter needs
- * that the 1D one does not. Below the table's own native mass floor (e.g.
- * a PopIII-like table with mass_min above the IMF's own mass_min), the
- * integrated table is flat at exactly 0 (cumulative-from-Mmin, zero at
- * every native floor cell) with no Z-dependence, so the subtraction stays
- * exact there too.
+ * Mirrors #radiation_get_luminosities_from_integral. Below the table's native
+ * mass floor the integrated table is flat at 0, so the subtraction stays
+ * exact. The top-edge query is nudged by #radiation_nudge_mass_edge_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -479,12 +387,9 @@ float radiation_get_luminosities_from_integral_2d(const struct radiation *rad,
 
 /**
  * @brief Get the IMF-averaged ionization rate per mass, at a given
- * metallicity, from a 2D ("M,Z") table.
+ * metallicity, from a 2D ("M,Z") table. See
+ * #radiation_get_luminosities_from_integral_2d for the 2D caveats.
  *
- * Mirrors #radiation_get_ionization_rate_from_integral exactly. See
- * #radiation_get_luminosities_from_integral_2d's doxygen for the
- * shared 2D-specific caveats (top-edge nudge, sub-native-floor flat
- * region).
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -508,17 +413,12 @@ double radiation_get_ionization_rate_from_integral_2d(
 }
 
 /**
- * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
- * the 13.6 eV HI ionization threshold, at a given metallicity, from a 2D
- * ("M,Z") table.
+ * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above the
+ * 13.6 eV HI threshold, at a given metallicity, from a 2D ("M,Z") table.
  *
- * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_integral
- * exactly, including the degenerate-ratio guard. More load-bearing here
- * than in the 1D case, since Z-axis blending introduces its own roundoff on
- * top of the mass-axis interpolation roundoff the guard already exists to
- * catch. See #radiation_get_luminosities_from_integral_2d's doxygen
- * for the shared 2D-specific caveats (top-edge nudge, sub-native-floor
- * flat region).
+ * Mirrors #radiation_get_mean_excess_photon_energy_HI_from_integral, including
+ * its degenerate-ratio guard. See #radiation_get_luminosities_from_integral_2d
+ * for the shared 2D caveats.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -558,27 +458,20 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
 }
 
 /**
- * @brief Get the population-level main-sequence-lifetime-capped upper mass
- * bound, at a given metallicity and population age, from a 2D ("M,Z")
- * table's MainSequenceLifetimeInverse dataset.
+ * @brief Get the upper mass bound still on the main sequence, for a population
+ * of a given age and metallicity, from MainSequenceLifetimeInverse.
  *
- * Brackets the two
- * native metallicity rows #radiation.longest_ms_lifetime_myr is indexed by
- * (#interpolate_2d_bracket_x() on the table itself, whose x axis is that
- * same native log10(Z) grid), takes the min() of their two
- * longest-tabulated-MS-lifetimes (not a blend: a blended threshold can
- * admit a query one row's own Excluded mask had already rejected), and
- * gates on both that threshold and #radiation.age_max_myr
- * before trusting the interpolated value.
+ * The threshold is the min() of the longest tabulated lifetimes of the two
+ * bracketing metallicity rows (not a blend, which could admit a query one row
+ * already excluded). It also gates on #radiation.age_max_myr.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
  * @param star_age_myr The population's age in Myr.
- * @param m_min Returned when no MS-active mass remains at this (Z, age):
- * the caller's own floor mass (sm->imf.mass_min in every call site so far).
- * @return m_MS_end_step, in Msun: the mass whose PARSEC main-sequence
- * lifetime equals @p star_age_myr at @p log_z, or @p m_min if none of the
- * table's masses are still on the main sequence at that age.
+ * @param m_min Returned when no main-sequence mass remains (the caller's floor
+ * mass).
+ * @return The mass whose main-sequence lifetime equals @p star_age_myr at
+ * @p log_z, in Msun, or @p m_min if none remains.
  */
 float radiation_get_main_sequence_lifetime_inverse_mass_2d(
     const struct radiation *rad, float log_z, float star_age_myr, float m_min) {
@@ -601,8 +494,7 @@ float radiation_get_main_sequence_lifetime_inverse_mass_2d(
 
 /**
  * @brief Get a single star's bolometric luminosity at a given mass,
- * dispatching on #rad->is_2d between the 1D (mass-only) and 2D (mass x
- * metallicity) raw tables.
+ * dispatching on #rad->is_2d.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -619,17 +511,14 @@ float radiation_get_star_luminosity(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get a single star's ionization rate at a given mass, dispatching
- * on #rad->is_2d between the 1D (mass-only) and 2D (mass x metallicity) raw
- * tables.
+ * @brief Get a single star's ionization rate at a given mass, dispatching on
+ * #rad->is_2d.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
  * used only if #rad holds a 2D table.
- * @param star_age_myr The star's current age, in Myr, ZAMS-anchored (see
- * #radiation_get_ionization_rate_from_raw_2d's doxygen); used only if
- * #rad holds a 2D table.
+ * @param star_age_myr The star's age in Myr, ZAMS-anchored; used only for 2D.
  * @return The ionization rate, internal units.
  */
 double radiation_get_star_ionization_rate(const struct radiation *rad,
@@ -644,16 +533,13 @@ double radiation_get_star_ionization_rate(const struct radiation *rad,
 
 /**
  * @brief Get a single star's mean excess photon energy above the 13.6 eV HI
- * ionization threshold at a given mass, dispatching on #rad->is_2d between
- * the 1D (mass-only) and 2D (mass x metallicity) raw tables.
+ * threshold, dispatching on #rad->is_2d.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity),
  * used only if #rad holds a 2D table.
- * @param star_age_myr The star's current age, in Myr, ZAMS-anchored (see
- * #radiation_get_ionization_rate_from_raw_2d's doxygen); used only if
- * #rad holds a 2D table.
+ * @param star_age_myr The star's age in Myr, ZAMS-anchored; used only for 2D.
  * @return Mean excess photon energy in cgs erg.
  */
 double radiation_get_star_mean_excess_photon_energy_HI(
@@ -666,17 +552,11 @@ double radiation_get_star_mean_excess_photon_energy_HI(
 }
 
 /**
- * @brief Get a single star's photon-number-weighted mean Lyman-Werner
- * photon energy at a given mass, from a 1D (mass-only) table.
+ * @brief Get a single star's photon-number-weighted mean LW photon energy at a
+ * given mass, from a 1D table. A diagnostic: no rate reads it.
  *
- * radiation_read_data() requires the underlying "MeanPhotonEnergyLW"
- * dataset unconditionally, so this is valid whenever #radiation.is_active
- * is set. Reported as a diagnostic: no rate reads it, see
- * #RADIATION_SIGMA_H2_OVER_E_LW_CGS.
- *
- * Below pychem's own LW mass floor this returns the 11.2-13.6 eV band
- * midpoint, 12.4 eV in erg, which is a finite in-band placeholder rather
- * than a measured mean; see #radiation.raw.mean_photon_energy_lw.
+ * Below pychem's LW mass floor it returns the band midpoint, 12.4 eV in erg, a
+ * placeholder (see #radiation.raw.mean_photon_energy_lw).
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -689,10 +569,9 @@ double radiation_get_mean_photon_energy_lw_from_raw(const struct radiation *rad,
 }
 
 /**
- * @brief Get a single star's photon-number-weighted mean Lyman-Werner
- * photon energy at a given mass and metallicity, from a 2D ("M,Z") table.
- * See #radiation_get_mean_photon_energy_lw_from_raw (identical shape, on
- * #radiation.raw.mean_photon_energy_lw_2d).
+ * @brief Get a single star's mean LW photon energy at a given mass and
+ * metallicity, from a 2D table. See
+ * #radiation_get_mean_photon_energy_lw_from_raw.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -707,17 +586,10 @@ double radiation_get_mean_photon_energy_lw_from_raw_2d(
 }
 
 /**
- * @brief Get a single star's photon-number-weighted mean Lyman-Werner
- * photon energy, dispatching on #radiation.is_2d between the 1D and 2D
- * raw tables. The individual-star counterpart of
- * #radiation_get_mean_photon_energy_lw_from_integral, mirroring
- * #radiation_get_star_mean_excess_photon_energy_HI's own dispatch for the
- * ionizing band.
+ * @brief Get a single star's mean LW photon energy, dispatching on #rad->is_2d.
  *
- * Not capped by main_sequence_lifetime, unlike Q_H/DotEExcess: this is a
- * ratio describing the shape of a star's LW spectrum, not an emission
- * rate, so there is nothing for a lifetime cap to switch off. The caller
- * gates on the star's LW luminosity instead.
+ * Not capped by the main-sequence lifetime: it is a spectral shape, not a
+ * rate. The caller gates on the LW luminosity instead.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -734,24 +606,13 @@ double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
 }
 
 /**
- * @brief Get the photon-number-weighted mean Lyman-Werner photon energy of
- * the population formed between the IMF's own mass_min and @p log_m, from
- * a 1D (mass-only) table.
+ * @brief Get the photon-number-weighted mean LW photon energy of the population
+ * formed between the IMF's mass_min and @p log_m, from a 1D table.
  *
- * Takes ONE mass bound, not the (log_m1, log_m2) pair every other
- * _from_integral getter here takes, and this is not an oversight. The
- * underlying dataset is the intensive ratio
- * Integrated_L_LW/Integrated_Q_LW, so a window mean would need
- * Integrated_Q_LW to re-weight the two endpoints, and pychem does not
- * export it. Differencing two ratios would be meaningless. A caller
- * wanting the mean over [mass_min, m_sup] passes m_sup and gets exactly
- * that; no other window is recoverable from this table.
- *
- * Intensive, so unlike #radiation_get_luminosity_lw_from_integral the result
- * must NOT be rescaled by a star particle's birth mass.
- *
- * Valid whenever #radiation.is_active is set; see
- * #radiation_get_mean_photon_energy_lw_from_raw.
+ * It takes one mass bound: the dataset is the ratio Integrated_L_LW /
+ * Integrated_Q_LW, and pychem does not export Integrated_Q_LW, so a window mean
+ * is not recoverable. The result is intensive: do not rescale it by the star's
+ * birth mass.
  *
  * @param rad The #radiation model.
  * @param log_m Upper mass bound of the population, in log.
@@ -764,11 +625,9 @@ double radiation_get_mean_photon_energy_lw_from_integral(
 }
 
 /**
- * @brief Get the photon-number-weighted mean Lyman-Werner photon energy of
- * the population formed between the IMF's own mass_min and @p log_m, at a
- * given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_mean_photon_energy_lw_from_integral for why this takes a
- * single mass bound.
+ * @brief Get the mean LW photon energy of the population formed between the
+ * IMF's mass_min and @p log_m, at a given metallicity, from a 2D table. See
+ * #radiation_get_mean_photon_energy_lw_from_integral.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -811,13 +670,10 @@ float radiation_get_teff_from_raw_2d(const struct radiation *rad, float log_z,
 }
 
 /**
- * @brief Get a single star's photospheric effective temperature at a given
- * mass, dispatching on #rad->is_2d between the 1D (mass-only) and 2D
- * (mass x metallicity) raw tables. Not capped by main_sequence_lifetime:
- * like #radiation_get_star_luminosity, Teff describes the star's continued
- * (post-main-sequence included) photospheric state. Only valid when
- * #radiation.has_teff is set; callers must check that first (this getter
- * does not, matching every other raw getter here).
+ * @brief Get a single star's effective temperature at a given mass,
+ * dispatching on #rad->is_2d. Not capped by the main-sequence lifetime, like
+ * #radiation_get_star_luminosity. Valid only when #radiation.has_teff is set;
+ * callers must check.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -834,9 +690,8 @@ float radiation_get_star_teff(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get the non-IMF-integrated non-ionizing PE band emission rate at
- * a given mass, from a 1D (mass-only) table. Mirrors
- * #radiation_get_luminosities_from_raw exactly, on #rad->raw.l_pe.
+ * @brief Get the non-IMF-integrated PE band emission rate at a given mass,
+ * from a 1D table. See #radiation_get_luminosities_from_raw.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -849,9 +704,8 @@ float radiation_get_luminosity_pe_from_raw(const struct radiation *rad,
 }
 
 /**
- * @brief Get the non-IMF-integrated PE band emission rate at a given mass
- * and metallicity, from a 2D ("M,Z") table. Mirrors
- * #radiation_get_luminosities_from_raw_2d exactly, on #rad->raw.l_pe_2d.
+ * @brief Get the non-IMF-integrated PE band emission rate at a given mass and
+ * metallicity, from a 2D table. See #radiation_get_luminosities_from_raw_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -866,9 +720,8 @@ float radiation_get_luminosity_pe_from_raw_2d(const struct radiation *rad,
 
 /**
  * @brief Get a single star's PE band emission rate at a given mass,
- * dispatching on #rad->is_2d, mirroring #radiation_get_star_luminosity.
- * Only valid when #radiation.with_ISRF is set; callers must check that
- * first (this getter does not, matching every other raw getter here).
+ * dispatching on #rad->is_2d. Valid only when #radiation.with_ISRF is set;
+ * callers must check.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -885,9 +738,8 @@ float radiation_get_star_luminosity_pe(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
- * given mass, from a 1D (mass-only) table. See
- * #radiation_get_luminosity_pe_from_raw (identical shape, on #rad->raw.l_lw).
+ * @brief Get the non-IMF-integrated LW band emission rate at a given mass, from
+ * a 1D table. See #radiation_get_luminosity_pe_from_raw.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -900,10 +752,8 @@ float radiation_get_luminosity_lw_from_raw(const struct radiation *rad,
 }
 
 /**
- * @brief Get the non-IMF-integrated Lyman-Werner band emission rate at a
- * given mass and metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_luminosity_pe_from_raw_2d (identical shape, on
- * #rad->raw.l_lw_2d).
+ * @brief Get the non-IMF-integrated LW band emission rate at a given mass and
+ * metallicity, from a 2D table. See #radiation_get_luminosity_pe_from_raw_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -917,9 +767,8 @@ float radiation_get_luminosity_lw_from_raw_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get a single star's Lyman-Werner band emission rate at a given
- * mass, dispatching on #rad->is_2d. See #radiation_get_star_luminosity_pe
- * (identical shape); only valid when #radiation.with_ISRF is set.
+ * @brief Get a single star's LW band emission rate at a given mass. See
+ * #radiation_get_star_luminosity_pe.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
@@ -936,10 +785,8 @@ float radiation_get_star_luminosity_lw(const struct radiation *rad, float log_m,
 }
 
 /**
- * @brief Get the IMF-averaged non-ionizing PE band emission rate per mass,
- * from a 1D (mass-only) table. Mirrors
- * #radiation_get_luminosities_from_integral exactly, on
- * #rad->integrated.l_pe. Only valid when #radiation.with_ISRF is set.
+ * @brief Get the IMF-averaged PE band emission rate per mass, from a 1D table.
+ * Valid only when #radiation.with_ISRF is set.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -956,9 +803,8 @@ float radiation_get_luminosity_pe_from_integral(const struct radiation *rad,
 
 /**
  * @brief Get the IMF-averaged PE band emission rate per mass, at a given
- * metallicity, from a 2D ("M,Z") table. Mirrors
- * #radiation_get_luminosities_from_integral_2d exactly (including the
- * top-edge nudge), on #rad->integrated.l_pe_2d.
+ * metallicity, from a 2D table. See
+ * #radiation_get_luminosities_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -979,9 +825,8 @@ float radiation_get_luminosity_pe_from_integral_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass,
- * from a 1D (mass-only) table. See #radiation_get_luminosity_pe_from_integral
- * (identical shape, on #rad->integrated.l_lw).
+ * @brief Get the IMF-averaged LW band emission rate per mass, from a 1D table.
+ * See #radiation_get_luminosity_pe_from_integral.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -998,10 +843,9 @@ float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged Lyman-Werner band emission rate per mass, at
- * a given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_luminosity_pe_from_integral_2d (identical shape, on
- * #rad->integrated.l_lw_2d).
+ * @brief Get the IMF-averaged LW band emission rate per mass, at a given
+ * metallicity, from a 2D table. See
+ * #radiation_get_luminosity_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -1023,15 +867,12 @@ float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
 }
 
 /**
- * @brief Get the IMF-averaged PE band lower-edge spectral photon rate
- * (pre-multiplied by E_lo^2 and unit-converted like #l_pe; see
- * #radiation.raw.l_edge_pe's doxygen), from a 1D (mass-only) table. See
- * #radiation_get_luminosity_pe_from_integral (identical shape, on
- * #rad->integrated.l_edge_pe): the SAME difference pattern, so a caller
- * forming lambda_E(PE) - 1 from this getter's result and
- * #radiation_get_luminosity_pe_from_integral's, both over the same (log_m1,
- * log_m2), never mixes a windowed numerator with a whole-population denominator
- * or the reverse.
+ * @brief Get the IMF-averaged PE band lower-edge spectral photon rate (scaled
+ * by E_lo^2 and unit-converted like #l_pe), from a 1D table.
+ *
+ * It uses the same difference pattern as
+ * #radiation_get_luminosity_pe_from_integral, so lambda_E(PE) - 1 never mixes
+ * a windowed numerator with a whole-population denominator.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -1049,9 +890,8 @@ float radiation_get_luminosity_edge_pe_from_integral(
 
 /**
  * @brief Get the IMF-averaged PE band lower-edge spectral photon rate, at a
- * given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_luminosity_pe_from_integral_2d (identical shape, including the
- * top-edge nudge), on #rad->integrated.l_edge_pe_2d.
+ * given metallicity, from a 2D table. See
+ * #radiation_get_luminosity_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
@@ -1072,9 +912,8 @@ float radiation_get_luminosity_edge_pe_from_integral_2d(
 }
 
 /**
- * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, from
- * a 1D (mass-only) table. See #radiation_get_luminosity_edge_pe_from_integral
- * (identical shape, on #rad->integrated.l_edge_lw).
+ * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, from a
+ * 1D table. See #radiation_get_luminosity_edge_pe_from_integral.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
@@ -1092,9 +931,8 @@ float radiation_get_luminosity_edge_lw_from_integral(
 
 /**
  * @brief Get the IMF-averaged LW band lower-edge spectral photon rate, at a
- * given metallicity, from a 2D ("M,Z") table. See
- * #radiation_get_luminosity_edge_pe_from_integral_2d (identical shape, on
- * #rad->integrated.l_edge_lw_2d).
+ * given metallicity, from a 2D table. See
+ * #radiation_get_luminosity_edge_pe_from_integral_2d.
  *
  * @param rad The #radiation model.
  * @param log_z The metallicity in log10 (see #radiation_get_log_metallicity).
