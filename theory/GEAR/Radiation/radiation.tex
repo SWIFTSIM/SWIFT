@@ -58,13 +58,16 @@
 \maketitle
 
 This is the theory document for the GEAR subgrid HII photoionization
-model (\code{src/feedback/GEAR/radiation.c} and related files), branch
+model, branch
 \code{darwin/gear\_radiation}. It describes the algorithm as
 implemented (Section~\ref{sec:algorithm}) and how it is wired into
 \swift's task graph (Section~\ref{sec:taskgraph}). The radiation-pressure
 feedback channel and the FUV/ISRF propagation design are covered in a
 separate, dedicated document in this same directory,
-\code{radiation\_pressure\_isrf.tex} (\code{./run\_pressure\_isrf.sh}).
+\code{radiation\_pressure\_isrf.tex}.
+
+\textbf{In the code.} The model lives in \code{src/feedback/GEAR/radiation.c}
+and related files.
 
 \tableofcontents
 

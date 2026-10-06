@@ -781,8 +781,7 @@ not an atomic-physics constant. H$_2$ absorbs in the Lyman and Werner
 line systems, so the true dissociation rate is a sum over discrete lines
 weighted by the radiation field's own shape across $11.2$--$13.6$\,eV;
 $\sigma_{\rm H_2}$ is the single number that reproduces that sum for one
-assumed shape. \code{RADIATION\_SIGMA\_H2\_LW\_CGS} in
-\code{src/feedback/GEAR/radiation.h} holds it as a compile-time constant,
+assumed shape. It is a compile-time constant,
 not a run-time parameter, since it is a property of the assumed spectrum
 rather than a knob to tune per run.
 
@@ -859,6 +858,9 @@ $k_{\rm diss}$. Photoelectric heating and dust recombination cooling
 work in every Grackle mode; H$_2$ formation on dust and H$_2$
 dissociation only where H$_2$ is a tracked species.
 
+\paragraph{Implementation.} $\sigma_{\rm H_2}$ is the macro
+\code{RADIATION\_SIGMA\_H2\_LW\_CGS} (\code{src/feedback/GEAR/radiation.h:102}).
+
 \subsection{How we solve them numerically}
 \label{sec:fuv-numerics}
 
@@ -908,7 +910,7 @@ each gas particle $j$ inside its kernel, the band energy
 \end{equation}
 with weights that sum to one over the kernel. $\Delta t_\star$ is the
 star's proper-time feedback window; under cosmology it is not the
-value \code{get\_timestep()} returns
+star's integer time-bin width, which is in $\ln a$
 (Section~\ref{sec:fuv-cosmo} states the size of the error).
 $\zeta_{b,j\star}\in(0,1]$ is
 a dust extinction that attenuates the deposit,
@@ -919,7 +921,7 @@ a dust extinction that attenuates the deposit,
 \end{equation}
 the column formed once, from the receiver's own density and a path
 length $\ell_{j\star}$, with no knowledge of which mechanism built the
-length (\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part()}).
+length.
 It represents dust local to the illuminating star-receiver pair and is
 distinct from the absorption along the path at large, which the
 propagation handles. Extinction applies in both run modes; under
@@ -927,8 +929,7 @@ cosmology both $\rho_j$ and $\ell_{j\star}$ above are comoving
 (Section~\ref{sec:fuv-cosmo}).
 
 \texttt{GEARFeedback:ISRF\_extinction\_path} selects the mechanism that
-builds $\ell_{j\star}$, dispatched once per star-gas pair by
-\code{radiation\_get\_comoving\_extinction\_path()}:
+builds $\ell_{j\star}$, dispatched once per star-gas pair:
 \begin{itemize}
   \item \texttt{pair\_separation} (\textbf{the shipped default}):
     $\ell_{j\star} = r_{j\star}$, the star-gas separation itself. The only
@@ -962,8 +963,7 @@ Only \texttt{pair\_separation}'s length depends on the illuminating star
 as well as the receiver; the other two mechanisms are receiver-only. All
 three are nonetheless evaluated inside the star-gas pair loop, since
 hoisting the call out of it would fork the code path for
-\texttt{pair\_separation} alone
-(\code{radiation\_get\_comoving\_extinction\_path()}). An unrecognised
+\texttt{pair\_separation} alone. An unrecognised
 value of \texttt{ISRF\_extinction\_path} is a fatal error, not a silent
 fallback (Section~\ref{sec:fuv-parameters} gives the parameters each
 mechanism reads).
@@ -1022,6 +1022,12 @@ synchronises the particle's time step so that it integrates the deposit
 promptly. The mark expires once no star has renewed it for two star
 steps; with propagation on the expiry has no effect on the field, which
 decays through its own equations.
+
+\paragraph{Implementation.} The column is formed by
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
+(\code{src/feedback/GEAR/radiation\_isrf.c:908}), and the path mechanism is
+dispatched by \code{radiation\_get\_comoving\_extinction\_path}
+(\code{radiation\_isrf.c:853}), called inside the star-gas pair loop.
 
 \subsubsection{The signal speed and the stability bound}
 \label{sec:fuv-chyp}
@@ -1108,7 +1114,7 @@ local gas's own time-stepping: a particle pinned to a short step (large
 $c_{\rm hyp}$) receives more of the true source than one on a long step,
 independent of the pathway-1 sign question above. At a uniform
 $c_{\rm hyp}$ this construction is exactly self-consistent: the source
-rescale and the rate getters in \code{radiation\_gas.c} (which read the
+rescale and the rate getters (which read the
 true $c$, never $c_{\rm hyp}$) form a matched pair whose propagation
 fixed point cancels the speed identically, with or without transport.
 The defect is specific to $c_{\rm hyp}$
@@ -1133,6 +1139,12 @@ from it is quoted here. Part of any gap measured this way is a slower
 relaxation clock (Section~\ref{sec:fuv-chyp}'s own discussion of the
 transient), not a pure injection bias, and the two effects are not
 separated on the fixtures tested.
+
+\paragraph{Implementation.} The rate getters are
+\code{radiation\_get\_part\_isrf\_habing} and
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal}
+(\code{src/feedback/GEAR/radiation\_gas.c:653} and \code{:690}); they read the
+true $c$ at lines 661 and 696.
 
 \paragraph{Speed definitions tested, and the default chosen among them.}
 Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
@@ -1260,11 +1272,10 @@ asynchronous-time-step case directly; it was not independently read and
 its content is not asserted here.
 
 \textbf{SWIFT's own two RT modules both use a single, global, run-constant
-value (verified, read directly from \code{src/rt/}).} GEAR-RT
-(\code{src/rt/GEAR/rt\_properties.h}) sets \code{reduced\_speed\_of\_light}
+value (verified, read directly from the source).} GEAR-RT
+sets its reduced speed of light
 once at start-up from the parameter \code{GEARRT:f\_reduce\_c} and every
-particle reads the same global struct field. SPHM1RT
-(\code{src/rt/SPHM1RT/rt\_properties.h}) does the same with
+particle reads the same global value. SPHM1RT does the same with
 \code{SPHM1RT:cred}, copied unchanged into every particle at start-up. A
 single uniform speed is not a deviation from how this feature is
 normally used elsewhere in this codebase; every other user of a reduced
@@ -1314,6 +1325,11 @@ schemes that never couple a per-element time step to the propagation
 speed the way this scheme does, or it may mean it is undocumented; we
 cannot distinguish the two, and the unread Commer\c{c}on et
 al. (2014) source above is the most promising remaining lead.
+
+\paragraph{Implementation.} GEAR-RT sets \code{reduced\_speed\_of\_light} in
+\code{src/rt/GEAR/rt\_properties.h:299-302}. SPHM1RT reads
+\code{SPHM1RT:cred} into \code{cred\_phys} in
+\code{src/rt/SPHM1RT/rt\_properties.h:221-224}.
 
 \subsubsection{Spatial operators}
 \label{sec:fuv-operators}
@@ -1824,13 +1840,11 @@ formulas is the physical one, $a\,h$; $\Delta t$ is proper time.
 \textbf{The star's feedback window.} $\Delta t_\star$ in
 Eq.~\ref{eq:fuv-inject} is proper time, but a star's own integer
 timestep is stored as a time-bin width in $\ln a$ under cosmology, not
-in $t$: \code{get\_timestep()} returns $\Delta(\ln a)$, not $\Delta t$.
-\code{radiation\_iact\_nonsym\_feedback\_apply()}
-(\code{radiation\_iact.h}) therefore branches on \code{with\_cosmology}
-and calls \code{cosmology\_get\_delta\_time()} on the star's own
-$[t_{\rm begin}, t_{\rm begin}+\delta t)$ interval instead, the same
-branch \code{feedback\_common.c}'s \code{compute\_time()} takes for
-every other star-feedback channel this module shares a time step with.
+in $t$. The window is therefore formed as the proper-time difference over
+the star's own
+$[t_{\rm begin}, t_{\rm begin}+\delta t)$ interval, the same
+branch every other star-feedback channel this module shares a time step
+with takes.
 Over one step $d(\ln a)/dt = H$, so using $\Delta(\ln a)$ in place of
 $\Delta t_\star$ would scale every deposited dose (Eq.~\ref{eq:fuv-inject})
 by
@@ -1846,12 +1860,10 @@ over the redshift range this module targets, not a rounding error.
 in Eq.~\ref{eq:fuv-drain}, and the reservoir's remaining drain horizon,
 $t_{{\rm end},j}-t$ in Eqs.~\ref{eq:fuv-reservoir}--\ref{eq:fuv-drain},
 are proper-time differences under cosmology and plain code-time
-differences otherwise; both branches sit in
-\code{radiation\_snapshot\_part\_propagation()}
-(\code{radiation\_isrf.c}), which forms $\Delta t_j$ from
-\code{cosmology\_get\_delta\_time()} on the particle's own step and the
+differences otherwise; both are formed at the drift, $\Delta t_j$ as the
+proper-time difference over the particle's own step and the
 drain horizon's remaining time the same way, from the step's start to
-\code{ISRF\_reservoir\_end\_ti}. A drain horizon has to be proper time
+the reservoir's end time. A drain horizon has to be proper time
 because it marks a physical duration: the reservoir must empty over the
 same number of seconds the deposited energy represents, so that
 $\dot s_{b,j} = \phi_j R_{b,j}/\Delta t_j$ (Eq.~\ref{eq:fuv-drain}) stays
@@ -1864,13 +1876,13 @@ that actually elapsed.
 
 \textbf{The extinction path is comoving.} $\ell_{j\star}$
 (Section~\ref{sec:fuv-injection}) is returned comoving by every branch
-of \code{radiation\_get\_comoving\_extinction\_path()}: a kernel support
+of the path dispatch: a kernel support
 radius, a pair separation or a temperature-capped Jeans length, all
 built from comoving inputs.
-\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part()} forms
+The column step forms
 the comoving product $\ell_{j\star}\,\rho_j$ from this length and the
 comoving density with no conversion of either;
-\code{radiation\_get\_part\_ISRF\_extinction\_factors()} then converts
+the extinction-factor step then converts
 that product to the physical column density Eq.~\ref{eq:fuv-extinction}
 needs,
 \begin{equation}
@@ -1898,12 +1910,10 @@ recovers the grey, comoving-band-edge result the "band-edge transfer"
 paragraph below replaces.
 
 Here $a_i$ is the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
-\code{radiation\_end\_gradient\_propagation()} (the flux update,
-Eq.~\ref{eq:fuv-F-update}) and \code{radiation\_end\_force\_propagation()}
-(the energy update, Eq.~\ref{eq:fuv-u-update}). $H$ enters
+the flux update (Eq.~\ref{eq:fuv-F-update}) and the energy update
+(Eq.~\ref{eq:fuv-u-update}). $H$ enters
 \emph{only} through $a_i$: it changes the decay $e^{-a_i}$ and the
-weight $\varphi(a_i) = (1-e^{-a_i})/a_i$
-(\code{radiation\_relaxation\_phi\_factor()}) that both the transport
+weight $\varphi(a_i) = (1-e^{-a_i})/a_i$ that both the transport
 divergence and the rescaled source rate are multiplied by in
 Eq.~\ref{eq:fuv-u-update}, and it changes nothing else: the deposited
 dose (Eq.~\ref{eq:fuv-inject}) and the reservoir drawdown
@@ -1956,6 +1966,29 @@ the band's lower-edge photon-number weight, distinct from
 $\lambda_E({\rm LW})$: applying the energy coefficient to the photon
 count would flatten the diagnostic identity that moment exists to
 expose.
+
+\paragraph{Implementation.} The star's proper-time window is formed by
+\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:539}), whose
+cosmology branch calls \code{cosmology\_get\_delta\_time} at lines 549-551,
+because \code{get\_timestep()} returns $\Delta(\ln a)$ under cosmology. The
+window is cached once per star and step by \code{feedback\_star\_store\_timestep}
+(\code{src/feedback/GEAR/radiation\_iact.h:111}, called at line 164), and
+\code{radiation\_iact\_nonsym\_feedback\_apply} reads the cached value
+(\code{radiation\_iact.h:218}). The particle's step and the drain horizon are
+formed in \code{radiation\_snapshot\_part\_propagation}
+(\code{src/feedback/GEAR/radiation\_isrf.c:129}), at lines 176-182 and 206-214,
+the horizon ending at \code{ISRF\_reservoir\_end\_ti}. The depth $a_i$ is formed
+in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:730},
+line 768) and \code{radiation\_end\_force\_propagation}
+(\code{radiation\_isrf.c:462}, line 530), and $\varphi$ is
+\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:350}) and
+its double twin (\code{radiation\_isrf.c:363}). The comoving path is returned
+by \code{radiation\_get\_comoving\_extinction\_path}
+(\code{radiation\_isrf.c:853}), the comoving product is formed by
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
+(\code{radiation\_isrf.c:908}), and the $a^{-2}$ is applied in
+\code{radiation\_get\_part\_ISRF\_extinction\_factors}
+(\code{radiation\_isrf.c:1022}, lines 1028-1030).
 
 \subsubsection{Runtime parameters}
 \label{sec:fuv-parameters}

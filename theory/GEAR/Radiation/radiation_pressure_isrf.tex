@@ -62,11 +62,10 @@ channels beyond the subgrid HII photoionization model, split out from
 that model's own theory document (\code{radiation.tex}/\code{radiation.pdf},
 this same directory) since they are largely self-contained: the
 \textbf{radiation-pressure} momentum-injection channel
-(Section~\ref{sec:radiation-pressure}, \code{src/feedback/GEAR/radiation.c}
-and related files, branch \code{darwin/gear\_radiation}), and the
+(Section~\ref{sec:radiation-pressure}, branch
+\code{darwin/gear\_radiation}), and the
 \textbf{FUV/ISRF} channel for photoelectric heating and
-H$_2$ photodissociation (Section~\ref{sec:fuv-isrf},
-\code{src/feedback/GEAR/radiation\_isrf.c} and related files). It
+H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}). It
 describes the current design and physics only;
 dated bug history and open-item tracking for both channels live in the
 \textbf{GEAR radiation logbook} (\code{swift-gear} repository,
@@ -77,8 +76,11 @@ task-graph algorithm, the validation targets) or on the logbook, it is
 cited by name and section rather than by automatic cross-reference,
 since the documents compile separately in separate repositories.
 Edit the numbered \code{.tex} files directly; each covers one topic and
-is short enough to update on its own. Regenerate the PDF with
-\code{./run\_pressure\_isrf.sh}.
+is short enough to update on its own.
+
+\textbf{In the code.} The radiation-pressure channel lives in
+\code{src/feedback/GEAR/radiation.c} and related files, and the FUV/ISRF
+channel in \code{src/feedback/GEAR/radiation\_isrf.c} and related files.
 
 \tableofcontents
 

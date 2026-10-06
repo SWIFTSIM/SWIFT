@@ -64,17 +64,21 @@ caveat (an unrelated, unused dead-code mass--temperature relation).
 \subsubsection{What a Tag Is}
 
 A gas particle a star has claimed carries three
-pieces of state, all set by \code{radiation\_tag\_part\_as\_ionized}:
+pieces of state, all set when the tag is applied:
 the owning star's id, an \code{end\_time} at which the claim lapses
 (Section~\ref{sec:persistence}), and, until that time, a forced
 thermodynamic state (Section~\ref{sec:temperature-floor} in the
 default mode, or the Grackle source terms of
 Section~\ref{sec:rate-coupled} in the rate-coupled one). Of these,
-only the star id is one-way: \code{radiation\_reset\_part\_ionized\_
-tag} clears the active claim once \code{end\_time} lapses, but never
+only the star id is one-way: the tag reset clears the active claim once \code{end\_time} lapses, but never
 clears which star last owned the particle, a distinction
 Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
+
+\paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
+(\code{src/feedback/GEAR/radiation\_gas.c:418}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:437}),
+which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
 
@@ -87,7 +91,7 @@ for ionization only if
 \begin{enumerate}
 \item it is not already tagged,
 \item is denser than \code{GEARFeedback:HII\_min\_density\_Hpcm3},
-\item and is not already above $\approx 10^4\,$K (\code{feedback\_part\_can\_be\_ionized}).
+\item and is not already above $\approx 10^4\,$K.
 \end{enumerate}
 
 For a candidate particle $b$ of mass $m_b$, hydrogen mass fraction $X_H$,
@@ -102,12 +106,14 @@ recombination rate needed to keep it ionized are
 where $m_p$ is the proton mass and $\beta$ is the case-B recombination
 coefficient, evaluated at the particle's own applied ionized
 temperature rather than fixed at the papers' common $10^4\,$K
-reference (\code{radiation\_get\_case\_b\_recombination\_\allowbreak
-coefficient\_cgs}, Section~\ref{sec:beta-temperature}).
+reference (Section~\ref{sec:beta-temperature}).
 Equation~\ref{eq:recomb-cost} is
 identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 ``the number of hydrogen nuclei'', an unambiguous atom count) and to
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
+
+\paragraph{Implementation.} The candidate filter is \code{feedback\_part\_can\_be\_ionized}
+(\code{src/feedback/GEAR/feedback\_common.c:684}).
 
 \subsubsection{Claim Cost vs.\ Maintenance Rate}
 
@@ -129,8 +135,7 @@ plus a one-off cost to strip its still-neutral electrons:
   {\rm cost}_b = N_{HI,b} + \Delta t_{\rm back}\,\Delta \dot N_b,
   \label{eq:claim-cost}
 \end{equation}
-where $N_{HI,b}$ is the particle's \emph{neutral}-hydrogen atom count
-(\code{radiation\_get\_part\_number\_neutral\_hydrogen\_atoms}), not
+where $N_{HI,b}$ is the particle's \emph{neutral}-hydrogen atom count, not
 the total $N_{H,b}$ of Eq.~\ref{eq:recomb-cost}. At
 \code{COOLING\_GRACKLE\_MODE}$\,\ge 1$, where species fractions are
 tracked, a candidate that is already partly or fully ionized: gas
@@ -143,6 +148,9 @@ The maintenance charge levied on gas the star already holds ionized
 the integrated rate, $\Delta t_{\rm back}\,\Delta \dot N_b$: those
 electrons are already stripped, so there is no neutral-hydrogen term to
 pay again.
+
+\paragraph{Implementation.} $N_{HI,b}$ is \code{radiation\_get\_part\_number\_neutral\_hydrogen\_atoms}
+(\code{src/feedback/GEAR/radiation\_gas.c:107}).
 
 \subsubsection{Implicit Region Growth}
 
@@ -219,8 +227,7 @@ model inherits the same approximation.
 \subsubsection{The Floor Formula}
 
 Once a particle is tagged, its internal energy is set (and reset every
-step while tagged, in the cooling task, via
-\code{cooling\_ionize\_part\_subgrid}) to
+step while tagged, in the cooling task) to
 \begin{equation}
   u_{\rm new} = \min\left(\Delta u_{\rm ionized},\ u_{\rm collisional}\right),
   \label{eq:floor}
@@ -246,20 +253,23 @@ temperature fit]{Hopkins2023}:
 Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
 at all: both simply clamp ionized gas to a flat $10^4\,$K.
 
+\paragraph{Implementation.} The floor is set in \code{cooling\_ionize\_part\_subgrid}
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}), called from the
+cooling task.
+
 \subsubsection{Applying the Floor: Energy Accounting}
 
 $u_{\rm new}$
 (Eq.~\ref{eq:floor}) is never written to the particle directly.
-\code{cooling\_ionize\_part\_subgrid} (\code{cooling\_gear\_subgrid.h})
-returns it to its caller, \code{cooling\_new\_energy}, which returns
+It is returned to the cooling step's new-energy computation, which returns
 immediately on a tagged particle without ever calling Grackle's own
-chemistry/cooling solve (\code{local\_solve\_chemistry}): the
+chemistry/cooling solve: the
 untagged path always calls it. Skipping that call is what makes the
 floor hold for the step: Grackle's ODE integrator has no notion of the
 external photoionizing forcing this model represents and would
 otherwise relax the just-floored energy back toward its own
 equilibrium within the same step it was applied. $u_{\rm new}$ then
-re-enters \code{cooling\_cool\_part} exactly like any other cooling
+re-enters the cooling step exactly like any other cooling
 function's return value: floored again at
 \code{hydro\_props->minimal\_internal\_energy} if needed, and is
 turned into a rate,
@@ -274,12 +284,12 @@ integration path as ordinary cooling, subject to the same floors. It
 is also subject to the same suppression as ordinary cooling when
 \code{cooling->thermal\_time} delayed-cooling turn-off is active for
 this particle (\code{time - time\_last\_event < thermal\_time}): while
-that window is open, \code{cooling\_new\_energy}: and with it
-\code{cooling\_ionize\_part\_subgrid}: is not called at all, so a
+that window is open, the new-energy computation, and with it the floor,
+is not called at all, so a
 tagged particle is not re-floored until the window closes.
 
 The bookkeeping this produces is exact, not merely consistent:
-\code{cooling\_cool\_part} records, every step,
+the cooling step records, every step,
 \begin{equation}
   \Delta E_{\rm radiated} = -m_b\left(u_{\rm new} - u_{\rm ad,\,before}\right)
   = m_b\left(u_{\rm ad,\,before} - u_{\rm new}\right)
@@ -291,7 +301,7 @@ radiated energy (negative, i.e.\ recorded as heating, whenever the
 floor raises the particle's energy) always equals the energy
 correction actually applied to the particle that step.
 
-\code{radiation.c} computes Eq.~\ref{eq:tcollisional}'s $\log_{10}$
+The code computes Eq.~\ref{eq:tcollisional}'s $\log_{10}$
 with a base-10 logarithm throughout, for every $Z \ge
 10^{-3}Z_\odot$. This project's reference metallicity point,
 $Z/Z_\odot\approx0.231$, is chosen specifically because that base
@@ -300,6 +310,17 @@ makes $T_{\rm collisional}=10^4\,$K there, matching
 through Section~\ref{sec:beta-temperature} below, the case-B $\beta$
 evaluated at it whenever $u_{\rm collisional} < \Delta u_{\rm
 ionized}$).
+
+\paragraph{Implementation.} \code{cooling\_ionize\_part\_subgrid}
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}) returns $u_{\rm new}$ to
+\code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1261}), which
+skips Grackle's \code{local\_solve\_chemistry} on a tagged particle. The
+cooling step that applies Eq.~\ref{eq:cool-dudt} and records the radiated
+energy is \code{cooling\_cool\_part} (\code{src/cooling/grackle/cooling.c:1479}).
+The fit of
+Eq.~\ref{eq:tcollisional} is \code{radiation\_get\_T\_collisional\_K}
+(\code{src/feedback/GEAR/radiation\_gas.c:145}), with the
+$Z \ge 10^{-3}Z_\odot$ guard at line 155 and the base-10 logarithm at line 157.
 
 \subsection{Temperature dependence of $\beta$}
 \label{sec:beta-temperature}
@@ -316,8 +337,8 @@ purposes):
   \label{eq:alphaB-huignedin}
 \end{equation}
 The same fit is used elsewhere in \swift: identically in
-\code{src/rt/SPHM1RT/rt\_cooling\_rates.h}, and inside grackle's own
-\code{k2\_rate()} (which GEAR-RT delegates to for its own case-B
+the SPHM1RT radiative-transfer module, and inside grackle's own case-B
+rate (which GEAR-RT delegates to for its own case-B
 recombination, via the \code{CaseBRecombination} flag: GEAR-RT has no
 case-B formula of its own). Here too, $\beta$ in
 Eq.~\ref{eq:recomb-cost} is Eq.~\ref{eq:alphaB-huignedin} evaluated at
@@ -326,12 +347,8 @@ $T$ is the particle's own applied ionized temperature: the same
 $u_{\rm new}$ from Eq.~\ref{eq:floor}, converted to a temperature via
 its own $\mu$, so the recombination cost charged against a star's
 budget is always consistent with the temperature that particle is
-actually being held at
-(\code{radiation\_get\_part\_ionized\_internal\_energy}, shared between
-\code{radiation\_get\_part\_rate\_to\_fully\_ionize} and
-\code{cooling\_ionize\_part\_subgrid} to guarantee the two never
-disagree; \code{radiation\_get\_case\_b\_recombination\_\allowbreak
-coefficient\_cgs} implements Eq.~\ref{eq:alphaB-huignedin} itself).
+actually being held at: the budget and the cooling step share one
+computation of that energy, so the two never disagree.
 
 For reference, evaluating Eq.~\ref{eq:alphaB-huignedin} across the
 range this model's own temperature floor
@@ -355,6 +372,19 @@ materially changes the recombination cost charged against a star's
 budget, most at low metallicity, where the floor temperature is
 highest.
 
+\paragraph{Implementation.} Grackle's case-B rate is its function
+\code{k2\_rate()}. The SPHM1RT copy of the fit is in
+\code{src/rt/SPHM1RT/rt\_cooling\_rates.h}, with $\lambda = 315614\,{\rm K}/T$
+at lines 169 and 262. In this model,
+\code{radiation\_get\_case\_b\_recombination\_coefficient\_cgs}
+(\code{src/feedback/GEAR/radiation\_gas.c:218}) implements
+Eq.~\ref{eq:alphaB-huignedin}, and
+\code{radiation\_get\_part\_ionized\_internal\_energy}
+(\code{radiation\_gas.c:182}) is shared by
+\code{radiation\_get\_part\_rate\_to\_fully\_ionize}
+(\code{radiation\_gas.c:238}) and \code{cooling\_ionize\_part\_subgrid}, to
+guarantee the two never disagree.
+
 \subsection{Applying a tag: flag-and-floor vs.\ rate-coupled}
 \label{sec:rate-coupled}
 
@@ -363,14 +393,13 @@ candidate selection, claim/maintenance pricing, and the temperature
 floor, describes how a star decides \emph{which} gas to tag and for
 how long. What happens to a tagged particle's thermodynamics is a
 separate, swappable choice, controlled by
-\code{GEARFeedback:HII\_couple\_ionization\_rate}
-(\code{cooling\_gear\_subgrid.h}).
+\code{GEARFeedback:HII\_couple\_ionization\_rate}.
 
 \subsubsection{Default: Flag-and-Floor}
 
 With the flag off (the default),
 Section~\ref{sec:temperature-floor} is the whole story:
-\code{cooling\_ionize\_part\_subgrid} forces the particle's internal
+the cooling step forces the particle's internal
 energy to $u_{\rm new}$ (Eq.~\ref{eq:floor}) every step and skips
 Grackle's own chemistry/cooling solve entirely while the tag is held.
 The particle's ionization state is never actually tracked; it is
@@ -380,13 +409,12 @@ long as the tag lasts.
 \subsubsection{Rate-Coupled: \texttt{HII\_couple\_ionization\_rate=1}}
 
 Requires \code{COOLING\_GRACKLE\_MODE}$\,\ge 1$ (species tracked); the
-gate is compile-time (\code{\#if COOLING\_GRACKLE\_MODE > 0} in
-\code{cooling\_gear\_subgrid.h}), so a \code{COOLING\_GRACKLE\_MODE=0}
+gate is compile-time, so a \code{COOLING\_GRACKLE\_MODE=0}
 build never even evaluates the flag: setting it in the parameter file
 at that mode is a silent no-op, with no warning at start-up, and the
 run falls back to flag-and-floor unconditionally. Here the tag no
-longer forces an energy: \code{cooling\_ionize\_part\_
-subgrid} returns immediately without touching $u_{\rm new}$, and
+longer forces an energy: the cooling step's floor
+returns immediately without touching $u_{\rm new}$, and
 Grackle's own non-equilibrium primordial-chemistry solver runs as
 usual. What the tag supplies instead is a source term for that solver.
 At the moment a particle is claimed or renewed, the model evaluates
@@ -398,16 +426,13 @@ angle $\Omega_{\rm pix}=4\pi/N_{\rm pix}$ and the physical distance
 $r$), and converts it, via the standard hydrogen photoionization
 cross-section $\sigma_{\rm HI}=6.3\times10^{-18}\,{\rm cm^2}$ (Osterbrock
 \& Ferland 2006), into a photoionization rate coefficient
-$\Gamma_{\rm HI}$
-(\code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}).
+$\Gamma_{\rm HI}$.
 A companion quantity, the star's mean excess photon energy above the
-$13.6\,$eV threshold (read from the pychem tables,
-\code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}),
+$13.6\,$eV threshold (read from the pychem tables),
 gives a heating rate $\Gamma_{\rm HI}\times E_{\rm excess}$. Both are
 frozen on the particle at tag time and injected into Grackle every
-step the tag is held
-(\code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}, feeding
-Grackle's \code{RT\_HI\_ionization\_rate}/\code{RT\_heating\_rate}
+step the tag is held (Grackle's
+\code{RT\_HI\_ionization\_rate}/\code{RT\_heating\_rate}
 fields), so Grackle's own solver, not a hand-set floor, determines the
 resulting HII fraction $x_{\rm HII}$ and temperature self-consistently
 with the gas's own cooling.
@@ -421,6 +446,19 @@ temperature is ever written to the particle. Only the consequence of
 holding a tag, forced energy vs.\ injected Grackle rates, differs.
 This is also why the two modes read out a star's ionized region
 differently; see Section~\ref{sec:front-radius}.
+
+\paragraph{Implementation.} The flag is read in
+\code{cooling\_ionize\_part\_subgrid}
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}) inside
+\code{\#if COOLING\_GRACKLE\_MODE > 0}, at lines 73-74; the same compile-time
+gate recurs at line 97. The rate-coupled branch starts at line 74 and leaves the energy alone.
+$\Gamma_{\rm HI}$ is
+\code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
+(\code{src/feedback/GEAR/radiation\_gas.c:547}); the excess photon energy is
+\code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
+(\code{src/feedback/GEAR/radiation\_getters.c:543}); the fields are handed to
+Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:229}).
 
 \subsection{Per-cone photon budget (angular splitting)}
 \label{sec:angular-splitting}
@@ -480,8 +518,7 @@ count stood at when that pass ended. In
 step'') mode, $\Delta t_{\rm back}$ tracks the star's own timestep,
 which can be arbitrarily small; the nominal cadence used to bound how
 large a single pass's $\Delta t_{\rm back}$ is trusted to be is
-floored at \code{GEARFeedback:HII\_rebuild\_floor\_Myr}
-(\code{feedback\_get\_star\_HII\_nominal\_interval}), the same
+floored at \code{GEARFeedback:HII\_rebuild\_floor\_Myr}, the same
 constant that also floors the star's own timestep in that mode so it
 cannot collapse toward zero. Unspent \emph{positive} budget is
 not carried forward: those photons reached no gas and escaped;
@@ -505,6 +542,10 @@ alone. $\Delta t_{\rm back}$ is anchored at the star's last rebuild
 cell does not make the next real pass cover the skipped gap. The cached
 previous rate is resynced to the current one on that skip, so the trapezoid
 never averages against a stale rate.
+
+\paragraph{Implementation.} The nominal cadence and its floor are
+\code{feedback\_get\_star\_HII\_nominal\_interval}
+(\code{src/feedback/GEAR/feedback\_common.c:1043}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -561,29 +602,40 @@ Eq.~\ref{eq:floor}, every step) until
 GEARFeedback:HII\_rebuild\_time\_Myr}, at which
 point it is unflagged and becomes eligible to compete for budget again
 on the star's next rebuild pass. Each star's rebuild is scheduled
-independently off its own age and its own last-rebuild time
-(\code{feedback\_common.c}); there is no cross-star coordination or
+independently off its own age and its own last-rebuild time; there is no cross-star coordination or
 deliberate synchronous/asynchronous toggle like the one
 \citet{Smith2021} implemented (they found no difference between the
 two). For the co-located, simultaneously-born stars in the validation
 example this produces synchronous rebuilds in practice, simply because
 the stars are identical, not because the code enforces it.
 
+\paragraph{Implementation.} The per-star rebuild schedule is decided in
+\code{feedback\_will\_do\_HII\_ionization}
+(\code{src/feedback/GEAR/feedback\_common.c:415}), from
+\code{HII\_rebuild\_time} at lines 428-450.
+
 \subsubsection{Maintenance: Renewing Gas Already Held Ionized}
 
 Before a pass
 spends anything on new candidates, it first renews the gas the star
-already holds. \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
+already holds. The pass
 gathers every particle currently tagged with this star's own id,
-via a traversal exempt from the ordinary candidate filter
-(\code{feedback\_part\_can\_be\_ionized}), since held gas is neither
+via a traversal exempt from the ordinary candidate filter,
+since held gas is neither
 cold nor untagged: into a scratch buffer, then charges each one's
-maintenance rate (Section~\ref{sec:photon-budget}) via
-\code{feedback\_iact\_HII\_maintain\_ionized\_part}, which also renews
+maintenance rate (Section~\ref{sec:photon-budget}), which also renews
 its \texttt{end\_time} so the tag survives to the following pass. Every
 rebuild after the one that first claimed a particle therefore
 re-charges its ongoing recombination cost, rather than charging it
 once at claim time and never again.
+
+\paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
+(\code{src/runner\_radiation\_feedback.c:474}), exempt from
+\code{feedback\_part\_can\_be\_ionized}
+(\code{src/feedback/GEAR/feedback\_common.c:684}). The charge and renewal are
+\code{feedback\_iact\_HII\_maintain\_ionized\_part}
+(\code{feedback\_common.c:842}), called at
+\code{src/runner\_radiation\_feedback.c:711}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -599,10 +651,8 @@ particles first, which then reach their already-recorded
 step. A receding region therefore shrinks from its outer shell inward,
 rather than developing a hole wherever the traversal order happened to
 run out of budget. Each held particle is re-priced against the same
-pixel it was assigned to when claimed or last renewed
-(\code{feedback\_iact\_HII\_maintain\_ionized\_part} passes the stored
-pixel index straight through to
-\code{radiation\_consume\_ionizing\_photons}), so upkeep tracks
+pixel it was assigned to when claimed or last renewed (the stored
+pixel index is passed straight through to the photon spend), so upkeep tracks
 ownership, not a particle's current direction from the star even if it
 has since drifted into another cone.
 
@@ -623,6 +673,11 @@ Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
 same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
+\paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
+(\code{src/feedback/GEAR/feedback\_common.c:842}) passes the stored pixel index
+to \code{radiation\_consume\_ionizing\_photons}
+(\code{src/feedback/GEAR/radiation\_gas.c:399}).
+
 \subsection{Front-radius measure}
 \label{sec:front-radius}
 
@@ -641,10 +696,8 @@ present state exactly.
 \subsubsection{Historical Extent: The Ownership Stamp}
 
 A gas particle's
-ionizing-star id (\code{radiation\_tag\_part\_as\_ionized}'s
-\code{star\_id}, exposed to snapshots as \texttt{HIIStarIDs}) is a
-one-way stamp:
-\code{radiation\_reset\_part\_ionized\_tag} clears the active
+ionizing-star id (\code{star\_id}, exposed to snapshots as
+\texttt{HIIStarIDs}) is a one-way stamp: the tag reset clears the active
 \emph{tag} once a particle's \texttt{end\_time} lapses, but never
 clears which star last owned it. A particle the star ionized and later
 stopped renewing therefore still carries that star's id and keeps
@@ -663,6 +716,10 @@ rather than forcing a temperature, $h_{\rm hii}$ is instead the
 measure that coincides with the actual $x_{\rm HII}$ front; the
 historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
+
+\paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
+(\code{src/feedback/GEAR/radiation\_gas.c:418}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:437}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 

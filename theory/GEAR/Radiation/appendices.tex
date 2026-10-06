@@ -11,8 +11,7 @@
 
 Every active star's ionizing photon rate $\dot N_{\rm ion}$ (the budget
 spent in Section~\ref{sec:photon-budget} of the algorithm document)
-comes from \code{radiation\_get\_star\_ionization\_rate}
-(\code{src/feedback/GEAR/radiation.h}), which interpolates the
+comes from an interpolation of the
 $(M,Z)$-dependent \code{Data/Radiation} table of \code{pychem}. SWIFT does
 not evaluate the blackbody chain of this appendix. The chain gives the
 blackbody estimate of $\dot N_{\rm ion}$ from the stellar mass alone.
@@ -80,8 +79,13 @@ hence $T_{\rm eff}$) mass-independent there by construction, not
 physical intent. Both fits are single-metallicity piecewise power laws
 with no $(M,Z)$ dependence. SWIFT therefore reads the luminosity, the
 effective temperature and the ionizing photon rate from the
-$(M,Z)$-dependent \code{pychem} stellar tables
-(\code{radiation\_get\_star\_luminosity},
-\code{radiation\_get\_star\_teff},
-\code{radiation\_get\_star\_ionization\_rate}), and no empirical radius,
-luminosity or temperature fit remains in \code{src/}.
+$(M,Z)$-dependent \code{pychem} stellar tables, and no empirical radius,
+luminosity or temperature fit remains in the code.
+
+\paragraph{Implementation.} The table reads are
+\code{radiation\_get\_star\_luminosity},
+\code{radiation\_get\_star\_ionization\_rate} and
+\code{radiation\_get\_star\_teff}, declared in
+\code{src/feedback/GEAR/radiation.h:313}, \code{:315} and \code{:324} and
+defined in \code{src/feedback/GEAR/radiation\_getters.c:503}, \code{:522} and
+\code{:684}.
