@@ -10,11 +10,14 @@ The valid keys are collected statically, without running SWIFT, from:
    ``sprintf``/``strcpy`` in the same file are resolved), and
 2. every key in ``examples/parameter_example.yml``.
 
-A key that is in neither set is reported as UNKNOWN. A key found in a table
-of retired keys in ``src/`` (an array whose name contains ``retired``, with
-``{"old_key", "replacement"}`` entries) is reported as RETIRED, together
-with its replacement. Keys that depend on a runtime value and cannot be
-resolved are listed at the end, so the gap in the check is visible.
+A key that is in neither set is reported as UNKNOWN. A key in ``RETIRED_KEYS``
+below, the tool's own list of names that were removed or renamed, is reported
+as RETIRED, together with its replacement. The list is the tool's own: SWIFT
+does not carry one and ignores a key that no code reads, so a stale key only
+shows up here. Add an entry when a key is removed or renamed.
+
+Keys that depend on a runtime value and cannot be resolved are listed at the
+end, so the gap in the check is visible.
 
 The key set is the union over every module and every ``#ifdef`` branch of
 ``src/``. A key read only by a module that the build does not use is
@@ -52,8 +55,36 @@ IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
 FORMAT_SPEC = re.compile(
     r"%(?:%|[-+ #0]*[0-9*]*(?:\.[0-9*]+)?(?:hh|h|ll|l|z|j|t)?[a-zA-Z])"
 )
-RETIRED_TABLE = re.compile(r"\b\w*retired\w*\s*\[\s*\]\s*=\s*\{")
 MIN_PATTERN_LITERAL_CHARS = 3
+
+# Keys that were removed or renamed, with the text to use instead. A key here
+# is flagged RETIRED even when it is also in parameter_example.yml.
+RETIRED_KEYS: Dict[str, str] = {
+    "GEARFeedback:with_photoelectric_heating": "GEARFeedback:with_interstellar_radiation_field",
+    "GEARFeedback:do_photoionization": "GEARFeedback:with_photoionization",
+    "GEARFeedback:LW_FUV_propagation": "GEARFeedback:ISRF_propagation",
+    "GEARFeedback:LW_FUV_c_hyp_margin": "GEARFeedback:ISRF_c_hyp_margin",
+    "GEARFeedback:LW_FUV_dissipation_alpha_max": "GEARFeedback:ISRF_dissipation_alpha_max",
+    "GEARFeedback:LW_FUV_dissipation_negativity_threshold": "GEARFeedback:ISRF_dissipation_negativity_threshold",
+    "GEARFeedback:LW_FUV_dissipation_alpha_floor": "GEARFeedback:ISRF_dissipation_alpha_floor",
+    "GEARFeedback:LW_FUV_dissipation_floor_h_over_lambda": "GEARFeedback:ISRF_dissipation_floor_h_over_lambda",
+    "GEARFeedback:LW_FUV_dissipation_floor_relaxation_residual": "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
+    "GEARFeedback:LW_FUV_dissipation_alpha_pin_for_debugging": "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging",
+    "GEARFeedback:radiation_interpolation_size_mass": "GEARRadiation:interpolation_size_mass",
+    "GEARFeedback:minimal_HII_ionization_density_Hpcm3": "GEARFeedback:HII_min_density_Hpcm3",
+    "GEARFeedback:HII_region_min_density_Hpcm3": "GEARFeedback:HII_min_density_Hpcm3",
+    "GEARFeedback:HII_region_max_age_Myr": "GEARFeedback:HII_max_age_Myr",
+    "GEARFeedback:HII_region_rebuild_time_Myr": "GEARFeedback:HII_rebuild_time_Myr",
+    "GEARFeedback:HII_region_rebuild_floor_Myr": "GEARFeedback:HII_rebuild_floor_Myr",
+    "GEARFeedback:photoelectric_heating_grackle_option": "GrackleCooling:photoelectric_heating_efficiency",
+    "GEARFeedback:min_star_timestep_Myr": "Stars:min_star_timestep_Myr",
+    "GrackleCooling:provide_volumetric_heating_rates": "GrackleCooling:volumetric_heating_rates_cgs",
+    "GrackleCooling:provide_specific_heating_rates": "GrackleCooling:specific_heating_rates_cgs",
+    "GrackleCooling:convergence_limit": "nothing (the key is no longer read)",
+    "GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging": "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging",
+    "GEARFeedback:ISRF_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme 2 with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
+    "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging": "GEARFeedback:ISRF_c_hyp_scheme 2 with GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c = v/c",
+}
 
 
 @dataclass
@@ -436,8 +467,8 @@ def resolve_key_expr(
     return None
 
 
-def scan_source(src: Path) -> Tuple[KeySet, List[Unresolved], Dict[str, str]]:
-    """Collect every key SWIFT reads and every retired key from ``src``.
+def scan_source(src: Path) -> Tuple[KeySet, List[Unresolved]]:
+    """Collect every key SWIFT reads from ``src``.
 
     Parameters
     ----------
@@ -447,12 +478,10 @@ def scan_source(src: Path) -> Tuple[KeySet, List[Unresolved], Dict[str, str]]:
     Returns
     -------
     tuple
-        The valid keys, the parser calls that could not be resolved, and the
-        retired keys mapped to their replacement text.
+        The valid keys and the parser calls that could not be resolved.
     """
     keys = KeySet()
     unresolved: List[Unresolved] = []
-    retired: Dict[str, str] = {}
     for path in sorted(src.rglob("*")):
         if path.suffix not in (".c", ".h") or path.name in ("parser.c", "parser.h"):
             continue
@@ -460,8 +489,6 @@ def scan_source(src: Path) -> Tuple[KeySet, List[Unresolved], Dict[str, str]]:
         text = strip_comments(raw)
         macros = collect_macros(text)
         rel = path.relative_to(src.parent)
-        for m in RETIRED_TABLE.finditer(text):
-            retired.update(parse_retired_table(text, m.end() - 1, macros))
         for m in PARSER_CALL.finditer(text):
             got = balanced_args(text, m.end() - 1)
             if got is None or len(got[0]) < 2:
@@ -472,43 +499,7 @@ def scan_source(src: Path) -> Tuple[KeySet, List[Unresolved], Dict[str, str]]:
             ok = resolved is not None and all(keys.add(k) for k in resolved)
             if not ok:
                 unresolved.append(Unresolved(f"{rel}:{line}", " ".join(expr.split())))
-    return keys, unresolved, retired
-
-
-def parse_retired_table(
-    text: str, brace_pos: int, macros: Dict[str, str]
-) -> Dict[str, str]:
-    """Read ``{"old", "replacement"}`` entries from a C array initialiser.
-
-    Parameters
-    ----------
-    text : str
-        Source with comments removed.
-    brace_pos : int
-        Index of the opening brace of the initialiser.
-    macros : dict
-        String macros of the file.
-
-    Returns
-    -------
-    dict
-        Retired key to replacement text.
-    """
-    got = balanced_args(text, brace_pos)
-    if got is None:
-        return {}
-    _, end = got
-    body = text[brace_pos + 1 : end]
-    table: Dict[str, str] = {}
-    for entry in re.finditer(r"\{([^{}]*)\}", body):
-        fields = balanced_args("(" + entry.group(1) + ")", 0)
-        if fields is None or len(fields[0]) < 2:
-            continue
-        old = literal_concat(fields[0][0], macros)
-        new = literal_concat(fields[0][1], macros)
-        if old is not None and new is not None:
-            table[old] = new
-    return table
+    return keys, unresolved
 
 
 def read_param_keys(path: Path) -> List[Tuple[str, int]]:
@@ -565,7 +556,7 @@ def is_param_file(path: Path) -> bool:
     return re.search(r"^InternalUnitSystem:", text, re.M) is not None
 
 
-def check_file(path: Path, valid: KeySet, retired: Dict[str, str]) -> List[Finding]:
+def check_file(path: Path, valid: KeySet) -> List[Finding]:
     """Check one parameter file.
 
     Parameters
@@ -574,8 +565,6 @@ def check_file(path: Path, valid: KeySet, retired: Dict[str, str]) -> List[Findi
         The parameter file.
     valid : KeySet
         The keys SWIFT reads.
-    retired : dict
-        Retired key to replacement text.
 
     Returns
     -------
@@ -585,8 +574,8 @@ def check_file(path: Path, valid: KeySet, retired: Dict[str, str]) -> List[Findi
     findings: List[Finding] = []
     pool = sorted(valid.literals)
     for key, line in read_param_keys(path):
-        if key in retired:
-            findings.append(Finding(path, line, key, "RETIRED", retired[key]))
+        if key in RETIRED_KEYS:
+            findings.append(Finding(path, line, key, "RETIRED", RETIRED_KEYS[key]))
         elif key not in valid:
             close = difflib.get_close_matches(key, pool, n=1, cutoff=0.85)
             findings.append(
@@ -663,7 +652,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = ap.parse_args(argv)
 
     root: Path = args.root
-    valid, unresolved, retired = scan_source(root / "src")
+    valid, unresolved = scan_source(root / "src")
     example = root / "examples" / "parameter_example.yml"
     if example.is_file():
         for key, _ in read_param_keys(example):
@@ -677,7 +666,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     findings: List[Finding] = []
     for path in files:
-        found = check_file(path, valid, retired)
+        found = check_file(path, valid)
         findings += found
         if not args.summary_only:
             for f in found:
@@ -703,7 +692,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     print(
         f"\nKnown keys: {len(valid.literals)} literal, {len(valid.patterns)} "
-        f"patterns. Retired-key table: {len(retired)} entries."
+        f"patterns. Retired names known to the tool: {len(RETIRED_KEYS)}."
     )
     print(
         f"Unresolved parser calls: {len(unresolved)} (keys not checked against these):"
