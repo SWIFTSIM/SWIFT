@@ -845,7 +845,7 @@ def read_snapshot(filename: str) -> Dict:
             ),
             # (A1)'s and (A3)'s float-residual bar terms: the FLOAT inputs
             # still feeding the double relaxation update
-            # (radiation_end_force_propagation, radiation_isrf.c:899-903).
+            # (radiation_end_force_propagation, radiation_isrf.c:546-550).
             "div_PE": (
                 physical(gas["PESpecificFluxDivergences"], a, energy / time)[order]
                 if "PESpecificFluxDivergences" in gas
@@ -1519,7 +1519,7 @@ def c_hyp_spatial_spread(run: List[Dict], start: int = 0) -> Optional[float]:
             # Snapshot 0 is written before the first force step. Under the
             # scheme that sets c_hyp in radiation_snapshot_part_propagation
             # (fixed_fraction) it therefore still holds the first-init seed of exactly
-            # zero (radiation_isrf.c:156); the scheme that sets it in
+            # zero (radiation_isrf.c:112); the scheme that sets it in
             # radiation_end_density_propagation (kernel_local) reads the light-speed
             # value instead, because the initial density pass does
             # run. A snapshot with no speed at all carries nothing to be
@@ -1904,7 +1904,7 @@ def float_divergence_pull(
 
     The relaxation update is double, but the flux divergence it subtracts is
     still float end to end (radiation_end_force_propagation,
-    radiation_isrf.c:899-903), so each step's increment carries a float32
+    radiation_isrf.c:546-550), so each step's increment carries a float32
     relative error. This returns the increment's own size relative to ``u``,
     ``max_i |dt * div_i / u_i|``, which the caller multiplies by
     ``FLOAT32_EPS`` and the run's step count. None when the snapshot carries
@@ -2050,11 +2050,11 @@ def check_band_edge_ratio(
     trapezoid = abs(delta_lambda) * float(errors["trapezoid_bound"][-1])
 
     # c_hyp and dt_prev are shared by both moments (one operator,
-    # radiation_isrf.c:739-740) and cancel in the ratio to first order, so
+    # radiation_isrf.c:462-463) and cancel in the ratio to first order, so
     # they do not enter here. What survives is the FLOAT operands that
     # differ BETWEEN the two moments feeding the double relaxation update:
     # each moment's own flux divergence and dissipation source
-    # (radiation_isrf.c:899-903 is still float end to end for the
+    # (radiation_isrf.c:546-550 is still float end to end for the
     # divergence and dissipation inputs). Bounded by
     # eps_f * n_steps * the divergence's own relative pull on u this step,
     # read from the run's own snapshots, never fitted.
@@ -3121,14 +3121,14 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     At zero metallicity the injected energy is
     ``sum_j m_j u_j = Delta_t L sum_j weight_j``, with
     ``weight_j = m_j W(r_j, h_i) / enrichment_weight``
-    (radiation_iact.h:227,297), so the residual is bounded by the roundings
+    (radiation_iact.h:212,297), so the residual is bounded by the roundings
     that stand between the two sides of that identity, and by nothing else.
     These candidate terms are zero by construction, not by measurement:
 
     - only one step accumulates, because the field is reset on the step's
-      first touch by any star (radiation_iact.h:320-326);
+      first touch by any star (radiation_iact.h:283-289);
     - no quadrature of the source rate enters, because the star's step is
-      cached once per step (radiation_iact.h:124) and its band luminosity
+      cached once per step (radiation_iact.h:114) and its band luminosity
       once per stellar-evolution update
       (src/feedback/GEAR/stellar_evolution.c:1394 and :1668), and both are
       held constant across its neighbours. This needs the snapshot's
@@ -3136,16 +3136,16 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
       luminosity is constant over the run;
     - the extinction factor is exactly ``1.0f`` at ``Z = 0``, because
       ``kappa_eff`` carries ``Z`` as a factor and ``expf(-0.f)`` is exact
-      (radiation_isrf.c:1557 and radiation_get_dust_extinction_factor);
+      (radiation_isrf.c:1025 and radiation_get_dust_extinction_factor);
     - ``u`` carries no float32 term, being a double in ``struct part`` and in
-      the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:127);
+      the snapshot (src/feedback/GEAR_thermal/feedback_struct.h:97);
     - this check's own float64 summation of ``n_lit`` terms costs
       ``(n_lit - 1) * 2**-53``, eleven orders below the terms kept below.
 
     Two premises the bar does not cover, because neither is a rounding:
 
     - the two loops must evaluate the same ``r``. The injection floors it at
-      ``1e-3 h_i`` (radiation_iact.h:214) and the density loop does not
+      ``1e-3 h_i`` (radiation_iact.h:199) and the density loop does not
       (GEAR_thermal/feedback_iact.h:58), so a pair inside that radius has
       the two sides reading different kernel arguments. The effect is small
       rather than absent, but it is a statement about THIS kernel and not
@@ -3201,7 +3201,7 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     """
     u32 = FLOAT32_EPS / 2.0
     # The star's step is narrowed to a float before any neighbour reads it
-    # (radiation_iact.h:124), while the reference side uses the double the
+    # (radiation_iact.h:114), while the reference side uses the double the
     # log printed.
     dt_float32 = u32
     dt_text = log_step_quantisation(delta_t_token)
@@ -3215,10 +3215,10 @@ def injection_identity_bar(delta_t_token: str, n_lit: int) -> Dict:
     # Roundings that differ between the two loops. Every weight is positive,
     # so the normalised sum is a convex combination of the per-term relative
     # perturbations and each of these counts once, not n_lit times: the
-    # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:222),
+    # injection's per-neighbour hi_inv_dim scaling (radiation_iact.h:207),
     # then its m_j * w_j product, the density loop's own m_j * w_j product
     # over different operands, and the single hi_inv_dim scaling of
-    # enrichment_weight (GEAR_thermal/feedback.c:346). The kernel evaluation
+    # enrichment_weight (GEAR_thermal/feedback.c:334). The kernel evaluation
     # itself adds no term here; see this function's docstring for why
     # identical compilation of W is a premise and cannot be given one.
     reconstruction = 4.0 * u32

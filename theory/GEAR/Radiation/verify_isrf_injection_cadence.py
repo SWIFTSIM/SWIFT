@@ -6,7 +6,7 @@ Both schemes use the same exact-relaxation integrator (radiation_isrf.c,
 `u_new = e*u_prev + dt*phi*(source - div_F)`, `e = exp(-a)`,
 `phi = (1-e)/a`). They differ only in WHEN the star's emission enters `u`:
 
-  L (lump, current code, radiation_iact.h:239-274): the star's whole step
+  L (lump, current code, radiation_iact.h:238-274): the star's whole step
     `Delta_t_star*S*phi(Delta_t_star/tau)` is added ONCE, after the gas
     density ghost, gradient loop, extra ghost and cooling of the step the
     star is active in. A gas particle on a 2^k-finer bin runs its other
