@@ -1025,9 +1025,9 @@ decays through its own equations.
 
 \paragraph{Implementation.} The column is formed by
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{src/feedback/GEAR/radiation\_isrf.c:908}), and the path mechanism is
+(\code{src/feedback/GEAR/radiation\_isrf.c:998}), and the path mechanism is
 dispatched by \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:853}), called inside the star-gas pair loop.
+(\code{radiation\_isrf.c:943}), called inside the star-gas pair loop.
 
 \subsubsection{The signal speed and the stability bound}
 \label{sec:fuv-chyp}
@@ -1982,19 +1982,19 @@ window is cached once per star and step by \code{feedback\_star\_store\_timestep
 \code{radiation\_iact\_nonsym\_feedback\_apply} reads the cached value
 (\code{radiation\_iact.h:218}). The particle's step and the drain horizon are
 formed in \code{radiation\_snapshot\_part\_propagation}
-(\code{src/feedback/GEAR/radiation\_isrf.c:129}), at lines 176-182 and 206-214,
+(\code{src/feedback/GEAR/radiation\_isrf.c:147}), at lines 198-204 and 228-236,
 the horizon ending at \code{ISRF\_reservoir\_end\_ti}. The depth $a_i$ is formed
-in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:730},
-line 768) and \code{radiation\_end\_force\_propagation}
-(\code{radiation\_isrf.c:462}, line 530), and $\varphi$ is
-\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:350}) and
-its double twin (\code{radiation\_isrf.c:363}). The comoving path is returned
+in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:819},
+line 858) and \code{radiation\_end\_force\_propagation}
+(\code{radiation\_isrf.c:531}, line 607), and $\varphi$ is
+\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:372}) and
+its double twin (\code{radiation\_propagation\_iact.h:558-559}). The comoving path is returned
 by \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:853}), the comoving product is formed by
+(\code{radiation\_isrf.c:943}), the comoving product is formed by
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{radiation\_isrf.c:908}), and the $a^{-2}$ is applied in
+(\code{radiation\_isrf.c:998}), and the $a^{-2}$ is applied in
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{radiation\_isrf.c:1022}, lines 1028-1030).
+(\code{radiation\_isrf.c:1112}, lines 1118-1120).
 
 \subsubsection{Runtime parameters}
 \label{sec:fuv-parameters}
