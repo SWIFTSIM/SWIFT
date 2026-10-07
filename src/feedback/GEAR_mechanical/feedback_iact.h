@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "../GEAR/feedback_tracers_common.h"
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
 #include "feedback.h"
 #include "hydro.h"
 #include "mechanical_feedback_iact.h"
@@ -64,6 +66,11 @@ runner_iact_nonsym_feedback_density(
   float wi;
   kernel_eval(ui, &wi);
   si->feedback_data.gas_density += mj * wi;
+
+  /* Radiation: density gradient and metallicity at the star */
+  radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                         fb_props, hydro_props, phys_const, us,
+                                         cooling, ti_current);
 }
 
 /**
@@ -139,8 +146,9 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
+  /* Do we have SN, winds or radiation to distribute with the weights? */
+  if (!feedback_should_inject_feedback(si) &&
+      !feedback_should_inject_radiation_feedback(si, fb_props)) {
     return;
   }
 
@@ -196,8 +204,9 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
+  /* Do we have SN, winds or radiation to distribute with the weights? */
+  if (!feedback_should_inject_feedback(si) &&
+      !feedback_should_inject_radiation_feedback(si, fb_props)) {
     return;
   }
 
@@ -383,6 +392,10 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
+  /* The weights were not accumulated (nothing to distribute), or no
+     neighbour contributes: the normalization below would divide by 0. */
+  if (si->feedback_data.enrichment_weight <= 0.f) return;
+
   /* Compute the w_j_bar. */
   double w_j_bar[3];
   feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar);
@@ -395,6 +408,22 @@ runner_iact_nonsym_feedback_apply(
    * avoids 1./0. */
   if (w_j_bar_norm == 0) {
     return;
+  }
+
+  /*****************************************/
+  /* Radiation: the fraction |w_j_bar| of the star's emission, the
+     radiation momentum along w_j_bar. Sum_j w_j_bar = 0 and
+     sum_j |w_j_bar| = 1, so the radiation momentum given to the gas sums to
+     zero and its norms sum to the star's momentum. */
+  if (feedback_should_inject_radiation_feedback(si, fb_props)) {
+    const float r2_min = 1e-6f * hi * hi;
+    const float r_rad = sqrtf(max(r2, r2_min));
+    /* The shared body pushes along -dir */
+    const float dir[3] = {-(float)w_j_bar[0], -(float)w_j_bar[1],
+                          -(float)w_j_bar[2]};
+    radiation_iact_nonsym_feedback_apply_weighted(
+        r_rad, w_j_bar_norm, dir, (float)w_j_bar_norm, si, pj, xpj, cosmo,
+        hydro_props, fb_props, phys_const, us, cooling, ti_current);
   }
 
   const float mj = hydro_get_mass(pj);
@@ -652,124 +681,5 @@ runner_iact_nonsym_feedback_apply(
     timestep_sync_part(pj);
   }
 }
-
-/**
- * @brief ISRF propagation (symmetric): no-op, this feedback model
- * does not track the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param us Unit system.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct unit_system *us) {}
-
-/**
- * @brief ISRF propagation (non-symmetric): no-op, this feedback
- * model does not track the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param us Unit system.
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct part *restrict pi,
-                                    const struct part *restrict pj,
-                                    const float a, const float H,
-                                    const struct unit_system *us) {}
-
-/**
- * @brief `grad(u)` interaction (symmetric): no-op, this
- * feedback model does not track the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
-
-/**
- * @brief `grad(u)` interaction (non-symmetric): no-op, this
- * feedback model does not track the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct part *restrict pi,
-                                 struct part *restrict pj, const float a,
-                                 const float H) {}
-
-/**
- * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
- * no-op, this feedback model does not track
- * the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
-
-/**
- * @brief Negativity-triggered artificial-dissipation interaction
- * (non-symmetric): no-op, this feedback model does not track
- * the ISRF band fields.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi First particle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct part *restrict pi,
-                                    struct part *restrict pj, const float a,
-                                    const float H) {}
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */

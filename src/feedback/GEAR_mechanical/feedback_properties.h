@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 
+#include "../GEAR/radiation_isrf.h"
 #include "../GEAR/radiation_struct.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
@@ -91,48 +92,96 @@ struct feedback_props {
    * init. Never zero. */
   float event_dt_floor_Myr;
 
-  /* ------------- Subgrid radiation properties ------------- */
+  /* The subgrid radiation fields have the names and the meaning of the GEAR
+     thermal module's #feedback_props: the shared GEAR radiation code reads
+     them by name. */
 
-  /* This module has no subgrid radiation. The shared GEAR code reads these
-     fields, so they hold values that switch it off. */
+  /* ------------- Subgrid Radiation properties ------------- */
 
-  /*! The radiation processes enabled: always radiation_policy_none. */
+  /* The radiation processes enabled */
   int radiation_policy;
 
-  /*! Radiation pressure momentum effectively injected: always 0. */
+  /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /*! HII region rebuild frequency: always 0 (no HII timestep constraint). */
+  /*! Run the hyperbolic M1 propagation update? Only meaningful when
+   * radiation_policy_isrf is set. */
+  char ISRF_propagation;
+
+  /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or
+   * 1. */
+  double band_edge_weight_pe;
+  double band_edge_weight_lw;
+  double band_edge_photon_weight_lw;
+
+  /*! Active #isrf_extinction_path_mechanism. */
+  char ISRF_extinction_path_mechanism;
+
+  /*! Path R of #isrf_extinction_path_constant_kernel_path, in kernel support
+   * radii. Only parsed for that mechanism. */
+  float ISRF_extinction_path_in_kernel_radii;
+
+  /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
+  float ISRF_extinction_jeans_temperature_cap_K;
+
+  /*! Stability margin C_hyp in `c_hyp_i = C_hyp*h_i/dt_max(i)`, see
+   * feedback_props_init() for its range. */
+  float ISRF_c_hyp_margin;
+
+  /*! Active #isrf_c_hyp_scheme, parsed from a string and stored as an
+   * integer. 0 (not a valid scheme) when the ISRF is off. */
+  int ISRF_c_hyp_scheme;
+
+  /*! Fraction f with `c_hyp_i = f*c`, fixed_fraction scheme only. 0 when
+   * unused. */
+  float ISRF_c_hyp_fixed_fraction_of_c;
+
+  /*! Debug only: skip the timestep term `C_hyp*h_i/(f*c)` of the
+   * fixed_fraction scheme. */
+  char ISRF_c_hyp_timestep_term_off_for_debugging;
+
+  /*! Ceiling of the negativity-triggered dissipation coefficient. 0 disables
+   * it. The allowed range depends on #ISRF_c_hyp_margin. */
+  float ISRF_dissipation_alpha_max;
+
+  /*! Relative undershoot of `rho_prev*u` below the neighbours' kernel mean
+   * at which the trigger reaches #ISRF_dissipation_alpha_max. */
+  float ISRF_dissipation_negativity_threshold;
+
+  /*! Floor `alpha_floor/(1+(h*kappa/eps_lambda)^4)` under the trigger,
+   * combined with it by a max. 0 disables it. */
+  float ISRF_dissipation_alpha_floor;
+
+  /*! Screening-length budget `eps_lambda` of the floor roll-off. */
+  float ISRF_dissipation_floor_h_over_lambda;
+
+  /*! Threshold `eps_R` in [0, 1] of the flux-relaxation residual gate on
+   * the floor. 0 disables it. */
+  float ISRF_dissipation_floor_relaxation_residual;
+
+  /*! Debug only: when positive, pin every dissipation coefficient to this
+   * value. */
+  float ISRF_dissipation_alpha_pin_for_debugging;
+
+  /*! Minimal density to consider a particle eligible for HII ionization */
+  float HII_min_density;
+
+  /*! HII region rebuild frequency */
   float HII_rebuild_time;
 
-  /*! Maximal age of a star for the HII region algorithm: always 0. */
+  /*! Maximun age of star particle to trigger the HII region algorithm */
   float HII_max_age;
 
-  /*! Floor on the HII photon budget interval: always 0. */
+  /*! Boundary particle the photon budget cannot fully ionize: 0 =
+   * probabilistic, 1 = always ionize it. */
+  char HII_deterministic_boundary_ionization;
+
+  /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
 };
 
-/**
- * @brief Does this run need Grackle's chemistry_data resolved for a local
- * Lyman-Werner/PE channel? Never: this module has no subgrid radiation.
- *
- * @param feedback_props The #feedback_props.
- */
-__attribute__((always_inline)) INLINE static int
-feedback_props_needs_cooling_initialized(
-    const struct feedback_props *feedback_props) {
-  return 0;
-}
-
-/**
- * @brief Check and announce the subgrid radiation part of a #feedback_props
- * just read from a restart file. Nothing to do here: this module has no
- * subgrid radiation.
- *
- * @param feedback The restored #feedback_props.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_props_restore_radiation(const struct feedback_props *feedback) {}
+/* The shared radiation parameters read the fields above. */
+#include "../GEAR/radiation_properties.h"
 
 /**
  * @brief Print the feedback model.
@@ -186,6 +235,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Metallicity max for the first stars (in mass fraction) = %g",
             feedback_props->metallicity_max_first_stars);
   }
+
+  feedback_props_print_radiation(feedback_props);
 }
 
 /**
@@ -203,10 +254,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
 
-  /* sink_props_init() writes with_sinks after this function returns, and the
-     radiation fields stay at the zero that switches the radiation off. */
+  /* sink_props_init() writes with_sinks after this function returns. */
   bzero(fp, sizeof(struct feedback_props));
-  fp->radiation_policy = radiation_policy_none;
+
+  /* Every operator-state writer trusts the owner map. Mirrored on restart by
+     feedback_props_restore_radiation(). */
+  feedback_check_isrf_operator_owner_map(
+      radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
+      radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
   /* Supernovae energy efficiency */
   fp->supernovae_efficiency =
@@ -225,6 +280,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   fp->winds_efficiency = w_efficiency;
 
+  /* Every subgrid radiation channel switch, and the radiation pressure
+     efficiency. */
+  const char with_radiation =
+      feedback_props_init_radiation_switches(fp, params);
+
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
                           fp->stellar_model.yields_table);
@@ -232,7 +292,16 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
                                cosmo, fp->with_stellar_wind_feedback,
-                               /*with_radiation=*/0);
+                               with_radiation);
+
+  /* Announce the H2 photodissociation coefficient, once per run (not for the
+     first-stars model). */
+  radiation_set_lw_photon_energy_cgs(&fp->stellar_model.rad,
+                                     &fp->stellar_model);
+
+  /* Announce the band-edge weights. */
+  radiation_set_band_edge_coefficients(fp, &fp->stellar_model.rad,
+                                       &fp->stellar_model);
 
   /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -266,7 +335,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
                                  params, cosmo, fp->with_stellar_wind_feedback,
-                                 /*with_radiation=*/0);
+                                 with_radiation);
   }
 
   /* ------------- Star evolution timestep properties ------------- */
@@ -297,6 +366,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         "GEARFeedback:event_dt_floor_Myr (%g, internal units) must exceed "
         "TimeIntegration:dt_min (%g, internal units).",
         fp->event_dt_floor_Myr, dt_min);
+
+  /* ------------- Subgrid Radiation properties ------------- */
+  feedback_props_init_radiation(fp, phys_const, us, params);
 
   /*****************************************/
   /* Mechanical feedback properties */

@@ -147,17 +147,16 @@ COMMON_GEAR_SOURCES = \
     feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
 COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_star.c \
     feedback/GEAR/radiation_getters.c feedback/GEAR/radiation_table_io.c
+COMMON_GEAR_SOURCES += feedback/GEAR/feedback_radiation.c \
+    feedback/GEAR/radiation_gas.c feedback/GEAR/radiation_pressure.c \
+    feedback/GEAR/radiation_isrf.c
+COMMON_GEAR_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
 
-# The gas side of the subgrid radiation exists in GEAR_thermal only
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR_thermal/feedback.c
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback_radiation.c \
-    feedback/GEAR/radiation_gas.c feedback/GEAR/radiation_pressure.c \
-    feedback/GEAR/radiation_isrf.c
-GEAR_FEEDBACK_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
 endif
 
 if HAVEGEARMECHANICALFEEDBACK

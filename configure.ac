@@ -3535,8 +3535,9 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
-# Define GEAR_COOLING if GEAR feedback and grackle cooling are selected
-AS_IF([test "$with_feedback" = "GEAR" && test "$with_cooling" = "grackle"],
+# Define GEAR_COOLING if a GEAR feedback module and grackle cooling are
+# selected: the subgrid radiation of both modules acts through it
+AS_IF([test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical" && test "$with_cooling" = "grackle"],
   [AC_DEFINE([GEAR_COOLING], [1], [Use GEAR cooling subgrid logic])]
 )
 
