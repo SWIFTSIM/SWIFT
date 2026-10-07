@@ -567,16 +567,19 @@ because both sides share one $\Phi_{ij}$
 (\code{radiation\_propagation\_iact.h:27-33}, \code{:78}). At a uniform
 $c_{\rm hyp}$ this is proportional to $m_i X_i + m_j X_j = 0$. The exactness is
 a property of the accumulator, not of the applied update: $u$ is advanced by
-$dt_i\,\varphi_i\,X_i$ per particle (\code{radiation\_isrf.c:546-550}), so the
+$dt_i\,\varphi_i\,X_i$ per particle (\code{radiation\_isrf.c:630-634}), so the
 pairwise cancellation survives into $u$ only where $dt_i = dt_j$ and
 $\varphi_i = \varphi_j$, i.e.\ same time bin and same relaxation depth. On one
-rank, a pair across time bins is booked once, over the finer member's step:
-the finer member applies its own $dt\,\varphi\,X$, and the coarser member
-receives the exact opposite amount, held until its own update and added there
-with weight one to $u$ plus the absorbed energy. The finer member's $\varphi$
-in that amount leaves out the Hubble term of its depth, which is first order in
-$\lambda (c_{\rm hyp}/c) H\, dt$. On several MPI ranks each member integrates
-the pair with its own $dt$, and the cancellation fails across time bins.
+rank, a pair across time bins is booked once, over the finer member's step.
+The coarser member receives the opposite of the finer member's change of $u$
+plus absorbed energy, in $c_{\rm hyp}$-weighted units. That is $-dt\,X$ for
+transport, with no $\varphi$, and $-dt\,\varphi\,D$ for dissipation, where $D$
+is the dissipation accumulator. The amount is held until the coarser member's
+own update and added there with weight one. The finer member's $\varphi$ in
+the dissipation share leaves out the Hubble term of its depth, which is first
+order in $\lambda (c_{\rm hyp}/c) H\, dt$. On several MPI ranks each member
+integrates the pair with its own $dt$, and the cancellation fails across time
+bins.
 
 The divergence sits in the \emph{force} loop, not a type-1 loop, because it needs
 both sides of every pair credited and only the type-2 dispatch fires both sides
