@@ -266,12 +266,12 @@ static INLINE void tracers_first_init_xpart(
  * @brief Accumulate one channel's contribution to a gas particle's
  * lifetime-cumulative feedback tracers.
  *
- * Called once per channel per feedback event, from inside that channel's
- * own branch in the SN/winds/radiation-pressure interaction code, using
- * that branch's own locally-computed momentum/energy, not read back from
- * the shared feedback_xpart_data.delta_p/delta_E_th afterwards, since SN and
- * winds can both fire on the same gas particle in the same step and would
- * otherwise be inseparable.
+ * With the GEAR feedback, supernovae and winds call it once per channel per
+ * step from feedback_update_part(), with the sums over the events of the step
+ * and the final mass; radiation pressure calls it once per event from its own
+ * branch. Each channel passes its own momentum and energy, not the shared
+ * feedback_xpart_data.delta_p/delta_E_th, since SN and winds can both act on
+ * the same gas particle in the same step.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
  * field (feedback_cumulative.momentum_supernovae/winds/radiation).
@@ -279,12 +279,12 @@ static INLINE void tracers_first_init_xpart(
  * or NULL if this channel has no separate thermal contribution to track.
  * @param max_kick_velocity_channel Pointer to this channel's maximal kick
  * velocity field.
- * @param delta_p Momentum received this event (physical internal units):
- * a norm for supernovae and winds, signed for radiation pressure.
- * @param delta_u Specific internal energy received this event
- * (physical internal units), ignored if energy_channel is NULL.
- * @param kick_velocity Velocity magnitude of this event's kick (same
- * frame as delta_p).
+ * @param delta_p Momentum received (physical internal units): a sum of
+ * norms for supernovae and winds, signed for radiation pressure.
+ * @param delta_u Specific internal energy received (physical internal units),
+ * ignored if energy_channel is NULL.
+ * @param kick_velocity Largest kick velocity of one event (same frame as
+ * delta_p).
  */
 static INLINE void tracers_gear_accumulate_feedback_part(
     float *momentum_channel, float *energy_channel,
