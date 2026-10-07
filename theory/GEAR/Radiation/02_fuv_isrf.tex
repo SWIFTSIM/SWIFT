@@ -701,9 +701,9 @@ which the discrete scheme satisfies exactly when every particle shares
 the same $h_i$ and $\Delta t_i$, and hence the same $c_{{\rm hyp},i}$ and
 relaxation depth $a_i$: only then does the transport operator conserve
 $\sum_i m_i u_i$ exactly across the applied update
-(Section~\ref{sec:fuv-operators}); under mixed time bins or a
-non-uniform $c_{\rm hyp}\kappa\rho$ the identity holds up to the same
-residual described there.
+(Section~\ref{sec:fuv-operators}); under a non-uniform
+$c_{\rm hyp}\kappa\rho$, or under mixed time bins on several MPI ranks,
+the identity holds up to the same residual described there.
 
 \subsubsection{Coupling to the chemistry and cooling solver}
 \label{sec:fuv-coupling}
@@ -1367,8 +1367,8 @@ each particle applies, however, is that divergence scaled by its own
 $\Delta t_i\,\varphi(a_i)$ in Eq.~\ref{eq:fuv-u-update}, and $a_i$
 differs between particles whose time bin or $c_{\rm hyp}\kappa\rho$
 differ. $\sum_i m_i u_i$ is therefore conserved exactly only when both
-particles of a pair share the time bin and the same $c_{\rm
-hyp}\kappa\rho$; otherwise a residual of order the difference between
+particles of a pair share the same $c_{\rm hyp}\kappa\rho$, and the
+time bin unless the pair is booked across bins as below; otherwise a residual of order the difference between
 the two particles' $\varphi(a)$ remains, the price of applying an exact
 exponential integrator per particle rather than one global step. A pair
 across time bins is booked once, over the finer member's step, on one
@@ -1767,7 +1767,8 @@ $C_{\rm hyp} = 0.5$ ($1.68$ against $1.35$) and $1.35$ at $C_{\rm hyp} = 1.0$
 It is bounded within the stability bound of
 Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
 one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
-for pairs of active particles in the same time bin (Section~\ref{sec:fuv-operators});
+for pairs of active particles in the same time bin, and across time bins on one rank
+(Section~\ref{sec:fuv-operators});
 it does not conserve the first spatial moment: behind a source moving through the
 gas the trigger fires preferentially on the depleted trailing side, and
 the field's centroid lags the source by a small additional amount,
@@ -2178,8 +2179,8 @@ path.
     to $323$ particles (FUV) and $456$ (LW) at snapshots $3$ to $8$,
     against at most $1$ before the dispatch moved; a smaller, standing
     negative population also appears at time-bin boundaries, where
-    particles that do not share a time bin or the same $c_{\rm
-    hyp}\kappa\rho$ leave a residual by construction
+    particles that do not share the same $c_{\rm hyp}\kappa\rho$, or a
+    time bin on several MPI ranks, leave a residual by construction
     (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
     Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
     positivity at time-bin boundaries and in strongly contrasted gas,

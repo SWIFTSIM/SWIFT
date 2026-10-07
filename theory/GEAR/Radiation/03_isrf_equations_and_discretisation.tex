@@ -248,7 +248,7 @@ $\varphi$, $\mathcal{A}$ as in Equation~(\ref{eq:isrfd-depth-u}). It is
 \textbf{not} the dust-extinction loss alone: the transport divergence and the
 dissipation source are folded in too, because the exact-relaxation update mixes
 all three under one $\varphi$. At a snapshot, $E + \mathrm{Abs} - \mathrm{Inj}$,
-with $E = \sum m\,u$, isolates the part of the update that this closed-form split
+with $E = \sum m\,u$ (plus the pending amounts below), isolates the part of the update that this closed-form split
 attributes neither to injection nor to the surviving field: the transport and
 dissipation residual, which the SPH divergence's kernel-sum identity and the
 dissipation's pairwise antisymmetry drive to about zero when summed over all
@@ -256,8 +256,10 @@ particles. Both totals are never reset, so the identity holds at every snapshot.
 The PE moment's share of the LW-to-PE transfer is booked into PE's injected total,
 since LW's absorbed total already contains it. Energy that a pair across time
 bins still owes a coarser particle sits in its pending amounts
-(Section~\ref{sec:isrf-eqdisc-pairwise}), so $E$ includes them, and the
-pending add books its absorbed share. The ledger is updated at
+(Section~\ref{sec:isrf-eqdisc-pairwise}), so
+$E = \sum m\,\big(u + c_{\rm hyp}(P^{\rm tr} + P^{\rm d})\big)$, and the
+pending add books its absorbed share. Across time bins the identity is exact
+in its $c_{\rm hyp}$-weighted form. The ledger is updated at
 \code{radiation\_isrf.c:611-626} and, for the pending add, at
 \code{radiation\_isrf.c:500-501}.
 
@@ -755,7 +757,8 @@ particles are synchronised must add them to $u$.
 ledger residual: $E + \mathrm{Abs} - \mathrm{Inj}$ over the injected energy,
 with each term divided by its particle's $c_{\rm hyp}$ and the pending amounts
 included (0 is exact conservation). Final values, one rank, 8
-threads, per-owner booking against the cross-bin booking:
+threads, per-owner booking (each member books the pair over its own step, as
+on several ranks) against the cross-bin booking:
 \begin{center}
 \begin{tabular}{p{5.0cm}llll}
 \hline
@@ -763,7 +766,7 @@ fixture (several time bins) & \multicolumn{2}{l}{per-owner, PE / LW} & \multicol
 \hline
 \code{ISRFDissipationExtreme}, fixed speed, $Z = 1$ & $-1.6\times10^{-2}$ & $-4.5\times10^{-2}$ & $-1.6\times10^{-3}$ & $-1.2\times10^{-3}$ \\
 \code{ISRFMultiBinDissipation}, level 5, scheme 4, $Z = 1$ & $+1.3\times10^{-1}$ & $+5.2\times10^{-2}$ & $+3.5\times10^{-4}$ & $+2.1\times10^{-4}$ \\
-box at redshift 9, level 5, scheme 4, $Z = 1$ & $+8.0\times10^{-1}$ & $+7.0\times10^{-1}$ & $-2.0\times10^{-4}$ & $+6.6\times10^{-6}$ \\
+test box at redshift 9, level 5, scheme 4, $Z = 1$, young-star step cap $10^{-3}$\,Myr & $+8.0\times10^{-1}$ & $+7.0\times10^{-1}$ & $-2.0\times10^{-4}$ & $+6.6\times10^{-6}$ \\
 \hline
 \end{tabular}
 \end{center}
@@ -915,7 +918,7 @@ is at \code{radiation\_isrf.c:373-374} and
 \code{radiation\_isrf.c:373}. The double-precision path is
 \code{radiation\_isrf.c:544-550}, \code{:607} and \code{:628-632}, and the
 reason for the double $\varphi$ is the comment at
-\code{radiation\_propagation\_iact.h:551-552}. The debug ledger counters are at
+\code{radiation\_propagation\_iact.h:552-553}. The debug ledger counters are at
 \code{radiation\_isrf.c:611-626}. The pending add follows at
 \code{radiation\_isrf.c:639-645}, and the debug minimum since the last snapshot
 is recorded after it, at \code{radiation\_isrf.c:647-654}. The limiter that
@@ -996,7 +999,7 @@ the last step's value.
 function comment states the same substitution (\code{radiation\_isrf.c:812-813}).
 The double $u$ depth is at \code{radiation\_isrf.c:607} and the float flux depth
 at \code{radiation\_isrf.c:858}; the few-$10^{-8}$ bound is the comment at
-\code{radiation\_propagation\_iact.h:551-552}, and the same-rate requirement is the comment at
+\code{radiation\_propagation\_iact.h:552-553}, and the same-rate requirement is the comment at
 \code{radiation\_isrf.c:843-844}. The limiter decision is
 \code{radiation\_compute\_flux\_limiter\_scale\_band}
 (\code{radiation\_isrf.c:405}), called once per operator at
@@ -1190,8 +1193,7 @@ marker block naming the stored particle layout, and a file without it, or with
 another value, stops the run. The current layout is 3: the reduced flux plus
 the pending amounts of pairs across time bins, with $\varphi$-weighted
 dissipation (Section~\ref{sec:isrf-eqdisc-pairwise}). Layout 1 (reduced flux,
-no pending amounts) and layout 2 (pending amounts without the $\varphi$
-weight) stop the run. A restart file
+no pending amounts) and layout 2 stop the run. A restart file
 written by an older code, which stores the true flux and has no marker, stops
 the run, so such a run is rerun, never resumed.
 
@@ -1236,7 +1238,7 @@ effect, and the user must remove it from the parameter file by hand.
 time (\code{feedback\_properties.h:751-757}), at the drift and density-ghost
 dispatch (\code{radiation\_isrf.c:213-218}, \code{:324-328}) and on a restart
 (\code{feedback\_common.c:1719-1729}). The layout marker is the macro
-\code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT} (\code{feedback\_common.h:153-155}),
+\code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT} (\code{feedback\_common.h:154-156}),
 written at \code{feedback\_common.c:1661-1667} and checked at \code{:1693-1703}. The speed of
 scheme 2 is set at \code{radiation\_isrf.c:211-212} and that of scheme 4 at
 \code{radiation\_isrf.c:356-357}. The default scheme is parsed at
@@ -1919,15 +1921,15 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
     equal depth, and across time bins on one rank up to the same-step and
     Hubble terms; see Section~\ref{sec:isrf-eqdisc-pairwise}. The cross-bin
     booking does not preserve positivity, and neither does the per-owner one.
-    The metric is the count of particle-snapshots whose lowest PE or LW value
-    at the end of an update, since the previous snapshot, is negative (debug
-    builds only). On \code{ISRFMultiBinDissipation} (level 5, scheme 4, one
+    The metric counts the particle-snapshots whose lowest value at the end of
+    an update, since the previous snapshot, is negative, summed over the PE
+    and LW bands (debug builds only). On \code{ISRFMultiBinDissipation} (level 5, scheme 4, one
     thread), per-owner against cross-bin: 538 / 547 at $Z = 1$ and margin 0.5,
     58 / 64 at $Z = 0$ and margin 0.5, 99 / 101 at $Z = 1$ and margin 0.25,
     and 28 / 26 at $Z = 1$ and margin 0.125. Values negative at the snapshot
     instants, $Z = 1$ and margin 0.5: 54 / 67. On
-    \code{ISRFDissipationExtreme} (6 threads), one particle ends at $-2.07$
-    against $-0.067$ with the per-owner booking, after its coarse step
+    \code{ISRFDissipationExtreme} (scheme 4, 6 threads), one particle holds
+    $-2.07$ at a snapshot against $-0.067$ with the per-owner booking, after its coarse step
     receives a drain larger than its $u$. The mechanism of the excess is not
     established. No limiter is applied, because a limiter would break the
     ledger.
