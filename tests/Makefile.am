@@ -179,7 +179,7 @@ testTimeline_SOURCES = testTimeline.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
-testSymmetricMatrixDiagonalisation.c_SOURCES = testSymmetricMatrixDiagonalisation.c
+testSymmetricMatrixDiagonalisation_SOURCES = testSymmetricMatrixDiagonalisation.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
