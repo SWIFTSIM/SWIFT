@@ -352,12 +352,13 @@ def main():
 
     f_trap_t = np.array(f_trap_t)
 
-    # The t=0 snapshot is dumped before the star's own density loop has ever
-    # run, so EnrichmentWeight (hence f_trap) is still zero-initialized
-    # there; use the first snapshot with a genuinely measured value instead
-    # (mirrors Starbench's own "measured in <snapshot>, not necessarily the
-    # first" provenance discipline).
-    nonzero = np.nonzero(f_trap_t > 0)[0]
+    # The t=0 snapshot is dumped before the star's own feedback step has
+    # ever run, so its EnrichmentWeight/ZStar are not a measured value (zero
+    # with GEAR thermal, a partial sum with GEAR mechanical); use the first
+    # later snapshot with a measured value instead (mirrors Starbench's own
+    # "measured in <snapshot>, not necessarily the first" provenance
+    # discipline).
+    nonzero = np.nonzero((f_trap_t > 0) & (t_sim_s > 0))[0]
     if len(nonzero) == 0:
         raise RuntimeError("f_trap is 0 in every snapshot -- no radiation pressure?")
     ref_idx = int(nonzero[0])
