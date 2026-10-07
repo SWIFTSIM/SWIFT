@@ -135,6 +135,11 @@ do_configure --with-parmetis --disable-vec --disable-optimization --with-cooling
 do_make
 do_make clean
 
+echo "TREECOOL"
+do_configure --with-parmetis --disable-vec --disable-optimization --with-cooling=TREECOOL
+do_make
+do_make clean
+
 echo "----------------"
 echo "Chemistry models"
 echo "----------------"

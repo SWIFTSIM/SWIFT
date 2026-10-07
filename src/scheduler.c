@@ -80,7 +80,7 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 
   /* Wait for all writes to the old buffer to complete. */
   while (s->completed_unlock_writes < s->size_unlocks) {
-    /* Nothing to do here. */
+    cpu_relax();
   }
 
   /* Copy the buffers. */
@@ -123,7 +123,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
   /* Wait for there to actually be space at my index. */
   while (ind > s->size_unlocks) {
-    /* Nothing to do here. */
+    cpu_relax();
   }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
@@ -529,6 +529,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          cost = 1.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_sink_formation_sink) {
+          cost = 1.f * (wscale * count_i) * sink_count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -602,6 +606,24 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           } else {
             cost = 2.f * wscale *
                    (sink_count_i * sink_count_j + sink_count_j * sink_count_i) *
+                   sid_scale[t->flags];
+          }
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          }
+        } else if (t->subtype == task_subtype_sink_formation_sink) {
+          if (t->ci->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * count_i) * sink_count_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * sink_count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale *
+                   (count_i * sink_count_j + sink_count_i * count_j) *
                    sid_scale[t->flags];
           }
         } else if (t->subtype == task_subtype_bh_density ||

@@ -25,6 +25,8 @@
 /* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
+#include <stdint.h>
 #include <unistd.h>
 
 /* MPI headers. */
@@ -38,6 +40,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "common_io.h"
+#include "custom_mpi.h"
 #include "engine.h"
 #include "fof_catalogue_io.h"
 #include "hashmap.h"
@@ -918,9 +921,14 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 
   if (offset != NULL) {
 
-    /* If the element is a new entry set its value. */
+    /* If the element is a new entry set its value.
+     * The hashmap stores a long long: fine for anything below 2^63 groups. */
     if (created_new_element) {
-      (*offset).value_st = group_offset;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (group_offset > (size_t)LLONG_MAX)
+        error("Group offset %zu does not fit in the hashmap", group_offset);
+#endif
+      (*offset).value_st = (long long)group_offset;
     }
   } else
     error("Couldn't find key (%zu) or create new one.", group_id);
@@ -1209,27 +1217,40 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
  * Possibly reallocates the local_group_links if we run out of space.
  */
 static INLINE void add_foreign_link_to_list(
-    int *local_link_count, int *group_links_size, struct fof_mpi **group_links,
-    struct fof_mpi **local_group_links, const size_t root_i,
-    const size_t root_j, const size_t size_i, const size_t size_j) {
+    size_t *local_link_count, size_t *group_links_size,
+    struct fof_mpi **group_links, struct fof_mpi **local_group_links,
+    const size_t root_i, const size_t root_j, const size_t size_i,
+    const size_t size_j) {
 
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
-    const int new_size = 2 * (*group_links_size);
+    const size_t old_size = *group_links_size;
 
+    /* Grow geometrically but make sure we always make progress. */
+    const size_t new_size = (old_size > 0) ? 2 * old_size : 1;
+
+    /* The doubling must not wrap around and the buffer must remain
+     * addressable. */
+    if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+      error("Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
+
+    struct fof_mpi *temp =
+        (struct fof_mpi *)swift_realloc("fof_local_group_links", *group_links,
+                                        new_size * sizeof(struct fof_mpi));
+    if (temp == NULL)
+      error("Failed to re-allocate the list of foreign links to %zu elements",
+            new_size);
+
+    *group_links = temp;
     *group_links_size = new_size;
-
-    (*group_links) = (struct fof_mpi *)realloc(
-        *group_links, new_size * sizeof(struct fof_mpi));
 
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %d to %d elements.",
-            *local_link_count, new_size);
-
-    if (new_size < 0) error("Overflow in size of list of foreign links");
+    message("Re-allocating local group links from %zu to %zu elements.",
+            old_size, new_size);
   }
 
   /* Store the particle group properties for communication. */
@@ -1251,8 +1272,8 @@ void fof_search_pair_cells_foreign(
     const struct fof_props *props, const double dim[3], const double l_x2,
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *restrict ci,
-    const struct cell *restrict cj, int *restrict link_count,
-    struct fof_mpi **group_links, int *restrict group_links_size) {
+    const struct cell *restrict cj, size_t *restrict link_count,
+    struct fof_mpi **group_links, size_t *restrict group_links_size) {
 
 #ifdef WITH_MPI
   const size_t count_i = ci->grav.count;
@@ -1266,7 +1287,7 @@ void fof_search_pair_cells_foreign(
 
   /* Values local to this function to avoid dereferencing */
   struct fof_mpi *local_group_links = *group_links;
-  int local_link_count = *link_count;
+  size_t local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
   const size_t *const offset_i =
@@ -1369,7 +1390,7 @@ void fof_search_pair_cells_foreign(
       if (r2 < l_x2) {
 
         /* Check that the links have not already been added to the list. */
-        for (int l = 0; l < local_link_count; l++) {
+        for (size_t l = 0; l < local_link_count; l++) {
           if (local_group_links[l].group_i == root_i &&
               local_group_links[l].group_j == pj->fof_data.group_id) {
             continue;
@@ -1460,8 +1481,8 @@ void rec_fof_search_pair_foreign(
     const struct fof_props *props, const double dim[3], const double search_r2,
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *ci, const struct cell *cj,
-    int *restrict link_count, struct fof_mpi **group_links,
-    int *restrict group_links_size) {
+    size_t *restrict link_count, struct fof_mpi **group_links,
+    size_t *restrict group_links_size) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
@@ -2386,8 +2407,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   const double search_r2 = props->l_x2;
 
   /* Store links in an array local to this thread. */
-  int local_link_count = 0;
-  int local_group_links_size = props->group_links_size / e->nr_threads;
+  size_t local_link_count = 0;
+  size_t local_group_links_size = props->group_links_size / e->nr_threads;
 
   /* Init the local group links buffer. */
   struct fof_mpi *local_group_links = (struct fof_mpi *)swift_calloc(
@@ -2414,34 +2435,50 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   if (lock_lock(&s->lock) == 0) {
 
     /* Get pointers to global arrays. */
-    int *restrict group_links_size = &props->group_links_size;
-    int *restrict group_link_count = &props->group_link_count;
+    size_t *restrict group_links_size = &props->group_links_size;
+    size_t *restrict group_link_count = &props->group_link_count;
     struct fof_mpi **group_links = &props->group_links;
 
+    /* Total number of links we need to be able to store. */
+    const size_t needed = *group_link_count + local_link_count;
+    if (needed < *group_link_count)
+      error("Overflow in the number of foreign links (%zu + %zu)",
+            *group_link_count, local_link_count);
+
     /* If the global group_links array is not big enough re-allocate it. */
-    if (*group_link_count + local_link_count > *group_links_size) {
+    if (needed > *group_links_size) {
 
-      const int old_size = *group_links_size;
-      const int new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
+      const size_t old_size = *group_links_size;
+      const size_t new_size = max(needed, 2 * old_size);
 
-      (*group_links) = (struct fof_mpi *)realloc(
-          *group_links, new_size * sizeof(struct fof_mpi));
+      /* The growth must not wrap around and the buffer must remain
+       * addressable. */
+      if (new_size <= old_size || new_size > SIZE_MAX / sizeof(struct fof_mpi))
+        error(
+            "Overflow in the size of the list of foreign links (%zu elements)",
+            old_size);
 
+      struct fof_mpi *temp = (struct fof_mpi *)swift_realloc(
+          "fof_group_links", *group_links, new_size * sizeof(struct fof_mpi));
+      if (temp == NULL)
+        error("Failed to re-allocate the list of foreign links to %zu elements",
+              new_size);
+
+      (*group_links) = temp;
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %d to %d elements.",
+      message("Re-allocating global group links from %zu to %zu elements.",
               old_size, new_size);
     }
 
     /* Copy the local links to the global list. */
-    for (int i = 0; i < local_link_count; i++) {
+    for (size_t i = 0; i < local_link_count; i++) {
 
       int found = 0;
 
       /* Check that the links have not already been added to the list by another
        * thread. */
-      for (int l = 0; l < *group_link_count; l++) {
+      for (size_t l = 0; l < *group_link_count; l++) {
         if ((*group_links)[l].group_i == local_group_links[i].group_i &&
             (*group_links)[l].group_j == local_group_links[i].group_j) {
           found = 1;
@@ -3349,18 +3386,24 @@ void fof_link_foreign_fragments(struct fof_props *props,
         nr_gparts, sqrt(props->l_x2));
 
   /* Local copy of the variable set in the mapper */
-  const int group_link_count = props->group_link_count;
+  const size_t group_link_count = props->group_link_count;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  int global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
+  size_t global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
+                MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-  if (global_group_link_count < 0)
-    error("Overflow of the size of the global list of foreign links");
+  /* The global list is allocated as a single block on every rank, as are the
+   * three 2x-as-long size_t arrays derived from it further down. The largest
+   * of those is the list itself, so checking it covers them all. */
+  if (global_group_link_count > SIZE_MAX / sizeof(struct fof_mpi))
+    error(
+        "Overflow of the size of the global list of foreign links (%zu "
+        "elements)",
+        global_group_link_count);
 
   struct fof_mpi *global_group_links = NULL;
-  int *displ = NULL, *group_link_counts = NULL;
+  size_t *displ = NULL, *group_link_counts = NULL;
 
   if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3368,33 +3411,39 @@ void fof_link_foreign_fragments(struct fof_props *props,
     error("Error while allocating memory for the global list of group links");
 
   if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the number of group links on each "
         "MPI rank");
 
   if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
+                     e->nr_nodes * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
   /* Gather the total number of links on each rank. */
-  MPI_Allgather(&group_link_count, 1, MPI_INT, group_link_counts, 1, MPI_INT,
-                MPI_COMM_WORLD);
+  MPI_Allgather(&group_link_count, 1, MPI_UNSIGNED_LONG, group_link_counts, 1,
+                MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
 
   /* Set the displacements into the global link list using the link counts from
    * each rank */
   displ[0] = 0;
   for (int i = 1; i < e->nr_nodes; i++) {
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
-    if (displ[i] < 0) error("Number of group links overflowing!");
+
+    /* The running sum is monotonic unless it has wrapped around. */
+    if (displ[i] < displ[i - 1])
+      error(
+          "Overflow of the displacements into the global list of foreign "
+          "links at rank %d",
+          i);
   }
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
-                 global_group_links, group_link_counts, displ, fof_mpi_type,
-                 MPI_COMM_WORLD);
+  swift_mpi_allgatherv_sizet(props->group_links, group_link_count, fof_mpi_type,
+                             global_group_links, group_link_counts, displ,
+                             fof_mpi_type, MPI_COMM_WORLD);
 
   /* Clean up memory. */
   free(group_link_counts);
@@ -3417,7 +3466,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  const int global_group_list_size = 2 * global_group_link_count;
+  const size_t global_group_list_size = 2 * global_group_link_count;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3447,8 +3496,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
   hashmap_init(&map);
 
   /* Store each group ID and its properties. */
-  int group_count = 0;
-  for (int k = 0; k < global_group_link_count; k++) {
+  size_t group_count = 0;
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
@@ -3474,7 +3523,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * can perform a union-find locally on each node.
    * The value of which is an offset into global_group_id, which is the actual
    * root. */
-  for (int i = 0; i < group_count; i++) global_group_index[i] = i;
+  for (size_t i = 0; i < group_count; i++) global_group_index[i] = i;
 
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
@@ -3490,7 +3539,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
          group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (int k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
@@ -3538,7 +3587,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
   tic = getticks();
 
   /* Update each group locally with new root information. */
-  for (int i = 0; i < group_count; i++) {
+  for (size_t i = 0; i < group_count; i++) {
 
     const size_t group_id = global_group_id[i];
     const size_t offset = fof_find(global_group_index[i], global_group_index);
