@@ -35,7 +35,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
-        test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
+        test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
+        testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck \
         testIOOptionalFieldDefaultWidth \
@@ -52,7 +53,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck \
 		 testIOOptionalFieldDefaultWidth \
@@ -117,6 +119,14 @@ test27cellsStars_SOURCES = test27cellsStars.c
 test27cellsStars_subset_SOURCES = test27cellsStars.c
 
 test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
+
+test27cellsHydroSinks_SOURCES = test27cellsHydroSinks.c
+
+testSinkApertureRebuild_SOURCES = testSinkApertureRebuild.c
+
+testSinkFormationGasCompleteness_SOURCES = testSinkFormationGasCompleteness.c
+
+testSinkOverlapCriteria_SOURCES = testSinkOverlapCriteria.c
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -203,4 +213,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
+             test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh

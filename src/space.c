@@ -54,6 +54,7 @@
 #include "proxy.h"
 #include "restart.h"
 #include "rt.h"
+#include "sink_properties.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
@@ -1135,7 +1136,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  */
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
+                const struct hydro_props *hydro_properties,
+                const struct sink_props *sink_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
@@ -1271,6 +1273,21 @@ void space_init(struct space *s, struct swift_params *params,
   const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
   s->cell_min = tol * dmax / maxtcells;
 
+  /* If the sink model uses a fixed, global aperture radius for the gas-gas
+     sink-formation preparation loop, the top-level cells must be at least as
+     large as that aperture (with the same safety margin space_stretch gives
+     the h_max-based terms elsewhere) so that the immediate-neighbour task
+     stencil is guaranteed complete -- independent of whether any sink
+     particle currently exists. This must be folded in here (once, before the
+     first space_regrid() call below) rather than inside space_regrid()
+     itself: the first regrid happens before the #engine (and hence
+     e->sink_properties) exists. */
+  if (sink_formation_gas_loop_is_active(sink_properties)) {
+    s->cell_min = max(s->cell_min,
+                      (double)(space_stretch *
+                               sink_formation_gas_loop_r_cut(sink_properties)));
+  }
+
   /* Decide on the maximal top-level cell width -- the complement of the
      above, bounding how coarse the grid is ever allowed to get regardless
      of what is driving the coarsening (ordinary hydro/star/black-hole/sink
@@ -1295,6 +1312,19 @@ void space_init(struct space *s, struct swift_params *params,
         "Scheduler:max_top_level_cells (%d)",
         mintcells, maxtcells);
   s->cell_max_width = dmin / mintcells;
+
+  /* space_regrid() clamps the cell width at cell_max_width, which would
+     silently break the aperture floor set above. */
+  if (sink_formation_gas_loop_is_active(sink_properties) &&
+      space_stretch * sink_formation_gas_loop_r_cut(sink_properties) >
+          s->cell_max_width)
+    error(
+        "The sink-formation gas loop aperture (%e, with the space stretch "
+        "factor) is larger than the coarsest top-level cell allowed by "
+        "Scheduler:min_top_level_cells (%e). Lower "
+        "Scheduler:min_top_level_cells or the aperture.",
+        space_stretch * sink_formation_gas_loop_r_cut(sink_properties),
+        s->cell_max_width);
 
   /* Check that max_top_level_cells is big enough for the grid that
      min_top_level_cells actually forces along the longest axis.

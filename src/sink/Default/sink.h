@@ -71,7 +71,13 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(
-    struct part *restrict p, const struct sink_props *sink_props) {}
+    struct part *restrict p, const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  p->sink_data.N_check_formation = 0;
+  p->sink_data.N_check_formation_exact = 0;
+#endif
+}
 
 /**
  * @brief Prepares a sink-particle for its interactions
@@ -407,24 +413,51 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
     struct sink_part_data *p_data, const struct gpart *gp) {}
 
 /**
+ * @brief Fold the candidate particle's own contribution into its
+ * sink-formation totals.
+ *
+ * Nothing to do here.
+ *
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param pi The #part for which we compute the quantities.
+ * @param cosmo The cosmological parameters and properties.
+ */
+INLINE static void sink_prepare_part_sink_formation(
+    const int with_self_gravity, struct part *restrict pi,
+    const struct cosmology *cosmo) {}
+
+/**
  * @brief Compute all quantities required for the formation of a sink such as
  * kinetic energy, potential energy, etc. This function works on the
  * neighbouring gas particles.
  *
  * Nothing to do here.
  *
- * @param e The #engine.
+ * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
- * @param xpi The #xpart data of the particle #pi.
  * @param pj A neighbouring #part of #pi.
- * @param xpj The #xpart data of the particle #pj.
+ * @param r2 Comoving square distance between pi and pj.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
-    struct part *restrict pj, struct xpart *restrict xpj,
+    const int with_self_gravity, struct part *restrict pi,
+    const struct part *restrict pj, const float r2, const float dx[3],
     const struct cosmology *cosmo, const struct sink_props *sink_props) {}
+
+/**
+ * @brief Can the gas particle form a sink?
+ *
+ * Used to skip the overlap test of the gas-sink formation loop for gas that
+ * cannot form a sink.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static int sink_part_can_form_sink(
+    const struct part *restrict p) {
+  return 0;
+}
 
 /**
  * @brief Compute all quantities required for the formation of a sink. This
@@ -438,11 +471,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param sj A neighbouring #sink of #p.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
+ * @param r_acc_p Accretion radius of #pi if it forms a sink.
+ * @param dim Box size in each direction. 0 if the box is not periodic.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const double time) {}
+    const double time, const float r_acc_p, const double dim[3]) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */

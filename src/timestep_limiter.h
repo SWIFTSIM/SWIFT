@@ -182,6 +182,15 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     /* Mark the particle as being ready to be time integrated */
     p->limiter_data.wakeup = time_bin_not_awake;
 
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+    /* This particle was inactive when the formation loop ran, so its
+     * N_check_formation is stale from a previous active step.  Reset it
+     * and mark N_check_formation_exact with a sentinel (-1) so the debug
+     * check skips this particle rather than firing a spurious mismatch. */
+    p->sink_data.N_check_formation = 0;
+    p->sink_data.N_check_formation_exact = -1;
+#endif
+
     /* Do we need to apply the mising kick1 or is this bin active and
        it will be done in the kick task? */
     if (new_bin > e->max_active_bin) {
