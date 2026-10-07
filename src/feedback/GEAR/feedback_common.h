@@ -142,6 +142,7 @@ float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
 float feedback_get_part_c_hyp(const struct part *p);
+float feedback_get_part_pending_specific_energy(const struct part *p, int m);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -150,13 +151,9 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
-/*! Value of the ISRF flux-form marker block that feedback_struct_dump() writes
- * ahead of the #feedback_props block: the tracked flux is the reduced flux
- * `Ft = F_true/c_hyp` for every ISRF scheme. A restart file written by an
- * earlier code version has no such block, and a restart that holds the true
- * flux would otherwise be read back as reduced flux, silently wrong by a
- * factor `c_hyp`. */
-#define FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED 1
+/*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
+ * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,

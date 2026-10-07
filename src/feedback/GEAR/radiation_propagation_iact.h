@@ -549,10 +549,130 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 }
 
 /**
+ * @brief Relaxation factor `phi(a) = (1 - e^-a)/a` in double precision, for
+ * depths down to ~1e-8, below float32 resolution.
+ *
+ * @param a Dimensionless relaxation depth. Always `>= 0`.
+ * @return phi(a).
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_relaxation_phi_factor_double(double a) {
+  if (a < 1e-6) return 1.0 - 0.5 * a + (1.0 / 6.0) * a * a;
+  return -expm1(-a) / a;
+}
+
+/**
+ * @brief One band of a pair whose members have unequal steps: the finer member
+ * may take its rate, the coarser one gets its share as pending amounts.
+ *
+ * The coarser share is the finer member's booking over its step, divided by
+ * c_hyp, with its dissipation weighted by the finer member's phi.
+ *
+ * @param dx Comoving separation vector (pi - pj).
+ * @param r_inv Inverse comoving particle separation.
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param rho_i Particle i's cached comoving density snapshot.
+ * @param rho_j Particle j's cached comoving density snapshot.
+ * @param moment_i Particle i's moment (this band).
+ * @param moment_j Particle j's moment (this band).
+ * @param op_i Particle i's operator of this band.
+ * @param op_j Particle j's operator of this band.
+ * @param c_i Particle i's #feedback_part_data.c_hyp.
+ * @param c_j Particle j's #feedback_part_data.c_hyp.
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param i_is_fine 1 if particle i has the shorter step.
+ * @param fine_rate 1 to add the finer member's rate here.
+ * @param dt_fine The finer member's step.
+ */
+__attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
+    const float dx[3], float r_inv, float wi_dr, float wj_dr, float mi,
+    float mj, float rho_i, float rho_j,
+    struct feedback_isrf_moment_data *moment_i,
+    struct feedback_isrf_moment_data *moment_j,
+    const struct feedback_isrf_operator_data *op_i,
+    const struct feedback_isrf_operator_data *op_j, float c_i, float c_j,
+    float a_factor_comoving_to_physical, int i_is_fine, int fine_rate,
+    float dt_fine) {
+
+  /* The finer member's phi as its update forms it, without the Hubble term
+   * (no lambda or c here): exact at H = 0. */
+  const float c_fine = i_is_fine ? c_i : c_j;
+  const float kappa_fine = i_is_fine ? op_i->kappa : op_j->kappa;
+  const double phi_fine = radiation_relaxation_phi_factor_double(
+      (double)c_fine * (double)kappa_fine * (double)dt_fine);
+
+  /* The coarser side is formed with c_hyp = 1, which makes it c-free. */
+  const float cf_i = i_is_fine ? c_i : 1.f;
+  const float cf_j = i_is_fine ? 1.f : c_j;
+  float div[2] = {0.f, 0.f};
+  float diss[2] = {0.f, 0.f};
+  radiation_divergence_accumulate_band(
+      dx, r_inv, wi_dr, wj_dr, mi, mj, rho_i, rho_j, moment_i->specific_flux,
+      moment_j->specific_flux, cf_i, cf_j, a_factor_comoving_to_physical,
+      &div[0], &div[1]);
+  radiation_dissipation_force_accumulate_band(
+      wi_dr, wj_dr, mi, mj, rho_i, rho_j, cf_i, cf_j,
+      op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+      op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor, moment_i->u,
+      moment_j->u, a_factor_comoving_to_physical, &diss[0], &diss[1]);
+
+  const int f = i_is_fine ? 0 : 1;
+  struct feedback_isrf_moment_data *fine = i_is_fine ? moment_i : moment_j;
+  struct feedback_isrf_moment_data *coarse = i_is_fine ? moment_j : moment_i;
+  if (fine_rate) {
+    fine->div_specific_flux += div[f];
+    fine->dissipation_u += diss[f];
+  }
+  /* Gains to u over the finer step: -div and +phi*diss. */
+  coarse->pending_transport_u += -div[1 - f] * dt_fine;
+  coarse->pending_dissipation_u +=
+      (float)((double)diss[1 - f] * (double)dt_fine * phi_fine);
+}
+
+/**
+ * @brief All bands of an unequal-step pair (#radiation_cross_bin_pair_band).
+ * Out of line, so the same-step path keeps its code generation.
+ *
+ * @param dx Comoving separation vector (pi - pj).
+ * @param r_inv Inverse comoving particle separation.
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param fdi Particle i's feedback data.
+ * @param fdj Particle j's feedback data.
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param i_is_fine 1 if particle i has the shorter step.
+ * @param fine_rate 1 to add the finer member's rate here.
+ * @param dt_fine The finer member's step.
+ */
+__attribute__((noinline)) static void radiation_cross_bin_pair(
+    const float dx[3], float r_inv, float wi_dr, float wj_dr, float mi,
+    float mj, struct feedback_part_data *fdi, struct feedback_part_data *fdj,
+    float a_factor_comoving_to_physical, int i_is_fine, int fine_rate,
+    float dt_fine) {
+
+  const float c_i = fdi->c_hyp;
+  const float c_j = fdj->c_hyp;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    radiation_cross_bin_pair_band(
+        dx, r_inv, wi_dr, wj_dr, mi, mj, fdi->rho_prev, fdj->rho_prev,
+        &fdi->isrf_moment[m], &fdj->isrf_moment[m], &fdi->isrf_operator[o],
+        &fdj->isrf_operator[o], c_i, c_j, a_factor_comoving_to_physical,
+        i_is_fine, fine_rate, dt_fine);
+  }
+}
+
+/**
  * @brief Force-loop interaction between two particles (symmetric): both
  * particles' `div(F)` and dissipation terms are updated.
  *
  * Runs after the extra ghost has relaxed `specific_flux` and set `alpha`.
+ * With unequal steps, see #radiation_cross_bin_pair.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -593,6 +713,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
 
   const float a_factor_comoving_to_physical = 1.f / a;
 
+  const float s_i = fdi->dt_active;
+  const float s_j = fdj->dt_active;
+  if (s_i != s_j && s_i != 0.f && s_j != 0.f) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (s_i < 0.f || s_j < 0.f)
+      error("Symmetric ISRF pair with an inactive member (%e, %e).", s_i, s_j);
+#endif
+    radiation_cross_bin_pair(dx, r_inv, wi_dr, wj_dr, mi, mj, fdi, fdj,
+                             a_factor_comoving_to_physical, s_i < s_j,
+                             /*fine_rate=*/1, min(s_i, s_j));
+    return;
+  }
+
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
     struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
@@ -618,12 +751,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
  * @brief Force-loop interaction between two particles (non-symmetric): only
  * particle i's `div(F)` and dissipation terms are updated.
  *
+ * With unequal steps, an inactive j receives its pending share, and an i
+ * coarser than an active j books its own share as pending.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
- * @param pj Second particle (its own accumulator not updated).
+ * @param pj Second particle (only its pending amounts may be updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
@@ -631,8 +767,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct part *restrict pi,
-                                    const struct part *restrict pj,
-                                    const float a, const float H) {
+                                    struct part *restrict pj, const float a,
+                                    const float H) {
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.f / r : 0.f;
@@ -657,6 +793,25 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
   const float c_j = fdj->c_hyp;
 
   const float a_factor_comoving_to_physical = 1.f / a;
+
+  /* An active coarser j books this pair in its own visit. */
+  const float s_i = fdi->dt_active;
+  const float s_j = fdj->dt_active;
+  if (s_i != s_j && s_i != 0.f && s_j != 0.f && s_j < s_i) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (s_i < 0.f)
+      error("Inactive particle %lld visits its neighbours.", pi->id);
+    if (s_j < 0.f && !(fdj->dt_prev > fdi->dt_prev))
+      error("Inactive particle %lld is not coarser than %lld.", pj->id, pi->id);
+#endif
+    /* s_j < 0: j inactive, i finer. 0 < s_j < s_i: i coarser. */
+    const int i_is_fine = s_j < 0.f;
+    radiation_cross_bin_pair(dx, r_inv, wi_dr, wj_dr, mi, mj, fdi,
+                             &pj->feedback_data, a_factor_comoving_to_physical,
+                             i_is_fine,
+                             /*fine_rate=*/i_is_fine, i_is_fine ? s_i : s_j);
+    return;
+  }
 
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];

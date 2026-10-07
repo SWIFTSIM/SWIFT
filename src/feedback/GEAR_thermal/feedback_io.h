@@ -279,6 +279,37 @@ INLINE static void convert_part_c_hyp(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter for #PEPendingSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_pending_PE(const struct engine *e,
+                                           const struct part *p,
+                                           const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_PE);
+}
+
+/**
+ * @brief Snapshot converter for #LWPendingSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_pending_LW(const struct engine *e,
+                                           const struct part *p,
+                                           const struct xpart *xp, float *ret) {
+  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW);
+}
+
+/**
+ * @brief Snapshot converter for #LWPhotonPendingSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_pending_LW_PHOTON(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  float *ret) {
+  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW_PHOTON);
+}
+
+/**
  * @brief Specifies which particle fields to read from the ICs.
  *
  * @param parts The particle array.
@@ -322,7 +353,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 24;
+  int num = 27;
 
   list[0] = io_make_output_field_convert_part(
       "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
@@ -515,6 +546,25 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Same as LWCumulativeAbsorbedSpecificEnergies, Lyman-Werner-band "
       "photon-number moment. Always 0 unless the code is configured with "
       "--enable-debugging-checks.");
+
+  list[24] = io_make_output_field_convert_part(
+      "PEPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_pending_PE,
+      "PE-band specific energy owed by neighbours on shorter time steps, "
+      "added by the particle's next update. Add it to PESpecificEnergies "
+      "for an energy sum at a time when not all particles are synchronised.");
+
+  list[25] = io_make_output_field_convert_part(
+      "LWPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      0.f, parts, xparts, convert_part_pending_LW,
+      "Same as PEPendingSpecificEnergies, Lyman-Werner band.");
+
+  list[26] = io_make_output_field_convert_part(
+      "LWPhotonPendingSpecificEnergies", FLOAT, 1,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_pending_LW_PHOTON,
+      "Same as PEPendingSpecificEnergies, Lyman-Werner-band photon-number "
+      "moment.");
 
   return num;
 }

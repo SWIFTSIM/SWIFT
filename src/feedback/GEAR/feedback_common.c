@@ -1468,6 +1468,20 @@ float feedback_get_part_c_hyp(const struct part *p) {
 }
 
 /**
+ * @brief Specific energy owed to a moment by finer neighbours, added by the
+ * particle's next update: `c_hyp` times the two pending amounts.
+ *
+ * @param p The #part to query.
+ * @param m The #radiation_isrf_moment.
+ * @return The pending specific energy.
+ */
+float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
+  const struct feedback_isrf_moment_data *mo = &p->feedback_data.isrf_moment[m];
+  return p->feedback_data.c_hyp *
+         (mo->pending_transport_u + mo->pending_dissipation_u);
+}
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
@@ -1626,7 +1640,7 @@ void feedback_first_init_spart(struct spart *sp,
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes,
  * preceded by the ISRF flux-form marker block
- * (#FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED).
+ * (#FEEDBACK_RESTART_ISRF_PART_LAYOUT).
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1648,7 +1662,7 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
      block is the (much larger) #feedback_props block, fails the block-length
      check of restart_read_blocks() instead of being read with the wrong flux
      form. The description string is what that error prints. */
-  const int flux_form = FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED;
+  const int flux_form = FEEDBACK_RESTART_ISRF_PART_LAYOUT;
   restart_write_blocks((void *)&flux_form, sizeof(int), 1, stream,
                        "isrf_flux_form", ISRF_FLUX_FORM_RESTART_DESCRIPTION);
 
@@ -1679,13 +1693,13 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   int flux_form = 0;
   restart_read_blocks(&flux_form, sizeof(int), 1, stream, NULL,
                       ISRF_FLUX_FORM_RESTART_DESCRIPTION);
-  if (flux_form != FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED)
+  if (flux_form != FEEDBACK_RESTART_ISRF_PART_LAYOUT)
     error(
-        "The restart file holds ISRF flux form %d, but this code stores the "
-        "reduced flux for every scheme. A restart written by another code "
-        "version cannot be resumed: rerun the simulation from its initial "
-        "conditions.",
-        flux_form);
+        "The restart file holds ISRF particle layout %d, but this code needs "
+        "%d (reduced flux, phi-weighted cross-bin pending fields). A restart "
+        "written by another code version cannot be resumed: rerun the "
+        "simulation from its initial conditions.",
+        flux_form, FEEDBACK_RESTART_ISRF_PART_LAYOUT);
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");

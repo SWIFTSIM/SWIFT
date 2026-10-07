@@ -118,8 +118,17 @@ struct feedback_isrf_moment_data {
   /*! This step's source rate, drawn from #u_dose_reservoir. Scratch. */
   float u_source_rate;
 
+  /*! Transport amount owed by finer neighbours, divided by c_hyp. Added and
+      zeroed by the next own update. */
+  float pending_transport_u;
+
+  /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
+      weighted by their phi. Same life cycle as #pending_transport_u. */
+  float pending_dissipation_u;
+
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Most negative #u written since the previous snapshot, 0 if none. */
+  /*! Most negative #u at the end of an update since the previous snapshot,
+      0 if none. */
   float u_min_since_snapshot;
 
   /*! Cumulative dose handed to #u by the reservoir, rescaled by `c_hyp/c`
@@ -225,6 +234,10 @@ struct feedback_part_data {
       episode still live? Gates a first-touch-only timestep_sync_part call and
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
+
+  /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
+      active (equals #dt_prev), 0 legacy (every pair booked as before). */
+  float dt_active;
 
   /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
       every injection touch with a margin of
