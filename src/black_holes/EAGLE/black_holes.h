@@ -905,6 +905,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    * subgrid masses have catched up to the dynamical mass, nibbling 
    * will start taking place. */
   bp->nsc_mass += bp->nsc_mass_deficit;
+  message("Subgrid accretion: BH %lld just accreted some mass onto its NSC to constrain it to the mass scaling", bp->id);
 
   if (props->use_nibbling && (bp->subgrid_mass + bp->nsc_mass) < bp->mass) {
     /* In this case, the BH is still accreting from its (assumed) subgrid gas
