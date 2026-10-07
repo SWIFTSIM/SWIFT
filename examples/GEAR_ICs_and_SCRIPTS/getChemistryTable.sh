@@ -38,9 +38,11 @@ if [ "$WITH_WINDS" = true ]; then
     echo "Source: UniGe Astro servers"
     echo "========================================"
 
-    # TODO: the Data/SW group of POPII.hdf5 must be indexed by absolute Z, not
-    # Z/Zsun (see stellar_evolution_compute_preSN_properties). Upload the
-    # regenerated table and update this URL.
+    # TODO: the Data/SW groups of POPII.hdf5 and POPIII_PISNe.hdf5 must be
+    # indexed by absolute Z, not Z/Zsun (see
+    # stellar_evolution_compute_preSN_properties), and SWIFT stops at start-up
+    # if a Data/SW group lacks metallicity_convention. Upload the regenerated
+    # tables and update these URLs.
     wget -P "$DEST_DIR" https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPII.hdf5
     wget -P "$DEST_DIR" https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPIII_PISNe.hdf5
 
