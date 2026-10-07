@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
 #include "../GEAR/radiation_isrf.h"
+#include "../GEAR/radiation_struct.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
@@ -43,21 +44,6 @@
 /* Temperature cap in K of the temperature_capped_jeans extinction path:
  * Safranek-Shrader et al. (2017), MNRAS 465, 885, Section 3.4. */
 #define default_ISRF_extinction_jeans_temperature_cap_K 40.0
-
-/**
- * @brief The subgrid radiation feedback processes.
- */
-enum radiation_policy {
-  radiation_policy_none = 0,
-  /*! Photoionization (Strömgren sphere). */
-  radiation_policy_photoionization = (1 << 0),
-  /*! Radiation pressure from the stars' bolometric luminosity */
-  radiation_policy_radiation_pressure = (1 << 1),
-
-  /*! Interstellar radiation field: photoelectric heating and H2
-   * photodissociation. */
-  radiation_policy_isrf = (1 << 2),
-};
 
 /**
  * @brief Scheme that sets the ISRF propagation speed `c_hyp_i`.
@@ -488,6 +474,56 @@ feedback_check_isrf_operator_owner_map(
           "does.",
           o, (int)owner[o], o, first);
   }
+}
+
+/**
+ * @brief Check and announce the subgrid radiation part of a #feedback_props
+ * just read from a restart file.
+ *
+ * Stops with error() if the restored ISRF c_hyp scheme is not a valid one.
+ *
+ * @param feedback The restored #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_props_restore_radiation(const struct feedback_props *feedback) {
+
+  /* The two ISRF operator/moment maps are compile-time constants, so
+   * feedback_props_init()'s own check of them applies unchanged here; it
+   * does not run on a restart, so its call is mirrored explicitly. */
+  feedback_check_isrf_operator_owner_map(
+      radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
+      radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
+
+  /* The flat block read above bypasses feedback_props_init()'s parse-time
+   * check of the scheme, so a restart written by a run that used a removed
+   * scheme would otherwise resume with a speed rule nothing sets. The field
+   * is only meaningful, and only validated at parse time, when the
+   * interstellar radiation field is on. */
+  if ((feedback->radiation_policy & radiation_policy_isrf) &&
+      feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
+      feedback->ISRF_c_hyp_scheme !=
+          isrf_c_hyp_scheme_kernel_local_reduced_flux)
+    error(
+        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d (internal "
+        "value), which is neither fixed_fraction (2) nor kernel_local (4). A "
+        "restart written with a removed scheme cannot be resumed. Rerun the "
+        "simulation from its initial conditions with fixed_fraction or "
+        "kernel_local.",
+        feedback->ISRF_c_hyp_scheme);
+
+  /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
+     here, unlike radiation_lw_photon_energy_cgs above: they are plain
+     fields of *feedback, already restored verbatim by the flat
+     restart_read_blocks() call at the top of this function. Announcing the
+     restored value (not re-deriving it) still lets a restarted run's log be
+     checked against its own start-up announcement, confirming the restart
+     path preserves this value across a change to the radiation sub-struct. */
+  if (engine_rank == 0 && feedback->radiation_policy != 0)
+    message(
+        "Band-edge weights restored from the restart file: lambda_E(PE)=%.5g, "
+        "lambda_E(LW)=%.5g, lambda_N(LW)=%.5g",
+        feedback->band_edge_weight_pe, feedback->band_edge_weight_lw,
+        feedback->band_edge_photon_weight_lw);
 }
 
 /**

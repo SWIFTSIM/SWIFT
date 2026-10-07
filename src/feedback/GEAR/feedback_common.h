@@ -75,25 +75,6 @@ double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget_max(const struct spart *sp);
 double feedback_get_star_ionization_budget_total(const struct spart *sp);
-char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
-                                  const struct engine *e);
-void feedback_iact_HII_ionization(
-    struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, int pixel,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling,
-    const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back);
-
-double feedback_iact_HII_maintain_ionized_part(
-    struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, int pixel,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back);
-
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
@@ -107,41 +88,10 @@ double feedback_get_star_HII_last_attempt(const struct spart *sp);
 void feedback_set_star_HII_last_attempt(struct spart *sp,
                                         double star_age_beg_step);
 
-char feedback_is_part_tagged_as_ionized(const struct part *p,
-                                        const struct xpart *xp);
-long long feedback_get_part_ionized_star_id(const struct part *p,
-                                            const struct xpart *xp);
 float feedback_get_star_HII_mass(const struct spart *sp);
 double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
 float feedback_get_star_teff(const struct spart *sp);
-double feedback_get_part_u_PE(const struct part *p);
-double feedback_get_part_u_LW(const struct part *p);
-double feedback_get_part_u_LW_PHOTON(const struct part *p);
-float feedback_get_part_dissipation_alpha_PE(const struct part *p);
-float feedback_get_part_dissipation_alpha_LW(const struct part *p);
-float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p);
-float feedback_get_part_div_specific_flux_PE(const struct part *p);
-float feedback_get_part_div_specific_flux_LW(const struct part *p);
-float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p);
-void feedback_get_part_specific_flux_PE(const struct part *p, float *ret);
-void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
-void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
-                                               float *ret);
-struct engine;
-float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
-                                                const struct engine *e);
-float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
-                                                const struct engine *e);
-float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
-                                                       const struct engine *e);
-float feedback_get_part_cumulative_injected_PE(const struct part *p);
-float feedback_get_part_cumulative_injected_LW(const struct part *p);
-float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p);
-float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
-float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
-float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
-float feedback_get_part_c_hyp(const struct part *p);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

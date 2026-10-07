@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_GEAR_H
 
 #include "../GEAR/feedback_common.h"
+#include "../GEAR/feedback_radiation.h"
 #include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"

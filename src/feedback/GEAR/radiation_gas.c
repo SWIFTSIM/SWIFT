@@ -19,7 +19,7 @@
 /**
  * @file src/feedback/GEAR/radiation_gas.c
  * @brief Per-gas-particle radiation feedback physics for GEAR: hydrogen
- * content, ionized state, ionizing photon budget and the ionization tag.
+ * content, ionized state and the ionization tag.
  */
 
 /* Config parameters. */
@@ -276,130 +276,6 @@ radiation_get_part_rate_to_fully_ionize(
   const double Delta_N_dot = N_H * beta * n_e;
 
   return Delta_N_dot;
-}
-
-/**
- * @brief Set the #spart's ionizing photon rate, split evenly across the active
- * angular pixels.
- *
- * @param sp The star.
- * @param dot_N_ion_total The total ionizing photon rate for this star.
- * @param n_HII_pixels Number of active angular pixels (from
- * GEARFeedback:HII_angular_nside via #radiation.n_HII_pixels).
- */
-__attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
-    struct spart *sp, double dot_N_ion_total, int n_HII_pixels) {
-
-  sp->feedback_data.radiation.n_HII_pixels = n_HII_pixels;
-
-  const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
-  for (int p = 0; p < n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
-  }
-}
-
-/**
- * @brief Zero a #spart's radiation output, for when no radiation table is
- * loaded (#radiation.is_active = 0).
- *
- * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
- * by zero in radiation_set_ionizing_photon_rate().
- *
- * @param sp The star to zero.
- */
-__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
-    struct spart *sp) {
-  sp->feedback_data.radiation.L_bol = 0.f;
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    sp->feedback_data.radiation.L_band[m] = 0.;
-  sp->feedback_data.radiation.teff = 0.f;
-  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
-}
-
-/**
- * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
- * photons emitted over dt_back plus any overdraft carried from the last pass.
- *
- * The rate is integrated with the trapezoid rule, because a declining SSP rate
- * makes the rectangle rule under-issue photons.
- *
- * @param sp The star.
- * @param dt_back Time elapsed since this star's last HII rebuild pass.
- */
-__attribute__((always_inline)) INLINE void
-radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  /* All pixels share one rate, so log once per star. */
-  double issued_total = 0.;
-  double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
-#endif
-
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    /* A pass overdraws its pixel by up to one particle's cost. Carry the debt
-       forward: forgiving it would over-issue photons as 1/dt_back. Unspent
-       positive budget escaped and is dropped. */
-    const double debt =
-        min(sp->feedback_data.radiation.N_ion_budget_pix[p], 0.);
-
-    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
-    const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
-    /* rate_prev < 0: first pass, no previous sample, so use rate_now. */
-    const double rate_used =
-        rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
-    const double issued = rate_used * dt_back;
-
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = debt + issued;
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = rate_now;
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-    issued_total += issued;
-    rate_prev_dbg = rate_prev;
-    rate_now_dbg = rate_now;
-    rate_used_dbg = rate_used;
-#endif
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-  message(
-      "HII budget open: star %lld dt_back=%e rate_prev=%e rate_now=%e "
-      "rate_used=%e issued_total=%e",
-      sp->id, dt_back, rate_prev_dbg, rate_now_dbg, rate_used_dbg,
-      issued_total);
-#endif
-}
-
-/**
- * @brief Resync the cached previous rate to the rate now, without opening a
- * budget.
- *
- * Call it when a gas-free cell skips the budget but advances
- * HII_region_last_attempt. Otherwise the next trapezoid averages against a
- * stale, too-high rate and over-issues photons.
- *
- * @param sp The star.
- */
-__attribute__((always_inline)) INLINE void
-radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
-
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] =
-        sp->feedback_data.radiation.dot_N_ion_pix[p];
-  }
-}
-
-/**
- * @brief Consume the #spart ionizing photon budget.
- *
- * @param sp The star.
- * @param pixel The angular pixel to consume from.
- * @param Delta_N_ion The ionizing photon count to remove.
- */
-__attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
-    struct spart *sp, int pixel, double Delta_N_ion) {
-  sp->feedback_data.radiation.N_ion_budget_pix[pixel] -= Delta_N_ion;
-  return;
 }
 
 /**
