@@ -1006,6 +1006,10 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
+  /* Checks and messages that only the feedback module knows, before the
+     tables are read */
+  feedback_props_restore_radiation(feedback);
+
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
    * pressure, and the local Lyman-Werner/PE feedback (photoelectric
@@ -1030,9 +1034,6 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
      exactly as feedback_props_init() sets it. */
   radiation_set_lw_photon_energy_cgs(&feedback->stellar_model.rad,
                                      &feedback->stellar_model);
-
-  /* Checks and messages that only the feedback module knows */
-  feedback_props_restore_radiation(feedback);
 
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
