@@ -50,8 +50,11 @@ void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
   /* TODO: CHeck this works */
-  /* Did the particle receive a feedback event? */
-  if (xp->feedback_data.number_SN || xp->feedback_data.number_winds)
+  /* Did the particle receive a feedback event? delta_mass is tested on its own:
+     supernova ejecta can arrive without energy, hence without an event count,
+     and the mass must still be applied. */
+  if (xp->feedback_data.number_SN || xp->feedback_data.number_winds ||
+      xp->feedback_data.delta_mass != 0.f)
     feedback_update_part_events(p, xp, e);
 
   /* After the events: the radiation momentum acts on the final mass. */
@@ -311,7 +314,22 @@ int feedback_should_inject_wind_feedback(const struct spart *sp) {
  */
 int feedback_should_inject_feedback(const struct spart *sp) {
   return feedback_should_inject_SN_feedback(sp) ||
-         feedback_should_inject_wind_feedback(sp);
+         feedback_should_inject_wind_feedback(sp) ||
+         feedback_should_inject_SN_mass_only(sp);
+}
+
+/**
+ * @brief Should this particle deliver supernova ejecta without energy?
+ *
+ * The stellar evolution has already removed the ejected mass from the star,
+ * so the mass and the metals must reach the gas even when an efficiency
+ * factor has zeroed the energy.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_mass_only(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected == 0 &&
+         sp->feedback_data.supernovae.mass_ejected > 0;
 }
 
 /**

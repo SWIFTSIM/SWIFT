@@ -49,6 +49,7 @@ void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
+int feedback_should_inject_SN_mass_only(const struct spart *sp);
 int feedback_should_inject_feedback(const struct spart *sp);
 int feedback_should_inject_radiation_feedback(
     const struct spart *sp, const struct feedback_props *feedback_props);

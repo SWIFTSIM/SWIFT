@@ -653,6 +653,50 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
+  /*****************************************/
+  /* Supernova ejecta without energy: the mass, the metals and the momentum
+     the ejecta carry with the star velocity. No blastwave. */
+  if (feedback_should_inject_SN_mass_only(si)) {
+    m_ej = si->feedback_data.supernovae.mass_ejected;
+    dm_SN = w_j_bar_norm * m_ej;
+    xpj->feedback_data.delta_mass += dm_SN;
+    new_mass += dm_SN;
+
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      pj->chemistry_data.metal_mass[i] +=
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      pj->feedback_data.metal_mass[i] +=
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#endif
+    }
+
+    float delta_p_mag_ejecta = 0.f;
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    const double dp_zero[3] = {0.0, 0.0, 0.0};
+    const double dp_ejecta_SN[3] = {dm_SN * v_i_p[0], dm_SN * v_i_p[1],
+                                    dm_SN * v_i_p[2]};
+    for (int i = 0; i < 3; i++)
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
+
+    if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+      feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+          xpj, mj, new_mass, vj_pec, vj_hubble, dp_zero, dp_ejecta_SN);
+    }
+
+    /* Physical momentum given to pj in its own frame, as for the energetic
+       supernovae */
+    const double dp_rel[3] = {dm_SN * (v_i_p[0] - vj_pec[0]),
+                              dm_SN * (v_i_p[1] - vj_pec[1]),
+                              dm_SN * (v_i_p[2] - vj_pec[2])};
+    delta_p_mag_ejecta = (float)sqrt(
+        dp_rel[0] * dp_rel[0] + dp_rel[1] * dp_rel[1] + dp_rel[2] * dp_rel[2]);
+#endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
+    feedback_tracers_pending_add_SN(xpj, delta_p_mag_ejecta, 0.0);
+
+    timestep_sync_part(pj);
+  }
+
   /*-------------------------------------------------------------------------*/
   /* Final feedback considerations */
   if (feedback_should_inject_wind_feedback(si) ||
