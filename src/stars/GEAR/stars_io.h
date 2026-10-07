@@ -150,6 +150,14 @@ INLINE static void convert_spart_teff(const struct engine *e,
   ret[0] = feedback_get_star_teff(sp);
 }
 
+#ifdef DEBUG_INTERACTIONS_STARS
+INLINE static void convert_spart_gas_density_at_star(const struct engine *e,
+                                                     const struct spart *sp,
+                                                     float *ret) {
+  ret[0] = feedback_get_comoving_gas_density_at_star(sp);
+}
+#endif
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -271,9 +279,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_feedback,
       "List of interacting particles in the feedback SELF and PAIR");
 
-  list[4] = io_make_output_field(
+  list[4] = io_make_output_field_convert_spart(
       "EnrichmentWeight", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
-      feedback_data.enrichment_weight,
+      convert_spart_gas_density_at_star,
       "Star's SPH-kernel-weighted local gas density, as used by the "
       "radiation-pressure Sobolev column-density estimate "
       "(radiation_get_comoving_gas_column_density_at_star). Debug-only "

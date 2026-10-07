@@ -26,6 +26,7 @@
 #include <config.h>
 
 /* Include header */
+#include "feedback.h"
 #include "inline.h"
 #include "kernel_hydro.h"
 #include "radiation.h"
@@ -41,8 +42,8 @@
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
-  /* enrichment_weight is the star's SPH-averaged local gas density. */
-  const float rho_gas = sp->feedback_data.enrichment_weight;
+  /* The star's SPH-averaged local gas density. */
+  const float rho_gas = feedback_get_comoving_gas_density_at_star(sp);
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
                              sp->feedback_data.grad_rho_star[1],
                              sp->feedback_data.grad_rho_star[2]};

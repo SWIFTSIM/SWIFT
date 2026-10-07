@@ -29,87 +29,6 @@
 #include "timeline.h"
 
 /**
- * @brief Per-moment ISRF transport state of a hydro particle.
- */
-struct feedback_isrf_moment_data {
-
-  /*! Local specific radiation field of the band (physical, per unit mass).
-      Double: the per-step relaxation depth can be ~1e-8, too small for
-      `1 - a` in float. */
-  double u;
-
-  /*! Snapshot of #u taken once per step. Double, like #u. */
-  double u_prev;
-
-  /*! Reduced specific flux `F_true/c_hyp`, in the units of #u. */
-  float specific_flux[3];
-
-  /*! `(1/rho) div(rho F)` accumulated by the force loop. */
-  float div_specific_flux;
-
-  /*! Artificial-dissipation source term from the force loop. Scratch. */
-  float dissipation_u;
-
-  /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
-      loop, per physical length. Scratch. */
-  float grad_u[3];
-
-  /*! Mass-specific emission dose not yet injected into #u. */
-  float u_dose_reservoir;
-
-  /*! This step's source rate, drawn from #u_dose_reservoir. Scratch. */
-  float u_source_rate;
-
-  /*! Transport amount owed by finer neighbours, divided by c_hyp. Added and
-      zeroed by the next own update. */
-  float pending_transport_u;
-
-  /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
-      weighted by their phi. Same life cycle as #pending_transport_u. */
-  float pending_dissipation_u;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! Most negative #u at the end of an update since the previous snapshot,
-      0 if none. */
-  float u_min_since_snapshot;
-
-  /*! Cumulative dose handed to #u by the reservoir, rescaled by `c_hyp/c`
-      but not relaxed. */
-  float cumulative_injected;
-
-  /*! Cumulative energy lost to relaxation (dust absorption and redshift),
-      including transport and dissipation terms of optically thick steps. */
-  float cumulative_absorbed;
-#endif
-};
-
-/**
- * @brief Per-operator ISRF band coefficients of a hydro particle.
- */
-struct feedback_isrf_operator_data {
-
-  /*! Local linear dust absorption rate of the band, cached once per step. Not
-      the injection-side kappa of #radiation_get_part_ISRF_extinction_factors.
-   */
-  float kappa;
-
-  /*! M1 closure tensor `D(f)` of the owning moment. */
-  float m1_closure_D[3][3];
-
-  /*! Kernel mean of the neighbours' `|rho_prev*u_prev|`, the reference of the
-      negativity trigger. Scratch. */
-  float ngb_mean_abs_u_V;
-
-  /*! Reactive part of the dissipation coefficient, raised by the negativity
-      trigger and decayed otherwise. Dimensionless. */
-  float dissipation_alpha_trigger;
-
-  /*! Anticipatory part, the `h/lambda`-gated floor
-      (#radiation_dissipation_alpha_floor_band). */
-  float dissipation_alpha_floor;
-};
-
-/**
  * @brief Feedback fields carried by each hydro particle.
  *
  * Lives in #part, not #xpart, so the HII tag follows MPI exchange and
@@ -219,26 +138,11 @@ struct feedback_xpart_data {
   float delta_p[3];
 
   /*! Radiation struct */
-  struct {
-
-    /*! Momentum received from radiation pressure */
-    float delta_p[3];
-  } radiation;
+  struct feedback_xpart_radiation_data radiation;
 
   /*! HII ionization payload computed by the owner, local to its rank. The tag
       itself lives in #feedback_part_data. */
-  struct {
-
-    /*! Mean photon energy of the tagging star above 13.6 eV, frozen at tag
-        time, in erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
-    float excess_photon_energy_HI;
-
-    /*! Photoionization rate coefficient Gamma_HI of the tagging star at this
-        particle, frozen at tag time (internal 1/time). Only set with
-        GEARFeedback:HII_couple_ionization_rate, 0 otherwise. */
-    float photoionization_rate_HI;
-
-  } HII_region;
+  struct feedback_xpart_HII_region_data HII_region;
 
   /*! Indicator if the particule receive energy from SN specifically */
   char hit_by_SN;

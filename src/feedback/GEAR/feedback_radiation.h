@@ -28,8 +28,7 @@
 /**
  * @file src/feedback/GEAR/feedback_radiation.h
  * @brief Gas-side functions of the GEAR subgrid radiation (HII tag and ISRF
- * fields of a #part). Only the GEAR thermal feedback module carries this
- * state.
+ * fields of a #part), shared by the GEAR feedback modules.
  */
 
 struct engine;
@@ -85,5 +84,7 @@ float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
 float feedback_get_part_c_hyp(const struct part *p);
 float feedback_get_part_pending_specific_energy(const struct part *p, int m);
+float feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                               const struct engine *e);
 
 #endif /* SWIFT_FEEDBACK_GEAR_RADIATION_H */

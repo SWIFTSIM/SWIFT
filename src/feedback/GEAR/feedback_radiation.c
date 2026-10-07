@@ -27,6 +27,7 @@
 #include "minmax.h"
 #include "part.h"
 #include "radiation.h"
+#include "radiation_isrf.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
 #include "units.h"
@@ -725,4 +726,33 @@ float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
   const struct feedback_isrf_moment_data *mo = &p->feedback_data.isrf_moment[m];
   return p->feedback_data.c_hyp *
          (mo->pending_transport_u + mo->pending_dissipation_u);
+}
+
+/**
+ * @brief Radiation timestep bound of a particle, see
+ * #radiation_isrf_part_timestep.
+ *
+ * Stops the run if the bound is below TimeIntegration:dt_min.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ * @return The radiation timestep bound (before the cosmology factor), or
+ *     FLT_MAX if none applies.
+ */
+float feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                               const struct engine *e) {
+  const float dt_isrf = radiation_isrf_part_timestep(p, e);
+  /* Compared to dt_min after the cosmology factor, like the other
+   * candidates in get_part_timestep(). */
+  const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
+  if (dt_isrf_scaled < e->dt_min)
+    error(
+        "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
+        "the cosmology factor) below TimeIntegration:dt_min (%e): "
+        "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = "
+        "C_hyp*h/(f*c) below dt_min for this particle's h. Lower the "
+        "fraction (dt_rad grows as 1/f), or lower dt_min.",
+        p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
+        e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+  return dt_isrf;
 }

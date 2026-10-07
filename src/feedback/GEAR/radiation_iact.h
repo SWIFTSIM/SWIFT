@@ -154,26 +154,30 @@ feedback_prepare_radiation_feedback(
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  /* enrichment_weight is 0 only when the Z_star sum is too, so skipping is
-     exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). */
-  if (sp->feedback_data.enrichment_weight > 0.0f) {
-    sp->feedback_data.Z_star *=
-        hi_inv_dim / sp->feedback_data.enrichment_weight;
+  /* The gas density is 0 only when the Z_star sum is too, so skipping is
+     exact. Z_star needs 1/h^d, not the gradient's 1/h^(d+1). The density is
+     already normalized by the caller. */
+  const float rho_gas = feedback_get_comoving_gas_density_at_star(sp);
+  if (rho_gas > 0.0f) {
+    sp->feedback_data.Z_star *= hi_inv_dim / rho_gas;
   }
 
   feedback_star_store_timestep(sp, dt, ti_begin);
 }
 
 /**
- * @brief Radiation feedback interaction between two particles (non-symmetric),
- * updating the gas particles neighbouring a star particle.
+ * @brief Radiation feedback of a star on one gas neighbour, for a given
+ * share of the star's emission (non-symmetric).
  *
  * Applies radiation pressure and injects the local Lyman-Werner/PE field.
+ * The neighbour receives the fraction @p weight of the star's radiation
+ * momentum, along -@p dir, and the fraction @p weight of its LW/PE energy.
+ * The caller chooses the weights; they must sum to 1 over the neighbours.
  *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (si - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
+ * @param r Comoving distance between the two particles, floored above 0.
+ * @param weight Share of the star's emission given to pj.
+ * @param dir Comoving vector pointing from pj towards the star.
+ * @param dir_norm Norm of @p dir, > 0.
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
@@ -186,30 +190,15 @@ feedback_prepare_radiation_feedback(
  * @param ti_current Current integer time
  */
 __attribute__((always_inline)) INLINE static void
-radiation_iact_nonsym_feedback_apply(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *si, struct part *pj, struct xpart *xpj,
+radiation_iact_nonsym_feedback_apply_weighted(
+    const float r, const double weight, const float dir[3],
+    const float dir_norm, struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
 
   const float mj = hydro_get_mass(pj);
-  /* Floor avoids a NaN in the radial kick for a coincident pair (r2 == 0). */
-  const float r2_min = 1e-6f * hi * hi;
-  const float r = sqrtf(max(r2, r2_min));
-
-  float hi_inv = 1.0f / hi;
-  float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
-  float xi = r * hi_inv;
-  float wi, wi_dx;
-  kernel_deval(xi, &wi, &wi_dx);
-  wi *= hi_inv_dim;
-
-  const double si_inv_weight = si->feedback_data.enrichment_weight == 0
-                                   ? 0.
-                                   : 1. / si->feedback_data.enrichment_weight;
-  const double weight = mj * wi * si_inv_weight;
 
   /* Also used to renew the LW/PE illumination window. */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
@@ -233,10 +222,10 @@ radiation_iact_nonsym_feedback_apply(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
-    /* Radially outwards from the star; cosmo->a converts to comoving. */
+    /* Along -dir, away from the star; cosmo->a converts to comoving. */
     for (int i = 0; i < 3; i++) {
       xpj->feedback_data.radiation.delta_p[i] -=
-          delta_p_rad * dx[i] / r * cosmo->a;
+          delta_p_rad * dir[i] / dir_norm * cosmo->a;
     }
 
     /* Tracer. The kick velocity is a magnitude because
@@ -309,12 +298,66 @@ radiation_iact_nonsym_feedback_apply(
 }
 
 /**
+ * @brief Radiation feedback interaction between two particles (non-symmetric),
+ * updating the gas particles neighbouring a star particle.
+ *
+ * Applies radiation pressure and injects the local Lyman-Werner/PE field,
+ * shared by the SPH kernel mass weights and directed radially away from the
+ * star.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param fb_props Properties of the feedback scheme.
+ * @param phys_const The physical constants (in internal units).
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
+ * @param ti_current Current integer time
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
+
+  const float mj = hydro_get_mass(pj);
+  /* Floor avoids a NaN in the radial kick for a coincident pair (r2 == 0). */
+  const float r2_min = 1e-6f * hi * hi;
+  const float r = sqrtf(max(r2, r2_min));
+
+  float hi_inv = 1.0f / hi;
+  float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  float xi = r * hi_inv;
+  float wi, wi_dx;
+  kernel_deval(xi, &wi, &wi_dx);
+  wi *= hi_inv_dim;
+
+  const float rho_gas = feedback_get_comoving_gas_density_at_star(si);
+  const double si_inv_weight = rho_gas == 0 ? 0. : 1. / rho_gas;
+  const double weight = mj * wi * si_inv_weight;
+
+  radiation_iact_nonsym_feedback_apply_weighted(
+      r, weight, dx, r, si, pj, xpj, cosmo, hydro_props, fb_props, phys_const,
+      us, cooling, ti_current);
+}
+
+/**
  * @brief Update the properties of the particle due to radiation feedback.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
- * @param initial_mass Initial mass of the gas, i.e. before any winds or SN.
+ * @param initial_mass Mass of the gas the momentum is divided by (GEAR
+ * thermal: before any winds or SN).
  */
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
