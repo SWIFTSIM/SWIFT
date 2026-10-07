@@ -328,12 +328,14 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  * neighbours. The energy must already include the winds efficiency factor;
  * the mass is not scaled by it.
  *
- * The momentum is the star-frame ejecta budget sqrt(2 m_ej E_ej), the same
- * p_ej the gas-side injection distributes. It excludes the change-of-frame
- * term m_ej v_star that the gas-side CumulativeMomentumFromWinds includes, so
- * the two agree exactly only for a star at rest. The gas receives the budget
- * in the step after this call, so a snapshot can see the star-side totals
- * lead the gas-side totals by one step.
+ * The momentum is the ejecta budget sqrt(2 m_ej E_ej) in the rest frame of the
+ * star, the same p_ej the gas-side injection distributes. The star cannot know
+ * the velocity of the gas, so it records no other frame. The gas-side
+ * CumulativeMomentumFromWinds is a sum over the gas particles of the momentum
+ * applied to each one, which equals this budget when the star and the gas move
+ * with the same velocity. The gas receives the budget in the step after this
+ * call, so a snapshot can see the star-side totals lead the gas-side totals by
+ * one step.
  *
  * @param w The star's #tracers_winds_data to update.
  * @param mass_ejected Wind mass ejected this step (internal units).
